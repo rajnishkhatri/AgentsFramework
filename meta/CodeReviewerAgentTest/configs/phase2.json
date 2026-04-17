@@ -1,0 +1,33 @@
+{
+  "name": "phase2-verification",
+  "description": "PLAN_v2.md Phase 2 (\u00a72.1-2.8) end-to-end verification: per-step routing, evaluator, tool cache, output guardrail, PhaseLogger, GuardRailValidator",
+  "model_env_var": "MODEL_NAME_JUDGE",
+  "files": [
+    "components/router.py",
+    "components/evaluator.py",
+    "components/routing_config.py",
+    "components/schemas.py",
+    "orchestration/react_loop.py",
+    "orchestration/state.py",
+    "services/eval_capture.py",
+    "services/guardrails.py",
+    "services/base_config.py",
+    "services/tools/registry.py",
+    "services/governance/phase_logger.py",
+    "services/governance/guardrail_validator.py",
+    "prompts/system_prompt.j2",
+    "prompts/routing_policy.j2",
+    "prompts/output_guardrail.j2"
+  ],
+  "task_id": "phase2-verify-001",
+  "user_id": "phase2-reviewer",
+  "deterministic_only": false,
+  "output_json": "docs/PHASE2_CODE_REVIEW.json",
+  "output_md": "docs/PHASE2_CODE_REVIEW.md",
+  "md_template_section_overrides": {
+    "phase_label": "Phase 2",
+    "plan_reference": "[PLAN_v2.md](../PLAN_v2.md) \u00a72.1-2.8",
+    "decomposition_axis": "By Phase 2 sub-section (\u00a72.1 templates, \u00a72.2 router, \u00a72.3 evaluator, \u00a72.5 tool cache, \u00a72.6 output guardrail, \u00a72.7 PhaseLogger, \u00a72.8 GuardRailValidator).",
+    "review_id": "REVIEW-PHASE2-001"
+  }
+}

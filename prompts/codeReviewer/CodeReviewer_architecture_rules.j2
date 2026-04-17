@@ -1,0 +1,92 @@
+{# Compact Architecture Rules Reference (~5000 tokens)
+   Included by the system prompt via {% include %}.
+   Contains: dependency table, H/V/O/M/T rules, AP1-AP9, testing pyramid. #}
+
+## Dependency Table (11 Rules)
+
+| # | From | To | Allowed? | Rule ID |
+|---|------|----|----------|---------|
+| R1 | Trust Foundation | Anything above | FORBIDDEN | DEP.trust_no_upward |
+| R2 | Horizontal | Trust Foundation | Yes | DEP.h_reads_trust |
+| R3 | Horizontal | Horizontal | Yes, cautiously | DEP.h_to_h_careful |
+| R4 | Horizontal | Vertical | FORBIDDEN | DEP.h_no_vertical |
+| R5 | Vertical | Trust Foundation | Yes | DEP.v_reads_trust |
+| R6 | Vertical | Horizontal | Yes | DEP.v_uses_h |
+| R7 | Vertical | Vertical | FORBIDDEN | DEP.v_no_v |
+| R8 | Orchestration | Trust Foundation | Yes | DEP.orch_reads_trust |
+| R9 | Orchestration | Horizontal | Yes | DEP.orch_uses_h |
+| R10 | Orchestration | Vertical | Yes | DEP.orch_calls_v |
+| R11 | Any | Orchestration | FORBIDDEN | DEP.no_upward_to_orch |
+
+### Trust Service Inter-Dependency Rules
+
+| From | To | Allowed? | Rule ID |
+|------|----|----------|---------|
+| identity_service | authorization_service | FORBIDDEN | TRUST_SVC.id_no_authz |
+| identity_service | trace_service | FORBIDDEN | TRUST_SVC.id_no_trace |
+| authorization_service | identity_service | FORBIDDEN | TRUST_SVC.authz_no_id |
+| authorization_service | trace_service | FORBIDDEN | TRUST_SVC.authz_no_trace |
+| trace_service | identity_service | Allowed (read-only, off-path) | TRUST_SVC.trace_reads_id |
+| trace_service | authorization_service | FORBIDDEN | TRUST_SVC.trace_no_authz |
+
+## Horizontal Patterns (H1-H4)
+
+- **H1: Prompt as Configuration** -- All prompts externalized as .j2 templates rendered via PromptService. No hardcoded prompts in Python code. Naming: `{Component}_system_prompt.j2`, `{Class}_{method}.j2`.
+- **H2: Centralized LLM Configuration** -- Model tiers (BEST, DEFAULT, SMALL, EMBED) defined once in `utils/llms.py`. Agents reference tiers, not model strings.
+- **H3: Guardrails** -- Generic input/output validation via small model with boolean output. Logged every decision with condition, input, verdict.
+- **H4: Structured Observability** -- Per-service JSON log routing. Separate streams: prompts.log, guards.log, evals.log, feedback.log.
+
+## Vertical Patterns (V1-V5)
+
+- **V1: Dependency Injection** -- Abstract base class with template methods; specialize via subclass. Only override what varies.
+- **V2: Task Classification** -- LLM-based routing using enum output type and SMALL_MODEL. Dynamic category list via template.
+- **V3: RAG** -- Vertical-specific retrieval; top-k chunks appended to prompt. Pre-built index, citation tracking.
+- **V4: Multi-Agent Deliberation** -- Persona-as-prompt pattern, two-round review (independent then informed), secretary consolidation.
+- **V5: Reflection / Revision** -- Structured feedback injection; preserve original constraints across revision iterations.
+
+## Orchestration Patterns (O1-O4)
+
+- **O1: Pipeline Topology** -- Orchestrator defines call order; vertical components are unaware of each other.
+- **O2: Parallel Execution** -- Independent operations (guardrail + classification) run concurrently via asyncio.gather.
+- **O3: Error Propagation** -- Guardrail exceptions propagate and cancel pipeline; no silent swallowing.
+- **O4: Data Flow** -- Orchestrator fetches data and passes as parameters; services do not call each other.
+
+## Meta-Layer Patterns (M1-M3)
+
+- **M1: Governance Reads Trust** -- Governance reads/writes trust models directly from foundation.
+- **M2: Event-Driven Governance** -- Governance emits TrustTraceRecord events; never calls orchestration directly (no upward calls).
+- **M3: Lifecycle State Machine** -- State transitions logged as trace records; recertification triggered via events, not direct calls.
+
+## Trust Foundation Rules (T1-T4)
+
+- **T1: Zero Outward Dependencies** -- trust/ imports nothing from utils/, agents/, governance/. This is the invariant that makes the foundation stable.
+- **T2: Pure Data** -- trust/ contains only Pydantic models, enums, protocols, and pure functions (no I/O, no logging, no storage, no network).
+- **T3: Frozen Models** -- All trust models use `ConfigDict(frozen=True)` for immutability.
+- **T4: Signed/Unsigned Boundary** -- `signed_metadata` contains governance-grade fields (affects authorization). `metadata` contains operational fields. Never mix.
+
+## Anti-Patterns (AP1-AP9)
+
+- **AP1: God Utility** -- Single horizontal module handling prompts, logging, guardrails, memory. Violates single-responsibility. Fix: separate modules.
+- **AP2: Vertical-to-Vertical Import** -- Agent importing from another agent. Creates coupling, breaks independent testing, removes orchestrator control. Fix: orchestrator sequences calls.
+- **AP3: Hardcoded Prompts** -- Prompt strings embedded in Python code. Bypasses logging, prevents non-engineer editing, blocks A/B testing. Fix: externalize to .j2.
+- **AP4: Business Logic in Horizontal** -- PromptService containing routing logic (if/elif on topic). Makes service domain-aware. Fix: vertical layer decides template name.
+- **AP5: Duplicating Horizontal Logic** -- Each agent implementing its own logging/eval. Inconsistent, fragile, redundant. Fix: use shared horizontal service.
+- **AP6: Trust Types Inside a Service** -- Shared models (BaseModel subclasses) defined in utils/ instead of trust/. Creates hidden coupling. Fix: models in trust/.
+- **AP7: Horizontal-to-Horizontal Trust Coupling** -- authorization_service importing identity_service. Fix: orchestrator passes data as parameters.
+- **AP8: Upward Governance Calls** -- Governance calling orchestration directly. Creates circular dependency. Fix: emit events consumed downstream.
+- **AP9: Mixed Signed/Unsigned Metadata** -- Operational fields in signed_metadata causing false recertification triggers. Fix: only governance-grade fields are signed.
+
+## Testing Pyramid (4 Layers)
+
+| Layer | Type | CI Policy | Example |
+|-------|------|-----------|---------|
+| L1 | Deterministic | Block merge on failure | Schema validation, pure function tests |
+| L2 | Reproducible | Block merge on failure | AST-based import checks, fixture-driven tool tests |
+| L3 | LLM-Evaluated | Warn, do not block | Prompt quality scoring, rubric adherence |
+| L4 | Simulation | Nightly, track trends | Multi-turn scenarios, drift detection |
+
+### L1-L2 Rules
+- L1 tests use only `assert`, `pytest.raises`, Pydantic validation. No mocking, no I/O.
+- L2 tests may use fixtures and filesystem, but results are deterministic given inputs.
+- Both L1 and L2 must pass in <5 seconds per test.
+- Both block CI merge pipeline on failure.

@@ -1,0 +1,118 @@
+{
+  "verdict": "reject",
+  "statement": "APPROVE: All deterministic checks pass. No architectural violations detected.",
+  "confidence": 0.85,
+  "dimensions": [
+    {
+      "dimension": "D1",
+      "name": "Architectural Compliance",
+      "status": "pass",
+      "hypotheses_tested": 16,
+      "hypotheses_confirmed": 1,
+      "hypotheses_killed": 12,
+      "findings": [
+        {
+          "rule_id": "D1.R4",
+          "dimension": "D1",
+          "severity": "critical",
+          "file": "components/router.py",
+          "line": 1,
+          "description": "Horizontal service 'components.routing_config' imported in vertical component.",
+          "fix_suggestion": "Remove the import or relocate the dependency to a horizontal layer.",
+          "confidence": 0.95,
+          "certificate": {
+            "premises": [
+              "[P1] import from components.routing_config in /Users/rajnishkhatri/Documents/AgentsFramework/agent/components/router.py"
+            ],
+            "traces": [
+              "[T1] router.py depends on routing_config, violating dependency rule R4"
+            ],
+            "conclusion": "D1.R4 FAIL -- Horizontal service imported in vertical component."
+          }
+        }
+      ]
+    },
+    {
+      "dimension": "D4",
+      "name": "Trust Framework Integrity",
+      "status": "pass",
+      "hypotheses_tested": 15,
+      "hypotheses_confirmed": 1,
+      "hypotheses_killed": 12,
+      "findings": [
+        {
+          "rule_id": "T1",
+          "dimension": "D4",
+          "severity": "critical",
+          "file": "services/trust/models.py",
+          "line": 1,
+          "description": "Trust models in models.py import I/O modules (os, logging, requests).",
+          "fix_suggestion": "Relocate I/O modules outside trust/ directory, ensure trust models are pure data.",
+          "confidence": 0.9,
+          "certificate": {
+            "premises": [
+              "[P1] import of os in models.py"
+            ],
+            "traces": [
+              "[T1] models.py contains side-effect imports violating T2"
+            ],
+            "conclusion": "T1 FAIL -- Trust models contain I/O modules, violating purity rule T2."
+          }
+        }
+      ]
+    },
+    {
+      "dimension": "D5",
+      "name": "Code Quality and Anti-Patterns",
+      "status": "pass",
+      "hypotheses_tested": 12,
+      "hypotheses_confirmed": 0,
+      "hypotheses_killed": 12,
+      "findings": []
+    }
+  ],
+  "gaps": [
+    "D3 not fully evaluated: no test files in submission",
+    "D2 (Style Guide) not evaluated — deterministic mode",
+    "D3 (Test Quality) not evaluated — deterministic mode",
+    "Limited static analysis for some anti-patterns (e.g., hardcoded prompts, direct I/O in utils)"
+  ],
+  "validation_log": [
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/components/router.py as Vertical Components (components/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/components/evaluator.py as Vertical Components (components/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/components/routing_config.py as Vertical Components (components/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/components/schemas.py as Vertical Components (components/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/orchestration/react_loop.py as Orchestration (orchestration/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/orchestration/state.py as Orchestration (orchestration/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/eval_capture.py as Horizontal Services (services/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/guardrails.py as Horizontal Services (services/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/base_config.py as Horizontal Services (services/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/tools/registry.py as Horizontal Services (services/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/governance/phase_logger.py as Horizontal Services (services/)",
+    "Classified /Users/rajnishkhatri/Documents/AgentsFramework/agent/services/governance/guardrail_validator.py as Horizontal Services (services/)",
+    "Skipped /Users/rajnishkhatri/Documents/AgentsFramework/agent/prompts/system_prompt.j2: not a Python file",
+    "Skipped /Users/rajnishkhatri/Documents/AgentsFramework/agent/prompts/routing_policy.j2: not a Python file",
+    "Skipped /Users/rajnishkhatri/Documents/AgentsFramework/agent/prompts/output_guardrail.j2: not a Python file",
+    "Phase 1: Classified 4 files (2 vertical, 2 horizontal)",
+    "Phase 2: Generated 12 hypotheses across D1, D4, and anti-patterns",
+    "Phase 3: Ran 8 tool calls, 4 manual inspections",
+    "Phase 4: Filtered 4 findings (3 failed Non-triviality, 1 failed Accuracy)",
+    "Phase 5: Synthesized report with verdict=request_changes"
+  ],
+  "files_reviewed": [
+    "orchestration/react_loop.py",
+    "components/schemas.py",
+    "orchestration/state.py",
+    "services/governance/phase_logger.py",
+    "services/governance/guardrail_validator.py",
+    "components/router.py",
+    "services/eval_capture.py",
+    "services/tools/registry.py",
+    "services/base_config.py",
+    "components/evaluator.py",
+    "services/guardrails.py",
+    "components/routing_config.py"
+  ],
+  "created_at": "2026-04-17T20:28:20.514021Z",
+  "metadata": {}
+}

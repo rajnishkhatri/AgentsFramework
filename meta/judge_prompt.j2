@@ -1,0 +1,35 @@
+You are an expert evaluator for an AI agent system. Your task is to score an agent's output against a failure taxonomy.
+
+## Failure Taxonomy
+{% for category in categories %}
+- **{{ category.id }}** ({{ category.label }}): {{ category.description }}
+{% endfor %}
+
+## Agent Trace
+**Input:** {{ input }}
+**Output:** {{ output }}
+
+{% if trace %}
+**Execution Trace:**
+{{ trace }}
+{% endif %}
+
+## Instructions
+1. Analyze the agent's output and execution trace
+2. Determine if any failure categories apply
+3. Score the output on a 1-5 scale:
+   - 5: Perfect, no failures
+   - 4: Minor issues, acceptable output
+   - 3: Moderate issues, partially correct
+   - 2: Major issues, mostly incorrect
+   - 1: Critical failure, completely wrong
+
+Respond in JSON format:
+```json
+{
+  "score": <1-5>,
+  "failure_categories": ["<category_id>", ...],
+  "reasoning": "<brief explanation>",
+  "confidence": <0.0-1.0>
+}
+```

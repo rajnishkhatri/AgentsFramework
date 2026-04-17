@@ -1,0 +1,35 @@
+{# CodeReviewer_review_submission.j2
+   Task prompt for the Code Review Validator Agent.
+   Variables: files_to_review, submission_context, review_scope #}
+
+# Code Review Request
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("Full review -- evaluate all applicable dimensions (D1-D5).") }}
+
+## Files to Review
+
+{% for file in files_to_review %}
+### {{ file.path }}
+
+**Layer:** {{ file.layer | default("To be classified") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language | default("python") }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+## Instructions
+
+1. Execute the Five-Phase ReAct Loop from your system prompt.
+2. Run deterministic tools (D1, D4) on every file before applying LLM judgment.
+3. Produce a certificate for every hypothesis tested.
+4. Apply the Judge criteria to filter findings.
+5. Output a single `ReviewReport` JSON object as your final response.

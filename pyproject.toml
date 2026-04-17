@@ -1,0 +1,44 @@
+[project]
+name = "agent-trust-foundation"
+version = "0.1.0"
+description = "ReAct Agent with Dynamic Model Selection -- Phase 1"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+
+    "langgraph>=0.2",
+    "langchain-litellm>=0.2",
+    "litellm>=1.0",
+    "langsmith>=0.1",
+    "jinja2>=3.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+aws = ["boto3>=1.34.0"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "hypothesis>=6.0",
+    "freezegun>=1.0",
+    "ruff>=0.4",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["trust", "utils", "components", "services", "orchestration", "meta"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "simulation: marks tests as simulation-based (Layer 4)",
+    "live_llm: marks tests that require real LLM API calls",
+    "property: marks property-based tests (Hypothesis)",
+]
+testpaths = ["tests"]
+addopts = "-m 'not slow and not simulation and not live_llm' --strict-markers"
+asyncio_mode = "auto"

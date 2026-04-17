@@ -1,0 +1,19 @@
+## Routing Policy (Advisory)
+
+The system selects a model for each step using this decision order
+(first match wins). This policy is informational — the deterministic
+`select_model()` function is the source of truth; if prose and code
+disagree, code wins.
+
+1. **Budget pressure.** When total spend reaches
+   {{ budget_downgrade_pct }}% of the per-task cap, downgrade to the
+   fast tier regardless of other signals.
+2. **Retryable error.** If the last step failed with a transient
+   error (HTTP 429/503), re-run the same model after the configured
+   backoff. Do not change models on transient failures.
+3. **Escalation.** After {{ escalate_after_failures }} consecutive
+   non-retryable failures, escalate to a capable-tier model. Cap
+   total escalations at {{ max_escalations }} per task.
+4. **Planning first step.** Use a capable-tier model on step 0 to
+   draft the plan; subsequent steady-state steps may downgrade.
+5. **Steady state.** Otherwise, default to the fast tier.

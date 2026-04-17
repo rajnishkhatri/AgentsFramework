@@ -1,0 +1,43 @@
+{
+  "name": "phase1-verification",
+  "description": "PLAN_v2.md Phase 1 (\u00a71.1-1.8) end-to-end verification",
+  "model_env_var": "MODEL_NAME",
+  "files": [
+    "trust/__init__.py",
+    "trust/cloud_identity.py",
+    "trust/models.py",
+    "trust/enums.py",
+    "trust/exceptions.py",
+    "trust/protocols.py",
+    "trust/review_schema.py",
+    "trust/signature.py",
+    "components/schemas.py",
+    "components/routing_config.py",
+    "orchestration/state.py",
+    "orchestration/react_loop.py",
+    "services/base_config.py",
+    "services/llm_config.py",
+    "services/prompt_service.py",
+    "services/guardrails.py",
+    "services/eval_capture.py",
+    "services/observability.py",
+    "services/tools/registry.py",
+    "services/tools/shell.py",
+    "services/tools/file_io.py",
+    "services/tools/web_search.py",
+    "services/governance/agent_facts_registry.py",
+    "services/governance/black_box.py",
+    "cli.py"
+  ],
+  "task_id": "phase1-verify-001",
+  "user_id": "phase1-reviewer",
+  "deterministic_only": false,
+  "output_json": "docs/PHASE1_CODE_REVIEW.json",
+  "output_md": "docs/PHASE1_CODE_REVIEW.md",
+  "md_template_section_overrides": {
+    "phase_label": "Phase 1",
+    "plan_reference": "[PLAN_v2.md](../PLAN_v2.md) \u00a71.1-1.8",
+    "decomposition_axis": "By validation dimension (D1-D5).",
+    "review_id": "REVIEW-PHASE1-001"
+  }
+}

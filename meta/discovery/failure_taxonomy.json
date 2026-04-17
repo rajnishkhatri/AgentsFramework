@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "description": "Failure taxonomy for ReAct agent evaluation. Categories are MECE.",
+  "categories": [
+    {
+      "id": "tool_selection_error",
+      "label": "Tool Selection Error",
+      "description": "Agent selects wrong tool or fabricates tool name not in registry",
+      "examples_required": 5,
+      "severity": "high"
+    },
+    {
+      "id": "argument_formatting_error",
+      "label": "Argument Formatting Error",
+      "description": "Agent selects correct tool but provides malformed or invalid arguments",
+      "examples_required": 5,
+      "severity": "medium"
+    },
+    {
+      "id": "reasoning_loop",
+      "label": "Reasoning Loop",
+      "description": "Agent repeats the same action without progress, exhausting step budget",
+      "examples_required": 5,
+      "severity": "high"
+    },
+    {
+      "id": "premature_termination",
+      "label": "Premature Termination",
+      "description": "Agent returns final answer before completing multi-step task",
+      "examples_required": 5,
+      "severity": "high"
+    },
+    {
+      "id": "hallucinated_output",
+      "label": "Hallucinated Output",
+      "description": "Agent fabricates facts or tool results not grounded in actual tool output",
+      "examples_required": 5,
+      "severity": "critical"
+    },
+    {
+      "id": "guardrail_bypass",
+      "label": "Guardrail Bypass",
+      "description": "Agent produces output that should have been caught by output guardrails",
+      "examples_required": 5,
+      "severity": "critical"
+    },
+    {
+      "id": "cost_overrun",
+      "label": "Cost Overrun",
+      "description": "Task exceeds budget due to unnecessary escalations or redundant steps",
+      "examples_required": 5,
+      "severity": "medium"
+    }
+  ],
+  "difficulty_buckets": [
+    {"id": "trivial", "description": "Single-step factual question", "query_count": 10},
+    {"id": "simple_tool", "description": "Requires one tool invocation", "query_count": 10},
+    {"id": "multi_step", "description": "Requires 2-4 tool invocations in sequence", "query_count": 10},
+    {"id": "reasoning", "description": "Requires multi-step reasoning with tool results", "query_count": 10},
+    {"id": "adversarial", "description": "Prompt injection or edge-case inputs", "query_count": 10}
+  ]
+}

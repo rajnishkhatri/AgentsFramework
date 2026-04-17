@@ -1,0 +1,137 @@
+{
+    "version": 1,
+    "disable_existing_loggers": false,
+    "formatters": {
+        "json": {
+            "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+        }
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
+            "stream": "ext://sys.stderr"
+        },
+        "prompts": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/prompts.log",
+            "mode": "a"
+        },
+        "guards": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/guards.log",
+            "mode": "a"
+        },
+        "evals": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/evals.log",
+            "mode": "a"
+        },
+        "tools": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/tools.log",
+            "mode": "a"
+        },
+        "routing": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/routing.log",
+            "mode": "a"
+        },
+        "black_box": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/black_box.log",
+            "mode": "a"
+        },
+        "phases": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/phases.log",
+            "mode": "a"
+        },
+        "identity": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/identity.log",
+            "mode": "a"
+        },
+        "drift": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/drift.log",
+            "mode": "a"
+        },
+        "framework_telemetry": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/framework_telemetry.log",
+            "mode": "a"
+        }
+    },
+    "loggers": {
+        "services.prompt_service": {
+            "handlers": ["prompts", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.guardrails": {
+            "handlers": ["guards", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.eval_capture": {
+            "handlers": ["evals", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.tools": {
+            "handlers": ["tools", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "components.router": {
+            "handlers": ["routing", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.governance.black_box": {
+            "handlers": ["black_box", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.governance.phase_logger": {
+            "handlers": ["phases", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.governance.agent_facts": {
+            "handlers": ["identity", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "orchestration.react_loop": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "meta.drift": {
+            "handlers": ["drift", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.observability": {
+            "handlers": ["framework_telemetry", "console"],
+            "level": "INFO",
+            "propagate": false
+        }
+    },
+    "root": {
+        "level": "INFO",
+        "handlers": ["console"]
+    }
+}
