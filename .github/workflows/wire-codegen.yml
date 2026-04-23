@@ -1,0 +1,78 @@
+name: wire-codegen
+
+# Drift gate for the agent_ui_adapter wire contract.
+#
+# Per AGENT_UI_ADAPTER_SPRINTS.md S8 (US-8.1, US-8.2, US-8.3) this job:
+#   1. Re-runs the OpenAPI exporter and asserts the result is byte-identical
+#      to the committed `openapi.yaml`.
+#   2. Re-runs `openapi-typescript` against the regenerated YAML and asserts
+#      the result is byte-identical to the committed `frontend/lib/wire-types.ts`.
+#
+# Either drift fails the workflow with the regeneration command in the
+# annotation. Per US-8.3 the gate must be provable by intentionally
+# mutating a Pydantic model and observing the failure (see
+# `tests/agent_ui_adapter/wire/test_openapi_drift.py` and
+# `test_wire_types_drift.py` for the test-side hooks).
+
+on:
+  pull_request:
+    paths:
+      - "agent_ui_adapter/wire/**"
+      - "openapi.yaml"
+      - "frontend/**"
+      - "scripts/regenerate_wire_artifacts.sh"
+      - ".github/workflows/wire-codegen.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  drift:
+    name: Wire artifact drift gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Python project (editable, no dev extras needed for codegen)
+        run: pip install -e .
+
+      - name: Install frontend codegen deps
+        working-directory: frontend
+        run: npm install --no-audit --no-fund --no-progress
+
+      - name: Regenerate wire artifacts
+        run: ./scripts/regenerate_wire_artifacts.sh
+
+      - name: Fail on uncommitted drift
+        run: |
+          if ! git diff --quiet openapi.yaml frontend/lib/wire-types.ts; then
+            echo "::error title=wire-codegen drift::openapi.yaml and/or frontend/lib/wire-types.ts are out of sync."
+            echo "Run \`./scripts/regenerate_wire_artifacts.sh\` locally and commit the result."
+            git --no-pager diff --stat openapi.yaml frontend/lib/wire-types.ts
+            git --no-pager diff openapi.yaml frontend/lib/wire-types.ts | head -200
+            exit 1
+          fi
+          echo "wire-codegen artifacts are in sync."
+
+      - name: Run drift unit tests (Python + Node)
+        run: |
+          pip install pytest pyyaml
+          pytest -q tests/agent_ui_adapter/wire/test_openapi_drift.py \
+                    tests/agent_ui_adapter/wire/test_wire_types_drift.py \
+                    tests/agent_ui_adapter/wire/test_frontend_lib_readme.py
