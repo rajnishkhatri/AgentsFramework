@@ -20,12 +20,17 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
 )
-from trust.models import AgentFacts
+from services.authorization_service import AuthorizationService, EmbeddedPolicyBackend
+from trust.models import AgentFacts, Capability
 
 
 def test_phase_1_end_to_end_smoke() -> None:
     facts = AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
+        agent_id="a1",
+        agent_name="Bot",
+        owner="team",
+        version="1.0.0",
+        capabilities=[Capability(name="agent.session.start")],
     )
     runtime = MockRuntime(
         events=[
@@ -49,6 +54,9 @@ def test_phase_1_end_to_end_smoke() -> None:
             }
         ),
         agent_facts={facts.agent_id: facts},
+        authorization_service=AuthorizationService(
+            embedded_backend=EmbeddedPolicyBackend(),
+        ),
     )
     client = TestClient(app)
 

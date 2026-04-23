@@ -18,17 +18,25 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
 )
-from trust.models import AgentFacts
+from services.authorization_service import AuthorizationService, EmbeddedPolicyBackend
+from services.trace_service import InMemoryTraceSink, TraceService
+from trust.models import AgentFacts, Capability
 
 
 def _good_token(client: TestClient) -> dict:
     return {"Authorization": "Bearer good"}
 
 
-def _make_app_with_runtime(runtime, agent_id: str = "a1"):
+def _make_app_with_runtime(runtime, agent_id: str = "a1", *, trace_sink=None):
     facts = AgentFacts(
-        agent_id=agent_id, agent_name="Bot", owner="team", version="1.0.0"
+        agent_id=agent_id,
+        agent_name="Bot",
+        owner="team",
+        version="1.0.0",
+        capabilities=[Capability(name="agent.session.start")],
     )
+    sink = trace_sink or InMemoryTraceSink()
+    trace_svc = TraceService(sinks=[sink])
     return build_app(
         runtime=runtime,
         jwt_verifier=InMemoryJwtVerifier(
@@ -40,6 +48,11 @@ def _make_app_with_runtime(runtime, agent_id: str = "a1"):
             }
         ),
         agent_facts={facts.agent_id: facts},
+        authorization_service=AuthorizationService(
+            embedded_backend=EmbeddedPolicyBackend(),
+            trace_emit=trace_svc.emit,
+        ),
+        trace_service=trace_svc,
     )
 
 
@@ -143,3 +156,25 @@ class TestCompositionRoot:
 
         app = _make_app_with_runtime(MockRuntime(events=[]))
         assert isinstance(app, FastAPI)
+
+    def test_cancel_run_routes_through_runtime(self) -> None:
+        runtime = MockRuntime(
+            events=[
+                RunStartedDomain(trace_id="t", run_id="r1", thread_id="t1"),
+                RunFinishedDomain(trace_id="t", run_id="r1", thread_id="t1"),
+            ]
+        )
+        client = TestClient(_make_app_with_runtime(runtime))
+        with client.stream(
+            "POST",
+            "/agent/runs/stream",
+            json={"thread_id": "t1", "input": {}},
+            headers=_good_token(client),
+        ) as r:
+            body = b"".join(r.iter_bytes())
+        run_id = "r1"
+        r2 = client.delete(
+            f"/agent/runs/{run_id}", headers=_good_token(client)
+        )
+        assert r2.status_code == 200
+        assert run_id in runtime.cancelled_runs

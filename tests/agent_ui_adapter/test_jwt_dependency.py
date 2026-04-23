@@ -20,12 +20,26 @@ from agent_ui_adapter.server import (
     JwtClaims,
     build_app,
 )
-from trust.models import AgentFacts
+from services.authorization_service import AuthorizationService, EmbeddedPolicyBackend
+from trust.enums import IdentityStatus
+from trust.models import AgentFacts, Capability
 
 
-def _facts(agent_id: str = "a1") -> AgentFacts:
+def _facts(
+    agent_id: str = "a1",
+    *,
+    status: IdentityStatus = IdentityStatus.ACTIVE,
+    valid_until: datetime | None = None,
+    capabilities: list[Capability] | None = None,
+) -> AgentFacts:
     return AgentFacts(
-        agent_id=agent_id, agent_name="Bot", owner="team", version="1.0.0"
+        agent_id=agent_id,
+        agent_name="Bot",
+        owner="team",
+        version="1.0.0",
+        status=status,
+        valid_until=valid_until,
+        capabilities=capabilities or [Capability(name="agent.session.start")],
     )
 
 
@@ -34,12 +48,17 @@ def _verifier(claims: JwtClaims, agent_id: str = "a1") -> InMemoryJwtVerifier:
     return InMemoryJwtVerifier(token_to_claims={"good": claims})
 
 
-def _client(verifier=None, identities=None) -> TestClient:
+def _authz() -> AuthorizationService:
+    return AuthorizationService(embedded_backend=EmbeddedPolicyBackend())
+
+
+def _client(verifier=None, identities=None, *, authz=True) -> TestClient:
     return TestClient(
         build_app(
             runtime=MockRuntime(events=[]),
             jwt_verifier=verifier or InMemoryJwtVerifier(token_to_claims={}),
             agent_facts={f.agent_id: f for f in (identities or [])},
+            authorization_service=_authz() if authz else None,
         )
     )
 
@@ -100,6 +119,51 @@ class TestJwtPreflight:
         assert r.status_code == 401
         assert "identity" in r.json()["detail"].lower()
 
+    def test_suspended_identity_returns_401(self) -> None:
+        facts = _facts(status=IdentityStatus.SUSPENDED)
+        claims = JwtClaims(
+            subject="a1",
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        client = _client(_verifier(claims), [facts])
+        r = client.post(
+            "/agent/runs/stream",
+            json={"thread_id": "t", "input": {}},
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 401
+        assert "suspended" in r.json()["detail"].lower()
+
+    def test_revoked_identity_returns_401(self) -> None:
+        facts = _facts(status=IdentityStatus.REVOKED)
+        claims = JwtClaims(
+            subject="a1",
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        client = _client(_verifier(claims), [facts])
+        r = client.post(
+            "/agent/runs/stream",
+            json={"thread_id": "t", "input": {}},
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 401
+        assert "revoked" in r.json()["detail"].lower()
+
+    def test_past_valid_until_returns_401(self) -> None:
+        facts = _facts(valid_until=datetime(2000, 1, 1, tzinfo=UTC))
+        claims = JwtClaims(
+            subject="a1",
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        client = _client(_verifier(claims), [facts])
+        r = client.post(
+            "/agent/runs/stream",
+            json={"thread_id": "t", "input": {}},
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 401
+        assert "expired" in r.json()["detail"].lower()
+
 
 # ── Acceptance: valid token + active identity ─────────────────────────
 
@@ -116,5 +180,4 @@ class TestJwtAcceptance:
             json={"thread_id": "t", "input": {}},
             headers={"Authorization": "Bearer good"},
         )
-        # MockRuntime yields no events; sentinel comes; status 200.
         assert r.status_code == 200

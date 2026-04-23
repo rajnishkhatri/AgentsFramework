@@ -28,9 +28,12 @@ HITL ``request_approval`` wiring (S7).
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 import uuid
-from typing import Any, AsyncIterator, Protocol
+from datetime import UTC, datetime
+from typing import Any, AsyncIterator, Callable, Protocol
 
 from agent_ui_adapter.wire.agent_protocol import ThreadState
 from agent_ui_adapter.wire.domain_events import (
@@ -43,7 +46,9 @@ from agent_ui_adapter.wire.domain_events import (
     ToolCallStarted,
     ToolResultReceived,
 )
-from trust.models import AgentFacts
+from trust.models import AgentFacts, TrustTraceRecord
+
+_logger = logging.getLogger("agent_ui_adapter.adapters.langgraph_runtime")
 
 
 class _CompiledGraphLike(Protocol):
@@ -62,8 +67,41 @@ class _CompiledGraphLike(Protocol):
 class LangGraphRuntime:
     """Production ``AgentRuntime`` wrapping a LangGraph compiled app."""
 
-    def __init__(self, graph: _CompiledGraphLike) -> None:
+    def __init__(
+        self,
+        graph: _CompiledGraphLike,
+        *,
+        trace_emit: Callable[[TrustTraceRecord], None] | None = None,
+    ) -> None:
         self._graph = graph
+        self._trace_emit = trace_emit
+        self._run_tasks: dict[str, asyncio.Task] = {}
+
+    def _emit_trace(
+        self,
+        *,
+        trace_id: str,
+        agent_id: str,
+        event_type: str,
+        outcome: str,
+        details: dict[str, Any] | None = None,
+    ) -> None:
+        if self._trace_emit is None:
+            return
+        record = TrustTraceRecord(
+            event_id=str(uuid.uuid4()),
+            timestamp=datetime.now(UTC),
+            trace_id=trace_id,
+            agent_id=agent_id,
+            layer="L4",
+            event_type=event_type,
+            details=details or {},
+            outcome=outcome,
+        )
+        try:
+            self._trace_emit(record)
+        except Exception as exc:
+            _logger.error("trace_emit failed: %s: %s", type(exc).__name__, exc)
 
     async def run(
         self,
@@ -73,6 +111,14 @@ class LangGraphRuntime:
     ) -> AsyncIterator[DomainEvent]:
         trace_id = uuid.uuid4().hex
         run_id = uuid.uuid4().hex
+
+        self._emit_trace(
+            trace_id=trace_id,
+            agent_id=identity.agent_id,
+            event_type="run_started",
+            outcome="pass",
+            details={"run_id": run_id, "thread_id": thread_id},
+        )
 
         yield RunStartedDomain(
             trace_id=trace_id, run_id=run_id, thread_id=thread_id
@@ -87,8 +133,16 @@ class LangGraphRuntime:
                 event = self._translate(raw, trace_id)
                 if event is not None:
                     yield event
-        except Exception as exc:  # broad: translator boundary swallows raw exceptions
+        except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
+
+        self._emit_trace(
+            trace_id=trace_id,
+            agent_id=identity.agent_id,
+            event_type="run_finished",
+            outcome="fail" if error else "pass",
+            details={"run_id": run_id, "thread_id": thread_id, "error": error},
+        )
 
         yield RunFinishedDomain(
             trace_id=trace_id,
@@ -98,9 +152,9 @@ class LangGraphRuntime:
         )
 
     async def cancel(self, run_id: str) -> None:
-        # LangGraph cancellation is per-task; v1 is best-effort no-op until
-        # we wire run_id → asyncio.Task tracking in S6.
-        return None
+        task = self._run_tasks.pop(run_id, None)
+        if task is not None and not task.done():
+            task.cancel()
 
     async def get_state(self, thread_id: str) -> ThreadState:
         from datetime import UTC, datetime
@@ -142,24 +196,29 @@ class LangGraphRuntime:
     def _translate(raw: dict, trace_id: str) -> DomainEvent | None:
         ev_name = raw.get("event", "")
         data = raw.get("data") or {}
-        run_id = raw.get("run_id") or uuid.uuid4().hex
+        event_run_id = raw.get("run_id") or uuid.uuid4().hex
 
         if ev_name == "on_chat_model_stream":
             chunk = data.get("chunk")
             content = getattr(chunk, "content", None)
             if isinstance(content, str) and content:
                 return LLMTokenEmitted(
-                    trace_id=trace_id, message_id=run_id, delta=content
+                    trace_id=trace_id, message_id=event_run_id, delta=content
                 )
             return None
 
         if ev_name == "on_chat_model_start":
-            return LLMMessageStarted(trace_id=trace_id, message_id=run_id)
+            return LLMMessageStarted(trace_id=trace_id, message_id=event_run_id)
 
         if ev_name == "on_chat_model_end":
-            return LLMMessageEnded(trace_id=trace_id, message_id=run_id)
+            return LLMMessageEnded(trace_id=trace_id, message_id=event_run_id)
 
         if ev_name == "on_tool_start":
+            tool_call_id = (
+                data.get("tool_call_id")
+                or raw.get("id")
+                or event_run_id
+            )
             args_raw = data.get("input", {})
             try:
                 args_json = json.dumps(args_raw, default=str, sort_keys=True)
@@ -167,16 +226,21 @@ class LangGraphRuntime:
                 args_json = str(args_raw)
             return ToolCallStarted(
                 trace_id=trace_id,
-                tool_call_id=run_id,
+                tool_call_id=tool_call_id,
                 tool_name=raw.get("name", ""),
                 args_json=args_json,
             )
 
         if ev_name == "on_tool_end":
+            tool_call_id = (
+                data.get("tool_call_id")
+                or raw.get("id")
+                or event_run_id
+            )
             output = data.get("output", "")
             return ToolResultReceived(
                 trace_id=trace_id,
-                tool_call_id=run_id,
+                tool_call_id=tool_call_id,
                 result=str(output),
             )
 

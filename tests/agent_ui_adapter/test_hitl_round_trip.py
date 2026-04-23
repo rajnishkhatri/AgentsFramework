@@ -94,11 +94,18 @@ def _build_hitl_runtime() -> MockRuntime:
 
 
 def _build_authed_client() -> TestClient:
+    from services.authorization_service import (
+        AuthorizationService,
+        EmbeddedPolicyBackend,
+    )
+    from trust.models import Capability
+
     facts = AgentFacts(
         agent_id="hitl-agent",
         agent_name="HITLBot",
         owner="team",
         version="1.0.0",
+        capabilities=[Capability(name="agent.session.start")],
     )
     app = build_app(
         runtime=_build_hitl_runtime(),
@@ -111,6 +118,9 @@ def _build_authed_client() -> TestClient:
             }
         ),
         agent_facts={facts.agent_id: facts},
+        authorization_service=AuthorizationService(
+            embedded_backend=EmbeddedPolicyBackend(),
+        ),
     )
     return TestClient(app)
 

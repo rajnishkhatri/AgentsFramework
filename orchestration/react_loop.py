@@ -135,6 +135,8 @@ def build_graph(
     checkpointer: Any | None = None,
     agent_facts_registry: AgentFactsRegistry | None = None,
     telemetry: FrameworkTelemetry | None = None,
+    authorization_service: Any | None = None,
+    trace_service: Any | None = None,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -483,6 +485,91 @@ def build_graph(
         )
         return result
 
+    # ── verify_authorize_log_node: per-tool-call PEP (opt-in) ──
+
+    async def verify_authorize_log_node(state: AgentState, config: RunnableConfig) -> dict:
+        """Per-action PEP per FOUR_LAYER_ARCHITECTURE.md §verify_authorize_log_node.
+
+        When ``authorization_service`` is configured, checks every pending
+        tool call against the identity's capabilities/policies. A ``deny``
+        short-circuits: the tool is not executed and the graph proceeds to
+        evaluation with an error outcome.
+        """
+        if authorization_service is None:
+            return {}
+
+        messages = state.get("messages", [])
+        if not messages:
+            return {}
+
+        last_msg = messages[-1]
+        tool_calls = getattr(last_msg, "tool_calls", [])
+        if not tool_calls:
+            return {}
+
+        configurable = config.get("configurable", {})
+        registered_agent_id = (
+            configurable.get("registered_agent_id")
+            or state.get("registered_agent_id", "")
+        )
+
+        facts = None
+        if agent_facts_registry is not None and registered_agent_id:
+            try:
+                facts = agent_facts_registry.get(registered_agent_id)
+            except Exception:
+                facts = None
+
+        if facts is None:
+            return {}
+
+        workflow_id = state.get("workflow_id", "")
+        trace_id = configurable.get("trace_id") or workflow_id
+
+        for tc in tool_calls:
+            tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+            decision = authorization_service.authorize(
+                facts, tool_name, {}, trace_id=trace_id
+            )
+            if not decision.allowed:
+                logger.warning(
+                    "verify_authorize_log_node denied tool=%s agent=%s reason=%s",
+                    tool_name,
+                    registered_agent_id,
+                    decision.reason,
+                )
+                if trace_service is not None:
+                    from trust.models import TrustTraceRecord as _TTR
+
+                    trace_service.emit(
+                        _TTR(
+                            event_id=str(uuid.uuid4()),
+                            timestamp=datetime.now(UTC),
+                            trace_id=trace_id,
+                            agent_id=registered_agent_id,
+                            layer="L4",
+                            event_type="tool_call_denied",
+                            details={
+                                "tool": tool_name,
+                                "enforcement": decision.enforcement,
+                                "reason": decision.reason,
+                            },
+                            outcome="fail",
+                        )
+                    )
+                return {
+                    "last_outcome": "rejected",
+                    "last_error_type": "authorization_denied",
+                    "current_workflow_phase": WorkflowPhase.TOOL_EXECUTION.value,
+                }
+
+        return {}
+
+    def _verify_authz_routing(state: AgentState) -> str:
+        if state.get("last_outcome") == "rejected":
+            return "denied"
+        return "authorized"
+
     # ── Story 1.3: evaluate_node with real error propagation ──
 
     async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
@@ -609,11 +696,26 @@ def build_graph(
     )
 
     builder.add_edge("route", "call_llm")
-    builder.add_conditional_edges(
-        "call_llm",
-        _parse_response,
-        {"tool_call": "execute_tool", "final_answer": "evaluate", "budget_exceeded": END},
-    )
+
+    if authorization_service is not None:
+        builder.add_node("verify_authorize_log", verify_authorize_log_node)
+        builder.add_conditional_edges(
+            "call_llm",
+            _parse_response,
+            {"tool_call": "verify_authorize_log", "final_answer": "evaluate", "budget_exceeded": END},
+        )
+        builder.add_conditional_edges(
+            "verify_authorize_log",
+            _verify_authz_routing,
+            {"authorized": "execute_tool", "denied": "evaluate"},
+        )
+    else:
+        builder.add_conditional_edges(
+            "call_llm",
+            _parse_response,
+            {"tool_call": "execute_tool", "final_answer": "evaluate", "budget_exceeded": END},
+        )
+
     builder.add_edge("execute_tool", "evaluate")
     builder.add_conditional_edges(
         "evaluate",

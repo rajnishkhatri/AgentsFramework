@@ -370,15 +370,15 @@ class TestCompositionAndPortShape:
         source = server_path.read_text()
         tree = ast.parse(source)
 
-        # Required imports (composition shape):
-        # - AgentRuntime (the port)
-        # - to_ag_ui (the translator)
-        # - encode_event / SENTINEL_LINE (the transport)
         required_symbols = {
             "AgentRuntime",
             "to_ag_ui",
             "encode_event",
             "SENTINEL_LINE",
+            "AuthorizationService",
+            "TraceService",
+            "LongTermMemoryService",
+            "ToolRegistry",
         }
         imported: set[str] = set()
         for node in ast.walk(tree):
