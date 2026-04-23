@@ -1,5 +1,7 @@
 # `frontend/lib/` — wire-types and sealed-envelope rule
 
+> **See also**: [`docs/STYLE_GUIDE_FRONTEND.md`](../../docs/STYLE_GUIDE_FRONTEND.md) — the canonical, prescriptive style guide for the Frontend Ring (W/P/A/T/X/C/B/U/S/O rule families, code-review checklists, anti-patterns). The sealed-envelope rule below is restated there as Rule W4 and operationalized in §16.
+>
 > **Owner**: `agent_ui_adapter` codegen pipeline (S8 of [`docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md`](../../docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md)).
 >
 > **Source of truth**: Pydantic models under [`agent_ui_adapter/wire/`](../../agent_ui_adapter/wire/) → committed `openapi.yaml` at the repo root → committed `wire-types.ts` in this directory.
@@ -17,7 +19,7 @@
 
 ## Sealed-Envelope Rule
 
-Per [`AGENT_UI_ADAPTER_PLAN.md` §4.4 / risk R3](../../docs/plan/adapter/AGENT_UI_ADAPTER_PLAN.md) and [`docs/FOUR_LAYER_ARCHITECTURE.md` §Trust Foundation](../../docs/FOUR_LAYER_ARCHITECTURE.md):
+Per [`AGENT_UI_ADAPTER_PLAN.md` §4.4 / risk R3](../../docs/plan/adapter/AGENT_UI_ADAPTER_PLAN.md) and [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` §Trust Foundation](../../docs/Architectures/FOUR_LAYER_ARCHITECTURE.md):
 
 > **Any payload carrying a cryptographic signature MUST be passed through the frontend bytewise-unchanged.**
 

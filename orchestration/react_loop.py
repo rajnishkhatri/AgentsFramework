@@ -488,7 +488,7 @@ def build_graph(
     # ── verify_authorize_log_node: per-tool-call PEP (opt-in) ──
 
     async def verify_authorize_log_node(state: AgentState, config: RunnableConfig) -> dict:
-        """Per-action PEP per FOUR_LAYER_ARCHITECTURE.md §verify_authorize_log_node.
+        """Per-action PEP per docs/Architectures/FOUR_LAYER_ARCHITECTURE.md §verify_authorize_log_node.
 
         When ``authorization_service`` is configured, checks every pending
         tool call against the identity's capabilities/policies. A ``deny``

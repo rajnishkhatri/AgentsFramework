@@ -95,7 +95,7 @@ class CloudBinding(BaseModel):
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Schema-version-2 trust types per docs/FOUR_LAYER_ARCHITECTURE.md
+# Schema-version-2 trust types per docs/Architectures/FOUR_LAYER_ARCHITECTURE.md
 # Added by AGENT_UI_ADAPTER_SPRINTS.md US-DP-1.1 (S0 prerequisite).
 # Additive only -- no existing signed field changes.
 # ─────────────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ TraceOutcome = Literal["pass", "fail", "alert"]
 class TrustTraceRecord(BaseModel):
     """Cross-layer trace event (schema_version=2).
 
-    Spec: docs/FOUR_LAYER_ARCHITECTURE.md lines 197-209. The shared schema
+    Spec: docs/Architectures/FOUR_LAYER_ARCHITECTURE.md lines 197-209. The shared schema
     that makes cross-layer queries possible across the seven trust layers.
 
     Schema version 2 adds three multi-agent fields (event_id,
@@ -133,7 +133,7 @@ class TrustTraceRecord(BaseModel):
 class PolicyDecision(BaseModel):
     """Output of any policy enforcement point (PEP).
 
-    Spec: docs/FOUR_LAYER_ARCHITECTURE.md lines 906-916. Returned by the
+    Spec: docs/Architectures/FOUR_LAYER_ARCHITECTURE.md lines 906-916. Returned by the
     Runtime Trust Gate and any external policy backend (OPA/Cedar/YAML).
     Carries an audit_entry for downstream TrustTraceRecord emission.
     """

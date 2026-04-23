@@ -3,7 +3,7 @@
 **Analysis method:** Protocol-first design with Hexagonal Architecture (Ports and Adapters)
 **Source documents:**
 
-- `agent/docs/FOUR_LAYER_ARCHITECTURE.md` (Four-layer grid with Trust Foundation)
+- `agent/docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` (Four-layer grid with Trust Foundation)
 - `agent/docs/TRUST_FRAMEWORK_ARCHITECTURE.md` (Seven-layer trust framework)
 - `agent/docs/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
 - `agent/docs/STYLE_GUIDE_LAYERING.md` (Composable layering architecture)
@@ -27,7 +27,7 @@ The Trust Foundation layer defines **cloud-agnostic protocols** (ports) for iden
 
 ## Context
 
-The [FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) defines the `trust/` directory as the bottom-most layer: pure types, zero I/O, zero outward dependencies. Cloud provider integrations are horizontal services that import from `trust/` -- never the reverse.
+The [FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) defines the `trust/` directory as the bottom-most layer: pure types, zero I/O, zero outward dependencies. Cloud provider integrations are horizontal services that import from `trust/` -- never the reverse.
 
 This plan adds two new modules to `trust/` (protocols + cloud identity value objects) and a new `utils/cloud_providers/` package with an AWS adapter using boto3.
 
@@ -356,12 +356,12 @@ project/
 
 ## Relationship to Existing Documents
 
-This document extends the Trust Foundation layer defined in [FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) by adding cloud-agnostic protocol definitions and cloud-specific adapter specifications. The protocols serve as the bridge between the internal trust framework (AgentFacts, identity verification, authorization) and external cloud IAM systems.
+This document extends the Trust Foundation layer defined in [FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) by adding cloud-agnostic protocol definitions and cloud-specific adapter specifications. The protocols serve as the bridge between the internal trust framework (AgentFacts, identity verification, authorization) and external cloud IAM systems.
 
 
 | Existing Document                 | Relationship                                                                                                                        |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `FOUR_LAYER_ARCHITECTURE.md`      | This plan adds `cloud_identity.py` and `protocols.py` to the Trust Foundation layer, and `cloud_providers/` to the Horizontal layer |
+| `Architectures/FOUR_LAYER_ARCHITECTURE.md` | This plan adds `cloud_identity.py` and `protocols.py` to the Trust Foundation layer, and `cloud_providers/` to the Horizontal layer |
 | `TRUST_FRAMEWORK_ARCHITECTURE.md` | The three protocols map to L1 (IdentityProvider), L2 (PolicyProvider), and L1+L2 (CredentialProvider)                               |
 | `LAYER1_IDENTITY_ANALYSIS.md`     | The AgentFacts-to-IAM mapping builds on the Phase 1 data model defined there                                                        |
 | `STYLE_GUIDE_LAYERING.md`         | Cloud adapters follow horizontal service rules (H1-H4), especially H4 (parameterized)                                               |

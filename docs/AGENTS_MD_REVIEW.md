@@ -64,7 +64,7 @@ Root: Is this AGENTS.md fit for purpose?
 |---|---|---|---|
 | A1 | **Meta-layer dependency rules** are absent | Agent may create upward dependencies from `meta/` to `orchestration/` — Anti-Pattern 8 from STYLE_GUIDE_LAYERING | Add meta-layer row to dependency table: `Meta → Services`, `Meta → Trust Kernel`, forbidden `Meta → Orchestration` |
 | A2 | **Patterns H6, H7, V3, V4, V5** from the catalog are omitted | Agent won't know about Long-term Memory, Human Feedback, RAG, Multi-Agent Deliberation, or Reflection patterns | Add at minimum a reference note that H3–H7 and V1–V6 exist |
-| A3 | **Signed vs. unsigned field boundary** is mentioned but no field list | Agent modifying `AgentFacts` won't know which fields to sign | Add a brief field classification or reference to `FOUR_LAYER_ARCHITECTURE.md` §Signed vs Unsigned |
+| A3 | **Signed vs. unsigned field boundary** is mentioned but no field list | Agent modifying `AgentFacts` won't know which fields to sign | Add a brief field classification or reference to `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` §Signed vs Unsigned |
 
 ### Branch 3: Structural/Ordering Issues (2 findings)
 

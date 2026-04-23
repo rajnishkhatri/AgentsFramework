@@ -1,0 +1,258 @@
+{# Compact Frontend Ring Architecture Rules Reference (~6000 tokens)
+   Included by prompts/codeReviewer/frontend/system_prompt.j2 via {% include %}.
+   Sourced verbatim from docs/STYLE_GUIDE_FRONTEND.md where possible.
+   Sections: Five Sub-Packages Map, F/W/P/A/T/X/C/B/U/S/O rule families,
+   F-R1..F-R9 invariants, FE-AP-1..FE-AP-20 with AUTO-REJECT flags,
+   plus quick references for security, accessibility, performance, testing. #}
+
+## Five Sub-Packages Map (Browser + BFF sub-ring)
+
+| Module | May import from | May NOT import from |
+|--------|-----------------|---------------------|
+| `frontend/lib/wire/` | `zod`, stdlib | Everything else in `frontend/lib/` |
+| `frontend/lib/trust-view/` | `zod`, stdlib | Everything else in `frontend/lib/` |
+| `frontend/lib/ports/` | `wire/`, `trust-view/` | `adapters/`, `translators/`, `transport/`, `composition.ts` |
+| `frontend/lib/translators/` | `wire/`, `trust-view/` | `adapters/`, `ports/`, `transport/`, `composition.ts`, any SDK |
+| `frontend/lib/transport/` | `wire/`, stdlib, `EventSource` | `adapters/`, `ports/`, `translators/`, `composition.ts`, any SDK |
+| `frontend/lib/adapters/` | `ports/`, `wire/`, `trust-view/`, third-party SDKs | `translators/`, `transport/`, `composition.ts`, other `adapters/` |
+| `frontend/lib/composition.ts` | Everything in `frontend/lib/`, React context | Nothing imports composition |
+
+Cross-process rule: `frontend/` MUST NEVER import a Python module.
+
+## Layering Rules (F-Family)
+
+- **F1** Three composition roots, no fourth. `ARCHITECTURE_PROFILE` reads only in `frontend/lib/composition.ts`, `middleware/composition.py`, or `agent_ui_adapter/server.py`.
+- **F2** Five sub-packages per process, no sixth. New top-level dir under `frontend/lib/` requires a merged ADR.
+- **F3** Substrate swaps are composition-root-only. V2/V3 swap touches exactly one new adapter file + one composition selector update.
+- **F4** Frontend ring never imports backend Python at module scope. Cross-process boundary is HTTP/SSE only.
+
+## Wire & Kernel Rules (W-Family)
+
+- **W1** Pure shapes only. No I/O, no logging, no SDK calls in `wire/` or `trust-view/`.
+- **W2** Mirror Python source of truth. Every `agent_ui_adapter/wire/` module has a TS twin under `frontend/lib/wire/`. Drift detected via `__python_schema_baseline__.json`.
+- **W3** Discriminated unions, not bare unions. Multi-variant types use `z.discriminatedUnion("type", [...])` with `z.literal()` discriminators.
+- **W4** Sealed envelopes are read-only. `Readonly<T>` typing; never spread, re-serialize, or add convenience props.
+- **W5** `trace_id` is structural. Every event schema extends `BaseEvent` declaring `trace_id: z.string()`.
+- **W6** snake_case on the wire; camelCase only after a translator.
+- **W7** Schema const + inferred type co-export with same name (e.g., `export const RunCreateRequest` and `export type RunCreateRequest`).
+- **W8** `trust-view/` exports only `z.infer<...>` types. No functions or mutable state.
+
+## Port Rules (P-Family)
+
+- **P1** One interface per file.
+- **P2** Vendor-neutral name (e.g., `MemoryClient`, not `Mem0Client`).
+- **P3** Behavioral contract documented in JSDoc above the interface.
+- **P4** Typed errors (`AgentAuthError`, `ThreadStoreError`, `MemoryError`) declared via `@throws`.
+- **P5** Async by default; synchronous only with documented justification (e.g., `FeatureFlagProvider.isEnabled()` for render-time reads).
+- **P6** No imports from `adapters/`, `translators/`, `transport/`, or `composition.ts`.
+- **P7** Ports come paired with a conformance test in `frontend/tests/architecture/test_port_conformance.ts`.
+
+## Adapter Rules (A-Family)
+
+- **A1** SDK imports permitted only here (and in `middleware/adapters/`).
+- **A2** Adapters do not import each other. Cross-adapter dependencies injected via composition root as port instances.
+- **A3** Depend on `ports/`, `wire/`, `trust-view/`, and SDKs only. No `translators/`, `transport/`, or `composition.ts` imports.
+- **A4** SDK types never escape the adapter file. Convert to `wire/` shapes before returning.
+- **A5** Error translation table in JSDoc (HTTP status -> typed port error).
+- **A6** Idempotency on destructive operations (`cancel`, `delete`, `deleteAll`).
+- **A7** Per-family logger namespace (`frontend:adapter:runtime`, `frontend:adapter:auth`, etc.). No PII in logs.
+- **A8** `middleware/adapters/` never module-imports `agent_ui_adapter/`.
+- **A9** SDK pin in JSDoc (`@sdk @langchain/langgraph-sdk ^0.0.x`).
+- **A10** Per-family README under `adapters/<family>/README.md` listing port, current implementations, swap trigger.
+
+## Translator Rules (T-Family)
+
+- **T1** Imports only `wire/` and `trust-view/`. No SDK, no React, no I/O.
+- **T2** Forward `trace_id` from input to every output shape.
+- **T3** Zero-or-many output rule documented in JSDoc.
+- **T4** Table-driven Vitest tests co-located as `*.test.ts`; one test per discriminated-union variant.
+
+## Transport Rules (X-Family)
+
+- **X1** `EventSource` only in `frontend/lib/transport/sse_client.ts`.
+- **X2** Zod-parse on receive (`safeParse` against `AGUIEvent`); failures synthesize `RunErrorEvent` with `error_type: "wire_parse_error"`.
+- **X3** `Last-Event-ID` resumption is non-optional.
+- **X4** Heartbeat detection thresholds (15s send / 30s detect) documented and matched to Python `agent_ui_adapter/transport/heartbeat.py`.
+- **X5** Backpressure: 100-event in-memory buffer; drop-oldest after that.
+- **X6** BFF strips `Accept-Encoding` on streaming routes; sets `Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no`, `Connection: keep-alive`; clears `Transfer-Encoding`.
+
+## Composition Rules (C-Family)
+
+- **C1** Single profile switch. `ARCHITECTURE_PROFILE` (or Python equivalent) appears only in composition root.
+- **C2** Inject by port. Composition exports `buildAdapters()` returning a typed bag of port instances.
+- **C3** React context provision. Adapters reach UI via a single `<AdapterProvider>` context; hooks read from it.
+- **C4** Env reads only in composition. Adapters receive plain strings/numbers via constructor.
+- **C5** Composition is the only file allowed to use `process.env.*` for adapter wiring.
+
+## Browser Process Rules (B-Family)
+
+- **B1** New components default to RSC. `'use client'` requires an inline justification comment.
+- **B2** Pass Server Components to Client Components as `children`.
+- **B3** Await `params`, `searchParams`, `cookies()`, `headers()` (Next 15 / React 19 contract).
+- **B4** Server Actions for UI-triggered mutations; Route Handlers for SSE / external consumers.
+- **B5** `cache: 'no-store'` is the default; `force-cache` only for non-user-scoped data.
+- **B6** Route Handlers are composition adapters. Port calls and SSE byte-forward only -- no business `if/else`.
+- **B7** Edge runtime opt-in only for `transport/edge_proxy.ts`.
+
+## UI Rules (U-Family)
+
+- **U1** RSC by default.
+- **U2** Leaf `'use client'`. Push the boundary as far down the tree as possible.
+- **U3** Sandboxed iframe (`<iframe sandbox="allow-scripts">` only) for generative UI.
+- **U4** ARIA live region for streaming tokens: single persistent `<div role="log" aria-live="polite" aria-atomic="false">`. Never `assertive`.
+- **U5** Focus moves on route change only -- never on incoming tokens.
+- **U6** `cn()` (`clsx` + `tailwind-merge`) for class merging. Template-string conditionals forbidden.
+- **U7** shadcn primitives over custom-built. Wrap raw shadcn output (`components/ui/`) in `components/primitives/` for product-specific defaults.
+- **U8** Design tokens via Tailwind v4 `@theme` blocks in `app/globals.css`. Semantic tokens (`--color-primary`), never raw hue values.
+
+## Auth / Session Rules (S-Family)
+
+- **S1** `AuthProvider.getAccessToken()` refreshes on `<60s` to expiry.
+- **S2** BFF holds no cloud credentials (F-R9). All credential-bearing calls flow through `middleware/`.
+- **S3** JWT verified server-side, never trusted client-side. Browser may read `Session.user_id` for display only.
+
+## Observability Rules (O-Family)
+
+- **O1** Telemetry never blocks SSE. `span()` / `start_span()` are non-blocking; failures swallowed.
+- **O2** No PII in logs. Allowed: `trace_id`, `run_id`, `thread_id`, adapter name, error type, durations, status codes. Forbidden: tokens, memory content, LLM output text, user emails.
+- **O3** Per-adapter logger namespace.
+- **O4** `trace_id` propagated to every span (Langfuse trace external ID).
+
+## Frontend Architectural Invariants (F-R1..F-R9)
+
+- **F-R1** No domain logic in React components.
+- **F-R2** SDK imports allowed only in `adapters/`.
+- **F-R3** One interface per `ports/` module.
+- **F-R4** BFF Route Handlers are composition adapters, not business logic.
+- **F-R5** System prompts remain in `prompts/` as Jinja templates. No prompt strings in `.ts` / `.tsx`.
+- **F-R6** `trust-view/` is read-only.
+- **F-R7** Every emitted event must forward `trace_id` untouched.
+- **F-R8** No SDK type may escape past an adapter boundary.
+- **F-R9** BFF must never hold cloud credentials.
+
+## Anti-Patterns (FE-AP-1 ... FE-AP-20)
+
+| ID | Name | AUTO-REJECT |
+|----|------|-------------|
+| FE-AP-1 | SDK type leak through a port | no |
+| FE-AP-2 | Cross-adapter import | no |
+| FE-AP-3 | Business logic in a Route Handler | no |
+| FE-AP-4 | `useComponent` iframe without `sandbox` (XSS-critical) | **YES** |
+| FE-AP-5 | `aria-live="assertive"` on streaming tokens (a11y-critical) | no |
+| FE-AP-6 | Mutating a sealed envelope (signature-breaking) | **YES** |
+| FE-AP-7 | Generating `trace_id` in the browser (breaks F-R7) | **YES** |
+| FE-AP-8 | Hardcoded model tier or LangGraph URL outside composition | no |
+| FE-AP-9 | `console.*` outside an adapter | no |
+| FE-AP-10 | Parallel client store mirroring CopilotKit state | no |
+| FE-AP-11 | `'use client'` on the root layout | no |
+| FE-AP-12 | `dangerouslySetInnerHTML` of agent output (XSS-critical) | **YES** |
+| FE-AP-13 | Direct CopilotKit / WorkOS / Mem0 import outside `adapters/` | no |
+| FE-AP-14 | Schema drift: TS Zod schema with no matching Python baseline entry | no |
+| FE-AP-15 | Adapter without an error-translation table | no |
+| FE-AP-16 | Port without a conformance test | no |
+| FE-AP-17 | Translator that touches `localStorage` / `fetch` / `document` | no |
+| FE-AP-18 | BFF holding a cloud credential (F-R9 violation) | **YES** |
+| FE-AP-19 | Adding `'unsafe-inline'` to CSP to silence shadcn warning | **YES** |
+| FE-AP-20 | CopilotKit barrel import without `next/dynamic` (~20MB regression) | no |
+
+## Security Hardening Quick Reference
+
+**Strict CSP template (mandated; no `'unsafe-inline'`, no `'unsafe-eval'`):**
+```
+default-src 'self';
+script-src 'self' 'nonce-${nonce}' 'strict-dynamic';
+style-src 'self' 'nonce-${nonce}';
+img-src 'self' blob: data:;
+font-src 'self';
+connect-src 'self' https://*.workos.com;
+frame-src 'self';
+object-src 'none';
+base-uri 'self';
+form-action 'self';
+frame-ancestors 'none';
+upgrade-insecure-requests;
+```
+- Nonce generated in `frontend/middleware.ts` per request; root `app/layout.tsx` calls `await headers()` to force dynamic rendering.
+
+**Iframe sandbox:**
+- `sandbox="allow-scripts"` only. Forbidden tokens: `allow-same-origin`, `allow-top-navigation`, `allow-forms`, `allow-popups`, `allow-modals`, `allow-pointer-lock`.
+- Iframe content via `srcDoc` (origin: `null`), never `src` to external URL.
+- CSP `frame-src 'self'` (sandboxed `srcDoc` count as same-origin).
+
+**BFF env policy (F-R9):**
+- BFF holds only `WORKOS_CLIENT_ID` (public), `WORKOS_REDIRECT_URI` (public), `MIDDLEWARE_URL` (public), Next.js framework secrets.
+- Never `NEXT_PUBLIC_*` containing `*KEY*`, `*SECRET*`, `*TOKEN*`, `*PRIVATE*`, `*API*`, `*CREDENTIAL*`.
+- All credential-bearing calls (Mem0 API key, Langfuse keys, OpenAI/Anthropic keys) flow through `middleware/` only.
+
+**Sealed envelope:**
+- `AgentFacts`, `TrustTraceRecord`, `PolicyDecision` typed `Readonly<T>`. Read fields, never mutate.
+- Never `{...envelope}`, never `JSON.stringify(JSON.parse(envelope))`. Echo original bytes.
+
+**OWASP additions:**
+- `next.config.ts`: `productionBrowserSourceMaps: false`.
+- `images.remotePatterns`: explicit allowlist (SSRF prevention).
+- JWT in `HttpOnly`, `Secure`, `SameSite=Strict` cookies; never `localStorage` / `sessionStorage`.
+- Security headers: HSTS (`max-age=63072000; includeSubDomains; preload`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
+
+## Accessibility Quick Reference (WCAG 2.2 AA)
+
+**Auto-checkable (axe-core 4.5+ / `eslint-plugin-jsx-a11y`):**
+- ARIA role validity, required/prohibited attributes.
+- HTML structure: lang tag, unique title, correct list/table nesting.
+- Form inputs have associated `<label>` (`jsx-a11y/label-has-associated-control`).
+- Interactive elements: `<button>`/`<a>` not `<div onClick>` (`jsx-a11y/no-static-element-interactions`).
+- WCAG 2.2 `target-size` (axe rule).
+- `aria-live` attribute presence and syntactic validity.
+- `<iframe sandbox>` token list (custom check).
+- Image `alt` attributes.
+
+**Manual / gap territory (record as `gaps`, never as findings):**
+- Whether streaming announcement is appropriately timed (not every-token spam).
+- Whether focus is preserved during dynamic content updates.
+- Whether `alt` text is meaningful (not just present).
+- Whether reading order matches visual order.
+- Whether color contrast is correct in custom theme variants.
+- Screen-reader UX quality.
+- WCAG `Focus Appearance`, `Focus Not Obscured` (visual / dynamic-state criteria).
+
+## Performance Quick Reference
+
+**Bundle policy:**
+- No fixed initial-load KB target on day 1; measure-first.
+- First production build commits `frontend/.bundle-baseline.json`.
+- CI fails any route's First Load JS exceeding baseline by `>10%`.
+- CopilotKit components not on first paint (Composer, MessageList, generative renderers) imported via `next/dynamic`.
+- Pin `@copilotkit/react-core` and `@copilotkit/react-ui` to a version including the issue #3653 `sideEffects` fix (`mermaid`, `shiki`, `streamdown` barrel regression -- ~20MB).
+
+**Streaming hygiene:**
+- `cache: 'no-store'` on every user-scoped route.
+- Strip `Accept-Encoding` on streaming routes (X6).
+- `<Suspense>` boundaries around every async server boundary; named `loading.tsx`.
+
+**Image / code splitting:**
+- `next/image` for every content image. `<img>` for content fails review.
+- `dynamic(() => import(...))` only for heavy generative-UI components not needed on first paint; reason in JSDoc.
+
+**TTFT target:** `<500ms` p50 cold, `<100ms` p50 warm.
+
+## Testing Pyramid
+
+| Layer | Tool | Required when |
+|-------|------|---------------|
+| Unit -- pure | Vitest | Any new translator, wire schema, pure helper |
+| Unit -- component | Vitest + React Testing Library | Any new component |
+| Integration -- adapter | Vitest + MSW | Any new adapter |
+| Port conformance | Vitest parametrized over adapters | Any new port OR any new adapter for an existing port |
+| Architecture -- TS layering | `ts-morph` walker (`tests/architecture/test_frontend_layering.ts`) | Always runs |
+| Architecture -- middleware | `pytest` + `importlib` | Always runs |
+| Wire schema drift | Python JSON Schema baseline diff | On any `frontend/lib/wire/` change |
+| e2e | Playwright | Critical path per release |
+| Accessibility -- static | `eslint-plugin-jsx-a11y` | Always runs in CI |
+| Accessibility -- dynamic | `@axe-core/playwright` | On every Playwright route |
+| Visual | Storybook stories | Every component under `components/tools/` and `components/generative/` |
+
+**Failure paths first:** rejection tests (401/403/429/5xx/timeout) before happy-path tests for every adapter.
+
+**No live LLM calls in CI.** All adapter tests use MSW mocks or scripted servers.
+
+**`tsc --noEmit` clean.** Type errors block merge. `tsconfig.json` minimum: `"strict": true`, `"noUncheckedIndexedAccess": true`, `"exactOptionalPropertyTypes": true`, `"verbatimModuleSyntax": true`.

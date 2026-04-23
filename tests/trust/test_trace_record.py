@@ -125,7 +125,7 @@ class TestTrustTraceRecordSchema:
         )
         assert record.schema_version == 2, (
             "TrustTraceRecord schema_version must default to 2 per "
-            "FOUR_LAYER_ARCHITECTURE.md §schema-version-2"
+            "docs/Architectures/FOUR_LAYER_ARCHITECTURE.md §schema-version-2"
         )
 
     def test_optional_multi_agent_fields_default_none(self):

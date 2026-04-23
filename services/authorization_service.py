@@ -7,7 +7,7 @@ parameter (never fetches identity), receives a `trace_emit` callable as a
 parameter (never imports the trace service), and never imports
 `AgentFactsRegistry`.
 
-Decision precedence (docs/FOUR_LAYER_ARCHITECTURE.md):
+Decision precedence (docs/Architectures/FOUR_LAYER_ARCHITECTURE.md):
     1. Embedded backend evaluates first.
     2. Embedded `deny` short-circuits and is returned.
     3. If an external backend is configured, it is consulted next.

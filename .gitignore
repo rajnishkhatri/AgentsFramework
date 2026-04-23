@@ -48,3 +48,6 @@ Thumbs.db
 
 # Claude / Cursor local
 .claude/
+
+# Sprint 0 / V3-Dev-Tier throwaway spike code (per SPRINT_0_RUNBOOK.md §5)
+spikes/

@@ -390,7 +390,7 @@ A tool call -- shell, file IO, web search -- raised an exception or returned a s
 | Cost / budget                   | [Chapter 11.5](#115-a-budget-exceeded-exit-ends-the-loop-before-the-answer-is-ready)                                                                                                                                     |
 | Errors and exit codes           | [Chapter 11](#11-six-named-failures-cover-every-way-one-query-can-break); the only documented exit code is `1` for missing argument.                                                                                     |
 | Extending the agent             | This is a user manual; for extension recipes see `[docs/DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md)`.                                                                                                                        |
-| Architecture overview           | `[docs/FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md)` and `[docs/STYLE_GUIDE_LAYERING.md](STYLE_GUIDE_LAYERING.md)`.                                                                                           |
+| Architecture overview           | `[docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md)` and `[docs/STYLE_GUIDE_LAYERING.md](STYLE_GUIDE_LAYERING.md)`.                                                                                           |
 | Governance narratives           | `[governanaceTriangle/](../governanaceTriangle/)` -- six tutorial markdown files covering explainability, the black box recorder, AgentFacts governance, guardrail validation, and the phase logger deep dive.           |
 
 

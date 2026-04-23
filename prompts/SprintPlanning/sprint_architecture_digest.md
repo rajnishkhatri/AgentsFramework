@@ -1,5 +1,5 @@
 {# Token-efficient digest for sprint_story_agent_system.j2
-   Full sources: docs/FOUR_LAYER_ARCHITECTURE.md, PLAN_v2.md, docs/STYLE_GUIDE_LAYERING.md,
+   Full sources: docs/Architectures/FOUR_LAYER_ARCHITECTURE.md, PLAN_v2.md, docs/STYLE_GUIDE_LAYERING.md,
    research/tdd_agentic_systems_prompt.md. Rule IDs align with prompts/codeReviewer/CodeReviewer_architecture_rules.j2 #}
 
 ## Canonical repository map (PLAN_v2 vs style-guide wording)

@@ -1,0 +1,47 @@
+{# prompts/codeReviewer/frontend/review_submission.j2
+   Task prompt for the Frontend Ring Code Review Validator Agent.
+   Variables: files_to_review, submission_context, review_scope.
+   Mirror of prompts/codeReviewer/CodeReviewer_review_submission.j2 (backend reviewer)
+   scoped to the Frontend Ring per docs/STYLE_GUIDE_FRONTEND.md. #}
+
+# Frontend Code Review Request
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("full") }}
+
+**Named scopes** (defaults to `full` if not specified):
+
+- `full` -- evaluate all seven dimensions (FD1-FD7).
+- `adapter_pr` -- focus on FD1 (Layering) + FD2 (A-rules) + FD3 (Security) + FD6 (Tests/conformance) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend/lib/adapters/`.
+- `ui_component_pr` -- focus on FD2 (U-rules + S-rules) + FD3 (Security/sandboxing) + FD4 (Accessibility) + FD5 (Performance/streaming) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend/components/` or `frontend/app/`.
+- `wire_translator_pr` -- focus on FD2 (W-rules + T-rules) + FD6 (wire schema drift). Use for any PR that adds or modifies a file under `frontend/lib/wire/`, `frontend/lib/trust-view/`, or `frontend/lib/translators/`.
+- `security_audit` -- FD3 + FD7 only. Use for security-targeted reviews.
+
+## Files to Review
+
+{% for file in files_to_review %}
+### {{ file.path }}
+
+**Layer:** {{ file.layer | default("To be classified by Phase 1") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language | default("typescript") }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+## Instructions
+
+1. Execute the Five-Phase ReAct Loop from your system prompt.
+2. **Auto-scope inference:** If `review_scope` is `full` (or unspecified) AND every file in `files_to_review` is a `.tsx` file under `frontend/components/`, infer `review_scope="ui_component_pr"` and record the inference in `validation_log[0]` (e.g., `"Auto-inferred review_scope=ui_component_pr from file mix"`).
+3. Run deterministic tools first for FD1, FD3, FD5, FD6, and the AST-detectable FD2/FD7 hypotheses on every applicable file. Apply LLM judgment only for residual FD2 (B6 Route Handler hygiene, U1 RSC suitability) and FD4 appropriateness (always recorded as `gaps`, never findings).
+4. Produce a certificate for every hypothesis tested.
+5. Apply the Judge criteria (Section 7) to filter findings.
+6. Apply the strictest verdict decision rules (Section 8). Auto-reject anti-patterns (FE-AP-4, FE-AP-6, FE-AP-7, FE-AP-12, FE-AP-18, FE-AP-19) and critical FD3 hypotheses (`CSP1`, `CSP2`, `SBX2`, `SEC1`, `SEC2`, `TRUST1`, `TRUST2`) take precedence over count thresholds. List any auto-reject reasons inline at the top of the `statement` field.
+7. Output a single `ReviewReport` JSON object as your final response.

@@ -265,7 +265,7 @@ For deep context on architecture and patterns, see:
 
 - @docs/STYLE_GUIDE_LAYERING.md — four-layer architecture rules and anti-patterns
 - @docs/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1-H7, V1-V6)
-- @docs/FOUR_LAYER_ARCHITECTURE.md — trust foundation, hexagonal ports, policy engines
+- @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md — trust foundation, hexagonal ports, policy engines
 - @docs/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework
 - @research/tdd_agentic_systems_prompt.md — testing pyramid for agentic systems
 ```

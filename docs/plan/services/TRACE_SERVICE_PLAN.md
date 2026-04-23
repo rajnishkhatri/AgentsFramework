@@ -25,7 +25,7 @@ A horizontal **emit + route** service for `TrustTraceRecord` events. Accepts a r
 
 ### 1.3 Why it exists
 
-[docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 471–478 mandate one trace sink for all layers. Without it, every layer would invent its own sink (`black_box.py`, `phase_logger.py`, `eval_capture.py` already do). This service unifies the dispatch.
+[docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 471–478 mandate one trace sink for all layers. Without it, every layer would invent its own sink (`black_box.py`, `phase_logger.py`, `eval_capture.py` already do). This service unifies the dispatch.
 
 ---
 

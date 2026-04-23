@@ -1,10 +1,10 @@
 # AUTHORIZATION_SERVICE_PLAN.md — `services/authorization_service.py` Implementation Plan
 
-> **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). Implements the Runtime Trust Gate from [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 599–664.
+> **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). Implements the Runtime Trust Gate from [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 599–664.
 >
 > **TDD Protocol**: B (Contract-driven, decision matrix) per [research/tdd_agentic_systems_prompt.md](../../../research/tdd_agentic_systems_prompt.md) §Protocol B + §B2 + §Pattern 11 (Failure Mode Matrix).
 >
-> **Boundary**: horizontal service per [AGENTS.md](../../../AGENTS.md). Receives `AgentFacts` as a parameter (Critical Design Rule, [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 641–661). Anti-pattern AP-2 strictly enforced.
+> **Boundary**: horizontal service per [AGENTS.md](../../../AGENTS.md). Receives `AgentFacts` as a parameter (Critical Design Rule, [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 641–661). Anti-pattern AP-2 strictly enforced.
 
 ---
 
@@ -16,7 +16,7 @@ Given an `AgentFacts` (the agent's identity card), an `action` (the operation re
 
 ### 1.2 What it does NOT do
 
-- **Does NOT fetch identity** — `AgentFacts` arrives as a parameter. The service never calls `AgentFactsRegistry.get(...)` itself. (AP-2 enforcement; [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) Critical Design Rule.)
+- **Does NOT fetch identity** — `AgentFacts` arrives as a parameter. The service never calls `AgentFactsRegistry.get(...)` itself. (AP-2 enforcement; [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) Critical Design Rule.)
 - **Does NOT verify signatures** — that's `services/governance/agent_facts_registry.py`'s job; the orchestrator calls verify FIRST, then passes verified facts here
 - **Does NOT log directly to a file** — emits a `TrustTraceRecord` to the trace service, which decides routing
 - **Does NOT mutate state** — pure decision function (plus a side effect: trace emission)
@@ -88,7 +88,7 @@ Per TDD Protocol B §B2 (Authorization Service Tests). Every row below is a test
 | 3 | `status=SUSPENDED` | matches action | none | none | `deny` (reason: "suspended identity") |
 | 4 | `status=REVOKED` | matches action | none | none | `deny` (reason: "revoked identity") |
 | 5 | `status=ACTIVE` | does NOT match action | none | none | `deny` (reason: "missing capability") |
-| 6 | `status=ACTIVE` | matches | embedded `deny` | external `allow` | `deny` (embedded wins per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) precedence) |
+| 6 | `status=ACTIVE` | matches | embedded `deny` | external `allow` | `deny` (embedded wins per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) precedence) |
 | 7 | `status=ACTIVE` | matches | embedded `allow` | external `deny` | `deny` (any deny denies) |
 | 8 | `status=ACTIVE` | matches | embedded `allow` | external `allow` | `allow` |
 | 9 | `status=ACTIVE` | matches | embedded `require_approval` | n/a | `require_approval` |

@@ -5,6 +5,8 @@ Technology-agnostic principles with concrete examples from the [composable_app](
 
 For the architectural layering rules that these patterns plug into, see [STYLE_GUIDE_LAYERING.md](STYLE_GUIDE_LAYERING.md).
 
+For the Frontend Ring counterpart (W/P/A/T/X/C/B/U/S/O rule families for the Next.js + CopilotKit + AG-UI stack), see [STYLE_GUIDE_FRONTEND.md](STYLE_GUIDE_FRONTEND.md).
+
 ---
 
 ## Table of Contents

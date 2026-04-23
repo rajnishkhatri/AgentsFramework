@@ -25,7 +25,7 @@ Read order:
 
 Discovered prerequisites (not in the original plan, surfaced during sprint authoring):
 
-- **DP-1: `TrustTraceRecord` and `PolicyDecision` are designed in [docs/FOUR_LAYER_ARCHITECTURE.md](../../../FOUR_LAYER_ARCHITECTURE.md) (lines 197–209 and 907–916) but NOT yet defined in [trust/models.py](../../../../trust/models.py).** Adding them is a [AGENTS.md](../../../../AGENTS.md) "⚠️ Ask first" item because it modifies the trust kernel. They are additive types (no existing signed field changes), so they do NOT trigger re-signing of existing `AgentFacts`. **Owner: S0 prerequisite story (DP-1.1) — must complete before S1.**
+- **DP-1: `TrustTraceRecord` and `PolicyDecision` are designed in [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../../Architectures/FOUR_LAYER_ARCHITECTURE.md) (lines 197–209 and 907–916) but NOT yet defined in [trust/models.py](../../../../trust/models.py).** Adding them is a [AGENTS.md](../../../../AGENTS.md) "⚠️ Ask first" item because it modifies the trust kernel. They are additive types (no existing signed field changes), so they do NOT trigger re-signing of existing `AgentFacts`. **Owner: S0 prerequisite story (DP-1.1) — must complete before S1.**
 
 ---
 
@@ -105,7 +105,7 @@ Story format:
 #### US-DP-1.1 — Add `TrustTraceRecord` and `PolicyDecision` to `trust/models.py`
 
 - **As a** trust kernel maintainer
-- **I want** the two types designed in `docs/FOUR_LAYER_ARCHITECTURE.md` to exist as Pydantic models in `trust/models.py`
+- **I want** the two types designed in `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` to exist as Pydantic models in `trust/models.py`
 - **So that** S1 horizontal services and S2 wire models have a domain contract to import from
 - **Dependencies**: AGENTS.md "Ask first" approval (already granted in chat)
 - **TDD Protocol**: A (Pure TDD)
@@ -222,7 +222,7 @@ Story format:
   - Given expired `AgentFacts.valid_until`, When `authorize()`, Then `PolicyDecision(enforcement="deny", reason="expired identity")`
   - Given suspended `AgentFacts.status`, When `authorize()`, Then deny with reason `"suspended identity"`
   - Given missing capability for the action, When `authorize()`, Then deny with reason `"missing capability"`
-  - Given a deny embedded policy, When external policy would allow, Then deny (embedded layer wins per [docs/FOUR_LAYER_ARCHITECTURE.md](../../../FOUR_LAYER_ARCHITECTURE.md) precedence)
+  - Given a deny embedded policy, When external policy would allow, Then deny (embedded layer wins per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../../Architectures/FOUR_LAYER_ARCHITECTURE.md) precedence)
   - Given valid `AgentFacts` + matching capability + no deny policy, When `authorize()`, Then `enforcement="allow"`
   - Given any decision, When `authorize()` returns, Then a `TrustTraceRecord` was emitted to the configured trace service
 - **Test Mapping**: `tests/services/test_authorization_service.py` (new); pattern 11 failure-mode matrix

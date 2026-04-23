@@ -4,7 +4,7 @@
 **Plan reference:** [`PLAN_v2.md`](../PLAN_v2.md), consolidated across all four layers.
 **Method:** Five-Phase ReAct protocol from [`prompts/codeReviewer/CodeReviewer_system_prompt.j2`](../prompts/codeReviewer/CodeReviewer_system_prompt.j2), scoped by the MECE Pyramid principle from [`research/pyramid_react_system_prompt.md`](../research/pyramid_react_system_prompt.md).
 **Decomposition axis:** By validation dimension (D1 → D5).
-**Rubric:** [`prompts/codeReviewer/CodeReviewer_architecture_rules.j2`](../prompts/codeReviewer/CodeReviewer_architecture_rules.j2) cross-checked against [`docs/FOUR_LAYER_ARCHITECTURE.md`](FOUR_LAYER_ARCHITECTURE.md), [`docs/STYLE_GUIDE_LAYERING.md`](STYLE_GUIDE_LAYERING.md), and the "Architecture Invariants" / "Critical Anti-Patterns" sections of [`AGENTS.md`](../AGENTS.md).
+**Rubric:** [`prompts/codeReviewer/CodeReviewer_architecture_rules.j2`](../prompts/codeReviewer/CodeReviewer_architecture_rules.j2) cross-checked against [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](FOUR_LAYER_ARCHITECTURE.md), [`docs/STYLE_GUIDE_LAYERING.md`](STYLE_GUIDE_LAYERING.md), and the "Architecture Invariants" / "Critical Anti-Patterns" sections of [`AGENTS.md`](../AGENTS.md).
 **Generated:** 2026-04-17
 
 ---
@@ -627,7 +627,7 @@ Conforms to `trust/review_schema.py::ReviewReport` and system prompt §8 schema:
     "rubric_sources": [
       "prompts/codeReviewer/CodeReviewer_system_prompt.j2",
       "prompts/codeReviewer/CodeReviewer_architecture_rules.j2",
-      "docs/FOUR_LAYER_ARCHITECTURE.md",
+      "docs/Architectures/FOUR_LAYER_ARCHITECTURE.md",
       "docs/STYLE_GUIDE_LAYERING.md",
       "AGENTS.md"
     ],
