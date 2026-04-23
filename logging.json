@@ -71,6 +71,42 @@
             "formatter": "json",
             "filename": "logs/framework_telemetry.log",
             "mode": "a"
+        },
+        "trust_trace": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/trust_trace.log",
+            "mode": "a"
+        },
+        "authorization": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/authorization.log",
+            "mode": "a"
+        },
+        "long_term_memory": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/long_term_memory.log",
+            "mode": "a"
+        },
+        "agent_ui_adapter_server": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/agent_ui_adapter_server.log",
+            "mode": "a"
+        },
+        "agent_ui_adapter_transport": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/agent_ui_adapter_transport.log",
+            "mode": "a"
+        },
+        "agent_ui_adapter_translators": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/agent_ui_adapter_translators.log",
+            "mode": "a"
         }
     },
     "loggers": {
@@ -126,6 +162,36 @@
         },
         "services.observability": {
             "handlers": ["framework_telemetry", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "trust.trace": {
+            "handlers": ["trust_trace", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.authorization": {
+            "handlers": ["authorization", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.long_term_memory": {
+            "handlers": ["long_term_memory", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "agent_ui_adapter.server": {
+            "handlers": ["agent_ui_adapter_server", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "agent_ui_adapter.transport": {
+            "handlers": ["agent_ui_adapter_transport", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "agent_ui_adapter.translators": {
+            "handlers": ["agent_ui_adapter_translators", "console"],
             "level": "INFO",
             "propagate": false
         }

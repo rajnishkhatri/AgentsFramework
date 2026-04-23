@@ -27,6 +27,10 @@ from trust.models import (
     Capability,
     CloudBinding,
     Policy,
+    PolicyDecision,
+    TraceLayer,
+    TraceOutcome,
+    TrustTraceRecord,
     VerificationReport,
 )
 from trust.protocols import CredentialProvider, IdentityProvider, PolicyProvider
@@ -48,6 +52,10 @@ __all__ = [
     "Capability",
     "CloudBinding",
     "Policy",
+    "PolicyDecision",
+    "TraceLayer",
+    "TraceOutcome",
+    "TrustTraceRecord",
     "VerificationReport",
     # cloud identity value objects
     "AccessDecision",
