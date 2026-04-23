@@ -1,0 +1,14 @@
+{
+  "name": "agent-frontend-codegen",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wire-type codegen scaffold for the agent_ui_adapter (S8 of AGENT_UI_ADAPTER_SPRINTS.md). Hosts the openapi-typescript dev dependency and the regenerate script. The actual Next.js application lives in a separate package per docs/plan/frontend/FRONTEND_PLAN.md.",
+  "type": "module",
+  "scripts": {
+    "regen:wire-types": "openapi-typescript ../openapi.yaml -o lib/wire-types.ts",
+    "check:wire-types": "openapi-typescript ../openapi.yaml -o /tmp/agent-wire-types.ts && diff -u lib/wire-types.ts /tmp/agent-wire-types.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.4.4"
+  }
+}

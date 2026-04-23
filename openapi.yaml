@@ -1,0 +1,1042 @@
+components:
+  schemas:
+    BaseEvent:
+      $defs:
+        EventType:
+          description: The 17 AG-UI event-type discriminator strings.
+          enum:
+          - RUN_STARTED
+          - RUN_FINISHED
+          - RUN_ERROR
+          - STEP_STARTED
+          - STEP_FINISHED
+          - TEXT_MESSAGE_START
+          - TEXT_MESSAGE_CONTENT
+          - TEXT_MESSAGE_END
+          - TOOL_CALL_START
+          - TOOL_CALL_ARGS
+          - TOOL_CALL_END
+          - TOOL_RESULT
+          - STATE_SNAPSHOT
+          - STATE_DELTA
+          - MESSAGES_SNAPSHOT
+          - RAW
+          - CUSTOM
+          title: EventType
+          type: string
+      additionalProperties: false
+      description: Common header for every AG-UI event.
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          $ref: '#/components/schemas/EventType'
+      required:
+      - type
+      title: BaseEvent
+      type: object
+    Custom:
+      additionalProperties: false
+      properties:
+        name:
+          title: Name
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: CUSTOM
+          default: CUSTOM
+          title: Type
+          type: string
+        value:
+          additionalProperties: true
+          title: Value
+          type: object
+      required:
+      - name
+      - value
+      title: Custom
+      type: object
+    DomainEventBase:
+      additionalProperties: false
+      description: Common header for every internal domain event.
+      properties:
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      title: DomainEventBase
+      type: object
+    EventType:
+      description: The 17 AG-UI event-type discriminator strings.
+      enum:
+      - RUN_STARTED
+      - RUN_FINISHED
+      - RUN_ERROR
+      - STEP_STARTED
+      - STEP_FINISHED
+      - TEXT_MESSAGE_START
+      - TEXT_MESSAGE_CONTENT
+      - TEXT_MESSAGE_END
+      - TOOL_CALL_START
+      - TOOL_CALL_ARGS
+      - TOOL_CALL_END
+      - TOOL_RESULT
+      - STATE_SNAPSHOT
+      - STATE_DELTA
+      - MESSAGES_SNAPSHOT
+      - RAW
+      - CUSTOM
+      title: EventType
+      type: string
+    HealthResponse:
+      additionalProperties: false
+      description: Response body of ``GET /healthz``.
+      properties:
+        adapter_version:
+          title: Adapter Version
+          type: string
+        status:
+          const: ok
+          title: Status
+          type: string
+      required:
+      - status
+      - adapter_version
+      title: HealthResponse
+      type: object
+    LLMMessageEnded:
+      additionalProperties: false
+      properties:
+        message_id:
+          title: Message Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - message_id
+      title: LLMMessageEnded
+      type: object
+    LLMMessageStarted:
+      additionalProperties: false
+      properties:
+        message_id:
+          title: Message Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - message_id
+      title: LLMMessageStarted
+      type: object
+    LLMTokenEmitted:
+      additionalProperties: false
+      properties:
+        delta:
+          title: Delta
+          type: string
+        message_id:
+          title: Message Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - message_id
+      - delta
+      title: LLMTokenEmitted
+      type: object
+    MessagesSnapshot:
+      additionalProperties: false
+      properties:
+        messages:
+          items:
+            additionalProperties: true
+            type: object
+          title: Messages
+          type: array
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: MESSAGES_SNAPSHOT
+          default: MESSAGES_SNAPSHOT
+          title: Type
+          type: string
+      required:
+      - messages
+      title: MessagesSnapshot
+      type: object
+    Raw:
+      additionalProperties: false
+      properties:
+        event:
+          title: Event
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Source
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: RAW
+          default: RAW
+          title: Type
+          type: string
+      required:
+      - event
+      title: Raw
+      type: object
+    RunCreateRequest:
+      additionalProperties: false
+      description: Body of ``POST /agent/runs/stream`` and ``POST /agent/runs``.
+      properties:
+        agent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Agent Id
+        input:
+          additionalProperties: true
+          title: Input
+          type: object
+        thread_id:
+          title: Thread Id
+          type: string
+      required:
+      - thread_id
+      - input
+      title: RunCreateRequest
+      type: object
+    RunError:
+      additionalProperties: false
+      properties:
+        code:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Code
+        message:
+          title: Message
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        run_id:
+          title: Run Id
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: RUN_ERROR
+          default: RUN_ERROR
+          title: Type
+          type: string
+      required:
+      - run_id
+      - thread_id
+      - message
+      title: RunError
+      type: object
+    RunFinished:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        run_id:
+          title: Run Id
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: RUN_FINISHED
+          default: RUN_FINISHED
+          title: Type
+          type: string
+      required:
+      - run_id
+      - thread_id
+      title: RunFinished
+      type: object
+    RunFinishedDomain:
+      additionalProperties: false
+      properties:
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Error
+        run_id:
+          title: Run Id
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - run_id
+      - thread_id
+      title: RunFinishedDomain
+      type: object
+    RunStarted:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        run_id:
+          title: Run Id
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: RUN_STARTED
+          default: RUN_STARTED
+          title: Type
+          type: string
+      required:
+      - run_id
+      - thread_id
+      title: RunStarted
+      type: object
+    RunStartedDomain:
+      additionalProperties: false
+      properties:
+        run_id:
+          title: Run Id
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - run_id
+      - thread_id
+      title: RunStartedDomain
+      type: object
+    RunStateView:
+      additionalProperties: false
+      description: Response body of ``GET /agent/runs/{run_id}``.
+      properties:
+        completed_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Completed At
+        run_id:
+          title: Run Id
+          type: string
+        started_at:
+          format: date-time
+          title: Started At
+          type: string
+        status:
+          enum:
+          - running
+          - completed
+          - cancelled
+          - errored
+          title: Status
+          type: string
+        thread_id:
+          title: Thread Id
+          type: string
+      required:
+      - run_id
+      - thread_id
+      - status
+      - started_at
+      - completed_at
+      title: RunStateView
+      type: object
+    StateDelta:
+      additionalProperties: false
+      properties:
+        delta:
+          items:
+            additionalProperties: true
+            type: object
+          title: Delta
+          type: array
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: STATE_DELTA
+          default: STATE_DELTA
+          title: Type
+          type: string
+      required:
+      - delta
+      title: StateDelta
+      type: object
+    StateMutated:
+      additionalProperties: false
+      properties:
+        delta:
+          anyOf:
+          - items:
+              additionalProperties: true
+              type: object
+            type: array
+          - type: 'null'
+          default: null
+          title: Delta
+        snapshot:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Snapshot
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      title: StateMutated
+      type: object
+    StateSnapshot:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        snapshot:
+          additionalProperties: true
+          title: Snapshot
+          type: object
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: STATE_SNAPSHOT
+          default: STATE_SNAPSHOT
+          title: Type
+          type: string
+      required:
+      - snapshot
+      title: StateSnapshot
+      type: object
+    StepFinished:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        step_name:
+          title: Step Name
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: STEP_FINISHED
+          default: STEP_FINISHED
+          title: Type
+          type: string
+      required:
+      - step_name
+      title: StepFinished
+      type: object
+    StepStarted:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        step_name:
+          title: Step Name
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: STEP_STARTED
+          default: STEP_STARTED
+          title: Type
+          type: string
+      required:
+      - step_name
+      title: StepStarted
+      type: object
+    TextMessageContent:
+      additionalProperties: false
+      properties:
+        delta:
+          title: Delta
+          type: string
+        message_id:
+          title: Message Id
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: TEXT_MESSAGE_CONTENT
+          default: TEXT_MESSAGE_CONTENT
+          title: Type
+          type: string
+      required:
+      - message_id
+      - delta
+      title: TextMessageContent
+      type: object
+    TextMessageEnd:
+      additionalProperties: false
+      properties:
+        message_id:
+          title: Message Id
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: TEXT_MESSAGE_END
+          default: TEXT_MESSAGE_END
+          title: Type
+          type: string
+      required:
+      - message_id
+      title: TextMessageEnd
+      type: object
+    TextMessageStart:
+      additionalProperties: false
+      properties:
+        message_id:
+          title: Message Id
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        role:
+          const: assistant
+          title: Role
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        type:
+          const: TEXT_MESSAGE_START
+          default: TEXT_MESSAGE_START
+          title: Type
+          type: string
+      required:
+      - message_id
+      - role
+      title: TextMessageStart
+      type: object
+    ThreadCreateRequest:
+      additionalProperties: false
+      description: Body of ``POST /agent/threads``.
+      properties:
+        metadata:
+          additionalProperties: true
+          title: Metadata
+          type: object
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - user_id
+      title: ThreadCreateRequest
+      type: object
+    ThreadState:
+      additionalProperties: false
+      description: Response body of ``GET /agent/threads/{thread_id}``.
+      properties:
+        created_at:
+          format: date-time
+          title: Created At
+          type: string
+        messages:
+          items:
+            additionalProperties: true
+            type: object
+          title: Messages
+          type: array
+        thread_id:
+          title: Thread Id
+          type: string
+        updated_at:
+          format: date-time
+          title: Updated At
+          type: string
+        user_id:
+          title: User Id
+          type: string
+      required:
+      - thread_id
+      - user_id
+      - created_at
+      - updated_at
+      title: ThreadState
+      type: object
+    ToolCallArgs:
+      additionalProperties: false
+      properties:
+        delta:
+          title: Delta
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        type:
+          const: TOOL_CALL_ARGS
+          default: TOOL_CALL_ARGS
+          title: Type
+          type: string
+      required:
+      - tool_call_id
+      - delta
+      title: ToolCallArgs
+      type: object
+    ToolCallEnd:
+      additionalProperties: false
+      properties:
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        type:
+          const: TOOL_CALL_END
+          default: TOOL_CALL_END
+          title: Type
+          type: string
+      required:
+      - tool_call_id
+      title: ToolCallEnd
+      type: object
+    ToolCallEnded:
+      additionalProperties: false
+      properties:
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - tool_call_id
+      title: ToolCallEnded
+      type: object
+    ToolCallStart:
+      additionalProperties: false
+      properties:
+        parent_message_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Parent Message Id
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        tool_call_name:
+          title: Tool Call Name
+          type: string
+        type:
+          const: TOOL_CALL_START
+          default: TOOL_CALL_START
+          title: Type
+          type: string
+      required:
+      - tool_call_id
+      - tool_call_name
+      title: ToolCallStart
+      type: object
+    ToolCallStarted:
+      additionalProperties: false
+      properties:
+        args_json:
+          title: Args Json
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        tool_name:
+          title: Tool Name
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - tool_call_id
+      - tool_name
+      - args_json
+      title: ToolCallStarted
+      type: object
+    ToolResult:
+      additionalProperties: false
+      properties:
+        content:
+          title: Content
+          type: string
+        raw_event:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          default: null
+          title: Raw Event
+        role:
+          const: tool
+          title: Role
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        type:
+          const: TOOL_RESULT
+          default: TOOL_RESULT
+          title: Type
+          type: string
+      required:
+      - tool_call_id
+      - content
+      - role
+      title: ToolResult
+      type: object
+    ToolResultReceived:
+      additionalProperties: false
+      properties:
+        result:
+          title: Result
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool_call_id:
+          title: Tool Call Id
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - tool_call_id
+      - result
+      title: ToolResultReceived
+      type: object
+info:
+  description: AG-UI Agent Protocol routes exposed by agent_ui_adapter. Generated
+    from Pydantic wire models.
+  title: Agent UI Adapter
+  version: 0.1.0
+openapi: 3.1.0
+paths:
+  /agent/runs/stream:
+    post:
+      operationId: streamRun
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RunCreateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            text/event-stream:
+              schema:
+                format: event-stream
+                type: string
+          description: AG-UI event stream
+        '401':
+          description: Unauthorized
+      summary: Open an SSE stream of AG-UI events for a run
+  /agent/runs/{run_id}:
+    delete:
+      operationId: cancelRun
+      parameters:
+      - in: path
+        name: run_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStateView'
+          description: Cancelled run state
+        '404':
+          description: Run not found
+      summary: Cancel a run
+    get:
+      operationId: getRun
+      parameters:
+      - in: path
+        name: run_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunStateView'
+          description: Run state
+        '404':
+          description: Run not found
+      summary: Get run state
+  /agent/threads:
+    get:
+      operationId: listThreads
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/ThreadState'
+                type: array
+          description: List of threads
+      summary: List threads
+    post:
+      operationId: createThread
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThreadCreateRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadState'
+          description: Created thread
+      summary: Create a thread
+  /agent/threads/{thread_id}:
+    get:
+      operationId: getThread
+      parameters:
+      - in: path
+        name: thread_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadState'
+          description: Thread state
+      summary: Get a thread
+  /healthz:
+    get:
+      operationId: healthz
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+          description: Healthy
+      summary: Liveness probe

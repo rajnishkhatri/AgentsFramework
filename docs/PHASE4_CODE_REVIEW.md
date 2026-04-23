@@ -1,7 +1,7 @@
 # Phase 4 Code Review Report
 
 **Review ID:** `REVIEW-PHASE4-001`
-**Plan reference:** [PLAN_v2.md §Phase 4](../PLAN_v2.md), [docs/SPRINT_PHASE4_PLAN.md](SPRINT_PHASE4_PLAN.md)
+**Plan reference:** [PLAN_v2.md §Phase 4](../PLAN_v2.md), [docs/plan/sprint/SPRINT_PHASE4_PLAN.md](plan/sprint/SPRINT_PHASE4_PLAN.md)
 **Method:** Manual review following the Five-Phase ReAct protocol from [`prompts/codeReviewer/CodeReviewer_system_prompt.j2`](../prompts/codeReviewer/CodeReviewer_system_prompt.j2), structured by the MECE Pyramid principle from [`research/pyramid_react_system_prompt.md`](../research/pyramid_react_system_prompt.md).
 **Decomposition axis:** By validation dimension (D1–D5).
 **Generated:** 2026-04-17

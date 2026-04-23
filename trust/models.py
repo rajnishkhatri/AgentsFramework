@@ -92,3 +92,59 @@ class CloudBinding(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     model_config = ConfigDict(frozen=True)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Schema-version-2 trust types per docs/FOUR_LAYER_ARCHITECTURE.md
+# Added by AGENT_UI_ADAPTER_SPRINTS.md US-DP-1.1 (S0 prerequisite).
+# Additive only -- no existing signed field changes.
+# ─────────────────────────────────────────────────────────────────────
+
+
+TraceLayer = Literal["L1", "L2", "L3", "L4", "L5", "L6", "L7"]
+TraceOutcome = Literal["pass", "fail", "alert"]
+
+
+class TrustTraceRecord(BaseModel):
+    """Cross-layer trace event (schema_version=2).
+
+    Spec: docs/FOUR_LAYER_ARCHITECTURE.md lines 197-209. The shared schema
+    that makes cross-layer queries possible across the seven trust layers.
+
+    Schema version 2 adds three multi-agent fields (event_id,
+    source_agent_id, causation_id) for event correlation and causal tracing.
+    """
+
+    schema_version: int = 2
+    event_id: str
+    source_agent_id: str | None = None
+    causation_id: str | None = None
+    timestamp: datetime
+    trace_id: str
+    agent_id: str
+    layer: TraceLayer
+    event_type: str
+    details: dict[str, Any] = Field(default_factory=dict)
+    outcome: TraceOutcome | None = None
+
+    model_config = ConfigDict(frozen=True)
+
+
+class PolicyDecision(BaseModel):
+    """Output of any policy enforcement point (PEP).
+
+    Spec: docs/FOUR_LAYER_ARCHITECTURE.md lines 906-916. Returned by the
+    Runtime Trust Gate and any external policy backend (OPA/Cedar/YAML).
+    Carries an audit_entry for downstream TrustTraceRecord emission.
+    """
+
+    enforcement: Literal["allow", "deny", "require_approval", "throttle"]
+    reason: str
+    backend: Literal["embedded", "opa", "cedar", "yaml"]
+    audit_entry: dict[str, Any]
+
+    model_config = ConfigDict(frozen=True)
+
+    @property
+    def allowed(self) -> bool:
+        return self.enforcement == "allow"

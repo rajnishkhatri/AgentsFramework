@@ -1,0 +1,186 @@
+"""LangGraphRuntime — production ``AgentRuntime`` wrapping ``orchestration.react_loop``.
+
+Per AGENT_UI_ADAPTER_SPRINTS.md US-3.3.
+
+Translation contract:
+
+- A LangGraph compiled app exposes ``astream_events(input, config, version='v2')``
+  yielding dicts with shape ``{"event": <name>, "data": {...}, "name": str, "run_id": str}``.
+- This adapter consumes that stream and emits ``agent_ui_adapter.wire.domain_events``
+  values WITHOUT exposing any LangGraph types past its own boundary.
+- Every emitted event carries the same ``trace_id`` for the run (plan §4.3 Option B).
+- Exceptions raised by the graph are caught and translated to a
+  ``RunFinishedDomain(error=<message>)`` so the wire boundary never sees a raw stack.
+
+LangChain event-name mapping (subset; v1 wire surface):
+
+| LangGraph event              | Domain event                  |
+|------------------------------|-------------------------------|
+| on_chat_model_stream         | LLMTokenEmitted (delta=chunk) |
+| on_chat_model_start          | LLMMessageStarted             |
+| on_chat_model_end            | LLMMessageEnded               |
+| on_tool_start                | ToolCallStarted               |
+| on_tool_end                  | ToolResultReceived            |
+
+Future enhancements (deferred): JSON Patch translation for state mutations,
+HITL ``request_approval`` wiring (S7).
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from typing import Any, AsyncIterator, Protocol
+
+from agent_ui_adapter.wire.agent_protocol import ThreadState
+from agent_ui_adapter.wire.domain_events import (
+    DomainEvent,
+    LLMMessageEnded,
+    LLMMessageStarted,
+    LLMTokenEmitted,
+    RunFinishedDomain,
+    RunStartedDomain,
+    ToolCallStarted,
+    ToolResultReceived,
+)
+from trust.models import AgentFacts
+
+
+class _CompiledGraphLike(Protocol):
+    """Structural shape of a LangGraph compiled app (subset)."""
+
+    def astream_events(
+        self,
+        input: Any,
+        config: dict | None = ...,
+        version: str = ...,
+    ) -> AsyncIterator[dict]: ...
+
+    async def aget_state(self, config: dict) -> Any: ...
+
+
+class LangGraphRuntime:
+    """Production ``AgentRuntime`` wrapping a LangGraph compiled app."""
+
+    def __init__(self, graph: _CompiledGraphLike) -> None:
+        self._graph = graph
+
+    async def run(
+        self,
+        thread_id: str,
+        input: dict[str, Any],
+        identity: AgentFacts,
+    ) -> AsyncIterator[DomainEvent]:
+        trace_id = uuid.uuid4().hex
+        run_id = uuid.uuid4().hex
+
+        yield RunStartedDomain(
+            trace_id=trace_id, run_id=run_id, thread_id=thread_id
+        )
+
+        config = {"configurable": {"thread_id": thread_id}}
+        error: str | None = None
+        try:
+            async for raw in self._graph.astream_events(
+                input, config=config, version="v2"
+            ):
+                event = self._translate(raw, trace_id)
+                if event is not None:
+                    yield event
+        except Exception as exc:  # broad: translator boundary swallows raw exceptions
+            error = f"{type(exc).__name__}: {exc}"
+
+        yield RunFinishedDomain(
+            trace_id=trace_id,
+            run_id=run_id,
+            thread_id=thread_id,
+            error=error,
+        )
+
+    async def cancel(self, run_id: str) -> None:
+        # LangGraph cancellation is per-task; v1 is best-effort no-op until
+        # we wire run_id → asyncio.Task tracking in S6.
+        return None
+
+    async def get_state(self, thread_id: str) -> ThreadState:
+        from datetime import UTC, datetime
+
+        config = {"configurable": {"thread_id": thread_id}}
+        try:
+            snapshot = await self._graph.aget_state(config)
+        except Exception:
+            snapshot = None
+
+        now = datetime.now(UTC)
+        messages: list[dict] = []
+        if snapshot is not None:
+            values = getattr(snapshot, "values", None) or snapshot
+            if isinstance(values, dict):
+                raw_msgs = values.get("messages", [])
+                for m in raw_msgs:
+                    if isinstance(m, dict):
+                        messages.append(m)
+                    else:
+                        messages.append(
+                            {
+                                "role": getattr(m, "role", "assistant"),
+                                "content": getattr(m, "content", ""),
+                            }
+                        )
+
+        return ThreadState(
+            thread_id=thread_id,
+            user_id="langgraph",
+            messages=messages,
+            created_at=now,
+            updated_at=now,
+        )
+
+    # ── translation ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _translate(raw: dict, trace_id: str) -> DomainEvent | None:
+        ev_name = raw.get("event", "")
+        data = raw.get("data") or {}
+        run_id = raw.get("run_id") or uuid.uuid4().hex
+
+        if ev_name == "on_chat_model_stream":
+            chunk = data.get("chunk")
+            content = getattr(chunk, "content", None)
+            if isinstance(content, str) and content:
+                return LLMTokenEmitted(
+                    trace_id=trace_id, message_id=run_id, delta=content
+                )
+            return None
+
+        if ev_name == "on_chat_model_start":
+            return LLMMessageStarted(trace_id=trace_id, message_id=run_id)
+
+        if ev_name == "on_chat_model_end":
+            return LLMMessageEnded(trace_id=trace_id, message_id=run_id)
+
+        if ev_name == "on_tool_start":
+            args_raw = data.get("input", {})
+            try:
+                args_json = json.dumps(args_raw, default=str, sort_keys=True)
+            except (TypeError, ValueError):
+                args_json = str(args_raw)
+            return ToolCallStarted(
+                trace_id=trace_id,
+                tool_call_id=run_id,
+                tool_name=raw.get("name", ""),
+                args_json=args_json,
+            )
+
+        if ev_name == "on_tool_end":
+            output = data.get("output", "")
+            return ToolResultReceived(
+                trace_id=trace_id,
+                tool_call_id=run_id,
+                result=str(output),
+            )
+
+        return None
+
+
+__all__ = ["LangGraphRuntime"]

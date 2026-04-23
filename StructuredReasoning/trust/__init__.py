@@ -1,0 +1,66 @@
+"""Pyramid trust kernel -- pure types for the Structured Reasoning agent.
+
+Re-exports the public schema so consumers can write::
+
+    from StructuredReasoning.trust import AnalysisOutput, IssueTree, ...
+"""
+
+from StructuredReasoning.trust.pyramid_schema import (
+    AnalysisOutput,
+    Branch,
+    CrossBranchInteraction,
+    DeductiveChain,
+    DeductivePremise,
+    Evidence,
+    Gaps,
+    GoverningThought,
+    HypothesisStatus,
+    IssueTree,
+    KeyArgument,
+    KnownWeakness,
+    Metadata,
+    MissingData,
+    OrderingType,
+    Phase,
+    PresentationNote,
+    ProblemDefinition,
+    ProblemType,
+    ReasoningMode,
+    SoWhatChain,
+    SoWhatLevel,
+    UntestedHypothesis,
+    ValidationCheck,
+    ValidationCheckName,
+    ValidationResult,
+    WeaknessSeverity,
+)
+
+__all__ = [
+    "AnalysisOutput",
+    "Branch",
+    "CrossBranchInteraction",
+    "DeductiveChain",
+    "DeductivePremise",
+    "Evidence",
+    "Gaps",
+    "GoverningThought",
+    "HypothesisStatus",
+    "IssueTree",
+    "KeyArgument",
+    "KnownWeakness",
+    "Metadata",
+    "MissingData",
+    "OrderingType",
+    "Phase",
+    "PresentationNote",
+    "ProblemDefinition",
+    "ProblemType",
+    "ReasoningMode",
+    "SoWhatChain",
+    "SoWhatLevel",
+    "UntestedHypothesis",
+    "ValidationCheck",
+    "ValidationCheckName",
+    "ValidationResult",
+    "WeaknessSeverity",
+]
