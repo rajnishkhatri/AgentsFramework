@@ -334,6 +334,10 @@ The win statement made concrete:
 
 Notice: rows for Mem0 / WorkOS / Langfuse swaps point to `services/*` files, NOT to `agent_ui_adapter/adapters/*`. This is the single-port consequence.
 
+**Empirical validation (M-Phase2):**
+- Swap 1: `services/long_term_memory.py` → `services/memory_backends/sqlite.py` (SQLite backend). Commit `00e6651`. Zero `agent_ui_adapter/` files changed.
+- Swap 2: `services/trace_service.py` → `services/trace_sinks/jsonl_sink.py` (JSONL file sink). Zero `agent_ui_adapter/` files changed.
+
 ---
 
 ## 11. Phased Delivery
@@ -407,6 +411,19 @@ Carried from brainstorm; resolved here when possible, deferred when not.
 | R2 | Pydantic-to-OpenAPI codegen lossy on union/discriminated types | Medium | Low | Use Pydantic V2 `discriminator=` explicitly; CI test compares regenerated schema to checked-in golden file |
 | R3 | Signed-payload byte-equivalence breaks under JSON re-encoding (frontend reorders keys) | Low | High | Architecture test (§4.4); document sealed-envelope rule in `frontend/lib/wire-types.ts` README; HMAC verification server-side rejects fast |
 | R4 | Pre-work for Phase 1 (three new horizontal services) was not in the V3 timeline | High | Medium | Gate adapter Phase 1 acceptance criteria on the three horizontal services existing and having tests in `tests/services/`. Add to V3 §8 Phase 1 explicitly. |
+
+### Phase 1 Risk Sign-off (US-9.4)
+
+All four risks are now mitigated with implementation evidence:
+
+| ID | Risk | Status | Evidence |
+|----|------|--------|----------|
+| R1 | AG-UI 0.x spec breaks | **Closed** | `AGUI_PINNED_VERSION = "0.1.18"` in `agent_ui_adapter/wire/ag_ui_events.py`; enforced by `tests/agent_ui_adapter/wire/test_agui_version_pin.py`. |
+| R2 | Codegen drift | **Closed** | CI drift detection in `.github/workflows/wire-codegen.yml`; enforced by `tests/agent_ui_adapter/wire/test_openapi_drift.py` and `tests/agent_ui_adapter/wire/test_wire_types_drift.py`. |
+| R3 | Sealed-payload byte-equivalence | **Closed** | `agent_ui_adapter/translators/sealed_envelope.py` with Hypothesis key-shuffle round-trip tests in `tests/agent_ui_adapter/translators/test_sealed_envelope.py`; architecture test T6 in `tests/architecture/test_agent_ui_adapter_layer.py`. |
+| R4 | Horizontal-service coupling | **Closed** | M-Phase2 SQLite swap (commit `00e6651`) proved `agent_ui_adapter/` untouched; second swap (JSONL trace sink) provides additional evidence. Architecture tests T1-T5 enforce import boundaries at CI time. |
+
+**JWT verifier deferral**: Production deployment requires a real `JwtVerifier` implementation (WorkOS / RS256 / OAuth) behind the `JwtVerifier` Protocol in `agent_ui_adapter/server.py`. Phase 1 sign-off uses `InMemoryJwtVerifier` with a static token map. Deferred to v1.5.
 
 ---
 
