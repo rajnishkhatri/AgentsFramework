@@ -89,14 +89,17 @@ frontend/lib/
         └── env_var_flags.ts
 
 middleware/
-├── ports/                                (3 Python Protocols)
+├── ports/                                (4 Python Protocols)
 │   ├── jwt_verifier.py
-│   ├── memory_provider.py
+│   ├── tool_acl.py
+│   ├── memory_client.py
 │   └── telemetry_exporter.py
 │
 └── adapters/
     ├── auth/
     │   └── workos_jwt_verifier.py
+    ├── acl/
+    │   └── workos_role_acl.py                    V3 default
     ├── memory/
     │   ├── mem0_cloud_hobby_client.py            V3 default
     │   └── self_hosted_mem0_client.py            V2 graduation
@@ -673,41 +676,54 @@ export function buildAdapters() {
 ```python
 # middleware/composition.py
 import os
+from dataclasses import dataclass
 from middleware.ports.jwt_verifier import JwtVerifier
-from middleware.ports.memory_provider import MemoryProvider
+from middleware.ports.tool_acl import ToolAclProvider
+from middleware.ports.memory_client import MemoryClient
 from middleware.ports.telemetry_exporter import TelemetryExporter
 
-_profile = os.environ.get("ARCHITECTURE_PROFILE", "v3")
+@dataclass(frozen=True)
+class MiddlewareAdapters:
+    profile: str
+    jwt_verifier: JwtVerifier
+    tool_acl: ToolAclProvider
+    memory_client: MemoryClient
+    telemetry_exporter: TelemetryExporter
 
-def build_adapters() -> tuple[JwtVerifier, MemoryProvider, TelemetryExporter]:
+def build_adapters(*, env=None) -> MiddlewareAdapters:
+    e = dict(env) if env is not None else dict(os.environ)
+    profile = e.get("ARCHITECTURE_PROFILE", "v3")
+
     from middleware.adapters.auth.workos_jwt_verifier import WorkOSJwtVerifier
+    from middleware.adapters.acl.workos_role_acl import WorkOSRoleAcl
     verifier = WorkOSJwtVerifier(
-        client_id=os.environ["WORKOS_CLIENT_ID"],
-        jwks_url=os.environ["WORKOS_JWKS_URL"],
+        jwks_url=e.get("WORKOS_JWKS_URL", ...),
+        expected_issuer=...,
+        expected_client_id=e["WORKOS_CLIENT_ID"],
     )
+    acl = WorkOSRoleAcl(role_to_tools=..., known_tools=...)
 
-    if _profile == "v2":
+    if profile == "v2":
         from middleware.adapters.memory.self_hosted_mem0_client import SelfHostedMem0Client
         from middleware.adapters.observability.self_hosted_langfuse_exporter import SelfHostedLangfuseExporter
-        memory = SelfHostedMem0Client(base_url=os.environ["MEM0_URL"])
-        telemetry = SelfHostedLangfuseExporter(
-            public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
-            secret_key=os.environ["LANGFUSE_SECRET_KEY"],
-            host=os.environ["LANGFUSE_HOST"],
-        )
+        memory = SelfHostedMem0Client(base_url=e["MEM0_URL"])
+        telemetry = SelfHostedLangfuseExporter(...)
     else:
         from middleware.adapters.memory.mem0_cloud_hobby_client import Mem0CloudHobbyClient
         from middleware.adapters.observability.langfuse_cloud_hobby_exporter import LangfuseCloudHobbyExporter
-        memory = Mem0CloudHobbyClient(api_key=os.environ["MEM0_API_KEY"])
-        telemetry = LangfuseCloudHobbyExporter(
-            public_key=os.environ["LANGFUSE_PUBLIC_KEY"],
-            secret_key=os.environ["LANGFUSE_SECRET_KEY"],
-        )
+        memory = Mem0CloudHobbyClient(api_key=e["MEM0_API_KEY"])
+        telemetry = LangfuseCloudHobbyExporter(...)
 
-    return verifier, memory, telemetry
+    return MiddlewareAdapters(
+        profile=profile,
+        jwt_verifier=verifier,
+        tool_acl=acl,
+        memory_client=memory,
+        telemetry_exporter=telemetry,
+    )
 ```
 
-**Rule C1 enforcement:** These two files are the only files in the entire codebase that contain `if profile == "v2"` adapter selection logic. Architecture tests assert that no other file contains such conditionals on `ARCHITECTURE_PROFILE`.
+**Rule C1 enforcement:** These two files are the only files in the entire codebase that contain `if profile == "v2"` adapter selection logic. Architecture tests assert that no other file contains such conditionals on `ARCHITECTURE_PROFILE`. The `MiddlewareAdapters` typed bag (rule C2) ensures downstream consumers receive port instances only.
 
 ---
 

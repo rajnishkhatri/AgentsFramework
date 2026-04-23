@@ -10,10 +10,15 @@ This is the v3 default. Sprint 2 will land the full conformance suite
 constructible and the composition root wires it.
 
 **SDK pin (rule A9):** ``mem0ai >= 0.1.100`` (declared in pyproject).
+
+**Async safety:** The ``mem0ai`` SDK client is synchronous. All blocking
+calls are wrapped in ``asyncio.to_thread()`` to avoid blocking the
+event loop during I/O (e.g. HTTP round-trips to Mem0 Cloud).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any
@@ -30,7 +35,11 @@ __all__ = ["Mem0CloudClient"]
 
 
 class Mem0CloudClient:
-    """Thin wrapper around the ``mem0ai`` async client.
+    """Thin wrapper around the ``mem0ai`` SDK client.
+
+    The ``mem0ai`` SDK is synchronous; blocking calls are offloaded to a
+    thread via ``asyncio.to_thread()`` so the FastAPI event loop is never
+    blocked.
 
     Args:
         api_key: Mem0 Cloud API key (``MEM0_API_KEY``).
@@ -63,10 +72,22 @@ class Mem0CloudClient:
         self._sdk_client = _SdkClient(api_key=self._api_key, host=self._base_url)
         return self._sdk_client
 
+    def _sync_add(self, *, user_id: str, content: str) -> None:
+        self._client().add(messages=content, user_id=user_id)
+
+    def _sync_search(
+        self, *, user_id: str, query: str, limit: int
+    ) -> list[dict[str, Any]]:
+        return self._client().search(query=query, user_id=user_id, limit=limit) or []
+
     async def add(self, *, user_id: str, content: str) -> None:
         try:
-            self._client().add(messages=content, user_id=user_id)
-        except Exception as exc:  # SDK -> port boundary translation (A5)
+            await asyncio.to_thread(
+                self._sync_add, user_id=user_id, content=content
+            )
+        except MemoryClientError:
+            raise
+        except Exception as exc:
             logger.warning("mem0 add failed: %s: %s", type(exc).__name__, exc)
             raise MemoryClientError(f"mem0 add failed: {exc}") from exc
 
@@ -78,14 +99,17 @@ class Mem0CloudClient:
         limit: int = 10,
     ) -> list[MemoryRecord]:
         try:
-            results = self._client().search(query=query, user_id=user_id, limit=limit)
+            results = await asyncio.to_thread(
+                self._sync_search, user_id=user_id, query=query, limit=limit
+            )
+        except MemoryClientError:
+            raise
         except Exception as exc:
             logger.warning("mem0 search failed: %s: %s", type(exc).__name__, exc)
             raise MemoryClientError(f"mem0 search failed: {exc}") from exc
 
-        # Normalize to vendor-neutral wire shape -- never return SDK objects.
         records: list[MemoryRecord] = []
-        for item in (results or []):
+        for item in results:
             records.append(
                 MemoryRecord(
                     id=str(item.get("id", "")),

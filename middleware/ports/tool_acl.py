@@ -26,6 +26,9 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 
+# JwtClaims is a vendor-neutral wire shape co-located with its port.
+# Port-to-port imports of shared shapes are permitted by the architecture
+# test (no SDK, no adapter, no transport import -- only sibling shapes).
 from middleware.ports.jwt_verifier import JwtClaims
 
 
