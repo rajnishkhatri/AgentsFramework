@@ -552,7 +552,7 @@ Consumers catch cloud-agnostic categories without importing provider-specific SD
 | `PolicyProvider` | `list_policies(identity)`, `evaluate_access(identity, action, resource)`, `get_permission_boundary(identity)` | `utils/cloud_providers/` adapters |
 | `CredentialProvider` | `issue_credentials(agent_facts, scope)`, `refresh_credentials(credentials)`, `revoke_credentials(credentials)` | `utils/cloud_providers/` adapters |
 
-Method signatures use `cloud_identity` types and `AgentFacts` for credential issuance. Implementation details documented in [TRUST_FOUNDATION_PROTOCOLS_PLAN.md](docs/TRUST_FOUNDATION_PROTOCOLS_PLAN.md).
+Method signatures use `cloud_identity` types and `AgentFacts` for credential issuance. Implementation details documented in [TRUST_FOUNDATION_PROTOCOLS_PLAN.md](docs/plan/trust/TRUST_FOUNDATION_PROTOCOLS_PLAN.md).
 
 ### Module: `trust/review_schema.py` -- Code Review Validator Output
 

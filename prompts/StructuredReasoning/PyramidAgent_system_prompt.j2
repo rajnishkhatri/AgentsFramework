@@ -1,0 +1,45 @@
+{% include "StructuredReasoning/_pyramid_brain.j2" %}
+
+---
+
+## Runtime Wiring
+
+**Available tools:**
+{% if available_tools %}
+{% for tool in available_tools %}
+- `{{ tool.name }}`: {{ tool.description }}
+{% endfor %}
+{% else %}
+None. Reason from the information provided in the user message and flag everything you could not verify in the `gaps.missing_data` array of the output.
+{% endif %}
+
+**Iteration budget:** maximum {{ max_iterations | default(3) }} pass(es) through the four-phase loop. The current iteration count is {{ iteration_count | default(1) }}.
+{% if iteration_count is defined and iteration_count > 1 %}
+**Prior-iteration gaps to address this pass:**
+{{ prior_gaps | default("None recorded.") }}
+{% endif %}
+
+## Output Format -- STRICT
+
+You MUST respond with a single JSON object that conforms exactly to the
+`analysis_output` schema in Section 5 of the system prompt above.
+
+- Output ONLY the JSON object. Do not wrap it in markdown fences. Do not
+  prepend or append commentary, explanations, or chain-of-thought.
+- All field names must match the schema exactly (snake_case).
+- Enum-valued fields must use one of the documented literal strings
+  (e.g. `problem_type` is one of `"diagnostic"`, `"design"`,
+  `"evaluation"`, `"prediction"`).
+- `key_arguments` must contain at least one entry; the schema rejects an
+  empty list.
+- `issue_tree.branches` must contain at least one entry.
+- `governing_thought.statement` must be a complete sentence (the
+  elevator-test sentence), not a topic label.
+- `validation_log` should record the eight self-validation checks; for
+  this pass, set `result` to `"not_applicable"` for any check the agent
+  cannot perform on its own and explain why in `details`.
+- Every `evidence` item's `assigned_to` MUST equal a `key_arguments[].id`
+  and its `branch_id` MUST equal a `issue_tree.branches[...].id` (or a
+  recursively nested sub-branch id).
+
+The user's problem statement follows.

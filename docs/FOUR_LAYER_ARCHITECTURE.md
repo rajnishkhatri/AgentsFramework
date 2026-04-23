@@ -1120,8 +1120,8 @@ The following table tracks all Phase 2 features. Features promoted to full speci
 | EDA migration path | **Documented** | [Phase 1/2/3 progression with latency contract](#event-driven-architecture-migration-path) | All layers | See migration table |
 | TrustTraceRecord v2 | **Specified** | [+event_id, source_agent_id, causation_id](#trusttrace_schemapy----cross-layer-event-schema) | Trust Foundation | `trust/trace_schema.py` |
 | EventCategory enum | **Specified** | [MECE event type taxonomy](#event-type-taxonomy) | Trust Foundation | `trust/enums.py` |
-| Cloud-agnostic protocols | **Specified** | [IdentityProvider, PolicyProvider, CredentialProvider](TRUST_FOUNDATION_PROTOCOLS_PLAN.md) | Trust Foundation + Horizontal | `trust/protocols.py`, `utils/cloud_providers/` |
-| Exception hierarchy | **Specified** | [TrustProviderError tree](TRUST_FOUNDATION_PROTOCOLS_PLAN.md) | Trust Foundation | `trust/exceptions.py` |
+| Cloud-agnostic protocols | **Specified** | [IdentityProvider, PolicyProvider, CredentialProvider](plan/trust/TRUST_FOUNDATION_PROTOCOLS_PLAN.md) | Trust Foundation + Horizontal | `trust/protocols.py`, `utils/cloud_providers/` |
+| Exception hierarchy | **Specified** | [TrustProviderError tree](plan/trust/TRUST_FOUNDATION_PROTOCOLS_PLAN.md) | Trust Foundation | `trust/exceptions.py` |
 | Multi-agent readiness | **Extension points documented** | [Serialization + Ed25519 migration path](#multi-agent-trust-handshake-readiness) | Trust Foundation + Horizontal | `trust/signature.py`, `utils/trust_exchange.py`, `utils/trust_handshake.py` |
 | EventBus protocol | **Deferred** | YAGNI -- introduce when second consumer arrives. See [EDA Migration Path](#event-driven-architecture-migration-path). | Trust Foundation | `trust/protocols.py` (Phase 2) |
 | Event sourcing for identity | **Deferred** | JSONL becomes source of truth; JSON becomes materialized view. See [EDA Migration Path](#event-driven-architecture-migration-path). | Horizontal | `utils/identity_service.py` |
