@@ -61,17 +61,59 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let accumulated = "";
+      let buffer = "";
+      let assistantText = "";
+
+      const flushEvent = (rawEvent: string): void => {
+        let eventName = "message";
+        const dataLines: string[] = [];
+        for (const line of rawEvent.split("\n")) {
+          if (line.startsWith("event:")) {
+            eventName = line.slice(6).trim();
+          } else if (line.startsWith("data:")) {
+            dataLines.push(line.slice(5).trimStart());
+          }
+        }
+        if (dataLines.length === 0) return;
+        const dataStr = dataLines.join("\n");
+        if (eventName === "done" || dataStr === "[DONE]") return;
+
+        try {
+          const payload = JSON.parse(dataStr) as {
+            type?: string;
+            delta?: string;
+            message?: string;
+          };
+          if (eventName === "TEXT_MESSAGE_CONTENT" && typeof payload.delta === "string") {
+            assistantText += payload.delta;
+            const snapshot = assistantText;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
+            );
+          } else if (eventName === "RUN_ERROR" && payload.message) {
+            assistantText += `\n\n_Error: ${payload.message}_`;
+            const snapshot = assistantText;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
+            );
+          }
+        } catch {
+          // Non-JSON data line — ignore.
+        }
+      };
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        accumulated += decoder.decode(value, { stream: true });
-        const current = accumulated;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === assistantId ? { ...m, text: current } : m)),
-        );
+        buffer += decoder.decode(value, { stream: true });
+        let sepIdx: number;
+        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+          const rawEvent = buffer.slice(0, sepIdx);
+          buffer = buffer.slice(sepIdx + 2);
+          if (rawEvent.trim().length > 0) flushEvent(rawEvent);
+        }
       }
+      if (buffer.trim().length > 0) flushEvent(buffer);
     } catch {
       const errMsg: Message = {
         id: crypto.randomUUID(),

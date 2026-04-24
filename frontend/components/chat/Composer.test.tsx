@@ -75,6 +75,8 @@ function setControlledValue(ta: HTMLTextAreaElement, value: string): void {
 interface EnterOpts {
   metaKey?: boolean;
   ctrlKey?: boolean;
+  shiftKey?: boolean;
+  altKey?: boolean;
   isComposing?: boolean;
 }
 
@@ -89,6 +91,8 @@ function dispatchEnter(ta: HTMLTextAreaElement, opts: EnterOpts = {}): void {
     key: "Enter",
     metaKey: !!opts.metaKey,
     ctrlKey: !!opts.ctrlKey,
+    shiftKey: !!opts.shiftKey,
+    altKey: !!opts.altKey,
     isComposing: !!opts.isComposing,
     bubbles: true,
     cancelable: true,
@@ -97,61 +101,60 @@ function dispatchEnter(ta: HTMLTextAreaElement, opts: EnterOpts = {}): void {
 }
 
 describe("Composer keyboard contract [FD2.U_KBD / U_IME]", () => {
-  it("does NOT submit on Meta+Enter while IME is composing (regression guard)", () => {
+  it("does NOT submit on Enter while IME is composing (regression guard)", () => {
     const onSend = vi.fn();
     const ta = render({ onSend });
     act(() => setControlledValue(ta, "konnichiwa"));
-    act(() => dispatchEnter(ta, { metaKey: true, isComposing: true }));
+    act(() => dispatchEnter(ta, { isComposing: true }));
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it("does NOT submit on Ctrl+Enter while IME is composing (regression guard)", () => {
-    const onSend = vi.fn();
-    const ta = render({ onSend });
-    act(() => setControlledValue(ta, "annyeonghaseyo"));
-    act(() => dispatchEnter(ta, { ctrlKey: true, isComposing: true }));
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it("submits trimmed body once on Meta+Enter (no IME)", () => {
+  it("submits trimmed body once on plain Enter (no IME, no modifier)", () => {
     const onSend = vi.fn();
     const ta = render({ onSend });
     act(() => setControlledValue(ta, "  hello  "));
-    act(() => dispatchEnter(ta, { metaKey: true }));
+    act(() => dispatchEnter(ta));
     expect(onSend).toHaveBeenCalledTimes(1);
     expect(onSend).toHaveBeenCalledWith("hello");
   });
 
-  it("submits trimmed body once on Ctrl+Enter (no IME)", () => {
-    const onSend = vi.fn();
-    const ta = render({ onSend });
-    act(() => setControlledValue(ta, "hello"));
-    act(() => dispatchEnter(ta, { ctrlKey: true }));
-    expect(onSend).toHaveBeenCalledTimes(1);
-    expect(onSend).toHaveBeenCalledWith("hello");
-  });
-
-  it("does NOT submit when the textarea is whitespace-only on Meta+Enter", () => {
+  it("does NOT submit when the textarea is whitespace-only on Enter", () => {
     const onSend = vi.fn();
     const ta = render({ onSend });
     act(() => setControlledValue(ta, "    "));
-    act(() => dispatchEnter(ta, { metaKey: true }));
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it("does NOT submit on plain Enter without Meta or Ctrl (Shift+Enter inserts newline path)", () => {
-    const onSend = vi.fn();
-    const ta = render({ onSend });
-    act(() => setControlledValue(ta, "hi"));
     act(() => dispatchEnter(ta));
     expect(onSend).not.toHaveBeenCalled();
   });
 
-  it("does NOT submit while busy=true even on Meta+Enter", () => {
+  it("does NOT submit on Meta+Enter (newline modifier)", () => {
+    const onSend = vi.fn();
+    const ta = render({ onSend });
+    act(() => setControlledValue(ta, "hi"));
+    act(() => dispatchEnter(ta, { metaKey: true }));
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("does NOT submit on Ctrl+Enter (newline modifier)", () => {
+    const onSend = vi.fn();
+    const ta = render({ onSend });
+    act(() => setControlledValue(ta, "hi"));
+    act(() => dispatchEnter(ta, { ctrlKey: true }));
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("does NOT submit on Shift+Enter (newline modifier)", () => {
+    const onSend = vi.fn();
+    const ta = render({ onSend });
+    act(() => setControlledValue(ta, "hi"));
+    act(() => dispatchEnter(ta, { shiftKey: true }));
+    expect(onSend).not.toHaveBeenCalled();
+  });
+
+  it("does NOT submit while busy=true even on Enter", () => {
     const onSend = vi.fn();
     const ta = render({ onSend, busy: true });
     act(() => setControlledValue(ta, "hi"));
-    act(() => dispatchEnter(ta, { metaKey: true }));
+    act(() => dispatchEnter(ta));
     expect(onSend).not.toHaveBeenCalled();
   });
 });

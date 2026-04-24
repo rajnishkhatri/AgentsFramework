@@ -7,7 +7,8 @@
  * contracts encoded in the U-family of `architecture_rules.j2`:
  *
  *   U_KBD            A KeyboardEvent handler whose submit branch matches
- *                    `(e.metaKey || e.ctrlKey) && e.key === "Enter"`.
+ *                    plain Enter (`e.key === "Enter"`) AND explicitly
+ *                    excludes the newline modifiers (Meta / Ctrl / Shift).
  *   U_IME            That same submit branch is guarded by
  *                    `!e.nativeEvent.isComposing`.
  *   U_AUTOSIZE       The textarea grows with content — either CSS
@@ -113,9 +114,11 @@ function attributeText(
 
 function evaluateKeyboardSubmit(sf: SourceFile): { u_kbd: boolean; u_ime: boolean } {
   const text = sf.getFullText();
-  // U_KBD: a logical-AND containing both `metaKey || ctrlKey` and key === "Enter".
+  // U_KBD: the submit branch matches plain Enter and excludes the newline
+  // modifiers (Meta / Ctrl / Shift). Accept either ordering of the
+  // `key === "Enter"` and `!metaKey && !ctrlKey && !shiftKey` conjuncts.
   const kbdRegex =
-    /\((?:[^)]*\.)?metaKey\s*\|\|\s*(?:[^)]*\.)?ctrlKey\)[^;]*?\.key\s*===\s*["'`]Enter["'`]/;
+    /\.key\s*===\s*["'`]Enter["'`][\s\S]*?!\s*(?:[^.\s)]+\.)?metaKey[\s\S]*?!\s*(?:[^.\s)]+\.)?ctrlKey[\s\S]*?!\s*(?:[^.\s)]+\.)?shiftKey/;
   const u_kbd = kbdRegex.test(text);
 
   // U_IME: the SAME function body must reference !e.nativeEvent.isComposing
@@ -258,7 +261,7 @@ export function checkComposerKeyboard(filepath: string): CheckResult {
           rule: "U_KBD",
           line: headLine,
           description:
-            "Composer is missing a submit handler that matches `(e.metaKey || e.ctrlKey) && e.key === \"Enter\"` (S3.8.5).",
+            "Composer is missing a submit handler that matches plain Enter and excludes the newline modifiers (Meta/Ctrl/Shift).",
         });
       if (!u_ime)
         violations.push({

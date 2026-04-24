@@ -76,6 +76,7 @@ class LangGraphRuntime:
         self._graph = graph
         self._trace_emit = trace_emit
         self._run_tasks: dict[str, asyncio.Task] = {}
+        self._streamed_run_ids: set[str] = set()
 
     def _emit_trace(
         self,
@@ -126,12 +127,12 @@ class LangGraphRuntime:
 
         config = {"configurable": {"thread_id": thread_id}}
         error: str | None = None
+        self._streamed_run_ids = set()
         try:
             async for raw in self._graph.astream_events(
                 input, config=config, version="v2"
             ):
-                event = self._translate(raw, trace_id)
-                if event is not None:
+                for event in self._translate_event(raw, trace_id):
                     yield event
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
@@ -193,25 +194,56 @@ class LangGraphRuntime:
     # ── translation ───────────────────────────────────────────────────
 
     @staticmethod
-    def _translate(raw: dict, trace_id: str) -> DomainEvent | None:
+    def _extract_content(obj: object) -> str:
+        """Extract text content from a LangChain message or chunk.
+
+        Handles both string content and list-of-blocks content (Anthropic
+        style: ``[{"type": "text", "text": "..."}]``).
+        """
+        content = getattr(obj, "content", None)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for block in content:
+                if isinstance(block, str):
+                    parts.append(block)
+                elif isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+            return "".join(parts)
+        return ""
+
+    def _translate_event(self, raw: dict, trace_id: str) -> list[DomainEvent]:
         ev_name = raw.get("event", "")
         data = raw.get("data") or {}
         event_run_id = raw.get("run_id") or uuid.uuid4().hex
 
         if ev_name == "on_chat_model_stream":
             chunk = data.get("chunk")
-            content = getattr(chunk, "content", None)
-            if isinstance(content, str) and content:
-                return LLMTokenEmitted(
+            content = self._extract_content(chunk) if chunk else ""
+            if content:
+                self._streamed_run_ids.add(event_run_id)
+                return [LLMTokenEmitted(
                     trace_id=trace_id, message_id=event_run_id, delta=content
-                )
-            return None
+                )]
+            return []
 
         if ev_name == "on_chat_model_start":
-            return LLMMessageStarted(trace_id=trace_id, message_id=event_run_id)
+            return [LLMMessageStarted(trace_id=trace_id, message_id=event_run_id)]
 
         if ev_name == "on_chat_model_end":
-            return LLMMessageEnded(trace_id=trace_id, message_id=event_run_id)
+            events: list[DomainEvent] = []
+            already_streamed = event_run_id in self._streamed_run_ids
+            if not already_streamed:
+                output = data.get("output")
+                content = self._extract_content(output) if output else ""
+                if content:
+                    events.append(LLMTokenEmitted(
+                        trace_id=trace_id, message_id=event_run_id, delta=content
+                    ))
+            events.append(LLMMessageEnded(trace_id=trace_id, message_id=event_run_id))
+            self._streamed_run_ids.discard(event_run_id)
+            return events
 
         if ev_name == "on_tool_start":
             tool_call_id = (
@@ -224,12 +256,12 @@ class LangGraphRuntime:
                 args_json = json.dumps(args_raw, default=str, sort_keys=True)
             except (TypeError, ValueError):
                 args_json = str(args_raw)
-            return ToolCallStarted(
+            return [ToolCallStarted(
                 trace_id=trace_id,
                 tool_call_id=tool_call_id,
                 tool_name=raw.get("name", ""),
                 args_json=args_json,
-            )
+            )]
 
         if ev_name == "on_tool_end":
             tool_call_id = (
@@ -238,13 +270,13 @@ class LangGraphRuntime:
                 or event_run_id
             )
             output = data.get("output", "")
-            return ToolResultReceived(
+            return [ToolResultReceived(
                 trace_id=trace_id,
                 tool_call_id=tool_call_id,
                 result=str(output),
-            )
+            )]
 
-        return None
+        return []
 
 
 __all__ = ["LangGraphRuntime"]

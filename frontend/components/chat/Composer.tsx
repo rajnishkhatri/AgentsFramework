@@ -1,12 +1,12 @@
 /**
  * Mobile-first responsive composer (S3.8.5, F4).
  *
- * Keyboard shortcuts: ⌘↩ / Ctrl↩ submits. Shift+Enter inserts a newline.
+ * Keyboard shortcuts: Enter submits. ⌘↩ / Ctrl↩ / Shift↩ insert a newline.
  *
  * IME guard (FD2.U_IME): the submit branch is suppressed while an IME
  * composition session is in flight (`e.nativeEvent.isComposing === true`).
  * Without the guard, the Enter key that confirms a kana/hangul/pinyin
- * candidate selection would also trip Meta+Enter and double-fire onSend.
+ * candidate selection would also fire Enter and double-fire onSend.
  *
  * Autosize (FD2.U_AUTOSIZE): the textarea uses CSS `field-sizing: content`
  * (Tailwind v4 arbitrary property) to grow with content up to a documented
@@ -41,8 +41,11 @@ export function Composer(props: {
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     const isSubmit =
-      (e.metaKey || e.ctrlKey) &&
       e.key === "Enter" &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey &&
       !e.nativeEvent.isComposing;
     if (isSubmit) {
       e.preventDefault();
@@ -69,7 +72,7 @@ export function Composer(props: {
         ref={taRef}
         rows={1}
         value={body}
-        placeholder={props.placeholder ?? "Send a message…"}
+        placeholder={props.placeholder ?? "Send a message… (⌘↩ for newline)"}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={onKeyDown}
         aria-label="Compose message"
