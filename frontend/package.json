@@ -18,6 +18,11 @@
     "wire-schema-snapshot": "tsx scripts/snapshot_wire_schemas.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
+    "test:e2e:t1": "playwright test --grep-invert '@t2|@t3' --ignore-snapshots",
+    "test:e2e:t2": "MOCK_MIDDLEWARE=1 MIDDLEWARE_URL=http://localhost:8765 playwright test e2e/integration/",
+    "test:e2e:t3": "playwright test e2e/full-stack/ e2e/smoke.spec.ts",
+    "test:e2e:matrix": "playwright test e2e/cross-browser/",
+    "mock-middleware": "tsx e2e/fixtures/mock-middleware.ts",
     "check:csp": "tsx scripts/check_csp_strict.ts middleware.ts",
     "check:iframe": "tsx scripts/check_iframe_sandbox.ts",
     "check:composer": "tsx scripts/check_composer_keyboard.ts components/chat/Composer.tsx",
@@ -50,6 +55,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.2",
     "@playwright/test": "^1.59.1",
     "@types/jsdom": "^28.0.1",
     "@types/node": "^22.7.5",

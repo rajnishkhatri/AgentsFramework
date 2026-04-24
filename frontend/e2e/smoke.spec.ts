@@ -20,10 +20,10 @@
  */
 
 import { test, expect, type Page } from "@playwright/test";
+import { sendMessage, composer, waitForResponse } from "./fixtures/helpers";
+import { PROMPTS } from "./fixtures/prompts";
 
 const E2E_USER_EMAIL = process.env.E2E_USER_EMAIL ?? "beta@example.com";
-
-// ── Helpers ──────────────────────────────────────────────────────────────
 
 async function waitForSelector(page: Page, selector: string, timeoutMs = 10_000) {
   await page.waitForSelector(selector, { timeout: timeoutMs });
