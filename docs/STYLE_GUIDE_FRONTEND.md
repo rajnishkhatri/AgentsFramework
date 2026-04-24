@@ -736,7 +736,7 @@ The frontend ring crosses three process boundaries: Browser → BFF (Next.js Rou
 The dependency arrow is one-way. A backend file that imports from `middleware/` fails `tests/architecture/test_middleware_layering.py`.
 
 **Rule M2: BFF holds no cloud credentials (F-R9 restated).**
-No AWS key, GCP service-account JSON, or provider API key (WorkOS API key, Mem0 API key, Langfuse keys) appears in a Vercel or Cloudflare Pages environment variable. All credential-bearing calls go through `middleware/`. The BFF holds only `WORKOS_CLIENT_ID` (public), `WORKOS_REDIRECT_URI` (public), `MIDDLEWARE_URL` (public), and Next.js framework secrets (`NEXT_*`).
+No AWS key, GCP service-account JSON, or provider API key (WorkOS API key, Mem0 API key, Langfuse keys) appears in a Vercel or Cloudflare Pages environment variable. All credential-bearing calls go through `middleware/`. The BFF holds only `WORKOS_CLIENT_ID` (public), `NEXT_PUBLIC_WORKOS_REDIRECT_URI` (public OAuth callback URL; required by `@workos-inc/authkit-nextjs` — not `WORKOS_REDIRECT_URI`), `MIDDLEWARE_URL` (public), and other Next.js framework secrets (`NEXT_*`).
 
 **Rule M3: JWT-bearing HTTPS is the only cross-process call shape.**
 Browser → BFF: WorkOS session cookie (HttpOnly). BFF → Middleware: `Authorization: Bearer <WorkOS access token>`. Middleware → `agent_ui_adapter`: same bearer token, re-verified server-side. No shared in-memory state, no Unix sockets, no shared filesystem, no message queues at this seam.

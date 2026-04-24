@@ -44,6 +44,16 @@ Exhaustive specification for `frontend/lib/ports/`, `frontend/lib/adapters/`, `m
 
 **Audience:** Maintainers of any adapter family and future authors of new concrete adapters or new port interfaces.
 
+> **Important:** §4.1, §4.2, §4.3 of this document describe the Sprint 0 spec. The Sprint 3 (V3-Dev-Tier) implementation deviates deliberately — see `FRONTEND_PORT_DEVIATIONS_V3.md` for the canonical signatures.
+
+---
+
+### `FRONTEND_PORT_DEVIATIONS_V3.md`
+
+Canonical Sprint-3 (V3-Dev-Tier) refinements to three ports: `AgentRuntimeClient` (split `stream()` into `createRun()` + `streamRun()`; remove `getState()` — moved to `ThreadStore`), `AuthProvider` (remove `signIn()` — replaced by redirect-based flow; return `IdentityClaim` instead of `Session` — closes a token-leak surface), and `ThreadStore` (every method takes `IdentityClaim` for defense-in-depth ownership scoping; collapse `update()` → `rename()`, drop `delete()` since `archive()` already soft-deletes, defer `getMessages()` until message volume justifies a separate table). For each port: original spec, implemented signature, per-row delta with rationale, preserved invariants (F-R3, F-R8, A4, FE-AP-7, FE-AP-18), and a forward-looking trigger table for when (if ever) to revisit. Promotes the implemented surface to canonical for V3-Dev-Tier.
+
+**Audience:** Architects and code reviewers comparing the implemented `frontend/lib/ports/` to the original deep-dive spec.
+
 ---
 
 ### `FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md`

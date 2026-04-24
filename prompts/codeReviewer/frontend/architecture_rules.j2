@@ -104,6 +104,11 @@ Cross-process rule: `frontend/` MUST NEVER import a Python module.
 - **U6** `cn()` (`clsx` + `tailwind-merge`) for class merging. Template-string conditionals forbidden.
 - **U7** shadcn primitives over custom-built. Wrap raw shadcn output (`components/ui/`) in `components/primitives/` for product-specific defaults.
 - **U8** Design tokens via Tailwind v4 `@theme` blocks in `app/globals.css`. Semantic tokens (`--color-primary`), never raw hue values.
+- **U_KBD** Composer textareas (S3.8.5 / F4) submit on `(metaKey || ctrlKey) && key === "Enter"`. `Shift+Enter` inserts a newline. The submit handler must call `e.preventDefault()` before invoking `onSend`.
+- **U_IME** Composer submit branch is guarded by `!e.nativeEvent.isComposing` so an IME / kana / hangul `Enter` keystroke does not double-fire. Tested via a synthetic `KeyboardEvent` with `isComposing: true` in the unit suite.
+- **U_AUTOSIZE** Composer textareas grow with content up to a documented max-rows (`6` rows by default for the chat composer) then scroll. Implementations: `rows` ref-based scrollHeight resize OR CSS `field-sizing: content`. Fixed-height textareas fail the F4 mobile-keyboard-friendly criterion.
+- **U_LBL** Composer textareas have an associated `<label htmlFor>` OR an explicit `aria-label` (e.g. `"Message"`). Visually hidden labels (`sr-only`) satisfy the rule. Cross-checked by `eslint-plugin-jsx-a11y/label-has-associated-control`.
+- **U_FOCUS_NO_STEAL** Mount-time `taRef.current?.focus()` MUST NOT run while a sibling streaming-message live region (`role="log"`) is announcing tokens — that would steal focus from the screen reader mid-sentence (regression of `U5`). Either gate the mount focus on `!isStreaming`, or move it into the route-change `useEffect` that already moves focus on `params.threadId` change.
 
 ## Auth / Session Rules (S-Family)
 
@@ -180,7 +185,7 @@ upgrade-insecure-requests;
 - CSP `frame-src 'self'` (sandboxed `srcDoc` count as same-origin).
 
 **BFF env policy (F-R9):**
-- BFF holds only `WORKOS_CLIENT_ID` (public), `WORKOS_REDIRECT_URI` (public), `MIDDLEWARE_URL` (public), Next.js framework secrets.
+- BFF holds only `WORKOS_CLIENT_ID` (public), `NEXT_PUBLIC_WORKOS_REDIRECT_URI` (public OAuth callback; AuthKit — not `WORKOS_REDIRECT_URI`), `MIDDLEWARE_URL` (public), Next.js framework secrets.
 - Never `NEXT_PUBLIC_*` containing `*KEY*`, `*SECRET*`, `*TOKEN*`, `*PRIVATE*`, `*API*`, `*CREDENTIAL*`.
 - All credential-bearing calls (Mem0 API key, Langfuse keys, OpenAI/Anthropic keys) flow through `middleware/` only.
 
@@ -256,3 +261,159 @@ upgrade-insecure-requests;
 **No live LLM calls in CI.** All adapter tests use MSW mocks or scripted servers.
 
 **`tsc --noEmit` clean.** Type errors block merge. `tsconfig.json` minimum: `"strict": true`, `"noUncheckedIndexedAccess": true`, `"exactOptionalPropertyTypes": true`, `"verbatimModuleSyntax": true`.
+
+## Accepted V3 Deviations (do NOT flag)
+
+The deviations below are **intentional refinements** locked in by `docs/Architectures/FRONTEND_PORT_DEVIATIONS_V3.md` and supplementary Sprint 0/2 decisions. The reviewer MUST treat them as canonical and MUST NOT raise findings against the original spec text.
+
+**D-V3-P1: `AgentRuntimeClient` — split `stream()` into `createRun()` + `streamRun()`; remove `getState()`.**
+- Spec (deep-dive §4.1): `stream(req): AsyncIterable<AGUIEvent>; cancel; getState(threadId)`.
+- Canonical: `createRun(req): Promise<RunStateView>; streamRun(runId): AsyncIterable<UIRuntimeEvent>; cancel(runId)`.
+- Rationale: two-step flow enables `Last-Event-ID` resumption (caller must know the run id before reconnecting), early telemetry attachment, and immediate UI "running" state. `getState(threadId)` moved to `ThreadStore.get(identity, threadId)` (single responsibility).
+- Trust boundary preserved: `trace_id` still flows verbatim from backend; browser still never generates one (FE-AP-7 AUTO-REJECT). Transport-level errors with no real `trace_id` use the documented sentinel `"no-trace"`, synthesized in the composition root.
+- Yields `UIRuntimeEvent` (post-translation), not raw `AGUIEvent`. The translation lives inside the adapter ring (per `A3`) so component code never observes raw wire events. `UIRuntimeEvent` is itself a `wire/` type so `A4` still holds.
+
+**D-V3-P2: `AuthProvider` — remove `signIn()`; return `IdentityClaim` from `getSession()`.**
+- Spec: `getSession(): Promise<Session | null>; getAccessToken; signIn(options?); signOut`.
+- Canonical: `getSession(): Promise<IdentityClaim | null>; getAccessToken; signOut`.
+- Rationale: WorkOS AuthKit + Next.js 15 are redirect-based — sign-in is `<a href="/api/auth/sign-in">`, an imperative method would be a leaky wrapper around `window.location.assign`. `IdentityClaim` (from `trust-view/identity.ts`) exposes only `{ sub, org_id, roles, email }` — the access token never lands in the structured port surface, eliminating accidental `JSON.stringify(session)` token leaks. JWT storage policy unchanged (HttpOnly + Secure + SameSite=Strict cookie only; FE-AP-18 still AUTO-REJECT).
+
+**D-V3-P3: `ThreadStore` — identity-scoped methods; `rename`/`get` added; `update`/`delete`/`getMessages` removed.**
+- Spec: `list; create; update(id, patch); archive(id); delete(id); getMessages(threadId, opts)`.
+- Canonical: every method takes `identity: IdentityClaim` first; methods are `create; get; list; rename; archive`.
+- Rationale: defense-in-depth (port surface itself enforces ownership; no admin god-mode path); `archive()` is the soft-delete (the spec's `delete()` had identical semantics — collapsed to one method); `rename()` replaces the over-broad `update(id, patch)`; `get(identity, threadId)` returns `null` for both "not found" and "not the owner" (existence-oracle prevention); `getMessages()` deferred to a future expansion when message volume justifies a separate table.
+
+**D-S0-5 (Spike B SKIPPED): self-hosted LangGraph Developer is the v1 path** — already proven by `agent_ui_adapter/server.py`. Reviewer must NOT flag the absence of an LGP Cloud SaaS Plus adapter in `frontend/lib/adapters/runtime/` for v1.
+
+**D-S0-6 (Spike D SKIPPED): Cloud Trace + Cloud Logging is the v1 telemetry path** — Langfuse Cloud Hobby was the V3 default but has been deferred. Reviewer must NOT flag the absence of `LangfuseCloudHobbyAdapter` wiring in `middleware/composition.py` for v1; the `TelemetryExporter` port still exists and is satisfied by a Cloud Logging exporter.
+
+**D-S0-8 (Spike C ACCEPTED with documented latency debt): Mem0 Cloud Hobby retained for v1 despite search p95 = 447.6 ms (vs the 200 ms criterion).** Reviewer must NOT flag the latency miss as a v1 blocker; the alternatives shortlist in `docs/plan/frontend/spike_reports/SPIKE_C_ALTERNATIVES_RESEARCH.md` is the documented re-evaluation trigger.
+
+**Cloudflare Pro WAF entitlement erratum (S2.1.3 → S4.1.1).** Custom WAF rules with action `log` (the basis of S2.1.3's "WAF in count mode for 24h" criterion) require Cloudflare Enterprise. The Pro plan permits custom WAF rules only with enforcing actions (`block`, `challenge`, `js_challenge`, `managed_challenge`, `skip`). Reviewer must NOT flag the absence of a 24h count-mode window. The auto-applied "Cloudflare Free Managed Ruleset" provides the v1 baseline; S4.1.1 goes straight to `block` action and relies on the manual review window already required by the sprint board. Documented in the file header of `infra/dev-tier/cloudflare-edge.tf`.
+
+**Cache Rules Cloudflare API token gap (S2.1.3).** Custom Cache Rules in the `http_request_cache_settings` phase require an additional API-token scope (`Zone:Cache Rules:Edit`) that wasn't in the Sprint 0 token-creation checklist. SSE pass-through is verified by Cloudflare default behaviour (text/event-stream Content-Type bypasses cache + buffering automatically). Reviewer must NOT flag the absence of a custom cache ruleset.
+
+**D-V3-S3.7.1-RouteHandler.** The catch-all WorkOS Route Handler at `frontend/app/api/auth/[...workos]/route.ts` MAY import `handleAuth` directly from `@workos-inc/authkit-nextjs`. Rationale: the catch-all WorkOS route IS the AuthKit composition seam (per `F-R4` / `B6` — Route Handlers are composition adapters); routing through `lib/adapters/auth/workos_server_sdk.ts` would add a no-op wrapper. NOTE: this exception applies ONLY to this single Route Handler file; all OTHER Route Handlers MUST flow through `lib/adapters/`. The reviewer MUST NOT flag `W1` / `FD1.A1` / `FE-AP-13` / `FD8.S3.7.1` SDK leak for this specific file.
+
+**D-V3-S4.2.1-MonitoringDeferred.** `infra/dev-tier/monitoring.tf` is intentionally absent until v1.1. The five 80%-quota alarms (5xx rate, Cloud Run errors, Langfuse, Mem0, Neon CU-hr) remain operational gaps tracked under `OR-MON` in `gaps[]`. The reviewer MUST NOT escalate `FD11.MON` to a finding; it is recorded as `gaps[]` only.
+
+**D-V3-S4.3.2-TTFTColdStart.** `frontend/e2e/smoke.spec.ts` line 341 uses a `2000ms` TTFT threshold rather than the Sprint Board's `500ms` target, with documented rationale "absorb cold starts and network variance". This is a permanent runtime allowance for Cloud Run `min=0` cold-start behaviour. The reviewer MUST NOT flag the threshold as a Sprint Board deviation; it is recorded as accepted operational tuning (cross-references the TTFT target in the Performance Quick Reference of this file).
+
+**D-V3-S2.1.3-CloudflareWAF.** Cloudflare Pro plan does not entitle the `log` action on custom WAF rules (Enterprise-only). The "WAF in count mode for 24h" Sprint Board criterion is permanently superseded by `cloudflare-edge.tf`'s direct-to-`block` ruleset (3 enforce-only rules). Cache Rules are also deferred per the API-token-scope gap above; SSE pass-through is verified by Cloudflare default behaviour for `text/event-stream`. The reviewer MUST NOT flag the absence of a count-mode window or of custom cache rules. Supersedes the original "Cloudflare Pro WAF entitlement erratum" + "Cache Rules Cloudflare API token gap" entries above (kept for backward citation; the substantive guidance is identical).
+
+## Middleware Ring Rules (Python)
+
+Mirror of the M-family enforced by `tests/architecture/test_middleware_layer.py`. Authoritative for FD9 hypotheses.
+
+| ID | Rule | Test |
+|----|------|------|
+| **M1** | Nothing in `trust/`, `services/`, `components/`, `orchestration/`, `governance/`, `meta/`, or `agent_ui_adapter/` imports from `middleware/`. Dependency arrow is one-way. | `TestM1_BackendDoesNotImportMiddleware::test_no_backend_layer_imports_middleware` |
+| **M-F1** | `os.environ["ARCHITECTURE_PROFILE"]` (or `os.getenv(...)`) appears only in `middleware/composition.py`. Module docstrings that mention the literal string are exempt. | `TestF1_SingleProfileSwitch::test_architecture_profile_only_in_composition` |
+| **M-F4** | `middleware/` may import from `trust/`, `services/`, `agent_ui_adapter/wire/` — never from `components/`, `orchestration/`, `governance/`, `meta/`. The graph is loaded via `langgraph.json` config string reference, not Python module import. | `TestF4_MiddlewareDependencyDirection::*` (one test per forbidden target) |
+| **M-ports** | `middleware/ports/*.py` imports only stdlib + Pydantic + `agent_ui_adapter/wire/` + `trust/`. No SDKs (`jwt`, `mem0`, `mem0ai`, `langfuse`, `workos`), no other middleware sub-packages. | `TestPortPurity::test_ports_have_no_sdk_imports`, `test_ports_do_not_import_adapters` |
+| **M-no-cross** | SDKs from `{jwt, mem0, mem0ai, langfuse, workos}` appear ONLY under `middleware/adapters/*` — never in `ports/`, `transport/`, `composition.py`, or `server.py`. Equivalent to `F-R2` / `A1` for the Python ring. | `TestSdkConfinement::test_sdks_only_in_adapters` |
+| **M-A2** | An adapter family (`auth | acl | memory | observability`) under `middleware/adapters/` does not import a sibling family. Cross-family wiring goes through the composition root via port instances. | `TestAdapterIsolation::test_no_cross_adapter_imports` |
+| **M-server** | `middleware/server.py` does not Python-import `orchestration/`. The graph reference is a string in `langgraph.json` (loaded via the LangGraph Developer config), not a Python import. Specific instance of M-F4. | `TestF4_MiddlewareDependencyDirection::test_middleware_does_not_import_orchestration` |
+| **M-composition** | Only `middleware/composition.py` reads `ARCHITECTURE_PROFILE`. Equivalent to `F1` / `C1` / `C5` for the Python ring. | `TestF1_SingleProfileSwitch::test_architecture_profile_only_in_composition` |
+
+The four adapter families today are: `auth/` (WorkOS JWT verifier), `acl/` (tool ACL), `memory/` (Mem0), `observability/` (Langfuse / Cloud Logging). Adding a fifth family requires a merged ADR (mirror of `F2` for the Python ring).
+
+## Infra Dev-Tier Rules (OpenTofu)
+
+Authoritative for FD10. Each rule maps 1:1 to a pytest node in `tests/infra/`.
+
+| ID | Rule | Test node |
+|----|------|-----------|
+| **IR-RUN-1** | `google_cloud_run_v2_service.middleware` exists and is named `agent-middleware`. | `tests/infra/test_cloud_run.py::test_cloud_run_service_named_agent_middleware` |
+| **IR-RUN-2** | `min_instance_count = 0` (free-tier scale-to-zero). | `test_cloud_run_min_instance_count_is_zero` |
+| **IR-RUN-3** | 1 vCPU (`1000m`) and 2 GB (`2Gi`). | `test_cloud_run_cpu_is_1000m`, `test_cloud_run_memory_is_2gi` |
+| **IR-RUN-4** | `request_timeout = 3600s` (long ReAct runs). | `test_cloud_run_request_timeout_is_3600s` |
+| **IR-RUN-5** | `startup_cpu_boost = true` (cold start <200ms). | `test_cloud_run_startup_cpu_boost_enabled` |
+| **IR-RUN-6** | `/healthz` startup probe. | `test_cloud_run_startup_probe_hits_healthz` |
+| **IR-RUN-7** | Dedicated `agent-middleware-runtime` SA, NOT the default Compute SA. | `test_cloud_run_uses_dedicated_service_account`, `test_dedicated_runtime_service_account_exists` |
+| **IR-NEON-1** | Exactly one Neon project declared (Free quota = 1 project / account). | `tests/infra/test_neon.py::test_exactly_one_neon_project` |
+| **IR-NEON-2** | Project region pinned (no env-driven region). | `test_neon_project_region_is_aws` |
+| **IR-NEON-3** | `pg_version` locked (Neon's current default; cannot be downgraded). | `test_neon_project_pg_version_locked` |
+| **IR-NEON-4** | pgvector extension declared via `cyrilgdn/postgresql` provider. | `test_pgvector_extension_declared` |
+| **IR-NEON-5** | `tablesFilter` in `frontend/drizzle.config.ts` excludes LangGraph checkpoint tables. | Manual: `search_codebase("tablesFilter", "frontend/drizzle.config.ts")` |
+| **IR-CF-1** | A Cloudflare zone is referenced via `data "cloudflare_zone"`. | `tests/infra/test_cloudflare.py::test_zone_referenced_via_data_source` |
+| **IR-CF-2** | Cloudflare Pages project exists with `production_branch = main`. | `test_cloudflare_pages_project_exists`, `test_cloudflare_pages_production_branch_is_main` |
+| **IR-CF-3** | WAF custom rules use enforce-style actions only (`block`, `challenge`, `js_challenge`, `managed_challenge`, `skip`). The `log` action is Enterprise-only — see "Accepted V3 Deviations". | `test_waf_rules_use_enforce_actions` |
+| **IR-CF-4** | No cache rule targets an SSE path with `cache: enabled` (would buffer streaming). | `test_no_cache_rule_targets_sse_paths_with_cache` |
+| **IR-SM-1** | Every secret declared via `google_secret_manager_secret` has a replication block. | `tests/infra/test_secret_manager.py::test_every_secret_has_replication_block` |
+| **IR-SM-2** | Every secret has a version (Tofu creates both shell + version). | `test_every_secret_has_a_version` |
+| **IR-SM-3** | No plaintext `secret_data` in HCL — values come from `var.<name>` references only. | `test_no_plaintext_secret_data_in_hcl` |
+| **IR-SM-4** | Every secret has an IAM accessor binding to the `middleware_runtime` SA. | `test_every_secret_has_iam_accessor_for_runtime_sa` |
+| **IR-SM-5** | No IAM binding grants access to an external principal (`allUsers`, `allAuthenticatedUsers`, personal accounts). | `test_no_iam_member_grants_to_external_principal` |
+| **IR-SM-6** | Cloud Run env block references every required secret by static address. | `test_cloud_run_references_every_required_secret` |
+| **IR-SM-7** | Every Tofu variable holding a secret value is marked `sensitive = true`. | `test_every_secret_var_is_marked_sensitive` |
+| **IR-SM-8** | No Tofu variable holding a secret value is named `next_public_*`. Equivalent to `FE-AP-18` for the IaC layer. | `test_no_secret_var_is_named_next_public` |
+| **IR-XX-1** | No Tofu variable starts with `next_public_` (cross-cutting; covers Pages env block too). | `tests/infra/test_cross_cutting.py::test_no_variable_starts_with_next_public` |
+| **IR-XX-2** | No outputs reference a secret variable. | `test_no_secret_outputs` |
+| **IR-XX-3** | No hardcoded credentials in provider blocks. | `test_no_hardcoded_credentials_in_providers` |
+| **IR-XX-4** | No `trace_id` generation in HCL (browser/IaC must not synthesize trace ids; mirrors `FE-AP-7`). | `test_no_trace_id_generation_in_hcl` |
+| **IR-XX-5** | Every `.tf` file has a leading docstring header. | `test_every_tf_file_has_leading_docstring` |
+| **IR-XX-6** | Resource local names are snake_case. | `test_resource_local_names_are_snake_case` |
+| **IR-XX-7** | No Cloud Run env var holds a literal secret value. | `test_no_cloud_run_env_var_has_literal_secret` |
+
+## Operational Readiness Notes (Sprint 4)
+
+These items are the documented v1 operational gaps. Reviewer records them as `gaps[]`, never as findings (per Anti-Pattern Guard #6 / #3).
+
+- **OR-MON: `infra/dev-tier/monitoring.tf` is MISSING_TODAY.** S4.2.1 ("5+ Cloud Monitoring alarms at 80% quota for 5xx, Cloud Run errors, Langfuse, Mem0, Neon CU-hr") has no IaC representation today. Until the file ships, the FD11.MON hypothesis records a `gaps[]` entry.
+- **OR-MFA: WorkOS MFA enforcement is operational, not in IaC.** S4.1.1's "MFA required for all users" is a WorkOS dashboard toggle. No automated check exists. Reviewer marks FD11.MFA as `gaps[]`.
+- **OR-E2E: Beta-launch e2e tests are gated.** `frontend/e2e/smoke.spec.ts` exists but most chat-flow tests are wrapped in `test.skip(!process.env.E2E_AUTHENTICATED)`. The env var is not exported in any committed `.github/workflows/*.yml`. Until the WorkOS test-user credentials and authenticated-state setup land in CI, FD11.E2E_GATED is recorded as `gaps[]`.
+- **OR-RUNBOOK: `infra/RUNBOOK.md` Stage A→B→C→D upgrade procedure.** The runbook exists; the per-component sections (Neon quota upgrade, Mem0 Hobby→Starter, Langfuse Hobby→Core, Cloud Run min=0→min=1, Cloudflare Free→Pro, full V3→V2-Frontier graduation) must be present. Missing sections are FD11.RUNBOOK warnings.
+
+## Sprint Story Acceptance Map
+
+Authoritative seed for FD8.{story_id} hypotheses. The reviewer MUST re-derive `known_status` on every run by inspecting the live repo — the column below is a hint, not a finding. The `acceptance_signal` column lists the shell command (or test node) that decides PASS / PARTIAL / FAIL.
+
+| story_id | key_files | acceptance_signal | known_status |
+|----------|-----------|-------------------|--------------|
+| **S0.1.1** | `docs/plan/frontend/FRONTEND_PLAN_V3_DEV_TIER.md` | `test -f docs/plan/frontend/FRONTEND_PLAN_V3_DEV_TIER.md` | PASS (Sprint 0 closed) |
+| **S0.1.2** | n/a (operational — GCP project) | manual: `gcloud projects describe agent-prod-gcp-dev` | PASS (operational; assumed live) |
+| **S0.2.1** | `docs/plan/frontend/spike_reports/SPIKE_A.md` | `rg -n "Verdict.*PASS" docs/plan/frontend/spike_reports/SPIKE_A.md` | PASS |
+| **S0.2.2** | `docs/plan/frontend/spike_reports/SPIKE_A.md`, `frontend/components/generative/SandboxedCanvas.tsx`, `frontend/components/generative/SandboxedCanvas.test.tsx` | `cd frontend && npm run test -- components/generative/SandboxedCanvas.test.tsx` + `check_iframe_sandbox` | PASS |
+| **S0.2.3** | `docs/plan/frontend/spike_reports/SPIKE_A.md` | `rg -n "useCoAgentStateRender" docs/plan/frontend/spike_reports/SPIKE_A.md` | PASS |
+| **S0.3.1** | `docs/plan/frontend/spike_reports/SPIKE_B.md` | `rg -n "SKIPPED.*D-S0-5" docs/plan/frontend/spike_reports/SPIKE_B.md` | SKIPPED per D-S0-5 (do not flag) |
+| **S0.4.1** | `docs/plan/frontend/spike_reports/SPIKE_C.md`, `docs/plan/frontend/spike_reports/SPIKE_C_ALTERNATIVES_RESEARCH.md` | `rg -n "ACCEPTED.*D-S0-8" docs/plan/frontend/spike_reports/SPIKE_C.md` | PASS w/ documented latency debt per D-S0-8 (do not flag) |
+| **S0.5.1** | `docs/plan/frontend/spike_reports/SPIKE_D.md` | `rg -n "SKIPPED.*D-S0-6" docs/plan/frontend/spike_reports/SPIKE_D.md` | SKIPPED per D-S0-6 (do not flag) |
+| **S1.1.1** | `middleware/server.py`, `middleware/langgraph.json`, `tests/architecture/test_middleware_layer.py` | `pytest tests/architecture/test_middleware_layer.py -q` + `test -f middleware/server.py` | PARTIAL (re-derive: test passes; SSE mount completeness verified by curl runbook only) |
+| **S1.1.2** | `middleware/composition.py` | `rg -n "ARCHITECTURE_PROFILE" middleware/composition.py` + `pytest tests/architecture/test_middleware_layer.py::TestF1_SingleProfileSwitch -q` | PASS |
+| **S1.2.1** | `middleware/adapters/auth/workos_jwt_verifier.py`, `middleware/ports/jwt_verifier.py`, `tests/middleware/test_workos_auth.py` | `pytest tests/middleware/test_workos_auth.py -q` (failure-paths first per TAP-4) | re-derive |
+| **S1.3.1** | `middleware/adapters/acl/`, `tests/middleware/test_tool_acl.py` | `pytest tests/middleware/test_tool_acl.py -q` | re-derive |
+| **S1.4.1** | `tests/architecture/test_middleware_layer.py` | `pytest tests/architecture/test_middleware_layer.py -q` | PASS |
+| **S2.1.1** | `infra/dev-tier/cloud-run.tf` | `pytest tests/infra/test_cloud_run.py -q` | PASS |
+| **S2.1.2** | `infra/dev-tier/neon.tf`, `frontend/drizzle.config.ts` | `pytest tests/infra/test_neon.py -q` + `rg -n "tablesFilter" frontend/drizzle.config.ts` | PARTIAL (`tablesFilter` requires re-derive; Drizzle config not yet committed) |
+| **S2.1.3** | `infra/dev-tier/cloudflare-pages.tf`, `infra/dev-tier/cloudflare-edge.tf` | `pytest tests/infra/test_cloudflare.py -q` | PARTIAL: WAF entitlement deviation accepted per Cloudflare Pro WAF erratum (do not flag absence of count-mode window) |
+| **S2.1.4** | `infra/dev-tier/secret-manager.tf`, `infra/dev-tier/cloud-run.tf` | `pytest tests/infra/test_secret_manager.py -q` + `pytest tests/infra/test_cross_cutting.py -q` | PASS |
+| **S3.1.1** | `frontend/lib/wire/{domain_events,agent_protocol,ag_ui_events,ui_runtime_events}.ts`, `frontend/lib/wire/__python_schema_baseline__.json` | `cd frontend && npm run test:arch && npm run test -- lib/wire/baseline_drift.test.ts && npm run typecheck` | PASS |
+| **S3.1.2** | `frontend/lib/trust-view/identity.ts`, `frontend/lib/trust-view/identity.test.ts` | `cd frontend && npm run test -- lib/trust-view/` + `npm run typecheck` | PASS |
+| **S3.2.1** | `frontend/lib/ports/*.ts` (8 files), `frontend/tests/architecture/test_port_conformance.test.ts` | `cd frontend && npm run test:arch -- tests/architecture/test_port_conformance.test.ts` | PASS — but ports DEVIATE from deep-dive spec; see "Accepted V3 Deviations" (D-V3-P1/P2/P3) |
+| **S3.3.1** | `frontend/lib/adapters/runtime/self_hosted_langgraph_dev_client.{ts,test.ts}` | `cd frontend && npm run test -- lib/adapters/runtime/` | PARTIAL (LGP SaaS V2 adapter not yet implemented; D-S0-5 means V2 adapter is also non-blocking for v1) |
+| **S3.3.2** | `frontend/lib/adapters/auth/workos_authkit_adapter.{ts,test.ts}`, `frontend/lib/adapters/auth/workos_server_sdk.ts` | `cd frontend && npm run test -- lib/adapters/auth/` | re-derive (signIn() removed per D-V3-P2 — do not flag) |
+| **S3.3.3** | `frontend/lib/adapters/thread_store/neon_free_thread_store.{ts,test.ts}` | `cd frontend && npm run test -- lib/adapters/thread_store/` | PARTIAL (CloudSQL V2 adapter not yet implemented; identity-scoped methods per D-V3-P3 — do not flag missing update/delete/getMessages) |
+| **S3.3.4** | `frontend/lib/adapters/ui_runtime/copilotkit_ui_runtime.{ts,test.ts}`, `frontend/lib/adapters/tool_renderer/copilotkit_registry_adapter.{ts,test.ts}` | `cd frontend && npm run test -- lib/adapters/ui_runtime/ lib/adapters/tool_renderer/` | re-derive |
+| **S3.3.5** | `frontend/lib/adapters/feature_flags/env_var_flags_adapter.{ts,test.ts}` | `cd frontend && npm run test -- lib/adapters/feature_flags/` | re-derive |
+| **S3.4.1** | `frontend/lib/translators/{ag_ui_to_ui_runtime,ui_input_to_agent_request,sealed_envelope,tool_event_to_renderer_request}.{ts,test.ts}` | `cd frontend && npm run test -- lib/translators/` + `npm run test:arch` (T1 enforced by layering test) | PASS |
+| **S3.5.1** | `frontend/lib/transport/sse_client.{ts,test.ts}` | `cd frontend && npm run test -- lib/transport/sse_client.test.ts` | re-derive |
+| **S3.5.2** | `frontend/lib/transport/edge_proxy.{ts,test.ts}` | `cd frontend && npm run test -- lib/transport/edge_proxy.test.ts` | re-derive |
+| **S3.6.1** | `frontend/lib/composition.ts`, `frontend/lib/composition_react.tsx`, `frontend/lib/composition.test.ts` | `cd frontend && npm run test -- lib/composition.test.ts && npm run test:arch && rg -nl "ARCHITECTURE_PROFILE" frontend/ | grep -v composition` | PASS |
+| **S3.7.1** | `frontend/app/api/auth/[...workos]/route.ts`, `frontend/middleware.ts` | `cd frontend && npm run test -- middleware.test.ts` + `check_jwt_storage` on the auth route | re-derive |
+| **S3.7.2** | `frontend/middleware.ts`, `frontend/middleware.test.ts`, `frontend/app/layout.tsx` | `cd frontend && npm run test -- middleware.test.ts` + `check_csp_strict` (MISSING_TODAY) | re-derive |
+| **S3.8.1** | `frontend/components/chat/StreamingMarkdown.{tsx,test.tsx}`, `frontend/components/chat/ThemeToggle.tsx` | `cd frontend && npm run test -- components/chat/ && npx eslint --format=json components/chat/` | PARTIAL (no Storybook host today — `*.stories.tsx` exist but cannot render) |
+| **S3.8.2** | `frontend/components/tools/ToolCard.{tsx,stories.tsx}` | `test -f frontend/components/tools/ToolCard.stories.tsx` + `cd frontend && npm run test:arch` | PARTIAL (ShellToolUI / FileIOToolUI / WebSearchToolUI / GenericJsonToolUI not yet authored; only `ToolCard` shell exists) |
+| **S3.8.3** | `frontend/components/generative/SandboxedCanvas.{tsx,test.tsx,stories.tsx}` | `cd frontend && npm run test -- components/generative/SandboxedCanvas.test.tsx` + `check_iframe_sandbox` | re-derive |
+| **S3.8.4** | `frontend/components/generative/PyramidPanel.{tsx,stories.tsx}` | `test -f frontend/components/generative/PyramidPanel.stories.tsx` + feature-flag verification | re-derive |
+| **S3.8.5** | `frontend/components/chat/Composer.tsx`, `frontend/components/chat/RunControls.tsx` | `cd frontend && npm run test -- components/chat/Composer` + `check_composer_keyboard` (MISSING_TODAY) — covers FD2.U_KBD/U_IME/U_AUTOSIZE/U_LBL/U_FOCUS_NO_STEAL | PARTIAL (composer file exists with U_KBD/U_IME inline; automated assertions not yet wired up) |
+| **S3.8.6** | `frontend/components/chat/ThreadSidebar.tsx` | `cd frontend && npm run test -- components/chat/ThreadSidebar` | re-derive |
+| **S3.8.7** | `frontend/components/chat/RunControls.tsx`, `frontend/lib/adapters/runtime/*.test.ts` (idempotent cancel coverage) | `cd frontend && npm run test -- components/chat/RunControls lib/adapters/runtime/` | re-derive |
+| **S3.8.8** | `frontend/components/chat/ThemeToggle.tsx`, `frontend/app/theme-provider.tsx`, `frontend/app/globals.css` | `cd frontend && npm run test -- components/chat/ThemeToggle` | re-derive |
+| **S3.9.1** | `frontend/app/api/threads/route.ts`, `frontend/app/api/threads/[id]/route.ts`, `frontend/app/api/run/stream/route.ts`, `frontend/app/api/run/cancel/route.ts`, `frontend/lib/bff/handlers.{ts,test.ts}`, `frontend/lib/bff/server_composition.ts` | `cd frontend && npm run test -- lib/bff/ && npm run test:arch` | re-derive (B6 hygiene — Route Handler must not contain business `if/else`) |
+| **S3.10.1** | `frontend/tests/architecture/test_frontend_layering.test.ts` | `cd frontend && npm run test:arch -- tests/architecture/test_frontend_layering.test.ts` | PASS |
+| **S3.11.1** | `frontend/lib/wire/__python_schema_baseline__.json`, `frontend/scripts/snapshot_wire_schemas.ts`, `frontend/lib/wire/baseline_drift.test.ts`, `.github/workflows/frontend-wire-baseline.yml` | `cd frontend && npm run wire-schema-snapshot && git diff --quiet -- lib/wire/__python_schema_baseline__.json && npm run test -- lib/wire/baseline_drift.test.ts` | PASS |
+| **S4.1.1** | `frontend/next.config.ts`, `frontend/tests/security/test_next_config_hardening.test.ts`, `infra/dev-tier/cloudflare-edge.tf` | `cd frontend && npm run test -- tests/security/test_next_config_hardening.test.ts` + `pytest tests/infra/test_cloudflare.py -q` | PARTIAL: `next.config.ts` hardening covered; WAF action goes straight to `block` per Cloudflare Pro WAF erratum (do not flag missing 24h count-mode); MFA toggle is `gaps[]` per OR-MFA |
+| **S4.2.1** | `infra/dev-tier/monitoring.tf` | `pytest tests/infra/test_monitoring.py -q` (`monitoring.tf` MISSING_TODAY) | FAIL → `gaps[]` per OR-MON |
+| **S4.3.1** | `infra/RUNBOOK.md` | `read_file infra/RUNBOOK.md` + `rg -n "^##? +(Neon|Mem0|Langfuse|Cloud Run|Cloudflare|V3|V2-Frontier)" infra/RUNBOOK.md` | re-derive |
+| **S4.3.2** | `frontend/e2e/smoke.spec.ts` | `cd frontend && npx playwright test e2e/smoke.spec.ts --list` + check `E2E_AUTHENTICATED` in `.github/workflows/` | PARTIAL: smoke harness exists but chat tests gated on `E2E_AUTHENTICATED`; recorded as `gaps[]` per OR-E2E |

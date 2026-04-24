@@ -1,0 +1,84 @@
+name: frontend-wire-baseline
+
+# Drift gate for the V3 frontend's TypeScript Zod kernel (S3.11.1).
+#
+# Per FRONTEND_PLAN_V3_DEV_TIER §FD6.DRIFT and the agentic TDD prompt §Pattern 4
+# (Consumer-Driven Contract): the Python `agent_ui_adapter/wire/` modules are
+# the single source of truth. The TS Zod kernels in
+# `frontend/lib/wire/{agent_protocol,domain_events,ag_ui_events,ui_runtime_events}.ts`
+# mirror them by hand. To prevent silent drift we:
+#
+#   1. Re-snapshot the Python schemas with `npm run wire-schema-snapshot`,
+#      which writes `frontend/lib/wire/__python_schema_baseline__.json`.
+#   2. Fail the workflow when the freshly-snapshotted baseline differs from
+#      what is committed (the field-set parity check inside Vitest will then
+#      flag the TS schema as needing an update).
+#   3. Run the Vitest baseline_drift suite, which structurally compares the
+#      TS schemas to the committed baseline (one test per tracked model).
+#
+# Local fix command:
+#   cd frontend && npm run wire-schema-snapshot && npm run typecheck && npm test
+# then commit the regenerated baseline + any TS schema updates.
+
+on:
+  pull_request:
+    paths:
+      - "agent_ui_adapter/wire/**"
+      - "frontend/lib/wire/**"
+      - "frontend/lib/trust-view/**"
+      - "frontend/scripts/snapshot_wire_schemas.ts"
+      - ".github/workflows/frontend-wire-baseline.yml"
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  baseline:
+    name: TS <-> Python wire schema parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python project
+        run: pip install -e .
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package.json
+
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm install --no-audit --no-fund --no-progress
+
+      - name: Re-snapshot Python wire schemas
+        working-directory: frontend
+        run: npm run wire-schema-snapshot
+
+      - name: Fail on uncommitted baseline drift
+        run: |
+          if ! git diff --quiet frontend/lib/wire/__python_schema_baseline__.json; then
+            echo "::error title=wire-baseline drift::__python_schema_baseline__.json is out of sync with the Python source of truth."
+            echo "Run \`cd frontend && npm run wire-schema-snapshot\` and commit the result."
+            git --no-pager diff frontend/lib/wire/__python_schema_baseline__.json | head -300
+            exit 1
+          fi
+          echo "Wire schema baseline is in sync."
+
+      - name: TypeScript strict check
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Vitest (wire + trust-view + architecture + drift)
+        working-directory: frontend
+        run: npm test

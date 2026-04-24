@@ -36,6 +36,10 @@ dev = [
     "freezegun>=1.0",
     "ruff>=0.4",
 ]
+infra = [
+    "python-hcl2>=7.0",
+    "pytest>=8.0",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -50,7 +54,13 @@ markers = [
     "simulation: marks tests as simulation-based (Layer 4)",
     "live_llm: marks tests that require real LLM API calls",
     "property: marks property-based tests (Hypothesis)",
+    "infra: marks Sprint 2 OpenTofu/HCL infrastructure tests (run with `pytest tests/infra/`)",
 ]
 testpaths = ["tests"]
-addopts = "-m 'not slow and not simulation and not live_llm' --strict-markers"
+# pythonpath = ["."] puts the repo root first so the LOCAL `tests/` package
+# wins over any site-packages shadow (e.g. `terraform-compliance` ships its
+# own `tests/` package which would otherwise shadow ours under
+# `from tests.conftest import ...` style imports).
+pythonpath = ["."]
+addopts = "-m 'not slow and not simulation and not live_llm and not infra' --strict-markers"
 asyncio_mode = "auto"

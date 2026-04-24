@@ -6,6 +6,17 @@
 - `docs/Architectures/FRONTEND_ARCHITECTURE.md` — big-picture view of the full frontend ring
 - `docs/Architectures/AGENT_UI_ADAPTER_ADAPTERS_DEEP_DIVE.md` — the equivalent deep-dive for the backend adapter ring
 - `docs/Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md` — exhaustive spec for wire kernels, translators, and SSE transport
+- `docs/Architectures/FRONTEND_PORT_DEVIATIONS_V3.md` — **canonical** Sprint-3 refinements to `AgentRuntimeClient`, `AuthProvider`, `ThreadStore` (this document is the original Sprint-0 spec; the deviations doc supersedes §4.1, §4.2, §4.3 below)
+
+> **Reader note (Sprint 3, V3-Dev-Tier).** The interface signatures shown
+> for `AgentRuntimeClient` (§4.1), `AuthProvider` (§4.2), and `ThreadStore`
+> (§4.3) describe the Sprint 0 spec and are preserved here for historical
+> context. The implemented and reviewed Sprint 3 surfaces deviate
+> deliberately — see [`FRONTEND_PORT_DEVIATIONS_V3.md`](./FRONTEND_PORT_DEVIATIONS_V3.md)
+> for the canonical signatures, deltas, and rationale per port. The
+> remaining five ports (`MemoryClient`, `TelemetrySink`,
+> `FeatureFlagProvider`, `ToolRendererRegistry`, `UIRuntime`) match this
+> document verbatim and are unaffected.
 
 ---
 
@@ -465,10 +476,10 @@ interface UIRuntime {
 ### 5.3 `WorkOSAuthKitAdapter`
 
 **File:** `frontend/lib/adapters/auth/workos_authkit_adapter.ts`
-**Wraps:** `@workos-inc/authkit-nextjs` (pin to `^0.x`)
+**Wraps:** `@workos-inc/authkit-nextjs` (pin to `^2`)
 **Port implemented:** `AuthProvider`
 
-**Constructor parameters:** none — WorkOS AuthKit is configured via `WORKOS_CLIENT_ID` and `WORKOS_REDIRECT_URI` Next.js env vars, read at module load by the SDK.
+**Constructor parameters:** none — WorkOS AuthKit is configured via `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, and `NEXT_PUBLIC_WORKOS_REDIRECT_URI` Next.js env vars, read at module load by the SDK. (`WORKOS_REDIRECT_URI` is not read by AuthKit; the redirect must match the callback route and the WorkOS dashboard allowlist.)
 
 **Translation contract:**
 
