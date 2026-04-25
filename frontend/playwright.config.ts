@@ -17,6 +17,8 @@ import { defineConfig, devices } from "@playwright/test";
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const MOCK_MIDDLEWARE_URL = `http://localhost:${process.env.MOCK_MIDDLEWARE_PORT ?? "8765"}`;
 const USE_MOCK_MIDDLEWARE = process.env.MOCK_MIDDLEWARE === "1";
+const STORAGE_STATE = process.env.E2E_STORAGE_STATE ?? "e2e/.auth/state.json";
+const BYPASS_AUTH = process.env.E2E_BYPASS_AUTH === "1";
 
 const webServers: NonNullable<Parameters<typeof defineConfig>[0]["webServer"]> = [];
 
@@ -24,9 +26,15 @@ if (!process.env.CI) {
   webServers.push({
     command: "npm run dev",
     url: BASE_URL,
-    reuseExistingServer: true,
-    timeout: 30_000,
-    env: USE_MOCK_MIDDLEWARE ? { MIDDLEWARE_URL: MOCK_MIDDLEWARE_URL } : {},
+    // When auth bypass is requested we MUST start a fresh dev server so
+    // it inherits the E2E_BYPASS_AUTH env. A reused server would still
+    // be enforcing real WorkOS auth.
+    reuseExistingServer: !BYPASS_AUTH,
+    timeout: 60_000,
+    env: {
+      ...(USE_MOCK_MIDDLEWARE ? { MIDDLEWARE_URL: MOCK_MIDDLEWARE_URL } : {}),
+      ...(BYPASS_AUTH ? { E2E_BYPASS_AUTH: "1" } : {}),
+    },
   });
 }
 
@@ -50,6 +58,16 @@ export default defineConfig({
   timeout: 60_000,
   expect: {
     timeout: 10_000,
+    toHaveScreenshot: {
+      // Visual regression defaults for the e2e/visual/ suite. Pixel-diff
+      // baselines tolerate small antialiasing/font-hinting drift but still
+      // catch real layout/color regressions.
+      maxDiffPixelRatio: 0.02,
+      threshold: 0.2,
+      animations: "disabled",
+      caret: "hide",
+      scale: "css",
+    },
   },
 
   ...(process.env.E2E_AUTHENTICATED === "1"
@@ -60,6 +78,14 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // When E2E_AUTHENTICATED=1, every test (including the visual suite that
+    // uses plain `test` from @playwright/test) inherits the sealed
+    // `wos-session` cookie produced by `e2e/global-setup.ts`. The
+    // `authenticatedPage` fixture continues to work because it builds its
+    // own context from the same file.
+    ...(process.env.E2E_AUTHENTICATED === "1"
+      ? { storageState: STORAGE_STATE }
+      : {}),
   },
 
   projects: [
