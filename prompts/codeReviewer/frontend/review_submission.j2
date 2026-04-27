@@ -1,0 +1,54 @@
+{# prompts/codeReviewer/frontend/review_submission.j2
+   Task prompt for the Frontend Ring Code Review Validator Agent.
+   Variables: files_to_review, submission_context, review_scope.
+   Mirror of prompts/codeReviewer/CodeReviewer_review_submission.j2 (backend reviewer)
+   scoped to the Frontend Ring per docs/STYLE_GUIDE_FRONTEND.md. #}
+
+# Frontend Code Review Request
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("full") }}
+
+**Named scopes** (defaults to `full` if not specified):
+
+- `full` -- evaluate all eleven dimensions (FD1-FD11).
+- `adapter_pr` -- focus on FD1 (Layering) + FD2 (A-rules) + FD3 (Security) + FD6 (Tests/conformance) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend/lib/adapters/`.
+- `ui_component_pr` -- focus on FD2 (U-rules + S-rules + the composer U_KBD/U_IME/U_AUTOSIZE/U_LBL/U_FOCUS_NO_STEAL hypotheses) + FD3 (Security/sandboxing) + FD4 (Accessibility) + FD5 (Performance/streaming) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend/components/` or `frontend/app/`.
+- `wire_translator_pr` -- focus on FD2 (W-rules + T-rules) + FD6 (wire schema drift). Use for any PR that adds or modifies a file under `frontend/lib/wire/`, `frontend/lib/trust-view/`, or `frontend/lib/translators/`.
+- `security_audit` -- FD3 + FD7 only. Use for security-targeted reviews.
+- `sprint_audit` -- FD8 + FD9 + FD11. Use for sprint-board re-derivation runs (e.g. before a release gate). FD8 walks the `Sprint Story Acceptance Map` row by row; FD9 runs `tests/architecture/test_middleware_layer.py`; FD11 records operational gaps (`monitoring.tf`, MFA, gated e2e). NEVER auto-rejects on its own — only inherits from FD9 (M-rules) which mirror FD1 severity.
+- `infra_audit` -- FD10 + FD11 (and FD3.SEC1 / FE-AP-18 for the Cloudflare Pages env block). Use for any PR that adds or modifies a file under `infra/dev-tier/` or `tests/infra/`. FD10 dispatches to the per-test pytest nodes in `tests/infra/`; FD11 records the `monitoring.tf` and runbook gaps. The Cloudflare Pro WAF entitlement erratum is in the "Accepted V3 Deviations" allowlist — do NOT flag the absent 24h count-mode window.
+
+## Files to Review
+
+{% for file in files_to_review %}
+### {{ file.path }}
+
+**Layer:** {{ file.layer | default("To be classified by Phase 1") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language | default("typescript") }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+## Instructions
+
+1. Execute the Five-Phase ReAct Loop from your system prompt.
+2. **Auto-scope inference:** If `review_scope` is `full` (or unspecified):
+   - All `.tsx` files under `frontend/components/` → infer `review_scope="ui_component_pr"`.
+   - All files under `infra/dev-tier/` or `tests/infra/` → infer `review_scope="infra_audit"`.
+   - All files under `middleware/` (Python) → narrow to FD9-only review (still `full` scope but FD1-FD7 dimensions skip with `status="skipped"`).
+   Record the inference in `validation_log[0]` (e.g., `"Auto-inferred review_scope=infra_audit from file mix"`).
+3. Run deterministic tools first for FD1, FD3, FD5, FD6, FD9, FD10, and the AST-detectable FD2/FD7 hypotheses on every applicable file. Apply LLM judgment only for residual FD2 (B6 Route Handler hygiene, U1 RSC suitability), FD4 appropriateness (always recorded as `gaps`, never findings), and FD8 stories whose `acceptance_signal` cannot be re-derived programmatically.
+4. Produce a certificate for every hypothesis tested.
+5. Apply the Judge criteria (Section 7) to filter findings.
+6. Apply the strictest verdict decision rules (Section 8). Auto-reject anti-patterns (FE-AP-4, FE-AP-6, FE-AP-7, FE-AP-12, FE-AP-18, FE-AP-19), critical FD3 hypotheses (`CSP1`, `CSP2`, `SBX2`, `SEC1`, `SEC2`, `TRUST1`, `TRUST2`), and any critical FD9 (Middleware Ring) failure take precedence over count thresholds. FD8, FD10, FD11 add NO new auto-rejects — they inherit only when their hypotheses overlap an existing FD1/FD3 rule. List any auto-reject reasons inline at the top of the `statement` field.
+7. Treat the items in the `Accepted V3 Deviations (do NOT flag)` subsection of `architecture_rules.j2` as canonical. Findings that contradict an entry in that list MUST be killed by the Judge gate (Section 7, Non-triviality).
+8. Output a single `ReviewReport` JSON object as your final response.

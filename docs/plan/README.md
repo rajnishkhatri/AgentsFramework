@@ -2,7 +2,7 @@
 
 This directory holds all planning artifacts in the repo, organized by the four-layer architecture (plus the outer adapter ring and sprint/process plans).
 
-For the architectural rules these plans target, see [docs/FOUR_LAYER_ARCHITECTURE.md](../FOUR_LAYER_ARCHITECTURE.md), [docs/STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md), [docs/STYLE_GUIDE_PATTERNS.md](../STYLE_GUIDE_PATTERNS.md), and the workspace-wide rules in [AGENTS.md](../../AGENTS.md).
+For the architectural rules these plans target, see [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md), [docs/STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md), [docs/STYLE_GUIDE_PATTERNS.md](../STYLE_GUIDE_PATTERNS.md), and the workspace-wide rules in [AGENTS.md](../../AGENTS.md).
 
 System-wide plans (cross-layer) remain at the repo root: [PLAN.md](../../PLAN.md) (3-layer original) and [PLAN_v2.md](../../PLAN_v2.md) (4-layer with trust kernel).
 

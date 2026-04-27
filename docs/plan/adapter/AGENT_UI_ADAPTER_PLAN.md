@@ -52,7 +52,7 @@ Confidence: **0.78** (good evidence on architecture and protocol; three Phase 1 
 
 ### 2.4 Out of scope forever
 
-- Building memory, trace, or authorization logic INSIDE `agent_ui_adapter/`. These belong in horizontal services per [AGENTS.md](../../../AGENTS.md) anti-pattern AP-2 and the "Outer Adapter Ring" subsection added to [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md).
+- Building memory, trace, or authorization logic INSIDE `agent_ui_adapter/`. These belong in horizontal services per [AGENTS.md](../../../AGENTS.md) anti-pattern AP-2 and the "Outer Adapter Ring" subsection added to [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md).
 - Frontend doing client-side signature verification.
 - Translators making I/O calls, LLM calls, or business decisions.
 
@@ -94,7 +94,7 @@ flowchart LR
 | Wire | Replace entire frontend stack (CopilotKit → assistant-ui → CLI → React Native) | Very stable; standardized | `frontend/` only |
 | Application port | Swap a single backend technology (LangGraph → CrewAI; mock for tests) | Stable; one repo's responsibility | `agent_ui_adapter/adapters/runtime/<new>.py` + one DI line in `server.py` |
 | Horizontal services | Swap memory backend (Mem0 cloud → self-hosted), auth (WorkOS → Cognito), trace (Langfuse → Phoenix) | Stable | A single `services/<service>.py` file; adapter unchanged |
-| Domain (trust kernel) | Almost never; triggers re-signing per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) H3a | Most stable | `trust/` (governance process; recertification per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 231-240) |
+| Domain (trust kernel) | Almost never; triggers re-signing per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) H3a | Most stable | `trust/` (governance process; recertification per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 231-240) |
 
 This nesting matches [utils/cloud_providers/](../../../utils/cloud_providers/) precedent (hexagonal adapters at the cloud-provider boundary) but applied at the HTTP boundary.
 
@@ -145,7 +145,7 @@ AG-UI's 17 native events fully cover four of the seven backend↔frontend concer
 |---------|---------------|--------------------|
 | **HITL / authorization prompt** | No dedicated event | Agent emits `TOOL_CALL_START` for a virtual `request_approval` tool with `args = {action: str, justification: str}`. Frontend renders the approval UI. User response returns as `TOOL_RESULT` with `result = {approved: bool, reason: str}`. Translator never auto-approves. Pattern follows Microsoft AG-UI HITL reference and ag-ui-protocol GitHub discussion #158. |
 | **Auth-token transport** | Not in AG-UI | WorkOS access token rides in HTTP `Authorization: Bearer <jwt>` header on the SSE connection request. `agent_ui_adapter/server.py` FastAPI dependency verifies via [services/governance/agent_facts_registry.py](../../../services/governance/agent_facts_registry.py) (and future `services/authorization_service.py`) BEFORE the SSE stream opens. Token is **never** in AG-UI event payloads. |
-| **`TrustTraceRecord.trace_id`** | Partial — AG-UI provides `runId` + `threadId` only | **Decision: Option B** — `trace_id` rides in `BaseEvent.rawEvent.trace_id` on every event. Preserves trust framework semantics ([docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) line 204) without conflating with AG-UI's `runId` (which restarts per-run). Translator sets this on every emitted event; consumers may correlate. |
+| **`TrustTraceRecord.trace_id`** | Partial — AG-UI provides `runId` + `threadId` only | **Decision: Option B** — `trace_id` rides in `BaseEvent.rawEvent.trace_id` on every event. Preserves trust framework semantics ([docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) line 204) without conflating with AG-UI's `runId` (which restarts per-run). Translator sets this on every emitted event; consumers may correlate. |
 
 ### 4.4 Sealed-envelope rule for signed trust types
 
@@ -190,20 +190,20 @@ Build status verified by globbing the actual repo as of v1.1 plan authoring:
 |---------|---------------------|------------------------------|
 | Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
 | Identity / JWT verify | `IdentityVerifier` | [services/governance/agent_facts_registry.py](../../../services/governance/agent_facts_registry.py) (**exists**; HMAC-style `compute_signature` with `AGENT_FACTS_SECRET`) |
-| Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
+| Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
 | Tool registry | `ToolRegistry` | [services/tools/registry.py](../../../services/tools/registry.py) (**exists**) |
-| Authorization | `AuthorizationGate` | `services/authorization_service.py` (**to be built per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) line 414; does not exist today**) |
+| Authorization | `AuthorizationGate` | `services/authorization_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) line 414; does not exist today**) |
 
 > Three of the five concerns lack a horizontal service today. The adapter MUST NOT bypass this gap by absorbing memory/trace/authorization into `agent_ui_adapter/` — that would prevent CLI, batch, and worker entry points from ever consuming them. They must be built as horizontal services first; see Phase 1 pre-work in §11.
 
-### 5.3 Dual-PEP design (cross-reference to FOUR_LAYER_ARCHITECTURE)
+### 5.3 Dual-PEP design (cross-reference to FOUR_LAYER_ARCHITECTURE.md)
 
-Per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` section (lines 599-664), `verify_authorize_log_node` in the orchestration layer is the **in-graph PEP** for per-action policy decisions. The adapter performs a **pre-flight cheap PEP** before opening the SSE stream:
+Per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` section (lines 599-664), `verify_authorize_log_node` in the orchestration layer is the **in-graph PEP** for per-action policy decisions. The adapter performs a **pre-flight cheap PEP** before opening the SSE stream:
 
 | PEP | Where | What it checks | Latency |
 |-----|-------|----------------|---------|
 | Adapter pre-flight PEP | `agent_ui_adapter/server.py` FastAPI dependency | JWT signature valid? Token not expired? Identity not revoked? | < 5ms (in-memory cache) |
-| Orchestration in-graph PEP | `verify_authorize_log_node` per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 614-639 | Per-action policy: signature recompute, status check, capability evaluation | < 1ms (per-action) |
+| Orchestration in-graph PEP | `verify_authorize_log_node` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 614-639 | Per-action policy: signature recompute, status check, capability evaluation | < 1ms (per-action) |
 
 Two PEPs is fine — they decide on different inputs. The adapter never substitutes for the in-graph PEP; it just rejects obviously invalid sessions before they consume backend resources.
 
@@ -218,8 +218,8 @@ Trust types crossing the wire in v1:
 | Type | Source | Wire serialization |
 |------|--------|--------------------|
 | `AgentFacts` | [trust/models.py](../../../trust/models.py) | Pydantic `model_dump_json()`; sealed envelope per §4.4 |
-| `TrustTraceRecord` | [trust/models.py](../../../trust/models.py) (per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 196-209) | Carried in `BaseEvent.rawEvent.trace_id` per §4.3 |
-| `PolicyDecision` | [trust/models.py](../../../trust/models.py) (per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 906-916) | Embedded in `TOOL_RESULT` for HITL flow |
+| `TrustTraceRecord` | [trust/models.py](../../../trust/models.py) (per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 196-209) | Carried in `BaseEvent.rawEvent.trace_id` per §4.3 |
+| `PolicyDecision` | [trust/models.py](../../../trust/models.py) (per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 906-916) | Embedded in `TOOL_RESULT` for HITL flow |
 
 `schema_version` is preserved verbatim on every type that has one.
 
@@ -334,6 +334,10 @@ The win statement made concrete:
 
 Notice: rows for Mem0 / WorkOS / Langfuse swaps point to `services/*` files, NOT to `agent_ui_adapter/adapters/*`. This is the single-port consequence.
 
+**Empirical validation (M-Phase2):**
+- Swap 1: `services/long_term_memory.py` → `services/memory_backends/sqlite.py` (SQLite backend). Commit `00e6651`. Zero `agent_ui_adapter/` files changed.
+- Swap 2: `services/trace_service.py` → `services/trace_sinks/jsonl_sink.py` (JSONL file sink). Zero `agent_ui_adapter/` files changed.
+
 ---
 
 ## 11. Phased Delivery
@@ -350,8 +354,8 @@ Aligned with [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIE
 **Pre-work (blocks adapter Phase 1):**
 
 - Build `services/long_term_memory.py` per H6 ([docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537). Tests in `tests/services/test_long_term_memory.py`.
-- Build `services/trace_service.py` per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern (lines 244-307), scoped to `TrustTraceRecord` emission and routing. Tests in `tests/services/test_trace_service.py`.
-- Build `services/authorization_service.py` per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664). Receives `AgentFacts` as a parameter (Critical Design Rule, lines 641-661). Tests in `tests/services/test_authorization_service.py`.
+- Build `services/trace_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern (lines 244-307), scoped to `TrustTraceRecord` emission and routing. Tests in `tests/services/test_trace_service.py`.
+- Build `services/authorization_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664). Receives `AgentFacts` as a parameter (Critical Design Rule, lines 641-661). Tests in `tests/services/test_authorization_service.py`.
 
 Each pre-work item gets its own implementation plan. None are scoped here.
 
@@ -408,6 +412,19 @@ Carried from brainstorm; resolved here when possible, deferred when not.
 | R3 | Signed-payload byte-equivalence breaks under JSON re-encoding (frontend reorders keys) | Low | High | Architecture test (§4.4); document sealed-envelope rule in `frontend/lib/wire-types.ts` README; HMAC verification server-side rejects fast |
 | R4 | Pre-work for Phase 1 (three new horizontal services) was not in the V3 timeline | High | Medium | Gate adapter Phase 1 acceptance criteria on the three horizontal services existing and having tests in `tests/services/`. Add to V3 §8 Phase 1 explicitly. |
 
+### Phase 1 Risk Sign-off (US-9.4)
+
+All four risks are now mitigated with implementation evidence:
+
+| ID | Risk | Status | Evidence |
+|----|------|--------|----------|
+| R1 | AG-UI 0.x spec breaks | **Closed** | `AGUI_PINNED_VERSION = "0.1.18"` in `agent_ui_adapter/wire/ag_ui_events.py`; enforced by `tests/agent_ui_adapter/wire/test_agui_version_pin.py`. |
+| R2 | Codegen drift | **Closed** | CI drift detection in `.github/workflows/wire-codegen.yml`; enforced by `tests/agent_ui_adapter/wire/test_openapi_drift.py` and `tests/agent_ui_adapter/wire/test_wire_types_drift.py`. |
+| R3 | Sealed-payload byte-equivalence | **Closed** | `agent_ui_adapter/translators/sealed_envelope.py` with Hypothesis key-shuffle round-trip tests in `tests/agent_ui_adapter/translators/test_sealed_envelope.py`; architecture test T6 in `tests/architecture/test_agent_ui_adapter_layer.py`. |
+| R4 | Horizontal-service coupling | **Closed** | M-Phase2 SQLite swap (commit `00e6651`) proved `agent_ui_adapter/` untouched; second swap (JSONL trace sink) provides additional evidence. Architecture tests T1-T5 enforce import boundaries at CI time. |
+
+**JWT verifier deferral**: Production deployment requires a real `JwtVerifier` implementation (WorkOS / RS256 / OAuth) behind the `JwtVerifier` Protocol in `agent_ui_adapter/server.py`. Phase 1 sign-off uses `InMemoryJwtVerifier` with a static token map. Deferred to v1.5.
+
 ---
 
 ## 14. Changelog vs FRONTEND_PLAN_V3_DEV_TIER.md
@@ -435,7 +452,7 @@ Carried from brainstorm; resolved here when possible, deferred when not.
 | 3 | Item placement | Pass | Tested: "Mem0 swap" → §10 row pointing to `services/`, only; "AG-UI version" → Q1, only; "HITL" → §4.3 row, only |
 | 4 | So what? | Pass | Each architectural choice has a documented swap consequence in §10 |
 | 5 | Vertical logic | Pass | Each section answers a question raised by §1: §3 (how does it swap?), §4 (what crosses the wire?), §5 (one port — why?), §11 (when?), §13 (what could go wrong?) |
-| 6 | Remove one | Pass | Removing wire ring weakens but doesn't collapse case (we still have a Python contract); same for application port ring; domain ring is load-bearing (acceptable per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) — the kernel is the immovable foundation) |
+| 6 | Remove one | Pass | Removing wire ring weakens but doesn't collapse case (we still have a Python contract); same for application port ring; domain ring is load-bearing (acceptable per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) — the kernel is the immovable foundation) |
 | 7 | Never one | Pass | Every section has 3+ sub-items |
 | 8 | Mathematical | N/A | No quantitative claim in governing thought |
 
@@ -464,7 +481,7 @@ Failure-paths first per AGENTS.md "Always" rules:
 | ACL | Anti-Corruption Layer; the translators package that maps domain to wire and back |
 | BFF | Backend-for-Frontend; what `agent_ui_adapter/server.py` is functionally |
 | HITL | Human-in-the-Loop; user approval interleaved with agent execution |
-| PEP | Policy Enforcement Point per NIST 800-207 (see [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) Runtime Trust Gate) |
+| PEP | Policy Enforcement Point per NIST 800-207 (see [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) Runtime Trust Gate) |
 | Sealed envelope | Convention that the frontend never modifies signed `trust/` types — they round-trip byte-equivalent |
 | Pre-work | The three horizontal services that must exist before adapter Phase 1 can ship |
 
@@ -476,7 +493,7 @@ Failure-paths first per AGENTS.md "Always" rules:
 
 - [AGENT_UI_ADAPTER_PLAN_V1.1.md](AGENT_UI_ADAPTER_PLAN_V1.1.md) — design rationale and edit lineage
 - [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md) — deployment substrate
-- [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) — backend invariants
+- [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) — backend invariants
 - [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) — H1-H7 pattern catalog (H8 added by this plan)
 - [AGENTS.md](../../../AGENTS.md) — repo-wide rules
 - [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md) — reasoning method

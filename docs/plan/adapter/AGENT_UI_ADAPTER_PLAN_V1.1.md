@@ -4,7 +4,7 @@
 >
 > **Lineage**:
 > - v0 (cursor plan): brainstorm-to-plan conversion. Captured initial six-port adapter design.
-> - v1 (cursor plan): four high-impact fixes from end-to-end critique against [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md), [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md), [AGENTS.md](../../../AGENTS.md), and [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md). Collapsed to single-port adapter; added STYLE_GUIDE_PATTERNS H8 entry; tightened translator-as-ACL rule; added wire-schema-versioning with signature-roundtrip requirement.
+> - v1 (cursor plan): four high-impact fixes from end-to-end critique against [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md), [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md), [AGENTS.md](../../../AGENTS.md), and [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md). Collapsed to single-port adapter; added STYLE_GUIDE_PATTERNS H8 entry; tightened translator-as-ACL rule; added wire-schema-versioning with signature-roundtrip requirement.
 > - v1.1 (this document): four additive edits from gap research against the actual codebase and the AG-UI specification. None change locked decisions.
 
 ---
@@ -29,9 +29,9 @@ Replace the v1 §5 "what is NOT a port" table with a three-column version that r
 |---|---|---|
 | Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
 | Identity / JWT verify | `IdentityVerifier` | [services/governance/agent_facts_registry.py](../../../services/governance/agent_facts_registry.py) (**exists**; HMAC-style `compute_signature` with `AGENT_FACTS_SECRET`) |
-| Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
+| Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
 | Tool registry | `ToolRegistry` | [services/tools/registry.py](../../../services/tools/registry.py) (**exists**) |
-| Authorization | `AuthorizationGate` | `services/authorization_service.py` (**to be built per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) line 414; does not exist today**) |
+| Authorization | `AuthorizationGate` | `services/authorization_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) line 414; does not exist today**) |
 
 Add a callout under the table:
 
@@ -49,8 +49,8 @@ with:
 >
 > **Pre-work (blocks adapter Phase 1):**
 > - Build `services/long_term_memory.py` per H6 ([docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537)
-> - Build `services/trace_service.py` per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern, scoped to `TrustTraceRecord` emission and routing
-> - Build `services/authorization_service.py` per [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664), receiving `AgentFacts` as a parameter (Critical Design Rule, lines 641-661)
+> - Build `services/trace_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern, scoped to `TrustTraceRecord` emission and routing
+> - Build `services/authorization_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664), receiving `AgentFacts` as a parameter (Critical Design Rule, lines 641-661)
 >
 > **Adapter work (after pre-work lands):**
 > - `AgentRuntime` port in `agent_ui_adapter/ports/`
@@ -75,7 +75,7 @@ Source: `docs.ag-ui.com/concepts/events`, `learn.microsoft.com/en-us/agent-frame
 |---|---|---|
 | HITL / authorization prompt | No dedicated event | Agent emits `TOOL_CALL_START` for a virtual `request_approval` tool with `args = {action, justification}`. Frontend renders the approval UI. User response returns as `TOOL_RESULT` with `result = {approved: bool, reason: str}`. Translator never auto-approves. Pattern follows Microsoft AG-UI HITL reference and ag-ui-protocol discussion #158. |
 | Auth-token transport | Not in AG-UI | WorkOS access token rides in HTTP `Authorization: Bearer <jwt>` header on the SSE connection request. `agent_ui_adapter/server.py` FastAPI dependency verifies via `services/governance/agent_facts_registry` (or future `services/authorization_service`) BEFORE the SSE stream opens. Token is never in AG-UI event payloads. |
-| `TrustTraceRecord.trace_id` | Partial — AG-UI provides `runId` + `threadId` only | **Decision: Option B** — `trace_id` rides in `BaseEvent.rawEvent.trace_id` on every event. Preserves trust framework semantics ([docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) line 204) without conflating with AG-UI's `runId` (which restarts per-run). Translator sets this on every emitted event; consumers may correlate. |
+| `TrustTraceRecord.trace_id` | Partial — AG-UI provides `runId` + `threadId` only | **Decision: Option B** — `trace_id` rides in `BaseEvent.rawEvent.trace_id` on every event. Preserves trust framework semantics ([docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) line 204) without conflating with AG-UI's `runId` (which restarts per-run). Translator sets this on every emitted event; consumers may correlate. |
 
 Add corresponding architecture-test stubs to the v1 §15 validation suite:
 
@@ -113,7 +113,7 @@ When this plan is executed, the following five edits land:
 1. **New file**: `AGENT_UI_ADAPTER_PLAN.md` at repo root, peer to [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md), reflecting all v1.1 edits in its outline.
 2. **Edits**: [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md) — rename `middleware/` references to `agent_ui_adapter/` (Python package, underscored) and `agent-ui-adapter` (Cloud Run service, hyphenated) in sections 1, 3, 3.1, 4, 6.1, 8 Phase 1, 16; add forward-link to `AGENT_UI_ADAPTER_PLAN.md` in section 1.
 3. **Edits**: [AGENTS.md](../../../AGENTS.md) — add `agent_ui_adapter/` row to Key Directories; append architecture invariant 9 with the three-rule translator constraint and single-port note.
-4. **Edits**: [docs/FOUR_LAYER_ARCHITECTURE.md](../../FOUR_LAYER_ARCHITECTURE.md) — add short "Outer Adapter Ring" subsection citing [utils/cloud_providers/](../../../utils/cloud_providers/) precedent and noting single-port + horizontal-services-consumption design. Do NOT modify any other part.
+4. **Edits**: [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) — add short "Outer Adapter Ring" subsection citing [utils/cloud_providers/](../../../utils/cloud_providers/) precedent and noting single-port + horizontal-services-consumption design. Do NOT modify any other part.
 5. **Edits**: [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) — append H8 Outer-Ring Wire Adapter row to Pattern Catalog Overview table (lines 35-50); add full H8 section after H7 (line 587), matching H1-H7 shape.
 
 ---

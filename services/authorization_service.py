@@ -7,7 +7,7 @@ parameter (never fetches identity), receives a `trace_emit` callable as a
 parameter (never imports the trace service), and never imports
 `AgentFactsRegistry`.
 
-Decision precedence (docs/FOUR_LAYER_ARCHITECTURE.md):
+Decision precedence (docs/Architectures/FOUR_LAYER_ARCHITECTURE.md):
     1. Embedded backend evaluates first.
     2. Embedded `deny` short-circuits and is returned.
     3. If an external backend is configured, it is consulted next.
@@ -169,6 +169,8 @@ class AuthorizationService:
         facts: AgentFacts,
         action: str,
         context: dict[str, Any] | None = None,
+        *,
+        trace_id: str | None = None,
     ) -> PolicyDecision:
         if not isinstance(facts, AgentFacts):
             raise TypeError(
@@ -198,7 +200,7 @@ class AuthorizationService:
             final = embedded
 
         self._log_decision(facts, action, ctx, final)
-        self._emit_trace(facts, action, final)
+        self._emit_trace(facts, action, final, trace_id=trace_id)
         return final
 
     def _log_decision(
@@ -223,6 +225,8 @@ class AuthorizationService:
         facts: AgentFacts,
         action: str,
         decision: PolicyDecision,
+        *,
+        trace_id: str | None = None,
     ) -> None:
         if self._trace_emit is None:
             return
@@ -231,7 +235,7 @@ class AuthorizationService:
         record = TrustTraceRecord(
             event_id=str(uuid.uuid4()),
             timestamp=datetime.now(UTC),
-            trace_id=str(uuid.uuid4()),
+            trace_id=trace_id or str(uuid.uuid4()),
             agent_id=facts.agent_id,
             layer="L4",
             event_type=event_type,

@@ -25,7 +25,7 @@ Read order:
 
 Discovered prerequisites (not in the original plan, surfaced during sprint authoring):
 
-- **DP-1: `TrustTraceRecord` and `PolicyDecision` are designed in [docs/FOUR_LAYER_ARCHITECTURE.md](../../../FOUR_LAYER_ARCHITECTURE.md) (lines 197–209 and 907–916) but NOT yet defined in [trust/models.py](../../../../trust/models.py).** Adding them is a [AGENTS.md](../../../../AGENTS.md) "⚠️ Ask first" item because it modifies the trust kernel. They are additive types (no existing signed field changes), so they do NOT trigger re-signing of existing `AgentFacts`. **Owner: S0 prerequisite story (DP-1.1) — must complete before S1.**
+- **DP-1: `TrustTraceRecord` and `PolicyDecision` are designed in [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../../Architectures/FOUR_LAYER_ARCHITECTURE.md) (lines 197–209 and 907–916) but NOT yet defined in [trust/models.py](../../../../trust/models.py).** Adding them is a [AGENTS.md](../../../../AGENTS.md) "⚠️ Ask first" item because it modifies the trust kernel. They are additive types (no existing signed field changes), so they do NOT trigger re-signing of existing `AgentFacts`. **Owner: S0 prerequisite story (DP-1.1) — must complete before S1.**
 
 ---
 
@@ -105,7 +105,7 @@ Story format:
 #### US-DP-1.1 — Add `TrustTraceRecord` and `PolicyDecision` to `trust/models.py`
 
 - **As a** trust kernel maintainer
-- **I want** the two types designed in `docs/FOUR_LAYER_ARCHITECTURE.md` to exist as Pydantic models in `trust/models.py`
+- **I want** the two types designed in `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` to exist as Pydantic models in `trust/models.py`
 - **So that** S1 horizontal services and S2 wire models have a domain contract to import from
 - **Dependencies**: AGENTS.md "Ask first" approval (already granted in chat)
 - **TDD Protocol**: A (Pure TDD)
@@ -222,7 +222,7 @@ Story format:
   - Given expired `AgentFacts.valid_until`, When `authorize()`, Then `PolicyDecision(enforcement="deny", reason="expired identity")`
   - Given suspended `AgentFacts.status`, When `authorize()`, Then deny with reason `"suspended identity"`
   - Given missing capability for the action, When `authorize()`, Then deny with reason `"missing capability"`
-  - Given a deny embedded policy, When external policy would allow, Then deny (embedded layer wins per [docs/FOUR_LAYER_ARCHITECTURE.md](../../../FOUR_LAYER_ARCHITECTURE.md) precedence)
+  - Given a deny embedded policy, When external policy would allow, Then deny (embedded layer wins per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../../Architectures/FOUR_LAYER_ARCHITECTURE.md) precedence)
   - Given valid `AgentFacts` + matching capability + no deny policy, When `authorize()`, Then `enforcement="allow"`
   - Given any decision, When `authorize()` returns, Then a `TrustTraceRecord` was emitted to the configured trace service
 - **Test Mapping**: `tests/services/test_authorization_service.py` (new); pattern 11 failure-mode matrix
@@ -742,6 +742,14 @@ Must still pass with the new backend.
 - Swap diff scoped to a single `services/*.py` file (+ tests)
 - Plan §10 row "Replace Mem0 / WorkOS / Langfuse" empirically validated
 
+#### M-Phase2 Sign-off
+
+**Swap 1 (commit `00e6651`):** `services/long_term_memory.py` in-memory backend → `services/memory_backends/sqlite.py` (SQLite). `git diff --stat` for that commit touches only `services/memory_backends/` + `tests/services/test_sqlite_memory_backend.py`. Zero `agent_ui_adapter/` files changed. S6 smoke test (`tests/agent_ui_adapter/test_smoke_phase1.py`) passes.
+
+**Swap 2:** `services/trace_service.py` logging-only → `services/trace_sinks/jsonl_sink.py` (JSONL file sink). New `TraceSink` implementation added under `services/trace_sinks/`. Zero `agent_ui_adapter/` files changed. S6 smoke test passes.
+
+Both swaps validate plan §10 row "Replace Mem0 / WorkOS / Langfuse" empirically.
+
 ---
 
 ### S9 — Hardening and Validation (depends: S6, S7, S8, M-Phase2)
@@ -821,7 +829,7 @@ Each row proves a plan element has at least one owning story. Each story can be 
 | US-8.2 | §9 | — | — | — | — | — |
 | US-8.3 | §9 | — | — | — | R2 | — |
 | US-8.4 | §4.4 | — | — | — | R3 | — |
-| M-Phase2 | §11 Phase 2 | — | — | — | — | — |
+| M-Phase2 | §11 Phase 2 | — | `tests/services/test_sqlite_memory_backend.py`, `tests/services/trace_sinks/test_jsonl_sink.py` | — | R4 | — |
 | US-9.1 | §15.2 | A11 | T1–T9 | R1–R9 | — | — |
 | US-9.2 | §11 Phase 1 last bullet | — | — | — | — | — |
 | US-9.3 | §15.1 | — | — | — | — | — |

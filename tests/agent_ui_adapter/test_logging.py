@@ -18,13 +18,21 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
 )
-from trust.models import AgentFacts
+from services.authorization_service import AuthorizationService, EmbeddedPolicyBackend
+from services.trace_service import InMemoryTraceSink, TraceService
+from trust.models import AgentFacts, Capability
 
 
-def _make_client(runtime) -> TestClient:
+def _make_client(runtime, *, trace_sink=None) -> TestClient:
     facts = AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
+        agent_id="a1",
+        agent_name="Bot",
+        owner="team",
+        version="1.0.0",
+        capabilities=[Capability(name="agent.session.start")],
     )
+    sink = trace_sink or InMemoryTraceSink()
+    trace_svc = TraceService(sinks=[sink])
     return TestClient(
         build_app(
             runtime=runtime,
@@ -37,6 +45,11 @@ def _make_client(runtime) -> TestClient:
                 }
             ),
             agent_facts={facts.agent_id: facts},
+            authorization_service=AuthorizationService(
+                embedded_backend=EmbeddedPolicyBackend(),
+                trace_emit=trace_svc.emit,
+            ),
+            trace_service=trace_svc,
         )
     )
 

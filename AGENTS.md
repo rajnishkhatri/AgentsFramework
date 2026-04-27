@@ -80,6 +80,22 @@ Reference: @docs/STYLE_GUIDE_PATTERNS.md for full catalog (H1–H7, V1–V6).
 | V2 | `components/router.py` — deterministic heuristics + advisory `.j2` templates. |
 | V6 | Pydantic models for all non-trivial outputs. Schema enforcement with retries. |
 
+## Frontend Conventions
+
+Frontend code (`frontend/`, `middleware/`) is governed by @docs/STYLE_GUIDE_FRONTEND.md — the canonical document for frontend code review. It mirrors the backend layering and patterns guides for the Frontend Ring (Next.js 15 + React 19 + CopilotKit v2 + AG-UI + Zod + Tailwind v4/shadcn + WorkOS + LangGraph SDK), defines numbered rule families (F, W, P, A, T, X, C, B, U, S, O), and includes paste-into-PR checklists for adapter, UI component, and wire/translator reviews.
+
+Key invariants for frontend reviewers:
+
+- SDK imports (CopilotKit, WorkOS, LangGraph SDK, Mem0, Langfuse, Drizzle) appear only in `frontend/lib/adapters/` or `middleware/adapters/`.
+- `frontend/lib/wire/` and `frontend/lib/trust-view/` are pure Zod kernels with zero outward dependencies.
+- `trace_id` originates in the Python runtime adapter and flows verbatim through every layer; the browser never generates one.
+- BFF (Vercel/Cloudflare Pages) holds no cloud credentials — all credential-bearing calls flow through `middleware/`.
+- Strict CSP with per-request nonce; no `'unsafe-inline'`. Generative-UI iframes use `sandbox="allow-scripts"` only.
+
+See also: @docs/Architectures/FRONTEND_ARCHITECTURE.md, @docs/Architectures/FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md, @docs/Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md.
+
+Frontend code review prompts live in `prompts/codeReviewer/frontend/` (mirror of `prompts/codeReviewer/` for backend). The frontend reviewer encodes the §23 review checklists as seven dimensions (FD1 Layering, FD2 Patterns, FD3 Security, FD4 Accessibility, FD5 Performance & Streaming, FD6 Tests, FD7 Anti-Patterns) and auto-rejects on the security/trust-critical anti-patterns FE-AP-4, FE-AP-6, FE-AP-7, FE-AP-12, FE-AP-18, and FE-AP-19.
+
 ## Trust Kernel Rules
 
 A type belongs in `trust/` only if ALL criteria are met:
@@ -91,7 +107,7 @@ A type belongs in `trust/` only if ALL criteria are met:
 
 Key types: `AgentFacts`, `Capability`, `Policy`, `AuditEntry`, `TrustTraceRecord`, `PolicyDecision`, `CredentialRecord`.
 
-Signed fields determine authorization (triggers re-signing on change). Unsigned fields are operational metadata. See @docs/FOUR_LAYER_ARCHITECTURE.md §Signed vs Unsigned for field classification.
+Signed fields determine authorization (triggers re-signing on change). Unsigned fields are operational metadata. See @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md §Signed vs Unsigned for field classification.
 
 ## Testing Rules
 
@@ -192,6 +208,6 @@ For deep context on architecture and patterns, see:
 
 - @docs/STYLE_GUIDE_LAYERING.md — four-layer architecture rules and anti-patterns
 - @docs/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1-H7, V1-V6)
-- @docs/FOUR_LAYER_ARCHITECTURE.md — trust foundation, hexagonal ports, policy engines
+- @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md — trust foundation, hexagonal ports, policy engines
 - @docs/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework
 - @research/tdd_agentic_systems_prompt.md — testing pyramid for agentic systems

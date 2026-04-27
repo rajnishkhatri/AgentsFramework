@@ -17,7 +17,7 @@
 
 The system is organized as a four-layer grid. The **trust kernel** sits at the bottom: pure types, protocols, and crypto with zero framework dependencies. **Horizontal services** provide cross-cutting infrastructure including governance services. **Vertical components** contain framework-agnostic domain logic. The **orchestration layer** (LangGraph `StateGraph`) defines topology -- which nodes run in what order. Dependencies flow downward only. Cloud provider adapters implement trust kernel ports via the hexagonal pattern.
 
-This extends the composable layering architecture from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) by adding the trust foundation as a fourth layer beneath the existing three. The four-layer rationale is documented in [FOUR_LAYER_ARCHITECTURE.md](docs/FOUR_LAYER_ARCHITECTURE.md).
+This extends the composable layering architecture from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) by adding the trust foundation as a fourth layer beneath the existing three. The four-layer rationale is documented in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 ```mermaid
 flowchart TB
@@ -137,7 +137,7 @@ flowchart LR
 
 ## Four-Layer Grid
 
-The original three-layer composable grid (horizontal services, vertical components, orchestration) requires a fourth foundational layer to support the trust framework. Trust models (`AgentFacts`, `Capability`, `Policy`, signature logic) are neither horizontal services nor vertical components -- they are portable trust artifacts consumed by every layer. Placing them in a dependency-free foundation follows the DDD Shared Kernel pattern and aligns with production systems like Microsoft's Agent Governance Toolkit and the Agent Identity Protocol. Full rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/FOUR_LAYER_ARCHITECTURE.md).
+The original three-layer composable grid (horizontal services, vertical components, orchestration) requires a fourth foundational layer to support the trust framework. Trust models (`AgentFacts`, `Capability`, `Policy`, signature logic) are neither horizontal services nor vertical components -- they are portable trust artifacts consumed by every layer. Placing them in a dependency-free foundation follows the DDD Shared Kernel pattern and aligns with production systems like Microsoft's Agent Governance Toolkit and the Agent Identity Protocol. Full rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 A component belongs in the trust kernel if it satisfies all of these criteria:
 
@@ -237,7 +237,7 @@ Nodes read these values via `config["configurable"]["user_id"]` etc. The `eval_c
 
 ## Dependency Rules
 
-The four-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md), extended for the trust kernel per [FOUR_LAYER_ARCHITECTURE.md](docs/FOUR_LAYER_ARCHITECTURE.md), and adapted for the LangGraph orchestration pattern.
+The four-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md), extended for the trust kernel per [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md), and adapted for the LangGraph orchestration pattern.
 
 ### Allowed Dependencies
 
@@ -494,7 +494,7 @@ Post-incident analysis joins these artifacts by `workflow_id` to reconstruct the
 
 ## Trust Kernel Detail (`agent/trust/`)
 
-The trust kernel is the shared foundation consumed by all layers. It contains pure types, hexagonal ports, and deterministic cryptographic helpers. Zero framework dependencies, zero I/O. Full architectural rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/FOUR_LAYER_ARCHITECTURE.md) and [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/TRUST_FRAMEWORK_ARCHITECTURE.md).
+The trust kernel is the shared foundation consumed by all layers. It contains pure types, hexagonal ports, and deterministic cryptographic helpers. Zero framework dependencies, zero I/O. Full architectural rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md) and [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/TRUST_FRAMEWORK_ARCHITECTURE.md).
 
 ### Module: `trust/cloud_identity.py` -- Cloud-Agnostic Value Objects
 
@@ -1255,7 +1255,7 @@ This fallback is viable because:
 
 ## Key Design Principles
 
-1. **Composable layering**: The system is organized as a four-layer grid -- trust kernel (pure types/ports/crypto), horizontal services (infrastructure), vertical components (domain logic), orchestration (topology). Dependencies flow downward only. This extends the [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) architecture with the trust foundation per [FOUR_LAYER_ARCHITECTURE.md](docs/FOUR_LAYER_ARCHITECTURE.md).
+1. **Composable layering**: The system is organized as a four-layer grid -- trust kernel (pure types/ports/crypto), horizontal services (infrastructure), vertical components (domain logic), orchestration (topology). Dependencies flow downward only. This extends the [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) architecture with the trust foundation per [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 2. **Framework as a wrapper, not a dependency**: LangGraph orchestrates; domain logic (`components/router.py`, `components/evaluator.py`), infrastructure (`services/`), and the trust kernel (`trust/`) are framework-agnostic. This keeps the Phase 4 fallback viable.
 

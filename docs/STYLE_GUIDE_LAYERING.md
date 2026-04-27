@@ -5,7 +5,8 @@ Technology-agnostic principles with concrete examples from the [composable_app](
 
 **Related documents:**
 - [STYLE_GUIDE_PATTERNS.md](STYLE_GUIDE_PATTERNS.md) -- Design patterns catalog with implementation guidance
-- [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) -- Trust Foundation integration and dependency analysis
+- [STYLE_GUIDE_FRONTEND.md](STYLE_GUIDE_FRONTEND.md) -- Frontend Ring counterpart to this guide (W/P/A/T/X/C/B/U/S/O rule families for the Next.js + CopilotKit + AG-UI stack)
+- [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) -- Trust Foundation integration and dependency analysis
 - [TRUST_FRAMEWORK_ARCHITECTURE.md](TRUST_FRAMEWORK_ARCHITECTURE.md) -- Seven-layer trust framework mapped to the four-layer grid
 - [LAYER1_IDENTITY_ANALYSIS.md](LAYER1_IDENTITY_ANALYSIS.md) -- Detailed L1 Identity implementation analysis
 
@@ -128,7 +129,7 @@ The trust foundation imports nothing from horizontal, vertical, orchestration, o
 | Organization | (N/A -- `owner` is a top-level signed field) | `team_email`, `cost_center` |
 | Operations | (N/A) | `baseline_accuracy`, `incident_response_contact` |
 
-Changing a `signed_metadata` field triggers signature recomputation and may trigger recertification. Changing a `metadata` field creates an audit entry but does not break the signature. See [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) for the full field specification.
+Changing a `signed_metadata` field triggers signature recomputation and may trigger recertification. Changing a `metadata` field creates an audit entry but does not break the signature. See [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) for the full field specification.
 
 ---
 
@@ -228,7 +229,7 @@ Trust-aware horizontal services extend this pattern with their own log streams:
 }
 ```
 
-This produces additional log files: `trust_identity.log` (identity CRUD and verification events), `trust_authorization.log` (access decisions), `trust_trace.log` (cross-layer trust event routing). Trust events are also emitted as `TrustTraceRecord` instances to the trace service for cross-layer correlation. See [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) for the complete logging configuration including credential, policy, and trust scoring log streams.
+This produces additional log files: `trust_identity.log` (identity CRUD and verification events), `trust_authorization.log` (access decisions), `trust_trace.log` (cross-layer trust event routing). Trust events are also emitted as `TrustTraceRecord` instances to the trace service for cross-layer correlation. See [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) for the complete logging configuration including credential, policy, and trust scoring log streams.
 
 **Rule H4: Parameterized, not specialized.**
 Horizontal services are configured by their callers, not hardcoded for specific use cases. The guardrail service accepts an `accept_condition` string -- it does not have a built-in "topic safety check".
@@ -264,7 +265,7 @@ Trust-aware horizontal services follow the same H-rules as existing services. Th
 | H3: Own logging stream | Pass | `trust_identity.log` via `logging.json` configuration. |
 | H4: Parameterized | Pass | Stores whatever `AgentFacts` instance the caller provides. Does not define what capabilities or policies mean. |
 
-The three trust services (`identity_service`, `authorization_service`, `trace_service`) are **independent peers** on the synchronous runtime path. They share nothing except `trust/` foundation types. The orchestrator composes them into the Runtime Trust Gate (see [Orchestration Layer](#orchestration-layer-pipeline-topology) and [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) for the full specification).
+The three trust services (`identity_service`, `authorization_service`, `trace_service`) are **independent peers** on the synchronous runtime path. They share nothing except `trust/` foundation types. The orchestrator composes them into the Runtime Trust Gate (see [Orchestration Layer](#orchestration-layer-pipeline-topology) and [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) for the full specification).
 
 ---
 
@@ -419,7 +420,7 @@ access_decision = authorization_service.evaluate(
 trace_service.record(...)
 ```
 
-See [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) for the full NIST 800-207 mapping and sequential flow specification.
+See [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) for the full NIST 800-207 mapping and sequential flow specification.
 
 ---
 
@@ -866,6 +867,6 @@ The key structural signals:
 | Document | Relationship |
 |----------|-------------|
 | [STYLE_GUIDE_PATTERNS.md](STYLE_GUIDE_PATTERNS.md) | Design patterns catalog (H1-H7, V1-V6) with implementation guidance. Patterns plug into the layering rules defined here. |
-| [FOUR_LAYER_ARCHITECTURE.md](FOUR_LAYER_ARCHITECTURE.md) | Trust Foundation integration analysis. Defines the trust foundation layer, identity service design, Runtime Trust Gate, ephemeral credentials, external policy engines, continuous trust scoring, and multi-agent readiness. |
+| [FOUR_LAYER_ARCHITECTURE.md](Architectures/FOUR_LAYER_ARCHITECTURE.md) | Trust Foundation integration analysis. Defines the trust foundation layer, identity service design, Runtime Trust Gate, ephemeral credentials, external policy engines, continuous trust scoring, and multi-agent readiness. |
 | [TRUST_FRAMEWORK_ARCHITECTURE.md](TRUST_FRAMEWORK_ARCHITECTURE.md) | Seven-layer trust framework (L1-L7) mapped onto the four-layer grid. Each trust layer splits into types in the foundation and behavior in the appropriate grid layer. |
 | [LAYER1_IDENTITY_ANALYSIS.md](LAYER1_IDENTITY_ANALYSIS.md) | Detailed L1 Identity implementation analysis. Structured analysis of the `AgentFacts` model, identity service design options, and storage patterns. |

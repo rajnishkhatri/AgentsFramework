@@ -35,6 +35,7 @@ class LLMService:
             model=profile.litellm_id,
             temperature=0,
             max_tokens=4096,
+            streaming=True,
         )
 
     async def invoke(

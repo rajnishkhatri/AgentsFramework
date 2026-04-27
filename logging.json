@@ -107,6 +107,12 @@
             "formatter": "json",
             "filename": "logs/agent_ui_adapter_translators.log",
             "mode": "a"
+        },
+        "explainability": {
+            "class": "logging.FileHandler",
+            "formatter": "json",
+            "filename": "logs/explainability.log",
+            "mode": "a"
         }
     },
     "loggers": {
@@ -192,6 +198,16 @@
         },
         "agent_ui_adapter.translators": {
             "handlers": ["agent_ui_adapter_translators", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "explainability_app.server": {
+            "handlers": ["explainability", "console"],
+            "level": "INFO",
+            "propagate": false
+        },
+        "services.explainability": {
+            "handlers": ["explainability", "console"],
             "level": "INFO",
             "propagate": false
         }

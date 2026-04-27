@@ -9,9 +9,16 @@ yarn-error.log*
 out/
 dist/
 build/
+coverage/
+*.tsbuildinfo
 
 .env
 .env.*
 !.env.example
 
 .DS_Store
+
+# Playwright
+playwright-report/
+test-results/
+blob-report/

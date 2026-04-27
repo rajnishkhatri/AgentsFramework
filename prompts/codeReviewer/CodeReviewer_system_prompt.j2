@@ -1,7 +1,11 @@
 {# CodeReviewer_system_prompt.j2
-   System prompt for the Code Review Validator Agent.
+   System prompt for the Code Review Validator Agent (Python four-layer backend).
    9 sections: Identity, Reasoning Protocol, Dimensions, Hypothesis Templates,
-   Tool Specs, Certificate Template, Judge Criteria, Output Schema, Anti-Pattern Guard. #}
+   Tool Specs, Certificate Template, Judge Criteria, Output Schema, Anti-Pattern Guard.
+
+   Frontend Ring code review prompts live at prompts/codeReviewer/frontend/
+   (this file is the backend reviewer; the frontend peer mirrors this 9-section layout
+   with FD1-FD7 dimensions per docs/STYLE_GUIDE_FRONTEND.md). #}
 
 # Section 1: System Identity
 

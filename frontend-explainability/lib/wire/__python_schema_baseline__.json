@@ -1,0 +1,392 @@
+{
+  "WorkflowSummaryResponse": {
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "started_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Started At"
+      },
+      "event_count": {
+        "default": 0,
+        "title": "Event Count",
+        "type": "integer"
+      },
+      "status": {
+        "default": "unknown",
+        "title": "Status",
+        "type": "string"
+      },
+      "primary_agent_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Primary Agent Id"
+      }
+    },
+    "required": [
+      "workflow_id"
+    ],
+    "title": "WorkflowSummaryResponse",
+    "type": "object"
+  },
+  "BlackBoxEventResponse": {
+    "properties": {
+      "event_id": {
+        "title": "Event Id",
+        "type": "string"
+      },
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "event_type": {
+        "title": "Event Type",
+        "type": "string"
+      },
+      "timestamp": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Timestamp"
+      },
+      "step": {
+        "anyOf": [
+          {
+            "type": "integer"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Step"
+      },
+      "details": {
+        "additionalProperties": true,
+        "default": {},
+        "title": "Details",
+        "type": "object"
+      },
+      "integrity_hash": {
+        "default": "",
+        "title": "Integrity Hash",
+        "type": "string"
+      }
+    },
+    "required": [
+      "event_id",
+      "workflow_id",
+      "event_type"
+    ],
+    "title": "BlackBoxEventResponse",
+    "type": "object"
+  },
+  "WorkflowEventsResponse": {
+    "$defs": {
+      "BlackBoxEventResponse": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Step"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          },
+          "integrity_hash": {
+            "default": "",
+            "title": "Integrity Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "workflow_id",
+          "event_type"
+        ],
+        "title": "BlackBoxEventResponse",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "event_count": {
+        "default": 0,
+        "title": "Event Count",
+        "type": "integer"
+      },
+      "hash_chain_valid": {
+        "default": false,
+        "title": "Hash Chain Valid",
+        "type": "boolean"
+      },
+      "events": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/BlackBoxEventResponse"
+        },
+        "title": "Events",
+        "type": "array"
+      }
+    },
+    "required": [
+      "workflow_id"
+    ],
+    "title": "WorkflowEventsResponse",
+    "type": "object"
+  },
+  "DecisionRecordResponse": {
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "phase": {
+        "title": "Phase",
+        "type": "string"
+      },
+      "description": {
+        "title": "Description",
+        "type": "string"
+      },
+      "alternatives": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Alternatives",
+        "type": "array"
+      },
+      "rationale": {
+        "title": "Rationale",
+        "type": "string"
+      },
+      "confidence": {
+        "title": "Confidence",
+        "type": "number"
+      },
+      "timestamp": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Timestamp"
+      }
+    },
+    "required": [
+      "workflow_id",
+      "phase",
+      "description",
+      "rationale",
+      "confidence"
+    ],
+    "title": "DecisionRecordResponse",
+    "type": "object"
+  },
+  "TimeSeriesPointResponse": {
+    "properties": {
+      "bucket": {
+        "format": "date-time",
+        "title": "Bucket",
+        "type": "string"
+      },
+      "value": {
+        "title": "Value",
+        "type": "number"
+      }
+    },
+    "required": [
+      "bucket",
+      "value"
+    ],
+    "title": "TimeSeriesPointResponse",
+    "type": "object"
+  },
+  "DashboardMetricsResponse": {
+    "$defs": {
+      "TimeSeriesPointResponse": {
+        "properties": {
+          "bucket": {
+            "format": "date-time",
+            "title": "Bucket",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "bucket",
+          "value"
+        ],
+        "title": "TimeSeriesPointResponse",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "total_runs": {
+        "default": 0,
+        "title": "Total Runs",
+        "type": "integer"
+      },
+      "p50_latency_ms": {
+        "default": 0.0,
+        "title": "P50 Latency Ms",
+        "type": "number"
+      },
+      "p95_latency_ms": {
+        "default": 0.0,
+        "title": "P95 Latency Ms",
+        "type": "number"
+      },
+      "total_cost_usd": {
+        "default": 0.0,
+        "title": "Total Cost Usd",
+        "type": "number"
+      },
+      "guardrail_pass_rate": {
+        "default": 0.0,
+        "title": "Guardrail Pass Rate",
+        "type": "number"
+      },
+      "hash_chain_valid_count": {
+        "default": 0,
+        "title": "Hash Chain Valid Count",
+        "type": "integer"
+      },
+      "hash_chain_invalid_count": {
+        "default": 0,
+        "title": "Hash Chain Invalid Count",
+        "type": "integer"
+      },
+      "time_series_cost": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TimeSeriesPointResponse"
+        },
+        "title": "Time Series Cost",
+        "type": "array"
+      },
+      "time_series_latency": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TimeSeriesPointResponse"
+        },
+        "title": "Time Series Latency",
+        "type": "array"
+      },
+      "time_series_tokens": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/TimeSeriesPointResponse"
+        },
+        "title": "Time Series Tokens",
+        "type": "array"
+      },
+      "model_distribution": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "default": {},
+        "title": "Model Distribution",
+        "type": "object"
+      }
+    },
+    "title": "DashboardMetricsResponse",
+    "type": "object"
+  },
+  "HealthResponse": {
+    "properties": {
+      "status": {
+        "default": "ok",
+        "title": "Status",
+        "type": "string"
+      }
+    },
+    "title": "HealthResponse",
+    "type": "object"
+  },
+  "ErrorResponse": {
+    "properties": {
+      "detail": {
+        "title": "Detail",
+        "type": "string"
+      }
+    },
+    "required": [
+      "detail"
+    ],
+    "title": "ErrorResponse",
+    "type": "object"
+  }
+}

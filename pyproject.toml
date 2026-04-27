@@ -18,6 +18,13 @@ dependencies = [
     # agent_ui_adapter (Sprint S6) — FastAPI composition root + httpx test client
     "fastapi>=0.115",
     "httpx>=0.27",
+
+    # middleware (Sprint 1) — WorkOS JWT verification, Mem0 long-term memory,
+    # Langfuse telemetry. SDK imports confined to middleware/adapters/* per
+    # rule F-R2 / A1 (no SDK types escape past adapter boundary).
+    "PyJWT[crypto]>=2.8",
+    "mem0ai>=0.1.100",
+    "langfuse>=3.0",
 ]
 
 [project.optional-dependencies]
@@ -29,13 +36,17 @@ dev = [
     "freezegun>=1.0",
     "ruff>=0.4",
 ]
+infra = [
+    "python-hcl2>=7.0",
+    "pytest>=8.0",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["trust", "utils", "components", "services", "orchestration", "meta", "StructuredReasoning", "agent_ui_adapter"]
+packages = ["trust", "utils", "components", "services", "orchestration", "meta", "StructuredReasoning", "agent_ui_adapter", "middleware", "explainability_app"]
 
 [tool.pytest.ini_options]
 markers = [
@@ -43,7 +54,13 @@ markers = [
     "simulation: marks tests as simulation-based (Layer 4)",
     "live_llm: marks tests that require real LLM API calls",
     "property: marks property-based tests (Hypothesis)",
+    "infra: marks Sprint 2 OpenTofu/HCL infrastructure tests (run with `pytest tests/infra/`)",
 ]
 testpaths = ["tests"]
-addopts = "-m 'not slow and not simulation and not live_llm' --strict-markers"
+# pythonpath = ["."] puts the repo root first so the LOCAL `tests/` package
+# wins over any site-packages shadow (e.g. `terraform-compliance` ships its
+# own `tests/` package which would otherwise shadow ours under
+# `from tests.conftest import ...` style imports).
+pythonpath = ["."]
+addopts = "-m 'not slow and not simulation and not live_llm and not infra' --strict-markers"
 asyncio_mode = "auto"

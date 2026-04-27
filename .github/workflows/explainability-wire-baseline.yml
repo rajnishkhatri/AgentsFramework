@@ -1,0 +1,49 @@
+name: Explainability Wire Baseline
+
+on:
+  pull_request:
+    paths:
+      - "explainability_app/wire/**"
+      - "frontend-explainability/lib/wire/**"
+      - "frontend-explainability/scripts/wire_schema_snapshot.ts"
+
+jobs:
+  wire-drift:
+    name: Check wire schema baseline drift
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install Python package
+        run: pip install -e ".[dev]"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend-explainability/package-lock.json
+
+      - name: Install frontend deps
+        run: npm ci
+        working-directory: frontend-explainability
+
+      - name: Regenerate schema baseline
+        run: npm run wire-schema-snapshot
+        working-directory: frontend-explainability
+
+      - name: Fail if baseline has drifted
+        run: |
+          git diff --quiet -- frontend-explainability/lib/wire/__python_schema_baseline__.json \
+            || (echo "ERROR: wire baseline has drifted. Run 'npm run wire-schema-snapshot' and commit the updated baseline." && exit 1)
+
+      - name: Run baseline drift test
+        run: npx vitest run lib/wire/baseline_drift.test.ts
+        working-directory: frontend-explainability

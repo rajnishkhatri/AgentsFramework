@@ -23,7 +23,7 @@ from typing import AsyncIterator, Protocol, runtime_checkable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from agent_ui_adapter.ports.agent_runtime import AgentRuntime
 from agent_ui_adapter.translators.domain_to_ag_ui import to_ag_ui
@@ -40,6 +40,10 @@ from agent_ui_adapter.wire.agent_protocol import (
     ThreadCreateRequest,
     ThreadState,
 )
+from services.authorization_service import AuthorizationService
+from services.long_term_memory import LongTermMemoryService
+from services.trace_service import TraceService
+from services.tools.registry import ToolRegistry
 from trust.models import AgentFacts
 
 logger = logging.getLogger("agent_ui_adapter.server")
@@ -153,8 +157,12 @@ def build_app(
     runtime: AgentRuntime,
     jwt_verifier: JwtVerifier,
     agent_facts: dict[str, AgentFacts],
+    authorization_service: AuthorizationService | None = None,
+    trace_service: TraceService | None = None,
+    long_term_memory: LongTermMemoryService | None = None,
+    tool_registry: ToolRegistry | None = None,
 ) -> FastAPI:
-    """Wire FastAPI app from a runtime + JWT verifier + identity registry.
+    """Wire FastAPI app from a runtime + JWT verifier + horizontal services.
 
     Caller is responsible for choosing a runtime (LangGraphRuntime in prod,
     MockRuntime in tests) and a JwtVerifier (real WorkOS in prod, in-memory
@@ -188,6 +196,18 @@ def build_app(
             raise HTTPException(
                 status_code=401, detail="unknown identity for subject"
             )
+        if authorization_service is not None:
+            preflight_trace_id = uuid.uuid4().hex
+            decision = authorization_service.authorize(
+                identity,
+                "agent.session.start",
+                {},
+                trace_id=preflight_trace_id,
+            )
+            if not decision.allowed:
+                raise HTTPException(
+                    status_code=401, detail=decision.reason
+                )
         return identity
 
     # ── routes ──────────────────────────────────────────────────────
@@ -237,20 +257,13 @@ def build_app(
         body: RunCreateRequest,
         identity: AgentFacts = Depends(_verify_bearer),
     ) -> StreamingResponse:
-        run_id = uuid.uuid4().hex
         run_started_at = time.monotonic()
 
         async def _generate() -> AsyncIterator[bytes]:
+            run_id: str | None = None
             trace_id_seen: str | None = None
             errored = False
             try:
-                runs.started(run_id, body.thread_id)
-                logger.info(
-                    "stream_started run_id=%s thread_id=%s identity=%s",
-                    run_id,
-                    body.thread_id,
-                    identity.agent_id,
-                )
                 async for domain_event in runtime.run(
                     thread_id=body.thread_id,
                     input=body.input,
@@ -258,6 +271,17 @@ def build_app(
                 ):
                     if trace_id_seen is None:
                         trace_id_seen = domain_event.trace_id
+                    if run_id is None and hasattr(domain_event, "run_id"):
+                        run_id = domain_event.run_id
+                        runs.started(run_id, body.thread_id)
+                        logger.info(
+                            "stream_started run_id=%s thread_id=%s "
+                            "trace_id=%s identity=%s",
+                            run_id,
+                            body.thread_id,
+                            trace_id_seen,
+                            identity.agent_id,
+                        )
                     for ag_ui_event in to_ag_ui(domain_event):
                         yield encode_event(
                             ag_ui_event,
@@ -278,7 +302,8 @@ def build_app(
                 )
                 yield SENTINEL_LINE
             finally:
-                runs.finished(run_id, errored=errored)
+                if run_id is not None:
+                    runs.finished(run_id, errored=errored)
                 duration_ms = int((time.monotonic() - run_started_at) * 1000)
                 logger.info(
                     "stream_ended run_id=%s thread_id=%s trace_id=%s "
@@ -301,8 +326,12 @@ def build_app(
 
 __all__ = [
     "ADAPTER_VERSION",
+    "AuthorizationService",
     "InMemoryJwtVerifier",
     "JwtClaims",
     "JwtVerifier",
+    "LongTermMemoryService",
+    "ToolRegistry",
+    "TraceService",
     "build_app",
 ]

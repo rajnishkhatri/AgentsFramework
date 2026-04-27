@@ -1,0 +1,51 @@
+{# prompts/codeReviewer/explainability_frontend/review_submission.j2
+   Task prompt for the Explainability Frontend Code Review Validator Agent.
+   Variables: files_to_review, submission_context, review_scope.
+   Adapted from prompts/codeReviewer/frontend/review_submission.j2 for the
+   Explainability Dashboard (frontend-explainability/). #}
+
+# Explainability Frontend Code Review Request
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("full") }}
+
+**Named scopes** (defaults to `full` if not specified):
+
+- `full` -- evaluate all eight dimensions (FD1-FD8).
+- `adapter_pr` -- focus on FD1 (Layering) + FD2 (A-rules) + FD3 (Security) + FD6 (Tests/conformance) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend-explainability/lib/adapters/`.
+- `ui_component_pr` -- focus on FD2 (U-rules) + FD3 (Security) + FD4 (Accessibility) + FD5 (Performance) + FD7 (Anti-Patterns). Use for any PR that adds or modifies a file under `frontend-explainability/components/` or `frontend-explainability/app/`.
+- `wire_translator_pr` -- focus on FD2 (W-rules + T-rules) + FD6 (wire schema drift). Use for any PR that adds or modifies a file under `frontend-explainability/lib/wire/` or `frontend-explainability/lib/translators/`.
+- `security_audit` -- FD3 + FD7 only.
+- `sprint_audit` -- FD8 only. Use for sprint-board re-derivation runs.
+
+## Files to Review
+
+{% for file in files_to_review %}
+### {{ file.path }}
+
+**Layer:** {{ file.layer | default("To be classified by Phase 1") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language | default("typescript") }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+## Instructions
+
+1. Execute the Five-Phase ReAct Loop from your system prompt.
+2. **Auto-scope inference:** If `review_scope` is `full` (or unspecified):
+   - All `.tsx` files under `frontend-explainability/components/` → infer `review_scope="ui_component_pr"`.
+   - All files under `frontend-explainability/lib/adapters/` → infer `review_scope="adapter_pr"`.
+   Record the inference in `validation_log[0]`.
+3. Run deterministic tools first for FD1, FD3, FD5, FD6, and the AST-detectable FD2/FD7 hypotheses. Apply LLM judgment only for residual FD2 and FD4 appropriateness (always recorded as `gaps`, never findings).
+4. Produce a certificate for every hypothesis tested.
+5. Apply the Judge criteria (Section 7) to filter findings.
+6. Apply the strictest verdict decision rules (Section 8). Auto-reject anti-patterns (FE-AP-7, FE-AP-12, FE-AP-18, FE-AP-19) take precedence over count thresholds. FD8 adds NO new auto-rejects.
+7. Output a single `ReviewReport` JSON object as your final response.

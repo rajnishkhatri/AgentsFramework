@@ -1,0 +1,21 @@
+# OpenTofu / Terraform working files — never commit.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Local var files containing secret values (Sprint 2 §S2.1.4 cross-cutting DoD).
+# terraform.tfvars.example IS committed (template); terraform.tfvars is NOT.
+terraform.tfvars
+terraform.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+
+# Generated plan artifacts — pytest/conftest produce these on the fly.
+tfplan
+tfplan.json
+plan.out
+plan.json

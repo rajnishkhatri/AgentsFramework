@@ -1,0 +1,211 @@
+{# Compact Explainability Frontend Architecture Rules Reference
+   Included by prompts/codeReviewer/explainability_frontend/system_prompt.j2.
+   Adapted from prompts/codeReviewer/frontend/architecture_rules.j2 for the
+   Explainability Dashboard (frontend-explainability/).
+   SDK allowlist: recharts, @visx/*, reactflow, @monaco-editor/react,
+   @tanstack/react-query, @tanstack/react-table, vis-network.
+   FD9, FD10, FD11 stubbed as N/A (local-only MVP). #}
+
+## Five Sub-Packages Map (Explainability Dashboard)
+
+| Module | May import from | May NOT import from |
+|--------|-----------------|---------------------|
+| `frontend-explainability/lib/wire/` | `zod`, stdlib | Everything else in `frontend-explainability/lib/` |
+| `frontend-explainability/lib/ports/` | `wire/` | `adapters/`, `translators/`, `transport/`, `composition.ts` |
+| `frontend-explainability/lib/translators/` | `wire/` | `adapters/`, `ports/`, `transport/`, `composition.ts`, any SDK |
+| `frontend-explainability/lib/transport/` | `wire/`, stdlib, `EventSource` | `adapters/`, `ports/`, `translators/`, `composition.ts`, any SDK |
+| `frontend-explainability/lib/adapters/` | `ports/`, `wire/`, third-party SDKs | `translators/`, `transport/`, `composition.ts`, other `adapters/` |
+| `frontend-explainability/lib/composition.ts` | Everything in `frontend-explainability/lib/`, React context | Nothing imports composition |
+
+Cross-project rule: `frontend-explainability/` MUST NEVER import from `frontend/`, `agent_ui_adapter/`, or any Python module.
+
+## Layering Rules (F-Family)
+
+- **F1** Composition root only. `process.env.*` reads for adapter wiring only in `frontend-explainability/lib/composition.ts`.
+- **F2** Five sub-packages, no sixth. New top-level dir under `frontend-explainability/lib/` requires a merged ADR.
+- **F3** Substrate swaps are composition-root-only.
+- **F4** Frontend never imports backend Python at module scope. Cross-process boundary is HTTP/SSE only.
+
+## Wire & Kernel Rules (W-Family)
+
+- **W1** Pure shapes only. No I/O, no logging, no SDK calls in `wire/`.
+- **W2** Mirror Python source of truth. Every `explainability_app/wire/` module has a TS twin under `frontend-explainability/lib/wire/`. Drift detected via `__python_schema_baseline__.json`.
+- **W3** Discriminated unions, not bare unions.
+- **W5** `trace_id` is structural where applicable.
+- **W6** snake_case on the wire; camelCase only after a translator.
+- **W7** Schema const + inferred type co-export with same name.
+
+## Port Rules (P-Family)
+
+- **P1** One interface per file.
+- **P2** Vendor-neutral name.
+- **P3** Behavioral contract documented in JSDoc above the interface.
+- **P4** Typed errors declared via `@throws`.
+- **P5** Async by default.
+- **P6** No imports from `adapters/`, `translators/`, `transport/`, or `composition.ts`.
+- **P7** Ports come paired with a conformance test.
+
+## Adapter Rules (A-Family)
+
+- **A1** SDK imports permitted only here.
+- **A2** Adapters do not import each other.
+- **A3** Depend on `ports/`, `wire/`, and SDKs only.
+- **A4** SDK types never escape the adapter file. Convert to `wire/` shapes before returning.
+- **A5** Error translation table in JSDoc (HTTP status -> typed port error).
+- **A9** SDK pin in JSDoc (`@sdk <package> <version-spec>`).
+
+## Translator Rules (T-Family)
+
+- **T1** Imports only `wire/`. No SDK, no React, no I/O.
+- **T2** Forward identifying fields from input to output.
+- **T4** Table-driven Vitest tests co-located as `*.test.ts`; one test per discriminated-union variant.
+
+## Transport Rules (X-Family)
+
+- **X1** `EventSource` only in `frontend-explainability/lib/transport/sse_client.ts`.
+- **X2** Zod-parse on receive; failures synthesize an error frame.
+- **X4** Heartbeat detection thresholds (15s send / 30s detect).
+- **X5** Backpressure: 100-event in-memory buffer; drop-oldest after that.
+
+## Composition Rules (C-Family)
+
+- **C1** Single profile switch — `process.env.*` reads only in composition root.
+- **C2** Inject by port. Composition exports `buildAdapters()` returning a typed bag of port instances.
+- **C5** Composition is the only file allowed to use `process.env.*` for adapter wiring.
+
+## Browser Process Rules (B-Family)
+
+- **B1** New components default to RSC. `'use client'` requires an inline justification comment.
+- **B2** Pass Server Components to Client Components as `children`.
+- **B3** Await `params`, `searchParams`, `cookies()`, `headers()` (Next 15 / React 19 contract).
+- **B5** `cache: 'no-store'` is the default; `force-cache` only for non-user-scoped data.
+- **B6** Route Handlers are composition adapters — no business `if/else`.
+
+## UI Rules (U-Family)
+
+- **U1** RSC by default.
+- **U2** Leaf `'use client'`. Push the boundary as far down the tree as possible.
+- **U4** ARIA live region for streaming content: `<div role="log" aria-live="polite" aria-atomic="false">`. Never `assertive`.
+- **U6** `cn()` (`clsx` + `tailwind-merge`) for class merging. Template-string conditionals forbidden.
+- **U7** shadcn primitives over custom-built.
+- **U8** Design tokens via Tailwind v4 `@theme` blocks in `app/globals.css`.
+
+## Frontend Architectural Invariants (F-R1..F-R4)
+
+- **F-R1** No domain logic in React components.
+- **F-R2** SDK imports allowed only in `adapters/`.
+- **F-R3** One interface per `ports/` module.
+- **F-R4** Route Handlers are composition adapters, not business logic.
+
+Note: F-R5 (prompts in `.j2`) is vacuous — this dashboard has no prompts. F-R6/F-R7 are vacuous — the browser only forwards backend-generated identifiers; it never generates `trace_id` or `event_id`. F-R9 is interpreted as "the dashboard backend is the only process that touches the filesystem; the browser never reads `cache/`/`logs/`".
+
+## Anti-Patterns (Applicable Subset)
+
+| ID | Name | AUTO-REJECT |
+|----|------|-------------|
+| FE-AP-7 | Generating `trace_id` in the browser (breaks trust propagation) | **YES** |
+| FE-AP-9 | `console.*` outside an adapter | no |
+| FE-AP-11 | `'use client'` on the root layout | no |
+| FE-AP-12 | `dangerouslySetInnerHTML` of agent output (XSS-critical) | **YES** |
+| FE-AP-13 | Direct SDK import outside `adapters/` | no |
+| FE-AP-14 | Schema drift: TS Zod with no matching Python baseline entry | no |
+| FE-AP-15 | Adapter without an error-translation table | no |
+| FE-AP-16 | Port without a conformance test | no |
+| FE-AP-17 | Translator that touches `localStorage` / `fetch` / `document` | no |
+| FE-AP-18 | API URL holding a cloud credential | **YES** |
+| FE-AP-19 | Adding `'unsafe-inline'` to CSP | **YES** |
+
+**Dropped (not applicable to this MVP):**
+- FE-AP-4 (`useComponent` iframe without `sandbox`) — no generative-UI iframes in this dashboard.
+- FE-AP-6 (mutating a sealed envelope) — no sealed envelopes / HITL flows.
+- FE-AP-20 (CopilotKit barrel import) — CopilotKit not in the SDK allowlist.
+
+## Security Hardening Quick Reference
+
+- No `dangerouslySetInnerHTML` on any agent-derived or backend-fetched content.
+- No browser-side `trace_id` generation (`crypto.randomUUID()`, `nanoid()`, etc.).
+- `NEXT_PUBLIC_*` env vars must not match `*KEY*`, `*SECRET*`, `*TOKEN*`, `*PRIVATE*`, `*CREDENTIAL*`.
+- API URL in composition root only — never hardcoded in adapters or components.
+
+## Accessibility Quick Reference (WCAG 2.2 AA)
+
+**Auto-checkable:**
+- ARIA role validity, required/prohibited attributes.
+- Form inputs have associated `<label>` or `aria-label`.
+- Interactive elements: `<button>`/`<a>` not `<div onClick>`.
+- `aria-live` attribute presence and syntactic validity.
+- Image `alt` attributes.
+
+**Manual / gap territory (record as `gaps`, never as findings):**
+- Announcement timing, focus preservation, reading order, color contrast, screen-reader UX quality.
+
+## Performance Quick Reference
+
+- `next/image` for every content image. `<img>` fails review.
+- `cache: 'no-store'` on every user-scoped route.
+- `<Suspense>` boundaries around every async server boundary.
+- Heavy chart libraries (`recharts`, `@visx/*`, `reactflow`) on non-first-paint routes use `next/dynamic`.
+
+## Testing Pyramid
+
+| Layer | Tool | Required when |
+|-------|------|---------------|
+| Unit -- pure | Vitest | Any new translator, wire schema, pure helper |
+| Unit -- component | Vitest + React Testing Library | Any new component |
+| Integration -- adapter | Vitest + MSW | Any new adapter |
+| Port conformance | Vitest parametrized | Any new port or adapter |
+| Architecture -- TS layering | `ts-morph` walker | Always runs |
+| Wire schema drift | Python baseline diff | On any `frontend-explainability/lib/wire/` change |
+| Accessibility -- static | `eslint-plugin-jsx-a11y` | Always runs in CI |
+
+**Failure paths first:** rejection tests (404/500/timeout/parse-error) before happy-path tests for every adapter.
+
+**No live LLM calls in CI.**
+
+**`tsc --noEmit` clean.** Type errors block merge.
+
+## FD9: Middleware Ring — N/A — local-only MVP
+Not applicable. The explainability dashboard has no middleware ring. This
+dimension is always `skipped`.
+
+## FD10: Infra Dev-Tier — N/A — local-only MVP
+Not applicable. The explainability dashboard is local-only with no IaC. This
+dimension is always `skipped`.
+
+## FD11: Operational Readiness — N/A — local-only MVP
+Not applicable. No deployment, monitoring, or MFA for the local-only MVP. This
+dimension is always `skipped`.
+
+## Sprint Story Acceptance Map
+
+Authoritative seed for FD8 hypotheses. Re-derive `known_status` on every run.
+
+| story_id | key_files | acceptance_signal | known_status |
+|----------|-----------|-------------------|--------------|
+| **S0.1.1** | `prompts/codeReviewer/explainability_frontend/{system_prompt,architecture_rules,review_submission}.j2`, `tests/prompts/test_explainability_reviewer_renders.py` | `pytest tests/prompts/test_explainability_reviewer_renders.py -q && rg -q "frontend/lib" prompts/codeReviewer/explainability_frontend/ && exit 1 \|\| exit 0` | re-derive |
+| **S0.2.1** | `services/explainability_service.py`, `tests/services/test_explainability_service.py`, `tests/architecture/test_explainability_layering.py` | `pytest tests/services/test_explainability_service.py -q -k list_workflows && pytest tests/architecture/test_explainability_layering.py -q` | re-derive |
+| **S0.2.2** | `explainability_app/{__init__,__main__,server}.py`, `explainability_app/wire/{__init__,responses}.py`, `tests/explainability_app/test_server.py` | `pytest tests/explainability_app/ -q` | re-derive |
+| **S0.2.3** | `explainability_app/dev_seed.py`, `tests/explainability_app/test_dev_seed.py` | `pytest tests/explainability_app/test_dev_seed.py -q` | re-derive |
+| **S0.3.1** | `frontend-explainability/package.json`, `frontend-explainability/app/layout.tsx`, `frontend-explainability/tests/architecture/test_layering.test.ts`, `frontend-explainability/tests/architecture/test_no_cross_project_imports.test.ts` | `cd frontend-explainability && npm run typecheck && npm run lint && npm run test:arch` | re-derive |
+| **S0.3.2** | `frontend-explainability/lib/wire/responses.ts`, `frontend-explainability/lib/ports/explainability_client.ts`, `frontend-explainability/lib/adapters/http_explainability_client.ts`, `frontend-explainability/lib/composition.ts` | `cd frontend-explainability && npm run test && npm run test:arch` | re-derive |
+| **S0.3.3** | `frontend-explainability/app/traces/page.tsx`, `frontend-explainability/app/traces/[wf_id]/page.tsx`, `frontend-explainability/components/traces/WorkflowsTable.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S1.1.1** | `services/explainability_service.py`, `explainability_app/server.py`, `tests/services/test_explainability_service.py` | `pytest tests/services/test_explainability_service.py -q -k get_workflow_events` | re-derive |
+| **S1.1.2** | `frontend-explainability/lib/translators/event_to_timeline.ts` | `cd frontend-explainability && npm run test -- lib/translators/` | re-derive |
+| **S1.2.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k get_workflow_decisions` | re-derive |
+| **S1.2.2** | `frontend-explainability/app/decisions/[wf_id]/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S1.3.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k get_dashboard_metrics` | re-derive |
+| **S1.3.2** | `frontend-explainability/app/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S2.1.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k get_guardrail_summary` | re-derive |
+| **S2.1.2** | `frontend-explainability/app/guardrails/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S2.2.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k "list_agents or get_agent"` | re-derive |
+| **S2.2.2** | `frontend-explainability/app/agents/page.tsx`, `frontend-explainability/app/agents/[agent_id]/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S3.1.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k get_workflow_integrity` | re-derive |
+| **S3.1.2** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k get_compliance_bundle` | re-derive |
+| **S3.2.1** | `frontend-explainability/app/compliance/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S3.2.2** | `frontend-explainability/app/compliance/[wf_id]/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S4.1.1** | `frontend-explainability/lib/translators/cascade_analysis.ts` | `cd frontend-explainability && npm run test -- lib/translators/cascade_analysis` | re-derive |
+| **S4.2.1** | `frontend-explainability/lib/translators/events_to_replay_frames.ts` | `cd frontend-explainability && npm run test -- lib/translators/events_to_replay_frames` | re-derive |
+| **S4.3.1** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k query_logs` | re-derive |
+| **S4.3.2** | `services/explainability_service.py`, `explainability_app/server.py` | `pytest tests/services/test_explainability_service.py -q -k tail_logs` | re-derive |
+| **S4.3.3** | `frontend-explainability/app/logs/page.tsx` | `cd frontend-explainability && npm run test` | re-derive |
+| **S4.3.4** | `Makefile` | `make -n explainability` | re-derive |

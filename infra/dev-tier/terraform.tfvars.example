@@ -1,0 +1,34 @@
+###############################################################################
+# infra/dev-tier/terraform.tfvars.example
+#
+# COPY this file to terraform.tfvars (gitignored) and fill in real values.
+# In CI/CD the values come from `TF_VAR_<lowercased_var_name>` env vars
+# instead — never store the live tfvars file in any artifact store.
+###############################################################################
+
+# ── GCP ─────────────────────────────────────────────────────────────────────
+gcp_project_id = "agent-prod-gcp-dev-CHANGEME"   # see Sprint 0 §S0.1.2
+gcp_region     = "us-central1"
+
+# ── Neon ────────────────────────────────────────────────────────────────────
+# Generate at https://console.neon.tech → Account Settings → API Keys.
+neon_api_key       = "neon_api_key_REPLACE_ME"
+neon_region_id     = "aws-us-east-2"
+neon_database_name = "neondb"   # Project chose to adopt Neon's auto-created default DB; see variables.tf docstring.
+
+# ── Cloudflare ─────────────────────────────────────────────────────────────
+# My Profile → API Tokens → Create Token → custom scope.
+cloudflare_api_token  = "cloudflare_token_REPLACE_ME"
+cloudflare_account_id = "REPLACE_WITH_ACCOUNT_ID"
+cloudflare_zone_id    = "REPLACE_WITH_ZONE_ID"
+
+# ── WorkOS public config ────────────────────────────────────────────────────
+workos_client_id = "client_REPLACE_ME"
+
+# ── Secret Manager seed values (live keys) ─────────────────────────────────
+workos_api_key      = "sk_test_REPLACE_ME"
+openai_api_key      = "sk-REPLACE_ME"
+anthropic_api_key   = "sk-ant-REPLACE_ME"
+langfuse_public_key = "pk-lf-REPLACE_ME"
+langfuse_secret_key = "sk-lf-REPLACE_ME"
+mem0_api_key        = "m0-REPLACE_ME"

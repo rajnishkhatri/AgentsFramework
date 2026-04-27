@@ -276,11 +276,12 @@ class TestAuthorizationTraceEmission:
             embedded_backend=EmbeddedPolicyBackend(),
             trace_emit=collector,
         )
-        service.authorize(facts, "read", {})
+        service.authorize(facts, "read", {}, trace_id="tid-allow")
         assert len(collector.records) == 1
         rec = collector.records[0]
         assert rec.outcome == "pass"
         assert rec.event_type == "access_granted"
+        assert rec.trace_id == "tid-allow"
 
     def test_authorize_emits_trace_on_deny(self):
         from services.authorization_service import (
@@ -294,11 +295,28 @@ class TestAuthorizationTraceEmission:
             embedded_backend=EmbeddedPolicyBackend(),
             trace_emit=collector,
         )
-        service.authorize(facts, "delete", {})
+        service.authorize(facts, "delete", {}, trace_id="tid-deny")
         assert len(collector.records) == 1
         rec = collector.records[0]
         assert rec.outcome == "fail"
         assert rec.event_type == "access_denied"
+        assert rec.trace_id == "tid-deny"
+
+    def test_authorize_generates_trace_id_when_not_supplied(self):
+        from services.authorization_service import (
+            AuthorizationService,
+            EmbeddedPolicyBackend,
+        )
+
+        facts = _make_facts(capabilities=[_cap("read")])
+        collector = _TraceCollector()
+        service = AuthorizationService(
+            embedded_backend=EmbeddedPolicyBackend(),
+            trace_emit=collector,
+        )
+        service.authorize(facts, "read", {})
+        assert len(collector.records) == 1
+        assert collector.records[0].trace_id  # non-empty auto-generated
 
     def test_authorize_works_without_trace_emit(self):
         from services.authorization_service import (

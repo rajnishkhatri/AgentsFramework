@@ -1,0 +1,8 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "react_loop": "orchestration.react_loop:build_graph"
+  },
+  "env": ".env",
+  "_comment": "Per Sprint 1 §S1.1.1: this config is the ONLY place the middleware references the orchestration package. The middleware/ Python tree never imports orchestration/ directly (rule F4 / M1). Run `langgraph dev` from the repo root to embed the graph."
+}
