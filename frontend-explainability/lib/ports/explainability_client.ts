@@ -6,7 +6,12 @@
  *
  * @throws {ExplainabilityClientError} on any transport or validation failure.
  */
-import type { WorkflowSummary } from "@/lib/wire/responses";
+import type {
+  DashboardMetrics,
+  DecisionRecord,
+  WorkflowEvents,
+  WorkflowSummary,
+} from "@/lib/wire/responses";
 
 /** Typed errors raised by any ExplainabilityClient implementation (rule P4). */
 export class ExplainabilityClientError extends Error {
@@ -38,4 +43,37 @@ export interface ExplainabilityClient {
    * @throws {ExplainabilityClientError} status=null on Zod parse failure.
    */
   listWorkflows(since?: Date): Promise<WorkflowSummary[]>;
+
+  /**
+   * Returns the full event timeline for a workflow with hash-chain status.
+   *
+   * @param wfId  The workflow id.
+   * @throws {ExplainabilityClientError} status=404 when the workflow id is unknown.
+   * @throws {ExplainabilityClientError} status=null on network or parse failure.
+   * @throws {ExplainabilityClientError} status=5xx on server error.
+   */
+  getWorkflowEvents(wfId: string): Promise<WorkflowEvents>;
+
+  /**
+   * Returns the chronological decision log for a workflow.
+   *
+   * Returns an empty array when the workflow recorded no decisions — never 404.
+   *
+   * @param wfId  The workflow id.
+   * @throws {ExplainabilityClientError} status=null on network or parse failure.
+   * @throws {ExplainabilityClientError} status=5xx on server error.
+   */
+  getWorkflowDecisions(wfId: string): Promise<DecisionRecord[]>;
+
+  /**
+   * Returns aggregated dashboard KPIs over the workflows in `[since, until)`.
+   *
+   * Returns the all-zero structure when no workflows are in range — never 404.
+   *
+   * @param since  Inclusive lower bound on `started_at`.
+   * @param until  Exclusive upper bound on `started_at`.
+   * @throws {ExplainabilityClientError} status=null on network or parse failure.
+   * @throws {ExplainabilityClientError} status=5xx on server error.
+   */
+  getDashboardMetrics(since?: Date, until?: Date): Promise<DashboardMetrics>;
 }

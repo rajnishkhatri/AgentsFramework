@@ -13,6 +13,9 @@ export const metadata = {
   title: "Trace Explorer — Explainability Dashboard",
 };
 
+// Skip static prerender — every render reads live workflows over HTTP.
+export const dynamic = "force-dynamic";
+
 export default async function TracesPage() {
   const { explainabilityClient } = buildAdapters();
   const workflows = await explainabilityClient.listWorkflows();

@@ -11,8 +11,15 @@
  *
  * Returns only types from lib/wire/ — never raw Response or JSON (rule A4).
  */
+import { z } from "zod";
 import {
+  DashboardMetricsSchema,
+  DecisionRecordListSchema,
+  WorkflowEventsSchema,
   WorkflowSummaryListSchema,
+  type DashboardMetrics,
+  type DecisionRecord,
+  type WorkflowEvents,
   type WorkflowSummary,
 } from "@/lib/wire/responses";
 import {
@@ -33,7 +40,56 @@ export class HttpExplainabilityClient implements ExplainabilityClient {
     if (since !== undefined) {
       url.searchParams.set("since", since.toISOString());
     }
+    return this.requestJson(url, WorkflowSummaryListSchema);
+  }
 
+  /**
+   * GET /api/v1/workflows/{wfId}/events
+   *
+   * @throws {ExplainabilityClientError} status=404 on unknown workflow id.
+   * @throws {ExplainabilityClientError} status=null on network/parse error.
+   */
+  async getWorkflowEvents(wfId: string): Promise<WorkflowEvents> {
+    const url = new URL(
+      `${this.baseUrl}/api/v1/workflows/${encodeURIComponent(wfId)}/events`,
+    );
+    return this.requestJson(url, WorkflowEventsSchema);
+  }
+
+  /**
+   * GET /api/v1/workflows/{wfId}/decisions
+   *
+   * @throws {ExplainabilityClientError} status=null on network/parse error.
+   */
+  async getWorkflowDecisions(wfId: string): Promise<DecisionRecord[]> {
+    const url = new URL(
+      `${this.baseUrl}/api/v1/workflows/${encodeURIComponent(wfId)}/decisions`,
+    );
+    return this.requestJson(url, DecisionRecordListSchema);
+  }
+
+  /**
+   * GET /api/v1/dashboard/metrics[?since=<iso>&until=<iso>]
+   *
+   * @throws {ExplainabilityClientError} status=null on network/parse error.
+   */
+  async getDashboardMetrics(
+    since?: Date,
+    until?: Date,
+  ): Promise<DashboardMetrics> {
+    const url = new URL(`${this.baseUrl}/api/v1/dashboard/metrics`);
+    if (since !== undefined) url.searchParams.set("since", since.toISOString());
+    if (until !== undefined) url.searchParams.set("until", until.toISOString());
+    return this.requestJson(url, DashboardMetricsSchema);
+  }
+
+  /**
+   * Centralised request helper — applies the error-translation table:
+   *  - Network failure (fetch rejects)  → ExplainabilityClientError(message, null)
+   *  - HTTP 4xx / 5xx                   → ExplainabilityClientError(detail, status)
+   *  - Body unreadable / Zod parse fail → ExplainabilityClientError(zodMessage, null)
+   */
+  private async requestJson<T>(url: URL, schema: z.ZodType<T>): Promise<T> {
     let res: Response;
     try {
       res = await fetch(url.toString());
@@ -65,7 +121,7 @@ export class HttpExplainabilityClient implements ExplainabilityClient {
       );
     }
 
-    const result = WorkflowSummaryListSchema.safeParse(raw);
+    const result = schema.safeParse(raw);
     if (!result.success) {
       throw new ExplainabilityClientError(result.error.message, null);
     }

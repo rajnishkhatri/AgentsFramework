@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from explainability_app.dev_seed import generate_workflows
-from services.governance.black_box import BlackBoxRecorder
+from services.governance.black_box import BlackBoxRecorder, EventType
 
 
 def test_dev_seed_tampered_chain_detected(tmp_path: Path) -> None:
@@ -43,7 +43,21 @@ def test_dev_seed_produces_valid_chain(tmp_path: Path) -> None:
     for wf_id in wf_ids:
         export = recorder.export(wf_id)
         assert export["hash_chain_valid"] is True, f"Chain invalid for {wf_id}"
-        assert export["event_count"] >= 3
+        assert 5 <= export["event_count"] <= 20
+
+
+def test_dev_seed_spans_all_event_types(tmp_path: Path) -> None:
+    """AC1: seeded corpus spans all nine EventType values."""
+    cache_dir = tmp_path / "cache"
+    wf_ids = generate_workflows(cache_dir, count=5, seed=42)
+
+    recorder = BlackBoxRecorder(cache_dir / "black_box_recordings")
+    observed: set[str] = set()
+    for wf_id in wf_ids:
+        export = recorder.export(wf_id)
+        observed.update(event["event_type"] for event in export["events"])
+
+    assert observed == {event_type.value for event_type in EventType}
 
 
 def test_dev_seed_is_deterministic(tmp_path: Path) -> None:
@@ -77,8 +91,12 @@ def test_dev_seed_idempotent(tmp_path: Path) -> None:
     """AC5: re-running creates new workflow IDs, never overwrites."""
     cache_dir = tmp_path / "cache"
     ids1 = generate_workflows(cache_dir, count=2, seed=42)
-    ids2 = generate_workflows(cache_dir, count=2, seed=99)
+    trace_file = cache_dir / "black_box_recordings" / ids1[0] / "trace.jsonl"
+    original_trace = trace_file.read_text()
+
+    ids2 = generate_workflows(cache_dir, count=2, seed=42)
     assert set(ids1).isdisjoint(set(ids2))
+    assert trace_file.read_text() == original_trace
 
     recordings_dir = cache_dir / "black_box_recordings"
     all_dirs = [d.name for d in recordings_dir.iterdir() if d.is_dir()]

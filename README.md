@@ -42,6 +42,18 @@ cd agent
 pytest tests/ -q
 ```
 
+### Explainability Dashboard
+
+```bash
+# Optional: seed local governance artifacts for a dense dashboard.
+python -m explainability_app.dev_seed --seed 42 --count 5
+
+# Run the read-only FastAPI backend and Next.js frontend together.
+make explainability
+```
+
+The backend binds to `127.0.0.1:8001`; the dashboard runs at `http://localhost:3001`.
+
 ### Docker
 
 ```bash

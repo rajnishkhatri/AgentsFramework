@@ -20,4 +20,17 @@
   --color-status-in-progress: #eab308;
   --color-status-error: #ef4444;
   --color-status-unknown: #94a3b8;
+
+  /* KPI traffic-light tokens (rule U8 — colours never hard-coded in TSX). */
+  --color-kpi-green: #22c55e;
+  --color-kpi-amber: #f59e0b;
+  --color-kpi-red: #ef4444;
+  --color-kpi-bg-green: #ecfdf5;
+  --color-kpi-bg-amber: #fffbeb;
+  --color-kpi-bg-red: #fef2f2;
+  --color-kpi-bg-neutral: #f8fafc;
+  --color-kpi-text-green: #166534;
+  --color-kpi-text-amber: #92400e;
+  --color-kpi-text-red: #991b1b;
+  --color-kpi-text-neutral: #475569;
 }
