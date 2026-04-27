@@ -78,16 +78,6 @@ def main() -> None:
 
     cache_dir = AGENT_ROOT / "cache"
 
-    # Story 2.1: SqliteSaver checkpointer
-    checkpointer = None
-    try:
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-        checkpointer = AsyncSqliteSaver.from_conn_string(
-            str(cache_dir / "checkpoints.db")
-        )
-    except ImportError:
-        pass
-
     # Story 1.4: AgentFacts registry setup
     agent_facts_secret = os.environ.get("AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production")
     agent_facts_dir = cache_dir / "agent_facts"
@@ -112,15 +102,6 @@ def main() -> None:
             registered_by="cli-bootstrap",
         )
 
-    graph = build_graph(
-        agent_config=agent_config,
-        routing_config=routing_config,
-        tool_registry=tool_registry,
-        cache_dir=cache_dir,
-        checkpointer=checkpointer,
-        agent_facts_registry=agent_facts_registry,
-    )
-
     workflow_id = f"wf-{uuid.uuid4().hex[:8]}"
     task_id = f"task-{uuid.uuid4().hex[:8]}"
     session_id = f"session-{uuid.uuid4().hex[:8]}"
@@ -129,24 +110,70 @@ def main() -> None:
     console.print(f"\n[bold blue]Task:[/bold blue] {task_input}")
     console.print(f"[dim]workflow_id={workflow_id} task_id={task_id}[/dim]\n")
 
-    result = asyncio.run(graph.ainvoke(
-        {
-            "task_id": task_id,
-            "task_input": task_input,
-            "messages": [],
-            "workflow_id": workflow_id,
-            "registered_agent_id": agent_id,
-        },
-        config={
-            "configurable": {
-                "task_id": task_id,
-                "user_id": user_id,
-                "workflow_id": workflow_id,
-                "registered_agent_id": agent_id,
-                "thread_id": session_id,
-            },
-        },
-    ))
+    async def _run_with_checkpointer() -> dict:
+        # AsyncSqliteSaver.from_conn_string is an @asynccontextmanager — must
+        # be entered with `async with` before the graph can use it.
+        try:
+            from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+            async with AsyncSqliteSaver.from_conn_string(
+                str(cache_dir / "checkpoints.db")
+            ) as checkpointer:
+                graph = build_graph(
+                    agent_config=agent_config,
+                    routing_config=routing_config,
+                    tool_registry=tool_registry,
+                    cache_dir=cache_dir,
+                    checkpointer=checkpointer,
+                    agent_facts_registry=agent_facts_registry,
+                )
+                return await graph.ainvoke(
+                    {
+                        "task_id": task_id,
+                        "task_input": task_input,
+                        "messages": [],
+                        "workflow_id": workflow_id,
+                        "registered_agent_id": agent_id,
+                    },
+                    config={
+                        "configurable": {
+                            "task_id": task_id,
+                            "user_id": user_id,
+                            "workflow_id": workflow_id,
+                            "registered_agent_id": agent_id,
+                            "thread_id": session_id,
+                        },
+                    },
+                )
+        except ImportError:
+            graph = build_graph(
+                agent_config=agent_config,
+                routing_config=routing_config,
+                tool_registry=tool_registry,
+                cache_dir=cache_dir,
+                checkpointer=None,
+                agent_facts_registry=agent_facts_registry,
+            )
+            return await graph.ainvoke(
+                {
+                    "task_id": task_id,
+                    "task_input": task_input,
+                    "messages": [],
+                    "workflow_id": workflow_id,
+                    "registered_agent_id": agent_id,
+                },
+                config={
+                    "configurable": {
+                        "task_id": task_id,
+                        "user_id": user_id,
+                        "workflow_id": workflow_id,
+                        "registered_agent_id": agent_id,
+                        "thread_id": session_id,
+                    },
+                },
+            )
+
+    result = asyncio.run(_run_with_checkpointer())
 
     messages = result.get("messages", [])
     final_answer = None
