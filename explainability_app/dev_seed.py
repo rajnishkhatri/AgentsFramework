@@ -13,8 +13,10 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+from trust.models import AgentFacts, Capability, Policy
 
 AGENT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -34,11 +36,69 @@ TASK_INPUTS = [
 GUARDRAIL_TYPES = ["prompt_injection", "agent_facts", "output_pii_scan"]
 
 
+DEV_SEED_AGENT_FACTS_SECRET = "dev-seed-secret-do-not-use-in-prod"
+
+
+SEED_AGENTS: list[AgentFacts] = [
+    AgentFacts(
+        agent_id="cli-agent",
+        agent_name="CLI ReAct Agent",
+        owner="platform",
+        version="0.1.0",
+        description="Default ReAct agent invoked by `python -m agent.cli`.",
+        capabilities=[
+            Capability(name="shell.run", description="Run shell commands."),
+            Capability(name="file.read", description="Read repo files."),
+            Capability(name="model.call", description="Invoke LLM via LiteLLM."),
+        ],
+        policies=[
+            Policy(name="never-rm-rf", description="Reject destructive shell commands."),
+            Policy(name="repo-sandbox", description="File I/O is sandboxed to repo root."),
+        ],
+    ),
+    AgentFacts(
+        agent_id="dev-agent",
+        agent_name="Developer Agent",
+        owner="platform",
+        version="0.1.0",
+        description="Development variant with code-review capability.",
+        capabilities=[
+            Capability(name="shell.run", description="Run shell commands."),
+            Capability(name="code.review", description="Review code patches."),
+        ],
+        policies=[
+            Policy(name="never-rm-rf", description="Reject destructive shell commands."),
+        ],
+    ),
+]
+
+
 def _existing_workflow_count(cache_dir: Path) -> int:
     recordings_dir = cache_dir / "black_box_recordings"
     if not recordings_dir.exists():
         return 0
     return sum(1 for path in recordings_dir.iterdir() if path.is_dir())
+
+
+def seed_agents(cache_dir: Path) -> list[str]:
+    """Idempotently register the dev-seed agents in `AgentFactsRegistry`.
+
+    Returns the list of agent ids that were newly registered (already-present
+    agents are skipped). Re-running is a no-op.
+    """
+    registry = AgentFactsRegistry(
+        storage_dir=cache_dir / "agent_facts",
+        secret=DEV_SEED_AGENT_FACTS_SECRET,
+    )
+    newly_registered: list[str] = []
+    for facts in SEED_AGENTS:
+        try:
+            registry.get(facts.agent_id)
+            continue
+        except KeyError:
+            registry.register(facts, registered_by="dev_seed")
+            newly_registered.append(facts.agent_id)
+    return newly_registered
 
 
 def generate_workflows(
@@ -211,6 +271,12 @@ def main() -> None:
         default=AGENT_ROOT / "cache",
     )
     args = parser.parse_args()
+
+    new_agents = seed_agents(args.cache_dir)
+    if new_agents:
+        print(f"Registered {len(new_agents)} agents: {', '.join(new_agents)}")
+    else:
+        print("Agents already registered (skipping).")
 
     wf_ids = generate_workflows(args.cache_dir, count=args.count, seed=args.seed)
     print(f"Generated {len(wf_ids)} workflows:")

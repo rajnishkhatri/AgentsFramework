@@ -1,0 +1,115 @@
+[
+  {
+    "id": "todo_file_progression",
+    "task_input": "Compare two architecture approaches, design a migration roadmap, and then produce a concise implementation summary with testing notes and explicit constraints.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "todo-1",
+                  "content": "Draft implementation summary",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "notes/analysis.md",
+              "content": "Draft findings from branch comparison"
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "todo-1",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Final synthesis: architecture comparison, migration roadmap, and tests are complete.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "todo-1",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "notes/analysis.md"
+      ],
+      "expect_offload": false
+    }
+  },
+  {
+    "id": "large_output_offload",
+    "task_input": "Design and compare rollout options, then summarize risks, constraints, and mitigation trade-offs for the migration.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "todo-2",
+                  "content": "Process large output safely",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "emit_large",
+            "args": {
+              "size": 120,
+              "char": "Z"
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "todo-2",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Final synthesis: large artifact was offloaded and reviewed, risks and mitigations documented.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "todo-2",
+          "status": "completed"
+        }
+      ],
+      "required_files": [],
+      "expect_offload": true
+    }
+  }
+]

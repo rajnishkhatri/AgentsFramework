@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
@@ -24,8 +25,14 @@ from components.evaluator import (
     classify_outcome,
     parse_llm_response,
 )
+from components.plan_builder import build_planning_instructions
+from components.plan_builder import build_plan_artifact
+from components.plan_builder import validate_plan_mece
+from components.schemas import ErrorRecord
 from components.router import select_model
+from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
+from components.synthesis_validator import validate_synthesis
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 from services.governance.agent_facts_registry import AgentFactsRegistry
@@ -40,9 +47,33 @@ from services.guardrails import InputGuardrail, output_guardrail_scan
 from services.llm_config import LLMService
 from services.observability import FrameworkTelemetry, InstrumentedCheckpointer
 from services.prompt_service import PromptService
-from services.tools.registry import ToolRegistry
+from services.summarizer import (
+    build_compaction_summary,
+    should_compact_trajectory,
+)
+from services.tools.registry import ToolExecutionResult, ToolRegistry
+from utils.debug_fc2601 import debug_fc2601
 
 logger = logging.getLogger("orchestration.react_loop")
+
+
+def _ensure_checkpoint_saver_instance(checkpointer: Any) -> None:
+    """Reject a bare ``from_conn_string`` context manager (common footgun).
+
+    ``AsyncSqliteSaver.from_conn_string`` / ``SqliteSaver.from_conn_string`` are
+    context managers. LangGraph expects the *entered* saver (with
+    ``get_next_version``, etc.). Passing the manager yields::
+
+        AttributeError: '_AsyncGeneratorContextManager' object has no attribute 'get_next_version'
+    """
+    getter = getattr(checkpointer, "get_next_version", None)
+    if not callable(getter):
+        raise TypeError(
+            "checkpointer must be the saver instance from "
+            "`async with AsyncSqliteSaver.from_conn_string(...) as saver` or "
+            "`with SqliteSaver.from_conn_string(...) as saver`, not the "
+            "unentered `from_conn_string(...)` context manager."
+        )
 
 
 def _compute_tool_cache_key(tool_name: str, tool_args: dict[str, Any]) -> str:
@@ -51,17 +82,56 @@ def _compute_tool_cache_key(tool_name: str, tool_args: dict[str, Any]) -> str:
     return f"{tool_name}:{digest}"
 
 
+def _apply_tool_output_thresholds(
+    *,
+    tool_name: str,
+    output: str,
+    offload_key: str,
+    files: dict[str, str],
+    agent_config: AgentConfig,
+) -> tuple[str, str, bool, str | None]:
+    """Apply explicit output offload/clearing thresholds.
+
+    Returns:
+      - ``message_output``: compact output to put in ToolMessage
+      - ``recorded_output``: output to store in ``tool_results``
+      - ``offloaded``: whether full output was offloaded to virtual files
+      - ``offload_ref``: file reference when offloaded
+    """
+    threshold = max(1, int(agent_config.tool_output_offload_threshold_chars))
+    preview_len = max(1, int(agent_config.tool_output_preview_chars))
+
+    if len(output) <= threshold:
+        return output, output, False, None
+
+    ref_hash = hashlib.md5(f"{tool_name}:{offload_key}".encode()).hexdigest()[:12]
+    offload_ref = f".agent_offload/{tool_name}_{ref_hash}.txt"
+    files[offload_ref] = output
+
+    preview = output[:preview_len]
+    compact = (
+        f"[offloaded:{offload_ref}] "
+        f"tool output was {len(output)} chars and exceeded threshold {threshold}. "
+        f"Preview:\n{preview}"
+    )
+    return compact, compact, True, offload_ref
+
+
 def _execute_tools_impl(
     state: dict[str, Any],
     *,
     tool_registry: ToolRegistry,
     black_box: BlackBoxRecorder,
+    agent_config: AgentConfig,
+    trace_service: Any | None = None,
 ) -> dict[str, Any]:
     """Pure-ish executor for tool calls with cache-aware dispatch.
 
     Contract: reads ``state['tool_cache']``, returns a dict with ``messages``
     (ToolMessage list), ``tool_cache`` (updated), and ``current_workflow_phase``.
     Cache hits skip registry dispatch and emit TOOL_CALLED with cached=True.
+    Tool results may include optional ``state_delta`` updates for ``files``,
+    ``todos``, and ``plan_ref``.
     """
     from langchain_core.messages import ToolMessage
 
@@ -77,6 +147,15 @@ def _execute_tools_impl(
 
     updated_cache: dict[str, Any] = dict(state.get("tool_cache", {}) or {})
     results: list[ToolMessage] = []
+    tool_results: list[dict[str, Any]] = []
+    updated_files: dict[str, str] = dict(state.get("files", {}) or {})
+    updated_todos = state.get("todos", [])
+    updated_plan_ref = state.get("plan_ref", "")
+    reasoning_trace_delta: list[str] = []
+
+    delegation_call_count = sum(
+        1 for result in state.get("tool_results", []) if result.get("tool_name") == "task"
+    )
 
     for tc in tool_calls:
         tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
@@ -85,9 +164,38 @@ def _execute_tools_impl(
 
         cache_key = _compute_tool_cache_key(tool_name, tool_args)
         cacheable = tool_registry.has(tool_name) and tool_registry.is_cacheable(tool_name)
+        tool_args_with_state = {
+            **tool_args,
+            "_state": {
+                "files": updated_files,
+                "todos": updated_todos,
+                "plan_ref": updated_plan_ref,
+                "task_id": state.get("task_id", ""),
+                "user_id": state.get("user_id", "anonymous"),
+                "workflow_id": workflow_id,
+                "step_count": state.get("step_count", 0),
+                "total_cost_usd": state.get("total_cost_usd", 0.0),
+                "max_cost_usd": agent_config.max_cost_usd,
+                "delegation_max_cost_usd": agent_config.delegation_max_cost_usd,
+                "delegation_call_count": delegation_call_count,
+                "delegation_max_calls_per_task": agent_config.delegation_max_calls_per_task,
+                "agent_capabilities": state.get("agent_capabilities", []),
+            },
+        }
 
         if cacheable and cache_key in updated_cache:
-            output = updated_cache[cache_key]
+            execution_result = ToolExecutionResult(
+                output=updated_cache[cache_key],
+                ok=True,
+                metadata={"cached": True},
+            )
+            message_output, recorded_output, offloaded, offload_ref = _apply_tool_output_thresholds(
+                tool_name=tool_name,
+                output=execution_result.output,
+                offload_key=cache_key,
+                files=updated_files,
+                agent_config=agent_config,
+            )
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
@@ -96,15 +204,35 @@ def _execute_tools_impl(
                 step=state.get("step_count", 0),
                 details={"tool": tool_name, "args": tool_args, "cached": True},
             ))
-            results.append(ToolMessage(content=output, tool_call_id=tool_id))
+            results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
+            tool_results.append({
+                "record_id": f"{state.get('step_count', 0)}:{tool_id}",
+                "step_id": state.get("step_count", 0),
+                "tool_name": tool_name,
+                "tool_input": tool_args,
+                "tool_output": recorded_output,
+                "ok": execution_result.ok,
+                "error": execution_result.error,
+                "cached": True,
+                "offloaded": offloaded,
+                "offload_ref": offload_ref,
+            })
             continue
 
         try:
-            output = tool_registry.execute(tool_name, tool_args)
+            execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
         except KeyError:
-            output = f"Error: Unknown tool '{tool_name}'"
+            execution_result = ToolExecutionResult(
+                output=f"Error: Unknown tool '{tool_name}'",
+                ok=False,
+                error=f"Unknown tool '{tool_name}'",
+            )
         except Exception as exc:
-            output = f"Error: Tool '{tool_name}' failed: {exc}"
+            execution_result = ToolExecutionResult(
+                output=f"Error: Tool '{tool_name}' failed: {exc}",
+                ok=False,
+                error=str(exc),
+            )
 
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
@@ -116,15 +244,85 @@ def _execute_tools_impl(
         ))
 
         if cacheable:
-            updated_cache[cache_key] = output
+            updated_cache[cache_key] = execution_result.output
 
-        results.append(ToolMessage(content=output, tool_call_id=tool_id))
+        state_delta = execution_result.state_delta or {}
+        if "files" in state_delta and isinstance(state_delta["files"], dict):
+            updated_files.update(state_delta["files"])
+        if "todos" in state_delta and isinstance(state_delta["todos"], list):
+            updated_todos = state_delta["todos"]
+        if "plan_ref" in state_delta and isinstance(state_delta["plan_ref"], str):
+            updated_plan_ref = state_delta["plan_ref"]
+        if "reasoning_trace" in state_delta and isinstance(state_delta["reasoning_trace"], list):
+            reasoning_trace_delta.extend(str(item) for item in state_delta["reasoning_trace"])
+        if trace_service is not None:
+            trace_records = (execution_result.metadata or {}).get("trace_records", [])
+            if trace_records:
+                from trust.models import TrustTraceRecord
 
-    return {
+                configurable_agent_id = str(state.get("registered_agent_id", "") or "")
+                for trace_record in trace_records:
+                    if not isinstance(trace_record, dict):
+                        continue
+                    try:
+                        trace_service.emit(
+                            TrustTraceRecord(
+                                event_id=str(uuid.uuid4()),
+                                timestamp=datetime.now(UTC),
+                                trace_id=workflow_id,
+                                agent_id=configurable_agent_id or "unknown-agent",
+                                source_agent_id=configurable_agent_id or None,
+                                layer="L4",
+                                event_type=str(trace_record.get("event_type", "delegation_event")),
+                                details=dict(trace_record.get("details", {})),
+                                causation_id=trace_record.get("causation_id"),
+                                outcome=trace_record.get("outcome"),
+                            )
+                        )
+                    except Exception:
+                        logger.exception("failed to emit delegation trace event")
+
+        message_output, recorded_output, offloaded, offload_ref = _apply_tool_output_thresholds(
+            tool_name=tool_name,
+            output=execution_result.output,
+            offload_key=cache_key,
+            files=updated_files,
+            agent_config=agent_config,
+        )
+
+        results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
+        tool_results.append({
+            "record_id": f"{state.get('step_count', 0)}:{tool_id}",
+            "step_id": state.get("step_count", 0),
+            "tool_name": tool_name,
+            "tool_input": tool_args,
+            "tool_output": recorded_output,
+            "ok": execution_result.ok,
+            "error": execution_result.error,
+            "cached": False,
+            "offloaded": offloaded,
+            "offload_ref": offload_ref,
+        })
+
+    history_limit = max(1, int(agent_config.tool_result_history_limit))
+    if len(tool_results) > history_limit:
+        tool_results = tool_results[-history_limit:]
+
+    response: dict[str, Any] = {
         "messages": results,
         "tool_cache": updated_cache,
+        "tool_results": tool_results,
         "current_workflow_phase": WorkflowPhase.TOOL_EXECUTION.value,
     }
+    if updated_files:
+        response["files"] = updated_files
+    if updated_todos:
+        response["todos"] = updated_todos
+    if updated_plan_ref:
+        response["plan_ref"] = updated_plan_ref
+    if reasoning_trace_delta:
+        response["reasoning_trace"] = reasoning_trace_delta
+    return response
 
 
 def build_graph(
@@ -137,6 +335,8 @@ def build_graph(
     telemetry: FrameworkTelemetry | None = None,
     authorization_service: Any | None = None,
     trace_service: Any | None = None,
+    *,
+    interrupt_before_execute_tool: bool = True,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -154,6 +354,11 @@ def build_graph(
         app = build_graph(cfg, checkpointer=cp, telemetry=telemetry)
         await app.ainvoke({...})
         save_telemetry(telemetry)
+
+    ``interrupt_before_execute_tool`` (default True when a checkpointer is
+    supplied) compiles with ``interrupt_before=['execute_tool']`` for HITL /
+    risky-tool gating. Streaming dev entry points pass ``False`` so tools run
+    automatically and the assistant can return after tool results.
     """
     routing_config = routing_config or RoutingConfig()
     tool_registry = tool_registry or ToolRegistry({})
@@ -194,6 +399,7 @@ def build_graph(
 
         # Story 1.4: AgentFacts identity verification
         agent_facts_verified = True
+        agent_capabilities: list[str] = []
         if agent_facts_registry is not None:
             registered_agent_id = (
                 config.get("configurable", {}).get("registered_agent_id")
@@ -201,6 +407,12 @@ def build_graph(
             )
             if registered_agent_id:
                 agent_facts_verified = agent_facts_registry.verify(registered_agent_id)
+                if agent_facts_verified:
+                    try:
+                        facts = agent_facts_registry.get(registered_agent_id)
+                        agent_capabilities = [cap.name for cap in facts.capabilities]
+                    except Exception:
+                        agent_capabilities = []
                 black_box.record(TraceEvent(
                     event_id=str(uuid.uuid4()),
                     workflow_id=workflow_id,
@@ -215,6 +427,7 @@ def build_graph(
                 if not agent_facts_verified:
                     return {
                         "agent_facts_verified": False,
+                        "agent_capabilities": [],
                         "last_outcome": "rejected",
                         "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
                     }
@@ -244,12 +457,14 @@ def build_graph(
         if not accepted:
             return {
                 "agent_facts_verified": agent_facts_verified,
+                "agent_capabilities": agent_capabilities,
                 "last_outcome": "rejected",
                 "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
             }
 
         return {
             "agent_facts_verified": agent_facts_verified,
+            "agent_capabilities": agent_capabilities,
             "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
         }
 
@@ -284,6 +499,24 @@ def build_graph(
             agent_config=agent_config,
             routing_config=routing_config,
         )
+        planning_depth, planning_depth_reason = select_planning_depth(
+            task_input=state.get("task_input", ""),
+            step_count=state.get("step_count", 0),
+            tool_results_count=len(state.get("tool_results", [])),
+        )
+        plan_artifact = build_plan_artifact(
+            planning_depth,
+            task_input=state.get("task_input", ""),
+        )
+        plan_validation = validate_plan_mece(plan_artifact)
+        if not plan_validation.is_valid:
+            capable = next(
+                (item for item in agent_config.models if item.tier == "capable"),
+                None,
+            )
+            if capable is not None:
+                profile = capable
+                reason = "plan-validation-escalation"
 
         alternatives = [m.name for m in agent_config.models if m.name != profile.name]
         if not alternatives:
@@ -304,6 +537,7 @@ def build_graph(
             f"errors={state.get('consecutive_errors', 0)}",
             f"last_err={state.get('last_error_type', '') or 'none'}",
             f"cost_usd={state.get('total_cost_usd', 0.0):.4f}",
+            f"plan_depth={planning_depth}",
         ]
         rationale = f"{reason} ({', '.join(detail_bits)})"
 
@@ -321,12 +555,31 @@ def build_graph(
             workflow_id=workflow_id,
             event_type=EventType.MODEL_SELECTED,
             timestamp=datetime.now(UTC),
-            details={"model": profile.name, "reason": reason},
+            details={
+                "model": profile.name,
+                "reason": reason,
+                "plan_depth": planning_depth,
+                "plan_valid": plan_validation.is_valid,
+            },
         ))
+
+        plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
+        plan_payload = {
+            "planning_depth": planning_depth,
+            "planning_depth_reason": planning_depth_reason,
+            "artifact": plan_artifact.model_dump(mode="json"),
+            "validation": plan_validation.model_dump(mode="json"),
+        }
 
         return {
             "selected_model": profile.name,
             "routing_reason": reason,
+            "planning_depth": planning_depth,
+            "planning_depth_reason": planning_depth_reason,
+            "files": {
+                plan_ref: json.dumps(plan_payload, sort_keys=True),
+            },
+            "plan_ref": plan_ref,
             "model_history": [
                 {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
             ],
@@ -348,7 +601,10 @@ def build_graph(
 
         system_prompt = prompt_service.render_prompt(
             "system_prompt",
-            additional_instructions="",
+            additional_instructions=build_planning_instructions(
+                state.get("planning_depth", "L0"),
+                task_input=state.get("task_input", ""),
+            ),
             include_routing_policy=True,
             budget_downgrade_pct=int(routing_config.budget_downgrade_threshold * 100),
             escalate_after_failures=routing_config.escalate_after_failures,
@@ -357,6 +613,21 @@ def build_graph(
 
         # Story 1.1: build full multi-turn message list
         existing_messages = state.get("messages", [])
+        # region agent log
+        lm = existing_messages[-1] if existing_messages else None
+        debug_fc2601(
+            hypothesis_id="H-graph",
+            location="react_loop.call_llm_node",
+            message="enter",
+            data={
+                "n_msgs": len(existing_messages),
+                "step_count": state.get("step_count", 0),
+                "wf_tail": str(workflow_id)[-12:] if workflow_id else "",
+                "last_typ": type(lm).__name__ if lm is not None else None,
+                "last_has_tc": bool(getattr(lm, "tool_calls", None)) if lm is not None else None,
+            },
+        )
+        # endregion agent log
         if existing_messages:
             lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
         else:
@@ -468,6 +739,7 @@ def build_graph(
             "total_cost_usd": cost,
             "total_input_tokens": tokens_in,
             "total_output_tokens": tokens_out,
+            "current_token_count": tokens_in + tokens_out,
             "current_workflow_phase": WorkflowPhase.MODEL_INVOCATION.value,
         }
         if error is not None:
@@ -482,6 +754,8 @@ def build_graph(
             dict(state),
             tool_registry=tool_registry,
             black_box=black_box,
+            agent_config=agent_config,
+            trace_service=trace_service,
         )
         return result
 
@@ -599,6 +873,23 @@ def build_graph(
             model=state.get("selected_model", ""),
             step=state.get("step_count", 0),
         )
+        if outcome == "success":
+            synthesis_validation = validate_synthesis(
+                final_answer=content,
+                task_input=state.get("task_input", ""),
+                planning_depth=state.get("planning_depth", "L0"),
+                todos=state.get("todos", []),
+            )
+            if not synthesis_validation.passed:
+                outcome = "failure"
+                error_record = ErrorRecord(
+                    step=state.get("step_count", 0),
+                    error_type="synthesis_validation_error",
+                    error_code=None,
+                    message="; ".join(synthesis_validation.feedback) or "synthesis validation failed",
+                    model=state.get("selected_model", ""),
+                    timestamp=time.time(),
+                )
         error_type = error_record.error_type if error_record else None
 
         # Story 5.2: backoff calculation for retryable errors
@@ -649,6 +940,23 @@ def build_graph(
         }
         if backoff_until is not None:
             result["backoff_until"] = backoff_until
+
+        token_count = int(state.get("current_token_count", 0) or 0)
+        if should_compact_trajectory(
+            current_token_count=token_count,
+            token_threshold=agent_config.trajectory_compaction_token_threshold,
+        ):
+            summary_text = build_compaction_summary(
+                task_input=state.get("task_input", ""),
+                reasoning_trace=state.get("reasoning_trace", []),
+                tool_results=state.get("tool_results", []),
+                latest_output=content,
+            )
+            workflow_id_suffix = (state.get("workflow_id", "") or "wf")[-8:]
+            offload_ref = f".agent_offload/trajectory_summary_{workflow_id_suffix}.md"
+            result["files"] = {offload_ref: summary_text}
+            result["reasoning_trace"] = [summary_text]
+            result["truncation_applied"] = True
         return result
 
     def _parse_response(state: AgentState) -> str:
@@ -668,15 +976,45 @@ def build_graph(
         return parse_llm_response(last_msg)
 
     def _should_continue(state: AgentState) -> str:
+        """Continue the loop when ToolMessage(s) need a follow-up LLM synthesis pass.
+
+        Without this, ``check_continuation`` treats post-tool ``success`` as a
+        terminal answer and the graph ends after ``execute_tool`` — only the
+        tool-call preview is streamed, never the final model response.
+        """
+        messages = state.get("messages") or []
+        has_pending_tool_result = bool(
+            messages and isinstance(messages[-1], ToolMessage)
+        )
         result = check_continuation(
             step_count=state.get("step_count", 0),
             total_cost_usd=state.get("total_cost_usd", 0.0),
             last_outcome=state.get("last_outcome", ""),
             last_error_type=state.get("last_error_type", None),
             agent_config=agent_config,
+            has_pending_tool_result=has_pending_tool_result,
             backoff_until=state.get("backoff_until"),
         )
-        return "continue" if result == "continue" else "done"
+        branch = "continue" if result == "continue" else "done"
+        # region agent log
+        _lm = messages[-1] if messages else None
+        debug_fc2601(
+            hypothesis_id="H-cont",
+            location="react_loop._should_continue",
+            message="routing",
+            data={
+                "branch": branch,
+                "chk_raw": result,
+                "pending_tool_flag": has_pending_tool_result,
+                "last_cls": type(_lm).__name__ if _lm is not None else None,
+                "isinstance_ToolMessage": isinstance(_lm, ToolMessage) if _lm is not None else False,
+                "step_count": state.get("step_count", 0),
+                "last_outcome": state.get("last_outcome", ""),
+                "n_msgs": len(messages),
+            },
+        )
+        # endregion agent log
+        return branch
 
     builder = StateGraph(AgentState)
 
@@ -729,9 +1067,15 @@ def build_graph(
     # so put/get calls update FrameworkTelemetry counters.
     compile_kwargs: dict[str, Any] = {}
     if checkpointer is not None:
+        _ensure_checkpoint_saver_instance(checkpointer)
         if telemetry is not None:
             checkpointer = InstrumentedCheckpointer(checkpointer, telemetry)
         compile_kwargs["checkpointer"] = checkpointer
-        compile_kwargs["interrupt_before"] = ["execute_tool"]
+        # Story 2.2: pause before tool side-effects when using checkpointers +
+        # human-in-the-loop workflows. Dev middleware / streaming chat passes
+        # interrupt_before_execute_tool=False so tool nodes run to completion
+        # and the assistant can stream a final answer after tools complete.
+        if interrupt_before_execute_tool:
+            compile_kwargs["interrupt_before"] = ["execute_tool"]
 
     return builder.compile(**compile_kwargs)

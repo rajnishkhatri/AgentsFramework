@@ -106,6 +106,99 @@ class TestLangGraphRuntimeStream:
         assert token_events[1].delta == "lo"
 
     @pytest.mark.asyncio
+    async def test_filters_guard_input_when_langgraph_node_tagged(self) -> None:
+        """Production graphs tag internal LLM nodes; only call_llm may surface."""
+        scripted = [
+            {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": _FakeChunk(content="accept")},
+                "name": "ChatModel",
+                "run_id": "lc-guard",
+                "metadata": {"langgraph_node": "guard_input"},
+            },
+            {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": _FakeChunk(content="Hi")},
+                "name": "ChatModel",
+                "run_id": "lc-main",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = []
+        async for ev in rt.run(thread_id="t1", input={}, identity=_facts()):
+            out.append(ev)
+        token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(token_events) == 1
+        assert token_events[0].delta == "Hi"
+
+    @pytest.mark.asyncio
+    async def test_null_langgraph_node_does_not_drop_tokens(self) -> None:
+        """LangGraph may include ``langgraph_node: null``; must not filter like ``!= call_llm``."""
+        scripted = [
+            {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": _FakeChunk(content="Hello")},
+                "name": "ChatModel",
+                "run_id": "lc-1",
+                "metadata": {"langgraph_node": None},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(token_events) == 1
+        assert token_events[0].delta == "Hello"
+
+    @pytest.mark.asyncio
+    async def test_on_llm_stream_emits_tokens_for_legacy_run_type(self) -> None:
+        class _GenChunk:
+            def __init__(self, text: str) -> None:
+                self.text = text
+
+        scripted = [
+            {
+                "event": "on_llm_stream",
+                "data": {"chunk": _GenChunk("legacy")},
+                "name": "LLM",
+                "run_id": "lc-legacy",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(token_events) == 1
+        assert token_events[0].delta == "legacy"
+
+    @pytest.mark.asyncio
+    async def test_tool_only_chat_end_emits_preview(self) -> None:
+        class _ToolOnlyMsg:
+            content = ""
+            tool_calls = [{"name": "calculator"}]
+
+        scripted = [
+            {
+                "event": "on_chat_model_end",
+                "data": {"output": _ToolOnlyMsg()},
+                "name": "ChatModel",
+                "run_id": "lc-tools",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(token_events) == 1
+        assert "calculator" in token_events[0].delta
+
+    @pytest.mark.asyncio
     async def test_translates_tool_start_and_end(self) -> None:
         scripted = [
             {

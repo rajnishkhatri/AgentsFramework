@@ -12,8 +12,10 @@ import pytest
 from pydantic import ValidationError
 
 from services.tools.file_io import FileIOInput, FileIOOutput, execute_file_io
-from services.tools.registry import ToolDefinition, ToolRegistry
+from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
+from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
 from services.tools.shell import ShellToolInput, ShellToolOutput, execute_shell
+from services.tools.task_tool import TaskToolInput
 from services.tools.web_search import WebSearchInput, WebSearchOutput, execute_web_search
 
 
@@ -186,6 +188,38 @@ class TestToolRegistry:
         result = registry.execute("fake", {"x": 1})
         assert "executed with" in result
 
+    def test_execute_with_result_wraps_string_executor(self):
+        registry = ToolRegistry({
+            "fake": ToolDefinition(
+                executor=lambda args: "ok",
+                schema=ShellToolInput,
+                cacheable=False,
+            ),
+        })
+        result = registry.execute_with_result("fake", {})
+        assert result.output == "ok"
+        assert result.ok is True
+        assert result.state_delta is None
+
+    def test_execute_with_result_preserves_structured_result(self):
+        def _structured(_args):
+            return ToolExecutionResult(
+                output="wrote file",
+                ok=True,
+                state_delta={"files": {"notes.txt": "hello"}},
+            )
+
+        registry = ToolRegistry({
+            "fake": ToolDefinition(
+                executor=_structured,
+                schema=ShellToolInput,
+                cacheable=False,
+            ),
+        })
+        result = registry.execute_with_result("fake", {})
+        assert result.output == "wrote file"
+        assert result.state_delta == {"files": {"notes.txt": "hello"}}
+
     def test_execute_unknown_tool_raises(self):
         registry = ToolRegistry({})
         with pytest.raises(KeyError):
@@ -225,3 +259,28 @@ class TestToolRegistry:
         schemas = registry.get_schemas()
         assert len(schemas) == 1
         assert schemas[0]["name"] == "shell"
+
+    def test_get_schemas_hides_internal_state_fields(self):
+        registry = ToolRegistry({
+            "state_file": ToolDefinition(
+                executor=execute_state_file_tool,
+                schema=StateFileToolInput,
+                cacheable=False,
+            ),
+        })
+        schemas = registry.get_schemas()
+        props = schemas[0]["parameters"]["properties"]
+        assert "_state" not in props
+
+    def test_get_schemas_hides_task_internal_fields(self):
+        registry = ToolRegistry({
+            "task": ToolDefinition(
+                executor=lambda _args: "ok",
+                schema=TaskToolInput,
+                cacheable=False,
+            ),
+        })
+        schemas = registry.get_schemas()
+        props = schemas[0]["parameters"]["properties"]
+        assert "_state" not in props
+        assert "_delegate_dispatch" not in props

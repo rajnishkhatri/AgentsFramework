@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from components.router import select_model
+from components.router import select_model, select_planning_depth
 from components.routing_config import RoutingConfig
 from services.base_config import AgentConfig, ModelProfile
 
@@ -197,3 +197,44 @@ class TestReturnShape:
         profile, reason = result
         assert isinstance(profile, ModelProfile)
         assert isinstance(reason, str) and reason
+
+
+class TestPlanningDepth:
+    @pytest.mark.parametrize(
+        "task_input,step_count,tool_results_count,expected_depth,expected_reason",
+        [
+            ("What is 2+2?", 0, 0, "L0", "simple-initial-task"),
+            (
+                "Compare architecture trade-offs and propose a migration roadmap with constraints.",
+                0,
+                0,
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
+            (
+                "Compare architecture options and design a migration plan.\n"
+                "Also include risks and phased rollout.\n"
+                "Then propose test strategy and governance checks?",
+                0,
+                0,
+                "L2",
+                "high-complexity-initial-task",
+            ),
+            ("Any follow-up after tools.", 1, 1, "L0", "post-tool-synthesis"),
+        ],
+    )
+    def test_select_planning_depth_levels(
+        self,
+        task_input: str,
+        step_count: int,
+        tool_results_count: int,
+        expected_depth: str,
+        expected_reason: str,
+    ) -> None:
+        depth, reason = select_planning_depth(
+            task_input=task_input,
+            step_count=step_count,
+            tool_results_count=tool_results_count,
+        )
+        assert depth == expected_depth
+        assert reason == expected_reason

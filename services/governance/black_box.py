@@ -73,7 +73,10 @@ class BlackBoxRecorder:
         """Export a workflow's trace as a structured JSON bundle with integrity verification.
 
         Returns a dict containing events, metadata, and a verification status
-        indicating whether the hash chain is intact.
+        indicating whether the hash chain is intact.  When the chain is broken,
+        the dict also exposes the FIRST broken event's id along with the
+        expected and actual hashes so explainability surfaces can report the
+        break location explicitly without re-hashing.
         """
         trace_file = self._storage_dir / workflow_id / "trace.jsonl"
         if not trace_file.exists():
@@ -82,6 +85,9 @@ class BlackBoxRecorder:
         events = []
         chain_valid = True
         prev_hash = "0" * 64
+        broken_at_event_id: str | None = None
+        broken_expected_hash: str | None = None
+        broken_actual_hash: str | None = None
 
         for line in trace_file.read_text().strip().split("\n"):
             if not line:
@@ -96,6 +102,10 @@ class BlackBoxRecorder:
 
             if stored_hash != expected_hash:
                 chain_valid = False
+                if broken_at_event_id is None:
+                    broken_at_event_id = event_data.get("event_id", "unknown")
+                    broken_expected_hash = expected_hash
+                    broken_actual_hash = stored_hash
                 logger.warning(
                     "Hash chain broken for workflow %s at event %s",
                     workflow_id,
@@ -110,6 +120,9 @@ class BlackBoxRecorder:
             "event_count": len(events),
             "events": events,
             "hash_chain_valid": chain_valid,
+            "broken_at_event_id": broken_at_event_id,
+            "broken_expected_hash": broken_expected_hash,
+            "broken_actual_hash": broken_actual_hash,
             "exported_at": datetime.now(UTC).isoformat() if events else None,
         }
 

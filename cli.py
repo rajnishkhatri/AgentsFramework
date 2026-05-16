@@ -39,11 +39,16 @@ def main() -> None:
     from services.base_config import AgentConfig, ModelProfile
     from services.governance.agent_facts_registry import AgentFactsRegistry
     from services.tools.file_io import FileIOInput, execute_file_io
+    from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
+    from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
     from services.tools.registry import ToolDefinition, ToolRegistry
     from services.tools.shell import ShellToolInput, execute_shell
+    from services.tools.task_tool import TaskToolInput, build_task_tool_executor
+    from services.tools.think_tool import ThinkToolInput, execute_think_tool
+    from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
     from services.tools.web_search import WebSearchInput, execute_web_search
     from trust.enums import IdentityStatus
-    from trust.models import AgentFacts
+    from trust.models import AgentFacts, Capability
 
     fast = ModelProfile(
         name="gpt-4o-mini",
@@ -70,9 +75,18 @@ def main() -> None:
     )
     routing_config = RoutingConfig()
 
+    delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({
         "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=True),
         "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=True),
+        "state_file": ToolDefinition(executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False),
+        "state_todo": ToolDefinition(executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False),
+        "task": ToolDefinition(
+            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+            schema=TaskToolInput,
+            cacheable=False,
+        ),
+        "think": ToolDefinition(executor=execute_think_tool, schema=ThinkToolInput, cacheable=False),
         "web_search": ToolDefinition(executor=execute_web_search, schema=WebSearchInput, cacheable=False),
     })
 
@@ -97,6 +111,7 @@ def main() -> None:
                 owner="cli-user",
                 version="1.0.0",
                 description="Default CLI agent",
+                capabilities=[Capability(name="delegate.subagent.*")],
                 status=IdentityStatus.ACTIVE,
             ),
             registered_by="cli-bootstrap",
@@ -126,6 +141,7 @@ def main() -> None:
                     cache_dir=cache_dir,
                     checkpointer=checkpointer,
                     agent_facts_registry=agent_facts_registry,
+                    interrupt_before_execute_tool=False,
                 )
                 return await graph.ainvoke(
                     {

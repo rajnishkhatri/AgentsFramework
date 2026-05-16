@@ -365,6 +365,1390 @@
     "title": "DashboardMetricsResponse",
     "type": "object"
   },
+  "ValidatorStatResponse": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "total_checks": {
+        "default": 0,
+        "title": "Total Checks",
+        "type": "integer"
+      },
+      "pass_count": {
+        "default": 0,
+        "title": "Pass Count",
+        "type": "integer"
+      },
+      "fail_count": {
+        "default": 0,
+        "title": "Fail Count",
+        "type": "integer"
+      },
+      "pass_rate": {
+        "default": 0.0,
+        "title": "Pass Rate",
+        "type": "number"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "ValidatorStatResponse",
+    "type": "object"
+  },
+  "GuardrailFailureResponse": {
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "validator": {
+        "title": "Validator",
+        "type": "string"
+      },
+      "fail_action": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Fail Action"
+      },
+      "timestamp": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Timestamp"
+      }
+    },
+    "required": [
+      "workflow_id",
+      "validator"
+    ],
+    "title": "GuardrailFailureResponse",
+    "type": "object"
+  },
+  "GuardrailSummaryResponse": {
+    "$defs": {
+      "GuardrailFailureResponse": {
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "validator": {
+            "title": "Validator",
+            "type": "string"
+          },
+          "fail_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Fail Action"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "workflow_id",
+          "validator"
+        ],
+        "title": "GuardrailFailureResponse",
+        "type": "object"
+      },
+      "ValidatorStatResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "total_checks": {
+            "default": 0,
+            "title": "Total Checks",
+            "type": "integer"
+          },
+          "pass_count": {
+            "default": 0,
+            "title": "Pass Count",
+            "type": "integer"
+          },
+          "fail_count": {
+            "default": 0,
+            "title": "Fail Count",
+            "type": "integer"
+          },
+          "pass_rate": {
+            "default": 0.0,
+            "title": "Pass Rate",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ValidatorStatResponse",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "total_checks": {
+        "default": 0,
+        "title": "Total Checks",
+        "type": "integer"
+      },
+      "pass_count": {
+        "default": 0,
+        "title": "Pass Count",
+        "type": "integer"
+      },
+      "fail_count": {
+        "default": 0,
+        "title": "Fail Count",
+        "type": "integer"
+      },
+      "pass_rate": {
+        "default": 0.0,
+        "title": "Pass Rate",
+        "type": "number"
+      },
+      "fail_action_distribution": {
+        "additionalProperties": {
+          "type": "integer"
+        },
+        "default": {},
+        "title": "Fail Action Distribution",
+        "type": "object"
+      },
+      "per_validator": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/ValidatorStatResponse"
+        },
+        "title": "Per Validator",
+        "type": "array"
+      },
+      "recent_failures": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/GuardrailFailureResponse"
+        },
+        "title": "Recent Failures",
+        "type": "array"
+      },
+      "trend_pass_rate_delta": {
+        "default": 0.0,
+        "title": "Trend Pass Rate Delta",
+        "type": "number"
+      }
+    },
+    "title": "GuardrailSummaryResponse",
+    "type": "object"
+  },
+  "CapabilityResponse": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "description": {
+        "default": "",
+        "title": "Description",
+        "type": "string"
+      },
+      "parameters": {
+        "additionalProperties": true,
+        "default": {},
+        "title": "Parameters",
+        "type": "object"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "CapabilityResponse",
+    "type": "object"
+  },
+  "PolicyResponse": {
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string"
+      },
+      "description": {
+        "default": "",
+        "title": "Description",
+        "type": "string"
+      },
+      "rules": {
+        "additionalProperties": true,
+        "default": {},
+        "title": "Rules",
+        "type": "object"
+      }
+    },
+    "required": [
+      "name"
+    ],
+    "title": "PolicyResponse",
+    "type": "object"
+  },
+  "AgentCardResponse": {
+    "$defs": {
+      "CapabilityResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CapabilityResponse",
+        "type": "object"
+      },
+      "PolicyResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "rules": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Rules",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PolicyResponse",
+        "type": "object"
+      }
+    },
+    "description": "Wire shape for the read-only Agent Registry card.\n\n``signature_verification_status`` distinguishes the three trust signals\n(``verified``, ``failed``, ``unavailable``); ``signature_verified`` is\nretained as a convenience boolean (``True`` only for ``verified``) so\nolder clients keep working while the UI migrates to the richer status\nstring.",
+    "properties": {
+      "agent_id": {
+        "title": "Agent Id",
+        "type": "string"
+      },
+      "agent_name": {
+        "title": "Agent Name",
+        "type": "string"
+      },
+      "owner": {
+        "title": "Owner",
+        "type": "string"
+      },
+      "version": {
+        "title": "Version",
+        "type": "string"
+      },
+      "description": {
+        "default": "",
+        "title": "Description",
+        "type": "string"
+      },
+      "capabilities": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/CapabilityResponse"
+        },
+        "title": "Capabilities",
+        "type": "array"
+      },
+      "policies": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/PolicyResponse"
+        },
+        "title": "Policies",
+        "type": "array"
+      },
+      "status": {
+        "title": "Status",
+        "type": "string"
+      },
+      "valid_until": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Valid Until"
+      },
+      "parent_agent_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Parent Agent Id"
+      },
+      "signature_truncated": {
+        "title": "Signature Truncated",
+        "type": "string"
+      },
+      "signature_verified": {
+        "title": "Signature Verified",
+        "type": "boolean"
+      },
+      "signature_verification_status": {
+        "default": "unavailable",
+        "title": "Signature Verification Status",
+        "type": "string"
+      },
+      "created_at": {
+        "format": "date-time",
+        "title": "Created At",
+        "type": "string"
+      },
+      "updated_at": {
+        "format": "date-time",
+        "title": "Updated At",
+        "type": "string"
+      }
+    },
+    "required": [
+      "agent_id",
+      "agent_name",
+      "owner",
+      "version",
+      "status",
+      "signature_truncated",
+      "signature_verified",
+      "created_at",
+      "updated_at"
+    ],
+    "title": "AgentCardResponse",
+    "type": "object"
+  },
+  "AgentAuditEntryResponse": {
+    "properties": {
+      "agent_id": {
+        "title": "Agent Id",
+        "type": "string"
+      },
+      "action": {
+        "title": "Action",
+        "type": "string"
+      },
+      "performed_by": {
+        "title": "Performed By",
+        "type": "string"
+      },
+      "timestamp": {
+        "format": "date-time",
+        "title": "Timestamp",
+        "type": "string"
+      },
+      "details": {
+        "additionalProperties": true,
+        "default": {},
+        "title": "Details",
+        "type": "object"
+      }
+    },
+    "required": [
+      "agent_id",
+      "action",
+      "performed_by",
+      "timestamp"
+    ],
+    "title": "AgentAuditEntryResponse",
+    "type": "object"
+  },
+  "IntegrityReportResponse": {
+    "description": "S3.1.1 wire shape: chain-integrity result for a single workflow.",
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "chain_valid": {
+        "title": "Chain Valid",
+        "type": "boolean"
+      },
+      "broken_at_event_id": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Broken At Event Id"
+      },
+      "expected_hash": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Expected Hash"
+      },
+      "actual_hash": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Actual Hash"
+      }
+    },
+    "required": [
+      "workflow_id",
+      "chain_valid"
+    ],
+    "title": "IntegrityReportResponse",
+    "type": "object"
+  },
+  "CorrelationHealthResponse": {
+    "description": "S3.1.2 wire shape: explicit per-key correlation status.\n\n`missing_keys` is the convenience list consumed by the Compliance UI's\n\"missing keys named explicitly\" card.",
+    "properties": {
+      "has_trace_id": {
+        "title": "Has Trace Id",
+        "type": "boolean"
+      },
+      "has_user_id": {
+        "title": "Has User Id",
+        "type": "boolean"
+      },
+      "has_task_id": {
+        "title": "Has Task Id",
+        "type": "boolean"
+      },
+      "has_agent_id": {
+        "title": "Has Agent Id",
+        "type": "boolean"
+      },
+      "missing_keys": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "title": "Missing Keys",
+        "type": "array"
+      }
+    },
+    "required": [
+      "has_trace_id",
+      "has_user_id",
+      "has_task_id",
+      "has_agent_id"
+    ],
+    "title": "CorrelationHealthResponse",
+    "type": "object"
+  },
+  "ComplianceBundleResponse": {
+    "$defs": {
+      "AgentAuditEntryResponse": {
+        "properties": {
+          "agent_id": {
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "performed_by": {
+            "title": "Performed By",
+            "type": "string"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          }
+        },
+        "required": [
+          "agent_id",
+          "action",
+          "performed_by",
+          "timestamp"
+        ],
+        "title": "AgentAuditEntryResponse",
+        "type": "object"
+      },
+      "AgentCardResponse": {
+        "description": "Wire shape for the read-only Agent Registry card.\n\n``signature_verification_status`` distinguishes the three trust signals\n(``verified``, ``failed``, ``unavailable``); ``signature_verified`` is\nretained as a convenience boolean (``True`` only for ``verified``) so\nolder clients keep working while the UI migrates to the richer status\nstring.",
+        "properties": {
+          "agent_id": {
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "owner": {
+            "title": "Owner",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "capabilities": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/CapabilityResponse"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "policies": {
+            "default": [],
+            "items": {
+              "$ref": "#/$defs/PolicyResponse"
+            },
+            "title": "Policies",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Valid Until"
+          },
+          "parent_agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Parent Agent Id"
+          },
+          "signature_truncated": {
+            "title": "Signature Truncated",
+            "type": "string"
+          },
+          "signature_verified": {
+            "title": "Signature Verified",
+            "type": "boolean"
+          },
+          "signature_verification_status": {
+            "default": "unavailable",
+            "title": "Signature Verification Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "agent_name",
+          "owner",
+          "version",
+          "status",
+          "signature_truncated",
+          "signature_verified",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AgentCardResponse",
+        "type": "object"
+      },
+      "BlackBoxEventResponse": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Step"
+          },
+          "details": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Details",
+            "type": "object"
+          },
+          "integrity_hash": {
+            "default": "",
+            "title": "Integrity Hash",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "workflow_id",
+          "event_type"
+        ],
+        "title": "BlackBoxEventResponse",
+        "type": "object"
+      },
+      "CapabilityResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "parameters": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CapabilityResponse",
+        "type": "object"
+      },
+      "CorrelationHealthResponse": {
+        "description": "S3.1.2 wire shape: explicit per-key correlation status.\n\n`missing_keys` is the convenience list consumed by the Compliance UI's\n\"missing keys named explicitly\" card.",
+        "properties": {
+          "has_trace_id": {
+            "title": "Has Trace Id",
+            "type": "boolean"
+          },
+          "has_user_id": {
+            "title": "Has User Id",
+            "type": "boolean"
+          },
+          "has_task_id": {
+            "title": "Has Task Id",
+            "type": "boolean"
+          },
+          "has_agent_id": {
+            "title": "Has Agent Id",
+            "type": "boolean"
+          },
+          "missing_keys": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Keys",
+            "type": "array"
+          }
+        },
+        "required": [
+          "has_trace_id",
+          "has_user_id",
+          "has_task_id",
+          "has_agent_id"
+        ],
+        "title": "CorrelationHealthResponse",
+        "type": "object"
+      },
+      "DecisionRecordResponse": {
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "alternatives": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Timestamp"
+          }
+        },
+        "required": [
+          "workflow_id",
+          "phase",
+          "description",
+          "rationale",
+          "confidence"
+        ],
+        "title": "DecisionRecordResponse",
+        "type": "object"
+      },
+      "IntegrityReportResponse": {
+        "description": "S3.1.1 wire shape: chain-integrity result for a single workflow.",
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "chain_valid": {
+            "title": "Chain Valid",
+            "type": "boolean"
+          },
+          "broken_at_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Broken At Event Id"
+          },
+          "expected_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Hash"
+          },
+          "actual_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Hash"
+          }
+        },
+        "required": [
+          "workflow_id",
+          "chain_valid"
+        ],
+        "title": "IntegrityReportResponse",
+        "type": "object"
+      },
+      "PolicyResponse": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "rules": {
+            "additionalProperties": true,
+            "default": {},
+            "title": "Rules",
+            "type": "object"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PolicyResponse",
+        "type": "object"
+      }
+    },
+    "description": "S3.1.2 wire shape: four-pillar compliance bundle for a workflow.\n\nThe ``integrity`` field embeds the full `IntegrityReportResponse` so the\nWorkflow Deep Dive's Recording quadrant can name the broken event id\nplus the expected/actual hashes (Sprint 3 review F4).",
+    "properties": {
+      "workflow_id": {
+        "title": "Workflow Id",
+        "type": "string"
+      },
+      "event_count": {
+        "default": 0,
+        "title": "Event Count",
+        "type": "integer"
+      },
+      "hash_chain_valid": {
+        "default": false,
+        "title": "Hash Chain Valid",
+        "type": "boolean"
+      },
+      "bundle_type": {
+        "default": "compliance_audit",
+        "title": "Bundle Type",
+        "type": "string"
+      },
+      "exported_at": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Exported At"
+      },
+      "events": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/BlackBoxEventResponse"
+        },
+        "title": "Events",
+        "type": "array"
+      },
+      "identity_cards": {
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgentCardResponse"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "default": {},
+        "title": "Identity Cards",
+        "type": "object"
+      },
+      "audit_trails": {
+        "additionalProperties": {
+          "items": {
+            "$ref": "#/$defs/AgentAuditEntryResponse"
+          },
+          "type": "array"
+        },
+        "default": {},
+        "title": "Audit Trails",
+        "type": "object"
+      },
+      "phase_decisions": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/DecisionRecordResponse"
+        },
+        "title": "Phase Decisions",
+        "type": "array"
+      },
+      "correlation_health": {
+        "$ref": "#/$defs/CorrelationHealthResponse"
+      },
+      "integrity": {
+        "$ref": "#/$defs/IntegrityReportResponse"
+      }
+    },
+    "required": [
+      "workflow_id",
+      "correlation_health",
+      "integrity"
+    ],
+    "title": "ComplianceBundleResponse",
+    "type": "object"
+  },
+  "WorkflowIntegritySummaryResponse": {
+    "$defs": {
+      "IntegrityReportResponse": {
+        "description": "S3.1.1 wire shape: chain-integrity result for a single workflow.",
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "chain_valid": {
+            "title": "Chain Valid",
+            "type": "boolean"
+          },
+          "broken_at_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Broken At Event Id"
+          },
+          "expected_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Hash"
+          },
+          "actual_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Hash"
+          }
+        },
+        "required": [
+          "workflow_id",
+          "chain_valid"
+        ],
+        "title": "IntegrityReportResponse",
+        "type": "object"
+      },
+      "WorkflowSummaryResponse": {
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "event_count": {
+            "default": 0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "status": {
+            "default": "unknown",
+            "title": "Status",
+            "type": "string"
+          },
+          "primary_agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Primary Agent Id"
+          }
+        },
+        "required": [
+          "workflow_id"
+        ],
+        "title": "WorkflowSummaryResponse",
+        "type": "object"
+      }
+    },
+    "description": "One row in the batched compliance summary.\n\nPairs a workflow summary with its integrity report (or ``None`` when\nthe workflow could not be read).  See `ComplianceSummaryResponse`.",
+    "properties": {
+      "workflow": {
+        "$ref": "#/$defs/WorkflowSummaryResponse"
+      },
+      "integrity": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/IntegrityReportResponse"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      }
+    },
+    "required": [
+      "workflow"
+    ],
+    "title": "WorkflowIntegritySummaryResponse",
+    "type": "object"
+  },
+  "ComplianceSummaryResponse": {
+    "$defs": {
+      "IntegrityReportResponse": {
+        "description": "S3.1.1 wire shape: chain-integrity result for a single workflow.",
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "chain_valid": {
+            "title": "Chain Valid",
+            "type": "boolean"
+          },
+          "broken_at_event_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Broken At Event Id"
+          },
+          "expected_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expected Hash"
+          },
+          "actual_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Actual Hash"
+          }
+        },
+        "required": [
+          "workflow_id",
+          "chain_valid"
+        ],
+        "title": "IntegrityReportResponse",
+        "type": "object"
+      },
+      "WorkflowIntegritySummaryResponse": {
+        "description": "One row in the batched compliance summary.\n\nPairs a workflow summary with its integrity report (or ``None`` when\nthe workflow could not be read).  See `ComplianceSummaryResponse`.",
+        "properties": {
+          "workflow": {
+            "$ref": "#/$defs/WorkflowSummaryResponse"
+          },
+          "integrity": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/IntegrityReportResponse"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "workflow"
+        ],
+        "title": "WorkflowIntegritySummaryResponse",
+        "type": "object"
+      },
+      "WorkflowSummaryResponse": {
+        "properties": {
+          "workflow_id": {
+            "title": "Workflow Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "event_count": {
+            "default": 0,
+            "title": "Event Count",
+            "type": "integer"
+          },
+          "status": {
+            "default": "unknown",
+            "title": "Status",
+            "type": "string"
+          },
+          "primary_agent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Primary Agent Id"
+          }
+        },
+        "required": [
+          "workflow_id"
+        ],
+        "title": "WorkflowSummaryResponse",
+        "type": "object"
+      }
+    },
+    "description": "Batched compliance home payload (Sprint 3 review F3 fix).\n\nReplaces the previous per-workflow integrity fan-out: one call returns\nevery workflow + integrity row, plus the bounds the server actually\napplied (so the UI can render the audit window verbatim).",
+    "properties": {
+      "rows": {
+        "default": [],
+        "items": {
+          "$ref": "#/$defs/WorkflowIntegritySummaryResponse"
+        },
+        "title": "Rows",
+        "type": "array"
+      },
+      "generated_at": {
+        "format": "date-time",
+        "title": "Generated At",
+        "type": "string"
+      },
+      "since": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Since"
+      },
+      "until": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Until"
+      }
+    },
+    "required": [
+      "generated_at"
+    ],
+    "title": "ComplianceSummaryResponse",
+    "type": "object"
+  },
+  "LogRowResponse": {
+    "description": "S4.3.1 wire shape: a single parsed log line.\n\n`level=\"UNKNOWN\"` when the formatter pattern did not match -- the raw line\nis preserved in `raw` and `message` so the operator can still see the\nbytes that hit disk.",
+    "properties": {
+      "concern": {
+        "title": "Concern",
+        "type": "string"
+      },
+      "timestamp": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Timestamp"
+      },
+      "logger": {
+        "default": "",
+        "title": "Logger",
+        "type": "string"
+      },
+      "level": {
+        "default": "UNKNOWN",
+        "title": "Level",
+        "type": "string"
+      },
+      "message": {
+        "default": "",
+        "title": "Message",
+        "type": "string"
+      },
+      "raw": {
+        "default": "",
+        "title": "Raw",
+        "type": "string"
+      }
+    },
+    "required": [
+      "concern"
+    ],
+    "title": "LogRowResponse",
+    "type": "object"
+  },
   "HealthResponse": {
     "properties": {
       "status": {

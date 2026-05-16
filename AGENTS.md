@@ -96,6 +96,12 @@ See also: @docs/Architectures/FRONTEND_ARCHITECTURE.md, @docs/Architectures/FRON
 
 Frontend code review prompts live in `prompts/codeReviewer/frontend/` (mirror of `prompts/codeReviewer/` for backend). The frontend reviewer encodes the §23 review checklists as seven dimensions (FD1 Layering, FD2 Patterns, FD3 Security, FD4 Accessibility, FD5 Performance & Streaming, FD6 Tests, FD7 Anti-Patterns) and auto-rejects on the security/trust-critical anti-patterns FE-AP-4, FE-AP-6, FE-AP-7, FE-AP-12, FE-AP-18, and FE-AP-19.
 
+Backend reviewer prompts are versioned:
+
+- `prompts/codeReviewer/` is the stable v1 baseline.
+- `prompts/codeReviewer/v2/` is the deep-agent hardening prompt family (Sprint 4).
+- Rollout policy: default to v1, select v2 explicitly for staged adoption or A/B comparisons (`prompt_version` config field or CLI `--prompt-version v2`).
+
 ## Trust Kernel Rules
 
 A type belongs in `trust/` only if ALL criteria are met:

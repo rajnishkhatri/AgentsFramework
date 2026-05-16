@@ -25,6 +25,8 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [busy, setBusy] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  /** Stable LangGraph thread id for checkpointer + /run/stream (multiturn). */
+  const threadIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,6 +38,15 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
       role: "user",
       text: body,
     };
+    if (threadIdRef.current === null) {
+      threadIdRef.current = crypto.randomUUID();
+    }
+    const threadId = threadIdRef.current;
+    // Only the new user line: middleware uses `thread_id` + SqliteSaver so LangGraph
+    // appends to checkpoint state. Sending full chat history duplicates prior turns in
+    // `messages` and breaks tool follow-ups on turn 2+.
+    const messagesForApi = [{ role: "user" as const, content: body }];
+
     setMessages((prev) => [...prev, userMsg]);
     setBusy(true);
 
@@ -43,7 +54,10 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
       const res = await fetch("/api/run/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: { messages: [{ role: "user", content: body }] } }),
+        body: JSON.stringify({
+          thread_id: threadId,
+          input: { messages: messagesForApi },
+        }),
       });
 
       if (!res.ok || !res.body) {
@@ -63,6 +77,10 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantText = "";
+      // region agent log
+      let sseTextDeltaEvents = 0;
+      const threadDbg = threadId.slice(-12);
+      // endregion agent log
 
       const flushEvent = (rawEvent: string): void => {
         let eventName = "message";
@@ -85,6 +103,9 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
             message?: string;
           };
           if (eventName === "TEXT_MESSAGE_CONTENT" && typeof payload.delta === "string") {
+            // region agent log
+            sseTextDeltaEvents += 1;
+            // endregion agent log
             assistantText += payload.delta;
             const snapshot = assistantText;
             setMessages((prev) =>
@@ -114,6 +135,27 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
         }
       }
       if (buffer.trim().length > 0) flushEvent(buffer);
+      // region agent log
+      fetch("http://127.0.0.1:7741/ingest/df13fdc3-767a-4065-8184-895d6434b022", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Debug-Session-Id": "fc2601",
+        },
+        body: JSON.stringify({
+          sessionId: "fc2601",
+          hypothesisId: "H-front",
+          location: "chat-shell.tsx:stream_end",
+          message: "assistant_final_length",
+          data: {
+            thread_tail: threadDbg,
+            text_delta_events: sseTextDeltaEvents,
+            text_len_chars: assistantText.length,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // endregion agent log
     } catch {
       const errMsg: Message = {
         id: crypto.randomUUID(),

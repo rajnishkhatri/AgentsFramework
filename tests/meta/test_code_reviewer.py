@@ -18,7 +18,15 @@ from meta.code_reviewer import (
     run_code_reviewer_cli,
     run_deterministic_review,
 )
-from trust.review_schema import Severity, Verdict
+from trust.review_schema import (
+    Certificate,
+    DimensionResult,
+    DimensionStatus,
+    ReviewFinding,
+    ReviewReport,
+    Severity,
+    Verdict,
+)
 
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -288,6 +296,41 @@ class TestCodeReviewerEvalCapture:
         assert "error" in recorded[0]["ai_response"]
 
 
+@pytest.mark.asyncio
+async def test_prompt_version_v2_selects_v2_templates() -> None:
+    minimal = {
+        "verdict": "approve",
+        "statement": "ok",
+        "confidence": 0.9,
+        "dimensions": [],
+        "gaps": [],
+        "validation_log": [],
+        "files_reviewed": [],
+    }
+    llm = AsyncMock()
+    llm.invoke.return_value = MagicMock(content=json.dumps(minimal))
+    ps = MagicMock()
+    ps.render_prompt.return_value = "rendered"
+    profile = MagicMock()
+    profile.name = "gpt-4o-mini"
+
+    agent = CodeReviewerAgent(
+        llm_service=llm,
+        prompt_service=ps,
+        judge_profile=profile,
+        prompt_version="v2",
+    )
+    report = await agent.review([str(AGENT_ROOT / "trust" / "enums.py")])
+    assert report.verdict == Verdict.APPROVE
+
+    expected_templates = {
+        "codeReviewer/v2/CodeReviewer_system_prompt",
+        "codeReviewer/v2/CodeReviewer_review_submission",
+    }
+    rendered_templates = {call.args[0] for call in ps.render_prompt.call_args_list}
+    assert expected_templates.issubset(rendered_templates)
+
+
 # ── L3: end-to-end with recorded LLM fixture (STORY-408) ───────────
 
 
@@ -341,3 +384,127 @@ class TestCodeReviewerL3:
         )
         assert isinstance(report.confidence, float)
         assert 0.0 <= report.confidence <= 1.0
+
+
+class TestCodeReviewerNormalizationAndReconciliation:
+    def test_parse_review_response_normalizes_enum_case_and_missing_fields(self):
+        agent = CodeReviewerAgent()
+        raw = json.dumps({
+            "verdict": "APPROVE",
+            "statement": "ok",
+            "confidence": 0.9,
+            "dimensions": [
+                {
+                    "dimension": "D1",
+                    "name": "Architectural Compliance",
+                    "status": "PARTIAL",
+                    "findings": [
+                        {
+                            "rule_id": "DEP.h_no_h",
+                            "severity": "WARNING",
+                            "file": "services/tools/registry.py",
+                            "line": 10,
+                            "description": "Possible coupling",
+                            "fix_suggestion": "Refactor dependency",
+                        }
+                    ],
+                }
+            ],
+            "gaps": [],
+            "validation_log": [],
+            "files_reviewed": [],
+        })
+
+        report = agent._parse_review_response(raw)
+        assert report.verdict == Verdict.APPROVE
+        assert report.dimensions[0].status == DimensionStatus.PARTIAL
+        finding = report.dimensions[0].findings[0]
+        assert finding.severity == Severity.WARNING
+        assert finding.dimension == "D1"
+        assert finding.confidence == 0.6
+        assert finding.certificate.premises
+
+    def test_merge_reports_downgrades_uncorroborated_d1_critical(self):
+        agent = CodeReviewerAgent()
+        deterministic = run_deterministic_review([str(AGENT_ROOT / "trust" / "enums.py")])
+        llm = ReviewReport(
+            verdict=Verdict.REJECT,
+            statement="llm reject",
+            confidence=0.8,
+            dimensions=[
+                DimensionResult(
+                    dimension="D1",
+                    name="Architectural Compliance",
+                    status=DimensionStatus.FAIL,
+                    hypotheses_tested=1,
+                    hypotheses_confirmed=1,
+                    hypotheses_killed=0,
+                    findings=[
+                        ReviewFinding(
+                            rule_id="DEP.trust_no_upward",
+                            dimension="D1",
+                            severity=Severity.CRITICAL,
+                            file="orchestration/state.py",
+                            line=5,
+                            description="False positive",
+                            fix_suggestion="",
+                            confidence=0.9,
+                            certificate=Certificate(
+                                premises=["[P1] LLM claim"],
+                                traces=[],
+                                conclusion="claim",
+                            ),
+                        )
+                    ],
+                )
+            ],
+            gaps=[],
+            validation_log=[],
+            files_reviewed=["orchestration/state.py"],
+        )
+
+        merged = agent._merge_reports(deterministic, llm)
+        d1 = next(d for d in merged.dimensions if d.dimension == "D1")
+        assert d1.findings
+        assert d1.findings[0].severity == Severity.WARNING
+        assert merged.verdict != Verdict.REJECT
+        assert any("downgraded to warning" in gap for gap in merged.gaps)
+
+    def test_parse_review_response_second_stage_alias_and_dimension_inference(self):
+        agent = CodeReviewerAgent()
+        raw = json.dumps({
+            "verdict": "REQUEST CHANGES",
+            "dimensions": [
+                {
+                    "dimension": "D1 Architectural Compliance",
+                    "findings": [
+                        {
+                            "rule": "DEP.h_no_vertical",
+                            "file": "components/router.py",
+                            "message": "Vertical import detected in horizontal layer.",
+                            "severity": "ERROR",
+                            "suggestion": "Refactor import direction.",
+                        }
+                    ],
+                },
+                {
+                    "dimension": "S4.DOCS.1",
+                    "findings": [],
+                },
+            ],
+        })
+
+        report = agent._parse_review_response(raw)
+        assert report.verdict == Verdict.REQUEST_CHANGES
+        assert report.dimensions[0].dimension == "D1"
+        assert report.dimensions[0].name == "Architectural Compliance"
+        assert report.dimensions[0].status == DimensionStatus.PARTIAL
+
+        finding = report.dimensions[0].findings[0]
+        assert finding.rule_id == "DEP.h_no_vertical"
+        assert finding.description == "Vertical import detected in horizontal layer."
+        assert finding.severity == Severity.CRITICAL
+        assert finding.fix_suggestion == "Refactor import direction."
+
+        # Unknown custom dimension gets mapped to a supported dimension id.
+        assert report.dimensions[1].dimension == "D5"

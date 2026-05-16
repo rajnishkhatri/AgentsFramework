@@ -1,0 +1,768 @@
+[
+  {
+    "id": "easy_internal_todo_brief",
+    "task_input": "Create a one-item execution checklist and confirm completion.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "easy-1-todo",
+                  "content": "Create checklist item",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "easy-1-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Checklist created and completed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L0",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "easy-1-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "source": "internal_synthetic",
+      "primary_capability": "C2",
+      "selection_rationale": "Single-state transition with deterministic completion."
+    }
+  },
+  {
+    "id": "easy_hotpot_style_summary_note",
+    "task_input": "Summarize two short constraints into a single implementation note.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "notes/easy_hotpot_summary.md",
+              "content": "Constraint A and B reconciled into one concise implementation note."
+            }
+          }
+        ]
+      },
+      {
+        "content": "Summary note saved with reconciled constraints.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L0",
+      "final_depth": "L0",
+      "required_todos": [],
+      "required_files": [
+        "notes/easy_hotpot_summary.md"
+      ],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "source": "hotpot_style",
+      "primary_capability": "C3",
+      "selection_rationale": "Single-artifact persistence without branching."
+    }
+  },
+  {
+    "id": "easy_gaia_style_single_plan",
+    "task_input": "Draft a short one-step plan and mark it done.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "easy-3-todo",
+                  "content": "Draft one-step plan",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "easy-3-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Plan drafted and closed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L0",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "easy-3-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "source": "gaia_style",
+      "primary_capability": "C1",
+      "selection_rationale": "Simple objective intended to stay at shallow planning depth."
+    }
+  },
+  {
+    "id": "easy_arena_style_compare_then_close",
+    "task_input": "Compare two options briefly and close the tracking todo.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "easy-4-todo",
+                  "content": "Compare option alpha vs beta",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "easy-4-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Comparison complete and task closed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L0",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "easy-4-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "easy",
+      "source": "arena_style",
+      "primary_capability": "C2",
+      "selection_rationale": "Minimal compare-and-close flow with deterministic state transition."
+    }
+  },
+  {
+    "id": "medium_internal_plan_and_file",
+    "task_input": "Create a two-step implementation plan, persist notes, and close work tracking.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "med-1-todo",
+                  "content": "Create two-step implementation plan",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "plans/medium_internal_plan.md",
+              "content": "Step 1: Baseline assessment. Step 2: Controlled rollout."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "med-1-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Plan and notes are complete.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "med-1-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "plans/medium_internal_plan.md"
+      ],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "source": "internal_synthetic",
+      "primary_capability": "C3",
+      "selection_rationale": "Moderate sequencing with both todo and file artifacts."
+    }
+  },
+  {
+    "id": "medium_hotpot_multi_constraint",
+    "task_input": "Reconcile two linked constraints, track progress, and produce a short synthesis.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "med-2-todo",
+                  "content": "Reconcile linked constraints",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "med-2-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Constraints reconciled with clear trade-off synthesis.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "med-2-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "source": "hotpot_style",
+      "primary_capability": "C5",
+      "selection_rationale": "Compositional reasoning with objective state completion checks."
+    }
+  },
+  {
+    "id": "medium_gaia_compare_and_record",
+    "task_input": "Compare rollout paths, write recommendation note, and finalize the checklist.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "med-3-todo",
+                  "content": "Compare rollout paths",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "notes/medium_gaia_recommendation.md",
+              "content": "Recommendation: phased rollout with explicit rollback checkpoints."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "med-3-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Recommendation recorded and checklist closed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "med-3-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "notes/medium_gaia_recommendation.md"
+      ],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "source": "gaia_style",
+      "primary_capability": "C1",
+      "selection_rationale": "Requires moderate planning then deterministic closure."
+    }
+  },
+  {
+    "id": "medium_arena_review_actions",
+    "task_input": "Generate a compact review action list, persist it, and mark review complete.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "med-4-todo",
+                  "content": "Prepare review action list",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "reviews/medium_actions.md",
+              "content": "- tighten tests\n- refine prompt criteria\n- add rollback notes"
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "med-4-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Review actions prepared and review is complete.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "med-4-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "reviews/medium_actions.md"
+      ],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "medium",
+      "source": "arena_style",
+      "primary_capability": "C5",
+      "selection_rationale": "Two-objective task with reproducible artifacts."
+    }
+  },
+  {
+    "id": "hard_internal_offload_stress",
+    "task_input": "Produce a large intermediate artifact, persist governance notes, and complete all tracking tasks.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "hard-1-todo-a",
+                  "content": "Generate large intermediate artifact",
+                  "status": "in_progress"
+                },
+                {
+                  "id": "hard-1-todo-b",
+                  "content": "Persist governance notes",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "emit_large",
+            "args": {
+              "size": 150,
+              "char": "Q"
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "governance/hard_internal_notes.md",
+              "content": "Artifact reviewed. Governance notes captured with follow-up constraints."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-1-todo-a",
+              "status": "completed"
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-1-todo-b",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Large artifact handled, notes persisted, and all tasks completed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "hard-1-todo-a",
+          "status": "completed"
+        },
+        {
+          "id": "hard-1-todo-b",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "governance/hard_internal_notes.md"
+      ],
+      "expect_offload": true
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "source": "internal_synthetic",
+      "primary_capability": "C4",
+      "selection_rationale": "Explicit stress path for offload plus multi-artifact reconciliation."
+    }
+  },
+  {
+    "id": "hard_gaia_multi_artifact_chain",
+    "task_input": "Decompose a complex rollout objective, capture intermediate notes, emit stress output, and finalize recommendation.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "hard-2-todo",
+                  "content": "Run multi-artifact rollout analysis",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "analysis/hard_gaia_intermediate.md",
+              "content": "Intermediate decomposition across policy, cost, and rollback dimensions."
+            }
+          },
+          {
+            "name": "emit_large",
+            "args": {
+              "size": 180,
+              "char": "G"
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "analysis/hard_gaia_recommendation.md",
+              "content": "Final recommendation: staged migration with measurable promotion gates."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-2-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Complex rollout analysis completed with final recommendation.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "hard-2-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "analysis/hard_gaia_intermediate.md",
+        "analysis/hard_gaia_recommendation.md"
+      ],
+      "expect_offload": true
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "source": "gaia_style",
+      "primary_capability": "C4",
+      "selection_rationale": "Hard chain with decomposition, multiple artifacts, and offload."
+    }
+  },
+  {
+    "id": "hard_hotpot_constraint_conflict",
+    "task_input": "Resolve conflicting constraints across phases, document rationale, and close all validation steps.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "hard-3-todo-a",
+                  "content": "Resolve phase-one conflict",
+                  "status": "in_progress"
+                },
+                {
+                  "id": "hard-3-todo-b",
+                  "content": "Resolve phase-two conflict",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "constraints/hard_hotpot_resolution.md",
+              "content": "Conflict resolution rationale with explicit assumptions and guardrails."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-3-todo-a",
+              "status": "completed"
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-3-todo-b",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Constraint conflicts resolved and validation steps completed.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "hard-3-todo-a",
+          "status": "completed"
+        },
+        {
+          "id": "hard-3-todo-b",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "constraints/hard_hotpot_resolution.md"
+      ],
+      "expect_offload": false
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "source": "hotpot_style",
+      "primary_capability": "C5",
+      "selection_rationale": "Hard reasoning case with multi-constraint reconciliation and auditable outputs."
+    }
+  },
+  {
+    "id": "hard_arena_review_and_stress",
+    "task_input": "Perform a deep review workflow with stress artifact generation, capture findings, and finalize execution.",
+    "llm_script": [
+      {
+        "content": "",
+        "tool_calls": [
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "set",
+              "todos": [
+                {
+                  "id": "hard-4-todo",
+                  "content": "Run deep review workflow",
+                  "status": "in_progress"
+                }
+              ]
+            }
+          },
+          {
+            "name": "emit_large",
+            "args": {
+              "size": 140,
+              "char": "R"
+            }
+          },
+          {
+            "name": "state_file",
+            "args": {
+              "operation": "write",
+              "file_path": "reviews/hard_arena_findings.md",
+              "content": "Deep review findings, risk scoring, and prioritized remediation actions."
+            }
+          },
+          {
+            "name": "state_todo",
+            "args": {
+              "operation": "update_status",
+              "todo_id": "hard-4-todo",
+              "status": "completed"
+            }
+          }
+        ]
+      },
+      {
+        "content": "Deep review completed with findings and remediation actions.",
+        "tool_calls": []
+      }
+    ],
+    "expectations": {
+      "initial_depth": "L1",
+      "final_depth": "L0",
+      "required_todos": [
+        {
+          "id": "hard-4-todo",
+          "status": "completed"
+        }
+      ],
+      "required_files": [
+        "reviews/hard_arena_findings.md"
+      ],
+      "expect_offload": true
+    },
+    "metadata": {
+      "difficulty": "hard",
+      "source": "arena_style",
+      "primary_capability": "C1",
+      "selection_rationale": "Hard sequencing + stress output + final synthesis closure."
+    }
+  }
+]

@@ -136,6 +136,87 @@ class TestInstrumentedCheckpointerPassthrough:
         assert telemetry.rollback_invocations == 0
 
 
+# ── LangGraph surface-area regression tests ────────────────────────
+#
+# LangGraph's pregel loop binds ``checkpointer.get_next_version`` /
+# ``put_writes`` / ``aput_writes`` directly during compilation
+# (see langgraph/pregel/loop.py). When ``InstrumentedCheckpointer``
+# relied solely on ``__getattr__`` for these, ``inspect.signature``
+# (used by pregel to detect optional ``task_path``) and direct method
+# binding were brittle. These tests pin explicit delegation.
+
+
+class _CheckpointSurfaceStub:
+    """Stub exposing the exact LangGraph-surface methods we delegate."""
+
+    def __init__(self) -> None:
+        self.next_version_calls: list[tuple[tuple, dict]] = []
+        self.put_writes_calls: list[tuple[tuple, dict]] = []
+        self.aput_writes_calls: list[tuple[tuple, dict]] = []
+
+    def get_next_version(self, *args: Any, **kwargs: Any) -> int:
+        self.next_version_calls.append((args, kwargs))
+        return 7
+
+    def put_writes(self, *args: Any, **kwargs: Any) -> str:
+        self.put_writes_calls.append((args, kwargs))
+        return "wrote"
+
+    async def aput_writes(self, *args: Any, **kwargs: Any) -> str:
+        self.aput_writes_calls.append((args, kwargs))
+        return "wrote-async"
+
+
+class TestInstrumentedCheckpointerLangGraphSurface:
+    """Direct delegation tests for methods LangGraph binds at compile time."""
+
+    def test_get_next_version_delegates_to_inner(self):
+        inner = _CheckpointSurfaceStub()
+        wrapper = InstrumentedCheckpointer(inner, FrameworkTelemetry())
+
+        assert wrapper.get_next_version("v1", None) == 7
+        assert inner.next_version_calls == [(("v1", None), {})]
+
+    def test_put_writes_delegates_to_inner(self):
+        inner = _CheckpointSurfaceStub()
+        telemetry = FrameworkTelemetry()
+        wrapper = InstrumentedCheckpointer(inner, telemetry)
+
+        assert wrapper.put_writes({"cfg": True}, [("ch", 1)], "task-1") == "wrote"
+        assert inner.put_writes_calls == [
+            (({"cfg": True}, [("ch", 1)], "task-1"), {})
+        ]
+        assert telemetry.checkpoint_invocations == 0, (
+            "put_writes (intermediate channel writes) must NOT increment "
+            "checkpoint_invocations -- STORY-412 maps a checkpoint to a "
+            "full put() call only."
+        )
+
+    @pytest.mark.asyncio
+    async def test_aput_writes_delegates_to_inner(self):
+        inner = _CheckpointSurfaceStub()
+        telemetry = FrameworkTelemetry()
+        wrapper = InstrumentedCheckpointer(inner, telemetry)
+
+        assert (
+            await wrapper.aput_writes({"cfg": True}, [("ch", 1)], "task-1")
+            == "wrote-async"
+        )
+        assert inner.aput_writes_calls == [
+            (({"cfg": True}, [("ch", 1)], "task-1"), {})
+        ]
+        assert telemetry.checkpoint_invocations == 0
+
+    def test_get_next_version_is_a_real_method_not_just_dunder_getattr(self):
+        """LangGraph's pregel uses ``inspect.signature(checkpointer.put_writes)``;
+        bound methods discovered via ``__getattr__`` lose the wrapper identity.
+        Pin the method as a real attribute on the class, not a fallback.
+        """
+        assert "get_next_version" in InstrumentedCheckpointer.__dict__
+        assert "put_writes" in InstrumentedCheckpointer.__dict__
+        assert "aput_writes" in InstrumentedCheckpointer.__dict__
+
+
 # ── Integration: build_graph wires the wrapper end-to-end ──────────
 
 

@@ -8,13 +8,15 @@
 
 There are five independent but correlated planes of logging. They share `trace_id` as the correlation key — but only if you bridge the gap described in the [Known Gap](#known-gap) section below.
 
-| Plane | Where it lands | Keyed by |
-|---|---|---|
-| **HTTP layer** | `middleware` stdout / structlog | `trace_id`, `run_id`, `thread_id` |
-| **Domain events → SSE** | SSE stream to browser | `trace_id` (minted by `LangGraphRuntime`) |
-| **Black box recorder** | `cache/black_box_recordings/<workflow_id>/trace.jsonl` | `workflow_id` |
-| **Phase logger** | `cache/phase_logs/<workflow_id>/decisions.jsonl` | `workflow_id` |
-| **Eval capture** | `logging.json` handler for `services.eval_capture` | `task_id`, `user_id` |
+
+| Plane                   | Where it lands                                         | Keyed by                                  |
+| ----------------------- | ------------------------------------------------------ | ----------------------------------------- |
+| **HTTP layer**          | `middleware` stdout / structlog                        | `trace_id`, `run_id`, `thread_id`         |
+| **Domain events → SSE** | SSE stream to browser                                  | `trace_id` (minted by `LangGraphRuntime`) |
+| **Black box recorder**  | `cache/black_box_recordings/<workflow_id>/trace.jsonl` | `workflow_id`                             |
+| **Phase logger**        | `cache/phase_logs/<workflow_id>/decisions.jsonl`       | `workflow_id`                             |
+| **Eval capture**        | `logging.json` handler for `services.eval_capture`     | `task_id`, `user_id`                      |
+
 
 ---
 
@@ -75,15 +77,17 @@ cache/black_box_recordings/<workflow_id>/trace.jsonl
 
 Event types recorded during a run:
 
-| `EventType` | When recorded |
-|---|---|
-| `TASK_STARTED` | Graph entry |
-| `GUARDRAIL_CHECKED` | Input / output guardrail pass or fail |
-| `MODEL_SELECTED` | Router picks a model tier |
-| `TOOL_CALLED` | Any tool invocation (with `cached` flag) |
-| `STEP_EXECUTED` | Each ReAct step |
-| `TASK_COMPLETED` | Graph exit |
-| `ERROR_OCCURRED` | Any unhandled exception |
+
+| `EventType`         | When recorded                            |
+| ------------------- | ---------------------------------------- |
+| `TASK_STARTED`      | Graph entry                              |
+| `GUARDRAIL_CHECKED` | Input / output guardrail pass or fail    |
+| `MODEL_SELECTED`    | Router picks a model tier                |
+| `TOOL_CALLED`       | Any tool invocation (with `cached` flag) |
+| `STEP_EXECUTED`     | Each ReAct step                          |
+| `TASK_COMPLETED`    | Graph exit                               |
+| `ERROR_OCCURRED`    | Any unhandled exception                  |
+
 
 ### Phase logger
 
@@ -107,6 +111,7 @@ python -m middleware
 ```
 
 This:
+
 - Loads `.env`
 - Runs `setup_logging()` → writes structured logs per `logging.json`
 - Registers `dev-agent` `AgentFacts` in `cache/agent_facts/`
@@ -229,6 +234,7 @@ config = {"configurable": {"thread_id": thread_id}}
 ```
 
 This means:
+
 - `verify_authorize_log_node` falls back to `workflow_id` from graph state (empty for the middleware path).
 - Black box recorder keys recordings under an empty `workflow_id`.
 - Eval capture records have empty `task_id`.
@@ -255,30 +261,35 @@ After this change, the `trace_id` from the SSE stream will match the `workflow_i
 
 ## Cross-Correlation Reference
 
-| Log surface | How to read it | Correlation key |
-|---|---|---|
-| Browser EventStream | DevTools → Network → EventStream tab | `trace_id` in every event payload |
-| Middleware stdout | Terminal running `python -m middleware` | `trace=<trace_id>` in `stream_ended` |
-| Black box JSONL | `cache/black_box_recordings/<id>/trace.jsonl` | `workflow_id` (should equal `trace_id` after fix) |
-| Phase decisions JSONL | `cache/phase_logs/<id>/decisions.jsonl` | `workflow_id` |
-| Eval capture logs | structured log file via `logging.json` | `task_id`, `user_id` |
-| Trust trace JSONL | `cache/trust_traces/` (after wiring `trace_emit`) | `trace_id` |
+
+| Log surface           | How to read it                                    | Correlation key                                   |
+| --------------------- | ------------------------------------------------- | ------------------------------------------------- |
+| Browser EventStream   | DevTools → Network → EventStream tab              | `trace_id` in every event payload                 |
+| Middleware stdout     | Terminal running `python -m middleware`           | `trace=<trace_id>` in `stream_ended`              |
+| Black box JSONL       | `cache/black_box_recordings/<id>/trace.jsonl`     | `workflow_id` (should equal `trace_id` after fix) |
+| Phase decisions JSONL | `cache/phase_logs/<id>/decisions.jsonl`           | `workflow_id`                                     |
+| Eval capture logs     | structured log file via `logging.json`            | `task_id`, `user_id`                              |
+| Trust trace JSONL     | `cache/trust_traces/` (after wiring `trace_emit`) | `trace_id`                                        |
+
 
 ---
 
 ## Key Source Files
 
-| File | Role |
-|---|---|
-| `agent_ui_adapter/adapters/runtime/langgraph_runtime.py` | Mints `trace_id`; translates LangGraph events to domain events |
-| `agent_ui_adapter/translators/domain_to_ag_ui.py` | Embeds `trace_id` into AG-UI SSE payloads |
-| `middleware/__main__.py` | Dev entry point; wires graph, runtime, identity; logs `stream_ended` |
-| `orchestration/react_loop.py` | Graph nodes; drives black box + phase logger + eval capture |
-| `services/governance/black_box.py` | Append-only JSONL recorder with SHA-256 chain |
-| `services/governance/phase_logger.py` | Per-decision routing/evaluation logs |
-| `services/eval_capture.py` | Per-LLM-call structured records keyed by `task_id` / `user_id` |
-| `services/trace_service.py` | Fan-out sink for `TrustTraceRecord` emission |
-| `trust/models.py` | `AgentFacts` (signed identity), `TrustTraceRecord` |
-| `frontend/lib/adapters/runtime/self_hosted_langgraph_dev_client.ts` | Browser client; reads `trace_id` from SSE, never generates one |
-| `frontend/lib/transport/sse_client.ts` | Parses AG-UI events; routes `raw_event.trace_id` to UI runtime |
-| `frontend/app/api/run/stream/route.ts` | BFF route; forwards POST to middleware with bearer token |
+
+| File                                                                | Role                                                                 |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `agent_ui_adapter/adapters/runtime/langgraph_runtime.py`            | Mints `trace_id`; translates LangGraph events to domain events       |
+| `agent_ui_adapter/translators/domain_to_ag_ui.py`                   | Embeds `trace_id` into AG-UI SSE payloads                            |
+| `middleware/__main__.py`                                            | Dev entry point; wires graph, runtime, identity; logs `stream_ended` |
+| `orchestration/react_loop.py`                                       | Graph nodes; drives black box + phase logger + eval capture          |
+| `services/governance/black_box.py`                                  | Append-only JSONL recorder with SHA-256 chain                        |
+| `services/governance/phase_logger.py`                               | Per-decision routing/evaluation logs                                 |
+| `services/eval_capture.py`                                          | Per-LLM-call structured records keyed by `task_id` / `user_id`       |
+| `services/trace_service.py`                                         | Fan-out sink for `TrustTraceRecord` emission                         |
+| `trust/models.py`                                                   | `AgentFacts` (signed identity), `TrustTraceRecord`                   |
+| `frontend/lib/adapters/runtime/self_hosted_langgraph_dev_client.ts` | Browser client; reads `trace_id` from SSE, never generates one       |
+| `frontend/lib/transport/sse_client.ts`                              | Parses AG-UI events; routes `raw_event.trace_id` to UI runtime       |
+| `frontend/app/api/run/stream/route.ts`                              | BFF route; forwards POST to middleware with bearer token             |
+
+

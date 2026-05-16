@@ -10,7 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from explainability_app.dev_seed import generate_workflows
+from explainability_app.dev_seed import (
+    DEV_SEED_AGENT_FACTS_SECRET,
+    generate_workflows,
+    seed_agents,
+)
+from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.governance.black_box import BlackBoxRecorder, EventType
 
 
@@ -101,3 +106,35 @@ def test_dev_seed_idempotent(tmp_path: Path) -> None:
     recordings_dir = cache_dir / "black_box_recordings"
     all_dirs = [d.name for d in recordings_dir.iterdir() if d.is_dir()]
     assert len(all_dirs) == 4
+
+
+# --- S2.2 dev seed: agent registration ---
+
+
+def test_seed_agents_registers_cli_and_dev(tmp_path: Path) -> None:
+    """Acceptance: seed_agents writes both default agents to the registry."""
+    cache_dir = tmp_path / "cache"
+    new = seed_agents(cache_dir)
+    assert set(new) == {"cli-agent", "dev-agent"}
+
+    registry = AgentFactsRegistry(
+        storage_dir=cache_dir / "agent_facts",
+        secret=DEV_SEED_AGENT_FACTS_SECRET,
+    )
+    assert registry.verify("cli-agent") is True
+    assert registry.verify("dev-agent") is True
+
+
+def test_seed_agents_idempotent(tmp_path: Path) -> None:
+    """Failure-first: re-running must not re-register or break the chain."""
+    cache_dir = tmp_path / "cache"
+    seed_agents(cache_dir)
+    second = seed_agents(cache_dir)
+    assert second == [], "Second seeding pass should be a no-op"
+
+    registry = AgentFactsRegistry(
+        storage_dir=cache_dir / "agent_facts",
+        secret=DEV_SEED_AGENT_FACTS_SECRET,
+    )
+    audit = registry.audit_trail("cli-agent")
+    assert len([e for e in audit if e.action == "register"]) == 1

@@ -61,6 +61,11 @@ class TestAgentConfig:
         assert cfg.max_cost_usd == 1.0
         assert cfg.default_model == "gpt-4o-mini"
         assert cfg.models == []
+        assert cfg.tool_output_offload_threshold_chars == 4000
+        assert cfg.tool_output_preview_chars == 400
+        assert cfg.tool_result_history_limit == 100
+        assert cfg.delegation_max_cost_usd == 0.5
+        assert cfg.delegation_max_calls_per_task == 4
 
     def test_override_defaults(self):
         mp = ModelProfile(

@@ -1,7 +1,8 @@
 """Local dev entry point: ``python -m middleware``
 
-Starts a combined FastAPI app on port 8000 (the default MIDDLEWARE_URL
-the frontend BFF forwards to) that:
+Starts a combined FastAPI app on port 8000 by default (matching the
+frontend BFF's default ``MIDDLEWARE_URL``). If that port is busy, the next
+free port up to +63 is used unless ``PORT_STRICT=1`` is set.
 
   1. Builds the real LangGraph ReAct graph from ``orchestration.react_loop``.
   2. Wraps it with ``LangGraphRuntime`` from ``agent_ui_adapter``.
@@ -18,16 +19,22 @@ Usage::
 
     # custom port
     PORT=9000 python -m middleware
+
+    # fail if PORT is busy (no auto-increment)
+    PORT_STRICT=1 python -m middleware
 """
 
 from __future__ import annotations
 
-import asyncio
+import importlib
+import json
 import logging
 import os
+import socket
 import sys
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import AsyncIterator
@@ -37,11 +44,14 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent
 
 load_dotenv(AGENT_ROOT / ".env")
+
+# LangGraph’s default cap (25 transitions) is low for ReAct+tools; align process
+# default so any code path that merges against env-based DEFAULT gets headroom.
+os.environ.setdefault("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "150")
 
 sys.path.insert(0, str(AGENT_ROOT))
 
@@ -53,27 +63,104 @@ from agent_ui_adapter.transport.sse import (
     encode_error,
     encode_event,
 )
-from agent_ui_adapter.wire.agent_protocol import RunCreateRequest
-from components.routing_config import RoutingConfig
-from orchestration.react_loop import build_graph
 from services.base_config import AgentConfig, ModelProfile
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.observability import setup_logging
+from services.trace_service import JsonlFileTraceSink, TraceService
+from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
 from services.tools.file_io import FileIOInput, execute_file_io
+from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
 from services.tools.registry import ToolDefinition, ToolRegistry
 from services.tools.shell import ShellToolInput, execute_shell
+from services.tools.task_tool import TaskToolInput, build_task_tool_executor
+from services.tools.think_tool import ThinkToolInput, execute_think_tool
+from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
 from services.tools.web_search import WebSearchInput, execute_web_search
 from trust.enums import IdentityStatus
-from trust.models import AgentFacts
+from trust.models import AgentFacts, Capability
+from utils.debug_fc2601 import debug_fc2601
 
 logger = logging.getLogger("middleware.__main__")
+
+_DEV_PORT_SEARCH_SPAN = 64
+
+
+def _tcp_port_available(port: int, host: str = "0.0.0.0") -> bool:
+    """Return True if *host*:*port* can be bound for a new listener.
+
+    Intentionally omits ``SO_REUSEADDR`` so we detect ports held by typical
+    dev servers (matching uvicorn's default bind semantics for "in use").
+    """
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        try:
+            sock.bind((host, port))
+        except OSError:
+            return False
+    return True
+
+
+def _resolve_listen_port(preferred: int) -> int:
+    """Return a listen port, starting at *preferred*.
+
+    When ``PORT_STRICT`` is truthy, only *preferred* may be used.
+    Otherwise the next free port in a bounded range is chosen.
+    """
+    strict = os.environ.get("PORT_STRICT", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if strict:
+        if not _tcp_port_available(preferred):
+            msg = (
+                f"Port {preferred} is not available (PORT_STRICT is set). "
+                "Free the port or unset PORT_STRICT to auto-pick a nearby port."
+            )
+            raise OSError(msg)
+        return preferred
+    if _tcp_port_available(preferred):
+        return preferred
+    upper = preferred + _DEV_PORT_SEARCH_SPAN
+    for port in range(preferred + 1, upper):
+        if _tcp_port_available(port):
+            logger.warning(
+                "Port %d is in use; listening on %d instead. "
+                "Set MIDDLEWARE_URL=http://localhost:%d for the Next.js BFF.",
+                preferred,
+                port,
+                port,
+            )
+            return port
+    raise RuntimeError(
+        f"No free TCP port found between {preferred} and {upper - 1} inclusive"
+    )
+
 
 DEV_AGENT_ID = "dev-agent"
 DEV_USER_ID = "dev-user"
 
 
-def _build_graph_and_runtime() -> tuple[LangGraphRuntime, AgentFacts]:
-    """Wire the LangGraph ReAct graph + runtime (mirrors cli.py)."""
+def _load_graph_factory():
+    """Load the graph factory from ``langgraph.json`` without static imports."""
+    config_path = AGENT_ROOT / "langgraph.json"
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    target = payload.get("graphs", {}).get("react_loop")
+    if not target or ":" not in target:
+        raise RuntimeError("langgraph.json missing graphs.react_loop entry")
+    module_name, attr_name = target.split(":", 1)
+    module = importlib.import_module(module_name)
+    factory = getattr(module, attr_name, None)
+    if factory is None:
+        raise RuntimeError(f"Graph factory '{target}' not found")
+    return factory
+
+
+def _build_base_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsRegistry, Path]:
+    """Build all non-async components (config, tools, identity registry).
+
+    Separated from the graph/runtime so the async lifespan can enter the
+    AsyncSqliteSaver context manager before compiling the graph.
+    """
     os.chdir(str(AGENT_ROOT))
     setup_logging()
 
@@ -101,12 +188,27 @@ def _build_graph_and_runtime() -> tuple[LangGraphRuntime, AgentFacts]:
         max_cost_usd=1.0,
     )
 
+    delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({
         "shell": ToolDefinition(
             executor=execute_shell, schema=ShellToolInput, cacheable=True
         ),
         "file_io": ToolDefinition(
             executor=execute_file_io, schema=FileIOInput, cacheable=True
+        ),
+        "state_file": ToolDefinition(
+            executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
+        ),
+        "state_todo": ToolDefinition(
+            executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False
+        ),
+        "task": ToolDefinition(
+            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+            schema=TaskToolInput,
+            cacheable=False,
+        ),
+        "think": ToolDefinition(
+            executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
         ),
         "web_search": ToolDefinition(
             executor=execute_web_search, schema=WebSearchInput, cacheable=False
@@ -115,16 +217,6 @@ def _build_graph_and_runtime() -> tuple[LangGraphRuntime, AgentFacts]:
 
     cache_dir = AGENT_ROOT / "cache"
     cache_dir.mkdir(exist_ok=True)
-
-    checkpointer = None
-    try:
-        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-
-        checkpointer = AsyncSqliteSaver.from_conn_string(
-            str(cache_dir / "checkpoints.db")
-        )
-    except ImportError:
-        logger.warning("AsyncSqliteSaver not available; running without checkpointer")
 
     agent_facts_secret = os.environ.get(
         "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
@@ -145,30 +237,67 @@ def _build_graph_and_runtime() -> tuple[LangGraphRuntime, AgentFacts]:
                 owner=DEV_USER_ID,
                 version="1.0.0",
                 description="Local development agent",
+                capabilities=[Capability(name="delegate.subagent.*")],
                 status=IdentityStatus.ACTIVE,
             ),
             registered_by="dev-bootstrap",
         )
 
-    graph = build_graph(
-        agent_config=agent_config,
-        routing_config=RoutingConfig(),
-        tool_registry=tool_registry,
-        cache_dir=cache_dir,
-        checkpointer=checkpointer,
-        agent_facts_registry=agent_facts_registry,
-    )
-
-    dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
-    runtime = LangGraphRuntime(graph)
-    return runtime, dev_identity
+    return agent_config, tool_registry, agent_facts_registry, cache_dir
 
 
 def build_dev_app() -> FastAPI:
     """Build the local dev FastAPI app with permissive auth."""
-    runtime, dev_identity = _build_graph_and_runtime()
+    agent_config, tool_registry, agent_facts_registry, cache_dir = _build_base_components()
+    build_graph = _load_graph_factory()
+    dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
 
-    app = FastAPI(title="Agent Dev Middleware", version="0.1.0-dev")
+    trust_traces_dir = cache_dir / "trust_traces"
+    trust_traces_dir.mkdir(parents=True, exist_ok=True)
+    trace_service = TraceService(
+        sinks=[JsonlFileTraceSink(trust_traces_dir / "records.jsonl")]
+    )
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        """Enter AsyncSqliteSaver context before the graph is compiled."""
+        checkpointer = None
+        try:
+            from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+            async with AsyncSqliteSaver.from_conn_string(
+                str(cache_dir / "checkpoints.db")
+            ) as cp:
+                graph = build_graph(
+                    agent_config=agent_config,
+                    tool_registry=tool_registry,
+                    cache_dir=cache_dir,
+                    checkpointer=cp,
+                    agent_facts_registry=agent_facts_registry,
+                    interrupt_before_execute_tool=False,
+                )
+                app.state.runtime = LangGraphRuntime(
+                    graph, trace_emit=trace_service.emit
+                )
+                app.state.dev_identity = dev_identity
+                yield
+        except ImportError:
+            logger.warning("AsyncSqliteSaver not available; running without checkpointer")
+            graph = build_graph(
+                agent_config=agent_config,
+                tool_registry=tool_registry,
+                cache_dir=cache_dir,
+                checkpointer=checkpointer,
+                agent_facts_registry=agent_facts_registry,
+                interrupt_before_execute_tool=False,
+            )
+            app.state.runtime = LangGraphRuntime(
+                graph, trace_emit=trace_service.emit
+            )
+            app.state.dev_identity = dev_identity
+            yield
+
+    app = FastAPI(title="Agent Dev Middleware", version="0.1.0-dev", lifespan=lifespan)
 
     app.add_middleware(
         CORSMiddleware,
@@ -180,11 +309,12 @@ def build_dev_app() -> FastAPI:
     threads_store: dict[str, dict] = {}
 
     def _require_bearer(
+        request: Request,
         authorization: str | None = Header(default=None),
     ) -> AgentFacts:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="missing bearer token")
-        return dev_identity
+        return request.app.state.dev_identity
 
     # ── healthz ────────────────────────────────────────────────────
 
@@ -199,7 +329,8 @@ def build_dev_app() -> FastAPI:
         request: Request,
         authorization: str | None = Header(default=None),
     ) -> StreamingResponse:
-        identity = _require_bearer(authorization)
+        identity = _require_bearer(request, authorization)
+        runtime: LangGraphRuntime = request.app.state.runtime
         body = await request.json()
         thread_id = body.get("thread_id", uuid.uuid4().hex)
         user_input = body.get("input", {})
@@ -216,13 +347,28 @@ def build_dev_app() -> FastAPI:
         run_started_at = time.monotonic()
 
         async def _generate() -> AsyncIterator[bytes]:
+            # region agent log
+            _ilist = []
+            if isinstance(user_input, dict):
+                _ilist = user_input.get("messages") or []
+            debug_fc2601(
+                hypothesis_id="H-thread",
+                location="middleware.__main__:run_stream",
+                message="generate_start",
+                data={
+                    "thread_tail": thread_id[-12:] if len(thread_id) >= 12 else thread_id,
+                    "incoming_messages_len": len(_ilist),
+                    "task_input_len": len(task_input),
+                },
+            )
+            # endregion agent log
             run_id: str | None = None
             trace_id_seen: str | None = None
             errored = False
             try:
                 async for domain_event in runtime.run(
                     thread_id=thread_id,
-                    input=user_input if user_input else {"task_input": task_input},
+                    input={**(user_input or {}), "task_input": task_input},
                     identity=identity,
                 ):
                     if trace_id_seen is None:
@@ -262,10 +408,10 @@ def build_dev_app() -> FastAPI:
         request: Request,
         authorization: str | None = Header(default=None),
     ):
-        _require_bearer(authorization)
+        _require_bearer(request, authorization)
         body = await request.json()
         run_id = body.get("run_id", "")
-        await runtime.cancel(run_id)
+        await request.app.state.runtime.cancel(run_id)
         return {"cancelled": run_id}
 
     # ── threads ────────────────────────────────────────────────────
@@ -275,7 +421,7 @@ def build_dev_app() -> FastAPI:
         request: Request,
         authorization: str | None = Header(default=None),
     ):
-        _require_bearer(authorization)
+        _require_bearer(request, authorization)
         body = await request.json()
         thread_id = f"t-{uuid.uuid4().hex[:12]}"
         now = datetime.now(UTC).isoformat()
@@ -291,9 +437,10 @@ def build_dev_app() -> FastAPI:
 
     @app.get("/threads")
     async def list_threads(
+        request: Request,
         authorization: str | None = Header(default=None),
     ):
-        _require_bearer(authorization)
+        _require_bearer(request, authorization)
         return {
             "threads": list(threads_store.values()),
             "nextCursor": None,
@@ -301,10 +448,11 @@ def build_dev_app() -> FastAPI:
 
     @app.get("/threads/{thread_id}")
     async def get_thread(
+        request: Request,
         thread_id: str,
         authorization: str | None = Header(default=None),
     ):
-        _require_bearer(authorization)
+        _require_bearer(request, authorization)
         thread = threads_store.get(thread_id)
         if thread is None:
             raise HTTPException(status_code=404, detail="thread not found")
@@ -314,10 +462,16 @@ def build_dev_app() -> FastAPI:
 
 
 def main() -> None:
-    port = int(os.environ.get("PORT", "8000"))
+    preferred = int(os.environ.get("PORT", "8000"))
+    port = _resolve_listen_port(preferred)
     logger.info("Starting dev middleware on port %d", port)
-    app = build_dev_app()
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
+    uvicorn.run(
+        "middleware.__main__:build_dev_app",
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+        factory=True,
+    )
 
 
 if __name__ == "__main__":
