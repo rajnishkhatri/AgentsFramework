@@ -1,0 +1,85 @@
+# infra/gcp/terraform.tfvars.example
+#
+# Copy to terraform.tfvars (gitignored) and fill in real values.
+# Never commit terraform.tfvars — it holds live secrets.
+#
+# CI passes these as TF_VAR_* environment variables from the deploy runner's
+# secret store. HUMAN_SETUP.md §3 documents how to populate them.
+
+# ── GCP project ─────────────────────────────────────────────────────────────
+
+gcp_project_id = "your-gcp-project-id"
+gcp_region     = "us-central1"
+
+# ── Artifact Registry ────────────────────────────────────────────────────────
+
+artifact_registry_location = "us-central1"
+artifact_registry_repo_id  = "agent-backend"
+
+# ── WorkOS public config ─────────────────────────────────────────────────────
+
+workos_client_id = "client_01XXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+# ── Secrets (sensitive — do not commit) ─────────────────────────────────────
+
+workos_api_key      = "REPLACE_WITH_WORKOS_API_KEY"
+openai_api_key      = "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+anthropic_api_key   = "sk-ant-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+langfuse_public_key = "pk-lf-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+langfuse_secret_key = "sk-lf-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+mem0_api_key        = "m0-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+agent_facts_secret = "REPLACE_WITH_64_HEX_CHAR_SIGNING_KEY"
+
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+workos_cookie_password = "REPLACE_WITH_32_PLUS_CHAR_COOKIE_ENCRYPTION_KEY"
+
+# ── Cloud SQL (Recipe 2) ────────────────────────────────────────────────────
+
+cloud_sql_instance_name = "agent-db"
+cloud_sql_tier          = "db-f1-micro"
+cloud_sql_disk_size_gb  = 10
+cloud_sql_database_name = "agent"
+cloud_sql_user          = "agent_runtime"
+
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+cloud_sql_password = "REPLACE_WITH_SECURE_PASSWORD"
+
+# database_url is set AFTER Cloud SQL is provisioned. Format:
+#   postgresql+asyncpg://USER:PASSWORD@/DB?host=/cloudsql/PROJECT:REGION:INSTANCE
+# Update the database-url secret via:
+#   echo -n "postgresql+asyncpg://agent_runtime:PASSWORD@/agent?host=/cloudsql/PROJECT:REGION:agent-db" \
+#     | gcloud secrets versions add database-url --data-file=-
+database_url = "placeholder-set-in-recipe-2"
+
+# ── Cloud Run backend (Recipe 4) ────────────────────────────────────────────
+#
+# Override after pushing the Recipe 3 image:
+#   docker tag agent-backend:dev $(tofu output -raw artifact_registry_url)/agent-backend:v1
+#   docker push $(tofu output -raw artifact_registry_url)/agent-backend:v1
+#   backend_image = "<artifact_registry_url>/agent-backend:v1"
+
+# backend_image = "us-central1-docker.pkg.dev/your-gcp-project-id/agent-backend/agent-backend:v1"
+
+# ── Cloud Run frontend (Recipe 5) ─────────────────────────────────────────────
+#
+# Override after pushing the Recipe 3 frontend image:
+#   docker build -f Dockerfile.frontend -t agent-frontend:dev ./frontend
+#   docker tag agent-frontend:dev $(tofu output -raw artifact_registry_url)/agent-frontend:v1
+#   docker push $(tofu output -raw artifact_registry_url)/agent-frontend:v1
+#   frontend_image = "<artifact_registry_url>/agent-frontend:v1"
+
+# frontend_image = "us-central1-docker.pkg.dev/your-gcp-project-id/agent-backend/agent-frontend:v1"
+
+# ── Meta ring (Recipe 6, optional — disabled by default) ─────────────────────
+#
+# enable_meta_ring = true
+# meta_cron_schedule = "0 6 * * *"
+# meta_golden_set_gcs_uri = "gs://your-gcp-project-id-trust-traces/golden/eval.jsonl"
+
+# ── Observability (Recipe 7) ─────────────────────────────────────────────────
+#
+# billing_account_id = "XXXXXX-XXXXXX-XXXXXX"   # gcloud billing accounts list
+# alert_notification_email = "ops@example.com"
+# monthly_budget_usd = 50

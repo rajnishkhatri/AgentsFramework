@@ -1,0 +1,48 @@
+# Dockerfile.backend — Production combined backend for Cloud Run
+# Multi-stage build: deps cached separately from application code.
+#
+# Build:  docker build -f Dockerfile.backend -t agent-backend:dev .
+# Run:    docker run -p 8080:8080 -e GCP_EXECUTION_ENV=cloudrun ... agent-backend:dev
+# Probe:  curl http://localhost:8080/healthz
+
+# ─── Stage 1: dependency install ────────────────────────────────────
+FROM python:3.11-slim AS deps
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc libpq-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml ./
+RUN pip install --no-cache-dir -e ".[gcp]" uvicorn[standard] python-multipart 2>/dev/null || \
+    pip install --no-cache-dir ".[gcp]" uvicorn[standard] python-multipart
+
+# ─── Stage 2: application ───────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libpq5 curl && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=deps /usr/local/bin /usr/local/bin
+
+COPY . .
+RUN pip install --no-cache-dir --no-deps -e .
+
+RUN mkdir -p /app/logs /tmp/agent_offload
+
+ENV GCP_EXECUTION_ENV=cloudrun
+ENV AGENT_OFFLOAD_DIR=/tmp/agent_offload
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/healthz || exit 1
+
+CMD ["uvicorn", "middleware.app_prod:build_combined_app", "--factory", "--host", "0.0.0.0", "--port", "8080", "--timeout-keep-alive", "620"]

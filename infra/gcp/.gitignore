@@ -1,0 +1,23 @@
+# infra/gcp/.gitignore
+#
+# Files that must NEVER be committed. Cross-cutting DoD (FE-AP-18, AGENTS.md
+# §Development Conventions): no secrets or credentials in git history.
+
+# Tofu local state and provider downloads
+.terraform/
+.terraform.lock.hcl
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate
+*.tfstate.*
+
+# Local variable values — secrets live here; NEVER commit
+terraform.tfvars
+
+# Saved plan output (may contain secret values in plan diff)
+*.tfplan
+tfplan
+
+# macOS / editor noise
+.DS_Store
+*.swp

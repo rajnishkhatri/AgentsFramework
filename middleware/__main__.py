@@ -67,6 +67,8 @@ from services.base_config import AgentConfig, ModelProfile
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.observability import setup_logging
 from services.trace_service import JsonlFileTraceSink, TraceService
+
+_GCP_EXECUTION_ENV = os.environ.get("GCP_EXECUTION_ENV")
 from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
 from services.tools.file_io import FileIOInput, execute_file_io
 from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
@@ -215,33 +217,48 @@ def _build_base_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsRegis
         ),
     })
 
-    cache_dir = AGENT_ROOT / "cache"
-    cache_dir.mkdir(exist_ok=True)
+    if _GCP_EXECUTION_ENV:
+        cache_dir = Path(os.environ.get("AGENT_OFFLOAD_DIR", "/tmp/agent_offload"))
+    else:
+        cache_dir = AGENT_ROOT / "cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
     agent_facts_secret = os.environ.get(
         "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
     )
-    agent_facts_dir = cache_dir / "agent_facts"
-    agent_facts_registry = AgentFactsRegistry(
-        storage_dir=agent_facts_dir,
-        secret=agent_facts_secret,
-    )
 
-    try:
-        agent_facts_registry.get(DEV_AGENT_ID)
-    except KeyError:
-        agent_facts_registry.register(
-            AgentFacts(
-                agent_id=DEV_AGENT_ID,
-                agent_name="Dev Agent",
-                owner=DEV_USER_ID,
-                version="1.0.0",
-                description="Local development agent",
-                capabilities=[Capability(name="delegate.subagent.*")],
-                status=IdentityStatus.ACTIVE,
-            ),
-            registered_by="dev-bootstrap",
+    if _GCP_EXECUTION_ENV:
+        from services.governance.agent_facts_gcs_registry import AgentFactsGcsRegistry
+
+        gcs_facts_bucket = os.environ.get("GCS_FACTS_BUCKET", "")
+        if not gcs_facts_bucket:
+            raise RuntimeError("GCS_FACTS_BUCKET is required when GCP_EXECUTION_ENV is set")
+        agent_facts_registry = AgentFactsGcsRegistry(
+            bucket_name=gcs_facts_bucket,
+            secret=agent_facts_secret,
         )
+    else:
+        agent_facts_dir = cache_dir / "agent_facts"
+        agent_facts_registry = AgentFactsRegistry(
+            storage_dir=agent_facts_dir,
+            secret=agent_facts_secret,
+        )
+
+        try:
+            agent_facts_registry.get(DEV_AGENT_ID)
+        except KeyError:
+            agent_facts_registry.register(
+                AgentFacts(
+                    agent_id=DEV_AGENT_ID,
+                    agent_name="Dev Agent",
+                    owner=DEV_USER_ID,
+                    version="1.0.0",
+                    description="Local development agent",
+                    capabilities=[Capability(name="delegate.subagent.*")],
+                    status=IdentityStatus.ACTIVE,
+                ),
+                registered_by="dev-bootstrap",
+            )
 
     return agent_config, tool_registry, agent_facts_registry, cache_dir
 
@@ -252,27 +269,32 @@ def build_dev_app() -> FastAPI:
     build_graph = _load_graph_factory()
     dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
 
-    trust_traces_dir = cache_dir / "trust_traces"
-    trust_traces_dir.mkdir(parents=True, exist_ok=True)
-    trace_service = TraceService(
-        sinks=[JsonlFileTraceSink(trust_traces_dir / "records.jsonl")]
-    )
+    if _GCP_EXECUTION_ENV:
+        from services.trace_sinks.gcs_sink import GcsTraceSink
+
+        gcs_traces_bucket = os.environ.get("GCS_TRACES_BUCKET", "")
+        if not gcs_traces_bucket:
+            raise RuntimeError("GCS_TRACES_BUCKET is required when GCP_EXECUTION_ENV is set")
+        trace_service = TraceService(sinks=[GcsTraceSink(gcs_traces_bucket)])
+    else:
+        trust_traces_dir = cache_dir / "trust_traces"
+        trust_traces_dir.mkdir(parents=True, exist_ok=True)
+        trace_service = TraceService(
+            sinks=[JsonlFileTraceSink(trust_traces_dir / "records.jsonl")]
+        )
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        """Enter AsyncSqliteSaver context before the graph is compiled."""
-        checkpointer = None
-        try:
-            from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        """Enter checkpointer context before the graph is compiled."""
+        if _GCP_EXECUTION_ENV:
+            from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
 
-            async with AsyncSqliteSaver.from_conn_string(
-                str(cache_dir / "checkpoints.db")
-            ) as cp:
+            async with PostgresCheckpointer.from_env() as pg_cp:
                 graph = build_graph(
                     agent_config=agent_config,
                     tool_registry=tool_registry,
                     cache_dir=cache_dir,
-                    checkpointer=cp,
+                    checkpointer=pg_cp.saver,
                     agent_facts_registry=agent_facts_registry,
                     interrupt_before_execute_tool=False,
                 )
@@ -281,21 +303,42 @@ def build_dev_app() -> FastAPI:
                 )
                 app.state.dev_identity = dev_identity
                 yield
-        except ImportError:
-            logger.warning("AsyncSqliteSaver not available; running without checkpointer")
-            graph = build_graph(
-                agent_config=agent_config,
-                tool_registry=tool_registry,
-                cache_dir=cache_dir,
-                checkpointer=checkpointer,
-                agent_facts_registry=agent_facts_registry,
-                interrupt_before_execute_tool=False,
-            )
-            app.state.runtime = LangGraphRuntime(
-                graph, trace_emit=trace_service.emit
-            )
-            app.state.dev_identity = dev_identity
-            yield
+        else:
+            checkpointer = None
+            try:
+                from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+                async with AsyncSqliteSaver.from_conn_string(
+                    str(cache_dir / "checkpoints.db")
+                ) as cp:
+                    graph = build_graph(
+                        agent_config=agent_config,
+                        tool_registry=tool_registry,
+                        cache_dir=cache_dir,
+                        checkpointer=cp,
+                        agent_facts_registry=agent_facts_registry,
+                        interrupt_before_execute_tool=False,
+                    )
+                    app.state.runtime = LangGraphRuntime(
+                        graph, trace_emit=trace_service.emit
+                    )
+                    app.state.dev_identity = dev_identity
+                    yield
+            except ImportError:
+                logger.warning("AsyncSqliteSaver not available; running without checkpointer")
+                graph = build_graph(
+                    agent_config=agent_config,
+                    tool_registry=tool_registry,
+                    cache_dir=cache_dir,
+                    checkpointer=checkpointer,
+                    agent_facts_registry=agent_facts_registry,
+                    interrupt_before_execute_tool=False,
+                )
+                app.state.runtime = LangGraphRuntime(
+                    graph, trace_emit=trace_service.emit
+                )
+                app.state.dev_identity = dev_identity
+                yield
 
     app = FastAPI(title="Agent Dev Middleware", version="0.1.0-dev", lifespan=lifespan)
 
