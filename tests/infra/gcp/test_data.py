@@ -275,8 +275,7 @@ def test_runtime_sa_has_cloudsql_client_role(resources):
 
 
 def test_agent_facts_bucket_iam_is_object_viewer(resources):
-    """ACCEPT: runtime SA gets roles/storage.objectViewer on agent-facts.
-    Read-only — the runtime reads signed facts but never writes them."""
+    """ACCEPT: runtime SA gets roles/storage.objectViewer on agent-facts."""
     bucket_iam = find_resources(
         resources, resource_type="google_storage_bucket_iam_member"
     )
@@ -289,6 +288,24 @@ def test_agent_facts_bucket_iam_is_object_viewer(resources):
     assert viewers, (
         "Recipe 2: no google_storage_bucket_iam_member grants "
         "roles/storage.objectViewer to backend_runtime on agent-facts bucket."
+    )
+
+
+def test_agent_facts_bucket_iam_is_object_creator(resources):
+    """ACCEPT: runtime SA gets roles/storage.objectCreator on agent-facts.
+    Write-only — auto-provision creates AgentFacts on first auth."""
+    bucket_iam = find_resources(
+        resources, resource_type="google_storage_bucket_iam_member"
+    )
+    creators = [
+        r for r in bucket_iam
+        if r["attrs"].get("role") == "roles/storage.objectCreator"
+        and "backend_runtime" in str(r["attrs"].get("member", ""))
+        and "agent_facts" in str(r["attrs"].get("bucket", ""))
+    ]
+    assert creators, (
+        "Recipe 2: no google_storage_bucket_iam_member grants "
+        "roles/storage.objectCreator to backend_runtime on agent-facts bucket."
     )
 
 

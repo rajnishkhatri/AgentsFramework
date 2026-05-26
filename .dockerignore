@@ -17,4 +17,6 @@ frontend/playwright-report/
 tests/
 docs/
 infra/
+spikes/
+frontend-explainability/
 *.md

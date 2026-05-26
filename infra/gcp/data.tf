@@ -167,15 +167,21 @@ resource "google_project_iam_member" "backend_runtime_cloudsql_client" {
   member  = local.backend_runtime_member
 }
 
-# ── IAM: runtime SA → GCS agent-facts (read) ────────────────────────────────
+# ── IAM: runtime SA → GCS agent-facts (read + auto-provision write) ─────────
 #
-# `roles/storage.objectViewer` — read-only. The runtime reads signed facts
-# but never writes them (facts are published by the governance pipeline or
-# a human operator).
+# `roles/storage.objectViewer` — read signed facts at runtime.
+# `roles/storage.objectCreator` — auto-provision writes a new AgentFacts
+# document on first authenticated request (app_prod.py KeyError path).
 
 resource "google_storage_bucket_iam_member" "agent_facts_reader" {
   bucket = google_storage_bucket.agent_facts.name
   role   = "roles/storage.objectViewer"
+  member = local.backend_runtime_member
+}
+
+resource "google_storage_bucket_iam_member" "agent_facts_writer" {
+  bucket = google_storage_bucket.agent_facts.name
+  role   = "roles/storage.objectCreator"
   member = local.backend_runtime_member
 }
 
