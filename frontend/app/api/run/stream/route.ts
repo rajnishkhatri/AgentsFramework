@@ -23,7 +23,13 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest): Promise<Response> {
   const bag = serverPortBag();
-  const claim = await bag.authProvider.getSession();
+  let claim = null;
+  try {
+    claim = await bag.authProvider.getSession();
+  } catch {
+    // Session retrieval failed — treat as unauthenticated.
+  }
+
   if (!claim) {
     return new Response(JSON.stringify({ error: "unauthorized" }), {
       status: 401,

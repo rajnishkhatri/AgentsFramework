@@ -4,8 +4,8 @@
  * Per FRONTEND_STYLE_GUIDE §19 / FD3.CSP3 / FE-AP-19 AUTO-REJECT.
  *
  * The middleware now composes AuthKit session management with CSP + hardening
- * headers. `authkitMiddleware` is mocked so we test only OUR header logic,
- * not the SDK internals.
+ * headers. `authkit` + `handleAuthkitHeaders` are mocked so we test only OUR
+ * header logic, not the SDK internals.
  *
  * Dev-mode CSP relaxation (NODE_ENV !== "production") is tested separately
  * from production-mode strict CSP. Failure paths first (FD6).
@@ -14,11 +14,18 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-// Mock authkitMiddleware — return a pass-through NextResponse
+const handleAuthkitHeadersMock = vi.fn(
+  (_req: NextRequest, _headers: Headers) => NextResponse.next(),
+);
+
+// Mock composable AuthKit helpers — pass-through NextResponse
 vi.mock("@workos-inc/authkit-nextjs", () => ({
-  authkitMiddleware: () => {
-    return async (_req: NextRequest) => NextResponse.next();
-  },
+  authkit: async (_req: NextRequest) => ({
+    session: { user: null },
+    headers: new Headers(),
+  }),
+  handleAuthkitHeaders: (...args: [NextRequest, Headers]) =>
+    handleAuthkitHeadersMock(...args),
 }));
 
 // ── Production-mode tests (NODE_ENV=production / test) ────────────────
@@ -29,6 +36,7 @@ describe("middleware security headers — production CSP (failure-path guards)",
   beforeEach(async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.resetModules();
+    handleAuthkitHeadersMock.mockClear();
     const mod = await import("./middleware");
     middlewareFn = mod.middleware;
   });
@@ -37,6 +45,13 @@ describe("middleware security headers — production CSP (failure-path guards)",
     const req = new NextRequest(url);
     return middlewareFn(req);
   }
+
+  it("invokes handleAuthkitHeaders so AuthKit request headers reach route handlers", async () => {
+    await call("https://example.com/api/run/stream");
+    expect(handleAuthkitHeadersMock).toHaveBeenCalledTimes(1);
+    const [, authHeaders] = handleAuthkitHeadersMock.mock.calls[0]!;
+    expect(authHeaders.get("x-nonce")).toMatch(/^[A-Za-z0-9+/=_-]{8,}$/);
+  });
 
   it("CSP forbids 'unsafe-inline' in production [FE-AP-19 AUTO-REJECT]", async () => {
     const csp = (await call()).headers.get("content-security-policy") ?? "";
@@ -120,6 +135,7 @@ describe("middleware security headers — dev-mode CSP relaxation", () => {
   beforeEach(async () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.resetModules();
+    handleAuthkitHeadersMock.mockClear();
     const mod = await import("./middleware");
     middlewareFn = mod.middleware;
   });

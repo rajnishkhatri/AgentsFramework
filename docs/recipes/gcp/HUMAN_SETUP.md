@@ -124,6 +124,18 @@ Edit `infra/gcp/terraform.tfvars` with real values:
 
 At this point the human preflight is done. OpenTofu can now take over: initialize against the remote state bucket, plan the foundation resources, and apply them.
 
+**ADC preflight:** Before running `tofu plan`, confirm that Application Default Credentials resolve. Either:
+
+```bash
+# Option A: service account key (from Step 3)
+export GOOGLE_APPLICATION_CREDENTIALS="$HOME/tofu-deployer-key.json"
+
+# Option B: user ADC (interactive dev machines)
+gcloud auth application-default print-access-token >/dev/null 2>&1 && echo "ADC OK" || echo "ADC MISSING"
+```
+
+If neither succeeds, `tofu plan` will fail with a credentials error unrelated to your infrastructure code.
+
 ```bash
 cd infra/gcp
 

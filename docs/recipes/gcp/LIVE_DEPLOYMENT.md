@@ -812,6 +812,33 @@ Remote state bucket `${PROJECT}-tofu-state` is outside the Tofu stack — delete
 
 ---
 
+## Chat 401 Triage
+
+If the chat UI shows a 401 or "Session expired" after WorkOS sign-in, use Cloud Run logs to isolate the failing layer:
+
+| Log signal | Layer | Action |
+|------------|-------|--------|
+| `hasClaim: false`, `hasSessionHdr: false` | BFF middleware | Verify `handleAuthkitHeaders()` composable pattern in `frontend/middleware.ts` |
+| `hasClaim: true`, `upstreamStatus: 401`, `auth_reject reason=invalid_token_use` | Backend JWT | Check AuthKit token claims vs verifier — absent `token_use` should be treated as access |
+| `auth_reject reason=invalid_issuer` | Backend JWT | Align `WORKOS_ISSUER` / `client_id` env with the token's `iss` claim |
+| `upstreamStatus: 500`, `relation "checkpoints" does not exist` | Runtime / DB | Run Postgres saver schema setup (Recipe 4 gotcha — `PostgresSaver.setup()`) |
+
+**Quick log queries:**
+
+```bash
+# BFF: check if session headers reach route handler
+gcloud logging read \
+  'resource.labels.service_name="agent-frontend" AND textPayload:"route.ts:POST"' \
+  --project=$PROJECT --limit=5
+
+# Backend: auth_ok vs auth_reject
+gcloud logging read \
+  'resource.labels.service_name="agent-backend-combined" AND (textPayload:"auth_ok" OR textPayload:"auth_reject")' \
+  --project=$PROJECT --limit=10
+```
+
+---
+
 ## Appendices
 
 ### Appendix A: Copy-paste env block

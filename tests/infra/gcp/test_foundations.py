@@ -2,7 +2,7 @@
 
 Verifies the acceptance criteria for infra/gcp/foundations.tf:
 
-  * All 10 required GCP APIs are enabled via google_project_service.
+  * All 11 required GCP APIs are enabled via google_project_service.
   * disable_on_destroy = false on every API resource (non-destructive teardown).
   * A Docker Artifact Registry repository is declared.
   * A backend runtime service account is declared with the right account_id.
@@ -33,6 +33,7 @@ REQUIRED_APIS = {
     "storage.googleapis.com",
     "monitoring.googleapis.com",
     "cloudbilling.googleapis.com",
+    "billingbudgets.googleapis.com",
     "cloudscheduler.googleapis.com",
 }
 

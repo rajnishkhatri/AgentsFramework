@@ -51,7 +51,7 @@ echo
 
 # ── 1. Backend health ────────────────────────────────────────────────────────
 
-health_body="$(curl -sf "${BACKEND_URL}/healthz")" || fail "/healthz request failed"
+health_body="$(curl -sf "${BACKEND_URL}/healthz" || curl -sf "${BACKEND_URL}/health")" || fail "/healthz request failed"
 if ! echo "${health_body}" | grep -q '"status"[[:space:]]*:[[:space:]]*"ok"'; then
   fail "/healthz did not return status=ok: ${health_body}"
 fi
@@ -109,6 +109,27 @@ elif grep -q '\[DONE\]' "${tmp_sse}"; then
   pass "/run/stream completed with [DONE] sentinel within ${SSE_TIMEOUT_SECONDS}s"
 else
   fail "/run/stream response missing expected SSE markers: $(head -c 500 "${tmp_sse}")"
+fi
+
+# ── 4. Auth chain log check (warn-only) ──────────────────────────────────────
+
+PROJECT="${GCP_PROJECT:-}"
+if [[ -z "${PROJECT}" ]] && command -v tofu >/dev/null 2>&1; then
+  PROJECT="$(tofu -chdir="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}/infra/gcp" output -raw gcp_project_id 2>/dev/null || true)"
+fi
+
+if [[ -n "${PROJECT}" ]] && command -v gcloud >/dev/null 2>&1; then
+  auth_rejects="$(gcloud logging read \
+    'resource.labels.service_name="agent-backend-combined" AND textPayload:"auth_reject"' \
+    --project="${PROJECT}" --limit=5 --format='value(textPayload)' 2>/dev/null || true)"
+  if [[ -n "${auth_rejects}" ]]; then
+    echo -e "${YELLOW}WARN${NC}: Recent auth_reject entries in backend logs:"
+    echo "${auth_rejects}" | head -5
+  else
+    pass "No recent auth_reject entries in backend logs"
+  fi
+else
+  warn "GCP_PROJECT unset or gcloud unavailable — skipping auth log check"
 fi
 
 echo

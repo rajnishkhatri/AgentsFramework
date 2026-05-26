@@ -116,7 +116,7 @@ def make_token(
         subject: str = "user_01HX",
         issuer: str | None = None,
         client_id: str | None = None,
-        token_use: str = "access",
+        token_use: str | None = "access",
         expires_at: datetime | None = None,
         algorithm: str = "RS256",
         kid: str | None = None,
@@ -130,12 +130,13 @@ def make_token(
             "sub": subject,
             "iss": issuer if issuer is not None else expected_issuer,
             "client_id": client_id if client_id is not None else expected_client_id,
-            "token_use": token_use,
             "iat": int(now.timestamp()),
             "exp": int(
                 (expires_at or (now + timedelta(minutes=15))).timestamp()
             ),
         }
+        if token_use is not None:
+            payload["token_use"] = token_use
         if organization_id is not None:
             payload["org_id"] = organization_id
         if roles is not None:

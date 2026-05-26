@@ -17,6 +17,14 @@
 # Depends on: foundations.tf, secret-manager.tf, cloud-run-backend.tf (Recipe 4)
 ###############################################################################
 
+locals {
+  # OpenTofu rejects self-referential .uri inside this resource. Use
+  # var.frontend_workos_redirect_uri (derive the hash from any existing
+  # *.a.run.app URL in this project) until apply completes; then prefer
+  # tofu output -raw frontend_workos_redirect_uri for WorkOS dashboard setup.
+  frontend_workos_redirect_uri = var.frontend_workos_redirect_uri != "" ? var.frontend_workos_redirect_uri : "https://agent-frontend-${data.google_project.current.number}.${var.gcp_region}.run.app/api/auth/callback"
+}
+
 resource "google_cloud_run_v2_service" "frontend" {
   project  = var.gcp_project_id
   name     = "agent-frontend"
@@ -91,7 +99,7 @@ resource "google_cloud_run_v2_service" "frontend" {
 
       env {
         name  = "NEXT_PUBLIC_WORKOS_REDIRECT_URI"
-        value = "${google_cloud_run_v2_service.frontend.uri}/api/auth/callback"
+        value = local.frontend_workos_redirect_uri
       }
 
       # ── BFF-only secrets via Secret Manager ─────────────────────────────

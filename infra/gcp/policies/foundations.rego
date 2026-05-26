@@ -29,6 +29,8 @@ required_apis := {
   "storage.googleapis.com",
   "monitoring.googleapis.com",
   "cloudbilling.googleapis.com",
+  "billingbudgets.googleapis.com",
+  "cloudscheduler.googleapis.com",
 }
 
 project_service_attrs contains attrs if {

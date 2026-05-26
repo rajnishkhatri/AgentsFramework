@@ -24,6 +24,8 @@ Feature: GCP Tier A Foundations (Recipe 1)
       | storage.googleapis.com              |
       | monitoring.googleapis.com           |
       | cloudbilling.googleapis.com         |
+      | billingbudgets.googleapis.com       |
+      | cloudscheduler.googleapis.com       |
 
   Scenario: Project APIs have disable_on_destroy = false
     Then no google_project_service resource has disable_on_destroy = true

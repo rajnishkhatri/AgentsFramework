@@ -68,10 +68,10 @@ resource "google_cloud_run_v2_service" "backend_combined" {
           path = "/healthz"
           port = 8080
         }
-        initial_delay_seconds = 0
+        initial_delay_seconds = 5
         timeout_seconds       = 5
-        period_seconds        = 5
-        failure_threshold     = 3
+        period_seconds        = 10
+        failure_threshold     = 12
       }
 
       liveness_probe {

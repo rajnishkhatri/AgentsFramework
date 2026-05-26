@@ -13,7 +13,7 @@
 #   * google_monitoring_alert_policy.cloud_sql_connections
 #   * google_billing_budget.tier_a — project-scoped budget (when billing_account_id set)
 #
-# Depends on: foundations.tf (monitoring + cloudbilling APIs), cloud-run-backend.tf,
+# Depends on: foundations.tf (monitoring + cloudbilling + billingbudgets APIs), cloud-run-backend.tf,
 #             data.tf (Cloud SQL instance)
 ###############################################################################
 
@@ -320,17 +320,15 @@ resource "google_monitoring_alert_policy" "cloud_sql_connections" {
 }
 
 # ── Billing budget alert ─────────────────────────────────────────────────────
-
-data "google_billing_account" "linked" {
-  count = var.billing_account_id != "" ? 1 : 0
-
-  billing_account = var.billing_account_id
-}
+#
+# Use var.billing_account_id directly — the google_billing_account data source
+# requires cloudbilling.googleapis.com at plan time, before foundations.tf can
+# enable it on the first apply.
 
 resource "google_billing_budget" "tier_a" {
   count = var.billing_account_id != "" ? 1 : 0
 
-  billing_account = data.google_billing_account.linked[0].id
+  billing_account = var.billing_account_id
   display_name    = "AgentsFramework Tier A (${var.gcp_project_id})"
 
   budget_filter {

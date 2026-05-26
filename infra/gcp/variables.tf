@@ -297,6 +297,12 @@ variable "frontend_request_timeout_seconds" {
   }
 }
 
+variable "frontend_workos_redirect_uri" {
+  type        = string
+  description = "WorkOS OAuth callback URL for NEXT_PUBLIC_WORKOS_REDIRECT_URI. Set before apply using the project-scoped *.a.run.app hash from any Cloud Run URL in this project (replace the service segment with agent-frontend). After apply, verify with tofu output -raw frontend_workos_redirect_uri."
+  default     = ""
+}
+
 # ── Meta ring (Recipe 6, optional) ───────────────────────────────────────────
 
 variable "enable_meta_ring" {

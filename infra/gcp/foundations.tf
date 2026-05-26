@@ -5,7 +5,7 @@
 # and the runtime service account that Cloud Run containers will use.
 #
 # Resources:
-#   * google_project_service — enables 9 APIs needed for Tier A
+#   * google_project_service — enables 11 APIs needed for Tier A
 #   * google_artifact_registry_repository — Docker repo for backend images
 #   * google_service_account.backend_runtime — least-privilege identity for
 #     Cloud Run containers (secretAccessor + AR reader + log writer)
@@ -38,7 +38,8 @@ locals {
     "secretmanager.googleapis.com",        # Secret Manager
     "storage.googleapis.com",              # GCS (agent-facts + trust-traces buckets)
     "monitoring.googleapis.com",           # Cloud Monitoring (Recipe 7)
-    "cloudbilling.googleapis.com",         # billing budget alerts (Recipe 7)
+    "cloudbilling.googleapis.com",         # billing account lookup (Recipe 7)
+    "billingbudgets.googleapis.com",       # billing budget alerts (Recipe 7)
     "cloudscheduler.googleapis.com",       # Cloud Scheduler (Recipe 6 meta ring)
   ])
 }

@@ -157,9 +157,10 @@ def test_frontend_workos_redirect_uri_wired(resources):
     """ACCEPT: NEXT_PUBLIC_WORKOS_REDIRECT_URI ends with /api/auth/callback."""
     envs = _env_map(_container(_template(_frontend_service(resources))))
     redirect = str(envs.get("NEXT_PUBLIC_WORKOS_REDIRECT_URI", {}).get("value", ""))
-    assert redirect.endswith("/api/auth/callback"), (
-        f"Recipe 5: NEXT_PUBLIC_WORKOS_REDIRECT_URI must end with /api/auth/callback, "
-        f"got {redirect!r}."
+    wired = redirect.endswith("/api/auth/callback") or "frontend_workos_redirect_uri" in redirect
+    assert wired, (
+        f"Recipe 5: NEXT_PUBLIC_WORKOS_REDIRECT_URI must end with /api/auth/callback "
+        f"or reference local/var frontend_workos_redirect_uri, got {redirect!r}."
     )
     assert "frontend" in redirect, (
         "Recipe 5: redirect URI must reference the frontend service URI."

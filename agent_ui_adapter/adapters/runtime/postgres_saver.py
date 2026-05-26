@@ -31,7 +31,7 @@ class PostgresCheckpointer:
     def __init__(self, connection_string: str) -> None:
         self._connection_string = connection_string
         self._saver = None
-        self._pool = None
+        self._ctx = None
 
     @property
     def saver(self):
@@ -56,16 +56,16 @@ class PostgresCheckpointer:
     async def __aenter__(self) -> PostgresCheckpointer:
         from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
-        self._saver = AsyncPostgresSaver.from_conn_string(self._connection_string)
+        self._ctx = AsyncPostgresSaver.from_conn_string(self._connection_string)
+        self._saver = await self._ctx.__aenter__()
         await self._saver.setup()
         logger.info("PostgresCheckpointer: connected and migrations applied")
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self._saver is not None:
-            # AsyncPostgresSaver manages its own pool; close if available
-            if hasattr(self._saver, "conn") and self._saver.conn is not None:
-                await self._saver.conn.close()
+        if self._ctx is not None:
+            await self._ctx.__aexit__(exc_type, exc_val, exc_tb)
+            self._ctx = None
             self._saver = None
         logger.info("PostgresCheckpointer: connection closed")
 

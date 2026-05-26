@@ -39,5 +39,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     return await signOut();
   }
 
-  return callbackHandler(request);
+  const res = await callbackHandler(request);
+
+  // Cloud Run standalone: fix redirect from internal 0.0.0.0 to external host
+  if (res && res.status >= 300 && res.status < 400) {
+    const location = res.headers.get("location");
+    if (location && /^https?:\/\/(0\.0\.0\.0|localhost|127\.0\.0\.1)/.test(location)) {
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const proto = request.headers.get("x-forwarded-proto") || "https";
+      const fixedUrl = location.replace(/^https?:\/\/[^/]+/, `${proto}://${host}`);
+      return NextResponse.redirect(fixedUrl, res.status as 301 | 302 | 303 | 307 | 308);
+    }
+  }
+
+  return res;
 }
