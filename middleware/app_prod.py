@@ -215,6 +215,7 @@ def build_combined_app() -> FastAPI:
     )
 
     @app.get("/healthz")
+    @app.get("/health")
     async def healthz():
         """Cloud Run liveness/readiness probe — pre-auth."""
         return {
@@ -253,11 +254,31 @@ def build_combined_app() -> FastAPI:
         try:
             claims = adapters.jwt_verifier.verify(token)
         except Exception as exc:
+            logger.warning(
+                "jwt_verify_failed type=%s detail=%s",
+                type(exc).__name__,
+                str(exc)[:200],
+            )
             raise HTTPException(
                 status_code=401, detail=f"invalid token: {exc}"
             ) from None
 
-        identity = agent_facts_registry.get(claims.subject)
+        try:
+            identity = agent_facts_registry.get(claims.subject)
+        except KeyError:
+            identity = agent_facts_registry.register(
+                AgentFacts(
+                    agent_id=claims.subject,
+                    agent_name=claims.subject,
+                    owner=claims.subject,
+                    version="1.0.0",
+                    description="Auto-provisioned on first authenticated request",
+                    capabilities=[Capability(name="delegate.subagent.*")],
+                    status=IdentityStatus.ACTIVE,
+                ),
+                registered_by="app_prod:auto_provision",
+            )
+            logger.info("auto_provisioned_identity subject=%s", claims.subject)
 
         run_started_at = time.monotonic()
 

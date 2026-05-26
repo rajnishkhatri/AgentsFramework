@@ -51,7 +51,6 @@ from trust.models import AgentFacts, TrustTraceRecord
 # LangGraph’s config merge differs from LangChain’s; normalize here so Pregel sees
 # the requested ``recursion_limit`` after ``Runnable.astream_events`` runs.
 from langgraph.utils.config import ensure_config as _lg_ensure_config
-from utils.debug_fc2601 import debug_fc2601
 
 _logger = logging.getLogger("agent_ui_adapter.adapters.langgraph_runtime")
 
@@ -152,17 +151,6 @@ class LangGraphRuntime:
             config.get("recursion_limit"),
             thread_id[-12:] if len(thread_id) >= 12 else thread_id,
         )
-        # region agent log
-        debug_fc2601(
-            hypothesis_id="H-limit",
-            location="agent_ui_adapter.LangGraphRuntime.run",
-            message="effective_recursion_limit_after_lg_ensure",
-            data={
-                "recursion_limit": config.get("recursion_limit"),
-                "thread_tail": thread_id[-12:] if len(thread_id) >= 12 else thread_id,
-            },
-        )
-        # endregion agent log
         # Seed correlation keys into state so graph nodes can key black-box
         # recordings and phase logs under the same trace_id that SSE emits.
         input = {
