@@ -309,3 +309,51 @@ class TestAdapterIsolation:
             "A2 violated: adapter families must not import each other:\n"
             + "\n".join(violations)
         )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# C1/I-10 — app_prod must not import langfuse SDK
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestAppProdSdkIsolation:
+    """app_prod.py and telemetry_bridge.py must not import the langfuse SDK.
+
+    The SDK is confined to middleware/adapters/observability/. Production
+    entry points use only the port Protocol (TelemetryExporter).
+    """
+
+    def test_app_prod_does_not_import_langfuse(self) -> None:
+        app_prod = MIDDLEWARE_DIR / "app_prod.py"
+        if not app_prod.exists():
+            pytest.skip("app_prod.py not yet scaffolded")
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "app_prod" in str(path) and pkg == "langfuse"
+        ]
+        assert violations == [], (
+            "C1/I-10 violated: app_prod.py must NOT import langfuse SDK "
+            "(use port TelemetryExporter instead):\n" + "\n".join(violations)
+        )
+
+    def test_telemetry_bridge_does_not_import_langfuse(self) -> None:
+        bridge = MIDDLEWARE_DIR / "telemetry_bridge.py"
+        if not bridge.exists():
+            pytest.skip("telemetry_bridge.py not yet created")
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "telemetry_bridge" in str(path) and pkg == "langfuse"
+        ]
+        assert violations == [], (
+            "C1/I-10 violated: telemetry_bridge.py must NOT import langfuse "
+            "SDK (use port TelemetryExporter instead):\n"
+            + "\n".join(violations)
+        )

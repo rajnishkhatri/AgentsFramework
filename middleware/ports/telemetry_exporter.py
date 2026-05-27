@@ -35,6 +35,14 @@ class TelemetryExporter(Protocol):
         """
         ...
 
+    def release_trace(self, trace_id: str) -> None:
+        """Drop in-memory handle for a completed trace.
+
+        Called by the telemetry bridge after ``run.finished`` to prevent
+        unbounded growth of trace handles.  MUST NOT raise.
+        """
+        ...
+
     def shutdown(self) -> None:
         """Flush buffered events. MUST NOT raise."""
         ...
