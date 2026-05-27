@@ -405,3 +405,7 @@ Include the Option B pros/cons table above as the decision guide for when to gra
 Recipe 0 must pass all tests before Recipe 1. Recipe 2 depends on Recipe 1. Recipes 3–5 are sequential (image → backend → frontend). Recipes 6–8 are optional/final.
 
 Estimated Tier A monthly cost after full deploy: **~$12–15/mo list-price** (Cloud SQL ~$12 dominates; compute within Cloud Run always-free tier at dev traffic).
+
+## Follow-on plans
+
+- [langfuse_gcp_integration.plan.md](langfuse_gcp_integration.plan.md) — wire Langfuse Cloud runtime telemetry on `/run/stream` (GCP secrets/env already provisioned in Recipes 1/4)

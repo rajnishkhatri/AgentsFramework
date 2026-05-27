@@ -152,6 +152,12 @@ Smoke complete (all checks passed).
 
 ---
 
+## Log pipeline analysis
+
+After deploy or when chat/auth fails, use **[LOG_PIPELINE_GUIDE.md](LOG_PIPELINE_GUIDE.md)** for step-by-step `gcloud logging read` queries across `agent-frontend` and `agent-backend-combined` (auth, auto-provision, SSE stream, trace correlation).
+
+---
+
 ## Human Review Gate
 
 Before signing off on Tier A deploy:

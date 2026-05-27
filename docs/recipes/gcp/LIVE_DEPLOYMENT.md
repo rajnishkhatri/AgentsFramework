@@ -37,7 +37,7 @@ This runbook stitches [Recipes 0–8](.) into a single top-to-bottom walkthrough
   - [2.4 Rotate a secret](#24-rotate-a-secret)
   - [2.5 Scale knobs](#25-scale-knobs)
   - [2.6 SSE production gotchas](#26-sse-production-gotchas)
-  - [2.7 View logs](#27-view-logs--debug-a-failed-request)
+  - [2.7 View logs](#27-view-logs--debug-a-failed-request) — see also [LOG_PIPELINE_GUIDE.md](LOG_PIPELINE_GUIDE.md)
   - [2.8 Database backup](#28-database-backup--inspect)
   - [2.9 Cost check](#29-cost-check)
   - [2.10 Teardown](#210-teardown)
@@ -697,6 +697,10 @@ If users report SSE freezes mid-stream:
 Trade-off: `min_instances=1` adds ~$117/mo compute — defer unless symptoms appear. See [TIER_B_FUTURE.md](TIER_B_FUTURE.md) for production SSE posture.
 
 ### 2.7 View logs / debug a failed request
+
+For a full step-by-step walkthrough of the browser → BFF → backend → Postgres/GCS pipeline (auth, auto-provision, `stream_ended`, trace correlation), see **[LOG_PIPELINE_GUIDE.md](LOG_PIPELINE_GUIDE.md)**.
+
+Quick queries:
 
 ```bash
 # Backend errors (last hour)

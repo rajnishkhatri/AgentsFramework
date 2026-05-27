@@ -12,6 +12,9 @@
 #   export BEARER_TOKEN="<WorkOS JWT from signed-in session>"                 # optional
 #   ./scripts/smoke_gcp.sh
 #
+# For full end-to-end log analysis (auth, auto-provision, stream_ended), see
+# docs/recipes/gcp/LOG_PIPELINE_GUIDE.md
+#
 # Exit codes: 0 = all executed checks passed, 1 = failure.
 
 set -euo pipefail
