@@ -317,11 +317,32 @@ class TestAdapterIsolation:
 
 
 class TestAppProdSdkIsolation:
-    """app_prod.py and telemetry_bridge.py must not import the langfuse SDK.
+    """app_prod.py, __main__.py, and telemetry_bridge.py must not import the
+    langfuse SDK.
 
     The SDK is confined to middleware/adapters/observability/. Production
-    entry points use only the port Protocol (TelemetryExporter).
+    and dev entry points use only the port Protocol (TelemetryExporter).
     """
+
+    def test_dev_main_does_not_import_langfuse(self) -> None:
+        """Phase 4: __main__.py imports LangfuseCloudExporter (adapter), not
+        the langfuse SDK directly."""
+        main_file = MIDDLEWARE_DIR / "__main__.py"
+        if not main_file.exists():
+            pytest.skip("__main__.py not yet scaffolded")
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "__main__" in str(path) and pkg == "langfuse"
+        ]
+        assert violations == [], (
+            "C1/I-10 violated: __main__.py must NOT import langfuse SDK "
+            "(use LangfuseCloudExporter adapter or port instead):\n"
+            + "\n".join(violations)
+        )
 
     def test_app_prod_does_not_import_langfuse(self) -> None:
         app_prod = MIDDLEWARE_DIR / "app_prod.py"

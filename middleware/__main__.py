@@ -63,6 +63,12 @@ from agent_ui_adapter.transport.sse import (
     encode_error,
     encode_event,
 )
+from agent_ui_adapter.wire.domain_events import RunFinishedDomain
+from middleware import telemetry_bridge
+from middleware.adapters.observability.langfuse_cloud_exporter import (
+    LangfuseCloudExporter,
+)
+from middleware.ports.telemetry_exporter import TelemetryExporter
 from services.base_config import AgentConfig, ModelProfile
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.observability import setup_logging
@@ -85,6 +91,65 @@ from utils.debug_fc2601 import debug_fc2601
 logger = logging.getLogger("middleware.__main__")
 
 _DEV_PORT_SEARCH_SPAN = 64
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Telemetry exporter for dev parity (Phase 4)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _NoopTelemetryExporter:
+    """Port-shaped stub: all methods are silent no-ops.
+
+    Used when Langfuse is disabled or keys are not configured.
+    Satisfies the TelemetryExporter protocol.
+    """
+
+    def export_event(
+        self,
+        *,
+        name: str,
+        trace_id: str,
+        attributes: dict | None = None,
+    ) -> None:
+        pass
+
+    def release_trace(self, trace_id: str) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+
+def _build_dev_telemetry_exporter() -> TelemetryExporter:
+    """Build a telemetry exporter for dev: Langfuse when available, noop otherwise.
+
+    Kill switch: ``LANGFUSE_ENABLED=false`` → noop.
+    Missing keys: no ``LANGFUSE_PUBLIC_KEY`` / ``LANGFUSE_SECRET_KEY`` → noop.
+    Construction failure: ``LangfuseCloudExporter.__init__`` raises → noop.
+    """
+    if os.environ.get("LANGFUSE_ENABLED", "true").lower() == "false":
+        logger.info("LANGFUSE_ENABLED=false; dev telemetry disabled")
+        return _NoopTelemetryExporter()
+
+    pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    if not pk or not sk:
+        logger.info("Langfuse keys not configured; dev telemetry disabled")
+        return _NoopTelemetryExporter()
+
+    try:
+        host = os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        exporter = LangfuseCloudExporter(
+            public_key=pk, secret_key=sk, host=host
+        )
+        logger.info("Langfuse telemetry enabled for dev")
+        return exporter
+    except Exception as exc:
+        logger.warning(
+            "Langfuse exporter init failed: %s; dev telemetry disabled", exc
+        )
+        return _NoopTelemetryExporter()
 
 
 def _tcp_port_available(port: int, host: str = "0.0.0.0") -> bool:
@@ -268,6 +333,7 @@ def build_dev_app() -> FastAPI:
     agent_config, tool_registry, agent_facts_registry, cache_dir = _build_base_components()
     build_graph = _load_graph_factory()
     dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
+    dev_telemetry = _build_dev_telemetry_exporter()
 
     if _GCP_EXECUTION_ENV:
         from services.trace_sinks.gcs_sink import GcsTraceSink
@@ -302,6 +368,7 @@ def build_dev_app() -> FastAPI:
                     graph, trace_emit=trace_service.emit
                 )
                 app.state.dev_identity = dev_identity
+                app.state.telemetry_exporter = dev_telemetry
                 yield
         else:
             checkpointer = None
@@ -323,6 +390,7 @@ def build_dev_app() -> FastAPI:
                         graph, trace_emit=trace_service.emit
                     )
                     app.state.dev_identity = dev_identity
+                    app.state.telemetry_exporter = dev_telemetry
                     yield
             except ImportError:
                 logger.warning("AsyncSqliteSaver not available; running without checkpointer")
@@ -338,7 +406,12 @@ def build_dev_app() -> FastAPI:
                     graph, trace_emit=trace_service.emit
                 )
                 app.state.dev_identity = dev_identity
+                app.state.telemetry_exporter = dev_telemetry
                 yield
+        try:
+            dev_telemetry.shutdown()
+        except Exception:
+            logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
 
     app = FastAPI(title="Agent Dev Middleware", version="0.1.0-dev", lifespan=lifespan)
 
@@ -389,6 +462,8 @@ def build_dev_app() -> FastAPI:
 
         run_started_at = time.monotonic()
 
+        exporter = dev_telemetry
+
         async def _generate() -> AsyncIterator[bytes]:
             # region agent log
             _ilist = []
@@ -408,6 +483,7 @@ def build_dev_app() -> FastAPI:
             run_id: str | None = None
             trace_id_seen: str | None = None
             errored = False
+            run_finished_emitted = False
             try:
                 async for domain_event in runtime.run(
                     thread_id=thread_id,
@@ -418,6 +494,15 @@ def build_dev_app() -> FastAPI:
                         trace_id_seen = domain_event.trace_id
                     if run_id is None and hasattr(domain_event, "run_id"):
                         run_id = domain_event.run_id
+
+                    telemetry_bridge.emit_domain_event(
+                        exporter,
+                        domain_event,
+                        subject=DEV_USER_ID,
+                    )
+                    if isinstance(domain_event, RunFinishedDomain):
+                        run_finished_emitted = True
+
                     for ag_ui_event in to_ag_ui(domain_event):
                         yield encode_event(
                             ag_ui_event, event_id=uuid.uuid4().hex
@@ -437,6 +522,16 @@ def build_dev_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                if trace_id_seen is not None and not run_finished_emitted:
+                    telemetry_bridge.emit_run_finished(
+                        exporter,
+                        trace_id=trace_id_seen,
+                        run_id=run_id,
+                        thread_id=thread_id,
+                        duration_ms=duration_ms,
+                        errored=errored,
+                        subject=DEV_USER_ID,
+                    )
 
         return StreamingResponse(
             _generate(),

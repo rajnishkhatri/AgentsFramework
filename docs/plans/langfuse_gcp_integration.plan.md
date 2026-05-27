@@ -13,7 +13,7 @@ todos:
     status: completed
   - id: phase4-dev-parity
     content: "Phase 4 (optional): Wire middleware/__main__.py with build_adapters + noop fallback when LANGFUSE_ENABLED=false; reuse bridge"
-    status: pending
+    status: completed
   - id: phase5-tests
     content: "Phase 5: L2 tests - test_langfuse_cloud_exporter.py, test_telemetry_bridge.py, extend test_app_prod.py + architecture test enforcing layer rules"
     status: pending
