@@ -16,7 +16,7 @@ todos:
     status: completed
   - id: phase5-tests
     content: "Phase 5: L2 tests - test_langfuse_cloud_exporter.py, test_telemetry_bridge.py, extend test_app_prod.py + architecture test enforcing layer rules"
-    status: pending
+    status: completed
   - id: phase6-docs
     content: "Phase 6: Update LOG_PIPELINE_GUIDE (Langfuse verification step), 07_observability (quota note), END_TO_END_TRACING_GUIDE (sixth plane + retire Known Gap), architecture doc API alignment, RUNBOOK adapter name fixes, smoke_gcp.sh warn grep"
     status: pending
