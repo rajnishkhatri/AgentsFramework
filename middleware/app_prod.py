@@ -53,6 +53,8 @@ from agent_ui_adapter.transport.sse import (
     encode_error,
     encode_event,
 )
+from agent_ui_adapter.wire.domain_events import RunFinishedDomain
+from middleware import telemetry_bridge
 from middleware.composition import build_adapters
 from middleware.server import build_middleware_app
 from services.base_config import AgentConfig, ModelProfile
@@ -196,6 +198,10 @@ def build_combined_app() -> FastAPI:
             )
             logger.info("Production graph compiled, runtime ready")
             yield
+        try:
+            adapters.telemetry_exporter.shutdown()
+        except Exception:
+            logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
 
     adapters = build_adapters()
     middleware_app = build_middleware_app(adapters=adapters)
@@ -286,6 +292,7 @@ def build_combined_app() -> FastAPI:
             run_id: str | None = None
             trace_id_seen: str | None = None
             errored = False
+            run_finished_emitted = False
             try:
                 async for domain_event in runtime.run(
                     thread_id=thread_id,
@@ -296,6 +303,15 @@ def build_combined_app() -> FastAPI:
                         trace_id_seen = domain_event.trace_id
                     if run_id is None and hasattr(domain_event, "run_id"):
                         run_id = domain_event.run_id
+
+                    telemetry_bridge.emit_domain_event(
+                        adapters.telemetry_exporter,
+                        domain_event,
+                        subject=claims.subject,
+                    )
+                    if isinstance(domain_event, RunFinishedDomain):
+                        run_finished_emitted = True
+
                     for ag_ui_event in to_ag_ui(domain_event):
                         yield encode_event(
                             ag_ui_event, event_id=uuid.uuid4().hex
@@ -315,6 +331,16 @@ def build_combined_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                if trace_id_seen is not None and not run_finished_emitted:
+                    telemetry_bridge.emit_run_finished(
+                        adapters.telemetry_exporter,
+                        trace_id=trace_id_seen,
+                        run_id=run_id,
+                        thread_id=thread_id,
+                        duration_ms=duration_ms,
+                        errored=errored,
+                        subject=claims.subject,
+                    )
 
         return StreamingResponse(
             _generate(),

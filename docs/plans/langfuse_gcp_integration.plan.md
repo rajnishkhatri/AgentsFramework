@@ -10,7 +10,7 @@ todos:
     status: completed
   - id: phase3-wire-prod
     content: "Phase 3: Wire middleware/app_prod.py _generate() to call telemetry_bridge per domain event + run.finished in finally; lifespan shutdown() safety net"
-    status: pending
+    status: completed
   - id: phase4-dev-parity
     content: "Phase 4 (optional): Wire middleware/__main__.py with build_adapters + noop fallback when LANGFUSE_ENABLED=false; reuse bridge"
     status: pending
