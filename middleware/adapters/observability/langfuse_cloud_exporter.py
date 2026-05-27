@@ -57,6 +57,11 @@ class LangfuseCloudExporter:
         self._enabled = os.environ.get("LANGFUSE_ENABLED", "true").lower() != "false"
         self._traces: dict[str, Any] = {}
 
+    @property
+    def active_trace_count(self) -> int:
+        """Number of trace handles held in memory. Zero after full cleanup."""
+        return len(self._traces)
+
     def _client(self) -> Any | None:
         if not self._enabled:
             return None

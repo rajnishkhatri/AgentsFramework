@@ -19,7 +19,10 @@ todos:
     status: completed
   - id: phase6-docs
     content: "Phase 6: Update LOG_PIPELINE_GUIDE (Langfuse verification step), 07_observability (quota note), END_TO_END_TRACING_GUIDE (sixth plane + retire Known Gap), architecture doc API alignment, RUNBOOK adapter name fixes, smoke_gcp.sh warn grep"
-    status: pending
+    status: completed
+  - id: phase7-correlation
+    content: "Phase 7: Trace Correlation Health & Event Completeness — TDD Pattern A3 event completeness guard, concurrent trace isolation, trace handle lifecycle failure mode matrix, full vertical integration (bridge→exporter→SDK), active_trace_count observability property"
+    status: completed
 ---
 
 # Langfuse GCP Integration — End-to-End Implementation Plan
@@ -242,6 +245,48 @@ from middleware import telemetry_bridge
 
 ---
 
+## Phase 7 — Trace Correlation Health & Event Completeness (TDD)
+
+**New file:** `tests/middleware/test_telemetry_correlation.py`
+**Production change:** `middleware/adapters/observability/langfuse_cloud_exporter.py` — `active_trace_count` property
+
+**Purpose:** Automated guards that fill the gap between Phase 5 unit/contract tests and Phase 6 manual verification. Follows `research/tdd_agentic_systems_prompt.md` Protocol B (Contract-Driven TDD, L2 Reproducible Reality).
+
+**Test categories (36 tests, <0.3s):**
+
+| Category | TDD Pattern | Tests | What it catches |
+|----------|-------------|-------|-----------------|
+| Event Completeness Guard | A3 (Enum Completeness) | 14 | New `DomainEvent` type added without updating bridge — mapped ∪ skipped = all types |
+| Cross-Plane Correlation | Pattern 4 (Consumer Contract) | 3 | `trace_id` inconsistency across export calls for a single run |
+| Concurrent Trace Isolation | B1 (Contract TDD) | 4 | Interleaved runs cross-contaminating trace handles or child spans |
+| Trace Handle Lifecycle | Pattern 11 (Failure Mode Matrix) | 6 | Release-before-export, double-release, export-after-release, memory leak |
+| Full Vertical Integration | Pattern 4 (Consumer Contract) | 8 | End-to-end data shape: domain event → bridge → exporter → mock SDK |
+| Port Protocol | L2 Contract | 1 | Stub satisfies `TelemetryExporter` protocol |
+
+**Production code added:**
+
+```python
+# middleware/adapters/observability/langfuse_cloud_exporter.py
+@property
+def active_trace_count(self) -> int:
+    """Number of trace handles held in memory. Zero after full cleanup."""
+    return len(self._traces)
+```
+
+**Anti-patterns avoided:**
+- Gap Blindness: event completeness guard + failure mode matrix
+- Mock Addiction: real in-memory `FakeLangfuseClient`, not `MagicMock`
+- Tautological: tests assert observable output (span names, counts), not algorithm
+
+**Acceptance:**
+
+- `test_mapped_plus_skipped_equals_all` breaks if a 10th DomainEvent type is added without updating bridge
+- 100 concurrent traces all opened and released cleanly (no memory leak)
+- Full run lifecycle produces exactly 1 SDK trace with 6 correctly-named child spans
+- `active_trace_count == 0` after `release_trace()` for every opened trace
+
+---
+
 ## Risk Register
 
 | Risk | Mitigation |
@@ -282,6 +327,7 @@ from middleware import telemetry_bridge
 - **Phase 5 bundled with 1–3** (no merge without tests)
 - **Phase 4** optional fast follow-up
 - **Phase 6** ships with code PR (no doc drift)
+- **Phase 7** TDD correlation health — runs in CI with L1+L2 (<0.3s)
 
 ---
 
