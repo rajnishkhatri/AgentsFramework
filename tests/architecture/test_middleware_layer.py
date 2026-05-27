@@ -357,3 +357,82 @@ class TestAppProdSdkIsolation:
             "SDK (use port TelemetryExporter instead):\n"
             + "\n".join(violations)
         )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Bridge import allowlist — only stdlib + wire + port
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestTelemetryBridgeImportAllowlist:
+    """telemetry_bridge.py may only import from stdlib, agent_ui_adapter.wire,
+    and middleware.ports. No other first-party or third-party packages.
+    """
+
+    ALLOWED_FIRST_PARTY = {
+        "agent_ui_adapter",
+        "middleware",
+    }
+
+    ALLOWED_MIDDLEWARE_SUBPACKAGES = {
+        "middleware.ports",
+    }
+
+    def test_bridge_imports_only_allowed_packages(self) -> None:
+        bridge = MIDDLEWARE_DIR / "telemetry_bridge.py"
+        if not bridge.exists():
+            pytest.skip("telemetry_bridge.py not yet created")
+
+        from utils.code_analysis import parse_imports
+
+        parsed = parse_imports(bridge)
+        assert parsed["pass"], f"Failed to parse {bridge}"
+
+        violations: list[str] = []
+        for imp in parsed["imports"]:
+            top = imp["top_package"]
+            full_module = imp.get("module", top)
+
+            # stdlib is always allowed
+            if self._is_stdlib(top):
+                continue
+
+            # Check first-party allowlist
+            if top not in self.ALLOWED_FIRST_PARTY:
+                violations.append(
+                    f"imports '{full_module}' (top: {top}) — not in allowlist"
+                )
+                continue
+
+            # For middleware imports, only ports subpackage is allowed
+            if top == "middleware" and not any(
+                full_module.startswith(sub)
+                for sub in self.ALLOWED_MIDDLEWARE_SUBPACKAGES
+            ):
+                violations.append(
+                    f"imports '{full_module}' — only middleware.ports allowed"
+                )
+
+            # For agent_ui_adapter, only wire subpackage is allowed
+            if top == "agent_ui_adapter" and not full_module.startswith(
+                "agent_ui_adapter.wire"
+            ):
+                violations.append(
+                    f"imports '{full_module}' — only agent_ui_adapter.wire allowed"
+                )
+
+        assert violations == [], (
+            "telemetry_bridge.py import allowlist violated:\n"
+            + "\n".join(violations)
+        )
+
+    @staticmethod
+    def _is_stdlib(package: str) -> bool:
+        """Check if a package is part of the Python standard library."""
+        import sys
+
+        if package in sys.stdlib_module_names:
+            return True
+        # Common stdlib modules that might not be in stdlib_module_names
+        # on all Python versions
+        return package in {"__future__", "typing", "logging"}
