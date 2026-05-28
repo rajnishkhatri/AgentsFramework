@@ -130,6 +130,55 @@ class TestRelayModeEnv:
         assert relay is not None
         assert relay._storage_dir == storage
 
+    def test_relay_storage_derives_from_offload_dir_on_cloud_run(self) -> None:
+        """Hardening: on Cloud Run with BLACKBOX_STORAGE_DIR unset, derive the
+        storage dir from AGENT_OFFLOAD_DIR so it matches BlackBoxRecorder.
+
+        Guards against the relative ``cache/black_box_recordings`` default
+        resolving to the wrong cwd on Cloud Run (deploy plan §Blocker 2).
+        """
+        from middleware.composition import build_adapters
+
+        env = {
+            **_MINIMAL_ENV,
+            "BLACKBOX_RELAY_MODE": "in_process",
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "AGENT_OFFLOAD_DIR": "/tmp/agent_offload",
+        }
+        adapters = build_adapters(env=env)
+        relay = adapters.black_box_relay
+        assert relay is not None
+        assert relay._storage_dir == Path("/tmp/agent_offload/black_box_recordings")
+
+    def test_explicit_storage_dir_overrides_offload_derivation(
+        self, tmp_path: Path
+    ) -> None:
+        """Explicit BLACKBOX_STORAGE_DIR wins over the AGENT_OFFLOAD_DIR fallback."""
+        from middleware.composition import build_adapters
+
+        storage = tmp_path / "explicit_bb"
+        env = {
+            **_MINIMAL_ENV,
+            "BLACKBOX_RELAY_MODE": "in_process",
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "AGENT_OFFLOAD_DIR": "/tmp/agent_offload",
+            "BLACKBOX_STORAGE_DIR": str(storage),
+        }
+        adapters = build_adapters(env=env)
+        relay = adapters.black_box_relay
+        assert relay is not None
+        assert relay._storage_dir == storage
+
+    def test_local_default_storage_when_not_cloud_run(self) -> None:
+        """Off Cloud Run with no explicit dir, keep the local cache default."""
+        from middleware.composition import build_adapters
+
+        env = {**_MINIMAL_ENV, "BLACKBOX_RELAY_MODE": "in_process"}
+        adapters = build_adapters(env=env)
+        relay = adapters.black_box_relay
+        assert relay is not None
+        assert relay._storage_dir == Path("cache/black_box_recordings")
+
 
 # ─────────────────────────────────────────────────────────────────────
 # C. COMPOSITION INTEGRATION — relay instance on MiddlewareAdapters

@@ -223,6 +223,38 @@ def test_backend_offload_dir_set(resources):
     )
 
 
+def test_backend_blackbox_relay_mode_in_process(resources):
+    """ACCEPT: BLACKBOX_RELAY_MODE=in_process so the relay runs inside app_prod.
+
+    Without this the production lifespan has no relay to start and BlackBox
+    recordings never reach Langfuse (blackbox_langfuse_gcp_deploy.plan §Blocker 1).
+    """
+    envs = _env_map(_container(_template(_backend_service(resources))))
+    assert envs.get("BLACKBOX_RELAY_MODE", {}).get("value") == "in_process", (
+        "Recipe 4: BLACKBOX_RELAY_MODE must be 'in_process' for Tier A."
+    )
+
+
+def test_backend_blackbox_storage_dir_aligned_with_offload(resources):
+    """REJECT a relay storage path that does not match where the recorder writes.
+
+    BlackBoxRecorder writes to {AGENT_OFFLOAD_DIR}/black_box_recordings; the
+    relay tails BLACKBOX_STORAGE_DIR. A mismatch means the relay polls an empty
+    directory (blackbox_langfuse_gcp_deploy.plan §Blocker 2).
+    """
+    envs = _env_map(_container(_template(_backend_service(resources))))
+    offload = str(envs.get("AGENT_OFFLOAD_DIR", {}).get("value", ""))
+    storage = str(envs.get("BLACKBOX_STORAGE_DIR", {}).get("value", ""))
+    assert storage == "/tmp/agent_offload/black_box_recordings", (
+        f"Recipe 4: BLACKBOX_STORAGE_DIR must be "
+        f"/tmp/agent_offload/black_box_recordings, got {storage!r}."
+    )
+    assert offload and storage.startswith(offload.rstrip("/") + "/"), (
+        f"Recipe 4: BLACKBOX_STORAGE_DIR ({storage!r}) must be nested under "
+        f"AGENT_OFFLOAD_DIR ({offload!r}) so relay and recorder agree."
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Probes + service account
 # ─────────────────────────────────────────────────────────────────────────────

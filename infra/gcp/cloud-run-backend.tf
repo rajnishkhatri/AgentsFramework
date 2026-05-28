@@ -101,6 +101,22 @@ resource "google_cloud_run_v2_service" "backend_combined" {
         value = "/tmp/agent_offload"
       }
 
+      # ── BlackBox→Langfuse relay (Tier A in-process mode) ─────────────────
+      #
+      # The relay runs as an asyncio task inside app_prod's lifespan. Its
+      # storage dir MUST match where BlackBoxRecorder writes recordings under
+      # AGENT_OFFLOAD_DIR, otherwise the relay tails an empty path.
+
+      env {
+        name  = "BLACKBOX_RELAY_MODE"
+        value = "in_process"
+      }
+
+      env {
+        name  = "BLACKBOX_STORAGE_DIR"
+        value = "/tmp/agent_offload/black_box_recordings"
+      }
+
       env {
         name  = "GCS_FACTS_BUCKET"
         value = google_storage_bucket.agent_facts.name

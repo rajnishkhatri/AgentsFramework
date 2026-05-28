@@ -293,8 +293,7 @@ def _build_relay(
     if mode != _RELAY_MODE_IN_PROCESS:
         return None
 
-    storage_dir_str = e.get("BLACKBOX_STORAGE_DIR", "")
-    storage_dir = Path(storage_dir_str) if storage_dir_str else _DEFAULT_BB_STORAGE
+    storage_dir = _resolve_relay_storage_dir(e)
 
     from middleware.ports.compliance_publisher import CompliancePublisher
 
@@ -305,6 +304,28 @@ def _build_relay(
         exporter=exporter,
         compliance_publisher=compliance_publisher,
     )
+
+
+def _resolve_relay_storage_dir(e: Mapping[str, str]) -> Path:
+    """Resolve where the relay tails BlackBox recordings.
+
+    Precedence:
+      1. ``BLACKBOX_STORAGE_DIR`` (explicit; set by Terraform on Cloud Run).
+      2. On Cloud Run (``GCP_EXECUTION_ENV=cloudrun``) with the var unset,
+         derive from ``AGENT_OFFLOAD_DIR`` so the relay matches where
+         ``BlackBoxRecorder`` writes (the default relative ``cache/`` path
+         resolves to the wrong cwd on Cloud Run).
+      3. Local default (``cache/black_box_recordings``).
+    """
+    storage_dir_str = e.get("BLACKBOX_STORAGE_DIR", "")
+    if storage_dir_str:
+        return Path(storage_dir_str)
+
+    if e.get("GCP_EXECUTION_ENV") == "cloudrun":
+        offload_dir = e.get("AGENT_OFFLOAD_DIR", "/tmp/agent_offload")
+        return Path(offload_dir) / "black_box_recordings"
+
+    return _DEFAULT_BB_STORAGE
 
 
 def _require(env: Mapping[str, str], key: str) -> str:

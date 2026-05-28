@@ -24,6 +24,7 @@ Environment variables (all injected via Secret Manager on Cloud Run):
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import logging
@@ -181,27 +182,49 @@ def build_combined_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        """Enter async Postgres checkpointer before graph compilation."""
+        """Enter async Postgres checkpointer before graph compilation.
+
+        Also runs the BlackBox→Langfuse relay as an in-process asyncio task
+        when ``BLACKBOX_RELAY_MODE=in_process`` (the Tier A default). This
+        mirrors the dev entry point (``middleware/__main__.py``); without it
+        BlackBox recordings written to tmpfs are never exported to Langfuse.
+        """
         from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
 
-        async with PostgresCheckpointer.from_env() as pg_cp:
-            graph = build_graph(
-                agent_config=agent_config,
-                tool_registry=tool_registry,
-                cache_dir=cache_dir,
-                checkpointer=pg_cp.saver,
-                agent_facts_registry=agent_facts_registry,
-                interrupt_before_execute_tool=False,
-            )
-            app.state.runtime = LangGraphRuntime(
-                graph, trace_emit=trace_service.emit
-            )
-            logger.info("Production graph compiled, runtime ready")
-            yield
+        relay = adapters.black_box_relay
+        relay_task: asyncio.Task | None = None
+        if relay is not None:
+            relay_task = asyncio.create_task(relay.run_forever(interval_s=1.0))
+            logger.info("BlackBox→Langfuse relay started (in-process)")
+
         try:
-            adapters.telemetry_exporter.shutdown()
-        except Exception:
-            logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
+            async with PostgresCheckpointer.from_env() as pg_cp:
+                graph = build_graph(
+                    agent_config=agent_config,
+                    tool_registry=tool_registry,
+                    cache_dir=cache_dir,
+                    checkpointer=pg_cp.saver,
+                    agent_facts_registry=agent_facts_registry,
+                    interrupt_before_execute_tool=False,
+                )
+                app.state.runtime = LangGraphRuntime(
+                    graph, trace_emit=trace_service.emit
+                )
+                logger.info("Production graph compiled, runtime ready")
+                yield
+        finally:
+            if relay_task is not None and relay is not None:
+                relay.stop()
+                relay_task.cancel()
+                try:
+                    await relay_task
+                except asyncio.CancelledError:
+                    pass
+                logger.info("BlackBox→Langfuse relay stopped (in-process)")
+            try:
+                adapters.telemetry_exporter.shutdown()
+            except Exception:
+                logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
 
     adapters = build_adapters()
     middleware_app = build_middleware_app(adapters=adapters)
