@@ -25,6 +25,8 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [busy, setBusy] = React.useState(false);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+  /** Stable LangGraph thread id for checkpointer + /run/stream (multiturn). */
+  const threadIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,21 +38,47 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
       role: "user",
       text: body,
     };
+    if (threadIdRef.current === null) {
+      threadIdRef.current = crypto.randomUUID();
+    }
+    const threadId = threadIdRef.current;
+    // Only the new user line: middleware uses `thread_id` + SqliteSaver so LangGraph
+    // appends to checkpoint state. Sending full chat history duplicates prior turns in
+    // `messages` and breaks tool follow-ups on turn 2+.
+    const messagesForApi = [{ role: "user" as const, content: body }];
+
     setMessages((prev) => [...prev, userMsg]);
     setBusy(true);
 
     try {
       const res = await fetch("/api/run/stream", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: { messages: [{ role: "user", content: body }] } }),
+        body: JSON.stringify({
+          thread_id: threadId,
+          input: { messages: messagesForApi },
+        }),
       });
 
       if (!res.ok || !res.body) {
+        let errorText: string;
+        if (res.status === 401) {
+          const contentType = res.headers.get("content-type") ?? "";
+          if (contentType.includes("application/json")) {
+            errorText = "Session expired — please sign in again.";
+          } else {
+            errorText = "Backend rejected credentials — contact your admin.";
+          }
+        } else if (res.status === 502 || res.status === 503 || res.status === 504) {
+          errorText = "Backend unreachable — try again in a moment.";
+        } else {
+          errorText = `Error: ${res.status} — ${res.statusText || "unexpected failure"}.`;
+        }
         const assistantMsg: Message = {
           id: crypto.randomUUID(),
           role: "assistant",
-          text: `Error: ${res.status} — ${res.statusText}. The backend runtime is not connected yet.`,
+          text: errorText,
         };
         setMessages((prev) => [...prev, assistantMsg]);
         return;
@@ -136,6 +164,7 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
           <ThemeToggle />
           <Link
             href="/api/auth/sign-out"
+            prefetch={false}
             className="text-sm text-muted hover:text-fg no-underline"
           >
             Sign out

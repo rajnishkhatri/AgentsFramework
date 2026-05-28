@@ -50,9 +50,16 @@ python -m explainability_app.dev_seed --seed 42 --count 5
 
 # Run the read-only FastAPI backend and Next.js frontend together.
 make explainability
+
+# Or run them separately.
+make explainability-backend
+make explainability-frontend
 ```
 
 The backend binds to `127.0.0.1:8001`; the dashboard runs at `http://localhost:3001`.
+Modules: Dashboard, Trace Explorer (Timeline / Cascade / Replay tabs), Decision
+Audit, Guardrail Monitor, Agent Registry, Compliance Center, and Log Viewer
+(per-concern static + live SSE tail of `logs/*.log`).
 
 ### Docker
 

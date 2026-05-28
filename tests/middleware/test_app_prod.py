@@ -1,0 +1,618 @@
+"""Tests for middleware.app_prod — production combined backend.
+
+Verifies:
+  * build_combined_app() factory boots cleanly with mocked GCP deps
+  * /healthz responds 200 pre-auth (Cloud Run liveness)
+  * /run/stream rejects missing bearer (401)
+  * Dockerfile.backend and Dockerfile.frontend exist with expected content
+  * Phase 3: _generate() wires domain events to telemetry bridge (TDD §Protocol B)
+"""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from agent_ui_adapter.wire.domain_events import (
+    LLMMessageEnded,
+    LLMMessageStarted,
+    RunFinishedDomain,
+    RunStartedDomain,
+    ToolCallStarted,
+    ToolResultReceived,
+)
+from trust.enums import IdentityStatus
+from trust.models import AgentFacts, Capability
+
+
+AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+class TestDockerfiles:
+    """Verify Docker assets exist and contain expected markers."""
+
+    def test_dockerfile_backend_exists(self) -> None:
+        path = AGENT_ROOT / "Dockerfile.backend"
+        assert path.exists(), "Dockerfile.backend must exist at repo root"
+
+    def test_dockerfile_backend_uses_python_311(self) -> None:
+        content = (AGENT_ROOT / "Dockerfile.backend").read_text()
+        assert "python:3.11" in content
+
+    def test_dockerfile_backend_installs_gcp_extra(self) -> None:
+        content = (AGENT_ROOT / "Dockerfile.backend").read_text()
+        assert "[gcp]" in content
+
+    def test_dockerfile_backend_exposes_8080(self) -> None:
+        content = (AGENT_ROOT / "Dockerfile.backend").read_text()
+        assert "EXPOSE 8080" in content
+
+    def test_dockerfile_backend_cmd_is_uvicorn_factory(self) -> None:
+        content = (AGENT_ROOT / "Dockerfile.backend").read_text()
+        assert "middleware.app_prod:build_combined_app" in content
+        assert "--factory" in content
+
+    def test_dockerfile_backend_has_healthcheck(self) -> None:
+        content = (AGENT_ROOT / "Dockerfile.backend").read_text()
+        assert "HEALTHCHECK" in content
+        assert "/healthz" in content
+
+    def test_dockerfile_frontend_exists(self) -> None:
+        path = AGENT_ROOT / "frontend" / "Dockerfile.frontend"
+        assert path.exists(), "Dockerfile.frontend must exist in frontend/"
+
+    def test_dockerfile_frontend_uses_standalone(self) -> None:
+        content = (AGENT_ROOT / "frontend" / "Dockerfile.frontend").read_text()
+        assert "standalone" in content
+
+    def test_dockerfile_frontend_exposes_3000(self) -> None:
+        content = (AGENT_ROOT / "frontend" / "Dockerfile.frontend").read_text()
+        assert "EXPOSE 3000" in content
+
+    def test_dockerfile_frontend_runs_server_js(self) -> None:
+        content = (AGENT_ROOT / "frontend" / "Dockerfile.frontend").read_text()
+        assert "server.js" in content
+
+
+class TestNextConfig:
+    """Verify next.config.ts has output: standalone."""
+
+    def test_standalone_output_configured(self) -> None:
+        content = (AGENT_ROOT / "frontend" / "next.config.ts").read_text()
+        assert 'output: "standalone"' in content or "output: 'standalone'" in content
+
+
+class TestAppProdModule:
+    """Verify app_prod module structure and imports."""
+
+    def test_module_importable(self) -> None:
+        """app_prod module can be imported (top-level only)."""
+        import middleware.app_prod as mod
+
+        assert hasattr(mod, "build_combined_app")
+
+    def test_build_combined_app_requires_gcs_facts_bucket(self) -> None:
+        """Factory raises RuntimeError if GCS_FACTS_BUCKET is not set."""
+        env = {
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "ARCHITECTURE_PROFILE": "v3",
+            "GCS_TRACES_BUCKET": "test-traces",
+            "WORKOS_CLIENT_ID": "client_test",
+            "WORKOS_API_KEY": "sk_test",
+            "MEM0_API_KEY": "mem0_test",
+            "LANGFUSE_PUBLIC_KEY": "pk_test",
+            "LANGFUSE_SECRET_KEY": "sk_test",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("GCS_FACTS_BUCKET", None)
+            with pytest.raises(RuntimeError, match="GCS_FACTS_BUCKET"):
+                from middleware.app_prod import build_combined_app
+                build_combined_app()
+
+    def test_build_combined_app_requires_gcs_traces_bucket(self) -> None:
+        """Factory raises RuntimeError if GCS_TRACES_BUCKET is not set."""
+        env = {
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "ARCHITECTURE_PROFILE": "v3",
+            "GCS_FACTS_BUCKET": "test-facts",
+            "WORKOS_CLIENT_ID": "client_test",
+            "WORKOS_API_KEY": "sk_test",
+            "MEM0_API_KEY": "mem0_test",
+            "LANGFUSE_PUBLIC_KEY": "pk_test",
+            "LANGFUSE_SECRET_KEY": "sk_test",
+        }
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("GCS_TRACES_BUCKET", None)
+            with pytest.raises(RuntimeError, match="GCS_TRACES_BUCKET"):
+                from middleware.app_prod import build_combined_app
+                build_combined_app()
+
+
+class TestAppProdHealthz:
+    """Integration test: build_combined_app healthz works pre-auth."""
+
+    @pytest.fixture
+    def prod_client(self):
+        """Build the app with all GCP services mocked."""
+        env = {
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "ARCHITECTURE_PROFILE": "v3",
+            "GCS_FACTS_BUCKET": "test-facts",
+            "GCS_TRACES_BUCKET": "test-traces",
+            "AGENT_FACTS_SECRET": "test-secret",
+            "WORKOS_CLIENT_ID": "client_test",
+            "WORKOS_API_KEY": "sk_test",
+            "MEM0_API_KEY": "mem0_test",
+            "LANGFUSE_PUBLIC_KEY": "pk_test",
+            "LANGFUSE_SECRET_KEY": "sk_test",
+            "DATABASE_URL": "postgresql://test:test@localhost/test",
+        }
+
+        mock_gcs_registry = MagicMock()
+        mock_gcs_sink = MagicMock()
+
+        with patch.dict(os.environ, env, clear=False), \
+             patch(
+                 "middleware.app_prod.AgentFactsGcsRegistry",
+                 return_value=mock_gcs_registry,
+             ), \
+             patch(
+                 "middleware.app_prod.GcsTraceSink",
+                 return_value=mock_gcs_sink,
+             ), \
+             patch(
+                 "middleware.app_prod._load_graph_factory",
+                 return_value=MagicMock(),
+             ):
+            from importlib import reload
+            import middleware.app_prod as mod
+            reload(mod)
+            app = mod.build_combined_app()
+
+        from fastapi.testclient import TestClient
+        return TestClient(app, raise_server_exceptions=False)
+
+    def test_healthz_returns_200(self, prod_client) -> None:
+        r = prod_client.get("/healthz")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["mode"] == "combined"
+
+    def test_run_stream_rejects_missing_bearer(self, prod_client) -> None:
+        r = prod_client.post("/run/stream", json={"input": {}})
+        assert r.status_code == 401
+
+
+class TestAppProdAutoProvision:
+    """Verify missing AgentFacts triggers auto-registration instead of 500."""
+
+    @pytest.fixture
+    def auto_provision_client(self):
+        env = {
+            "GCP_EXECUTION_ENV": "cloudrun",
+            "ARCHITECTURE_PROFILE": "v3",
+            "GCS_FACTS_BUCKET": "test-facts",
+            "GCS_TRACES_BUCKET": "test-traces",
+            "AGENT_FACTS_SECRET": "test-secret",
+            "WORKOS_CLIENT_ID": "client_test",
+            "WORKOS_API_KEY": "sk_test",
+            "MEM0_API_KEY": "mem0_test",
+            "LANGFUSE_PUBLIC_KEY": "pk_test",
+            "LANGFUSE_SECRET_KEY": "sk_test",
+            "DATABASE_URL": "postgresql://test:test@localhost/test",
+        }
+
+        subject = "user_01TESTSUBJECT"
+        claims = MagicMock(subject=subject)
+        mock_jwt_verifier = MagicMock()
+        mock_jwt_verifier.verify.return_value = claims
+
+        mock_adapters = MagicMock()
+        mock_adapters.profile = "v3"
+        mock_adapters.jwt_verifier = mock_jwt_verifier
+
+        provisioned = AgentFacts(
+            agent_id=subject,
+            agent_name=subject,
+            owner=subject,
+            version="1.0.0",
+            description="Auto-provisioned on first authenticated request",
+            capabilities=[Capability(name="delegate.subagent.*")],
+            status=IdentityStatus.ACTIVE,
+        )
+        mock_registry = MagicMock()
+        mock_registry.get.side_effect = KeyError(subject)
+        mock_registry.register.return_value = provisioned
+
+        async def _empty_run(*_args, **_kwargs):
+            return
+            yield  # pragma: no cover — makes this an async generator
+
+        mock_runtime = MagicMock()
+        mock_runtime.run = _empty_run
+
+        mock_pg = MagicMock()
+        mock_pg.saver = MagicMock()
+        mock_pg_cm = AsyncMock()
+        mock_pg_cm.__aenter__.return_value = mock_pg
+        mock_pg_cm.__aexit__.return_value = None
+
+        build_components_return = (
+            MagicMock(),
+            MagicMock(),
+            mock_registry,
+            Path("/tmp/agent-cache"),
+        )
+
+        with patch.dict(os.environ, env, clear=False), \
+             patch(
+                 "middleware.app_prod.GcsTraceSink",
+                 return_value=MagicMock(),
+             ), \
+             patch(
+                 "middleware.app_prod._load_graph_factory",
+                 return_value=MagicMock(),
+             ), \
+             patch(
+                 "middleware.composition.build_adapters",
+                 return_value=mock_adapters,
+             ), \
+             patch(
+                 "agent_ui_adapter.adapters.runtime.postgres_saver.PostgresCheckpointer.from_env",
+                 return_value=mock_pg_cm,
+             ), \
+             patch(
+                 "middleware.app_prod.LangGraphRuntime",
+                 return_value=mock_runtime,
+             ):
+            from importlib import reload
+            import middleware.app_prod as mod
+            reload(mod)
+            with patch.object(
+                mod,
+                "_build_components",
+                return_value=build_components_return,
+            ):
+                app = mod.build_combined_app()
+            app.state.runtime = mock_runtime
+
+        from fastapi.testclient import TestClient
+        client = TestClient(app, raise_server_exceptions=False)
+        return client, mock_registry, subject
+
+    def test_run_stream_auto_provisions_missing_identity(
+        self, auto_provision_client
+    ) -> None:
+        client, mock_registry, subject = auto_provision_client
+        r = client.post(
+            "/run/stream",
+            json={"input": {}},
+            headers={"Authorization": "Bearer test-token"},
+        )
+        assert r.status_code == 200
+        mock_registry.get.assert_called_once_with(subject)
+        mock_registry.register.assert_called_once()
+        registered_facts = mock_registry.register.call_args[0][0]
+        assert registered_facts.agent_id == subject
+        assert mock_registry.register.call_args[1]["registered_by"] == (
+            "app_prod:auto_provision"
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 3 — Telemetry Wiring in _generate()
+#
+# Layer: L2 (Reproducible Reality)
+# Strategy: Contract-driven TDD with in-memory exporter stub
+# Acceptance criteria (langfuse_gcp_integration.plan.md §Phase 3):
+#   - Mock exporter receives run.started exactly once per request
+#   - Mock exporter receives run.finished exactly once
+#   - Exporter raising on export_event() does not break SSE
+# Anti-patterns avoided:
+#   - Mock Addiction: real in-memory StubTelemetryExporter; infra mocks only
+#   - Gap Blindness: failure paths tested before acceptance paths
+#   - Tautological: observable exporter state, not algorithm reimplementation
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _StubTelemetryExporter:
+    """In-memory exporter recording calls for assertion.
+
+    Satisfies TelemetryExporter protocol without SDK dependency.
+    """
+
+    def __init__(self, *, raise_on_export: bool = False) -> None:
+        self.events: list[dict] = []
+        self.released_traces: list[str] = []
+        self.shutdown_called = False
+        self._raise_on_export = raise_on_export
+
+    def export_event(
+        self, *, name: str, trace_id: str, attributes: dict | None = None
+    ) -> None:
+        if self._raise_on_export:
+            raise RuntimeError("simulated exporter failure")
+        self.events.append(
+            {"name": name, "trace_id": trace_id, "attributes": attributes}
+        )
+
+    def release_trace(self, trace_id: str) -> None:
+        self.released_traces.append(trace_id)
+
+    def shutdown(self) -> None:
+        self.shutdown_called = True
+
+
+def _build_telemetry_client(
+    domain_events,
+    *,
+    stub_exporter: _StubTelemetryExporter | None = None,
+    runtime_error: Exception | None = None,
+):
+    """Build a FastAPI TestClient wired with a StubTelemetryExporter.
+
+    Returns ``(TestClient, StubTelemetryExporter, subject_string)``.
+    Infrastructure mocks (JWT, GCS, Postgres) isolate external I/O;
+    the exporter is a real in-memory implementation.
+    """
+    from importlib import reload
+
+    if stub_exporter is None:
+        stub_exporter = _StubTelemetryExporter()
+
+    subject = "user-test-telemetry"
+    claims = MagicMock(subject=subject)
+    mock_jwt = MagicMock()
+    mock_jwt.verify.return_value = claims
+
+    mock_adapters = MagicMock()
+    mock_adapters.profile = "v3"
+    mock_adapters.jwt_verifier = mock_jwt
+    mock_adapters.telemetry_exporter = stub_exporter
+
+    async def _mock_run(*args, **kwargs):
+        for ev in domain_events:
+            yield ev
+        if runtime_error:
+            raise runtime_error
+
+    mock_runtime = MagicMock()
+    mock_runtime.run = _mock_run
+
+    mock_registry = MagicMock()
+    mock_registry.get.return_value = AgentFacts(
+        agent_id=subject,
+        agent_name=subject,
+        owner=subject,
+        version="1.0.0",
+        description="Test identity",
+        capabilities=[Capability(name="delegate.subagent.*")],
+        status=IdentityStatus.ACTIVE,
+    )
+
+    env = {
+        "GCP_EXECUTION_ENV": "cloudrun",
+        "ARCHITECTURE_PROFILE": "v3",
+        "GCS_FACTS_BUCKET": "test-facts",
+        "GCS_TRACES_BUCKET": "test-traces",
+        "AGENT_FACTS_SECRET": "test-secret",
+        "WORKOS_CLIENT_ID": "client_test",
+        "WORKOS_API_KEY": "sk_test",
+        "MEM0_API_KEY": "mem0_test",
+        "LANGFUSE_PUBLIC_KEY": "pk_test",
+        "LANGFUSE_SECRET_KEY": "sk_test",
+        "DATABASE_URL": "postgresql://test:test@localhost/test",
+    }
+
+    build_components_return = (
+        MagicMock(),  # agent_config
+        MagicMock(),  # tool_registry
+        mock_registry,
+        Path("/tmp/agent-cache"),
+    )
+
+    with patch.dict(os.environ, env, clear=False), \
+         patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()), \
+         patch(
+             "middleware.app_prod._load_graph_factory",
+             return_value=MagicMock(),
+         ), \
+         patch(
+             "middleware.composition.build_adapters",
+             return_value=mock_adapters,
+         ), \
+         patch(
+             "middleware.app_prod.LangGraphRuntime",
+             return_value=mock_runtime,
+         ):
+        import middleware.app_prod as mod
+
+        reload(mod)
+        with patch.object(
+            mod, "_build_components", return_value=build_components_return
+        ):
+            app = mod.build_combined_app()
+        app.state.runtime = mock_runtime
+
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app, raise_server_exceptions=False)
+    return client, stub_exporter, subject
+
+
+def _post_stream(client):
+    """POST /run/stream with valid auth header."""
+    return client.post(
+        "/run/stream",
+        json={"input": {"messages": [{"content": "hello"}]}},
+        headers={"Authorization": "Bearer test-token"},
+    )
+
+
+class TestTelemetryWiring:
+    """Phase 3: _generate() wires domain events to telemetry bridge.
+
+    Tests ordered failure-path-first per TDD §Operating Principle 4.
+    """
+
+    # ── Failure paths (tested first) ─────────────────────────────────
+
+    def test_sse_survives_exporter_failure(self) -> None:
+        """O1: broken exporter never breaks SSE stream."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        stub = _StubTelemetryExporter(raise_on_export=True)
+        client, _, _ = _build_telemetry_client(events, stub_exporter=stub)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+    def test_safety_net_emits_run_finished_on_stream_error(self) -> None:
+        """Finally block emits run.finished when stream errors before
+        RunFinishedDomain."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+        ]
+        client, stub, _ = _build_telemetry_client(
+            events, runtime_error=RuntimeError("boom")
+        )
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        run_finished = [e for e in stub.events if e["name"] == "run.finished"]
+        assert len(run_finished) == 1, (
+            f"Expected 1 run.finished, got {len(run_finished)}"
+        )
+        assert run_finished[0]["attributes"]["errored"] is True
+
+    def test_no_double_run_finished(self) -> None:
+        """Bridge handles RunFinishedDomain; finally block does not
+        duplicate."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        client, stub, _ = _build_telemetry_client(events)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        run_finished = [e for e in stub.events if e["name"] == "run.finished"]
+        assert len(run_finished) == 1, (
+            f"Expected exactly 1 run.finished, got {len(run_finished)}"
+        )
+
+    def test_safety_net_skipped_when_no_events(self) -> None:
+        """No run.finished emitted when stream yields zero events."""
+        client, stub, _ = _build_telemetry_client([])
+        r = _post_stream(client)
+        assert r.status_code == 200
+        assert len(stub.events) == 0
+
+    # ── Contract: exactly-once semantics ─────────────────────────────
+
+    def test_run_started_exactly_once(self) -> None:
+        """run.started exported exactly once per request."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            ToolCallStarted(
+                trace_id="t-1",
+                tool_call_id="tc-1",
+                tool_name="shell",
+                args_json='{"cmd":"ls"}',
+            ),
+            ToolResultReceived(
+                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
+            ),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        client, stub, _ = _build_telemetry_client(events)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        run_started = [e for e in stub.events if e["name"] == "run.started"]
+        assert len(run_started) == 1
+
+    def test_run_finished_exactly_once(self) -> None:
+        """run.finished exported exactly once per request."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            ToolCallStarted(
+                trace_id="t-1",
+                tool_call_id="tc-1",
+                tool_name="shell",
+                args_json='{"cmd":"ls"}',
+            ),
+            ToolResultReceived(
+                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
+            ),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        client, stub, _ = _build_telemetry_client(events)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        run_finished = [e for e in stub.events if e["name"] == "run.finished"]
+        assert len(run_finished) == 1
+
+    # ── Happy path: full event forwarding ────────────────────────────
+
+    def test_forwards_all_domain_events_to_exporter(self) -> None:
+        """All non-skipped domain events forwarded to telemetry exporter."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            LLMMessageStarted(trace_id="t-1", message_id="msg-1"),
+            LLMMessageEnded(trace_id="t-1", message_id="msg-1"),
+            ToolCallStarted(
+                trace_id="t-1",
+                tool_call_id="tc-1",
+                tool_name="shell",
+                args_json='{"cmd":"ls"}',
+            ),
+            ToolResultReceived(
+                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
+            ),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        client, stub, _ = _build_telemetry_client(events)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        exported_names = [e["name"] for e in stub.events]
+        assert exported_names == [
+            "run.started",
+            "llm.started",
+            "llm.finished",
+            "tool.started",
+            "tool.finished",
+            "run.finished",
+        ]
+
+    def test_subject_passed_to_bridge(self) -> None:
+        """claims.subject forwarded to telemetry bridge events."""
+        events = [
+            RunStartedDomain(trace_id="t-1", run_id="r-1", thread_id="th-1"),
+            RunFinishedDomain(
+                trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
+            ),
+        ]
+        client, stub, subject = _build_telemetry_client(events)
+        r = _post_stream(client)
+        assert r.status_code == 200
+
+        for event in stub.events:
+            assert event["attributes"].get("subject") == subject

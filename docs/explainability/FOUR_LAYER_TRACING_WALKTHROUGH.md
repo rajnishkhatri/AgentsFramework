@@ -83,11 +83,13 @@ TestBehavioralContract::test_verify_is_idempotent                        PASSED
 TestBehavioralContract::test_verifier_returns_no_sdk_types               PASSED
 ```
 
-| Category | Tests | What they prove |
-|---|---|---|
-| Rejection (R1-R5 + 3) | 8 | Missing, expired, wrong issuer/client_id/token_use, tampered signature, unknown kid, malformed JWT |
-| Acceptance (A1) | 1 | Valid token returns normalized `JwtClaims` |
-| Behavioral contract | 3 | Satisfies Protocol, idempotent, no SDK type leakage |
+
+| Category              | Tests | What they prove                                                                                    |
+| --------------------- | ----- | -------------------------------------------------------------------------------------------------- |
+| Rejection (R1-R5 + 3) | 8     | Missing, expired, wrong issuer/client_id/token_use, tampered signature, unknown kid, malformed JWT |
+| Acceptance (A1)       | 1     | Valid token returns normalized `JwtClaims`                                                         |
+| Behavioral contract   | 3     | Satisfies Protocol, idempotent, no SDK type leakage                                                |
+
 
 ---
 
@@ -118,13 +120,15 @@ TestBehavioralContract::test_first_role_wins_for_audit_trace             PASSED
 
 **Policy table (from `middleware/composition.py`):**
 
-| Role | `shell` | `file_io` | `web_search` |
-|---|---|---|---|
-| `admin` | Allowed | Allowed | Allowed |
-| `beta` | **Denied** | Allowed | Allowed |
-| `viewer` | Denied | Denied | Denied |
-| `member` | Denied | Denied | Denied |
-| Unknown role | Denied | Denied | Denied |
+
+| Role         | `shell`    | `file_io` | `web_search` |
+| ------------ | ---------- | --------- | ------------ |
+| `admin`      | Allowed    | Allowed   | Allowed      |
+| `beta`       | **Denied** | Allowed   | Allowed      |
+| `viewer`     | Denied     | Denied    | Denied       |
+| `member`     | Denied     | Denied    | Denied       |
+| Unknown role | Denied     | Denied    | Denied       |
+
 
 ---
 
@@ -196,13 +200,15 @@ Steps: 1 | Cost: $0.0024
 
 **Artifacts created:**
 
-| Path | Content |
-|---|---|
-| `cache/black_box_recordings/wf-21b731f5/trace.jsonl` | Tamper-proof event chain |
-| `cache/phase_logs/wf-21b731f5/decisions.jsonl` | Routing + evaluation decisions |
-| `cache/agent_facts/cli-agent.json` | Signed agent identity |
-| `cache/checkpoints.db` | SQLite graph checkpoints |
-| `logs/*.log` | Per-concern structured log files |
+
+| Path                                                 | Content                          |
+| ---------------------------------------------------- | -------------------------------- |
+| `cache/black_box_recordings/wf-21b731f5/trace.jsonl` | Tamper-proof event chain         |
+| `cache/phase_logs/wf-21b731f5/decisions.jsonl`       | Routing + evaluation decisions   |
+| `cache/agent_facts/cli-agent.json`                   | Signed agent identity            |
+| `cache/checkpoints.db`                               | SQLite graph checkpoints         |
+| `logs/*.log`                                         | Per-concern structured log files |
+
 
 Note the `workflow_id` (`wf-21b731f5`) -- use it to query all artifacts in subsequent steps.
 
@@ -212,23 +218,27 @@ Note the `workflow_id` (`wf-21b731f5`) -- use it to query all artifacts in subse
 
 `logging.json` routes each service's logger to a dedicated file under `logs/`. After the CLI run, these files contain:
 
-**`logs/identity.log`** -- Agent registration:
+`**logs/identity.log`** -- Agent registration:
+
 ```
 2026-04-26 07:13:57,558 services.governance.agent_facts INFO Registered agent cli-agent by cli-bootstrap
 ```
 
-**`logs/guards.log`** -- Guardrail verdicts:
+`**logs/guards.log**` -- Guardrail verdicts:
+
 ```
 2026-04-26 07:14:11,896 services.guardrails INFO Guardrail prompt_injection: accepted
 ```
 
-**`logs/prompts.log`** -- Template rendering:
+`**logs/prompts.log**` -- Template rendering:
+
 ```
 2026-04-26 07:14:07,343 services.prompt_service INFO Rendered template input_guardrail.j2
 2026-04-26 07:14:11,904 services.prompt_service INFO Rendered template system_prompt.j2
 ```
 
-**`logs/black_box.log`** -- Recorder activity:
+`**logs/black_box.log**` -- Recorder activity:
+
 ```
 2026-04-26 07:14:07,341 services.governance.black_box INFO Recorded task_started for workflow wf-21b731f5
 2026-04-26 07:14:07,342 services.governance.black_box INFO Recorded guardrail_checked for workflow wf-21b731f5
@@ -237,13 +247,15 @@ Note the `workflow_id` (`wf-21b731f5`) -- use it to query all artifacts in subse
 2026-04-26 07:14:13,654 services.governance.black_box INFO Recorded step_executed for workflow wf-21b731f5
 ```
 
-**`logs/phases.log`** -- Decision rationale:
+`**logs/phases.log**` -- Decision rationale:
+
 ```
 2026-04-26 07:14:11,899 services.governance.phase_logger INFO Decision [routing]: Selected gpt-4o
 2026-04-26 07:14:13,657 services.governance.phase_logger INFO Decision [evaluation]: Outcome: success
 ```
 
-**`logs/evals.log`** -- Eval capture (LLM call records):
+`**logs/evals.log**` -- Eval capture (LLM call records):
+
 ```
 2026-04-26 07:14:11,897 services.eval_capture INFO AI Response
 2026-04-26 07:14:13,654 services.eval_capture INFO AI Response
@@ -263,13 +275,15 @@ cat cache/black_box_recordings/wf-21b731f5/trace.jsonl | python -m json.tool
 
 **Events recorded for session `wf-21b731f5`:**
 
-| # | Event | Details | Hash (truncated) |
-|---|---|---|---|
-| 1 | `task_started` | `task_input: "What is the capital of France?"` | `cc939ca626ca...` |
-| 2 | `guardrail_checked` | `agent_facts` for `cli-agent`, `verified: true` | `ea8aec527ed5...` |
-| 3 | `guardrail_checked` | `prompt_injection`, `accepted: true` | `664e96c990f1...` |
-| 4 | `model_selected` | `model: gpt-4o`, `reason: capable-for-planning` | `f8219dbeb8a8...` |
-| 5 | `step_executed` | `model: gpt-4o`, 469 tokens in, 6 out, $0.0024, 1750ms | `867f0154651a...` |
+
+| #   | Event               | Details                                                | Hash (truncated)  |
+| --- | ------------------- | ------------------------------------------------------ | ----------------- |
+| 1   | `task_started`      | `task_input: "What is the capital of France?"`         | `cc939ca626ca...` |
+| 2   | `guardrail_checked` | `agent_facts` for `cli-agent`, `verified: true`        | `ea8aec527ed5...` |
+| 3   | `guardrail_checked` | `prompt_injection`, `accepted: true`                   | `664e96c990f1...` |
+| 4   | `model_selected`    | `model: gpt-4o`, `reason: capable-for-planning`        | `f8219dbeb8a8...` |
+| 5   | `step_executed`     | `model: gpt-4o`, 469 tokens in, 6 out, $0.0024, 1750ms | `867f0154651a...` |
+
 
 Each event contains: `event_id` (UUID), `workflow_id`, `event_type`, `timestamp`, `details`, and `integrity_hash`.
 
@@ -291,11 +305,13 @@ print(f"Events: {len(bundle['events'])}")             # 5
 
 **Tamper detection demo:** Modifying even a single character in any event causes the chain to break:
 
-| Action | `hash_chain_valid` |
-|---|---|
-| Original (untouched) | `True` |
-| Changed event 1's `task_input` | `False` |
-| Restored to original | `True` |
+
+| Action                         | `hash_chain_valid` |
+| ------------------------------ | ------------------ |
+| Original (untouched)           | `True`             |
+| Changed event 1's `task_input` | `False`            |
+| Restored to original           | `True`             |
+
 
 When tampering is detected, the export identifies the exact event where the chain broke.
 
@@ -370,38 +386,45 @@ bundle = recorder.export_for_compliance(
 
 The bundle contains:
 
-| Section | What it answers |
-|---|---|
-| `hash_chain_valid` | Has the audit trail been tampered with? |
-| `events` | **What** happened during the session (tamper-proof) |
-| `agent_facts` | **Who** ran the session (signed identity) |
-| `phase_decisions` | **Why** each decision was made (rationale + confidence) |
+
+| Section            | What it answers                                         |
+| ------------------ | ------------------------------------------------------- |
+| `hash_chain_valid` | Has the audit trail been tampered with?                 |
+| `events`           | **What** happened during the session (tamper-proof)     |
+| `agent_facts`      | **Who** ran the session (signed identity)               |
+| `phase_decisions`  | **Why** each decision was made (rationale + confidence) |
+
 
 ---
 
 ## Summary
 
-| Layer | Purpose | Key Files | Artifacts |
-|---|---|---|---|
-| **JWT Auth** | Prove identity | `middleware/ports/jwt_verifier.py`, `middleware/adapters/auth/workos_jwt_verifier.py` | HTTP 200/401 |
-| **Tool ACL** | Authorize actions | `middleware/ports/tool_acl.py`, `middleware/adapters/acl/workos_role_acl.py` | HTTP 200/403 |
-| **Observability** | Monitor operations | `services/observability.py`, `logging.json` | `logs/*.log` |
-| **Black Box** | Audit compliance | `services/governance/black_box.py`, `services/governance/phase_logger.py` | `cache/black_box_recordings/`, `cache/phase_logs/` |
+
+| Layer             | Purpose            | Key Files                                                                             | Artifacts                                          |
+| ----------------- | ------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| **JWT Auth**      | Prove identity     | `middleware/ports/jwt_verifier.py`, `middleware/adapters/auth/workos_jwt_verifier.py` | HTTP 200/401                                       |
+| **Tool ACL**      | Authorize actions  | `middleware/ports/tool_acl.py`, `middleware/adapters/acl/workos_role_acl.py`          | HTTP 200/403                                       |
+| **Observability** | Monitor operations | `services/observability.py`, `logging.json`                                           | `logs/*.log`                                       |
+| **Black Box**     | Audit compliance   | `services/governance/black_box.py`, `services/governance/phase_logger.py`             | `cache/black_box_recordings/`, `cache/phase_logs/` |
+
 
 ---
 
 ## Key Source Files
 
-| File | Role |
-|---|---|
-| `middleware/__main__.py` | Dev entry point with permissive auth |
-| `middleware/server.py` | Production app with WorkOS JWT + ACL |
-| `middleware/composition.py` | Single wiring point for all adapters |
-| `middleware/ports/jwt_verifier.py` | Vendor-neutral JWT verification contract |
-| `middleware/ports/tool_acl.py` | Vendor-neutral tool ACL contract |
-| `services/governance/black_box.py` | Append-only JSONL recorder with SHA-256 chain |
-| `services/governance/phase_logger.py` | Per-decision routing/evaluation logs |
-| `services/observability.py` | Logging setup + framework telemetry |
-| `orchestration/react_loop.py` | Graph nodes that drive all four layers |
-| `logging.json` | Per-concern log routing configuration |
-| `tests/middleware/conftest.py` | In-process RSA keys + JWKS fixtures for testing |
+
+| File                                  | Role                                            |
+| ------------------------------------- | ----------------------------------------------- |
+| `middleware/__main__.py`              | Dev entry point with permissive auth            |
+| `middleware/server.py`                | Production app with WorkOS JWT + ACL            |
+| `middleware/composition.py`           | Single wiring point for all adapters            |
+| `middleware/ports/jwt_verifier.py`    | Vendor-neutral JWT verification contract        |
+| `middleware/ports/tool_acl.py`        | Vendor-neutral tool ACL contract                |
+| `services/governance/black_box.py`    | Append-only JSONL recorder with SHA-256 chain   |
+| `services/governance/phase_logger.py` | Per-decision routing/evaluation logs            |
+| `services/observability.py`           | Logging setup + framework telemetry             |
+| `orchestration/react_loop.py`         | Graph nodes that drive all four layers          |
+| `logging.json`                        | Per-concern log routing configuration           |
+| `tests/middleware/conftest.py`        | In-process RSA keys + JWKS fixtures for testing |
+
+

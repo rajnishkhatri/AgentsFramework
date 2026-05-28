@@ -10,7 +10,12 @@ import Link from "next/link";
 import { buildAdapters } from "@/lib/composition";
 import { ExplainabilityClientError } from "@/lib/ports/explainability_client";
 import { eventsToTimeline } from "@/lib/translators/event_to_timeline";
+import { analyzeCascade } from "@/lib/translators/cascade_analysis";
+import { eventsToReplayFrames } from "@/lib/translators/events_to_replay_frames";
 import { TimelineWithDetail } from "@/components/traces/TimelineWithDetail";
+import { CascadeView } from "@/components/traces/CascadeView";
+import { ReplayScrubber } from "@/components/traces/ReplayScrubber";
+import { WorkflowDetailTabs } from "@/components/traces/WorkflowDetailTabs";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -35,6 +40,8 @@ export default async function WorkflowDetailPage({ params }: Props) {
   }
 
   const frames = eventsToTimeline(workflow.events);
+  const cascadeReport = analyzeCascade(workflow.events);
+  const replayFrames = eventsToReplayFrames(workflow.events);
 
   return (
     <div className="flex flex-col gap-4">
@@ -76,7 +83,11 @@ export default async function WorkflowDetailPage({ params }: Props) {
         </div>
       </header>
 
-      <TimelineWithDetail frames={frames} />
+      <WorkflowDetailTabs
+        timeline={<TimelineWithDetail frames={frames} />}
+        cascade={<CascadeView report={cascadeReport} />}
+        replay={<ReplayScrubber frames={replayFrames} />}
+      />
     </div>
   );
 }

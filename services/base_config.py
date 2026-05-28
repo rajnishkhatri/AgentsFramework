@@ -26,6 +26,12 @@ class AgentConfig(BaseModel):
     max_cost_usd: float = 1.0
     default_model: str = "gpt-4o-mini"
     models: list[ModelProfile] = []
+    tool_output_offload_threshold_chars: int = 4000
+    tool_output_preview_chars: int = 400
+    tool_result_history_limit: int = 100
+    trajectory_compaction_token_threshold: int = 3000
+    delegation_max_cost_usd: float = 0.5
+    delegation_max_calls_per_task: int = 4
 
 
 def default_fast_profile() -> ModelProfile:

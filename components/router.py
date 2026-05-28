@@ -16,6 +16,8 @@ Branch order (highest priority first):
 
 from __future__ import annotations
 
+from typing import Literal
+
 from components.routing_config import RoutingConfig
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 
@@ -64,6 +66,61 @@ def _select_same_model(
             return profile
 
     return _fallback_profile(agent_config, default_name)
+
+
+def select_planning_depth(
+    *,
+    task_input: str,
+    step_count: int,
+    tool_results_count: int,
+) -> tuple[Literal["L0", "L1", "L2"], str]:
+    """Pick planning depth level for the current routing decision.
+
+    Levels:
+      - ``L0``: Minimal planning for simple or post-tool synthesis turns.
+      - ``L1``: Moderate decomposition for medium-complexity requests.
+      - ``L2``: Deep decomposition for broad, constrained, or multi-part tasks.
+    """
+    if step_count > 0 or tool_results_count > 0:
+        return "L0", "post-tool-synthesis"
+
+    lowered = (task_input or "").lower()
+    words = [part for part in lowered.replace("\n", " ").split(" ") if part]
+    word_count = len(words)
+
+    complexity_score = 0
+    if word_count >= 35:
+        complexity_score += 1
+    if word_count >= 80:
+        complexity_score += 1
+
+    multi_part_markers = (
+        "compare",
+        "trade-off",
+        "tradeoff",
+        "architecture",
+        "migration",
+        "refactor",
+        "roadmap",
+        "design",
+    )
+    if any(marker in lowered for marker in multi_part_markers):
+        complexity_score += 1
+
+    if any(marker in lowered for marker in (" and ", " then ", " also ", "\n- ", "\n1.")):
+        complexity_score += 1
+
+    if task_input.count("\n") >= 2:
+        complexity_score += 1
+
+    if lowered.count("?") >= 2:
+        complexity_score += 1
+
+    if complexity_score >= 3:
+        return "L2", "high-complexity-initial-task"
+    if complexity_score >= 2:
+        return "L1", "moderate-complexity-initial-task"
+    return "L0", "simple-initial-task"
 
 
 def select_model(

@@ -48,7 +48,16 @@ from agent_ui_adapter.wire.domain_events import (
 )
 from trust.models import AgentFacts, TrustTraceRecord
 
+# LangGraph’s config merge differs from LangChain’s; normalize here so Pregel sees
+# the requested ``recursion_limit`` after ``Runnable.astream_events`` runs.
+from langgraph.utils.config import ensure_config as _lg_ensure_config
+
 _logger = logging.getLogger("agent_ui_adapter.adapters.langgraph_runtime")
+
+# LangGraph defaults recursion_limit to 25 (graph node transitions). Each ReAct lap
+# (guard/route/call_llm/execute_tool/evaluate) consumes several transitions, so
+# web_search-heavy runs otherwise raise GraphRecursionError before synthesis.
+_DEFAULT_RECURSION_LIMIT = 150
 
 
 class _CompiledGraphLike(Protocol):
@@ -125,7 +134,31 @@ class LangGraphRuntime:
             trace_id=trace_id, run_id=run_id, thread_id=thread_id
         )
 
-        config = {"configurable": {"thread_id": thread_id}}
+        config = _lg_ensure_config(
+            None,
+            {
+                "recursion_limit": _DEFAULT_RECURSION_LIMIT,
+                "configurable": {
+                    "thread_id": thread_id,
+                    "trace_id": trace_id,
+                    "user_id": identity.owner,
+                    "registered_agent_id": identity.agent_id,
+                },
+            },
+        )
+        _logger.info(
+            "astream_events using recursion_limit=%s (thread_tail=%s)",
+            config.get("recursion_limit"),
+            thread_id[-12:] if len(thread_id) >= 12 else thread_id,
+        )
+        # Seed correlation keys into state so graph nodes can key black-box
+        # recordings and phase logs under the same trace_id that SSE emits.
+        input = {
+            **input,
+            "workflow_id": trace_id,
+            "task_id": run_id,
+            "registered_agent_id": identity.agent_id,
+        }
         error: str | None = None
         self._streamed_run_ids = set()
         try:
@@ -213,14 +246,82 @@ class LangGraphRuntime:
             return "".join(parts)
         return ""
 
+    @staticmethod
+    def _extract_llm_chunk_text(chunk: object) -> str:
+        """Text from a chat chunk, or legacy ``GenerationChunk.text``."""
+        text = LangGraphRuntime._extract_content(chunk)
+        if text:
+            return text
+        raw_text = getattr(chunk, "text", None)
+        return raw_text if isinstance(raw_text, str) else ""
+
+    @staticmethod
+    def _tool_calls_preview(obj: object) -> str:
+        """When the model returns only tool calls, surface a short line for the UI."""
+        tool_calls = getattr(obj, "tool_calls", None)
+        if not tool_calls:
+            return ""
+        names: list[str] = []
+        for tc in tool_calls:
+            if isinstance(tc, dict):
+                name = tc.get("name", "")
+            else:
+                name = getattr(tc, "name", "") or ""
+            if isinstance(name, str) and name:
+                names.append(name)
+        if not names:
+            return ""
+        return "Using tools: " + ", ".join(names) + "…"
+
+    @staticmethod
+    def _suppress_llm_event_for_node(raw: dict) -> bool:
+        """Hide LLM traffic from internal graph nodes (e.g. input guardrail).
+
+        LangGraph tags the emitting node in ``metadata.langgraph_node``. A key
+        may be present with a null/empty value on some runs; those must **not**
+        be treated as ``!= "call_llm"`` or we drop the main model stream.
+        """
+        meta = raw.get("metadata") or {}
+        node = meta.get("langgraph_node")
+        if not isinstance(node, str) or not node.strip():
+            return False
+        return node != "call_llm"
+
     def _translate_event(self, raw: dict, trace_id: str) -> list[DomainEvent]:
         ev_name = raw.get("event", "")
         data = raw.get("data") or {}
         event_run_id = raw.get("run_id") or uuid.uuid4().hex
 
+        # Only surface LLM events from the main call_llm node. Internal nodes
+        # (guardrails, routers) also invoke LLMs but their outputs must not be
+        # rendered as user-visible messages. LangGraph v2 events carry the
+        # originating node name in metadata.langgraph_node.
+        #
+        # When metadata lacks a usable langgraph_node (unit-test fakes, older
+        # streams, or null placeholders), pass events through unchanged.
+        if ev_name in (
+            "on_chat_model_start",
+            "on_chat_model_stream",
+            "on_chat_model_end",
+            "on_llm_stream",
+            "on_llm_end",
+        ):
+            if self._suppress_llm_event_for_node(raw):
+                return []
+
         if ev_name == "on_chat_model_stream":
             chunk = data.get("chunk")
-            content = self._extract_content(chunk) if chunk else ""
+            content = self._extract_llm_chunk_text(chunk) if chunk else ""
+            if content:
+                self._streamed_run_ids.add(event_run_id)
+                return [LLMTokenEmitted(
+                    trace_id=trace_id, message_id=event_run_id, delta=content
+                )]
+            return []
+
+        if ev_name == "on_llm_stream":
+            chunk = data.get("chunk")
+            content = self._extract_llm_chunk_text(chunk) if chunk else ""
             if content:
                 self._streamed_run_ids.add(event_run_id)
                 return [LLMTokenEmitted(
@@ -237,9 +338,35 @@ class LangGraphRuntime:
             if not already_streamed:
                 output = data.get("output")
                 content = self._extract_content(output) if output else ""
+                if not content and output:
+                    content = self._tool_calls_preview(output)
                 if content:
                     events.append(LLMTokenEmitted(
                         trace_id=trace_id, message_id=event_run_id, delta=content
+                    ))
+            events.append(LLMMessageEnded(trace_id=trace_id, message_id=event_run_id))
+            self._streamed_run_ids.discard(event_run_id)
+            return events
+
+        if ev_name == "on_llm_end":
+            events: list[DomainEvent] = []
+            already_streamed = event_run_id in self._streamed_run_ids
+            if not already_streamed:
+                output = data.get("output")
+                text = ""
+                if isinstance(output, dict):
+                    gens = output.get("generations") or []
+                    if gens and gens[0]:
+                        g0 = gens[0][0]
+                        if isinstance(g0, dict):
+                            text = str(g0.get("text", "") or "")
+                        else:
+                            text = str(getattr(g0, "text", None) or "")
+                elif output is not None:
+                    text = str(output)
+                if text:
+                    events.append(LLMTokenEmitted(
+                        trace_id=trace_id, message_id=event_run_id, delta=text
                     ))
             events.append(LLMMessageEnded(trace_id=trace_id, message_id=event_run_id))
             self._streamed_run_ids.discard(event_run_id)

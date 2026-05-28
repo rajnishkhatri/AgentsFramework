@@ -1,15 +1,15 @@
 /**
  * Edge middleware -- AuthKit session + strict CSP nonce + security headers (S3.7.2).
  *
- * Composes WorkOS AuthKit middleware (session management) with the existing
- * CSP nonce and security-header pipeline. AuthKit runs first so `withAuth()`
- * can read the session in RSC / Route Handlers; then we layer on CSP + the
- * hardening headers.
+ * Composes WorkOS AuthKit via the composable `authkit()` + `handleAuthkitHeaders()`
+ * pattern so `x-workos-*` session headers reach Route Handlers (withAuth in
+ * `/api/run/stream`), then layers CSP + hardening headers on the response.
  *
  * Per FRONTEND_STYLE_GUIDE §19 and the auto-reject anti-patterns
  * (FE-AP-19, FE-AP-12, FE-AP-4, FE-AP-7), this middleware:
  *
- *   - Delegates to `authkitMiddleware` for session cookie management.
+ *   - Calls `authkit()` for session cookie management and internal headers.
+ *   - Returns via `handleAuthkitHeaders()` so AuthKit request headers are forwarded.
  *   - Generates a per-request CSP nonce (16 bytes -> base64url).
  *   - Builds a CSP that allows the nonce on `script-src` ONLY (no
  *     'unsafe-inline', no 'unsafe-eval').
@@ -24,8 +24,7 @@
  */
 
 import { type NextRequest } from "next/server";
-import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
-
+import { authkit, handleAuthkitHeaders } from "@workos-inc/authkit-nextjs";
 function generateNonce(): string {
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
@@ -72,15 +71,16 @@ function buildCSP(nonce: string): string {
   return isDev ? buildDevCSP(nonce) : buildStrictCSP(nonce);
 }
 
-const workosMiddleware = authkitMiddleware();
-
 export async function middleware(req: NextRequest) {
   const nonce = generateNonce();
   const csp = buildCSP(nonce);
 
   req.headers.set("x-nonce", nonce);
 
-  const res = await workosMiddleware(req);
+  const { headers: authHeaders } = await authkit(req);
+  authHeaders.set("x-nonce", nonce);
+
+  const res = handleAuthkitHeaders(req, authHeaders);
 
   res.headers.set("content-security-policy", csp);
   res.headers.set("strict-transport-security", "max-age=63072000; includeSubDomains; preload");

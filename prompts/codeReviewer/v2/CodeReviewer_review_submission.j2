@@ -1,0 +1,35 @@
+{# CodeReviewer_review_submission.j2 (v2)
+   Compatible submission envelope for the v2 reviewer prompt family. #}
+
+# Code Review Request (v2)
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("Full review -- evaluate all applicable dimensions (D1-D5), including Sprint 4 hardening checks.") }}
+
+## Files to Review
+
+{% for file in files_to_review %}
+### {{ file.path }}
+
+**Layer:** {{ file.layer | default("To be classified") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language | default("python") }}
+{{ file.content }}
+```
+
+{% endfor %}
+
+## Instructions
+
+1. Execute the five-phase review loop from the v2 system prompt.
+2. Run deterministic dependency/trust checks before LLM-only judgment.
+3. Include Sprint 4 checks when relevant: docs alignment, prompt versioning, and scratch cleanup.
+4. Provide evidence-backed findings with concrete fix suggestions.
+5. Output exactly one `ReviewReport` JSON object.
+

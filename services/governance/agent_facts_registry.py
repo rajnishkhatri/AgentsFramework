@@ -141,6 +141,28 @@ class AgentFactsRegistry:
                 entries.append(AuditEntry.model_validate_json(line))
         return entries
 
+    def list_agent_ids(self) -> list[str]:
+        """Public listing of every registered agent id.
+
+        Returns the alphabetically sorted set of registered agent ids by
+        scanning the storage directory. Read-only; safe for the dashboard
+        aggregator to call without depending on private fields.
+        """
+        if not self._storage_dir.exists():
+            return []
+        ids: list[str] = []
+        for path in self._storage_dir.iterdir():
+            if not path.is_file():
+                continue
+            name = path.name
+            if not name.endswith(".json"):
+                continue
+            if name.endswith("_audit.jsonl"):
+                continue
+            ids.append(path.stem)
+        ids.sort()
+        return ids
+
     def _append_audit(self, agent_id: str, entry: AuditEntry) -> None:
         path = self._audit_path(agent_id)
         with open(path, "a") as f:

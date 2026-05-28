@@ -101,6 +101,13 @@ class WorkOSJwtVerifier:
             )
 
     Exactly one of ``jwks_client`` or ``jwks_fetcher`` MUST be supplied.
+
+    AuthKit compatibility note:
+        WorkOS AuthKit access tokens may omit the ``token_use`` claim entirely
+        (unlike Cognito-style tokens which always include it). This verifier
+        treats an absent ``token_use`` as equivalent to ``"access"``. It only
+        rejects when the claim is *present* and does not match the expected
+        value (e.g. ``"id"``). See WorkOS session-tokens documentation.
     """
 
     def __init__(
@@ -184,7 +191,9 @@ class WorkOSJwtVerifier:
             )
 
         actual_token_use = payload.get("token_use")
-        if actual_token_use != self._expected_token_use:
+        # WorkOS AuthKit access tokens omit token_use (see WorkOS session-tokens
+        # docs). Treat absent claim as access; reject only when present and wrong.
+        if actual_token_use is not None and actual_token_use != self._expected_token_use:
             self._log_rejection(token, "invalid_token_use")
             raise InvalidTokenUseError(
                 f"token_use mismatch (got {actual_token_use!r}, "
@@ -243,7 +252,7 @@ class WorkOSJwtVerifier:
             expires_at=datetime.fromtimestamp(int(payload["exp"]), tz=UTC),
             issuer=str(payload["iss"]),
             client_id=str(payload["client_id"]),
-            token_use=str(payload["token_use"]),
+            token_use=str(payload.get("token_use") or self._expected_token_use),
             organization_id=(
                 str(payload["org_id"]) if payload.get("org_id") else None
             ),

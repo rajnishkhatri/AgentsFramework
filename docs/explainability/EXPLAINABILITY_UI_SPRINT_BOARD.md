@@ -268,6 +268,17 @@ Every story in every sprint must satisfy these gates before it is closed:
 
 ## Sprint 3 — Cross-Pillar Compliance
 
+**Execution status (Apr 29, 2026):** Base Sprint 3 stories are implemented and test-green, with hardening gaps captured in [EXPLAINABILITY_UI_SPRINT_3_REVIEW.md](EXPLAINABILITY_UI_SPRINT_3_REVIEW.md). Sprint 3 is now tracked as a closeout sprint focused on audit correctness and scalability.
+
+### Sprint 3 Closeout Backlog (Priority Order)
+
+- **P0 — Export correctness (must-fix before close).** Export action must produce true compliance bundle artifacts, or be explicitly labeled as summary-only.
+- **P1 — Audit-window correctness.** Compliance views must accept and propagate `since` and `until` consistently across workflows/integrity/guardrails.
+- **P1 — Batch integrity reads.** Replace N+1 integrity calls on `/compliance` with one backend summary path.
+- **P2 — Deep-dive tamper evidence.** Recording quadrant must surface `broken_at_event_id`, `expected_hash`, `actual_hash` for broken chains.
+- **P2 — Translator extraction.** Move compliance derivations out of React component render code.
+- **P3 — Comment/test hygiene.** Remove stale resilience comments and add route-level tests for query propagation.
+
 ### Epic E3.1 — Compliance Integrity and Bundle
 
 - **S3.1.1 — `service.get_workflow_integrity(wf_id)` and `GET /api/v1/workflows/{wf_id}/integrity`.**
@@ -276,16 +287,35 @@ Every story in every sprint must satisfy these gates before it is closed:
 - **S3.1.2 — `service.get_compliance_bundle(wf_id)` and `GET /api/v1/workflows/{wf_id}/compliance`.**
   - **AC.** Delegates to `BlackBoxRecorder.export_for_compliance(wf_id, agent_facts_registry, phase_logger)`. Adds a `correlation_health` block: `{ has_trace_id, has_user_id, has_task_id, has_agent_id, missing_keys: list[str] }` derived from event details.
   - **TDD.** Acceptance: a fully-correlated workflow has empty `missing_keys`. Fail-first: a workflow missing `user_id` (set by deleting the field in a fixture) reports `has_user_id=False, missing_keys=["user_id"]`.
+  - **Closeout AC (from Sprint 3 review).** `ComplianceBundleResponse` includes integrity evidence (`integrity: IntegrityReportResponse` or equivalent explicit break-location fields) so deep dive can show tamper location and expected-vs-actual hash.
+  - **Closeout TDD.** Fail-first: tampered workflow bundle includes non-null break evidence fields; acceptance: valid bundle returns null break evidence fields.
 
 ### Epic E3.2 — Compliance Center UI
 
 - **S3.2.1 — `/compliance` home.**
   - **AC.** Integrity status across all workflows in range; agent identity cards summary; guardrail summary (reuses S2.1.2 component); export buttons (`Export JSON Bundle`, `Export CSV`). PDF export is **out of scope** in MVP.
   - **TDD.** Snapshot for "all valid", "one tampered", "no workflows" states.
+  - **Closeout AC-1 (export semantics).** Button semantics are explicit:
+    - Option A: rename to `Export Summary JSON` and keep current lightweight payload.
+    - Option B: keep `Export JSON Bundle` label and export full `ComplianceBundle` payload(s) that include `events`, `identity_cards`, `phase_decisions`, and `correlation_health`.
+  - **Closeout AC-2 (range).** Route accepts `searchParams` `since` and `until`; those values are propagated to workflow listing, integrity summary query, and guardrail summary.
+  - **Closeout AC-3 (performance).** Integrity on `/compliance` is loaded via one batch endpoint (for example `GET /api/v1/compliance/summary`) rather than one request per workflow row.
+  - **Closeout TDD.** Add route-level tests for query propagation (`since`/`until`) and export contract tests asserting selected payload shape matches button label.
 - **S3.2.2 — `/compliance/[wf_id]` Workflow Deep Dive (4-pillar join).**
   - **AC.** Layout matches brainstorm §5b: four quadrants for Recording, Identity, Validation, Reasoning. Correlation health badge at the top; missing keys are explicitly named, never silently omitted.
   - **TDD.** Snapshot for "complete correlation" and "missing user_id" states.
   - **Review.** Explainability frontend reviewer; watch FD2.U6 (`cn()`); FD2.B1 (RSC by default).
+  - **Closeout AC-1 (tamper evidence).** Recording quadrant renders `broken_at_event_id` and truncated `expected_hash`/`actual_hash` when chain is invalid.
+  - **Closeout AC-2 (translator boundary).** Guardrail aggregation and other domain derivations live in `frontend-explainability/lib/translators/compliance_bundle.ts`; `WorkflowDeepDive` remains presentational.
+  - **Closeout TDD.** Table-driven translator tests for: no guardrails, all pass, mixed pass/fail, malformed accepted flag, missing details; plus tampered deep-dive render test.
+
+### Epic E3.3 — Sprint 3 Closeout Gate
+
+- **S3.3.1 — Re-run sprint validation suite with closeout assertions.**
+  - **AC1.** Backend: `pytest tests/services/test_explainability_service.py tests/explainability_app/ tests/architecture/test_explainability_layering.py tests/architecture/test_agents_router_read_only.py -q` is green.
+  - **AC2.** Frontend: `cd frontend-explainability && npm run test -- components/compliance lib/translators/compliance_bundle.test.ts lib/adapters/http_explainability_client.test.ts lib/wire/baseline_drift.test.ts && npm run typecheck && npm run lint && npm run test:arch` is green.
+  - **AC3.** Sprint 3 review findings F1-F6 are either resolved in code/tests or explicitly moved to Sprint 4+ as conscious scope deferments with rationale.
+  - **Review.** Explainability frontend reviewer + backend reviewer on touched paths.
 
 ---
 

@@ -11,13 +11,18 @@ import * as path from "path";
 
 const PROJECT_ROOT = path.resolve(__dirname, "../..");
 
+// Match import paths only -- not arbitrary substrings.  The wire layer is
+// allowed to mention strings like "agent_ui_adapter_server" because those
+// are stable concern names from `logging.json`, not import targets.
 const FORBIDDEN_PATTERNS = [
   /['"]\.\.\/\.\.\/frontend\//,
   /['"]\.\.\/frontend\//,
-  /['"]agent_ui_adapter/,
+  /['"]agent_ui_adapter\//,
+  /['"]agent_ui_adapter['"]/,
   /from\s+['"]\.\.\/\.\.\/frontend\//,
   /from\s+['"]\.\.\/frontend\//,
-  /from\s+['"]agent_ui_adapter/,
+  /from\s+['"]agent_ui_adapter\//,
+  /from\s+['"]agent_ui_adapter['"]/,
 ];
 
 function collectTsFiles(dir: string): string[] {

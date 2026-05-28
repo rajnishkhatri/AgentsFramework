@@ -143,9 +143,22 @@ A component belongs in the trust foundation if it satisfies **all** of these cri
 | `authorization` | `access_granted`, `access_denied`, `agent_quarantined`, `policy_evaluated` | `trust_scoring`, anomaly detector |
 | `credential` | `credential_issued`, `credential_refreshed`, `credential_evicted`, `credential_expired` | `credential_cache`, audit system |
 | `governance` | `lifecycle_transition`, `governance_decision`, `recertification_triggered`, `trust_score_updated` | `certification`, `compliance_reporter` |
-| `execution` | `plan_captured`, `plan_validated`, `tool_executed`, `purpose_checked` | `trace_service`, explainability |
+| `execution` | `plan_captured`, `plan_validated`, `planning_depth_selected`, `reflection_recorded`, `trajectory_compacted`, `synthesis_validated`, `delegation_requested`, `delegation_budget_checked`, `delegation_handoff_written`, `tool_executed`, `purpose_checked` | `trace_service`, explainability |
 
 **Classification convention:** Each `event_type` maps to exactly one `EventCategory`. The mapping is defined in `trust/enums.py` as a dict or method on the enum. If a new event type could fit two categories, classify by the **originating layer**: events emitted by L1 services are `identity`, events emitted by L2 services are `authorization`, etc.
+
+### Deep-Agent Runtime Capability Mapping (Sprint 1-4)
+
+The deep-agent rollout adds runtime behavior across state, tools, reasoning, and delegation. These capabilities remain within the same four-layer dependency rules:
+
+| Capability Slice | Primary Layer | Representative Modules |
+|---|---|---|
+| Stateful execution (`files`, `todos`, `plan_ref`) | Orchestration + Services | `orchestration/state.py`, `services/tools/registry.py`, `services/tools/file_tools.py`, `services/tools/todo_tools.py` |
+| Planning depth + synthesis validation | Components | `components/router.py`, `components/plan_builder.py`, `components/synthesis_validator.py` |
+| Reflection + compaction | Services + Orchestration | `services/tools/think_tool.py`, `services/summarizer.py`, `orchestration/react_loop.py` |
+| Delegation with policy/budget/handoff | Services + Orchestration | `services/tools/task_tool.py`, `services/tools/delegation_dispatcher.py`, `orchestration/react_loop.py` |
+
+This mapping keeps orchestration as thin topology, pushes domain logic into components/services, and keeps shared trust/event envelopes in the foundation.
 
 #### Dual State Machine Contract
 

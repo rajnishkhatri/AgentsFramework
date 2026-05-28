@@ -193,12 +193,26 @@ class CodeReviewerAgent:
         judge_profile: Any = None,
         task_id: str | None = None,
         user_id: str | None = None,
+        prompt_version: str = "v1",
     ) -> None:
         self._llm_service = llm_service
         self._prompt_service = prompt_service
         self._judge_profile = judge_profile
         self._task_id = task_id or str(uuid.uuid4())
         self._user_id = user_id or "code_reviewer"
+        self._prompt_version = prompt_version
+        if self._prompt_version not in {"v1", "v2"}:
+            raise ValueError(f"Unsupported prompt_version={self._prompt_version!r}")
+
+    def _system_prompt_template(self) -> str:
+        if self._prompt_version == "v2":
+            return "codeReviewer/v2/CodeReviewer_system_prompt"
+        return "codeReviewer/CodeReviewer_system_prompt"
+
+    def _submission_prompt_template(self) -> str:
+        if self._prompt_version == "v2":
+            return "codeReviewer/v2/CodeReviewer_review_submission"
+        return "codeReviewer/CodeReviewer_review_submission"
 
     def _eval_config(self) -> dict[str, Any]:
         """RunnableConfig-shaped dict for eval_capture (H5)."""
@@ -236,7 +250,7 @@ class CodeReviewerAgent:
     ) -> ReviewReport:
         """Run LLM-based review with retry on schema validation failure."""
         system_prompt = self._prompt_service.render_prompt(
-            "codeReviewer/CodeReviewer_system_prompt"
+            self._system_prompt_template()
         )
 
         files_data = []
@@ -252,7 +266,7 @@ class CodeReviewerAgent:
                 })
 
         submission = self._prompt_service.render_prompt(
-            "codeReviewer/CodeReviewer_review_submission",
+            self._submission_prompt_template(),
             files_to_review=files_data,
             submission_context=diff or "No diff provided.",
         )
@@ -316,24 +330,187 @@ class CodeReviewerAgent:
             cleaned = cleaned.split("```", 1)[0]
 
         data = json.loads(cleaned.strip())
+        data = self._normalize_review_payload(data)
         return ReviewReport.model_validate(data)
+
+    def _normalize_review_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Normalize loose LLM JSON into ReviewReport-compatible shape.
+
+        Handles common schema drift from LLMs:
+        - enum casing (PASS/WARNING/APPROVE -> lowercase values)
+        - missing finding fields (dimension, confidence, certificate)
+        - alias fields (`rule` -> `rule_id`, etc.)
+        - dimension labels merged with ids (e.g. "D1 Architectural Compliance")
+        """
+        def _to_status(value: str | None) -> str:
+            if not value:
+                return "partial"
+            lowered = value.lower().strip()
+            if lowered in {"pass", "fail", "partial", "skipped"}:
+                return lowered
+            if lowered in {"passed"}:
+                return "pass"
+            if lowered in {"failed"}:
+                return "fail"
+            return "partial"
+
+        def _to_severity(value: str | None) -> str:
+            if not value:
+                return "warning"
+            lowered = value.lower().strip()
+            if lowered in {"critical", "warning", "info"}:
+                return lowered
+            if lowered in {"error", "high"}:
+                return "critical"
+            if lowered in {"medium"}:
+                return "warning"
+            if lowered in {"low"}:
+                return "info"
+            return "warning"
+
+        def _to_verdict(value: str | None) -> str:
+            if not value:
+                return "request_changes"
+            lowered = value.lower().strip()
+            if lowered in {"approve", "request_changes", "reject"}:
+                return lowered
+            if lowered in {"approved"}:
+                return "approve"
+            if lowered in {"request changes", "changes_requested"}:
+                return "request_changes"
+            if lowered in {"rejected"}:
+                return "reject"
+            return "request_changes"
+
+        def _infer_dimension_id_and_name(dim_raw: Any, name_raw: Any) -> tuple[str, str]:
+            canonical = {
+                "D1": "Architectural Compliance",
+                "D2": "Style Guide Adherence",
+                "D3": "Test Quality",
+                "D4": "Trust Framework Integrity",
+                "D5": "Code Quality and Anti-Patterns",
+            }
+
+            dim_text = str(dim_raw or "").strip()
+            name_text = str(name_raw or "").strip()
+            combined = f"{dim_text} {name_text}".strip()
+
+            for dim_id, dim_name in canonical.items():
+                if dim_text == dim_id:
+                    return dim_id, (name_text or dim_name)
+                if dim_text.lower().startswith(f"{dim_id.lower()} "):
+                    suffix = dim_text[len(dim_id):].strip()
+                    return dim_id, (suffix or name_text or dim_name)
+                if dim_name.lower() in combined.lower():
+                    return dim_id, dim_name
+
+            return "D5", (name_text or dim_text or canonical["D5"])
+
+        if isinstance(payload.get("verdict"), str):
+            payload["verdict"] = _to_verdict(payload["verdict"])
+        else:
+            payload["verdict"] = "request_changes"
+        payload.setdefault("statement", "LLM-produced review report")
+        payload.setdefault("confidence", 0.6)
+        payload.setdefault("gaps", [])
+        payload.setdefault("validation_log", [])
+        payload.setdefault("files_reviewed", [])
+
+        dimensions = payload.get("dimensions")
+        if not isinstance(dimensions, list):
+            payload["dimensions"] = []
+            return payload
+
+        normalized_dimensions: list[dict[str, Any]] = []
+        for dim in dimensions:
+            if not isinstance(dim, dict):
+                continue
+            dim_id, dim_name = _infer_dimension_id_and_name(
+                dim.get("dimension"),
+                dim.get("name"),
+            )
+            status = _to_status(dim.get("status") if isinstance(dim.get("status"), str) else None)
+
+            findings = dim.get("findings")
+            if not isinstance(findings, list):
+                findings = []
+
+            normalized_findings: list[dict[str, Any]] = []
+            for finding in findings:
+                if not isinstance(finding, dict):
+                    continue
+                if "rule_id" not in finding and "rule" in finding:
+                    finding["rule_id"] = finding["rule"]
+                if "description" not in finding and "message" in finding:
+                    finding["description"] = finding["message"]
+                if "fix_suggestion" not in finding and "suggestion" in finding:
+                    finding["fix_suggestion"] = finding["suggestion"]
+                if "fix_suggestion" not in finding and "fix" in finding:
+                    finding["fix_suggestion"] = finding["fix"]
+
+                finding.setdefault("rule_id", "LLM.UNKNOWN_RULE")
+                finding.setdefault("severity", "warning")
+                finding["severity"] = _to_severity(
+                    finding["severity"] if isinstance(finding.get("severity"), str) else None
+                )
+                finding.setdefault("file", "<unknown>")
+                finding.setdefault("description", "LLM-reported finding")
+                finding.setdefault("fix_suggestion", "")
+                finding.setdefault("dimension", dim_id)
+                finding.setdefault("confidence", 0.6)
+                if not isinstance(finding.get("certificate"), dict):
+                    rule_id = str(finding.get("rule_id", "LLM.FINDING"))
+                    description = str(
+                        finding.get("description", "LLM-reported finding")
+                    )
+                    finding["certificate"] = {
+                        "premises": ["[P1] LLM-reported finding (normalization fallback)."],
+                        "traces": [],
+                        "conclusion": f"{rule_id} FAIL -- {description}",
+                    }
+
+                normalized_findings.append(finding)
+
+            normalized_dimensions.append({
+                "dimension": dim_id,
+                "name": dim_name,
+                "status": status,
+                "hypotheses_tested": int(dim.get("hypotheses_tested", len(normalized_findings) or 1)),
+                "hypotheses_confirmed": int(dim.get("hypotheses_confirmed", len(normalized_findings))),
+                "hypotheses_killed": int(dim.get("hypotheses_killed", 0)),
+                "findings": normalized_findings,
+            })
+
+        payload["dimensions"] = normalized_dimensions
+        return payload
 
     def _merge_reports(
         self, deterministic: ReviewReport, llm: ReviewReport
     ) -> ReviewReport:
         """Merge deterministic and LLM reports, deterministic findings take priority."""
-        all_findings = list(deterministic.dimensions)
+        deterministic_findings_by_dim: dict[str, list[ReviewFinding]] = {
+            d.dimension: list(d.findings) for d in deterministic.dimensions
+        }
         llm_dims = {d.dimension: d for d in llm.dimensions}
 
         merged_dims: list[DimensionResult] = []
         seen_dims: set[str] = set()
+        reconciliation_gaps: list[str] = []
 
         for d in deterministic.dimensions:
             seen_dims.add(d.dimension)
             llm_dim = llm_dims.get(d.dimension)
             if llm_dim:
+                reconciled_llm_findings = self._reconcile_llm_findings(
+                    llm_findings=list(llm_dim.findings),
+                    deterministic_findings=deterministic_findings_by_dim.get(
+                        d.dimension, []
+                    ),
+                    dimension=d.dimension,
+                    reconciliation_gaps=reconciliation_gaps,
+                )
                 extra_findings = [
-                    f for f in llm_dim.findings
+                    f for f in reconciled_llm_findings
                     if not any(
                         ef.rule_id == f.rule_id and ef.file == f.file
                         for ef in d.findings
@@ -355,7 +532,25 @@ class CodeReviewerAgent:
 
         for d in llm.dimensions:
             if d.dimension not in seen_dims:
-                merged_dims.append(d)
+                reconciled = self._reconcile_llm_findings(
+                    llm_findings=list(d.findings),
+                    deterministic_findings=deterministic_findings_by_dim.get(
+                        d.dimension, []
+                    ),
+                    dimension=d.dimension,
+                    reconciliation_gaps=reconciliation_gaps,
+                )
+                merged_dims.append(
+                    DimensionResult(
+                        dimension=d.dimension,
+                        name=d.name,
+                        status=d.status,
+                        hypotheses_tested=d.hypotheses_tested,
+                        hypotheses_confirmed=d.hypotheses_confirmed,
+                        hypotheses_killed=d.hypotheses_killed,
+                        findings=reconciled,
+                    )
+                )
 
         all_f = [f for d in merged_dims for f in d.findings]
         critical = sum(1 for f in all_f if f.severity == Severity.CRITICAL)
@@ -383,10 +578,51 @@ class CodeReviewerAgent:
             statement=statement,
             confidence=min(deterministic.confidence, llm.confidence),
             dimensions=merged_dims,
-            gaps=list(set(deterministic.gaps) | set(llm.gaps)),
+            gaps=list(set(deterministic.gaps) | set(llm.gaps) | set(reconciliation_gaps)),
             validation_log=deterministic.validation_log + llm.validation_log,
             files_reviewed=list(set(deterministic.files_reviewed) | set(llm.files_reviewed)),
         )
+
+    def _reconcile_llm_findings(
+        self,
+        llm_findings: list[ReviewFinding],
+        deterministic_findings: list[ReviewFinding],
+        dimension: str,
+        reconciliation_gaps: list[str],
+    ) -> list[ReviewFinding]:
+        """Downgrade uncorroborated LLM criticals in D1/D4 to warnings."""
+        if dimension not in {"D1", "D4"}:
+            return llm_findings
+
+        deterministic_critical_keys = {
+            (f.rule_id, f.file)
+            for f in deterministic_findings
+            if f.severity == Severity.CRITICAL
+        }
+        reconciled: list[ReviewFinding] = []
+        for finding in llm_findings:
+            if (
+                finding.severity == Severity.CRITICAL
+                and (finding.rule_id, finding.file) not in deterministic_critical_keys
+            ):
+                reconciliation_gaps.append(
+                    "LLM critical downgraded to warning due to missing deterministic corroboration: "
+                    f"{finding.rule_id} in {finding.file}"
+                )
+                reconciled.append(
+                    finding.model_copy(
+                        update={
+                            "severity": Severity.WARNING,
+                            "description": (
+                                f"{finding.description} "
+                                "[Downgraded: not corroborated by deterministic checks.]"
+                            ),
+                        }
+                    )
+                )
+                continue
+            reconciled.append(finding)
+        return reconciled
 
 
 # ── CLI entrypoint (STORY-410) ──────────────────────────────────────
@@ -397,6 +633,7 @@ async def _async_llm_review(
     diff: str | None,
     task_id: str | None,
     user_id: str | None,
+    prompt_version: str = "v1",
 ) -> ReviewReport:
     """Build services and run full CodeReviewerAgent.review (LLM + deterministic).
 
@@ -422,6 +659,7 @@ async def _async_llm_review(
         judge_profile=profile,
         task_id=task_id,
         user_id=user_id,
+        prompt_version=prompt_version,
     )
     return await reviewer.review(files, diff)
 
@@ -461,6 +699,12 @@ def run_code_reviewer_cli(args: list[str] | None = None) -> int:
         default=None,
         help="user_id for eval_capture (H5)",
     )
+    parser.add_argument(
+        "--prompt-version",
+        choices=["v1", "v2"],
+        default="v1",
+        help="Prompt bundle version for LLM review path.",
+    )
     parsed = parser.parse_args(args)
 
     if parsed.llm and parsed.deterministic_only:
@@ -494,6 +738,7 @@ def run_code_reviewer_cli(args: list[str] | None = None) -> int:
                     diff_text,
                     task_id=parsed.task_id,
                     user_id=parsed.user_id,
+                    prompt_version=parsed.prompt_version,
                 )
             )
         else:

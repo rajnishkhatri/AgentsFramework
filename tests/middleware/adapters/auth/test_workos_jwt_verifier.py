@@ -123,6 +123,17 @@ class TestRejectionPaths:
         with pytest.raises(InvalidTokenUseError):
             verifier.verify(token)
 
+    def test_R5b_missing_token_use_accepted_for_authkit_access_tokens(
+        self,
+        verifier: JwtVerifier,
+        make_token: Callable[..., str],
+    ) -> None:
+        """AuthKit access tokens omit token_use; absent claim is treated as access."""
+        token = make_token(subject="user_authkit", token_use=None)
+        claims = verifier.verify(token)
+        assert claims.subject == "user_authkit"
+        assert claims.token_use == "access"
+
     # Bonus rejections that are documented behavior of the port contract.
 
     def test_signature_tampering_raises_invalid_token_error(
@@ -188,6 +199,71 @@ class TestAcceptancePath:
         assert claims.roles == ("beta",)
         assert claims.permissions == ("tool:file_io", "tool:web_search")
         assert claims.expires_at > datetime.now(UTC)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# AuthKit token shape contract — prevents regression if token_use is
+# re-tightened to strict equality. Mirrors real WorkOS session-token docs.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestAuthKitTokenContract:
+    """Real AuthKit access tokens omit token_use, include sid/org_id/role."""
+
+    def test_authkit_full_claim_set_accepted(
+        self,
+        verifier: JwtVerifier,
+        make_token: Callable[..., str],
+        expected_issuer: str,
+        expected_client_id: str,
+    ) -> None:
+        """AuthKit-shaped token with sid, org_id, role, no token_use."""
+        token = make_token(
+            subject="user_01AUTHKIT",
+            token_use=None,
+            organization_id="org_acme",
+            roles=["admin"],
+            permissions=["tool:file_io", "tool:shell"],
+            extra_claims={"sid": "session_01HX"},
+        )
+        claims = verifier.verify(token)
+
+        assert claims.subject == "user_01AUTHKIT"
+        assert claims.issuer == expected_issuer
+        assert claims.client_id == expected_client_id
+        assert claims.token_use == "access"
+        assert claims.organization_id == "org_acme"
+        assert claims.roles == ("admin",)
+        assert claims.permissions == ("tool:file_io", "tool:shell")
+
+    def test_authkit_token_with_explicit_wrong_use_rejected(
+        self,
+        verifier: JwtVerifier,
+        make_token: Callable[..., str],
+    ) -> None:
+        """Explicit token_use='id' is still rejected even with AuthKit claims."""
+        token = make_token(
+            subject="user_01AUTHKIT",
+            token_use="id",
+            extra_claims={"sid": "session_01HX"},
+        )
+        with pytest.raises(InvalidTokenUseError):
+            verifier.verify(token)
+
+    def test_authkit_token_with_multiple_roles_normalized(
+        self,
+        verifier: JwtVerifier,
+        make_token: Callable[..., str],
+    ) -> None:
+        """Multiple roles in AuthKit token are normalized to a tuple."""
+        token = make_token(
+            subject="user_multirole",
+            token_use=None,
+            roles=["admin", "editor"],
+            extra_claims={"sid": "session_02"},
+        )
+        claims = verifier.verify(token)
+        assert claims.roles == ("admin", "editor")
 
 
 # ─────────────────────────────────────────────────────────────────────

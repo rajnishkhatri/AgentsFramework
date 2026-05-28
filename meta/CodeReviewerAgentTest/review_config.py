@@ -55,6 +55,10 @@ class ReviewAgentConfig(BaseModel):
         default="codeReviewer/CodeReviewer_review_submission",
         description="Template path (without .j2) for the user submission.",
     )
+    prompt_version: str = Field(
+        default="v1",
+        description="Prompt bundle version for the reviewer agent (v1 or v2).",
+    )
     task_id: str | None = None
     user_id: str = "code-reviewer"
     deterministic_only: bool = Field(
@@ -82,6 +86,13 @@ class ReviewAgentConfig(BaseModel):
     def _files_non_empty(cls, value: list[str]) -> list[str]:
         if not value:
             raise ValueError("files must contain at least one entry")
+        return value
+
+    @field_validator("prompt_version")
+    @classmethod
+    def _prompt_version_supported(cls, value: str) -> str:
+        if value not in {"v1", "v2"}:
+            raise ValueError("prompt_version must be 'v1' or 'v2'")
         return value
 
     @classmethod

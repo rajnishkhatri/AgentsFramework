@@ -17,6 +17,8 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { Button } from "@/components/ui/button";
 import { ChatShell } from "./chat-shell";
 
+export const dynamic = "force-dynamic";
+
 const E2E_BYPASS_AUTH =
   process.env.NODE_ENV !== "production" &&
   process.env.E2E_BYPASS_AUTH === "1";

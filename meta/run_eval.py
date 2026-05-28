@@ -121,3 +121,132 @@ def save_report(report: EvalReport, output_path: Path) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(report.model_dump_json(indent=2))
     logger.info("Report saved to %s", output_path)
+
+
+def _parse_gs_uri(uri: str) -> tuple[str, str]:
+    if not uri.startswith("gs://"):
+        raise ValueError(f"Not a GCS URI: {uri}")
+    bucket, _, blob = uri[5:].partition("/")
+    if not bucket or not blob:
+        raise ValueError(f"GCS URI must include bucket and object path: {uri}")
+    return bucket, blob
+
+
+def _download_gcs(uri: str, dest: Path) -> Path:
+    from google.cloud import storage
+
+    bucket_name, blob_name = _parse_gs_uri(uri)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    storage.Client().bucket(bucket_name).blob(blob_name).download_to_filename(str(dest))
+    return dest
+
+
+def _upload_gcs(local_path: Path, uri: str) -> None:
+    from google.cloud import storage
+
+    bucket_name, blob_name = _parse_gs_uri(uri)
+    storage.Client().bucket(bucket_name).blob(blob_name).upload_from_filename(
+        str(local_path),
+        content_type="application/json",
+    )
+
+
+def resolve_input_path(path: str, *, cache_dir: Path = Path("/tmp/meta_eval")) -> Path:
+    """Resolve a local path or download ``gs://`` object to a cache file."""
+    if path.startswith("gs://"):
+        suffix = Path(_parse_gs_uri(path)[1]).suffix or ".jsonl"
+        dest = cache_dir / f"golden{suffix}"
+        return _download_gcs(path, dest)
+    return Path(path)
+
+
+def persist_output_path(report: EvalReport, path: str, *, cache_dir: Path = Path("/tmp/meta_eval")) -> Path:
+    """Write report locally and optionally upload to ``gs://``."""
+    if path.startswith("gs://"):
+        local_path = cache_dir / "report.json"
+        save_report(report, local_path)
+        _upload_gcs(local_path, path)
+        logger.info("Report uploaded to %s", path)
+        return local_path
+    local_path = Path(path)
+    save_report(report, local_path)
+    return local_path
+
+
+def _judge_profile_from_env() -> ModelProfile:
+    name = __import__("os").environ.get("META_JUDGE_MODEL", "gpt-4o-mini")
+    return ModelProfile(
+        name=name,
+        litellm_id=f"openai/{name}",
+        tier="fast",
+        context_window=128_000,
+        cost_per_1k_input=0.00015,
+        cost_per_1k_output=0.0006,
+    )
+
+
+def run_eval_cli(args: list[str] | None = None) -> int:
+    """CLI entry point for Cloud Run Jobs and local ``python -m meta.run_eval``."""
+    import argparse
+    import asyncio
+    import sys
+
+    from services.base_config import AgentConfig
+    from services.llm_config import LLMService
+
+    parser = argparse.ArgumentParser(description="Run the meta evaluation scoring pipeline.")
+    parser.add_argument(
+        "--golden-set",
+        required=True,
+        help="Local path or gs:// URI to the golden-set JSONL file.",
+    )
+    parser.add_argument(
+        "--output",
+        required=True,
+        help="Local path or gs:// URI for the eval report JSON output.",
+    )
+    parser.add_argument(
+        "--report-id",
+        default="meta-eval-report",
+        help="Report identifier embedded in the output JSON.",
+    )
+    parsed = parser.parse_args(args)
+
+    try:
+        golden_path = resolve_input_path(parsed.golden_set)
+        golden = load_golden_set(golden_path)
+        if not golden:
+            print(
+                f"ERROR: golden set is empty or missing at {parsed.golden_set}",
+                file=sys.stderr,
+            )
+            return 2
+
+        judge_profile = _judge_profile_from_env()
+        llm_service = LLMService(
+            AgentConfig(default_model=judge_profile.name, models=[judge_profile])
+        )
+        report = asyncio.run(
+            run_eval_pipeline(
+                golden_set=golden,
+                llm_service=llm_service,
+                judge_profile=judge_profile,
+                report_id=parsed.report_id,
+            )
+        )
+        persist_output_path(report, parsed.output)
+        print(
+            f"Eval complete: scored={report.scored_records} "
+            f"failed={report.failed_records} mean={report.mean_score:.2f}"
+        )
+        return 0
+    except Exception as exc:
+        logger.error("Meta eval CLI failed: %s", exc)
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.exit(run_eval_cli())

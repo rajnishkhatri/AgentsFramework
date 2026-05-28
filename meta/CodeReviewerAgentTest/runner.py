@@ -67,6 +67,7 @@ async def run_review(config: ReviewAgentConfig) -> ReviewReport:
         judge_profile=profile,
         task_id=config.task_id,
         user_id=config.user_id,
+        prompt_version=config.prompt_version,
     )
 
     files = [_resolve(f) for f in config.files]

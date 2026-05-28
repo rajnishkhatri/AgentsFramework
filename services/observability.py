@@ -116,6 +116,16 @@ class InstrumentedCheckpointer:
             self._telemetry.increment_rollback()
         return result
 
+    def get_next_version(self, *args: Any, **kwargs: Any) -> Any:
+        """Delegate for LangGraph pregel (accessed as ``checkpointer.get_next_version``)."""
+        return self._inner.get_next_version(*args, **kwargs)
+
+    def put_writes(self, *args: Any, **kwargs: Any) -> Any:
+        return self._inner.put_writes(*args, **kwargs)
+
+    async def aput_writes(self, *args: Any, **kwargs: Any) -> Any:
+        return await self._inner.aput_writes(*args, **kwargs)
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self._inner, name)
 

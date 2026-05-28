@@ -1,0 +1,48 @@
+{# codeReviewer/v2 architecture rules
+   Delta-compatible with v1 + Sprint 4 hardening checks. #}
+
+## Dependency Table (11 Rules)
+
+| # | From | To | Allowed? | Rule ID |
+|---|------|----|----------|---------|
+| R1 | Trust Foundation | Anything above | FORBIDDEN | DEP.trust_no_upward |
+| R2 | Horizontal | Trust Foundation | Yes | DEP.h_reads_trust |
+| R3 | Horizontal | Horizontal | Yes, cautiously | DEP.h_to_h_careful |
+| R4 | Horizontal | Vertical | FORBIDDEN | DEP.h_no_vertical |
+| R5 | Vertical | Trust Foundation | Yes | DEP.v_reads_trust |
+| R6 | Vertical | Horizontal | Yes | DEP.v_uses_h |
+| R7 | Vertical | Vertical | FORBIDDEN | DEP.v_no_v |
+| R8 | Orchestration | Trust Foundation | Yes | DEP.orch_reads_trust |
+| R9 | Orchestration | Horizontal | Yes | DEP.orch_uses_h |
+| R10 | Orchestration | Vertical | Yes | DEP.orch_calls_v |
+| R11 | Any | Orchestration | FORBIDDEN | DEP.no_upward_to_orch |
+
+## Trust Foundation Rules
+
+- **T1**: `trust/` has zero outward dependencies.
+- **T2**: `trust/` remains pure (no I/O, no logging, no network).
+- **T3**: shared trust models stay immutable (`ConfigDict(frozen=True)` where applicable).
+- **T4**: signed vs unsigned metadata boundary is respected.
+
+## Prompt/Review Rules (v2 Rollout)
+
+- **PR.VER.1**: v2 prompts must coexist with v1 prompts (non-breaking rollout).
+- **PR.VER.2**: review runtime can select prompt bundle version explicitly (`v1` or `v2`).
+- **PR.VER.3**: default prompt selection remains backward-compatible (`v1`) unless requested.
+
+## Deep-Agent Hardening Rules (Sprint 4)
+
+- **DEEP.DOCS.1**: architecture docs enumerate deep-agent state/tool/planning/delegation capabilities.
+- **DEEP.DOCS.2**: event taxonomy includes deep-agent execution events for observability and explainability.
+- **DEEP.CLEAN.1**: no runtime imports from `deep_agents_from_scratch`.
+- **DEEP.CLEAN.2**: cleanup is protected by architecture tests.
+
+## Anti-Patterns
+
+- **AP2**: vertical-to-vertical imports.
+- **AP3**: hardcoded prompts.
+- **AP6**: trust/shared types defined in service modules.
+- **AP7**: horizontal trust service coupling.
+- **AP8**: governance importing orchestration.
+- **AP10**: lingering `deep_agents_from_scratch` references in runtime paths.
+
