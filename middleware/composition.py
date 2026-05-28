@@ -156,7 +156,11 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
         "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
     )
     mem0_base_url = e.get("MEM0_BASE_URL", "https://api.mem0.ai")
-    langfuse_host = e.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+    langfuse_host = (
+        e.get("LANGFUSE_HOST")
+        or e.get("LANGFUSE_BASE_URL")
+        or "https://cloud.langfuse.com"
+    )
     jwks_url = e.get(
         "WORKOS_JWKS_URL",
         f"https://api.workos.com/sso/jwks/{workos_client_id}",

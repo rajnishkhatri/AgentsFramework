@@ -139,7 +139,11 @@ def _build_dev_telemetry_exporter() -> TelemetryExporter:
         return _NoopTelemetryExporter()
 
     try:
-        host = os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
+        host = (
+            os.environ.get("LANGFUSE_HOST")
+            or os.environ.get("LANGFUSE_BASE_URL")
+            or "https://cloud.langfuse.com"
+        )
         exporter = LangfuseCloudExporter(
             public_key=pk, secret_key=sk, host=host
         )

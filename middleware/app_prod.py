@@ -9,7 +9,7 @@ Usage:
 
 Environment variables (all injected via Secret Manager on Cloud Run):
     GCP_EXECUTION_ENV       - "cloudrun" (triggers GCP adapter wiring)
-    ARCHITECTURE_PROFILE    - "v3" (default)
+    (profile)               - read by composition.py, not here (rule C5)
     DATABASE_URL            - postgres connection string
     GCS_FACTS_BUCKET        - agent-facts bucket name
     GCS_TRACES_BUCKET       - trust-traces bucket name

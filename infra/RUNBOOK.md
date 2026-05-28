@@ -156,15 +156,17 @@ Each upgrade is triggered by a specific quota or performance threshold. All swap
 
 ### 4.1 Langfuse Cloud Hobby → Self-Hosted Langfuse
 
-**Trigger**: >50K trace units/mo OR >30-day retention needed.
+**Trigger**: >50K observation units/mo OR >30-day retention needed.
+
+**Current adapter**: `LangfuseCloudExporter` (`middleware/adapters/observability/langfuse_cloud_exporter.py`)
 
 **Steps**:
 
 1. Deploy Langfuse Docker to a new Cloud Run service.
 2. Update `middleware/composition.py`:
-   - Switch `ARCHITECTURE_PROFILE` check to instantiate `SelfHostedLangfuseAdapter` instead of `LangfuseCloudHobbyAdapter`.
+   - Switch `ARCHITECTURE_PROFILE` check to instantiate `SelfHostedLangfuseExporter` instead of `LangfuseCloudExporter`.
 3. Update Secret Manager: add Langfuse self-hosted DB URL, remove Langfuse Cloud keys.
-4. Verify: run a traced agent session; confirm trace lands in self-hosted Langfuse.
+4. Verify: run a traced agent session; confirm trace lands in self-hosted Langfuse UI. Check for `langfuse client init failed` warnings in Cloud Logging.
 
 **Swap file**: `middleware/composition.py`
 

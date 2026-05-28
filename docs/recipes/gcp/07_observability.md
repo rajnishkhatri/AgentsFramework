@@ -216,6 +216,22 @@ Cloud Run services, data tier, and secrets remain untouched.
 
 ---
 
+## Langfuse Cloud Integration (Sixth Trace Plane)
+
+The middleware `/run/stream` endpoint exports domain events to Langfuse Cloud via `LangfuseCloudExporter` (wired by `middleware/composition.py`). Each agent run produces a Langfuse trace keyed by the same `trace_id` visible in `stream_ended` Cloud Logging entries and GCS trust traces.
+
+**Langfuse Hobby tier quota:** 50K observation units/month (free). The telemetry bridge deliberately skips high-volume events (`LLMTokenEmitted`, `StateMutated`, `ToolCallEnded`) to stay within budget. At typical dev-tier traffic (5–20 chats/day), each chat consumes ~10–20 observation units (run start/finish, tool spans, LLM spans).
+
+| Control | How |
+|---------|-----|
+| Disable telemetry | `LANGFUSE_ENABLED=false` env var (agent runs unaffected) |
+| Check health | `gcloud logging read … textPayload=~"langfuse client init failed"` |
+| Verify trace | Langfuse Cloud UI → Traces → search by `trace_id` from `stream_ended` |
+
+See [LOG_PIPELINE_GUIDE.md § Step 12](LOG_PIPELINE_GUIDE.md#step-12-langfuse-trace-verification) for the full verification procedure.
+
+---
+
 ## Cost Note
 
 | Resource | Monthly cost (dev traffic) |
@@ -224,6 +240,7 @@ Cloud Run services, data tier, and secrets remain untouched.
 | Alert policies (3) | $0.00 |
 | Billing budget alert | $0.00 |
 | Email notification channel | $0.00 |
+| Langfuse Cloud Hobby | $0.00 (50K units/mo free) |
 | **Recipe 7 incremental** | **$0.00** |
 | **Cumulative (Recipes 1–7)** | **~$9.33/mo** (unchanged — observability is free at this scale) |
 

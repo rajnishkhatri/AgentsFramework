@@ -287,20 +287,21 @@ interface TelemetrySink {
 # Python (middleware/ports/telemetry_exporter.py — server-side traces)
 @runtime_checkable
 class TelemetryExporter(Protocol):
-    def start_span(self, name: str, trace_id: str, attributes: dict) -> "Span": ...
-    def finish_span(self, span: "Span", outcome: str, error: str | None = None) -> None: ...
-    def flush(self) -> None: ...
+    def export_event(self, *, name: str, trace_id: str, attributes: Mapping[str, Any] | None = None) -> None: ...
+    def release_trace(self, trace_id: str) -> None: ...
+    def shutdown(self) -> None: ...
 ```
 
 **Behavioral contract:**
 
-1. `span()` / `start_span()` must be non-blocking; telemetry must never delay the SSE stream.
-2. If the telemetry backend is unavailable, the adapter must swallow the error and log it locally. A failing telemetry call must never interrupt a run.
-3. The `trace_id` passed to `start_span()` in the middleware adapter must be the same `trace_id` propagated from the Python runtime (rule F-R7).
+1. `span()` / `export_event()` must be non-blocking; telemetry must never delay the SSE stream.
+2. If the telemetry backend is unavailable, the adapter must swallow the error and log it locally. A failing telemetry call must never interrupt a run (O1 rule).
+3. The `trace_id` passed to `export_event()` in the middleware adapter must be the same `trace_id` propagated from the Python runtime (rule F-R7). The `LangfuseCloudExporter` opens a Langfuse trace with `id=trace_id`, so child spans are grouped under a single trace in the Langfuse UI.
+4. `release_trace()` must be called after `run.finished` to free in-memory trace handles and prevent unbounded growth.
 
-**V3 adapter:** `LangfuseCloudHobbyAdapter` / `LangfuseCloudHobbyExporter` (50K units/mo free)
-**V2 adapter:** `SelfHostedLangfuseAdapter` / `SelfHostedLangfuseExporter` (Cloud Run + ClickHouse)
-**Cross-port interaction:** The middleware `TelemetryExporter` receives `trace_id` from the `AgentRuntimeClient` response stream.
+**V3 adapter:** `LangfuseCloudExporter` (50K units/mo free on Langfuse Cloud Hobby)
+**V2 adapter:** `SelfHostedLangfuseExporter` (Cloud Run + ClickHouse)
+**Cross-port interaction:** The middleware `TelemetryExporter` receives `trace_id` from the `AgentRuntimeClient` response stream. The `telemetry_bridge.py` module maps domain events to export calls; `app_prod.py` calls the bridge in the `/run/stream` loop.
 
 ---
 
@@ -548,11 +549,11 @@ interface UIRuntime {
 
 ---
 
-### 5.7 `LangfuseCloudHobbyAdapter` (V3) and `SelfHostedLangfuseAdapter` (V2)
+### 5.7 `LangfuseCloudExporter` (V3) and `SelfHostedLangfuseExporter` (V2)
 
 **Files:** Python adapters in `middleware/adapters/observability/`
-**Wraps:** `langfuse` Python SDK (pin to `^2.x`)
-**Port implemented:** `TelemetryExporter` (Python Protocol)
+**Wraps:** `langfuse` Python SDK (pin to `^3.x`)
+**Port implemented:** `TelemetryExporter` (Python Protocol — `export_event`, `release_trace`, `shutdown`)
 
 **Constructor parameters:**
 
@@ -562,11 +563,16 @@ interface UIRuntime {
 | `public_key` | `str` | Langfuse public key from Secret Manager                          |
 | `secret_key` | `str` | Langfuse secret key from Secret Manager                          |
 | `host`       | `str` | `https://cloud.langfuse.com` (V3) or internal Cloud Run URL (V2) |
+| `sdk_client` | `Any` | Optional pre-built SDK client (test injection)                   |
 
 
-**Trust-trace integration:** `start_span()` receives the `trace_id` from the run and creates a Langfuse trace with that ID as the external ID. This ensures Langfuse traces are correlated with `TrustTraceRecord` events on the Python side.
+**Trace grouping:** On first `export_event()` for a given `trace_id`, the exporter opens a Langfuse trace with `id=trace_id`. Subsequent calls create child spans under that trace handle. `release_trace()` clears the handle on `run.finished` to prevent unbounded growth.
 
-**Failure isolation:** identical to the Python `_emit_trace` failure isolation rule — a failing Langfuse call is caught, logged, and swallowed; it must never interrupt the SSE stream.
+**Kill switch:** `LANGFUSE_ENABLED=false` env var makes all methods silent no-ops. Agent runs are unaffected.
+
+**Failure isolation:** Every public method swallows exceptions (O1 rule). Init failure logs `langfuse client init failed` at WARNING and returns `None` — telemetry is disabled but SSE continues.
+
+**Trust-trace integration:** `export_event()` receives the `trace_id` from the run and creates a Langfuse trace with that ID as the Langfuse trace ID. This ensures Langfuse traces are correlated with `TrustTraceRecord` events, `stream_ended` Cloud Logging entries, and GCS trust traces on the Python side.
 
 ---
 

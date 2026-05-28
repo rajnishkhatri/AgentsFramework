@@ -52,6 +52,7 @@ To support the streaming nature of LangGraph agents (SSE), we utilize Global HTT
 2. **Middleware Ring (BFF / FastAPI)**
    - **Service:** Cloud Run + Global HTTP(S) Load Balancer.
    - **Role:** Handles authentication (WorkOS), rate-limiting, and SDK telemetry (Langfuse, Mem0). Bridges the frontend to the internal agent infrastructure. Timeout settings on the Load Balancer are extended for SSE.
+   - **Langfuse export:** The `/run/stream` endpoint emits domain events to Langfuse Cloud via `telemetry_bridge.py` → `LangfuseCloudExporter`. Each agent run produces a Langfuse trace keyed by `trace_id`, with child spans for tool calls, LLM messages, and run lifecycle events. The `LANGFUSE_ENABLED=false` kill switch disables export without affecting SSE (O1 rule). Langfuse Cloud Hobby tier: 50K observation units/mo free.
 
 3. **Adapter & Four-Layer Backend Ring**
    - **Service:** Cloud Run (Internal Ingress) + Internal HTTP(S) Load Balancer.

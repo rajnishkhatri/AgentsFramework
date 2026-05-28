@@ -29,47 +29,50 @@ from middleware.adapters.observability.langfuse_cloud_exporter import (
 # ─────────────────────────────────────────────────────────────────────
 
 
-class FakeLangfuseClient:
-    """In-memory stand-in for the Langfuse SDK client.
-
-    Tracks trace creation and span generation calls to verify
-    the exporter's trace-grouping contract without hitting real APIs.
-    """
-
-    def __init__(self) -> None:
-        self.traces: dict[str, dict] = {}
-        self.spans: list[dict] = []
-        self.flushed = False
-
-    def trace(self, *, id: str, name: str | None = None, **kwargs) -> "FakeTrace":
-        self.traces[id] = {"id": id, "name": name, **kwargs}
-        return FakeTrace(trace_id=id, client=self)
-
-    def flush(self) -> None:
-        self.flushed = True
-
-
-class FakeTrace:
-    """Fake trace handle returned by FakeLangfuseClient.trace()."""
-
-    def __init__(self, trace_id: str, client: FakeLangfuseClient) -> None:
-        self.trace_id = trace_id
-        self._client = client
-
-    def span(self, *, name: str, input: dict | None = None, **kwargs) -> "FakeSpan":
-        span_data = {"trace_id": self.trace_id, "name": name, "input": input, **kwargs}
-        self._client.spans.append(span_data)
-        return FakeSpan(span_data)
-
-
-class FakeSpan:
-    """Fake span returned by FakeTrace.span()."""
+class FakeObservation:
+    """Fake observation returned by FakeLangfuseClient.start_observation()."""
 
     def __init__(self, data: dict) -> None:
         self.data = data
 
     def end(self) -> None:
         pass
+
+
+class FakeLangfuseClient:
+    """In-memory stand-in for the Langfuse SDK v4 client."""
+
+    def __init__(self) -> None:
+        self.traces: dict[str, dict] = {}
+        self.spans: list[dict] = []
+        self.flushed = False
+
+    def start_observation(
+        self,
+        *,
+        trace_context: dict | None = None,
+        name: str,
+        as_type: str = "span",
+        input: dict | None = None,
+        metadata: dict | None = None,
+        **kwargs,
+    ) -> FakeObservation:
+        trace_id = (trace_context or {}).get("trace_id", "unknown")
+        if trace_id not in self.traces:
+            self.traces[trace_id] = {"id": trace_id}
+        span_data = {
+            "trace_id": trace_id,
+            "name": name,
+            "input": input,
+            "as_type": as_type,
+            "metadata": metadata,
+            **kwargs,
+        }
+        self.spans.append(span_data)
+        return FakeObservation(span_data)
+
+    def flush(self) -> None:
+        self.flushed = True
 
 
 @pytest.fixture
@@ -167,10 +170,9 @@ class TestReleaseTrace:
     ) -> None:
         exporter.export_event(name="run.started", trace_id="trace-001")
         exporter.release_trace("trace-001")
-        # After release, a new export should create a new trace call
         exporter.export_event(name="run.started", trace_id="trace-001")
-        # Trace was opened twice (second time after release)
         assert len(fake_client.spans) == 2
+        assert fake_client.flushed is True
 
     def test_release_nonexistent_trace_is_noop(
         self, exporter: LangfuseCloudExporter
@@ -291,7 +293,7 @@ class TestExportFailure:
 
     def test_export_event_swallows_sdk_exception(self) -> None:
         broken_client = MagicMock()
-        broken_client.trace.side_effect = RuntimeError("SDK crash")
+        broken_client.start_observation.side_effect = RuntimeError("SDK crash")
         exp = LangfuseCloudExporter(
             public_key="pk-test",
             secret_key="sk-test",

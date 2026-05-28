@@ -131,6 +131,17 @@ if [[ -n "${PROJECT}" ]] && command -v gcloud >/dev/null 2>&1; then
   else
     pass "No recent auth_reject entries in backend logs"
   fi
+
+  # ── 5. Langfuse init failure check (warn-only) ───────────────────────────
+  langfuse_failures="$(gcloud logging read \
+    'resource.labels.service_name="agent-backend-combined" AND textPayload:"langfuse client init failed"' \
+    --project="${PROJECT}" --limit=3 --freshness=7d --format='value(textPayload)' 2>/dev/null || true)"
+  if [[ -n "${langfuse_failures}" ]]; then
+    echo -e "${YELLOW}WARN${NC}: Langfuse exporter init failures detected (telemetry disabled):"
+    echo "${langfuse_failures}" | head -3
+  else
+    pass "No langfuse client init failed warnings in backend logs"
+  fi
 else
   warn "GCP_PROJECT unset or gcloud unavailable — skipping auth log check"
 fi

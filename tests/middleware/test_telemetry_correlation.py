@@ -91,39 +91,48 @@ class StubTelemetryExporter:
         self.shutdown_called = True
 
 
+class FakeObservation:
+    def __init__(self, data: dict) -> None:
+        self.data = data
+
+    def end(self) -> None:
+        pass
+
+
 class FakeLangfuseClient:
-    """In-memory stand-in for the Langfuse SDK client."""
+    """In-memory stand-in for the Langfuse SDK v4 client."""
 
     def __init__(self) -> None:
         self.traces: dict[str, dict] = {}
         self.spans: list[dict] = []
         self.flushed = False
 
-    def trace(self, *, id: str, name: str | None = None, **kw) -> "FakeTrace":
-        self.traces[id] = {"id": id, "name": name, **kw}
-        return FakeTrace(trace_id=id, client=self)
+    def start_observation(
+        self,
+        *,
+        trace_context: dict | None = None,
+        name: str,
+        as_type: str = "span",
+        input: dict | None = None,
+        metadata: dict | None = None,
+        **kw,
+    ) -> FakeObservation:
+        trace_id = (trace_context or {}).get("trace_id", "unknown")
+        if trace_id not in self.traces:
+            self.traces[trace_id] = {"id": trace_id}
+        data = {
+            "trace_id": trace_id,
+            "name": name,
+            "input": input,
+            "as_type": as_type,
+            "metadata": metadata,
+            **kw,
+        }
+        self.spans.append(data)
+        return FakeObservation(data)
 
     def flush(self) -> None:
         self.flushed = True
-
-
-class FakeTrace:
-    def __init__(self, trace_id: str, client: FakeLangfuseClient) -> None:
-        self.trace_id = trace_id
-        self._client = client
-
-    def span(self, *, name: str, input: dict | None = None, **kw) -> "FakeSpan":
-        data = {"trace_id": self.trace_id, "name": name, "input": input, **kw}
-        self._client.spans.append(data)
-        return FakeSpan(data)
-
-
-class FakeSpan:
-    def __init__(self, data: dict) -> None:
-        self.data = data
-
-    def end(self) -> None:
-        pass
 
 
 @pytest.fixture

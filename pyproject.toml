@@ -24,7 +24,7 @@ dependencies = [
     # rule F-R2 / A1 (no SDK types escape past adapter boundary).
     "PyJWT[crypto]>=2.8",
     "mem0ai>=0.1.100",
-    "langfuse>=3.0",
+    "langfuse>=4.0,<5",
 ]
 
 [project.optional-dependencies]

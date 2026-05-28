@@ -23,6 +23,7 @@ Use this guide after a deploy or when chat/auth fails in production. For metrics
 - [Step 9 — End-to-end debug checklist](LOG_PIPELINE_GUIDE.md#step-9-end-to-end-debug-checklist)
 - [Step 10 — Output formats and live tail](LOG_PIPELINE_GUIDE.md#step-10-output-formats-and-live-tail)
 - [Step 11 — Smoke script integration](LOG_PIPELINE_GUIDE.md#step-11-smoke-script-integration)
+- [Step 12 — Langfuse trace verification](LOG_PIPELINE_GUIDE.md#step-12-langfuse-trace-verification)
 - [Log marker reference](LOG_PIPELINE_GUIDE.md#log-marker-reference)
 - [Common mistakes](LOG_PIPELINE_GUIDE.md#common-mistakes)
 - [Quick reference aliases](LOG_PIPELINE_GUIDE.md#quick-reference-aliases)
@@ -422,6 +423,7 @@ gcloud logging read \
 4. `auto_provisioned_identity` (first chat only)
 5. `stream_ended … errored=False`
 6. Frontend `run/stream` → 200
+7. No `langfuse client init failed` warnings (Step 12)
 
 ---
 
@@ -467,6 +469,51 @@ export BEARER_TOKEN="<WorkOS access token>"
 
 ---
 
+<h2 id="step-12-langfuse-trace-verification">Step 12 — Langfuse trace verification</h2>
+
+After a successful agent run (Step 6), verify that the same `trace_id` visible in `stream_ended` logs also appears in Langfuse Cloud as a correlated trace with child spans.
+
+### 12.1 Check for Langfuse init failures
+
+```bash
+gcloud logging read \
+  'resource.labels.service_name=agent-backend-combined
+   AND textPayload=~"langfuse client init failed"' \
+  --project="$PROJECT" --limit=5 --freshness=7d \
+  --format='table(timestamp,textPayload)'
+```
+
+**Healthy:** No results — the `LangfuseCloudExporter` initialised successfully.
+
+**If results appear:** Check that `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_HOST` are populated in Secret Manager and exposed to Cloud Run (Recipe 1/4). Set `LANGFUSE_ENABLED=false` to disable telemetry without blocking agent runs (O1 rule).
+
+### 12.2 Correlate trace_id in Langfuse UI
+
+1. Copy the `trace=<hex>` value from `stream_ended` (Step 6).
+2. Open [Langfuse Cloud](https://cloud.langfuse.com) → Traces → search by the trace ID.
+3. Verify the trace contains child spans: `run.started`, `tool.started`, `tool.finished`, `llm.started`, `llm.finished`, `run.finished`.
+
+### 12.3 Verify GCS trust-trace correlation
+
+The same `trace_id` should appear in the GCS trust-traces bucket:
+
+```bash
+export TRACES_BUCKET="$(tofu -chdir="$INFRA" output -raw trust_traces_bucket 2>/dev/null || echo '')"
+if [[ -n "$TRACES_BUCKET" ]]; then
+  gcloud storage ls "gs://${TRACES_BUCKET}/" --project="$PROJECT" | head -5
+fi
+```
+
+| Signal | Where | Keyed by |
+|--------|-------|----------|
+| `stream_ended trace=<id>` | Cloud Logging | `trace_id` |
+| Langfuse trace | Langfuse Cloud UI | `trace_id` (as Langfuse trace ID) |
+| GCS trust trace | `gs://trust-traces-*` | `trace_id` |
+
+**Quota note:** Langfuse Cloud Hobby tier allows 50K observation units/month. The telemetry bridge skips high-volume events (token emissions, state mutations) to stay within budget. See [07_observability.md](07_observability.md) for details.
+
+---
+
 <h2 id="log-marker-reference">Log marker reference</h2>
 
 | Stage | Service | Log substring | Source |
@@ -480,6 +527,8 @@ export BEARER_TOKEN="<WorkOS access token>"
 | GCS register | backend | `Registered agent … by app_prod:auto_provision` | `agent_facts_gcs_registry.py` |
 | Auto-provision | backend | `auto_provisioned_identity subject=` | `middleware/app_prod.py` |
 | Stream done | backend | `stream_ended … errored=False` | `middleware/app_prod.py` |
+| Langfuse init fail | backend | `langfuse client init failed` | `langfuse_cloud_exporter.py` |
+| Langfuse export | backend | `langfuse export_event swallowed` | `langfuse_cloud_exporter.py` |
 | Shutdown | backend | `PostgresCheckpointer: connection closed` | `postgres_saver.py` |
 
 ---
