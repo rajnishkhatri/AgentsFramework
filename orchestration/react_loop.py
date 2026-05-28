@@ -227,12 +227,36 @@ def _execute_tools_impl(
                 ok=False,
                 error=f"Unknown tool '{tool_name}'",
             )
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.ERROR_OCCURRED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "source": "tool_execution",
+                    "tool": tool_name,
+                    "error": f"Unknown tool '{tool_name}'",
+                },
+            ))
         except Exception as exc:
             execution_result = ToolExecutionResult(
                 output=f"Error: Tool '{tool_name}' failed: {exc}",
                 ok=False,
                 error=str(exc),
             )
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.ERROR_OCCURRED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "source": "tool_execution",
+                    "tool": tool_name,
+                    "error": str(exc),
+                },
+            ))
 
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
@@ -425,6 +449,18 @@ def build_graph(
                     },
                 ))
                 if not agent_facts_verified:
+                    black_box.record(TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.TASK_COMPLETED,
+                        timestamp=datetime.now(UTC),
+                        details={
+                            "outcome": "rejected",
+                            "reason": "agent_facts_verification_failed",
+                            "step_count": 0,
+                            "total_cost_usd": 0.0,
+                        },
+                    ))
                     return {
                         "agent_facts_verified": False,
                         "agent_capabilities": [],
@@ -455,6 +491,18 @@ def build_graph(
         )
 
         if not accepted:
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_COMPLETED,
+                timestamp=datetime.now(UTC),
+                details={
+                    "outcome": "rejected",
+                    "reason": "guardrail_rejected",
+                    "step_count": 0,
+                    "total_cost_usd": 0.0,
+                },
+            ))
             return {
                 "agent_facts_verified": agent_facts_verified,
                 "agent_capabilities": agent_capabilities,
@@ -485,6 +533,18 @@ def build_graph(
         budget_limit = user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
         total_cost = state.get("total_cost_usd", 0.0)
         if total_cost >= budget_limit:
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_COMPLETED,
+                timestamp=datetime.now(UTC),
+                details={
+                    "outcome": "budget_exceeded",
+                    "step_count": state.get("step_count", 0),
+                    "total_cost_usd": total_cost,
+                    "budget_limit": budget_limit,
+                },
+            ))
             return {
                 "last_outcome": "budget_exceeded",
                 "current_workflow_phase": WorkflowPhase.ROUTING.value,
@@ -508,6 +568,21 @@ def build_graph(
             planning_depth,
             task_input=state.get("task_input", ""),
         )
+
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.STEP_PLANNED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details={
+                "planning_depth": planning_depth,
+                "plan_steps": len(plan_artifact.ordered_steps),
+                "constraints": len(plan_artifact.constraints),
+                "success_conditions": len(plan_artifact.success_conditions),
+            },
+        ))
+
         plan_validation = validate_plan_mece(plan_artifact)
         if not plan_validation.is_valid:
             capable = next(
@@ -515,8 +590,24 @@ def build_graph(
                 None,
             )
             if capable is not None:
+                old_tier = profile.tier
                 profile = capable
                 reason = "plan-validation-escalation"
+
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.PARAMETER_CHANGED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "parameter": "model_tier",
+                        "old_value": old_tier,
+                        "new_value": capable.tier,
+                        "reason": "plan-validation-escalation",
+                        "plan_issues": plan_validation.issues,
+                    },
+                ))
 
         alternatives = [m.name for m in agent_config.models if m.name != profile.name]
         if not alternatives:
@@ -655,6 +746,19 @@ def build_graph(
                 "usage_metadata": {},
                 "response_metadata": {},
             })()
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.ERROR_OCCURRED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "source": "llm_call",
+                    "model": profile.name,
+                    "error": str(e),
+                    "latency_ms": latency_ms,
+                },
+            ))
 
         usage = getattr(response, "usage_metadata", {}) or {}
         tokens_in = usage.get("input_tokens", 0)
@@ -957,6 +1061,36 @@ def build_graph(
             result["files"] = {offload_ref: summary_text}
             result["reasoning_trace"] = [summary_text]
             result["truncation_applied"] = True
+
+        updated_step_count = state.get("step_count", 0) + 1
+        updated_cost = state.get("total_cost_usd", 0.0)
+        has_pending_tool = bool(
+            messages and isinstance(messages[-1], ToolMessage)
+        )
+        continuation = check_continuation(
+            step_count=updated_step_count,
+            total_cost_usd=updated_cost,
+            last_outcome=outcome,
+            last_error_type=error_type,
+            agent_config=agent_config,
+            has_pending_tool_result=has_pending_tool,
+            backoff_until=backoff_until,
+        )
+        if continuation == "done":
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_COMPLETED,
+                timestamp=datetime.now(UTC),
+                step=updated_step_count,
+                details={
+                    "outcome": outcome,
+                    "step_count": updated_step_count,
+                    "total_cost_usd": updated_cost,
+                    "error_type": error_type,
+                },
+            ))
+
         return result
 
     def _parse_response(state: AgentState) -> str:
