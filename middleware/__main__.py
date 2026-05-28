@@ -164,6 +164,7 @@ def _build_dev_relay(
     """Build the BlackBox→Langfuse relay for dev if enabled.
 
     Respects BLACKBOX_RELAY_MODE env (default: in_process).
+    Passes compliance_publisher when the exporter satisfies the protocol.
     """
     mode = os.environ.get("BLACKBOX_RELAY_MODE", "in_process")
     if mode != "in_process":
@@ -172,7 +173,16 @@ def _build_dev_relay(
 
     storage_dir_str = os.environ.get("BLACKBOX_STORAGE_DIR", "")
     storage_dir = Path(storage_dir_str) if storage_dir_str else (cache_dir / "black_box_recordings")
-    return BlackBoxToTelemetryRelay(storage_dir=storage_dir, exporter=exporter)
+
+    from middleware.ports.compliance_publisher import CompliancePublisher
+
+    compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
+
+    return BlackBoxToTelemetryRelay(
+        storage_dir=storage_dir,
+        exporter=exporter,
+        compliance_publisher=compliance_publisher,
+    )
 
 
 def _tcp_port_available(port: int, host: str = "0.0.0.0") -> bool:

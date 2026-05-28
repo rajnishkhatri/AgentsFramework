@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** Complete | Sprints A, B, C, D, E, F complete
+**Status:** Complete | Sprints A, B, C, D, E, F, G complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -145,7 +145,7 @@ Attributes per event include `event_id`, `workflow_id`, `step`, `timestamp`, `in
 - New: `services/governance/black_box_publisher.py` — pure functions `to_export_kwargs(event) -> (name, type, attrs, level)` and `redact_details(details) -> dict[str, str]`.
 - New: `tests/services/governance/test_black_box_publisher.py` — 34 L2 contract tests: all 9 event types map correctly; redaction strips PII (emails, SSNs, phones) and API keys (OpenAI, AWS, GitHub); details longer than 200 chars are truncated; architecture invariants (no SDK imports) AST-checked. All passing in <1s.
 
-### Sprint B — Wire the missing 4 event emissions in [orchestration/react_loop.py](../../orchestration/react_loop.py)
+### Sprint B — Wire the missing 4 event emissions in [orchestration/react_loop.py](../../orchestration/react_loop.py) ✅ Complete
 
 Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_CHECKED`, `MODEL_SELECTED`, `STEP_EXECUTED`, `TOOL_CALLED`). Adding:
 
@@ -196,6 +196,20 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - New: `docs/recipes/governance/02_event_mapping.md` — *Translating Nine Languages Into One Timeline*. 4 lessons: 9-to-9 mapping, idempotency via observation_id, PII/API-key redaction, wiring the 4 missing producers.
 - New: `docs/recipes/governance/03_compliance_dataset.md` — *Turning Every Failed Workflow Into a Lesson Plan*. 3 lessons: why datasets not metadata, integrity chain as Langfuse score, replaying failed workflows for evals. Series summary and cost note.
 - New: `tests/docs/test_governance_recipes.py` — 38 L2 contract tests: file existence, structural elements (status banners, lessons, checkpoint questions, mermaid diagrams, next-recipe links), relative link resolution, code snippet accuracy (real symbols from implementation), architecture claim verification (AST-based SDK-import checks), recipe sequence chain, test count mentions. All passing in <0.3s.
+
+### Sprint G — End-to-end pipeline integration tests + gap fixes ✅ Complete
+
+- New: `tests/middleware/sidecars/test_e2e_blackbox_pipeline.py` — 22 L2 integration tests verifying the full BlackBox → Relay → Publisher → Exporter pipeline works end-to-end:
+  - **A. Failure paths first** (3 tests): corrupt JSON → DLQ + valid events still publish, exporter failure on specific event → only that event DLQs, partial JSONL line deferred to next poll.
+  - **B. Full pipeline flow** (9 tests): all 9 event types produce correct observation types, observation_id matches event_id for idempotency, ERROR_OCCURRED carries level=ERROR, PII/API-key redaction through the full chain, detail truncation at 200 chars, trace_id equals workflow_id (§2.2), integrity hash preserved.
+  - **C. Multi-workflow isolation** (3 tests): independent offset tracking, per-workflow compliance bundles, one workflow failure doesn't block another.
+  - **D. Forward-only + incremental** (3 tests): absent offset → EOF seek, new events after startup processed, offset advances correctly.
+  - **E. Dev relay compliance gap** (2 tests): compliance-capable exporter gets publisher wired, plain exporter gets None.
+  - **F. Compliance pipeline integration** (2 tests): full valid workflow → audit dataset + score=1.0, tampered chain → incident dataset + score=0.0.
+- Fix: `middleware/__main__.py` — `_build_dev_relay()` now passes `compliance_publisher` when the exporter satisfies the `CompliancePublisher` protocol (mirrors `composition._build_relay()`). Previously dev relay omitted compliance publishing.
+- Fix: `orchestration/react_loop.py` — `route_node` now emits `PARAMETER_CHANGED` for `budget-downgrade` and `escalate-after-N-failures` routing decisions, not only `plan-validation-escalation`. Covers all three runtime-mutable tier override paths per Sprint B's original scope.
+- New: 2 tests in `tests/orchestration/test_react_loop.py` — `TestParameterChangedBudgetDowngrade` and `TestParameterChangedEscalation` verify the new emissions.
+- New: 4 tests in `tests/architecture/test_middleware_layer.py` — `TestBlackBoxPipelineLayering` consolidates pipeline layering invariants (publisher no-SDK, relay no-SDK, publisher no upper-layer imports, compliance port purity) into the canonical architecture test file per plan §3.
 
 ---
 

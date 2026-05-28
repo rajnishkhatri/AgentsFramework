@@ -559,6 +559,25 @@ def build_graph(
             agent_config=agent_config,
             routing_config=routing_config,
         )
+
+        if reason == "budget-downgrade" or reason.startswith("escalate-after"):
+            prev_history = state.get("model_history", [])
+            prev_tier = prev_history[-1]["tier"] if prev_history else "fast"
+            if profile.tier != prev_tier:
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.PARAMETER_CHANGED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "parameter": "model_tier",
+                        "old_value": prev_tier,
+                        "new_value": profile.tier,
+                        "reason": reason,
+                    },
+                ))
+
         planning_depth, planning_depth_reason = select_planning_depth(
             task_input=state.get("task_input", ""),
             step_count=state.get("step_count", 0),

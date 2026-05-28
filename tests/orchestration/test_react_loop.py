@@ -829,3 +829,133 @@ class TestTaskCompletedEmission:
         completed = _events_of_type(events, EventType.TASK_COMPLETED.value)
         assert len(completed) == 1, "Expected TASK_COMPLETED on terminal error"
         assert completed[0]["details"]["outcome"] == "failure"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Sprint G: Extended PARAMETER_CHANGED coverage — budget-downgrade
+#           and escalation-after-failures routing paths
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestParameterChangedBudgetDowngrade:
+    """Binary outcome: Does the graph emit PARAMETER_CHANGED when the router
+    selects a budget-downgrade? YES."""
+
+    @pytest.mark.asyncio
+    async def test_parameter_changed_on_budget_downgrade(self, tmp_path):
+        """When total_cost_usd exceeds the budget_downgrade_threshold,
+        PARAMETER_CHANGED must record the tier change to fast."""
+        mock_response = MagicMock()
+        mock_response.content = "FINAL ANSWER: done"
+        mock_response.tool_calls = []
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+        mock_response.response_metadata = {}
+
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile(), _capable_profile()],
+            max_cost_usd=1.0,
+        )
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(return_value=mock_response)
+
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=agent_config,
+                cache_dir=tmp_path / "cache",
+            )
+            await graph.ainvoke(
+                {
+                    "task_id": "t-budget-param",
+                    "task_input": "Quick question",
+                    "messages": [],
+                    "workflow_id": "wf-budget-param-001",
+                    "step_count": 5,
+                    "total_cost_usd": 0.85,
+                    "model_history": [
+                        {"step": 0, "model": "gpt-4o", "tier": "capable", "reason": "capable-for-planning"},
+                    ],
+                },
+                config={"configurable": {"task_id": "t-budget-param", "user_id": "u1"}},
+            )
+
+        events = _read_bb_events(
+            tmp_path / "cache" / "black_box_recordings", "wf-budget-param-001"
+        )
+        changed = _events_of_type(events, EventType.PARAMETER_CHANGED.value)
+        assert len(changed) >= 1, "Expected PARAMETER_CHANGED on budget downgrade"
+        detail = changed[0]["details"]
+        assert detail["parameter"] == "model_tier"
+        assert detail["reason"] == "budget-downgrade"
+        assert detail["new_value"] == "fast"
+
+
+class TestParameterChangedEscalation:
+    """Binary outcome: Does the graph emit PARAMETER_CHANGED when the router
+    escalates after consecutive failures? YES."""
+
+    @pytest.mark.asyncio
+    async def test_parameter_changed_on_escalation_after_failures(self, tmp_path):
+        """When consecutive_errors >= threshold and escalation budget remains,
+        PARAMETER_CHANGED must record the tier change to capable."""
+        mock_response = MagicMock()
+        mock_response.content = "FINAL ANSWER: recovered"
+        mock_response.tool_calls = []
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+        mock_response.response_metadata = {}
+
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile(), _capable_profile()],
+        )
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(return_value=mock_response)
+
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=agent_config,
+                cache_dir=tmp_path / "cache",
+            )
+            await graph.ainvoke(
+                {
+                    "task_id": "t-escalate",
+                    "task_input": "Retry this task",
+                    "messages": [],
+                    "workflow_id": "wf-escalate-001",
+                    "step_count": 3,
+                    "consecutive_errors": 3,
+                    "last_error_type": "model_error",
+                    "model_history": [
+                        {"step": 0, "model": "gpt-4o-mini", "tier": "fast", "reason": "steady-state-fast"},
+                    ],
+                },
+                config={"configurable": {"task_id": "t-escalate", "user_id": "u1"}},
+            )
+
+        events = _read_bb_events(
+            tmp_path / "cache" / "black_box_recordings", "wf-escalate-001"
+        )
+        changed = _events_of_type(events, EventType.PARAMETER_CHANGED.value)
+        assert len(changed) >= 1, "Expected PARAMETER_CHANGED on escalation after failures"
+        detail = changed[0]["details"]
+        assert detail["parameter"] == "model_tier"
+        assert "escalate" in detail["reason"]
+        assert detail["new_value"] == "capable"

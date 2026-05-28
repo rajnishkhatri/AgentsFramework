@@ -449,6 +449,92 @@ class TestSidecarMainLayering:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Sprint G — BlackBox pipeline layering invariants
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestBlackBoxPipelineLayering:
+    """Consolidated layering invariants for the BlackBox→Langfuse pipeline.
+
+    Per plan §3, key invariants:
+      - black_box_publisher.py has ZERO SDK imports.
+      - black_box_to_telemetry.py imports TelemetryExporter port, never langfuse.
+      - Both modules must not import langgraph or langchain.
+    """
+
+    def test_publisher_has_no_langfuse_import(self) -> None:
+        publisher = AGENT_ROOT / "services" / "governance" / "black_box_publisher.py"
+        if not publisher.exists():
+            pytest.skip("black_box_publisher.py not yet created")
+        imports = collect_imports_in_directory(
+            publisher.parent, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "black_box_publisher" in str(path) and pkg in ("langfuse", "langgraph", "langchain")
+        ]
+        assert violations == [], (
+            "Pipeline layering violated: black_box_publisher.py must NOT "
+            "import langfuse/langgraph/langchain:\n" + "\n".join(violations)
+        )
+
+    def test_relay_has_no_langfuse_import(self) -> None:
+        relay = AGENT_ROOT / "middleware" / "sidecars" / "black_box_to_telemetry.py"
+        if not relay.exists():
+            pytest.skip("black_box_to_telemetry.py not yet created")
+        imports = collect_imports_in_directory(
+            relay.parent, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "black_box_to_telemetry" in str(path) and pkg in ("langfuse", "langgraph", "langchain")
+        ]
+        assert violations == [], (
+            "Pipeline layering violated: black_box_to_telemetry.py must NOT "
+            "import langfuse/langgraph/langchain:\n" + "\n".join(violations)
+        )
+
+    def test_publisher_imports_only_services_layer(self) -> None:
+        """black_box_publisher.py may import from services/ only, never
+        middleware/, components/, orchestration/, or meta/."""
+        publisher = AGENT_ROOT / "services" / "governance" / "black_box_publisher.py"
+        if not publisher.exists():
+            pytest.skip("black_box_publisher.py not yet created")
+        forbidden = {"middleware", "components", "orchestration", "meta"}
+        imports = collect_imports_in_directory(
+            publisher.parent, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "black_box_publisher" in str(path) and pkg in forbidden
+        ]
+        assert violations == [], (
+            "Pipeline layering violated: black_box_publisher.py must NOT "
+            "import from upper layers:\n" + "\n".join(violations)
+        )
+
+    def test_compliance_publisher_port_has_no_sdk_imports(self) -> None:
+        port = AGENT_ROOT / "middleware" / "ports" / "compliance_publisher.py"
+        if not port.exists():
+            pytest.skip("compliance_publisher.py not yet created")
+        imports = collect_imports_in_directory(
+            port.parent, relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "compliance_publisher" in str(path) and pkg in SDK_PACKAGES
+        ]
+        assert violations == [], (
+            "Port purity violated: compliance_publisher.py must NOT "
+            "import SDKs:\n" + "\n".join(violations)
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Bridge import allowlist — only stdlib + wire + port
 # ─────────────────────────────────────────────────────────────────────
 
