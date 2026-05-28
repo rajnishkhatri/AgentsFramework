@@ -139,6 +139,13 @@ class LangfuseCloudExporter:
             from langfuse import propagate_attributes
 
             attrs = dict(attributes) if attributes else {}
+
+            # BlackBox relay hints — extract before building metadata so they
+            # don't leak into the Langfuse metadata blob.
+            bb_observation_id = attrs.pop("__bb_observation_id", None)
+            bb_observation_type = attrs.pop("__bb_observation_type", None)
+            bb_level = attrs.pop("__bb_level", None)
+
             propagate_kwargs: dict[str, Any] = {}
 
             subject = attrs.get("subject")
@@ -162,14 +169,21 @@ class LangfuseCloudExporter:
                 else nullcontext()
             )
 
+            obs_type = bb_observation_type or _observation_type(name)
+            obs_kwargs: dict[str, Any] = {
+                "trace_context": trace_context,
+                "name": name,
+                "as_type": obs_type,
+                "input": attrs or None,
+                "metadata": _metadata(attrs),
+            }
+            if bb_observation_id is not None:
+                obs_kwargs["id"] = str(bb_observation_id)
+            if bb_level is not None and bb_level != "DEFAULT":
+                obs_kwargs["level"] = bb_level
+
             with ctx:
-                observation = client.start_observation(
-                    trace_context=trace_context,
-                    name=name,
-                    as_type=_observation_type(name),
-                    input=attrs or None,
-                    metadata=_metadata(attrs),
-                )
+                observation = client.start_observation(**obs_kwargs)
                 observation.end()
         except Exception as exc:
             logger.debug(

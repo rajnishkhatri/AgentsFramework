@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** In Progress | Sprint A complete
+**Status:** In Progress | Sprints A, B, C complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -159,17 +159,18 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - Modify: `orchestration/react_loop.py`
 - Extend: `tests/orchestration/test_react_loop.py` to assert each new emission.
 
-### Sprint C — Relay class + idempotency hook
+### Sprint C — Relay class + idempotency hook ✅ Complete
 
 - New: `middleware/sidecars/__init__.py`
 - New: `middleware/sidecars/black_box_to_telemetry.py` — `BlackBoxToTelemetryRelay` with:
   - `run_once()` — scan `cache/black_box_recordings/*/trace.jsonl`, resume from `.langfuse_offset`, publish new lines, advance offset.
   - `run_forever(interval_s=1.0)` — async loop wrapping `run_once`.
-  - DLQ: 5 jittered exponential-backoff retries (1, 2, 4, 8, 16 s) before writing to `.langfuse_failures.jsonl` and advancing past the poison line.
+  - DLQ: configurable jittered exponential-backoff retries before writing to `.langfuse_failures.jsonl` and advancing past the poison line.
   - File-watch method: simple `mtime` poll at 1 s (no new deps; `watchdog` swap deferred).
   - Forward-only on startup (absent `.langfuse_offset` = seek to end-of-file).
-- Modify: [middleware/adapters/observability/langfuse_cloud_exporter.py](../../middleware/adapters/observability/langfuse_cloud_exporter.py) — extend `export_event` to accept an optional `observation_id` (passes the event's UUID as Langfuse observation `id` for idempotent retries; verify SDK v4 surface during implementation).
-- New: `tests/middleware/sidecars/test_black_box_to_telemetry.py` — offset bookkeeping, DLQ promotion after N retries, mtime-based pickup, idempotent retry.
+  - Partial-line safety: incomplete JSONL tails deferred to next poll.
+- Modify: [middleware/adapters/observability/langfuse_cloud_exporter.py](../../middleware/adapters/observability/langfuse_cloud_exporter.py) — extended `export_event` to extract `__bb_observation_id`, `__bb_observation_type`, `__bb_level` from attributes; passes observation `id` for idempotent retries and overrides `as_type`/`level` when present.  Port Protocol (`TelemetryExporter`) unchanged — relay hints passed through the existing `attributes` dict.
+- New: `tests/middleware/sidecars/test_black_box_to_telemetry.py` — 24 L2 contract tests: DLQ promotion (corrupt JSON, exporter failure, offset advance past poison), offset bookkeeping (publish + advance, resume from saved, multi-workflow independence), forward-only startup (absent offset → EOF, new events after startup), mtime-based pickup, idempotent export (observation_id/type/level in attributes), run_forever lifecycle, partial-line safety, architecture invariants (no langfuse/langgraph imports). All passing in <0.5s.
 
 ### Sprint D — Composition + drivers
 
