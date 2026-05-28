@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** In Progress | Sprints A, B, C, D, E complete
+**Status:** Complete | Sprints A, B, C, D, E, F complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -189,18 +189,13 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - Modify: `middleware/composition.py` — `_build_relay()` now passes `compliance_publisher` to relay when exporter satisfies `CompliancePublisher` protocol (runtime `isinstance` check).
 - New: `tests/middleware/sidecars/test_compliance_dataset.py` — 18 L2 contract tests: broken chain → incident dataset, valid chain → audit dataset, score attachment (1.0/0.0), failure outcome → both datasets, trigger only on TASK_COMPLETED, no duplicate publish, publisher failure resilience, no-publisher graceful degradation, architecture invariants. All passing in <0.3s.
 
-### Sprint F — Three-recipe governance tutorial series
+### Sprint F — Three-recipe governance tutorial series ✅ Complete
 
-Create `docs/recipes/governance/` mirroring the [docs/recipes/gcp/](../recipes/gcp/) style: vivid "Before We Start: A Story" intro, numbered lessons, "Checkpoint question" + answer per lesson, "Why not X?" sidebars, mermaid diagrams, code snippets headed with file paths, status banner at top.
-
-| File | Working title | Narrative arc | Code covered |
-|---|---|---|---|
-| `00_overview.md` | *The Black Box Hidden in Your Cache Folder* | Series intro. Aviation analogy from [governanaceTriangle/02_black_box_recording_debugging.md](../../governanaceTriangle/02_black_box_recording_debugging.md), but ends with: "If your flight recorder is invisible until you crash, did it ever really exist?" | none — sets the arc |
-| `01_outbox_relay.md` | *The Dual-Write Bug That Could Have Stayed Hidden Forever* | The 2 AM pager scenario; the dual-write trap; the transactional outbox pattern; why the JSONL already is one; how the relay tails it. Lessons: (1) the dual-write trap, (2) JSONL-as-outbox, (3) offset bookkeeping for at-least-once delivery, (4) in-process vs out-of-process drivers — when to graduate. | Sprints A, C, D |
-| `02_event_mapping.md` | *Translating Nine Languages Into One Timeline* | The nine event types and why Langfuse's observation types are the right Rosetta Stone. Lessons: (1) the 9-to-9 mapping, (2) idempotency via `observation_id`, (3) redaction reusing existing guardrails (the "PII leaking into vendor UIs" cautionary tale), (4) wiring the 4 missing producers. | Sprint A publisher + Sprint B emissions |
-| `03_compliance_dataset.md` | *Turning Every Failed Workflow Into a Lesson Plan* | The auditor visit; the compliance bundle and its hash chain as Langfuse dataset items; the `agent-incident-replay` dataset for regression testing. Lessons: (1) why Langfuse datasets (not metadata) for audit-grade payloads, (2) the integrity chain as a Langfuse score, (3) replaying failed workflows for evals. | Sprint E |
-
-Each recipe ends with a status banner ("Complete | N contract tests passing | ~$0/mo Langfuse incremental at dev tier"), a "Run it yourself" section, and links to the next recipe.
+- New: `docs/recipes/governance/00_overview.md` — *The Black Box Hidden in Your Cache Folder*. Series intro with aviation analogy, architecture overview, mermaid diagram of the full pipeline.
+- New: `docs/recipes/governance/01_outbox_relay.md` — *The Dual-Write Bug That Could Have Stayed Hidden Forever*. 4 lessons: dual-write trap, JSONL-as-outbox, offset bookkeeping, DLQ + retry policy. In-process vs out-of-process driver comparison.
+- New: `docs/recipes/governance/02_event_mapping.md` — *Translating Nine Languages Into One Timeline*. 4 lessons: 9-to-9 mapping, idempotency via observation_id, PII/API-key redaction, wiring the 4 missing producers.
+- New: `docs/recipes/governance/03_compliance_dataset.md` — *Turning Every Failed Workflow Into a Lesson Plan*. 3 lessons: why datasets not metadata, integrity chain as Langfuse score, replaying failed workflows for evals. Series summary and cost note.
+- New: `tests/docs/test_governance_recipes.py` — 38 L2 contract tests: file existence, structural elements (status banners, lessons, checkpoint questions, mermaid diagrams, next-recipe links), relative link resolution, code snippet accuracy (real symbols from implementation), architecture claim verification (AST-based SDK-import checks), recipe sequence chain, test count mentions. All passing in <0.3s.
 
 ---
 
