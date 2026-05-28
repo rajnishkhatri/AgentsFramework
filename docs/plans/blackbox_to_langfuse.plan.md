@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** In Progress | Sprints A, B, C complete
+**Status:** In Progress | Sprints A, B, C, D complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -172,12 +172,14 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - Modify: [middleware/adapters/observability/langfuse_cloud_exporter.py](../../middleware/adapters/observability/langfuse_cloud_exporter.py) — extended `export_event` to extract `__bb_observation_id`, `__bb_observation_type`, `__bb_level` from attributes; passes observation `id` for idempotent retries and overrides `as_type`/`level` when present.  Port Protocol (`TelemetryExporter`) unchanged — relay hints passed through the existing `attributes` dict.
 - New: `tests/middleware/sidecars/test_black_box_to_telemetry.py` — 24 L2 contract tests: DLQ promotion (corrupt JSON, exporter failure, offset advance past poison), offset bookkeeping (publish + advance, resume from saved, multi-workflow independence), forward-only startup (absent offset → EOF, new events after startup), mtime-based pickup, idempotent export (observation_id/type/level in attributes), run_forever lifecycle, partial-line safety, architecture invariants (no langfuse/langgraph imports). All passing in <0.5s.
 
-### Sprint D — Composition + drivers
+### Sprint D — Composition + drivers ✅ Complete
 
-- Modify: [middleware/composition.py](../../middleware/composition.py) — add optional `black_box_relay: BlackBoxToTelemetryRelay | None` to `MiddlewareAdapters`; honor `BLACKBOX_RELAY_MODE` env (`in_process` default, `off`, `external`).
-- Modify: [middleware/__main__.py](../../middleware/__main__.py) — inside `lifespan`, when relay mode is `in_process` start `asyncio.create_task(relay.run_forever())`; cancel + flush on lifespan exit.
-- New: `middleware/sidecars/__main__.py` — CLI entrypoint for out-of-process deployment, reuses `build_adapters()`.
-- Extend: `tests/architecture/test_middleware_layer.py` — assert sidecar module never imports `langfuse`; assert lifespan starts/stops the relay.
+- Modify: [middleware/composition.py](../../middleware/composition.py) — added `black_box_relay: BlackBoxToTelemetryRelay | None` to `MiddlewareAdapters`; honors `BLACKBOX_RELAY_MODE` env (`in_process` default, `off`, `external`). Helper `_build_relay()` reads `BLACKBOX_STORAGE_DIR` for custom paths.
+- Modify: [middleware/__main__.py](../../middleware/__main__.py) — inside `lifespan`, when relay mode is `in_process` starts `asyncio.create_task(relay.run_forever())`; cancels + stops on lifespan exit via `finally` block.
+- New: `middleware/sidecars/__main__.py` — CLI entrypoint for out-of-process deployment, reuses `build_adapters()`. Signal handling for SIGINT/SIGTERM. Usage: `python -m middleware.sidecars`.
+- Extended: `tests/architecture/test_middleware_layer.py` — `TestSidecarMainLayering` class asserts sidecar __main__ never imports `langfuse`/`langgraph`/forbidden layers.
+- New: `tests/middleware/test_composition_relay.py` — 14 L2 contract tests: relay mode handling (in_process/off/external/unknown), composition integration (field exists, correct type, shared exporter), lifespan lifecycle (start+stop, cancellation). All passing.
+- New: `tests/middleware/sidecars/test_sidecar_cli.py` — 6 L2 contract tests: failure paths (missing env), CLI structure (main function, __name__ guard), reuse of build_adapters. All passing.
 
 ### Sprint E — Compliance bundle as Langfuse dataset item
 

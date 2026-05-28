@@ -26,6 +26,7 @@ Usage::
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import json
 import logging
@@ -69,6 +70,7 @@ from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
 from middleware.ports.telemetry_exporter import TelemetryExporter
+from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
 from services.base_config import AgentConfig, ModelProfile
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.observability import setup_logging
@@ -154,6 +156,23 @@ def _build_dev_telemetry_exporter() -> TelemetryExporter:
             "Langfuse exporter init failed: %s; dev telemetry disabled", exc
         )
         return _NoopTelemetryExporter()
+
+
+def _build_dev_relay(
+    exporter: TelemetryExporter, cache_dir: Path
+) -> BlackBoxToTelemetryRelay | None:
+    """Build the BlackBox→Langfuse relay for dev if enabled.
+
+    Respects BLACKBOX_RELAY_MODE env (default: in_process).
+    """
+    mode = os.environ.get("BLACKBOX_RELAY_MODE", "in_process")
+    if mode != "in_process":
+        logger.info("BlackBox relay mode=%s; relay not started in-process", mode)
+        return None
+
+    storage_dir_str = os.environ.get("BLACKBOX_STORAGE_DIR", "")
+    storage_dir = Path(storage_dir_str) if storage_dir_str else (cache_dir / "black_box_recordings")
+    return BlackBoxToTelemetryRelay(storage_dir=storage_dir, exporter=exporter)
 
 
 def _tcp_port_available(port: int, host: str = "0.0.0.0") -> bool:
@@ -353,40 +372,26 @@ def build_dev_app() -> FastAPI:
             sinks=[JsonlFileTraceSink(trust_traces_dir / "records.jsonl")]
         )
 
+    dev_relay = _build_dev_relay(dev_telemetry, cache_dir)
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         """Enter checkpointer context before the graph is compiled."""
-        if _GCP_EXECUTION_ENV:
-            from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
+        relay_task: asyncio.Task | None = None
+        if dev_relay is not None:
+            relay_task = asyncio.create_task(dev_relay.run_forever(interval_s=1.0))
+            logger.info("BlackBox→Langfuse relay started (in-process)")
 
-            async with PostgresCheckpointer.from_env() as pg_cp:
-                graph = build_graph(
-                    agent_config=agent_config,
-                    tool_registry=tool_registry,
-                    cache_dir=cache_dir,
-                    checkpointer=pg_cp.saver,
-                    agent_facts_registry=agent_facts_registry,
-                    interrupt_before_execute_tool=False,
-                )
-                app.state.runtime = LangGraphRuntime(
-                    graph, trace_emit=trace_service.emit
-                )
-                app.state.dev_identity = dev_identity
-                app.state.telemetry_exporter = dev_telemetry
-                yield
-        else:
-            checkpointer = None
-            try:
-                from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        try:
+            if _GCP_EXECUTION_ENV:
+                from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
 
-                async with AsyncSqliteSaver.from_conn_string(
-                    str(cache_dir / "checkpoints.db")
-                ) as cp:
+                async with PostgresCheckpointer.from_env() as pg_cp:
                     graph = build_graph(
                         agent_config=agent_config,
                         tool_registry=tool_registry,
                         cache_dir=cache_dir,
-                        checkpointer=cp,
+                        checkpointer=pg_cp.saver,
                         agent_facts_registry=agent_facts_registry,
                         interrupt_before_execute_tool=False,
                     )
@@ -396,26 +401,57 @@ def build_dev_app() -> FastAPI:
                     app.state.dev_identity = dev_identity
                     app.state.telemetry_exporter = dev_telemetry
                     yield
-            except ImportError:
-                logger.warning("AsyncSqliteSaver not available; running without checkpointer")
-                graph = build_graph(
-                    agent_config=agent_config,
-                    tool_registry=tool_registry,
-                    cache_dir=cache_dir,
-                    checkpointer=checkpointer,
-                    agent_facts_registry=agent_facts_registry,
-                    interrupt_before_execute_tool=False,
-                )
-                app.state.runtime = LangGraphRuntime(
-                    graph, trace_emit=trace_service.emit
-                )
-                app.state.dev_identity = dev_identity
-                app.state.telemetry_exporter = dev_telemetry
-                yield
-        try:
-            dev_telemetry.shutdown()
-        except Exception:
-            logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
+            else:
+                checkpointer = None
+                try:
+                    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+                    async with AsyncSqliteSaver.from_conn_string(
+                        str(cache_dir / "checkpoints.db")
+                    ) as cp:
+                        graph = build_graph(
+                            agent_config=agent_config,
+                            tool_registry=tool_registry,
+                            cache_dir=cache_dir,
+                            checkpointer=cp,
+                            agent_facts_registry=agent_facts_registry,
+                            interrupt_before_execute_tool=False,
+                        )
+                        app.state.runtime = LangGraphRuntime(
+                            graph, trace_emit=trace_service.emit
+                        )
+                        app.state.dev_identity = dev_identity
+                        app.state.telemetry_exporter = dev_telemetry
+                        yield
+                except ImportError:
+                    logger.warning("AsyncSqliteSaver not available; running without checkpointer")
+                    graph = build_graph(
+                        agent_config=agent_config,
+                        tool_registry=tool_registry,
+                        cache_dir=cache_dir,
+                        checkpointer=checkpointer,
+                        agent_facts_registry=agent_facts_registry,
+                        interrupt_before_execute_tool=False,
+                    )
+                    app.state.runtime = LangGraphRuntime(
+                        graph, trace_emit=trace_service.emit
+                    )
+                    app.state.dev_identity = dev_identity
+                    app.state.telemetry_exporter = dev_telemetry
+                    yield
+        finally:
+            if relay_task is not None:
+                dev_relay.stop()
+                relay_task.cancel()
+                try:
+                    await relay_task
+                except asyncio.CancelledError:
+                    pass
+                logger.info("BlackBox→Langfuse relay stopped")
+            try:
+                dev_telemetry.shutdown()
+            except Exception:
+                logger.debug("telemetry exporter shutdown swallowed", exc_info=True)
 
     app = FastAPI(title="Agent Dev Middleware", version="0.1.0-dev", lifespan=lifespan)
 

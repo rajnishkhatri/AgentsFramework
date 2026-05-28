@@ -385,6 +385,74 @@ class TestAppProdSdkIsolation:
 # ─────────────────────────────────────────────────────────────────────
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Sprint D — sidecar __main__ layering invariant
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestSidecarMainLayering:
+    """middleware/sidecars/__main__.py must never import the langfuse SDK
+    directly, and must not import orchestration/components/governance/meta."""
+
+    def test_sidecar_main_does_not_import_langfuse(self) -> None:
+        sidecar_main = MIDDLEWARE_DIR / "sidecars" / "__main__.py"
+        if not sidecar_main.exists():
+            pytest.skip("sidecars/__main__.py not yet scaffolded")
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR / "sidecars", relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "__main__" in str(path) and pkg == "langfuse"
+        ]
+        assert violations == [], (
+            "Sprint D layering violated: sidecars/__main__.py must NOT "
+            "import langfuse SDK:\n" + "\n".join(violations)
+        )
+
+    def test_sidecar_main_does_not_import_langgraph(self) -> None:
+        sidecar_main = MIDDLEWARE_DIR / "sidecars" / "__main__.py"
+        if not sidecar_main.exists():
+            pytest.skip("sidecars/__main__.py not yet scaffolded")
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR / "sidecars", relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "__main__" in str(path) and pkg == "langgraph"
+        ]
+        assert violations == [], (
+            "Sprint D layering violated: sidecars/__main__.py must NOT "
+            "import langgraph:\n" + "\n".join(violations)
+        )
+
+    def test_sidecar_main_does_not_import_forbidden_layers(self) -> None:
+        sidecar_main = MIDDLEWARE_DIR / "sidecars" / "__main__.py"
+        if not sidecar_main.exists():
+            pytest.skip("sidecars/__main__.py not yet scaffolded")
+        forbidden = {"components", "orchestration", "governance", "meta"}
+        imports = collect_imports_in_directory(
+            MIDDLEWARE_DIR / "sidecars", relative_to=AGENT_ROOT
+        )
+        violations = [
+            f"{path} imports {pkg}"
+            for path, pkg in imports
+            if "__main__" in str(path) and pkg in forbidden
+        ]
+        assert violations == [], (
+            "Sprint D layering violated: sidecars/__main__.py must NOT "
+            "import components/orchestration/governance/meta:\n"
+            + "\n".join(violations)
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Bridge import allowlist — only stdlib + wire + port
+# ─────────────────────────────────────────────────────────────────────
+
+
 class TestTelemetryBridgeImportAllowlist:
     """telemetry_bridge.py may only import from stdlib, agent_ui_adapter.wire,
     and middleware.ports. No other first-party or third-party packages.
