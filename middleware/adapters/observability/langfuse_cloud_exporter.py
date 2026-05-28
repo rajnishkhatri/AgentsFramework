@@ -207,6 +207,65 @@ class LangfuseCloudExporter:
                 exc,
             )
 
+    def create_dataset_item(
+        self,
+        *,
+        dataset_name: str,
+        input_data: dict[str, Any],
+        item_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            kwargs: dict[str, Any] = {
+                "dataset_name": dataset_name,
+                "input": input_data,
+            }
+            if item_id is not None:
+                kwargs["id"] = item_id
+            if metadata is not None:
+                kwargs["metadata"] = metadata
+            client.create_dataset_item(**kwargs)
+        except Exception as exc:
+            logger.debug(
+                "langfuse create_dataset_item swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
+    def score_trace(
+        self,
+        *,
+        trace_id: str,
+        name: str,
+        value: float,
+        comment: str | None = None,
+    ) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            kwargs: dict[str, Any] = {
+                "trace_id": trace_id,
+                "name": name,
+                "value": value,
+            }
+            if comment is not None:
+                kwargs["comment"] = comment
+            client.score(**kwargs)
+        except Exception as exc:
+            logger.debug(
+                "langfuse score_trace swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
     def shutdown(self) -> None:
         if not self._enabled:
             return

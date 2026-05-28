@@ -295,7 +295,16 @@ def _build_relay(
 
     storage_dir_str = e.get("BLACKBOX_STORAGE_DIR", "")
     storage_dir = Path(storage_dir_str) if storage_dir_str else _DEFAULT_BB_STORAGE
-    return BlackBoxToTelemetryRelay(storage_dir=storage_dir, exporter=exporter)
+
+    from middleware.ports.compliance_publisher import CompliancePublisher
+
+    compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
+
+    return BlackBoxToTelemetryRelay(
+        storage_dir=storage_dir,
+        exporter=exporter,
+        compliance_publisher=compliance_publisher,
+    )
 
 
 def _require(env: Mapping[str, str], key: str) -> str:

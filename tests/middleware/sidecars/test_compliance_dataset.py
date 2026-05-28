@@ -1,0 +1,493 @@
+"""L2 Contract: Compliance bundle → Langfuse dataset item.
+
+Sprint E of the BlackBox→Langfuse plan.  Tests follow Protocol B
+(Contract-Driven TDD) from research/tdd_agentic_systems_prompt.md.
+
+Layer: middleware/sidecars (Middleware ring)
+Pyramid level: L2 — Reproducible.  Deterministic, fast, filesystem-isolated.
+
+Test categories:
+  A. Failure paths first — broken hash chain publishes to incident dataset
+  B. Success path — valid chain publishes to compliance audit dataset
+  C. Score attachment — hash_chain_valid score on trace (True/False)
+  D. Trigger condition — only TASK_COMPLETED triggers compliance publish
+  E. Architecture invariant — relay still has no langfuse/langgraph imports
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Mapping
+
+import pytest
+
+from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Fixtures — FakeExporter + FakeCompliancePublisher + helpers
+# ─────────────────────────────────────────────────────────────────────
+
+
+class FakeExporter:
+    """In-memory TelemetryExporter that records calls."""
+
+    def __init__(self) -> None:
+        self.events: list[dict[str, Any]] = []
+
+    def export_event(
+        self,
+        *,
+        name: str,
+        trace_id: str,
+        attributes: Mapping[str, Any] | None = None,
+    ) -> None:
+        self.events.append({
+            "name": name,
+            "trace_id": trace_id,
+            "attributes": dict(attributes) if attributes else {},
+        })
+
+    def release_trace(self, trace_id: str) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
+
+
+class FakeCompliancePublisher:
+    """In-memory CompliancePublisher that records dataset items and scores."""
+
+    def __init__(self, *, fail_on_publish: bool = False) -> None:
+        self.dataset_items: list[dict[str, Any]] = []
+        self.scores: list[dict[str, Any]] = []
+        self._fail_on_publish = fail_on_publish
+
+    def create_dataset_item(
+        self,
+        *,
+        dataset_name: str,
+        input_data: dict[str, Any],
+        item_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if self._fail_on_publish:
+            raise RuntimeError("Simulated Langfuse dataset publish failure")
+        self.dataset_items.append({
+            "dataset_name": dataset_name,
+            "input_data": input_data,
+            "item_id": item_id,
+            "metadata": metadata,
+        })
+
+    def score_trace(
+        self,
+        *,
+        trace_id: str,
+        name: str,
+        value: float,
+        comment: str | None = None,
+    ) -> None:
+        if self._fail_on_publish:
+            raise RuntimeError("Simulated Langfuse score failure")
+        self.scores.append({
+            "trace_id": trace_id,
+            "name": name,
+            "value": value,
+            "comment": comment,
+        })
+
+
+def _make_event(
+    event_type: EventType = EventType.STEP_EXECUTED,
+    *,
+    workflow_id: str = "wf-001",
+    step: int = 1,
+    details: dict[str, Any] | None = None,
+) -> TraceEvent:
+    return TraceEvent(
+        event_id=str(uuid.uuid4()),
+        workflow_id=workflow_id,
+        event_type=event_type,
+        timestamp=datetime(2026, 5, 28, 12, 0, 0, tzinfo=UTC),
+        step=step,
+        details=details or {"info": "ok"},
+    )
+
+
+def _record_workflow(
+    storage_dir: Path,
+    workflow_id: str,
+    *,
+    include_task_completed: bool = True,
+    outcome: str = "success",
+) -> Path:
+    """Record a complete workflow: TASK_STARTED, STEP_EXECUTED, TASK_COMPLETED."""
+    recorder = BlackBoxRecorder(storage_dir=storage_dir)
+    recorder.record(_make_event(
+        EventType.TASK_STARTED, workflow_id=workflow_id, step=0,
+        details={"task": "test task"},
+    ))
+    recorder.record(_make_event(
+        EventType.STEP_EXECUTED, workflow_id=workflow_id, step=1,
+        details={"action": "test action"},
+    ))
+    if include_task_completed:
+        recorder.record(_make_event(
+            EventType.TASK_COMPLETED, workflow_id=workflow_id, step=2,
+            details={"outcome": outcome},
+        ))
+    return storage_dir / workflow_id / "trace.jsonl"
+
+
+def _corrupt_hash_chain(trace_file: Path) -> None:
+    """Tamper with the integrity hash of the second event to break the chain."""
+    lines = trace_file.read_text().strip().split("\n")
+    if len(lines) >= 2:
+        event_data = json.loads(lines[1])
+        event_data["integrity_hash"] = "0" * 64
+        lines[1] = json.dumps(event_data, default=str)
+    trace_file.write_text("\n".join(lines) + "\n")
+
+
+@pytest.fixture()
+def storage(tmp_path: Path) -> Path:
+    return tmp_path / "black_box_recordings"
+
+
+@pytest.fixture()
+def exporter() -> FakeExporter:
+    return FakeExporter()
+
+
+@pytest.fixture()
+def compliance_publisher() -> FakeCompliancePublisher:
+    return FakeCompliancePublisher()
+
+
+def _build_relay(
+    storage: Path,
+    exporter: FakeExporter,
+    compliance_publisher: FakeCompliancePublisher | None = None,
+    **kwargs: Any,
+):
+    """Lazy import to let RED phase fail on ImportError."""
+    from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
+
+    return BlackBoxToTelemetryRelay(
+        storage_dir=storage,
+        exporter=exporter,
+        compliance_publisher=compliance_publisher,
+        base_delay_s=0.0,
+        **kwargs,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# A. FAILURE PATHS FIRST — broken chain → incident dataset
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestBrokenChainPublishesToIncidentDataset:
+    """When hash chain is broken, the bundle goes to agent-incident-replay."""
+
+    def test_broken_chain_publishes_to_incident_dataset(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        trace_file = _record_workflow(storage, "wf-broken")
+        _corrupt_hash_chain(trace_file)
+        (storage / "wf-broken" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        incident_items = [
+            item for item in compliance_publisher.dataset_items
+            if item["dataset_name"] == "agent-incident-replay"
+        ]
+        assert len(incident_items) == 1
+        assert incident_items[0]["input_data"]["hash_chain_valid"] is False
+        assert incident_items[0]["input_data"]["workflow_id"] == "wf-broken"
+
+    def test_broken_chain_score_is_zero(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        trace_file = _record_workflow(storage, "wf-score-broken")
+        _corrupt_hash_chain(trace_file)
+        (storage / "wf-score-broken" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = [s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-broken"]
+        assert len(scores) == 1
+        assert scores[0]["name"] == "hash_chain_valid"
+        assert scores[0]["value"] == 0.0
+
+    def test_broken_chain_item_has_workflow_id_as_item_id(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        trace_file = _record_workflow(storage, "wf-itemid")
+        _corrupt_hash_chain(trace_file)
+        (storage / "wf-itemid" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        items = compliance_publisher.dataset_items
+        assert len(items) >= 1
+        assert items[0]["item_id"] == "wf-itemid"
+
+    def test_publisher_failure_does_not_crash_relay(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """CompliancePublisher failure must not crash the relay (rule O1)."""
+        failing_publisher = FakeCompliancePublisher(fail_on_publish=True)
+        _record_workflow(storage, "wf-crash")
+        (storage / "wf-crash" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, failing_publisher)
+        published = relay.run_once()
+
+        assert published >= 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# B. SUCCESS PATH — valid chain → compliance audit dataset
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestValidChainPublishesToAuditDataset:
+    """When hash chain is valid, the bundle goes to agent-compliance-audit."""
+
+    def test_valid_chain_publishes_to_audit_dataset(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow(storage, "wf-valid")
+        (storage / "wf-valid" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        audit_items = [
+            item for item in compliance_publisher.dataset_items
+            if item["dataset_name"] == "agent-compliance-audit"
+        ]
+        assert len(audit_items) == 1
+        assert audit_items[0]["input_data"]["hash_chain_valid"] is True
+        assert audit_items[0]["input_data"]["workflow_id"] == "wf-valid"
+
+    def test_valid_chain_score_is_one(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow(storage, "wf-score-valid")
+        (storage / "wf-score-valid" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = [s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-valid"]
+        assert len(scores) == 1
+        assert scores[0]["name"] == "hash_chain_valid"
+        assert scores[0]["value"] == 1.0
+
+    def test_audit_item_contains_event_count(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow(storage, "wf-count")
+        (storage / "wf-count" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        items = compliance_publisher.dataset_items
+        assert items[0]["input_data"]["event_count"] == 3
+
+    def test_audit_item_contains_bundle_type(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow(storage, "wf-bundle")
+        (storage / "wf-bundle" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        items = compliance_publisher.dataset_items
+        assert items[0]["input_data"]["bundle_type"] == "compliance_audit"
+
+    def test_failed_outcome_goes_to_both_datasets(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """A failed outcome with valid chain still goes to audit, PLUS incident-replay."""
+        _record_workflow(storage, "wf-failed-outcome", outcome="failure")
+        (storage / "wf-failed-outcome" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        dataset_names = [item["dataset_name"] for item in compliance_publisher.dataset_items]
+        assert "agent-compliance-audit" in dataset_names
+        assert "agent-incident-replay" in dataset_names
+
+
+# ─────────────────────────────────────────────────────────────────────
+# C. SCORE ATTACHMENT — hash_chain_valid score on trace
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestScoreAttachment:
+    """Attach hash_chain_valid as a Langfuse score on the trace."""
+
+    def test_score_has_comment_on_failure(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        trace_file = _record_workflow(storage, "wf-comment")
+        _corrupt_hash_chain(trace_file)
+        (storage / "wf-comment" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = compliance_publisher.scores
+        assert len(scores) >= 1
+        assert scores[0]["comment"] is not None
+        assert "broken" in scores[0]["comment"].lower() or "invalid" in scores[0]["comment"].lower()
+
+    def test_score_trace_id_matches_workflow_id(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow(storage, "wf-trace-match")
+        (storage / "wf-trace-match" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = compliance_publisher.scores
+        assert len(scores) == 1
+        assert scores[0]["trace_id"] == "wf-trace-match"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# D. TRIGGER CONDITION — only TASK_COMPLETED triggers publish
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestTriggerCondition:
+    """Compliance publish only triggers on TASK_COMPLETED event."""
+
+    def test_no_publish_without_task_completed(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """A workflow without TASK_COMPLETED should not trigger compliance publish."""
+        _record_workflow(storage, "wf-incomplete", include_task_completed=False)
+        (storage / "wf-incomplete" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        assert len(compliance_publisher.dataset_items) == 0
+        assert len(compliance_publisher.scores) == 0
+
+    def test_publish_triggered_by_task_completed_event(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """Relay publishes compliance bundle when it processes TASK_COMPLETED."""
+        _record_workflow(storage, "wf-trigger")
+        (storage / "wf-trigger" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        assert len(compliance_publisher.dataset_items) >= 1
+
+    def test_no_duplicate_publish_on_second_run(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """Once processed, the same TASK_COMPLETED should not re-trigger."""
+        _record_workflow(storage, "wf-no-dup")
+        (storage / "wf-no-dup" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+        relay.run_once()
+
+        audit_items = [
+            item for item in compliance_publisher.dataset_items
+            if item["input_data"]["workflow_id"] == "wf-no-dup"
+        ]
+        assert len(audit_items) == 1
+
+    def test_no_publisher_means_no_compliance_action(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """When compliance_publisher is None, relay still works without compliance."""
+        _record_workflow(storage, "wf-no-pub")
+        (storage / "wf-no-pub" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher=None)
+        published = relay.run_once()
+
+        assert published >= 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# E. ARCHITECTURE INVARIANT — relay has no langfuse/langgraph imports
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestArchitectureInvariant:
+    """Sidecar module must import ports, never SDKs directly."""
+
+    def test_relay_has_no_langfuse_import(self) -> None:
+        import ast
+
+        src = Path("middleware/sidecars/black_box_to_telemetry.py").read_text()
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert not alias.name.startswith("langfuse"), (
+                        f"Forbidden import: {alias.name}"
+                    )
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    assert not node.module.startswith("langfuse"), (
+                        f"Forbidden import from: {node.module}"
+                    )
+
+    def test_relay_has_no_langgraph_import(self) -> None:
+        import ast
+
+        src = Path("middleware/sidecars/black_box_to_telemetry.py").read_text()
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert not alias.name.startswith("langgraph"), (
+                        f"Forbidden import: {alias.name}"
+                    )
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    assert not node.module.startswith("langgraph"), (
+                        f"Forbidden import from: {node.module}"
+                    )
+
+    def test_compliance_publisher_port_has_no_sdk_imports(self) -> None:
+        import ast
+
+        src = Path("middleware/ports/compliance_publisher.py").read_text()
+        tree = ast.parse(src)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert not alias.name.startswith(("langfuse", "langgraph")), (
+                        f"Forbidden import in port: {alias.name}"
+                    )
+            elif isinstance(node, ast.ImportFrom):
+                if node.module:
+                    assert not node.module.startswith(("langfuse", "langgraph")), (
+                        f"Forbidden import in port: {node.module}"
+                    )

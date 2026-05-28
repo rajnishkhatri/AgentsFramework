@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** In Progress | Sprints A, B, C, D complete
+**Status:** In Progress | Sprints A, B, C, D, E complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -181,12 +181,13 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - New: `tests/middleware/test_composition_relay.py` — 14 L2 contract tests: relay mode handling (in_process/off/external/unknown), composition integration (field exists, correct type, shared exporter), lifespan lifecycle (start+stop, cancellation). All passing.
 - New: `tests/middleware/sidecars/test_sidecar_cli.py` — 6 L2 contract tests: failure paths (missing env), CLI structure (main function, __name__ guard), reuse of build_adapters. All passing.
 
-### Sprint E — Compliance bundle as Langfuse dataset item
+### Sprint E — Compliance bundle as Langfuse dataset item ✅ Complete
 
-- Add `publish_compliance_bundle(workflow_id, dataset_name)` to the relay, triggered on observing a `TASK_COMPLETED` event for a workflow.
-- Calls `BlackBoxRecorder.export_for_compliance(...)` to get the integrity-verified bundle, then uses the Langfuse SDK to upsert a dataset item in `agent-compliance-audit` (failures go to a second `agent-incident-replay` dataset).
-- Attach `hash_chain_valid` as a Langfuse score on the trace.
-- New: `tests/middleware/sidecars/test_compliance_dataset.py` — success-path and broken-chain-path both upload with the correct status.
+- New: `middleware/ports/compliance_publisher.py` — `CompliancePublisher` protocol with `create_dataset_item()` and `score_trace()` methods. Pure port, zero SDK imports.
+- Modify: `middleware/adapters/observability/langfuse_cloud_exporter.py` — extended `LangfuseCloudExporter` to implement `CompliancePublisher` protocol with `create_dataset_item()` (upserts to named dataset) and `score_trace()` (attaches numeric score). Both swallow exceptions per O1.
+- Modify: `middleware/sidecars/black_box_to_telemetry.py` — added `compliance_publisher` optional parameter and `_publish_compliance_bundle()` method. Triggered on observing `TASK_COMPLETED`; calls `BlackBoxRecorder.export_for_compliance()`, publishes to `agent-compliance-audit` (valid chain) or `agent-incident-replay` (broken chain/failure outcome), and attaches `hash_chain_valid` score on trace. Idempotent (per-session deduplication). Failures swallowed per O1.
+- Modify: `middleware/composition.py` — `_build_relay()` now passes `compliance_publisher` to relay when exporter satisfies `CompliancePublisher` protocol (runtime `isinstance` check).
+- New: `tests/middleware/sidecars/test_compliance_dataset.py` — 18 L2 contract tests: broken chain → incident dataset, valid chain → audit dataset, score attachment (1.0/0.0), failure outcome → both datasets, trigger only on TASK_COMPLETED, no duplicate publish, publisher failure resilience, no-publisher graceful degradation, architecture invariants. All passing in <0.3s.
 
 ### Sprint F — Three-recipe governance tutorial series
 

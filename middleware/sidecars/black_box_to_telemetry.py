@@ -1,15 +1,21 @@
 """BlackBoxToTelemetryRelay — outbox relay from BlackBox JSONL to Langfuse.
 
-Sprint C of the BlackBox→Langfuse plan.
+Sprints C + E of the BlackBox→Langfuse plan.
 
 Tails ``cache/black_box_recordings/*/trace.jsonl`` (the transactional outbox),
 publishes each event via the ``TelemetryExporter`` port, and tracks per-workflow
 byte offsets for at-least-once delivery.  Poison events go to a per-workflow
 ``.langfuse_failures.jsonl`` dead-letter queue.
 
+Sprint E addition: on observing a ``TASK_COMPLETED`` event, calls
+``BlackBoxRecorder.export_for_compliance()`` and publishes the integrity-
+verified bundle as a Langfuse dataset item (via ``CompliancePublisher`` port).
+Valid chains go to ``agent-compliance-audit``; failures go to
+``agent-incident-replay``.  Attaches ``hash_chain_valid`` as a Langfuse score.
+
 Layering invariants (enforced by tests/middleware/sidecars/test_black_box_to_telemetry.py):
   - Zero ``langfuse`` or ``langgraph`` imports.
-  - Uses the ``TelemetryExporter`` port, never the SDK directly.
+  - Uses the ``TelemetryExporter`` and ``CompliancePublisher`` ports, never the SDK directly.
   - Mapping + redaction delegated to ``services.governance.black_box_publisher``.
 """
 
@@ -24,8 +30,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from middleware.ports.compliance_publisher import CompliancePublisher
 from middleware.ports.telemetry_exporter import TelemetryExporter
-from services.governance.black_box import TraceEvent
+from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
 from services.governance.black_box_publisher import to_export_kwargs
 
 logger = logging.getLogger("middleware.sidecars.black_box_to_telemetry")
@@ -39,24 +46,31 @@ class BlackBoxToTelemetryRelay:
     Args:
         storage_dir: Root of ``cache/black_box_recordings/``.
         exporter: ``TelemetryExporter`` port implementation.
+        compliance_publisher: Optional ``CompliancePublisher`` port for dataset items.
         max_retries: Per-line retry count before DLQ promotion.
         base_delay_s: Base delay for jittered exponential backoff.
     """
+
+    DATASET_AUDIT = "agent-compliance-audit"
+    DATASET_INCIDENT = "agent-incident-replay"
 
     def __init__(
         self,
         storage_dir: Path | str,
         exporter: TelemetryExporter,
+        compliance_publisher: CompliancePublisher | None = None,
         *,
         max_retries: int = 5,
         base_delay_s: float = 1.0,
     ) -> None:
         self._storage_dir = Path(storage_dir)
         self._exporter = exporter
+        self._compliance_publisher = compliance_publisher
         self._max_retries = max_retries
         self._base_delay_s = base_delay_s
         self._mtimes: dict[str, float] = {}
         self._stopped = False
+        self._published_compliance: set[str] = set()
 
     # ── public API ──────────────────────────────────────────────────
 
@@ -156,6 +170,10 @@ class BlackBoxToTelemetryRelay:
                     trace_id=kwargs["trace_id"],
                     attributes=attrs,
                 )
+
+                if event.event_type == EventType.TASK_COMPLETED:
+                    self._publish_compliance_bundle(event.workflow_id, event.details)
+
                 return True
             except Exception as exc:
                 last_exc = exc
@@ -166,6 +184,72 @@ class BlackBoxToTelemetryRelay:
 
         self._write_dlq(wf_dir, line, str(last_exc))
         return False
+
+    def _publish_compliance_bundle(
+        self, workflow_id: str, task_details: dict[str, Any]
+    ) -> None:
+        """Export compliance bundle as a Langfuse dataset item on TASK_COMPLETED.
+
+        Idempotent: skips if already published for this workflow_id in this session.
+        Failures are swallowed per rule O1.
+        """
+        if self._compliance_publisher is None:
+            return
+        if workflow_id in self._published_compliance:
+            return
+
+        self._published_compliance.add(workflow_id)
+
+        try:
+            recorder = BlackBoxRecorder(storage_dir=self._storage_dir)
+            bundle = recorder.export_for_compliance(workflow_id)
+        except Exception as exc:
+            logger.warning(
+                "Failed to export compliance bundle for %s: %s", workflow_id, exc
+            )
+            return
+
+        chain_valid = bundle.get("hash_chain_valid", False)
+        outcome = task_details.get("outcome", "")
+
+        try:
+            self._compliance_publisher.score_trace(
+                trace_id=workflow_id,
+                name="hash_chain_valid",
+                value=1.0 if chain_valid else 0.0,
+                comment=None if chain_valid else "Integrity hash chain broken or invalid",
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to score trace %s: %s", workflow_id, exc
+            )
+
+        try:
+            self._compliance_publisher.create_dataset_item(
+                dataset_name=self.DATASET_AUDIT if chain_valid else self.DATASET_INCIDENT,
+                input_data=bundle,
+                item_id=workflow_id,
+                metadata={"workflow_id": workflow_id, "chain_valid": chain_valid},
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to publish compliance dataset item for %s: %s",
+                workflow_id, exc,
+            )
+
+        if chain_valid and outcome == "failure":
+            try:
+                self._compliance_publisher.create_dataset_item(
+                    dataset_name=self.DATASET_INCIDENT,
+                    input_data=bundle,
+                    item_id=f"{workflow_id}-incident",
+                    metadata={"workflow_id": workflow_id, "reason": "task_failure"},
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to publish incident dataset item for %s: %s",
+                    workflow_id, exc,
+                )
 
     @staticmethod
     def _write_dlq(wf_dir: Path, line: str, error: str) -> None:
