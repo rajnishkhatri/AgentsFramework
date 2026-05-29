@@ -188,7 +188,7 @@ class LangfuseCloudExporter:
                 observation = client.start_observation(**obs_kwargs)
                 observation.end()
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse export_event swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -203,7 +203,7 @@ class LangfuseCloudExporter:
             if client is not None:
                 client.flush()
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse release_trace swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -233,7 +233,7 @@ class LangfuseCloudExporter:
                 kwargs["metadata"] = metadata
             client.create_dataset_item(**kwargs)
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse create_dataset_item swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -262,7 +262,7 @@ class LangfuseCloudExporter:
                 kwargs["comment"] = comment
             client.score(**kwargs)
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse score_trace swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -279,7 +279,7 @@ class LangfuseCloudExporter:
             if hasattr(client, "shutdown"):
                 client.shutdown()
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse flush swallowed: %s: %s",
                 type(exc).__name__,
                 exc,

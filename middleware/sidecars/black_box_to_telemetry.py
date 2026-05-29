@@ -77,6 +77,7 @@ class BlackBoxToTelemetryRelay:
     def run_once(self) -> int:
         """Scan all workflow dirs, publish new events.  Returns count published."""
         if not self._storage_dir.exists():
+            logger.debug("Relay storage dir does not exist: %s", self._storage_dir)
             return 0
 
         total = 0
@@ -86,7 +87,14 @@ class BlackBoxToTelemetryRelay:
             trace_file = wf_dir / "trace.jsonl"
             if not trace_file.exists():
                 continue
-            total += self._process_workflow(wf_dir, trace_file)
+            published = self._process_workflow(wf_dir, trace_file)
+            if published > 0:
+                logger.info(
+                    "Relay published %d event(s) for workflow %s",
+                    published,
+                    wf_dir.name,
+                )
+            total += published
         return total
 
     async def run_forever(self, interval_s: float = 1.0) -> None:
