@@ -403,9 +403,9 @@ phase_images() {
   local fver_tag="agent-frontend:${DEPLOY_VERSION}"
   local fsha_tag="agent-frontend:sha-${SHORT_SHA}"
 
-  echo "+ (cd \"${REPO_ROOT}\" && docker build -f Dockerfile.frontend -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
+  echo "+ (cd \"${REPO_ROOT}\" && docker build -f frontend/Dockerfile.frontend -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
   if [[ -z "${DRY_RUN}" ]]; then
-    (cd "${REPO_ROOT}" && docker build -f Dockerfile.frontend -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
+    (cd "${REPO_ROOT}" && docker build -f frontend/Dockerfile.frontend -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
   fi
   run_cmd docker tag "${fver_tag}" "${ar_url}/${fver_tag}"
   run_cmd docker tag "${fsha_tag}" "${ar_url}/${fsha_tag}"
