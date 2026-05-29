@@ -62,6 +62,7 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         attrs["run_id"] = event.run_id
         attrs["thread_id"] = event.thread_id
         attrs["error"] = event.error
+        attrs["__output"] = {"status": "error" if event.error else "success", "error": event.error}
 
     elif isinstance(event, ToolCallStarted):
         name = "tool.started"
@@ -73,6 +74,7 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         name = "tool.finished"
         attrs["tool_call_id"] = event.tool_call_id
         attrs["result"] = _truncate(event.result)
+        attrs["__output"] = {"result": _truncate(event.result)}
 
     elif isinstance(event, LLMMessageStarted):
         name = "llm.started"
@@ -81,6 +83,7 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
     elif isinstance(event, LLMMessageEnded):
         name = "llm.finished"
         attrs["message_id"] = event.message_id
+        attrs["__output"] = {"status": "completed", "message_id": event.message_id}
 
     else:
         return None

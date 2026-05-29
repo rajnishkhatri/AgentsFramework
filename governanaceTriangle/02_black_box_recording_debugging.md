@@ -6,6 +6,38 @@
 
 ---
 
+> **Reconciliation Note (2026-05-29)**
+>
+> This tutorial documents the **lesson-17 tutorial taxonomy** (`backend.explainability.black_box`)
+> which uses 9 event types: `STEP_START`, `STEP_END`, `DECISION`, `ERROR`, `CHECKPOINT`,
+> `PARAMETER_CHANGE`, `COLLABORATOR_JOIN`, `COLLABORATOR_LEAVE`, `ROLLBACK`.
+>
+> The **shipped production code** lives at `services/governance/black_box.py` and uses a
+> different 9-event taxonomy designed for the ReAct agent loop:
+>
+> | Tutorial (this doc) | Production (`services.governance.black_box`) | Notes |
+> |---|---|---|
+> | `STEP_START` | — | Covered by `STEP_PLANNED` / `STEP_EXECUTED` |
+> | `STEP_END` | — | Covered by `STEP_EXECUTED` |
+> | `DECISION` | — | Routing decisions captured by `MODEL_SELECTED` |
+> | `ERROR` | `ERROR_OCCURRED` | Semantic match |
+> | `CHECKPOINT` | — | Not in production taxonomy |
+> | `PARAMETER_CHANGE` | `PARAMETER_CHANGED` | Semantic match |
+> | `COLLABORATOR_JOIN` | — | Single-agent loop; not applicable |
+> | `COLLABORATOR_LEAVE` | — | Single-agent loop; not applicable |
+> | `ROLLBACK` | — | Not in production taxonomy |
+> | — | `TASK_STARTED` | Lifecycle event |
+> | — | `STEP_PLANNED` | Planning event |
+> | — | `STEP_EXECUTED` | Execution completion |
+> | — | `TOOL_CALLED` | Tool invocation |
+> | — | `MODEL_SELECTED` | Model routing |
+> | — | `GUARDRAIL_CHECKED` | Input/output guardrail gate |
+> | — | `TASK_COMPLETED` | Lifecycle event |
+>
+> Full drift analysis: [`docs/drift/blackbox_event_taxonomy_drift.json`](../docs/drift/blackbox_event_taxonomy_drift.json)
+
+---
+
 ## Introduction
 
 When a complex multi-agent workflow fails, the question isn't *if* you'll need to debug it—it's *how*. Without proper instrumentation, you're left guessing at root causes from incomplete logs, reproducing issues in isolation, and hoping the problem recurs so you can catch it.

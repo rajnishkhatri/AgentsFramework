@@ -267,14 +267,20 @@ class TestOffsetBookkeeping:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# C. FORWARD-ONLY STARTUP — absent offset = seek to EOF
+# C. STARTUP — absent offset processes from beginning (idempotent via observation_id)
 # ─────────────────────────────────────────────────────────────────────
 
 
-class TestForwardOnlyStartup:
-    """Absent .langfuse_offset → relay skips existing events (no backfill)."""
+class TestStartupFromBeginning:
+    """Absent .langfuse_offset → relay processes all existing events from offset 0.
 
-    def test_absent_offset_creates_offset_at_eof(
+    In the in-process relay mode (Cloud Run), the relay starts alongside the
+    recorder. Fast-completing requests write all events before the relay's first
+    poll. Starting from 0 ensures nothing is skipped. Duplicate exports are safe
+    because Langfuse deduplicates on observation_id.
+    """
+
+    def test_absent_offset_processes_existing_events(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
         ev = _make_event(workflow_id="wf-new")
@@ -284,13 +290,13 @@ class TestForwardOnlyStartup:
         relay = _build_relay(storage, exporter)
         published = relay.run_once()
 
-        assert published == 0, "Should not backfill existing events"
-        assert len(exporter.events) == 0
+        assert published == 1, "Should process existing events on first encounter"
+        assert len(exporter.events) == 1
         offset_file = storage / "wf-new" / ".langfuse_offset"
         assert offset_file.exists()
         assert int(offset_file.read_text().strip()) == expected_size
 
-    def test_new_events_after_startup_are_published(
+    def test_new_events_after_startup_are_also_published(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
         ev1 = _make_event(EventType.TASK_STARTED, workflow_id="wf-grow")
@@ -298,7 +304,7 @@ class TestForwardOnlyStartup:
 
         relay = _build_relay(storage, exporter)
         relay.run_once()
-        assert len(exporter.events) == 0
+        assert len(exporter.events) == 1
 
         ev2 = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-grow", step=2)
         recorder = BlackBoxRecorder(storage_dir=storage)
@@ -306,7 +312,7 @@ class TestForwardOnlyStartup:
 
         published = relay.run_once()
         assert published == 1
-        assert exporter.events[0]["name"] == "step.executed"
+        assert exporter.events[1]["name"] == "step.executed"
 
     def test_nonexistent_storage_dir_returns_zero(
         self, tmp_path: Path, exporter: FakeExporter

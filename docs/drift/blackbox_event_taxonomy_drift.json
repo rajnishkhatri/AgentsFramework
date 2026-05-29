@@ -1,0 +1,129 @@
+{
+  "drift_report": {
+    "generated_at": "2026-05-29T11:00:00Z",
+    "scope": "BlackBox event taxonomy and import paths",
+    "status": "DRIFT_DETECTED",
+    "summary": "Governance-triangle docs describe the lesson-17 tutorial EventType enum and import paths; shipped production code uses a different 9-event taxonomy and a different module path."
+  },
+  "documented": {
+    "source_files": [
+      "governanaceTriangle/02_black_box_recording_debugging.md",
+      "governanaceTriangle/05_black_box_explanation.md"
+    ],
+    "import_path": "backend.explainability.black_box",
+    "logger_name": "backend.explainability.black_box",
+    "event_types": [
+      "STEP_START",
+      "STEP_END",
+      "DECISION",
+      "ERROR",
+      "CHECKPOINT",
+      "PARAMETER_CHANGE",
+      "COLLABORATOR_JOIN",
+      "COLLABORATOR_LEAVE",
+      "ROLLBACK"
+    ],
+    "model_classes": [
+      "TaskPlan",
+      "PlanStep",
+      "AgentInfo",
+      "ParameterSubstitution",
+      "ExecutionTrace",
+      "TraceEvent",
+      "RecordedEvent"
+    ],
+    "recorder_api": [
+      "record_task_plan(task_id, plan)",
+      "record_collaborators(task_id, agents)",
+      "record_parameter_substitution(task_id, param, old_val, new_val, reason, agent_id)",
+      "record_execution_trace(task_id, trace)",
+      "add_trace_event(task_id, event)",
+      "export_black_box(task_id, filepath)",
+      "replay(task_id)"
+    ]
+  },
+  "shipped": {
+    "source_file": "services/governance/black_box.py",
+    "import_path": "services.governance.black_box",
+    "logger_name": "services.governance.black_box",
+    "event_types": [
+      "TASK_STARTED",
+      "STEP_PLANNED",
+      "STEP_EXECUTED",
+      "TOOL_CALLED",
+      "MODEL_SELECTED",
+      "ERROR_OCCURRED",
+      "GUARDRAIL_CHECKED",
+      "PARAMETER_CHANGED",
+      "TASK_COMPLETED"
+    ],
+    "model_classes": [
+      "EventType",
+      "TraceEvent",
+      "BlackBoxRecorder"
+    ],
+    "recorder_api": [
+      "record(event: TraceEvent)",
+      "export(workflow_id)",
+      "replay(workflow_id)",
+      "export_for_compliance(workflow_id, agent_facts_registry, phase_logger)"
+    ]
+  },
+  "drift_items": [
+    {
+      "category": "import_path",
+      "documented": "backend.explainability.black_box",
+      "shipped": "services.governance.black_box",
+      "severity": "HIGH",
+      "note": "All code examples in 02 and 05 use the lesson-17 tutorial path. Production code lives in services/governance/."
+    },
+    {
+      "category": "event_taxonomy",
+      "documented_count": 9,
+      "shipped_count": 9,
+      "mapped": [
+        {"documented": "STEP_START", "shipped": null, "note": "No direct equivalent; closest is STEP_PLANNED or STEP_EXECUTED"},
+        {"documented": "STEP_END", "shipped": null, "note": "No direct equivalent; STEP_EXECUTED covers completion"},
+        {"documented": "DECISION", "shipped": null, "note": "No direct equivalent in shipped code"},
+        {"documented": "ERROR", "shipped": "ERROR_OCCURRED", "note": "Semantic match with name change"},
+        {"documented": "CHECKPOINT", "shipped": null, "note": "Not present in shipped code"},
+        {"documented": "PARAMETER_CHANGE", "shipped": "PARAMETER_CHANGED", "note": "Semantic match with tense change"},
+        {"documented": "COLLABORATOR_JOIN", "shipped": null, "note": "Not present in shipped code"},
+        {"documented": "COLLABORATOR_LEAVE", "shipped": null, "note": "Not present in shipped code"},
+        {"documented": "ROLLBACK", "shipped": null, "note": "Not present in shipped code"},
+        {"documented": null, "shipped": "TASK_STARTED", "note": "Lifecycle event added in production, not in docs"},
+        {"documented": null, "shipped": "STEP_PLANNED", "note": "Planning event added in production, not in docs"},
+        {"documented": null, "shipped": "STEP_EXECUTED", "note": "Execution event added in production, not in docs"},
+        {"documented": null, "shipped": "TOOL_CALLED", "note": "Tool-call event added in production, not in docs"},
+        {"documented": null, "shipped": "MODEL_SELECTED", "note": "Model routing event added in production, not in docs"},
+        {"documented": null, "shipped": "GUARDRAIL_CHECKED", "note": "Guardrail gate event added in production, not in docs"},
+        {"documented": null, "shipped": "TASK_COMPLETED", "note": "Lifecycle event added in production, not in docs"}
+      ],
+      "severity": "HIGH",
+      "note": "Only ERROR/ERROR_OCCURRED and PARAMETER_CHANGE/PARAMETER_CHANGED have clear semantic mappings. The two taxonomies reflect different design philosophies: docs describe a multi-agent tutorial system; shipped code models a ReAct agent loop."
+    },
+    {
+      "category": "recorder_api",
+      "severity": "MEDIUM",
+      "note": "Docs describe a multi-method recorder (record_task_plan, record_collaborators, etc.) while shipped code uses a single record(event) method with workflow-partitioned JSONL storage."
+    },
+    {
+      "category": "model_classes",
+      "severity": "MEDIUM",
+      "note": "Docs reference TaskPlan, PlanStep, AgentInfo, ParameterSubstitution, ExecutionTrace, RecordedEvent — none of which exist in shipped code. Shipped code uses only EventType, TraceEvent, and BlackBoxRecorder."
+    },
+    {
+      "category": "storage_format",
+      "documented": "JSON files per artifact type ({task_id}_plan.json, _trace.json, etc.)",
+      "shipped": "Append-only JSONL with chained SHA-256 integrity hashes ({workflow_id}/trace.jsonl)",
+      "severity": "LOW",
+      "note": "Storage format diverged but is an implementation detail. The shipped format is superior for append-only integrity guarantees."
+    }
+  ],
+  "recommendations": [
+    "Add a reconciliation note at the top of governanaceTriangle/02 and 05 explaining the docs describe the lesson-17 tutorial taxonomy while production uses services/governance/black_box.py.",
+    "Create a mapping table in each doc showing documented → shipped event type equivalences.",
+    "Update import path references from backend.explainability.black_box to services.governance.black_box where docs reference production code.",
+    "Consider whether the tutorial taxonomy should be updated to match production, or if both taxonomies serve different valid purposes (tutorial vs. production)."
+  ]
+}

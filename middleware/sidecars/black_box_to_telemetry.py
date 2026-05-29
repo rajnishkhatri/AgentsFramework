@@ -115,9 +115,7 @@ class BlackBoxToTelemetryRelay:
         file_size = trace_file.stat().st_size
 
         if not offset_file.exists():
-            offset_file.write_text(str(file_size))
-            self._mtimes[wf_id] = current_mtime
-            return 0
+            offset_file.write_text("0")
 
         offset = int(offset_file.read_text().strip())
         if offset >= file_size:
@@ -164,6 +162,8 @@ class BlackBoxToTelemetryRelay:
                 attrs["__bb_observation_id"] = kwargs["observation_id"]
                 attrs["__bb_observation_type"] = kwargs["observation_type"]
                 attrs["__bb_level"] = kwargs["level"]
+                if event.details:
+                    attrs["__output"] = event.details
 
                 self._exporter.export_event(
                     name=kwargs["name"],

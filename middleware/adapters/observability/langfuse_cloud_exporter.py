@@ -145,6 +145,7 @@ class LangfuseCloudExporter:
             bb_observation_id = attrs.pop("__bb_observation_id", None)
             bb_observation_type = attrs.pop("__bb_observation_type", None)
             bb_level = attrs.pop("__bb_level", None)
+            bb_output = attrs.pop("__output", None)
 
             propagate_kwargs: dict[str, Any] = {}
 
@@ -175,6 +176,7 @@ class LangfuseCloudExporter:
                 "name": name,
                 "as_type": obs_type,
                 "input": attrs or None,
+                "output": bb_output,
                 "metadata": _metadata(attrs),
             }
             if bb_observation_id is not None:

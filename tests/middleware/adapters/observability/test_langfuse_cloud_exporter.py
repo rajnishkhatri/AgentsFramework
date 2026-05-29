@@ -35,8 +35,8 @@ class FakeObservation:
     def __init__(self, data: dict) -> None:
         self.data = data
 
-    def end(self) -> None:
-        pass
+    def end(self, **kwargs: object) -> None:
+        self.data["output"] = kwargs.get("output")
 
 
 class FakeLangfuseClient:
