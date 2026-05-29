@@ -268,6 +268,21 @@ class LangfuseCloudExporter:
                 exc,
             )
 
+    def flush(self) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            client.flush()
+        except Exception as exc:
+            logger.warning(
+                "langfuse flush swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
     def shutdown(self) -> None:
         if not self._enabled:
             return

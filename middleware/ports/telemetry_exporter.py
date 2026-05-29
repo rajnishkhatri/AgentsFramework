@@ -46,3 +46,7 @@ class TelemetryExporter(Protocol):
     def shutdown(self) -> None:
         """Flush buffered events. MUST NOT raise."""
         ...
+
+    def flush(self) -> None:
+        """Send buffered events. MUST NOT raise."""
+        ...

@@ -363,6 +363,36 @@ class TestMtimePickup:
         assert published == 1
         assert exporter.events[-1]["name"] == "step.executed"
 
+    def test_mtime_regression(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """Write events, poll, write more within same mtime resolution, poll again.
+        Ensures removing the mtime-only early exit correctly picks up new events
+        when mtime float64 hasn't changed.
+        """
+        import os
+        ev1 = _make_event(EventType.TASK_STARTED, workflow_id="wf-regress")
+        trace_file = _record_events(storage, "wf-regress", [ev1])
+        (storage / "wf-regress" / ".langfuse_offset").write_text("0")
+        
+        # force mtime to a known value
+        os.utime(trace_file, (1000.0, 1000.0))
+
+        relay = _build_relay(storage, exporter)
+        relay.run_once()
+        assert len(exporter.events) == 1
+
+        ev2 = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-regress", step=2)
+        recorder = BlackBoxRecorder(storage_dir=storage)
+        recorder.record(ev2)
+        
+        # force mtime to exactly the SAME value as before
+        os.utime(trace_file, (1000.0, 1000.0))
+
+        published = relay.run_once()
+        assert published == 1, "Should publish new events despite identical mtime"
+        assert len(exporter.events) == 2
+
 
 # ─────────────────────────────────────────────────────────────────────
 # E. IDEMPOTENT EXPORT — observation_id/type/level in attributes
@@ -576,3 +606,30 @@ class TestPartialLineSafety:
         published = relay.run_once()
         assert published == 1
         assert len(exporter.events) == initial_count + 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I. DRAIN WORKFLOW — synchronous per-workflow drain
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestDrainWorkflow:
+    def test_drain_workflow_processes_only_target(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev_a = _make_event(workflow_id="wf-a")
+        ev_b = _make_event(workflow_id="wf-b")
+        _record_events(storage, "wf-a", [ev_a])
+        _record_events(storage, "wf-b", [ev_b])
+
+        relay = _build_relay(storage, exporter)
+        
+        # Drain only wf-a
+        processed = relay.drain_workflow("wf-a")
+        assert processed == 1
+        assert len(exporter.events) == 1
+        assert exporter.events[0]["trace_id"] == "wf-a"
+
+        # wf-b is untouched
+        offset_b = storage / "wf-b" / ".langfuse_offset"
+        assert not offset_b.exists() or int(offset_b.read_text().strip()) == 0

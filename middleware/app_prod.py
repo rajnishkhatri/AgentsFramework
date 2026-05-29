@@ -354,6 +354,11 @@ def build_combined_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                relay = adapters.black_box_relay
+                if relay is not None and trace_id_seen is not None:
+                    relay.drain_workflow(trace_id_seen)
+                    adapters.telemetry_exporter.flush()
+
                 if trace_id_seen is not None and not run_finished_emitted:
                     telemetry_bridge.emit_run_finished(
                         adapters.telemetry_exporter,

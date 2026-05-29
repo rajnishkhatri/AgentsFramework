@@ -122,6 +122,9 @@ class _NoopTelemetryExporter:
     def shutdown(self) -> None:
         pass
 
+    def flush(self) -> None:
+        pass
+
 
 def _build_dev_telemetry_exporter() -> TelemetryExporter:
     """Build a telemetry exporter for dev: Langfuse when available, noop otherwise.
@@ -572,6 +575,10 @@ def build_dev_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                if dev_relay is not None and trace_id_seen is not None:
+                    dev_relay.drain_workflow(trace_id_seen)
+                    exporter.flush()
+
                 if trace_id_seen is not None and not run_finished_emitted:
                     telemetry_bridge.emit_run_finished(
                         exporter,

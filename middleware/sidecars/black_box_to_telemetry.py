@@ -76,7 +76,8 @@ class BlackBoxToTelemetryRelay:
 
     def run_once(self) -> int:
         """Scan all workflow dirs, publish new events.  Returns count published."""
-        if not self._storage_dir.exists():
+        exists = self._storage_dir.exists()
+        if not exists:
             logger.debug("Relay storage dir does not exist: %s", self._storage_dir)
             return 0
 
@@ -110,22 +111,33 @@ class BlackBoxToTelemetryRelay:
         """Signal ``run_forever`` to exit after the current iteration."""
         self._stopped = True
 
+    def drain_workflow(self, workflow_id: str) -> int:
+        """Synchronously process all pending events for a specific workflow.
+
+        Called from the SSE finally block to ensure relay events are in
+        the SDK buffer before flush().
+        """
+        wf_dir = self._storage_dir / workflow_id
+        trace_file = wf_dir / "trace.jsonl"
+        if not wf_dir.is_dir() or not trace_file.exists():
+            return 0
+        return self._process_workflow(wf_dir, trace_file)
+
     # ── internals ───────────────────────────────────────────────────
 
     def _process_workflow(self, wf_dir: Path, trace_file: Path) -> int:
         wf_id = wf_dir.name
 
-        current_mtime = trace_file.stat().st_mtime
-        if wf_id in self._mtimes and self._mtimes[wf_id] == current_mtime:
-            return 0
+        file_stat = trace_file.stat()
+        current_mtime = file_stat.st_mtime
+        file_size = file_stat.st_size
 
         offset_file = wf_dir / ".langfuse_offset"
-        file_size = trace_file.stat().st_size
-
         if not offset_file.exists():
             offset_file.write_text("0")
 
         offset = int(offset_file.read_text().strip())
+
         if offset >= file_size:
             self._mtimes[wf_id] = current_mtime
             return 0
