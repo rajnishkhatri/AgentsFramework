@@ -241,11 +241,11 @@ tofu_init_backend() {
 tofu_gate() {
   run_in_infra tofu plan -out=tfplan -var-file=terraform.tfvars
   run_in_infra_to_file tfplan.txt tofu show -no-color tfplan
-  echo "+ (cd \"${INFRA_DIR}\" && conftest test --policy policies/ --parser hcl2 --all-namespaces *.tf)"
+  echo "+ (cd \"${INFRA_DIR}\" && conftest test --policy policies/ --parser hcl2 --all-namespaces --combine *.tf)"
   if [[ -z "${DRY_RUN}" ]]; then
     (
       cd "${INFRA_DIR}"
-      conftest test --policy policies/ --parser hcl2 --all-namespaces *.tf
+      conftest test --policy policies/ --parser hcl2 --all-namespaces --combine *.tf
     )
   fi
   run_in_infra_to_file tfplan.json tofu show -json tfplan
