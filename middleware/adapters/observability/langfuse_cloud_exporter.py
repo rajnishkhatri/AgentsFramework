@@ -236,6 +236,12 @@ class LangfuseCloudExporter:
         if client is None:
             return
         try:
+            # SDK v4 does NOT auto-create the dataset on first item insert; an
+            # unknown dataset_name yields a 404. ``create_dataset`` is an upsert
+            # (idempotent by name), so ensure the dataset exists before adding
+            # the item.
+            client.create_dataset(name=dataset_name)
+
             kwargs: dict[str, Any] = {
                 "dataset_name": dataset_name,
                 "input": input_data,
@@ -273,7 +279,9 @@ class LangfuseCloudExporter:
             }
             if comment is not None:
                 kwargs["comment"] = comment
-            client.score(**kwargs)
+            # SDK v4 renamed trace scoring: ``Langfuse.score`` no longer exists;
+            # the API is ``create_score`` (the kwargs above match its signature).
+            client.create_score(**kwargs)
         except Exception as exc:
             logger.warning(
                 "langfuse score_trace swallowed: %s: %s",

@@ -29,6 +29,10 @@ from middleware.adapters.observability.langfuse_cloud_exporter import (
 # ─────────────────────────────────────────────────────────────────────
 
 
+class FakeNotFoundError(Exception):
+    """Mirrors the SDK's 404 when a dataset does not exist yet."""
+
+
 class FakeObservation:
     """Fake observation returned by FakeLangfuseClient.start_observation()."""
 
@@ -75,6 +79,9 @@ class FakeLangfuseClient:
         self.traces: dict[str, dict] = {}
         self.spans: list[dict] = []
         self.flushed = False
+        self.scores: list[dict] = []
+        self.datasets: set[str] = set()
+        self.dataset_items: list[dict] = []
 
     def start_observation(
         self,
@@ -107,6 +114,58 @@ class FakeLangfuseClient:
         }
         self.spans.append(span_data)
         return FakeObservation(span_data)
+
+    # NOTE: deliberately NO ``score`` method. SDK v4 renamed trace scoring to
+    # ``create_score``; the old ``Langfuse.score`` attribute is gone. Omitting it
+    # here turns a regression back to ``client.score(...)`` into an
+    # AttributeError (the second hidden-failure bug class) rather than a pass.
+    def create_score(
+        self,
+        *,
+        name: str,
+        value: float | str,
+        trace_id: str | None = None,
+        comment: str | None = None,
+        **kwargs,
+    ) -> None:
+        self.scores.append(
+            {
+                "name": name,
+                "value": value,
+                "trace_id": trace_id,
+                "comment": comment,
+            }
+        )
+
+    def create_dataset(self, *, name: str, **kwargs) -> dict:
+        # Idempotent upsert by name (mirrors POST /api/public/v2/datasets).
+        self.datasets.add(name)
+        return {"name": name}
+
+    def create_dataset_item(
+        self,
+        *,
+        dataset_name: str,
+        input: dict | None = None,
+        id: str | None = None,
+        metadata: dict | None = None,
+        **kwargs,
+    ) -> dict:
+        # Mirror the real SDK: inserting into a non-existent dataset 404s. This
+        # is the bug that dropped every compliance item — the exporter must
+        # ensure the dataset exists first.
+        if dataset_name not in self.datasets:
+            raise FakeNotFoundError(
+                f"Dataset {dataset_name} not found for project test"
+            )
+        item = {
+            "dataset_name": dataset_name,
+            "input": input,
+            "id": id,
+            "metadata": metadata,
+        }
+        self.dataset_items.append(item)
+        return item
 
     def flush(self) -> None:
         self.flushed = True
@@ -446,6 +505,103 @@ class TestBlackBoxRelayHints:
         assert "__bb_observation_id" not in (span.get("metadata") or {})
         assert "__bb_observation_id" not in (span.get("input") or {})
         assert span["as_type"] == "agent"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# score_trace() — SDK v4 create_score regression guard
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestScoreTrace:
+    """score_trace must use the SDK v4 ``create_score`` API, not ``.score``.
+
+    Regression guard: the exporter used to call ``client.score(...)``, which
+    raised ``AttributeError`` on the real SDK v4 (no such method) and was
+    swallowed per rule O1 — so ``hash_chain_valid`` never reached Langfuse.
+    """
+
+    def test_real_sdk_has_no_score_attribute(
+        self, fake_client: FakeLangfuseClient
+    ) -> None:
+        # The fake mirrors the strict v4 surface: ``score`` is gone.
+        assert not hasattr(fake_client, "score")
+        assert hasattr(fake_client, "create_score")
+
+    def test_score_trace_records_score(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.score_trace(
+            trace_id="t-1", name="hash_chain_valid", value=1.0
+        )
+        assert len(fake_client.scores) == 1
+        score = fake_client.scores[0]
+        assert score["trace_id"] == "t-1"
+        assert score["name"] == "hash_chain_valid"
+        assert score["value"] == 1.0
+
+    def test_score_trace_passes_comment(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.score_trace(
+            trace_id="t-2",
+            name="hash_chain_valid",
+            value=0.0,
+            comment="Integrity hash chain broken or invalid",
+        )
+        assert fake_client.scores[0]["comment"] == (
+            "Integrity hash chain broken or invalid"
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# create_dataset_item() — dataset-must-exist regression guard
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestCreateDatasetItem:
+    """create_dataset_item must ensure the dataset exists first.
+
+    Regression guard: SDK v4 does not auto-create the dataset, so the first
+    insert into a fresh dataset 404'd and was swallowed per rule O1 — dropping
+    every compliance audit item.
+    """
+
+    def test_fake_rejects_item_for_unknown_dataset(
+        self, fake_client: FakeLangfuseClient
+    ) -> None:
+        with pytest.raises(FakeNotFoundError, match="not found"):
+            fake_client.create_dataset_item(
+                dataset_name="agent-compliance-audit", input={"x": 1}
+            )
+
+    def test_create_dataset_item_creates_dataset_first(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.create_dataset_item(
+            dataset_name="agent-compliance-audit",
+            input_data={"hash_chain_valid": True},
+            item_id="wf-1",
+            metadata={"workflow_id": "wf-1"},
+        )
+        # Dataset was upserted ...
+        assert "agent-compliance-audit" in fake_client.datasets
+        # ... and the item landed.
+        assert len(fake_client.dataset_items) == 1
+        item = fake_client.dataset_items[0]
+        assert item["dataset_name"] == "agent-compliance-audit"
+        assert item["id"] == "wf-1"
+        assert item["input"] == {"hash_chain_valid": True}
+
+    def test_create_dataset_item_swallows_errors(self) -> None:
+        broken = MagicMock()
+        broken.create_dataset.side_effect = RuntimeError("network down")
+        exp = LangfuseCloudExporter(
+            public_key="pk-test", secret_key="sk-test", sdk_client=broken
+        )
+        # Must not raise (rule O1).
+        exp.create_dataset_item(
+            dataset_name="agent-compliance-audit", input_data={"x": 1}
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
