@@ -208,6 +208,8 @@ Expected: green `Preflight PASSED`. Exports `PROJECT`, `REGION`, and (when state
 
 ## Day-1 — First production deploy
 
+> **Prefer an autopilot?** The phases below can be driven one at a time by the `deploy-gcp` skill and [`scripts/deploy_gcp.sh`](../../../scripts/deploy_gcp.sh), which enforce the plan -> policy -> apply gate order and stop at the two human gates automatically. See [SKILL_DEPLOY_GUIDE.md](SKILL_DEPLOY_GUIDE.md). The manual commands below remain the source of truth for what each phase does.
+
 Every snippet below assumes you have sourced the bootstrap script (or exported the variables in [Appendix A](#appendix-a-copy-paste-env-block)).
 
 ### 1.1 Set environment block
