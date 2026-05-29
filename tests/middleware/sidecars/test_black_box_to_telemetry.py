@@ -36,11 +36,21 @@ from services.governance.black_box import BlackBoxRecorder, EventType, TraceEven
 
 
 class FakeExporter:
-    """In-memory TelemetryExporter that records calls and can simulate failures."""
+    """In-memory TelemetryExporter that records calls and can simulate failures.
 
-    def __init__(self, *, fail_until: int = 0) -> None:
+    Args:
+        fail_until: raise on the first N calls (simulates a *raising* exporter;
+            the relay's retry/DLQ loop is exercised).
+        swallow_export: when True, ``export_event`` returns ``False`` instead of
+            recording — simulates a real swallowed SDK error per rule O1 (the
+            S1 bug class), so the relay must dead-letter rather than count it as
+            published.
+    """
+
+    def __init__(self, *, fail_until: int = 0, swallow_export: bool = False) -> None:
         self.events: list[dict[str, Any]] = []
         self._fail_until = fail_until
+        self._swallow_export = swallow_export
         self._call_count = 0
 
     def export_event(
@@ -49,15 +59,18 @@ class FakeExporter:
         name: str,
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
         self._call_count += 1
         if self._call_count <= self._fail_until:
             raise RuntimeError(f"Simulated failure #{self._call_count}")
+        if self._swallow_export:
+            return False
         self.events.append({
             "name": name,
             "trace_id": trace_id,
             "attributes": dict(attributes) if attributes else {},
         })
+        return True
 
     def release_trace(self, trace_id: str) -> None:
         pass
@@ -191,6 +204,54 @@ class TestDLQPromotion:
             (wf_dir / ".langfuse_failures.jsonl").read_text().strip()
         )
         assert "timestamp" in dlq_entry
+
+
+class TestSwallowedExportSignal:
+    """A swallowed export (``export_event`` returns False) is dead-lettered.
+
+    Regression guard for the S1 root cause: the exporter swallows SDK errors per
+    rule O1 and the relay used to treat that silence as success — advancing the
+    offset and logging "published" while dropping every BlackBox observation.
+    The relay now treats a ``False`` return as a poison line.
+    """
+
+    def test_swallowed_export_goes_to_dlq(self, storage: Path) -> None:
+        ev = _make_event(workflow_id="wf-swallow")
+        _record_events(storage, "wf-swallow", [ev])
+        (storage / "wf-swallow" / ".langfuse_offset").write_text("0")
+
+        swallowing = FakeExporter(swallow_export=True)
+        relay = _build_relay(storage, swallowing, max_retries=0)
+        published = relay.run_once()
+
+        assert published == 0, "Swallowed export must not count as published"
+        assert len(swallowing.events) == 0
+        dlq = storage / "wf-swallow" / ".langfuse_failures.jsonl"
+        assert dlq.exists()
+        dlq_entry = json.loads(dlq.read_text().strip().split("\n")[0])
+        assert "swallowed" in dlq_entry["error"]
+
+    def test_none_return_is_treated_as_success(self, storage: Path) -> None:
+        """Older exporters that return None (not bool) still count as published."""
+
+        class LegacyExporter(FakeExporter):
+            def export_event(self, *, name, trace_id, attributes=None):  # type: ignore[override]
+                self.events.append(
+                    {"name": name, "trace_id": trace_id, "attributes": dict(attributes or {})}
+                )
+                return None  # legacy contract
+
+        ev = _make_event(workflow_id="wf-legacy")
+        _record_events(storage, "wf-legacy", [ev])
+        (storage / "wf-legacy" / ".langfuse_offset").write_text("0")
+
+        legacy = LegacyExporter()
+        relay = _build_relay(storage, legacy, max_retries=0)
+        published = relay.run_once()
+
+        assert published == 1
+        assert len(legacy.events) == 1
+        assert not (storage / "wf-legacy" / ".langfuse_failures.jsonl").exists()
 
 
 # ─────────────────────────────────────────────────────────────────────

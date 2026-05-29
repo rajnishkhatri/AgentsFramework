@@ -129,12 +129,20 @@ class LangfuseCloudExporter:
         name: str,
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
+        """Export a single observation.
+
+        Returns ``True`` when the event was handed to the SDK, ``False`` when a
+        genuine export error was swallowed (rule O1 — telemetry never blocks, so
+        the caller decides whether to dead-letter). An intentional no-op
+        (kill-switch disabled or client unavailable) returns ``True`` so the
+        relay does not dead-letter events it was never meant to publish.
+        """
         if not self._enabled:
-            return
+            return True
         client = self._client()
         if client is None:
-            return
+            return True
         try:
             from langfuse import propagate_attributes
 
@@ -142,7 +150,7 @@ class LangfuseCloudExporter:
 
             # BlackBox relay hints — extract before building metadata so they
             # don't leak into the Langfuse metadata blob.
-            bb_observation_id = attrs.pop("__bb_observation_id", None)
+            attrs.pop("__bb_observation_id", None)  # not settable in SDK v4
             bb_observation_type = attrs.pop("__bb_observation_type", None)
             bb_level = attrs.pop("__bb_level", None)
             bb_output = attrs.pop("__output", None)
@@ -179,20 +187,25 @@ class LangfuseCloudExporter:
                 "output": bb_output,
                 "metadata": _metadata(attrs),
             }
-            if bb_observation_id is not None:
-                obs_kwargs["id"] = str(bb_observation_id)
+            # NOTE: Langfuse SDK v4 ``start_observation()`` does not accept an
+            # ``id`` kwarg (observation IDs are auto-generated OTel span IDs).
+            # ``__bb_observation_id`` is popped above so it never reaches the
+            # metadata blob; idempotency is enforced by the relay's byte-offset
+            # outbox, not by a caller-supplied observation id.
             if bb_level is not None and bb_level != "DEFAULT":
                 obs_kwargs["level"] = bb_level
 
             with ctx:
                 observation = client.start_observation(**obs_kwargs)
                 observation.end()
+            return True
         except Exception as exc:
             logger.warning(
                 "langfuse export_event swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
             )
+            return False
 
     def release_trace(self, trace_id: str) -> None:
         if not self._enabled:

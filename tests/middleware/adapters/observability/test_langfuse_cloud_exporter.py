@@ -40,7 +40,36 @@ class FakeObservation:
 
 
 class FakeLangfuseClient:
-    """In-memory stand-in for the Langfuse SDK v4 client."""
+    """In-memory stand-in for the Langfuse SDK v4 client.
+
+    ``start_observation`` deliberately mirrors the **real** SDK v4.5.1
+    signature exactly — no ``**kwargs`` catch-all. A catch-all is what hid the
+    S1 BlackBox-relay bug: the exporter passed an unsupported ``id`` kwarg, the
+    old fake silently absorbed it, and CI stayed green while 100% of BlackBox
+    observations threw ``TypeError`` against the strict real SDK. Rejecting
+    unknown kwargs here turns that class of regression into a CI failure.
+    """
+
+    # Exact keyword set accepted by langfuse>=4 ``Langfuse.start_observation``.
+    _SDK_KWARGS = frozenset(
+        {
+            "trace_context",
+            "name",
+            "as_type",
+            "input",
+            "output",
+            "metadata",
+            "version",
+            "level",
+            "status_message",
+            "completion_start_time",
+            "model",
+            "model_parameters",
+            "usage_details",
+            "cost_details",
+            "prompt",
+        }
+    )
 
     def __init__(self) -> None:
         self.traces: dict[str, dict] = {}
@@ -57,6 +86,14 @@ class FakeLangfuseClient:
         metadata: dict | None = None,
         **kwargs,
     ) -> FakeObservation:
+        # Reject anything outside the real SDK signature (mirrors the strict
+        # keyword-only contract of langfuse>=4 ``start_observation``).
+        unknown = set(kwargs) - self._SDK_KWARGS
+        if unknown:
+            raise TypeError(
+                "Langfuse.start_observation() got an unexpected keyword "
+                f"argument {sorted(unknown)[0]!r}"
+            )
         trace_id = (trace_context or {}).get("trace_id", "unknown")
         if trace_id not in self.traces:
             self.traces[trace_id] = {"id": trace_id}
@@ -312,6 +349,103 @@ class TestExportFailure:
         exp._traces = None  # type: ignore[attr-defined]
         # Must not raise
         exp.release_trace("trace-001")
+
+
+# ─────────────────────────────────────────────────────────────────────
+# export_event() bool contract (relay success signal)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestExportEventReturnValue:
+    """``export_event`` returns True on publish/no-op, False on swallowed error.
+
+    This is the relay's success signal: it lets the BlackBox relay distinguish a
+    real publish from a swallowed failure so swallowed failures get dead-lettered
+    instead of being silently counted as published.
+    """
+
+    def test_returns_true_on_success(
+        self, exporter: LangfuseCloudExporter
+    ) -> None:
+        assert exporter.export_event(name="run.started", trace_id="t-1") is True
+
+    def test_returns_false_on_swallowed_sdk_exception(self) -> None:
+        broken_client = MagicMock()
+        broken_client.start_observation.side_effect = RuntimeError("SDK crash")
+        exp = LangfuseCloudExporter(
+            public_key="pk-test",
+            secret_key="sk-test",
+            sdk_client=broken_client,
+        )
+        assert exp.export_event(name="run.started", trace_id="t-1") is False
+
+    def test_returns_true_when_disabled(
+        self, fake_client: FakeLangfuseClient
+    ) -> None:
+        with patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}):
+            exp = LangfuseCloudExporter(
+                public_key="pk-test",
+                secret_key="sk-test",
+                sdk_client=fake_client,
+            )
+        # Intentional no-op is success, not a failure to dead-letter.
+        assert exp.export_event(name="run.started", trace_id="t-1") is True
+
+    def test_returns_true_when_client_unavailable(self) -> None:
+        with patch(
+            "langfuse.Langfuse",
+            side_effect=RuntimeError("connection refused"),
+            create=True,
+        ):
+            exp = LangfuseCloudExporter(public_key="pk-test", secret_key="sk-test")
+            assert exp.export_event(name="run.started", trace_id="t-1") is True
+
+
+# ─────────────────────────────────────────────────────────────────────
+# BlackBox relay hints — `id` kwarg regression guard (S1 root cause)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestBlackBoxRelayHints:
+    """The exporter must NOT forward the unsupported ``id`` kwarg to the SDK.
+
+    Regression guard for the S1 root cause: the exporter used to set
+    ``start_observation(id=...)``, which raises ``TypeError`` on the real SDK v4
+    and was swallowed (rule O1), dropping 100% of BlackBox observations.
+    """
+
+    def test_fake_client_rejects_unknown_kwargs(
+        self, fake_client: FakeLangfuseClient
+    ) -> None:
+        # The fake now mirrors the strict real SDK signature.
+        with pytest.raises(TypeError, match="unexpected keyword argument 'id'"):
+            fake_client.start_observation(
+                trace_context={"trace_id": "t-1"},
+                name="task.started",
+                id="bb-event-1",  # type: ignore[call-arg]
+            )
+
+    def test_bb_observation_id_does_not_reach_sdk(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        result = exporter.export_event(
+            name="task.started",
+            trace_id="t-1",
+            attributes={
+                "__bb_observation_id": "bb-event-1",
+                "__bb_observation_type": "agent",
+                "task": "demo",
+            },
+        )
+        # Export succeeds (no TypeError swallowed) ...
+        assert result is True
+        assert len(fake_client.spans) == 1
+        span = fake_client.spans[0]
+        # ... and neither the relay hint nor an `id` kwarg leaked through.
+        assert "id" not in span
+        assert "__bb_observation_id" not in (span.get("metadata") or {})
+        assert "__bb_observation_id" not in (span.get("input") or {})
+        assert span["as_type"] == "agent"
 
 
 # ─────────────────────────────────────────────────────────────────────

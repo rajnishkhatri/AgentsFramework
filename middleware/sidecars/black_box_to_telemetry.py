@@ -185,11 +185,23 @@ class BlackBoxToTelemetryRelay:
                 if event.details:
                     attrs["__output"] = event.details
 
-                self._exporter.export_event(
+                exported = self._exporter.export_event(
                     name=kwargs["name"],
                     trace_id=kwargs["trace_id"],
                     attributes=attrs,
                 )
+
+                # ``export_event`` swallows SDK errors per rule O1 and signals a
+                # genuine (non-no-op) failure by returning ``False``. Treat that
+                # as a poison line so it is dead-lettered instead of being
+                # silently counted as published (the bug class that previously
+                # dropped every BlackBox observation). ``None`` is treated as
+                # success for backward compatibility with older exporters.
+                if exported is False:
+                    self._write_dlq(
+                        wf_dir, line, "exporter swallowed export failure"
+                    )
+                    return False
 
                 if event.event_type == EventType.TASK_COMPLETED:
                     self._publish_compliance_bundle(event.workflow_id, event.details)
