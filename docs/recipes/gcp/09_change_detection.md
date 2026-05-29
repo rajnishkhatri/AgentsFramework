@@ -65,7 +65,7 @@ Every changed file maps to one or more deployment phases. The mapping is determi
 | `infra/gcp/cloud-run-frontend.tf` | frontend | — |
 | `infra/gcp/observability.tf`, `meta.tf` | observability | — |
 | `infra/gcp/{variables,outputs,versions,backend}.tf`, `terraform.tfvars` | all infra phases (shared) | — |
-| `Dockerfile.backend` + backend app code (`agent/`, `services/`, etc.) | images, backend | backend |
+| `Dockerfile.backend` + backend app code (`agent/`, `services/`, `middleware/`, etc.) | images, backend | backend |
 | `Dockerfile.frontend` + `frontend/**` | images, frontend | frontend |
 
 ### Forward-dependency expansion

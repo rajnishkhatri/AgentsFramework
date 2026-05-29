@@ -187,7 +187,7 @@ detect_changes() {
         _ps_observability=1 ;;
       infra/gcp/variables.tf|infra/gcp/outputs.tf|infra/gcp/versions.tf|infra/gcp/backend.tf|infra/gcp/terraform.tfvars)
         _ps_foundations=1; _ps_data=1; _ps_backend=1; _ps_frontend=1; _ps_observability=1 ;;
-      Dockerfile.backend|agent/*|services/*|components/*|orchestration/*|trust/*|meta/*|prompts/*)
+      Dockerfile.backend|agent/*|services/*|components/*|orchestration/*|trust/*|meta/*|prompts/*|middleware/*)
         REBUILD_BACKEND=1; _ps_images=1; _ps_backend=1 ;;
       Dockerfile.frontend|frontend/*)
         REBUILD_FRONTEND=1; _ps_images=1; _ps_frontend=1 ;;
@@ -241,7 +241,13 @@ tofu_init_backend() {
 tofu_gate() {
   run_in_infra tofu plan -out=tfplan -var-file=terraform.tfvars
   run_in_infra_to_file tfplan.txt tofu show -no-color tfplan
-  run_in_infra conftest test --policy policies/ --parser hcl2 --all-namespaces "*.tf"
+  echo "+ (cd \"${INFRA_DIR}\" && conftest test --policy policies/ --parser hcl2 --all-namespaces *.tf)"
+  if [[ -z "${DRY_RUN}" ]]; then
+    (
+      cd "${INFRA_DIR}"
+      conftest test --policy policies/ --parser hcl2 --all-namespaces *.tf
+    )
+  fi
   run_in_infra_to_file tfplan.json tofu show -json tfplan
   run_in_infra terraform-compliance -p tfplan.json -f features/
 
