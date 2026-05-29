@@ -139,6 +139,14 @@ class LangfuseCloudExporter:
             from langfuse import propagate_attributes
 
             attrs = dict(attributes) if attributes else {}
+
+            # BlackBox relay hints — extract before building metadata so they
+            # don't leak into the Langfuse metadata blob.
+            bb_observation_id = attrs.pop("__bb_observation_id", None)
+            bb_observation_type = attrs.pop("__bb_observation_type", None)
+            bb_level = attrs.pop("__bb_level", None)
+            bb_output = attrs.pop("__output", None)
+
             propagate_kwargs: dict[str, Any] = {}
 
             subject = attrs.get("subject")
@@ -162,14 +170,22 @@ class LangfuseCloudExporter:
                 else nullcontext()
             )
 
+            obs_type = bb_observation_type or _observation_type(name)
+            obs_kwargs: dict[str, Any] = {
+                "trace_context": trace_context,
+                "name": name,
+                "as_type": obs_type,
+                "input": attrs or None,
+                "output": bb_output,
+                "metadata": _metadata(attrs),
+            }
+            if bb_observation_id is not None:
+                obs_kwargs["id"] = str(bb_observation_id)
+            if bb_level is not None and bb_level != "DEFAULT":
+                obs_kwargs["level"] = bb_level
+
             with ctx:
-                observation = client.start_observation(
-                    trace_context=trace_context,
-                    name=name,
-                    as_type=_observation_type(name),
-                    input=attrs or None,
-                    metadata=_metadata(attrs),
-                )
+                observation = client.start_observation(**obs_kwargs)
                 observation.end()
         except Exception as exc:
             logger.debug(
@@ -189,6 +205,65 @@ class LangfuseCloudExporter:
         except Exception as exc:
             logger.debug(
                 "langfuse release_trace swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
+    def create_dataset_item(
+        self,
+        *,
+        dataset_name: str,
+        input_data: dict[str, Any],
+        item_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            kwargs: dict[str, Any] = {
+                "dataset_name": dataset_name,
+                "input": input_data,
+            }
+            if item_id is not None:
+                kwargs["id"] = item_id
+            if metadata is not None:
+                kwargs["metadata"] = metadata
+            client.create_dataset_item(**kwargs)
+        except Exception as exc:
+            logger.debug(
+                "langfuse create_dataset_item swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
+    def score_trace(
+        self,
+        *,
+        trace_id: str,
+        name: str,
+        value: float,
+        comment: str | None = None,
+    ) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            kwargs: dict[str, Any] = {
+                "trace_id": trace_id,
+                "name": name,
+                "value": value,
+            }
+            if comment is not None:
+                kwargs["comment"] = comment
+            client.score(**kwargs)
+        except Exception as exc:
+            logger.debug(
+                "langfuse score_trace swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
             )

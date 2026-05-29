@@ -17,8 +17,10 @@ Architecture-test enforcement: ``tests/architecture/test_middleware_layer.py``.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Mapping
 
 from middleware.adapters.acl.workos_role_acl import WorkOSRoleAcl
@@ -34,6 +36,9 @@ from middleware.ports.jwt_verifier import JwtVerifier
 from middleware.ports.memory_client import MemoryClient
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from middleware.ports.tool_acl import ToolAclProvider
+from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
+
+_logger = logging.getLogger(__name__)
 
 
 __all__ = [
@@ -90,6 +95,14 @@ _DEFAULT_KNOWN_TOOLS: frozenset[str] = frozenset(
 # ─────────────────────────────────────────────────────────────────────
 
 
+_RELAY_MODE_IN_PROCESS = "in_process"
+_RELAY_MODE_OFF = "off"
+_RELAY_MODE_EXTERNAL = "external"
+_VALID_RELAY_MODES = {_RELAY_MODE_IN_PROCESS, _RELAY_MODE_OFF, _RELAY_MODE_EXTERNAL}
+
+_DEFAULT_BB_STORAGE = Path("cache/black_box_recordings")
+
+
 @dataclass(frozen=True)
 class MiddlewareAdapters:
     """Bag of port-typed adapter instances (rule C2)."""
@@ -99,6 +112,7 @@ class MiddlewareAdapters:
     tool_acl: ToolAclProvider
     memory_client: MemoryClient
     telemetry_exporter: TelemetryExporter
+    black_box_relay: BlackBoxToTelemetryRelay | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -175,6 +189,12 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
         expected_token_use="access",
     )
 
+    telemetry = LangfuseCloudExporter(
+        public_key=langfuse_public,
+        secret_key=langfuse_secret,
+        host=langfuse_host,
+    )
+
     return MiddlewareAdapters(
         profile="v3",
         jwt_verifier=verifier,
@@ -186,11 +206,8 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
             api_key=mem0_api_key,
             base_url=mem0_base_url,
         ),
-        telemetry_exporter=LangfuseCloudExporter(
-            public_key=langfuse_public,
-            secret_key=langfuse_secret,
-            host=langfuse_host,
-        ),
+        telemetry_exporter=telemetry,
+        black_box_relay=_build_relay(e, telemetry),
     )
 
 
@@ -231,6 +248,12 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
         expected_token_use="access",
     )
 
+    telemetry = LangfuseCloudExporter(
+        public_key=langfuse_public,
+        secret_key=langfuse_secret,
+        host=langfuse_host,
+    )
+
     return MiddlewareAdapters(
         profile="v2",
         jwt_verifier=verifier,
@@ -242,17 +265,67 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
             api_key=mem0_api_key,
             base_url=mem0_base_url,
         ),
-        telemetry_exporter=LangfuseCloudExporter(
-            public_key=langfuse_public,
-            secret_key=langfuse_secret,
-            host=langfuse_host,
-        ),
+        telemetry_exporter=telemetry,
+        black_box_relay=_build_relay(e, telemetry),
     )
 
 
 # ─────────────────────────────────────────────────────────────────────
 # helpers
 # ─────────────────────────────────────────────────────────────────────
+
+
+def _build_relay(
+    e: Mapping[str, str],
+    exporter: TelemetryExporter,
+) -> BlackBoxToTelemetryRelay | None:
+    """Build the BlackBox→Telemetry relay if BLACKBOX_RELAY_MODE requests it.
+
+    Returns None for modes ``off``, ``external``, or any unrecognized value.
+    Only ``in_process`` (the default) produces a relay instance.
+    """
+    mode = e.get("BLACKBOX_RELAY_MODE", _RELAY_MODE_IN_PROCESS)
+    if mode not in _VALID_RELAY_MODES:
+        _logger.warning(
+            "Unknown BLACKBOX_RELAY_MODE=%r; treating as 'off'", mode
+        )
+        return None
+    if mode != _RELAY_MODE_IN_PROCESS:
+        return None
+
+    storage_dir = _resolve_relay_storage_dir(e)
+
+    from middleware.ports.compliance_publisher import CompliancePublisher
+
+    compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
+
+    return BlackBoxToTelemetryRelay(
+        storage_dir=storage_dir,
+        exporter=exporter,
+        compliance_publisher=compliance_publisher,
+    )
+
+
+def _resolve_relay_storage_dir(e: Mapping[str, str]) -> Path:
+    """Resolve where the relay tails BlackBox recordings.
+
+    Precedence:
+      1. ``BLACKBOX_STORAGE_DIR`` (explicit; set by Terraform on Cloud Run).
+      2. On Cloud Run (``GCP_EXECUTION_ENV=cloudrun``) with the var unset,
+         derive from ``AGENT_OFFLOAD_DIR`` so the relay matches where
+         ``BlackBoxRecorder`` writes (the default relative ``cache/`` path
+         resolves to the wrong cwd on Cloud Run).
+      3. Local default (``cache/black_box_recordings``).
+    """
+    storage_dir_str = e.get("BLACKBOX_STORAGE_DIR", "")
+    if storage_dir_str:
+        return Path(storage_dir_str)
+
+    if e.get("GCP_EXECUTION_ENV") == "cloudrun":
+        offload_dir = e.get("AGENT_OFFLOAD_DIR", "/tmp/agent_offload")
+        return Path(offload_dir) / "black_box_recordings"
+
+    return _DEFAULT_BB_STORAGE
 
 
 def _require(env: Mapping[str, str], key: str) -> str:

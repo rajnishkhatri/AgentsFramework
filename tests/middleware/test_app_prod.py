@@ -10,7 +10,9 @@ Verifies:
 
 from __future__ import annotations
 
+import asyncio
 import os
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -616,3 +618,141 @@ class TestTelemetryWiring:
 
         for event in stub.events:
             assert event["attributes"].get("subject") == subject
+
+
+# ─────────────────────────────────────────────────────────────────────
+# BlackBox→Langfuse relay lifecycle (Blocker 1)
+#
+# Layer: L2 — production lifespan must start the in-process relay (matching
+#   dev parity in middleware/__main__.py) and tear it down on shutdown.
+# Acceptance (blackbox_langfuse_gcp_deploy.plan.md §Blocker 1):
+#   - lifespan starts relay.run_forever as an asyncio task when relay present
+#   - finally block calls relay.stop() and cancels the task on shutdown
+#   - no relay started / no crash when adapters.black_box_relay is None (off)
+# Anti-patterns avoided:
+#   - Mock Addiction: real in-memory _StubRelay observed by behavior, not config
+#   - Gap Blindness: off/None failure path covered alongside happy path
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _StubRelay:
+    """In-memory relay recording start/stop for lifecycle assertions.
+
+    Shape-compatible with BlackBoxToTelemetryRelay's lifespan usage:
+    ``run_forever(interval_s=...)`` coroutine + ``stop()``.
+    """
+
+    def __init__(self) -> None:
+        self.started = False
+        self.stopped = False
+        self._stop = False
+
+    async def run_forever(self, interval_s: float = 1.0) -> None:
+        self.started = True
+        while not self._stop:
+            await asyncio.sleep(0.005)
+
+    def stop(self) -> None:
+        self.stopped = True
+        self._stop = True
+
+
+@contextmanager
+def _prod_app_with_relay(relay):
+    """Build the prod app with a controllable ``black_box_relay`` on adapters.
+
+    Yields ``(app, mock_telemetry)`` while infra patches (JWT/GCS/Postgres/
+    runtime) stay active, so the FastAPI lifespan can run under the mocks.
+    The relay is a real in-memory stub so we assert observable lifecycle.
+    """
+    from importlib import reload
+
+    mock_telemetry = MagicMock()
+    mock_adapters = MagicMock()
+    mock_adapters.profile = "v3"
+    mock_adapters.black_box_relay = relay
+    mock_adapters.telemetry_exporter = mock_telemetry
+
+    mock_pg = MagicMock()
+    mock_pg.saver = MagicMock()
+    mock_pg_cm = AsyncMock()
+    mock_pg_cm.__aenter__.return_value = mock_pg
+    mock_pg_cm.__aexit__.return_value = None
+
+    build_components_return = (
+        MagicMock(),  # agent_config
+        MagicMock(),  # tool_registry
+        MagicMock(),  # agent_facts_registry
+        Path("/tmp/agent-cache"),
+    )
+
+    env = {
+        "GCP_EXECUTION_ENV": "cloudrun",
+        "ARCHITECTURE_PROFILE": "v3",
+        "GCS_FACTS_BUCKET": "test-facts",
+        "GCS_TRACES_BUCKET": "test-traces",
+        "AGENT_FACTS_SECRET": "test-secret",
+        "WORKOS_CLIENT_ID": "client_test",
+        "WORKOS_API_KEY": "sk_test",
+        "MEM0_API_KEY": "mem0_test",
+        "LANGFUSE_PUBLIC_KEY": "pk_test",
+        "LANGFUSE_SECRET_KEY": "sk_test",
+        "DATABASE_URL": "postgresql://test:test@localhost/test",
+    }
+
+    with patch.dict(os.environ, env, clear=False), \
+         patch(
+             "middleware.composition.build_adapters",
+             return_value=mock_adapters,
+         ), \
+         patch(
+             "agent_ui_adapter.adapters.runtime.postgres_saver."
+             "PostgresCheckpointer.from_env",
+             return_value=mock_pg_cm,
+         ):
+        import middleware.app_prod as mod
+
+        # Reload first, then patch module attributes: reload() re-binds the
+        # module's imported names to the real implementations, so patches must
+        # be applied to the reloaded module (and stay active through lifespan).
+        reload(mod)
+        with patch.object(mod, "GcsTraceSink", return_value=MagicMock()), \
+             patch.object(mod, "_load_graph_factory", return_value=MagicMock()), \
+             patch.object(mod, "LangGraphRuntime", return_value=MagicMock()), \
+             patch.object(
+                 mod, "_build_components", return_value=build_components_return
+             ):
+            app = mod.build_combined_app()
+            # Keep patches active while the caller drives the lifespan.
+            yield app, mock_telemetry
+
+
+class TestAppProdRelayLifecycle:
+    """Blocker 1: production lifespan runs the in-process relay."""
+
+    def test_relay_started_and_stopped_in_lifespan(self) -> None:
+        """ACCEPT: relay.run_forever runs during lifespan; stop() on shutdown."""
+        from fastapi.testclient import TestClient
+
+        relay = _StubRelay()
+        with _prod_app_with_relay(relay) as (app, mock_telemetry):
+            with TestClient(app, raise_server_exceptions=False) as client:
+                # A request pumps the loop so run_forever's body executes.
+                assert client.get("/healthz").status_code == 200
+
+            assert relay.started is True, (
+                "relay.run_forever should have been scheduled"
+            )
+            assert relay.stopped is True, "relay.stop() should run on shutdown"
+            mock_telemetry.shutdown.assert_called_once()
+
+    def test_no_relay_when_mode_off(self) -> None:
+        """ACCEPT: adapters.black_box_relay=None (mode=off) boots with no relay."""
+        from fastapi.testclient import TestClient
+
+        with _prod_app_with_relay(None) as (app, mock_telemetry):
+            with TestClient(app, raise_server_exceptions=False) as client:
+                assert client.get("/healthz").status_code == 200
+
+            # Telemetry exporter still shuts down even when no relay is wired.
+            mock_telemetry.shutdown.assert_called_once()

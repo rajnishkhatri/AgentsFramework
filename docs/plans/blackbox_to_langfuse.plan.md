@@ -1,6 +1,6 @@
 # BlackBox → Langfuse Implementation Plan
 
-**Status:** In Progress | Sprint A complete
+**Status:** Complete | Sprints A, B, C, D, E, F, G complete
 **Last updated:** 2026-05-28
 
 ## Overview
@@ -145,7 +145,7 @@ Attributes per event include `event_id`, `workflow_id`, `step`, `timestamp`, `in
 - New: `services/governance/black_box_publisher.py` — pure functions `to_export_kwargs(event) -> (name, type, attrs, level)` and `redact_details(details) -> dict[str, str]`.
 - New: `tests/services/governance/test_black_box_publisher.py` — 34 L2 contract tests: all 9 event types map correctly; redaction strips PII (emails, SSNs, phones) and API keys (OpenAI, AWS, GitHub); details longer than 200 chars are truncated; architecture invariants (no SDK imports) AST-checked. All passing in <1s.
 
-### Sprint B — Wire the missing 4 event emissions in [orchestration/react_loop.py](../../orchestration/react_loop.py)
+### Sprint B — Wire the missing 4 event emissions in [orchestration/react_loop.py](../../orchestration/react_loop.py) ✅ Complete
 
 Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_CHECKED`, `MODEL_SELECTED`, `STEP_EXECUTED`, `TOOL_CALLED`). Adding:
 
@@ -159,44 +159,57 @@ Current state: only 5 of 9 event types are emitted (`TASK_STARTED`, `GUARDRAIL_C
 - Modify: `orchestration/react_loop.py`
 - Extend: `tests/orchestration/test_react_loop.py` to assert each new emission.
 
-### Sprint C — Relay class + idempotency hook
+### Sprint C — Relay class + idempotency hook ✅ Complete
 
 - New: `middleware/sidecars/__init__.py`
 - New: `middleware/sidecars/black_box_to_telemetry.py` — `BlackBoxToTelemetryRelay` with:
   - `run_once()` — scan `cache/black_box_recordings/*/trace.jsonl`, resume from `.langfuse_offset`, publish new lines, advance offset.
   - `run_forever(interval_s=1.0)` — async loop wrapping `run_once`.
-  - DLQ: 5 jittered exponential-backoff retries (1, 2, 4, 8, 16 s) before writing to `.langfuse_failures.jsonl` and advancing past the poison line.
+  - DLQ: configurable jittered exponential-backoff retries before writing to `.langfuse_failures.jsonl` and advancing past the poison line.
   - File-watch method: simple `mtime` poll at 1 s (no new deps; `watchdog` swap deferred).
   - Forward-only on startup (absent `.langfuse_offset` = seek to end-of-file).
-- Modify: [middleware/adapters/observability/langfuse_cloud_exporter.py](../../middleware/adapters/observability/langfuse_cloud_exporter.py) — extend `export_event` to accept an optional `observation_id` (passes the event's UUID as Langfuse observation `id` for idempotent retries; verify SDK v4 surface during implementation).
-- New: `tests/middleware/sidecars/test_black_box_to_telemetry.py` — offset bookkeeping, DLQ promotion after N retries, mtime-based pickup, idempotent retry.
+  - Partial-line safety: incomplete JSONL tails deferred to next poll.
+- Modify: [middleware/adapters/observability/langfuse_cloud_exporter.py](../../middleware/adapters/observability/langfuse_cloud_exporter.py) — extended `export_event` to extract `__bb_observation_id`, `__bb_observation_type`, `__bb_level` from attributes; passes observation `id` for idempotent retries and overrides `as_type`/`level` when present.  Port Protocol (`TelemetryExporter`) unchanged — relay hints passed through the existing `attributes` dict.
+- New: `tests/middleware/sidecars/test_black_box_to_telemetry.py` — 24 L2 contract tests: DLQ promotion (corrupt JSON, exporter failure, offset advance past poison), offset bookkeeping (publish + advance, resume from saved, multi-workflow independence), forward-only startup (absent offset → EOF, new events after startup), mtime-based pickup, idempotent export (observation_id/type/level in attributes), run_forever lifecycle, partial-line safety, architecture invariants (no langfuse/langgraph imports). All passing in <0.5s.
 
-### Sprint D — Composition + drivers
+### Sprint D — Composition + drivers ✅ Complete
 
-- Modify: [middleware/composition.py](../../middleware/composition.py) — add optional `black_box_relay: BlackBoxToTelemetryRelay | None` to `MiddlewareAdapters`; honor `BLACKBOX_RELAY_MODE` env (`in_process` default, `off`, `external`).
-- Modify: [middleware/__main__.py](../../middleware/__main__.py) — inside `lifespan`, when relay mode is `in_process` start `asyncio.create_task(relay.run_forever())`; cancel + flush on lifespan exit.
-- New: `middleware/sidecars/__main__.py` — CLI entrypoint for out-of-process deployment, reuses `build_adapters()`.
-- Extend: `tests/architecture/test_middleware_layer.py` — assert sidecar module never imports `langfuse`; assert lifespan starts/stops the relay.
+- Modify: [middleware/composition.py](../../middleware/composition.py) — added `black_box_relay: BlackBoxToTelemetryRelay | None` to `MiddlewareAdapters`; honors `BLACKBOX_RELAY_MODE` env (`in_process` default, `off`, `external`). Helper `_build_relay()` reads `BLACKBOX_STORAGE_DIR` for custom paths.
+- Modify: [middleware/__main__.py](../../middleware/__main__.py) — inside `lifespan`, when relay mode is `in_process` starts `asyncio.create_task(relay.run_forever())`; cancels + stops on lifespan exit via `finally` block.
+- New: `middleware/sidecars/__main__.py` — CLI entrypoint for out-of-process deployment, reuses `build_adapters()`. Signal handling for SIGINT/SIGTERM. Usage: `python -m middleware.sidecars`.
+- Extended: `tests/architecture/test_middleware_layer.py` — `TestSidecarMainLayering` class asserts sidecar __main__ never imports `langfuse`/`langgraph`/forbidden layers.
+- New: `tests/middleware/test_composition_relay.py` — 14 L2 contract tests: relay mode handling (in_process/off/external/unknown), composition integration (field exists, correct type, shared exporter), lifespan lifecycle (start+stop, cancellation). All passing.
+- New: `tests/middleware/sidecars/test_sidecar_cli.py` — 6 L2 contract tests: failure paths (missing env), CLI structure (main function, __name__ guard), reuse of build_adapters. All passing.
 
-### Sprint E — Compliance bundle as Langfuse dataset item
+### Sprint E — Compliance bundle as Langfuse dataset item ✅ Complete
 
-- Add `publish_compliance_bundle(workflow_id, dataset_name)` to the relay, triggered on observing a `TASK_COMPLETED` event for a workflow.
-- Calls `BlackBoxRecorder.export_for_compliance(...)` to get the integrity-verified bundle, then uses the Langfuse SDK to upsert a dataset item in `agent-compliance-audit` (failures go to a second `agent-incident-replay` dataset).
-- Attach `hash_chain_valid` as a Langfuse score on the trace.
-- New: `tests/middleware/sidecars/test_compliance_dataset.py` — success-path and broken-chain-path both upload with the correct status.
+- New: `middleware/ports/compliance_publisher.py` — `CompliancePublisher` protocol with `create_dataset_item()` and `score_trace()` methods. Pure port, zero SDK imports.
+- Modify: `middleware/adapters/observability/langfuse_cloud_exporter.py` — extended `LangfuseCloudExporter` to implement `CompliancePublisher` protocol with `create_dataset_item()` (upserts to named dataset) and `score_trace()` (attaches numeric score). Both swallow exceptions per O1.
+- Modify: `middleware/sidecars/black_box_to_telemetry.py` — added `compliance_publisher` optional parameter and `_publish_compliance_bundle()` method. Triggered on observing `TASK_COMPLETED`; calls `BlackBoxRecorder.export_for_compliance()`, publishes to `agent-compliance-audit` (valid chain) or `agent-incident-replay` (broken chain/failure outcome), and attaches `hash_chain_valid` score on trace. Idempotent (per-session deduplication). Failures swallowed per O1.
+- Modify: `middleware/composition.py` — `_build_relay()` now passes `compliance_publisher` to relay when exporter satisfies `CompliancePublisher` protocol (runtime `isinstance` check).
+- New: `tests/middleware/sidecars/test_compliance_dataset.py` — 18 L2 contract tests: broken chain → incident dataset, valid chain → audit dataset, score attachment (1.0/0.0), failure outcome → both datasets, trigger only on TASK_COMPLETED, no duplicate publish, publisher failure resilience, no-publisher graceful degradation, architecture invariants. All passing in <0.3s.
 
-### Sprint F — Three-recipe governance tutorial series
+### Sprint F — Three-recipe governance tutorial series ✅ Complete
 
-Create `docs/recipes/governance/` mirroring the [docs/recipes/gcp/](../recipes/gcp/) style: vivid "Before We Start: A Story" intro, numbered lessons, "Checkpoint question" + answer per lesson, "Why not X?" sidebars, mermaid diagrams, code snippets headed with file paths, status banner at top.
+- New: `docs/recipes/governance/00_overview.md` — *The Black Box Hidden in Your Cache Folder*. Series intro with aviation analogy, architecture overview, mermaid diagram of the full pipeline.
+- New: `docs/recipes/governance/01_outbox_relay.md` — *The Dual-Write Bug That Could Have Stayed Hidden Forever*. 4 lessons: dual-write trap, JSONL-as-outbox, offset bookkeeping, DLQ + retry policy. In-process vs out-of-process driver comparison.
+- New: `docs/recipes/governance/02_event_mapping.md` — *Translating Nine Languages Into One Timeline*. 4 lessons: 9-to-9 mapping, idempotency via observation_id, PII/API-key redaction, wiring the 4 missing producers.
+- New: `docs/recipes/governance/03_compliance_dataset.md` — *Turning Every Failed Workflow Into a Lesson Plan*. 3 lessons: why datasets not metadata, integrity chain as Langfuse score, replaying failed workflows for evals. Series summary and cost note.
+- New: `tests/docs/test_governance_recipes.py` — 38 L2 contract tests: file existence, structural elements (status banners, lessons, checkpoint questions, mermaid diagrams, next-recipe links), relative link resolution, code snippet accuracy (real symbols from implementation), architecture claim verification (AST-based SDK-import checks), recipe sequence chain, test count mentions. All passing in <0.3s.
 
-| File | Working title | Narrative arc | Code covered |
-|---|---|---|---|
-| `00_overview.md` | *The Black Box Hidden in Your Cache Folder* | Series intro. Aviation analogy from [governanaceTriangle/02_black_box_recording_debugging.md](../../governanaceTriangle/02_black_box_recording_debugging.md), but ends with: "If your flight recorder is invisible until you crash, did it ever really exist?" | none — sets the arc |
-| `01_outbox_relay.md` | *The Dual-Write Bug That Could Have Stayed Hidden Forever* | The 2 AM pager scenario; the dual-write trap; the transactional outbox pattern; why the JSONL already is one; how the relay tails it. Lessons: (1) the dual-write trap, (2) JSONL-as-outbox, (3) offset bookkeeping for at-least-once delivery, (4) in-process vs out-of-process drivers — when to graduate. | Sprints A, C, D |
-| `02_event_mapping.md` | *Translating Nine Languages Into One Timeline* | The nine event types and why Langfuse's observation types are the right Rosetta Stone. Lessons: (1) the 9-to-9 mapping, (2) idempotency via `observation_id`, (3) redaction reusing existing guardrails (the "PII leaking into vendor UIs" cautionary tale), (4) wiring the 4 missing producers. | Sprint A publisher + Sprint B emissions |
-| `03_compliance_dataset.md` | *Turning Every Failed Workflow Into a Lesson Plan* | The auditor visit; the compliance bundle and its hash chain as Langfuse dataset items; the `agent-incident-replay` dataset for regression testing. Lessons: (1) why Langfuse datasets (not metadata) for audit-grade payloads, (2) the integrity chain as a Langfuse score, (3) replaying failed workflows for evals. | Sprint E |
+### Sprint G — End-to-end pipeline integration tests + gap fixes ✅ Complete
 
-Each recipe ends with a status banner ("Complete | N contract tests passing | ~$0/mo Langfuse incremental at dev tier"), a "Run it yourself" section, and links to the next recipe.
+- New: `tests/middleware/sidecars/test_e2e_blackbox_pipeline.py` — 22 L2 integration tests verifying the full BlackBox → Relay → Publisher → Exporter pipeline works end-to-end:
+  - **A. Failure paths first** (3 tests): corrupt JSON → DLQ + valid events still publish, exporter failure on specific event → only that event DLQs, partial JSONL line deferred to next poll.
+  - **B. Full pipeline flow** (9 tests): all 9 event types produce correct observation types, observation_id matches event_id for idempotency, ERROR_OCCURRED carries level=ERROR, PII/API-key redaction through the full chain, detail truncation at 200 chars, trace_id equals workflow_id (§2.2), integrity hash preserved.
+  - **C. Multi-workflow isolation** (3 tests): independent offset tracking, per-workflow compliance bundles, one workflow failure doesn't block another.
+  - **D. Forward-only + incremental** (3 tests): absent offset → EOF seek, new events after startup processed, offset advances correctly.
+  - **E. Dev relay compliance gap** (2 tests): compliance-capable exporter gets publisher wired, plain exporter gets None.
+  - **F. Compliance pipeline integration** (2 tests): full valid workflow → audit dataset + score=1.0, tampered chain → incident dataset + score=0.0.
+- Fix: `middleware/__main__.py` — `_build_dev_relay()` now passes `compliance_publisher` when the exporter satisfies the `CompliancePublisher` protocol (mirrors `composition._build_relay()`). Previously dev relay omitted compliance publishing.
+- Fix: `orchestration/react_loop.py` — `route_node` now emits `PARAMETER_CHANGED` for `budget-downgrade` and `escalate-after-N-failures` routing decisions, not only `plan-validation-escalation`. Covers all three runtime-mutable tier override paths per Sprint B's original scope.
+- New: 2 tests in `tests/orchestration/test_react_loop.py` — `TestParameterChangedBudgetDowngrade` and `TestParameterChangedEscalation` verify the new emissions.
+- New: 4 tests in `tests/architecture/test_middleware_layer.py` — `TestBlackBoxPipelineLayering` consolidates pipeline layering invariants (publisher no-SDK, relay no-SDK, publisher no upper-layer imports, compliance port purity) into the canonical architecture test file per plan §3.
 
 ---
 

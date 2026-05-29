@@ -1,5 +1,25 @@
 # Black Box Recorder: Step-by-Step Explanation
 
+> **Reconciliation Note (2026-05-29)**
+>
+> This document describes the **lesson-17 tutorial implementation** (`backend.explainability.black_box`)
+> which uses event types: `STEP_START`, `STEP_END`, `DECISION`, `ERROR`, `CHECKPOINT`,
+> `PARAMETER_CHANGE`, `COLLABORATOR_JOIN`, `COLLABORATOR_LEAVE`, `ROLLBACK` and model classes
+> `TaskPlan`, `PlanStep`, `AgentInfo`, `ParameterSubstitution`, `ExecutionTrace`, `RecordedEvent`.
+>
+> The **shipped production code** lives at `services/governance/black_box.py` (import:
+> `services.governance.black_box`) and uses:
+> - **EventType enum:** `TASK_STARTED`, `STEP_PLANNED`, `STEP_EXECUTED`, `TOOL_CALLED`,
+>   `MODEL_SELECTED`, `ERROR_OCCURRED`, `GUARDRAIL_CHECKED`, `PARAMETER_CHANGED`, `TASK_COMPLETED`
+> - **Model classes:** `EventType`, `TraceEvent`, `BlackBoxRecorder`
+> - **Recorder API:** single `record(event)` method with append-only JSONL + SHA-256 hash chain,
+>   `export(workflow_id)`, `replay(workflow_id)`, `export_for_compliance(workflow_id)`
+>
+> The tutorial taxonomy is intentionally richer (multi-agent collaboration events, checkpoints,
+> rollback) while the production taxonomy is optimised for the single-agent ReAct loop.
+>
+> Full drift analysis: [`docs/drift/blackbox_event_taxonomy_drift.json`](../docs/drift/blackbox_event_taxonomy_drift.json)
+
 ## Table of Contents
 
 1. [Introduction](#introduction)
