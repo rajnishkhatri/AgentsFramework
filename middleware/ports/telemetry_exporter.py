@@ -28,10 +28,16 @@ class TelemetryExporter(Protocol):
         name: str,
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
         """Emit a single observability event.
 
         MUST NOT raise -- per O1, telemetry failures are silent.
+
+        Returns ``True`` when the event was handed to the backend (or was an
+        intentional no-op, e.g. the exporter is disabled), and ``False`` when a
+        genuine export error was swallowed. Callers may use the return value to
+        dead-letter swallowed failures, but MUST treat a missing/ ``None``
+        return as success for backward compatibility.
         """
         ...
 
@@ -45,4 +51,8 @@ class TelemetryExporter(Protocol):
 
     def shutdown(self) -> None:
         """Flush buffered events. MUST NOT raise."""
+        ...
+
+    def flush(self) -> None:
+        """Send buffered events. MUST NOT raise."""
         ...

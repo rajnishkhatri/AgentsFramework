@@ -1,0 +1,156 @@
+"""GoalJudge — task-adaptive LLM-as-judge for goal satisfaction (I2).
+
+Framework-agnostic: imports only from ``components.schemas`` (same layer) and,
+under ``TYPE_CHECKING``, the injected ``services`` types. NO ``langgraph`` /
+``langchain`` imports (AGENTS.md invariant #3). Mirrors
+``services.guardrails.InputGuardrail``: it takes an injected ``LLMService`` +
+``PromptService`` + ``ModelProfile``, renders a ``.j2`` prompt (H1), calls
+``llm_service.invoke`` (H2 fast tier), and parses a structured JSON verdict.
+
+Why this exists
+---------------
+``evaluate_task_outcome`` scores ``goal_met``/``criteria_met`` via keyword
+overlap against two fixed generic strings from ``plan_builder``. Those never
+share vocabulary with a real answer, so ``criteria_met`` is ~always ``0.0`` and
+``unmet_conditions`` is identical on good and bad runs. Keyword/overlap metrics
+are blind to goal-directed reasoning; goal satisfaction needs a task-adaptive
+judge (reference-free rubric over the final answer + trajectory evidence).
+
+Layering contract
+-----------------
+The judge overlays ``goal_met``/``criteria_met``/``unmet_conditions`` onto the
+``TaskOutcome``. It NEVER changes ``outcome``: the deterministic process floor
+("ran cleanly") stays the gating signal. The keyword heuristic remains the
+offline/CI fallback (AGENTS.md: no live LLM in CI), so the judge is injectable,
+flag-gated, and mockable.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from typing import TYPE_CHECKING, Any
+
+from components.schemas import GoalVerdict
+
+if TYPE_CHECKING:
+    from services.base_config import ModelProfile
+    from services.llm_config import LLMService
+    from services.prompt_service import PromptService
+
+logger = logging.getLogger("components.goal_judge")
+
+__all__ = ["GoalJudge"]
+
+
+class GoalJudge:
+    """Reference-free LLM-as-judge that scores goal satisfaction.
+
+    Args:
+        llm_service: injected ``LLMService`` (the only LLM boundary).
+        prompt_service: injected ``PromptService`` for ``.j2`` rendering (H1).
+        judge_profile: fast-tier ``ModelProfile`` (H2).
+        name: logging / eval-capture tag.
+    """
+
+    PROMPT_NAME = "goal_judge_system_prompt"
+
+    def __init__(
+        self,
+        llm_service: LLMService,
+        prompt_service: PromptService,
+        judge_profile: ModelProfile,
+        *,
+        name: str = "goal_judge",
+    ) -> None:
+        self.name = name
+        self._llm_service = llm_service
+        self._prompt_service = prompt_service
+        self._judge_profile = judge_profile
+
+    @property
+    def model_name(self) -> str:
+        return getattr(self._judge_profile, "name", "")
+
+    async def evaluate(
+        self,
+        *,
+        task_input: str,
+        final_answer: str,
+        success_conditions: list[str],
+        evidence: list[dict[str, Any]] | None = None,
+    ) -> GoalVerdict:
+        """Judge whether ``final_answer`` satisfies the task goal.
+
+        Builds a compact evidence digest from the tool trajectory, renders the
+        rubric prompt, invokes the judge model, and parses the JSON verdict.
+        Raises on an unparseable response so the caller can fall back to the
+        deterministic heuristic (the judge is best-effort, never load-bearing).
+        """
+        evidence_digest = _summarize_evidence(evidence)
+        rendered = self._prompt_service.render_prompt(
+            self.PROMPT_NAME,
+            task_input=task_input,
+            final_answer=final_answer,
+            success_conditions=success_conditions,
+            evidence=evidence_digest,
+        )
+        response = await self._llm_service.invoke(
+            self._judge_profile,
+            [{"role": "user", "content": rendered}],
+        )
+        content = getattr(response, "content", response)
+        return self._parse_verdict(str(content))
+
+    @staticmethod
+    def _parse_verdict(content: str) -> GoalVerdict:
+        """Parse a JSON verdict, tolerating ```json fenced blocks."""
+        payload = _extract_json(content)
+        data = json.loads(payload)
+        if not isinstance(data, dict):
+            raise ValueError("goal judge verdict is not a JSON object")
+        # ``criteria_met`` may arrive as a 0-100 percentage from some models;
+        # clamp into the 0..1 contract.
+        criteria = data.get("criteria_met", 0.0)
+        try:
+            criteria = float(criteria)
+        except (TypeError, ValueError):
+            criteria = 0.0
+        if criteria > 1.0:
+            criteria = criteria / 100.0
+        data["criteria_met"] = max(0.0, min(1.0, criteria))
+        return GoalVerdict.model_validate(data)
+
+
+def _extract_json(content: str) -> str:
+    """Return the JSON substring from a possibly fenced / chatty response."""
+    text = content.strip()
+    if "```" in text:
+        # Pull the first fenced block, dropping an optional ``json`` tag.
+        fenced = text.split("```", 2)
+        if len(fenced) >= 2:
+            block = fenced[1]
+            if block.lstrip().lower().startswith("json"):
+                block = block.lstrip()[4:]
+            text = block.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text
+
+
+def _summarize_evidence(
+    evidence: list[dict[str, Any]] | None, *, max_items: int = 8, max_chars: int = 400
+) -> str:
+    """Render the tool trajectory into a compact, prompt-safe digest."""
+    if not evidence:
+        return "(no tool calls were made)"
+    lines: list[str] = []
+    for entry in evidence[-max_items:]:
+        tool = entry.get("tool_name", "?")
+        out = str(entry.get("tool_output", "") or "")
+        if len(out) > max_chars:
+            out = out[:max_chars] + "…"
+        lines.append(f"- {tool}: {out}")
+    return "\n".join(lines)

@@ -16,7 +16,7 @@ from services.tools.file_tools import StateFileToolInput, execute_state_file_too
 from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
 from services.tools.shell import ShellToolInput, ShellToolOutput, execute_shell
 from services.tools.task_tool import TaskToolInput
-from services.tools.web_search import WebSearchInput, WebSearchOutput, execute_web_search
+from services.tools.web_search import WebSearchInput, execute_web_search
 
 
 class TestShellToolInput:

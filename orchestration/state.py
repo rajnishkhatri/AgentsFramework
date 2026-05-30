@@ -89,6 +89,9 @@ class AgentState(MessagesState):
 
     current_workflow_phase: str
 
+    # No-progress graceful wrap-up: tracks whether the synthesis directive was injected
+    no_progress_directive_sent: bool
+
     # Story 1.3: error propagation from call_llm_node to evaluate_node
     last_llm_error: str
     last_llm_error_code: int | None

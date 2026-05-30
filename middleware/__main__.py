@@ -85,14 +85,26 @@ from services.tools.shell import ShellToolInput, execute_shell
 from services.tools.task_tool import TaskToolInput, build_task_tool_executor
 from services.tools.think_tool import ThinkToolInput, execute_think_tool
 from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
-from services.tools.web_search import WebSearchInput, execute_web_search
+from services.tools.web_search import WebSearchInput, build_web_search_executor
+from services.tools.search.port import WebSearchProvider
+from services.tools.search.stub import StubProvider
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, Capability
-from utils.debug_fc2601 import debug_fc2601
 
 logger = logging.getLogger("middleware.__main__")
 
 _DEV_PORT_SEARCH_SPAN = 64
+
+
+def _resolve_search_provider() -> WebSearchProvider:
+    """Select web search provider from env (WEB_SEARCH_PROVIDER / SEARXNG_URL)."""
+    provider_name = os.environ.get("WEB_SEARCH_PROVIDER", "stub").lower()
+    if provider_name == "searxng":
+        from services.tools.search.searxng import SearxngProvider
+
+        base_url = os.environ.get("SEARXNG_URL", "http://localhost:8888")
+        return SearxngProvider(base_url=base_url)
+    return StubProvider()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -120,6 +132,9 @@ class _NoopTelemetryExporter:
         pass
 
     def shutdown(self) -> None:
+        pass
+
+    def flush(self) -> None:
         pass
 
 
@@ -286,6 +301,8 @@ def _build_base_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsRegis
         models=[fast, capable],
         max_steps=20,
         max_cost_usd=1.0,
+        goal_judge_enabled=os.environ.get("GOAL_JUDGE_ENABLED", "").strip().lower()
+        in ("1", "true", "yes"),
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
@@ -311,7 +328,9 @@ def _build_base_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsRegis
             executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
         ),
         "web_search": ToolDefinition(
-            executor=execute_web_search, schema=WebSearchInput, cacheable=False
+            executor=build_web_search_executor(_resolve_search_provider()),
+            schema=WebSearchInput,
+            cacheable=True,
         ),
     })
 
@@ -515,21 +534,6 @@ def build_dev_app() -> FastAPI:
         exporter = dev_telemetry
 
         async def _generate() -> AsyncIterator[bytes]:
-            # region agent log
-            _ilist = []
-            if isinstance(user_input, dict):
-                _ilist = user_input.get("messages") or []
-            debug_fc2601(
-                hypothesis_id="H-thread",
-                location="middleware.__main__:run_stream",
-                message="generate_start",
-                data={
-                    "thread_tail": thread_id[-12:] if len(thread_id) >= 12 else thread_id,
-                    "incoming_messages_len": len(_ilist),
-                    "task_input_len": len(task_input),
-                },
-            )
-            # endregion agent log
             run_id: str | None = None
             trace_id_seen: str | None = None
             errored = False
@@ -549,6 +553,7 @@ def build_dev_app() -> FastAPI:
                         exporter,
                         domain_event,
                         subject=DEV_USER_ID,
+                        release_on_finish=False,
                     )
                     if isinstance(domain_event, RunFinishedDomain):
                         run_finished_emitted = True
@@ -572,6 +577,14 @@ def build_dev_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                # I6: teardown order is drain -> release_trace -> flush. The
+                # relay tail MUST be drained before any step.N span is closed,
+                # otherwise late BlackBox events recreate fresh spans and the
+                # trace tree shape is nondeterministic across runs. Mirrors
+                # middleware/app_prod.py.
+                if dev_relay is not None and trace_id_seen is not None:
+                    dev_relay.drain_workflow(trace_id_seen)
+
                 if trace_id_seen is not None and not run_finished_emitted:
                     telemetry_bridge.emit_run_finished(
                         exporter,
@@ -581,7 +594,13 @@ def build_dev_app() -> FastAPI:
                         duration_ms=duration_ms,
                         errored=errored,
                         subject=DEV_USER_ID,
+                        release=False,
                     )
+
+                if trace_id_seen is not None:
+                    # Idempotent: closes step spans (if any remain) and flushes.
+                    exporter.release_trace(trace_id_seen)
+                exporter.flush()
 
         return StreamingResponse(
             _generate(),

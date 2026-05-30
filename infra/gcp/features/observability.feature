@@ -5,16 +5,16 @@ Feature: GCP Tier A observability (Recipe 7)
     Given I have google provider configured
 
   Scenario: Monitoring dashboard is declared
-    Given I declare google_monitoring_dashboard
+    Given I have google_monitoring_dashboard defined
     When it contains dashboard_json
-    Then it must contain AgentsFramework Tier A
+    Then its value must contain "AgentsFramework Tier A"
 
   Scenario: Backend 5xx alert uses ratio threshold
-    Given I declare google_monitoring_alert_policy
+    Given I have google_monitoring_alert_policy defined
     When it contains backend_5xx_rate
     Then it must contain denominator_filter
 
   Scenario: Billing budget is count-gated
-    Given I declare google_billing_budget
+    Given I have google_billing_budget defined
     When it contains tier_a
     Then it must contain count

@@ -1,36 +1,107 @@
-"""Web search tool: stub returning canned response (real impl in Phase 2+)."""
+"""Web search tool: provider-agnostic executor factory.
+
+Exposes build_web_search_executor(provider) which returns a callable
+compatible with ToolDefinition.executor. Returns ToolExecutionResult
+with ok=False on provider failure/empty so the loop treats a dead
+backend as terminal rather than retryable.
+
+NO langgraph or langchain imports allowed.
+"""
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from services.tools.registry import ToolExecutionResult
+from services.tools.search.port import (
+    SearchResult,
+    WebSearchEmpty,
+    WebSearchError,
+    WebSearchProvider,
+)
+
+logger = logging.getLogger(__name__)
+
 
 class WebSearchInput(BaseModel):
+    """Input schema for web_search tool."""
+
     query: str = Field(description="Search query")
 
 
 class WebSearchOutput(BaseModel):
-    results: list[dict[str, str]]
+    """Output schema carrying real or stub results."""
+
+    results: list[SearchResult]
     query: str
+    provider: str = "unknown"
+
+
+def build_web_search_executor(
+    provider: WebSearchProvider,
+) -> Callable[[dict[str, Any]], ToolExecutionResult]:
+    """Factory: returns a tool executor bound to the given search provider."""
+
+    def _execute(args: dict[str, Any]) -> ToolExecutionResult:
+        try:
+            validated = WebSearchInput(**args)
+        except Exception as e:
+            return ToolExecutionResult(
+                output=f"Error: Invalid input: {e}",
+                ok=False,
+                error=f"validation_error: {e}",
+            )
+
+        try:
+            results = provider.search(validated.query, max_results=5)
+        except WebSearchEmpty as exc:
+            output = WebSearchOutput(
+                query=validated.query,
+                results=[],
+                provider=exc.provider,
+            )
+            return ToolExecutionResult(
+                output=output.model_dump_json(),
+                ok=False,
+                error=f"empty_results: {exc}",
+            )
+        except WebSearchError as exc:
+            return ToolExecutionResult(
+                output=f"Error: {exc}",
+                ok=False,
+                error=f"provider_error: {exc}",
+            )
+        except Exception as exc:
+            logger.exception("Unexpected error in web_search provider")
+            return ToolExecutionResult(
+                output=f"Error: unexpected failure: {exc}",
+                ok=False,
+                error=f"unexpected: {exc}",
+            )
+
+        output = WebSearchOutput(
+            query=validated.query,
+            results=results,
+            provider=getattr(provider, "_provider_name", type(provider).__name__.lower()),
+        )
+        return ToolExecutionResult(
+            output=output.model_dump_json(),
+            ok=True,
+        )
+
+    return _execute
 
 
 def execute_web_search(args: dict[str, Any]) -> str:
-    """Stub web search that returns a placeholder result."""
-    try:
-        validated = WebSearchInput(**args)
-    except Exception as e:
-        return f"Error: {e}"
+    """Backward-compatible stub executor (no provider injection).
 
-    output = WebSearchOutput(
-        query=validated.query,
-        results=[
-            {
-                "title": f"Search result for: {validated.query}",
-                "snippet": "This is a stub response. Real web search will be implemented in Phase 2.",
-                "url": "https://example.com",
-            }
-        ],
-    )
-    return output.model_dump_json()
+    Used by callers that haven't migrated to build_web_search_executor yet.
+    """
+    from services.tools.search.stub import StubProvider
+
+    executor = build_web_search_executor(StubProvider())
+    result = executor(args)
+    return result.output

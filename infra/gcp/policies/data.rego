@@ -19,7 +19,7 @@ import future.keywords.in
 
 sql_instance_attrs contains attrs if {
   some name
-  attrs := input.resource.google_sql_database_instance[name][_]
+  attrs := input[_].contents.resource.google_sql_database_instance[name][_]
 }
 
 deny contains msg if {
@@ -50,7 +50,7 @@ deny contains msg if {
 
 bucket_attrs contains {"name": name, "attrs": attrs} if {
   some name
-  attrs := input.resource.google_storage_bucket[name][_]
+  attrs := input[_].contents.resource.google_storage_bucket[name][_]
 }
 
 deny contains msg if {
@@ -75,7 +75,7 @@ deny contains msg if {
 
 bucket_iam_attrs contains attrs if {
   some name
-  attrs := input.resource.google_storage_bucket_iam_member[name][_]
+  attrs := input[_].contents.resource.google_storage_bucket_iam_member[name][_]
 }
 
 forbidden_bucket_roles := {
@@ -96,7 +96,7 @@ deny contains msg if {
 
 sql_user_attrs contains attrs if {
   some name
-  attrs := input.resource.google_sql_user[name][_]
+  attrs := input[_].contents.resource.google_sql_user[name][_]
 }
 
 deny contains msg if {

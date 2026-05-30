@@ -31,6 +31,20 @@ __all__ = ["to_export_kwargs", "redact_details"]
 
 _MAX_DETAIL_VALUE_LEN = 200
 
+_SAFE_NUMERIC_KEYS: frozenset[str] = frozenset({
+    "latency_ms",
+    "cost_usd",
+    "total_cost_usd",
+    "tokens_in",
+    "tokens_out",
+    "step_count",
+    "step",
+    "input_tokens",
+    "output_tokens",
+    "budget_limit",
+    "total_tokens",
+})
+
 _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     EventType.TASK_STARTED: ("agent", "task.started"),
     EventType.TASK_COMPLETED: ("agent", "task.completed"),
@@ -60,6 +74,10 @@ def redact_details(details: dict[str, Any]) -> dict[str, str]:
     Every value is coerced to ``str`` before processing so the relay can
     safely serialize the result without type surprises.
 
+    Known-safe numeric keys (latency_ms, cost_usd, tokens_in, etc.) are
+    exempt from regex redaction to prevent false-positive corruption of
+    telemetry data by the credit-card pattern.
+
     Processing order: coerce → truncate → redact.  Truncation before
     redaction ensures that a long string ending with PII gets capped first
     (the PII may be cut off by truncation, which is acceptable — it's
@@ -72,8 +90,9 @@ def redact_details(details: dict[str, Any]) -> dict[str, str]:
         if len(text) > _MAX_DETAIL_VALUE_LEN:
             text = text[:_MAX_DETAIL_VALUE_LEN]
 
-        for pattern, replacement in _REDACTION_PATTERNS:
-            text = pattern.sub(replacement, text)
+        if key not in _SAFE_NUMERIC_KEYS:
+            for pattern, replacement in _REDACTION_PATTERNS:
+                text = pattern.sub(replacement, text)
 
         result[key] = text
     return result
@@ -89,6 +108,10 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
       - ``observation_id``: equals ``event.event_id`` for idempotent retries.
       - ``level``: ``"ERROR"`` for error events, ``"DEFAULT"`` otherwise.
       - ``attributes``: dict of redacted, truncated event metadata.
+      - ``parent_observation_id``: step-span parent for hierarchical nesting (I6).
+      - ``model``: native Langfuse model field for GENERATION observations (I5).
+      - ``usage``: native Langfuse usage dict for GENERATION observations (I5).
+      - ``cost``: native Langfuse cost for GENERATION observations (I5).
     """
     obs_type, name = _EVENT_TYPE_TO_OBSERVATION[event.event_type]
 
@@ -103,7 +126,7 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
         "details": redact_details(event.details),
     }
 
-    return {
+    result: dict[str, Any] = {
         "name": name,
         "observation_type": obs_type,
         "trace_id": event.workflow_id,
@@ -111,3 +134,59 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
         "level": level,
         "attributes": attributes,
     }
+
+    # I6: Parent observation hierarchy — step-based nesting.
+    # Task-level events (TASK_STARTED, TASK_COMPLETED) are root spans.
+    # All other events nest under a synthetic per-step span ID.
+    if event.step is not None and event.event_type not in (
+        EventType.TASK_STARTED,
+        EventType.TASK_COMPLETED,
+    ):
+        result["parent_observation_id"] = f"{event.workflow_id}:step:{event.step}"
+
+    # I5: Promote native generation fields for GENERATION-typed observations.
+    details = event.details
+    if obs_type == "generation":
+        model_name = details.get("model")
+        if model_name:
+            result["model"] = model_name
+
+        tokens_in = details.get("tokens_in") or details.get("input_tokens")
+        tokens_out = details.get("tokens_out") or details.get("output_tokens")
+        if tokens_in is not None or tokens_out is not None:
+            result["usage"] = {}
+            if tokens_in is not None:
+                result["usage"]["input"] = int(tokens_in)
+            if tokens_out is not None:
+                result["usage"]["output"] = int(tokens_out)
+            total = (int(tokens_in or 0)) + (int(tokens_out or 0))
+            if total:
+                result["usage"]["total"] = total
+
+        cost_usd = details.get("cost_usd")
+        if cost_usd is not None:
+            result["cost"] = float(cost_usd)
+
+    # For STEP_EXECUTED (span type but carries generation-like data), also promote.
+    if event.event_type == EventType.STEP_EXECUTED:
+        model_name = details.get("model")
+        if model_name:
+            result["model"] = model_name
+
+        tokens_in = details.get("tokens_in")
+        tokens_out = details.get("tokens_out")
+        if tokens_in is not None or tokens_out is not None:
+            result["usage"] = {}
+            if tokens_in is not None:
+                result["usage"]["input"] = int(tokens_in)
+            if tokens_out is not None:
+                result["usage"]["output"] = int(tokens_out)
+            total = (int(tokens_in or 0)) + (int(tokens_out or 0))
+            if total:
+                result["usage"]["total"] = total
+
+        cost_usd = details.get("cost_usd")
+        if cost_usd is not None:
+            result["cost"] = float(cost_usd)
+
+    return result

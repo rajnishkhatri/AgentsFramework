@@ -15,7 +15,7 @@ data_bucket_names := {"agent_facts", "trust_traces"}
 
 bucket_attrs contains {"name": name, "attrs": attrs} if {
   some name
-  attrs := input.resource.google_storage_bucket[name][_]
+  attrs := input[_].contents.resource.google_storage_bucket[name][_]
 }
 
 deny contains msg if {
@@ -32,7 +32,7 @@ deny contains msg if {
 
 sql_instance_attrs contains attrs if {
   some name
-  attrs := input.resource.google_sql_database_instance[name][_]
+  attrs := input[_].contents.resource.google_sql_database_instance[name][_]
 }
 
 deny contains msg if {
@@ -45,7 +45,7 @@ deny contains msg if {
 
 secret_version_attrs contains attrs if {
   some name
-  attrs := input.resource.google_secret_manager_secret_version[name][_]
+  attrs := input[_].contents.resource.google_secret_manager_secret_version[name][_]
 }
 
 deny contains msg if {

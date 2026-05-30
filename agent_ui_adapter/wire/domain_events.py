@@ -43,10 +43,12 @@ class LLMTokenEmitted(DomainEventBase):
 
 class LLMMessageStarted(DomainEventBase):
     message_id: str
+    input_text: str | None = None
 
 
 class LLMMessageEnded(DomainEventBase):
     message_id: str
+    output_text: str | None = None
 
 
 # ── Tool call lifecycle ───────────────────────────────────────────────

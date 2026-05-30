@@ -95,6 +95,18 @@ class LangfuseCloudExporter:
         self._sdk_client = sdk_client
         self._enabled = os.environ.get("LANGFUSE_ENABLED", "true").lower() != "false"
         self._started_traces: set[str] = set()
+        # I6: one live SDK step span per ``(trace_id, logical_step_key)``.
+        # Children of a step nest under it via the SDK's real nesting API; the
+        # span stays open until ``release_trace`` ends it (carrying the run's
+        # lifetime). Keyed by the publisher's synthetic step key, never an SDK id.
+        self._step_spans: dict[tuple[str, str], Any] = {}
+        # I8: per-trace set of BlackBox event_ids already exported. The relay is
+        # at-least-once (``run_forever`` + ``drain_workflow`` can read the same
+        # byte offset under a crash/race) and Langfuse SDK v4 cannot upsert on a
+        # caller-supplied observation id, so duplicate ``task.completed`` /
+        # ``step.executed`` observations surface with identical metadata. This
+        # guard drops the second export. Cleared per trace in ``release_trace``.
+        self._seen_events: dict[str, set[str]] = {}
 
     @property
     def active_trace_count(self) -> int:
@@ -129,12 +141,20 @@ class LangfuseCloudExporter:
         name: str,
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
+        """Export a single observation.
+
+        Returns ``True`` when the event was handed to the SDK, ``False`` when a
+        genuine export error was swallowed (rule O1 — telemetry never blocks, so
+        the caller decides whether to dead-letter). An intentional no-op
+        (kill-switch disabled or client unavailable) returns ``True`` so the
+        relay does not dead-letter events it was never meant to publish.
+        """
         if not self._enabled:
-            return
+            return True
         client = self._client()
         if client is None:
-            return
+            return True
         try:
             from langfuse import propagate_attributes
 
@@ -142,10 +162,26 @@ class LangfuseCloudExporter:
 
             # BlackBox relay hints — extract before building metadata so they
             # don't leak into the Langfuse metadata blob.
-            bb_observation_id = attrs.pop("__bb_observation_id", None)
+            bb_observation_id = attrs.pop("__bb_observation_id", None)  # not settable in SDK v4
+
+            # I8: idempotency guard. Dedupe on the BlackBox ``event_id`` (the
+            # relay also surfaces it as ``__bb_observation_id``). A repeat for an
+            # already-exported event is a no-op success (return True) so the
+            # at-least-once relay does not dead-letter it. We only mark an event
+            # seen *after* a successful export so a genuine failure can retry.
+            dedup_id = attrs.get("event_id") or bb_observation_id
+            if dedup_id is not None and str(dedup_id) in self._seen_events.get(
+                trace_id, set()
+            ):
+                return True
+
             bb_observation_type = attrs.pop("__bb_observation_type", None)
             bb_level = attrs.pop("__bb_level", None)
             bb_output = attrs.pop("__output", None)
+            bb_parent_observation_id = attrs.pop("__bb_parent_observation_id", None)
+            bb_model = attrs.pop("__bb_model", None)
+            bb_usage = attrs.pop("__bb_usage", None)
+            bb_cost = attrs.pop("__bb_cost", None)
 
             propagate_kwargs: dict[str, Any] = {}
 
@@ -172,38 +208,109 @@ class LangfuseCloudExporter:
 
             obs_type = bb_observation_type or _observation_type(name)
             obs_kwargs: dict[str, Any] = {
-                "trace_context": trace_context,
                 "name": name,
                 "as_type": obs_type,
                 "input": attrs or None,
                 "output": bb_output,
                 "metadata": _metadata(attrs),
             }
-            if bb_observation_id is not None:
-                obs_kwargs["id"] = str(bb_observation_id)
+            if bb_model is not None:
+                obs_kwargs["model"] = bb_model
+            # SDK v4 native generation fields are ``usage_details`` /
+            # ``cost_details`` (a dict). The publisher (I5) emits ``usage`` as
+            # ``{input,output,total}`` and ``cost`` as a float; normalise here.
+            if bb_usage is not None:
+                obs_kwargs["usage_details"] = bb_usage
+            if bb_cost is not None:
+                obs_kwargs["cost_details"] = (
+                    dict(bb_cost)
+                    if isinstance(bb_cost, Mapping)
+                    else {"total": float(bb_cost)}
+                )
+            # NOTE: Langfuse SDK v4 ``start_observation()`` does not accept an
+            # ``id`` kwarg (observation IDs are auto-generated OTel span IDs).
+            # ``__bb_observation_id`` is popped above so it never reaches the
+            # metadata blob; idempotency is enforced by the relay's byte-offset
+            # outbox, not by a caller-supplied observation id.
             if bb_level is not None and bb_level != "DEFAULT":
                 obs_kwargs["level"] = bb_level
 
             with ctx:
-                observation = client.start_observation(**obs_kwargs)
-                observation.end()
+                if bb_parent_observation_id is not None:
+                    # I6: translate the publisher's logical step key into a real
+                    # per-(trace, step) span and nest this child under it using
+                    # the SDK's real nesting API (``parent.start_observation``),
+                    # never the synthetic ``workflow:step:N`` string.
+                    step_span = self._get_or_create_step_span(
+                        client, trace_id, str(bb_parent_observation_id)
+                    )
+                    child = step_span.start_observation(**obs_kwargs)
+                    child.end()
+                else:
+                    observation = client.start_observation(
+                        trace_context=trace_context, **obs_kwargs
+                    )
+                    observation.end()
+            # I8: mark exported only after the SDK accepted it.
+            if dedup_id is not None:
+                self._seen_events.setdefault(trace_id, set()).add(str(dedup_id))
+            return True
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse export_event swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
             )
+            return False
+
+    def _get_or_create_step_span(
+        self, client: Any, trace_id: str, parent_key: str
+    ) -> Any:
+        """Return the live step span for ``(trace_id, parent_key)``, creating it once.
+
+        ``parent_key`` is the publisher's synthetic ``workflow:step:N`` key. The
+        span itself is created with the SDK's auto-generated id and kept open
+        until :meth:`release_trace` ends it.
+        """
+        key = (trace_id, parent_key)
+        span = self._step_spans.get(key)
+        if span is None:
+            step_label = parent_key.rsplit(":", 1)[-1]
+            span = client.start_observation(
+                trace_context={"trace_id": trace_id},
+                name=f"step.{step_label}",
+                as_type="span",
+            )
+            self._step_spans[key] = span
+        return span
 
     def release_trace(self, trace_id: str) -> None:
         if not self._enabled:
             return
         try:
             self._started_traces.discard(trace_id)
+            # I8: drop the per-trace idempotency set so a re-used trace_id starts
+            # fresh (release_trace is the end-of-run boundary).
+            self._seen_events.pop(trace_id, None)
+            # I6: close any open step spans for this trace BEFORE flush so the
+            # tree closes cleanly and each step carries the run's lifetime.
+            for key in [k for k in self._step_spans if k[0] == trace_id]:
+                span = self._step_spans.pop(key, None)
+                if span is None:
+                    continue
+                try:
+                    span.end()
+                except Exception as exc:
+                    logger.warning(
+                        "langfuse step span end swallowed: %s: %s",
+                        type(exc).__name__,
+                        exc,
+                    )
             client = self._client()
             if client is not None:
                 client.flush()
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse release_trace swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -223,6 +330,12 @@ class LangfuseCloudExporter:
         if client is None:
             return
         try:
+            # SDK v4 does NOT auto-create the dataset on first item insert; an
+            # unknown dataset_name yields a 404. ``create_dataset`` is an upsert
+            # (idempotent by name), so ensure the dataset exists before adding
+            # the item.
+            client.create_dataset(name=dataset_name)
+
             kwargs: dict[str, Any] = {
                 "dataset_name": dataset_name,
                 "input": input_data,
@@ -233,7 +346,7 @@ class LangfuseCloudExporter:
                 kwargs["metadata"] = metadata
             client.create_dataset_item(**kwargs)
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse create_dataset_item swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
@@ -260,10 +373,27 @@ class LangfuseCloudExporter:
             }
             if comment is not None:
                 kwargs["comment"] = comment
-            client.score(**kwargs)
+            # SDK v4 renamed trace scoring: ``Langfuse.score`` no longer exists;
+            # the API is ``create_score`` (the kwargs above match its signature).
+            client.create_score(**kwargs)
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse score_trace swallowed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
+
+    def flush(self) -> None:
+        if not self._enabled:
+            return
+        client = self._client()
+        if client is None:
+            return
+        try:
+            client.flush()
+        except Exception as exc:
+            logger.warning(
+                "langfuse flush swallowed: %s: %s",
                 type(exc).__name__,
                 exc,
             )
@@ -279,7 +409,7 @@ class LangfuseCloudExporter:
             if hasattr(client, "shutdown"):
                 client.shutdown()
         except Exception as exc:
-            logger.debug(
+            logger.warning(
                 "langfuse flush swallowed: %s: %s",
                 type(exc).__name__,
                 exc,

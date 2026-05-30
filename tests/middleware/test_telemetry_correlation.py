@@ -73,6 +73,7 @@ class StubTelemetryExporter:
         self.events: list[dict] = []
         self.released_traces: list[str] = []
         self.shutdown_called = False
+        self.flush_called = False
         self._raise_on_export = raise_on_export
 
     def export_event(
@@ -89,6 +90,9 @@ class StubTelemetryExporter:
 
     def shutdown(self) -> None:
         self.shutdown_called = True
+
+    def flush(self) -> None:
+        self.flush_called = True
 
 
 class FakeObservation:

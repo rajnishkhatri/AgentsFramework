@@ -22,7 +22,7 @@ import future.keywords.in
 
 cloud_run_attrs contains attrs if {
   some name
-  attrs := input.resource.google_cloud_run_v2_service[name][_]
+  attrs := input[_].contents.resource.google_cloud_run_v2_service[name][_]
 }
 
 # ── min_instance_count must be 0 (scale-to-zero, Tier A cost constraint) ──

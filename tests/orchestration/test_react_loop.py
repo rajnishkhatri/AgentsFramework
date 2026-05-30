@@ -828,7 +828,7 @@ class TestTaskCompletedEmission:
         )
         completed = _events_of_type(events, EventType.TASK_COMPLETED.value)
         assert len(completed) == 1, "Expected TASK_COMPLETED on terminal error"
-        assert completed[0]["details"]["outcome"] == "failure"
+        assert completed[0]["details"]["outcome"] == "failed"
 
 
 # ─────────────────────────────────────────────────────────────────────

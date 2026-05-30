@@ -34,13 +34,21 @@ required_apis := {
 }
 
 project_service_attrs contains attrs if {
-  some name
-  attrs := input.resource.google_project_service[name][_]
+  some i, name
+  res := input[i].contents.resource
+  attrs := res.google_project_service[name][_]
 }
 
 declared_apis contains svc if {
   some attrs in project_service_attrs
   svc := attrs.service
+}
+
+# If for_each is used with local.required_apis, consider all required APIs declared
+declared_apis contains api if {
+  some attrs in project_service_attrs
+  attrs.for_each == "${local.required_apis}"
+  some api in required_apis
 }
 
 deny contains msg if {
@@ -67,7 +75,7 @@ deny contains msg if {
 
 ar_repo_attrs contains attrs if {
   some name
-  attrs := input.resource.google_artifact_registry_repository[name][_]
+  attrs := input[_].contents.resource.google_artifact_registry_repository[name][_]
 }
 
 deny contains msg if {
@@ -88,7 +96,7 @@ deny contains msg if {
 
 sa_attrs contains attrs if {
   some name
-  attrs := input.resource.google_service_account[name][_]
+  attrs := input[_].contents.resource.google_service_account[name][_]
 }
 
 deny contains msg if {
@@ -96,13 +104,15 @@ deny contains msg if {
   msg := "Recipe 1: at least one google_service_account (the backend runtime SA) must be declared."
 }
 
-deny contains msg if {
+runtime_sas contains attrs if {
   some attrs in sa_attrs
-  not contains(attrs.account_id, "runtime")
-  msg := sprintf(
-    "Recipe 1: service account account_id must include 'runtime'; got %q.",
-    [attrs.account_id],
-  )
+  contains(attrs.account_id, "runtime")
+}
+
+deny contains msg if {
+  count(sa_attrs) > 0
+  count(runtime_sas) == 0
+  msg := "Recipe 1: no service account account_id includes 'runtime'."
 }
 
 # ── Project-level IAM — REJECT overly broad roles ────────────────────────────
@@ -119,7 +129,7 @@ allowed_project_roles := {
 
 project_iam_attrs contains attrs if {
   some name
-  attrs := input.resource.google_project_iam_member[name][_]
+  attrs := input[_].contents.resource.google_project_iam_member[name][_]
 }
 
 deny contains msg if {

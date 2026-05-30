@@ -17,9 +17,10 @@ Feature: Combined backend Cloud Run service satisfies Recipe 4 Tier A constraint
     Background:
         Given I have google_cloud_run_v2_service defined
 
-    Scenario: Service is named agent-backend-combined
-        Then it must contain name
-        And its value must match the "agent-backend-combined" regex
+  Scenario: Service is named agent-backend-combined
+    When its name is backend_combined
+    Then it must contain name
+    And its value must match the "agent-backend-combined" regex
 
     Scenario: Service has a template block (sized via pytest + Rego)
         Then it must contain template

@@ -13,12 +13,12 @@ import future.keywords.in
 
 meta_job_attrs contains attrs if {
   some name
-  attrs := input.resource.google_cloud_run_v2_job[name][_]
+  attrs := input[_].contents.resource.google_cloud_run_v2_job[name][_]
 }
 
 meta_scheduler_attrs contains attrs if {
   some name
-  attrs := input.resource.google_cloud_scheduler_job[name][_]
+  attrs := input[_].contents.resource.google_cloud_scheduler_job[name][_]
 }
 
 # ── Job command must invoke meta.run_eval ─────────────────────────────────
@@ -64,7 +64,7 @@ deny contains msg if {
 
 deny contains msg if {
   some name
-  attrs := input.resource.google_storage_bucket_iam_member[name][_]
+  attrs := input[_].contents.resource.google_storage_bucket_iam_member[name][_]
   contains(name, "meta")
   contains(attrs.bucket, "agent-facts")
   msg := sprintf(

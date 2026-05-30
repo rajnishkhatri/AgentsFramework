@@ -18,12 +18,12 @@ import future.keywords.in
 
 secret_version_attrs contains attrs if {
   some name
-  attrs := input.resource.google_secret_manager_secret_version[name][_]
+  attrs := input[_].contents.resource.google_secret_manager_secret_version[name][_]
 }
 
 iam_member_attrs contains attrs if {
   some name
-  attrs := input.resource.google_secret_manager_secret_iam_member[name][_]
+  attrs := input[_].contents.resource.google_secret_manager_secret_iam_member[name][_]
 }
 
 # ── AUTO-REJECT (FE-AP-18): no plaintext secret_data ─────────────────────

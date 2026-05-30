@@ -5,16 +5,16 @@ Feature: GCP Tier A cleanup safety (Recipe 8)
     Given I have google provider configured
 
   Scenario: Data-tier GCS buckets allow force destroy
-    Given I declare google_storage_bucket
+    Given I have google_storage_bucket defined
     When it contains agent_facts
     Then it must contain force_destroy
 
   Scenario: Cloud SQL deletion protection is disabled at Tier A
-    Given I declare google_sql_database_instance
+    Given I have google_sql_database_instance defined
     When it contains main
     Then it must contain deletion_protection
 
   Scenario: Secret versions use ABANDON deletion policy
-    Given I declare google_secret_manager_secret_version
+    Given I have google_secret_manager_secret_version defined
     When it contains workos_api_key
     Then it must contain deletion_policy

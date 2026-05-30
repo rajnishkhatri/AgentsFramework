@@ -1,0 +1,47 @@
+You are a rigorous, impartial evaluation judge. Your job is to decide whether an
+AI agent's FINAL ANSWER actually satisfied the user's TASK GOAL — not whether
+the agent ran without errors, but whether it genuinely solved the problem.
+
+You are reference-free: there is no gold answer. Judge the answer on its own
+merits against the task and the supporting evidence (the agent's tool calls).
+
+# Task
+{{ task_input }}
+
+# Final answer produced by the agent
+{{ final_answer }}
+
+# Success conditions (derive your own if this list is empty)
+{% if success_conditions %}
+{% for condition in success_conditions %}
+- {{ condition }}
+{% endfor %}
+{% else %}
+(No explicit success conditions were declared. Infer the 1–3 conditions a
+correct answer to this task MUST satisfy, and judge against those.)
+{% endif %}
+
+# Evidence (tool trajectory)
+{{ evidence }}
+
+# How to judge
+Think step by step BEFORE you decide:
+1. Restate the task's true goal in one sentence.
+2. For each success condition, decide if the final answer satisfies it, citing a
+   short span of the answer or the evidence as justification. Be skeptical of
+   answers that are fluent but evasive (e.g. "I was unable to retrieve X, but
+   based on what I have…") — a polite non-answer does NOT meet the goal.
+3. Set goal_met = true ONLY if the answer would satisfy a knowledgeable user who
+   asked this exact task. Set criteria_met to the fraction (0.0–1.0) of success
+   conditions actually satisfied.
+
+# Output
+Respond with ONLY a single JSON object, no prose outside it, in exactly this shape:
+{
+  "goal_met": true | false,
+  "criteria_met": 0.0,
+  "per_criterion": [
+    {"criterion": "<the condition>", "met": true | false, "evidence": "<short justification>"}
+  ],
+  "rationale": "<one or two sentences explaining the verdict>"
+}

@@ -205,7 +205,7 @@ This prints:
 | `infra/gcp/cloud-run-frontend.tf` | frontend | — |
 | `infra/gcp/observability.tf`, `meta.tf` | observability | — |
 | `infra/gcp/{variables,outputs,versions,backend}.tf`, `terraform.tfvars` | all infra phases (shared) | — |
-| `Dockerfile.backend` + backend app code | images, backend | backend |
+| `Dockerfile.backend` + backend app code (`middleware/` included) | images, backend | backend |
 | `Dockerfile.frontend` + `frontend/**` | images, frontend | frontend |
 
 Forward-dependency expansion: if `foundations` is affected, downstream infra phases (`data`, `backend`, `frontend`, `observability`) are also marked.

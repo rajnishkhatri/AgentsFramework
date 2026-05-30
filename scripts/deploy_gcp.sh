@@ -187,7 +187,7 @@ detect_changes() {
         _ps_observability=1 ;;
       infra/gcp/variables.tf|infra/gcp/outputs.tf|infra/gcp/versions.tf|infra/gcp/backend.tf|infra/gcp/terraform.tfvars)
         _ps_foundations=1; _ps_data=1; _ps_backend=1; _ps_frontend=1; _ps_observability=1 ;;
-      Dockerfile.backend|agent/*|services/*|components/*|orchestration/*|trust/*|meta/*|prompts/*)
+      Dockerfile.backend|agent/*|services/*|components/*|orchestration/*|trust/*|meta/*|prompts/*|middleware/*)
         REBUILD_BACKEND=1; _ps_images=1; _ps_backend=1 ;;
       Dockerfile.frontend|frontend/*)
         REBUILD_FRONTEND=1; _ps_images=1; _ps_frontend=1 ;;
@@ -241,7 +241,13 @@ tofu_init_backend() {
 tofu_gate() {
   run_in_infra tofu plan -out=tfplan -var-file=terraform.tfvars
   run_in_infra_to_file tfplan.txt tofu show -no-color tfplan
-  run_in_infra conftest test --policy policies/ --parser hcl2 --all-namespaces "*.tf"
+  echo "+ (cd \"${INFRA_DIR}\" && conftest test --policy policies/ --parser hcl2 --all-namespaces --combine *.tf)"
+  if [[ -z "${DRY_RUN}" ]]; then
+    (
+      cd "${INFRA_DIR}"
+      conftest test --policy policies/ --parser hcl2 --all-namespaces --combine *.tf
+    )
+  fi
   run_in_infra_to_file tfplan.json tofu show -json tfplan
   run_in_infra terraform-compliance -p tfplan.json -f features/
 
@@ -385,9 +391,9 @@ phase_images() {
   local ver_tag="agent-backend:${DEPLOY_VERSION}"
   local sha_tag="agent-backend:sha-${SHORT_SHA}"
 
-  echo "+ (cd \"${REPO_ROOT}\" && docker build -f Dockerfile.backend -t \"${ver_tag}\" -t \"${sha_tag}\" .)"
+  echo "+ (cd \"${REPO_ROOT}\" && docker build --platform linux/amd64 -f Dockerfile.backend -t \"${ver_tag}\" -t \"${sha_tag}\" .)"
   if [[ -z "${DRY_RUN}" ]]; then
-    (cd "${REPO_ROOT}" && docker build -f Dockerfile.backend -t "${ver_tag}" -t "${sha_tag}" .)
+    (cd "${REPO_ROOT}" && docker build --platform linux/amd64 -f Dockerfile.backend -t "${ver_tag}" -t "${sha_tag}" .)
   fi
   run_cmd docker tag "${ver_tag}" "${ar_url}/${ver_tag}"
   run_cmd docker tag "${sha_tag}" "${ar_url}/${sha_tag}"
@@ -397,14 +403,25 @@ phase_images() {
   local fver_tag="agent-frontend:${DEPLOY_VERSION}"
   local fsha_tag="agent-frontend:sha-${SHORT_SHA}"
 
-  echo "+ (cd \"${REPO_ROOT}\" && docker build -f Dockerfile.frontend -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
+  echo "+ (cd \"${REPO_ROOT}\" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend -t \"${fver_tag}\" -t \"${fsha_tag}\" ./frontend)"
   if [[ -z "${DRY_RUN}" ]]; then
-    (cd "${REPO_ROOT}" && docker build -f Dockerfile.frontend -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
+    (cd "${REPO_ROOT}" && docker build --platform linux/amd64 -f frontend/Dockerfile.frontend -t "${fver_tag}" -t "${fsha_tag}" ./frontend)
   fi
   run_cmd docker tag "${fver_tag}" "${ar_url}/${fver_tag}"
   run_cmd docker tag "${fsha_tag}" "${ar_url}/${fsha_tag}"
   run_cmd docker push "${ar_url}/${fver_tag}"
   run_cmd docker push "${ar_url}/${fsha_tag}"
+
+  # ── SearXNG sidecar image mirror ──────────────────────────────────────────
+  # Pull the upstream image and push to our Artifact Registry so Cloud Run
+  # can pull it without Docker Hub rate limits.
+  local searxng_tag="searxng:latest"
+  local searxng_upstream="docker.io/searxng/searxng:latest"
+  info "Mirroring SearXNG sidecar image..."
+  run_cmd docker pull --platform linux/amd64 "${searxng_upstream}"
+  run_cmd docker tag "${searxng_upstream}" "${ar_url}/${searxng_tag}"
+  run_cmd docker push "${ar_url}/${searxng_tag}"
+  pass "SearXNG image mirrored to ${ar_url}/${searxng_tag}"
 
   if [[ -n "${DRY_RUN}" ]]; then
     warn "DRY_RUN=1 set; skipping digest lookup and tfvars updates."

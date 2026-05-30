@@ -36,11 +36,21 @@ from services.governance.black_box import BlackBoxRecorder, EventType, TraceEven
 
 
 class FakeExporter:
-    """In-memory TelemetryExporter that records calls and can simulate failures."""
+    """In-memory TelemetryExporter that records calls and can simulate failures.
 
-    def __init__(self, *, fail_until: int = 0) -> None:
+    Args:
+        fail_until: raise on the first N calls (simulates a *raising* exporter;
+            the relay's retry/DLQ loop is exercised).
+        swallow_export: when True, ``export_event`` returns ``False`` instead of
+            recording — simulates a real swallowed SDK error per rule O1 (the
+            S1 bug class), so the relay must dead-letter rather than count it as
+            published.
+    """
+
+    def __init__(self, *, fail_until: int = 0, swallow_export: bool = False) -> None:
         self.events: list[dict[str, Any]] = []
         self._fail_until = fail_until
+        self._swallow_export = swallow_export
         self._call_count = 0
 
     def export_event(
@@ -49,15 +59,18 @@ class FakeExporter:
         name: str,
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
-    ) -> None:
+    ) -> bool:
         self._call_count += 1
         if self._call_count <= self._fail_until:
             raise RuntimeError(f"Simulated failure #{self._call_count}")
+        if self._swallow_export:
+            return False
         self.events.append({
             "name": name,
             "trace_id": trace_id,
             "attributes": dict(attributes) if attributes else {},
         })
+        return True
 
     def release_trace(self, trace_id: str) -> None:
         pass
@@ -191,6 +204,54 @@ class TestDLQPromotion:
             (wf_dir / ".langfuse_failures.jsonl").read_text().strip()
         )
         assert "timestamp" in dlq_entry
+
+
+class TestSwallowedExportSignal:
+    """A swallowed export (``export_event`` returns False) is dead-lettered.
+
+    Regression guard for the S1 root cause: the exporter swallows SDK errors per
+    rule O1 and the relay used to treat that silence as success — advancing the
+    offset and logging "published" while dropping every BlackBox observation.
+    The relay now treats a ``False`` return as a poison line.
+    """
+
+    def test_swallowed_export_goes_to_dlq(self, storage: Path) -> None:
+        ev = _make_event(workflow_id="wf-swallow")
+        _record_events(storage, "wf-swallow", [ev])
+        (storage / "wf-swallow" / ".langfuse_offset").write_text("0")
+
+        swallowing = FakeExporter(swallow_export=True)
+        relay = _build_relay(storage, swallowing, max_retries=0)
+        published = relay.run_once()
+
+        assert published == 0, "Swallowed export must not count as published"
+        assert len(swallowing.events) == 0
+        dlq = storage / "wf-swallow" / ".langfuse_failures.jsonl"
+        assert dlq.exists()
+        dlq_entry = json.loads(dlq.read_text().strip().split("\n")[0])
+        assert "swallowed" in dlq_entry["error"]
+
+    def test_none_return_is_treated_as_success(self, storage: Path) -> None:
+        """Older exporters that return None (not bool) still count as published."""
+
+        class LegacyExporter(FakeExporter):
+            def export_event(self, *, name, trace_id, attributes=None):  # type: ignore[override]
+                self.events.append(
+                    {"name": name, "trace_id": trace_id, "attributes": dict(attributes or {})}
+                )
+                return None  # legacy contract
+
+        ev = _make_event(workflow_id="wf-legacy")
+        _record_events(storage, "wf-legacy", [ev])
+        (storage / "wf-legacy" / ".langfuse_offset").write_text("0")
+
+        legacy = LegacyExporter()
+        relay = _build_relay(storage, legacy, max_retries=0)
+        published = relay.run_once()
+
+        assert published == 1
+        assert len(legacy.events) == 1
+        assert not (storage / "wf-legacy" / ".langfuse_failures.jsonl").exists()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -362,6 +423,36 @@ class TestMtimePickup:
         published = relay.run_once()
         assert published == 1
         assert exporter.events[-1]["name"] == "step.executed"
+
+    def test_mtime_regression(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """Write events, poll, write more within same mtime resolution, poll again.
+        Ensures removing the mtime-only early exit correctly picks up new events
+        when mtime float64 hasn't changed.
+        """
+        import os
+        ev1 = _make_event(EventType.TASK_STARTED, workflow_id="wf-regress")
+        trace_file = _record_events(storage, "wf-regress", [ev1])
+        (storage / "wf-regress" / ".langfuse_offset").write_text("0")
+        
+        # force mtime to a known value
+        os.utime(trace_file, (1000.0, 1000.0))
+
+        relay = _build_relay(storage, exporter)
+        relay.run_once()
+        assert len(exporter.events) == 1
+
+        ev2 = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-regress", step=2)
+        recorder = BlackBoxRecorder(storage_dir=storage)
+        recorder.record(ev2)
+        
+        # force mtime to exactly the SAME value as before
+        os.utime(trace_file, (1000.0, 1000.0))
+
+        published = relay.run_once()
+        assert published == 1, "Should publish new events despite identical mtime"
+        assert len(exporter.events) == 2
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -576,3 +667,121 @@ class TestPartialLineSafety:
         published = relay.run_once()
         assert published == 1
         assert len(exporter.events) == initial_count + 1
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I. DRAIN WORKFLOW — synchronous per-workflow drain
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestDrainWorkflow:
+    def test_drain_workflow_processes_only_target(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev_a = _make_event(workflow_id="wf-a")
+        ev_b = _make_event(workflow_id="wf-b")
+        _record_events(storage, "wf-a", [ev_a])
+        _record_events(storage, "wf-b", [ev_b])
+
+        relay = _build_relay(storage, exporter)
+        
+        # Drain only wf-a
+        processed = relay.drain_workflow("wf-a")
+        assert processed == 1
+        assert len(exporter.events) == 1
+        assert exporter.events[0]["trace_id"] == "wf-a"
+
+        # wf-b is untouched
+        offset_b = storage / "wf-b" / ".langfuse_offset"
+        assert not offset_b.exists() or int(offset_b.read_text().strip()) == 0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I8 — single-writer serialization + at-least-once dedup
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _CountingFakeSdkClient:
+    """Minimal Langfuse SDK v4 stand-in counting real (deduped) observations."""
+
+    def __init__(self) -> None:
+        self.spans: list[dict] = []
+        self.flushed = False
+
+    def start_observation(self, *, trace_context=None, name, **kwargs):
+        self.spans.append({"name": name, "trace_id": (trace_context or {}).get("trace_id")})
+
+        class _Obs:
+            def end(self_inner, **_):
+                pass
+
+            def start_observation(self_inner, *, name, **kw):
+                return _Obs()
+
+        return _Obs()
+
+    def flush(self) -> None:
+        self.flushed = True
+
+
+class TestSingleWriterIdempotency:
+    """Drain after a full poll exports the tail zero extra times; an at-least-once
+    re-read (the run_forever + drain race) yields exactly one observation per
+    event_id once it reaches the real exporter's dedup guard (I8).
+    """
+
+    def test_drain_after_full_poll_publishes_nothing(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-tail")
+        _record_events(storage, "wf-tail", [ev])
+
+        relay = _build_relay(storage, exporter)
+        assert relay.run_once() == 1
+        # The SSE-finally drain races the background poll; with the offset fully
+        # advanced it must publish zero extra events.
+        assert relay.drain_workflow("wf-tail") == 0
+        assert len(exporter.events) == 1
+
+    def test_offset_write_is_atomic_no_temp_left_behind(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(workflow_id="wf-atomic")
+        _record_events(storage, "wf-atomic", [ev])
+
+        relay = _build_relay(storage, exporter)
+        relay.run_once()
+
+        wf_dir = storage / "wf-atomic"
+        assert (wf_dir / ".langfuse_offset").exists()
+        assert not (wf_dir / ".langfuse_offset.tmp").exists()
+
+    def test_at_least_once_reread_dedupes_at_exporter(
+        self, storage: Path
+    ) -> None:
+        """A re-read of the same offset window (crash/race) exports once.
+
+        Uses the real ``LangfuseCloudExporter`` so the per-trace ``event_id``
+        dedup guard is exercised end to end, not a test re-implementation.
+        """
+        from middleware.adapters.observability.langfuse_cloud_exporter import (
+            LangfuseCloudExporter,
+        )
+
+        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-race")
+        _record_events(storage, "wf-race", [ev])
+
+        sdk = _CountingFakeSdkClient()
+        real_exporter = LangfuseCloudExporter(
+            public_key="pk", secret_key="sk", sdk_client=sdk
+        )
+        relay = _build_relay(storage, real_exporter)
+
+        relay.run_once()
+        # Simulate the at-least-once race: the offset was not yet durable, so a
+        # concurrent reader re-consumes the same window.
+        (storage / "wf-race" / ".langfuse_offset").write_text("0")
+        relay.run_once()
+
+        task_spans = [s for s in sdk.spans if s["name"] == "task.completed"]
+        assert len(task_spans) == 1, "duplicate event_id must export exactly once"

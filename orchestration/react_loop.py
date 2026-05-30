@@ -23,8 +23,11 @@ from components.evaluator import (
     build_step_result,
     check_continuation,
     classify_outcome,
+    count_trailing_repeats as _count_trailing_repeats,
+    evaluate_task_outcome,
     parse_llm_response,
 )
+from components.goal_judge import GoalJudge
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
 from components.plan_builder import validate_plan_mece
@@ -52,7 +55,6 @@ from services.summarizer import (
     should_compact_trajectory,
 )
 from services.tools.registry import ToolExecutionResult, ToolRegistry
-from utils.debug_fc2601 import debug_fc2601
 
 logger = logging.getLogger("orchestration.react_loop")
 
@@ -401,6 +403,21 @@ def build_graph(
     )
     output_validator = GuardRailValidator(pii_rules() + api_key_rules())
 
+    # I2: task-adaptive goal judge, flag-gated (off in CI). When enabled it
+    # overlays goal_met/criteria_met/unmet_conditions onto the TaskOutcome; the
+    # deterministic keyword heuristic is the fallback when disabled or on error.
+    goal_judge: GoalJudge | None = None
+    if getattr(agent_config, "goal_judge_enabled", False):
+        judge_profile = next(
+            (m for m in agent_config.models if m.tier == "fast"),
+            default_fast_profile(),
+        )
+        goal_judge = GoalJudge(
+            llm_service=llm_service,
+            prompt_service=prompt_service,
+            judge_profile=judge_profile,
+        )
+
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
     # ── Story 1.2 + 1.4: guard_input_node with rejection branching + AgentFacts ──
@@ -665,6 +682,7 @@ def build_graph(
             workflow_id=workflow_id,
             event_type=EventType.MODEL_SELECTED,
             timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
             details={
                 "model": profile.name,
                 "reason": reason,
@@ -723,21 +741,6 @@ def build_graph(
 
         # Story 1.1: build full multi-turn message list
         existing_messages = state.get("messages", [])
-        # region agent log
-        lm = existing_messages[-1] if existing_messages else None
-        debug_fc2601(
-            hypothesis_id="H-graph",
-            location="react_loop.call_llm_node",
-            message="enter",
-            data={
-                "n_msgs": len(existing_messages),
-                "step_count": state.get("step_count", 0),
-                "wf_tail": str(workflow_id)[-12:] if workflow_id else "",
-                "last_typ": type(lm).__name__ if lm is not None else None,
-                "last_has_tc": bool(getattr(lm, "tool_calls", None)) if lm is not None else None,
-            },
-        )
-        # endregion agent log
         if existing_messages:
             lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
         else:
@@ -746,6 +749,29 @@ def build_graph(
                 HumanMessage(content=state.get("task_input", "")),
             ]
 
+        # ── No-progress graceful wrap-up: inject directive + strip tools ──
+        repeats = _count_trailing_repeats(state.get("tool_results") or [])
+        inject_wrapup = (
+            repeats >= agent_config.no_progress_repeat_threshold
+            and not state.get("no_progress_directive_sent", False)
+        )
+        effective_tool_schemas = tool_schemas or None
+        if inject_wrapup:
+            wrapup_directive = prompt_service.render_prompt(
+                "no_progress_wrapup",
+                task_input=state.get("task_input", ""),
+            )
+            lc_messages.append(HumanMessage(content=wrapup_directive))
+            effective_tool_schemas = None
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.STEP_PLANNED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={"no_progress": True, "repeats": repeats},
+            ))
+
         start_time = time.time()
         error: Exception | None = None
         try:
@@ -753,7 +779,7 @@ def build_graph(
             response = await llm_service.invoke_with_tools(
                 profile,
                 lc_messages,
-                tool_schemas=tool_schemas or None,
+                tool_schemas=effective_tool_schemas,
             )
             latency_ms = (time.time() - start_time) * 1000
         except Exception as e:
@@ -865,6 +891,8 @@ def build_graph(
             "current_token_count": tokens_in + tokens_out,
             "current_workflow_phase": WorkflowPhase.MODEL_INVOCATION.value,
         }
+        if inject_wrapup:
+            result["no_progress_directive_sent"] = True
         if error is not None:
             result["last_llm_error"] = str(error)
             result["last_llm_error_code"] = getattr(error, "status_code", None)
@@ -1096,6 +1124,88 @@ def build_graph(
             backoff_until=backoff_until,
         )
         if continuation == "done":
+            # I2: evaluate final answer against plan success_conditions
+            plan_ref = state.get("plan_ref", "")
+            plan_data: dict[str, Any] = {}
+            if plan_ref:
+                plan_json_str = (state.get("files") or {}).get(plan_ref, "")
+                if plan_json_str:
+                    try:
+                        plan_data = json.loads(plan_json_str)
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+
+            plan_artifact = plan_data.get("artifact", {})
+            success_conditions = plan_artifact.get("success_conditions", [])
+            plan_steps = plan_artifact.get("ordered_steps", [])
+
+            termination_reason = outcome
+            if updated_step_count >= agent_config.max_steps:
+                termination_reason = "max_steps"
+            elif updated_cost >= agent_config.max_cost_usd:
+                termination_reason = "budget_exceeded"
+            else:
+                # I2: loop-exhaustion / no-progress wrap-up is the Austin
+                # symptom — a clean final_answer produced after the agent
+                # thrashed. Mark it unclean so evaluate_task_outcome downgrades
+                # success -> partial instead of scoring corrupt-success.
+                repeats = _count_trailing_repeats(state.get("tool_results") or [])
+                if (
+                    state.get("no_progress_directive_sent")
+                    or repeats >= agent_config.no_progress_repeat_threshold
+                ):
+                    termination_reason = "no_progress"
+
+            task_outcome = evaluate_task_outcome(
+                final_answer=content,
+                success_conditions=success_conditions,
+                plan_steps=plan_steps,
+                termination_reason=termination_reason,
+                tool_results=state.get("tool_results"),
+            )
+
+            # I2: overlay a task-adaptive LLM-as-judge verdict onto the goal
+            # signals. The judge NEVER changes ``outcome`` (the deterministic
+            # process floor owns that); it only replaces the fragile keyword
+            # goal_met/criteria_met/unmet_conditions. Failures fall back to the
+            # heuristic so the judge is best-effort, never load-bearing.
+            if goal_judge is not None and content:
+                try:
+                    verdict = await goal_judge.evaluate(
+                        task_input=state.get("task_input", ""),
+                        final_answer=content,
+                        success_conditions=success_conditions,
+                        evidence=state.get("tool_results") or [],
+                    )
+                    task_outcome = task_outcome.model_copy(
+                        update={
+                            "goal_met": verdict.goal_met,
+                            "criteria_met": round(verdict.criteria_met, 3),
+                            "unmet_conditions": verdict.unmet_conditions,
+                        }
+                    )
+                    from services import eval_capture
+
+                    await eval_capture.record(
+                        target="goal_judge",
+                        ai_input={
+                            "task_input": state.get("task_input", "")[:500],
+                            "success_conditions": success_conditions,
+                        },
+                        ai_response=verdict.model_dump(),
+                        config=config,
+                        step=updated_step_count,
+                        model=goal_judge.model_name,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "goal_judge failed; falling back to heuristic: %s: %s",
+                        type(exc).__name__,
+                        exc,
+                    )
+
+            effective_outcome = task_outcome.outcome
+
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
@@ -1103,10 +1213,17 @@ def build_graph(
                 timestamp=datetime.now(UTC),
                 step=updated_step_count,
                 details={
-                    "outcome": outcome,
+                    "outcome": effective_outcome,
                     "step_count": updated_step_count,
                     "total_cost_usd": updated_cost,
                     "error_type": error_type,
+                    "task_completion_score": task_outcome.score,
+                    "criteria_met": task_outcome.criteria_met,
+                    "branch_coverage": task_outcome.branch_coverage,
+                    "unmet_conditions": task_outcome.unmet_conditions,
+                    "termination_clean": task_outcome.termination_clean,
+                    "termination_reason": task_outcome.termination_reason,
+                    "goal_met": task_outcome.goal_met,
                 },
             ))
 
@@ -1134,11 +1251,18 @@ def build_graph(
         Without this, ``check_continuation`` treats post-tool ``success`` as a
         terminal answer and the graph ends after ``execute_tool`` — only the
         tool-call preview is streamed, never the final model response.
+
+        Also detects repeated tool calls (no-progress) and terminates the loop
+        when the agent re-invokes the same tool with the same input or gets the
+        same output more than ``no_progress_repeat_threshold`` times in a row.
         """
         messages = state.get("messages") or []
         has_pending_tool_result = bool(
             messages and isinstance(messages[-1], ToolMessage)
         )
+
+        repeated_count = _count_trailing_repeats(state.get("tool_results") or [])
+
         result = check_continuation(
             step_count=state.get("step_count", 0),
             total_cost_usd=state.get("total_cost_usd", 0.0),
@@ -1147,26 +1271,10 @@ def build_graph(
             agent_config=agent_config,
             has_pending_tool_result=has_pending_tool_result,
             backoff_until=state.get("backoff_until"),
+            repeated_tool_calls=repeated_count,
+            no_progress_directive_sent=state.get("no_progress_directive_sent", False),
         )
         branch = "continue" if result == "continue" else "done"
-        # region agent log
-        _lm = messages[-1] if messages else None
-        debug_fc2601(
-            hypothesis_id="H-cont",
-            location="react_loop._should_continue",
-            message="routing",
-            data={
-                "branch": branch,
-                "chk_raw": result,
-                "pending_tool_flag": has_pending_tool_result,
-                "last_cls": type(_lm).__name__ if _lm is not None else None,
-                "isinstance_ToolMessage": isinstance(_lm, ToolMessage) if _lm is not None else False,
-                "step_count": state.get("step_count", 0),
-                "last_outcome": state.get("last_outcome", ""),
-                "n_msgs": len(messages),
-            },
-        )
-        # endregion agent log
         return branch
 
     builder = StateGraph(AgentState)

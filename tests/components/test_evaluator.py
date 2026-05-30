@@ -252,3 +252,385 @@ class TestCheckContinuation:
             now=now,
         )
         assert result == "done"
+
+
+class TestCheckContinuationNoProgress:
+    """No-progress graduated backstop: failure paths first (TAP-4 prevention).
+
+    Three tiers:
+      1. hard_limit: terminates regardless of directive flag.
+      2. threshold + directive_sent: model ignored wrap-up, terminate.
+      3. threshold + not directive_sent: allow one synthesis pass (continue).
+    """
+
+    # ── Tier 1: hard_limit failsafe (absolute cap) ──
+
+    def test_stops_at_hard_limit_regardless_of_directive_flag(self):
+        """Hard limit terminates even when directive was NOT sent."""
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=5,
+            no_progress_directive_sent=False,
+        )
+        assert result == "done"
+
+    def test_stops_above_hard_limit_with_directive_sent(self):
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=6,
+            no_progress_directive_sent=True,
+        )
+        assert result == "done"
+
+    # ── Tier 2: threshold + directive_sent -> done ──
+
+    def test_stops_at_threshold_when_directive_was_sent(self):
+        """Model ignored the wrap-up directive: terminate."""
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=3,
+            no_progress_directive_sent=True,
+        )
+        assert result == "done"
+
+    def test_stops_above_threshold_when_directive_was_sent(self):
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type=None,
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=4,
+            no_progress_directive_sent=True,
+        )
+        assert result == "done"
+
+    # ── Tier 3: threshold + not directive_sent -> continue (synthesis pass) ──
+
+    def test_continues_at_threshold_when_directive_not_sent(self):
+        """Allows one synthesis pass before termination."""
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=3,
+            no_progress_directive_sent=False,
+        )
+        assert result == "continue"
+
+    def test_continues_above_threshold_below_hard_limit_when_directive_not_sent(self):
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=4,
+            no_progress_directive_sent=False,
+        )
+        assert result == "continue"
+
+    # ── Below threshold: always continue ──
+
+    def test_continues_when_repeated_below_threshold(self):
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=2,
+        )
+        assert result == "continue"
+
+    def test_zero_repeats_does_not_trigger(self):
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type="retryable",
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=0,
+        )
+        assert result == "continue"
+
+    def test_no_progress_overrides_pending_tool_result(self):
+        """Even with a pending tool result, hard limit causes termination."""
+        result = check_continuation(
+            step_count=5,
+            total_cost_usd=0.01,
+            last_outcome="failure",
+            last_error_type=None,
+            agent_config=AgentConfig(
+                max_steps=20, max_cost_usd=1.0,
+                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+            ),
+            has_pending_tool_result=True,
+            repeated_tool_calls=5,
+        )
+        assert result == "done"
+
+
+class TestEvaluateTaskOutcome:
+    """L2 Reproducible: Task outcome evaluation (Protocol B — contract tests).
+
+    Failure paths first per TAP-4. Tests the deterministic process-level
+    evaluation: clean termination + substance → outcome classification.
+    """
+
+    def test_clean_termination_with_substantive_answer_is_success(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The capital of France is Paris.",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.outcome == "success"
+        assert result.termination_clean is True
+        assert result.score > 0.7
+
+    def test_clean_termination_empty_answer_is_failed(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.outcome == "failed"
+        assert result.termination_clean is True
+
+    def test_unclean_termination_with_answer_is_partial(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="I found some information about the weather.",
+            success_conditions=["Provide today's forecast"],
+            plan_steps=[{"goal": "Find weather data"}],
+            termination_reason="max_steps",
+        )
+        assert result.outcome == "partial"
+        assert result.termination_clean is False
+
+    def test_error_content_is_treated_as_failed(self):
+        """Error-formatted content is not a substantive answer."""
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Error: model returned 401 unauthorized",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="failure",
+        )
+        assert result.outcome == "failed"
+        assert result.termination_clean is False
+
+    def test_budget_exceeded_with_answer_is_partial(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Based on what I found, the answer is approximately 42.",
+            success_conditions=["Exact numeric answer required"],
+            plan_steps=[],
+            termination_reason="budget_exceeded",
+        )
+        assert result.outcome == "partial"
+        assert result.termination_clean is False
+
+    def test_branch_coverage_calculated_from_plan_steps(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The weather in Austin Texas is sunny and 75 degrees today.",
+            success_conditions=[],
+            plan_steps=[
+                {"goal": "Find current weather in Austin Texas"},
+                {"goal": "Report temperature and conditions"},
+            ],
+            termination_reason="success",
+        )
+        assert result.outcome == "success"
+        assert result.branch_coverage > 0.0
+
+    def test_unmet_conditions_reported(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Hello world",
+            success_conditions=[
+                "Provide detailed analysis of quantum computing",
+                "Include at least 3 references",
+            ],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.outcome == "success"  # Process succeeded
+        assert len(result.unmet_conditions) >= 1  # But conditions unmet (informational)
+
+    def test_tool_results_contribute_to_coverage(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The weather is sunny.",
+            success_conditions=[],
+            plan_steps=[{"goal": "Search for weather forecast in Austin"}],
+            termination_reason="success",
+            tool_results=[
+                {"tool_output": "Austin Texas weather forecast: sunny, high 75F"},
+            ],
+        )
+        assert result.outcome == "success"
+        assert result.branch_coverage > 0.3
+
+
+class TestI2OutcomeCorrectness:
+    """I2: loop-exhaustion (no_progress) must downgrade corrupt-success to partial.
+
+    Failure path first (TAP-4). The Austin symptom: the no-progress wrap-up
+    terminates via a clean ``final_answer`` so a naive evaluator scores
+    ``success``. Treating ``no_progress`` as unclean fixes the headline bug.
+    Goal progress is a separate, NON-gating signal (no determinism theater).
+    """
+
+    # ── The corrupt-success fix: no_progress -> partial ──
+
+    def test_no_progress_with_substantive_answer_is_partial(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Based on the information gathered, the weather looks sunny.",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="no_progress",
+        )
+        assert result.outcome == "partial"
+        assert result.termination_clean is False
+        assert result.termination_reason == "no_progress"
+
+    def test_no_progress_empty_answer_is_failed(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="no_progress",
+        )
+        assert result.outcome == "failed"
+        assert result.termination_clean is False
+
+    def test_clean_success_still_succeeds(self):
+        """Sanity: a genuinely clean run is NOT downgraded."""
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The capital of France is Paris.",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.outcome == "success"
+        assert result.termination_reason == "success"
+
+    # ── goal_met: non-gating goal-progress signal ──
+
+    def test_goal_met_none_when_no_conditions(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The capital of France is Paris.",
+            success_conditions=[],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.goal_met is None
+
+    def test_goal_met_true_when_conditions_satisfied(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="The capital of France is Paris, a major European city.",
+            success_conditions=["Identify the capital city of France"],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.goal_met is True
+
+    def test_goal_met_false_when_conditions_unmet(self):
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Hello world.",
+            success_conditions=[
+                "Provide a detailed analysis of quantum entanglement experiments",
+            ],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.goal_met is False
+
+    def test_goal_met_does_not_change_outcome(self):
+        """goal_met=False must NOT downgrade a clean, substantive success."""
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="Here is a thorough and substantive response to the request.",
+            success_conditions=[
+                "Provide a detailed analysis of quantum entanglement experiments",
+            ],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        # Process succeeded (clean + substantive) ...
+        assert result.outcome == "success"
+        # ... even though the keyword-overlap goal signal says the goal is unmet.
+        assert result.goal_met is False

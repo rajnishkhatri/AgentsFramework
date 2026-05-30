@@ -13,17 +13,17 @@ import future.keywords.in
 
 dashboard_attrs contains attrs if {
   some name
-  attrs := input.resource.google_monitoring_dashboard[name][_]
+  attrs := input[_].contents.resource.google_monitoring_dashboard[name][_]
 }
 
 alert_policy_attrs contains attrs if {
   some name
-  attrs := input.resource.google_monitoring_alert_policy[name][_]
+  attrs := input[_].contents.resource.google_monitoring_alert_policy[name][_]
 }
 
 budget_attrs contains attrs if {
   some name
-  attrs := input.resource.google_billing_budget[name][_]
+  attrs := input[_].contents.resource.google_billing_budget[name][_]
 }
 
 # ── Dashboard must exist ────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ deny contains msg if {
 
 deny contains msg if {
   some name
-  attrs := input.resource.google_monitoring_alert_policy[name][_]
+  attrs := input[_].contents.resource.google_monitoring_alert_policy[name][_]
   name == "backend_5xx_rate"
   some cond in attrs.conditions
   count(cond.condition_threshold) > 0
@@ -60,7 +60,7 @@ deny contains msg if {
 
 deny contains msg if {
   some name
-  attrs := input.resource.google_billing_budget[name][_]
+  attrs := input[_].contents.resource.google_billing_budget[name][_]
   not attrs.count
   msg := sprintf(
     "Recipe 7: google_billing_budget.%s must use count gate on billing_account_id.",
