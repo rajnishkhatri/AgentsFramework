@@ -232,7 +232,7 @@ class TestProviderSelection:
         from services.tools.web_search import execute_web_search
 
         result = execute_web_search({"query": "fallback test"})
-        assert "stub" in result.lower() or "example.com" in result
+        assert "stub" in result.lower()
 
     def test_stub_explicit(self, monkeypatch):
         monkeypatch.setenv("WEB_SEARCH_PROVIDER", "stub")
