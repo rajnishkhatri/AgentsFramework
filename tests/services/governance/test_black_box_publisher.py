@@ -268,6 +268,162 @@ class TestEdgeCases:
 # ─────────────────────────────────────────────────────────────────────
 
 
+# ─────────────────────────────────────────────────────────────────────
+# H. I4 — numeric telemetry keys survive redaction unredacted
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestNumericKeysSurviveRedaction:
+    """Failure path first: the credit-card pattern MUST NOT corrupt numeric telemetry.
+
+    Regression guard for I4: a float like ``total_cost_usd=4242424242424242.0``
+    is credit-card-shaped and was being redacted to ``[REDACTED]`` before the
+    safe-key exemption, silently destroying cost/latency metrics.
+    """
+
+    @pytest.mark.parametrize(
+        "key,value",
+        [
+            ("latency_ms", 1234.5),
+            ("total_cost_usd", 0.0042),
+            ("cost_usd", 0.0042),
+            ("tokens_in", 512),
+            ("tokens_out", 256),
+            ("input_tokens", 512),
+            ("output_tokens", 256),
+            ("step_count", 7),
+            ("step", 3),
+            ("budget_limit", 1.0),
+            ("total_tokens", 768),
+        ],
+    )
+    def test_safe_numeric_key_survives_unredacted(self, key, value) -> None:
+        result = redact_details({key: value})
+        assert result[key] == str(value)
+        assert "[REDACTED]" not in result[key]
+
+    def test_credit_card_shaped_float_on_safe_key_not_redacted(self) -> None:
+        """The exact I4 regression: a 16-digit cost float must survive."""
+        cc_shaped = 4242424242424242.0
+        result = redact_details({"total_cost_usd": cc_shaped})
+        assert "[REDACTED]" not in result["total_cost_usd"]
+        assert result["total_cost_usd"].startswith("424242424242424")
+
+    def test_same_value_on_unsafe_key_is_still_redacted(self) -> None:
+        """Proves the redaction is still live — only the safe keys are exempt."""
+        result = redact_details({"note": "4242424242424242"})
+        assert "[REDACTED]" in result["note"]
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I. I5 — native generation field promotion
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestNativeGenerationFields:
+    """MODEL_SELECTED / STEP_EXECUTED promote native model/usage/cost fields."""
+
+    def test_model_selected_promotes_model(self) -> None:
+        ev = _event(EventType.MODEL_SELECTED, details={"model": "gpt-4o-mini"})
+        result = to_export_kwargs(ev)
+        assert result["model"] == "gpt-4o-mini"
+
+    def test_model_selected_promotes_usage_and_cost(self) -> None:
+        ev = _event(
+            EventType.MODEL_SELECTED,
+            details={
+                "model": "gpt-4o-mini",
+                "tokens_in": 100,
+                "tokens_out": 50,
+                "cost_usd": 0.0012,
+            },
+        )
+        result = to_export_kwargs(ev)
+        assert result["usage"] == {"input": 100, "output": 50, "total": 150}
+        assert result["cost"] == pytest.approx(0.0012)
+
+    def test_step_executed_promotes_usage_and_cost(self) -> None:
+        ev = _event(
+            EventType.STEP_EXECUTED,
+            details={
+                "model": "gpt-4o-mini",
+                "tokens_in": 80,
+                "tokens_out": 30,
+                "cost_usd": 0.0009,
+            },
+        )
+        result = to_export_kwargs(ev)
+        assert result["model"] == "gpt-4o-mini"
+        assert result["usage"] == {"input": 80, "output": 30, "total": 110}
+        assert result["cost"] == pytest.approx(0.0009)
+
+    def test_input_output_tokens_alias_promoted(self) -> None:
+        """GENERATION events may carry input_tokens/output_tokens aliases."""
+        ev = _event(
+            EventType.MODEL_SELECTED,
+            details={"model": "m", "input_tokens": 10, "output_tokens": 5},
+        )
+        result = to_export_kwargs(ev)
+        assert result["usage"] == {"input": 10, "output": 5, "total": 15}
+
+    def test_non_generation_event_does_not_promote_native_fields(self) -> None:
+        """Failure path: a tool event must NOT leak model/usage/cost kwargs."""
+        ev = _event(
+            EventType.TOOL_CALLED,
+            details={"tool": "shell", "model": "gpt-4o-mini", "cost_usd": 0.01},
+        )
+        result = to_export_kwargs(ev)
+        assert "model" not in result
+        assert "usage" not in result
+        assert "cost" not in result
+
+    def test_task_event_does_not_promote_native_fields(self) -> None:
+        ev = _event(EventType.TASK_COMPLETED, details={"cost_usd": 0.02}, step=None)
+        result = to_export_kwargs(ev)
+        assert "model" not in result
+        assert "usage" not in result
+        assert "cost" not in result
+
+
+# ─────────────────────────────────────────────────────────────────────
+# J. I6 — step-based parent observation hierarchy
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestParentObservationHierarchy:
+    """Non-task events nest under a per-step parent; task events are roots."""
+
+    @pytest.mark.parametrize(
+        "event_type",
+        [
+            EventType.STEP_PLANNED,
+            EventType.STEP_EXECUTED,
+            EventType.TOOL_CALLED,
+            EventType.MODEL_SELECTED,
+            EventType.GUARDRAIL_CHECKED,
+            EventType.PARAMETER_CHANGED,
+            EventType.ERROR_OCCURRED,
+        ],
+    )
+    def test_non_task_event_gets_step_parent(self, event_type) -> None:
+        ev = _event(event_type, step=4, workflow_id="wf-xyz")
+        result = to_export_kwargs(ev)
+        assert result["parent_observation_id"] == "wf-xyz:step:4"
+
+    @pytest.mark.parametrize(
+        "event_type", [EventType.TASK_STARTED, EventType.TASK_COMPLETED]
+    )
+    def test_task_event_is_root(self, event_type) -> None:
+        ev = _event(event_type, step=4, workflow_id="wf-xyz")
+        result = to_export_kwargs(ev)
+        assert "parent_observation_id" not in result
+
+    def test_event_without_step_has_no_parent(self) -> None:
+        ev = _event(EventType.STEP_PLANNED, step=None)
+        result = to_export_kwargs(ev)
+        assert "parent_observation_id" not in result
+
+
 class TestLayeringInvariant:
     """Architecture invariant: publisher has zero SDK imports."""
 

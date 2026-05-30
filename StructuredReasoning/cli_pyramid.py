@@ -44,12 +44,23 @@ def _build_default_tool_registry() -> Any:
     from services.tools.file_io import FileIOInput, execute_file_io
     from services.tools.registry import ToolDefinition, ToolRegistry
     from services.tools.shell import ShellToolInput, execute_shell
-    from services.tools.web_search import WebSearchInput, execute_web_search
+    from services.tools.web_search import WebSearchInput, build_web_search_executor
+    from services.tools.search.stub import StubProvider
+
+    search_provider_name = os.environ.get("WEB_SEARCH_PROVIDER", "stub").lower()
+    if search_provider_name == "searxng":
+        from services.tools.search.searxng import SearxngProvider
+
+        _provider = SearxngProvider(base_url=os.environ.get("SEARXNG_URL", "http://localhost:8888"))
+    else:
+        _provider = StubProvider()
 
     return ToolRegistry({
         "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=True),
         "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=True),
-        "web_search": ToolDefinition(executor=execute_web_search, schema=WebSearchInput, cacheable=False),
+        "web_search": ToolDefinition(
+            executor=build_web_search_executor(_provider), schema=WebSearchInput, cacheable=True
+        ),
     })
 
 

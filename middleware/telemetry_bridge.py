@@ -33,10 +33,16 @@ from middleware.ports.telemetry_exporter import TelemetryExporter
 
 logger = logging.getLogger("middleware.telemetry_bridge")
 
+
 __all__ = ["emit_domain_event", "emit_run_finished"]
 
 _MAX_FIELD_BYTES = 4096
+# ``LLMTokenEmitted`` is intercepted earlier in ``emit_domain_event`` (its deltas
+# are buffered and folded into the matching ``llm.finished`` export), so it never
+# produces a direct observation — it belongs in the skipped set alongside the
+# events that are dropped outright.
 _SKIPPED_TYPES = (LLMTokenEmitted, StateMutated, ToolCallEnded)
+_llm_token_buffers: dict[tuple[str, str], list[str]] = {}
 
 
 def _truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
@@ -79,11 +85,22 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
     elif isinstance(event, LLMMessageStarted):
         name = "llm.started"
         attrs["message_id"] = event.message_id
+        if event.input_text:
+            attrs["input_text"] = _truncate(event.input_text)
 
     elif isinstance(event, LLMMessageEnded):
         name = "llm.finished"
         attrs["message_id"] = event.message_id
-        attrs["__output"] = {"status": "completed", "message_id": event.message_id}
+        key = (event.trace_id, event.message_id)
+        buffered = "".join(_llm_token_buffers.pop(key, []))
+        content = event.output_text or buffered or None
+        output: dict[str, Any] = {
+            "status": "completed",
+            "message_id": event.message_id,
+        }
+        if content:
+            output["content"] = _truncate(content)
+        attrs["__output"] = output
 
     else:
         return None
@@ -99,16 +116,31 @@ def emit_domain_event(
     domain_event: DomainEvent,
     *,
     subject: str | None = None,
+    release_on_finish: bool = True,
 ) -> None:
     """Map a DomainEvent to a Langfuse export call via the TelemetryExporter port.
 
-    Skipped events (LLMTokenEmitted, StateMutated, ToolCallEnded) produce
-    zero export calls. On RunFinishedDomain, release_trace() is called to
-    free in-memory handles.
+    ``LLMTokenEmitted`` events are buffered and folded into the matching
+    ``llm.finished`` export. Skipped events (``StateMutated``, ``ToolCallEnded``)
+    produce zero export calls. On RunFinishedDomain, release_trace() is called
+    to free in-memory handles.
+
+    ``release_on_finish`` (I6): when ``False``, ``release_trace`` is **not**
+    called on ``RunFinishedDomain``. The SSE ``finally`` in ``app_prod`` sets
+    this so it can own teardown ordering — drain the BlackBox relay tail
+    *before* closing step spans. Releasing eagerly here would close every
+    ``step.N`` span before the relay's late events are exported, so the late
+    events would recreate fresh spans and the trace tree shape would differ run
+    to run (the I6 nondeterministic-nesting symptom).
 
     MUST NOT raise — per O1, telemetry failures are silent.
     """
     try:
+        if isinstance(domain_event, LLMTokenEmitted):
+            key = (domain_event.trace_id, domain_event.message_id)
+            _llm_token_buffers.setdefault(key, []).append(domain_event.delta)
+            return
+
         result = _build_attributes(domain_event, subject)
         if result is None:
             return
@@ -116,7 +148,7 @@ def emit_domain_event(
         name, attrs = result
         exporter.export_event(name=name, trace_id=domain_event.trace_id, attributes=attrs)
 
-        if isinstance(domain_event, RunFinishedDomain):
+        if isinstance(domain_event, RunFinishedDomain) and release_on_finish:
             exporter.release_trace(domain_event.trace_id)
     except Exception as exc:
         logger.debug(
@@ -135,12 +167,16 @@ def emit_run_finished(
     duration_ms: int,
     errored: bool,
     subject: str | None = None,
+    release: bool = True,
 ) -> None:
     """Emit a standalone run.finished event (safety-net for error paths).
 
     Used by app_prod.py's finally block when RunFinishedDomain was never
     received from the stream (e.g. the stream errored early). Calls
     release_trace() after emission.
+
+    ``release`` (I6): when ``False`` the caller owns teardown ordering and is
+    responsible for calling ``release_trace`` *after* the relay tail is drained.
 
     MUST NOT raise — per O1, telemetry failures are silent.
     """
@@ -155,7 +191,8 @@ def emit_run_finished(
             attrs["subject"] = subject
 
         exporter.export_event(name="run.finished", trace_id=trace_id, attributes=attrs)
-        exporter.release_trace(trace_id)
+        if release:
+            exporter.release_trace(trace_id)
     except Exception as exc:
         logger.debug(
             "telemetry_bridge emit_run_finished swallowed: %s: %s",

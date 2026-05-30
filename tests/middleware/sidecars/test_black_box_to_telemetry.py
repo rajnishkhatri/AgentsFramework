@@ -694,3 +694,94 @@ class TestDrainWorkflow:
         # wf-b is untouched
         offset_b = storage / "wf-b" / ".langfuse_offset"
         assert not offset_b.exists() or int(offset_b.read_text().strip()) == 0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I8 — single-writer serialization + at-least-once dedup
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _CountingFakeSdkClient:
+    """Minimal Langfuse SDK v4 stand-in counting real (deduped) observations."""
+
+    def __init__(self) -> None:
+        self.spans: list[dict] = []
+        self.flushed = False
+
+    def start_observation(self, *, trace_context=None, name, **kwargs):
+        self.spans.append({"name": name, "trace_id": (trace_context or {}).get("trace_id")})
+
+        class _Obs:
+            def end(self_inner, **_):
+                pass
+
+            def start_observation(self_inner, *, name, **kw):
+                return _Obs()
+
+        return _Obs()
+
+    def flush(self) -> None:
+        self.flushed = True
+
+
+class TestSingleWriterIdempotency:
+    """Drain after a full poll exports the tail zero extra times; an at-least-once
+    re-read (the run_forever + drain race) yields exactly one observation per
+    event_id once it reaches the real exporter's dedup guard (I8).
+    """
+
+    def test_drain_after_full_poll_publishes_nothing(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-tail")
+        _record_events(storage, "wf-tail", [ev])
+
+        relay = _build_relay(storage, exporter)
+        assert relay.run_once() == 1
+        # The SSE-finally drain races the background poll; with the offset fully
+        # advanced it must publish zero extra events.
+        assert relay.drain_workflow("wf-tail") == 0
+        assert len(exporter.events) == 1
+
+    def test_offset_write_is_atomic_no_temp_left_behind(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(workflow_id="wf-atomic")
+        _record_events(storage, "wf-atomic", [ev])
+
+        relay = _build_relay(storage, exporter)
+        relay.run_once()
+
+        wf_dir = storage / "wf-atomic"
+        assert (wf_dir / ".langfuse_offset").exists()
+        assert not (wf_dir / ".langfuse_offset.tmp").exists()
+
+    def test_at_least_once_reread_dedupes_at_exporter(
+        self, storage: Path
+    ) -> None:
+        """A re-read of the same offset window (crash/race) exports once.
+
+        Uses the real ``LangfuseCloudExporter`` so the per-trace ``event_id``
+        dedup guard is exercised end to end, not a test re-implementation.
+        """
+        from middleware.adapters.observability.langfuse_cloud_exporter import (
+            LangfuseCloudExporter,
+        )
+
+        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-race")
+        _record_events(storage, "wf-race", [ev])
+
+        sdk = _CountingFakeSdkClient()
+        real_exporter = LangfuseCloudExporter(
+            public_key="pk", secret_key="sk", sdk_client=sdk
+        )
+        relay = _build_relay(storage, real_exporter)
+
+        relay.run_once()
+        # Simulate the at-least-once race: the offset was not yet durable, so a
+        # concurrent reader re-consumes the same window.
+        (storage / "wf-race" / ".langfuse_offset").write_text("0")
+        relay.run_once()
+
+        task_spans = [s for s in sdk.spans if s["name"] == "task.completed"]
+        assert len(task_spans) == 1, "duplicate event_id must export exactly once"

@@ -24,7 +24,9 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import random
+import threading
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -71,6 +73,12 @@ class BlackBoxToTelemetryRelay:
         self._mtimes: dict[str, float] = {}
         self._stopped = False
         self._published_compliance: set[str] = set()
+        # I8: single-writer serialization. ``run_forever`` (background poll) and
+        # ``drain_workflow`` (SSE finally) can both target the same workflow; a
+        # per-workflow lock guarantees only one reader advances the byte offset
+        # at a time so the trace tail is never read — and exported — twice.
+        self._wf_locks: dict[str, threading.Lock] = {}
+        self._wf_locks_guard = threading.Lock()
 
     # ── public API ──────────────────────────────────────────────────
 
@@ -125,49 +133,75 @@ class BlackBoxToTelemetryRelay:
 
     # ── internals ───────────────────────────────────────────────────
 
+    def _workflow_lock(self, wf_id: str) -> threading.Lock:
+        """Return the (lazily created) per-workflow single-writer lock."""
+        with self._wf_locks_guard:
+            lock = self._wf_locks.get(wf_id)
+            if lock is None:
+                lock = threading.Lock()
+                self._wf_locks[wf_id] = lock
+            return lock
+
+    @staticmethod
+    def _write_offset_atomic(offset_file: Path, value: int) -> None:
+        """Persist the byte offset atomically (write temp + ``os.replace``).
+
+        A partial/torn offset write would let the relay re-read (and re-export)
+        the trace tail on the next poll. ``os.replace`` is atomic on POSIX, so a
+        reader either sees the old offset or the new one, never a truncated one.
+        """
+        tmp = offset_file.with_name(offset_file.name + ".tmp")
+        tmp.write_text(str(value))
+        os.replace(tmp, offset_file)
+
     def _process_workflow(self, wf_dir: Path, trace_file: Path) -> int:
         wf_id = wf_dir.name
 
-        file_stat = trace_file.stat()
-        current_mtime = file_stat.st_mtime
-        file_size = file_stat.st_size
+        # I8: serialize all readers of this workflow's outbox so a concurrent
+        # poll + drain cannot both consume the same offset window.
+        with self._workflow_lock(wf_id):
+            file_stat = trace_file.stat()
+            current_mtime = file_stat.st_mtime
+            file_size = file_stat.st_size
 
-        offset_file = wf_dir / ".langfuse_offset"
-        if not offset_file.exists():
-            offset_file.write_text("0")
+            offset_file = wf_dir / ".langfuse_offset"
+            if not offset_file.exists():
+                self._write_offset_atomic(offset_file, 0)
 
-        offset = int(offset_file.read_text().strip())
+            offset = int(offset_file.read_text().strip())
 
-        if offset >= file_size:
-            self._mtimes[wf_id] = current_mtime
-            return 0
-
-        with open(trace_file, "rb") as fh:
-            fh.seek(offset)
-            new_bytes = fh.read()
-
-        new_text = new_bytes.decode("utf-8")
-
-        # Only process complete lines — partial tail deferred to next poll
-        if new_text and not new_text.endswith("\n"):
-            last_nl = new_text.rfind("\n")
-            if last_nl == -1:
+            if offset >= file_size:
                 self._mtimes[wf_id] = current_mtime
                 return 0
-            new_text = new_text[: last_nl + 1]
 
-        bytes_consumed = len(new_text.encode("utf-8"))
-        published = 0
+            with open(trace_file, "rb") as fh:
+                fh.seek(offset)
+                new_bytes = fh.read()
 
-        for line in new_text.splitlines():
-            if not line.strip():
-                continue
-            if self._process_line(wf_dir, line):
-                published += 1
+            new_text = new_bytes.decode("utf-8")
 
-        offset_file.write_text(str(offset + bytes_consumed))
-        self._mtimes[wf_id] = current_mtime
-        return published
+            # Only process complete lines — partial tail deferred to next poll
+            if new_text and not new_text.endswith("\n"):
+                last_nl = new_text.rfind("\n")
+                if last_nl == -1:
+                    self._mtimes[wf_id] = current_mtime
+                    return 0
+                new_text = new_text[: last_nl + 1]
+
+            bytes_consumed = len(new_text.encode("utf-8"))
+            published = 0
+
+            for line in new_text.splitlines():
+                if not line.strip():
+                    continue
+                if self._process_line(wf_dir, line):
+                    published += 1
+
+            # Advance the offset BEFORE releasing the lock so the next reader
+            # starts past the bytes we just consumed.
+            self._write_offset_atomic(offset_file, offset + bytes_consumed)
+            self._mtimes[wf_id] = current_mtime
+            return published
 
     def _process_line(self, wf_dir: Path, line: str) -> bool:
         """Parse, map, and export a single JSONL line.  Returns True on success."""
@@ -184,6 +218,15 @@ class BlackBoxToTelemetryRelay:
                 attrs["__bb_level"] = kwargs["level"]
                 if event.details:
                     attrs["__output"] = event.details
+
+                if "parent_observation_id" in kwargs:
+                    attrs["__bb_parent_observation_id"] = kwargs["parent_observation_id"]
+                if "model" in kwargs:
+                    attrs["__bb_model"] = kwargs["model"]
+                if "usage" in kwargs:
+                    attrs["__bb_usage"] = kwargs["usage"]
+                if "cost" in kwargs:
+                    attrs["__bb_cost"] = kwargs["cost"]
 
                 exported = self._exporter.export_event(
                     name=kwargs["name"],

@@ -32,6 +32,12 @@ class AgentConfig(BaseModel):
     trajectory_compaction_token_threshold: int = 3000
     delegation_max_cost_usd: float = 0.5
     delegation_max_calls_per_task: int = 4
+    no_progress_repeat_threshold: int = 3
+    no_progress_hard_limit: int = 5
+    # I2: enable the task-adaptive LLM-as-judge to overlay goal_met/criteria_met
+    # onto TaskOutcome. Off by default so CI stays L2-pure (no live LLM); the
+    # deterministic keyword heuristic is the fallback when disabled.
+    goal_judge_enabled: bool = False
 
 
 def default_fast_profile() -> ModelProfile:

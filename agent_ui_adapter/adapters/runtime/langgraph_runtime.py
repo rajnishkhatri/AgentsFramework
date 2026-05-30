@@ -256,6 +256,44 @@ class LangGraphRuntime:
         return raw_text if isinstance(raw_text, str) else ""
 
     @staticmethod
+    def _extract_input_messages(data: dict[str, Any]) -> str:
+        """Serialize LangChain chat-model inputs for telemetry.
+
+        LangChain's ``on_chat_model_start`` emits ``data["input"]`` as a flat
+        list of message objects (``[SystemMessage, HumanMessage, ...]``). Some
+        code paths / test fixtures instead pass ``{"messages": [...]}`` or a
+        batched list-of-lists. All three shapes are handled so the prompt text
+        reaches Langfuse.
+        """
+        inp = data.get("input")
+        if isinstance(inp, dict):
+            messages = inp.get("messages")
+        else:
+            messages = inp
+        if not isinstance(messages, list) or not messages:
+            return ""
+        # Unwrap a single batched inner list: [[msg, msg]] -> [msg, msg].
+        if len(messages) == 1 and isinstance(messages[0], list):
+            messages = messages[0]
+        parts: list[str] = []
+        for msg in messages:
+            if isinstance(msg, dict):
+                role = str(msg.get("role") or msg.get("type") or "unknown")
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    content = LangGraphRuntime._extract_content(
+                        type("_Msg", (), {"content": content})()
+                    )
+                else:
+                    content = str(content)
+            else:
+                role = str(getattr(msg, "type", None) or getattr(msg, "role", "unknown"))
+                content = LangGraphRuntime._extract_content(msg)
+            if content:
+                parts.append(f"{role}: {content}")
+        return "\n".join(parts)
+
+    @staticmethod
     def _tool_calls_preview(obj: object) -> str:
         """When the model returns only tool calls, surface a short line for the UI."""
         tool_calls = getattr(obj, "tool_calls", None)
@@ -330,30 +368,43 @@ class LangGraphRuntime:
             return []
 
         if ev_name == "on_chat_model_start":
-            return [LLMMessageStarted(trace_id=trace_id, message_id=event_run_id)]
+            input_text = self._extract_input_messages(data)
+            return [
+                LLMMessageStarted(
+                    trace_id=trace_id,
+                    message_id=event_run_id,
+                    input_text=input_text or None,
+                )
+            ]
 
         if ev_name == "on_chat_model_end":
             events: list[DomainEvent] = []
             already_streamed = event_run_id in self._streamed_run_ids
+            output = data.get("output")
+            content = self._extract_content(output) if output else ""
+            if not content and output:
+                content = self._tool_calls_preview(output)
             if not already_streamed:
-                output = data.get("output")
-                content = self._extract_content(output) if output else ""
-                if not content and output:
-                    content = self._tool_calls_preview(output)
                 if content:
                     events.append(LLMTokenEmitted(
                         trace_id=trace_id, message_id=event_run_id, delta=content
                     ))
-            events.append(LLMMessageEnded(trace_id=trace_id, message_id=event_run_id))
+            events.append(
+                LLMMessageEnded(
+                    trace_id=trace_id,
+                    message_id=event_run_id,
+                    output_text=content or None,
+                )
+            )
             self._streamed_run_ids.discard(event_run_id)
             return events
 
         if ev_name == "on_llm_end":
             events: list[DomainEvent] = []
             already_streamed = event_run_id in self._streamed_run_ids
+            text = ""
             if not already_streamed:
                 output = data.get("output")
-                text = ""
                 if isinstance(output, dict):
                     gens = output.get("generations") or []
                     if gens and gens[0]:
@@ -368,7 +419,13 @@ class LangGraphRuntime:
                     events.append(LLMTokenEmitted(
                         trace_id=trace_id, message_id=event_run_id, delta=text
                     ))
-            events.append(LLMMessageEnded(trace_id=trace_id, message_id=event_run_id))
+            events.append(
+                LLMMessageEnded(
+                    trace_id=trace_id,
+                    message_id=event_run_id,
+                    output_text=text or None,
+                )
+            )
             self._streamed_run_ids.discard(event_run_id)
             return events
 

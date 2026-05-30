@@ -1,0 +1,25 @@
+# docker-compose.searxng.yml
+#
+# Local SearXNG sidecar for development/testing.
+# Run:  docker compose -f docker-compose.searxng.yml up -d
+# Then: WEB_SEARCH_PROVIDER=searxng SEARXNG_URL=http://localhost:8888 python -m agent.cli "weather in Austin"
+#
+# The instance runs in JSON-only mode with the rate limiter disabled
+# (private local instance, no Redis needed).
+
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    container_name: searxng-local
+    ports:
+      - "8888:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8888/
+    volumes:
+      - ./infra/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

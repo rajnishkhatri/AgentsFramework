@@ -51,6 +51,7 @@ class StubTelemetryExporter:
         self.events: list[dict] = []
         self.released_traces: list[str] = []
         self.shutdown_called = False
+        self.flush_called = False
         self._raise_on_export = raise_on_export
 
     def export_event(
@@ -71,6 +72,9 @@ class StubTelemetryExporter:
 
     def shutdown(self) -> None:
         self.shutdown_called = True
+
+    def flush(self) -> None:
+        self.flush_called = True
 
 
 @pytest.fixture
@@ -204,15 +208,11 @@ class TestEmitDomainEvent:
 
 
 class TestSkippedEvents:
-    """LLMTokenEmitted, StateMutated, ToolCallEnded produce zero export calls."""
+    """StateMutated and ToolCallEnded produce zero export calls."""
 
     @pytest.mark.parametrize(
         "domain_event",
         [
-            pytest.param(
-                LLMTokenEmitted(trace_id="t1", message_id="msg-1", delta="hello"),
-                id="LLMTokenEmitted-skipped",
-            ),
             pytest.param(
                 StateMutated(trace_id="t1", snapshot={"key": "value"}),
                 id="StateMutated-skipped",
@@ -231,6 +231,50 @@ class TestSkippedEvents:
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(stub_exporter, domain_event)
+        assert len(stub_exporter.events) == 0
+
+
+class TestLLMContentExport:
+    """LLM prompt/response text is folded into llm.started / llm.finished exports."""
+
+    def test_token_events_buffer_into_llm_finished(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            LLMMessageStarted(
+                trace_id="t1",
+                message_id="msg-1",
+                input_text="user: What is the capital of France?",
+            ),
+        )
+        emit_domain_event(
+            stub_exporter,
+            LLMTokenEmitted(trace_id="t1", message_id="msg-1", delta="Paris"),
+        )
+        emit_domain_event(
+            stub_exporter,
+            LLMTokenEmitted(trace_id="t1", message_id="msg-1", delta=" is the capital."),
+        )
+        emit_domain_event(stub_exporter, LLMMessageEnded(trace_id="t1", message_id="msg-1"))
+
+        assert len(stub_exporter.events) == 2
+        assert stub_exporter.events[0]["attributes"]["input_text"].startswith("user:")
+        assert stub_exporter.events[1]["attributes"]["__output"]["content"] == (
+            "Paris is the capital."
+        )
+
+    def test_llm_token_emitted_alone_produces_no_export(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            LLMTokenEmitted(trace_id="t1", message_id="msg-1", delta="hello"),
+        )
         assert len(stub_exporter.events) == 0
 
 

@@ -95,6 +95,18 @@ class LangfuseCloudExporter:
         self._sdk_client = sdk_client
         self._enabled = os.environ.get("LANGFUSE_ENABLED", "true").lower() != "false"
         self._started_traces: set[str] = set()
+        # I6: one live SDK step span per ``(trace_id, logical_step_key)``.
+        # Children of a step nest under it via the SDK's real nesting API; the
+        # span stays open until ``release_trace`` ends it (carrying the run's
+        # lifetime). Keyed by the publisher's synthetic step key, never an SDK id.
+        self._step_spans: dict[tuple[str, str], Any] = {}
+        # I8: per-trace set of BlackBox event_ids already exported. The relay is
+        # at-least-once (``run_forever`` + ``drain_workflow`` can read the same
+        # byte offset under a crash/race) and Langfuse SDK v4 cannot upsert on a
+        # caller-supplied observation id, so duplicate ``task.completed`` /
+        # ``step.executed`` observations surface with identical metadata. This
+        # guard drops the second export. Cleared per trace in ``release_trace``.
+        self._seen_events: dict[str, set[str]] = {}
 
     @property
     def active_trace_count(self) -> int:
@@ -150,10 +162,26 @@ class LangfuseCloudExporter:
 
             # BlackBox relay hints — extract before building metadata so they
             # don't leak into the Langfuse metadata blob.
-            attrs.pop("__bb_observation_id", None)  # not settable in SDK v4
+            bb_observation_id = attrs.pop("__bb_observation_id", None)  # not settable in SDK v4
+
+            # I8: idempotency guard. Dedupe on the BlackBox ``event_id`` (the
+            # relay also surfaces it as ``__bb_observation_id``). A repeat for an
+            # already-exported event is a no-op success (return True) so the
+            # at-least-once relay does not dead-letter it. We only mark an event
+            # seen *after* a successful export so a genuine failure can retry.
+            dedup_id = attrs.get("event_id") or bb_observation_id
+            if dedup_id is not None and str(dedup_id) in self._seen_events.get(
+                trace_id, set()
+            ):
+                return True
+
             bb_observation_type = attrs.pop("__bb_observation_type", None)
             bb_level = attrs.pop("__bb_level", None)
             bb_output = attrs.pop("__output", None)
+            bb_parent_observation_id = attrs.pop("__bb_parent_observation_id", None)
+            bb_model = attrs.pop("__bb_model", None)
+            bb_usage = attrs.pop("__bb_usage", None)
+            bb_cost = attrs.pop("__bb_cost", None)
 
             propagate_kwargs: dict[str, Any] = {}
 
@@ -180,13 +208,25 @@ class LangfuseCloudExporter:
 
             obs_type = bb_observation_type or _observation_type(name)
             obs_kwargs: dict[str, Any] = {
-                "trace_context": trace_context,
                 "name": name,
                 "as_type": obs_type,
                 "input": attrs or None,
                 "output": bb_output,
                 "metadata": _metadata(attrs),
             }
+            if bb_model is not None:
+                obs_kwargs["model"] = bb_model
+            # SDK v4 native generation fields are ``usage_details`` /
+            # ``cost_details`` (a dict). The publisher (I5) emits ``usage`` as
+            # ``{input,output,total}`` and ``cost`` as a float; normalise here.
+            if bb_usage is not None:
+                obs_kwargs["usage_details"] = bb_usage
+            if bb_cost is not None:
+                obs_kwargs["cost_details"] = (
+                    dict(bb_cost)
+                    if isinstance(bb_cost, Mapping)
+                    else {"total": float(bb_cost)}
+                )
             # NOTE: Langfuse SDK v4 ``start_observation()`` does not accept an
             # ``id`` kwarg (observation IDs are auto-generated OTel span IDs).
             # ``__bb_observation_id`` is popped above so it never reaches the
@@ -196,8 +236,24 @@ class LangfuseCloudExporter:
                 obs_kwargs["level"] = bb_level
 
             with ctx:
-                observation = client.start_observation(**obs_kwargs)
-                observation.end()
+                if bb_parent_observation_id is not None:
+                    # I6: translate the publisher's logical step key into a real
+                    # per-(trace, step) span and nest this child under it using
+                    # the SDK's real nesting API (``parent.start_observation``),
+                    # never the synthetic ``workflow:step:N`` string.
+                    step_span = self._get_or_create_step_span(
+                        client, trace_id, str(bb_parent_observation_id)
+                    )
+                    child = step_span.start_observation(**obs_kwargs)
+                    child.end()
+                else:
+                    observation = client.start_observation(
+                        trace_context=trace_context, **obs_kwargs
+                    )
+                    observation.end()
+            # I8: mark exported only after the SDK accepted it.
+            if dedup_id is not None:
+                self._seen_events.setdefault(trace_id, set()).add(str(dedup_id))
             return True
         except Exception as exc:
             logger.warning(
@@ -207,11 +263,49 @@ class LangfuseCloudExporter:
             )
             return False
 
+    def _get_or_create_step_span(
+        self, client: Any, trace_id: str, parent_key: str
+    ) -> Any:
+        """Return the live step span for ``(trace_id, parent_key)``, creating it once.
+
+        ``parent_key`` is the publisher's synthetic ``workflow:step:N`` key. The
+        span itself is created with the SDK's auto-generated id and kept open
+        until :meth:`release_trace` ends it.
+        """
+        key = (trace_id, parent_key)
+        span = self._step_spans.get(key)
+        if span is None:
+            step_label = parent_key.rsplit(":", 1)[-1]
+            span = client.start_observation(
+                trace_context={"trace_id": trace_id},
+                name=f"step.{step_label}",
+                as_type="span",
+            )
+            self._step_spans[key] = span
+        return span
+
     def release_trace(self, trace_id: str) -> None:
         if not self._enabled:
             return
         try:
             self._started_traces.discard(trace_id)
+            # I8: drop the per-trace idempotency set so a re-used trace_id starts
+            # fresh (release_trace is the end-of-run boundary).
+            self._seen_events.pop(trace_id, None)
+            # I6: close any open step spans for this trace BEFORE flush so the
+            # tree closes cleanly and each step carries the run's lifetime.
+            for key in [k for k in self._step_spans if k[0] == trace_id]:
+                span = self._step_spans.pop(key, None)
+                if span is None:
+                    continue
+                try:
+                    span.end()
+                except Exception as exc:
+                    logger.warning(
+                        "langfuse step span end swallowed: %s: %s",
+                        type(exc).__name__,
+                        exc,
+                    )
             client = self._client()
             if client is not None:
                 client.flush()

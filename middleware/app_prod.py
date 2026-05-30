@@ -71,11 +71,22 @@ from services.tools.shell import ShellToolInput, execute_shell
 from services.tools.task_tool import TaskToolInput, build_task_tool_executor
 from services.tools.think_tool import ThinkToolInput, execute_think_tool
 from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
-from services.tools.web_search import WebSearchInput, execute_web_search
+from services.tools.web_search import WebSearchInput, build_web_search_executor
+from services.tools.search.searxng import SearxngProvider
+from services.tools.search.stub import StubProvider
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, Capability
 
 logger = logging.getLogger("middleware.app_prod")
+
+
+def _resolve_prod_search_provider():
+    """Select web search provider from env (WEB_SEARCH_PROVIDER / SEARXNG_URL)."""
+    provider_name = os.environ.get("WEB_SEARCH_PROVIDER", "stub").lower()
+    if provider_name == "searxng":
+        base_url = os.environ.get("SEARXNG_URL", "http://localhost:8888")
+        return SearxngProvider(base_url=base_url)
+    return StubProvider()
 
 
 def _load_graph_factory():
@@ -144,7 +155,9 @@ def _build_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsGcsRegistr
             executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
         ),
         "web_search": ToolDefinition(
-            executor=execute_web_search, schema=WebSearchInput, cacheable=False
+            executor=build_web_search_executor(_resolve_prod_search_provider()),
+            schema=WebSearchInput,
+            cacheable=True,
         ),
     })
 
@@ -331,6 +344,7 @@ def build_combined_app() -> FastAPI:
                         adapters.telemetry_exporter,
                         domain_event,
                         subject=claims.subject,
+                        release_on_finish=False,
                     )
                     if isinstance(domain_event, RunFinishedDomain):
                         run_finished_emitted = True
@@ -354,10 +368,13 @@ def build_combined_app() -> FastAPI:
                     "duration_ms=%d errored=%s",
                     run_id, thread_id, trace_id_seen, duration_ms, errored,
                 )
+                # I6: teardown order is drain -> release_trace -> flush. The
+                # relay tail MUST be drained before any step.N span is closed,
+                # otherwise late BlackBox events recreate fresh spans and the
+                # trace tree shape is nondeterministic across runs.
                 relay = adapters.black_box_relay
                 if relay is not None and trace_id_seen is not None:
                     relay.drain_workflow(trace_id_seen)
-                    adapters.telemetry_exporter.flush()
 
                 if trace_id_seen is not None and not run_finished_emitted:
                     telemetry_bridge.emit_run_finished(
@@ -368,7 +385,13 @@ def build_combined_app() -> FastAPI:
                         duration_ms=duration_ms,
                         errored=errored,
                         subject=claims.subject,
+                        release=False,
                     )
+
+                if trace_id_seen is not None:
+                    # Idempotent: closes step spans (if any remain) and flushes.
+                    adapters.telemetry_exporter.release_trace(trace_id_seen)
+                adapters.telemetry_exporter.flush()
 
         return StreamingResponse(
             _generate(),

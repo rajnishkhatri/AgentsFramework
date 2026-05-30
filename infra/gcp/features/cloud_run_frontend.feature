@@ -17,9 +17,10 @@ Feature: Frontend Cloud Run service satisfies Recipe 5 Tier A constraints
     Background:
         Given I have google_cloud_run_v2_service defined
 
-    Scenario: Service is named agent-frontend
-        Then it must contain name
-        And its value must match the "agent-frontend" regex
+  Scenario: Service is named agent-frontend
+    When its name is frontend
+    Then it must contain name
+    And its value must match the "agent-frontend" regex
 
     Scenario: Service has a template block (sized via pytest + Rego)
         Then it must contain template

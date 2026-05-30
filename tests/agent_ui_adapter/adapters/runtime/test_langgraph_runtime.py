@@ -19,6 +19,7 @@ from agent_ui_adapter.adapters.runtime.langgraph_runtime import LangGraphRuntime
 from agent_ui_adapter.ports.agent_runtime import AgentRuntime
 from agent_ui_adapter.wire.domain_events import (
     DomainEventBase,
+    LLMMessageStarted,
     LLMTokenEmitted,
     RunFinishedDomain,
     RunStartedDomain,
@@ -174,6 +175,31 @@ class TestLangGraphRuntimeStream:
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
         assert len(token_events) == 1
         assert token_events[0].delta == "legacy"
+
+    @pytest.mark.asyncio
+    async def test_chat_model_start_captures_input_text(self) -> None:
+        scripted = [
+            {
+                "event": "on_chat_model_start",
+                "data": {
+                    "input": {
+                        "messages": [
+                            {"role": "user", "content": "What is the capital of France?"}
+                        ]
+                    }
+                },
+                "name": "ChatModel",
+                "run_id": "lc-input",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        starts = [e for e in out if isinstance(e, LLMMessageStarted)]
+        assert len(starts) == 1
+        assert starts[0].input_text == "user: What is the capital of France?"
 
     @pytest.mark.asyncio
     async def test_tool_only_chat_end_emits_preview(self) -> None:

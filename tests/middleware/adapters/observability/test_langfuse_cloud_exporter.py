@@ -34,13 +34,51 @@ class FakeNotFoundError(Exception):
 
 
 class FakeObservation:
-    """Fake observation returned by FakeLangfuseClient.start_observation()."""
+    """Fake observation returned by FakeLangfuseClient.start_observation().
 
-    def __init__(self, data: dict) -> None:
+    Mirrors the SDK v4 nesting API: a span object exposes ``start_observation``
+    to create a manual child (``parent.start_observation(...)``). Children are
+    recorded on the owning client so tests can assert the hierarchy.
+    """
+
+    def __init__(self, data: dict, client: "FakeLangfuseClient | None" = None) -> None:
         self.data = data
+        self._client = client
+        self.ended = False
 
     def end(self, **kwargs: object) -> None:
-        self.data["output"] = kwargs.get("output")
+        self.ended = True
+        self.data["ended"] = True
+        if "output" in kwargs:
+            self.data["output"] = kwargs.get("output")
+
+    def start_observation(
+        self,
+        *,
+        name: str,
+        as_type: str = "span",
+        input: dict | None = None,
+        metadata: dict | None = None,
+        **kwargs,
+    ) -> "FakeObservation":
+        unknown = set(kwargs) - FakeLangfuseClient._SDK_KWARGS
+        if unknown:
+            raise TypeError(
+                "LangfuseSpan.start_observation() got an unexpected keyword "
+                f"argument {sorted(unknown)[0]!r}"
+            )
+        child_data = {
+            "trace_id": self.data.get("trace_id"),
+            "name": name,
+            "input": input,
+            "as_type": as_type,
+            "metadata": metadata,
+            "parent_name": self.data.get("name"),
+            **kwargs,
+        }
+        if self._client is not None:
+            self._client.children.append(child_data)
+        return FakeObservation(child_data, self._client)
 
 
 class FakeLangfuseClient:
@@ -78,6 +116,7 @@ class FakeLangfuseClient:
     def __init__(self) -> None:
         self.traces: dict[str, dict] = {}
         self.spans: list[dict] = []
+        self.children: list[dict] = []
         self.flushed = False
         self.scores: list[dict] = []
         self.datasets: set[str] = set()
@@ -113,7 +152,7 @@ class FakeLangfuseClient:
             **kwargs,
         }
         self.spans.append(span_data)
-        return FakeObservation(span_data)
+        return FakeObservation(span_data, self)
 
     # NOTE: deliberately NO ``score`` method. SDK v4 renamed trace scoring to
     # ``create_score``; the old ``Langfuse.score`` attribute is gone. Omitting it
@@ -628,6 +667,249 @@ class TestShutdown:
         )
         # Must not raise
         exp.shutdown()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I6 — Step-span nesting (real SDK v4 nesting, not synthetic ids)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestStepSpanNesting:
+    """Children carrying ``__bb_parent_observation_id`` nest under a real step span.
+
+    Regression guard for I6: the exporter used to forward the publisher's
+    synthetic ``workflow:step:N`` string as ``parent_observation_id``, which
+    matched no real observation — so nesting silently did nothing (and against
+    the strict SDK signature it would have raised + been swallowed). The fix
+    creates one live step span per ``(trace, step)`` and uses the SDK's real
+    ``parent.start_observation`` nesting API.
+    """
+
+    def test_child_event_creates_one_step_span(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="step.planned",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:2", "k": "v"},
+        )
+        step_spans = [s for s in fake_client.spans if s["name"] == "step.2"]
+        assert len(step_spans) == 1
+        assert step_spans[0]["as_type"] == "span"
+
+    def test_step_span_created_once_per_trace_step(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        for _ in range(3):
+            exporter.export_event(
+                name="tool.called",
+                trace_id="wf-1",
+                attributes={"__bb_parent_observation_id": "wf-1:step:2"},
+            )
+        step_spans = [s for s in fake_client.spans if s["name"] == "step.2"]
+        assert len(step_spans) == 1, "step span must be created once and reused"
+        assert len(fake_client.children) == 3, "all three children nest under it"
+
+    def test_children_nest_under_step_span(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:5"},
+        )
+        assert len(fake_client.children) == 1
+        assert fake_client.children[0]["parent_name"] == "step.5"
+
+    def test_different_steps_get_separate_spans(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:1"},
+        )
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:2"},
+        )
+        names = {s["name"] for s in fake_client.spans if s["name"].startswith("step.")}
+        assert names == {"step.1", "step.2"}
+
+    def test_synthetic_parent_id_never_reaches_sdk(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:2", "tool": "shell"},
+        )
+        child = fake_client.children[0]
+        assert "parent_observation_id" not in child
+        assert "__bb_parent_observation_id" not in (child.get("metadata") or {})
+        assert "__bb_parent_observation_id" not in (child.get("input") or {})
+
+    def test_generation_child_carries_native_fields(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        """The I5 native fields flow through the nested generation child."""
+        exporter.export_event(
+            name="model.selected",
+            trace_id="wf-1",
+            attributes={
+                "__bb_parent_observation_id": "wf-1:step:1",
+                "__bb_observation_type": "generation",
+                "__bb_model": "gpt-4o-mini",
+                "__bb_usage": {"input": 10, "output": 5, "total": 15},
+                "__bb_cost": 0.0012,
+            },
+        )
+        child = fake_client.children[0]
+        assert child["as_type"] == "generation"
+        assert child["model"] == "gpt-4o-mini"
+        assert child["usage_details"] == {"input": 10, "output": 5, "total": 15}
+        assert child["cost_details"] == {"total": 0.0012}
+
+    def test_release_trace_ends_step_spans(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:1"},
+        )
+        step_span = next(s for s in fake_client.spans if s["name"] == "step.1")
+        assert step_span.get("ended") is not True  # still open mid-run
+        exporter.release_trace("wf-1")
+        assert step_span.get("ended") is True
+        assert fake_client.flushed is True
+        # A subsequent event for the same step opens a fresh span.
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:1"},
+        )
+        assert len([s for s in fake_client.spans if s["name"] == "step.1"]) == 2
+
+    def test_nesting_failure_does_not_propagate(self) -> None:
+        broken = MagicMock()
+        broken.start_observation.side_effect = RuntimeError("SDK crash")
+        exp = LangfuseCloudExporter(
+            public_key="pk-test", secret_key="sk-test", sdk_client=broken
+        )
+        # Must not raise; returns False so the relay dead-letters.
+        result = exp.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:1"},
+        )
+        assert result is False
+
+
+# ─────────────────────────────────────────────────────────────────────
+# I8 — per-trace event_id idempotency (duplicate terminal events)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestEventIdIdempotency:
+    """A repeated BlackBox ``event_id`` for a trace exports exactly one observation.
+
+    Regression guard for I8: the at-least-once relay (background poll +
+    SSE-finally drain) can hand the exporter the same ``task.completed`` /
+    ``step.executed`` line twice, and SDK v4 cannot upsert on a caller id — so
+    duplicates surfaced with identical metadata ``event_id``. The exporter now
+    drops the second export per ``(trace_id, event_id)``.
+    """
+
+    def test_duplicate_event_id_exports_once(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        attrs = {"__bb_observation_id": "ev-1", "event_id": "ev-1", "k": "v"}
+        assert exporter.export_event(
+            name="task.completed", trace_id="wf-1", attributes=dict(attrs)
+        ) is True
+        assert exporter.export_event(
+            name="task.completed", trace_id="wf-1", attributes=dict(attrs)
+        ) is True
+        assert len(fake_client.spans) == 1, "second export of same event_id is a no-op"
+
+    def test_distinct_event_ids_each_export(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="step.executed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        )
+        exporter.export_event(
+            name="step.executed", trace_id="wf-1", attributes={"event_id": "ev-2"}
+        )
+        assert len(fake_client.spans) == 2
+
+    def test_same_event_id_different_trace_both_export(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        )
+        exporter.export_event(
+            name="task.completed", trace_id="wf-2", attributes={"event_id": "ev-1"}
+        )
+        assert len(fake_client.spans) == 2, "dedup is scoped per-trace, not global"
+
+    def test_events_without_event_id_are_not_deduped(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        # Direct domain-bridge events (run.started, etc.) carry no event_id and
+        # must never be dropped as duplicates.
+        exporter.export_event(name="run.started", trace_id="wf-1")
+        exporter.export_event(name="run.started", trace_id="wf-1")
+        assert len(fake_client.spans) == 2
+
+    def test_failed_export_is_not_marked_seen(self) -> None:
+        """A swallowed failure must be retryable, not silently deduped away."""
+        broken = MagicMock()
+        broken.start_observation.side_effect = RuntimeError("SDK crash")
+        exp = LangfuseCloudExporter(
+            public_key="pk-test", secret_key="sk-test", sdk_client=broken
+        )
+        assert exp.export_event(
+            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        ) is False
+        # Recover the client; the retry must now go through (not be deduped).
+        good = FakeLangfuseClient()
+        exp._sdk_client = good
+        assert exp.export_event(
+            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        ) is True
+        assert len(good.spans) == 1
+
+    def test_release_trace_clears_seen_set(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        )
+        exporter.release_trace("wf-1")
+        # A re-used trace_id starts fresh after the run boundary.
+        exporter.export_event(
+            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+        )
+        assert len(fake_client.spans) == 2
+
+    def test_release_trace_is_idempotent(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        """Calling release_trace twice (bridge + SSE finally) must be safe."""
+        exporter.export_event(
+            name="tool.called",
+            trace_id="wf-1",
+            attributes={"__bb_parent_observation_id": "wf-1:step:1"},
+        )
+        exporter.release_trace("wf-1")
+        # Second release is a no-op: no error, no double-flush crash.
+        exporter.release_trace("wf-1")
+        step_span = next(s for s in fake_client.spans if s["name"] == "step.1")
+        assert step_span.get("ended") is True
 
 
 # ─────────────────────────────────────────────────────────────────────

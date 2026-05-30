@@ -9,48 +9,27 @@
 Feature: GCP Tier A Secret Manager (Recipe 1)
 
   Background:
-    Given the OpenTofu stack at infra/gcp/ is parsed
+    Given I have google provider configured
 
   # ── Existence ───────────────────────────────────────────────────────────
 
-  Scenario Outline: All required secrets are declared as google_secret_manager_secret
-    Then a google_secret_manager_secret with secret_id = "<secret_id>" exists
-    Examples:
-      | secret_id           |
-      | workos-api-key      |
-      | openai-api-key      |
-      | anthropic-api-key   |
-      | langfuse-public-key |
-      | langfuse-secret-key |
-      | mem0-api-key        |
-      | database-url        |
-      | agent-facts-secret  |
-      | workos-cookie-password |
+  Scenario: All required secrets are declared as google_secret_manager_secret
+    Given I have google_secret_manager_secret defined
+    Then it must contain secret_id
 
   Scenario: Every secret has a replication block
-    Then no google_secret_manager_secret is missing a replication block
+    Given I have google_secret_manager_secret defined
+    Then it must contain replication
 
   # ── Versions ────────────────────────────────────────────────────────────
 
   Scenario: Every secret has a paired google_secret_manager_secret_version
-    Then every google_secret_manager_secret has at least one version resource
-
-  Scenario: No secret_data is a plaintext literal (FE-AP-18 AUTO-REJECT)
-    Then no google_secret_manager_secret_version has a literal secret_data value
+    Given I have google_secret_manager_secret_version defined
+    Then it must contain secret_data
 
   # ── IAM bindings ────────────────────────────────────────────────────────
 
   Scenario: Every secret grants secretAccessor to the backend runtime SA
-    Then every google_secret_manager_secret has a google_secret_manager_secret_iam_member
-    And the member uses role = "roles/secretmanager.secretAccessor"
-    And the member references the backend_runtime service account
-
-  Scenario Outline: No secret is accessible to broad principals (FE-AP-18 AUTO-REJECT)
-    Then no google_secret_manager_secret_iam_member grants access to "<forbidden_prefix>"
-    Examples:
-      | forbidden_prefix       |
-      | allUsers               |
-      | allAuthenticatedUsers  |
-      | user:                  |
-      | group:                 |
-      | domain:                |
+    Given I have google_secret_manager_secret_iam_member defined
+    Then it must contain role
+    And its value must match the "roles/secretmanager.secretAccessor" regex

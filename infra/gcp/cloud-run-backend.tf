@@ -223,6 +223,47 @@ resource "google_cloud_run_v2_service" "backend_combined" {
           }
         }
       }
+
+      # ── Web search provider (SearXNG sidecar) ──────────────────────────────
+
+      env {
+        name  = "WEB_SEARCH_PROVIDER"
+        value = "searxng"
+      }
+
+      env {
+        name  = "SEARXNG_URL"
+        value = "http://localhost:8888"
+      }
+    }
+
+    # ── SearXNG sidecar container ──────────────────────────────────────────
+    #
+    # Private internal instance (no ingress port) accessed via localhost:8888.
+    # Shares the service's scale-to-zero and startup lifecycle.
+
+    containers {
+      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.docker.repository_id}/searxng:latest"
+      name  = "searxng"
+
+      resources {
+        limits = {
+          cpu    = "0.5"
+          memory = "512Mi"
+        }
+        cpu_idle = true
+      }
+
+      startup_probe {
+        http_get {
+          path = "/healthz"
+          port = 8888
+        }
+        initial_delay_seconds = 3
+        timeout_seconds       = 3
+        period_seconds        = 5
+        failure_threshold     = 10
+      }
     }
   }
 
