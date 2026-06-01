@@ -1,0 +1,3 @@
+# SearXNG sidecar for Cloud Run — listens on 8888 to avoid clashing with backend :8080.
+FROM docker.io/searxng/searxng:latest
+COPY searxng/settings.cloudrun.yml /etc/searxng/settings.yml
