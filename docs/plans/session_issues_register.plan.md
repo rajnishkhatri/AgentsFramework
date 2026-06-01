@@ -46,6 +46,27 @@ Issues found while reviewing the trace from `python scripts/_dbg_d9c823_send.py`
 - Root cause: events are emitted as instantaneous markers (true latency only in `details.latency_ms`) and flushed asynchronously.
 - Proposed fix (optional / defer): emit real start/end around the wrapped operation so spans carry duration; out-of-order emission is cosmetic given timestamps and can be left as-is.
 
+### I9 (High) Langfuse `output` and bridge `input_text` bypass redaction
+- Symptom: `task.started` shows `[REDACTED]` in `input`/`metadata` but raw `task_input` (PII/API keys) in `output`; `llm.started.input_text` leaks secrets past the 200-char metadata truncation.
+- Root cause: [middleware/sidecars/black_box_to_telemetry.py](middleware/sidecars/black_box_to_telemetry.py) set `attrs["__output"]` from raw `event.details`; [middleware/telemetry_bridge.py](middleware/telemetry_bridge.py) only truncated free-form strings. Compliance dataset items used the unredacted `export_for_compliance()` bundle.
+- Fix (landed): `__output` uses `redact_details()`; bridge uses shared `redact_text()`; compliance uploads call `redact_compliance_bundle()`. Assertion helper scans observation `output` as well as `input`/`metadata`.
+
+### I10 (Medium) `validate_blackbox_langfuse.py` false FAILs from fixed 5s relay wait
+- Symptom: CLI assertions ran before the relay flushed (~10–20s), printing spurious FAILs despite healthy traces.
+- Root cause: fixed `time.sleep(5)` before `verify_scenario`.
+- Fix (landed): poll for `task.completed` via `poll_for_observation()` with bounded retries (`LANGFUSE_POLL_*`).
+
+### I11 (Medium) `error.occurred` missing on non-zero shell exit
+- Symptom: S3/S5 tool failures visible only inside LLM tool-result text; no `error.occurred` span at ERROR level.
+- Root cause: `execute_shell` returned success-shaped JSON with `exit_code != 0` but `ToolExecutionResult.ok=True`; `ERROR_OCCURRED` was only emitted on exceptions, not `ok=False`.
+- Fix (landed): shell marks `ok=False` on non-zero exit; `_execute_tools_impl` records `ERROR_OCCURRED` when `execution_result.ok` is false.
+
+### I12 (Low) Stale `ni-4` probe/doc expectation (`defer` vs `accept`)
+- Symptom: REPL row 5 failed pre-check expectation while cascade was correct.
+- Root cause: FP-free pre-check now accepts benign “override” wording; probe and Recipe 07 §2.1 still said `defer`.
+- Fix (landed): `scripts/probe_guardrail.py` and Recipe 07 row 5 updated to `accept`.
+- Human re-validation: [Recipe 8 — telemetry redaction walkthrough](../recipes/guardrails/08_telemetry_redaction_validation_walkthrough.md).
+
 ## Notes
 - Healthy and intentionally unchanged: `trace_id` propagates verbatim end-to-end, `subject` propagation, `integrity_hash` on governance events, guardrails (`agent_facts`, `prompt_injection`), and routing policy (gpt-4o planning step 0 then gpt-4o-mini steady state).
-- Deliverable of this plan is the register above. Fixes I1–I8 can be implemented in follow-up changes. I1 and I3 are also covered by the SearXNG plan ([docs/plans/searxng_real_web_search.plan.md](docs/plans/searxng_real_web_search.plan.md)).
+- Deliverable of this plan is the register above. Fixes I1–I8 can be implemented in follow-up changes. I1 and I3 are also covered by the SearXNG plan ([docs/plans/searxng_real_web_search.plan.md](docs/plans/searxng_real_web_search.plan.md)). I9–I12 were addressed in the guardrails session findings fix pass (2026-06-01).

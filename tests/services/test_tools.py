@@ -14,6 +14,7 @@ from pydantic import ValidationError
 from services.tools.file_io import FileIOInput, FileIOOutput, execute_file_io
 from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
 from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
+from services.tools.registry import ToolExecutionResult
 from services.tools.shell import ShellToolInput, ShellToolOutput, execute_shell
 from services.tools.task_tool import TaskToolInput
 from services.tools.web_search import WebSearchInput, execute_web_search
@@ -106,10 +107,20 @@ class TestShellToolInput:
 class TestExecuteShell:
     def test_ls_executes(self):
         result = execute_shell({"command": "ls", "timeout": 5})
-        assert isinstance(result, str)
+        assert isinstance(result, ToolExecutionResult)
+        assert result.ok is True
+
+    def test_nonzero_exit_marks_failure(self):
+        result = execute_shell(
+            {"command": "grep NOTFOUND_PATTERN_xyz /etc/hosts", "timeout": 5}
+        )
+        assert isinstance(result, ToolExecutionResult)
+        assert result.ok is False
+        assert "exit code 1" in (result.error or "")
 
     def test_blocked_command_returns_error(self):
         result = execute_shell({"command": "rm -rf /", "timeout": 5})
+        assert isinstance(result, str)
         assert "error" in result.lower() or "blocked" in result.lower() or "Blocked" in result
 
 

@@ -35,7 +35,11 @@ from typing import Any
 from middleware.ports.compliance_publisher import CompliancePublisher
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
-from services.governance.black_box_publisher import to_export_kwargs
+from services.governance.black_box_publisher import (
+    redact_compliance_bundle,
+    redact_details,
+    to_export_kwargs,
+)
 
 logger = logging.getLogger("middleware.sidecars.black_box_to_telemetry")
 
@@ -217,7 +221,7 @@ class BlackBoxToTelemetryRelay:
                 attrs["__bb_observation_type"] = kwargs["observation_type"]
                 attrs["__bb_level"] = kwargs["level"]
                 if event.details:
-                    attrs["__output"] = event.details
+                    attrs["__output"] = redact_details(event.details)
 
                 if "parent_observation_id" in kwargs:
                     attrs["__bb_parent_observation_id"] = kwargs["parent_observation_id"]
@@ -302,7 +306,7 @@ class BlackBoxToTelemetryRelay:
         try:
             self._compliance_publisher.create_dataset_item(
                 dataset_name=self.DATASET_AUDIT if chain_valid else self.DATASET_INCIDENT,
-                input_data=bundle,
+                input_data=redact_compliance_bundle(bundle),
                 item_id=workflow_id,
                 metadata={"workflow_id": workflow_id, "chain_valid": chain_valid},
             )
@@ -316,7 +320,7 @@ class BlackBoxToTelemetryRelay:
             try:
                 self._compliance_publisher.create_dataset_item(
                     dataset_name=self.DATASET_INCIDENT,
-                    input_data=bundle,
+                    input_data=redact_compliance_bundle(bundle),
                     item_id=f"{workflow_id}-incident",
                     metadata={"workflow_id": workflow_id, "reason": "task_failure"},
                 )

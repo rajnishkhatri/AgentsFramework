@@ -15,7 +15,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e ".[gcp]" uvicorn[standard] python-multipart 2>/dev/null || \
+RUN pip install --no-cache-dir hatchling && \
+    pip install --no-cache-dir -e ".[gcp]" uvicorn[standard] python-multipart 2>/dev/null || \
     pip install --no-cache-dir ".[gcp]" uvicorn[standard] python-multipart
 
 # ─── Stage 2: application ───────────────────────────────────────────
@@ -31,7 +32,8 @@ COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.
 COPY --from=deps /usr/local/bin /usr/local/bin
 
 COPY . .
-RUN pip install --no-cache-dir --no-deps -e .
+# hatchling is already in site-packages from deps; avoid build isolation re-fetching PyPI.
+RUN PIP_NO_BUILD_ISOLATION=1 pip install --no-cache-dir --no-deps -e .
 
 RUN mkdir -p /app/logs /tmp/agent_offload
 

@@ -109,16 +109,47 @@ def poll_trace(
     return None
 
 
+def _to_dict(obj: Any) -> dict[str, Any]:
+    """Normalise a Langfuse SDK model or plain dict to a dict."""
+    if isinstance(obj, dict):
+        return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "__dict__"):
+        return obj.__dict__
+    return {}
+
+
+def fetch_trace_details(trace_id: str) -> dict[str, Any] | None:
+    """Fetch a trace with embedded observations and scores.
+
+    Langfuse SDK v4 ``observations.get_many()`` returns ``ObservationV2``
+    rows whose ``name`` / ``level`` / ``input`` fields are often null in the
+    list response. ``trace.get()`` embeds the full observation payloads the
+    BlackBox assertions expect (``task.started``, ``guardrail.checked``, …).
+    """
+    client = _get_langfuse_client()
+    try:
+        trace = client.api.trace.get(trace_id)
+        if trace and getattr(trace, "id", None):
+            return _to_dict(trace)
+    except Exception:
+        pass
+    return None
+
+
 def fetch_trace_observations(trace_id: str) -> list[dict[str, Any]]:
     """Fetch all observations for a given trace_id via v4 SDK API."""
+    trace = fetch_trace_details(trace_id)
+    if trace and trace.get("observations"):
+        return [_to_dict(obs) for obs in trace["observations"]]
+
+    # Fallback: list API (names may be absent on v2 list rows).
     client = _get_langfuse_client()
     try:
         resp = client.api.observations.get_many(trace_id=trace_id, limit=100)
         if resp and resp.data:
-            return [
-                obs.__dict__ if hasattr(obs, "__dict__") else obs
-                for obs in resp.data
-            ]
+            return [_to_dict(obs) for obs in resp.data]
     except Exception:
         pass
     return []
@@ -126,14 +157,15 @@ def fetch_trace_observations(trace_id: str) -> list[dict[str, Any]]:
 
 def fetch_trace_scores(trace_id: str) -> list[dict[str, Any]]:
     """Fetch all scores attached to a trace via v4 SDK API."""
+    trace = fetch_trace_details(trace_id)
+    if trace and trace.get("scores"):
+        return [_to_dict(s) for s in trace["scores"]]
+
     client = _get_langfuse_client()
     try:
         resp = client.api.scores.get_many(trace_id=trace_id, limit=100)
         if resp and resp.data:
-            return [
-                s.__dict__ if hasattr(s, "__dict__") else s
-                for s in resp.data
-            ]
+            return [_to_dict(s) for s in resp.data]
     except Exception:
         pass
     return []
@@ -143,7 +175,7 @@ def fetch_dataset_items(dataset_name: str) -> list[dict[str, Any]]:
     """Fetch items from a named Langfuse dataset via v4 SDK API."""
     client = _get_langfuse_client()
     try:
-        resp = client.api.dataset_items.list(dataset_name=dataset_name, limit=200)
+        resp = client.api.dataset_items.list(dataset_name=dataset_name, limit=100)
         if resp and resp.data:
             return [
                 item.__dict__ if hasattr(item, "__dict__") else item
@@ -233,11 +265,28 @@ def assert_observations_present(
     return results
 
 
+def poll_for_observation(
+    trace_id: str,
+    observation_name: str,
+    *,
+    max_attempts: int = LANGFUSE_POLL_MAX_ATTEMPTS,
+    interval_s: float = LANGFUSE_POLL_INTERVAL_S,
+) -> bool:
+    """Poll until an observation with *observation_name* appears on the trace."""
+    for attempt in range(max_attempts):
+        observations = fetch_trace_observations(trace_id)
+        if any(_get_obs_name(obs) == observation_name for obs in observations):
+            return True
+        if attempt < max_attempts - 1:
+            time.sleep(interval_s)
+    return False
+
+
 def assert_no_redacted_content(
     trace_id: str,
     forbidden_strings: list[str],
 ) -> list[AssertionResult]:
-    """Assert that raw PII/key strings do NOT appear in observation metadata."""
+    """Assert that raw PII/key strings do NOT appear in observation bodies."""
     results: list[AssertionResult] = []
     observations = fetch_trace_observations(trace_id)
     all_metadata_str = _serialize_observations_metadata(observations)
@@ -246,13 +295,13 @@ def assert_no_redacted_content(
         if forbidden in all_metadata_str:
             results.append(AssertionResult(
                 passed=False,
-                description=f"REDACTION FAILURE: '{forbidden[:30]}...' found in metadata",
-                details="Raw PII/API key leaked to Langfuse",
+                description=f"REDACTION FAILURE: '{forbidden[:30]}...' found in trace",
+                details="Raw PII/API key leaked to Langfuse (input/output/metadata)",
             ))
         else:
             results.append(AssertionResult(
                 passed=True,
-                description=f"Redacted: '{forbidden[:30]}...' NOT in metadata",
+                description=f"Redacted: '{forbidden[:30]}...' NOT in trace bodies",
             ))
 
     return results
@@ -563,14 +612,18 @@ def _get_obs_name(obs: Any) -> str:
 
 def _get_obs_type(obs: Any) -> str:
     if isinstance(obs, dict):
-        return obs.get("type", obs.get("observation_type", ""))
-    return getattr(obs, "type", getattr(obs, "observation_type", ""))
+        raw = obs.get("type", obs.get("observation_type", ""))
+    else:
+        raw = getattr(obs, "type", getattr(obs, "observation_type", ""))
+    return str(raw).lower() if raw else ""
 
 
 def _get_obs_level(obs: Any) -> str:
     if isinstance(obs, dict):
-        return obs.get("level", "DEFAULT")
-    return getattr(obs, "level", "DEFAULT") or "DEFAULT"
+        raw = obs.get("level", "DEFAULT")
+    else:
+        raw = getattr(obs, "level", "DEFAULT")
+    return str(raw).upper() if raw else "DEFAULT"
 
 
 def _get_score_name(score: Any) -> str:
@@ -605,7 +658,7 @@ def _item_has_workflow_id(item: Any, workflow_id: str) -> bool:
 
 
 def _serialize_observations_metadata(observations: list[Any]) -> str:
-    """Flatten all observation metadata/input into a single searchable string."""
+    """Flatten observation metadata, input, and output into a searchable string."""
     import json
 
     parts: list[str] = []
@@ -613,9 +666,12 @@ def _serialize_observations_metadata(observations: list[Any]) -> str:
         if isinstance(obs, dict):
             metadata = obs.get("metadata", {})
             input_data = obs.get("input", {})
+            output_data = obs.get("output", {})
         else:
             metadata = getattr(obs, "metadata", {})
             input_data = getattr(obs, "input", {})
+            output_data = getattr(obs, "output", {})
         parts.append(json.dumps(metadata, default=str))
         parts.append(json.dumps(input_data, default=str))
+        parts.append(json.dumps(output_data, default=str))
     return " ".join(parts)

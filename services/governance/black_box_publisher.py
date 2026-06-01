@@ -27,7 +27,12 @@ from services.governance.guardrail_validator import (
     pii_rules,
 )
 
-__all__ = ["to_export_kwargs", "redact_details"]
+__all__ = [
+    "to_export_kwargs",
+    "redact_details",
+    "redact_text",
+    "redact_compliance_bundle",
+]
 
 _MAX_DETAIL_VALUE_LEN = 200
 
@@ -68,6 +73,15 @@ for _rule in pii_rules() + api_key_rules():
     )
 
 
+def redact_text(text: str, *, max_len: int | None = _MAX_DETAIL_VALUE_LEN) -> str:
+    """Apply PII/API-key scrubbing to a free-form string (relay + bridge)."""
+    if max_len is not None and len(text) > max_len:
+        text = text[:max_len]
+    for pattern, replacement in _REDACTION_PATTERNS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
 def redact_details(details: dict[str, Any]) -> dict[str, str]:
     """Redact PII, API keys, and truncate values to ``_MAX_DETAIL_VALUE_LEN``.
 
@@ -86,16 +100,28 @@ def redact_details(details: dict[str, Any]) -> dict[str, str]:
     result: dict[str, str] = {}
     for key, value in details.items():
         text = str(value)
-
-        if len(text) > _MAX_DETAIL_VALUE_LEN:
-            text = text[:_MAX_DETAIL_VALUE_LEN]
-
-        if key not in _SAFE_NUMERIC_KEYS:
-            for pattern, replacement in _REDACTION_PATTERNS:
-                text = pattern.sub(replacement, text)
-
+        if key in _SAFE_NUMERIC_KEYS:
+            if len(text) > _MAX_DETAIL_VALUE_LEN:
+                text = text[:_MAX_DETAIL_VALUE_LEN]
+        else:
+            text = redact_text(text)
         result[key] = text
     return result
+
+
+def redact_compliance_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Redact event detail payloads before publishing a compliance dataset item."""
+    redacted = dict(bundle)
+    events = redacted.get("events")
+    if not isinstance(events, list):
+        return redacted
+    new_events: list[Any] = []
+    for ev in events:
+        if isinstance(ev, dict) and isinstance(ev.get("details"), dict):
+            ev = {**ev, "details": redact_details(ev["details"])}
+        new_events.append(ev)
+    redacted["events"] = new_events
+    return redacted
 
 
 def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:

@@ -112,3 +112,5 @@ Each recipe mirrors the [governance recipe series](../governance/00_overview.md)
 ## What Comes Next
 
 Continue to [`01_dimension_space.md`](01_dimension_space.md) — *Drawing the Map Before Building the Locks* — which walks through the Sprint 0 contracts: the rail matrix, the code/LLM split, the optional dependency decision, and the frozen schema + thresholds.
+
+After the program ships, human validation is in [`07_validation_walkthrough.md`](07_validation_walkthrough.md) (Tier 1 pytest, REPL spot-check, deployed S3/S5/S6 + Langfuse UI). After the telemetry/redaction fix pass (I9–I12), use [`08_telemetry_redaction_validation_walkthrough.md`](08_telemetry_redaction_validation_walkthrough.md) to confirm Langfuse **output** fields, `error.occurred`, and CLI polling.

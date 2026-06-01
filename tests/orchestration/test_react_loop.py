@@ -598,6 +598,39 @@ class TestErrorOccurredEmission:
         assert len(errors) >= 1, "Expected ERROR_OCCURRED on unknown tool"
         assert "nonexistent" in errors[0]["details"]["error"]
 
+    def test_error_occurred_on_failed_tool_result(self, tmp_path):
+        """Non-zero / ok=False tool results must emit ERROR_OCCURRED."""
+        from orchestration.react_loop import _execute_tools_impl
+        from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
+
+        class _FailArgs(BaseModel):
+            value: str
+
+        def _fail_executor(_args: dict) -> ToolExecutionResult:
+            return ToolExecutionResult(
+                output="failed",
+                ok=False,
+                error="simulated tool failure",
+            )
+
+        registry = ToolRegistry({
+            "fail_tool": ToolDefinition(
+                executor=_fail_executor, schema=_FailArgs, cacheable=False
+            ),
+        })
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        state = _build_tool_message_state("fail_tool", {"value": "x"})
+
+        _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+
+        events = _read_bb_events(tmp_path / "bb", "wf-contract")
+        errors = _events_of_type(events, EventType.ERROR_OCCURRED.value)
+        assert len(errors) >= 1, "Expected ERROR_OCCURRED on ok=False tool"
+        assert errors[0]["details"]["source"] == "tool_execution"
+        assert "simulated tool failure" in errors[0]["details"]["error"]
+
     @pytest.mark.asyncio
     async def test_error_occurred_on_llm_failure(self, tmp_path):
         """When the LLM call raises an exception, ERROR_OCCURRED must be
