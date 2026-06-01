@@ -15,6 +15,7 @@ from typing import Any, Callable
 
 from pydantic import BaseModel, Field
 
+from services.guardrails import sanitize_retrieved_text
 from services.tools.registry import ToolExecutionResult
 from services.tools.search.port import (
     SearchResult,
@@ -38,12 +39,52 @@ class WebSearchOutput(BaseModel):
     results: list[SearchResult]
     query: str
     provider: str = "unknown"
+    sanitized: bool = False
+
+
+def sanitize_search_results(
+    results: list[SearchResult],
+) -> tuple[list[SearchResult], list[str]]:
+    """Strip indirect-injection payloads from retrieved snippets (S5-1).
+
+    Runs the Retrieval-rail sanitizer over each result's ``title`` and
+    ``snippet`` (the model-visible text). The ``url`` is left untouched —
+    URLs are not model instructions and stripping them would break citation.
+    Returns the (possibly rewritten) results plus the de-duplicated list of
+    sanitization reasons across all results (empty ⇒ everything passed clean).
+    """
+    sanitized: list[SearchResult] = []
+    reasons: list[str] = []
+    for result in results:
+        title = sanitize_retrieved_text(result.title)
+        snippet = sanitize_retrieved_text(result.snippet)
+        if not title.modified and not snippet.modified:
+            sanitized.append(result)
+            continue
+        reasons.extend(title.flagged_reasons)
+        reasons.extend(snippet.flagged_reasons)
+        sanitized.append(
+            result.model_copy(
+                update={
+                    "title": title.sanitized_text,
+                    "snippet": snippet.sanitized_text,
+                }
+            )
+        )
+    return sanitized, list(dict.fromkeys(reasons))
 
 
 def build_web_search_executor(
     provider: WebSearchProvider,
+    *,
+    sanitize: bool = True,
 ) -> Callable[[dict[str, Any]], ToolExecutionResult]:
-    """Factory: returns a tool executor bound to the given search provider."""
+    """Factory: returns a tool executor bound to the given search provider.
+
+    When ``sanitize`` is ``True`` (the default, defense-in-depth), retrieved
+    snippets are run through the Retrieval-rail sanitizer (S5-1) before they
+    re-enter the model context.
+    """
 
     def _execute(args: dict[str, Any]) -> ToolExecutionResult:
         try:
@@ -82,10 +123,23 @@ def build_web_search_executor(
                 error=f"unexpected: {exc}",
             )
 
+        sanitized_flag = False
+        if sanitize:
+            results, reasons = sanitize_search_results(results)
+            if reasons:
+                sanitized_flag = True
+                logger.warning(
+                    "web_search sanitized retrieved snippets: query=%r reasons=%s",
+                    validated.query,
+                    reasons,
+                    extra={"flagged_reasons": reasons},
+                )
+
         output = WebSearchOutput(
             query=validated.query,
             results=results,
             provider=getattr(provider, "_provider_name", type(provider).__name__.lower()),
+            sanitized=sanitized_flag,
         )
         return ToolExecutionResult(
             output=output.model_dump_json(),

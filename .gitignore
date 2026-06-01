@@ -65,3 +65,7 @@ scripts/_dbg_*.py
 
 # Accidental root npm lockfile (frontend lockfile lives in frontend/)
 /package-lock.json
+
+# Guardrails ONNX artifact (model.onnx + tokenizer.json + config.json; ~184MB).
+# Shipped via git-LFS / fetch-at-build; absent in default checkout => graceful degrade.
+services/governance/artifacts/
