@@ -51,3 +51,17 @@ Thumbs.db
 
 # Sprint 0 / V3-Dev-Tier throwaway spike code (per SPRINT_0_RUNBOOK.md §5)
 spikes/
+
+# Local terraform / deploy scratch (never commit)
+infra/gcp/terraform.tfvars.bak
+infra/gcp/tfplan.json
+infra/gcp/tfplan.txt
+
+# PR draft bodies (local only)
+.github-pr-body.md
+
+# Ad-hoc debug scripts (local only)
+scripts/_dbg_*.py
+
+# Accidental root npm lockfile (frontend lockfile lives in frontend/)
+/package-lock.json
