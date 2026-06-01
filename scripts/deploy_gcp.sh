@@ -412,16 +412,18 @@ phase_images() {
   run_cmd docker push "${ar_url}/${fver_tag}"
   run_cmd docker push "${ar_url}/${fsha_tag}"
 
-  # ── SearXNG sidecar image mirror ──────────────────────────────────────────
-  # Pull the upstream image and push to our Artifact Registry so Cloud Run
-  # can pull it without Docker Hub rate limits.
+  # ── SearXNG sidecar image (Cloud Run settings baked in) ─────────────────
+  # Build from Dockerfile.searxng (port 8888 + JSON/limiter-off settings) and
+  # push to Artifact Registry so Cloud Run avoids Docker Hub rate limits.
   local searxng_tag="searxng:latest"
-  local searxng_upstream="docker.io/searxng/searxng:latest"
-  info "Mirroring SearXNG sidecar image..."
-  run_cmd docker pull --platform linux/amd64 "${searxng_upstream}"
-  run_cmd docker tag "${searxng_upstream}" "${ar_url}/${searxng_tag}"
+  info "Building SearXNG sidecar image..."
+  echo "+ (cd \"${REPO_ROOT}\" && docker build --platform linux/amd64 -f Dockerfile.searxng -t \"${searxng_tag}\" .)"
+  if [[ -z "${DRY_RUN}" ]]; then
+    (cd "${REPO_ROOT}" && docker build --platform linux/amd64 -f Dockerfile.searxng -t "${searxng_tag}" .)
+  fi
+  run_cmd docker tag "${searxng_tag}" "${ar_url}/${searxng_tag}"
   run_cmd docker push "${ar_url}/${searxng_tag}"
-  pass "SearXNG image mirrored to ${ar_url}/${searxng_tag}"
+  pass "SearXNG image pushed to ${ar_url}/${searxng_tag}"
 
   if [[ -n "${DRY_RUN}" ]]; then
     warn "DRY_RUN=1 set; skipping digest lookup and tfvars updates."

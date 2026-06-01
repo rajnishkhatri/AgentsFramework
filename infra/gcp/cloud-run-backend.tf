@@ -239,11 +239,11 @@ resource "google_cloud_run_v2_service" "backend_combined" {
 
     # ── SearXNG sidecar container ──────────────────────────────────────────
     #
-    # Private internal instance (no ingress port) accessed via localhost:8888.
+    # Private internal instance (no ingress port) on :8888 (backend uses :8080).
     # Shares the service's scale-to-zero and startup lifecycle.
 
     containers {
-      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.docker.repository_id}/searxng:latest"
+      image = "${var.gcp_region}-docker.pkg.dev/${var.gcp_project_id}/${google_artifact_registry_repository.backend.repository_id}/searxng:latest"
       name  = "searxng"
 
       resources {
@@ -254,12 +254,22 @@ resource "google_cloud_run_v2_service" "backend_combined" {
         cpu_idle = true
       }
 
+      env {
+        name  = "SEARXNG_BASE_URL"
+        value = "http://localhost:8888/"
+      }
+
+      env {
+        name  = "GRANIAN_PORT"
+        value = "8888"
+      }
+
       startup_probe {
         http_get {
           path = "/healthz"
           port = 8888
         }
-        initial_delay_seconds = 3
+        initial_delay_seconds = 10
         timeout_seconds       = 3
         period_seconds        = 5
         failure_threshold     = 10
