@@ -45,6 +45,7 @@ from services.governance.guardrail_validator import (
     api_key_rules,
     pii_rules,
 )
+from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
 from services.llm_config import LLMService
@@ -400,6 +401,7 @@ def build_graph(
         llm_service=llm_service,
         prompt_service=prompt_service,
         judge_profile=default_fast_profile(),
+        classifier=InjectionClassifier.maybe_load(),
     )
     output_validator = GuardRailValidator(pii_rules() + api_key_rules())
 
