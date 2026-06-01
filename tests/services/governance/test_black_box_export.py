@@ -12,7 +12,12 @@ from datetime import UTC, datetime
 
 import pytest
 
-from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+from services.governance.black_box import (
+    BUNDLE_SCHEMA_VERSION,
+    BlackBoxRecorder,
+    EventType,
+    TraceEvent,
+)
 
 
 def _make_event(workflow_id: str, event_type: EventType, step: int = 0) -> TraceEvent:
@@ -80,6 +85,158 @@ class TestBlackBoxExport:
 
         with pytest.raises(KeyError, match="No trace found"):
             bb.export("nonexistent-workflow")
+
+
+class TestBundleSchemaVersion:
+    """G4: every export bundle self-identifies with a stable schema version so
+    the coexisting ``task_completed`` shapes are no longer ambiguous."""
+
+    def test_export_stamps_bundle_schema_version(self, tmp_path):
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-schema-version"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_event(wf, EventType.TASK_COMPLETED, step=1))
+
+        export = bb.export(wf)
+        assert "bundle_schema_version" in export
+        assert export["bundle_schema_version"] == BUNDLE_SCHEMA_VERSION
+
+    def test_bundle_schema_version_is_stable(self):
+        # Locks the wire contract: a silent bump would break consumers that
+        # branch on this field, so the constant must change deliberately.
+        assert BUNDLE_SCHEMA_VERSION == "2"
+
+    def test_export_for_compliance_inherits_schema_version(self, tmp_path):
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-compliance-schema-version"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_event(wf, EventType.TASK_COMPLETED, step=1))
+
+        bundle = bb.export_for_compliance(wf)
+        assert bundle["bundle_schema_version"] == BUNDLE_SCHEMA_VERSION
+        assert bundle["bundle_type"] == "compliance_audit"
+
+
+def _make_terminal_event(workflow_id: str, details: dict, step: int = 1) -> TraceEvent:
+    return TraceEvent(
+        event_id=str(uuid.uuid4()),
+        workflow_id=workflow_id,
+        event_type=EventType.TASK_COMPLETED,
+        timestamp=datetime.now(UTC),
+        step=step,
+        details=details,
+    )
+
+
+class TestComplianceSummaryBlock:
+    """G6 residual: ``export_for_compliance`` lifts the terminal outcome signals
+    into a flat top-level ``summary`` block so dashboards can key off the result
+    without walking ``events[]`` or knowing which task_completed shape applies.
+
+    Failure paths first (TDD prompt §4 + TAP-4): a trace that never completes,
+    and the rejected/budget shapes that lack the goal fields, are proven before
+    the happy rich-path lift.
+    """
+
+    def test_summary_present_when_no_task_completed(self, tmp_path):
+        # Failure path: an aborted/incomplete trace still gets a shape-stable
+        # summary — its absence of completion is itself the signal.
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-no-terminal"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_event(wf, EventType.STEP_EXECUTED, step=1))
+
+        bundle = bb.export_for_compliance(wf)
+        summary = bundle["summary"]
+        assert summary["task_completed_present"] is False
+        assert summary["outcome"] is None
+        assert summary["goal_met"] is None
+        assert summary["criteria_met"] is None
+        assert summary["termination_reason"] is None
+        assert summary["reason"] is None
+
+    def test_summary_for_rejected_path_lacks_goal_fields(self, tmp_path):
+        # Failure path (G7): a guardrail/agent-facts rejection carries an
+        # ``outcome`` + ``reason`` but no goal_met/criteria_met. The summary must
+        # surface what exists and leave the rest as None rather than omitting keys.
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-rejected"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_terminal_event(wf, {
+            "outcome": "rejected",
+            "reason": "agent_facts_verification_failed",
+            "step_count": 0,
+            "total_cost_usd": 0.0,
+        }))
+
+        summary = bb.export_for_compliance(wf)["summary"]
+        assert summary["task_completed_present"] is True
+        assert summary["outcome"] == "rejected"
+        assert summary["reason"] == "agent_facts_verification_failed"
+        assert summary["goal_met"] is None
+        assert summary["criteria_met"] is None
+        assert summary["termination_reason"] is None
+
+    def test_summary_for_budget_exceeded_path(self, tmp_path):
+        # Failure path: budget-exceeded terminal shape (no goal fields, no reason).
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-budget"
+        bb.record(_make_terminal_event(wf, {
+            "outcome": "budget_exceeded",
+            "step_count": 3,
+            "total_cost_usd": 5.0,
+            "budget_limit": 5.0,
+        }))
+
+        summary = bb.export_for_compliance(wf)["summary"]
+        assert summary["outcome"] == "budget_exceeded"
+        assert summary["goal_met"] is None
+        assert summary["reason"] is None
+
+    def test_summary_lifts_goal_fields_from_rich_task_completed(self, tmp_path):
+        # Happy path: the rich terminal event's goal signals are lifted verbatim.
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-rich"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_terminal_event(wf, {
+            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+            "outcome": "partial",
+            "goal_met": False,
+            "criteria_met": 0.667,
+            "termination_reason": "no_progress",
+            "unmet_conditions": ["coverage"],
+        }, step=4))
+
+        summary = bb.export_for_compliance(wf)["summary"]
+        assert summary["task_completed_present"] is True
+        assert summary["outcome"] == "partial"
+        assert summary["goal_met"] is False
+        assert summary["criteria_met"] == 0.667
+        assert summary["termination_reason"] == "no_progress"
+        assert summary["reason"] is None
+
+    def test_summary_uses_last_task_completed(self, tmp_path):
+        # Edge: if more than one terminal event exists, the chronologically last
+        # one wins so the summary reflects the true final state.
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-last-wins"
+        bb.record(_make_terminal_event(wf, {"outcome": "partial", "goal_met": False}, step=1))
+        bb.record(_make_terminal_event(wf, {"outcome": "success", "goal_met": True}, step=2))
+
+        summary = bb.export_for_compliance(wf)["summary"]
+        assert summary["outcome"] == "success"
+        assert summary["goal_met"] is True
+
+    def test_base_export_has_no_summary_block(self, tmp_path):
+        # Contract boundary: the summary is a compliance-bundle concern only;
+        # the base export() wire shape stays unchanged (its tests stay green).
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-summary-base-export"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_terminal_event(wf, {"outcome": "success", "goal_met": True}))
+
+        assert "summary" not in bb.export(wf)
+        assert "summary" in bb.export_for_compliance(wf)
 
 
 class TestBlackBoxReplay:

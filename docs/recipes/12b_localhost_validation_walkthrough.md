@@ -1,4 +1,4 @@
-# Recipe 12 — Localhost Validation Walkthrough (I2 / I6 / I8)
+# Recipe 12b — Localhost Validation Walkthrough (I2 / I6 / I8)
 
 **Goal:** Manually validate the three fixes from
 [Recipe 12](12_eval_judge_span_order_and_dedup.md) against the **local dev

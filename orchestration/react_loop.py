@@ -39,7 +39,12 @@ from components.synthesis_validator import validate_synthesis
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 from services.governance.agent_facts_registry import AgentFactsRegistry
-from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+from services.governance.black_box import (
+    BUNDLE_SCHEMA_VERSION,
+    BlackBoxRecorder,
+    EventType,
+    TraceEvent,
+)
 from services.governance.guardrail_validator import (
     GuardRailValidator,
     api_key_rules,
@@ -488,6 +493,7 @@ def build_graph(
                         event_type=EventType.TASK_COMPLETED,
                         timestamp=datetime.now(UTC),
                         details={
+                            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
                             "outcome": "rejected",
                             "reason": "agent_facts_verification_failed",
                             "step_count": 0,
@@ -501,18 +507,24 @@ def build_graph(
                         "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
                     }
 
-        # Story 1.2: guardrail with rejection branching
+        # Story 1.2: guardrail with rejection branching. decide() also returns
+        # the cascade stage that owned the verdict so the trace can prove which
+        # rail fired (G2 input rationale), not just the accept/reject bit.
         try:
-            accepted = await guardrail.is_acceptable(task_input)
+            accepted, decision_stage = await guardrail.decide(task_input)
         except Exception:
-            accepted = True
+            accepted, decision_stage = True, "error"
 
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
             workflow_id=workflow_id,
             event_type=EventType.GUARDRAIL_CHECKED,
             timestamp=datetime.now(UTC),
-            details={"accepted": accepted, "guardrail": "prompt_injection"},
+            details={
+                "guardrail": "prompt_injection",
+                "accepted": accepted,
+                "decision_stage": decision_stage,
+            },
         ))
 
         from services import eval_capture
@@ -530,6 +542,7 @@ def build_graph(
                 event_type=EventType.TASK_COMPLETED,
                 timestamp=datetime.now(UTC),
                 details={
+                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
                     "outcome": "rejected",
                     "reason": "guardrail_rejected",
                     "step_count": 0,
@@ -572,6 +585,7 @@ def build_graph(
                 event_type=EventType.TASK_COMPLETED,
                 timestamp=datetime.now(UTC),
                 details={
+                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
                     "outcome": "budget_exceeded",
                     "step_count": state.get("step_count", 0),
                     "total_cost_usd": total_cost,
@@ -859,42 +873,34 @@ def build_graph(
         content = getattr(response, "content", "")
         tool_calls = getattr(response, "tool_calls", [])
 
+        # G2: always emit an output-stage guardrail_checked event, even on a
+        # clean pass. Previously the event only fired on block/redact, so a
+        # clean scan left no record that the rail ran at all — the "guard who
+        # showed up, did their job, and left no log entry" failure mode. A
+        # single always-on event makes both the negative (blocked/redacted) and
+        # the positive (checked, clean) outcomes provable in the trace.
         scan = output_guardrail_scan(str(content or ""), output_validator)
+        redacted = (not scan.blocked) and (scan.sanitized_content != content)
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.GUARDRAIL_CHECKED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details={
+                "stage": "output",
+                "guardrail": "output_scan",
+                "checked": True,
+                "blocked": scan.blocked,
+                "redacted": redacted,
+                "failed_rules": [
+                    r.guardrail_name for r in scan.rule_results if not r.passed
+                ],
+            },
+        ))
         if scan.blocked:
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.GUARDRAIL_CHECKED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    "stage": "output",
-                    "blocked": True,
-                    "failed_rules": [
-                        r.guardrail_name for r in scan.rule_results if not r.passed
-                    ],
-                },
-            ))
-            content = scan.sanitized_content
             tool_calls = []
-        else:
-            if scan.sanitized_content != content:
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.GUARDRAIL_CHECKED,
-                    timestamp=datetime.now(UTC),
-                    step=state.get("step_count", 0),
-                    details={
-                        "stage": "output",
-                        "blocked": False,
-                        "redacted": True,
-                        "failed_rules": [
-                            r.guardrail_name for r in scan.rule_results if not r.passed
-                        ],
-                    },
-                ))
-            content = scan.sanitized_content
+        content = scan.sanitized_content
 
         ai_msg = AIMessage(content=content, tool_calls=tool_calls)
 
@@ -1229,6 +1235,7 @@ def build_graph(
                 timestamp=datetime.now(UTC),
                 step=updated_step_count,
                 details={
+                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
                     "outcome": effective_outcome,
                     "step_count": updated_step_count,
                     "total_cost_usd": updated_cost,
