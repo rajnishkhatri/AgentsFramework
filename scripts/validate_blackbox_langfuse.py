@@ -51,7 +51,10 @@ from tests.synthetic.blackbox.langfuse_assertions import (
     AUDIT_DATASET,
     ComplianceDatasetReport,
     INCIDENT_DATASET,
+    LANGFUSE_POLL_INTERVAL_S,
+    LANGFUSE_POLL_MAX_ATTEMPTS,
     ScenarioVerification,
+    poll_for_observation,
     print_ui_checklist,
     verify_compliance_datasets,
     verify_scenario,
@@ -206,9 +209,17 @@ async def run_scenario(
 
     print(f"  trace_id = {trace_id}")
 
-    relay_wait_s = 5
-    print(f"\n[2/4] Waiting {relay_wait_s}s for relay to flush to Langfuse...")
-    time.sleep(relay_wait_s)
+    terminal_obs = "task.completed"
+    print(
+        f"\n[2/4] Polling for '{terminal_obs}' "
+        f"(up to {LANGFUSE_POLL_MAX_ATTEMPTS} attempts, "
+        f"{LANGFUSE_POLL_INTERVAL_S}s apart)..."
+    )
+    if not poll_for_observation(trace_id, terminal_obs):
+        print(
+            f"  WARNING: '{terminal_obs}' not seen after polling; "
+            "assertions may fail if relay is still flushing."
+        )
 
     print("[3/4] Running automated Langfuse assertions...")
     verification = verify_scenario(scenario, trace_id)

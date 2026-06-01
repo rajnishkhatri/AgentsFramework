@@ -18,7 +18,9 @@ from services.governance.black_box import EventType, TraceEvent
 
 # Import under test — intentionally failing until GREEN phase.
 from services.governance.black_box_publisher import (
+    redact_compliance_bundle,
     redact_details,
+    redact_text,
     to_export_kwargs,
 )
 
@@ -171,6 +173,24 @@ class TestRedactPII:
         result = redact_details(details)
         assert result["info"] == "step executed successfully"
         assert result["count"] == "42"
+
+    def test_redact_text_strips_inline_pii(self) -> None:
+        text = "Contact alice@example.com for help"
+        assert "alice@example.com" not in redact_text(text)
+        assert "[REDACTED]" in redact_text(text)
+
+    def test_redact_compliance_bundle_scrubs_event_details(self) -> None:
+        bundle = {
+            "workflow_id": "wf-1",
+            "events": [
+                {
+                    "event_id": "e1",
+                    "details": {"task_input": "sk-proj-abcdefghijklmnopqrstuvwx"},
+                }
+            ],
+        }
+        redacted = redact_compliance_bundle(bundle)
+        assert "sk-proj-abcdefghijklmnopqrstuvwx" not in str(redacted["events"][0]["details"])
 
 
 # ─────────────────────────────────────────────────────────────────────

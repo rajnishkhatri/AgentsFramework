@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from services.tools.registry import ToolExecutionResult
+
 ALLOWED_COMMANDS = {"ls", "cat", "head", "tail", "grep", "find", "python", "wc"}
 BLOCKED_PATTERNS = {"rm ", "curl ", "wget ", "nc ", "chmod ", "chown ", "sudo "}
 SHELL_METACHARACTERS = frozenset(";&|$`<>")
@@ -44,7 +46,7 @@ class ShellToolOutput(BaseModel):
     exit_code: int
 
 
-def execute_shell(args: dict[str, Any]) -> str:
+def execute_shell(args: dict[str, Any]) -> ToolExecutionResult | str:
     """Execute a validated shell command. Returns JSON string of ShellToolOutput."""
     try:
         validated = ShellToolInput(**args)
@@ -65,8 +67,23 @@ def execute_shell(args: dict[str, Any]) -> str:
             stderr=result.stderr,
             exit_code=result.returncode,
         )
-        return output.model_dump_json()
+        payload = output.model_dump_json()
+        if result.returncode == 0:
+            return ToolExecutionResult(output=payload, ok=True)
+        return ToolExecutionResult(
+            output=payload,
+            ok=False,
+            error=f"exit code {result.returncode}",
+        )
     except subprocess.TimeoutExpired:
-        return ShellToolOutput(stdout="", stderr="Command timed out", exit_code=-1).model_dump_json()
+        payload = ShellToolOutput(
+            stdout="", stderr="Command timed out", exit_code=-1
+        ).model_dump_json()
+        return ToolExecutionResult(
+            output=payload,
+            ok=False,
+            error="Command timed out",
+        )
     except Exception as e:
-        return ShellToolOutput(stdout="", stderr=str(e), exit_code=-1).model_dump_json()
+        payload = ShellToolOutput(stdout="", stderr=str(e), exit_code=-1).model_dump_json()
+        return ToolExecutionResult(output=payload, ok=False, error=str(e))

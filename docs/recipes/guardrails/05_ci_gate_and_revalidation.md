@@ -154,7 +154,8 @@ guardrail = InputGuardrail(
 pip install -e ".[guardrails]"
 .venv/bin/python -m pytest tests/services/test_guardrail_classifier.py::TestSmokeClassifierGate -q
 
-# Live end-to-end re-drive against Langfuse (manual, Route A — same as the governance walkthrough):
+# Live end-to-end re-drive against Langfuse (manual, Route A):
+# Full step-by-step + Langfuse UI checklists → Recipe 07_validation_walkthrough.md
 python scripts/validate_blackbox_langfuse.py --frontend-url https://your-app --scenario S3
 python scripts/validate_blackbox_langfuse.py --frontend-url https://your-app --scenario S5
 python scripts/validate_blackbox_langfuse.py --frontend-url https://your-app --scenario S6
@@ -165,3 +166,5 @@ python scripts/validate_blackbox_langfuse.py --frontend-url https://your-app --s
 ## What Comes Next
 
 The Input-rail program is complete: a documented dimension space (Recipe 1), a deterministic pre-check + narrowed judge (Recipe 2), a contamination-safe dataset (Recipe 3), a deterministic ONNX classifier (Recipe 4), and now a three-axis CI gate plus end-to-end revalidation (this recipe). The only remaining rail is the **optional Retrieval rail** — continue to [`06_retrieval_rail.md`](06_retrieval_rail.md) (Sprint 5) to sanitize `web_search`/searxng results for indirect injection.
+
+Human sign-off (intern walkthrough): [`07_validation_walkthrough.md`](07_validation_walkthrough.md).

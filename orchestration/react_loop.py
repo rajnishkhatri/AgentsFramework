@@ -270,6 +270,20 @@ def _execute_tools_impl(
             details={"tool": tool_name, "args": tool_args, "cached": False},
         ))
 
+        if not execution_result.ok:
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.ERROR_OCCURRED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "source": "tool_execution",
+                    "tool": tool_name,
+                    "error": execution_result.error or "tool returned failure",
+                },
+            ))
+
         if cacheable:
             updated_cache[cache_key] = execution_result.output
 

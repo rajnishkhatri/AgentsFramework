@@ -31,9 +31,11 @@ dependencies = [
 # guardrails (Sprint 0/3) — optional ONNX injection classifier for the Input
 # rail. Absent => graceful degrade to deterministic pre-check + the existing
 # narrow LLM judge (services/governance/injection_classifier.py). onnxruntime
-# / tokenizers are NOT langgraph/langchain, so the Layer 2 service stays within
-# AGENTS.md invariant #4. Approved ASK-FIRST in Sprint 0 (S0-2 / f2-deps).
-guardrails = ["onnxruntime>=1.17", "tokenizers>=0.15"]
+# / tokenizers / onnx are NOT langgraph/langchain, so the Layer 2 service stays
+# within AGENTS.md invariant #4. ``onnx`` is for smoke-artifact export only
+# (scripts/train_injection_classifier.py smoke); runtime inference needs only
+# onnxruntime + tokenizers. Approved ASK-FIRST in Sprint 0 (S0-2 / f2-deps).
+guardrails = ["onnxruntime>=1.17", "tokenizers>=0.15", "onnx>=1.15"]
 aws = ["boto3>=1.34.0"]
 gcp = [
     "google-cloud-storage>=2.14.0",

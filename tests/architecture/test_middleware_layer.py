@@ -547,10 +547,15 @@ class TestTelemetryBridgeImportAllowlist:
     ALLOWED_FIRST_PARTY = {
         "agent_ui_adapter",
         "middleware",
+        "services",
     }
 
     ALLOWED_MIDDLEWARE_SUBPACKAGES = {
         "middleware.ports",
+    }
+
+    ALLOWED_SERVICES_SUBPACKAGES = {
+        "services.governance.black_box_publisher",
     }
 
     def test_bridge_imports_only_allowed_packages(self) -> None:
@@ -594,6 +599,15 @@ class TestTelemetryBridgeImportAllowlist:
             ):
                 violations.append(
                     f"imports '{full_module}' — only agent_ui_adapter.wire allowed"
+                )
+
+            # Shared PII scrubber (same module the BlackBox relay uses via to_export_kwargs)
+            if top == "services" and not any(
+                full_module.startswith(sub)
+                for sub in self.ALLOWED_SERVICES_SUBPACKAGES
+            ):
+                violations.append(
+                    f"imports '{full_module}' — only services.governance.black_box_publisher allowed"
                 )
 
         assert violations == [], (

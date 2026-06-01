@@ -30,6 +30,7 @@ from agent_ui_adapter.wire.domain_events import (
     ToolResultReceived,
 )
 from middleware.ports.telemetry_exporter import TelemetryExporter
+from services.governance.black_box_publisher import redact_text
 
 logger = logging.getLogger("middleware.telemetry_bridge")
 
@@ -49,6 +50,10 @@ def _truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
     if len(value) <= limit:
         return value
     return value[:limit]
+
+
+def _redact_and_truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
+    return _truncate(redact_text(value, max_len=limit), limit)
 
 
 def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dict[str, Any]] | None:
@@ -74,19 +79,19 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         name = "tool.started"
         attrs["tool_name"] = event.tool_name
         attrs["tool_call_id"] = event.tool_call_id
-        attrs["args_json"] = _truncate(event.args_json)
+        attrs["args_json"] = _redact_and_truncate(event.args_json)
 
     elif isinstance(event, ToolResultReceived):
         name = "tool.finished"
         attrs["tool_call_id"] = event.tool_call_id
-        attrs["result"] = _truncate(event.result)
-        attrs["__output"] = {"result": _truncate(event.result)}
+        attrs["result"] = _redact_and_truncate(event.result)
+        attrs["__output"] = {"result": _redact_and_truncate(event.result)}
 
     elif isinstance(event, LLMMessageStarted):
         name = "llm.started"
         attrs["message_id"] = event.message_id
         if event.input_text:
-            attrs["input_text"] = _truncate(event.input_text)
+            attrs["input_text"] = _redact_and_truncate(event.input_text)
 
     elif isinstance(event, LLMMessageEnded):
         name = "llm.finished"
@@ -99,7 +104,7 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
             "message_id": event.message_id,
         }
         if content:
-            output["content"] = _truncate(content)
+            output["content"] = _redact_and_truncate(content)
         attrs["__output"] = output
 
     else:

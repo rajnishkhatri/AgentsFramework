@@ -361,9 +361,12 @@ class TestFullPipelineFlow:
         relay = _build_relay(storage, exporter)
         relay.run_once()
 
-        details = exporter.events[0]["attributes"]["details"]
+        attrs = exporter.events[0]["attributes"]
+        details = attrs["details"]
         assert "alice@example.com" not in str(details)
         assert details["query"] == "normal text"
+        if "__output" in attrs:
+            assert "alice@example.com" not in str(attrs["__output"])
 
     def test_api_key_redacted_through_pipeline(
         self, storage: Path, exporter: FakeExporter

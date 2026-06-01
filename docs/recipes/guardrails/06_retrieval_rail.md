@@ -6,6 +6,8 @@
 
 **Prerequisite:** [`02_prompt_and_precheck.md`](02_prompt_and_precheck.md) (the Sprint 1 pre-check primitives this rail reuses)
 
+**Human validation:** retrieval REPL examples in [`07_validation_walkthrough.md`](07_validation_walkthrough.md) Part 2.2 and 5.
+
 ---
 
 ## Before We Start: A Story
