@@ -38,6 +38,12 @@ class AgentConfig(BaseModel):
     # onto TaskOutcome. Off by default so CI stays L2-pure (no live LLM); the
     # deterministic keyword heuristic is the fallback when disabled.
     goal_judge_enabled: bool = False
+    # Stage 2 rollout: when True, a goal_met=False verdict may downgrade a
+    # clean ``success`` outcome to ``partial`` (strictly success->partial).
+    # Decoupled from goal_judge_enabled so the judge can run in shadow mode
+    # (gather verdicts, change nothing) before the gate is enabled. Default
+    # off — stays off until the gold-set production-enable gate is met.
+    goal_judge_downgrade_enabled: bool = False
 
 
 def default_fast_profile() -> ModelProfile:

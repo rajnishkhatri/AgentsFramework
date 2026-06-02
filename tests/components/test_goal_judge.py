@@ -20,7 +20,21 @@ import pytest
 from components.goal_judge import GoalJudge
 from components.schemas import GoalVerdict
 from services.base_config import ModelProfile
+from services.governance.guardrail_validator import (
+    FailAction,
+    GuardRailValidator,
+    api_key_rules,
+    pii_rules,
+)
 from services.prompt_service import PromptService
+
+
+def _redact_all_validator() -> GuardRailValidator:
+    """Mirror the graph-build judge redactor: all PII/API-key rules as REDACT."""
+    return GuardRailValidator([
+        rule.model_copy(update={"fail_action": FailAction.REDACT})
+        for rule in (pii_rules() + api_key_rules())
+    ])
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -56,12 +70,15 @@ def _profile() -> ModelProfile:
     )
 
 
-def _judge(response_content: str) -> tuple[GoalJudge, FakeLLMService]:
+def _judge(
+    response_content: str, *, redactor: GuardRailValidator | None = None
+) -> tuple[GoalJudge, FakeLLMService]:
     llm = FakeLLMService(response_content)
     judge = GoalJudge(
         llm_service=llm,  # type: ignore[arg-type]
         prompt_service=PromptService(),
         judge_profile=_profile(),
+        redactor=redactor,
     )
     return judge, llm
 
@@ -195,3 +212,200 @@ class TestPromptRendering:
     def test_model_name_exposed_for_eval_capture(self):
         judge, _ = _judge("{}")
         assert judge.model_name == "gpt-4o-mini"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Fix 2 (Option B): graceful_failure + partial_fraction metadata axes.
+# Backward compat (missing keys) is tested before the happy path (TAP-4).
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestNewVerdictAxes:
+    @pytest.mark.asyncio
+    async def test_graceful_failure_string_false_parses_false(self):
+        """JSON string ``\"false\"`` must not coerce to True (F4 regression)."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "stringy false", "graceful_failure": "false"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.graceful_failure is False
+
+    @pytest.mark.asyncio
+    async def test_graceful_failure_string_true_parses_true(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "stringy true", "graceful_failure": "true"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.graceful_failure is True
+
+    @pytest.mark.asyncio
+    async def test_missing_new_keys_default_safely(self):
+        """A v1 verdict (no graceful_failure/partial_fraction) stays valid."""
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.graceful_failure is False
+        assert verdict.partial_fraction == 0.0
+
+    @pytest.mark.asyncio
+    async def test_graceful_failure_parsed(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "task was impossible; agent reported it honestly", '
+            '"graceful_failure": true, "partial_fraction": 0.0}'
+        )
+        verdict = await judge.evaluate(
+            task_input="Divide 1 by 0 exactly.",
+            final_answer="That is undefined; division by zero is impossible.",
+            success_conditions=[],
+        )
+        assert verdict.goal_met is False
+        assert verdict.graceful_failure is True
+
+    @pytest.mark.asyncio
+    async def test_partial_fraction_parsed(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.5, "per_criterion": [], '
+            '"rationale": "half done", "partial_fraction": 0.5}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.partial_fraction == pytest.approx(0.5)
+
+    @pytest.mark.asyncio
+    async def test_partial_fraction_out_of_range_is_clamped(self):
+        """A >1 fraction (e.g. a 0-100 percentage) is rescaled then clamped."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "pct", "partial_fraction": 60}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert 0.0 <= verdict.partial_fraction <= 1.0
+        assert verdict.partial_fraction == pytest.approx(0.6)
+
+    @pytest.mark.asyncio
+    async def test_negative_partial_fraction_clamped_to_zero(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "neg", "partial_fraction": -0.5}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.partial_fraction == 0.0
+
+    @pytest.mark.asyncio
+    async def test_non_numeric_partial_fraction_defaults_zero(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "bad", "partial_fraction": "lots"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.partial_fraction == 0.0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Evidence enrichment + redaction: tool inputs reach the prompt, and an
+# injected redactor scrubs secrets/PII before they hit the judge call.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestEvidenceEnrichmentAndRedaction:
+    @pytest.mark.asyncio
+    async def test_digest_includes_tool_input(self):
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}'
+        )
+        await judge.evaluate(
+            task_input="Look up Austin weather",
+            final_answer="Sunny, 75F.",
+            success_conditions=[],
+            evidence=[
+                {
+                    "tool_name": "web_search",
+                    "tool_input": {"query": "Austin weather today"},
+                    "tool_output": "Austin 75F sunny",
+                }
+            ],
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert "Austin weather today" in rendered  # the tool INPUT is grounded
+        assert "Austin 75F sunny" in rendered  # the tool OUTPUT is grounded
+
+    @pytest.mark.asyncio
+    async def test_redactor_scrubs_api_key_in_evidence(self):
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}',
+            redactor=_redact_all_validator(),
+        )
+        secret = "sk-proj-ABCD1234efgh5678"
+        await judge.evaluate(
+            task_input="t",
+            final_answer="done",
+            success_conditions=[],
+            evidence=[
+                {
+                    "tool_name": "shell",
+                    "tool_input": {"cmd": f"export OPENAI_API_KEY={secret}"},
+                    "tool_output": f"key set to {secret}",
+                }
+            ],
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert secret not in rendered
+        assert "[REDACTED]" in rendered
+
+    @pytest.mark.asyncio
+    async def test_redactor_scrubs_email_pii_in_evidence(self):
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}',
+            redactor=_redact_all_validator(),
+        )
+        await judge.evaluate(
+            task_input="t",
+            final_answer="done",
+            success_conditions=[],
+            evidence=[
+                {
+                    "tool_name": "lookup",
+                    "tool_input": {},
+                    "tool_output": "contact: jane.doe@example.com",
+                }
+            ],
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert "jane.doe@example.com" not in rendered
+
+    @pytest.mark.asyncio
+    async def test_no_redactor_leaves_evidence_intact(self):
+        """Without a redactor (CI default) the digest is verbatim."""
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}'
+        )
+        await judge.evaluate(
+            task_input="t",
+            final_answer="done",
+            success_conditions=[],
+            evidence=[{"tool_name": "lookup", "tool_output": "plain text result"}],
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert "plain text result" in rendered

@@ -118,12 +118,20 @@ class GoalVerdict(BaseModel):
       - criteria_met: fraction (0..1) of declared success conditions satisfied.
       - per_criterion: per-condition breakdown with evidence.
       - rationale: short chain-of-thought summary (audit trail).
+      - graceful_failure: the agent correctly reported an impossible task
+        (behaved correctly, goal not met). Pure metadata — distinguishes a
+        well-behaved impossibility report from a hallucinated completion.
+      - partial_fraction: completion fraction (0..1) for a partially solved
+        task. TELEMETRY-ONLY: the orchestration downgrade gate reads ONLY
+        ``goal_met``; ``partial_fraction`` MUST NOT be wired into gating.
     """
 
     goal_met: bool
     criteria_met: float = 0.0
     per_criterion: list[CriterionVerdict] = Field(default_factory=list)
     rationale: str = ""
+    graceful_failure: bool = False
+    partial_fraction: float = 0.0
 
     @property
     def unmet_conditions(self) -> list[str]:
