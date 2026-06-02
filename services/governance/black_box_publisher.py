@@ -109,18 +109,32 @@ def redact_details(details: dict[str, Any]) -> dict[str, str]:
     return result
 
 
+def _redact_phase_events(phase_events: list[Any]) -> list[Any]:
+    """Redact free-text ``details`` on phase boundary records (same rules as events)."""
+    redacted: list[Any] = []
+    for record in phase_events:
+        if isinstance(record, dict) and isinstance(record.get("details"), dict):
+            record = {**record, "details": redact_details(record["details"])}
+        redacted.append(record)
+    return redacted
+
+
 def redact_compliance_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
-    """Redact event detail payloads before publishing a compliance dataset item."""
+    """Redact event and phase-event detail payloads before publishing a compliance bundle."""
     redacted = dict(bundle)
     events = redacted.get("events")
-    if not isinstance(events, list):
-        return redacted
-    new_events: list[Any] = []
-    for ev in events:
-        if isinstance(ev, dict) and isinstance(ev.get("details"), dict):
-            ev = {**ev, "details": redact_details(ev["details"])}
-        new_events.append(ev)
-    redacted["events"] = new_events
+    if isinstance(events, list):
+        new_events: list[Any] = []
+        for ev in events:
+            if isinstance(ev, dict) and isinstance(ev.get("details"), dict):
+                ev = {**ev, "details": redact_details(ev["details"])}
+            new_events.append(ev)
+        redacted["events"] = new_events
+
+    phase_events = redacted.get("phase_events")
+    if isinstance(phase_events, list):
+        redacted["phase_events"] = _redact_phase_events(phase_events)
+
     return redacted
 
 

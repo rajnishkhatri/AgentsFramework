@@ -36,6 +36,19 @@
 >
 > Full drift analysis: [`docs/drift/blackbox_event_taxonomy_drift.json`](../docs/drift/blackbox_event_taxonomy_drift.json)
 
+> **Phase 3 update (2026-06-01) — Phase boundary recording + relay**
+>
+> The **Reasoning pillar** (`PhaseLogger`) now records ReAct loop phase boundaries to `cache/phase_logs/{workflow_id}/phases.jsonl` (split from `decisions.jsonl`). On `TASK_COMPLETED`, the Langfuse relay builds a `PhaseLogger` from the sibling `phase_logs` directory and passes it into `export_for_compliance()`, so published dataset items include `phase_events[]` and `phase_log_schema_version="1"`. `redact_compliance_bundle()` walks `phase_events[]` with the same rules as `events[].details` — relay and redaction shipped together (see [`docs/plans/phase_3_phaselogger_wiring.plan.md`](../docs/plans/phase_3_phaselogger_wiring.plan.md)).
+>
+> **Still open (Recording pillar gaps — plan labels R1 / R3):**
+>
+> | Label | Master-plan todo | Gap |
+> |---|---|---|
+> | **R1** | `phase2a-tool-called-enrich` | Enrich `TOOL_CALLED` event `details` (args hashes, latency breakdown) |
+> | **R3** | `phase2b-error-enrich` | Enrich `ERROR_OCCURRED` event `details` (classification, retry hints) |
+>
+> These are tracked in the governance pipeline master plan (`.cursor/plans/governance_pipeline_enhancements_3c04ef92.plan.md`); Phase 3 scope was phase wiring only.
+
 ---
 
 ## Introduction

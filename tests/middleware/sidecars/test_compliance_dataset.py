@@ -29,7 +29,13 @@ from typing import Any, Mapping
 
 import pytest
 
-from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+from services.governance.black_box import (
+    PHASE_LOG_SCHEMA_VERSION,
+    BlackBoxRecorder,
+    EventType,
+    TraceEvent,
+)
+from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -693,6 +699,63 @@ class TestG9ErrorTraces:
         ]
         assert error_events, "ERROR_OCCURRED not exported to telemetry"
         assert error_events[0]["attributes"]["__bb_level"] == "ERROR"
+
+
+class TestRelayPhaseEvents:
+    """Sprint 4 (b3-relay): compliance publish includes phase_events[]; redaction applies."""
+
+    def test_relay_publishes_phase_events_when_phase_logs_present(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        wf_id = "wf-phase-relay"
+        _record_workflow(storage, wf_id)
+        phase_logs = storage.parent / "phase_logs"
+        pl = PhaseLogger(phase_logs)
+        pl.start_phase(wf_id, WorkflowPhase.ROUTING, step_count=0)
+        pl.end_phase(wf_id, WorkflowPhase.ROUTING, "done", step_count=0)
+        pl.start_phase(wf_id, WorkflowPhase.COMPLETION, step_count=0)
+        pl.end_phase(wf_id, WorkflowPhase.COMPLETION, "done", step_count=0)
+        (storage / wf_id / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        item = _published_item(compliance_publisher, wf_id)
+        bundle = item["input_data"]
+        assert bundle["phase_log_schema_version"] == PHASE_LOG_SCHEMA_VERSION
+        assert len(bundle["phase_events"]) >= 2
+        ended = [e for e in bundle["phase_events"] if e.get("event") == "phase_end"]
+        assert any(e["phase"] == WorkflowPhase.ROUTING.value for e in ended)
+
+    def test_published_phase_event_details_are_redacted(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        wf_id = "wf-phase-pii"
+        _record_workflow(storage, wf_id)
+        phase_logs = storage.parent / "phase_logs"
+        pl = PhaseLogger(phase_logs)
+        pl.end_phase(
+            wf_id,
+            WorkflowPhase.ROUTING,
+            "done",
+            step_count=0,
+            details={"note": "email alice@example.com before route"},
+        )
+        (storage / wf_id / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        bundle = _published_item(compliance_publisher, wf_id)["input_data"]
+        routing_ends = [
+            e
+            for e in bundle["phase_events"]
+            if e.get("event") == "phase_end" and e.get("phase") == WorkflowPhase.ROUTING.value
+        ]
+        assert routing_ends
+        note = routing_ends[0]["details"]["note"]
+        assert "alice@example.com" not in note
+        assert "[REDACTED]" in note
 
 
 class TestNegativeScenarioEventCoverage:

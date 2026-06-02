@@ -9,6 +9,8 @@ Failure paths first per TDD principle.
 
 from __future__ import annotations
 
+import json
+import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -195,6 +197,363 @@ class TestPhaseLogger:
         log_file = tmp_path / "wf-002" / "decisions.jsonl"
         lines = log_file.read_text().strip().split("\n")
         assert len(lines) == 2
+
+
+class TestPhaseLoggerFailurePaths:
+    """C0 (Sprint 0 red): failure-path tests for PhaseLogger persistence (B1).
+
+    These assert behaviors that the log-only implementation does not provide yet.
+    Remove the class ``xfail`` marker when Sprint 1 turns them green. Failure paths
+    first (TDD prompt §4, TAP-4).
+    """
+
+    @staticmethod
+    def _phases_path(tmp_path, workflow_id: str):
+        return tmp_path / workflow_id / "phases.jsonl"
+
+    def test_end_phase_without_start_writes_end_and_warns(self, tmp_path, caplog):
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
+            pl.end_phase("wf-unbalanced", WorkflowPhase.ROUTING, "done", step_count=0)
+
+        phases_file = self._phases_path(tmp_path, "wf-unbalanced")
+        assert phases_file.exists(), "end_phase must persist a phase_end row even without start"
+        rows = [json.loads(line) for line in phases_file.read_text().strip().split("\n") if line]
+        assert any(r.get("event") == "phase_end" for r in rows)
+        assert any("without matching start" in r.getMessage() for r in caplog.records)
+
+    def test_per_step_key_isolation(self, tmp_path):
+        from freezegun import freeze_time
+
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        with freeze_time("2026-06-01T10:00:00Z"):
+            pl.start_phase("wf-steps", WorkflowPhase.ROUTING, step_count=0)
+        with freeze_time("2026-06-01T10:00:01Z"):
+            pl.end_phase("wf-steps", WorkflowPhase.ROUTING, "done", step_count=0)
+        with freeze_time("2026-06-01T10:00:02Z"):
+            pl.start_phase("wf-steps", WorkflowPhase.ROUTING, step_count=1)
+        with freeze_time("2026-06-01T10:00:03Z"):
+            pl.end_phase("wf-steps", WorkflowPhase.ROUTING, "done", step_count=1)
+
+        events = pl.export_phase_events("wf-steps")
+        ends = [e for e in events if e.get("event") == "phase_end"]
+        assert len(ends) == 2
+        assert {e["step_count"] for e in ends} == {0, 1}
+        assert all(e.get("duration_ms", -1) >= 0 for e in ends)
+
+    def test_jsonl_write_io_error_does_not_crash(self, tmp_path, monkeypatch, caplog):
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        real_open = open
+
+        def failing_open(file, mode="r", *args, **kwargs):
+            path = str(file)
+            if "phases.jsonl" in path and "a" in mode:
+                raise OSError("simulated disk full")
+            return real_open(file, mode, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.open", failing_open)
+        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
+            pl.start_phase("wf-io", WorkflowPhase.INPUT_VALIDATION, step_count=0)
+
+        assert any("phases.jsonl" in r.getMessage() or "phase" in r.getMessage().lower() for r in caplog.records)
+
+    def test_completion_without_start_warns_no_crash(self, tmp_path, caplog):
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
+            pl.end_phase("wf-completion", WorkflowPhase.COMPLETION, "done", step_count=0)
+
+        phases_file = self._phases_path(tmp_path, "wf-completion")
+        assert phases_file.exists()
+        exported = pl.export_phase_events("wf-completion")
+        assert any(
+            ev.get("event") == "phase_end" and ev.get("phase") == "completion" for ev in exported
+        )
+        assert any("without matching start" in r.getMessage() for r in caplog.records)
+
+    def test_mixed_export_ordering_keeps_decisions_separate(self, tmp_path):
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        pl.start_phase("wf-mixed", WorkflowPhase.INITIALIZATION, step_count=0)
+        pl.log_decision(
+            "wf-mixed",
+            Decision(
+                phase=WorkflowPhase.ROUTING,
+                description="route",
+                alternatives=[],
+                rationale="r",
+                confidence=1.0,
+            ),
+        )
+        pl.end_phase("wf-mixed", WorkflowPhase.INITIALIZATION, "ok", step_count=0)
+
+        decisions = pl.export_workflow_log("wf-mixed")
+        phase_events = pl.export_phase_events("wf-mixed")
+
+        assert len(decisions) == 1
+        assert decisions[0].get("description") == "route"
+        assert not any(d.get("event") in ("phase_start", "phase_end") for d in decisions)
+        assert len(phase_events) >= 2
+        assert not any(e.get("description") == "route" for e in phase_events)
+
+    def test_phase_duration_tracked_with_freezegun(self, tmp_path):
+        from datetime import datetime
+
+        from freezegun import freeze_time
+
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        t0 = datetime(2026, 6, 1, 12, 0, 0, tzinfo=UTC)
+        t1 = datetime(2026, 6, 1, 12, 0, 0, 500000, tzinfo=UTC)
+        with freeze_time(t0):
+            pl.start_phase("wf-dur", WorkflowPhase.MODEL_INVOCATION, step_count=2)
+        with freeze_time(t1):
+            pl.end_phase("wf-dur", WorkflowPhase.MODEL_INVOCATION, "ok", step_count=2)
+
+        ends = [e for e in pl.export_phase_events("wf-dur") if e.get("event") == "phase_end"]
+        assert len(ends) == 1
+        assert ends[0]["duration_ms"] >= 500
+
+
+class TestPhaseLoggerImplementation:
+    """C1 (Sprint 1 green): acceptance tests for PhaseLogger persistence (B1)."""
+
+    def test_start_end_writes_phases_jsonl_schema(self, tmp_path):
+        from freezegun import freeze_time
+
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+        with freeze_time("2026-06-01T11:00:00Z"):
+            pl.start_phase("wf-schema", WorkflowPhase.INITIALIZATION, step_count=0)
+        with freeze_time("2026-06-01T11:00:01Z"):
+            pl.end_phase("wf-schema", WorkflowPhase.INITIALIZATION, "ok", step_count=0)
+
+        events = pl.export_phase_events("wf-schema")
+        assert len(events) == 2
+
+        start_row = next(e for e in events if e["event"] == "phase_start")
+        end_row = next(e for e in events if e["event"] == "phase_end")
+        assert start_row["workflow_id"] == "wf-schema"
+        assert start_row["step_count"] == 0
+        assert start_row["phase"] == "initialization"
+        assert "timestamp" in start_row
+        assert "outcome" not in start_row
+
+        assert end_row["outcome"] == "ok"
+        assert end_row["duration_ms"] >= 0
+
+    def test_phase_tracker_records_error_on_exception_and_reraises(self, tmp_path):
+        import asyncio
+
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+
+        async def _run() -> None:
+            async with pl.phase("wf-err", WorkflowPhase.MODEL_INVOCATION, step_count=1):
+                raise RuntimeError("simulated llm failure")
+
+        with pytest.raises(RuntimeError, match="simulated llm failure"):
+            asyncio.run(_run())
+
+        events = pl.export_phase_events("wf-err")
+        ends = [e for e in events if e["event"] == "phase_end"]
+        assert len(ends) == 1
+        assert ends[0]["outcome"] == "error"
+        assert ends[0]["step_count"] == 1
+        # Start key must be popped so a subsequent phase at same key can start fresh.
+        pl.start_phase("wf-err", WorkflowPhase.MODEL_INVOCATION, step_count=1)
+        pl.end_phase("wf-err", WorkflowPhase.MODEL_INVOCATION, "ok", step_count=1)
+        assert len([e for e in pl.export_phase_events("wf-err") if e["event"] == "phase_end"]) == 2
+
+    def test_phase_tracker_success_outcome(self, tmp_path):
+        import asyncio
+
+        from services.governance.phase_logger import PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path)
+
+        async def _run() -> None:
+            async with pl.phase(
+                "wf-ok",
+                WorkflowPhase.ROUTING,
+                step_count=0,
+                outcome="routed",
+            ):
+                pass
+
+        asyncio.run(_run())
+        ends = [e for e in pl.export_phase_events("wf-ok") if e["event"] == "phase_end"]
+        assert len(ends) == 1
+        assert ends[0]["outcome"] == "routed"
+
+    def test_injected_decision_id_factory_yields_deterministic_ids(self, tmp_path):
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        counter = {"n": 0}
+
+        def factory() -> str:
+            counter["n"] += 1
+            return f"decision-{counter['n']}"
+
+        pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=factory)
+        decision = Decision(
+            phase=WorkflowPhase.ROUTING,
+            description="first",
+            alternatives=[],
+            rationale="r",
+            confidence=1.0,
+        )
+        decision = pl.log_decision("wf-ids", decision)
+        assert decision.decision_id == "decision-1"
+        pl.log_decision(
+            "wf-ids",
+            Decision(
+                phase=WorkflowPhase.EVALUATION,
+                description="second",
+                alternatives=[],
+                rationale="r",
+                confidence=1.0,
+            ),
+        )
+
+        entries = pl.export_workflow_log("wf-ids")
+        assert [e["decision_id"] for e in entries] == ["decision-1", "decision-2"]
+
+
+class TestDecisionIdJoin:
+    """S2 (Sprint 2): decision_id on Decision model + MODEL_SELECTED cross-pillar join."""
+
+    def test_ensure_decision_id_is_idempotent(self, tmp_path):
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "stable-id")
+        base = Decision(
+            phase=WorkflowPhase.ROUTING,
+            description="route",
+            alternatives=[],
+            rationale="r",
+            confidence=1.0,
+        )
+        first = pl.ensure_decision_id(base)
+        second = pl.ensure_decision_id(first)
+        assert first.decision_id == "stable-id"
+        assert second.decision_id == "stable-id"
+
+    def test_log_decision_assigns_id_on_model_and_jsonl(self, tmp_path):
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "join-id")
+        decision = pl.log_decision(
+            "wf-model",
+            Decision(
+                phase=WorkflowPhase.ROUTING,
+                description="Selected gpt-4o-mini",
+                alternatives=["gpt-4o"],
+                rationale="steady-state",
+                confidence=0.75,
+            ),
+        )
+        assert decision.decision_id == "join-id"
+        row = pl.export_workflow_log("wf-model")[0]
+        assert row["decision_id"] == decision.decision_id
+
+    def test_model_selected_details_share_decision_id(self, tmp_path):
+        """Route-node pattern: same id in decisions.jsonl and BlackBox MODEL_SELECTED."""
+        from datetime import UTC, datetime
+
+        from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        wf_id = "wf-cross-pillar"
+        pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "route-decision-42")
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "black_box")
+
+        decision = pl.log_decision(
+            wf_id,
+            Decision(
+                phase=WorkflowPhase.ROUTING,
+                description="Selected gpt-4o-mini",
+                alternatives=["gpt-4o"],
+                rationale="capable-for-planning",
+                confidence=0.75,
+            ),
+        )
+        bb.record(
+            TraceEvent(
+                event_id="ev-model-selected",
+                workflow_id=wf_id,
+                event_type=EventType.MODEL_SELECTED,
+                timestamp=datetime.now(UTC),
+                step=0,
+                details={
+                    "model": "gpt-4o-mini",
+                    "reason": "capable-for-planning",
+                    "decision_id": decision.decision_id,
+                },
+            )
+        )
+
+        decision_row = pl.export_workflow_log(wf_id)[0]
+        model_selected = [
+            e
+            for e in bb.export(wf_id)["events"]
+            if e["event_type"] == EventType.MODEL_SELECTED.value
+        ]
+        assert len(model_selected) == 1
+        assert decision_row["decision_id"] == "route-decision-42"
+        assert model_selected[0]["details"]["decision_id"] == decision_row["decision_id"]
+
+
+try:
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    _HAS_HYPOTHESIS = True
+except ImportError:
+    _HAS_HYPOTHESIS = False
+
+
+@pytest.mark.property
+@pytest.mark.skipif(not _HAS_HYPOTHESIS, reason="hypothesis not installed")
+class TestDecisionIdUniqueness:
+    """C3 (Sprint 2): decision_id uniqueness within a workflow."""
+
+    @settings(max_examples=25, deadline=None)
+    @given(n=st.integers(min_value=2, max_value=50))
+    def test_decision_ids_unique_in_workflow(self, n: int):
+        import tempfile
+
+        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+
+        with tempfile.TemporaryDirectory() as storage_dir:
+            pl = PhaseLogger(storage_dir=storage_dir)
+            wf_id = "wf-uniqueness"
+            for i in range(n):
+                pl.log_decision(
+                    wf_id,
+                    Decision(
+                        phase=WorkflowPhase.ROUTING,
+                        description=f"decision-{i}",
+                        alternatives=[],
+                        rationale="property test",
+                        confidence=1.0,
+                    ),
+                )
+
+            ids = [row["decision_id"] for row in pl.export_workflow_log(wf_id)]
+            assert len(ids) == n
+            assert len(set(ids)) == n
 
 
 # ─────────────────────────────────────────────────────────────────────

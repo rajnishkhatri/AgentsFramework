@@ -192,6 +192,37 @@ class TestRedactPII:
         redacted = redact_compliance_bundle(bundle)
         assert "sk-proj-abcdefghijklmnopqrstuvwx" not in str(redacted["events"][0]["details"])
 
+    def test_redact_compliance_bundle_scrubs_phase_event_details(self) -> None:
+        bundle = {
+            "workflow_id": "wf-phase",
+            "phase_events": [
+                {
+                    "event": "phase_end",
+                    "phase": "routing",
+                    "details": {"note": "Contact alice@example.com for routing"},
+                }
+            ],
+        }
+        redacted = redact_compliance_bundle(bundle)
+        details = redacted["phase_events"][0]["details"]
+        assert "alice@example.com" not in details["note"]
+        assert "[REDACTED]" in details["note"]
+
+    def test_redact_compliance_bundle_leaves_phase_events_without_details(self) -> None:
+        bundle = {
+            "workflow_id": "wf-phase",
+            "phase_events": [
+                {
+                    "event": "phase_end",
+                    "phase": "completion",
+                    "outcome": "done",
+                }
+            ],
+        }
+        redacted = redact_compliance_bundle(bundle)
+        assert redacted["phase_events"][0]["outcome"] == "done"
+        assert "details" not in redacted["phase_events"][0]
+
 
 # ─────────────────────────────────────────────────────────────────────
 # D. Redaction — API key stripping
