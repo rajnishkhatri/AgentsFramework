@@ -200,8 +200,11 @@ def api_key_rules() -> list[GuardRail]:
     return [
         GuardRail(
             name="api_key.openai",
-            description="OpenAI-style secret key (sk-...)",
-            pattern=r"\bsk-[A-Za-z0-9\-_]{20,}\b",
+            description="OpenAI-style secret key (sk-... / sk-proj-...)",
+            # The optional ``proj-`` segment plus an 8-char floor catches
+            # short project keys (e.g. sk-proj-abc123456789) that the old
+            # {20,} quantifier silently let through — see walkthrough G1.2.
+            pattern=r"\bsk-(?:proj-)?[A-Za-z0-9_-]{8,}\b",
             severity=Severity.CRITICAL,
             fail_action=FailAction.BLOCK,
         ),

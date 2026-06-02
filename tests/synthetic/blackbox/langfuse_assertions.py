@@ -22,6 +22,7 @@ from typing import Any
 from tests.synthetic.blackbox.dataset import (
     ComplianceExpectation,
     ExpectedObservation,
+    PhaseExpectation,
     Scenario,
     ScenarioID,
 )
@@ -694,6 +695,353 @@ def assert_dataset_routing(
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Phase 3 — PhaseLogger (Reasoning pillar) bundle assertions
+#
+# The phase track (``phase_events[]`` / ``phase_decisions[]``) is published
+# inside the compliance dataset item's ``input_data``, NOT as live
+# observations. These assertions therefore operate on a bundle dict so they
+# are reusable by both the live driver (after fetching the item) and any
+# deterministic test that builds a bundle directly.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def fetch_compliance_bundle(
+    trace_id: str,
+    dataset_names: tuple[str, ...] = (AUDIT_DATASET, INCIDENT_DATASET),
+) -> dict[str, Any] | None:
+    """Return the published compliance bundle (dataset item ``input``) for a trace."""
+    for ds in dataset_names:
+        for item in fetch_dataset_items(ds):
+            if _item_matches(item, trace_id):
+                if isinstance(item, dict):
+                    inp = item.get("input")
+                else:
+                    inp = getattr(item, "input", None)
+                if isinstance(inp, dict):
+                    return inp
+    return None
+
+
+def _bundle_phase_events(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    events = bundle.get("phase_events")
+    return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else []
+
+
+def _bundle_phase_decisions(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    decisions = bundle.get("phase_decisions")
+    return [d for d in decisions if isinstance(d, dict)] if isinstance(decisions, list) else []
+
+
+def _phase_ends(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    return [e for e in _bundle_phase_events(bundle) if e.get("event") == "phase_end"]
+
+
+def assert_phase_schema_versions(bundle: dict[str, Any]) -> list[AssertionResult]:
+    """``phase_log_schema_version='1'`` is present and ``bundle_schema_version``
+    is still ``'2'`` (phase versioning never forces a bundle bump)."""
+    results: list[AssertionResult] = []
+    plv = bundle.get("phase_log_schema_version")
+    results.append(AssertionResult(
+        passed=plv == "1",
+        description=f"phase_log_schema_version == '1' (got {plv!r})",
+    ))
+    bsv = bundle.get("bundle_schema_version")
+    results.append(AssertionResult(
+        passed=bsv == "2",
+        description=f"bundle_schema_version == '2' (got {bsv!r})",
+    ))
+    return results
+
+
+def assert_phase_ends_present(
+    bundle: dict[str, Any],
+    expected_phases: tuple[str, ...],
+) -> list[AssertionResult]:
+    """Every expected phase has at least one ``phase_end`` row with ``duration_ms``."""
+    results: list[AssertionResult] = []
+    ends = _phase_ends(bundle)
+    ended = {e.get("phase") for e in ends}
+    for phase in expected_phases:
+        present = phase in ended
+        results.append(AssertionResult(
+            passed=present,
+            description=(
+                f"phase_end for '{phase}' present"
+                if present
+                else f"phase_end for '{phase}' MISSING (have {sorted(ended)})"
+            ),
+        ))
+    # Durations are non-negative where present.
+    bad_durations = [
+        e for e in ends
+        if "duration_ms" in e and (not isinstance(e["duration_ms"], int) or e["duration_ms"] < 0)
+    ]
+    results.append(AssertionResult(
+        passed=not bad_durations,
+        description=(
+            "all phase_end duration_ms >= 0"
+            if not bad_durations
+            else f"{len(bad_durations)} phase_end row(s) with invalid duration_ms"
+        ),
+    ))
+    return results
+
+
+def assert_no_phase_ends(
+    bundle: dict[str, Any],
+    forbidden_phases: tuple[str, ...],
+) -> list[AssertionResult]:
+    """Negative check: none of *forbidden_phases* produced a ``phase_end``."""
+    results: list[AssertionResult] = []
+    ended = {e.get("phase") for e in _phase_ends(bundle)}
+    for phase in forbidden_phases:
+        absent = phase not in ended
+        results.append(AssertionResult(
+            passed=absent,
+            description=(
+                f"no '{phase}' phase_end (as expected)"
+                if absent
+                else f"UNEXPECTED '{phase}' phase_end present"
+            ),
+        ))
+    return results
+
+
+def assert_phase_outcomes(
+    bundle: dict[str, Any],
+    pairs: tuple[tuple[str, str], ...],
+) -> list[AssertionResult]:
+    """Each ``(phase, outcome)`` pair appears on some ``phase_end`` row."""
+    results: list[AssertionResult] = []
+    ends = _phase_ends(bundle)
+    for phase, outcome in pairs:
+        found = any(
+            e.get("phase") == phase and e.get("outcome") == outcome for e in ends
+        )
+        results.append(AssertionResult(
+            passed=found,
+            description=(
+                f"phase '{phase}' ended with outcome '{outcome}'"
+                if found
+                else f"phase '{phase}' never ended with outcome '{outcome}'"
+            ),
+        ))
+    return results
+
+
+def assert_completion_fires_once(
+    bundle: dict[str, Any],
+    expected_count: int | None = 1,
+    expected_outcome: str | None = None,
+) -> list[AssertionResult]:
+    """COMPLETION single-flight: exactly *expected_count* ``completion``
+    ``phase_end`` rows, optionally with *expected_outcome*."""
+    results: list[AssertionResult] = []
+    completion_ends = [e for e in _phase_ends(bundle) if e.get("phase") == "completion"]
+
+    if expected_count is not None:
+        results.append(AssertionResult(
+            passed=len(completion_ends) == expected_count,
+            description=(
+                f"COMPLETION phase_end count == {expected_count} "
+                f"(got {len(completion_ends)})"
+            ),
+        ))
+
+    if expected_outcome is not None:
+        outcomes = {e.get("outcome") for e in completion_ends}
+        results.append(AssertionResult(
+            passed=outcomes == {expected_outcome},
+            description=(
+                f"COMPLETION outcome == '{expected_outcome}' (got {sorted(outcomes)})"
+            ),
+        ))
+    return results
+
+
+def assert_routing_step_counts(
+    bundle: dict[str, Any],
+    expected_step_counts: tuple[int, ...],
+) -> list[AssertionResult]:
+    """Per-step keying: each expected ``step_count`` has its own ``routing``
+    ``phase_end`` (step 0 and step 1 are independent, not one overwritten span)."""
+    results: list[AssertionResult] = []
+    routing_steps = {
+        e.get("step_count")
+        for e in _phase_ends(bundle)
+        if e.get("phase") == "routing"
+    }
+    for sc in expected_step_counts:
+        present = sc in routing_steps
+        results.append(AssertionResult(
+            passed=present,
+            description=(
+                f"routing phase_end at step_count={sc} present"
+                if present
+                else f"routing phase_end at step_count={sc} MISSING "
+                f"(have {sorted(s for s in routing_steps if s is not None)})"
+            ),
+        ))
+    return results
+
+
+def assert_unique_decision_ids(bundle: dict[str, Any]) -> AssertionResult:
+    """No duplicate ``decision_id`` across ``phase_decisions[]`` in a workflow."""
+    ids = [d.get("decision_id") for d in _bundle_phase_decisions(bundle) if d.get("decision_id")]
+    unique = len(ids) == len(set(ids))
+    return AssertionResult(
+        passed=unique,
+        description=(
+            f"decision_ids unique ({len(ids)} rows)"
+            if unique
+            else f"DUPLICATE decision_id across {len(ids)} rows: {ids}"
+        ),
+    )
+
+
+def assert_decision_id_join(bundle: dict[str, Any]) -> AssertionResult:
+    """Cross-pillar join: the routing decision's ``decision_id`` equals the
+    ``MODEL_SELECTED`` event's ``details.decision_id``."""
+    routing = [
+        d for d in _bundle_phase_decisions(bundle) if d.get("phase") == "routing"
+    ]
+    if not routing or not routing[0].get("decision_id"):
+        return AssertionResult(
+            passed=False,
+            description="no routing decision with a decision_id in phase_decisions[]",
+        )
+    decision_id = routing[0]["decision_id"]
+
+    model_selected = [
+        ev for ev in _bundle_events(bundle)
+        if ev.get("event_type") == "model_selected"
+    ]
+    event_ids = {
+        (ev.get("details") or {}).get("decision_id") for ev in model_selected
+    }
+    matched = decision_id in event_ids
+    return AssertionResult(
+        passed=matched,
+        description=(
+            f"decision_id {decision_id!r} joins routing decision to MODEL_SELECTED"
+            if matched
+            else f"decision_id {decision_id!r} NOT found on any MODEL_SELECTED "
+            f"event (have {sorted(i for i in event_ids if i)})"
+        ),
+    )
+
+
+def assert_no_phase_pii(
+    bundle: dict[str, Any],
+    forbidden_strings: tuple[str, ...],
+) -> list[AssertionResult]:
+    """No raw PII/key appears anywhere in the serialized phase track."""
+    import json
+
+    serialized = json.dumps(
+        {
+            "phase_events": _bundle_phase_events(bundle),
+            "phase_decisions": _bundle_phase_decisions(bundle),
+        },
+        default=str,
+    )
+    results: list[AssertionResult] = []
+    for forbidden in forbidden_strings:
+        leaked = forbidden in serialized
+        results.append(AssertionResult(
+            passed=not leaked,
+            description=(
+                f"phase track redacted: '{forbidden[:30]}...' NOT present"
+                if not leaked
+                else f"REDACTION FAILURE: '{forbidden[:30]}...' in phase track"
+            ),
+        ))
+    return results
+
+
+def verify_phase_expectation(
+    bundle: dict[str, Any],
+    phase: PhaseExpectation,
+) -> list[AssertionResult]:
+    """Run every configured phase assertion against a compliance bundle."""
+    results: list[AssertionResult] = []
+    results.extend(assert_phase_schema_versions(bundle))
+
+    if phase.expected_phase_ends:
+        results.extend(assert_phase_ends_present(bundle, phase.expected_phase_ends))
+    if phase.forbidden_phase_ends:
+        results.extend(assert_no_phase_ends(bundle, phase.forbidden_phase_ends))
+    if phase.expected_phase_outcomes:
+        results.extend(assert_phase_outcomes(bundle, phase.expected_phase_outcomes))
+    if phase.expected_completion_count is not None or phase.expected_completion_outcome is not None:
+        results.extend(assert_completion_fires_once(
+            bundle,
+            expected_count=phase.expected_completion_count,
+            expected_outcome=phase.expected_completion_outcome,
+        ))
+    if phase.expected_routing_step_counts:
+        results.extend(assert_routing_step_counts(bundle, phase.expected_routing_step_counts))
+    if phase.require_unique_decision_ids:
+        results.append(assert_unique_decision_ids(bundle))
+    if phase.check_decision_id_join:
+        results.append(assert_decision_id_join(bundle))
+    if phase.phase_redaction_forbidden:
+        results.extend(assert_no_phase_pii(bundle, phase.phase_redaction_forbidden))
+    return results
+
+
+def verify_phase_scenario(
+    scenario: Scenario,
+    trace_id: str,
+    bundle: dict[str, Any] | None = None,
+) -> ScenarioVerification:
+    """Verify a Phase 3 scenario.
+
+    Runs the base live-observation assertions, then fetches the compliance
+    bundle (unless *bundle* is supplied) and runs the phase-track assertions.
+    """
+    verification = ScenarioVerification(
+        scenario_id=scenario.id.value,
+        trace_id=trace_id,
+    )
+
+    verification.assertions.append(assert_trace_exists(trace_id))
+    if verification.assertions[0].passed:
+        verification.assertions.extend(
+            assert_observations_present(trace_id, scenario.expected_observations)
+        )
+        if scenario.redaction_assertions:
+            verification.assertions.extend(
+                assert_no_redacted_content(trace_id, scenario.redaction_assertions)
+            )
+        verification.assertions.append(
+            assert_compliance_score(trace_id, scenario.compliance)
+        )
+        verification.assertions.append(
+            assert_dataset_item_exists(trace_id, scenario.compliance)
+        )
+
+    if scenario.phase is not None:
+        if bundle is None:
+            bundle = fetch_compliance_bundle(
+                trace_id,
+                dataset_names=(scenario.compliance.dataset_name, AUDIT_DATASET, INCIDENT_DATASET),
+            )
+        if bundle is None:
+            verification.assertions.append(AssertionResult(
+                passed=False,
+                description="compliance bundle (dataset item input) NOT found",
+                details="phase-track assertions skipped — is the relay/publisher running?",
+            ))
+        else:
+            verification.assertions.extend(
+                verify_phase_expectation(bundle, scenario.phase)
+            )
+
+    return verification
+
+
+# ─────────────────────────────────────────────────────────────────────
 # UI Checklist printer
 # ─────────────────────────────────────────────────────────────────────
 
@@ -733,6 +1081,9 @@ def print_ui_checklist(scenario: Scenario, trace_id: str) -> str:
         for secret in scenario.redaction_assertions:
             lines.append(f"- [ ] `{secret[:40]}...` is NOT visible")
 
+    if scenario.phase is not None:
+        lines.extend(_phase_checklist_lines(scenario.phase, scenario.compliance.dataset_name))
+
     if scenario.notes:
         lines.append("")
         lines.append(f"### Notes:")
@@ -740,6 +1091,45 @@ def print_ui_checklist(scenario: Scenario, trace_id: str) -> str:
 
     checklist = "\n".join(lines)
     return checklist
+
+
+def _phase_checklist_lines(phase: PhaseExpectation, dataset_name: str) -> list[str]:
+    """Render the Reasoning-pillar (phase track) checklist for a scenario.
+
+    The phase track lives in the dataset item's ``input_data`` JSON, not in
+    live observations — the checklist points the reviewer there.
+    """
+    lines = [
+        "",
+        "### Reasoning pillar (phase track):",
+        f"  Open Datasets → `{dataset_name}` → item for this trace → inspect `input_data`.",
+        "- [ ] `phase_log_schema_version` == `1` and `bundle_schema_version` == `2`",
+    ]
+    for ph in phase.expected_phase_ends:
+        lines.append(f"- [ ] `phase_events[]` has a `phase_end` for `{ph}`")
+    for ph in phase.forbidden_phase_ends:
+        lines.append(f"- [ ] `phase_events[]` has NO `phase_end` for `{ph}`")
+    for ph, outcome in phase.expected_phase_outcomes:
+        lines.append(f"- [ ] `{ph}` `phase_end` has `outcome` == `{outcome}`")
+    if phase.expected_completion_count is not None:
+        lines.append(
+            f"- [ ] exactly `{phase.expected_completion_count}` `completion` `phase_end` row(s)"
+        )
+    if phase.expected_completion_outcome is not None:
+        lines.append(
+            f"- [ ] `completion` `phase_end` `outcome` == `{phase.expected_completion_outcome}`"
+        )
+    for sc in phase.expected_routing_step_counts:
+        lines.append(f"- [ ] independent `routing` `phase_end` at `step_count` == `{sc}`")
+    if phase.require_unique_decision_ids:
+        lines.append("- [ ] every `phase_decisions[]` row has a distinct `decision_id`")
+    if phase.check_decision_id_join:
+        lines.append(
+            "- [ ] routing `decision_id` matches `model.selected` `details.decision_id`"
+        )
+    for secret in phase.phase_redaction_forbidden:
+        lines.append(f"- [ ] `{secret[:40]}...` is NOT in `phase_events[]`/`phase_decisions[]`")
+    return lines
 
 
 # ─────────────────────────────────────────────────────────────────────
