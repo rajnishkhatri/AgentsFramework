@@ -12,6 +12,11 @@ Test categories:
   C. Score attachment — hash_chain_valid score on trace (True/False)
   D. Trigger condition — only TASK_COMPLETED triggers compliance publish
   E. Architecture invariant — relay still has no langfuse/langgraph imports
+  F. Negative-path gate-failure traces (G7/G8/G9) — drive the synthetic
+     scenarios from the dataset's single source of truth so the gate-failure
+     modes (failed AgentFacts, broken chain, retryable/tool errors) are
+     actually exercised, not just the happy path (Pattern 11 failure-mode
+     matrix; prevents TAP-4 Gap Blindness).
 """
 
 from __future__ import annotations
@@ -491,3 +496,228 @@ class TestArchitectureInvariant:
                     assert not node.module.startswith(("langfuse", "langgraph")), (
                         f"Forbidden import in port: {node.module}"
                     )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# F. NEGATIVE-PATH GATE-FAILURE TRACES (G7/G8/G9)
+#
+# A compliance dataset with zero ERROR_OCCURRED, zero broken chains and zero
+# rejected verifications is not proof the gates work — it is proof they were
+# never tested (TAP-4 Gap Blindness, AGENTS.md). These tests materialize the
+# synthetic scenarios (the single source of truth in tests/synthetic/blackbox)
+# and drive them through the *real* relay so each gate-failure mode lands in
+# the dataset exactly as the runtime would emit it. Failure paths first.
+# ─────────────────────────────────────────────────────────────────────
+
+
+from tests.synthetic.blackbox.dataset import (  # noqa: E402
+    NEGATIVE_SCENARIOS,
+    Scenario,
+    ScenarioID,
+)
+from tests.synthetic.blackbox.langfuse_assertions import (  # noqa: E402
+    assert_broken_chain_bundle,
+    assert_bundle_event_types,
+    assert_dataset_routing,
+    assert_error_trace_present,
+    assert_rejected_outcome,
+)
+
+
+def _materialize_scenario(storage: Path, scenario: Scenario) -> tuple[str, str | None]:
+    """Record a synthetic scenario's trace, optionally tampering the chain.
+
+    Returns ``(workflow_id, broken_event_id)`` where ``broken_event_id`` is the
+    event whose stored integrity hash was zeroed (None when no corruption).
+    The byte offset is reset to 0 so the relay reads the whole trace.
+    """
+    wf_id = scenario.id.value
+    recorder = BlackBoxRecorder(storage_dir=storage)
+    base_ts = datetime(2026, 5, 28, 12, 0, 0, tzinfo=UTC)
+    for i, ev in enumerate(scenario.synthetic_events):
+        recorder.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=wf_id,
+            event_type=EventType(ev.event_type),
+            timestamp=base_ts,
+            step=ev.step,
+            details=dict(ev.details),
+        ))
+
+    broken_event_id: str | None = None
+    if scenario.corrupt_event_index is not None:
+        trace_file = storage / wf_id / "trace.jsonl"
+        lines = trace_file.read_text().strip().split("\n")
+        idx = scenario.corrupt_event_index
+        event_data = json.loads(lines[idx])
+        broken_event_id = event_data.get("event_id")
+        event_data["integrity_hash"] = "0" * 64
+        lines[idx] = json.dumps(event_data, default=str)
+        trace_file.write_text("\n".join(lines) + "\n")
+
+    (storage / wf_id / ".langfuse_offset").write_text("0")
+    return wf_id, broken_event_id
+
+
+def _published_item(publisher: FakeCompliancePublisher, wf_id: str) -> dict[str, Any]:
+    """Return the (first) dataset item the relay published for *wf_id*."""
+    items = [
+        item for item in publisher.dataset_items
+        if item["input_data"].get("workflow_id") == wf_id
+    ]
+    assert items, f"No dataset item published for {wf_id}"
+    return items[0]
+
+
+class TestG8BrokenChainTrace:
+    """G8: a tampered hash chain routes to incident-replay with score 0 and a
+    populated ``broken_at_event_id`` — the auditor's jump-to-tamper signal."""
+
+    def test_broken_chain_routes_to_incident_with_break_location(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        scenario = NEGATIVE_SCENARIOS[ScenarioID.S9]
+        wf_id, broken_event_id = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        item = _published_item(compliance_publisher, wf_id)
+        routing = assert_dataset_routing(item["dataset_name"], scenario.compliance)
+        assert routing.passed, routing.description
+
+        bundle = item["input_data"]
+        failures = [r for r in assert_broken_chain_bundle(bundle) if not r.passed]
+        assert not failures, "\n".join(f.description for f in failures)
+        assert bundle["broken_at_event_id"] == broken_event_id
+
+    def test_broken_chain_score_is_zero(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        scenario = NEGATIVE_SCENARIOS[ScenarioID.S9]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = [s for s in compliance_publisher.scores if s["trace_id"] == wf_id]
+        assert len(scores) == 1
+        assert scores[0]["name"] == "hash_chain_valid"
+        assert scores[0]["value"] == scenario.compliance.hash_chain_valid_score == 0.0
+
+
+class TestG7FailedAgentFactsTrace:
+    """G7: a failed AgentFacts verification yields a rejected terminal outcome.
+    The chain is intact, so it routes to the audit dataset, but the summary
+    block surfaces ``outcome=rejected`` so the gate's firing is provable."""
+
+    def test_rejected_outcome_surfaced_in_summary(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        scenario = NEGATIVE_SCENARIOS[ScenarioID.S7]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        item = _published_item(compliance_publisher, wf_id)
+        routing = assert_dataset_routing(item["dataset_name"], scenario.compliance)
+        assert routing.passed, routing.description
+
+        failures = [
+            r for r in assert_rejected_outcome(item["input_data"], scenario.expected_reason)
+            if not r.passed
+        ]
+        assert not failures, "\n".join(f.description for f in failures)
+
+    def test_rejected_trace_chain_is_intact(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        # The task was rejected, not the recording — integrity must stay 1.0.
+        scenario = NEGATIVE_SCENARIOS[ScenarioID.S7]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        scores = [s for s in compliance_publisher.scores if s["trace_id"] == wf_id]
+        assert len(scores) == 1
+        assert scores[0]["value"] == 1.0
+
+
+class TestG9ErrorTraces:
+    """G9 dataset coverage: retryable (429) and tool errors fire ERROR_OCCURRED
+    and carry a non-null ``error_type`` onto the terminal event. The runtime
+    already emits these; this proves they reach the dataset."""
+
+    @pytest.mark.parametrize("scenario_id", [ScenarioID.S10, ScenarioID.S11])
+    def test_error_trace_present_with_error_type(
+        self,
+        scenario_id: ScenarioID,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
+    ) -> None:
+        scenario = NEGATIVE_SCENARIOS[scenario_id]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        item = _published_item(compliance_publisher, wf_id)
+        bundle = item["input_data"]
+        failures = [
+            r for r in assert_error_trace_present(bundle, scenario.expected_error_types)
+            if not r.passed
+        ]
+        assert not failures, "\n".join(f.description for f in failures)
+
+    @pytest.mark.parametrize("scenario_id", [ScenarioID.S10, ScenarioID.S11])
+    def test_error_occurred_exported_at_error_level(
+        self,
+        scenario_id: ScenarioID,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
+    ) -> None:
+        # The relay must still ship the ERROR_OCCURRED observation to telemetry.
+        scenario = NEGATIVE_SCENARIOS[scenario_id]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        error_events = [
+            e for e in exporter.events
+            if e["name"] == "error.occurred" and e["trace_id"] == wf_id
+        ]
+        assert error_events, "ERROR_OCCURRED not exported to telemetry"
+        assert error_events[0]["attributes"]["__bb_level"] == "ERROR"
+
+
+class TestNegativeScenarioEventCoverage:
+    """Every synthetic scenario's declared event sequence must materialize in
+    the published bundle — the dataset definition and the trace cannot drift."""
+
+    @pytest.mark.parametrize(
+        "scenario_id", [ScenarioID.S7, ScenarioID.S9, ScenarioID.S10, ScenarioID.S11]
+    )
+    def test_declared_events_present_in_bundle(
+        self,
+        scenario_id: ScenarioID,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
+    ) -> None:
+        scenario = NEGATIVE_SCENARIOS[scenario_id]
+        wf_id, _ = _materialize_scenario(storage, scenario)
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        bundle = _published_item(compliance_publisher, wf_id)["input_data"]
+        failures = [
+            r for r in assert_bundle_event_types(bundle, scenario.expected_observations)
+            if not r.passed
+        ]
+        assert not failures, "\n".join(f.description for f in failures)

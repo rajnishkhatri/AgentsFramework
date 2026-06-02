@@ -18,6 +18,20 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("services.governance.black_box")
 
+# G4: every export bundle and terminal ``task_completed`` event self-identifies
+# with this version so the (currently three) coexisting ``task_completed`` shapes
+# in a single dataset are no longer ambiguous. Bump when the bundle/terminal-event
+# shape changes; consumers branch on it instead of guessing from present keys.
+BUNDLE_SCHEMA_VERSION = "2"
+
+# G6 residual: the terminal outcome signals dashboards care about live inside the
+# ``task_completed`` event ``details``. Lifting them into a top-level ``summary``
+# block lets a consumer key off the result without walking ``events[]`` (and
+# without knowing which of the rich / rejected / budget shapes applies). Fields
+# absent from a given shape (e.g. ``goal_met`` on a rejected path) surface as
+# ``None`` rather than being omitted, so the summary contract is shape-stable.
+SUMMARY_FIELDS = ("outcome", "goal_met", "criteria_met", "termination_reason", "reason")
+
 
 class EventType(str, Enum):
     TASK_STARTED = "task_started"
@@ -116,6 +130,7 @@ class BlackBoxRecorder:
             events.append(event_data)
 
         return {
+            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
             "workflow_id": workflow_id,
             "event_count": len(events),
             "events": events,
@@ -142,6 +157,30 @@ class BlackBoxRecorder:
         events.sort(key=lambda e: e.timestamp)
         return events
 
+    @staticmethod
+    def _summarize_outcome(events: list[dict]) -> dict:
+        """G6 residual: lift the terminal outcome signals into a flat summary.
+
+        Walks the events for the (chronologically last) ``task_completed`` and
+        copies the dashboard-relevant fields out of its ``details``. Returns a
+        shape-stable dict: every field in ``SUMMARY_FIELDS`` is always present
+        (``None`` when the terminal event's shape does not carry it), and
+        ``task_completed_present`` reports whether a terminal event existed at
+        all — a trace that never completed (broken/aborted) is itself a signal.
+        """
+        summary: dict[str, Any] = {field: None for field in SUMMARY_FIELDS}
+        summary["task_completed_present"] = False
+
+        for event in events:
+            if event.get("event_type") != EventType.TASK_COMPLETED.value:
+                continue
+            details = event.get("details") or {}
+            summary["task_completed_present"] = True
+            for field in SUMMARY_FIELDS:
+                summary[field] = details.get(field)
+
+        return summary
+
     def export_for_compliance(
         self,
         workflow_id: str,
@@ -150,6 +189,10 @@ class BlackBoxRecorder:
     ) -> dict:
         """Story 6.3: produce a compliance-ready bundle joining all governance artifacts."""
         bundle = self.export(workflow_id)
+
+        # G6 residual: surface the terminal outcome at the top level so
+        # dashboards key off ``bundle["summary"]`` instead of scanning events[].
+        bundle["summary"] = self._summarize_outcome(bundle.get("events", []))
 
         if agent_facts_registry is not None:
             try:

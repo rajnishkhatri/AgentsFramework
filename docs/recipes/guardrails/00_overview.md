@@ -114,3 +114,5 @@ Each recipe mirrors the [governance recipe series](../governance/00_overview.md)
 Continue to [`01_dimension_space.md`](01_dimension_space.md) — *Drawing the Map Before Building the Locks* — which walks through the Sprint 0 contracts: the rail matrix, the code/LLM split, the optional dependency decision, and the frozen schema + thresholds.
 
 After the program ships, human validation is in [`07_validation_walkthrough.md`](07_validation_walkthrough.md) (Tier 1 pytest, REPL spot-check, deployed S3/S5/S6 + Langfuse UI). After the telemetry/redaction fix pass (I9–I12), use [`08_telemetry_redaction_validation_walkthrough.md`](08_telemetry_redaction_validation_walkthrough.md) to confirm Langfuse **output** fields, `error.occurred`, and CLI polling.
+
+Then [`09_rail_observability_and_determinism.md`](09_rail_observability_and_determinism.md) — *Proving the Guard Showed Up* — closes the trace-gap items G2 (always-on output `guardrail_checked`; `decision_stage` on the input event) and G3 (judge `temperature=0` + ONNX preference, deterministic pre-check verdicts) so a clean pass is provable and identical benign prompts give identical verdicts.

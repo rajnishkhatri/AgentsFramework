@@ -551,6 +551,149 @@ def _item_matches(item: Any, trace_id: str) -> bool:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Phase 5 — Negative-path bundle assertions (G7/G8/G9)
+#
+# These operate on a *compliance bundle* (the dict published as a dataset
+# item's ``input_data``), not on a live Langfuse query, so they are reusable
+# by the deterministic L2 relay contract test and zero-flake in CI. They prove
+# the gate-failure modes a pristine dataset would otherwise hide (TAP-4).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _bundle_events(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    events = bundle.get("events")
+    return events if isinstance(events, list) else []
+
+
+def _last_terminal_details(bundle: dict[str, Any]) -> dict[str, Any]:
+    """Return the chronologically last ``task_completed`` event's details."""
+    details: dict[str, Any] = {}
+    for ev in _bundle_events(bundle):
+        if ev.get("event_type") == "task_completed":
+            details = ev.get("details") or {}
+    return details
+
+
+def assert_broken_chain_bundle(bundle: dict[str, Any]) -> list[AssertionResult]:
+    """G8: a tampered chain must report ``hash_chain_valid=False`` and name the
+    first broken event so an auditor can jump straight to the tamper point."""
+    results: list[AssertionResult] = []
+
+    chain_valid = bundle.get("hash_chain_valid")
+    results.append(AssertionResult(
+        passed=chain_valid is False,
+        description=f"hash_chain_valid is False (got {chain_valid!r})",
+    ))
+
+    broken_at = bundle.get("broken_at_event_id")
+    results.append(AssertionResult(
+        passed=bool(broken_at),
+        description=(
+            f"broken_at_event_id populated ({broken_at!r})"
+            if broken_at
+            else "broken_at_event_id MISSING on a broken chain"
+        ),
+    ))
+    return results
+
+
+def assert_rejected_outcome(
+    bundle: dict[str, Any],
+    expected_reason: str | None = None,
+) -> list[AssertionResult]:
+    """G7: a rejected terminal outcome must surface in the summary block so a
+    reviewer sees the gate fired without walking ``events[]``."""
+    results: list[AssertionResult] = []
+    summary = bundle.get("summary") or {}
+
+    outcome = summary.get("outcome")
+    results.append(AssertionResult(
+        passed=outcome == "rejected",
+        description=f"summary.outcome == 'rejected' (got {outcome!r})",
+    ))
+
+    if expected_reason is not None:
+        reason = summary.get("reason")
+        results.append(AssertionResult(
+            passed=reason == expected_reason,
+            description=f"summary.reason == {expected_reason!r} (got {reason!r})",
+        ))
+    return results
+
+
+def assert_error_trace_present(
+    bundle: dict[str, Any],
+    expected_error_types: list[str] | tuple[str, ...] = (),
+) -> list[AssertionResult]:
+    """G9: an ``error.occurred`` event must exist and the terminal event must
+    carry a non-null ``error_type`` (optionally one of *expected_error_types*)."""
+    results: list[AssertionResult] = []
+
+    error_events = [
+        ev for ev in _bundle_events(bundle)
+        if ev.get("event_type") == "error_occurred"
+    ]
+    results.append(AssertionResult(
+        passed=len(error_events) >= 1,
+        description=f"error.occurred present ({len(error_events)} event(s))",
+    ))
+
+    error_type = _last_terminal_details(bundle).get("error_type")
+    results.append(AssertionResult(
+        passed=error_type is not None,
+        description=f"terminal error_type non-null (got {error_type!r})",
+    ))
+
+    if expected_error_types:
+        results.append(AssertionResult(
+            passed=error_type in expected_error_types,
+            description=(
+                f"terminal error_type in {list(expected_error_types)} "
+                f"(got {error_type!r})"
+            ),
+        ))
+    return results
+
+
+def assert_bundle_event_types(
+    bundle: dict[str, Any],
+    expected: list[ExpectedObservation],
+) -> list[AssertionResult]:
+    """Assert every expected observation maps to an event type in the bundle.
+
+    Observation names (``error.occurred``) map to event_type values
+    (``error_occurred``) by swapping ``.`` for ``_`` — the inverse of the
+    publisher's ``_EVENT_TYPE_TO_OBSERVATION`` table.
+    """
+    results: list[AssertionResult] = []
+    present = {ev.get("event_type") for ev in _bundle_events(bundle)}
+    for exp in expected:
+        event_type = exp.name.replace(".", "_")
+        results.append(AssertionResult(
+            passed=event_type in present,
+            description=(
+                f"event_type '{event_type}' present"
+                if event_type in present
+                else f"event_type '{event_type}' MISSING (have {sorted(present)})"
+            ),
+        ))
+    return results
+
+
+def assert_dataset_routing(
+    dataset_name: str,
+    expected: ComplianceExpectation,
+) -> AssertionResult:
+    """Assert the bundle was published to the dataset the scenario expects."""
+    return AssertionResult(
+        passed=dataset_name == expected.dataset_name,
+        description=(
+            f"routed to '{dataset_name}' (expected '{expected.dataset_name}')"
+        ),
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────
 # UI Checklist printer
 # ─────────────────────────────────────────────────────────────────────
 

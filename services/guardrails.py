@@ -380,11 +380,16 @@ class InputGuardrail:
         # unchanged unless they opt in.
         self._classifier = classifier
 
-    async def is_acceptable(
-        self,
-        prompt: str,
-        raise_exception: bool = False,
-    ) -> bool:
+    async def decide(self, prompt: str) -> tuple[bool, str]:
+        """Run the input cascade and return ``(accepted, decision_stage)``.
+
+        ``decision_stage`` is the cascade band that owned the verdict —
+        ``precheck:<reason>`` / ``classifier:<band>`` / ``judge`` — so callers
+        can record *why* the input was accepted or rejected, not just the
+        boolean. G2: the stage was previously logged then dropped, making a
+        clean pass unprovable downstream; surfacing it lets the trace show
+        which rail actually fired.
+        """
         # Cascade stage 1: deterministic pre-check (FP-free, no LLM cost).
         # Clear attacks reject, clearly-clean inputs accept (skip the LLM),
         # and the ambiguous residue defers downstream.
@@ -409,6 +414,15 @@ class InputGuardrail:
                 "input_preview": prompt[:100],
             },
         )
+        return accepted, stage
+
+    async def is_acceptable(
+        self,
+        prompt: str,
+        raise_exception: bool = False,
+    ) -> bool:
+        """Thin boolean wrapper over :meth:`decide` (back-compat surface)."""
+        accepted, _stage = await self.decide(prompt)
 
         if not accepted and raise_exception:
             raise ValueError(
