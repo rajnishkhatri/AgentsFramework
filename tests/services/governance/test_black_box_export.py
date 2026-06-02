@@ -14,10 +14,12 @@ import pytest
 
 from services.governance.black_box import (
     BUNDLE_SCHEMA_VERSION,
+    PHASE_LOG_SCHEMA_VERSION,
     BlackBoxRecorder,
     EventType,
     TraceEvent,
 )
+from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 
 
 def _make_event(workflow_id: str, event_type: EventType, step: int = 0) -> TraceEvent:
@@ -106,6 +108,9 @@ class TestBundleSchemaVersion:
         # branch on this field, so the constant must change deliberately.
         assert BUNDLE_SCHEMA_VERSION == "2"
 
+    def test_phase_log_schema_version_is_stable(self):
+        assert PHASE_LOG_SCHEMA_VERSION == "1"
+
     def test_export_for_compliance_inherits_schema_version(self, tmp_path):
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-compliance-schema-version"
@@ -115,6 +120,59 @@ class TestBundleSchemaVersion:
         bundle = bb.export_for_compliance(wf)
         assert bundle["bundle_schema_version"] == BUNDLE_SCHEMA_VERSION
         assert bundle["bundle_type"] == "compliance_audit"
+
+    def test_export_for_compliance_stamps_phase_log_schema_version(self, tmp_path):
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        wf = "wf-phase-log-schema"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_event(wf, EventType.TASK_COMPLETED, step=1))
+
+        bundle = bb.export_for_compliance(wf)
+        assert bundle["phase_log_schema_version"] == PHASE_LOG_SCHEMA_VERSION
+        assert bundle["bundle_schema_version"] == BUNDLE_SCHEMA_VERSION
+
+    def test_phase_events_separate_from_phase_decisions(self, tmp_path):
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        phase_logs = tmp_path / "phase_logs"
+        wf = "wf-phase-split"
+        bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
+        bb.record(_make_event(wf, EventType.TASK_COMPLETED, step=1))
+
+        pl = PhaseLogger(phase_logs)
+        pl.log_decision(
+            wf,
+            Decision(
+                phase=WorkflowPhase.ROUTING,
+                description="picked model",
+                alternatives=[],
+                rationale="test",
+                confidence=1.0,
+            ),
+        )
+        phases_file = phase_logs / wf / "phases.jsonl"
+        phases_file.parent.mkdir(parents=True, exist_ok=True)
+        phases_file.write_text(
+            json.dumps(
+                {
+                    "event": "phase_end",
+                    "workflow_id": wf,
+                    "step_count": 0,
+                    "phase": "routing",
+                    "outcome": "done",
+                    "duration_ms": 1,
+                    "timestamp": datetime.now(UTC).isoformat(),
+                }
+            )
+            + "\n"
+        )
+
+        bundle = bb.export_for_compliance(wf, phase_logger=pl)
+        assert bundle["phase_log_schema_version"] == "1"
+        assert len(bundle["phase_decisions"]) == 1
+        assert bundle["phase_decisions"][0]["description"] == "picked model"
+        assert len(bundle["phase_events"]) == 1
+        assert bundle["phase_events"][0]["event"] == "phase_end"
+        assert "description" not in bundle["phase_events"][0]
 
 
 def _make_terminal_event(workflow_id: str, details: dict, step: int = 1) -> TraceEvent:

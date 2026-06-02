@@ -192,6 +192,37 @@ class TestRedactPII:
         redacted = redact_compliance_bundle(bundle)
         assert "sk-proj-abcdefghijklmnopqrstuvwx" not in str(redacted["events"][0]["details"])
 
+    def test_redact_compliance_bundle_scrubs_phase_event_details(self) -> None:
+        bundle = {
+            "workflow_id": "wf-phase",
+            "phase_events": [
+                {
+                    "event": "phase_end",
+                    "phase": "routing",
+                    "details": {"note": "Contact alice@example.com for routing"},
+                }
+            ],
+        }
+        redacted = redact_compliance_bundle(bundle)
+        details = redacted["phase_events"][0]["details"]
+        assert "alice@example.com" not in details["note"]
+        assert "[REDACTED]" in details["note"]
+
+    def test_redact_compliance_bundle_leaves_phase_events_without_details(self) -> None:
+        bundle = {
+            "workflow_id": "wf-phase",
+            "phase_events": [
+                {
+                    "event": "phase_end",
+                    "phase": "completion",
+                    "outcome": "done",
+                }
+            ],
+        }
+        redacted = redact_compliance_bundle(bundle)
+        assert redacted["phase_events"][0]["outcome"] == "done"
+        assert "details" not in redacted["phase_events"][0]
+
 
 # ─────────────────────────────────────────────────────────────────────
 # D. Redaction — API key stripping
@@ -206,6 +237,26 @@ class TestRedactAPIKeys:
         result = redact_details(details)
         assert "sk-abcdefghijklmnopqrstuvwx" not in result["config"]
         assert "[REDACTED]" in result["config"]
+
+    def test_short_openai_project_key_redacted(self) -> None:
+        """Regression (walkthrough G1.2): a short sk-proj- key must redact.
+
+        The previous {20,} quantifier only matched long keys, so this exact
+        17-char-payload form leaked. Tests only exercised long keys, so the
+        gap went uncaught (TAP-4). Pin the short form to prevent resurfacing.
+        """
+        details = {"config": "my key is sk-proj-abc123456789 thanks"}
+        result = redact_details(details)
+        assert "sk-proj-abc123456789" not in result["config"]
+        assert "[REDACTED]" in result["config"]
+
+    def test_safe_numeric_keys_not_corrupted_by_key_rule(self) -> None:
+        """The broadened sk- rule must not touch known-safe numeric telemetry."""
+        details = {"latency_ms": 1234567890, "step": 42, "cost_usd": 0.0123}
+        result = redact_details(details)
+        assert result["latency_ms"] == "1234567890"
+        assert result["step"] == "42"
+        assert result["cost_usd"] == "0.0123"
 
     def test_aws_access_key_redacted(self) -> None:
         details = {"cred": "AKIAIOSFODNN7EXAMPLE"}

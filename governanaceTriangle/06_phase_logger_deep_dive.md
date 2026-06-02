@@ -4,6 +4,48 @@
 **Prerequisites:** Basic Python knowledge
 **Outcome:** Complete understanding of phase-based workflow logging for explainable AI agents
 
+> **Reconciliation Note (2026-06-01)**
+>
+> This document teaches an **aspirational lesson-17 API** (`backend.explainability.phase_logger`) with rich models (`Artifact`, `PhaseOutcome`, `PhaseSummary`) and helpers (`log_artifact`, `visualize_workflow`, …).
+>
+> **Shipped production code** lives at [`services/governance/phase_logger.py`](../services/governance/phase_logger.py) (~230 lines). It implements the ReAct-oriented `WorkflowPhase` enum, slim `Decision` records, JSONL persistence (`decisions.jsonl` + `phases.jsonl`), per-step phase keying, injectable `decision_id_factory`, and the `async with phase_logger.phase(...)` context manager wired from [`orchestration/react_loop.py`](../orchestration/react_loop.py).
+>
+> Phase 3 implementation plan: [`docs/plans/phase_3_phaselogger_wiring.plan.md`](../docs/plans/phase_3_phaselogger_wiring.plan.md).
+
+### Production Implementation Status
+
+| Doc concept / method | Production status | Notes |
+|---|---|---|
+| `WorkflowPhase` enum | **Implemented** | 9 values aligned to ReAct (`INITIALIZATION` … `COMPLETION`); `CONTINUATION` reserved |
+| `Decision` model | **Implemented** (slim) | `phase`, `description`, `alternatives`, `rationale`, `confidence`, `decision_id` — no `selected_because` / `reversible` |
+| `start_phase(workflow_id, phase, step_count)` | **Implemented** | Writes `phase_start` to `phases.jsonl`; keys `_phase_starts` by `{workflow_id}:{step_count}:{phase}` |
+| `end_phase(..., outcome, step_count, details=None)` | **Implemented** | Computes `duration_ms`; warns on unmatched start |
+| `phase()` async context manager | **Implemented** | Exception → `outcome="error"`, re-raises |
+| `log_decision(workflow_id, decision)` | **Implemented** | Appends to `decisions.jsonl`; assigns `decision_id` via factory |
+| `ensure_decision_id(decision)` | **Implemented** | Injectable factory for tests/replay |
+| `export_workflow_log(workflow_id)` | **Implemented** | Decisions only — feeds `bundle["phase_decisions"]` |
+| `export_phase_events(workflow_id)` | **Implemented** | Phase boundaries only — feeds `bundle["phase_events"]` |
+| `Artifact` / `log_artifact()` | **Deferred** | Not in production scope (Phase 3) |
+| `PhaseOutcome` / `get_phase_summary()` | **Deferred** | Duration tracked inline on `phase_end` rows |
+| `PhaseSummary` | **Deferred** | Aggregate stats not exported yet |
+| `log_error()` | **Deferred** | Errors surface via BlackBox `ERROR_OCCURRED` |
+| `visualize_workflow()` | **Deferred** | Mermaid export not implemented |
+
+**Production code location quick reference** (replace fictional `phase_logger.py:NNN` cites below):
+
+| Component | File | Approx. lines |
+|---|---|---|
+| `WorkflowPhase`, `Decision`, `PHASE_LOG_SCHEMA_VERSION` | `services/governance/phase_logger.py` | 33–54 |
+| `PhaseLogger.__init__`, `_phase_starts`, `decision_id_factory` | same | 57–67 |
+| `start_phase` / `end_phase` / `_append_phase_event` | same | 78–186 |
+| `phase()` async context manager | same | 188–205 |
+| `export_workflow_log` / `export_phase_events` | same | 207–227 |
+| ReAct wiring (`async with phase_logger.phase(...)`) | `orchestration/react_loop.py` | guard/route/llm/tool/evaluate nodes |
+| Compliance bundle join | `services/governance/black_box.py` | `export_for_compliance()` |
+| Langfuse relay + redaction | `middleware/sidecars/black_box_to_telemetry.py`, `services/governance/black_box_publisher.py` | relay passes `phase_logger=`; `_redact_phase_events()` |
+
+**Tests:** extend [`tests/services/test_governance.py`](../tests/services/test_governance.py) (`TestPhaseLogger*`) and [`tests/orchestration/test_phase_wiring.py`](../tests/orchestration/test_phase_wiring.py) — do not add a separate `test_phase_logger.py`.
+
 ---
 
 ## Table of Contents

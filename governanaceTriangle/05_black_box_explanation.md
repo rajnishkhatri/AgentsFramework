@@ -20,6 +20,33 @@
 >
 > Full drift analysis: [`docs/drift/blackbox_event_taxonomy_drift.json`](../docs/drift/blackbox_event_taxonomy_drift.json)
 
+> **Phase 3 update (2026-06-01) — Reasoning pillar in the compliance bundle**
+>
+> PhaseLogger phase boundaries are now persisted to `cache/phase_logs/{workflow_id}/phases.jsonl` and joined into the BlackBox compliance export as a **separate** bundle field — they do **not** appear in `phase_decisions[]`, so `DecisionRecord` / ExplainabilityService validation is unchanged.
+>
+> | Bundle field | Source | Schema version |
+> |---|---|---|
+> | `events[]` | BlackBox JSONL | `bundle_schema_version` (`"2"`) |
+> | `phase_decisions[]` | `decisions.jsonl` via `export_workflow_log()` | DecisionRecord (unchanged) |
+> | `phase_events[]` | `phases.jsonl` via `export_phase_events()` | `phase_log_schema_version` (`"1"`) |
+>
+> Cross-pillar joins: `decision_id` on a `Decision` row matches `MODEL_SELECTED` BlackBox event `details.decision_id`. The Langfuse relay (`middleware/sidecars/black_box_to_telemetry.py`) passes a `PhaseLogger` into `export_for_compliance()` and redacts `phase_events[]` via `redact_compliance_bundle()`.
+>
+> Implementation plan: [`docs/plans/phase_3_phaselogger_wiring.plan.md`](../docs/plans/phase_3_phaselogger_wiring.plan.md) · sprint board: [`docs/plans/phase_3_phaselogger_sprint_board.md`](../docs/plans/phase_3_phaselogger_sprint_board.md)
+
+### Governance triangle pillar labels (G / I / R / P)
+
+Plan-internal shorthand used in sprint boards and gap-closure docs. Not part of the runtime API.
+
+| Label | Pillar | Production module | Captures |
+|---|---|---|---|
+| **G** | Governance | `services/governance/agent_facts_registry.py` | Policies, capabilities, signed identity cards |
+| **I** | Identity | same registry + trust kernel | Who the agent is; authorization inputs |
+| **R** | Recording | `services/governance/black_box.py` | What happened — append-only event timeline |
+| **P** | Reasoning | `services/governance/phase_logger.py` | Why — phase boundaries + structured decisions |
+
+BlackBox (R) and PhaseLogger (P) compose in `export_for_compliance()`: events plus phase boundaries plus decisions, each in its own bundle slice.
+
 ## Table of Contents
 
 1. [Introduction](#introduction)

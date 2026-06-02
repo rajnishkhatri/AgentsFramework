@@ -186,6 +186,11 @@ export interface components {
             /** Message Id */
             message_id: string;
             /**
+             * Output Text
+             * @default null
+             */
+            output_text: string | null;
+            /**
              * Timestamp
              * Format: date-time
              */
@@ -195,6 +200,11 @@ export interface components {
         };
         /** LLMMessageStarted */
         LLMMessageStarted: {
+            /**
+             * Input Text
+             * @default null
+             */
+            input_text: string | null;
             /** Message Id */
             message_id: string;
             /**

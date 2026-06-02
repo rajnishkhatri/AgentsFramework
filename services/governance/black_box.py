@@ -24,6 +24,10 @@ logger = logging.getLogger("services.governance.black_box")
 # shape changes; consumers branch on it instead of guessing from present keys.
 BUNDLE_SCHEMA_VERSION = "2"
 
+# Phase boundary events use a separate schema version so phase-event evolution does
+# not force unrelated bundle consumer bumps (DecisionRecord / phase_decisions unchanged).
+PHASE_LOG_SCHEMA_VERSION = "1"
+
 # G6 residual: the terminal outcome signals dashboards care about live inside the
 # ``task_completed`` event ``details``. Lifting them into a top-level ``summary``
 # block lets a consumer key off the result without walking ``events[]`` (and
@@ -218,11 +222,17 @@ class BlackBoxRecorder:
             except Exception as exc:
                 logger.warning("Failed to include AgentFacts in compliance bundle: %s", exc)
 
+        bundle["phase_log_schema_version"] = PHASE_LOG_SCHEMA_VERSION
+
         if phase_logger is not None:
             try:
                 bundle["phase_decisions"] = phase_logger.export_workflow_log(workflow_id)
             except Exception as exc:
                 logger.warning("Failed to include phase decisions in compliance bundle: %s", exc)
+            try:
+                bundle["phase_events"] = phase_logger.export_phase_events(workflow_id)
+            except Exception as exc:
+                logger.warning("Failed to include phase events in compliance bundle: %s", exc)
 
         bundle["bundle_type"] = "compliance_audit"
         return bundle

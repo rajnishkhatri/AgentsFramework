@@ -514,17 +514,23 @@ class TestMultiWorkflowIsolation:
 
 
 # ─────────────────────────────────────────────────────────────────────
-# D. FORWARD-ONLY STARTUP + INCREMENTAL PROCESSING
+# D. STARTUP-FROM-BEGINNING + INCREMENTAL PROCESSING
+#
+# Canonical relay semantics (commit 9d06699): an absent ``.langfuse_offset``
+# starts from offset 0 so the in-process (Cloud Run) relay never skips events
+# written before its first poll. Duplicate exports are dedup-safe via
+# ``observation_id``. Mirrors TestStartupFromBeginning in
+# test_black_box_to_telemetry.py.
 # ─────────────────────────────────────────────────────────────────────
 
 
-class TestForwardOnlyAndIncremental:
+class TestStartupAndIncremental:
     """Startup and incremental processing behavior."""
 
-    def test_absent_offset_seeks_to_eof_no_processing(
+    def test_absent_offset_processes_existing_events(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        """Forward-only: absent .langfuse_offset → skip existing events."""
+        """Startup-from-beginning: absent .langfuse_offset → process existing events."""
         recorder = BlackBoxRecorder(storage_dir=storage)
         recorder.record(_make_event(EventType.TASK_STARTED, details={"task": "old"}))
         recorder.record(_make_event(EventType.STEP_EXECUTED, details={"old": True}))
@@ -532,28 +538,28 @@ class TestForwardOnlyAndIncremental:
         relay = _build_relay(storage, exporter)
         published = relay.run_once()
 
-        assert published == 0
-        assert len(exporter.events) == 0
+        assert published == 2
+        assert len(exporter.events) == 2
 
         offset_file = storage / "wf-e2e" / ".langfuse_offset"
         assert offset_file.exists()
 
-    def test_new_events_after_forward_only_startup_are_processed(
+    def test_new_events_after_startup_are_processed(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        """Events appended after the initial EOF seek get processed."""
+        """Events appended after the initial poll get processed incrementally."""
         recorder = BlackBoxRecorder(storage_dir=storage)
         recorder.record(_make_event(EventType.TASK_STARTED, details={"task": "old"}))
 
         relay = _build_relay(storage, exporter)
         relay.run_once()
-        assert len(exporter.events) == 0
+        assert len(exporter.events) == 1
 
         recorder.record(_make_event(EventType.STEP_EXECUTED, step=1, details={"new": True}))
         relay.run_once()
 
-        assert len(exporter.events) == 1
-        assert exporter.events[0]["name"] == "step.executed"
+        assert len(exporter.events) == 2
+        assert exporter.events[1]["name"] == "step.executed"
 
     def test_offset_advances_correctly_across_polls(
         self, storage: Path, exporter: FakeExporter

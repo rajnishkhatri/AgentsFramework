@@ -134,6 +134,12 @@ components:
         message_id:
           title: Message Id
           type: string
+        output_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Output Text
         timestamp:
           format: date-time
           title: Timestamp
@@ -149,6 +155,12 @@ components:
     LLMMessageStarted:
       additionalProperties: false
       properties:
+        input_text:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Input Text
         message_id:
           title: Message Id
           type: string

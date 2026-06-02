@@ -9,7 +9,7 @@ Pyramid level: L2 — Reproducible.  Deterministic, fast, filesystem-isolated.
 Test categories:
   A. Failure paths first — DLQ promotion, corrupt lines, exporter failure
   B. Offset bookkeeping — save/resume byte position
-  C. Forward-only startup — absent offset seeks to EOF
+  C. Startup-from-beginning — absent offset processes from offset 0 (dedup-safe)
   D. mtime-based pickup — unchanged files are skipped
   E. Idempotent export — observation_id + observation_type in attributes
   F. run_forever lifecycle — stop flag halts loop

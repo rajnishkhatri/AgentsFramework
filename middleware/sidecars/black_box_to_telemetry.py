@@ -35,6 +35,7 @@ from typing import Any
 from middleware.ports.compliance_publisher import CompliancePublisher
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+from services.governance.phase_logger import PhaseLogger
 from services.governance.black_box_publisher import (
     redact_compliance_bundle,
     redact_details,
@@ -281,7 +282,10 @@ class BlackBoxToTelemetryRelay:
 
         try:
             recorder = BlackBoxRecorder(storage_dir=self._storage_dir)
-            bundle = recorder.export_for_compliance(workflow_id)
+            phase_logger = PhaseLogger(storage_dir=self._storage_dir.parent / "phase_logs")
+            bundle = recorder.export_for_compliance(
+                workflow_id, phase_logger=phase_logger
+            )
         except Exception as exc:
             logger.warning(
                 "Failed to export compliance bundle for %s: %s", workflow_id, exc

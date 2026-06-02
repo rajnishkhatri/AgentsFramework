@@ -415,6 +415,25 @@ def build_graph(
     prompt_service = PromptService()
     black_box = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
     phase_logger = PhaseLogger(storage_dir=cache_dir / "phase_logs")
+    _completion_emitted: set[str] = set()
+
+    async def _emit_completion_once(
+        workflow_id: str,
+        step_count: int,
+        outcome: str,
+    ) -> None:
+        """Record COMPLETION exactly once per workflow (three terminal TASK_COMPLETED sites)."""
+        if not workflow_id or workflow_id in _completion_emitted:
+            return
+        _completion_emitted.add(workflow_id)
+        async with phase_logger.phase(
+            workflow_id,
+            WorkflowPhase.COMPLETION,
+            step_count,
+            outcome=outcome,
+        ):
+            pass
+
     guardrail = InputGuardrail(
         name="prompt_injection",
         accept_condition="The input is a legitimate user query",
@@ -461,17 +480,19 @@ def build_graph(
         workflow_id = state.get("workflow_id", "")
         task_input = state.get("task_input", "")
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.TASK_STARTED,
-            timestamp=datetime.now(UTC),
-            details={"task_input": task_input[:200]},
-        ))
+        async with phase_logger.phase(workflow_id, WorkflowPhase.INITIALIZATION, step_count):
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_STARTED,
+                timestamp=datetime.now(UTC),
+                details={"task_input": task_input[:200]},
+            ))
 
         # Story 1.4: AgentFacts identity verification
         agent_facts_verified = True
         agent_capabilities: list[str] = []
+        rejection_payload: dict[str, Any] | None = None
         if agent_facts_registry is not None:
             registered_agent_id = (
                 config.get("configurable", {}).get("registered_agent_id")
@@ -506,71 +527,83 @@ def build_graph(
                             "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
                             "outcome": "rejected",
                             "reason": "agent_facts_verification_failed",
-                            "step_count": 0,
+                            "step_count": step_count,
                             "total_cost_usd": 0.0,
                         },
                     ))
-                    return {
+                    rejection_payload = {
                         "agent_facts_verified": False,
                         "agent_capabilities": [],
                         "last_outcome": "rejected",
                         "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
                     }
 
-        # Story 1.2: guardrail with rejection branching. decide() also returns
-        # the cascade stage that owned the verdict so the trace can prove which
-        # rail fired (G2 input rationale), not just the accept/reject bit.
-        try:
-            accepted, decision_stage = await guardrail.decide(task_input)
-        except Exception:
-            accepted, decision_stage = True, "error"
+        if rejection_payload is None:
+            # Story 1.2: guardrail with rejection branching. decide() also returns
+            # the cascade stage that owned the verdict so the trace can prove which
+            # rail fired (G2 input rationale), not just the accept/reject bit.
+            try:
+                accepted, decision_stage = await guardrail.decide(task_input)
+            except Exception:
+                accepted, decision_stage = True, "error"
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.GUARDRAIL_CHECKED,
-            timestamp=datetime.now(UTC),
-            details={
-                "guardrail": "prompt_injection",
-                "accepted": accepted,
-                "decision_stage": decision_stage,
-            },
-        ))
-
-        from services import eval_capture
-        await eval_capture.record(
-            target="guardrail",
-            ai_input={"prompt": task_input[:200]},
-            ai_response={"accepted": accepted},
-            config=config,
-        )
-
-        if not accepted:
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
-                event_type=EventType.TASK_COMPLETED,
+                event_type=EventType.GUARDRAIL_CHECKED,
                 timestamp=datetime.now(UTC),
                 details={
-                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                    "outcome": "rejected",
-                    "reason": "guardrail_rejected",
-                    "step_count": 0,
-                    "total_cost_usd": 0.0,
+                    "guardrail": "prompt_injection",
+                    "accepted": accepted,
+                    "decision_stage": decision_stage,
                 },
             ))
+
+            from services import eval_capture
+            await eval_capture.record(
+                target="guardrail",
+                ai_input={"prompt": task_input[:200]},
+                ai_response={"accepted": accepted},
+                config=config,
+            )
+
+            if not accepted:
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.TASK_COMPLETED,
+                    timestamp=datetime.now(UTC),
+                    details={
+                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                        "outcome": "rejected",
+                        "reason": "guardrail_rejected",
+                        "step_count": step_count,
+                        "total_cost_usd": 0.0,
+                    },
+                ))
+                rejection_payload = {
+                    "agent_facts_verified": agent_facts_verified,
+                    "agent_capabilities": agent_capabilities,
+                    "last_outcome": "rejected",
+                    "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
+                }
+
+        if rejection_payload is not None:
+            async with phase_logger.phase(
+                workflow_id,
+                WorkflowPhase.INPUT_VALIDATION,
+                step_count,
+                outcome="rejected",
+            ):
+                await _emit_completion_once(workflow_id, step_count, "rejected")
+                return rejection_payload
+
+        async with phase_logger.phase(workflow_id, WorkflowPhase.INPUT_VALIDATION, step_count):
             return {
                 "agent_facts_verified": agent_facts_verified,
                 "agent_capabilities": agent_capabilities,
-                "last_outcome": "rejected",
                 "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
             }
-
-        return {
-            "agent_facts_verified": agent_facts_verified,
-            "agent_capabilities": agent_capabilities,
-            "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
-        }
 
     def _guard_routing(state: AgentState) -> str:
         """Story 1.2: Branch on guard rejection -- halt graph instead of continuing."""
@@ -582,6 +615,7 @@ def build_graph(
 
     async def route_node(state: AgentState, config: RunnableConfig) -> dict:
         workflow_id = state.get("workflow_id", "")
+        step_count = state.get("step_count", 0)
 
         # Story 5.1: per-user budget check
         configurable = config.get("configurable", {})
@@ -589,170 +623,179 @@ def build_graph(
         budget_limit = user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
         total_cost = state.get("total_cost_usd", 0.0)
         if total_cost >= budget_limit:
+            async with phase_logger.phase(
+                workflow_id,
+                WorkflowPhase.ROUTING,
+                step_count,
+                outcome="budget_exceeded",
+            ):
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.TASK_COMPLETED,
+                    timestamp=datetime.now(UTC),
+                    details={
+                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                        "outcome": "budget_exceeded",
+                        "step_count": step_count,
+                        "total_cost_usd": total_cost,
+                        "budget_limit": budget_limit,
+                    },
+                ))
+                await _emit_completion_once(workflow_id, step_count, "budget_exceeded")
+                return {
+                    "last_outcome": "budget_exceeded",
+                    "current_workflow_phase": WorkflowPhase.ROUTING.value,
+                }
+
+        async with phase_logger.phase(workflow_id, WorkflowPhase.ROUTING, step_count):
+            profile, reason = select_model(
+                step_count=state.get("step_count", 0),
+                consecutive_errors=state.get("consecutive_errors", 0),
+                last_error_type=state.get("last_error_type", ""),
+                total_cost_usd=state.get("total_cost_usd", 0.0),
+                model_history=state.get("model_history", []),
+                agent_config=agent_config,
+                routing_config=routing_config,
+            )
+
+            if reason == "budget-downgrade" or reason.startswith("escalate-after"):
+                prev_history = state.get("model_history", [])
+                prev_tier = prev_history[-1]["tier"] if prev_history else "fast"
+                if profile.tier != prev_tier:
+                    black_box.record(TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.PARAMETER_CHANGED,
+                        timestamp=datetime.now(UTC),
+                        step=state.get("step_count", 0),
+                        details={
+                            "parameter": "model_tier",
+                            "old_value": prev_tier,
+                            "new_value": profile.tier,
+                            "reason": reason,
+                        },
+                    ))
+
+            planning_depth, planning_depth_reason = select_planning_depth(
+                task_input=state.get("task_input", ""),
+                step_count=state.get("step_count", 0),
+                tool_results_count=len(state.get("tool_results", [])),
+            )
+            plan_artifact = build_plan_artifact(
+                planning_depth,
+                task_input=state.get("task_input", ""),
+            )
+
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
-                event_type=EventType.TASK_COMPLETED,
+                event_type=EventType.STEP_PLANNED,
                 timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
                 details={
-                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                    "outcome": "budget_exceeded",
-                    "step_count": state.get("step_count", 0),
-                    "total_cost_usd": total_cost,
-                    "budget_limit": budget_limit,
+                    "planning_depth": planning_depth,
+                    "plan_steps": len(plan_artifact.ordered_steps),
+                    "constraints": len(plan_artifact.constraints),
+                    "success_conditions": len(plan_artifact.success_conditions),
                 },
             ))
-            return {
-                "last_outcome": "budget_exceeded",
-                "current_workflow_phase": WorkflowPhase.ROUTING.value,
+
+            plan_validation = validate_plan_mece(plan_artifact)
+            if not plan_validation.is_valid:
+                capable = next(
+                    (item for item in agent_config.models if item.tier == "capable"),
+                    None,
+                )
+                if capable is not None:
+                    old_tier = profile.tier
+                    profile = capable
+                    reason = "plan-validation-escalation"
+
+                    black_box.record(TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.PARAMETER_CHANGED,
+                        timestamp=datetime.now(UTC),
+                        step=state.get("step_count", 0),
+                        details={
+                            "parameter": "model_tier",
+                            "old_value": old_tier,
+                            "new_value": capable.tier,
+                            "reason": "plan-validation-escalation",
+                            "plan_issues": plan_validation.issues,
+                        },
+                    ))
+
+            alternatives = [m.name for m in agent_config.models if m.name != profile.name]
+            if not alternatives:
+                alternatives = [profile.name]
+
+            confidence = 0.7
+            if reason.startswith("budget-downgrade"):
+                confidence = 1.0
+            elif reason.startswith("escalate-after"):
+                confidence = 0.9
+            elif reason.startswith("retry-after-backoff"):
+                confidence = 0.8
+            elif reason.startswith("capable-for-planning"):
+                confidence = 0.75
+
+            detail_bits = [
+                f"step={state.get('step_count', 0)}",
+                f"errors={state.get('consecutive_errors', 0)}",
+                f"last_err={state.get('last_error_type', '') or 'none'}",
+                f"cost_usd={state.get('total_cost_usd', 0.0):.4f}",
+                f"plan_depth={planning_depth}",
+            ]
+            rationale = f"{reason} ({', '.join(detail_bits)})"
+
+            decision = Decision(
+                phase=WorkflowPhase.ROUTING,
+                description=f"Selected {profile.name}",
+                alternatives=alternatives,
+                rationale=rationale,
+                confidence=confidence,
+            )
+            decision = phase_logger.log_decision(workflow_id, decision)
+
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.MODEL_SELECTED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "model": profile.name,
+                    "reason": reason,
+                    "plan_depth": planning_depth,
+                    "plan_valid": plan_validation.is_valid,
+                    "decision_id": decision.decision_id,
+                },
+            ))
+
+            plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
+            plan_payload = {
+                "planning_depth": planning_depth,
+                "planning_depth_reason": planning_depth_reason,
+                "artifact": plan_artifact.model_dump(mode="json"),
+                "validation": plan_validation.model_dump(mode="json"),
             }
 
-        profile, reason = select_model(
-            step_count=state.get("step_count", 0),
-            consecutive_errors=state.get("consecutive_errors", 0),
-            last_error_type=state.get("last_error_type", ""),
-            total_cost_usd=state.get("total_cost_usd", 0.0),
-            model_history=state.get("model_history", []),
-            agent_config=agent_config,
-            routing_config=routing_config,
-        )
-
-        if reason == "budget-downgrade" or reason.startswith("escalate-after"):
-            prev_history = state.get("model_history", [])
-            prev_tier = prev_history[-1]["tier"] if prev_history else "fast"
-            if profile.tier != prev_tier:
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.PARAMETER_CHANGED,
-                    timestamp=datetime.now(UTC),
-                    step=state.get("step_count", 0),
-                    details={
-                        "parameter": "model_tier",
-                        "old_value": prev_tier,
-                        "new_value": profile.tier,
-                        "reason": reason,
-                    },
-                ))
-
-        planning_depth, planning_depth_reason = select_planning_depth(
-            task_input=state.get("task_input", ""),
-            step_count=state.get("step_count", 0),
-            tool_results_count=len(state.get("tool_results", [])),
-        )
-        plan_artifact = build_plan_artifact(
-            planning_depth,
-            task_input=state.get("task_input", ""),
-        )
-
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.STEP_PLANNED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
+            return {
+                "selected_model": profile.name,
+                "routing_reason": reason,
                 "planning_depth": planning_depth,
-                "plan_steps": len(plan_artifact.ordered_steps),
-                "constraints": len(plan_artifact.constraints),
-                "success_conditions": len(plan_artifact.success_conditions),
-            },
-        ))
-
-        plan_validation = validate_plan_mece(plan_artifact)
-        if not plan_validation.is_valid:
-            capable = next(
-                (item for item in agent_config.models if item.tier == "capable"),
-                None,
-            )
-            if capable is not None:
-                old_tier = profile.tier
-                profile = capable
-                reason = "plan-validation-escalation"
-
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.PARAMETER_CHANGED,
-                    timestamp=datetime.now(UTC),
-                    step=state.get("step_count", 0),
-                    details={
-                        "parameter": "model_tier",
-                        "old_value": old_tier,
-                        "new_value": capable.tier,
-                        "reason": "plan-validation-escalation",
-                        "plan_issues": plan_validation.issues,
-                    },
-                ))
-
-        alternatives = [m.name for m in agent_config.models if m.name != profile.name]
-        if not alternatives:
-            alternatives = [profile.name]
-
-        confidence = 0.7
-        if reason.startswith("budget-downgrade"):
-            confidence = 1.0
-        elif reason.startswith("escalate-after"):
-            confidence = 0.9
-        elif reason.startswith("retry-after-backoff"):
-            confidence = 0.8
-        elif reason.startswith("capable-for-planning"):
-            confidence = 0.75
-
-        detail_bits = [
-            f"step={state.get('step_count', 0)}",
-            f"errors={state.get('consecutive_errors', 0)}",
-            f"last_err={state.get('last_error_type', '') or 'none'}",
-            f"cost_usd={state.get('total_cost_usd', 0.0):.4f}",
-            f"plan_depth={planning_depth}",
-        ]
-        rationale = f"{reason} ({', '.join(detail_bits)})"
-
-        decision = Decision(
-            phase=WorkflowPhase.ROUTING,
-            description=f"Selected {profile.name}",
-            alternatives=alternatives,
-            rationale=rationale,
-            confidence=confidence,
-        )
-        phase_logger.log_decision(workflow_id, decision)
-
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.MODEL_SELECTED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
-                "model": profile.name,
-                "reason": reason,
-                "plan_depth": planning_depth,
-                "plan_valid": plan_validation.is_valid,
-            },
-        ))
-
-        plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
-        plan_payload = {
-            "planning_depth": planning_depth,
-            "planning_depth_reason": planning_depth_reason,
-            "artifact": plan_artifact.model_dump(mode="json"),
-            "validation": plan_validation.model_dump(mode="json"),
-        }
-
-        return {
-            "selected_model": profile.name,
-            "routing_reason": reason,
-            "planning_depth": planning_depth,
-            "planning_depth_reason": planning_depth_reason,
-            "files": {
-                plan_ref: json.dumps(plan_payload, sort_keys=True),
-            },
-            "plan_ref": plan_ref,
-            "model_history": [
-                {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
-            ],
-            "current_workflow_phase": WorkflowPhase.ROUTING.value,
-        }
+                "planning_depth_reason": planning_depth_reason,
+                "files": {
+                    plan_ref: json.dumps(plan_payload, sort_keys=True),
+                },
+                "plan_ref": plan_ref,
+                "model_history": [
+                    {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
+                ],
+                "current_workflow_phase": WorkflowPhase.ROUTING.value,
+            }
 
     # ── Story 1.1: call_llm_node with tool binding + multi-turn messages ──
 
@@ -760,6 +803,7 @@ def build_graph(
         from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
         workflow_id = state.get("workflow_id", "")
+        step_count = state.get("step_count", 0)
         model_name = state.get("selected_model", agent_config.default_model)
 
         try:
@@ -808,10 +852,11 @@ def build_graph(
                 workflow_id=workflow_id,
                 event_type=EventType.STEP_PLANNED,
                 timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
+                step=step_count,
                 details={"no_progress": True, "repeats": repeats},
             ))
 
+        phase_logger.start_phase(workflow_id, WorkflowPhase.MODEL_INVOCATION, step_count)
         start_time = time.time()
         error: Exception | None = None
         try:
@@ -836,7 +881,7 @@ def build_graph(
                 workflow_id=workflow_id,
                 event_type=EventType.ERROR_OCCURRED,
                 timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
+                step=step_count,
                 details={
                     "source": "llm_call",
                     "model": profile.name,
@@ -855,7 +900,7 @@ def build_graph(
             workflow_id=workflow_id,
             event_type=EventType.STEP_EXECUTED,
             timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
+            step=step_count,
             details={
                 "model": profile.name,
                 "tokens_in": tokens_in,
@@ -872,7 +917,7 @@ def build_graph(
             ai_input={"task_input": state.get("task_input", "")[:200]},
             ai_response=str(getattr(response, "content", ""))[:500],
             config=config,
-            step=state.get("step_count", 0),
+            step=step_count,
             model=profile.name,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
@@ -882,65 +927,74 @@ def build_graph(
 
         content = getattr(response, "content", "")
         tool_calls = getattr(response, "tool_calls", [])
+        phase_logger.end_phase(
+            workflow_id,
+            WorkflowPhase.MODEL_INVOCATION,
+            "error" if error is not None else "ok",
+            step_count,
+        )
 
-        # G2: always emit an output-stage guardrail_checked event, even on a
-        # clean pass. Previously the event only fired on block/redact, so a
-        # clean scan left no record that the rail ran at all — the "guard who
-        # showed up, did their job, and left no log entry" failure mode. A
-        # single always-on event makes both the negative (blocked/redacted) and
-        # the positive (checked, clean) outcomes provable in the trace.
-        scan = output_guardrail_scan(str(content or ""), output_validator)
-        redacted = (not scan.blocked) and (scan.sanitized_content != content)
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.GUARDRAIL_CHECKED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
-                "stage": "output",
-                "guardrail": "output_scan",
-                "checked": True,
-                "blocked": scan.blocked,
-                "redacted": redacted,
-                "failed_rules": [
-                    r.guardrail_name for r in scan.rule_results if not r.passed
-                ],
-            },
-        ))
-        if scan.blocked:
-            tool_calls = []
-        content = scan.sanitized_content
+        async with phase_logger.phase(workflow_id, WorkflowPhase.OUTPUT_VALIDATION, step_count):
+            # G2: always emit an output-stage guardrail_checked event, even on a
+            # clean pass. Previously the event only fired on block/redact, so a
+            # clean scan left no record that the rail ran at all — the "guard who
+            # showed up, did their job, and left no log entry" failure mode. A
+            # single always-on event makes both the negative (blocked/redacted) and
+            # the positive (checked, clean) outcomes provable in the trace.
+            scan = output_guardrail_scan(str(content or ""), output_validator)
+            redacted = (not scan.blocked) and (scan.sanitized_content != content)
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.GUARDRAIL_CHECKED,
+                timestamp=datetime.now(UTC),
+                step=step_count,
+                details={
+                    "stage": "output",
+                    "guardrail": "output_scan",
+                    "checked": True,
+                    "blocked": scan.blocked,
+                    "redacted": redacted,
+                    "failed_rules": [
+                        r.guardrail_name for r in scan.rule_results if not r.passed
+                    ],
+                },
+            ))
+            if scan.blocked:
+                tool_calls = []
+            content = scan.sanitized_content
 
-        ai_msg = AIMessage(content=content, tool_calls=tool_calls)
+            ai_msg = AIMessage(content=content, tool_calls=tool_calls)
 
-        # Story 1.3: store error for propagation to evaluator
-        result: dict[str, Any] = {
-            "messages": [ai_msg],
-            "total_cost_usd": cost,
-            "total_input_tokens": tokens_in,
-            "total_output_tokens": tokens_out,
-            "current_token_count": tokens_in + tokens_out,
-            "current_workflow_phase": WorkflowPhase.MODEL_INVOCATION.value,
-        }
-        if inject_wrapup:
-            result["no_progress_directive_sent"] = True
-        if error is not None:
-            result["last_llm_error"] = str(error)
-            result["last_llm_error_code"] = getattr(error, "status_code", None)
-        return result
+            # Story 1.3: store error for propagation to evaluator
+            result: dict[str, Any] = {
+                "messages": [ai_msg],
+                "total_cost_usd": cost,
+                "total_input_tokens": tokens_in,
+                "total_output_tokens": tokens_out,
+                "current_token_count": tokens_in + tokens_out,
+                "current_workflow_phase": WorkflowPhase.OUTPUT_VALIDATION.value,
+            }
+            if inject_wrapup:
+                result["no_progress_directive_sent"] = True
+            if error is not None:
+                result["last_llm_error"] = str(error)
+                result["last_llm_error_code"] = getattr(error, "status_code", None)
+            return result
 
     # ── Story 1.3: execute_tool_node with error capture ──
 
     async def execute_tool_node(state: AgentState, config: RunnableConfig) -> dict:
-        result = _execute_tools_impl(
-            dict(state),
-            tool_registry=tool_registry,
-            black_box=black_box,
-            agent_config=agent_config,
-            trace_service=trace_service,
-        )
-        return result
+        workflow_id = state.get("workflow_id", "")
+        step_count = state.get("step_count", 0)
+        async with phase_logger.phase(workflow_id, WorkflowPhase.TOOL_EXECUTION, step_count):
+            return _execute_tools_impl(
+                dict(state),
+                tool_registry=tool_registry,
+                black_box=black_box,
+                agent_config=agent_config,
+                trace_service=trace_service,
+            )
 
     # ── verify_authorize_log_node: per-tool-call PEP (opt-in) ──
 
@@ -1014,11 +1068,18 @@ def build_graph(
                             outcome="fail",
                         )
                     )
-                return {
-                    "last_outcome": "rejected",
-                    "last_error_type": "authorization_denied",
-                    "current_workflow_phase": WorkflowPhase.TOOL_EXECUTION.value,
-                }
+                step_count = state.get("step_count", 0)
+                async with phase_logger.phase(
+                    workflow_id,
+                    WorkflowPhase.TOOL_EXECUTION,
+                    step_count,
+                    outcome="denied",
+                ):
+                    return {
+                        "last_outcome": "rejected",
+                        "last_error_type": "authorization_denied",
+                        "current_workflow_phase": WorkflowPhase.TOOL_EXECUTION.value,
+                    }
 
         return {}
 
@@ -1031,267 +1092,271 @@ def build_graph(
 
     async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
         workflow_id = state.get("workflow_id", "")
-        messages = state.get("messages", [])
-        last_msg = messages[-1] if messages else None
-        content = getattr(last_msg, "content", "") if last_msg else ""
+        step_count = state.get("step_count", 0)
 
-        # Story 1.3: reconstruct error from state if present
-        llm_error_str = state.get("last_llm_error")
-        error: Exception | None = None
-        if llm_error_str:
-            error = Exception(llm_error_str)
-            error_code = state.get("last_llm_error_code")
-            if error_code is not None:
-                error.status_code = error_code  # type: ignore[attr-defined]
+        async with phase_logger.phase(workflow_id, WorkflowPhase.EVALUATION, step_count):
+            messages = state.get("messages", [])
+            last_msg = messages[-1] if messages else None
+            content = getattr(last_msg, "content", "") if last_msg else ""
 
-        # Check for tool execution errors in content
-        if error is None and content and content.startswith("Error:"):
-            error = Exception(content)
-            if "tool" in content.lower():
-                pass  # classify_outcome will detect "tool" keyword
+            # Story 1.3: reconstruct error from state if present
+            llm_error_str = state.get("last_llm_error")
+            error: Exception | None = None
+            if llm_error_str:
+                error = Exception(llm_error_str)
+                error_code = state.get("last_llm_error_code")
+                if error_code is not None:
+                    error.status_code = error_code  # type: ignore[attr-defined]
 
-        outcome, error_record = classify_outcome(
-            content,
-            error,
-            model=state.get("selected_model", ""),
-            step=state.get("step_count", 0),
-        )
-        if outcome == "success":
-            synthesis_validation = validate_synthesis(
-                final_answer=content,
-                task_input=state.get("task_input", ""),
-                planning_depth=state.get("planning_depth", "L0"),
-                todos=state.get("todos", []),
+            # Check for tool execution errors in content
+            if error is None and content and content.startswith("Error:"):
+                error = Exception(content)
+                if "tool" in content.lower():
+                    pass  # classify_outcome will detect "tool" keyword
+
+            outcome, error_record = classify_outcome(
+                content,
+                error,
+                model=state.get("selected_model", ""),
+                step=state.get("step_count", 0),
             )
-            if not synthesis_validation.passed:
-                outcome = "failure"
-                error_record = ErrorRecord(
-                    step=state.get("step_count", 0),
-                    error_type="synthesis_validation_error",
-                    error_code=None,
-                    message="; ".join(synthesis_validation.feedback) or "synthesis validation failed",
-                    model=state.get("selected_model", ""),
-                    timestamp=time.time(),
+            if outcome == "success":
+                synthesis_validation = validate_synthesis(
+                    final_answer=content,
+                    task_input=state.get("task_input", ""),
+                    planning_depth=state.get("planning_depth", "L0"),
+                    todos=state.get("todos", []),
                 )
-        error_type = error_record.error_type if error_record else None
+                if not synthesis_validation.passed:
+                    outcome = "failure"
+                    error_record = ErrorRecord(
+                        step=state.get("step_count", 0),
+                        error_type="synthesis_validation_error",
+                        error_code=None,
+                        message="; ".join(synthesis_validation.feedback) or "synthesis validation failed",
+                        model=state.get("selected_model", ""),
+                        timestamp=time.time(),
+                    )
+            error_type = error_record.error_type if error_record else None
 
-        # Story 5.2: backoff calculation for retryable errors
-        backoff_until: float | None = None
-        if error_type == "retryable":
-            consecutive = state.get("consecutive_errors", 0) + 1
-            backoff_seconds = min(2 ** consecutive, 64)
-            backoff_until = time.time() + backoff_seconds
+            # Story 5.2: backoff calculation for retryable errors
+            backoff_until: float | None = None
+            if error_type == "retryable":
+                consecutive = state.get("consecutive_errors", 0) + 1
+                backoff_seconds = min(2 ** consecutive, 64)
+                backoff_until = time.time() + backoff_seconds
 
-        step_result = build_step_result(
-            step_id=state.get("step_count", 0),
-            action="answer",
-            model_used=state.get("selected_model", ""),
-            routing_reason=state.get("routing_reason", ""),
-            input_tokens=0,
-            output_tokens=0,
-            cost_usd=0.0,
-            latency_ms=0.0,
-            outcome=outcome,
-            error_record=error_record,
-            reasoning=content[:200] if content else "",
-        )
-
-        rationale = (
-            f"Error type: {error_type}; {error_record.message[:120]}"
-            if error_record
-            else "Step completed successfully"
-        )
-        decision = Decision(
-            phase=WorkflowPhase.EVALUATION,
-            description=f"Outcome: {outcome}",
-            alternatives=["retry", "escalate", "terminal"],
-            rationale=rationale,
-            confidence=1.0 if error_record is None else 0.8,
-        )
-        phase_logger.log_decision(workflow_id, decision)
-
-        result: dict[str, Any] = {
-            "step_count": 1,
-            "last_outcome": outcome,
-            "last_error_type": error_type or "",
-            "consecutive_errors": 0 if outcome == "success" else state.get("consecutive_errors", 0) + 1,
-            "error_history": [error_record.model_dump(mode="json")] if error_record else [],
-            "step_results": [step_result.model_dump()],
-            "current_workflow_phase": WorkflowPhase.EVALUATION.value,
-            "last_llm_error": "",
-            "last_llm_error_code": None,
-        }
-        if backoff_until is not None:
-            result["backoff_until"] = backoff_until
-
-        token_count = int(state.get("current_token_count", 0) or 0)
-        if should_compact_trajectory(
-            current_token_count=token_count,
-            token_threshold=agent_config.trajectory_compaction_token_threshold,
-        ):
-            summary_text = build_compaction_summary(
-                task_input=state.get("task_input", ""),
-                reasoning_trace=state.get("reasoning_trace", []),
-                tool_results=state.get("tool_results", []),
-                latest_output=content,
-            )
-            workflow_id_suffix = (state.get("workflow_id", "") or "wf")[-8:]
-            offload_ref = f".agent_offload/trajectory_summary_{workflow_id_suffix}.md"
-            result["files"] = {offload_ref: summary_text}
-            result["reasoning_trace"] = [summary_text]
-            result["truncation_applied"] = True
-
-        updated_step_count = state.get("step_count", 0) + 1
-        updated_cost = state.get("total_cost_usd", 0.0)
-        has_pending_tool = bool(
-            messages and isinstance(messages[-1], ToolMessage)
-        )
-        continuation = check_continuation(
-            step_count=updated_step_count,
-            total_cost_usd=updated_cost,
-            last_outcome=outcome,
-            last_error_type=error_type,
-            agent_config=agent_config,
-            has_pending_tool_result=has_pending_tool,
-            backoff_until=backoff_until,
-        )
-        if continuation == "done":
-            # I2: evaluate final answer against plan success_conditions
-            plan_ref = state.get("plan_ref", "")
-            plan_data: dict[str, Any] = {}
-            if plan_ref:
-                plan_json_str = (state.get("files") or {}).get(plan_ref, "")
-                if plan_json_str:
-                    try:
-                        plan_data = json.loads(plan_json_str)
-                    except (json.JSONDecodeError, TypeError):
-                        pass
-
-            plan_artifact = plan_data.get("artifact", {})
-            success_conditions = plan_artifact.get("success_conditions", [])
-            plan_steps = plan_artifact.get("ordered_steps", [])
-
-            termination_reason = outcome
-            if updated_step_count >= agent_config.max_steps:
-                termination_reason = "max_steps"
-            elif updated_cost >= agent_config.max_cost_usd:
-                termination_reason = "budget_exceeded"
-            else:
-                # I2: loop-exhaustion / no-progress wrap-up is the Austin
-                # symptom — a clean final_answer produced after the agent
-                # thrashed. Mark it unclean so evaluate_task_outcome downgrades
-                # success -> partial instead of scoring corrupt-success.
-                repeats = _count_trailing_repeats(state.get("tool_results") or [])
-                if (
-                    state.get("no_progress_directive_sent")
-                    or repeats >= agent_config.no_progress_repeat_threshold
-                ):
-                    termination_reason = "no_progress"
-
-            task_outcome = evaluate_task_outcome(
-                final_answer=content,
-                success_conditions=success_conditions,
-                plan_steps=plan_steps,
-                termination_reason=termination_reason,
-                tool_results=state.get("tool_results"),
+            step_result = build_step_result(
+                step_id=state.get("step_count", 0),
+                action="answer",
+                model_used=state.get("selected_model", ""),
+                routing_reason=state.get("routing_reason", ""),
+                input_tokens=0,
+                output_tokens=0,
+                cost_usd=0.0,
+                latency_ms=0.0,
+                outcome=outcome,
+                error_record=error_record,
+                reasoning=content[:200] if content else "",
             )
 
-            # I2: overlay a task-adaptive LLM-as-judge verdict onto the goal
-            # signals. The judge NEVER changes ``outcome`` (the deterministic
-            # process floor owns that); it only replaces the fragile keyword
-            # goal_met/criteria_met/unmet_conditions. Failures fall back to the
-            # heuristic so the judge is best-effort, never load-bearing.
-            downgrade_reason: str | None = None
-            if goal_judge is not None and content:
-                try:
-                    verdict = await goal_judge.evaluate(
-                        task_input=state.get("task_input", ""),
-                        final_answer=content,
-                        success_conditions=success_conditions,
-                        evidence=state.get("tool_results") or [],
-                    )
-                    task_outcome = task_outcome.model_copy(
-                        update={
-                            "goal_met": verdict.goal_met,
-                            "criteria_met": round(verdict.criteria_met, 3),
-                            "unmet_conditions": verdict.unmet_conditions,
-                        }
-                    )
+            rationale = (
+                f"Error type: {error_type}; {error_record.message[:120]}"
+                if error_record
+                else "Step completed successfully"
+            )
+            decision = Decision(
+                phase=WorkflowPhase.EVALUATION,
+                description=f"Outcome: {outcome}",
+                alternatives=["retry", "escalate", "terminal"],
+                rationale=rationale,
+                confidence=1.0 if error_record is None else 0.8,
+            )
+            phase_logger.log_decision(workflow_id, decision)
 
-                    # Stage 2 downgrade gate (AP-5: thin wrapper — the
-                    # decision ``verdict.goal_met`` was computed in L3). Reads
-                    # ONLY goal_met; STRICTLY success->partial. ``would_downgrade``
-                    # is the shadow signal: in Stage 0/1 (flag off) it records
-                    # what the gate *would* do without mutating the outcome.
-                    would_downgrade = (
-                        verdict.goal_met is False
-                        and task_outcome.outcome == "success"
-                    )
-                    if would_downgrade and getattr(
-                        agent_config, "goal_judge_downgrade_enabled", False
+            result: dict[str, Any] = {
+                "step_count": 1,
+                "last_outcome": outcome,
+                "last_error_type": error_type or "",
+                "consecutive_errors": 0 if outcome == "success" else state.get("consecutive_errors", 0) + 1,
+                "error_history": [error_record.model_dump(mode="json")] if error_record else [],
+                "step_results": [step_result.model_dump()],
+                "current_workflow_phase": WorkflowPhase.EVALUATION.value,
+                "last_llm_error": "",
+                "last_llm_error_code": None,
+            }
+            if backoff_until is not None:
+                result["backoff_until"] = backoff_until
+
+            token_count = int(state.get("current_token_count", 0) or 0)
+            if should_compact_trajectory(
+                current_token_count=token_count,
+                token_threshold=agent_config.trajectory_compaction_token_threshold,
+            ):
+                summary_text = build_compaction_summary(
+                    task_input=state.get("task_input", ""),
+                    reasoning_trace=state.get("reasoning_trace", []),
+                    tool_results=state.get("tool_results", []),
+                    latest_output=content,
+                )
+                workflow_id_suffix = (state.get("workflow_id", "") or "wf")[-8:]
+                offload_ref = f".agent_offload/trajectory_summary_{workflow_id_suffix}.md"
+                result["files"] = {offload_ref: summary_text}
+                result["reasoning_trace"] = [summary_text]
+                result["truncation_applied"] = True
+
+            updated_step_count = state.get("step_count", 0) + 1
+            updated_cost = state.get("total_cost_usd", 0.0)
+            has_pending_tool = bool(
+                messages and isinstance(messages[-1], ToolMessage)
+            )
+            continuation = check_continuation(
+                step_count=updated_step_count,
+                total_cost_usd=updated_cost,
+                last_outcome=outcome,
+                last_error_type=error_type,
+                agent_config=agent_config,
+                has_pending_tool_result=has_pending_tool,
+                backoff_until=backoff_until,
+            )
+            if continuation == "done":
+                # I2: evaluate final answer against plan success_conditions
+                plan_ref = state.get("plan_ref", "")
+                plan_data: dict[str, Any] = {}
+                if plan_ref:
+                    plan_json_str = (state.get("files") or {}).get(plan_ref, "")
+                    if plan_json_str:
+                        try:
+                            plan_data = json.loads(plan_json_str)
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
+                plan_artifact = plan_data.get("artifact", {})
+                success_conditions = plan_artifact.get("success_conditions", [])
+                plan_steps = plan_artifact.get("ordered_steps", [])
+
+                termination_reason = outcome
+                if updated_step_count >= agent_config.max_steps:
+                    termination_reason = "max_steps"
+                elif updated_cost >= agent_config.max_cost_usd:
+                    termination_reason = "budget_exceeded"
+                else:
+                    # I2: loop-exhaustion / no-progress wrap-up is the Austin
+                    # symptom — a clean final_answer produced after the agent
+                    # thrashed. Mark it unclean so evaluate_task_outcome downgrades
+                    # success -> partial instead of scoring corrupt-success.
+                    repeats = _count_trailing_repeats(state.get("tool_results") or [])
+                    if (
+                        state.get("no_progress_directive_sent")
+                        or repeats >= agent_config.no_progress_repeat_threshold
                     ):
-                        prev_outcome = task_outcome.outcome
-                        if prev_outcome != "success":
-                            raise RuntimeError(
-                                f"goal_judge downgrade gate reached with non-success "
-                                f"source {prev_outcome!r}; strict success->partial "
-                                "invariant violated"
-                            )
-                        task_outcome = task_outcome.model_copy(
-                            update={"outcome": "partial"}
+                        termination_reason = "no_progress"
+
+                task_outcome = evaluate_task_outcome(
+                    final_answer=content,
+                    success_conditions=success_conditions,
+                    plan_steps=plan_steps,
+                    termination_reason=termination_reason,
+                    tool_results=state.get("tool_results"),
+                )
+
+                # I2: overlay a task-adaptive LLM-as-judge verdict onto the goal
+                # signals. The judge NEVER changes ``outcome`` (the deterministic
+                # process floor owns that); it only replaces the fragile keyword
+                # goal_met/criteria_met/unmet_conditions. Failures fall back to the
+                # heuristic so the judge is best-effort, never load-bearing.
+                downgrade_reason: str | None = None
+                if goal_judge is not None and content:
+                    try:
+                        verdict = await goal_judge.evaluate(
+                            task_input=state.get("task_input", ""),
+                            final_answer=content,
+                            success_conditions=success_conditions,
+                            evidence=state.get("tool_results") or [],
                         )
-                        downgrade_reason = "goal_judge"
+                        task_outcome = task_outcome.model_copy(
+                            update={
+                                "goal_met": verdict.goal_met,
+                                "criteria_met": round(verdict.criteria_met, 3),
+                                "unmet_conditions": verdict.unmet_conditions,
+                            }
+                        )
 
-                    from services import eval_capture
+                        # Stage 2 downgrade gate (AP-5: thin wrapper — the
+                        # decision ``verdict.goal_met`` was computed in L3). Reads
+                        # ONLY goal_met; STRICTLY success->partial. ``would_downgrade``
+                        # is the shadow signal: in Stage 0/1 (flag off) it records
+                        # what the gate *would* do without mutating the outcome.
+                        would_downgrade = (
+                            verdict.goal_met is False
+                            and task_outcome.outcome == "success"
+                        )
+                        if would_downgrade and getattr(
+                            agent_config, "goal_judge_downgrade_enabled", False
+                        ):
+                            prev_outcome = task_outcome.outcome
+                            if prev_outcome != "success":
+                                raise RuntimeError(
+                                    f"goal_judge downgrade gate reached with non-success "
+                                    f"source {prev_outcome!r}; strict success->partial "
+                                    "invariant violated"
+                                )
+                            task_outcome = task_outcome.model_copy(
+                                update={"outcome": "partial"}
+                            )
+                            downgrade_reason = "goal_judge"
 
-                    await eval_capture.record(
-                        target="goal_judge",
-                        ai_input={
-                            "task_input": state.get("task_input", "")[:500],
-                            "success_conditions": success_conditions,
-                        },
-                        ai_response={
-                            **verdict.model_dump(),
-                            "would_downgrade": would_downgrade,
-                            "downgrade_applied": downgrade_reason is not None,
-                        },
-                        config=config,
-                        step=updated_step_count,
-                        model=goal_judge.model_name,
-                    )
-                except Exception as exc:
-                    logger.warning(
-                        "goal_judge failed; falling back to heuristic: %s: %s",
-                        type(exc).__name__,
-                        exc,
-                    )
+                        from services import eval_capture
 
-            effective_outcome = task_outcome.outcome
+                        await eval_capture.record(
+                            target="goal_judge",
+                            ai_input={
+                                "task_input": state.get("task_input", "")[:500],
+                                "success_conditions": success_conditions,
+                            },
+                            ai_response={
+                                **verdict.model_dump(),
+                                "would_downgrade": would_downgrade,
+                                "downgrade_applied": downgrade_reason is not None,
+                            },
+                            config=config,
+                            step=updated_step_count,
+                            model=goal_judge.model_name,
+                        )
+                    except Exception as exc:
+                        logger.warning(
+                            "goal_judge failed; falling back to heuristic: %s: %s",
+                            type(exc).__name__,
+                            exc,
+                        )
 
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.TASK_COMPLETED,
-                timestamp=datetime.now(UTC),
-                step=updated_step_count,
-                details={
-                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                    "outcome": effective_outcome,
-                    "step_count": updated_step_count,
-                    "total_cost_usd": updated_cost,
-                    "error_type": error_type,
-                    "task_completion_score": task_outcome.score,
-                    "criteria_met": task_outcome.criteria_met,
-                    "branch_coverage": task_outcome.branch_coverage,
-                    "unmet_conditions": task_outcome.unmet_conditions,
-                    "termination_clean": task_outcome.termination_clean,
-                    "termination_reason": task_outcome.termination_reason,
-                    "goal_met": task_outcome.goal_met,
-                    "downgrade_reason": downgrade_reason,
-                },
-            ))
+                effective_outcome = task_outcome.outcome
 
-        return result
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.TASK_COMPLETED,
+                    timestamp=datetime.now(UTC),
+                    step=updated_step_count,
+                    details={
+                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                        "outcome": effective_outcome,
+                        "step_count": updated_step_count,
+                        "total_cost_usd": updated_cost,
+                        "error_type": error_type,
+                        "task_completion_score": task_outcome.score,
+                        "criteria_met": task_outcome.criteria_met,
+                        "branch_coverage": task_outcome.branch_coverage,
+                        "unmet_conditions": task_outcome.unmet_conditions,
+                        "termination_clean": task_outcome.termination_clean,
+                        "termination_reason": task_outcome.termination_reason,
+                        "goal_met": task_outcome.goal_met,
+                        "downgrade_reason": downgrade_reason,
+                    },
+                ))
+                await _emit_completion_once(workflow_id, updated_step_count, effective_outcome)
+
+            return result
 
     def _parse_response(state: AgentState) -> str:
         messages = state.get("messages", [])

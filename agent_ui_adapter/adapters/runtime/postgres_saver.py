@@ -66,7 +66,14 @@ class PostgresCheckpointer:
         if self._ctx is not None:
             await self._ctx.__aexit__(exc_type, exc_val, exc_tb)
             self._ctx = None
-            self._saver = None
+        elif self._saver is not None:
+            # Defensive cleanup for a saver attached without the
+            # ``from_conn_string`` context (e.g. injected directly): close any
+            # connection it holds. The normal path delegates closing to ``_ctx``.
+            conn = getattr(self._saver, "conn", None)
+            if conn is not None:
+                await conn.close()
+        self._saver = None
         logger.info("PostgresCheckpointer: connection closed")
 
 

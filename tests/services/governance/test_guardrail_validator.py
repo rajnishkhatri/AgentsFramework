@@ -68,6 +68,14 @@ class TestAPIKeyValidator:
         assert oai.passed is False
         assert oai.severity == Severity.CRITICAL
 
+    def test_flags_short_openai_project_key(self):
+        """Regression: short sk-proj- keys must flag (walkthrough G1.2)."""
+        v = GuardRailValidator(api_key_rules())
+        results = v.validate("my key=sk-proj-abc123456789 leaked")
+        oai = next(r for r in results if r.guardrail_name == "api_key.openai")
+        assert oai.passed is False
+        assert oai.severity == Severity.CRITICAL
+
     def test_flags_aws_access_key(self):
         v = GuardRailValidator(api_key_rules())
         results = v.validate("aws id=AKIAIOSFODNN7EXAMPLE please rotate")
