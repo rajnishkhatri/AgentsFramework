@@ -46,6 +46,7 @@ from services.governance.black_box import (
     TraceEvent,
 )
 from services.governance.guardrail_validator import (
+    FailAction,
     GuardRailValidator,
     api_key_rules,
     pii_rules,
@@ -433,10 +434,19 @@ def build_graph(
             (m for m in agent_config.models if m.tier == "fast"),
             default_fast_profile(),
         )
+        # Reuse the canonical PII + API-key rule sets, but coerce every rule to
+        # REDACT so the judge-evidence scrubber masks secrets/PII in the tool
+        # trajectory before they reach the judge prompt (the shared
+        # output_validator leaves CRITICAL rules as BLOCK, which redact() skips).
+        judge_redactor = GuardRailValidator([
+            rule.model_copy(update={"fail_action": FailAction.REDACT})
+            for rule in (pii_rules() + api_key_rules())
+        ])
         goal_judge = GoalJudge(
             llm_service=llm_service,
             prompt_service=prompt_service,
             judge_profile=judge_profile,
+            redactor=judge_redactor,
         )
 
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
@@ -1191,6 +1201,7 @@ def build_graph(
             # process floor owns that); it only replaces the fragile keyword
             # goal_met/criteria_met/unmet_conditions. Failures fall back to the
             # heuristic so the judge is best-effort, never load-bearing.
+            downgrade_reason: str | None = None
             if goal_judge is not None and content:
                 try:
                     verdict = await goal_judge.evaluate(
@@ -1206,6 +1217,31 @@ def build_graph(
                             "unmet_conditions": verdict.unmet_conditions,
                         }
                     )
+
+                    # Stage 2 downgrade gate (AP-5: thin wrapper — the
+                    # decision ``verdict.goal_met`` was computed in L3). Reads
+                    # ONLY goal_met; STRICTLY success->partial. ``would_downgrade``
+                    # is the shadow signal: in Stage 0/1 (flag off) it records
+                    # what the gate *would* do without mutating the outcome.
+                    would_downgrade = (
+                        verdict.goal_met is False
+                        and task_outcome.outcome == "success"
+                    )
+                    if would_downgrade and getattr(
+                        agent_config, "goal_judge_downgrade_enabled", False
+                    ):
+                        prev_outcome = task_outcome.outcome
+                        if prev_outcome != "success":
+                            raise RuntimeError(
+                                f"goal_judge downgrade gate reached with non-success "
+                                f"source {prev_outcome!r}; strict success->partial "
+                                "invariant violated"
+                            )
+                        task_outcome = task_outcome.model_copy(
+                            update={"outcome": "partial"}
+                        )
+                        downgrade_reason = "goal_judge"
+
                     from services import eval_capture
 
                     await eval_capture.record(
@@ -1214,7 +1250,11 @@ def build_graph(
                             "task_input": state.get("task_input", "")[:500],
                             "success_conditions": success_conditions,
                         },
-                        ai_response=verdict.model_dump(),
+                        ai_response={
+                            **verdict.model_dump(),
+                            "would_downgrade": would_downgrade,
+                            "downgrade_applied": downgrade_reason is not None,
+                        },
                         config=config,
                         step=updated_step_count,
                         model=goal_judge.model_name,
@@ -1247,6 +1287,7 @@ def build_graph(
                     "termination_clean": task_outcome.termination_clean,
                     "termination_reason": task_outcome.termination_reason,
                     "goal_met": task_outcome.goal_met,
+                    "downgrade_reason": downgrade_reason,
                 },
             ))
 

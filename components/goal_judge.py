@@ -35,6 +35,7 @@ from components.schemas import GoalVerdict
 
 if TYPE_CHECKING:
     from services.base_config import ModelProfile
+    from services.governance.guardrail_validator import GuardRailValidator
     from services.llm_config import LLMService
     from services.prompt_service import PromptService
 
@@ -50,6 +51,11 @@ class GoalJudge:
         llm_service: injected ``LLMService`` (the only LLM boundary).
         prompt_service: injected ``PromptService`` for ``.j2`` rendering (H1).
         judge_profile: fast-tier ``ModelProfile`` (H2).
+        redactor: optional ``GuardRailValidator`` (L2). When present, every
+            evidence-digest line is passed through ``redactor.redact(line)``
+            so PII / secrets in the tool trajectory never reach the judge
+            prompt. Constructed at the graph-build boundary; ``None`` keeps
+            the judge a pure L3 unit in CI.
         name: logging / eval-capture tag.
     """
 
@@ -61,12 +67,14 @@ class GoalJudge:
         prompt_service: PromptService,
         judge_profile: ModelProfile,
         *,
+        redactor: GuardRailValidator | None = None,
         name: str = "goal_judge",
     ) -> None:
         self.name = name
         self._llm_service = llm_service
         self._prompt_service = prompt_service
         self._judge_profile = judge_profile
+        self._redactor = redactor
 
     @property
     def model_name(self) -> str:
@@ -87,7 +95,7 @@ class GoalJudge:
         Raises on an unparseable response so the caller can fall back to the
         deterministic heuristic (the judge is best-effort, never load-bearing).
         """
-        evidence_digest = _summarize_evidence(evidence)
+        evidence_digest = _summarize_evidence(evidence, redactor=self._redactor)
         rendered = self._prompt_service.render_prompt(
             self.PROMPT_NAME,
             task_input=task_input,
@@ -119,6 +127,18 @@ class GoalJudge:
         if criteria > 1.0:
             criteria = criteria / 100.0
         data["criteria_met"] = max(0.0, min(1.0, criteria))
+        # ``partial_fraction`` is telemetry-only completion metadata; clamp it
+        # into the 0..1 contract mirroring ``criteria_met`` (a 0-100 percentage
+        # from some models is rescaled before clamping).
+        if "partial_fraction" in data:
+            fraction = data.get("partial_fraction", 0.0)
+            try:
+                fraction = float(fraction)
+            except (TypeError, ValueError):
+                fraction = 0.0
+            if fraction > 1.0:
+                fraction = fraction / 100.0
+            data["partial_fraction"] = max(0.0, min(1.0, fraction))
         return GoalVerdict.model_validate(data)
 
 
@@ -141,16 +161,37 @@ def _extract_json(content: str) -> str:
 
 
 def _summarize_evidence(
-    evidence: list[dict[str, Any]] | None, *, max_items: int = 8, max_chars: int = 400
+    evidence: list[dict[str, Any]] | None,
+    *,
+    max_items: int = 8,
+    max_chars: int = 400,
+    redactor: GuardRailValidator | None = None,
 ) -> str:
-    """Render the tool trajectory into a compact, prompt-safe digest."""
+    """Render the tool trajectory into a compact, prompt-safe digest.
+
+    Each line carries the tool **input** (what the agent asked for) and the
+    tool **output** (what it observed), so the judge can ground a ``met=true``
+    in observable action — not self-narrated progress. When a ``redactor`` is
+    supplied, every line is scrubbed before it reaches the prompt so PII /
+    secrets in the trajectory never leak into the judge call.
+    """
     if not evidence:
         return "(no tool calls were made)"
     lines: list[str] = []
     for entry in evidence[-max_items:]:
         tool = entry.get("tool_name", "?")
-        out = str(entry.get("tool_output", "") or "")
-        if len(out) > max_chars:
-            out = out[:max_chars] + "…"
-        lines.append(f"- {tool}: {out}")
+        inp = _compact(entry.get("tool_input"), max_chars=max_chars)
+        out = _compact(entry.get("tool_output"), max_chars=max_chars)
+        line = f"- {tool}(input={inp}) -> {out}"
+        if redactor is not None:
+            line = redactor.redact(line)
+        lines.append(line)
     return "\n".join(lines)
+
+
+def _compact(value: Any, *, max_chars: int) -> str:
+    """Stringify and truncate a tool input/output fragment for the digest."""
+    text = "" if value is None else str(value)
+    if len(text) > max_chars:
+        text = text[:max_chars] + "…"
+    return text

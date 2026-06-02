@@ -21,7 +21,7 @@ merits against the task and the supporting evidence (the agent's tool calls).
 correct answer to this task MUST satisfy, and judge against those.)
 {% endif %}
 
-# Evidence (tool trajectory)
+# Evidence (tool trajectory: each line is `tool(input=…) -> output`)
 {{ evidence }}
 
 # How to judge
@@ -31,7 +31,24 @@ Think step by step BEFORE you decide:
    short span of the answer or the evidence as justification. Be skeptical of
    answers that are fluent but evasive (e.g. "I was unable to retrieve X, but
    based on what I have…") — a polite non-answer does NOT meet the goal.
-3. Set goal_met = true ONLY if the answer would satisfy a knowledgeable user who
+3. EVIDENCE-GROUNDING (anti-gaming): mark a condition `met=true` ONLY when an
+   OBSERVABLE tool input/output/state above supports it. Treat the agent's own
+   narration of progress ("I have now computed…", "Done.", "Successfully
+   retrieved…") as UNPROVEN unless a tool result confirms it. A claim with no
+   observable evidence is NOT met, no matter how confident it sounds.
+4. IMPOSSIBLE TASKS: judge possibility yourself from the task and the
+   trajectory — there is no external is-possible hint.
+   - If the task is genuinely impossible AND the trajectory shows the agent
+     explored adequately before reporting the impossibility, set
+     goal_met=false and graceful_failure=true (it behaved correctly; the goal
+     still was not met).
+   - If the agent instead FABRICATED a completion of an impossible task
+     (claimed success with no supporting evidence), set goal_met=false AND
+     graceful_failure=false.
+5. PARTIAL COMPLETION: if the answer solves only part of the task, set
+   goal_met=false and report how much was completed in partial_fraction
+   (0.0–1.0). partial_fraction is reporting metadata only.
+6. Set goal_met=true ONLY if the answer would satisfy a knowledgeable user who
    asked this exact task. Set criteria_met to the fraction (0.0–1.0) of success
    conditions actually satisfied.
 
@@ -43,5 +60,7 @@ Respond with ONLY a single JSON object, no prose outside it, in exactly this sha
   "per_criterion": [
     {"criterion": "<the condition>", "met": true | false, "evidence": "<short justification>"}
   ],
-  "rationale": "<one or two sentences explaining the verdict>"
+  "rationale": "<one or two sentences explaining the verdict>",
+  "graceful_failure": false,
+  "partial_fraction": 0.0
 }
