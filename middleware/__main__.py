@@ -38,7 +38,7 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 import uvicorn
 from dotenv import load_dotenv
@@ -71,40 +71,20 @@ from middleware.adapters.observability.langfuse_cloud_exporter import (
 )
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
-from services.base_config import AgentConfig, ModelProfile
-from services.governance.agent_facts_registry import AgentFactsRegistry
-from services.observability import setup_logging
+from middleware.composition import (
+    AgentComponents,
+    AgentRuntimeSettings,
+    build_components,
+    build_runtime_graph,
+)
 from services.trace_service import JsonlFileTraceSink, TraceService
+from trust.models import AgentFacts
 
 _GCP_EXECUTION_ENV = os.environ.get("GCP_EXECUTION_ENV")
-from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
-from services.tools.file_io import FileIOInput, execute_file_io
-from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
-from services.tools.registry import ToolDefinition, ToolRegistry
-from services.tools.shell import ShellToolInput, execute_shell
-from services.tools.task_tool import TaskToolInput, build_task_tool_executor
-from services.tools.think_tool import ThinkToolInput, execute_think_tool
-from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
-from services.tools.web_search import WebSearchInput, build_web_search_executor
-from services.tools.search.port import WebSearchProvider
-from services.tools.search.stub import StubProvider
-from trust.enums import IdentityStatus
-from trust.models import AgentFacts, Capability
 
 logger = logging.getLogger("middleware.__main__")
 
 _DEV_PORT_SEARCH_SPAN = 64
-
-
-def _resolve_search_provider() -> WebSearchProvider:
-    """Select web search provider from env (WEB_SEARCH_PROVIDER / SEARXNG_URL)."""
-    provider_name = os.environ.get("WEB_SEARCH_PROVIDER", "stub").lower()
-    if provider_name == "searxng":
-        from services.tools.search.searxng import SearxngProvider
-
-        base_url = os.environ.get("SEARXNG_URL", "http://localhost:8888")
-        return SearxngProvider(base_url=base_url)
-    return StubProvider()
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -270,119 +250,57 @@ def _load_graph_factory():
     return factory
 
 
-def _build_base_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsRegistry, Path]:
-    """Build all non-async components (config, tools, identity registry).
-
-    Separated from the graph/runtime so the async lifespan can enter the
-    AsyncSqliteSaver context manager before compiling the graph.
-    """
+def _build_base_components() -> tuple[Any, Any, Any, Path, Any]:
+    """Build all non-async components (compat shim → composition root)."""
     os.chdir(str(AGENT_ROOT))
-    setup_logging()
-
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
-    )
-
-    agent_config = AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
-        max_steps=20,
-        max_cost_usd=1.0,
-        goal_judge_enabled=os.environ.get("GOAL_JUDGE_ENABLED", "").strip().lower()
-        in ("1", "true", "yes"),
-    )
-
-    delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
-    tool_registry = ToolRegistry({
-        "shell": ToolDefinition(
-            executor=execute_shell, schema=ShellToolInput, cacheable=True
-        ),
-        "file_io": ToolDefinition(
-            executor=execute_file_io, schema=FileIOInput, cacheable=True
-        ),
-        "state_file": ToolDefinition(
-            executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
-        ),
-        "state_todo": ToolDefinition(
-            executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False
-        ),
-        "task": ToolDefinition(
-            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
-            schema=TaskToolInput,
-            cacheable=False,
-        ),
-        "think": ToolDefinition(
-            executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
-        ),
-        "web_search": ToolDefinition(
-            executor=build_web_search_executor(_resolve_search_provider()),
-            schema=WebSearchInput,
-            cacheable=True,
-        ),
-    })
-
     if _GCP_EXECUTION_ENV:
-        cache_dir = Path(os.environ.get("AGENT_OFFLOAD_DIR", "/tmp/agent_offload"))
+        os.environ.setdefault("AGENT_ENV", "prod")
+        settings = AgentRuntimeSettings(agent_env="prod")
     else:
-        cache_dir = AGENT_ROOT / "cache"
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    agent_facts_secret = os.environ.get(
-        "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
+        os.environ.setdefault("AGENT_ENV", "local")
+        settings = AgentRuntimeSettings(agent_env="local")
+    components = build_components(settings, agent_root=AGENT_ROOT)
+    return (
+        components.agent_config,
+        components.tool_registry,
+        components.agent_facts_registry,
+        components.cache_dir,
+        components.goal_judge_config_reader,
     )
 
+
+def _build_agent_components() -> AgentComponents:
+    os.chdir(str(AGENT_ROOT))
     if _GCP_EXECUTION_ENV:
-        from services.governance.agent_facts_gcs_registry import AgentFactsGcsRegistry
-
-        gcs_facts_bucket = os.environ.get("GCS_FACTS_BUCKET", "")
-        if not gcs_facts_bucket:
-            raise RuntimeError("GCS_FACTS_BUCKET is required when GCP_EXECUTION_ENV is set")
-        agent_facts_registry = AgentFactsGcsRegistry(
-            bucket_name=gcs_facts_bucket,
-            secret=agent_facts_secret,
-        )
+        os.environ.setdefault("AGENT_ENV", "prod")
+        settings = AgentRuntimeSettings(agent_env="prod")
     else:
-        agent_facts_dir = cache_dir / "agent_facts"
-        agent_facts_registry = AgentFactsRegistry(
-            storage_dir=agent_facts_dir,
-            secret=agent_facts_secret,
-        )
-
-        try:
-            agent_facts_registry.get(DEV_AGENT_ID)
-        except KeyError:
-            agent_facts_registry.register(
-                AgentFacts(
-                    agent_id=DEV_AGENT_ID,
-                    agent_name="Dev Agent",
-                    owner=DEV_USER_ID,
-                    version="1.0.0",
-                    description="Local development agent",
-                    capabilities=[Capability(name="delegate.subagent.*")],
-                    status=IdentityStatus.ACTIVE,
-                ),
-                registered_by="dev-bootstrap",
-            )
-
-    return agent_config, tool_registry, agent_facts_registry, cache_dir
+        os.environ.setdefault("AGENT_ENV", "local")
+        settings = AgentRuntimeSettings(agent_env="local")
+    return build_components(settings, agent_root=AGENT_ROOT)
 
 
 def build_dev_app() -> FastAPI:
     """Build the local dev FastAPI app with permissive auth."""
-    agent_config, tool_registry, agent_facts_registry, cache_dir = _build_base_components()
+    (
+        agent_config,
+        tool_registry,
+        agent_facts_registry,
+        cache_dir,
+        goal_judge_reader,
+    ) = _build_base_components()
+    if _GCP_EXECUTION_ENV:
+        settings = AgentRuntimeSettings(agent_env="prod")
+    else:
+        settings = AgentRuntimeSettings(agent_env="local")
+    components = AgentComponents(
+        agent_config=agent_config,
+        tool_registry=tool_registry,
+        agent_facts_registry=agent_facts_registry,
+        cache_dir=cache_dir,
+        goal_judge_config_reader=goal_judge_reader,
+        settings=settings,
+    )
     build_graph = _load_graph_factory()
     dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
     dev_telemetry = _build_dev_telemetry_exporter()
@@ -416,12 +334,10 @@ def build_dev_app() -> FastAPI:
                 from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
 
                 async with PostgresCheckpointer.from_env() as pg_cp:
-                    graph = build_graph(
-                        agent_config=agent_config,
-                        tool_registry=tool_registry,
-                        cache_dir=cache_dir,
+                    graph = build_runtime_graph(
+                        components,
+                        build_graph,
                         checkpointer=pg_cp.saver,
-                        agent_facts_registry=agent_facts_registry,
                         interrupt_before_execute_tool=False,
                     )
                     app.state.runtime = LangGraphRuntime(
@@ -438,12 +354,10 @@ def build_dev_app() -> FastAPI:
                     async with AsyncSqliteSaver.from_conn_string(
                         str(cache_dir / "checkpoints.db")
                     ) as cp:
-                        graph = build_graph(
-                            agent_config=agent_config,
-                            tool_registry=tool_registry,
-                            cache_dir=cache_dir,
+                        graph = build_runtime_graph(
+                            components,
+                            build_graph,
                             checkpointer=cp,
-                            agent_facts_registry=agent_facts_registry,
                             interrupt_before_execute_tool=False,
                         )
                         app.state.runtime = LangGraphRuntime(
@@ -454,12 +368,10 @@ def build_dev_app() -> FastAPI:
                         yield
                 except ImportError:
                     logger.warning("AsyncSqliteSaver not available; running without checkpointer")
-                    graph = build_graph(
-                        agent_config=agent_config,
-                        tool_registry=tool_registry,
-                        cache_dir=cache_dir,
+                    graph = build_runtime_graph(
+                        components,
+                        build_graph,
                         checkpointer=checkpointer,
-                        agent_facts_registry=agent_facts_registry,
                         interrupt_before_execute_tool=False,
                     )
                     app.state.runtime = LangGraphRuntime(
@@ -505,7 +417,12 @@ def build_dev_app() -> FastAPI:
 
     @app.get("/healthz")
     async def healthz():
-        return {"status": "ok", "profile": "dev", "runtime": "langgraph"}
+        return {
+            "status": "ok",
+            "profile": "dev",
+            "runtime": "langgraph",
+            "goal_judge": goal_judge_reader.health_posture(),
+        }
 
     # ── POST /run/stream ───────────────────────────────────────────
 

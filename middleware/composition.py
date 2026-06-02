@@ -21,7 +21,10 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from typing import Any, Literal, Mapping
+
+from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from middleware.adapters.acl.workos_role_acl import WorkOSRoleAcl
 from middleware.adapters.auth.workos_jwt_verifier import (
@@ -43,7 +46,11 @@ _logger = logging.getLogger(__name__)
 
 __all__ = [
     "MiddlewareAdapters",
+    "AgentComponents",
+    "AgentRuntimeSettings",
     "build_adapters",
+    "build_components",
+    "build_runtime_graph",
     "MissingEnvError",
     "UnknownProfileError",
 ]
@@ -333,3 +340,276 @@ def _require(env: Mapping[str, str], key: str) -> str:
     if value is None or value == "":
         raise MissingEnvError(key)
     return value
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Agent runtime composition (local + prod profiles)
+# ─────────────────────────────────────────────────────────────────────
+
+_DEV_AGENT_ID = "dev-agent"
+
+
+def _env_flag_from_mapping(env: Mapping[str, str], name: str) -> bool:
+    return env.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
+class AgentRuntimeSettings(BaseSettings):
+    """Env-driven profile for the agent object graph (Composition Root)."""
+
+    model_config = SettingsConfigDict(extra="ignore", populate_by_name=True)
+
+    agent_env: Literal["local", "prod"] | None = None
+    gcp_execution_env: str = Field(default="", validation_alias="GCP_EXECUTION_ENV")
+    gcs_facts_bucket: str = Field(default="", validation_alias="GCS_FACTS_BUCKET")
+    gcs_traces_bucket: str = Field(default="", validation_alias="GCS_TRACES_BUCKET")
+    agent_facts_secret: str = Field(
+        default="dev-secret-do-not-use-in-production",
+        validation_alias="AGENT_FACTS_SECRET",
+    )
+    agent_offload_dir: str = Field(default="", validation_alias="AGENT_OFFLOAD_DIR")
+    web_search_provider: str = Field(default="stub", validation_alias="WEB_SEARCH_PROVIDER")
+    searxng_url: str = Field(default="http://localhost:8888", validation_alias="SEARXNG_URL")
+    goal_judge_config_uri: str = Field(default="", validation_alias="GOAL_JUDGE_CONFIG_URI")
+    goal_judge_enabled: bool = Field(default=False, validation_alias="GOAL_JUDGE_ENABLED")
+    goal_judge_downgrade_enabled: bool = Field(
+        default=False, validation_alias="GOAL_JUDGE_DOWNGRADE_ENABLED"
+    )
+
+    @model_validator(mode="after")
+    def _resolve_agent_env(self) -> AgentRuntimeSettings:
+        if self.agent_env is None:
+            explicit = os.environ.get("AGENT_ENV", "").strip().lower()
+            if explicit in ("local", "prod"):
+                object.__setattr__(self, "agent_env", explicit)
+            elif self.gcp_execution_env:
+                object.__setattr__(self, "agent_env", "prod")
+            else:
+                object.__setattr__(self, "agent_env", "local")
+        return self
+
+    @classmethod
+    def from_mapping(cls, env: Mapping[str, str]) -> AgentRuntimeSettings:
+        """Build settings from an explicit env dict (tests inject this)."""
+        data: dict[str, Any] = {}
+        for field_name, field_info in cls.model_fields.items():
+            alias = field_info.validation_alias
+            if isinstance(alias, str) and alias in env:
+                raw = env[alias]
+                if field_name in (
+                    "goal_judge_enabled",
+                    "goal_judge_downgrade_enabled",
+                ):
+                    data[field_name] = _env_flag_from_mapping(env, alias)
+                else:
+                    data[field_name] = raw
+            elif field_name == "agent_env" and "AGENT_ENV" in env:
+                data["agent_env"] = env["AGENT_ENV"]
+        settings = cls.model_validate(data)
+        if settings.agent_env is None:
+            if env.get("AGENT_ENV", "").strip().lower() in ("local", "prod"):
+                object.__setattr__(
+                    settings,
+                    "agent_env",
+                    env["AGENT_ENV"].strip().lower(),
+                )
+            elif env.get("GCP_EXECUTION_ENV"):
+                object.__setattr__(settings, "agent_env", "prod")
+            else:
+                object.__setattr__(settings, "agent_env", "local")
+        return settings
+
+
+@dataclass(frozen=True)
+class AgentComponents:
+    """Typed bag of agent-runtime wiring (rule C2 analogue for the graph)."""
+
+    agent_config: Any
+    tool_registry: Any
+    agent_facts_registry: Any
+    cache_dir: Path
+    goal_judge_config_reader: Any
+    settings: AgentRuntimeSettings
+
+
+def _model_profiles() -> tuple[Any, Any]:
+    from services.base_config import ModelProfile
+
+    fast = ModelProfile(
+        name="gpt-4o-mini",
+        litellm_id="openai/gpt-4o-mini",
+        tier="fast",
+        context_window=128000,
+        cost_per_1k_input=0.00015,
+        cost_per_1k_output=0.0006,
+    )
+    capable = ModelProfile(
+        name="gpt-4o",
+        litellm_id="openai/gpt-4o",
+        tier="capable",
+        context_window=128000,
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.015,
+    )
+    return fast, capable
+
+
+def _resolve_search_provider(settings: AgentRuntimeSettings) -> Any:
+    from services.tools.search.port import WebSearchProvider
+    from services.tools.search.stub import StubProvider
+
+    provider_name = settings.web_search_provider.lower()
+    if provider_name == "searxng":
+        from services.tools.search.searxng import SearxngProvider
+
+        return SearxngProvider(base_url=settings.searxng_url)
+    return StubProvider()
+
+
+def build_components(
+    settings: AgentRuntimeSettings,
+    *,
+    agent_root: Path,
+) -> AgentComponents:
+    """Wire the agent object graph once for local or prod profile."""
+    from services.base_config import AgentConfig
+    from services.goal_judge_runtime_config import GoalJudgeRuntimeConfigReader
+    from services.governance.agent_facts_registry import AgentFactsRegistry
+    from services.observability import setup_logging
+    from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
+    from services.tools.file_io import FileIOInput, execute_file_io
+    from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
+    from services.tools.registry import ToolDefinition, ToolRegistry
+    from services.tools.shell import ShellToolInput, execute_shell
+    from services.tools.task_tool import TaskToolInput, build_task_tool_executor
+    from services.tools.think_tool import ThinkToolInput, execute_think_tool
+    from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
+    from services.tools.web_search import WebSearchInput, build_web_search_executor
+    from trust.enums import IdentityStatus
+    from trust.models import AgentFacts, Capability
+
+    setup_logging()
+    fast, capable = _model_profiles()
+
+    goal_judge_enabled = settings.goal_judge_enabled
+    goal_judge_downgrade = settings.goal_judge_downgrade_enabled
+
+    agent_config = AgentConfig(
+        default_model="gpt-4o-mini",
+        models=[fast, capable],
+        max_steps=20,
+        max_cost_usd=1.0,
+        goal_judge_enabled=goal_judge_enabled,
+        goal_judge_downgrade_enabled=goal_judge_downgrade,
+    )
+
+    delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
+    tool_registry = ToolRegistry({
+        "shell": ToolDefinition(
+            executor=execute_shell, schema=ShellToolInput, cacheable=True
+        ),
+        "file_io": ToolDefinition(
+            executor=execute_file_io, schema=FileIOInput, cacheable=True
+        ),
+        "state_file": ToolDefinition(
+            executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
+        ),
+        "state_todo": ToolDefinition(
+            executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False
+        ),
+        "task": ToolDefinition(
+            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+            schema=TaskToolInput,
+            cacheable=False,
+        ),
+        "think": ToolDefinition(
+            executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
+        ),
+        "web_search": ToolDefinition(
+            executor=build_web_search_executor(_resolve_search_provider(settings)),
+            schema=WebSearchInput,
+            cacheable=True,
+        ),
+    })
+
+    if settings.agent_env == "prod":
+        cache_dir = Path(settings.agent_offload_dir or "/tmp/agent_offload")
+        if not settings.gcs_facts_bucket:
+            raise RuntimeError("GCS_FACTS_BUCKET is required in production")
+        from services.governance.agent_facts_gcs_registry import AgentFactsGcsRegistry
+
+        agent_facts_registry = AgentFactsGcsRegistry(
+            bucket_name=settings.gcs_facts_bucket,
+            secret=settings.agent_facts_secret,
+        )
+    else:
+        cache_dir = agent_root / "cache"
+        if settings.agent_offload_dir:
+            cache_dir = Path(settings.agent_offload_dir)
+        agent_facts_dir = cache_dir / "agent_facts"
+        agent_facts_registry = AgentFactsRegistry(
+            storage_dir=agent_facts_dir,
+            secret=settings.agent_facts_secret,
+        )
+        try:
+            agent_facts_registry.get(_DEV_AGENT_ID)
+        except KeyError:
+            agent_facts_registry.register(
+                AgentFacts(
+                    agent_id=_DEV_AGENT_ID,
+                    agent_name="Dev Agent",
+                    owner="dev-user",
+                    version="1.0.0",
+                    description="Local development agent",
+                    capabilities=[Capability(name="delegate.subagent.*")],
+                    status=IdentityStatus.ACTIVE,
+                ),
+                registered_by="dev-bootstrap",
+            )
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    config_uri = settings.goal_judge_config_uri.strip() or None
+    if settings.agent_env == "prod" and not config_uri and settings.gcs_facts_bucket:
+        config_uri = f"gs://{settings.gcs_facts_bucket}/ops/goal_judge_config.json"
+
+    goal_judge_config_reader = GoalJudgeRuntimeConfigReader(
+        uri=config_uri,
+        env_enabled=goal_judge_enabled,
+        env_downgrade=goal_judge_downgrade,
+        defaults_enabled=agent_config.goal_judge_enabled,
+        defaults_downgrade=agent_config.goal_judge_downgrade_enabled,
+    )
+
+    return AgentComponents(
+        agent_config=agent_config,
+        tool_registry=tool_registry,
+        agent_facts_registry=agent_facts_registry,
+        cache_dir=cache_dir,
+        goal_judge_config_reader=goal_judge_config_reader,
+        settings=settings,
+    )
+
+
+def build_runtime_graph(
+    components: AgentComponents,
+    build_graph: Any,
+    *,
+    checkpointer: Any = None,
+    telemetry: Any = None,
+    authorization_service: Any = None,
+    trace_service: Any = None,
+    interrupt_before_execute_tool: bool = True,
+) -> Any:
+    """Single call site for ``build_graph`` with reader injection."""
+    return build_graph(
+        agent_config=components.agent_config,
+        tool_registry=components.tool_registry,
+        cache_dir=components.cache_dir,
+        checkpointer=checkpointer,
+        agent_facts_registry=components.agent_facts_registry,
+        telemetry=telemetry,
+        authorization_service=authorization_service,
+        trace_service=trace_service,
+        interrupt_before_execute_tool=interrupt_before_execute_tool,
+        goal_judge_config_reader=components.goal_judge_config_reader,
+    )
