@@ -38,6 +38,10 @@ from components.routing_config import RoutingConfig
 from components.synthesis_validator import validate_synthesis
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
+from services.goal_judge_runtime_config import (
+    GoalJudgeRuntimeConfigReader,
+    InMemoryGoalJudgeConfigReader,
+)
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.governance.black_box import (
     BUNDLE_SCHEMA_VERSION,
@@ -384,6 +388,9 @@ def build_graph(
     trace_service: Any | None = None,
     *,
     interrupt_before_execute_tool: bool = True,
+    goal_judge_config_reader: GoalJudgeRuntimeConfigReader
+    | InMemoryGoalJudgeConfigReader
+    | None = None,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -444,29 +451,26 @@ def build_graph(
     )
     output_validator = GuardRailValidator(pii_rules() + api_key_rules())
 
-    # I2: task-adaptive goal judge, flag-gated (off in CI). When enabled it
-    # overlays goal_met/criteria_met/unmet_conditions onto the TaskOutcome; the
-    # deterministic keyword heuristic is the fallback when disabled or on error.
-    goal_judge: GoalJudge | None = None
-    if getattr(agent_config, "goal_judge_enabled", False):
-        judge_profile = next(
-            (m for m in agent_config.models if m.tier == "fast"),
-            default_fast_profile(),
-        )
-        # Reuse the canonical PII + API-key rule sets, but coerce every rule to
-        # REDACT so the judge-evidence scrubber masks secrets/PII in the tool
-        # trajectory before they reach the judge prompt (the shared
-        # output_validator leaves CRITICAL rules as BLOCK, which redact() skips).
-        judge_redactor = GuardRailValidator([
-            rule.model_copy(update={"fail_action": FailAction.REDACT})
-            for rule in (pii_rules() + api_key_rules())
-        ])
-        goal_judge = GoalJudge(
-            llm_service=llm_service,
-            prompt_service=prompt_service,
-            judge_profile=judge_profile,
-            redactor=judge_redactor,
-        )
+    # I2: task-adaptive goal judge — always constructed (cheap; no LLM until
+    # evaluate()). Per-run enable/downgrade flags come from the injected reader.
+    judge_profile = next(
+        (m for m in agent_config.models if m.tier == "fast"),
+        default_fast_profile(),
+    )
+    judge_redactor = GuardRailValidator([
+        rule.model_copy(update={"fail_action": FailAction.REDACT})
+        for rule in (pii_rules() + api_key_rules())
+    ])
+    goal_judge = GoalJudge(
+        llm_service=llm_service,
+        prompt_service=prompt_service,
+        judge_profile=judge_profile,
+        redactor=judge_redactor,
+    )
+    gj_reader = goal_judge_config_reader or GoalJudgeRuntimeConfigReader.from_env(
+        defaults_enabled=agent_config.goal_judge_enabled,
+        defaults_downgrade=agent_config.goal_judge_downgrade_enabled,
+    )
 
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
@@ -1266,7 +1270,8 @@ def build_graph(
                 # goal_met/criteria_met/unmet_conditions. Failures fall back to the
                 # heuristic so the judge is best-effort, never load-bearing.
                 downgrade_reason: str | None = None
-                if goal_judge is not None and content:
+                gj_cfg = gj_reader.get()
+                if gj_cfg.goal_judge_enabled and content:
                     try:
                         verdict = await goal_judge.evaluate(
                             task_input=state.get("task_input", ""),
@@ -1291,9 +1296,7 @@ def build_graph(
                             verdict.goal_met is False
                             and task_outcome.outcome == "success"
                         )
-                        if would_downgrade and getattr(
-                            agent_config, "goal_judge_downgrade_enabled", False
-                        ):
+                        if would_downgrade and gj_cfg.goal_judge_downgrade_enabled:
                             prev_outcome = task_outcome.outcome
                             if prev_outcome != "success":
                                 raise RuntimeError(
@@ -1318,6 +1321,13 @@ def build_graph(
                                 **verdict.model_dump(),
                                 "would_downgrade": would_downgrade,
                                 "downgrade_applied": downgrade_reason is not None,
+                                "config_source": gj_cfg.source,
+                                "config_updated_at": (
+                                    gj_cfg.updated_at.isoformat()
+                                    if gj_cfg.updated_at
+                                    else None
+                                ),
+                                "config_schema_version": gj_cfg.schema_version,
                             },
                             config=config,
                             step=updated_step_count,

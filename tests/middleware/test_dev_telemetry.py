@@ -253,6 +253,7 @@ def _build_dev_telemetry_client(
         MagicMock(),  # tool_registry
         mock_registry,
         cache_dir,
+        MagicMock(),  # goal_judge_config_reader
     )
 
     env = {

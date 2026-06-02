@@ -155,12 +155,22 @@ class TestAppProdHealthz:
 
         mock_gcs_registry = MagicMock()
         mock_gcs_sink = MagicMock()
+        mock_reader = MagicMock()
+        mock_reader.health_posture.return_value = {
+            "enabled": False,
+            "downgrade_enabled": False,
+            "source": "default",
+        }
+
+        build_components_return = (
+            MagicMock(),
+            MagicMock(),
+            mock_gcs_registry,
+            Path("/tmp/agent-cache"),
+            mock_reader,
+        )
 
         with patch.dict(os.environ, env, clear=False), \
-             patch(
-                 "middleware.app_prod.AgentFactsGcsRegistry",
-                 return_value=mock_gcs_registry,
-             ), \
              patch(
                  "middleware.app_prod.GcsTraceSink",
                  return_value=mock_gcs_sink,
@@ -168,11 +178,18 @@ class TestAppProdHealthz:
              patch(
                  "middleware.app_prod._load_graph_factory",
                  return_value=MagicMock(),
+             ), \
+             patch(
+                 "middleware.composition.build_adapters",
+                 return_value=MagicMock(profile="v3"),
              ):
             from importlib import reload
             import middleware.app_prod as mod
             reload(mod)
-            app = mod.build_combined_app()
+            with patch.object(
+                mod, "_build_components", return_value=build_components_return
+            ):
+                app = mod.build_combined_app()
 
         from fastapi.testclient import TestClient
         return TestClient(app, raise_server_exceptions=False)
@@ -248,6 +265,7 @@ class TestAppProdAutoProvision:
             MagicMock(),
             mock_registry,
             Path("/tmp/agent-cache"),
+            MagicMock(),
         )
 
         with patch.dict(os.environ, env, clear=False), \
@@ -415,6 +433,7 @@ def _build_telemetry_client(
         MagicMock(),  # tool_registry
         mock_registry,
         Path("/tmp/agent-cache"),
+        MagicMock(),  # goal_judge_config_reader
     )
 
     with patch.dict(os.environ, env, clear=False), \
@@ -684,6 +703,7 @@ def _prod_app_with_relay(relay):
         MagicMock(),  # tool_registry
         MagicMock(),  # agent_facts_registry
         Path("/tmp/agent-cache"),
+        MagicMock(),  # goal_judge_config_reader
     )
 
     env = {
