@@ -69,6 +69,12 @@ docs/MARKETING_REPORT.md
 # Ad-hoc debug scripts (local only)
 scripts/_dbg_*.py
 
+# Captured test output (local only)
+test_log.txt
+
+# GitHub branch-ruleset export (local download, not tracked)
+AgentsFrameworkRules.json
+
 # Accidental root npm lockfile (frontend lockfile lives in frontend/)
 /package-lock.json
 
