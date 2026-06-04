@@ -68,19 +68,16 @@ jobs:
       # of requirements.lock); a few transitive wheels differ on 3.13. The
       # lockfile is still the source of truth for reproducible local installs
       # and is exercised by the `lockfile-install` job below on Python 3.10.
-      - name: Install project (editable, dev + gcp extras)
-        run: pip install -e ".[dev,gcp]"
+      - name: Install project (editable, dev + gcp + aws extras)
+        run: pip install -e ".[dev,gcp,aws]"
 
       - name: Show installed package versions
         run: pip list
 
       - name: Run L1+L2 test suite
-        # `-m` here mirrors pyproject.toml [tool.pytest.ini_options] addopts so
-        # the CI command is self-documenting even if addopts ever changes.
-        run: |
-          pytest tests/ -q \
-            -m "not slow and not simulation and not live_llm and not infra" \
-            -p no:cacheprovider
+        # Marker filter comes from pyproject.toml addopts; do not pass -m again
+        # (duplicate -m can trigger pytest usage errors on some versions).
+        run: python -m pytest tests/ -q -p no:cacheprovider
 
   architecture-trust:
     name: architecture + trust kernel gates
@@ -109,7 +106,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run architecture + trust gates
-        run: pytest tests/architecture/ tests/trust/ -q
+        run: python -m pytest tests/architecture/ tests/trust/ -q -o addopts=
 
   lockfile-install:
     name: reproducible install from requirements.lock (Python 3.10)
@@ -140,7 +137,4 @@ jobs:
         run: pip install -e . --no-deps
 
       - name: Run L1+L2 test suite from locked deps
-        run: |
-          pytest tests/ -q \
-            -m "not slow and not simulation and not live_llm and not infra" \
-            -p no:cacheprovider
+        run: python -m pytest tests/ -q -p no:cacheprovider

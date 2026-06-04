@@ -12,7 +12,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from freezegun import freeze_time
+from tests.conftest import freeze_time
 from pydantic import ValidationError
 
 from services.goal_judge_runtime_config import (
