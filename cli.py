@@ -117,8 +117,8 @@ def main() -> None:
             registered_by="cli-bootstrap",
         )
 
-    workflow_id = f"wf-{uuid.uuid4().hex[:8]}"
-    task_id = f"task-{uuid.uuid4().hex[:8]}"
+    workflow_id = uuid.uuid4().hex
+    task_id = workflow_id
     session_id = f"session-{uuid.uuid4().hex[:8]}"
     user_id = os.environ.get("USER", "local-user")
 
@@ -159,6 +159,7 @@ def main() -> None:
                             "registered_agent_id": agent_id,
                             "thread_id": session_id,
                         },
+                        "recursion_limit": 100,
                     },
                 )
         except ImportError:
@@ -186,6 +187,7 @@ def main() -> None:
                         "registered_agent_id": agent_id,
                         "thread_id": session_id,
                     },
+                    "recursion_limit": 100,
                 },
             )
 

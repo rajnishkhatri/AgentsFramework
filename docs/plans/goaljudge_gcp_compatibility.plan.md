@@ -540,6 +540,7 @@ Confirmed against [`AGENTS.md`](../../AGENTS.md) boundaries:
 | T4 | The walkthrough's field-location map assumes `jsonPayload.target="goal_judge"` is queryable on GCP. | **Contradicted by T3** until the formatter follow-on lands; flagged to the walkthrough author. |
 | T5 | `app_prod` reads new env at process start; a posture change requires a new Cloud Run revision (which `gcloud run services update` creates). | Verified — config is read once in `_build_components()` ([`app_prod.py:107-179`](../../middleware/app_prod.py)); no hot-reload. |
 | T6 | The dev entrypoint Change B is optional for GCP validation but recommended for parity. | Decision: recommend applying (§4). |
+| T7 | **Langfuse `eval_capture` tracing:** publish full `goal_judge` `eval_capture` records as a Langfuse observation on the same `trace_id`/`workflow_id` (e.g. `eval_capture.goal_judge`), so P-series validation and Step 6 export get `graceful_failure`/`partial_fraction`/`rationale`/`would_downgrade` without `logs/evals.log` join or offline replay. Motivation: [GoalJudge walkthrough §Future work](../walk-through/02_goaljudge_ui_langfuse_validation_walkthrough.md#future-work--eval_capture-in-langfuse-tracing) (2026-06-03 P3 session). Complements T3 (Cloud Logging JSON), does not replace it. | **Open follow-on** — wire after `eval_capture.record` in [`react_loop.py`](../../orchestration/react_loop.py) or via relay; redact like compliance bundle. |
 
 ---
 

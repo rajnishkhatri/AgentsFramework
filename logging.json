@@ -3,6 +3,7 @@
     "disable_existing_loggers": false,
     "formatters": {
         "json": {
+            "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
             "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
         }
     },

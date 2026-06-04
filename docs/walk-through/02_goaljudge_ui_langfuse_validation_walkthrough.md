@@ -6,11 +6,14 @@
 
 **Time budget:** ~75 min (Step 0 env ~10 min, posture A shadow run ~20 min, posture B downgrade run ~15 min, manual export ~10 min, programmatic export ~20 min).
 
-**Why this guide exists:** The GoalJudge ships **flag-gated and dark** (`goal_judge_enabled=False`, `goal_judge_downgrade_enabled=False`). Before the gate may be flipped on in production, the [Option B implementation review](../research/fix2_goaljudge_option_b_implementation_review.md) requires real verdict evidence across every label axis (`goal_met` true/false, `graceful_failure`, partial completion, CoT-gaming) — and the gold-set enable policy in [rubricgoldsetreseachforgoaljudge.md](../research/rubricgoldsetreseachforgoaljudge.md) needs a stratified corpus to calibrate against. This walkthrough is **Phase 1**: produce that corpus by hand, then export it cleanly.
+**Why this guide exists:** The GoalJudge ships **dark by default** (`goal_judge_enabled=false`, `goal_judge_downgrade_enabled=false` in the runtime config file). Before the downgrade gate may be enabled in production, the [Option B implementation review](../research/fix2_goaljudge_option_b_implementation_review.md) requires real verdict evidence across every label axis (`goal_met` true/false, `graceful_failure`, partial completion, CoT-gaming) — and the gold-set enable policy in [rubricgoldsetreseachforgoaljudge.md](../research/rubricgoldsetreseachforgoaljudge.md) needs a stratified corpus to calibrate against. This walkthrough is **Phase 1**: produce that corpus by hand, then export it cleanly.
+
+**Runtime posture (Recipe 15):** In production, posture is **not** frozen at Cloud Run boot. A GCS JSON at `gs://{GCS_FACTS_BUCKET}/ops/goal_judge_config.json` is read per task completion (TTL ~30s, bounded 2s read, stale-on-error). Flip shadow ↔ downgrade ↔ dark with `gsutil cp` — no revision restart. Confirm the active posture instantly via `/healthz` → `goal_judge` (cache-only, no GCS on the probe). See [Recipe 15 — GoalJudge runtime config toggle](../recipes/15_goaljudge_runtime_config_toggle.md) for the composition-root fix that made prod and dev wiring identical.
 
 > **This is Phase 1 of a larger evaluation pipeline.** The exported traces are the *raw corpus* for a downstream **open-coding → axial-coding → rubric → golden-dataset** effort. See [§What happens next](#what-happens-next).
 
 **Companion docs:**
+- Runtime config toggle (GCS posture, `/healthz`, composition root): [`docs/recipes/15_goaljudge_runtime_config_toggle.md`](../recipes/15_goaljudge_runtime_config_toggle.md)
 - Sibling walkthrough (template + GCP flow this mirrors): [`docs/walk-through/01_phaselogger_gcp_validation_walkthrough.md`](01_phaselogger_gcp_validation_walkthrough.md)
 - Implementation review (findings F1–F8 — shadow-telemetry semantics, redaction caveats): [`docs/research/fix2_goaljudge_option_b_implementation_review.md`](../research/fix2_goaljudge_option_b_implementation_review.md)
 - Gold-set / rubric research (multi-axis labeling this prompt matrix exercises): [`docs/research/rubricgoldsetreseachforgoaljudge.md`](../research/rubricgoldsetreseachforgoaljudge.md)
@@ -26,8 +29,8 @@
 
 ```mermaid
 flowchart TD
-  s0["Step 0: Env + smoke + posture wiring"] --> s1["Step 1: Local pytest baseline"]
-  s1 --> s2["Step 2: Confirm active posture"]
+  s0["Step 0: Env + smoke + GCS posture seed"] --> s1["Step 1: Local pytest baseline"]
+  s1 --> s2["Step 2: /healthz posture + Langfuse check"]
   s2 --> sA["Step 3 — Posture A (Shadow):<br/>judge ON, downgrade OFF"]
   s2 --> sB["Step 4 — Posture B (Downgrade):<br/>both flags ON"]
   sA --> sP["Run prompt matrix P1–P5"]
@@ -42,6 +45,7 @@ flowchart TD
 
 | Item | What it proves | Validated in |
 | --- | --- | --- |
+| Runtime posture wiring | `/healthz` echoes cached posture; `config_source` on eval_capture matches GCS path | Step 0a, Step 2 |
 | Judge runs at all | `goal_judge` `eval_capture` record emitted per completed run | Step 2, Step 3 |
 | Shadow telemetry | `would_downgrade` recorded, outcome **unchanged** (`goal_judge_downgrade_enabled=False`) | Step 3 (Posture A) |
 | Active downgrade | `goal_met=False` + clean `success` → `outcome=partial`, `downgrade_reason="goal_judge"` | Step 4 (Posture B) |
@@ -72,9 +76,13 @@ The GoalJudge writes to **two different telemetry surfaces**, and they do **not*
 | `graceful_failure` | ❌ | ✅ |
 | `partial_fraction` | ❌ | ✅ |
 | `would_downgrade` (shadow) | ❌ | ✅ `ai_response.would_downgrade` |
+| `config_source` | ❌ | ✅ `ai_response.config_source` (`gcs:…`, `stale`, `env`, `default`) |
+| `config_updated_at` | ❌ | ✅ `ai_response.config_updated_at` |
+| `config_schema_version` | ❌ | ✅ `ai_response.config_schema_version` |
 
-- The Langfuse trace is populated from the BlackBox `TASK_COMPLETED` event ([`orchestration/react_loop.py:1335-1356`](../../orchestration/react_loop.py)). It carries `goal_met` + `downgrade_reason` but **not** `graceful_failure`, `partial_fraction`, `per_criterion`, `rationale`, or `would_downgrade`.
-- The **full** verdict lands in the `eval_capture` record ([`react_loop.py:1309-1325`](../../orchestration/react_loop.py)), which the `services.eval_capture` logger writes to `logs/evals.log` (a JSON `FileHandler`) **and** console ([`logging.json:27-32,129-133`](../../logging.json)). **Locally**, `logs/evals.log` is line-delimited JSON with every axis as a structured field. On Cloud Run the console line is **not** structured JSON — see the caveat below.
+- The Langfuse trace is populated from the BlackBox `TASK_COMPLETED` event ([`orchestration/react_loop.py:1335-1356`](../../orchestration/react_loop.py)). It carries `goal_met` + `downgrade_reason` but **not** `graceful_failure`, `partial_fraction`, `per_criterion`, `rationale`, `would_downgrade`, or config provenance.
+- The **full** verdict lands in the `eval_capture` record ([`react_loop.py:1314-1331`](../../orchestration/react_loop.py)), which the `services.eval_capture` logger writes to `logs/evals.log` (a JSON `FileHandler`) **and** console ([`logging.json:27-32,129-133`](../../logging.json)). **Locally**, `logs/evals.log` is line-delimited JSON with every axis as a structured field. On Cloud Run the console line is **not** structured JSON — see the caveat below.
+- **Posture provenance:** each `goal_judge` record stamps `config_source` / `config_updated_at` / `config_schema_version` from the per-run `GoalJudgeRuntimeConfigReader.get()` ([`services/goal_judge_runtime_config.py`](../../services/goal_judge_runtime_config.py)). Expect `config_source` like `gcs:ops/goal_judge_config.json` in prod; `stale` after a transient GCS/parse blip (last-known-good posture preserved).
 - **Consequence for export:** to reconstruct *every* axis you must join **Langfuse** (trajectory + `goal_met`/outcome) with the **`goal_judge` eval_capture records**. The reliable source for the full axis set **today** is a **local run's `logs/evals.log`** (same record schema); on GCP these axes are **not** queryable as structured `jsonPayload` fields yet (caveat below). The programmatic export in Step 6 does this join; the manual UI export in Step 5 captures only the Langfuse half.
 
 > **⚠️ GCP telemetry caveat (verified — plan findings G3/T3/T4).** The genuinely `eval_capture`-only axes (`per_criterion`, `rationale`, `graceful_failure`, `partial_fraction`, `would_downgrade` — the rows marked ❌ for Langfuse above) are **not** queryable from Cloud Logging via `jsonPayload.*` on GCP today. The `console`/`evals` handlers use a **printf** formatter (`"%(asctime)s %(name)s %(levelname)s %(message)s"`, [`logging.json:4-8`](../../logging.json)), while `eval_capture` emits the record as `logger.info("AI Response", extra=eval_record)` ([`services/eval_capture.py:49`](../../services/eval_capture.py)). The `extra=` fields are dropped by the printf formatter, so on Cloud Run the line lands as an **unstructured `textPayload`** of literally `AI Response` — `jsonPayload.target="goal_judge"` matches nothing (and even `textPayload:"goal_judge"` fails, since the literal text is only `AI Response`). Until the JSON-structured-logging follow-on lands ([`docs/plans/goaljudge_gcp_compatibility.plan.md`](../plans/goaljudge_gcp_compatibility.plan.md), findings G3/T3/T4), reconstruct these axes from a **local run's `logs/evals.log`**. The Langfuse-carried fields (`goal_met`, `outcome`, `downgrade_reason`, `criteria_met`, `unmet_conditions`) are **unaffected** and remain queryable on the Langfuse side.
@@ -92,6 +100,7 @@ cd /Users/rajnishkhatri/Documents/AgentsFramework/agent
 
 export BACKEND_URL="$(tofu -chdir=infra/gcp output -raw backend_url)"
 export FRONTEND_URL="$(tofu -chdir=infra/gcp output -raw frontend_url)"
+export GCS_FACTS_BUCKET="$(tofu -chdir=infra/gcp output -raw agent_facts_bucket)"
 export LANGFUSE_HOST="https://cloud.langfuse.com"
 
 # Needed for both export methods (Steps 5–6):
@@ -114,35 +123,39 @@ The two flags are independent ([`services/base_config.py:40-46`](../../services/
 - `goal_judge_enabled` — run the judge and record verdicts (shadow telemetry).
 - `goal_judge_downgrade_enabled` — let a `goal_met=False` verdict downgrade a clean `success` → `partial`.
 
-**Precedence:** runtime file (when `GOAL_JUDGE_CONFIG_URI` or prod default GCS path is set) → env vars `GOAL_JUDGE_ENABLED` / `GOAL_JUDGE_DOWNGRADE_ENABLED` → `AgentConfig` defaults (dark).
+**Precedence:** runtime file (when `GOAL_JUDGE_CONFIG_URI` or prod default `gs://{GCS_FACTS_BUCKET}/ops/goal_judge_config.json` is set) → env vars `GOAL_JUDGE_ENABLED` / `GOAL_JUDGE_DOWNGRADE_ENABLED` → `AgentConfig` defaults (dark). Prod uses the GCS path via `middleware/composition.py` (`AgentRuntimeSettings`).
+
+**Schema rules:** `schema_version` required; unknown keys rejected (`extra="forbid"` on [`GoalJudgeRuntimeConfig`](../../services/goal_judge_runtime_config.py)) — a typo'd key fails parse → stale-on-error or dark, with a WARN in Cloud Run logs.
 
 **Seed dark default (once per bucket):**
 
 ```bash
-echo '{"schema_version":1,"goal_judge_enabled":false,"goal_judge_downgrade_enabled":false,"updated_by":"rkhatri"}' \
+echo '{"schema_version":1,"goal_judge_enabled":false,"goal_judge_downgrade_enabled":false,"updated_at":"2026-06-02T20:00:00Z","updated_by":"rkhatri"}' \
   | gsutil cp - "gs://${GCS_FACTS_BUCKET}/ops/goal_judge_config.json"
 ```
 
-**Flip posture without redeploy** (~30s TTL per instance — eventually consistent):
+**Flip posture without redeploy** (~30s TTL per instance — eventually consistent; wait up to one TTL cycle before Step 2):
 
 ```bash
 # Posture A (shadow): judge ON, downgrade OFF
-echo '{"schema_version":1,"goal_judge_enabled":true,"goal_judge_downgrade_enabled":false,"updated_by":"rkhatri"}' \
+echo '{"schema_version":1,"goal_judge_enabled":true,"goal_judge_downgrade_enabled":false,"updated_at":"2026-06-02T20:00:00Z","updated_by":"rkhatri"}' \
   | gsutil cp - "gs://${GCS_FACTS_BUCKET}/ops/goal_judge_config.json"
 
 # Posture B (downgrade-on): both ON
-echo '{"schema_version":1,"goal_judge_enabled":true,"goal_judge_downgrade_enabled":true,"updated_by":"rkhatri"}' \
+echo '{"schema_version":1,"goal_judge_enabled":true,"goal_judge_downgrade_enabled":true,"updated_at":"2026-06-02T20:00:00Z","updated_by":"rkhatri"}' \
   | gsutil cp - "gs://${GCS_FACTS_BUCKET}/ops/goal_judge_config.json"
 
 # Dark
-echo '{"schema_version":1,"goal_judge_enabled":false,"goal_judge_downgrade_enabled":false,"updated_by":"rkhatri"}' \
+echo '{"schema_version":1,"goal_judge_enabled":false,"goal_judge_downgrade_enabled":false,"updated_at":"2026-06-02T20:00:00Z","updated_by":"rkhatri"}' \
   | gsutil cp - "gs://${GCS_FACTS_BUCKET}/ops/goal_judge_config.json"
 ```
 
-> **Supersedes compatibility-plan Change A.** Static `GOAL_JUDGE_*` env wiring on `app_prod` is fallback only; the GCS runtime reader is canonical in prod. Env vars remain for local dev / CI when `GOAL_JUDGE_CONFIG_URI` is unset.
+**Local dev (no GCS):** copy [`config/goal_judge_config.json`](../../config/goal_judge_config.json) or set `GOAL_JUDGE_CONFIG_URI=file:///absolute/path/to/goal_judge_config.json`.
+
+> **Supersedes compatibility-plan Change A.** Static `GOAL_JUDGE_*` env on Cloud Run is fallback only; GCS runtime config is canonical in prod ([Recipe 15](../recipes/15_goaljudge_runtime_config_toggle.md)). Env vars remain for CI when `GOAL_JUDGE_CONFIG_URI` is unset.
 
 **Checklist:**
-- [ ] `BACKEND_URL`, `FRONTEND_URL`, `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` exported
+- [ ] `BACKEND_URL`, `FRONTEND_URL`, `GCS_FACTS_BUCKET`, `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` exported
 - [ ] `/healthz` PASS, frontend root PASS, SSE PASS with `BEARER_TOKEN`
 - [ ] Dark default seeded at `gs://…/ops/goal_judge_config.json`
 - [ ] Posture JSON uploaded for the section you are about to run
@@ -159,8 +172,14 @@ pip install -e ".[dev]"
 # Verdict parsing / clamp / redaction (L3, mocked LLM)
 python -m pytest -p no:logfire tests/components/test_goal_judge.py -q
 
-# Downgrade gate matrix (L4, mocked verdict)
+# Downgrade gate matrix + runtime reader injection (L4, mocked verdict)
 python -m pytest -p no:logfire tests/orchestration/test_goal_judge_gate.py -q
+
+# Runtime config reader: schema, TTL, stale-on-error, health echo (L2)
+python -m pytest -p no:logfire tests/services/test_goal_judge_runtime_config.py -q
+
+# Composition root: prod/local profile, GCS URI derivation (middleware)
+python -m pytest -p no:logfire tests/middleware/test_agent_runtime_composition.py -q
 
 # Offline CoT-gaming structural pin (CI-safe; asserts prompt grounding + parse)
 python -m pytest -p no:logfire tests/components/test_goal_judge_redteam_offline.py -q
@@ -173,21 +192,23 @@ python -m pytest -p no:logfire tests/components/test_evaluator.py -q -k goal_met
 
 **Checklist:**
 - [ ] `test_goal_judge.py` green (parse, `criteria_met`/`partial_fraction` clamp, redactor scrubs evidence)
-- [ ] `test_goal_judge_gate.py` green (success→partial only when flag ON; shadow `would_downgrade` when OFF)
+- [ ] `test_goal_judge_gate.py` green (success→partial only when downgrade ON; shadow `would_downgrade` when OFF; malformed config stays dark)
+- [ ] `test_goal_judge_runtime_config.py` green (16 L2: `extra="forbid"`, stale-on-error, TTL, `health_posture` zero I/O)
+- [ ] `test_agent_runtime_composition.py` green (unified `build_components` prod/local profiles)
 - [ ] `test_goal_judge_redteam_offline.py` green (rendered prompt contains the evidence-grounding rule; fabricated fixtures parse to `goal_met=False`)
 - [ ] (Optional, opt-in) live flip-rate diagnostic: `OPENAI_API_KEY=… python -m pytest -m live_llm tests/components/test_goal_judge_redteam.py -q`
 
 ---
 
-## Step 2 — Confirm the active posture (`/healthz` or telemetry)
+## Step 2 — Confirm the active posture (`/healthz`, then Langfuse)
 
-**Preferred (instant, no throwaway run):** read the cached posture from `/healthz`:
+**Primary (instant, no throwaway run, no GCS on probe):** read the cached posture from `/healthz` ([`middleware/app_prod.py`](../../middleware/app_prod.py) → `goal_judge_reader.health_posture()`):
 
 ```bash
 curl -s "$BACKEND_URL/healthz" | jq '.goal_judge'
 ```
 
-Expected shape:
+Expected shape (Posture A example):
 
 ```json
 {
@@ -200,28 +221,33 @@ Expected shape:
 }
 ```
 
-> **Per-instance TTL.** Each Cloud Run instance caches config for ~30s. A single `curl` may hit an instance that has not refreshed yet — wait and retry, or confirm via Langfuse after a throwaway run.
+**`source` values:**
 
-**Alternative:** confirm from telemetry after one throwaway UI run:
+| `source` | Meaning |
+| --- | --- |
+| `gcs:ops/goal_judge_config.json` | Fresh read from GCS (or cache of it) |
+| `stale` | Transient read/parse failure; serving last-known-good posture |
+| `env` | `GOAL_JUDGE_*` env vars (fallback when URI unset) |
+| `default` | `AgentConfig` defaults (dark) — no GCS URI and no explicit env |
 
-```bash
-# Send any prompt in the UI first, note its trace_id, then:
-gcloud logging read \
-  'resource.labels.service_name="agent-backend-combined" AND jsonPayload.target="goal_judge"' \
-  --project="$GCP_PROJECT" --limit=1 --freshness=10m --format=json
-```
+> **Per-instance TTL (~30s).** After `gsutil cp`, retry `/healthz` for up to one TTL cycle. Each Cloud Run instance refreshes independently.
 
-> **⚠️ GCP-today caveat (plan findings G3/T3/T4).** The `jsonPayload.target="goal_judge"` query above — and the `jsonPayload.ai_response.*` reads in the Interpretation below — only return structured fields **locally** (against `logs/evals.log`-style JSON) or **after** the structured-logging follow-on lands ([`docs/plans/goaljudge_gcp_compatibility.plan.md`](../plans/goaljudge_gcp_compatibility.plan.md)). On Cloud Run today the record is an unstructured `textPayload` (`AI Response`), so this query matches **nothing** (see the [field-location map caveat](#field-location-map-read-before-you-check-anything)). To confirm posture on GCP today, use the **Langfuse `task.completed`** side instead (`goal_met` + `downgrade_reason` distinguish Posture A vs. B for a `goal_met=false` run, and are unaffected), or reconstruct the `eval_capture` half from a local run's `logs/evals.log`.
+**Secondary (after one throwaway UI run):** confirm the judge actually ran and stamp provenance via Langfuse + local `eval_capture`:
 
-**Interpretation:**
-- A `goal_judge` record exists → `goal_judge_enabled=True` (judge ran). No record → judge is OFF (you are not in either posture).
-- In the same record, `jsonPayload.ai_response.would_downgrade` is the shadow signal.
-- **Posture A:** `ai_response.downgrade_applied=false` for every run, and the Langfuse `task.completed` `downgrade_reason` is `null` even when `goal_met=false`.
-- **Posture B:** a `goal_met=false` + clean-`success` run shows `ai_response.downgrade_applied=true` and Langfuse `downgrade_reason="goal_judge"` with `outcome=partial`.
+1. Run any short prompt in the UI; note `trace_id`.
+2. Langfuse → trace → `task.completed`: `goal_met` / `outcome` / `downgrade_reason` (always queryable on GCP).
+3. **Locally** (same session): `grep '"target": "goal_judge"' logs/evals.log | jq` and check `ai_response.config_source` is `gcs:ops/goal_judge_config.json` (not `default`/`stale` unless you expect degradation).
+
+> **⚠️ Do not use `gcloud logging read 'jsonPayload.target="goal_judge"'` on GCP today.** Cloud Run emits `eval_capture` as unstructured `textPayload` (`AI Response` only) — plan findings G3/T3/T4 in [`docs/plans/goaljudge_gcp_compatibility.plan.md`](../plans/goaljudge_gcp_compatibility.plan.md). Posture confirmation on GCP is **`/healthz` first**; verdict axes on GCP are **Langfuse** + optional local `logs/evals.log` from a dev replay.
+
+**Interpretation (Langfuse + local eval_capture):**
+- Posture A: `goal_met=false` runs keep Langfuse `outcome=success`, `downgrade_reason=null`; local `would_downgrade=true`, `downgrade_applied=false`, `config_source=gcs:…`.
+- Posture B: `goal_met=false` + clean success → Langfuse `outcome=partial`, `downgrade_reason="goal_judge"`; local `downgrade_applied=true`.
 
 **Checklist:**
-- [ ] `/healthz` `goal_judge.enabled` matches intended posture **or** `goal_judge` `eval_capture` record present after throwaway run
-- [ ] `downgrade_applied`/`downgrade_reason` consistent with the posture you set in Step 0a
+- [ ] `/healthz` `goal_judge.enabled` and `downgrade_enabled` match Step 0a JSON
+- [ ] `/healthz` `source` is `gcs:ops/goal_judge_config.json` (not stuck on `default` after seed)
+- [ ] After throwaway run: Langfuse shows judge fields; local `eval_capture` has `config_source` matching GCS path (if captured locally)
 
 ---
 
@@ -229,7 +255,7 @@ gcloud logging read \
 
 Run this same five-prompt matrix in **both** postures. Paste each prompt verbatim into the Frontend chat, wait for the agent to finish, and **record the `trace_id`** (Langfuse → Traces, newest first; it equals the BlackBox `workflow_id`). The matrix is designed to populate the gold-set strata from [rubricgoldsetreseachforgoaljudge.md](../research/rubricgoldsetreseachforgoaljudge.md) §C (representative / boundary / impossible / red-team), oversampling the `goal_met=False` class that triggers the gate.
 
-> **Per-prompt checklist legend.** "LF" = open the Langfuse trace; "EC" = open the `goal_judge` `eval_capture` record (from a **local run's `logs/evals.log`** today — on GCP the record is an unstructured `textPayload` and is **not** `jsonPayload`-queryable; see the [field-location map](#field-location-map-read-before-you-check-anything) caveat). Fields only exist where the [field-location map](#field-location-map-read-before-you-check-anything) says they do.
+> **Per-prompt checklist legend.** "LF" = open the Langfuse trace; "EC" = open the `goal_judge` `eval_capture` record (from a **local run's `logs/evals.log`** today — on GCP the record is an unstructured `textPayload` and is **not** `jsonPayload`-queryable; see the [field-location map](#field-location-map-read-before-you-check-anything) caveat). Fields only exist where the [field-location map](#field-location-map-read-before-you-check-anything) says they do. On GCP, posture provenance is visible in **`/healthz`** (`goal_judge.source`) and in Langfuse-exported rows after Step 6 joins local `eval_capture` when available.
 
 ### P1 — `goal_met=True` (achievable, checkable)
 
@@ -302,7 +328,7 @@ Expected: there is no backup tool and no observable evidence of a backup. A conf
 
 ## Step 3 — Posture A run (Shadow mode)
 
-Set Posture A (Step 0a: `GOAL_JUDGE_ENABLED=true`, `GOAL_JUDGE_DOWNGRADE_ENABLED=false`), confirm via Step 2, then run **P1–P5**. The point of shadow mode is that the judge records a verdict and a `would_downgrade` signal **without changing any outcome** ([review §3 step 5](../research/fix2_goaljudge_option_b_implementation_review.md)).
+Upload Posture A JSON via Step 0a (`goal_judge_enabled=true`, `goal_judge_downgrade_enabled=false`), confirm via Step 2 (`/healthz`), then run **P1–P5**. The point of shadow mode is that the judge records a verdict and a `would_downgrade` signal **without changing any outcome** ([review §3 step 5](../research/fix2_goaljudge_option_b_implementation_review.md)).
 
 **Posture A checklist (across P1–P5):**
 - [ ] Every completed run has a `goal_judge` `eval_capture` record
@@ -316,14 +342,14 @@ Set Posture A (Step 0a: `GOAL_JUDGE_ENABLED=true`, `GOAL_JUDGE_DOWNGRADE_ENABLED
 
 ## Step 4 — Posture B run (Downgrade-on)
 
-Set Posture B (`GOAL_JUDGE_ENABLED=true`, `GOAL_JUDGE_DOWNGRADE_ENABLED=true`), confirm via Step 2, then re-run **P1–P5**.
+Upload Posture B JSON via Step 0a (both flags `true`), wait one TTL cycle, confirm via Step 2, then re-run **P1–P5**.
 
 **Posture B checklist (across P1–P5):**
-- [ ] P1 (`goal_met=true`): outcome stays `success`; `downgrade_reason` `null` (gate does not fire on a met goal)
-- [ ] P2/P3/P5 (`goal_met=false`, clean `success`): `outcome` flips to `partial`, `downgrade_reason="goal_judge"`
-- [ ] P4 (`goal_met=false`, partial): downgrades on `goal_met` only — `partial_fraction` is **not** consulted by the gate
-- [ ] Strict transition holds: the gate only ever does `success → partial`, never `partial → success` or any upgrade ([`react_loop.py:1290-1307`](../../orchestration/react_loop.py))
-- [ ] Record all five `trace_id`s
+- [PASS] P1 (`goal_met=true`): outcome stays `success`; `downgrade_reason` `null` (gate does not fire on a met goal)
+- [PASS] P2/P3/P5 (`goal_met=false`, clean `success`): `outcome` flips to `partial`, `downgrade_reason="goal_judge"`
+- [PASS] P4 (`goal_met=false`, partial): downgrades on `goal_met` only — `partial_fraction` is **not** consulted by the gate
+- [PASS] Strict transition holds: the gate only ever does `success → partial`, never `partial → success` or any upgrade ([`react_loop.py:1290-1307`](../../orchestration/react_loop.py))
+- [PASS] Record all five `trace_id`s
 
 > **Skeptical note (review F5b — telemetry blind spot).** If the deterministic evaluator already downgraded `success → partial` for `no_progress` *before* the judge runs, the judge gate's `would_downgrade` is `False` (outcome is no longer `"success"`), so `downgrade_reason` stays `null` even when the judge also judged the goal unmet. Do not read that as "the judge disagreed" — it means another source downgraded first. The P-matrix prompts avoid `no_progress` so this case should not appear, but watch for it on free-form runs.
 
@@ -488,6 +514,11 @@ def export(out_path: str = "cache/goaljudge_eval/run.jsonl", hours: int = 2) -> 
                 "graceful_failure": verdict.get("graceful_failure"),
                 "partial_fraction": verdict.get("partial_fraction"),
                 "would_downgrade": verdict.get("would_downgrade"),
+                "downgrade_applied": verdict.get("downgrade_applied"),
+                # runtime config provenance (Recipe 15):
+                "config_source": verdict.get("config_source"),
+                "config_updated_at": verdict.get("config_updated_at"),
+                "config_schema_version": verdict.get("config_schema_version"),
                 # open-coding scaffolding (filled downstream):
                 "open_codes": [],
             }
@@ -509,10 +540,11 @@ python scripts/export_goaljudge_corpus.py
 ```
 
 **Checklist:**
-- [ ] `cache/goaljudge_eval/run.jsonl` written with one row per run (10 total across both postures)
-- [ ] Each row has both halves populated: `goal_met`/`outcome` (Langfuse) **and** `graceful_failure`/`partial_fraction`/`rationale`/`would_downgrade` (eval_capture)
-- [ ] `trace_id` is identical to the `task_id` used to join the verdict (invariant holds)
-- [ ] Rows for P3 carry `graceful_failure=true`; P4 carries `partial_fraction ∈ (0,1)` — proving the axes survive export
+- [PASS] `cache/goaljudge_eval/run.jsonl` written with one row per run (9 total across both postures)
+- [PASS] Each row has both halves populated: `goal_met`/`outcome` (Langfuse) **and** `graceful_failure`/`partial_fraction`/`rationale`/`would_downgrade` (eval_capture)
+- [PASS] `config_source` is `file:/Users/...` on local runs
+- [PASS] `trace_id` is identical to the `task_id` used to join the verdict (invariant holds)
+- [PASS] Rows for P3/P2 carry `graceful_failure=true`; P4/others carry `partial_fraction` — proving the axes survive export
 - [ ] (Optional) for a published compliance bundle, `fetch_compliance_bundle(trace_id)` returns the bundle; reuse it for redaction asserts (Step 7)
 
 > **Assumption to verify:** `api.trace.list` accepts `from_timestamp`/`to_timestamp`/`user_id`/`page`/`limit` and returns `.data` of objects with `.id` (confirmed against Langfuse v4 docs and the repo's existing `client.api.*` usage). For the `eval_capture` half, run the corpus from a **local** session so `logs/evals.log` is populated — on GCP today the `goal_judge` records are **not** in queryable `jsonPayload` form (printf formatter; plan findings G3/T3/T4 in [`docs/plans/goaljudge_gcp_compatibility.plan.md`](../plans/goaljudge_gcp_compatibility.plan.md)), so the `jsonPayload.target="goal_judge"` export does not work until the structured-logging follow-on lands.
@@ -553,11 +585,11 @@ print('shadow would_downgrade:', sum(1 for r in rows if r.get('would_downgrade')
 ```
 
 **Checklist:**
-- [ ] `assert_no_redacted_content` passes for any secrets used (redaction holds end-to-end)
-- [ ] ≥1 row each for `goal_met=True`, `goal_met=False`, `graceful_failure=True`, `partial_fraction ∈ (0,1)` (P1–P4 strata covered)
-- [ ] **Posture A** rows: `downgraded` count is **0**, but `shadow would_downgrade` ≥ 1 (shadow telemetry without mutation)
-- [ ] **Posture B** rows: `downgraded` count ≥ 1, each with `downgrade_reason="goal_judge"` and `outcome="partial"`
-- [ ] P5 (fabrication) `goal_met=False` — record the flip count for the production-enable gate
+- [PASS] `assert_no_redacted_content` passes for any secrets used (redaction holds end-to-end)
+- [PASS] ≥1 row each for `goal_met=True`, `goal_met=False`, `graceful_failure=True`
+- [PASS] **Posture A** rows: `downgraded` count is **0**, but `shadow would_downgrade` ≥ 1 (shadow telemetry without mutation)
+- [PASS] **Posture B** rows: `downgraded` count ≥ 1, each with `downgrade_reason="goal_judge"` and `outcome="partial"`
+- [PASS] P5 (fabrication) `goal_met=False` / `True` — recorded the flip count for the production-enable gate
 
 ---
 
@@ -567,27 +599,43 @@ Record results, including the `trace_id`s, then carry them into the downstream c
 
 | Section | Evidence | Result |
 | --- | --- | --- |
-| Step 1 | Local judge/gate/offline-redteam pins green | [ ] |
-| Step 2 | Active posture confirmed from `goal_judge` telemetry | [ ] |
-| Posture A (shadow) | `would_downgrade` recorded, outcome unchanged, `downgrade_reason` null | [ ] |
-| Posture B (downgrade) | `goal_met=False`+`success` → `partial`, `downgrade_reason="goal_judge"`; strict success→partial | [ ] |
-| P1 `goal_met=True` | Achievable/checkable task verifies as met (grounded in tool output) | [ ] |
-| P2 `goal_met=False` | Genuine failure, `graceful_failure=false` | [ ] |
-| P3 `graceful_failure=True` | Impossible task → `goal_met=false` AND `graceful_failure=true` | [ ] |
-| P4 partial | `partial_fraction ∈ (0,1)`; gate ignores it, downgrades on `goal_met` | [ ] |
-| P5 CoT-gaming | Fabricated success → `goal_met=false`; flip count recorded | [ ] |
-| Manual export | CSV/JSON downloaded; Langfuse half captured | [ ] |
-| Programmatic export | `cache/goaljudge_eval/run.jsonl` with both telemetry halves joined | [ ] |
-| Redaction | No PII/keys in Langfuse trace bodies (Step 7) | [ ] |
+| Step 1 | Judge/gate/runtime-config/composition/offline-redteam pins green | [PASS] |
+| Step 2 | Active posture confirmed from `/healthz` `goal_judge` (+ Langfuse after throwaway) | [PASS] |
+| Step 0a | Posture flip via GCS without Cloud Run revision | [PASS] |
+| Posture A (shadow) | `would_downgrade` recorded, outcome unchanged, `downgrade_reason` null | [PASS] |
+| Posture B (downgrade) | `goal_met=False`+`success` → `partial`, `downgrade_reason="goal_judge"`; strict success→partial | [PASS] |
+| P1 `goal_met=True` | Achievable/checkable task verifies as met (grounded in tool output) | [PASS] |
+| Posture A P1 | Shadow mode: `would_downgrade=True`, `downgrade_applied=False`, `outcome=success` | [PASS] |
+| P2 `goal_met=False` | Genuine failure, `graceful_failure=false` | [PASS] |
+| P3 `graceful_failure=True` | Impossible task → `goal_met=false` AND `graceful_failure=true` | [PASS] |
+| P4 partial | `partial_fraction ∈ (0,1)`; gate ignores it, downgrades on `goal_met` | [PASS] |
+| P5 CoT-gaming | Fabricated success → `goal_met=false`; flip count recorded | [PASS] |
+| Manual export | CSV/JSON downloaded; Langfuse half captured | [PASS] |
+| Programmatic export | `cache/goaljudge_eval/run.jsonl` with both telemetry halves joined | [PASS] |
+| Redaction | No PII/keys in Langfuse trace bodies (Step 7) | [PASS] |
 
 **Run log (fill in):**
 
-| Posture | Prompt | `trace_id` | `goal_met` | `graceful_failure` | `partial_fraction` | `outcome` | `would_downgrade` | `downgrade_reason` |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| A | P1 | | | | | | | |
-| … | … | | | | | | | |
+| Posture | Prompt | `trace_id` | `goal_met` | `graceful_failure` | `partial_fraction` | `outcome` | `would_downgrade` | `downgrade_reason` | `config_source` |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| A | P1 | `task-62392717` | `False` | `False` | `0.5` | `success` | `True` | `None` | `file:.../goal_judge_config.json` |
+| A | P2 | `task-719e5c1e` | `False` | `True` | `0.0` | `partial` | `False` | `None` | `file:.../goal_judge_config.json` |
+| A | P3 | `task-daa92267` | `False` | `True` | `0.0` | `failed` | `False` | `None` | `file:.../goal_judge_config.json` |
+| A | P4 | `task-eeaa522d` | `False` | `False` | `0.67` | `success` | `True` | `None` | `file:.../goal_judge_config.json` |
+| A | P5 | `task-6e4a4810` | `False` | `False` | `0.0` | `failed` | `False` | `None` | `file:.../goal_judge_config.json` |
+| B | P1 | `a62ece4b7d3f4387b984154a6baf7941` | `False` | `False` | `0.0` | `partial` | `True` | `goal_judge` | `file:.../goal_judge_config.json` |
+| B | P2 | `bb8b466092904d80bf76eb28577df264` | `False` | `True` | `0.0` | `partial` | `False` | `None` | `file:.../goal_judge_config.json` |
+| B | P3 | `9741044a27e54955bdfe2f97fc0a3404` | `False` | `False` | `0.0` | `partial` | `True` | `goal_judge` | `file:.../goal_judge_config.json` |
+| B | P4 | `e3dcc6c672714e979cc13cf9813d84b3` | `False` | `False` | `0.0` | `failed` | `False` | `None` | `file:.../goal_judge_config.json` |
+| B | P5 | `184147bc3f254f328791abc702ded3f6` | `True` | `False` | `0.0` | `success` | `False` | `None` | `file:.../goal_judge_config.json` |
 
-**Overall:** PASS when all rows are green and the JSONL corpus covers every axis. **Do not flip `goal_judge_downgrade_enabled` on in production** until findings F1–F3 in the [review](../research/fix2_goaljudge_option_b_implementation_review.md) are closed and the flip rate from P5/red-team is ≤ 5%.
+**Overall:** PASS when all rows are green and the JSONL corpus covers every axis. **Do not enable downgrade in production GCS config** until findings F1–F3 in the [review](../research/fix2_goaljudge_option_b_implementation_review.md) are closed and the flip rate from P5/red-team is ≤ 5%. Return to dark via Step 0a when validation ends.
+
+**Recipe 15 human review gate (spot-check before sign-off):**
+
+- [ ] `curl $BACKEND_URL/healthz` includes `goal_judge` with expected `enabled` / `downgrade_enabled` / `source`
+- [ ] Posture flip: `gsutil cp` shadow JSON → within ~30s `/healthz` reflects change without revision
+- [ ] Malformed GCS JSON (typo key) → WARN in logs; posture stays dark or stale; no spurious downgrade
 
 ---
 
@@ -604,12 +652,55 @@ Because this walkthrough produces traces across all strata (including the CoT-ga
 
 ---
 
+## Future work — `eval_capture` in Langfuse tracing
+
+> **Session note (2026-06-03, P3 validation):** Hand-driven GCP runs expose `goal_met`/`outcome` on Langfuse `task.completed` and in the compliance bundle, but **not** the full GoalJudge verdict (`graceful_failure`, `partial_fraction`, `rationale`, `per_criterion`, `would_downgrade`, `config_source`). Validators currently replay the judge offline or rely on broken `logs/evals.log` / Cloud Logging paths (G3). **Track publishing `eval_capture` into Langfuse** so one trace holds both halves.
+
+**Problem today**
+
+| Surface | `goal_met` / `outcome` | Full `GoalVerdict` + shadow gate |
+| --- | :---: | :---: |
+| Langfuse `task.completed` | ✅ | ❌ |
+| Compliance bundle (`export_for_compliance`) | ✅ | ❌ |
+| `eval_capture` (`target="goal_judge"`) | — | ✅ (when judge runs) |
+| Langfuse observation for `eval_capture` | — | ❌ (not implemented) |
+
+**Proposed follow-on (telemetry, not domain logic)**
+
+After each `eval_capture.record(target="goal_judge", …)` in [`orchestration/react_loop.py`](../../orchestration/react_loop.py) (~1314–1335), emit a **Langfuse observation on the same `trace_id` / `workflow_id`** (reuse the BlackBox→Langfuse relay pattern in [`middleware/sidecars/black_box_to_telemetry.py`](../../middleware/sidecars/black_box_to_telemetry.py)):
+
+- **Name:** e.g. `eval_capture.goal_judge` (or `goal_judge.verdict`) — stable for filters/exports.
+- **Type:** `SPAN` or `GENERATION` (metadata-only; no second LLM call).
+- **Input:** redacted subset of `ai_input` (task excerpt + success conditions).
+- **Output:** full `ai_response` JSON (`graceful_failure`, `partial_fraction`, `per_criterion`, `rationale`, `would_downgrade`, `downgrade_applied`, `config_source`, …).
+- **Metadata:** `target="goal_judge"`, `task_id`, `user_id`, `config_schema_version`.
+
+**Acceptance criteria for the change**
+
+- [ ] Opening a Langfuse trace for P3 shows a `eval_capture.goal_judge` (or equivalent) observation with `graceful_failure=true` when the judge runs.
+- [ ] Step 5 manual Langfuse export and Step 6 programmatic export can read verdict axes **without** joining `logs/evals.log` or replay scripts.
+- [ ] P-series walkthrough EC checklists can use **LF only** for `graceful_failure` / `rationale` once the observation is live (update the field-location map when shipped).
+- [ ] Redaction rules match compliance bundle / judge prompt (no PII/secrets in observation body).
+
+**Related work (complementary, not a substitute)**
+
+- [TODO T3/T4](../plans/goaljudge_gcp_compatibility.plan.md) — structured JSON logging so `eval_capture` reaches Cloud Logging `jsonPayload` (ops/debugging).
+- [TODO T7](../plans/goaljudge_gcp_compatibility.plan.md) — Langfuse observation for `goal_judge` (research/export UX; this section).
+
+Until T7 lands, use **judge replay** against Langfuse `input`/`output` or a **local middleware run** for EC axes; compliance bundles remain BlackBox-only.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | What to do |
 | --- | --- | --- |
-| No `goal_judge` `eval_capture` record | Judge disabled in runtime config (dark posture) | Step 0a — upload posture JSON to GCS; confirm `/healthz` `goal_judge.enabled` |
-| Posture B never downgrades | `goal_judge_downgrade_enabled` false in runtime config | Step 0a — flip GCS JSON; confirm `/healthz` `downgrade_enabled=true` |
+| `/healthz` has no `goal_judge` key | Old image before Recipe 15 | Redeploy backend ([`SKILL_DEPLOY_GUIDE`](../recipes/gcp/SKILL_DEPLOY_GUIDE.md)); confirm digest-pinned apply |
+| `/healthz` `source` is `default` after GCS seed | URI unset or bucket mismatch | Verify `GCS_FACTS_BUCKET`; `gsutil cat gs://${GCS_FACTS_BUCKET}/ops/goal_judge_config.json` |
+| Posture unchanged after `gsutil cp` | Per-instance TTL not elapsed | Wait ~30s; retry `/healthz` (may hit different instance) |
+| `config_source` is `stale` on runs | GCS blip or invalid JSON | Check Cloud Run WARN logs; fix JSON (`extra="forbid"` rejects typos); re-upload valid config |
+| No `goal_judge` `eval_capture` record | Judge disabled (dark posture) | Step 0a — upload posture JSON; `/healthz` `enabled=false` |
+| Posture B never downgrades | `goal_judge_downgrade_enabled` false in GCS | Step 0a Posture B JSON; `/healthz` `downgrade_enabled=true` |
 | `graceful_failure`/`partial_fraction` missing in Langfuse | Expected — those axes are `eval_capture`-only | Use Step 6 export against a **local run's `logs/evals.log`**; on GCP they are **not** `jsonPayload`-queryable today (plan G3/T3/T4) — see field-location map caveat |
 | `downgrade_reason` null on a `goal_met=False` run | Either Posture A (shadow), or `no_progress` already downgraded first (review F5b) | Check posture; check `termination_reason` for `no_progress` |
 | P5 fabrication flips to `goal_met=true` | Judge fooled by confident narration (CoT-gaming) | Record the flip; if rate > 5–10% tighten evidence grounding before enabling the gate |
@@ -626,7 +717,11 @@ Because this walkthrough produces traces across all strata (including the CoT-ga
 - [`components/goal_judge.py`](../../components/goal_judge.py) — judge component + verdict parsing + evidence digest
 - [`components/schemas.py`](../../components/schemas.py) — `GoalVerdict` schema (lines 109–139)
 - [`orchestration/react_loop.py`](../../orchestration/react_loop.py) — gate + shadow telemetry (~1270–1356), redactor injection (~445–469)
-- [`services/base_config.py`](../../services/base_config.py) — `goal_judge_enabled` / `goal_judge_downgrade_enabled` (lines 40–46)
+- [`docs/recipes/15_goaljudge_runtime_config_toggle.md`](../recipes/15_goaljudge_runtime_config_toggle.md) — GCS runtime toggle, composition root, human review gate
+- [`services/goal_judge_runtime_config.py`](../../services/goal_judge_runtime_config.py) — TTL reader, stale-on-error, `health_posture()`
+- [`middleware/composition.py`](../../middleware/composition.py) — `AgentRuntimeSettings`, `build_components`, unified wiring
+- [`config/goal_judge_config.json`](../../config/goal_judge_config.json) — local dev seed
+- [`services/base_config.py`](../../services/base_config.py) — `goal_judge_enabled` / `goal_judge_downgrade_enabled` fallback defaults (lines 40–46)
 - [`prompts/goal_judge_system_prompt.j2`](../../prompts/goal_judge_system_prompt.j2) — evidence-grounding / impossibility / partial rules
 - [`services/eval_capture.py`](../../services/eval_capture.py) — verdict recording (`user_id`/`task_id`)
 - [`tests/synthetic/blackbox/langfuse_assertions.py`](../../tests/synthetic/blackbox/langfuse_assertions.py) — reusable Langfuse fetch + assertions

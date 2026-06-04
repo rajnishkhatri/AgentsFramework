@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "goal_judge_enabled": false,
+  "goal_judge_enabled": true,
   "goal_judge_downgrade_enabled": false,
   "updated_at": "2026-06-02T00:00:00Z",
   "updated_by": "seed"
