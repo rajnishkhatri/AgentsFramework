@@ -21,12 +21,29 @@ logger = logging.getLogger("services.observability")
 _LOGGING_CONFIG_PATH = Path(__file__).resolve().parent.parent / "logging.json"
 
 
+def _ensure_handler_dirs(config: dict[str, Any]) -> None:
+    """Create parent directories for every file-based handler.
+
+    ``logging.config.dictConfig`` instantiates ``FileHandler`` eagerly, which
+    opens the target file and fails on a fresh checkout where ``logs/`` does
+    not yet exist (CI runs from a clean tree). Pre-creating the directories
+    keeps setup idempotent regardless of working directory state.
+    """
+    for handler in config.get("handlers", {}).values():
+        if not isinstance(handler, dict):
+            continue
+        filename = handler.get("filename")
+        if filename:
+            Path(filename).expanduser().parent.mkdir(parents=True, exist_ok=True)
+
+
 def setup_logging(config_path: str | Path | None = None) -> None:
     """Load per-concern logging config from JSON file."""
     path = Path(config_path) if config_path else _LOGGING_CONFIG_PATH
     if path.exists():
         with open(path) as f:
             config = json.load(f)
+        _ensure_handler_dirs(config)
         logging.config.dictConfig(config)
     else:
         logging.basicConfig(level=logging.INFO)

@@ -8,7 +8,7 @@ A LangGraph-based ReAct agent with four-layer architecture, trust kernel, and go
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.13+
 - OpenAI API key (or equivalent LiteLLM-compatible provider)
 - Optional: LangSmith API key for tracing
 
