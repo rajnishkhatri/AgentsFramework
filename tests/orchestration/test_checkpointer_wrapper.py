@@ -13,10 +13,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from services.observability import (
-    FrameworkTelemetry,
-    InstrumentedCheckpointer,
-)
+from services.observability import FrameworkTelemetry
+from orchestration.checkpointer_wrapper import InstrumentedCheckpointer
 
 
 class _SyncStub:

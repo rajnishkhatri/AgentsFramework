@@ -160,7 +160,6 @@ class TestReaderAcceptance:
             reader.get()
         assert read_count == 1
 
-    @freeze_time("2026-06-02T12:00:00")
     def test_ttl_expiry_triggers_refresh(self, tmp_path):
         cfg_file = tmp_path / "goal_judge_config.json"
         cfg_file.write_text(json.dumps(_VALID_JSON), encoding="utf-8")
@@ -182,7 +181,8 @@ class TestReaderAcceptance:
                 "_read_file_text",
                 counting_read,
             )
-            reader.get()
+            with freeze_time("2026-06-02T12:00:00"):
+                reader.get()
             with freeze_time("2026-06-02T12:00:31"):
                 reader.get()
         assert read_count == 2

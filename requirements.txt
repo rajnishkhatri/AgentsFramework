@@ -1,16 +1,6 @@
-# Phase 1 Runtime Dependencies
-pydantic>=2.0
-pydantic-settings>=2.0
-
-langgraph>=0.2
-langchain-litellm>=0.2
-litellm>=1.0
-langsmith>=0.1
-jinja2>=3.0
-rich>=13.0
-
-# Phase 3: Checkpointing
-langgraph-checkpoint-sqlite>=2.0
-
-# AWS trust adapters
-boto3>=1.34.0
+# Thin wrapper — for reproducible/CI installs use requirements.lock directly:
+#   pip install -r requirements.lock
+#
+# This file installs from the ranges in pyproject.toml (library-consumer mode).
+# For exact reproducibility, prefer: pip install -r requirements.lock
+-e ".[dev,gcp]"

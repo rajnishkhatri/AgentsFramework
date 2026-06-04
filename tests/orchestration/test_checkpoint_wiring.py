@@ -42,7 +42,8 @@ from orchestration.react_loop import (
     build_graph,
 )
 from services.base_config import AgentConfig, ModelProfile
-from services.observability import FrameworkTelemetry, InstrumentedCheckpointer
+from services.observability import FrameworkTelemetry
+from orchestration.checkpointer_wrapper import InstrumentedCheckpointer
 
 
 # ── Shared fixtures ───────────────────────────────────────────────────

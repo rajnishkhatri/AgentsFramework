@@ -1,5 +1,7 @@
 # ReAct Agent -- Phase 1
 
+[![python-tests](https://github.com/rajnishkhatri/AgentsFramework/actions/workflows/python-tests.yml/badge.svg?branch=main)](https://github.com/rajnishkhatri/AgentsFramework/actions/workflows/python-tests.yml)
+
 A LangGraph-based ReAct agent with four-layer architecture, trust kernel, and governance services.
 
 ## Quick Start
