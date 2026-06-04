@@ -5,7 +5,7 @@ description = "ReAct Agent with Dynamic Model Selection -- Phase 1"
 requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2.0,<3",
-    "python-json-logger>=3.0,<4",
+    "python-json-logger>=3.0,<5",
     "pydantic-settings>=2.0,<3",
 
     "langgraph>=0.6,<1",
