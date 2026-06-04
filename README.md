@@ -4,6 +4,10 @@
 
 A LangGraph-based ReAct agent with four-layer architecture, trust kernel, and governance services.
 
+## Continuous integration
+
+Python L1+L2 tests run via [`.github/workflows/python-tests.yml`](.github/workflows/python-tests.yml) on every push and pull request.
+
 ## Quick Start
 
 ### Prerequisites
