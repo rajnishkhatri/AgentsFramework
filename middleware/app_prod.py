@@ -34,7 +34,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -56,37 +56,18 @@ from agent_ui_adapter.transport.sse import (
 )
 from agent_ui_adapter.wire.domain_events import RunFinishedDomain
 from middleware import telemetry_bridge
-from middleware.composition import build_adapters
+from middleware.composition import (
+    AgentComponents,
+    AgentRuntimeSettings,
+    build_adapters,
+    build_components,
+    build_runtime_graph,
+)
 from middleware.server import build_middleware_app
-from services.base_config import AgentConfig, ModelProfile
-from services.governance.agent_facts_gcs_registry import AgentFactsGcsRegistry
-from services.observability import setup_logging
 from services.trace_service import TraceService
 from services.trace_sinks.gcs_sink import GcsTraceSink
-from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
-from services.tools.file_io import FileIOInput, execute_file_io
-from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
-from services.tools.registry import ToolDefinition, ToolRegistry
-from services.tools.shell import ShellToolInput, execute_shell
-from services.tools.task_tool import TaskToolInput, build_task_tool_executor
-from services.tools.think_tool import ThinkToolInput, execute_think_tool
-from services.tools.todo_tools import StateTodoToolInput, execute_state_todo_tool
-from services.tools.web_search import WebSearchInput, build_web_search_executor
-from services.tools.search.searxng import SearxngProvider
-from services.tools.search.stub import StubProvider
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, Capability
-
-logger = logging.getLogger("middleware.app_prod")
-
-
-def _resolve_prod_search_provider():
-    """Select web search provider from env (WEB_SEARCH_PROVIDER / SEARXNG_URL)."""
-    provider_name = os.environ.get("WEB_SEARCH_PROVIDER", "stub").lower()
-    if provider_name == "searxng":
-        base_url = os.environ.get("SEARXNG_URL", "http://localhost:8888")
-        return SearxngProvider(base_url=base_url)
-    return StubProvider()
 
 
 def _load_graph_factory():
@@ -104,79 +85,28 @@ def _load_graph_factory():
     return factory
 
 
-def _build_components() -> tuple[AgentConfig, ToolRegistry, AgentFactsGcsRegistry, Path]:
-    """Build non-async components for the production backend."""
-    setup_logging()
+logger = logging.getLogger("middleware.app_prod")
 
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
+
+def _build_components() -> tuple[Any, Any, Any, Path, Any]:
+    """Build non-async components for the production backend (compat shim)."""
+    os.environ.setdefault("AGENT_ENV", "prod")
+    settings = AgentRuntimeSettings(agent_env="prod")
+    components = build_components(settings, agent_root=AGENT_ROOT)
+    return (
+        components.agent_config,
+        components.tool_registry,
+        components.agent_facts_registry,
+        components.cache_dir,
+        components.goal_judge_config_reader,
     )
 
-    agent_config = AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
-        max_steps=20,
-        max_cost_usd=1.0,
-    )
 
-    delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
-    tool_registry = ToolRegistry({
-        "shell": ToolDefinition(
-            executor=execute_shell, schema=ShellToolInput, cacheable=True
-        ),
-        "file_io": ToolDefinition(
-            executor=execute_file_io, schema=FileIOInput, cacheable=True
-        ),
-        "state_file": ToolDefinition(
-            executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
-        ),
-        "state_todo": ToolDefinition(
-            executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False
-        ),
-        "task": ToolDefinition(
-            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
-            schema=TaskToolInput,
-            cacheable=False,
-        ),
-        "think": ToolDefinition(
-            executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
-        ),
-        "web_search": ToolDefinition(
-            executor=build_web_search_executor(_resolve_prod_search_provider()),
-            schema=WebSearchInput,
-            cacheable=True,
-        ),
-    })
-
-    cache_dir = Path(os.environ.get("AGENT_OFFLOAD_DIR", "/tmp/agent_offload"))
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    agent_facts_secret = os.environ.get(
-        "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
-    )
-    gcs_facts_bucket = os.environ.get("GCS_FACTS_BUCKET", "")
-    if not gcs_facts_bucket:
-        raise RuntimeError("GCS_FACTS_BUCKET is required in production")
-
-    agent_facts_registry = AgentFactsGcsRegistry(
-        bucket_name=gcs_facts_bucket,
-        secret=agent_facts_secret,
-    )
-
-    return agent_config, tool_registry, agent_facts_registry, cache_dir
+def _build_agent_components() -> AgentComponents:
+    """Full typed bag for internal wiring."""
+    os.environ.setdefault("AGENT_ENV", "prod")
+    settings = AgentRuntimeSettings(agent_env="prod")
+    return build_components(settings, agent_root=AGENT_ROOT)
 
 
 def build_combined_app() -> FastAPI:
@@ -185,7 +115,22 @@ def build_combined_app() -> FastAPI:
     Called by uvicorn with --factory flag:
         uvicorn middleware.app_prod:build_combined_app --factory
     """
-    agent_config, tool_registry, agent_facts_registry, cache_dir = _build_components()
+    (
+        agent_config,
+        tool_registry,
+        agent_facts_registry,
+        cache_dir,
+        goal_judge_reader,
+    ) = _build_components()
+    settings = AgentRuntimeSettings(agent_env="prod")
+    components = AgentComponents(
+        agent_config=agent_config,
+        tool_registry=tool_registry,
+        agent_facts_registry=agent_facts_registry,
+        cache_dir=cache_dir,
+        goal_judge_config_reader=goal_judge_reader,
+        settings=settings,
+    )
     build_graph = _load_graph_factory()
 
     gcs_traces_bucket = os.environ.get("GCS_TRACES_BUCKET", "")
@@ -212,12 +157,10 @@ def build_combined_app() -> FastAPI:
 
         try:
             async with PostgresCheckpointer.from_env() as pg_cp:
-                graph = build_graph(
-                    agent_config=agent_config,
-                    tool_registry=tool_registry,
-                    cache_dir=cache_dir,
+                graph = build_runtime_graph(
+                    components,
+                    build_graph,
                     checkpointer=pg_cp.saver,
-                    agent_facts_registry=agent_facts_registry,
                     interrupt_before_execute_tool=False,
                 )
                 app.state.runtime = LangGraphRuntime(
@@ -265,6 +208,7 @@ def build_combined_app() -> FastAPI:
             "profile": adapters.profile,
             "runtime": "langgraph",
             "mode": "combined",
+            "goal_judge": goal_judge_reader.health_posture(),
         }
 
     app.mount("/middleware", middleware_app)

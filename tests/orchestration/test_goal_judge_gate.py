@@ -24,6 +24,7 @@ import pytest
 
 from components.schemas import GoalVerdict
 from services.base_config import AgentConfig, ModelProfile
+from services.goal_judge_runtime_config import InMemoryGoalJudgeConfigReader
 
 
 def _fast_profile() -> ModelProfile:
@@ -60,6 +61,8 @@ async def _run_with_verdict(
     max_cost_usd: float = 1.0,
     initial_cost: float = 0.0,
     seed_no_progress: bool = False,
+    goal_judge_config_reader: InMemoryGoalJudgeConfigReader | None = None,
+    goal_judge_enabled: bool = True,
 ) -> dict:
     """Drive the graph to completion with a controlled goal-judge verdict."""
     mock_response = MagicMock()
@@ -72,9 +75,16 @@ async def _run_with_verdict(
         default_model="gpt-4o-mini",
         models=[_fast_profile()],
         max_cost_usd=max_cost_usd,
-        goal_judge_enabled=True,
+        goal_judge_enabled=goal_judge_enabled,
         goal_judge_downgrade_enabled=downgrade_enabled,
     )
+
+    graph_kwargs: dict = {
+        "agent_config": agent_config,
+        "cache_dir": tmp_path / "cache",
+    }
+    if goal_judge_config_reader is not None:
+        graph_kwargs["goal_judge_config_reader"] = goal_judge_config_reader
 
     with (
         patch("langchain_litellm.ChatLiteLLM") as MockLLM,
@@ -93,10 +103,7 @@ async def _run_with_verdict(
 
         from orchestration.react_loop import build_graph
 
-        graph = build_graph(
-            agent_config=agent_config,
-            cache_dir=tmp_path / "cache",
-        )
+        graph = build_graph(**graph_kwargs)
         initial_state: dict = {
             "task_id": "t",
             "task_input": "What is the capital of France?",
@@ -206,3 +213,46 @@ class TestDowngradeApplied:
         )
         assert details["outcome"] == "partial"
         assert details["downgrade_reason"] == "goal_judge"
+
+
+class TestRuntimeConfigReaderInjection:
+    @pytest.mark.asyncio
+    async def test_injected_reader_overrides_agent_config_downgrade(self, tmp_path):
+        """Per-run reader wins over static AgentConfig when injected."""
+        reader = InMemoryGoalJudgeConfigReader(
+            goal_judge_enabled=True,
+            goal_judge_downgrade_enabled=True,
+            source="test-injected",
+        )
+        details = await _run_with_verdict(
+            tmp_path,
+            workflow_id="wf-reader-on",
+            verdict=GoalVerdict(goal_met=False, criteria_met=0.0),
+            downgrade_enabled=False,
+            goal_judge_config_reader=reader,
+        )
+        assert details["outcome"] == "partial"
+        assert details["downgrade_reason"] == "goal_judge"
+
+    @pytest.mark.asyncio
+    async def test_malformed_runtime_config_stays_dark(self, tmp_path):
+        """Malformed on-disk config with URI set → fail-dark (judge skipped)."""
+        bad_file = tmp_path / "bad_goal_judge.json"
+        bad_file.write_text('{"goal_judge_enabled": true, "typo_key": 1}', encoding="utf-8")
+        from services.goal_judge_runtime_config import GoalJudgeRuntimeConfigReader
+
+        reader = GoalJudgeRuntimeConfigReader(
+            uri=f"file://{bad_file}",
+            defaults_enabled=False,
+            defaults_downgrade=False,
+        )
+        details = await _run_with_verdict(
+            tmp_path,
+            workflow_id="wf-malformed-dark",
+            verdict=GoalVerdict(goal_met=False, criteria_met=0.0),
+            downgrade_enabled=True,
+            goal_judge_config_reader=reader,
+            goal_judge_enabled=True,
+        )
+        assert details["outcome"] == "success"
+        assert details["downgrade_reason"] is None
