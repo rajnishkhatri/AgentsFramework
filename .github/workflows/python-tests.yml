@@ -1,0 +1,139 @@
+name: python-tests
+
+# Python L1+L2 test suite (per AGENTS.md "CI scope").
+#
+# Two jobs:
+#   1. tests           — full L1+L2 sweep on the supported Python version
+#                        (3.13 floor). Runs the exact
+#                        marker scope documented in AGENTS.md / pyproject's
+#                        addopts: `not slow and not simulation and not
+#                        live_llm and not infra` so no live LLM calls are
+#                        ever made and no API-key secrets are required.
+#
+#   2. architecture-trust — fast, focused job for the credibility-centerpiece
+#                           gates (`tests/architecture/` + `tests/trust/`).
+#                           These enforce the four-layer architecture
+#                           invariants and the pure-trust-kernel rules; we
+#                           surface them as their own check so reviewers can
+#                           see at a glance that the boundary tests are green.
+#
+# No live-LLM secrets are wired in — the marker exclusion above guarantees
+# tests/services/, tests/components/, etc. mock all model calls.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to keep the queue small.
+concurrency:
+  group: python-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: pytest L1+L2 (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    env:
+      # Some trust-kernel paths read this even in unit tests; set a deterministic
+      # placeholder so signing helpers don't blow up. Never a real secret.
+      AGENT_FACTS_SECRET: ci-placeholder-not-a-real-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.lock
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      # We install via `pip install -e ".[dev,gcp,aws]"` rather than the
+      # lockfile here so the editable-install path is exercised directly. The
+      # lockfile remains the source of truth for reproducible installs and is
+      # exercised by the `lockfile-install` job below (same Python 3.13).
+      - name: Install project (editable, dev + gcp + aws extras)
+        run: pip install -e ".[dev,gcp,aws]"
+
+      - name: Show installed package versions
+        run: pip list
+
+      - name: Run L1+L2 test suite
+        # Marker filter comes from pyproject.toml addopts; do not pass -m again
+        # (duplicate -m can trigger pytest usage errors on some versions).
+        run: python -m pytest tests/ -q -p no:cacheprovider
+
+  architecture-trust:
+    name: architecture + trust kernel gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AGENT_FACTS_SECRET: ci-placeholder-not-a-real-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.lock
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      # Architecture + trust tests don't need the gcp extra; keep this job lean.
+      - name: Install project (editable, dev extra only)
+        run: pip install -e ".[dev]"
+
+      - name: Run architecture + trust gates
+        run: python -m pytest tests/architecture/ tests/trust/ -q -o addopts=
+
+  lockfile-install:
+    name: reproducible install from requirements.lock (Python 3.13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AGENT_FACTS_SECRET: ci-placeholder-not-a-real-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      # Validate that requirements.lock is internally consistent and yields a
+      # working test run on the version it was resolved for.
+      - name: Install pinned dependencies from lockfile
+        run: pip install -r requirements.lock
+
+      - name: Install project (no deps — already locked)
+        run: pip install -e . --no-deps
+
+      - name: Run L1+L2 test suite from locked deps
+        run: python -m pytest tests/ -q -p no:cacheprovider

@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-LangGraph-based ReAct agent with four-layer architecture, trust kernel, governance services, and dynamic model routing. Python 3.10+, LiteLLM for model calls, Jinja2 for prompts, Pydantic for validation.
+LangGraph-based ReAct agent with four-layer architecture, trust kernel, governance services, and dynamic model routing. Python 3.13+, LiteLLM for model calls, Jinja2 for prompts, Pydantic for validation.
 
 ## Key Commands
 

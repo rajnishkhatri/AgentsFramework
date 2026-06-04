@@ -225,7 +225,7 @@ class TestPhaseLoggerFailurePaths:
         assert any("without matching start" in r.getMessage() for r in caplog.records)
 
     def test_per_step_key_isolation(self, tmp_path):
-        from freezegun import freeze_time
+        from tests.conftest import freeze_time
 
         from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 
@@ -307,7 +307,7 @@ class TestPhaseLoggerFailurePaths:
     def test_phase_duration_tracked_with_freezegun(self, tmp_path):
         from datetime import datetime
 
-        from freezegun import freeze_time
+        from tests.conftest import freeze_time
 
         from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 
@@ -328,7 +328,7 @@ class TestPhaseLoggerImplementation:
     """C1 (Sprint 1 green): acceptance tests for PhaseLogger persistence (B1)."""
 
     def test_start_end_writes_phases_jsonl_schema(self, tmp_path):
-        from freezegun import freeze_time
+        from tests.conftest import freeze_time
 
         from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 

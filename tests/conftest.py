@@ -2,11 +2,32 @@
 
 from __future__ import annotations
 
+import logging
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
+
+try:
+    from freezegun import freeze_time as _freezegun_freeze_time
+except ImportError:  # pragma: no cover - dev extra only
+    _freezegun_freeze_time = None
+
+# Modules middleware tests load before freezegun runs; skipping them avoids
+# pydantic schema errors when freezegun walks lazy langfuse.api attributes.
+_FREEZEGUN_IGNORE = ["langfuse"]
+
+
+def freeze_time(*args, **kwargs):
+    """freezegun wrapper that ignores langfuse (safe after middleware test runs)."""
+    if _freezegun_freeze_time is None:
+        raise RuntimeError("freezegun is required for freeze_time() tests")
+    ignore = list(kwargs.pop("ignore", []))
+    for name in _FREEZEGUN_IGNORE:
+        if name not in ignore:
+            ignore.append(name)
+    return _freezegun_freeze_time(*args, ignore=ignore, **kwargs)
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent
 if str(AGENT_ROOT) not in sys.path:
@@ -128,3 +149,28 @@ def certificate_factory():
 def review_finding_factory():
     """Fixture returning the ReviewFinding factory callable."""
     return make_review_finding
+
+
+def _reset_logging_after_dictconfig() -> None:
+    """Clear global handlers left by logging.config.dictConfig (H4 setup_logging).
+
+    Avoid ``logging.shutdown()`` — it can disturb freezegun/hypothesis time mocks.
+    """
+    for name in list(logging.root.manager.loggerDict.keys()):
+        logger = logging.getLogger(name)
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+            handler.close()
+        logger.filters.clear()
+        logger.propagate = True
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+        handler.close()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_logging_handlers():
+    """Keep caplog-based L2 tests independent of setup_logging() side effects."""
+    _reset_logging_after_dictconfig()
+    yield
+    _reset_logging_after_dictconfig()

@@ -59,7 +59,8 @@ from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
 from services.llm_config import LLMService
-from services.observability import FrameworkTelemetry, InstrumentedCheckpointer
+from services.observability import FrameworkTelemetry
+from orchestration.checkpointer_wrapper import InstrumentedCheckpointer
 from services.prompt_service import PromptService
 from services.summarizer import (
     build_compaction_summary,

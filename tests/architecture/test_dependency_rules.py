@@ -255,14 +255,14 @@ class TestSharedUtilityParity:
 
 
 class TestDeclaredDependencies:
-    """H5.3: boto3 is listed as a dependency per Step 9 of the plan."""
+    """H5.3: boto3 is declared as a dependency in pyproject.toml."""
 
-    def test_boto3_in_requirements(self):
-        req_path = AGENT_ROOT / "requirements.txt"
-        assert req_path.exists(), (
-            f"requirements.txt must exist at {req_path}"
+    def test_boto3_in_pyproject(self):
+        pyproject_path = AGENT_ROOT / "pyproject.toml"
+        assert pyproject_path.exists(), (
+            f"pyproject.toml must exist at {pyproject_path}"
         )
-        content = req_path.read_text()
+        content = pyproject_path.read_text()
         assert "boto3" in content, (
-            "boto3 must be listed in requirements.txt per Step 9 of the plan"
+            "boto3 must be listed in pyproject.toml (aws optional-deps)"
         )

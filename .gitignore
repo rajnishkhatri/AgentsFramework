@@ -57,8 +57,14 @@ infra/gcp/terraform.tfvars.bak
 infra/gcp/tfplan.json
 infra/gcp/tfplan.txt
 
+# Local agent scratch (goal-judge runs, ad-hoc outputs)
+workspace/
+
 # PR draft bodies (local only)
-.github-pr-body.md
+.github-pr-body*.md
+
+# Local marketing draft (not for the repo)
+docs/MARKETING_REPORT.md
 
 # Ad-hoc debug scripts (local only)
 scripts/_dbg_*.py

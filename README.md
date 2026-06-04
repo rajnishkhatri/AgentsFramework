@@ -1,12 +1,14 @@
 # ReAct Agent -- Phase 1
 
+[![python-tests](https://github.com/rajnishkhatri/AgentsFramework/actions/workflows/python-tests.yml/badge.svg?branch=main)](https://github.com/rajnishkhatri/AgentsFramework/actions/workflows/python-tests.yml)
+
 A LangGraph-based ReAct agent with four-layer architecture, trust kernel, and governance services.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.10+
+- Python 3.13+
 - OpenAI API key (or equivalent LiteLLM-compatible provider)
 - Optional: LangSmith API key for tracing
 
