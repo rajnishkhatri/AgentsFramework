@@ -66,6 +66,7 @@ from agent_ui_adapter.transport.sse import (
 )
 from agent_ui_adapter.wire.domain_events import RunFinishedDomain
 from middleware import telemetry_bridge
+from middleware.run_stream_context import build_run_stream_context
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
@@ -434,17 +435,18 @@ def build_dev_app() -> FastAPI:
         identity = _require_bearer(request, authorization)
         runtime: LangGraphRuntime = request.app.state.runtime
         body = await request.json()
-        thread_id = body.get("thread_id", uuid.uuid4().hex)
-        user_input = body.get("input", {})
-        task_input = ""
-        if isinstance(user_input, dict):
-            messages = user_input.get("messages", [])
-            if messages:
-                last = messages[-1]
-                if isinstance(last, dict):
-                    task_input = last.get("content", "")
-                elif isinstance(last, str):
-                    task_input = last
+        run_ctx = build_run_stream_context(
+            body,
+            identity=identity,
+            subject=DEV_USER_ID,
+        )
+        if run_ctx.saturation is not None:
+            logger.info(
+                "goaljudge_saturation case=%s trace=%s thread=%s",
+                run_ctx.saturation.case_id,
+                run_ctx.saturation.trace_id,
+                run_ctx.thread_id,
+            )
 
         run_started_at = time.monotonic()
 
@@ -457,9 +459,9 @@ def build_dev_app() -> FastAPI:
             run_finished_emitted = False
             try:
                 async for domain_event in runtime.run(
-                    thread_id=thread_id,
-                    input={**(user_input or {}), "task_input": task_input},
-                    identity=identity,
+                    thread_id=run_ctx.thread_id,
+                    input={**run_ctx.user_input, "task_input": run_ctx.task_input},
+                    identity=run_ctx.identity,
                 ):
                     if trace_id_seen is None:
                         trace_id_seen = domain_event.trace_id
@@ -469,7 +471,7 @@ def build_dev_app() -> FastAPI:
                     telemetry_bridge.emit_domain_event(
                         exporter,
                         domain_event,
-                        subject=DEV_USER_ID,
+                        subject=run_ctx.telemetry_subject,
                         release_on_finish=False,
                     )
                     if isinstance(domain_event, RunFinishedDomain):
@@ -492,7 +494,7 @@ def build_dev_app() -> FastAPI:
                 logger.info(
                     "stream_ended run_id=%s thread=%s trace=%s "
                     "duration_ms=%d errored=%s",
-                    run_id, thread_id, trace_id_seen, duration_ms, errored,
+                    run_id, run_ctx.thread_id, trace_id_seen, duration_ms, errored,
                 )
                 # I6: teardown order is drain -> release_trace -> flush. The
                 # relay tail MUST be drained before any step.N span is closed,
@@ -507,10 +509,10 @@ def build_dev_app() -> FastAPI:
                         exporter,
                         trace_id=trace_id_seen,
                         run_id=run_id,
-                        thread_id=thread_id,
+                        thread_id=run_ctx.thread_id,
                         duration_ms=duration_ms,
                         errored=errored,
-                        subject=DEV_USER_ID,
+                        subject=run_ctx.telemetry_subject,
                         release=False,
                     )
 

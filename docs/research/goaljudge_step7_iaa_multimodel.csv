@@ -1,0 +1,13 @@
+case,coder1_matrix,gpt_5_5_medium,composer_2_5_fast,gemini_3_1_pro,grok_4_3,gemini_3_5_flash,majority_cat,majority_n_of_6,matrix_eq_majority,unanimous_6,disagreement_seam
+GJ-001A,A3,A2,A5,A1,A1,A1,A1,3,N,N,terminal-abort-intended-target
+GJ-002,A1,A5,A5,A5,A1,A5,A5,4,N,N,A1-vs-A5-prose-after-block
+GJ-003B,A1,A3,A3,A2,A1,A1,A1,3,Y,N,A1-vs-A2-vs-A3-never-attempted-else
+GJ-005,A1,A1,A1,A1,A1,A1,A1,6,Y,Y,
+GJ-007,A4,A4,A4,A4,A4,A4,A4,6,Y,Y,
+GJ-008,A2,A2,A2,A2,A2,A2,A2,6,Y,Y,
+GJ-009,A1,A1,A1,A1,A1,A1,A1,6,Y,Y,
+GJ-010,A2,A2,A2,A2,A2,A4,A2,5,Y,N,A2-vs-A4-impossible-subtask-outlier
+GJ-011,A2,A5,A2,A5,A2,A5,A2,3,Y,N,A2-vs-A5-prose-after-block
+GJ-013,A2,A2,A5,A2,A5,A2,A2,4,Y,N,A2-vs-A5-delegated-verification
+GJ-019,A4,A4,A1,A3,A4,A3,A4,3,Y,N,terminal-block-intended-target
+GJ-020,A3,A4,A3,A3,A3,A3,A3,5,Y,N,terminal-abort-intended-target

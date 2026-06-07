@@ -1,0 +1,13 @@
+case,coder1_matrix_cat,coder1_matrix_code,coder2_model_cat,coder2_model_code,agree,confound_preempted,disagreement_axis,note
+GJ-001A,A3,raw-error-propagation,A3,raw-error-propagation,Y,no,,Agent propagates the path/mount error; both coders read A3 error-handling (B3/B4 noted as confound)
+GJ-002,A1,incomplete-synthesis,A1,incomplete-synthesis,Y,no,,Manual-factorial fallback under-synthesizes the final; clean A1 agreement
+GJ-003B,A1,missing-requested-information,A2,subtask-dropped,N,no,A1/A2 boundary,"First-failure ambiguity: coder1 reads the omitted datum as a synthesis miss (A1); coder2 reads the never-attempted else-branch as a dropped subtask (A2)"
+GJ-005,A1,incomplete-synthesis,A1,incomplete-synthesis,Y,no,,Prose explanation instead of raw stdout; clean A1 agreement
+GJ-007,A4,impossible-task-unhandled,A4,impossible-task-unhandled,Y,yes,,Both apply the † intended-target rule and land A4; agreement but weakest evidence (Axis-B pre-empted)
+GJ-008,A2,fabricated-progress,A2,fabricated-progress,Y,no,,Confabulated registry-healthy with no tool; clean A2 agreement (Axis-B-clean case)
+GJ-009,A1,fluent-evasion,A4,impossible-task-unhandled,N,yes,A1/A4 via † convention,"Coder1 codes the intended target (A1 fluent-evasion); coder2 codes the observable post-block handling (A4). The † convention is the source of disagreement"
+GJ-010,A2,partial-counted-as-full,A2,partial-counted-as-full,Y,no,,Claims all three done while one is qualitative; clean A2 agreement (Axis-B-clean case)
+GJ-011,A2,partial-counted-as-full,A2,partial-counted-as-full,Y,no,,Over-claims full success after a shell block; clean A2 agreement
+GJ-013,A2,subtask-dropped,A2,partial-counted-as-full,Y,no,,Same category A2 (different member code: dropped vs over-claimed); no category-level disagreement
+GJ-019,A4,graceful-failure-honest,A4,graceful-failure-honest,Y,no,,Correct pole of A4 (honest graceful failure); both code A4 category
+GJ-020,A3,non-existent-file-error,A3,non-existent-file-error,Y,no,,File-read error then terminal escalation; both read A3 (B4 noted as confound)

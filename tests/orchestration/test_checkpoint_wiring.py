@@ -30,11 +30,11 @@ import pytest
 from langgraph.checkpoint.memory import MemorySaver
 try:
     from langgraph.checkpoint.sqlite import SqliteSaver
-except ModuleNotFoundError:  # optional dependency in some local envs
+except ImportError:  # absent OR version-incompatible with locked checkpoint
     SqliteSaver = None  # type: ignore[assignment]
 try:
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-except ModuleNotFoundError:  # optional dependency in some local envs
+except ImportError:  # absent OR version-incompatible with locked checkpoint
     AsyncSqliteSaver = None  # type: ignore[assignment]
 
 from orchestration.react_loop import (

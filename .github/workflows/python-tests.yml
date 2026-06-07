@@ -63,12 +63,15 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
 
-      # We install via `pip install -e ".[dev,gcp,aws]"` rather than the
+      # We install via `pip install -e ".[dev,gcp,aws,sqlite]"` rather than the
       # lockfile here so the editable-install path is exercised directly. The
       # lockfile remains the source of truth for reproducible installs and is
       # exercised by the `lockfile-install` job below (same Python 3.13).
-      - name: Install project (editable, dev + gcp + aws extras)
-        run: pip install -e ".[dev,gcp,aws]"
+      # The sqlite extra pulls in langgraph-checkpoint-sqlite so the optional
+      # AsyncSqliteSaver import path in tests/orchestration is actually run
+      # rather than skipped.
+      - name: Install project (editable, dev + gcp + aws + sqlite extras)
+        run: pip install -e ".[dev,gcp,aws,sqlite]"
 
       - name: Show installed package versions
         run: pip list

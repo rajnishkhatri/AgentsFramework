@@ -124,3 +124,8 @@ These codes are now ready to be axial-coded into the following clustered taxonom
 5.  **Process Quality:** `right-answer-wrong-process`, `goal-met-but-unsafe-wasteful`.
 
 This structured, counted taxonomy will drive the analytic rubric design in Stage 4.
+
+> **→ Stage 3 executed:** [`goaljudge_phase3_axial_coding.md`](goaljudge_phase3_axial_coding.md)
+> refines this 5-cluster seed into Axis A and adds two orthogonal axes (B harness/environment
+> confounds, C judge reliability) to separate genuine agent failures from sandbox artifacts. The
+> hands-on procedure is [walkthrough 05](../walk-through/05_goaljudge_axial_coding_failure_taxonomy_walkthrough.md).
