@@ -45,19 +45,45 @@ export function messages(page: Page): Locator {
 }
 
 /**
- * Fill the composer with `text` and submit via the platform-correct
- * keyboard shortcut (Cmd+Enter on macOS, Ctrl+Enter elsewhere).
+ * Fill the composer with `text` and submit.
+ *
+ * `Composer.tsx` submits on **plain Enter**; Meta/Ctrl/Shift+Enter are treated
+ * as newline (the U_KBD contract enforced by
+ * `frontend/scripts/check_composer_keyboard.ts`). We therefore press plain
+ * Enter as the primary path. As a fallback — for cases where the composer is
+ * not focused, an IME composition swallowed the key, or remote DOM drift — we
+ * click the Send button if Enter did not kick off `POST /api/run/stream`
+ * within `submitFallbackMs`.
  */
 export async function sendMessage(
   page: Page,
   text: string,
-  opts?: { timeoutMs?: number },
+  opts?: { timeoutMs?: number; submitFallbackMs?: number },
 ): Promise<void> {
   const c = composer(page);
   await c.waitFor({ timeout: opts?.timeoutMs ?? 10_000 });
   await c.fill(text);
-  const mod = process.platform === "darwin" ? "Meta" : "Control";
-  await c.press(`${mod}+Enter`);
+
+  // Arm the request watcher before pressing Enter so we don't miss a fast
+  // submit. A rejection here (timeout) just means Enter didn't submit.
+  const submitFired = page
+    .waitForRequest(
+      (req) => req.method() === "POST" && /\/api\/run\/stream\b/.test(req.url()),
+      { timeout: opts?.submitFallbackMs ?? 2_000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+
+  await c.press("Enter");
+
+  if (!(await submitFired)) {
+    // Enter did not submit (unfocused composer, IME, DOM drift) — use the
+    // Send button as a deterministic fallback.
+    const btn = sendButton(page);
+    if ((await btn.count()) > 0) {
+      await btn.first().click();
+    }
+  }
 }
 
 /**

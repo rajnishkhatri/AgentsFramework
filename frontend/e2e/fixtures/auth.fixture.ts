@@ -18,6 +18,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { test as base, type Page } from "@playwright/test";
+import { E2E_BROWSER_CONTEXT } from "./browser-context";
 
 const DEFAULT_STORAGE_STATE = "e2e/.auth/state.json";
 
@@ -36,7 +37,10 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       );
     }
 
-    const ctx = await browser.newContext({ storageState: absolutePath });
+    const ctx = await browser.newContext({
+      ...E2E_BROWSER_CONTEXT,
+      storageState: absolutePath,
+    });
     const page = await ctx.newPage();
     try {
       await use(page);
