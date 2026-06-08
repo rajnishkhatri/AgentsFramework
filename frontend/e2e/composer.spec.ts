@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { composer, sendButton, sendMessage } from "./fixtures/helpers";
+import { composer, sendButton } from "./fixtures/helpers";
 import { buildSSEBody, buildSSEHeaders } from "./fixtures/sse-mock";
 import { plainMarkdown } from "./fixtures/scenarios";
 
@@ -37,8 +37,10 @@ test.describe("Composer (binary: Does the composer respect the keyboard contract
     }
   });
 
-  test("Cmd/Ctrl+Enter submits and clears the textarea", async ({ page }) => {
+  test("plain Enter submits and clears the textarea", async ({ page }) => {
+    let submitted = false;
     await page.route("**/api/run/stream", async (route) => {
+      submitted = true;
       await route.fulfill({
         status: 200,
         headers: buildSSEHeaders(),
@@ -50,8 +52,11 @@ test.describe("Composer (binary: Does the composer respect the keyboard contract
     const c = composer(page);
     test.skip((await c.count()) === 0, "Skipped: composer not rendered.");
 
-    await sendMessage(page, "What is 2 + 2?");
+    await c.fill("What is 2 + 2?");
+    await c.press("Enter");
     await page.waitForTimeout(500);
+
+    expect(submitted, "plain Enter must submit").toBe(true);
     const value = await c.inputValue().catch(() => "");
     expect(value).toBe("");
   });
@@ -97,10 +102,10 @@ test.describe("Composer (binary: Does the composer respect the keyboard contract
     expect(hasAccessibleName, "composer must have an accessible name").toBe(true);
   });
 
-  test(`uses ${isMac ? "Meta" : "Control"}+Enter as the submit chord`, async ({ page }) => {
-    let receivedSubmit = false;
+  test(`${isMac ? "Meta" : "Control"}+Enter inserts a newline (no submit)`, async ({ page }) => {
+    let submitted = false;
     await page.route("**/api/run/stream", async (route) => {
-      receivedSubmit = true;
+      submitted = true;
       await route.fulfill({
         status: 200,
         headers: buildSSEHeaders(),
@@ -117,6 +122,8 @@ test.describe("Composer (binary: Does the composer respect the keyboard contract
     await c.press(`${mod}+Enter`);
     await page.waitForTimeout(1_000);
 
-    expect(receivedSubmit).toBe(true);
+    // U_KBD contract: Composer.tsx submits on plain Enter only; the modifier
+    // chord must NOT submit (treated as newline / no-op).
+    expect(submitted, `${mod}+Enter must NOT submit`).toBe(false);
   });
 });

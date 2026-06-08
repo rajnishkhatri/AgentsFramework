@@ -20,9 +20,18 @@ const USE_MOCK_MIDDLEWARE = process.env.MOCK_MIDDLEWARE === "1";
 const STORAGE_STATE = process.env.E2E_STORAGE_STATE ?? "e2e/.auth/state.json";
 const BYPASS_AUTH = process.env.E2E_BYPASS_AUTH === "1";
 
+function isLocalBaseUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return true;
+  }
+}
+
 const webServers: NonNullable<Parameters<typeof defineConfig>[0]["webServer"]> = [];
 
-if (!process.env.CI) {
+if (!process.env.CI && isLocalBaseUrl(BASE_URL)) {
   webServers.push({
     command: "npm run dev",
     url: BASE_URL,
@@ -76,6 +85,7 @@ export default defineConfig({
 
   use: {
     baseURL: BASE_URL,
+    locale: "en-US",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     // When E2E_AUTHENTICATED=1, every test (including the visual suite that

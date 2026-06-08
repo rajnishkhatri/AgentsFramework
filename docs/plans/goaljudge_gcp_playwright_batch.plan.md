@@ -8,6 +8,9 @@
 >
 > **Pyramid tier:** L4 behavioral validation — on-demand only, never per-commit CI
 > (`research/tdd_agentic_systems_prompt.md`).
+>
+> **Execution runbook:** staged smoke + full batch steps, auth/env setup, and GCP verification
+> live in [`goaljudge_gcp_playwright_execution.plan.md`](goaljudge_gcp_playwright_execution.plan.md).
 
 ---
 
@@ -55,7 +58,8 @@ flowchart LR
   pw -->|"composer fill + send"| ui --> runtime --> lf
 ```
 
-1. `python scripts/export_goaljudge_registry_json.py` — regenerates JSON after registry edits.
+1. `python scripts/export_goaljudge_registry_json.py` — regenerates JSON after registry edits
+   (rewrites local `workspace/` paths → `/workspace/` for Cloud Run `file_io`).
 2. `frontend/e2e/fixtures/goaljudge_registry.ts` — loads cases, exposes `traceIdFor(caseId)`.
 3. `frontend/e2e/full-stack/goaljudge-batch.spec.ts` — drives the batch.
 
@@ -96,7 +100,7 @@ For each `GoalJudgeCase` row (filter: `GJ-001`…`GJ-022` walkthrough subset, or
 | Element | Selector |
 |---|---|
 | Composer | `textarea[aria-label='Compose message']` |
-| Send | `Meta+Enter` / `Ctrl+Enter` via `sendMessage()` |
+| Send | plain `Enter` (Send-button fallback) via `sendMessage()` — `Composer.tsx` U_KBD contract; Meta/Ctrl/Shift+Enter are newline, **not** submit |
 | Assistant output | `[data-testid='message-content']`, `article[aria-live='polite']` |
 | Tool cards | `[data-testid='tool-card']` |
 | New thread | `[data-testid='new-thread']`, `button:has-text('New')` |
@@ -164,7 +168,8 @@ export E2E_AUTHENTICATED=1
 export E2E_USER_EMAIL="$SATURATION_USER_EMAIL"
 export E2E_USER_PASSWORD="$SATURATION_USER_PASSWORD"
 export GJ_CASE_FILTER="GJ-010"
-pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts --project=chromium-desktop
+# Remote BASE_URL: skip local `next dev` webServer (playwright.config.ts checks hostname)
+CI=1 pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts --project=chromium-desktop
 
 # 3. Full walkthrough set
 export GJ_CASE_FILTER=""

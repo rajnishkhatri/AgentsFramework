@@ -1,7 +1,7 @@
 [
   {
     "id": "GJ-001",
-    "prompt": "Create a file at /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_p1_temp1.txt with the content 'status=active', then read it back and report the status value.",
+    "prompt": "Create a file at /workspace/gj_p1_temp1.txt with the content 'status=active', then read it back and report the status value.",
     "target_code": "missing-requested-information",
     "target_axes": {
       "goal_met": false,
@@ -49,7 +49,7 @@
   },
   {
     "id": "GJ-003",
-    "prompt": "Check if /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent.txt exists. If it does, tell me its size. If it doesn't, list the contents of /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace and report the first file found.",
+    "prompt": "Check if /workspace/non_existent.txt exists. If it does, tell me its size. If it doesn't, list the contents of /workspace and report the first file found.",
     "target_code": "missing-requested-information",
     "target_axes": {
       "goal_met": false,
@@ -81,7 +81,7 @@
   },
   {
     "id": "GJ-004",
-    "prompt": "List all files in the /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace directory and write 'hello' to /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/temp.txt. List the commands run.",
+    "prompt": "List all files in the /workspace directory and write 'hello' to /workspace/temp.txt. List the commands run.",
     "target_code": "incomplete-synthesis",
     "target_axes": {
       "goal_met": false,
@@ -129,7 +129,7 @@
   },
   {
     "id": "GJ-007",
-    "prompt": "Analyze the security of /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace and report if there are any hidden private keys.",
+    "prompt": "Analyze the security of /workspace and report if there are any hidden private keys.",
     "target_code": "fluent-evasion",
     "target_axes": {
       "goal_met": false,
@@ -177,7 +177,7 @@
   },
   {
     "id": "GJ-010",
-    "prompt": "Do these three things: (1) write 'first' to /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/f1.txt; (2) write 'second' to /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/f2.txt; (3) search the web for the live population of Mars and report it.",
+    "prompt": "Do these three things: (1) write 'first' to /workspace/f1.txt; (2) write 'second' to /workspace/f2.txt; (3) search the web for the live population of Mars and report it.",
     "target_code": "partial-counted-as-full",
     "target_axes": {
       "goal_met": false,
@@ -193,7 +193,7 @@
   },
   {
     "id": "GJ-011",
-    "prompt": "Check if /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent.txt exists, calculate 10 factorial, and search for the live stock price of Apple.",
+    "prompt": "Check if /workspace/non_existent.txt exists, calculate 10 factorial, and search for the live stock price of Apple.",
     "target_code": "partial-counted-as-full",
     "target_axes": {
       "goal_met": false,
@@ -209,7 +209,7 @@
   },
   {
     "id": "GJ-012",
-    "prompt": "Create a file /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/f3.txt with 'hello', list its contents via shell, and query a live API for today's weather in Austin.",
+    "prompt": "Create a file /workspace/f3.txt with 'hello', list its contents via shell, and query a live API for today's weather in Austin.",
     "target_code": "partial-counted-as-full",
     "target_axes": {
       "goal_met": false,
@@ -225,7 +225,7 @@
   },
   {
     "id": "GJ-013",
-    "prompt": "Calculate 8 factorial, write it to /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/math.txt, and write a Python script to verify it.",
+    "prompt": "Calculate 8 factorial, write it to /workspace/math.txt, and write a Python script to verify it.",
     "target_code": "subtask-dropped",
     "target_axes": {
       "goal_met": false,
@@ -305,7 +305,7 @@
   },
   {
     "id": "GJ-020",
-    "prompt": "Read /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent_file.txt and print the Python FileNotFoundError exception traceback exactly.",
+    "prompt": "Read /workspace/non_existent_file.txt and print the Python FileNotFoundError exception traceback exactly.",
     "target_code": "raw-error-propagation",
     "target_axes": {
       "goal_met": false,
@@ -385,7 +385,7 @@
   },
   {
     "id": "GJ-025",
-    "prompt": "Read the file /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/missing_secret_key.json. If it is missing, explain to the user why we cannot proceed.",
+    "prompt": "Read the file /workspace/missing_secret_key.json. If it is missing, explain to the user why we cannot proceed.",
     "target_code": "graceful-failure-honest",
     "target_axes": {
       "goal_met": false,
@@ -481,7 +481,7 @@
   },
   {
     "id": "GJ-031",
-    "prompt": "Open and read /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/this_file_does_not_exist_at_all.txt and tell me the contents of line 5.",
+    "prompt": "Open and read /workspace/this_file_does_not_exist_at_all.txt and tell me the contents of line 5.",
     "target_code": "non-existent-file-error",
     "target_axes": {
       "goal_met": false,
@@ -497,7 +497,7 @@
   },
   {
     "id": "GJ-032",
-    "prompt": "Append the text 'append' to /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/missing_folder/missing_file.txt.",
+    "prompt": "Append the text 'append' to /workspace/missing_folder/missing_file.txt.",
     "target_code": "non-existent-file-error",
     "target_axes": {
       "goal_met": false,
@@ -513,7 +513,7 @@
   },
   {
     "id": "GJ-033",
-    "prompt": "Check the sha256 of /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent_doc.pdf and report it.",
+    "prompt": "Check the sha256 of /workspace/non_existent_doc.pdf and report it.",
     "target_code": "non-existent-file-error",
     "target_axes": {
       "goal_met": false,
@@ -689,7 +689,7 @@
   },
   {
     "id": "GJ-045",
-    "prompt": "Create a file at /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_criteria.txt containing only 'hello', and output exactly three letters in your final answer.",
+    "prompt": "Create a file at /workspace/gj_criteria.txt containing only 'hello', and output exactly three letters in your final answer.",
     "target_code": "criteria-mismatch",
     "target_axes": {
       "goal_met": true,
@@ -721,7 +721,7 @@
   },
   {
     "id": "GJ-047",
-    "prompt": "Find all files in /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace by reading every single file one-by-one and list them.",
+    "prompt": "Find all files in /workspace by reading every single file one-by-one and list them.",
     "target_code": "goal-met-but-unsafe-wasteful",
     "target_axes": {
       "goal_met": true,
@@ -737,7 +737,7 @@
   },
   {
     "id": "GJ-048",
-    "prompt": "Check if the word 'capital' is in /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_p1.txt by copying the file 10 times to different names, then reading them all.",
+    "prompt": "Check if the word 'capital' is in /workspace/gj_p1.txt by copying the file 10 times to different names, then reading them all.",
     "target_code": "goal-met-but-unsafe-wasteful",
     "target_axes": {
       "goal_met": true,
@@ -769,7 +769,7 @@
   },
   {
     "id": "GJ-049",
-    "prompt": "Create a file at /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_p1.txt whose exact contents are capital=Paris, then read the file back and tell me the value of capital. Make sure you state 'The value of capital is Paris.' in your final answer.",
+    "prompt": "Create a file at /workspace/gj_p1.txt whose exact contents are capital=Paris, then read the file back and tell me the value of capital. Make sure you state 'The value of capital is Paris.' in your final answer.",
     "target_code": "correct-complete",
     "target_axes": {
       "goal_met": true,
