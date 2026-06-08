@@ -27,11 +27,15 @@
  *                              (read from `.env.local` by `next dev`)
  *
  *   When NOT using fake session, also required:
- *     E2E_USER_EMAIL        -- WorkOS test user email
- *     E2E_USER_PASSWORD     -- WorkOS test user password (or)
+ *     E2E_USER_EMAIL        -- WorkOS or Google test user email
+ *     E2E_USER_PASSWORD     -- WorkOS or Google test user password (or)
  *     E2E_USER_OTP          -- pre-known OTP if AuthKit is in OTP mode
+ *     E2E_AUTH_PROVIDER     -- `password` (default) or `google` for AuthKit SSO
+ *     E2E_REUSE_STORAGE=1   -- skip sign-in when storage state file already exists
  *
  *   BASE_URL                -- frontend root (defaults to http://localhost:3000)
+ *
+ * Repo-root ``../.env`` is loaded automatically when vars are not already exported.
  */
 
 import fs from "node:fs";
@@ -40,6 +44,31 @@ import { chromium, type FullConfig } from "@playwright/test";
 import { sealData } from "iron-session";
 import { SignJWT } from "jose";
 import { STORAGE_STATE_PATH } from "./fixtures/auth.fixture";
+import { E2E_BROWSER_CONTEXT } from "./fixtures/browser-context";
+
+/** Load repo-root `.env` when E2E vars are not already exported (no dotenv dep). */
+function loadRootEnvFile(): void {
+  const envPath = path.join(process.cwd(), "..", ".env");
+  if (!fs.existsSync(envPath)) return;
+  for (const rawLine of fs.readFileSync(envPath, "utf8").split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (process.env[key] !== undefined) continue;
+    let value = line.slice(eq + 1).trim().replace(/\r$/, "");
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
+loadRootEnvFile();
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const COOKIE_NAME = process.env.WORKOS_COOKIE_NAME ?? "wos-session";
@@ -92,6 +121,93 @@ async function buildFakeSessionCookie(opts: {
   );
 }
 
+async function waitForAppReturn(
+  page: import("@playwright/test").Page,
+  baseUrl: string,
+): Promise<void> {
+  try {
+    await page.waitForURL((url) => url.toString().startsWith(baseUrl), {
+      timeout: 90_000,
+    });
+  } catch (redirectError) {
+    const bodyText = await page.locator("body").innerText();
+    if (/invalid (email|password)|ongeldige e-pos of wagwoord/i.test(bodyText)) {
+      throw new Error(
+        "[global-setup] WorkOS rejected E2E_USER_EMAIL / E2E_USER_PASSWORD. " +
+          "If you sign in with Google manually, set E2E_AUTH_PROVIDER=google.",
+      );
+    }
+    throw redirectError;
+  }
+}
+
+async function workosPasswordSignIn(
+  page: import("@playwright/test").Page,
+  opts: { email: string; password?: string; otp?: string },
+): Promise<void> {
+  const emailInput = page.locator("input[type='email'], input[name='email']").first();
+  await emailInput.fill(opts.email);
+  await page
+    .locator(
+      "button[type='submit'], button:has-text('Continue'), button:has-text('Gaan voort')",
+    )
+    .first()
+    .click();
+
+  if (opts.password) {
+    const passwordInput = page.locator("input[type='password']").first();
+    await passwordInput.waitFor({ timeout: 15_000 });
+    await passwordInput.fill(opts.password);
+    await page
+      .locator(
+        "button[type='submit'], button:has-text('Sign in'), button:has-text('Teken in')",
+      )
+      .first()
+      .click();
+  } else if (opts.otp) {
+    const otpInput = page
+      .locator("input[name='code'], input[autocomplete='one-time-code']")
+      .first();
+    await otpInput.waitFor({ timeout: 15_000 });
+    await otpInput.fill(opts.otp);
+    await page
+      .locator(
+        "button[type='submit'], button:has-text('Continue'), button:has-text('Gaan voort')",
+      )
+      .first()
+      .click();
+  }
+}
+
+async function workosGoogleSignIn(
+  page: import("@playwright/test").Page,
+  opts: { email: string; password: string },
+): Promise<void> {
+  const googleButton = page.locator(
+    "button:has-text('Continue with Google'), a:has-text('Continue with Google')",
+  );
+  await googleButton.first().waitFor({ state: "visible", timeout: 60_000 });
+  await googleButton.first().click();
+  await page.waitForURL(/accounts\.google\.com/, { timeout: 60_000 });
+
+  const accountTile = page.locator(`div[data-email='${opts.email}']`);
+  if ((await accountTile.count()) > 0) {
+    await accountTile.first().click();
+  } else {
+    const emailInput = page.locator('input[type="email"]').first();
+    await emailInput.waitFor({ timeout: 15_000 });
+    await emailInput.fill(opts.email);
+    await page.locator("#identifierNext, button:has-text('Next')").first().click();
+  }
+
+  const passwordInput = page
+    .locator('input[type="password"][name="Passwd"], input[type="password"]')
+    .first();
+  await passwordInput.waitFor({ timeout: 30_000 });
+  await passwordInput.fill(opts.password);
+  await page.locator("#passwordNext, button:has-text('Next')").first().click();
+}
+
 async function fakeSessionSetup(absolutePath: string): Promise<void> {
   const cookiePassword = process.env.WORKOS_COOKIE_PASSWORD;
   if (!cookiePassword) {
@@ -113,7 +229,7 @@ async function fakeSessionSetup(absolutePath: string): Promise<void> {
   });
 
   const browser = await chromium.launch();
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(E2E_BROWSER_CONTEXT);
   try {
     await ctx.addCookies([
       {
@@ -148,6 +264,17 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     : path.join(process.cwd(), STORAGE_STATE_PATH);
   fs.mkdirSync(path.dirname(absolutePath), { recursive: true });
 
+  if (
+    process.env.E2E_REUSE_STORAGE === "1" &&
+    fs.existsSync(absolutePath) &&
+    fs.statSync(absolutePath).size > 0
+  ) {
+    console.log(
+      `[global-setup] E2E_REUSE_STORAGE=1 — reusing ${absolutePath}.`,
+    );
+    return;
+  }
+
   if (process.env.E2E_FAKE_SESSION === "1") {
     await fakeSessionSetup(absolutePath);
     return;
@@ -166,53 +293,40 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   }
 
   const browser = await chromium.launch();
-  const ctx = await browser.newContext();
+  const ctx = await browser.newContext(E2E_BROWSER_CONTEXT);
   const page = await ctx.newPage();
 
   try {
     await page.goto(BASE_URL, { waitUntil: "domcontentloaded" });
 
     const signInButton = page.locator(
-      "button:has-text('Sign in'), a:has-text('Sign in')",
+      "button:has-text('Sign in'), a:has-text('Sign in'), button:has-text('Teken in'), a:has-text('Teken in')",
     );
     if ((await signInButton.count()) > 0) {
       await signInButton.first().click();
     }
 
-    await page.waitForURL(/authkit\.|workos\./, { timeout: 30_000 });
-
-    const emailInput = page.locator(
-      "input[type='email'], input[name='email']",
-    ).first();
-    await emailInput.fill(email);
+    await page.waitForURL(/authkit\.|workos\./, { timeout: 60_000 });
     await page
-      .locator("button[type='submit'], button:has-text('Continue')")
+      .locator(
+        "input[type='email'], button:has-text('Continue with Google'), button:has-text('Continue')",
+      )
       .first()
-      .click();
+      .waitFor({ state: "visible", timeout: 60_000 });
 
-    if (password) {
-      const passwordInput = page.locator("input[type='password']").first();
-      await passwordInput.waitFor({ timeout: 15_000 });
-      await passwordInput.fill(password);
-      await page
-        .locator("button[type='submit'], button:has-text('Sign in')")
-        .first()
-        .click();
-    } else if (otp) {
-      const otpInput = page.locator(
-        "input[name='code'], input[autocomplete='one-time-code']",
-      ).first();
-      await otpInput.waitFor({ timeout: 15_000 });
-      await otpInput.fill(otp);
-      await page
-        .locator("button[type='submit'], button:has-text('Continue')")
-        .first()
-        .click();
+    const authProvider = (process.env.E2E_AUTH_PROVIDER ?? "password").toLowerCase();
+    if (authProvider === "google") {
+      if (!password) {
+        throw new Error(
+          "[global-setup] E2E_AUTH_PROVIDER=google requires E2E_USER_PASSWORD.",
+        );
+      }
+      await workosGoogleSignIn(page, { email, password });
+    } else {
+      await workosPasswordSignIn(page, { email, password, otp });
     }
 
-    await page.waitForURL((url) => url.toString().startsWith(BASE_URL), {
-      timeout: 30_000,
-    });
+    await waitForAppReturn(page, BASE_URL);
 
     await ctx.storageState({ path: absolutePath });
     console.log(`[global-setup] Saved storage state to ${absolutePath}.`);

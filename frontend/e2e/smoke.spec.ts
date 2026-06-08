@@ -106,9 +106,8 @@ test.describe("Chat flow (binary: Can a user chat with the agent?)", () => {
     await composer.first().waitFor({ timeout: 10_000 });
     await composer.first().fill("What is 2 + 2?");
 
-    // Send via keyboard shortcut (⌘↩ on Mac, Ctrl↩ on others)
-    const isMac = process.platform === "darwin";
-    await composer.first().press(isMac ? "Meta+Enter" : "Control+Enter");
+    // Submit on plain Enter (Composer.tsx U_KBD contract).
+    await composer.first().press("Enter");
 
     // Wait for streaming response to appear
     const messageArea = page.locator(
@@ -157,8 +156,7 @@ test.describe("Tool cards (binary: Are tool-call cards rendered?)", () => {
     await composer.first().waitFor({ timeout: 10_000 });
     // Ask something that triggers a tool call
     await composer.first().fill("List the files in the current directory");
-    const isMac = process.platform === "darwin";
-    await composer.first().press(isMac ? "Meta+Enter" : "Control+Enter");
+    await composer.first().press("Enter");
 
     // Wait for a tool card to appear
     const toolCard = page.locator(
@@ -201,8 +199,7 @@ test.describe("Run controls (binary: Can user stop/regenerate?)", () => {
     await composer.first().waitFor({ timeout: 10_000 });
     // Ask something that triggers a long-running agent
     await composer.first().fill("Write a detailed analysis of quantum computing");
-    const isMac = process.platform === "darwin";
-    await composer.first().press(isMac ? "Meta+Enter" : "Control+Enter");
+    await composer.first().press("Enter");
 
     // Wait for stop button to appear during streaming
     const stopButton = page.locator(
@@ -321,8 +318,7 @@ test.describe("TTFT performance (binary: Is TTFT < 500ms p50?)", () => {
     await composer.first().fill("What is 1 + 1?");
 
     const startTime = Date.now();
-    const isMac = process.platform === "darwin";
-    await composer.first().press(isMac ? "Meta+Enter" : "Control+Enter");
+    await composer.first().press("Enter");
 
     // Wait for the first token of the response
     const response = page.locator(

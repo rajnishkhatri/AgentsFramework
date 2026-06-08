@@ -21,6 +21,14 @@ from tests.fixtures.goaljudge.case_registry import LIVE_CASES
 
 OUT_PATH = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "goaljudge_registry.json"
 
+# Registry prompts use the local file_io sandbox; Playwright GCP batch needs /workspace.
+_LOCAL_WORKSPACE_PREFIX = "/Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace"
+
+
+def prompt_for_gcp(prompt: str) -> str:
+    """Map local workspace paths to the Cloud Run file_io sandbox."""
+    return prompt.replace(_LOCAL_WORKSPACE_PREFIX, "/workspace")
+
 
 def main() -> None:
     rows = []
@@ -29,7 +37,7 @@ def main() -> None:
         rows.append(
             {
                 "id": case.id,
-                "prompt": case.prompt,
+                "prompt": prompt_for_gcp(case.prompt),
                 "target_code": case.target_code,
                 "target_axes": case.target_axes,
                 "stratum": case.stratum,
