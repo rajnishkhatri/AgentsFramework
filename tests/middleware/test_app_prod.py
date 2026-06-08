@@ -40,9 +40,9 @@ class TestDockerfiles:
         path = AGENT_ROOT / "Dockerfile.backend"
         assert path.exists(), "Dockerfile.backend must exist at repo root"
 
-    def test_dockerfile_backend_uses_python_311(self) -> None:
+    def test_dockerfile_backend_uses_python_313(self) -> None:
         content = (AGENT_ROOT / "Dockerfile.backend").read_text()
-        assert "python:3.11" in content
+        assert "python:3.13" in content
 
     def test_dockerfile_backend_installs_gcp_extra(self) -> None:
         content = (AGENT_ROOT / "Dockerfile.backend").read_text()

@@ -1,33 +1,64 @@
 import { defineConfig } from "vitest/config";
 import path from "node:path";
 
-export default defineConfig({
-  test: {
-    environment: "node",
-    globals: false,
-    include: [
-      "lib/**/*.test.ts",
-      "lib/**/*.test.tsx",
-      "tests/**/*.test.ts",
-      "tests/**/*.test.tsx",
-      "middleware.test.ts",
-      "app/**/*.test.ts",
-      "app/**/*.test.tsx",
-      "components/**/*.test.ts",
-      "components/**/*.test.tsx",
-      "scripts/**/*.test.ts",
-    ],
-    exclude: ["node_modules", ".next", "dist"],
-    testTimeout: 10_000,
-    environmentMatchGlobs: [
-      ["lib/components/**", "jsdom"],
-      ["tests/components/**", "jsdom"],
-      ["components/**", "jsdom"],
-    ],
-  },
+const sharedTest = {
+  globals: false,
+  exclude: ["node_modules", ".next", "dist"],
+  testTimeout: 10_000,
+};
+
+const resolveAlias = {
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
     },
+  },
+};
+
+export default defineConfig({
+  ...resolveAlias,
+  test: {
+    projects: [
+      {
+        ...resolveAlias,
+        test: {
+          ...sharedTest,
+          name: "jsdom",
+          environment: "jsdom",
+          include: [
+            "lib/components/**/*.test.ts",
+            "lib/components/**/*.test.tsx",
+            "tests/components/**/*.test.ts",
+            "tests/components/**/*.test.tsx",
+            "components/**/*.test.ts",
+            "components/**/*.test.tsx",
+          ],
+        },
+      },
+      {
+        ...resolveAlias,
+        test: {
+          ...sharedTest,
+          name: "node",
+          environment: "node",
+          include: [
+            "lib/**/*.test.ts",
+            "lib/**/*.test.tsx",
+            "tests/**/*.test.ts",
+            "tests/**/*.test.tsx",
+            "middleware.test.ts",
+            "app/**/*.test.ts",
+            "app/**/*.test.tsx",
+            "scripts/**/*.test.ts",
+          ],
+          exclude: [
+            ...sharedTest.exclude,
+            "lib/components/**",
+            "tests/components/**",
+            "components/**",
+          ],
+        },
+      },
+    ],
   },
 });

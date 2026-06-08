@@ -6,7 +6,7 @@
 # Probe:  curl http://localhost:8080/healthz
 
 # ─── Stage 1: dependency install ────────────────────────────────────
-FROM python:3.11-slim AS deps
+FROM python:3.13-slim AS deps
 
 WORKDIR /app
 
@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir hatchling && \
     pip install --no-cache-dir ".[gcp]" uvicorn[standard] python-multipart
 
 # ─── Stage 2: application ───────────────────────────────────────────
-FROM python:3.11-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends libpq5 curl && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=deps /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=deps /usr/local/bin /usr/local/bin
 
 COPY . .
