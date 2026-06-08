@@ -36,6 +36,7 @@ export const LLMMessageStartedSchema = z
     trace_id: traceId,
     timestamp,
     message_id: z.string(),
+    input_text: z.string().nullable().default(null),
   })
   .strict();
 export type LLMMessageStarted = z.infer<typeof LLMMessageStartedSchema>;
@@ -45,6 +46,7 @@ export const LLMMessageEndedSchema = z
     trace_id: traceId,
     timestamp,
     message_id: z.string(),
+    output_text: z.string().nullable().default(null),
   })
   .strict();
 export type LLMMessageEnded = z.infer<typeof LLMMessageEndedSchema>;
