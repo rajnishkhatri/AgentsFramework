@@ -3,7 +3,8 @@
 **Prepared:** 2026-06-04 (updated after GJ-007–GJ-022 + telemetry review)  
 **Source:** UI + Langfuse trace review during [04 — synthetic prompt matrix manual walkthrough](../walk-through/04_goaljudge_synthetic_prompt_matrix_manual_walkthrough.md)  
 **Scope:** Matrix cases `GJ-001` … `GJ-022` — primarily ad-hoc **GCP UI** runs (`user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX`); local batch traces in `logs/evals.log` are a **separate** environment (see §3.5–3.6, §4 GJ-006)  
-**Status:** Session evidence for open coding; **not** saturation sign-off until batch traces + `goal_judge` eval_capture (or Langfuse `eval.*` per E1) exist under `synthetic-saturation-user`
+**Status:** Session evidence for open coding; **not** saturation sign-off until batch traces + `goal_judge` eval_capture (or Langfuse `eval.*` per E1) exist under `synthetic-saturation-user`  
+**Stage 3 follow-on:** This report's per-case codings and emergent environment codes are axial-coded in [`goaljudge_phase3_axial_coding.md`](../research/goaljudge_phase3_axial_coding.md) (3-axis failure taxonomy; PROVISIONAL/GATED). Procedure: [walkthrough 05](../walk-through/05_goaljudge_axial_coding_failure_taxonomy_walkthrough.md).
 
 ---
 

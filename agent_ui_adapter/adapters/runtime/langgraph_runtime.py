@@ -119,8 +119,18 @@ class LangGraphRuntime:
         input: dict[str, Any],
         identity: AgentFacts,
     ) -> AsyncIterator[DomainEvent]:
-        trace_id = uuid.uuid4().hex
-        run_id = uuid.uuid4().hex
+        graph_input = dict(input)
+        saturation = graph_input.pop("_goaljudge_saturation", None)
+        if saturation is not None:
+            trace_id = str(saturation["trace_id"])
+            task_id = str(saturation.get("task_id", trace_id))
+            eval_user_id = str(saturation.get("user_id", identity.owner))
+            run_id = trace_id
+        else:
+            trace_id = uuid.uuid4().hex
+            run_id = uuid.uuid4().hex
+            task_id = run_id
+            eval_user_id = identity.owner
 
         self._emit_trace(
             trace_id=trace_id,
@@ -141,7 +151,8 @@ class LangGraphRuntime:
                 "configurable": {
                     "thread_id": thread_id,
                     "trace_id": trace_id,
-                    "user_id": identity.owner,
+                    "task_id": task_id,
+                    "user_id": eval_user_id,
                     "registered_agent_id": identity.agent_id,
                 },
             },
@@ -153,17 +164,17 @@ class LangGraphRuntime:
         )
         # Seed correlation keys into state so graph nodes can key black-box
         # recordings and phase logs under the same trace_id that SSE emits.
-        input = {
-            **input,
+        graph_input = {
+            **graph_input,
             "workflow_id": trace_id,
-            "task_id": run_id,
+            "task_id": task_id,
             "registered_agent_id": identity.agent_id,
         }
         error: str | None = None
         self._streamed_run_ids = set()
         try:
             async for raw in self._graph.astream_events(
-                input, config=config, version="v2"
+                graph_input, config=config, version="v2"
             ):
                 for event in self._translate_event(raw, trace_id):
                     yield event

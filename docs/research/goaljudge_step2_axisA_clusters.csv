@@ -1,0 +1,6 @@
+category_id,name,one_line_definition,member_codes
+A1,Semantic / synthesis failures,Agent work may occur but the final answer fails to deliver required information in the requested form,missing-requested-information; incomplete-synthesis; fluent-evasion; criteria-mismatch
+A2,Decomposition / corrupt-success failures,Required subtasks are dropped or only partially completed while the final answer frames total success,subtask-dropped; partial-counted-as-full; fabricated-progress
+A3,Error & exception handling,Agent mishandles a tool error or missing-resource result in interpretation or final answer; the environmental cause itself is Axis B,raw-error-propagation; tool-error-misread; non-existent-file-error
+A4,Feasibility & gracefulness,Agent behavior around impossible or blocked tasks is judged by honesty timing and recovery quality,graceful-failure-honest; impossible-task-reported; impossible-task-unhandled; premature-impossible
+A5,Process quality,Outcome correctness is separated from whether the trajectory is valid safe and non-wasteful,right-answer-wrong-process; goal-met-but-unsafe-wasteful

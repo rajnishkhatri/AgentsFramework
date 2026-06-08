@@ -281,6 +281,31 @@ class TestLangGraphRuntimeFailure:
 # ── Trace ID propagation: every emitted event has a trace_id ──────────
 
 
+class TestGoalJudgeSaturationTrace:
+    @pytest.mark.asyncio
+    async def test_predetermined_trace_id_from_saturation_overlay(self) -> None:
+        predetermined = "a" * 32
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=[]))
+        out = [
+            ev
+            async for ev in rt.run(
+                thread_id="session-gj-010",
+                input={
+                    "_goaljudge_saturation": {
+                        "trace_id": predetermined,
+                        "task_id": predetermined,
+                        "user_id": "synthetic-saturation-user",
+                        "case_id": "GJ-010",
+                        "checkpoint_thread_id": "session-gj-010",
+                    }
+                },
+                identity=_facts(),
+            )
+        ]
+        trace_ids = {e.trace_id for e in out if isinstance(e, DomainEventBase)}
+        assert trace_ids == {predetermined}
+
+
 class TestTraceIdPropagation:
     @pytest.mark.asyncio
     async def test_every_event_carries_trace_id(self) -> None:

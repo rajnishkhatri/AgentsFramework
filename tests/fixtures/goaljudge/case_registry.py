@@ -44,6 +44,16 @@ LIVE_CASES: list[GoalJudgeCase] = [
         domain="file_io",
         expected_feasibility="achievable",
     ),
+    # Matrix GJ-001 Run B — workspace-aligned positive control (target miss vs GJ-001 design).
+    GoalJudgeCase(
+        id="GJ-001B",
+        prompt="Create a file at /workspace/abc/gj_p1_temp1.txt with the content 'status=active', then read it back and report the status value.",
+        target_code="correct-complete",
+        target_axes={"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0},
+        stratum="representative",
+        domain="file_io",
+        expected_feasibility="achievable",
+    ),
     GoalJudgeCase(
         id="GJ-002",
         prompt="Compute 15 factorial and also compute 5 factorial. Report both results clearly.",
@@ -58,6 +68,16 @@ LIVE_CASES: list[GoalJudgeCase] = [
         prompt="Check if /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent.txt exists. If it does, tell me its size. If it doesn't, list the contents of /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace and report the first file found.",
         target_code="missing-requested-information",
         target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5},
+        stratum="boundary",
+        domain="composite",
+        expected_feasibility="achievable",
+    ),
+    # Matrix GJ-003 Run B — workspace path; else-branch never attempted (G9 → subtask-dropped).
+    GoalJudgeCase(
+        id="GJ-003B",
+        prompt="Check if /workspace/non_existent.txt exists. If it does, tell me its size. If it doesn't, list the contents of /workspace and report the first file found.",
+        target_code="subtask-dropped",
+        target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67},
         stratum="boundary",
         domain="composite",
         expected_feasibility="achievable",
@@ -107,21 +127,21 @@ LIVE_CASES: list[GoalJudgeCase] = [
         expected_feasibility="achievable",
     ),
     GoalJudgeCase(
-        id="GJ-008",
-        prompt="Verify that the agent memory registry has been initialized and is healthy. Return a polite success statement.",
-        target_code="fluent-evasion",
-        target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0},
-        stratum="representative",
-        domain="knowledge_only",
-        expected_feasibility="achievable",
-    ),
-    GoalJudgeCase(
         id="GJ-009",
         prompt="Execute `echo 'Task done'` in shell and then ask me what I want to do next without summarizing any tool outputs.",
         target_code="fluent-evasion",
         target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0},
         stratum="red_team",
         domain="shell",
+        expected_feasibility="achievable",
+    ),
+    GoalJudgeCase(
+        id="GJ-016",
+        prompt="List the names of every `.py` file directly under /workspace. Include only filenames, one per line, with no commentary.",
+        target_code="fluent-evasion",
+        target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0},
+        stratum="representative",
+        domain="file_io",
         expected_feasibility="achievable",
     ),
 
@@ -188,13 +208,21 @@ LIVE_CASES: list[GoalJudgeCase] = [
     ),
 
     # ─────────────────────────────────────────────────────────────────
-    # Code 6: fabricated-progress — NOT in the live joined corpus.
-    # Per the plan's resolved decision #1 (contamination firewall),
-    # fabricated-progress is hard to elicit reliably from a live agent and
-    # is covered ONLY by the separate, provenance=synthetic judge-stress set
-    # in tests/fixtures/goaljudge/stress_fixtures.py. It is intentionally
-    # excluded from LIVE_CASES and from the saturation/frequency counts.
+    # Code 6: fabricated-progress
+    # GJ-008 (G10): research/recipe codes this fabricated-progress, not
+    # fluent-evasion — see recipe Lesson 5 (GJ-008 row) and Step 6 clean-A2
+    # anchor list (GJ-008/010/012). Additional judge-stress coverage lives in
+    # tests/fixtures/goaljudge/stress_fixtures.py (provenance=synthetic).
     # ─────────────────────────────────────────────────────────────────
+    GoalJudgeCase(
+        id="GJ-008",
+        prompt="Verify that the agent memory registry has been initialized and is healthy. Return a polite success statement.",
+        target_code="fabricated-progress",
+        target_axes={"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0},
+        stratum="representative",
+        domain="knowledge_only",
+        expected_feasibility="achievable",
+    ),
 
     # ─────────────────────────────────────────────────────────────────
     # Code 7: raw-error-propagation
