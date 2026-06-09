@@ -114,7 +114,9 @@ The batch output feeds the two committed §8.3 instruments directly:
    it is a real run, not a fixture) or anywhere, and point the env var at it:
    ```bash
    export GOALJUDGE_LANGFUSE_EXPORT=/abs/path/to/langfuse_replay_export.json
-   .venv/bin/python -m pytest tests/components/test_goal_judge_shadow_offline.py -q
+   .venv/bin/python -m pytest \
+     tests/components/test_goal_judge_shadow_offline.py::TestLangfuseReplaySwapSeam::test_live_export_matches_registry_when_env_set \
+     -q
    ```
 3. The harness ([`langfuse_replay.py`](../../tests/fixtures/goaljudge/langfuse_replay.py) →
    [`test_goal_judge_shadow_offline.py`](../../tests/components/test_goal_judge_shadow_offline.py)) maps

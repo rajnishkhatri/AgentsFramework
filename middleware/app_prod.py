@@ -157,6 +157,13 @@ def build_combined_app() -> FastAPI:
             logger.info("BlackBox→Langfuse relay started (in-process)")
 
         try:
+            try:
+                goal_judge_reader.get()
+            except Exception:
+                logger.warning(
+                    "goal_judge config cache-warm failed at startup",
+                    exc_info=True,
+                )
             async with PostgresCheckpointer.from_env() as pg_cp:
                 graph = build_runtime_graph(
                     components,

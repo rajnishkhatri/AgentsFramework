@@ -203,20 +203,21 @@ class TestLangfuseReplaySwapSeam:
         )
 
         replay = replay_source(SAMPLE_EXPORT_PATH)
-        llm = MultiTraceFakeLLM(SHADOW_TRACES, replay=replay)
-        judge = GoalJudge(
-            llm_service=llm,  # type: ignore[arg-type]
-            prompt_service=PromptService(),
-            judge_profile=_profile(),
-        )
-        for trace in SHADOW_TRACES:
-            if trace.registry_id not in replay:
-                continue
-            verdict = await _run(judge, trace)
-            assert verdict.goal_met is trace.expected_goal_met, trace.registry_id
-            assert verdict.partial_fraction == pytest.approx(
-                trace.expected_partial_fraction
-            ), trace.registry_id
+        await _assert_replay_matches_registry(replay)
+
+    @pytest.mark.asyncio
+    async def test_live_export_matches_registry_when_env_set(self):
+        """§8.3 behavioral gate: real batch export via GOALJUDGE_LANGFUSE_EXPORT."""
+        import os
+
+        from tests.fixtures.goaljudge.langfuse_replay import EXPORT_ENV_VAR, replay_source
+
+        if not os.environ.get(EXPORT_ENV_VAR):
+            pytest.skip(f"{EXPORT_ENV_VAR} not set — run batch + export first")
+        replay = replay_source()
+        if not replay:
+            pytest.skip(f"{EXPORT_ENV_VAR} resolved to an empty replay map")
+        await _assert_replay_matches_registry(replay)
 
     def test_no_export_falls_back_to_empty_source(self, monkeypatch):
         """Resolution order: no path + no env var → {} (harness keeps recorded)."""
@@ -281,3 +282,21 @@ class TestLangfuseReplaySwapSeam:
         )
         with pytest.raises(ReplayExportError, match="not a verdict"):
             load_replayed_verdicts(export)
+
+
+async def _assert_replay_matches_registry(replay: dict[str, str]) -> None:
+    """Shared §10.2 assertions for sample or live Langfuse replay exports."""
+    llm = MultiTraceFakeLLM(SHADOW_TRACES, replay=replay)
+    judge = GoalJudge(
+        llm_service=llm,  # type: ignore[arg-type]
+        prompt_service=PromptService(),
+        judge_profile=_profile(),
+    )
+    for trace in SHADOW_TRACES:
+        if trace.registry_id not in replay:
+            continue
+        verdict = await _run(judge, trace)
+        assert verdict.goal_met is trace.expected_goal_met, trace.registry_id
+        assert verdict.partial_fraction == pytest.approx(
+            trace.expected_partial_fraction
+        ), trace.registry_id

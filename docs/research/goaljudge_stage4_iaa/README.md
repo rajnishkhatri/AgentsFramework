@@ -6,9 +6,10 @@
 > scored with Cohen's κ. This is the EvalGen co-construction step (§8.1): humans confirm the A2 pass/fail
 > boundary on real traces *before* it is trusted as a rubric.
 >
-> **Status: instrument authored, grading not yet run.** Running it needs two humans and (for the
-> post-G3 rows) the batch re-run — see the [G3 batch runbook](../goaljudge_stage4_a2_g3_batch_runbook.md).
-> This directory commits the *sheets and protocol*, not results.
+> **Status: instrument authored; pass 1 ready after PR3 deploy smoke; human blind grading pending.**
+> Running it needs two humans and (for the post-G3 rows) the batch re-run — see the
+> [G3 batch runbook](../goaljudge_stage4_a2_g3_batch_runbook.md).
+> κ computation: [`scripts/compute_goaljudge_stage4_iaa_kappa.py`](../../../scripts/compute_goaljudge_stage4_iaa_kappa.py).
 
 Mirrors the established Stage-3 κ method ([`goaljudge_step7_iaa_multimodel.md`](../goaljudge_step7_iaa_multimodel.md)):
 blind coders, unit-of-agreement fixed up front, target bar **κ ≥ 0.8** (MAST,

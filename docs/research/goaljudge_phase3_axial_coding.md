@@ -429,6 +429,13 @@ The hands-on procedure for *running* this stage (human analyst + agentic assista
 > — how the A2 check became prompt rules, the crosswalk/GJ-008 (G10) reconciliation, and the
 > two-gate (Code §8.2 vs Confirmation §8.3) ship-PROVISIONAL discipline.
 
+> **Stage 5 v1 plan + spec (2026-06-08):** [`goaljudge_stage5_goldset.plan.md`](../plans/goaljudge_stage5_goldset.plan.md)
+> + [`goaljudge_stage5_goldset_spec.md`](goaljudge_stage5_goldset_spec.md) — the golden dataset that turns
+> each Axis-A category (this §8 table's first row) into a gold-set stratum + `failure_mode` label, with
+> the double-labeling **α ≥ 0.8** gate. The `failure_mode` axis landed on `GoalVerdict` (telemetry-only).
+> **Gated on Stage 4 Confirmation.** Stage 6 (the Axis-C calibration target in this §8 table's third row)
+> follows.
+
 ---
 
 ## 9. References

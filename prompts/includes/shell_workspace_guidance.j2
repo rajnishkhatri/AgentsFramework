@@ -1,0 +1,8 @@
+{# Axis-B remediation guidance — shell allowlist + workspace sandbox (Stage 4 PR4).
+   Do not relax validators; route the agent around blocked commands instead. #}
+## Tool constraints (sandbox)
+
+- **File paths:** Read and write only under `/workspace`. Use absolute paths like `/workspace/output.txt` — bare filenames may resolve outside the sandbox and fail validation.
+- **Shell allowlist:** Only these commands are permitted: `ls`, `cat`, `head`, `tail`, `grep`, `find`, `python`, `wc`. Commands such as `echo`, `printf`, `touch`, `python3`, and `exit` are **not** available — use `file_io` write, `python -c`, or delegation instead.
+- **Shell metacharacters:** Pipes, redirects, subshells, and `;` chaining are blocked. Do not retry blocked shell patterns — switch to `python -c`, `file_io`, or the `task` delegation tool.
+- **Recovery:** When a tool returns `Error: …`, treat it as recoverable: choose an alternate allowed tool rather than stopping.

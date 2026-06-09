@@ -246,7 +246,7 @@ class TestNewVerdictAxes:
 
     @pytest.mark.asyncio
     async def test_missing_new_keys_default_safely(self):
-        """A v1 verdict (no graceful_failure/partial_fraction) stays valid."""
+        """A v1 verdict (no graceful_failure/partial_fraction/failure_mode) stays valid."""
         judge, _ = _judge(
             '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
             '"rationale": "ok"}'
@@ -256,6 +256,9 @@ class TestNewVerdictAxes:
         )
         assert verdict.graceful_failure is False
         assert verdict.partial_fraction == 0.0
+        # Stage 5 ``failure_mode`` axis: absent key ⇒ None (telemetry-only, no
+        # behavior change). Back-compat is asserted before the happy path (TAP-4).
+        assert verdict.failure_mode is None
 
     @pytest.mark.asyncio
     async def test_graceful_failure_parsed(self):
@@ -336,6 +339,88 @@ class TestNewVerdictAxes:
             task_input="t", final_answer="a", success_conditions=[]
         )
         assert verdict.partial_fraction == 0.0
+
+    # ── Stage 5 ``failure_mode`` axis (telemetry-only; default-None) ──────
+    @pytest.mark.asyncio
+    async def test_failure_mode_a2_code_parsed(self):
+        """An A2 member code in the verdict JSON round-trips onto the axis."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "claimed done, no tool evidence", '
+            '"failure_mode": "fabricated-progress"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.failure_mode == "fabricated-progress"
+
+    @pytest.mark.asyncio
+    async def test_failure_mode_blank_string_is_none(self):
+        """An empty / whitespace ``failure_mode`` normalizes to None (no-op)."""
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok", "failure_mode": "   "}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.failure_mode is None
+
+    @pytest.mark.asyncio
+    async def test_failure_mode_literal_none_string_is_none(self):
+        """A model emitting the string ``\"none\"`` is treated as unclassified."""
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok", "failure_mode": "none"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.failure_mode is None
+
+    @pytest.mark.asyncio
+    async def test_failure_mode_unknown_code_raises(self):
+        """An out-of-vocabulary code is a labelling bug — surface it, don't store it."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.0, "per_criterion": [], '
+            '"rationale": "x", "failure_mode": "made-up-code"}'
+        )
+        with pytest.raises(ValueError, match="unknown failure_mode"):
+            await judge.evaluate(
+                task_input="t", final_answer="a", success_conditions=[]
+            )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# ``failure_mode`` enum integrity: the schema vocabulary must stay in sync
+# with the executable registry's Axis-A ``target_code`` values (L1, no I/O).
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestFailureModeEnumIntegrity:
+    def test_enum_matches_registry_axis_a_codes(self):
+        """``GOAL_FAILURE_MODES`` == the registry's active Axis-A codes.
+
+        Drift-guard analogous to F7: if a registry ``target_code`` is added or
+        retired, this pin fails until the schema enum is reconciled — so the
+        Stage 5 ``failure_mode`` vocabulary can never silently diverge from the
+        taxonomy the gold set labels against. ``correct-complete`` (the pass
+        baseline) and ``tool-stub-limitation`` (retired → Axis-B B5) are
+        excluded by construction.
+        """
+        from components.schemas import GOAL_FAILURE_MODES
+        from tests.fixtures.goaljudge.case_registry import LIVE_CASES
+
+        registry_codes = {
+            case.target_code
+            for case in LIVE_CASES
+            if case.target_code
+            not in {"correct-complete", "tool-stub-limitation"}
+        }
+        assert registry_codes <= GOAL_FAILURE_MODES, (
+            "registry has Axis-A codes missing from GOAL_FAILURE_MODES: "
+            f"{sorted(registry_codes - GOAL_FAILURE_MODES)}"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────

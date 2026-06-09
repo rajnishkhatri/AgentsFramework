@@ -128,6 +128,22 @@ resource "google_cloud_run_v2_service" "backend_combined" {
       }
 
       env {
+        name  = "WORKSPACE_DIR"
+        value = "/workspace"
+      }
+
+      # GoalJudge runtime posture (Change C — goaljudge_gcp_compatibility.plan.md)
+      env {
+        name  = "GOAL_JUDGE_ENABLED"
+        value = "true"
+      }
+
+      env {
+        name  = "GOAL_JUDGE_DOWNGRADE_ENABLED"
+        value = "false"
+      }
+
+      env {
         name  = "WORKOS_CLIENT_ID"
         value = var.workos_client_id
       }

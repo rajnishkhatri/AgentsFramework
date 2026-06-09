@@ -1310,27 +1310,40 @@ def build_graph(
                             )
                             downgrade_reason = "goal_judge"
 
-                        from services import eval_capture
+                        from services import eval_capture, eval_telemetry
 
+                        gj_ai_input = {
+                            "task_input": state.get("task_input", "")[:500],
+                            "success_conditions": success_conditions,
+                        }
+                        gj_ai_response = {
+                            **verdict.model_dump(),
+                            "would_downgrade": would_downgrade,
+                            "downgrade_applied": downgrade_reason is not None,
+                            "config_source": gj_cfg.source,
+                            "config_updated_at": (
+                                gj_cfg.updated_at.isoformat()
+                                if gj_cfg.updated_at
+                                else None
+                            ),
+                            "config_schema_version": gj_cfg.schema_version,
+                        }
                         await eval_capture.record(
                             target="goal_judge",
-                            ai_input={
-                                "task_input": state.get("task_input", "")[:500],
-                                "success_conditions": success_conditions,
-                            },
-                            ai_response={
-                                **verdict.model_dump(),
-                                "would_downgrade": would_downgrade,
-                                "downgrade_applied": downgrade_reason is not None,
-                                "config_source": gj_cfg.source,
-                                "config_updated_at": (
-                                    gj_cfg.updated_at.isoformat()
-                                    if gj_cfg.updated_at
-                                    else None
-                                ),
-                                "config_schema_version": gj_cfg.schema_version,
-                            },
+                            ai_input=gj_ai_input,
+                            ai_response=gj_ai_response,
                             config=config,
+                            step=updated_step_count,
+                            model=goal_judge.model_name,
+                        )
+                        _cfg = config.get("configurable", {})
+                        _trace_id = state.get("workflow_id") or _cfg.get("task_id", "")
+                        await eval_telemetry.publish_goal_judge(
+                            trace_id=_trace_id,
+                            user_id=_cfg.get("user_id", "anonymous"),
+                            task_id=_cfg.get("task_id", _trace_id),
+                            ai_input=gj_ai_input,
+                            ai_response=gj_ai_response,
                             step=updated_step_count,
                             model=goal_judge.model_name,
                         )

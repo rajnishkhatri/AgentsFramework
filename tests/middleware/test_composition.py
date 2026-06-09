@@ -57,6 +57,15 @@ class TestV3ProfileWiring:
         assert isinstance(adapters.memory_client, MemoryClient)
         assert isinstance(adapters.telemetry_exporter, TelemetryExporter)
 
+    def test_v3_registers_eval_telemetry_sink(self) -> None:
+        from middleware.composition import build_adapters
+        from services.eval_telemetry import get_sink
+
+        build_adapters(env=V3_ENV)
+        sink = get_sink()
+        assert sink is not None
+        assert hasattr(sink, "publish_goal_judge")
+
     def test_v3_uses_workos_jwt_verifier(self) -> None:
         from middleware.adapters.auth.workos_jwt_verifier import (
             WorkOSJwtVerifier,

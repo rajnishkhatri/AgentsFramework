@@ -294,16 +294,26 @@ logic improves. Langfuse/manual traces remain authoritative.
 
 ---
 
-## 9. Stage 5 `failure_mode` mapping (documentation-only)
+## 9. Stage 5 `failure_mode` mapping (schema seam landed 2026-06-08)
 
-`failure_mode` is **not** a `GoalVerdict` field in v1 — this mapping **cannot be pinned by offline
-tests**. It is documentation for the Stage 5 schema handoff only.
+The Stage 5 `failure_mode` axis **now exists** on `GoalVerdict` as the schema handoff
+([`components/schemas.py`](../../components/schemas.py): `failure_mode: str | None = None` +
+`GOAL_FAILURE_MODES`). It is **telemetry-only and default-None** — exactly like `partial_fraction`, the
+orchestration downgrade gate reads **only `goal_met`** and `failure_mode` MUST NOT be wired into gating —
+so adding it is behavior-neutral for Stage 4 (a v1 verdict omitting the key stays unchanged). The A2
+cluster populates these three codes; the full Axis-A vocabulary is reserved for the A1/A3/A4/A5 rollout
+(Stage 5 [spec §3](goaljudge_stage5_goldset_spec.md#3-failure_mode--axis-a-crosswalk)).
 
-| Stage 4 A2 fail pattern | Stage 5 `failure_mode` enum (future) |
+| Stage 4 A2 fail pattern | `failure_mode` code (now a `GoalVerdict` field) |
 |---|---|
 | No evidence + claimed done | `fabricated-progress` |
 | Partial framed as full | `partial-counted-as-full` |
 | Subtask never attempted | `subtask-dropped` |
+
+> The field is parse-tolerated (`_parse_verdict` → `model_validate`) and exported via
+> `verdict.model_dump()`, so the Stage 5 gold set harvests it with no orchestration change. Full Stage 5
+> plan: [`goaljudge_stage5_goldset.plan.md`](../plans/goaljudge_stage5_goldset.plan.md); schema +
+> stratification: [`goaljudge_stage5_goldset_spec.md`](goaljudge_stage5_goldset_spec.md).
 
 ---
 
