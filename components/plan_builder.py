@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -26,10 +27,115 @@ class PlanValidationResult(BaseModel):
     issues: list[str] = Field(default_factory=list)
 
 
+# Sentence-period splitter: only fires on ``. `` (or trailing ``.``) when the
+# following character is whitespace + uppercase OR end-of-string. This keeps
+# ``/workspace/f3.txt`` and ``v1.2.3`` intact while still splitting on real
+# sentence boundaries like ``"...migration. Evaluate risks..."``.
+_SENTENCE_BOUNDARY = re.compile(r"\.\s+(?=[A-Z])|\.\s*$")
+
+# Inline enumeration markers: "(1)", "(2)", "1)", "2)", "1.", "2."
+# Each match becomes a split point that *follows* the marker.
+_INLINE_ENUM = re.compile(r"(?:\(\s*([1-9])\s*\)|(?<![.\d])([1-9])[.)])\s+")
+
+# Conjunction connectors that introduce a NEW imperative clause. Requires a
+# leading comma — bare ``" and "`` is far too noisy (e.g. ``"trade-offs and
+# risks"`` is a noun phrase, not a subtask boundary). The ``, and X``
+# variant is the high-precision signal.
+_CONJUNCTION_CLAUSE = re.compile(
+    r",\s*(?:and|then)\s+(?=(?:also\s+)?[a-z]+\b)",
+    flags=re.IGNORECASE,
+)
+
+# "X, Y, and Z" / "X, Y, then Z" — three or more imperative clauses separated
+# by commas with a terminal "and"/"then". When this matches we ALSO split on
+# the intermediate commas, because the trailing ``, and`` is evidence that
+# the commas are subtask boundaries (not noun-phrase separators).
+_COMMA_THEN_AND = re.compile(r",[^,]+,\s*(?:and|then)\s", flags=re.IGNORECASE)
+
+
 def _extract_branches(task_input: str) -> list[str]:
-    raw = (task_input or "").replace("\n", ". ")
-    parts = [part.strip(" -.\t") for part in raw.split(".")]
-    branches = [part for part in parts if part]
+    """Split task into ordered subtask branches.
+
+    Splitting priority:
+      1. Newlines and bullet/numbered list markers — strongest signal.
+      2. Inline enumeration markers ``(1) … (2) …`` or ``1. … 2. …``.
+      3. Sentence-period boundary (period followed by space + uppercase or EOS) —
+         skips paths like ``/workspace/f3.txt`` and version strings ``v1.2``.
+      4. Comma-or-semicolon clauses joined by ``, and `` / ``, then `` /
+         ``; `` — only when the joining word introduces a new imperative
+         clause (action verb leading), to avoid splitting noun phrases like
+         ``"trade-offs and risks"``.
+    """
+    raw = (task_input or "").strip()
+    if not raw:
+        return ["Solve the user request directly"]
+
+    # Stage 1 — line/list-marker splits (newlines, "1.", "- ", "• ")
+    line_chunks: list[str] = []
+    for chunk in re.split(r"\n+", raw):
+        chunk = chunk.strip().lstrip("-•* ").strip()
+        chunk = re.sub(r"^\s*\d+[.)]\s*", "", chunk)
+        if chunk:
+            line_chunks.append(chunk)
+    if not line_chunks:
+        line_chunks = [raw]
+
+    branches: list[str] = []
+    for chunk in line_chunks:
+        # Stage 2 — inline enumeration "(1) X (2) Y (3) Z"
+        enum_parts = _INLINE_ENUM.split(chunk)
+        # _INLINE_ENUM has two capture groups; .split() includes them as
+        # interleaved items. Reassemble: text segments are at even indices
+        # (0, 3, 6, …) given two groups per match.
+        if len(enum_parts) > 1 and any(p and p.strip().isdigit() for p in enum_parts[1::3]):
+            # Keep only the textual segments between enumerators.
+            text_segments = [enum_parts[0]] + enum_parts[3::3]
+            stripped = [seg.strip(" ,;.") for seg in text_segments if seg and seg.strip(" ,;.")]
+            if len(stripped) >= 2:
+                branches.extend(stripped)
+                continue
+
+        # Stage 3 — sentence-period boundaries (path-safe)
+        sentence_parts = _SENTENCE_BOUNDARY.split(chunk)
+        sentence_parts = [s.strip(" \t,;.") for s in sentence_parts if s and s.strip()]
+        if len(sentence_parts) >= 2:
+            for s in sentence_parts:
+                # Stage 4 — comma/semicolon clauses with imperative conjunctions.
+                # Use semicolon as a hard split first, then "and"/"then" with
+                # an action-verb lookahead.
+                semicolon_parts = [p.strip(" ,;.") for p in re.split(r";\s+", s) if p.strip()]
+                for sp in semicolon_parts:
+                    conj_parts = _CONJUNCTION_CLAUSE.split(sp)
+                    conj_parts = [p.strip(" ,;.") for p in conj_parts if p.strip()]
+                    if len(conj_parts) >= 2:
+                        branches.extend(conj_parts)
+                    else:
+                        branches.append(sp)
+            continue
+
+        # Single-sentence chunk: try semicolon + conjunction-clause split.
+        for sp in (p.strip(" ,;.") for p in re.split(r";\s+", chunk) if p.strip()):
+            # If "X, Y, and Z" shape is present, split on intermediate commas
+            # too — the terminal ", and" is evidence that the commas are
+            # imperative-clause separators, not noun-phrase joins.
+            if _COMMA_THEN_AND.search(sp):
+                conj_split = _CONJUNCTION_CLAUSE.split(sp)
+                comma_parts: list[str] = []
+                for piece in conj_split:
+                    comma_parts.extend(
+                        p.strip(" ,;.") for p in piece.split(",") if p.strip()
+                    )
+                if len(comma_parts) >= 2:
+                    branches.extend(comma_parts)
+                    continue
+            conj_parts = _CONJUNCTION_CLAUSE.split(sp)
+            conj_parts = [p.strip(" ,;.") for p in conj_parts if p.strip()]
+            if len(conj_parts) >= 2:
+                branches.extend(conj_parts)
+            else:
+                branches.append(sp)
+
+    branches = [b for b in branches if b]
     return branches or ["Solve the user request directly"]
 
 
