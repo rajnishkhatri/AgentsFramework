@@ -72,10 +72,10 @@ self-consistent or reliably applicable). The machine-readable form with owners i
 | Gate | Status | What must happen |
 |---|---|---|
 | **G1 · Registry join / batch re-run** | **OPEN** | UI runs used random `workflow_id`s (no registry join, Axis-B5). Re-run GJ-001–GJ-022 with deterministic `trace_id`s + `user_id=synthetic-saturation-user` via `scripts/run_goaljudge_synthetic_batch.py`. |
-| **G2 · `eval.goal_judge` export (E1)** | **OPEN** | `logs/evals.log` has **zero** `target=goal_judge` rows. The GoalJudge axes (`graceful_failure`, `partial_fraction`, `per_criterion`) and **Axis-C** confirmation depend on requirement **E1**. |
-| **G3 · Axis-B environment correction** | **OPEN** | Re-run with `/workspace`-aligned paths, shell allowlist widened / prompts adapted, and the `classify_outcome` B4 escalation reviewed — so each Axis-A code reflects the agent, not the sandbox. Sequencing: [`goaljudge_axis_b_remediation_strategy.md`](goaljudge_axis_b_remediation_strategy.md). |
-| **G4 · GCS posture confirmed** | **OPEN** | `curl $BACKEND_URL/healthz \| jq .goal_judge` shows a file-backed `gs://…/ops/goal_judge_config.json` source before crediting any `goal_met`. |
-| **G5 · Human IAA κ ≥ 0.8 on Axis-A** | **OPEN** | Only model passes exist: single-model κ = 0.77 (partially blind, superseded); **five-model blind panel Fleiss' κ = 0.50** (moderate). A real **human** panel on the revised definitions is the actual playbook requirement. |
+| **G2 · `eval.goal_judge` export (E1)** | **OPEN** (code landed) | E1 implemented: `eval.goal_judge` Langfuse observation after `eval_capture.record`; export script reads Langfuse when `logs/evals.log` absent. **Pending:** prod deploy + smoke trace verification. |
+| **G3 · Axis-B environment correction** | **OPEN** (code landed) | B3 `/workspace` mount + B4 `tool_error` for validation failures + agent guidance partial. Adjudication log: [`goaljudge_stage4_b1b2_adjudication_log.md`](goaljudge_stage4_b1b2_adjudication_log.md). **Pending:** G1 batch re-run. |
+| **G4 · GCS posture confirmed** | **OPEN** | Prod `/health` still reports `source=env`, `enabled=false` (2026-06-09). Redeploy backend + apply `GOAL_JUDGE_*` env from `cloud-run-backend.tf`. |
+| **G5 · Human IAA κ ≥ 0.8 on Axis-A** | **OPEN** (instrument ready) | κ script: `scripts/compute_goaljudge_stage4_iaa_kappa.py`. Pass 1 (5 anchors) after PR3 smoke; pass 2 (+3) after batch. **Blind human grading session required.** |
 
 ### Consistency gates (from Steps 6–7 — close these *before* the re-run is coded)
 

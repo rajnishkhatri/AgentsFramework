@@ -305,6 +305,9 @@ def build_dev_app() -> FastAPI:
     build_graph = _load_graph_factory()
     dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
     dev_telemetry = _build_dev_telemetry_exporter()
+    from middleware.composition import _wire_eval_telemetry
+
+    _wire_eval_telemetry(dev_telemetry)
 
     if _GCP_EXECUTION_ENV:
         from services.trace_sinks.gcs_sink import GcsTraceSink

@@ -60,6 +60,11 @@ infra/gcp/tfplan.txt
 # Local agent scratch (goal-judge runs, ad-hoc outputs)
 workspace/
 
+# GoalJudge §8.3 confirmation-gate: real Langfuse verdict export (local download,
+# not tracked). The committed langfuse_replay_sample.json is the load-path smoke;
+# point GOALJUDGE_LANGFUSE_EXPORT at the real export to run the behavioral gate.
+tests/fixtures/goaljudge/langfuse_replay_export*.json
+
 # PR draft bodies (local only)
 .github-pr-body*.md
 

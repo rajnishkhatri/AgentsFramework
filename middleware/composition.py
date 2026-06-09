@@ -35,11 +35,15 @@ from middleware.adapters.memory.mem0_cloud_client import Mem0CloudClient
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
+from middleware.adapters.observability.langfuse_eval_telemetry_sink import (
+    LangfuseEvalTelemetrySink,
+)
 from middleware.ports.jwt_verifier import JwtVerifier
 from middleware.ports.memory_client import MemoryClient
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from middleware.ports.tool_acl import ToolAclProvider
 from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
+from services.eval_telemetry import set_sink
 
 _logger = logging.getLogger(__name__)
 
@@ -127,6 +131,11 @@ class MiddlewareAdapters:
 # ─────────────────────────────────────────────────────────────────────
 
 
+def _wire_eval_telemetry(exporter: TelemetryExporter) -> None:
+    """Register E1 eval.goal_judge sink for orchestration → Langfuse export."""
+    set_sink(LangfuseEvalTelemetrySink(exporter))
+
+
 def build_adapters(
     *,
     env: Mapping[str, str] | None = None,
@@ -201,6 +210,7 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
         secret_key=langfuse_secret,
         host=langfuse_host,
     )
+    _wire_eval_telemetry(telemetry)
 
     return MiddlewareAdapters(
         profile="v3",
@@ -260,6 +270,7 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
         secret_key=langfuse_secret,
         host=langfuse_host,
     )
+    _wire_eval_telemetry(telemetry)
 
     return MiddlewareAdapters(
         profile="v2",

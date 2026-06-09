@@ -58,6 +58,37 @@ from tests.fixtures.goaljudge.case_registry import LIVE_CASES, GoalJudgeCase
 
 console = Console()
 
+# §10.2 shadow anchors gradable before post-G3 batch (plan §8.3 pass 1).
+_PRE_G3_SHADOW_ANCHORS = frozenset({"GJ-008", "GJ-010", "GJ-012", "GJ-001B", "GJ-019"})
+
+
+def _normalize_prompt_for_batch(prompt: str, workspace: Path) -> str:
+    """Map registry `/workspace/…` paths to the local batch workspace dir.
+
+    Only rewrites docker-style ``/workspace/`` prefixes. Prompts that already
+    embed the repo ``workspace/`` mac path are left unchanged.
+    """
+    ws = str(workspace.resolve())
+    if "/workspace/" not in prompt or ws in prompt:
+        return prompt
+    prefix = ws if ws.endswith("/") else ws + "/"
+    return prompt.replace("/workspace/", prefix)
+
+
+def _ensure_batch_env() -> Path:
+    """Posture for Stage 4 confirmation batch (G3 remediation + G1)."""
+    workspace = AGENT_ROOT / "workspace"
+    workspace.mkdir(parents=True, exist_ok=True)
+    # Force local workspace to match registry mac paths; .env often sets /workspace.
+    os.environ["WORKSPACE_DIR"] = str(workspace)
+
+    cfg_path = AGENT_ROOT / "config" / "goal_judge_config.json"
+    if cfg_path.is_file():
+        os.environ.setdefault("GOAL_JUDGE_CONFIG_URI", f"file:{cfg_path}")
+    os.environ.setdefault("GOAL_JUDGE_ENABLED", "true")
+    os.environ.setdefault("GOAL_JUDGE_DOWNGRADE_ENABLED", "false")
+    return workspace
+
 
 def truncate_eval_log() -> None:
     """Truncate logs/evals.log to isolate this batch run's capture half."""
@@ -92,6 +123,8 @@ def build_agent_and_tools() -> tuple[AgentConfig, RoutingConfig, ToolRegistry, A
         models=[fast, capable],
         max_steps=20,
         max_cost_usd=1.0,
+        goal_judge_enabled=True,
+        goal_judge_downgrade_enabled=False,
     )
     routing_config = RoutingConfig()
 
@@ -144,6 +177,8 @@ async def run_case(
     routing_config: RoutingConfig,
     tool_registry: ToolRegistry,
     agent_facts_registry: AgentFactsRegistry,
+    *,
+    workspace: Path,
 ) -> dict:
     """Execute a single synthetic case through the compiled LangGraph agent graph."""
     # Compute deterministic 32-hex trace ID based on case ID
@@ -154,13 +189,14 @@ async def run_case(
     user_id = "synthetic-saturation-user"
     agent_id = "cli-agent"
     cache_dir = AGENT_ROOT / "cache"
+    task_input = _normalize_prompt_for_batch(case.prompt, workspace)
 
     console.print(Panel(
         f"[bold cyan]Case ID:[/bold cyan] {case.id}\n"
         f"[bold cyan]Target Code:[/bold cyan] {case.target_code}\n"
         f"[bold cyan]Stratum / Domain:[/bold cyan] {case.stratum} / {case.domain}\n"
         f"[bold cyan]Trace ID (32-hex):[/bold cyan] {trace_id}\n"
-        f"[bold cyan]Prompt:[/bold cyan] {case.prompt}",
+        f"[bold cyan]Prompt:[/bold cyan] {task_input}",
         title="Executing Synthetic Case"
     ))
 
@@ -180,7 +216,7 @@ async def run_case(
             return await graph.ainvoke(
                 {
                     "task_id": task_id,
-                    "task_input": case.prompt,
+                    "task_input": task_input,
                     "messages": [],
                     "workflow_id": workflow_id,
                     "registered_agent_id": agent_id,
@@ -208,7 +244,7 @@ async def run_case(
         return await graph.ainvoke(
             {
                 "task_id": task_id,
-                "task_input": case.prompt,
+                "task_input": task_input,
                 "messages": [],
                 "workflow_id": workflow_id,
                 "registered_agent_id": agent_id,
@@ -241,14 +277,35 @@ async def main() -> None:
     import argparse
     parser = argparse.ArgumentParser(description="Run GoalJudge synthetic saturation corpus batch")
     parser.add_argument("--case", help="Specific Case ID to run (e.g., GJ-001)")
+    parser.add_argument(
+        "--anchors",
+        action="store_true",
+        help="Run §10.2 pre-G3 shadow anchors only (GJ-008/010/012/001B/019)",
+    )
+    parser.add_argument(
+        "--export-replay",
+        action="store_true",
+        help="After batch, write cache/goaljudge_eval/shadow_replay.json",
+    )
     parser.add_argument("--yes", action="store_true", help="Skip confirmation prompt")
     args = parser.parse_args()
+
+    workspace = _ensure_batch_env()
 
     cases_to_run = LIVE_CASES
     if args.case:
         cases_to_run = [c for c in LIVE_CASES if c.id == args.case]
         if not cases_to_run:
             console.print(f"[bold red]Case {args.case} not found in registry.[/bold red]")
+            sys.exit(1)
+    elif args.anchors:
+        cases_to_run = [c for c in LIVE_CASES if c.id in _PRE_G3_SHADOW_ANCHORS]
+        if len(cases_to_run) != len(_PRE_G3_SHADOW_ANCHORS):
+            found = {c.id for c in cases_to_run}
+            missing = _PRE_G3_SHADOW_ANCHORS - found
+            console.print(
+                f"[bold red]Anchor filter missing registry cases: {sorted(missing)}[/bold red]"
+            )
             sys.exit(1)
 
     if not args.yes:
@@ -273,6 +330,7 @@ async def main() -> None:
                 routing_config,
                 tool_registry,
                 agent_facts_registry,
+                workspace=workspace,
             )
             success_count += 1
             console.print(f"[bold green]Case {case.id} completed successfully.[/bold green]")
@@ -285,6 +343,26 @@ async def main() -> None:
         f"Failed: {len(cases_to_run) - success_count} failures",
         title="Batch Run Complete"
     ))
+
+    if args.export_replay:
+        from scripts.export_goaljudge_shadow_replay import export_shadow_replay
+
+        out = AGENT_ROOT / "cache" / "goaljudge_eval" / "shadow_replay.json"
+        count, missing = export_shadow_replay(out_path=str(out))
+        if missing:
+            console.print(
+                f"[bold yellow]Shadow replay: {count} anchors written; "
+                f"missing: {sorted(missing)}[/bold yellow]"
+            )
+        else:
+            console.print(
+                f"[bold green]Shadow replay export: {count} anchors → {out}[/bold green]"
+            )
+            console.print(
+                "[dim]Behavioral gate: "
+                f"GOALJUDGE_LANGFUSE_EXPORT={out} "
+                "pytest tests/components/test_goal_judge_shadow_offline.py -q[/dim]"
+            )
 
 
 if __name__ == "__main__":

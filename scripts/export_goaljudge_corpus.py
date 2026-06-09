@@ -22,11 +22,33 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from langfuse import Langfuse
 
+from components.schemas import GOAL_FAILURE_MODES
+
 # Reuse the repo's tested fetch helpers rather than hand-rolling.
 from tests.synthetic.blackbox.langfuse_assertions import (
     fetch_trace_details,
     fetch_trace_observations,
 )
+
+
+def _resolve_failure_mode(
+    verdict: dict[str, Any],
+    target_code: str,
+) -> str | None:
+    """Surface ``failure_mode`` for corpus export (Stage 5 harvest path).
+
+    Prefer the eval_capture / Langfuse verdict axis when present; fall back to
+    the registry ``target_code`` when it is an active Axis-A member code.
+    """
+    raw = verdict.get("failure_mode")
+    if isinstance(raw, str):
+        stripped = raw.strip()
+        if stripped and stripped.lower() not in {"none", "null"}:
+            if stripped in GOAL_FAILURE_MODES:
+                return stripped
+    if target_code in GOAL_FAILURE_MODES:
+        return target_code
+    return None
 
 
 def _client() -> Langfuse:
@@ -67,6 +89,25 @@ def _task_completed_details(trace_id: str) -> dict:
             body = obs.get("output") or obs.get("metadata") or obs.get("input") or {}
             if isinstance(body, dict):
                 return body.get("details", body)
+    return {}
+
+
+def _eval_goal_judge_from_langfuse(trace_id: str) -> dict[str, Any]:
+    """Load full GoalJudge verdict from E1 ``eval.goal_judge`` observation."""
+    for obs in fetch_trace_observations(trace_id):
+        name = obs.get("name") if isinstance(obs, dict) else getattr(obs, "name", "")
+        if name not in ("eval.goal_judge", "eval_capture.goal_judge"):
+            continue
+        output = obs.get("output") if isinstance(obs, dict) else getattr(obs, "output", None)
+        if isinstance(output, dict):
+            return output
+        if isinstance(output, str):
+            try:
+                parsed = json.loads(output)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
     return {}
 
 
@@ -143,7 +184,7 @@ def export(
             if not trace:
                 continue
             details = _task_completed_details(trace_id)
-            verdict = verdicts.get(trace_id, {})  # full axes (eval_capture)
+            verdict = verdicts.get(trace_id) or _eval_goal_judge_from_langfuse(trace_id)
             
             case_info = case_map.get(trace_id) if case_map else None
             provenance = getattr(case_info, "provenance", "live") if case_info else "live"
@@ -167,6 +208,7 @@ def export(
                 "rationale": verdict.get("rationale"),
                 "graceful_failure": verdict.get("graceful_failure"),
                 "partial_fraction": verdict.get("partial_fraction"),
+                "failure_mode": _resolve_failure_mode(verdict, target_code),
                 "would_downgrade": verdict.get("would_downgrade"),
                 "downgrade_applied": verdict.get("downgrade_applied"),
                 # runtime config provenance (Recipe 15):

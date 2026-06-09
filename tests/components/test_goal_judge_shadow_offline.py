@@ -20,6 +20,8 @@ What this pins today:
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from components.goal_judge import GoalJudge
@@ -35,17 +37,36 @@ _A2_CODES = {"fabricated-progress", "partial-counted-as-full", "subtask-dropped"
 
 
 class MultiTraceFakeLLM(FakeLLMService):
-    """Replay the right recorded verdict per trace, keyed on its ``task_input``.
+    """Replay the right verdict per trace, keyed on its ``task_input``.
 
     One judge instance can shadow-run every anchor: each rendered prompt embeds
     the trace's ``task_input`` (``{{ task_input }}`` in the ``.j2``), so we route
-    the call to the matching ``recorded_verdict``. Falls back to a hard error on
-    an unrecognised prompt rather than silently replaying a stale verdict.
+    the call to the matching verdict. Falls back to a hard error on an
+    unrecognised prompt rather than silently replaying a stale verdict.
+
+    **Verdict source — the §8.3 swap seam.** By default each trace replays its
+    inline ``recorded_verdict`` (canned; pins wiring only). Pass ``replay`` — a
+    ``registry_id -> verdict_json`` map from
+    :func:`tests.fixtures.goaljudge.langfuse_replay.replay_source` — to override
+    those anchors with **Langfuse-replayed** verdicts from a real batch re-run.
+    Anchors absent from ``replay`` keep their recorded verdict, so a partial
+    export still runs. When ``replay`` covers every anchor, the shadow run is
+    the real §10.2 behavioral gate with no other code change.
     """
 
-    def __init__(self, traces: list[ShadowTrace]) -> None:
+    def __init__(
+        self,
+        traces: list[ShadowTrace],
+        replay: dict[str, str] | None = None,
+    ) -> None:
         super().__init__("")  # base records calls; we override the response
-        self._by_task_input = {t.task_input: t.recorded_verdict_json for t in traces}
+        replay = replay or {}
+        # Route by task_input (that is what lands in the prompt); pick the
+        # replayed verdict when present, else the trace's recorded verdict.
+        self._by_task_input = {
+            t.task_input: replay.get(t.registry_id, t.recorded_verdict_json)
+            for t in traces
+        }
 
     async def invoke(self, profile, messages, **kwargs):
         self.calls.append((profile, messages))
@@ -140,3 +161,142 @@ class TestShadowValidationHarness:
         llm = MultiTraceFakeLLM(SHADOW_TRACES)
         with pytest.raises(AssertionError, match="no recorded verdict matched"):
             asyncio.run(llm.invoke(_profile(), [{"role": "user", "content": "unknown task"}]))
+
+
+class TestLangfuseReplaySwapSeam:
+    """The §8.3 verdict-swap path (`langfuse_replay.py`) — load + route + parse.
+
+    Proves the recorded→replayed switch is invisible to the §10.2 assertions:
+    feeding the harness Langfuse-shaped verdicts (here, the committed *sample*
+    export) drives the same judge to the same registry-target verdicts. When the
+    real export replaces the sample post-G3 batch, these assertions become the
+    behavioral gate with no further code change.
+    """
+
+    def test_trace_id_map_covers_every_shadow_anchor(self):
+        """Every §10.2 anchor has a trace_id join (no silently-unmapped anchor)."""
+        from tests.fixtures.goaljudge.langfuse_replay import TRACE_ID_TO_REGISTRY_ID
+
+        mapped = set(TRACE_ID_TO_REGISTRY_ID.values())
+        for trace in SHADOW_TRACES:
+            assert trace.registry_id in mapped, f"{trace.registry_id} has no trace_id"
+
+    def test_sample_export_loads_all_anchors(self):
+        """The committed sample resolves to registry IDs via the trace_id map."""
+        from tests.fixtures.goaljudge.langfuse_replay import (
+            SAMPLE_EXPORT_PATH,
+            load_replayed_verdicts,
+        )
+
+        verdicts = load_replayed_verdicts(SAMPLE_EXPORT_PATH)
+        # Sample carries the 5 §10.2 anchors (both Form A and Form B rows).
+        assert set(verdicts) == {"GJ-008", "GJ-010", "GJ-012", "GJ-001B", "GJ-019"}
+        for v in verdicts.values():
+            assert "goal_met" in v and "partial_fraction" in v
+
+    @pytest.mark.asyncio
+    async def test_replayed_verdicts_match_registry_targets(self):
+        """Swap recorded→replayed: same judge, same registry-target verdicts (§10.2)."""
+        from tests.fixtures.goaljudge.langfuse_replay import (
+            SAMPLE_EXPORT_PATH,
+            replay_source,
+        )
+
+        replay = replay_source(SAMPLE_EXPORT_PATH)
+        await _assert_replay_matches_registry(replay)
+
+    @pytest.mark.asyncio
+    async def test_live_export_matches_registry_when_env_set(self):
+        """§8.3 behavioral gate: real batch export via GOALJUDGE_LANGFUSE_EXPORT."""
+        import os
+
+        from tests.fixtures.goaljudge.langfuse_replay import EXPORT_ENV_VAR, replay_source
+
+        if not os.environ.get(EXPORT_ENV_VAR):
+            pytest.skip(f"{EXPORT_ENV_VAR} not set — run batch + export first")
+        replay = replay_source()
+        if not replay:
+            pytest.skip(f"{EXPORT_ENV_VAR} resolved to an empty replay map")
+        await _assert_replay_matches_registry(replay)
+
+    def test_no_export_falls_back_to_empty_source(self, monkeypatch):
+        """Resolution order: no path + no env var → {} (harness keeps recorded)."""
+        from tests.fixtures.goaljudge import langfuse_replay
+
+        monkeypatch.delenv(langfuse_replay.EXPORT_ENV_VAR, raising=False)
+        assert langfuse_replay.replay_source() == {}
+
+    def test_env_var_resolves_export(self, monkeypatch):
+        """The env var is honoured when no explicit path is passed."""
+        from tests.fixtures.goaljudge import langfuse_replay
+
+        monkeypatch.setenv(
+            langfuse_replay.EXPORT_ENV_VAR, str(langfuse_replay.SAMPLE_EXPORT_PATH)
+        )
+        src = langfuse_replay.replay_source()
+        assert set(src) == {"GJ-008", "GJ-010", "GJ-012", "GJ-001B", "GJ-019"}
+
+    def test_unknown_trace_ids_are_skipped(self, tmp_path):
+        """An export carrying the full batch ignores non-anchor rows."""
+        from tests.fixtures.goaljudge.langfuse_replay import load_replayed_verdicts
+
+        export = tmp_path / "full_batch.json"
+        export.write_text(
+            json.dumps(
+                [
+                    {"trace_id": "deadbeef-not-an-anchor", "verdict": {"goal_met": True}},
+                    {
+                        "trace_id": "cbfe84539b675824a1eb08b331204b8d",
+                        "verdict": {"goal_met": False, "partial_fraction": 0.0},
+                    },
+                ]
+            )
+        )
+        verdicts = load_replayed_verdicts(export)
+        assert set(verdicts) == {"GJ-008"}
+
+    def test_malformed_row_without_trace_id_raises(self, tmp_path):
+        """A row missing trace_id is a hard error (can't silently drop an anchor)."""
+        from tests.fixtures.goaljudge.langfuse_replay import (
+            ReplayExportError,
+            load_replayed_verdicts,
+        )
+
+        export = tmp_path / "bad.json"
+        export.write_text(json.dumps([{"verdict": {"goal_met": False}}]))
+        with pytest.raises(ReplayExportError, match="needs a trace_id"):
+            load_replayed_verdicts(export)
+
+    def test_non_verdict_object_raises(self, tmp_path):
+        """A mapped row whose payload isn't a verdict is rejected, not replayed."""
+        from tests.fixtures.goaljudge.langfuse_replay import (
+            ReplayExportError,
+            load_replayed_verdicts,
+        )
+
+        export = tmp_path / "notaverdict.json"
+        export.write_text(
+            json.dumps(
+                [{"trace_id": "cbfe84539b675824a1eb08b331204b8d", "verdict": {"foo": 1}}]
+            )
+        )
+        with pytest.raises(ReplayExportError, match="not a verdict"):
+            load_replayed_verdicts(export)
+
+
+async def _assert_replay_matches_registry(replay: dict[str, str]) -> None:
+    """Shared §10.2 assertions for sample or live Langfuse replay exports."""
+    llm = MultiTraceFakeLLM(SHADOW_TRACES, replay=replay)
+    judge = GoalJudge(
+        llm_service=llm,  # type: ignore[arg-type]
+        prompt_service=PromptService(),
+        judge_profile=_profile(),
+    )
+    for trace in SHADOW_TRACES:
+        if trace.registry_id not in replay:
+            continue
+        verdict = await _run(judge, trace)
+        assert verdict.goal_met is trace.expected_goal_met, trace.registry_id
+        assert verdict.partial_fraction == pytest.approx(
+            trace.expected_partial_fraction
+        ), trace.registry_id

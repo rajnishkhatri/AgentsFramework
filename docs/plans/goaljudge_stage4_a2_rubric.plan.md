@@ -436,12 +436,12 @@ If **Reconfirm** or **G5** fails:
 
 | Item | Defer to |
 |---|---|
-| `failure_mode` on `GoalVerdict` | Stage 5 gold-set schema |
+| `failure_mode` on `GoalVerdict` | Stage 5 gold-set schema — **seam landed 2026-06-08** (telemetry-only, default-None; see [Stage 5 plan §6](goaljudge_stage5_goldset.plan.md#6-phase-2--failure_mode-schema-seam-landed)) |
 | Registry-derived `success_conditions` in orchestrator | Future enhancement after G1 batch; prompt infers subtasks for v1 |
 | A1/A3/A4/A5 as separate `per_criterion` entries | Stage 4 v2+ after A2 calibrated |
 | Axis-C judge fixes (C1 drift, incl. GJ-012 LF label) | Stage 6 calibration |
 | §2.8 enable-policy / flip `goal_judge_downgrade_enabled` | Stage 6 |
-| ~250 gold set | Stage 5 |
+| ~250 gold set | [Stage 5](goaljudge_stage5_goldset.plan.md) (gated on this plan's §8.3 Confirmation) |
 
 ---
 
@@ -472,9 +472,9 @@ If **Reconfirm** or **G5** fails:
 | rubric-spec | Author `goaljudge_stage4_a2_rubric_spec.md` | done ✓ |
 | prompt-a2 | Add CORRUPT-SUCCESS section to `goal_judge_system_prompt.j2` (≤15 lines) | done ✓ |
 | offline-fixtures | GJ-010/012 fixtures (registry-anchored, F7) + A2 prompt marker tests | done ✓ |
-| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | pending |
-| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending |
-| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **harness built** (offline scaffold `test_goal_judge_shadow_offline.py` + `shadow_traces.py`, recorded verdicts, F7-guarded — 10 pins green); **behavioral run pending** verdict swap to Langfuse post-G3/batch |
+| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | **in progress** — code remediation landed (B3/B4/B5, adjudication log, batch runner fixes); **local pass-1 batch** complete ([`goaljudge_stage4_local_batch_execution_log.md`](../research/goaljudge_stage4_local_batch_execution_log.md): 5/5 anchors, 3/5 behavioral miss); **GCP batch blocked** ([`goaljudge_stage4_gcp_batch_execution_log.md`](../research/goaljudge_stage4_gcp_batch_execution_log.md)) |
+| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending — instrument + κ script ready ([`goaljudge_stage4_iaa/`](../research/goaljudge_stage4_iaa/README.md)); **blind human grading required** |
+| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **behavioral gate wired** (`test_live_export_matches_registry_when_env_set` + `export_goaljudge_shadow_replay.py`); **pass-1 local run FAIL** (2/5 pass: GJ-008, GJ-019) — see local batch log; re-run after alignment |
 | rollback-trigger | If Reconfirm/G5 fails, execute §8.4 (iterate or re-pick) | conditional |
 | stage4-recipe | Optional: `02_stage4_a2_rubric.md` recipe + crosswalk lesson | done ✓ (5 lessons mirroring Stage 3 style; recipe 01 "What Comes Next" + phase3 §8 bridge link to it) |
 

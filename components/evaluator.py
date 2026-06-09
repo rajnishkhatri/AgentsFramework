@@ -120,6 +120,10 @@ def classify_outcome(
         error_type = "model_error"
     elif "tool" in str(error).lower():
         error_type = "tool_error"
+    elif str(error).startswith("Error:"):
+        # Tool validators (shell allowlist, file_io path sandbox) return
+        # "Error: …" strings — recoverable, not loop-terminating (B4).
+        error_type = "tool_error"
     else:
         error_type = "terminal"
 

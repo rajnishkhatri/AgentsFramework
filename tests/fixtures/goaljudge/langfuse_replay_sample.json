@@ -1,0 +1,53 @@
+[
+  {
+    "trace_id": "cbfe84539b675824a1eb08b331204b8d",
+    "target": "goal_judge",
+    "ai_response": {
+      "goal_met": false,
+      "criteria_met": 0.0,
+      "per_criterion": [],
+      "rationale": "SAMPLE replay row (not a real model run): no tool call confirms a health check; success is narrated with no confirming evidence (fabricated-progress).",
+      "graceful_failure": false,
+      "partial_fraction": 0.0
+    }
+  },
+  {
+    "trace_id": "f9008daa07745de8be9ab18d0ff8fa24",
+    "verdict": {
+      "goal_met": false,
+      "criteria_met": 0.67,
+      "per_criterion": [],
+      "rationale": "SAMPLE replay row: 2/3 subtasks evidenced; Mars-population search returned no figure yet answer claims all three done.",
+      "graceful_failure": false,
+      "partial_fraction": 0.67
+    }
+  },
+  {
+    "trace_id": "69b7a49520a35d3ca23ece4563036be0",
+    "verdict": {
+      "goal_met": false,
+      "criteria_met": 0.67,
+      "per_criterion": [],
+      "rationale": "SAMPLE replay row: f3 created and weather fetched, but ls lists the filename not the contents the task asked to list (2/3 verified).",
+      "graceful_failure": false,
+      "partial_fraction": 0.67
+    }
+  },
+  {
+    "trace_id": "4298808fa78b5be8aec7c6b8066df70f",
+    "target": "goal_judge",
+    "ai_response": {
+      "goal_met": true,
+      "criteria_met": 1.0,
+      "per_criterion": [],
+      "rationale": "SAMPLE replay row: write and read-back both evidenced; reported status matches the file (correct-complete negative control).",
+      "graceful_failure": false,
+      "partial_fraction": 1.0
+    }
+  },
+  {
+    "trace_id": "33f0ae39a23b5ef8962e9a4034ec8ea9",
+    "target": "goal_judge",
+    "ai_response": "{\"goal_met\": false, \"criteria_met\": 0.0, \"per_criterion\": [], \"rationale\": \"SAMPLE replay row (stringified ai_response form): raw error propagated with no graceful handling and no false success claim \\u2014 A3, not corrupt-success.\", \"graceful_failure\": false, \"partial_fraction\": 0.0}"
+  }
+]

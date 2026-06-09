@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ErrorRecord(BaseModel):
@@ -93,6 +93,47 @@ class TaskOutcome(BaseModel):
     goal_met: bool | None = None
 
 
+# Stage 5 gold-set ``failure_mode`` enum (the Axis-A member codes).
+# ---------------------------------------------------------------------------
+# The closed vocabulary a Stage-5 gold-set / calibration label may carry on the
+# ``failure_mode`` axis. These are the **Axis-A agent-behavior member codes**
+# from the Stage-3 failure taxonomy (``goaljudge_phase3_axial_coding.md`` §3),
+# kept in sync with the executable registry's ``target_code`` values
+# (``tests/fixtures/goaljudge/case_registry.py``). ``tool-stub-limitation`` is
+# intentionally absent (retired to Axis-B B5 — see the A3 note in §3).
+#
+# Stage 4 v1 only *populates* this axis for the A2 cluster (spec §9:
+# ``fabricated-progress`` / ``partial-counted-as-full`` / ``subtask-dropped``);
+# the rest are reserved for the A1/A3/A4/A5 rollout so the gold-set schema is
+# stable across that expansion. ``failure_mode`` is **telemetry-only**, exactly
+# like ``partial_fraction`` — it MUST NOT be wired into the downgrade gate.
+GOAL_FAILURE_MODES: frozenset[str] = frozenset(
+    {
+        # A1 · semantic / synthesis
+        "missing-requested-information",
+        "incomplete-synthesis",
+        "fluent-evasion",
+        "criteria-mismatch",
+        # A2 · decomposition / corrupt-success (the Stage 4 v1 cluster)
+        "subtask-dropped",
+        "partial-counted-as-full",
+        "fabricated-progress",
+        # A3 · error & exception handling
+        "raw-error-propagation",
+        "tool-error-misread",
+        "non-existent-file-error",
+        # A4 · feasibility & gracefulness
+        "graceful-failure-honest",
+        "impossible-task-reported",
+        "impossible-task-unhandled",
+        "premature-impossible",
+        # A5 · process quality
+        "right-answer-wrong-process",
+        "goal-met-but-unsafe-wasteful",
+    }
+)
+
+
 class CriterionVerdict(BaseModel):
     """Per-criterion judgment from the task-adaptive LLM-as-judge (I2).
 
@@ -124,6 +165,11 @@ class GoalVerdict(BaseModel):
       - partial_fraction: completion fraction (0..1) for a partially solved
         task. TELEMETRY-ONLY: the orchestration downgrade gate reads ONLY
         ``goal_met``; ``partial_fraction`` MUST NOT be wired into gating.
+      - failure_mode: optional Axis-A taxonomy code (Stage 5 gold-set axis).
+        One of ``GOAL_FAILURE_MODES`` or ``None`` when unclassified / a pass.
+        TELEMETRY-ONLY, like ``partial_fraction`` — it MUST NOT be wired into
+        gating. Stage 4 v1 populates it only for the A2 cluster (spec §9); it
+        defaults to ``None`` so a v1 verdict (which omits the key) is unchanged.
     """
 
     goal_met: bool
@@ -132,6 +178,32 @@ class GoalVerdict(BaseModel):
     rationale: str = ""
     graceful_failure: bool = False
     partial_fraction: float = 0.0
+    failure_mode: str | None = None
+
+    @field_validator("failure_mode", mode="before")
+    @classmethod
+    def _normalize_failure_mode(cls, value: object) -> str | None:
+        """Coerce an absent / blank ``failure_mode`` to ``None``; reject unknown codes.
+
+        Mirrors the permissive spirit of the ``partial_fraction`` handling: a
+        missing or empty value is the no-op default (``None``), not an error.
+        A *present, non-empty* value, however, must be a known Axis-A member
+        code — an unrecognised string is a labelling bug worth surfacing, not
+        silently stored telemetry.
+        """
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped or stripped.lower() in {"none", "null"}:
+                return None
+            if stripped not in GOAL_FAILURE_MODES:
+                raise ValueError(
+                    f"unknown failure_mode {stripped!r}; expected one of "
+                    f"{sorted(GOAL_FAILURE_MODES)} or null"
+                )
+            return stripped
+        raise ValueError(f"failure_mode must be a string or null, got {type(value).__name__}")
 
     @property
     def unmet_conditions(self) -> list[str]:

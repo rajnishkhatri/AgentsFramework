@@ -91,6 +91,23 @@ class TestClassifyOutcome:
         assert rec is not None
         assert rec.error_type == "tool_error"
 
+    def test_tool_error_for_validation_error_prefix(self):
+        """Shell/file_io validators emit 'Error: …' without the word 'tool' (B4)."""
+        err = Exception(
+            "Error: Command 'echo' not in allowlist: ['cat', 'find', 'grep', 'head', 'ls', 'python', 'tail', 'wc']"
+        )
+        outcome, rec = classify_outcome("", err, model="m", step=1)
+        assert outcome == "failure"
+        assert rec is not None
+        assert rec.error_type == "tool_error"
+        assert rec.step == 1
+
+    def test_tool_error_for_file_io_path_validation(self):
+        err = Exception("Error: Path /etc/passwd is outside workspace boundary (/workspace)")
+        outcome, rec = classify_outcome("", err, model="m")
+        assert rec is not None
+        assert rec.error_type == "tool_error"
+
     def test_success_returns_none_record(self):
         outcome, rec = classify_outcome("Some answer", None, model="m")
         assert outcome == "success"

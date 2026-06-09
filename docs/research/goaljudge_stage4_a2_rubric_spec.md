@@ -294,16 +294,26 @@ logic improves. Langfuse/manual traces remain authoritative.
 
 ---
 
-## 9. Stage 5 `failure_mode` mapping (documentation-only)
+## 9. Stage 5 `failure_mode` mapping (schema seam landed 2026-06-08)
 
-`failure_mode` is **not** a `GoalVerdict` field in v1 — this mapping **cannot be pinned by offline
-tests**. It is documentation for the Stage 5 schema handoff only.
+The Stage 5 `failure_mode` axis **now exists** on `GoalVerdict` as the schema handoff
+([`components/schemas.py`](../../components/schemas.py): `failure_mode: str | None = None` +
+`GOAL_FAILURE_MODES`). It is **telemetry-only and default-None** — exactly like `partial_fraction`, the
+orchestration downgrade gate reads **only `goal_met`** and `failure_mode` MUST NOT be wired into gating —
+so adding it is behavior-neutral for Stage 4 (a v1 verdict omitting the key stays unchanged). The A2
+cluster populates these three codes; the full Axis-A vocabulary is reserved for the A1/A3/A4/A5 rollout
+(Stage 5 [spec §3](goaljudge_stage5_goldset_spec.md#3-failure_mode--axis-a-crosswalk)).
 
-| Stage 4 A2 fail pattern | Stage 5 `failure_mode` enum (future) |
+| Stage 4 A2 fail pattern | `failure_mode` code (now a `GoalVerdict` field) |
 |---|---|
 | No evidence + claimed done | `fabricated-progress` |
 | Partial framed as full | `partial-counted-as-full` |
 | Subtask never attempted | `subtask-dropped` |
+
+> The field is parse-tolerated (`_parse_verdict` → `model_validate`) and exported via
+> `verdict.model_dump()`, so the Stage 5 gold set harvests it with no orchestration change. Full Stage 5
+> plan: [`goaljudge_stage5_goldset.plan.md`](../plans/goaljudge_stage5_goldset.plan.md); schema +
+> stratification: [`goaljudge_stage5_goldset_spec.md`](goaljudge_stage5_goldset_spec.md).
 
 ---
 
@@ -351,6 +361,17 @@ wiring + registry alignment **today** but is **not** the behavioral gate — the
 **swapped for Langfuse-replayed verdicts once G3 remediation + the G1/G2 batch land**, at which point the
 same assertions become the real §10.2 confirmation check (no test changes needed). It does **not** by
 itself satisfy this gate.
+
+**Swap mechanism (wired 2026-06-08).** The recorded→replayed swap is now a **single switch**, not a code
+change: [`langfuse_replay.py`](../../tests/fixtures/goaljudge/langfuse_replay.py) loads judge verdicts
+exported from a real batch run, joins them by `trace_id` (the §"Trace ID reference" table — the registry
+carries no `trace_id`), and feeds them to `MultiTraceFakeLLM(traces, replay=…)`, overriding the recorded
+verdict per anchor. Point the `GOALJUDGE_LANGFUSE_EXPORT` env var at the export and re-run the same test —
+the §10.2 assertions are unchanged. The export file (`langfuse_replay_export*.json`) is git-ignored; a
+committed `langfuse_replay_sample.json` smoke-tests the load path (both Form A `verdict` and Form B
+EvalRecord-`ai_response` row shapes). Producing the export is step 4 of the
+[G3 batch runbook](goaljudge_stage4_a2_g3_batch_runbook.md). The companion human-IAA instrument lives in
+[`goaljudge_stage4_iaa/`](goaljudge_stage4_iaa/README.md).
 
 **Current expectation:** shadow validation will **fail on C1 drift cases** (GJ-008, GJ-012, GJ-013)
 *before* the A2 prompt ships — that failure is the motivation for Stage 4. Success = post-prompt

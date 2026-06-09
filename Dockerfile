@@ -8,7 +8,7 @@ RUN pip install --no-cache-dir -r agent/requirements.txt
 COPY . ./agent/
 RUN pip install --no-cache-dir -e ./agent/
 
-RUN mkdir -p /app/agent/logs /app/agent/cache
+RUN mkdir -p /app/agent/logs /app/agent/cache /workspace
 
 ENV WORKSPACE_DIR=/workspace
 ENV TRUST_PROVIDER=local

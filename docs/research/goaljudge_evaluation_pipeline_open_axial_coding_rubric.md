@@ -148,6 +148,13 @@ The loop is **not** linear: criteria drift ([R4](#references)) and newly surface
 
 **Repo mapping.** Langfuse **datasets + dataset runs** are the substrate ([R13](#references), [R17 Langfuse experiments](#references)); the gold set is an **offline asset** under AGENTS.md ("never run live LLM in CI"). The judge runs over the dataset as an experiment, not in CI.
 
+> **Stage 5 v1 plan + spec (2026-06-08):** [`goaljudge_stage5_goldset.plan.md`](../plans/goaljudge_stage5_goldset.plan.md)
+> operationalizes this stage for the repo (schema, stratification, double-labeling + α-gate, contamination
+> firewall), **gated on Stage 4 Confirmation** (the gold set labels against the *confirmed* A2 rubric).
+> Canonical artifact: [`goaljudge_stage5_goldset_spec.md`](goaljudge_stage5_goldset_spec.md). The
+> `failure_mode` multi-axis field landed on `GoalVerdict` (telemetry-only, default-None) as the schema
+> handoff. The labeling instrument: [`goaljudge_stage5_goldset/`](goaljudge_stage5_goldset/README.md).
+
 ---
 
 ## Stage 6 — Evaluator judge calibration (terminates in §2.8 gates)
