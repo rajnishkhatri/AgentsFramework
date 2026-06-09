@@ -1,10 +1,27 @@
-# Playwright E2E Skills
+# Cursor Agent Skills (docs mirror)
+
+Documentation copies of Cursor/Claude skills installed under `.cursor/skills/` or
+`~/.cursor/skills/`. This folder versions them with the repo so they're
+discoverable and reviewable in PRs.
+
+## LLM evaluation
+
+| Skill | Scope | Start here |
+| --- | --- | --- |
+| [`llm-eval-grounded-theory`](llm-eval-grounded-theory/SKILL.md) | **Generic, portable.** Open coding → axial coding → synthetic strata → rubric → gold set → judge calibration → continuous monitoring. GoalJudge repo artifacts as worked example. | [SKILL.md](llm-eval-grounded-theory/SKILL.md) |
+
+Implementation plan: [`docs/plans/llm_eval_pipeline_skill.plan.md`](../plans/llm_eval_pipeline_skill.plan.md).
+
+Related research: [`goaljudge_evaluation_pipeline_open_axial_coding_rubric.md`](../research/goaljudge_evaluation_pipeline_open_axial_coding_rubric.md).
+
+---
+
+## Playwright E2E Skills
 
 Two complementary skills for end-to-end testing this app's streaming agent UI with
-Playwright. These are documentation copies of the skills installed at
-`~/.claude/skills/` (where Claude Code loads them); this folder versions them with
-the repo so they're discoverable and reviewable in PRs. The `evals/` test
-scaffolding and license files are intentionally omitted here.
+Playwright. Installed copies live at `~/.claude/skills/` (Claude Code) and
+`.cursor/skills/` where applicable. The `evals/` test scaffolding and license
+files are intentionally omitted here.
 
 ## The two skills
 
