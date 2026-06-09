@@ -16,9 +16,16 @@ const COMPOSER_SELECTORS = [
   "[contenteditable='true']",
 ].join(", ");
 
+// The assistant turn is rendered by `components/chat/StreamingMarkdown.tsx`
+// as an <article> whose streamed text lives in a nested
+// `div[aria-live='polite']` (the live region is the DIV, NOT the article --
+// FE-AP-5). We therefore target that content DIV as the primary handle.
+// `[aria-live='polite']` deliberately excludes Next.js's route announcer,
+// which is `div[aria-live='assertive'][role='alert']`. The remaining
+// entries are structural/legacy fallbacks for other surfaces.
 const MESSAGE_SELECTORS = [
+  "article div[aria-live='polite']",
   "[data-testid='message-content']",
-  "article[aria-live='polite']",
   "[role='log']",
   ".message-content",
 ].join(", ");
@@ -87,15 +94,54 @@ export async function sendMessage(
 }
 
 /**
- * Wait until at least one assistant response region is visible. Returns the
- * locator so callers can chain text-content assertions.
+ * Wait until the assistant response text has **settled** (non-empty and stable
+ * across `stableSamples` consecutive reads), then return the message locator.
+ *
+ * `StreamingMarkdown` renders a live *status feed*: "Using tools: …" lines are
+ * progressively replaced by the streamed answer. We poll the content region and
+ * return once the trimmed text stops changing. This captures the full answer for
+ * runs that stream one (observed streaming 19→905+ chars over several seconds on
+ * Cloud Run) and faithfully captures the status line for runs that never emit a
+ * rendered answer.
+ *
+ * NOTE on what "settled" means: do NOT assume `busy=false` / composer-enabled
+ * implies the stream finished. On Cloud Run we observed runs where the composer
+ * is never disabled and the DOM stays frozen at "Using tools: file_io…" — the
+ * final answer is simply never rendered for that run. The text-stability poll
+ * is therefore the source of truth, not the composer state.
+ *
+ * We avoid gating on the SSE response object's `finished()`: behind the
+ * `page.route` thread-bridge intercept it does not resolve for the long-lived
+ * event stream and hung the entire 180s test timeout.
  */
 export async function waitForResponse(
   page: Page,
-  opts?: { timeoutMs?: number },
+  opts?: { timeoutMs?: number; stableSamples?: number; sampleGapMs?: number },
 ): Promise<Locator> {
   const m = messages(page).first();
-  await m.waitFor({ timeout: opts?.timeoutMs ?? 30_000 });
+  const timeout = opts?.timeoutMs ?? 30_000;
+  const gap = opts?.sampleGapMs ?? 700;
+  const needStable = opts?.stableSamples ?? 3;
+  const deadline = Date.now() + timeout;
+
+  // Ensure the region exists and has produced *some* text.
+  await expect
+    .poll(async () => ((await m.textContent()) ?? "").trim().length, { timeout })
+    .toBeGreaterThan(0);
+
+  // Confirm the rendered text has stopped changing.
+  let last = "";
+  let stable = 0;
+  while (Date.now() < deadline) {
+    const cur = ((await m.textContent()) ?? "").trim();
+    if (cur.length > 0 && cur === last) {
+      if (++stable >= needStable) return m;
+    } else {
+      stable = 0;
+      last = cur;
+    }
+    await page.waitForTimeout(gap);
+  }
   return m;
 }
 
