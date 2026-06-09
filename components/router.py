@@ -105,10 +105,17 @@ def select_planning_depth(
         "roadmap",
         "design",
     )
-    if any(marker in lowered for marker in multi_part_markers):
+    has_multi_part_marker = any(
+        marker in lowered for marker in multi_part_markers
+    )
+    if has_multi_part_marker:
         complexity_score += 1
 
-    if any(marker in lowered for marker in (" and ", " then ", " also ", "\n- ", "\n1.")):
+    has_conjunction = any(
+        marker in lowered
+        for marker in (" and ", " then ", " also ", "\n- ", "\n1.")
+    )
+    if has_conjunction:
         complexity_score += 1
 
     if task_input.count("\n") >= 2:
@@ -117,15 +124,22 @@ def select_planning_depth(
     if lowered.count("?") >= 2:
         complexity_score += 1
 
-    # Composite imperative chain: explicit enumeration "(1) … (2) …" with at
-    # least two markers, OR a "do X, do Y, and do Z" comma-then-and pattern.
-    # Without this, prompts like "Create a file, list its contents, and query
-    # the API" score 1 (just " and ") and fall through to L0 / max_steps=1,
-    # so the planner truncates to a single subtask and the agent fabricates
-    # the rest. (Stage 4 §10.2 anchors GJ-010, GJ-011, GJ-012.)
+    # Composite imperative chain detector. Explicit enumeration "(1) … (2) …"
+    # is a strong, orthogonal signal (subtask count is observably ≥2), so it
+    # always contributes. The comma-then-and pattern, however, measures the
+    # same underlying property as the conjunction + multi-part-marker
+    # signals; double-counting would push architecture-style prompts
+    # ("Compare …, design …, and produce …") from their intended L1 into
+    # L2. So comma-then-and only fires when the other multi-part signals
+    # have not. This still flips GJ-010/011/012 from L0 to L1 (they have no
+    # multi-part markers and only the lone " and " trigger), without
+    # double-stacking on the existing L1/L2 boundaries.
     if len(re.findall(r"\([1-9]\)", task_input)) >= 2:
         complexity_score += 1
-    elif re.search(r",[^,]+,\s*(?:and|then)\s", lowered) is not None:
+    elif (
+        not has_multi_part_marker
+        and re.search(r",[^,]+,\s*(?:and|then)\s", lowered) is not None
+    ):
         complexity_score += 1
 
     if complexity_score >= 3:

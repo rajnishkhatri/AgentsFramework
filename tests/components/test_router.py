@@ -263,6 +263,30 @@ class TestPlanningDepth:
                 "L0",
                 "simple-initial-task",
             ),
+            # TAP-4 over-flag guard (CI regression from this PR): an
+            # architecture-style prompt already scoring on multi_part_markers
+            # + " and " must NOT *also* pick up the comma-then-and bonus, or
+            # the L1-expected synthetic e2e fixtures
+            # (``todo_file_progression``, ``large_output_offload``) get
+            # pushed into L2. The comma-then-and heuristic is gated on the
+            # absence of multi_part_markers for exactly this reason.
+            (
+                "Compare two architecture approaches, design a migration "
+                "roadmap, and then produce a concise implementation summary "
+                "with testing notes and explicit constraints.",
+                0,
+                0,
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
+            (
+                "Design and compare rollout options, then summarize risks, "
+                "constraints, and mitigation trade-offs for the migration.",
+                0,
+                0,
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
         ],
     )
     def test_select_planning_depth_levels(
