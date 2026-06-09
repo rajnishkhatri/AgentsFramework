@@ -16,6 +16,7 @@ Branch order (highest priority first):
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from components.routing_config import RoutingConfig
@@ -104,16 +105,41 @@ def select_planning_depth(
         "roadmap",
         "design",
     )
-    if any(marker in lowered for marker in multi_part_markers):
+    has_multi_part_marker = any(
+        marker in lowered for marker in multi_part_markers
+    )
+    if has_multi_part_marker:
         complexity_score += 1
 
-    if any(marker in lowered for marker in (" and ", " then ", " also ", "\n- ", "\n1.")):
+    has_conjunction = any(
+        marker in lowered
+        for marker in (" and ", " then ", " also ", "\n- ", "\n1.")
+    )
+    if has_conjunction:
         complexity_score += 1
 
     if task_input.count("\n") >= 2:
         complexity_score += 1
 
     if lowered.count("?") >= 2:
+        complexity_score += 1
+
+    # Composite imperative chain detector. Explicit enumeration "(1) … (2) …"
+    # is a strong, orthogonal signal (subtask count is observably ≥2), so it
+    # always contributes. The comma-then-and pattern, however, measures the
+    # same underlying property as the conjunction + multi-part-marker
+    # signals; double-counting would push architecture-style prompts
+    # ("Compare …, design …, and produce …") from their intended L1 into
+    # L2. So comma-then-and only fires when the other multi-part signals
+    # have not. This still flips GJ-010/011/012 from L0 to L1 (they have no
+    # multi-part markers and only the lone " and " trigger), without
+    # double-stacking on the existing L1/L2 boundaries.
+    if len(re.findall(r"\([1-9]\)", task_input)) >= 2:
+        complexity_score += 1
+    elif (
+        not has_multi_part_marker
+        and re.search(r",[^,]+,\s*(?:and|then)\s", lowered) is not None
+    ):
         complexity_score += 1
 
     if complexity_score >= 3:

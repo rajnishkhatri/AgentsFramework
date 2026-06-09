@@ -195,3 +195,26 @@ def _compact(value: Any, *, max_chars: int) -> str:
     if len(text) > max_chars:
         text = text[:max_chars] + "…"
     return text
+
+
+def summarize_tool_calls(
+    evidence: list[dict[str, Any]] | None,
+    *,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
+    """Compact, queryable per-call audit for the eval.goal_judge telemetry.
+
+    Returns the last ``limit`` tool calls with only the tool name and the
+    sorted set of arg keys — enough to write Langfuse queries like "show me
+    all GoalJudge verdicts where web_search wasn't called" without
+    inlining full tool args/outputs (those live in the evidence digest).
+    """
+    if not evidence:
+        return []
+    return [
+        {
+            "tool_name": entry.get("tool_name", "?"),
+            "args_keys": sorted((entry.get("tool_input") or {}).keys()),
+        }
+        for entry in evidence[-limit:]
+    ]

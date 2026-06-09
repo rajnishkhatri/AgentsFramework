@@ -27,7 +27,7 @@ from components.evaluator import (
     evaluate_task_outcome,
     parse_llm_response,
 )
-from components.goal_judge import GoalJudge
+from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
 from components.plan_builder import validate_plan_mece
@@ -1312,9 +1312,14 @@ def build_graph(
 
                         from services import eval_capture, eval_telemetry
 
+                        gj_tool_results = state.get("tool_results") or []
                         gj_ai_input = {
                             "task_input": state.get("task_input", "")[:500],
                             "success_conditions": success_conditions,
+                            "final_answer": (content or "")[:500],
+                            "evidence_digest": _summarize_evidence(gj_tool_results),
+                            "tool_calls_summary": summarize_tool_calls(gj_tool_results),
+                            "plan_steps": len(plan_steps),
                         }
                         gj_ai_response = {
                             **verdict.model_dump(),
