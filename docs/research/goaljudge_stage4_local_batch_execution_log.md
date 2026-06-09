@@ -37,6 +37,6 @@
 ## Next steps (Confirmation gate §8.3)
 
 1. **G3 full batch** (22 cases) after GCP deploy unblocks Playwright path, or continue local with `--yes`.
-2. **Human IAA** — blind grade [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](goaljudge_stage4_iaa/goaljudge_stage4_a2_iaa_grader_sheet.csv); compute κ via `scripts/compute_goaljudge_stage4_iaa_kappa.py`.
+2. **Human IAA** — blind grade [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](../IAA/goalJudge/goaljudge_stage4_a2_iaa_grader_sheet.csv); compute κ via `scripts/compute_goaljudge_stage4_iaa_kappa.py`.
 3. **Re-run behavioral shadow** after agent/judge alignment improves; gate passes when `test_live_export_matches_registry_when_env_set` is green.
 4. **GCP blockers** unchanged — see [`goaljudge_stage4_gcp_batch_execution_log.md`](goaljudge_stage4_gcp_batch_execution_log.md).

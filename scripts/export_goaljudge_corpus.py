@@ -227,13 +227,46 @@ def export(
     return n
 
 
+def _case_map_from_jsonl(jsonl_path: str) -> dict[str, Any]:
+    """Map deterministic trace_id → registry case from a Playwright batch JSONL."""
+    from tests.fixtures.goaljudge.case_registry import CASE_BY_ID
+
+    case_map: dict[str, Any] = {}
+    p = Path(jsonl_path)
+    if not p.is_absolute():
+        p = Path(__file__).resolve().parent.parent / p
+    for line in p.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        case_id = row.get("case_id")
+        trace_id = row.get("trace_id")
+        if case_id and trace_id and case_id in CASE_BY_ID:
+            case_map[trace_id] = CASE_BY_ID[case_id]
+    return case_map
+
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Export GoalJudge runs")
     parser.add_argument("--user-id", help="Filter by user_id")
     parser.add_argument("--hours", type=int, default=2, help="Hours back to fetch")
     parser.add_argument("--out", default="cache/goaljudge_eval/run.jsonl", help="Output path")
+    parser.add_argument(
+        "--trace-ids-from-jsonl",
+        metavar="PATH",
+        help="Scope export to trace_ids listed in a Playwright batch JSONL",
+    )
     args = parser.parse_args()
 
-    count = export(out_path=args.out, hours=args.hours, user_id=args.user_id)
+    case_map = None
+    if args.trace_ids_from_jsonl:
+        case_map = _case_map_from_jsonl(args.trace_ids_from_jsonl)
+
+    count = export(
+        out_path=args.out,
+        hours=args.hours,
+        user_id=args.user_id,
+        case_map=case_map,
+    )
     print(f"wrote {count} rows to {args.out}")

@@ -28,6 +28,9 @@ GJ_CASE_FILTER=GJ-010 pnpm exec playwright test e2e/full-stack/goaljudge-batch.s
 # Full subset GJ-001…GJ-022 (includes B-variants GJ-001B, GJ-003B):
 pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts
 
+# Stage 5 pilot — 43 registry cases (production + scaffolds, excludes GJ-STRESS-*):
+GOALJUDGE_BATCH_MODE=pilot pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts
+
 # Cap size while iterating:
 GOALJUDGE_BATCH_LIMIT=5 pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts
 ```
@@ -39,10 +42,12 @@ Env knobs (from the spec header): `GJ_CASE_FILTER` (single case),
 
 ## How the cases are selected
 
-`filterCases({ caseFilter, limit })` → `walkthroughCases()` returns the GJ-001…
-GJ-022 subset, numeric-sorted, **including** B-variants (GJ-001B, GJ-003B) — so
-the "22-case" subset is 22 *distinct ids* but **not** a clean GJ-001..GJ-022
-sequence. Regenerate the JSON from the Python registry when cases change:
+`filterCases({ caseFilter, limit })` selects cases via `GOALJUDGE_BATCH_MODE`:
+
+- `walkthrough` (default) → `walkthroughCases()` — GJ-001…GJ-022, numeric-sorted,
+  **including** B-variants (GJ-001B, GJ-003B).
+- `pilot` → `pilotRegistryCases()` — 43 Stage 5 pilot IDs from
+  `PILOT_REGISTRY_IDS` (all pilot sheet rows except `GJ-STRESS-*`). Regenerate the JSON from the Python registry when cases change:
 
 ```bash
 python scripts/export_goaljudge_registry_json.py
@@ -71,9 +76,10 @@ let the server own the trace.
 `appendCapture(...)` writes one JSONL row per case to
 `cache/goaljudge_eval/ui_batch.jsonl`:
 `case_id, trace_id, session_id, target_code, target_axes, prompt, thread_title,
-response_text (sliced to 4000), tool_card_count, screenshot_path, finished_at,
-base_url`. A full-page screenshot per case is also attached to the Playwright
-report and saved under the screenshot dir.
+response_text (sliced to 4000), tool_card_count, screenshot_path, outcome
+("pass" | "fail"), error (fail only), finished_at, base_url`. A full-page
+screenshot per case is also attached to the Playwright report and saved under
+the screenshot dir: pass → `{caseId}.png`, fail → `{caseId}_FAILED.png`.
 
 The capture's success assertion is intentionally minimal —
 `expect(responseText.length).toBeGreaterThan(0)` — because the *analysis* (did it

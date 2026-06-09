@@ -472,9 +472,9 @@ If **Reconfirm** or **G5** fails:
 | rubric-spec | Author `goaljudge_stage4_a2_rubric_spec.md` | done ✓ |
 | prompt-a2 | Add CORRUPT-SUCCESS section to `goal_judge_system_prompt.j2` (≤15 lines) | done ✓ |
 | offline-fixtures | GJ-010/012 fixtures (registry-anchored, F7) + A2 prompt marker tests | done ✓ |
-| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | **in progress** — code remediation landed (B3/B4/B5, adjudication log, batch runner fixes); **local pass-1 batch** complete ([`goaljudge_stage4_local_batch_execution_log.md`](../research/goaljudge_stage4_local_batch_execution_log.md): 5/5 anchors, 3/5 behavioral miss); **GCP batch blocked** ([`goaljudge_stage4_gcp_batch_execution_log.md`](../research/goaljudge_stage4_gcp_batch_execution_log.md)) |
-| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending — instrument + κ script ready ([`goaljudge_stage4_iaa/`](../research/goaljudge_stage4_iaa/README.md)); **blind human grading required** |
-| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **behavioral gate wired** (`test_live_export_matches_registry_when_env_set` + `export_goaljudge_shadow_replay.py`); **pass-1 local run FAIL** (2/5 pass: GJ-008, GJ-019) — see local batch log; re-run after alignment |
+| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | **CLEARED** — GCP batch 22/22 ([`goaljudge_stage4_gcp_batch_execution_log.md`](../research/goaljudge_stage4_gcp_batch_execution_log.md)); G2 E1 export 8/8 anchors from Langfuse ([`goaljudge_stage4_shadow_execution_log.md`](../research/goaljudge_stage4_shadow_execution_log.md)) |
+| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | **CLEARED** — κ = 1.0 ([`IAA/goalJudge/goaljudge_stage4_a2_iaa_results.md`](../IAA/goalJudge/goaljudge_stage4_a2_iaa_results.md)) |
+| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **FAIL** (3/5 GCP pass: GJ-008/001B/019) — GJ-010 pf precision (⅔ vs 0.67), GJ-012 C1 drift; see [`goaljudge_stage4_shadow_execution_log.md`](../research/goaljudge_stage4_shadow_execution_log.md) |
 | rollback-trigger | If Reconfirm/G5 fails, execute §8.4 (iterate or re-pick) | conditional |
 | stage4-recipe | Optional: `02_stage4_a2_rubric.md` recipe + crosswalk lesson | done ✓ (5 lessons mirroring Stage 3 style; recipe 01 "What Comes Next" + phase3 §8 bridge link to it) |
 
