@@ -128,7 +128,7 @@ The batch output feeds the two committed §8.3 instruments directly:
 ### → Human IAA (κ ≥ 0.8)
 
 The fresh post-G3 traces are the second-pass grading set for the
-[IAA instrument](goaljudge_stage4_iaa/README.md): graders score `GJ-011/013/003B` (gradable only after
+[IAA instrument](../IAA/goalJudge/README.md): graders score `GJ-011/013/003B` (gradable only after
 this batch) alongside the five already-gradable anchors, blind, and κ is computed on the `a2_fail`
 column. κ ≥ 0.8 on the gate-eligible set is the other §8.3 blocker.
 
@@ -154,5 +154,5 @@ column. κ ≥ 0.8 on the gate-eligible set is the other §8.3 blocker.
 | Stage 4 plan (§8.3 Confirmation gate, §8.4 rollback) | [`../plans/goaljudge_stage4_a2_rubric.plan.md`](../plans/goaljudge_stage4_a2_rubric.plan.md) |
 | Stage 4 spec (§8 anchors + trace IDs, §10.2 shadow table) | [`goaljudge_stage4_a2_rubric_spec.md`](goaljudge_stage4_a2_rubric_spec.md) |
 | Verdict-swap loader | [`../../tests/fixtures/goaljudge/langfuse_replay.py`](../../tests/fixtures/goaljudge/langfuse_replay.py) |
-| Human IAA instrument | [`goaljudge_stage4_iaa/README.md`](goaljudge_stage4_iaa/README.md) |
+| Human IAA instrument | [`goalJudge/README.md`](../IAA/goalJudge/README.md) |
 | Batch runner | [`../../scripts/run_goaljudge_synthetic_batch.py`](../../scripts/run_goaljudge_synthetic_batch.py) |

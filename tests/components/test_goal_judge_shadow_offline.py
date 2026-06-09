@@ -108,8 +108,9 @@ class TestShadowValidationHarness:
         judge, _ = _shadow_judge()
         verdict = await _run(judge, trace)
         assert verdict.goal_met is trace.expected_goal_met
+        # spec §10.2: partial_fraction ≈ target (±0.05) — Langfuse stores ⅔ as 0.6666…
         assert verdict.partial_fraction == pytest.approx(
-            trace.expected_partial_fraction
+            trace.expected_partial_fraction, abs=0.05
         )
 
     @pytest.mark.asyncio
@@ -119,7 +120,7 @@ class TestShadowValidationHarness:
         judge, _ = _shadow_judge()
         verdict = await _run(judge, trace)
         assert verdict.goal_met is True
-        assert verdict.partial_fraction == pytest.approx(1.0)
+        assert verdict.partial_fraction == pytest.approx(1.0, abs=0.05)
         assert trace.target_code not in _A2_CODES
 
     @pytest.mark.asyncio
@@ -142,7 +143,7 @@ class TestShadowValidationHarness:
         judge, _ = _shadow_judge()
         verdict = await _run(judge, trace)
         assert verdict.goal_met is False
-        assert verdict.partial_fraction == pytest.approx(0.0)
+        assert verdict.partial_fraction == pytest.approx(0.0, abs=0.05)
 
     @pytest.mark.asyncio
     async def test_all_a2_anchors_fail_goal_met(self):
@@ -297,6 +298,7 @@ async def _assert_replay_matches_registry(replay: dict[str, str]) -> None:
             continue
         verdict = await _run(judge, trace)
         assert verdict.goal_met is trace.expected_goal_met, trace.registry_id
+        # spec §10.2: ±0.05 tolerance on partial_fraction
         assert verdict.partial_fraction == pytest.approx(
-            trace.expected_partial_fraction
+            trace.expected_partial_fraction, abs=0.05
         ), trace.registry_id

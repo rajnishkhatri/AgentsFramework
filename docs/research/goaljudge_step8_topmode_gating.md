@@ -71,11 +71,12 @@ self-consistent or reliably applicable). The machine-readable form with owners i
 
 | Gate | Status | What must happen |
 |---|---|---|
-| **G1 · Registry join / batch re-run** | **OPEN** | UI runs used random `workflow_id`s (no registry join, Axis-B5). Re-run GJ-001–GJ-022 with deterministic `trace_id`s + `user_id=synthetic-saturation-user` via `scripts/run_goaljudge_synthetic_batch.py`. |
-| **G2 · `eval.goal_judge` export (E1)** | **OPEN** (code landed) | E1 implemented: `eval.goal_judge` Langfuse observation after `eval_capture.record`; export script reads Langfuse when `logs/evals.log` absent. **Pending:** prod deploy + smoke trace verification. |
-| **G3 · Axis-B environment correction** | **OPEN** (code landed) | B3 `/workspace` mount + B4 `tool_error` for validation failures + agent guidance partial. Adjudication log: [`goaljudge_stage4_b1b2_adjudication_log.md`](goaljudge_stage4_b1b2_adjudication_log.md). **Pending:** G1 batch re-run. |
-| **G4 · GCS posture confirmed** | **OPEN** | Prod `/health` still reports `source=env`, `enabled=false` (2026-06-09). Redeploy backend + apply `GOAL_JUDGE_*` env from `cloud-run-backend.tf`. |
-| **G5 · Human IAA κ ≥ 0.8 on Axis-A** | **OPEN** (instrument ready) | κ script: `scripts/compute_goaljudge_stage4_iaa_kappa.py`. Pass 1 (5 anchors) after PR3 smoke; pass 2 (+3) after batch. **Blind human grading session required.** |
+| **G1 · Registry join / batch re-run** | **CLEARED** | GCP Playwright batch `gcp_2026-06-09`: 22/22 deterministic `trace_id` join — [`goaljudge_stage4_gcp_batch_execution_log.md`](goaljudge_stage4_gcp_batch_execution_log.md). |
+| **G2 · `eval.goal_judge` export (E1)** | **CLEARED** | 8/8 anchor `eval.goal_judge` rows exported from Langfuse — [`goaljudge_stage4_shadow_execution_log.md`](goaljudge_stage4_shadow_execution_log.md). |
+| **G3 · Axis-B environment correction** | **CLEARED** | B3/B4 landed; GCP batch re-run complete 2026-06-09. |
+| **G4 · GCS posture confirmed** | **CLEARED** | GCP `/health`: `enabled=true`, `downgrade_enabled=false`, `source=gcs:ops/goal_judge_config.json`. |
+| **G5 · Human IAA κ ≥ 0.8 on Axis-A** | **CLEARED** | κ = 1.0 on gate-eligible set — [`../IAA/goalJudge/goaljudge_stage4_a2_iaa_results.md`](../IAA/goalJudge/goaljudge_stage4_a2_iaa_results.md). |
+| **Shadow · behavioral gate (§10.2)** | **OPEN** | GCP export + gate run 2026-06-09: **FAIL** (3/5) — GJ-010 pf precision, GJ-012 C1 drift — [`goaljudge_stage4_shadow_execution_log.md`](goaljudge_stage4_shadow_execution_log.md). |
 
 ### Consistency gates (from Steps 6–7 — close these *before* the re-run is coded)
 

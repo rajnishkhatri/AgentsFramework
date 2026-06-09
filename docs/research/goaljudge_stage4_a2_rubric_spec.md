@@ -371,7 +371,7 @@ the §10.2 assertions are unchanged. The export file (`langfuse_replay_export*.j
 committed `langfuse_replay_sample.json` smoke-tests the load path (both Form A `verdict` and Form B
 EvalRecord-`ai_response` row shapes). Producing the export is step 4 of the
 [G3 batch runbook](goaljudge_stage4_a2_g3_batch_runbook.md). The companion human-IAA instrument lives in
-[`goaljudge_stage4_iaa/`](goaljudge_stage4_iaa/README.md).
+[`goalJudge/`](../IAA/goalJudge/README.md).
 
 **Current expectation:** shadow validation will **fail on C1 drift cases** (GJ-008, GJ-012, GJ-013)
 *before* the A2 prompt ships — that failure is the motivation for Stage 4. Success = post-prompt

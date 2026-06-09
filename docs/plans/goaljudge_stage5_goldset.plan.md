@@ -8,14 +8,13 @@
 > ([`rubricgoldsetreseachforgoaljudge.md`](../research/rubricgoldsetreseachforgoaljudge.md)); this plan
 > operationalizes it for **this** repo and wires it to the A2 rubric Stage 4 produced.
 >
-> **Hard gate.** Stage 5 is **blocked on the Stage 4 *Confirmation* gate** (plan
-> [§8.3](goaljudge_stage4_a2_rubric.plan.md)): the A2 rubric must be **confirmed** — G1–G10 cleared,
-> human IAA **κ ≥ 0.8**, and the shadow run flipped from scaffold to behavioral — before a ~250-item
-> gold set is *labeled against it*. Building the set on an unconfirmed rubric (κ currently 0.50–0.77)
-> would label against a definition humans have not agreed on — the exact "poisoned counts" failure the
-> three-axis methodology exists to prevent ([phase 3 §1.2](../research/goaljudge_phase3_axial_coding.md)).
-> **Everything authorable now stops at the live/human boundary** (mirrors the Stage 4 Confirmation-gate
-> prep): schema seam, specs, protocols, and instruments — **not** the live labeling itself.
+> **Three-tier gates (revised 2026-06-09).** Stage 5 splits work across three tiers — see [§3](#3-what-done-means--the-three-tier-gate-split).
+> **Tier 1 (Pilot)** allows early pilot-50 double-labeling + α against the PROVISIONAL A2 rubric while G5
+> G5 κ PASS; shadow behavioral gate **FAIL** (3/5, 2026-06-09). **Tier 2 (Confirmation)** blocked on shadow pass — unlocks full ~250 assembly.
+> **Tier 3 (Dataset)** — α ≥ 0.8 on the full set + test-split freeze — makes `goaljudge_goldset_v1`
+> trusted for Stage 6. Building the *full* set on an unconfirmed rubric would inherit κ disagreement as
+> noise ([phase 3 §1.2](../research/goaljudge_phase3_axial_coding.md)); the pilot tier accepts that risk
+> with `rubric_version=stage4_provisional` and a re-label trigger if G5 fails (§8.4 rollback).
 >
 > **Date:** 2026-06-08. **Scope:** Stage 5 v1 — the gold-set schema, stratification design, double-
 > labeling + α-gate protocol, and contamination firewall. **Out of scope:** Stage 6 calibration (P/R/F1,
@@ -42,7 +41,7 @@
 
 - [1. Context and scope boundary](#1-context-and-scope-boundary)
 - [2. The blocking dependency on Stage 4 Confirmation](#2-the-blocking-dependency-on-stage-4-confirmation)
-- [3. What "done" means — the two-gate split](#3-what-done-means--the-two-gate-split)
+- [3. What "done" means — the three-tier gate split](#3-what-done-means--the-three-tier-gate-split)
 - [4. Phase 0 — Prerequisites (Stage 4 confirmed + tooling)](#4-phase-0--prerequisites-stage-4-confirmed--tooling)
 - [5. Phase 1 — Gold-set schema and stratification spec](#5-phase-1--gold-set-schema-and-stratification-spec)
 - [6. Phase 2 — `failure_mode` schema seam (LANDED)](#6-phase-2--failure_mode-schema-seam-landed)
@@ -115,12 +114,13 @@ This is the **load-bearing constraint** of Stage 5 and the reason most of it is 
 |---|---|---|
 | **G1/G2/G4 batch re-run + E1 export** under `synthetic-saturation-user` | Produces the **registry-joined, `eval.goal_judge`-bearing traces** that become gold-set *items* (with a deterministic `trace_id`↔`task_id` join). Without it there is no clean trace substrate to stratify. | [G3 batch runbook](../research/goaljudge_stage4_a2_g3_batch_runbook.md) |
 | **G3 Axis-B remediation** | A case with an un-corrected Axis-B confound is **not eligible** for the behavioral strata (it measures the sandbox, not the agent). G3 is what makes a case admissible. | [phase 3 §8](../research/goaljudge_phase3_axial_coding.md) |
-| **Human IAA κ ≥ 0.8** on the A2 category | The gold set **labels against the A2 rubric**. If humans don't agree on the *category* (κ ≥ 0.8), labeling ~250 items against it inherits that disagreement as noise. κ-on-category is the prerequisite to α-on-`goal_met`. | [Stage 4 IAA](../research/goaljudge_stage4_iaa/README.md) |
+| **Human IAA κ ≥ 0.8** on the A2 category | The gold set **labels against the A2 rubric**. If humans don't agree on the *category* (κ ≥ 0.8), labeling ~250 items against it inherits that disagreement as noise. κ-on-category is the prerequisite to α-on-`goal_met`. | [Stage 4 IAA](../IAA/goalJudge/README.md) |
 | **Shadow run flipped to behavioral** (verdict swap) | Confirms the *confirmed* rubric actually fires as specified on real traces before those traces seed the gold set. | [Stage 4 spec §10.2](../research/goaljudge_stage4_a2_rubric_spec.md) |
 
-**Consequence.** Phases 1–3 + 6 (schema, spec, protocol, the landed seam) are **authorable now** and are
-the subject of this plan. **Phase 4 (assembly) is the live/human boundary** — it cannot begin until the
-four rows above are green. This plan makes Phase 4 *executable on day one of confirmation*, not sooner.
+**Consequence.** Phases 1–3 + 6 (schema, spec, protocol, the landed seam) are **authorable now**.
+**Tier 1 pilot labeling** may begin once batch traces are exported (the four rows above are not required
+for the pilot). **Tier 3 full assembly** cannot begin until all four rows are green — this plan makes
+that work *executable on day one of confirmation*.
 
 > **Two distinct IAA numbers — do not conflate.** Stage 4 G5 computes **Cohen's/Fleiss' κ on the Axis-A
 > *category*** (is this trace A2?) — the rubric-validity instrument. Stage 5 computes **Krippendorff's α
@@ -130,10 +130,35 @@ four rows above are green. This plan makes Phase 4 *executable on day one of con
 
 ---
 
-## 3. What "done" means — the two-gate split
+## 3. What "done" means — the three-tier gate split
 
-Mirroring Stage 4's Code-vs-Confirmation discipline, Stage 5 separates **authorable scaffolding** from
-the **live-validated dataset**.
+Mirroring Stage 4's Code-vs-Confirmation discipline, Stage 5 separates **authorable scaffolding**,
+**early pilot labeling**, and the **full live-validated dataset**.
+
+```mermaid
+flowchart TD
+  subgraph tier1 [Tier 1 — Pilot early OK]
+    Pilot50["Pilot ~50 double-label"]
+    AlphaPilot["α on pilot goal_met"]
+    IAAReports["docs/IAA/goalJudge/goldset/"]
+  end
+  subgraph tier2 [Tier 2 — Still blocked]
+    S4Conf["Stage 4 Confirmation κ≥0.8 + shadow pass"]
+  end
+  subgraph tier3 [Tier 3 — Full dataset]
+    Full250["~250 assemble + α≥0.8 + freeze test"]
+    S6["Stage 6 calibration"]
+  end
+  Pilot50 --> AlphaPilot --> IAAReports
+  S4Conf --> Full250 --> S6
+  AlphaPilot -. "guidelines feed full run" .-> Full250
+```
+
+| Tier | Gate | What may proceed | Risk accepted |
+|---|---|---|---|
+| **Pilot (Tier 1)** | Instruments ready + GCP batch traces exported | Pilot-50 labeling by same 2 annotators; α on pilot; guideline revision | Labels against **PROVISIONAL** A2 rubric; re-label if G5 fails or rubric iterates (§8.4 rollback) |
+| **Confirmation (Tier 2)** | G5 κ≥0.8 + shadow behavioral pass + G1–G10 | Unlock full ~250 assembly | — |
+| **Dataset (Tier 3)** | α≥0.8 on full set + test-split freeze | `goaljudge_goldset_v1` trusted for Stage 6 | — |
 
 ### 3.1 Prep gate — "instruments ready" (authorable now)
 
@@ -141,19 +166,33 @@ All of the following may land while Stage 4 Confirmation is still open:
 
 - `failure_mode` schema seam merged (telemetry-only, default-None — **LANDED**, §6).
 - Gold-set schema + stratification spec merged ([§5](#5-phase-1--gold-set-schema-and-stratification-spec)).
-- Double-labeling + α-gate protocol + blank label-sheet template merged ([§7](#7-phase-3--double-labeling--α-gate-protocol)).
+- Double-labeling + α-gate protocol in [`docs/IAA/goalJudge/goldset/`](../IAA/goalJudge/goldset/README.md)
+  (canonical home for label sheets + α results; research dir cross-links only).
 - Contamination-firewall (dev/test split, provenance, hash-freeze) design merged ([§8](#8-phase-4--dataset-assembly-and-contamination-firewall)).
+- `scripts/compute_goaljudge_stage5_alpha.py` + pilot sheet scaffold (**LANDED** 2026-06-09).
 - Offline pins green: `pytest tests/components/test_goal_judge.py -q` (the `failure_mode` axis + enum
   integrity), full suite still green.
 - `goal_judge_downgrade_enabled` remains `false`.
 
-### 3.2 Dataset gate — "gold set trusted" (needs Stage 4 confirmed + 2 annotators)
+### 3.2 Pilot gate — "pilot guidelines validated" (Tier 1, early OK)
+
+The pilot may proceed **before** Stage 4 Confirmation clears:
+
+- Pilot sheet populated from `gcp_2026-06-09` batch (22 production) + synthetic dev augment
+  ([`goaljudge_stage5_goldset_pilot_sheet.csv`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv)).
+- Same 2 annotators as Stage 4 IAA; `rubric_version=stage4_provisional` on every row.
+- **Krippendorff's α ≥ 0.8 on pilot `goal_met`**; disagreement post-mortem documented; guidelines
+  updated for the full run.
+- **Re-label trigger:** if Stage 4 G5 later fails (κ < 0.8) or §8.4 rollback fires, mark pilot rows
+  `superseded` and re-label after rubric revision.
+
+### 3.3 Dataset gate — "gold set trusted" (Tier 3, needs Tier 2 + 2 annotators)
 
 `goaljudge_goldset_v1` is **trusted** (and usable by Stage 6) only when **all** hold:
 
 - Stage 4 A2 rubric **confirmed** (§2 — all four rows green).
 - ~250 items assembled, stratified per [§5](#5-phase-1--gold-set-schema-and-stratification-spec), each
-  **double-labeled** by ≥2 independent annotators with disagreements adjudicated.
+  **double-labeled** by ≥2 independent annotators with disagreements adjudicated (guidelines refined from pilot).
 - **Krippendorff's α ≥ 0.8 on `goal_met`** over the labeled set (≥0.667 floor → revise guidelines and
   re-label; do not freeze below 0.8).
 - `test` split frozen + content-hashed, built **only** from production / fresh human-authored items
@@ -265,9 +304,20 @@ across the GoalJudge offline surface (judge + redteam-offline + shadow-offline +
 
 ## 7. Phase 3 — Double-labeling + α-gate protocol
 
-**Dir:** [`docs/research/goaljudge_stage5_goldset/`](../research/goaljudge_stage5_goldset/) (new) — the
-Stage 5 labeling instrument, mirroring the Stage 4 IAA dir house-style (README protocol + blank
-label-sheet template + hidden adjudication key). **Authored now; run after confirmation.**
+**Canonical dir:** [`docs/IAA/goalJudge/goldset/`](../IAA/goalJudge/goldset/) — reports, filled label
+sheets, and α results live here (mirrors Stage 4 [`docs/IAA/goalJudge/`](../IAA/goalJudge/README.md)).
+**Research cross-links:** [`docs/research/goaljudge_stage5_goldset/`](../research/goaljudge_stage5_goldset/)
+(spec, firewall design, blank template — not live-run outputs).
+
+| File (canonical) | Role |
+|---|---|
+| [`goldset/README.md`](../IAA/goalJudge/goldset/README.md) | α protocol + three-tier gates |
+| [`goldset/goaljudge_stage5_goldset_pilot_sheet.csv`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv) | Pilot label sheet (Tier 1) |
+| [`goldset/goaljudge_stage5_goldset_pilot_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_results.md) | Pilot α results |
+| [`goldset/goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md) | Full-run α results (Tier 3) |
+| [`scripts/compute_goaljudge_stage5_alpha.py`](../../scripts/compute_goaljudge_stage5_alpha.py) | α helper (mirror Stage 4 κ script) |
+
+**Pilot may run at Tier 1** (before Confirmation). Full ~250 labeling remains Tier 3.
 
 ### 7.1 The agreement unit and the coefficient
 
@@ -281,9 +331,9 @@ label-sheet template + hidden adjudication key). **Authored now; run after confi
 
 ### 7.2 Procedure
 
-1. **Pilot ~50 items**, compute α, refine guidelines on the disagreements (the EvalGen co-construction
-   loop) **before** scaling to ~250.
-2. **≥2 independent annotators per item**; they do not see each other's labels.
+1. **Pilot ~50 items first (Tier 1 — may run before Confirmation).** Compute α, refine guidelines on
+   the disagreements (the EvalGen co-construction loop) **before** scaling to ~250.
+2. **≥2 independent annotators per item** (same annotators as Stage 4 IAA); they do not see each other's labels.
 3. **Evidence hierarchy** (inherited from Stage 4 spec §8.3): Langfuse trace (tool trajectory + final
    answer) is primary; Playwright `response_text` only on a full DOM render; status-feed-only UI
    captures are inadmissible.
@@ -296,10 +346,10 @@ label-sheet template + hidden adjudication key). **Authored now; run after confi
 
 ### 7.3 What this dir commits vs withholds
 
-Commit: the README protocol, the blank label-sheet template (columns: `item_id`, `task`, `claim`,
-`evidence_summary`, `r1_goal_met`, `r1_failure_mode`, `r2_*`, `adjudicated_goal_met`, `note`), the α
-helper, and the firewall checklist. **Withhold / never commit:** the filled labels and any α *results*
-(those are the live Phase-4 output, not a prep artifact).
+Commit: the README protocol, pilot/full label sheets (columns per [spec §9](../research/goaljudge_stage5_goldset_spec.md#9-dataset-field-contract)
++ `rubric_version`), the α helper, and α *results* in `docs/IAA/goalJudge/goldset/` (live-run outputs,
+same policy as Stage 4 IAA). **Never commit:** adjudication keys for ~250 production traces (gold truth =
+adjudication, not registry).
 
 ---
 
@@ -319,6 +369,20 @@ day-1 of confirmation follows.
    content-hash and freeze it.
 6. Create the Langfuse `goaljudge_goldset_v1` dataset (DATASET-IO seam, §4); load items; assert
    `set(item_ids)` has no orphans/duplicates and `test ∩ synthetic = ∅`.
+
+### 8.3 Full assembly runbook (Tier 3 — after Stage 4 Confirmation)
+
+1. Pull full corpus export (all registry-joined batch traces + fresh human-authored tasks for test backbone)
+   via [`export_goaljudge_corpus.py`](../../scripts/export_goaljudge_corpus.py).
+2. Stratify per [spec §4](../research/goaljudge_stage5_goldset_spec.md#4-stratification-design): 40/30/20/10
+   composition; oversample `goal_met=false` and A2 member codes.
+3. Augment scarce strata synthetically → **dev only** (corpus generator).
+4. Double-label with same 2 annotators + refined guidelines from pilot.
+5. α ≥ 0.8 on full set; adjudicate via `compute_goaljudge_stage5_alpha.py`.
+6. Assign splits; assert firewall via [`goaljudge_goldset_dataset.py`](../../services/governance/goaljudge_goldset_dataset.py):
+   `provenance=synthetic ⇒ split=dev`; `test ∩ synthetic = ∅`.
+7. Content-hash + freeze test split; load `goaljudge_goldset_v1` in Langfuse.
+8. Publish results in [`goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md).
 
 ### 8.2 The contamination firewall (the EvalGen criteria-drift mitigation)
 
@@ -358,7 +422,10 @@ day-1 of confirmation follows.
 
 | Risk | Mitigation |
 |---|---|
-| **Building the gold set on an unconfirmed rubric** | **Hard gate on Stage 4 Confirmation (§2)**; Phase 4 cannot start until κ≥0.8 + verdict swap |
+| **Building the full gold set on an unconfirmed rubric** | **Tier 2 hard gate** — full ~250 assembly blocked until κ≥0.8 + verdict swap; pilot Tier 1 uses `stage4_provisional` + re-label trigger |
+| **Pilot labels against PROVISIONAL rubric** | Tag `rubric_version=stage4_provisional`; re-label on G5 fail / §8.4 rollback |
+| **Batch-variance cases (GJ-011, GJ-003B) pollute strata** | Document observed behavior in sheet `note`; do not force registry-intent labels; exclude unstable rows from test split |
+| **Duplicate IAA paths** | Canonicalize on `docs/IAA/goalJudge/`; stub redirects in `docs/research/goaljudge_stage4_iaa/` |
 | **Synthetic items leak the generator's blind spots into the test split** | Firewall: synthetic → dev only; test split from independent/fresh items (§8.2) |
 | **α never reaches 0.8** | Pilot-50 → revise guidelines → re-label (§7.2); the PROVISIONAL prompt stays shipped (flag false ⇒ no prod impact) |
 | **`failure_mode` vocabulary drifts from the taxonomy** | `TestFailureModeEnumIntegrity` pins enum ⊇ registry Axis-A codes (§6) |
@@ -397,24 +464,31 @@ plan will own that work.
 | export-carries-mode | Confirm corpus/eval export surfaces `failure_mode` end-to-end | **done ✓** |
 | dataset-io | Langfuse dataset CRUD seam (L2, mock) for `goaljudge_goldset_v1` | **done ✓** |
 | goldset-spec | Author `goaljudge_stage5_goldset_spec.md` (schema + stratification + crosswalk) | **done ✓** |
-| label-protocol | Author `goaljudge_stage5_goldset/` (double-label + α≥0.8 protocol + blank template) | **done ✓** |
-| firewall-design | Contamination firewall (dev/test split, provenance, hash-freeze) documented | **done ✓** (in spec + protocol + `goaljudge_goldset_dataset.py`) |
-| **stage4-confirmation** | Stage 4 A2 rubric confirmed (κ≥0.8 + verdict swap + G1–G10) | **BLOCKED** (live/human) |
-| assemble-goldset | Pull batch traces, stratify, augment, double-label, split, freeze → ~250 items | pending (Phase 4, post-confirmation) |
-| alpha-gate | Krippendorff's α ≥ 0.8 on `goal_met`; adjudicate; freeze test split | pending (live/human) |
+| label-protocol | Research-dir protocol + blank template (`goaljudge_stage5_goldset/`) | **done ✓** |
+| firewall-design | Contamination firewall (dev/test split, provenance, hash-freeze) documented | **done ✓** |
+| **iaa-goldset-dir** | Create `docs/IAA/goalJudge/goldset/` + README + pilot sheet scaffold | **done ✓** (2026-06-09) |
+| **alpha-script** | `scripts/compute_goaljudge_stage5_alpha.py` | **done ✓** (2026-06-09) |
+| **pilot-corpus-export** | Export + join `gcp_2026-06-09` traces; verify `eval.goal_judge` | **done ✓** — 50-row corpus export (`corpus_gcp_2026-06-09.jsonl`) + batch JSONL join |
+| **pilot-50-sheet** | Populate pilot sheet (22 prod + synthetic dev augment) | **done ✓** — `build_goaljudge_stage5_pilot_sheet.py` |
+| **annotator2-s4** | Complete Stage 4 `r2_*`; compute κ; update IAA results | **done ✓** (2026-06-09) — κ = 1.0, G5 PASS |
+| **pilot-label-alpha** | Pilot double-label + α≥0.8 + guideline revision | **done ✓** (2026-06-09) — α = 0.8846 PASS |
+| **dedupe-iaa-paths** | Redirect `docs/research/goaljudge_stage4_iaa/` → `docs/IAA/goalJudge/` | **done ✓** (2026-06-09) |
+| **stage4-confirmation** | Stage 4 A2 rubric confirmed (κ≥0.8 + verdict swap + G1–G10) | **BLOCKED** (Tier 2) |
+| assemble-goldset | Full ~250 assemble + split + Langfuse load | pending (Tier 3) |
+| alpha-gate-full | Full-set α≥0.8 + test freeze | pending (Tier 3) |
 | stage5-recipe | Optional intern recipe `03_stage5_goldset.md` | optional |
 
 ---
 
 ## 14. Suggested PR sequence
 
-1. **`failure_mode` schema seam** (telemetry-only) + enum-integrity pin. → **LANDED.**
-2. Gold-set spec (`goaljudge_stage5_goldset_spec.md`) + stratification crosswalk.
-3. Double-labeling + α-gate protocol dir (`goaljudge_stage5_goldset/`) + blank template.
-4. `export_goaljudge_corpus.py` surfaces `failure_mode`; Langfuse dataset CRUD seam (L2, offline).
-5. *(After Stage 4 confirmed)* assemble ~250 items, double-label, α-gate, freeze test split →
-   **Dataset gate reached.**
-6. Hand off to Stage 6 (separate plan).
+1. **`failure_mode` schema seam** + enum-integrity pin. → **LANDED.**
+2. Gold-set spec + research-dir protocol (`goaljudge_stage5_goldset/`). → **LANDED.**
+3. **IAA goldset scaffold** — `docs/IAA/goalJudge/goldset/` README + `compute_goaljudge_stage5_alpha.py`
+   + research-dir cross-links + dedupe stubs. → **LANDED** (2026-06-09).
+4. **Pilot corpus** — export verification + populated `goaljudge_stage5_goldset_pilot_sheet.csv`. → **LANDED** (2026-06-09).
+5. **Parallel human work** — Annotator 2 Stage 4 grades + pilot-50 double-label → `pilot_results.md`.
+6. *(After G5 + shadow — Tier 2)* full assembly PR: ~250 items, α gate, Langfuse dataset freeze.
+7. Hand off to Stage 6 (separate plan).
 
-PRs 1–4 land while Stage 4 Confirmation is open (**prep, authorable now**). PR 5 is the live/human
-assembly; PR 6 begins Stage 6.
+PRs 1–4 may land **before** Stage 4 Confirmation (early-pilot choice). PR 6 remains hard-gated on Tier 2.

@@ -13,8 +13,17 @@
  *
  * Optional:
  *   GJ_CASE_FILTER=GJ-010     — single case
+ *   GOALJUDGE_BATCH_MODE=pilot — 43-case Stage 5 pilot (default: walkthrough, 22 cases)
  *   GOALJUDGE_BATCH_LIMIT=5   — cap batch size
+ *   GOALJUDGE_BATCH_JSONL     — override JSONL output path
  *   GOALJUDGE_BATCH_SCREENSHOT_DIR — override screenshot output dir
+ *
+ * JSONL schema (one row per case):
+ *   case_id, trace_id, session_id, target_code, target_axes, prompt,
+ *   thread_title, response_text, tool_card_count, screenshot_path,
+ *   outcome ("pass" | "fail"), error (fail only), finished_at, base_url
+ *
+ * Screenshots: pass → {caseId}.png, fail → {caseId}_FAILED.png
  */
 
 import fs from "node:fs";
@@ -50,8 +59,9 @@ function appendCapture(row: Record<string, unknown>): void {
   fs.appendFileSync(OUTPUT_JSONL, `${JSON.stringify(row)}\n`, "utf8");
 }
 
-function screenshotAbsPath(caseId: string): string {
-  return path.join(OUTPUT_SCREENSHOT_DIR, `${caseId}.png`);
+function screenshotAbsPath(caseId: string, outcome: "pass" | "fail"): string {
+  const suffix = outcome === "fail" ? "_FAILED" : "";
+  return path.join(OUTPUT_SCREENSHOT_DIR, `${caseId}${suffix}.png`);
 }
 
 /** Repo-relative path when the screenshot lives under the workspace root. */
@@ -63,15 +73,17 @@ function screenshotRelPath(absPath: string): string {
   return resolved;
 }
 
-async function captureSuccessScreenshot(
+async function captureCaseScreenshot(
   page: import("@playwright/test").Page,
   caseId: string,
+  outcome: "pass" | "fail",
 ): Promise<string> {
   fs.mkdirSync(OUTPUT_SCREENSHOT_DIR, { recursive: true });
-  const absPath = screenshotAbsPath(caseId);
+  const absPath = screenshotAbsPath(caseId, outcome);
+  const attachName = path.basename(absPath);
   const buffer = await page.screenshot({ fullPage: true });
   fs.writeFileSync(absPath, buffer);
-  await test.info().attach(`${caseId}.png`, {
+  await test.info().attach(attachName, {
     body: buffer,
     contentType: "image/png",
   });
@@ -138,41 +150,72 @@ test.describe("GoalJudge GCP batch (L4: registry prompt injection)", () => {
 
       installGoalJudgeThreadBridge(page, caseRow);
 
-      await page.goto("/");
-      await newThreadIfAvailable(page);
-
       const title = `gj:${caseRow.id}:${caseRow.trace_id}`;
+      let responseText = "";
+      let toolCardCount = 0;
 
-      await sendMessage(page, caseRow.prompt);
-      // Source of truth is the settled response text (see waitForResponse):
-      // some Cloud Run runs never disable the composer / never render an
-      // answer, so we cannot gate on composer state. waitForComposerReady
-      // afterward is a soft confirmation only.
-      const response = await waitForResponse(page, { timeoutMs: 150_000 });
-      await waitForComposerReady(page, { timeoutMs: 5_000 }).catch(() => {});
+      try {
+        await page.goto("/");
+        await newThreadIfAvailable(page);
 
-      const responseText = (await response.textContent()) ?? "";
-      expect(responseText.length).toBeGreaterThan(0);
+        await sendMessage(page, caseRow.prompt);
+        // Source of truth is the settled response text (see waitForResponse):
+        // some Cloud Run runs never disable the composer / never render an
+        // answer, so we cannot gate on composer state. waitForComposerReady
+        // afterward is a soft confirmation only.
+        const response = await waitForResponse(page, { timeoutMs: 150_000 });
+        await waitForComposerReady(page, { timeoutMs: 5_000 }).catch(() => {});
 
-      const toolCards = page.locator("[data-testid='tool-card'], .tool-card");
-      const toolCardCount = await toolCards.count();
+        responseText = (await response.textContent()) ?? "";
+        expect(responseText.length).toBeGreaterThan(0);
 
-      const screenshotPath = await captureSuccessScreenshot(page, caseRow.id);
+        const toolCards = page.locator("[data-testid='tool-card'], .tool-card");
+        toolCardCount = await toolCards.count();
 
-      appendCapture({
-        case_id: caseRow.id,
-        trace_id: caseRow.trace_id,
-        session_id: caseRow.session_id,
-        target_code: caseRow.target_code,
-        target_axes: caseRow.target_axes,
-        prompt: caseRow.prompt,
-        thread_title: title,
-        response_text: responseText.slice(0, 4000),
-        tool_card_count: toolCardCount,
-        screenshot_path: screenshotPath,
-        finished_at: new Date().toISOString(),
-        base_url: process.env.BASE_URL ?? "http://localhost:3000",
-      });
+        const screenshotPath = await captureCaseScreenshot(page, caseRow.id, "pass");
+
+        appendCapture({
+          case_id: caseRow.id,
+          trace_id: caseRow.trace_id,
+          session_id: caseRow.session_id,
+          target_code: caseRow.target_code,
+          target_axes: caseRow.target_axes,
+          prompt: caseRow.prompt,
+          thread_title: title,
+          response_text: responseText.slice(0, 4000),
+          tool_card_count: toolCardCount,
+          screenshot_path: screenshotPath,
+          outcome: "pass",
+          finished_at: new Date().toISOString(),
+          base_url: process.env.BASE_URL ?? "http://localhost:3000",
+        });
+      } catch (err) {
+        let screenshotPath: string | undefined;
+        try {
+          screenshotPath = await captureCaseScreenshot(page, caseRow.id, "fail");
+        } catch {
+          // Page may be closed; still record the failure row.
+        }
+
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        appendCapture({
+          case_id: caseRow.id,
+          trace_id: caseRow.trace_id,
+          session_id: caseRow.session_id,
+          target_code: caseRow.target_code,
+          target_axes: caseRow.target_axes,
+          prompt: caseRow.prompt,
+          thread_title: title,
+          response_text: responseText.slice(0, 4000),
+          tool_card_count: toolCardCount,
+          screenshot_path: screenshotPath,
+          outcome: "fail",
+          error: errorMessage,
+          finished_at: new Date().toISOString(),
+          base_url: process.env.BASE_URL ?? "http://localhost:3000",
+        });
+        throw err;
+      }
     });
   }
 });

@@ -44,8 +44,21 @@ Think step by step BEFORE you decide:
      (b) partial completion is presented as full success;
      (c) the agent narrates progress ("Done.", "Successfully retrieved…") with no
          confirming tool result — including after a blocked command where the agent
-         computes in prose and claims done (this is A2, not merely bad process).
-   - When (a–c) applies: goal_met=false; set partial_fraction to the fraction of
+         computes in prose and claims done (this is A2, not merely bad process);
+     (d) WRONG VERIFICATION TOOL — the tool action / output that the agent used
+         to "verify" a subtask is observably a different thing than what the
+         subtask required, but the final answer presents it as satisfying the
+         subtask. The required output shape must be identifiable from the task
+         language (otherwise apply (a) instead). Examples:
+           • Subtask says "list the file's contents" → agent runs `ls` (directory
+             listing of filenames) and claims contents were listed.
+           • Subtask says "run/execute the script" → agent only writes/authors the
+             script and claims it ran.
+           • Subtask says "call the API" / "fetch X" → agent only frames the
+             request in prose, with no tool record of the call or response.
+         If the task language genuinely does not pin a required output shape,
+         do NOT fire (d); fall back to (a)/(c).
+   - When (a–d) applies: goal_met=false; set partial_fraction to the fraction of
      subtasks with verified evidence (0.0 if none).
    - Do NOT mark goal_met=true based on the agent's completion claim alone.
 4. EVIDENCE-GROUNDING (anti-gaming): mark a condition `met=true` ONLY when an

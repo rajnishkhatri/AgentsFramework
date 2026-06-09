@@ -7,12 +7,13 @@
 > axis is scored with α. This is the gold-set-trust instrument — distinct from the Stage 4 *rubric-
 > validity* κ.
 >
-> **Status: instrument authored, labeling not yet run.** Running it needs (a) Stage 4 **Confirmation**
-> (κ ≥ 0.8 + verdict swap — the gold set labels against the *confirmed* A2 rubric) and (b) ≥2 human
-> annotators on the batch traces. This directory commits the **protocol + blank template**, not results.
-> See the [G3 batch runbook](../goaljudge_stage4_a2_g3_batch_runbook.md) for the trace source.
+> **Status: instrument authored; canonical IAA home moved to `docs/IAA/goalJudge/goldset/`.** Pilot
+> labeling may proceed at **Tier 1** (before Confirmation) against `stage4_provisional` rubric. Full ~250
+> assembly remains gated on Stage 4 Confirmation (Tier 2). See
+> [`docs/IAA/goalJudge/goldset/README.md`](../../IAA/goalJudge/goldset/README.md) for the live protocol,
+> pilot sheet, and α results. This research dir keeps the **spec cross-links + blank template** only.
 
-Mirrors the established Stage-4 IAA method ([`goaljudge_stage4_iaa/README.md`](../goaljudge_stage4_iaa/README.md)):
+Mirrors the established Stage-4 IAA method ([`goalJudge/README.md`](../IAA/goalJudge/README.md)):
 blind annotators, unit-of-agreement fixed up front, **recomputable from the CSV**. The bar and the
 coefficient differ — see [§ Why α, not κ](#why-α-not-κ).
 
@@ -22,8 +23,8 @@ coefficient differ — see [§ Why α, not κ](#why-α-not-κ).
 
 | Instrument | File | Unit | Coefficient | Bar | What it gates |
 |---|---|---|---|---|---|
-| **Rubric-validity** (Stage 4) | [`../goaljudge_stage4_iaa/`](../goaljudge_stage4_iaa/README.md) | Axis-A **category** (is this A2?) | Cohen's/Fleiss' **κ** | ≥ 0.8 | whether you may **build** the gold set |
-| **Gold-set-trust** (Stage 5, here) | this dir | binary **`goal_met`** per item | Krippendorff's **α** | ≥ 0.8 | whether the **built set** is trustworthy |
+| **Rubric-validity** (Stage 4) | [`../IAA/goalJudge/`](../IAA/goalJudge/README.md) | Axis-A **category** (is this A2?) | Cohen's/Fleiss' **κ** | ≥ 0.8 | whether you may **build** the gold set |
+| **Gold-set-trust** (Stage 5) | [`docs/IAA/goalJudge/goldset/`](../../IAA/goalJudge/goldset/README.md) | binary **`goal_met`** per item | Krippendorff's **α** | ≥ 0.8 | whether the **built set** is trustworthy |
 
 The Stage-4 κ confirms the *definition*; the Stage-5 α confirms the *labeled data*. You need the first
 before you run the second.
@@ -34,7 +35,8 @@ before you run the second.
 
 | File | Role | Show to annotators? |
 |---|---|---|
-| [`goaljudge_stage5_goldset_label_sheet_template.csv`](goaljudge_stage5_goldset_label_sheet_template.csv) | One row per item; `task` / `claim` / `evidence_summary` given; **blank** `r1_*` / `r2_*` / `adjudicated_*` columns | **Yes** (each annotator gets their own copy / column set) |
+| [`../../IAA/goalJudge/goldset/`](../../IAA/goalJudge/goldset/README.md) | **Canonical** — pilot sheet, α results, live protocol | Yes (sheets) / No (results) |
+| [`goaljudge_stage5_goldset_label_sheet_template.csv`](goaljudge_stage5_goldset_label_sheet_template.csv) | Blank column contract (reference template) | Yes |
 
 Dataset CRUD + firewall (Langfuse seam): [`services/governance/goaljudge_goldset_dataset.py`](../../services/governance/goaljudge_goldset_dataset.py).
 
@@ -76,9 +78,9 @@ tentative-conclusions floor.
 
 ## Procedure
 
-1. **Confirm the prerequisite.** Do not start until Stage 4 is **confirmed** (κ ≥ 0.8 + verdict swap) —
-   the gold set labels against the confirmed A2 rubric, not the PROVISIONAL one.
-2. **Pilot ~50 items first.** Label a 50-item pilot, compute α, and **revise the labeling guidelines on
+1. **Pilot ~50 items first (Tier 1 — may run before Confirmation).** Label against `stage4_provisional`;
+   re-label if G5 fails. Full ~250 requires Stage 4 **confirmed** (Tier 2).
+2. Label a 50-item pilot, compute α via [`compute_goaljudge_stage5_alpha.py`](../../../scripts/compute_goaljudge_stage5_alpha.py), and **revise the labeling guidelines on
    the disagreements** (the EvalGen co-construction loop) *before* scaling to ~250. Do not label the full
    set against guidelines the pilot showed are ambiguous.
 3. **Label blind.** Give each annotator only the template (their own `r1_*` or `r2_*` columns) + this

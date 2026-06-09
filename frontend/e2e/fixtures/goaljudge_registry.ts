@@ -35,6 +35,69 @@ export function walkthroughCases(): GoalJudgeRegistryCase[] {
   }).sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
 
+/** Stage 5 pilot registry IDs (43 rows — all pilot sheet cases except GJ-STRESS-*). */
+export const PILOT_REGISTRY_IDS: readonly string[] = [
+  "GJ-001",
+  "GJ-001B",
+  "GJ-002",
+  "GJ-003",
+  "GJ-003B",
+  "GJ-004",
+  "GJ-005",
+  "GJ-006",
+  "GJ-007",
+  "GJ-008",
+  "GJ-009",
+  "GJ-010",
+  "GJ-011",
+  "GJ-012",
+  "GJ-013",
+  "GJ-014",
+  "GJ-015",
+  "GJ-016",
+  "GJ-019",
+  "GJ-020",
+  "GJ-021",
+  "GJ-022",
+  "GJ-023",
+  "GJ-024",
+  "GJ-025",
+  "GJ-026",
+  "GJ-027",
+  "GJ-028",
+  "GJ-031",
+  "GJ-034",
+  "GJ-035",
+  "GJ-036",
+  "GJ-039",
+  "GJ-042",
+  "GJ-043",
+  "GJ-044",
+  "GJ-045",
+  "GJ-047",
+  "GJ-048",
+  "GJ-049",
+  "GJ-050",
+  "GJ-051",
+  "GJ-052",
+] as const;
+
+/** Stage 5 pilot batch — 43 registry cases (numeric sort). */
+export function pilotRegistryCases(): GoalJudgeRegistryCase[] {
+  const idSet = new Set(PILOT_REGISTRY_IDS);
+  return GOALJUDGE_REGISTRY.filter((c) => idSet.has(c.id)).sort((a, b) =>
+    a.id.localeCompare(b.id, undefined, { numeric: true }),
+  );
+}
+
+function batchModeCases(): GoalJudgeRegistryCase[] {
+  const mode = process.env.GOALJUDGE_BATCH_MODE ?? "walkthrough";
+  if (mode === "pilot") {
+    return pilotRegistryCases();
+  }
+  return walkthroughCases();
+}
+
 export function caseById(id: string): GoalJudgeRegistryCase | undefined {
   return GOALJUDGE_REGISTRY.find((c) => c.id === id);
 }
@@ -43,7 +106,7 @@ export function filterCases(opts?: {
   caseFilter?: string;
   limit?: number;
 }): GoalJudgeRegistryCase[] {
-  let rows = walkthroughCases();
+  let rows = batchModeCases();
   if (opts?.caseFilter) {
     rows = rows.filter((c) => c.id === opts.caseFilter);
   }

@@ -6,7 +6,7 @@ sheet with r1_* and r2_* columns) and reports κ on the primary ``a2_fail`` unit
 
 Usage:
   python scripts/compute_goaljudge_stage4_iaa_kappa.py \\
-    docs/research/goaljudge_stage4_iaa/goaljudge_stage4_a2_iaa_grader_sheet.csv
+    docs/IAA/goalJudge/goaljudge_stage4_a2_iaa_grader_sheet.csv
 """
 from __future__ import annotations
 
