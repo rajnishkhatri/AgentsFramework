@@ -72,8 +72,7 @@ def _select_same_model(
 def select_planning_depth(
     *,
     task_input: str,
-    step_count: int,
-    tool_results_count: int,
+    task_tool_results_count: int,
 ) -> tuple[Literal["L0", "L1", "L2"], str]:
     """Pick planning depth level for the current routing decision.
 
@@ -81,8 +80,15 @@ def select_planning_depth(
       - ``L0``: Minimal planning for simple or post-tool synthesis turns.
       - ``L1``: Moderate decomposition for medium-complexity requests.
       - ``L2``: Deep decomposition for broad, constrained, or multi-part tasks.
+
+    ``task_tool_results_count`` must be scoped to the **current task**, not the
+    underlying LangGraph thread. Using the thread-wide ``step_count`` /
+    ``len(state["tool_results"])`` here causes a re-asked task on a long-lived
+    thread (saturation runs, multi-turn UIs) to skip the multi-subtask
+    heuristic and cap planning at ``L0`` — the agent then executes only one
+    subtask and the judge marks the rest as fabricated.
     """
-    if step_count > 0 or tool_results_count > 0:
+    if task_tool_results_count > 0:
         return "L0", "post-tool-synthesis"
 
     lowered = (task_input or "").lower()

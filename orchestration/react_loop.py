@@ -222,6 +222,7 @@ def _execute_tools_impl(
             tool_results.append({
                 "record_id": f"{state.get('step_count', 0)}:{tool_id}",
                 "step_id": state.get("step_count", 0),
+                "task_id": state.get("task_id", ""),
                 "tool_name": tool_name,
                 "tool_input": tool_args,
                 "tool_output": recorded_output,
@@ -346,6 +347,7 @@ def _execute_tools_impl(
         tool_results.append({
             "record_id": f"{state.get('step_count', 0)}:{tool_id}",
             "step_id": state.get("step_count", 0),
+            "task_id": state.get("task_id", ""),
             "tool_name": tool_name,
             "tool_input": tool_args,
             "tool_output": recorded_output,
@@ -682,10 +684,15 @@ def build_graph(
                         },
                     ))
 
+            current_task_id = state.get("task_id", "")
+            task_tool_results_count = sum(
+                1
+                for tr in (state.get("tool_results") or [])
+                if tr.get("task_id", "") == current_task_id
+            )
             planning_depth, planning_depth_reason = select_planning_depth(
                 task_input=state.get("task_input", ""),
-                step_count=state.get("step_count", 0),
-                tool_results_count=len(state.get("tool_results", [])),
+                task_tool_results_count=task_tool_results_count,
             )
             plan_artifact = build_plan_artifact(
                 planning_depth,
