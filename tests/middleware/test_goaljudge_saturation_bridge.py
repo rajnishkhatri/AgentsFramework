@@ -63,14 +63,39 @@ class TestSaturationSubjectMapping:
 
 class TestSaturationOverlay:
     def test_overlay_matches_cli_batch_keys(self) -> None:
+        """``trace_id`` is the deterministic Langfuse join key for replay; it
+        is the only correlation field we lock down here. ``task_id`` is left
+        to the runtime to mint fresh per invocation — see
+        ``test_overlay_does_not_pin_task_id`` for the regression guard.
+        """
         trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-003B").hex
         ctx = parse_goaljudge_thread_id(f"gj:GJ-003B:{trace_id}")
         assert ctx is not None
         overlay = saturation_input_overlay(ctx, SATURATION_USER_ID)
         assert overlay["trace_id"] == trace_id
-        assert overlay["task_id"] == trace_id
         assert overlay["user_id"] == SATURATION_USER_ID
         assert overlay["case_id"] == "GJ-003B"
+
+    def test_overlay_does_not_pin_task_id(self) -> None:
+        """Per-invocation regression guard: ``task_id`` MUST NOT be carried in
+        the saturation overlay. Pinning it to the deterministic ``trace_id``
+        makes every Playwright replay of the same registry case look like a
+        continuation of the prior run, which causes
+        ``components.router.select_planning_depth`` to short-circuit to
+        ``L0`` via the per-task synthesis check. The runtime defaults
+        ``task_id`` to a fresh ``uuid.uuid4().hex`` when this key is absent —
+        same as the non-saturation path — so every replay is a fresh task
+        for the planner. See
+        ``middleware/goaljudge_saturation_bridge.saturation_input_overlay``.
+        """
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-012").hex
+        ctx = parse_goaljudge_thread_id(f"gj:GJ-012:{trace_id}")
+        assert ctx is not None
+        overlay = saturation_input_overlay(ctx, SATURATION_USER_ID)
+        assert "task_id" not in overlay, (
+            "task_id leaks the saturation trace_id into the planner's per-task "
+            "scoping filter and forces multi-subtask prompts to L0/1 plan step"
+        )
 
 
 class TestRunStreamContext:
@@ -115,4 +140,6 @@ class TestRunStreamContext:
         assert ctx.telemetry_subject == SATURATION_USER_ID
         overlay = ctx.user_input["_goaljudge_saturation"]
         assert overlay["trace_id"] == trace_id
-        assert overlay["task_id"] == trace_id
+        # task_id is deliberately NOT pinned to trace_id (see
+        # TestSaturationOverlay.test_overlay_does_not_pin_task_id).
+        assert "task_id" not in overlay
