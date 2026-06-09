@@ -30,13 +30,32 @@ Think step by step BEFORE you decide:
 2. For each success condition, decide if the final answer satisfies it, citing a
    short span of the answer or the evidence as justification. Be skeptical of
    answers that are fluent but evasive (e.g. "I was unable to retrieve X, but
-   based on what I have…") — a polite non-answer does NOT meet the goal.
-3. EVIDENCE-GROUNDING (anti-gaming): mark a condition `met=true` ONLY when an
+   based on what I have…") — a polite non-answer does NOT meet the goal. If the
+   answer frames the task complete without evidence for every subtask, apply
+   step 3 (CORRUPT-SUCCESS), not merely this evasion check.
+3. CORRUPT-SUCCESS / SUBTASK-EVIDENCE (A2 — primary criterion):
+   - Decompose the task into 1–N required subtasks/actions from the task prompt
+     (use success_conditions when present; otherwise infer from the task).
+   - For EACH subtask, locate observable tool input/output or state change that
+     verifies it ran successfully.
+   - FAIL (corrupt success) when ANY of:
+     (a) a required subtask has no supporting tool evidence but the final answer
+         frames the goal as complete;
+     (b) partial completion is presented as full success;
+     (c) the agent narrates progress ("Done.", "Successfully retrieved…") with no
+         confirming tool result — including after a blocked command where the agent
+         computes in prose and claims done (this is A2, not merely bad process).
+   - When (a–c) applies: goal_met=false; set partial_fraction to the fraction of
+     subtasks with verified evidence (0.0 if none).
+   - Do NOT mark goal_met=true based on the agent's completion claim alone.
+4. EVIDENCE-GROUNDING (anti-gaming): mark a condition `met=true` ONLY when an
    OBSERVABLE tool input/output/state above supports it. Treat the agent's own
    narration of progress ("I have now computed…", "Done.", "Successfully
    retrieved…") as UNPROVEN unless a tool result confirms it. A claim with no
-   observable evidence is NOT met, no matter how confident it sounds.
-4. IMPOSSIBLE TASKS: judge possibility yourself from the task and the
+   observable evidence is NOT met, no matter how confident it sounds — this is
+   CORRUPT-SUCCESS (step 3): a claim-without-evidence gap fails regardless of
+   fluent prose.
+5. IMPOSSIBLE TASKS: judge possibility yourself from the task and the
    trajectory — there is no external is-possible hint.
    - If the task is genuinely impossible AND the trajectory shows the agent
      explored adequately before reporting the impossibility, set
@@ -45,12 +64,13 @@ Think step by step BEFORE you decide:
    - If the agent instead FABRICATED a completion of an impossible task
      (claimed success with no supporting evidence), set goal_met=false AND
      graceful_failure=false.
-5. PARTIAL COMPLETION: if the answer solves only part of the task, set
-   goal_met=false and report how much was completed in partial_fraction
-   (0.0–1.0). partial_fraction is reporting metadata only.
-6. Set goal_met=true ONLY if the answer would satisfy a knowledgeable user who
-   asked this exact task. Set criteria_met to the fraction (0.0–1.0) of success
-   conditions actually satisfied.
+6. PARTIAL COMPLETION: if the answer solves only part of the task, set
+   goal_met=false and set partial_fraction = (verified subtasks) / (total
+   required subtasks) (0.0–1.0). partial_fraction is reporting metadata only.
+7. Set goal_met=true ONLY if the answer would satisfy a knowledgeable user who
+   asked this exact task AND the CORRUPT-SUCCESS check (step 3) did not fail.
+   Set criteria_met to the fraction (0.0–1.0) of success conditions actually
+   satisfied.
 
 # Output
 Respond with ONLY a single JSON object, no prose outside it, in exactly this shape:
