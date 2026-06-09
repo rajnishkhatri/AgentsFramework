@@ -14,12 +14,17 @@
  * Optional:
  *   GJ_CASE_FILTER=GJ-010     — single case
  *   GOALJUDGE_BATCH_LIMIT=5   — cap batch size
+ *   GOALJUDGE_BATCH_SCREENSHOT_DIR — override screenshot output dir
  */
 
 import fs from "node:fs";
 import path from "node:path";
 import { test, expect } from "../fixtures/auth.fixture";
-import { sendMessage, waitForResponse, waitForComposerReady } from "../fixtures/helpers";
+import {
+  sendMessage,
+  waitForResponse,
+  waitForComposerReady,
+} from "../fixtures/helpers";
 import { filterCases } from "../fixtures/goaljudge_registry";
 
 const CASES = filterCases({
@@ -33,10 +38,44 @@ const OUTPUT_JSONL =
   process.env.GOALJUDGE_BATCH_JSONL ??
   path.join(process.cwd(), "..", "cache", "goaljudge_eval", "ui_batch.jsonl");
 
+const OUTPUT_SCREENSHOT_DIR =
+  process.env.GOALJUDGE_BATCH_SCREENSHOT_DIR ??
+  path.join(path.dirname(OUTPUT_JSONL), "ui_batch_screenshots");
+
+const REPO_ROOT = path.resolve(process.cwd(), "..");
+
 function appendCapture(row: Record<string, unknown>): void {
   const dir = path.dirname(OUTPUT_JSONL);
   fs.mkdirSync(dir, { recursive: true });
   fs.appendFileSync(OUTPUT_JSONL, `${JSON.stringify(row)}\n`, "utf8");
+}
+
+function screenshotAbsPath(caseId: string): string {
+  return path.join(OUTPUT_SCREENSHOT_DIR, `${caseId}.png`);
+}
+
+/** Repo-relative path when the screenshot lives under the workspace root. */
+function screenshotRelPath(absPath: string): string {
+  const resolved = path.resolve(absPath);
+  if (resolved.startsWith(`${REPO_ROOT}${path.sep}`)) {
+    return path.relative(REPO_ROOT, resolved);
+  }
+  return resolved;
+}
+
+async function captureSuccessScreenshot(
+  page: import("@playwright/test").Page,
+  caseId: string,
+): Promise<string> {
+  fs.mkdirSync(OUTPUT_SCREENSHOT_DIR, { recursive: true });
+  const absPath = screenshotAbsPath(caseId);
+  const buffer = await page.screenshot({ fullPage: true });
+  fs.writeFileSync(absPath, buffer);
+  await test.info().attach(`${caseId}.png`, {
+    body: buffer,
+    contentType: "image/png",
+  });
+  return screenshotRelPath(absPath);
 }
 
 async function newThreadIfAvailable(page: import("@playwright/test").Page): Promise<void> {
@@ -105,14 +144,20 @@ test.describe("GoalJudge GCP batch (L4: registry prompt injection)", () => {
       const title = `gj:${caseRow.id}:${caseRow.trace_id}`;
 
       await sendMessage(page, caseRow.prompt);
-      const response = await waitForResponse(page, { timeoutMs: 120_000 });
-      await waitForComposerReady(page, { timeoutMs: 30_000 });
+      // Source of truth is the settled response text (see waitForResponse):
+      // some Cloud Run runs never disable the composer / never render an
+      // answer, so we cannot gate on composer state. waitForComposerReady
+      // afterward is a soft confirmation only.
+      const response = await waitForResponse(page, { timeoutMs: 150_000 });
+      await waitForComposerReady(page, { timeoutMs: 5_000 }).catch(() => {});
 
       const responseText = (await response.textContent()) ?? "";
       expect(responseText.length).toBeGreaterThan(0);
 
       const toolCards = page.locator("[data-testid='tool-card'], .tool-card");
       const toolCardCount = await toolCards.count();
+
+      const screenshotPath = await captureSuccessScreenshot(page, caseRow.id);
 
       appendCapture({
         case_id: caseRow.id,
@@ -124,6 +169,7 @@ test.describe("GoalJudge GCP batch (L4: registry prompt injection)", () => {
         thread_title: title,
         response_text: responseText.slice(0, 4000),
         tool_card_count: toolCardCount,
+        screenshot_path: screenshotPath,
         finished_at: new Date().toISOString(),
         base_url: process.env.BASE_URL ?? "http://localhost:3000",
       });

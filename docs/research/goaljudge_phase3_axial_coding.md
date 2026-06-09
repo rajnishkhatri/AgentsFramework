@@ -422,6 +422,13 @@ Langfuse dataset. Borrow vetted vocabulary from MAST (verification gap) and 2603
 The hands-on procedure for *running* this stage (human analyst + agentic assistant) is
 [walkthrough 05](../walk-through/05_goaljudge_axial_coding_failure_taxonomy_walkthrough.md).
 
+> **Stage 4 v1 spec (2026-06-08):** [`goaljudge_stage4_a2_rubric_spec.md`](goaljudge_stage4_a2_rubric_spec.md)
+> — A2 corrupt-success criterion, matrix↔registry crosswalk, anchor cases, and confirmation gates.
+> Implementation plan: [`goaljudge_stage4_a2_rubric.plan.md`](../plans/goaljudge_stage4_a2_rubric.plan.md).
+> Intern-facing walkthrough of the build: [`02_stage4_a2_rubric.md`](../recipes/goaljudge/02_stage4_a2_rubric.md)
+> — how the A2 check became prompt rules, the crosswalk/GJ-008 (G10) reconciliation, and the
+> two-gate (Code §8.2 vs Confirmation §8.3) ship-PROVISIONAL discipline.
+
 ---
 
 ## 9. References

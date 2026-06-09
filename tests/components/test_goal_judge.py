@@ -284,6 +284,25 @@ class TestNewVerdictAxes:
         assert verdict.partial_fraction == pytest.approx(0.5)
 
     @pytest.mark.asyncio
+    async def test_a2_partial_verdict_end_to_end(self):
+        """A2 corrupt-success: canned goal_met=false + partial_fraction=0.67 parses."""
+        from tests.fixtures.goaljudge.a2_session_fixtures import (
+            GJ_010_SHAPED,
+            _CANNED_A2_PARTIAL_VERDICT,
+        )
+
+        judge, _ = _judge(_CANNED_A2_PARTIAL_VERDICT)
+        verdict = await judge.evaluate(
+            task_input=GJ_010_SHAPED["task_input"],
+            final_answer=GJ_010_SHAPED["final_answer"],
+            success_conditions=GJ_010_SHAPED["success_conditions"],
+            evidence=GJ_010_SHAPED["evidence"],
+        )
+        assert verdict.goal_met is False
+        assert verdict.partial_fraction == pytest.approx(0.67)
+        assert verdict.graceful_failure is False
+
+    @pytest.mark.asyncio
     async def test_partial_fraction_out_of_range_is_clamped(self):
         """A >1 fraction (e.g. a 0-100 percentage) is rescaled then clamped."""
         judge, _ = _judge(
