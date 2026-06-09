@@ -472,9 +472,9 @@ If **Reconfirm** or **G5** fails:
 | rubric-spec | Author `goaljudge_stage4_a2_rubric_spec.md` | done ✓ |
 | prompt-a2 | Add CORRUPT-SUCCESS section to `goal_judge_system_prompt.j2` (≤15 lines) | done ✓ |
 | offline-fixtures | GJ-010/012 fixtures (registry-anchored, F7) + A2 prompt marker tests | done ✓ |
-| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | pending |
-| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending |
-| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **harness built** (offline scaffold `test_goal_judge_shadow_offline.py` + `shadow_traces.py`, recorded verdicts, F7-guarded — 10 pins green); **behavioral run pending** verdict swap to Langfuse post-G3/batch |
+| gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | pending — **runbook authored** ([`goaljudge_stage4_a2_g3_batch_runbook.md`](../research/goaljudge_stage4_a2_g3_batch_runbook.md): remediation §6 steps 1→8 made executable, real surfaces/commands, batch via `scripts/run_goaljudge_synthetic_batch.py`); **live run pending** |
+| human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending — **instrument authored** ([`goaljudge_stage4_iaa/`](../research/goaljudge_stage4_iaa/README.md): blind grader sheet + hidden answer key (verified == registry) + κ protocol mirroring Step 7); **grading pending** (5 anchors gradable now, GJ-011/013/003B after batch) |
+| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **swap seam wired** (offline scaffold `test_goal_judge_shadow_offline.py` + `shadow_traces.py`; `langfuse_replay.py` loader + sample export route `trace_id`→registry verdict via `GOALJUDGE_LANGFUSE_EXPORT` — 18 pins green incl. the recorded→replayed swap); **behavioral run pending** the real Langfuse export post-G3/batch (no test changes — env var only) |
 | rollback-trigger | If Reconfirm/G5 fails, execute §8.4 (iterate or re-pick) | conditional |
 | stage4-recipe | Optional: `02_stage4_a2_rubric.md` recipe + crosswalk lesson | done ✓ (5 lessons mirroring Stage 3 style; recipe 01 "What Comes Next" + phase3 §8 bridge link to it) |
 
