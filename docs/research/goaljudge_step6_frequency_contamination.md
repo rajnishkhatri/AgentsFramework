@@ -107,10 +107,11 @@ signals computed above:
 
 The walkthrough requires hand-verifying the arithmetic for at least the top category:
 
-- **A2 = 6 by hand:** `partial-counted-as-full` primaries = GJ-010, GJ-011, GJ-012 (3); `subtask-dropped`
-  primaries = GJ-013, GJ-014 (2); `fabricated-progress` primary = GJ-008 (1). 3 + 2 + 1 = **6**. ✔
-- **A2 clean = 3 by hand:** of those six, GJ-011 (B1,B2), GJ-013 (B1,B2), GJ-014 (B1,B3) are
-  contaminated; GJ-008, GJ-010, GJ-012 carry no Axis-B code. **3 clean.** ✔
+- **A2 = 7 by hand (post-G9):** `partial-counted-as-full` primaries = GJ-010, GJ-011, GJ-012 (3);
+  `subtask-dropped` primaries = **GJ-003B** (G9), GJ-013, GJ-014 (3); `fabricated-progress` primary =
+  GJ-008 (1). 3 + 3 + 1 = **7**. ✔
+- **A2 clean = 3 by hand:** of those seven, GJ-003B (B3), GJ-011 (B1,B2), GJ-013 (B1,B2), GJ-014
+  (B1,B3) are contaminated; GJ-008, GJ-010, GJ-012 carry no Axis-B code. **3 clean.** ✔
 - **Headline holds:** 16/21 rows carry an Axis-B code ⇒ the modal "failure" is the sandbox, not the
   agent. ✔
 
@@ -123,27 +124,33 @@ The walkthrough requires hand-verifying the arithmetic for at least the top cate
 - Every table **recomputable from the Step 5 matrix** (denominators 17 for Axis-A failures, 21 for
   share-of-cases). ✔
 
-## Reconciliation with Phase 3 §6.1–§6.2 (discrepancy flagged)
+## Reconciliation with Phase 3 §6.1–§6.2 (resolved — G6 + G9)
 
 This Step 6 recompute is taken from the **Step 5 matrix primary column**, which is the authoritative
-coding surface. It surfaces a **case-attribution discrepancy in the older Phase 3 §6.1**:
+coding surface. It surfaced a **case-attribution discrepancy in the older Phase 3 §6.1** that G6 + G9
+have since resolved. The resolved counts are **A1 = 4, A2 = 7** with **GJ-003B coded A2**.
 
-| | Phase 3 §6.1 (older) | Step 6 (from matrix) |
+| | Phase 3 §6.1 (older, pre-G9) | Resolved (this recompute + G9) |
 |---|---|---|
-| **A1 count** | 4 | **4** (GJ-003B moved to A2 per G9) |
+| **A1 count** | 4 | **4** |
 | **A1 cases** | GJ-002, GJ-004B, GJ-005, GJ-009† | unchanged |
-| **A2 cases** | GJ-010, 011, 012, **GJ-003B**, 013, 014 | + **GJ-003B**, **GJ-008** |
 | **A2 count** | 6 | **7** |
+| **A2 cases** | GJ-010, 011, 012, **GJ-003B**, 013, 014 (GJ-008 omitted) | GJ-003B, **GJ-008**, GJ-010, 011, 012, 013, 014 |
 
-- The Step 5/§6 matrix codes **GJ-003B** primary = `missing-requested-information` (**A1**) with
-  `subtask-dropped` *secondary*, and **GJ-008** primary = `fabricated-progress` (**A2**). Phase 3
-  §6.1 misplaced GJ-003B into A2 and omitted GJ-008 — the two errors cancel for the A2 *count* (still
-  6) but undercount A1 (4 → should be **5**) and misattribute cases.
-- Phase 3 **§6.3** also says A2 has "5" primary cases, which disagrees with both §6.1 (6) and this
-  recompute (6).
+- **GJ-003B home settled by G9.** The original Step 5 row coded **GJ-003B** primary =
+  `missing-requested-information` (**A1**) with `subtask-dropped` *secondary*. The **G9
+  conditional-prompt tie-breaker** (else-branch never attempted ⇒ the dropped subtask is the
+  first deviation) recodes GJ-003B to **A2 `subtask-dropped`** — this is the coding the executable
+  registry (`GJ-003B`) and Step 2 now carry. GJ-003B therefore counts under **A2, not A1**.
+- **GJ-008 home settled by G10.** **GJ-008** primary = `fabricated-progress` (**A2**); the older
+  §6.1 omitted it. (The registry's stale `fluent-evasion` coding was fixed under G10.)
+- **Net effect:** A1 stays **4** (GJ-003B was never an A1 primary once G9 applies), A2 becomes
+  **7** (adds GJ-003B and GJ-008). The older §6.1 figure of A2 = 6 — and the §6.3 figure of A2 = 5 —
+  are both superseded.
 - **Axis-B counts agree** with §6.2 (B1=8, B2=5, B3=4, B4=3), except §6.2 lists the B3 case as
   `GJ-003A`; in the collapsed matrix the kept row is **GJ-003B**, which is the one that carries B3.
 
-**Upstream fix applied (G6, 2026-06-07):** Phase 3 §6.1/§6.3 now carry A1=5 (with GJ-003B), A2 case
-list includes GJ-008 (not GJ-003B), and §6.3 states A2 primary count **6**, matching this
-matrix-derived recompute.
+**Upstream fix applied (G6 + G9, 2026-06-07):** Phase 3 §6.1/§6.3 now carry **A1 = 4** and
+**A2 = 7**, with GJ-003B listed under A2 (`subtask-dropped`) and GJ-008 included under A2
+(`fabricated-progress`), matching this matrix-derived recompute and the Step 8 gate tracker
+(G6: CLEARED, A1=4 / A2=7).
