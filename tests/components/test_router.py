@@ -221,6 +221,48 @@ class TestPlanningDepth:
                 "high-complexity-initial-task",
             ),
             ("Any follow-up after tools.", 1, 1, "L0", "post-tool-synthesis"),
+            # Composite imperative chains — Stage 4 §10.2 GJ-010/011/012
+            # regression guard. Without enumeration / comma-then-and
+            # detection, these score 1 (just " and ") and fall through to L0,
+            # capping the planner at 1 step and causing the agent to fabricate
+            # the missing subtasks (root cause of GJ-012 pf=0.33).
+            (
+                "Do these three things: (1) write 'first' to /tmp/f1.txt; "
+                "(2) write 'second' to /tmp/f2.txt; (3) search the web for "
+                "the live population of Mars and report it.",
+                0,
+                0,
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
+            (
+                "Create a file /tmp/f3.txt with 'hello', list its contents "
+                "via shell, and query a live API for today's weather.",
+                0,
+                0,
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
+            # TAP-4 rejection guard: a single-imperative prompt with one
+            # incidental comma must NOT trip the new comma-then-and heuristic
+            # (only TWO commas + "and" should fire it). If this flips to L1
+            # we're over-flagging trivial tasks and burning planner budget.
+            (
+                "Write the number 42 to /tmp/answer.txt.",
+                0,
+                0,
+                "L0",
+                "simple-initial-task",
+            ),
+            # TAP-4 rejection guard: a single "(1)"-marked enumeration is NOT
+            # multi-subtask — needs at least two enumeration markers to fire.
+            (
+                "Step (1) is the only step.",
+                0,
+                0,
+                "L0",
+                "simple-initial-task",
+            ),
         ],
     )
     def test_select_planning_depth_levels(

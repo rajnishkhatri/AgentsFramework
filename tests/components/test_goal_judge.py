@@ -513,3 +513,79 @@ class TestEvidenceEnrichmentAndRedaction:
         )
         rendered = llm.calls[0][1][0]["content"]
         assert "plain text result" in rendered
+
+
+class TestSummarizeToolCalls:
+    """L3 pure-function tests for the eval.goal_judge audit-trail helper.
+
+    ``summarize_tool_calls`` is what the orchestration node calls to build
+    the ``tool_calls_summary`` field on the Langfuse eval observation. This
+    lets us answer queries like "show me every GoalJudge verdict where
+    web_search was never invoked" without scrolling through evidence
+    digests. Failure paths first (AGENTS.md TAP-4).
+    """
+
+    def test_empty_evidence_returns_empty_list(self):
+        from components.goal_judge import summarize_tool_calls
+
+        assert summarize_tool_calls([]) == []
+
+    def test_none_evidence_returns_empty_list(self):
+        from components.goal_judge import summarize_tool_calls
+
+        assert summarize_tool_calls(None) == []
+
+    def test_missing_tool_name_falls_back_to_question_mark(self):
+        from components.goal_judge import summarize_tool_calls
+
+        summary = summarize_tool_calls(
+            [{"tool_input": {"q": "x"}}]  # no tool_name
+        )
+        assert summary == [{"tool_name": "?", "args_keys": ["q"]}]
+
+    def test_missing_tool_input_yields_empty_args_keys(self):
+        from components.goal_judge import summarize_tool_calls
+
+        summary = summarize_tool_calls([{"tool_name": "shell"}])
+        assert summary == [{"tool_name": "shell", "args_keys": []}]
+
+    def test_args_keys_are_sorted_for_stable_diff(self):
+        from components.goal_judge import summarize_tool_calls
+
+        summary = summarize_tool_calls(
+            [{"tool_name": "shell", "tool_input": {"cwd": ".", "command": "ls"}}]
+        )
+        assert summary[0]["args_keys"] == ["command", "cwd"]
+
+    def test_limit_keeps_only_tail(self):
+        from components.goal_judge import summarize_tool_calls
+
+        evidence = [
+            {"tool_name": f"t{i}", "tool_input": {}} for i in range(12)
+        ]
+        summary = summarize_tool_calls(evidence, limit=3)
+        assert [s["tool_name"] for s in summary] == ["t9", "t10", "t11"]
+
+    def test_default_limit_is_eight(self):
+        from components.goal_judge import summarize_tool_calls
+
+        evidence = [
+            {"tool_name": f"t{i}", "tool_input": {}} for i in range(20)
+        ]
+        summary = summarize_tool_calls(evidence)
+        assert len(summary) == 8
+        assert summary[0]["tool_name"] == "t12"
+
+    def test_three_subtask_trace_surfaces_all_distinct_tools(self):
+        """Stage 4 §10.2 GJ-012 — a healthy three-subtask trace should show
+        the three distinct tool names so a Langfuse query can flag the case
+        where web_search is missing."""
+        from components.goal_judge import summarize_tool_calls
+
+        evidence = [
+            {"tool_name": "file_io", "tool_input": {"operation": "write", "path": "/x"}},
+            {"tool_name": "shell", "tool_input": {"command": "cat /x"}},
+            {"tool_name": "web_search", "tool_input": {"query": "Austin weather"}},
+        ]
+        summary = summarize_tool_calls(evidence)
+        assert [s["tool_name"] for s in summary] == ["file_io", "shell", "web_search"]

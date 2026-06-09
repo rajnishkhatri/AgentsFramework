@@ -16,6 +16,7 @@ Branch order (highest priority first):
 
 from __future__ import annotations
 
+import re
 from typing import Literal
 
 from components.routing_config import RoutingConfig
@@ -114,6 +115,17 @@ def select_planning_depth(
         complexity_score += 1
 
     if lowered.count("?") >= 2:
+        complexity_score += 1
+
+    # Composite imperative chain: explicit enumeration "(1) … (2) …" with at
+    # least two markers, OR a "do X, do Y, and do Z" comma-then-and pattern.
+    # Without this, prompts like "Create a file, list its contents, and query
+    # the API" score 1 (just " and ") and fall through to L0 / max_steps=1,
+    # so the planner truncates to a single subtask and the agent fabricates
+    # the rest. (Stage 4 §10.2 anchors GJ-010, GJ-011, GJ-012.)
+    if len(re.findall(r"\([1-9]\)", task_input)) >= 2:
+        complexity_score += 1
+    elif re.search(r",[^,]+,\s*(?:and|then)\s", lowered) is not None:
         complexity_score += 1
 
     if complexity_score >= 3:

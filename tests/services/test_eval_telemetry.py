@@ -100,6 +100,47 @@ class TestEvalTelemetryPublish:
         assert output["graceful_failure"] is True
 
     @pytest.mark.asyncio
+    async def test_sink_receives_enriched_goal_judge_audit_fields(self):
+        """E.1 (Stage 4 Confirmation telemetry enrichment).
+
+        ``react_loop`` now forwards the ``final_answer``, ``evidence_digest``,
+        ``tool_calls_summary``, and ``plan_steps`` fields it actually fed the
+        judge — so a surprising verdict can be re-read end-to-end from the
+        Langfuse trace. Assert the sink passes them through redaction without
+        losing the audit trail.
+        """
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        await publish_goal_judge(
+            trace_id="trace-enriched",
+            user_id="synthetic-saturation-user",
+            task_id="trace-enriched",
+            ai_input={
+                "task_input": "list its contents",
+                "success_conditions": ["c1", "c2"],
+                "final_answer": "The contents of /workspace are: f1.txt, f2.txt",
+                "evidence_digest": "- shell(input={'command': 'ls /workspace'}) -> f1.txt\\nf2.txt",
+                "tool_calls_summary": [
+                    {"tool_name": "shell", "args_keys": ["command"]},
+                ],
+                "plan_steps": 1,
+            },
+            ai_response={"goal_met": False, "partial_fraction": 0.33},
+            step=4,
+            model="gpt-4o-mini",
+        )
+
+        assert len(exporter.calls) == 1
+        attrs = exporter.calls[0]["attributes"]
+        assert attrs["final_answer"].startswith("The contents")
+        assert "ls /workspace" in attrs["evidence_digest"]
+        assert attrs["tool_calls_summary"] == [
+            {"tool_name": "shell", "args_keys": ["command"]}
+        ]
+        assert attrs["plan_steps"] == 1
+
+    @pytest.mark.asyncio
     async def test_sink_failure_does_not_raise(self):
         broken = MagicMock()
         broken.publish_goal_judge.side_effect = RuntimeError("langfuse down")
