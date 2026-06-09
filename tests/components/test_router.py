@@ -201,12 +201,11 @@ class TestReturnShape:
 
 class TestPlanningDepth:
     @pytest.mark.parametrize(
-        "task_input,step_count,tool_results_count,expected_depth,expected_reason",
+        "task_input,task_tool_results_count,expected_depth,expected_reason",
         [
-            ("What is 2+2?", 0, 0, "L0", "simple-initial-task"),
+            ("What is 2+2?", 0, "L0", "simple-initial-task"),
             (
                 "Compare architecture trade-offs and propose a migration roadmap with constraints.",
-                0,
                 0,
                 "L1",
                 "moderate-complexity-initial-task",
@@ -216,11 +215,27 @@ class TestPlanningDepth:
                 "Also include risks and phased rollout.\n"
                 "Then propose test strategy and governance checks?",
                 0,
-                0,
                 "L2",
                 "high-complexity-initial-task",
             ),
-            ("Any follow-up after tools.", 1, 1, "L0", "post-tool-synthesis"),
+            ("Any follow-up after tools.", 1, "L0", "post-tool-synthesis"),
+            # Per-task scoping regression guard: a multi-subtask prompt on a
+            # long-lived LangGraph thread (saturation runs, replay batches,
+            # multi-turn UIs) must still classify as L1 when *this task* has
+            # produced zero tool results — even if the thread overall has
+            # many. The bug this guards: prior router took thread-wide
+            # ``step_count`` / ``len(state["tool_results"])`` and fell into
+            # ``post-tool-synthesis`` (L0), so the planner capped at 1 step,
+            # and the agent fabricated subtasks 2-N. The caller is now
+            # responsible for filtering tool_results to the current task_id.
+            (
+                "Create a file /workspace/f3.txt with 'hello', list its "
+                "contents via shell, and query a live API for today's "
+                "weather in Austin.",
+                0,  # task_tool_results_count=0 — this task has not yet acted
+                "L1",
+                "moderate-complexity-initial-task",
+            ),
             # Composite imperative chains — Stage 4 §10.2 GJ-010/011/012
             # regression guard. Without enumeration / comma-then-and
             # detection, these score 1 (just " and ") and fall through to L0,
@@ -231,14 +246,12 @@ class TestPlanningDepth:
                 "(2) write 'second' to /tmp/f2.txt; (3) search the web for "
                 "the live population of Mars and report it.",
                 0,
-                0,
                 "L1",
                 "moderate-complexity-initial-task",
             ),
             (
                 "Create a file /tmp/f3.txt with 'hello', list its contents "
                 "via shell, and query a live API for today's weather.",
-                0,
                 0,
                 "L1",
                 "moderate-complexity-initial-task",
@@ -250,7 +263,6 @@ class TestPlanningDepth:
             (
                 "Write the number 42 to /tmp/answer.txt.",
                 0,
-                0,
                 "L0",
                 "simple-initial-task",
             ),
@@ -258,7 +270,6 @@ class TestPlanningDepth:
             # multi-subtask — needs at least two enumeration markers to fire.
             (
                 "Step (1) is the only step.",
-                0,
                 0,
                 "L0",
                 "simple-initial-task",
@@ -275,14 +286,12 @@ class TestPlanningDepth:
                 "roadmap, and then produce a concise implementation summary "
                 "with testing notes and explicit constraints.",
                 0,
-                0,
                 "L1",
                 "moderate-complexity-initial-task",
             ),
             (
                 "Design and compare rollout options, then summarize risks, "
                 "constraints, and mitigation trade-offs for the migration.",
-                0,
                 0,
                 "L1",
                 "moderate-complexity-initial-task",
@@ -292,15 +301,13 @@ class TestPlanningDepth:
     def test_select_planning_depth_levels(
         self,
         task_input: str,
-        step_count: int,
-        tool_results_count: int,
+        task_tool_results_count: int,
         expected_depth: str,
         expected_reason: str,
     ) -> None:
         depth, reason = select_planning_depth(
             task_input=task_input,
-            step_count=step_count,
-            tool_results_count=tool_results_count,
+            task_tool_results_count=task_tool_results_count,
         )
         assert depth == expected_depth
         assert reason == expected_reason
