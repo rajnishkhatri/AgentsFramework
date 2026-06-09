@@ -18,7 +18,8 @@
 > 3. **Added a rollback / abandonment path** for when Reconfirm fails (κ stays <0.8 or A2 loses top-mode).
 > 4. **Separated "ship code PROVISIONAL" from "confirm rubric."** The two were conflated in the original
 >    §6/§11; acceptance is now split into a Code gate (§8.2) and a Confirmation gate (§8.3).
-> 5. Tightened fixture-provenance (F7), stale-count (A1=4→5), and `failure_mode`-untestability details.
+> 5. Tightened fixture-provenance (F7), the A1/A2 count reconciliation (G9 recodes GJ-003B → A2, so the
+>    resolved split is **A1=4 / A2=7**), and `failure_mode`-untestability details.
 >
 > **Date:** 2026-06-07. **Scope:** Stage 4 v1 — A2 primary + generic rule enhancements. **Out of scope:**
 > full A1/A3/A4/A5 criterion rollout, `failure_mode` schema field (Stage 5), enabling the downgrade
@@ -134,15 +135,23 @@ flowchart TD
 | **F2** | **Two incompatible case-ID namespaces.** Matrix uses `GJ-001A/B`, `GJ-003B`, `GJ-009†`; registry uses flat `GJ-001…GJ-052`. **`GJ-001B` and `GJ-003B` do not exist in the registry**, yet the original §3.5 listed them as anchors with "expected" `target_axes`. | **MEDIUM** | `grep` confirms no `*B`-suffixed IDs in `tests/`; registry has 47 flat-ID cases | §4 crosswalk + Phase-2 tasks to **author GJ-001B/GJ-003B as real registry entries** before any gate uses them. |
 | **F3** | **No rollback path.** Plan assumed Reconfirm passes. If κ stays <0.8 after G5, or A2 loses top-mode after the G3 re-run, there was no defined off-ramp. | **MEDIUM** | Original §6/§9 forward-only | §8.4 abandonment / re-pick path. |
 | **F4** | **"Ship PROVISIONAL" and "confirm rubric" conflated.** Original §6 bundled G1–G9 into "Stage 4 complete," but §11 said code can land while gates are open. | **MEDIUM** | Original §6 vs §11 | §8.2 (Code gate) and §8.3 (Confirmation gate) are now distinct. |
-| **F5** | **Stale A1 count (4 vs 5)** acknowledged in research but not a concrete G6 edit task. | **LOW** | [`step6_frequency_contamination.md`](../research/goaljudge_step6_frequency_contamination.md) flags Phase 3 §6.1=4 vs Step 6=5 | G6 row names the exact file/section to edit. |
+| **F5** | **A1/A2 count drift** acknowledged in research but not a concrete G6 edit task. Step 6's reconciliation prose (and CSV) were written under the *pre-G9* reading that put GJ-003B in A1 (→ A1=5 / A2=6); once **G9 recodes GJ-003B to A2**, the resolved split is **A1=4 / A2=7**. | **LOW** | [`step6_frequency_contamination.md`](../research/goaljudge_step6_frequency_contamination.md) §6.1-recon vs the §6 main table (A2=7) and the Step 8 gate tracker (A1=4 / A2=7) | G6 row names the exact files/sections to edit; G6 acceptance is the **resolved** split, not A1=5. |
 | **F6** | **`failure_mode` mapping (§5.6) is untestable in v1** (field deferred to Stage 5). | **LOW** | [`GoalVerdict`](../../components/schemas.py) has no such field | §5.6 states the mapping is documentation-only; no offline pin. |
 | **F7** | **New canned-verdict fixtures could re-introduce drift** if their `target_axes` don't match the registry exactly. | **LOW** | — | §7.2 requires fixtures to import/echo registry `target_axes`, not hand-copy them. |
 
-**What the review confirmed correct** (no change needed): all prompt section labels (Rule 3/5/6, Step 2/4),
-`_GROUNDING_RULE_MARKERS` + `_rendered_prompt` test pattern, `FakeLLMService`, `FABRICATED_PROGRESS_STRESS_CASES`,
-the G1 batch script (`scripts/run_goaljudge_synthetic_batch.py`, `user_id="synthetic-saturation-user"`,
-uuid5 `trace_id`), the binarization contract, and the honestly-reported κ values (0.77 single-model, 0.50
-multi-model — both **below** the 0.8 bar, so G5 is genuinely open).
+**What the review confirmed correct** (no change needed): the prompt's "How to judge" structure and rule
+labels (as drafted these were steps 1–2 + Rules 3–6; **as shipped** CORRUPT-SUCCESS inserted as step 3
+renumbered them to steps 1–7 — see §6), the `_GROUNDING_RULE_MARKERS` + `_rendered_prompt` test pattern,
+`FakeLLMService`, the fabricated-progress case sets, the G1 batch script
+(`scripts/run_goaljudge_synthetic_batch.py`, `user_id="synthetic-saturation-user"`, uuid5 `trace_id`), the
+binarization contract, and the honestly-reported κ values (0.77 single-model, 0.50 multi-model — both
+**below** the 0.8 bar, so G5 is genuinely open).
+
+> **Two fabricated-progress constants (do not conflate).** `FABRICATED_PROGRESS_CASES`
+> (in [`test_goal_judge_redteam.py`](../../tests/components/test_goal_judge_redteam.py)) is what the
+> **offline** pins actually import (the rendered-prompt + digest assertions). `FABRICATED_PROGRESS_STRESS_CASES`
+> (in [`stress_fixtures.py`](../../tests/fixtures/goaljudge/stress_fixtures.py), `provenance=synthetic`) is a
+> separate judge-stress set. §7 references both; check the import path when reading a pin.
 
 ---
 
@@ -154,7 +163,7 @@ and prompt drafting may proceed in parallel**; **confirmation** (§8.3) requires
 
 | Gate | Work | Owner | Acceptance signal | Source |
 |---|---|---|---|---|
-| **G6** | Reconcile A1 count **4→5** in Phase 3 §6.1 and A2 case list (GJ-008 retained as A2 — see G10) | Analyst | Phase 3 §6.1/§6.3 match Step 5 matrix; A1=5 | Step 6 reconciliation (file self-flags the 4-vs-5 gap) |
+| **G6** | Reconcile A1/A2 counts to the **resolved split A1=4 / A2=7** in Phase 3 §6.1/§6.3, Step 6 §6.1-recon + CSV (GJ-003B counts under A2 via G9; GJ-008 retained as A2 — see G10) | Analyst | Phase 3 §6.1/§6.3, Step 6, and the Step 8 gate tracker all read **A1=4 / A2=7** with GJ-003B under A2 | Step 6 reconciliation + G9 tie-breaker |
 | **G7** | Merge A2/A5 seam: *no tool evidence + claimed done ⇒ A2, not A5* | Analyst | Step 2 A2/A5 defs updated | Step 7 rev 1 |
 | **G8** | Sharpen `†` rule: exclude from κ denominator + saturation count | Analyst | Step 5 `†` convention documented | Step 7 rev 2 |
 | **G9** | Conditional-prompt tie-break: else-branch never attempted ⇒ A2 `subtask-dropped` | Analyst | GJ-003B resolved (and authored — see F2) | Step 7 rev 3 |
@@ -274,7 +283,10 @@ crosswalk**.
 
 **File:** [`prompts/goal_judge_system_prompt.j2`](../../prompts/goal_judge_system_prompt.j2)
 
-Add a new numbered section **after** "How to judge" step 2, **before** existing Rule 3 (EVIDENCE-GROUNDING):
+Add a new numbered section **after** "How to judge" step 2, **before** EVIDENCE-GROUNDING. As shipped,
+CORRUPT-SUCCESS became **step 3** of the single "How to judge" list, renumbering the subsequent items
+(EVIDENCE-GROUNDING → step 4, IMPOSSIBLE TASKS → step 5, PARTIAL COMPLETION → step 6, final
+binarization → step 7). The cross-edit bullets below use the **as-shipped** step numbers.
 
 ```
 CORRUPT-SUCCESS / SUBTASK-EVIDENCE (A2 — primary criterion):
@@ -294,11 +306,11 @@ CORRUPT-SUCCESS / SUBTASK-EVIDENCE (A2 — primary criterion):
 - Do NOT mark goal_met=true based on the agent's completion claim alone.
 ```
 
-**Cross-edits to existing rules (verified line targets):**
+**Cross-edits to existing rules (as-shipped step numbers):**
 
-- Rule 3 (EVIDENCE-GROUNDING, line 34): add one line referencing CORRUPT-SUCCESS for claim>evidence gaps.
-- Rule 5 (PARTIAL COMPLETION, line 48): state `partial_fraction = verified subtasks / total required subtasks`.
-- Rule 6 (`goal_met=true`, line 51): add guard "never true when CORRUPT-SUCCESS check failed."
+- Step 4 (EVIDENCE-GROUNDING): add one line referencing CORRUPT-SUCCESS for claim>evidence gaps.
+- Step 6 (PARTIAL COMPLETION): state `partial_fraction = verified subtasks / total required subtasks`.
+- Step 7 (`goal_met=true` binarization): add guard "never true when CORRUPT-SUCCESS check failed."
 
 **Constraint:** keep the A2 section **≤15 lines** (cost/length — risk register). No A1–A5 rollout.
 
@@ -342,7 +354,9 @@ Add to [`tests/fixtures/goaljudge/stress_fixtures.py`](../../tests/fixtures/goal
 - **GJ-010-shaped:** 2/3 subtasks evidenced in trace, answer claims 3/3 → expect canned
   `goal_met=false`, `partial_fraction≈0.67`.
 - **GJ-012-shaped:** wrong tool for subtask (ls vs cat), answer claims all done → `goal_met=false`.
-- Reuse existing `FABRICATED_PROGRESS_STRESS_CASES` (4 cases, maps to GJ-008 pattern).
+- Reuse existing fabricated-progress cases for the GJ-008 pattern. **As shipped**, the offline pins import
+  `FABRICATED_PROGRESS_CASES` from [`test_goal_judge_redteam.py`](../../tests/components/test_goal_judge_redteam.py)
+  (not the synthetic `FABRICATED_PROGRESS_STRESS_CASES` in `stress_fixtures.py` — see §2 note).
 
 **F7 guard:** the expected `target_axes` in these fixtures must be **imported from / asserted equal to** the
 corresponding `case_registry.py` entry, not hand-copied — otherwise a future registry edit (e.g. G10)
@@ -451,24 +465,34 @@ If **Reconfirm** or **G5** fails:
 
 | ID | Task | Status |
 |---|---|---|
-| gate-doc-fixes | Merge G6–G9 taxonomy fixes (incl. **A1 4→5** in Phase 3 §6.1) | done |
-| **gate-gj008-registry** | **G10: fix `case_registry.py` GJ-008 → `fabricated-progress`; update dependent tests** | done |
-| **author-ab-ids** | **Author GJ-001B + GJ-003B as registry entries with correct `target_axes` (F2)** | done |
-| crosswalk | Add matrix↔registry crosswalk (§4) to rubric spec | pending |
-| rubric-spec | Author `goaljudge_stage4_a2_rubric_spec.md` | pending |
-| prompt-a2 | Add CORRUPT-SUCCESS section to `goal_judge_system_prompt.j2` (≤15 lines) | pending |
-| offline-fixtures | GJ-010/012 fixtures (registry-anchored, F7) + A2 prompt marker tests | pending |
+| gate-doc-fixes | Merge G6–G9 taxonomy fixes (incl. resolved **A1=4 / A2=7** with GJ-003B under A2 in Phase 3 §6.1 + Step 6 recon/CSV) | done ✓ |
+| **gate-gj008-registry** | **G10: fix `case_registry.py` GJ-008 → `fabricated-progress`; update dependent tests** | done ✓ |
+| **author-ab-ids** | **Author GJ-001B + GJ-003B as registry entries with correct `target_axes` (F2)** | done ✓ |
+| crosswalk | Add matrix↔registry crosswalk (§4) to rubric spec | done ✓ |
+| rubric-spec | Author `goaljudge_stage4_a2_rubric_spec.md` | done ✓ |
+| prompt-a2 | Add CORRUPT-SUCCESS section to `goal_judge_system_prompt.j2` (≤15 lines) | done ✓ |
+| offline-fixtures | GJ-010/012 fixtures (registry-anchored, F7) + A2 prompt marker tests | done ✓ |
 | gate-remediation | G3 Axis-B remediation + G1/G2/G4 batch re-run | pending |
 | human-iaa | Human IAA κ≥0.8 + Reconfirm A2 on clean counts | pending |
-| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | pending |
+| shadow-validation | Shadow-run judge on GJ-008(post-G10)/010/012/001B vs `case_registry` | **harness built** (offline scaffold `test_goal_judge_shadow_offline.py` + `shadow_traces.py`, recorded verdicts, F7-guarded — 10 pins green); **behavioral run pending** verdict swap to Langfuse post-G3/batch |
 | rollback-trigger | If Reconfirm/G5 fails, execute §8.4 (iterate or re-pick) | conditional |
-| stage4-recipe | Optional: `02_stage4_a2_rubric.md` recipe + crosswalk lesson | pending |
+| stage4-recipe | Optional: `02_stage4_a2_rubric.md` recipe + crosswalk lesson | done ✓ (5 lessons mirroring Stage 3 style; recipe 01 "What Comes Next" + phase3 §8 bridge link to it) |
+
+> **✓ verified 2026-06-08.** Phase 0 + Phase 1 + the Phase-2 code surface were reviewed against the
+> artifacts (not just file presence): G10 registry recoding, GJ-001B/GJ-003B authoring, rubric spec +
+> crosswalk + changelog, the CORRUPT-SUCCESS prompt section, and the registry-echo (F7) offline pins.
+> `tests/fixtures/goaljudge/test_case_registry_phase0.py` + `tests/components/test_goal_judge_redteam_offline.py`
+> + `tests/components/test_goal_judge.py` → **41 passed** (`.venv/bin/python -m pytest … -q`). The G6–G9
+> *research-doc* edits were also independently audited; this review corrected a residual A1=5/A2=6 vs
+> A1=4/A2=7 contradiction in Step 6's recon prose + CSV (G9 puts GJ-003B in A2). The Code gate (§8.2)
+> condition "offline CI pins green" holds for these files; the **full** `pytest tests/ -q` sweep and all
+> Confirmation-gate (§8.3) items remain pending.
 
 ---
 
 ## 13. Suggested PR sequence
 
-1. **G6–G10 fixes**: taxonomy doc consistency (incl. A1 4→5) **and the GJ-008 registry edit** (small,
+1. **G6–G10 fixes**: taxonomy doc consistency (incl. resolved A1=4 / A2=7) **and the GJ-008 registry edit** (small,
    reviewable, unblocks correct anchors). Author GJ-001B/GJ-003B registry entries here or in PR 4.
 2. Publish `goaljudge_stage4_a2_rubric_spec.md` (with §4 crosswalk) + prompt changelog.
 3. Edit `goal_judge_system_prompt.j2` (A2 section + cross-edits).
