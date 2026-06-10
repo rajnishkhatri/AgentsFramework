@@ -5,11 +5,11 @@
 > the binary `goal_met` axis is scored with α. This is the gold-set-trust instrument — distinct from the
 > Stage 4 rubric-validity κ.
 >
-> **Status (2026-06-09):** Pilot batch `gcp_goldset_pilot_2026-06-09` complete (43/43 Playwright pass).
+> **Status (2026-06-09, v7_full re-run):** Pilot batch `gcp_goldset_pilot_2026-06-09` complete (43/43 Playwright pass).
 > Double-labeling **complete** (50/50); **α = 0.8846 PASS** on `goal_met`. Stage 4 **G5 κ = 1.0 PASS**
-> ([results](../goaljudge_stage4_a2_iaa_results.md)). Shadow behavioral gate **FAIL** (3/5 —
-> [log](../../../research/goaljudge_stage4_shadow_execution_log.md)); Tier 2 blocked until shadow passes.
-> See the [Stage 5 plan](../../../plans/goaljudge_stage5_goldset.plan.md).
+> ([results](../goaljudge_stage4_a2_iaa_results.md)). Shadow behavioral gate **CLEARED — 5/5 §10.2 anchors PASS on goal_met rail**
+> ([log §v7_full](../../../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)); A2 flips to CONFIRMED.
+> **Tier 2 CLEARED** — full ~250 assembly unblocked. See the [Stage 5 plan](../../../plans/goaljudge_stage5_goldset.plan.md).
 >
 > **α computation:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py)
 

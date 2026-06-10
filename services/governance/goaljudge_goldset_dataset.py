@@ -11,6 +11,8 @@ NO ``langgraph`` / ``langchain`` imports (AGENTS.md invariant #4).
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from collections.abc import Iterable, Sequence
 from enum import Enum
@@ -241,3 +243,28 @@ def assert_firewall_batch(items: Iterable[GoldsetItem]) -> None:
 def active_failure_modes() -> frozenset[str]:
     """Return the closed ``failure_mode`` vocabulary (for drift guards)."""
     return _ACTIVE_FAILURE_MODES
+
+
+def compute_test_split_hash(items: Iterable[GoldsetItem]) -> str:
+    """SHA-256 over the canonical-JSON of the sorted-by-item_id test rows.
+
+    Stable across dict ordering (``sort_keys=True``) and Python re-runs;
+    sensitive to **any** field change on **any** test-split row. Stage 6
+    must recompute this and diff against the manifest before every run —
+    a hash mismatch means the test split was tuned on.
+
+    Spec/plan references:
+
+    - Stage 5 spec §9 — "the test split's content hash is recorded and frozen".
+    - Stage 5 master plan §8.2 — "hash-freeze + per-run hash diff".
+    - Tier 3 assembly plan Phase 2/6 — this is the helper Phase 6 calls and
+      that the manifest records as ``test_split_sha256``.
+
+    Dev-split items in the input iterable are **ignored** — the hash is over
+    test rows only, so a dev-split churn does not break Stage 6's diff.
+    """
+    test_items = [i for i in items if i.split == GoldsetSplit.TEST]
+    test_items.sort(key=lambda item: item.item_id)
+    payload = [item.model_dump(mode="json", exclude_none=False) for item in test_items]
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

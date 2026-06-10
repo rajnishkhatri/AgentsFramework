@@ -141,6 +141,53 @@ class TestEvalTelemetryPublish:
         assert attrs["plan_steps"] == 1
 
     @pytest.mark.asyncio
+    async def test_sink_receives_pipeline_dimension_labels(self):
+        """Tier 3 Phase 2.5 (close the D6 telemetry gap).
+
+        ``react_loop`` also forwards the **pipeline-dimension labels** the
+        gold-set will stratify across: ``planning_depth`` (D1),
+        ``routing_reason`` (D3), ``model_tier`` (D4), ``cost_fraction`` (D6).
+        Without these on the input side, Stage 6 cannot slice judge metrics
+        by dimension from Langfuse alone — it would need to re-join other
+        traces by trace_id, which the Tier 2 unblock session showed is brittle
+        when traces are de-duplicated by deterministic id. Assert the sink
+        carries them through to the exported attributes.
+        """
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        await publish_goal_judge(
+            trace_id="trace-dims",
+            user_id="synthetic-saturation-user",
+            task_id="trace-dims",
+            ai_input={
+                "task_input": "Create f.txt, list its contents, and fetch weather.",
+                "success_conditions": ["c1", "c2", "c3"],
+                "final_answer": "Done.",
+                "evidence_digest": "- file_io(write) -> ok",
+                "tool_calls_summary": [
+                    {"tool_name": "file_io", "args_keys": ["operation", "path"]},
+                ],
+                "plan_steps": 3,
+                # The four new dimension labels.
+                "planning_depth": "L2",
+                "routing_reason": "capable-for-planning",
+                "model_tier": "capable",
+                "cost_fraction": 0.42,
+            },
+            ai_response={"goal_met": False, "partial_fraction": 0.33},
+            step=4,
+            model="gpt-4o",
+        )
+
+        assert len(exporter.calls) == 1
+        attrs = exporter.calls[0]["attributes"]
+        assert attrs["planning_depth"] == "L2"
+        assert attrs["routing_reason"] == "capable-for-planning"
+        assert attrs["model_tier"] == "capable"
+        assert attrs["cost_fraction"] == 0.42
+
+    @pytest.mark.asyncio
     async def test_sink_failure_does_not_raise(self):
         broken = MagicMock()
         broken.publish_goal_judge.side_effect = RuntimeError("langfuse down")
