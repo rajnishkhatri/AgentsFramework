@@ -9,9 +9,11 @@
 > Double-labeling **complete** (50/50); **α = 0.8846 PASS** on `goal_met`. Stage 4 **G5 κ = 1.0 PASS**
 > ([results](../goaljudge_stage4_a2_iaa_results.md)). Shadow behavioral gate **CLEARED — 5/5 §10.2 anchors PASS on goal_met rail**
 > ([log §v7_full](../../../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)); A2 flips to CONFIRMED.
-> **Tier 2 CLEARED** — full ~250 assembly unblocked. See the [Stage 5 plan](../../../plans/goaljudge_stage5_goldset.plan.md).
+> **Tier 2 CLEARED**; **Tier 3 plumbing LANDED** — all 7 phases of the [Tier 3 assembly plan](../../../plans/goaljudge_stage5_tier3_assembly.plan.md) closed under TDD discipline (test totals: 2473 passing, 0 failures). The live ~250 labeling run remains the human-paced critical path.
 >
-> **α computation:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py)
+> **Read before labeling:** [`full_set_labeling_protocol.md`](../../../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) — annotator runbook with the 5 refined rules + EvalGen loop.
+> **α computation:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py) — supports `--diff OUT.csv` for the adjudicator's working copy.
+> **Assembly + freeze:** [`scripts/assemble_goaljudge_goldset.py`](../../../../scripts/assemble_goaljudge_goldset.py) — single-shot CLI: CSV → invariants → SHA-256 → Langfuse load → manifest.
 
 Mirrors the Stage-4 IAA house-style ([`../README.md`](../README.md)): blind annotators, unit-of-agreement
 fixed up front, **recomputable from the CSV**.
@@ -45,8 +47,10 @@ If Stage 4 G5 later fails or §8.4 rollback fires, mark pilot rows `superseded` 
 | File | Role | Show to annotators? |
 |---|---|---|
 | [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv) | Pilot items (~50 target); blank `r1_*` / `r2_*` / `adjudicated_*` | **Yes** |
-| [`goaljudge_stage5_goldset_pilot_results.md`](goaljudge_stage5_goldset_pilot_results.md) | Pilot α report shell (filled after labeling) | No (results doc) |
-| [`goaljudge_stage5_goldset_results.md`](goaljudge_stage5_goldset_results.md) | Full-run α report shell (pending Tier 3) | No |
+| [`goaljudge_stage5_goldset_pilot_results.md`](goaljudge_stage5_goldset_pilot_results.md) | Pilot α report (filled — α = 0.8846 PASS) | No (results doc) |
+| [`goaljudge_stage5_goldset_results.md`](goaljudge_stage5_goldset_results.md) | Full-run α report scaffold (READY; live labeling pending) | No |
+| [`../../../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md`](../../../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md) | Phase 4 cell-targeted authoring discipline (cluster table + decision tree) | **Yes** (for authors filling fresh tasks) |
+| [`../../../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md`](../../../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) | Phase 5 annotator runbook (5 refined rules + EvalGen loop) | **Yes** (for annotators) |
 
 Rebuild pilot sheet from batch JSONL:
 

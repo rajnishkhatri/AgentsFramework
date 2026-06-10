@@ -111,31 +111,43 @@ Post-G3 anchors (GJ-011, GJ-013, GJ-003B) remain outside the §10.2 denominator;
 
 ---
 
-## Tier 3 — Full dataset (trusted for Stage 6) — **READY** (assembly unblocked)
+## Tier 3 — Full dataset (trusted for Stage 6) — **PLUMBING LANDED** (live run pending)
 
 **Gate:** Tier 2 clear → ~250 stratified items → double-label → α ≥ 0.8 → test-split hash-freeze → Langfuse `goaljudge_goldset_v1`.
 
 ### Current state
 
-[`goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md) is still an empty shell — Tier 2 just cleared, so full-run labeling hasn't started yet — but the upstream block is gone.
+The **entire assembly pipeline is implemented, tested (2473/2473 passing), and ready to run.** What remains is human-paced labeling — fresh-task authoring against the gap report, then the live double-label pass. The empty results doc ([`goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md)) is now a structured READY scaffold gated on those upstream steps.
 
-Checklist items, status:
+Checklist items, status (per [Tier 3 assembly plan](../plans/goaljudge_stage5_tier3_assembly.plan.md)):
 
-- `assemble-goldset` — full ~250 assemble + dev/test split + Langfuse load → **READY to begin** (was pending)
-- `alpha-gate-full` — full-set α ≥ 0.8 + test freeze → **pending Tier 3**
+| Phase | Status | Evidence |
+|---|---|---|
+| **Phase 1** — `RealLangfuseDatasetClient` wrapper | **done ✓** | `scripts/langfuse_dataset_client.py` |
+| **Phase 2** — `compute_test_split_hash` helper | **done ✓** | `services/governance/goaljudge_goldset_dataset.py:786` |
+| **Phase 2.5** — D6 cost telemetry seam | **done ✓** | `gj_ai_input` payload extended |
+| **Phase 3** — Full ~250 corpus join + cell-aware stratifier + corpus sidecar (`--corpus`) | **done ✓** | `scripts/build_goaljudge_stage5_full_sheet.py`, `project_trajectory_tools`, `classify_tool_cluster`, `compute_cell_coverage` |
+| **Phase 4** — Cell-targeted fresh-task plumbing + drift-guards + authoring guide | **done ✓** | `FreshTask` schema, `jaccard_similarity`, `validate_fresh_task_set`, `tests/fixtures/goaljudge/fresh_test_tasks.py` (5-row seed), [`fresh_task_authoring_guide.md`](../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md) |
+| **Phase 5** — α gate plumbing + adjudication + post-α coverage | **done ✓** | `services/governance/iaa.py` (Krippendorff α, disagreement diff, adjudication apply), `evaluate_goldset_post_alpha_coverage`, [`full_set_labeling_protocol.md`](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md), `scripts/compute_goaljudge_stage5_alpha.py --diff` |
+| **Phase 6** — `assemble_goaljudge_goldset.py` + manifest + invariant suite | **done ✓** | `scripts/assemble_goaljudge_goldset.py`, `row_to_goldset_item`, `assert_assembly_invariants`, `build_goldset_manifest` |
+| `assemble-goldset` — execute live freeze | **pending** — gated on Phase 4-authoring + Phase 5 labeling |
+| `alpha-gate-full` — α ≥ 0.8 on full set | **pending** — gated on the same |
 
 ### What is ready for day-one of Tier 3
 
-Engineering seams and design are in place:
+Engineering seams, design, **and the end-to-end CLI pipeline** are in place:
 
-- Stratification spec (40/30/20/10, A2-dense sampling)
+- Stratification spec (40/30/20/10, A2-dense sampling) — [`goaljudge_stage5_goldset_spec.md`](../research/goaljudge_stage5_goldset_spec.md)
 - Contamination firewall design (synthetic → dev only; test from production/fresh)
-- [`goaljudge_goldset_dataset.py`](../../services/governance/goaljudge_goldset_dataset.py) Langfuse CRUD (L2 mock)
-- Pilot-derived labeling guidelines (GJ-039/GJ-052 rules, GJ-011 batch-variance rule from Stage 4 IAA)
+- Phase 3 builder produces the full sheet with D1/D5 dimension columns + cell-coverage gap report
+- Phase 4 fresh-task schema + drift-guards (router-agreement, Jaccard < 0.5, vocabulary)
+- Phase 5 α gate + disagreement diff + adjudication apply, all reusing one L1 module ([`services/governance/iaa.py`](../../services/governance/iaa.py))
+- Phase 6 single-shot assembler: CSV → invariants → SHA-256 hash → Langfuse load → manifest JSON
+- Pilot-derived labeling guidelines codified into [`full_set_labeling_protocol.md`](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) (5 rules + decision tree)
 - Same two annotators, proven workflow, α tooling
 - Enriched `eval.goal_judge` telemetry (`final_answer`, `evidence_digest`, `tool_calls_summary`, `plan_steps`) — every labeling decision is now auditable end-to-end from Langfuse alone
 
-**Tier 3 verdict: assembly unblocked; needs a separate plan for the live ~250 labeling run.**
+**Tier 3 verdict: plumbing CLEARED; live run remains the human-paced critical path.** Phase 7 (this doc flip) is the final TDD-driven deliverable.
 
 ---
 
@@ -145,17 +157,20 @@ Engineering seams and design are in place:
 |---|---|---|---|
 | **1 — Pilot** | α ≥ 0.8 on ~50 | **PASS** | [`goaljudge_stage5_goldset_pilot_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_results.md) |
 | **2 — Confirmation** | κ ≥ 0.8 + shadow + G1–G10 | **CLEARED (goal_met rail 5/5)** | [`goaljudge_stage4_shadow_execution_log.md`](../research/goaljudge_stage4_shadow_execution_log.md) |
-| **3 — Dataset** | ~250 + α + test freeze | **READY** (assembly unblocked) | [`goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md) |
+| **3 — Dataset** | ~250 + α + test freeze | **PLUMBING LANDED** (live run pending) | [`Tier 3 assembly plan`](../plans/goaljudge_stage5_tier3_assembly.plan.md) + [`scripts/assemble_goaljudge_goldset.py`](../../scripts/assemble_goaljudge_goldset.py) |
 
 ---
 
 ## Critical path
 
 1. ~~**Unblock Tier 2:**~~ **DONE** — Phase A (tolerance), Phase B (wrong-tool prompt rule), Phase E.1 (telemetry enrichment), Phase E.2/3 (planner per-task scoping + plan_builder split + saturation `task_id` decoupling) all landed; shadow re-run 2026-06-09 v7_full cleared §10.2 on goal_met rail (5/5).
-2. **Tier 3 assembly (now active):** Pull full corpus via `export_goaljudge_corpus.py`, stratify per spec, augment scarce strata (dev-only synthetic), double-label with pilot-refined guidelines.
-3. **Tier 3 gate:** Compute full-set α, adjudicate, hash-freeze test split, load Langfuse dataset.
+2. ~~**Tier 3 plumbing:**~~ **DONE** — Phases 1–6 of the [Tier 3 assembly plan](../plans/goaljudge_stage5_tier3_assembly.plan.md) all landed under TDD discipline (Protocol A/B, 7 anti-patterns, 8 self-validation checks). End-to-end pipeline: stratified builder → cell-aware fresh-task seed + drift-guards → α gate + adjudication + post-α coverage → single-shot assembler with SHA-256 freeze and manifest JSON.
+3. **Tier 3 live run (now active, human-paced):**
+   1. **Phase 4-authoring** — fill the 5-row fresh-task seed toward ~80 entries per the [authoring guide](../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md) (each new row gated on `tests/services/test_fresh_task_authoring.py`).
+   2. **Phase 5 labeling** — distribute the assembled sheet + [labeling protocol](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) to the two annotators; blind label; run `compute_goaljudge_stage5_alpha.py --diff`; iterate via EvalGen loop until α ≥ 0.8; adjudicate via `apply_adjudication`.
+   3. **Phase 6 freeze** — run `assemble_goaljudge_goldset.py` (production floors, real Langfuse client); verify the manifest at `cache/goaljudge_eval/goldset_v1_manifest.json`; Tier 3 CLEARED → Stage 6 calibration unblocked.
 
-The pilot work de-risked the labeling instrument (α = 0.88 on `goal_met`). The Tier 2 unblock validated the rubric against live behavior. Tier 3 is the next plan.
+The pilot work de-risked the labeling instrument (α = 0.88 on `goal_met`). The Tier 2 unblock validated the rubric against live behavior. Tier 3 plumbing is complete; the next bottleneck is the human-paced labeling run.
 
 ### Deferred (do not block Tier 2 or 3)
 
@@ -167,8 +182,13 @@ The pilot work de-risked the labeling instrument (α = 0.88 on `goal_met`). The 
 
 ## References
 
-- [Stage 5 goldset plan](../plans/goaljudge_stage5_goldset.plan.md)
+- [Stage 5 goldset master plan](../plans/goaljudge_stage5_goldset.plan.md)
+- [Stage 5 Tier 3 assembly plan](../plans/goaljudge_stage5_tier3_assembly.plan.md) — the 7-phase pipeline this report tracks
 - [Stage 5 goldset IAA protocol](../IAA/goalJudge/goldset/README.md)
+- [Fresh-task authoring guide (Phase 4)](../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md)
+- [Full-set labeling protocol (Phase 5)](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md)
 - [Stage 4 A2 IAA results](../IAA/goalJudge/goaljudge_stage4_a2_iaa_results.md)
 - [Stage 4 shadow execution log](../research/goaljudge_stage4_shadow_execution_log.md)
 - [Stage 5 pilot execution log](../research/goaljudge_stage5_goldset_pilot_execution_log.md)
+- Tier 3 plumbing modules: [`services/governance/iaa.py`](../../services/governance/iaa.py), [`services/governance/goaljudge_goldset_dataset.py`](../../services/governance/goaljudge_goldset_dataset.py)
+- Tier 3 CLI: [`scripts/assemble_goaljudge_goldset.py`](../../scripts/assemble_goaljudge_goldset.py), [`scripts/compute_goaljudge_stage5_alpha.py`](../../scripts/compute_goaljudge_stage5_alpha.py), [`scripts/build_goaljudge_stage5_full_sheet.py`](../../scripts/build_goaljudge_stage5_full_sheet.py)
