@@ -123,7 +123,13 @@ class LangGraphRuntime:
         saturation = graph_input.pop("_goaljudge_saturation", None)
         if saturation is not None:
             trace_id = str(saturation["trace_id"])
-            task_id = str(saturation.get("task_id", trace_id))
+            # ``task_id`` MUST be fresh per invocation even in saturation mode:
+            # it scopes the planner's per-task tool-result count
+            # (``select_planning_depth`` short-circuit). Reusing ``trace_id`` as
+            # ``task_id`` makes every replay of the same case look like a
+            # continuation, capping multi-subtask prompts at ``L0``/1 plan step.
+            # See ``middleware/goaljudge_saturation_bridge.saturation_input_overlay``.
+            task_id = str(saturation.get("task_id") or uuid.uuid4().hex)
             eval_user_id = str(saturation.get("user_id", identity.owner))
             run_id = trace_id
         else:
