@@ -41,10 +41,20 @@ class LangfuseEvalTelemetrySink:
                     "subject": user_id,
                     "task_input": ai_input.get("task_input", ""),
                     "success_conditions": ai_input.get("success_conditions", []),
+                    # Stage 4 Phase E.1 (Tier 2) — audit-trail fields the judge saw.
                     "final_answer": ai_input.get("final_answer", ""),
                     "evidence_digest": ai_input.get("evidence_digest", ""),
                     "tool_calls_summary": ai_input.get("tool_calls_summary", []),
                     "plan_steps": ai_input.get("plan_steps", 0),
+                    # Stage 5 Tier 3 Phase 2.5 — pipeline-dimension labels.
+                    # D1, D3, D4, D6 from the Tier 3 assembly plan §"The
+                    # pipeline dimension space". Surfacing them as first-class
+                    # Langfuse attributes lets Stage 6 slice judge metrics by
+                    # dimension without joining other traces.
+                    "planning_depth": ai_input.get("planning_depth", ""),
+                    "routing_reason": ai_input.get("routing_reason", ""),
+                    "model_tier": ai_input.get("model_tier", ""),
+                    "cost_fraction": ai_input.get("cost_fraction", 0.0),
                     "__output": serialize_ai_response(ai_response),
                     "__bb_observation_type": "evaluator",
                 },

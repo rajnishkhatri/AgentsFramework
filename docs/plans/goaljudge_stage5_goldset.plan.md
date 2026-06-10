@@ -8,11 +8,9 @@
 > ([`rubricgoldsetreseachforgoaljudge.md`](../research/rubricgoldsetreseachforgoaljudge.md)); this plan
 > operationalizes it for **this** repo and wires it to the A2 rubric Stage 4 produced.
 >
-> **Three-tier gates (revised 2026-06-09).** Stage 5 splits work across three tiers — see [§3](#3-what-done-means--the-three-tier-gate-split).
-> **Tier 1 (Pilot)** allows early pilot-50 double-labeling + α against the PROVISIONAL A2 rubric while G5
-> G5 κ PASS; shadow behavioral gate **FAIL** (3/5, 2026-06-09). **Tier 2 (Confirmation)** blocked on shadow pass — unlocks full ~250 assembly.
-> **Tier 3 (Dataset)** — α ≥ 0.8 on the full set + test-split freeze — makes `goaljudge_goldset_v1`
-> trusted for Stage 6. Building the *full* set on an unconfirmed rubric would inherit κ disagreement as
+> **Three-tier gates (revised 2026-06-09 v7_full).** Stage 5 splits work across three tiers — see [§3](#3-what-done-means--the-three-tier-gate-split).
+> **Tier 1 (Pilot)** allowed early pilot-50 double-labeling + α against the PROVISIONAL A2 rubric and **PASSED** (α = 0.8846). G5 κ = 1.0 PASS. Shadow behavioral gate **CLEARED 5/5 §10.2 on goal_met rail** (2026-06-09 v7_full re-run; see [shadow log §v7_full](../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)) — A2 flips to CONFIRMED. **Tier 2 (Confirmation) CLEARED** — full ~250 assembly unblocked.
+> **Tier 3 (Dataset) — plumbing LANDED.** All 7 phases of the [Tier 3 assembly plan](goaljudge_stage5_tier3_assembly.plan.md) closed under TDD discipline (Protocol A/B, 7 anti-patterns guarded against, 8 self-validation checks; 2473 tests passing, 0 failures, zero `langgraph`/`langchain` imports). The live ~250 labeling run remains the human-paced critical path. α ≥ 0.8 on the full set + test-split freeze still makes `goaljudge_goldset_v1` trusted for Stage 6. Building the *full* set on an unconfirmed rubric would inherit κ disagreement as
 > noise ([phase 3 §1.2](../research/goaljudge_phase3_axial_coding.md)); the pilot tier accepts that risk
 > with `rubric_version=stage4_provisional` and a re-label trigger if G5 fails (§8.4 rollback).
 >
@@ -137,28 +135,31 @@ Mirroring Stage 4's Code-vs-Confirmation discipline, Stage 5 separates **authora
 
 ```mermaid
 flowchart TD
-  subgraph tier1 [Tier 1 — Pilot early OK]
+  subgraph tier1 [Tier 1 — Pilot PASS α=0.8846]
     Pilot50["Pilot ~50 double-label"]
     AlphaPilot["α on pilot goal_met"]
     IAAReports["docs/IAA/goalJudge/goldset/"]
   end
-  subgraph tier2 [Tier 2 — Still blocked]
-    S4Conf["Stage 4 Confirmation κ≥0.8 + shadow pass"]
+  subgraph tier2 [Tier 2 — CLEARED 2026-06-09 v7_full]
+    S4Conf["Stage 4 Confirmation κ≥0.8 + shadow pass (goal_met rail 5/5)"]
   end
-  subgraph tier3 [Tier 3 — Full dataset]
-    Full250["~250 assemble + α≥0.8 + freeze test"]
+  subgraph tier3 [Tier 3 — Plumbing LANDED; live run pending]
+    Plumbing["Phases 1–6 LANDED ✓ (iaa.py, FreshTask, --diff, assemble_goaljudge_goldset.py)"]
+    Authoring["Phase 4 authoring: 5→~80 fresh tasks (human-paced)"]
+    Labeling["Phase 5 double-label + α≥0.8 (human-paced)"]
+    Freeze["Phase 6 execute: SHA-256 + Langfuse load + manifest"]
     S6["Stage 6 calibration"]
   end
   Pilot50 --> AlphaPilot --> IAAReports
-  S4Conf --> Full250 --> S6
-  AlphaPilot -. "guidelines feed full run" .-> Full250
+  S4Conf --> Plumbing --> Authoring --> Labeling --> Freeze --> S6
+  AlphaPilot -. "guidelines feed full run" .-> Labeling
 ```
 
-| Tier | Gate | What may proceed | Risk accepted |
-|---|---|---|---|
-| **Pilot (Tier 1)** | Instruments ready + GCP batch traces exported | Pilot-50 labeling by same 2 annotators; α on pilot; guideline revision | Labels against **PROVISIONAL** A2 rubric; re-label if G5 fails or rubric iterates (§8.4 rollback) |
-| **Confirmation (Tier 2)** | G5 κ≥0.8 + shadow behavioral pass + G1–G10 | Unlock full ~250 assembly | — |
-| **Dataset (Tier 3)** | α≥0.8 on full set + test-split freeze | `goaljudge_goldset_v1` trusted for Stage 6 | — |
+| Tier | Gate | What may proceed | Risk accepted | Current status |
+|---|---|---|---|---|
+| **Pilot (Tier 1)** | Instruments ready + GCP batch traces exported | Pilot-50 labeling by same 2 annotators; α on pilot; guideline revision | Labels against **PROVISIONAL** A2 rubric; re-label if G5 fails or rubric iterates (§8.4 rollback) | **PASS** (α = 0.8846) |
+| **Confirmation (Tier 2)** | G5 κ≥0.8 + shadow behavioral pass + G1–G10 | Unlock full ~250 assembly | — | **CLEARED** (v7_full 5/5) |
+| **Dataset (Tier 3)** | α≥0.8 on full set + test-split freeze | `goaljudge_goldset_v1` trusted for Stage 6 | — | **Plumbing LANDED**; live run pending (Phase 4 authoring + Phase 5 labeling) |
 
 ### 3.1 Prep gate — "instruments ready" (authorable now)
 
@@ -206,7 +207,7 @@ The pilot may proceed **before** Stage 4 Confirmation clears:
 
 | Prereq | Work | Owner | Acceptance | Status |
 |---|---|---|---|---|
-| **S4-CONF** | Stage 4 A2 rubric confirmed (the four §2 rows) | Data/runtime + 2 humans | All four green | **BLOCKED** (live/human) |
+| **S4-CONF** | Stage 4 A2 rubric confirmed (the four §2 rows) | Data/runtime + 2 humans | All four green | **DONE** (2026-06-09 v7_full — see [shadow log §v7_full](../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)) |
 | **SEAM** | `failure_mode` on `GoalVerdict` (telemetry-only) | Engineering | Field default-None; enum == registry Axis-A codes; export round-trips | **DONE** (§6) |
 | **EXPORT** | `eval_capture` / corpus export carries `failure_mode` end-to-end | Engineering | `verdict.model_dump()` already includes it (no orchestration change); confirm [`export_goaljudge_corpus.py`](../../scripts/export_goaljudge_corpus.py) row surfaces it | **DONE** |
 | **DATASET-IO** | Langfuse dataset CRUD seam (create `goaljudge_goldset_v1`, add items, tag split/provenance) | Engineering | L2 record/replay over mock Langfuse; offline | **DONE** ([`goaljudge_goldset_dataset.py`](../../services/governance/goaljudge_goldset_dataset.py)) |
@@ -438,21 +439,21 @@ day-1 of confirmation follows.
 ## 12. Handoff to Stage 6
 
 Stage 6 (judge calibration) consumes the frozen `goaljudge_goldset_v1` and terminates in the §2.8 enable
-gates. **It does not start until the Stage 5 Dataset gate (§3.2) is green.** The handoff contract:
+gates. **It does not start until the Stage 5 Dataset gate (§3.2) is green** — i.e. until the live ~250 labeling run completes and `assemble_goaljudge_goldset.py` produces the frozen manifest. The handoff contract:
 
 | Stage 6 needs | Stage 5 provides |
 |---|---|
-| A frozen, hashed `test` split | §8.1 step 5 |
-| Per-`failure_mode` strata | the `failure_mode` axis (§6) + stratification (§5.2) |
-| `goal_met` truth at α≥0.8 | the α-gate (§7) |
-| Production-only metric subset | the `provenance` label (§8.2) |
+| A frozen, hashed `test` split | `compute_test_split_hash` (Tier 3 Phase 2) + `assemble_goaljudge_goldset.py` step 4 |
+| Per-`failure_mode` strata | the `failure_mode` axis (§6) + stratification (§5.2) + `failure_mode_distribution` in the v1 manifest (Tier 3 Phase 6) |
+| `goal_met` truth at α≥0.8 | the α-gate (§7) + `services/governance/iaa.py` (Tier 3 Phase 5) |
+| Production-only metric subset | the `provenance` label (§8.2) + the contamination firewall (`assert_assembly_invariants`) |
 | CoT-gaming red-team stratum | the densely-sampled `fabricated-progress` stratum (§5.2) + the existing offline red-team pin |
+| Calibration baseline diff target | `cache/goaljudge_eval/goldset_v1_manifest.json` (12 required keys + 3 informational distributions) |
 
 Stage 6 then reports **P/R/F1 on `goal_met=False`**, κ vs human labels, ECE (diagnostic-only), and the
 CoT-gaming verdict-flip rate, and gates deployment on
 [§2.8](../research/fix2_goaljudge_rubric_feasibility_pyramid.md): precision ≥ 0.90, recall ≥ 0.70,
-false-downgrade ≤ 2 %, flip ≤ 5 %, κ ≥ 0.6 — **flag default-off until all clear.** A separate Stage 6
-plan will own that work.
+false-downgrade ≤ 2 %, flip ≤ 5 %, κ ≥ 0.6 — **flag default-off until all clear.** A separate Stage 6 plan will own that work; with Tier 3 plumbing LANDED, **Stage 6 calibration is now unblocked at the engineering level** (only the live labeling run separates the two stages).
 
 ---
 
@@ -473,9 +474,10 @@ plan will own that work.
 | **annotator2-s4** | Complete Stage 4 `r2_*`; compute κ; update IAA results | **done ✓** (2026-06-09) — κ = 1.0, G5 PASS |
 | **pilot-label-alpha** | Pilot double-label + α≥0.8 + guideline revision | **done ✓** (2026-06-09) — α = 0.8846 PASS |
 | **dedupe-iaa-paths** | Redirect `docs/research/goaljudge_stage4_iaa/` → `docs/IAA/goalJudge/` | **done ✓** (2026-06-09) |
-| **stage4-confirmation** | Stage 4 A2 rubric confirmed (κ≥0.8 + verdict swap + G1–G10) | **BLOCKED** (Tier 2) |
-| assemble-goldset | Full ~250 assemble + split + Langfuse load | pending (Tier 3) |
-| alpha-gate-full | Full-set α≥0.8 + test freeze | pending (Tier 3) |
+| **stage4-confirmation** | Stage 4 A2 rubric confirmed (κ≥0.8 + verdict swap + G1–G10) | **done ✓** (2026-06-09 v7_full) — 5/5 §10.2 anchors PASS on goal_met rail; A2 CONFIRMED for Stage 5 α |
+| **tier3-plumbing** | Tier 3 assembly pipeline (Phases 1–6 of [`goaljudge_stage5_tier3_assembly.plan.md`](goaljudge_stage5_tier3_assembly.plan.md)) | **done ✓** — Real Langfuse client, `compute_test_split_hash`, D6 cost telemetry, full-sheet builder + `--corpus`, `FreshTask` schema + drift-guards + authoring guide, α/diff/adjudication helpers (`services/governance/iaa.py`) + post-α coverage + labeling protocol, `scripts/assemble_goaljudge_goldset.py` + invariants + manifest builder. Test totals: **2473 passing, 0 failures, zero `langgraph`/`langchain`/`components` imports** in the new L1 modules. |
+| assemble-goldset | Full ~250 assemble + split + Langfuse load (live run) | **plumbing done ✓**; live run pending Phase 4-authoring + Phase 5 labeling. Runbook: `python scripts/assemble_goaljudge_goldset.py --sheet … --manifest cache/goaljudge_eval/goldset_v1_manifest.json --frozen-at 2026-MM-DDTHH:MM:SSZ` |
+| alpha-gate-full | Full-set α≥0.8 + test freeze (live run) | **plumbing done ✓** (`compute_goaljudge_stage5_alpha.py --diff`); live run pending double-labeling |
 | stage5-recipe | Optional intern recipe `03_stage5_goldset.md` | optional |
 
 ---

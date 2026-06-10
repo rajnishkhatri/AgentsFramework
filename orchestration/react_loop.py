@@ -1320,6 +1320,22 @@ def build_graph(
                         from services import eval_capture, eval_telemetry
 
                         gj_tool_results = state.get("tool_results") or []
+                        # Stage 5 Tier 3 plan §"Phase 2.5" — pipeline-dimension
+                        # labels (D1 planning_depth, D3 routing_reason, D4
+                        # model_tier, D6 cost_fraction) on the input side so
+                        # Stage 6 can slice judge metrics from Langfuse alone
+                        # without re-joining other traces.
+                        _gj_model_history = state.get("model_history", []) or []
+                        _gj_model_tier = (
+                            _gj_model_history[-1].get("tier", "")
+                            if _gj_model_history
+                            and isinstance(_gj_model_history[-1], dict)
+                            else ""
+                        )
+                        _gj_max_cost = max(agent_config.max_cost_usd, 1e-9)
+                        _gj_cost_fraction = round(
+                            state.get("total_cost_usd", 0.0) / _gj_max_cost, 3
+                        )
                         gj_ai_input = {
                             "task_input": state.get("task_input", "")[:500],
                             "success_conditions": success_conditions,
@@ -1327,6 +1343,10 @@ def build_graph(
                             "evidence_digest": _summarize_evidence(gj_tool_results),
                             "tool_calls_summary": summarize_tool_calls(gj_tool_results),
                             "plan_steps": len(plan_steps),
+                            "planning_depth": state.get("planning_depth", "L0"),
+                            "routing_reason": state.get("routing_reason", ""),
+                            "model_tier": _gj_model_tier,
+                            "cost_fraction": _gj_cost_fraction,
                         }
                         gj_ai_response = {
                             **verdict.model_dump(),

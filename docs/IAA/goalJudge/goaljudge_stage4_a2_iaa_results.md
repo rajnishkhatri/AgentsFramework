@@ -1,7 +1,7 @@
 # Stage 4 A2 Human IAA — Results (G5)
 
-> **Gate:** Cohen's κ ≥ 0.8 on binary `a2_fail` across two human annotators  
-> **Status:** **CLOSED — G5 PASS** (κ = 1.0 on the gate-eligible set)  
+> **Gate:** Cohen's κ ≥ 0.8 on binary `a2_fail` across two human annotators
+> **Status:** **CLOSED — G5 PASS** (κ = 1.0 on the gate-eligible set); **A2 CONFIRMED** for Stage 5 α via shadow v7_full re-run 2026-06-09
 > **Instrument:** [`README.md`](README.md)
 
 ---
@@ -76,12 +76,21 @@ boundary is human-reproducible:
 - A3 trap (`GJ-019`) correctly kept out of A2 by both raters.
 - Member-code assignments identical across raters.
 
-**Confirmation gate impact (plan §8.3):** `human-iaa` row is **cleared**. The **shadow run** executed
-2026-06-09 against GCP Langfuse export — **FAIL** (3/5 §10.2 anchors; see
-[`goaljudge_stage4_shadow_execution_log.md`](../../research/goaljudge_stage4_shadow_execution_log.md)):
-GJ-010 `partial_fraction` precision (⅔ vs 0.67), GJ-012 C1 drift (`goal_met=true` vs registry `false`).
-A2 stays **PROVISIONAL**; `goal_judge_downgrade_enabled` remains `false`.
+**Confirmation gate impact (plan §8.3, updated 2026-06-09 v7_full):** `human-iaa` row was cleared by
+κ = 1.0. The shadow behavioral run executed twice on 2026-06-09:
 
-**Stage 5 impact:** the κ prerequisite for gold-set labeling is met; pilot rows labeled
-`rubric_version=stage4_provisional` no longer face a κ-failure re-label trigger from G5. Tier 2
-(Confirmation) remains blocked on shadow pass + any open G1–G10 rows.
+1. **First pass (v1, FAIL — 3/5 §10.2 anchors)** against GCP Langfuse export: GJ-010 `partial_fraction`
+   precision (⅔ vs 0.67), GJ-012 C1 drift (`goal_met=true` vs registry `false`). A2 stayed PROVISIONAL.
+2. **v7_full re-run (CLEARED — 5/5 §10.2 on goal_met rail)** after three fixes landed: spec-anchored
+   `±0.05` tolerance for `partial_fraction`, wrong-verification-tool prompt rule, planner per-task
+   scoping + plan_builder split + saturation `task_id` decoupling. See [shadow log §v7_full](../../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared).
+
+**A2 status:** **CONFIRMED** for Stage 5 α purposes. `goal_judge_downgrade_enabled` remains `false`
+(needs §2.8 enable gates from Stage 6 calibration, not just shadow PASS).
+
+**Stage 5 impact:** the κ prerequisite for gold-set labeling is met, the shadow gate is cleared, and
+pilot rows labeled `rubric_version=stage4_provisional` no longer carry rubric-confirmation risk. Tier 2
+(Confirmation) is **CLEARED** on the goal_met rail; full ~250 assembly is unblocked. Strict pf rail
+shows 4/5 with a documented GJ-012 carve-out (registry's `pf=0.67` anchors a desired trajectory; the
+current agent skips subtask 3, so the judge correctly returns `pf=0.33` while keeping `goal_met=false`)
+— this is an agent-policy concern, not a rubric regression, and is out of scope for Tier 2.
