@@ -98,10 +98,27 @@ def saturation_input_overlay(
     saturation: GoalJudgeSaturationContext,
     eval_user_id: str,
 ) -> dict[str, object]:
-    """Runtime-private overlay consumed by ``LangGraphRuntime`` (stripped before graph)."""
+    """Runtime-private overlay consumed by ``LangGraphRuntime`` (stripped before graph).
+
+    Deliberately does NOT carry ``task_id``. ``trace_id`` is deterministic by
+    design (the Langfuse join key for replay), but ``task_id`` is a per-run
+    discriminator the planner uses to scope tool-result counts. Reusing
+    ``trace_id`` as ``task_id`` would make every Playwright replay of the same
+    registry case look like a continuation of the prior run, which:
+
+    - causes ``select_planning_depth`` to short-circuit to ``L0`` via the
+      per-task synthesis check (``components/router.py``), capping multi-subtask
+      prompts at 1 plan step
+    - lets the agent fabricate subtasks 2-N because its tool-call budget runs
+      out before reaching them
+
+    The runtime defaults ``task_id`` to a fresh ``uuid.uuid4().hex`` when this
+    overlay omits it — same shape as the non-saturation path — so every replay
+    is treated as a fresh task by the planner. The deterministic Langfuse join
+    via ``trace_id`` is unaffected.
+    """
     return {
         "trace_id": saturation.trace_id,
-        "task_id": saturation.trace_id,
         "user_id": eval_user_id,
         "case_id": saturation.case_id,
         "checkpoint_thread_id": saturation.checkpoint_thread_id,
