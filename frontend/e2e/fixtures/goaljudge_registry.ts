@@ -2,8 +2,12 @@
  * GoalJudge registry cases exported from case_registry.py.
  *
  * Regenerate: `python scripts/export_goaljudge_registry_json.py`
+ *
+ * Phase 5 fresh corpus: `python scripts/export_goaljudge_fresh_tasks_json.py`
+ * → `goaljudge_fresh_tasks.json`; select with `GOALJUDGE_BATCH_MODE=fresh`.
  */
 import registry from "./goaljudge_registry.json" with { type: "json" };
+import freshTasks from "./goaljudge_fresh_tasks.json" with { type: "json" };
 
 export type GoalJudgeRegistryCase = {
   id: string;
@@ -90,10 +94,20 @@ export function pilotRegistryCases(): GoalJudgeRegistryCase[] {
   );
 }
 
+/** Phase 5 fresh-authored test split (79 rows after §6 drop). */
+export function freshRegistryCases(): GoalJudgeRegistryCase[] {
+  return (freshTasks as GoalJudgeRegistryCase[]).sort((a, b) =>
+    a.id.localeCompare(b.id, undefined, { numeric: true }),
+  );
+}
+
 function batchModeCases(): GoalJudgeRegistryCase[] {
   const mode = process.env.GOALJUDGE_BATCH_MODE ?? "walkthrough";
   if (mode === "pilot") {
     return pilotRegistryCases();
+  }
+  if (mode === "fresh") {
+    return freshRegistryCases();
   }
   return walkthroughCases();
 }

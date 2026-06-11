@@ -283,6 +283,10 @@ def allocate_splits(
         if out_row.get("provenance") == "synthetic":
             out_row["split"] = "dev"
             out.append(out_row)
+        elif out_row.get("provenance") == "fresh-authored":
+            # Phase 4 test-split backbone — every fresh row is a test candidate.
+            out_row["split"] = "test"
+            out.append(out_row)
         else:
             by_stratum.setdefault(out_row.get("stratum", ""), []).append(out_row)
 
@@ -333,6 +337,44 @@ def _write_report(path: Path, report: CoverageReport) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Fresh-authored task loader (Phase 4 test-split backbone)
+# ---------------------------------------------------------------------------
+
+
+def fresh_task_to_sheet_row(task: Any) -> dict[str, Any]:
+    """Project one :class:`FreshTask` into a builder row dict.
+
+    Fresh tasks are authored synthesis — no Playwright trace. Annotators
+    grade from Langfuse when a trace exists; otherwise the prompt + authored
+    ``expected_failure_mode`` anchor the row. ``provenance=fresh-authored``
+    is the Phase 5 walkthrough contract (distinct from production traces).
+    """
+    return {
+        "case_id": task.id,
+        "item_id": task.id,
+        "provenance": "fresh-authored",
+        "stratum": task.stratum,
+        "domain": task.domain,
+        "planning_depth": task.expected_planning_depth,
+        "tool_cluster": task.expected_tool_cluster,
+        "task": task.prompt,
+        "prompt": task.prompt,
+        "claim": "",
+        "evidence_summary": "",
+        "rubric_version": "stage4_confirmed",
+    }
+
+
+def load_fresh_task_rows() -> list[dict[str, Any]]:
+    """Load ``FRESH_TEST_TASKS`` from the Phase 4 fixture module."""
+    from tests.fixtures.goaljudge.fresh_test_tasks import FRESH_TEST_TASKS
+
+    rows = [fresh_task_to_sheet_row(task) for task in FRESH_TEST_TASKS]
+    rows.sort(key=lambda r: str(r.get("item_id", "")))
+    return rows
+
+
+# ---------------------------------------------------------------------------
 # Builder result + entrypoint
 # ---------------------------------------------------------------------------
 
@@ -345,11 +387,13 @@ class BuildResult:
 
 def build_full_sheet(
     *,
-    batch_jsonl_paths: list[Path],
+    batch_jsonl_paths: list[Path] | None,
     csv_output: Path,
     report_output: Path,
     dry_run: bool = False,
     corpus_jsonl_paths: list[Path] | None = None,
+    include_fresh_tasks: bool = False,
+    fresh_only: bool = False,
 ) -> BuildResult:
     """One-shot full-sheet build with optional dry-run.
 
@@ -364,12 +408,25 @@ def build_full_sheet(
     rows by ``trace_id``. Without it, behavior is byte-identical to
     today (every prod row falls to ``no-tool``).
     """
-    merged = load_and_dedupe_batches(batch_jsonl_paths)
+    if fresh_only:
+        merged: list[dict[str, Any]] = []
+    else:
+        merged = load_and_dedupe_batches(batch_jsonl_paths or [])
+
     tool_index = load_corpus_tool_index(corpus_jsonl_paths)
     enriched = [
         enrich_row_with_dimensions(row, tool_index=tool_index) for row in merged
     ]
     enriched = _apply_default_metadata(enriched)
+
+    if include_fresh_tasks or fresh_only:
+        fresh_rows = load_fresh_task_rows()
+        seen_ids = {str(r.get("item_id", "")) for r in enriched}
+        for row in fresh_rows:
+            if row["item_id"] not in seen_ids:
+                enriched.append(row)
+                seen_ids.add(row["item_id"])
+
     allocated = allocate_splits(enriched)
 
     report = compute_cell_coverage(allocated)
@@ -447,8 +504,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--batches",
-        required=True,
-        help="Comma-separated paths to batch JSONLs (or a directory).",
+        default=None,
+        help="Comma-separated paths to batch JSONLs (or a directory). "
+        "Optional when --fresh-only is set.",
     )
     parser.add_argument(
         "--csv",
@@ -475,20 +533,39 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Emit only the gap report; do not write CSV.",
     )
+    parser.add_argument(
+        "--fresh-tasks",
+        "--include-fresh-tasks",
+        dest="fresh_tasks",
+        action="store_true",
+        help="Merge FRESH_TEST_TASKS from tests/fixtures/goaljudge/fresh_test_tasks.py.",
+    )
+    parser.add_argument(
+        "--fresh-only",
+        action="store_true",
+        help="Emit only fresh-authored rows (Phase 5 labeling sheet; skips batches).",
+    )
     args = parser.parse_args(argv)
 
-    paths = _parse_paths_arg(args.batches)
-    if not paths:
-        parser.error("no batch JSONLs found at the given path(s)")
+    if args.fresh_only:
+        args.fresh_tasks = True
+
+    paths: list[Path] = _parse_paths_arg(args.batches) if args.batches else []
+    if not paths and not args.fresh_tasks:
+        parser.error(
+            "no batch JSONLs found — pass --batches or use --fresh-tasks / --fresh-only"
+        )
 
     corpus_paths = _parse_corpus_arg(args.corpus) if args.corpus else None
 
     result = build_full_sheet(
-        batch_jsonl_paths=paths,
+        batch_jsonl_paths=paths or None,
         csv_output=Path(args.csv),
         report_output=Path(args.report),
         dry_run=args.dry_run,
         corpus_jsonl_paths=corpus_paths,
+        include_fresh_tasks=args.fresh_tasks,
+        fresh_only=args.fresh_only,
     )
 
     mode = "DRY-RUN" if args.dry_run else "WROTE"

@@ -1,8 +1,8 @@
 # GoalJudge Stage 5 Goldset — Tier 1 / 2 / 3 Status Review
 
-> **Date:** 2026-06-09 (v7_full re-run)
+> **Date:** 2026-06-11 (Tier 3 v0.9 PROVISIONAL FROZEN)
 > **Scope:** Progress against the three-tier gates in the [Stage 5 goldset plan](../plans/goaljudge_stage5_goldset.plan.md), cross-checked against artifacts in [`docs/IAA/goalJudge/`](../IAA/goalJudge/) and related research logs.
-> **Author:** Session synthesis (pilot complete; **Tier 2 CLEARED on goal_met-only rail**; Tier 3 ready to assemble).
+> **Author:** Session synthesis (pilot complete; **Tier 2 CLEARED on goal_met-only rail**; **Tier 3 v0.9 PROVISIONAL frozen** — 101/250 rows, Stage 6 dev unblocked; v1 gated on wave 2 sourcing).
 
 ```mermaid
 flowchart LR
@@ -111,13 +111,13 @@ Post-G3 anchors (GJ-011, GJ-013, GJ-003B) remain outside the §10.2 denominator;
 
 ---
 
-## Tier 3 — Full dataset (trusted for Stage 6) — **PLUMBING LANDED** (live run pending)
+## Tier 3 — Full dataset (trusted for Stage 6) — **v0.9 PROVISIONAL FROZEN** (101/250 rows; v1 gated on wave 2)
 
 **Gate:** Tier 2 clear → ~250 stratified items → double-label → α ≥ 0.8 → test-split hash-freeze → Langfuse `goaljudge_goldset_v1`.
 
 ### Current state
 
-The **entire assembly pipeline is implemented, tested (2473/2473 passing), and ready to run.** What remains is human-paced labeling — fresh-task authoring against the gap report, then the live double-label pass. The empty results doc ([`goaljudge_stage5_goldset_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_results.md)) is now a structured READY scaffold gated on those upstream steps.
+The **entire assembly pipeline is implemented, tested, and the live freeze has been executed end-to-end as v0.9 (provisional).** Phase 4 wave 1 sourced 80 fresh-authored prompts; Phase 5 ran the live double-label on the 79-row fresh corpus (α = 0.27 round-1, dominated by a known grader-bug residue; adjudicated to 79/79 frozen labels with A2-vs-gold = 96.2 %). Phase 6 produced the v0.9 manifest at [`cache/goaljudge_eval/goldset_v0_9_manifest.json`](../../cache/goaljudge_eval/goldset_v0_9_manifest.json) (101 items = 79 fresh + 22 pilot-production; hash `ad5eccc0…dbc453cd`; `provisional=true`; 11-cell `floor_gap_summary`). v1 production-floor freeze is blocked only on **Phase 4 wave 2 sourcing** (~150 additional prompts targeting the under-floor cells).
 
 Checklist items, status (per [Tier 3 assembly plan](../plans/goaljudge_stage5_tier3_assembly.plan.md)):
 
@@ -130,8 +130,14 @@ Checklist items, status (per [Tier 3 assembly plan](../plans/goaljudge_stage5_ti
 | **Phase 4** — Cell-targeted fresh-task plumbing + drift-guards + authoring guide | **done ✓** | `FreshTask` schema, `jaccard_similarity`, `validate_fresh_task_set`, `tests/fixtures/goaljudge/fresh_test_tasks.py` (5-row seed), [`fresh_task_authoring_guide.md`](../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md) |
 | **Phase 5** — α gate plumbing + adjudication + post-α coverage | **done ✓** | `services/governance/iaa.py` (Krippendorff α, disagreement diff, adjudication apply), `evaluate_goldset_post_alpha_coverage`, [`full_set_labeling_protocol.md`](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md), `scripts/compute_goaljudge_stage5_alpha.py --diff` |
 | **Phase 6** — `assemble_goaljudge_goldset.py` + manifest + invariant suite | **done ✓** | `scripts/assemble_goaljudge_goldset.py`, `row_to_goldset_item`, `assert_assembly_invariants`, `build_goldset_manifest` |
-| `assemble-goldset` — execute live freeze | **pending** — gated on Phase 4-authoring + Phase 5 labeling |
-| `alpha-gate-full` — α ≥ 0.8 on full set | **pending** — gated on the same |
+| **Phase 6-C** — `--provisional` flag + `gate_goldset_v1_floors()` + v0.9/v1 cutover | **done ✓** | `--provisional` writes `provisional` + `floor_gap_summary` keys; `gate_goldset_v1_floors()` fails-closed on v0.9; [`scripts/verify_goldset_v1_cutover.py`](../../scripts/verify_goldset_v1_cutover.py); [`v0.9 contract`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_v0_9_contract.md) |
+| **Phase 7** — Documentation flip | **done ✓** | README banner v0.9, master plan §3 mermaid + §13 checklist, this doc |
+| **Phase 4-authoring (wave 1)** — 5 → 80 fresh-authored prompts | **done ✓** | 80-row `tests/fixtures/goaljudge/fresh_test_tasks.py`; 79/79 GCP traces joined; [`phase4_authoring_walkthrough.md`](../research/goaljudge_stage5_goldset/phase4_authoring_walkthrough.md) |
+| **Phase 5 live double-label** (on the 79-row fresh corpus) | **done ✓** | A1+A2 cold-blind label complete; round-1 α = 0.2682 (grader-bug residue diagnostic); 22 disagreements adjudicated; 79/79 frozen; [`round1_alpha_report.md`](../IAA/goalJudge/goldset/goaljudge_stage5_round1_alpha_report.md), [`round1_adjudication.md`](../IAA/goalJudge/goldset/goaljudge_stage5_round1_adjudication.md) |
+| **Phase 6 execute — v0.9 provisional manifest** | **done ✓** | 101-item manifest at `cache/goaljudge_eval/goldset_v0_9_manifest.json`, hash `ad5eccc0…dbc453cd`, reproducible via the `--provisional` flag |
+| ⏸ **Phase 4-authoring (wave 2)** — ~150 fresh-authored prompts targeting under-floor cells | **pending** — gap-driven brief in [`v0.9 contract`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_v0_9_contract.md); needs +28 L0, +56 L1, +35 L2, +16 web-bound, +14 wrong-tool, +11 blocked-tool, +9 file-only, +11 compose, +7 no-tool, +6 request_approval, +5 shell-bound |
+| ⏸ **Phase 5 wave-2 double-label + α ≥ 0.8 on wave 2** | **pending** — gated on wave 2 authoring + GCP run |
+| ⏸ **Phase 6 v1 freeze** — assembler **without** `--provisional` | **pending** — gated on wave 2 labels; `verify_goldset_v1_cutover.py` confirms the v0.9 → v1 transition is clean |
 
 ### What is ready for day-one of Tier 3
 
@@ -147,7 +153,7 @@ Engineering seams, design, **and the end-to-end CLI pipeline** are in place:
 - Same two annotators, proven workflow, α tooling
 - Enriched `eval.goal_judge` telemetry (`final_answer`, `evidence_digest`, `tool_calls_summary`, `plan_steps`) — every labeling decision is now auditable end-to-end from Langfuse alone
 
-**Tier 3 verdict: plumbing CLEARED; live run remains the human-paced critical path.** Phase 7 (this doc flip) is the final TDD-driven deliverable.
+**Tier 3 verdict: wave 1 CLEARED, v0.9 manifest shipped, Stage 6 development unblocked.** Wave 2 (~150 gap-targeted prompts → v1 freeze) is the remaining human-paced critical path.
 
 ---
 
@@ -157,7 +163,7 @@ Engineering seams, design, **and the end-to-end CLI pipeline** are in place:
 |---|---|---|---|
 | **1 — Pilot** | α ≥ 0.8 on ~50 | **PASS** | [`goaljudge_stage5_goldset_pilot_results.md`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_results.md) |
 | **2 — Confirmation** | κ ≥ 0.8 + shadow + G1–G10 | **CLEARED (goal_met rail 5/5)** | [`goaljudge_stage4_shadow_execution_log.md`](../research/goaljudge_stage4_shadow_execution_log.md) |
-| **3 — Dataset** | ~250 + α + test freeze | **PLUMBING LANDED** (live run pending) | [`Tier 3 assembly plan`](../plans/goaljudge_stage5_tier3_assembly.plan.md) + [`scripts/assemble_goaljudge_goldset.py`](../../scripts/assemble_goaljudge_goldset.py) |
+| **3 — Dataset** | ~250 + α + test freeze | **v0.9 PROVISIONAL FROZEN** (101 of ~250 rows; v1 gated on wave 2 sourcing) | [`v0.9 contract`](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_v0_9_contract.md) + [`Phase 6-B measurement`](../IAA/goalJudge/goldset/goaljudge_stage5_phase6b_combined_measurement.md) |
 
 ---
 
@@ -165,12 +171,13 @@ Engineering seams, design, **and the end-to-end CLI pipeline** are in place:
 
 1. ~~**Unblock Tier 2:**~~ **DONE** — Phase A (tolerance), Phase B (wrong-tool prompt rule), Phase E.1 (telemetry enrichment), Phase E.2/3 (planner per-task scoping + plan_builder split + saturation `task_id` decoupling) all landed; shadow re-run 2026-06-09 v7_full cleared §10.2 on goal_met rail (5/5).
 2. ~~**Tier 3 plumbing:**~~ **DONE** — Phases 1–6 of the [Tier 3 assembly plan](../plans/goaljudge_stage5_tier3_assembly.plan.md) all landed under TDD discipline (Protocol A/B, 7 anti-patterns, 8 self-validation checks). End-to-end pipeline: stratified builder → cell-aware fresh-task seed + drift-guards → α gate + adjudication + post-α coverage → single-shot assembler with SHA-256 freeze and manifest JSON.
-3. **Tier 3 live run (now active, human-paced):**
-   1. **Phase 4-authoring** — fill the 5-row fresh-task seed toward ~80 entries per the [authoring guide](../research/goaljudge_stage5_goldset/fresh_task_authoring_guide.md) (each new row gated on `tests/services/test_fresh_task_authoring.py`).
-   2. **Phase 5 labeling** — distribute the assembled sheet + [labeling protocol](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) to the two annotators; blind label; run `compute_goaljudge_stage5_alpha.py --diff`; iterate via EvalGen loop until α ≥ 0.8; adjudicate via `apply_adjudication`.
-   3. **Phase 6 freeze** — run `assemble_goaljudge_goldset.py` (production floors, real Langfuse client); verify the manifest at `cache/goaljudge_eval/goldset_v1_manifest.json`; Tier 3 CLEARED → Stage 6 calibration unblocked.
+3. ~~**Tier 3 live run wave 1:**~~ **DONE** — Phase 4-authoring (80 fresh prompts), GCP playwright batch (79/79 traces joined), Phase 5 double-label (A1+A2 cold-blind), round-1 α = 0.2682 + decomposed cause analysis (12/22 disagreements from known grader-bug residue), 22 adjudicated, 79/79 frozen, Phase 6 `--provisional` assemble → 101-row v0.9 manifest at `cache/goaljudge_eval/goldset_v0_9_manifest.json`. **Stage 6 development is unblocked against v0.9.**
+4. **Tier 3 live run wave 2 (now active, human-paced):**
+   1. **Phase 4 wave 2 authoring** — ~150 fresh-authored prompts gap-targeted at the 11 under-floor cells (see [`v0.9 contract` floor-gap table](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_v0_9_contract.md#floor-gap-summary-whats-still-under-floor)); same `FreshTask` schema + drift-guards as wave 1.
+   2. **Phase 5 wave-2 labeling** — same annotators, same protocol (with the post-wave-1 Rule 7 + `request_approval` reconciliation clauses already merged into the [labeling protocol](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md)). α ≥ 0.8 expected on wave-2 rows alone since the round-1 grader bug is fixed.
+   3. **Phase 6 v1 freeze** — run `assemble_goaljudge_goldset.py` **without** `--provisional` against the combined sheet (wave 1 + wave 2 ≈ 250 rows); `verify_goldset_v1_cutover.py` confirms the v0.9 → v1 transition is clean; manifest renamed `goldset_v1_manifest.json`; `gate_goldset_v1_floors()` flips from raise → pass; Tier 3 CLEARED → Stage 6 calibration fully unblocked.
 
-The pilot work de-risked the labeling instrument (α = 0.88 on `goal_met`). The Tier 2 unblock validated the rubric against live behavior. Tier 3 plumbing is complete; the next bottleneck is the human-paced labeling run.
+The pilot work de-risked the labeling instrument (α = 0.88 on `goal_met`). The Tier 2 unblock validated the rubric against live behavior. Tier 3 plumbing + v0.9 freeze are complete; the next bottleneck is wave-2 sourcing.
 
 ### Deferred (do not block Tier 2 or 3)
 

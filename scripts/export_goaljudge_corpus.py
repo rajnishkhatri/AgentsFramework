@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -227,10 +228,47 @@ def export(
     return n
 
 
+@dataclass(frozen=True)
+class _ExportCaseInfo:
+    """Normalized case metadata for corpus export (production, fresh, stress)."""
+
+    provenance: str
+    stratum: str
+    target_code: str
+
+
+def _export_case_info(case_id: str) -> _ExportCaseInfo | None:
+    """Resolve case_id from production, fresh-authored, or stress registries."""
+    from tests.fixtures.goaljudge.case_registry import CASE_BY_ID
+    from tests.fixtures.goaljudge.fresh_test_tasks import FRESH_BY_ID
+    from tests.fixtures.goaljudge.stress_fixtures import STRESS_BY_ID
+
+    if case_id in CASE_BY_ID:
+        case = CASE_BY_ID[case_id]
+        return _ExportCaseInfo(
+            provenance=getattr(case, "provenance", "live"),
+            stratum=case.stratum,
+            target_code=case.target_code,
+        )
+    if case_id in FRESH_BY_ID:
+        task = FRESH_BY_ID[case_id]
+        return _ExportCaseInfo(
+            provenance="live",
+            stratum=task.stratum,
+            target_code=task.expected_failure_mode or "unknown",
+        )
+    if case_id in STRESS_BY_ID:
+        case = STRESS_BY_ID[case_id]
+        return _ExportCaseInfo(
+            provenance=case["provenance"],
+            stratum=case["stratum"],
+            target_code=case["target_code"],
+        )
+    return None
+
+
 def _case_map_from_jsonl(jsonl_path: str) -> dict[str, Any]:
     """Map deterministic trace_id → registry case from a Playwright batch JSONL."""
-    from tests.fixtures.goaljudge.case_registry import CASE_BY_ID
-
     case_map: dict[str, Any] = {}
     p = Path(jsonl_path)
     if not p.is_absolute():
@@ -241,8 +279,11 @@ def _case_map_from_jsonl(jsonl_path: str) -> dict[str, Any]:
         row = json.loads(line)
         case_id = row.get("case_id")
         trace_id = row.get("trace_id")
-        if case_id and trace_id and case_id in CASE_BY_ID:
-            case_map[trace_id] = CASE_BY_ID[case_id]
+        if not case_id or not trace_id:
+            continue
+        info = _export_case_info(str(case_id))
+        if info is not None:
+            case_map[trace_id] = info
     return case_map
 
 

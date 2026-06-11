@@ -429,6 +429,65 @@ def _corpus_row(
     }
 
 
+class TestFreshTaskMerge:
+    """Phase 4/5 extension: ``--fresh-tasks`` rolls ``FRESH_TEST_TASKS`` into
+    the sheet; ``--fresh-only`` skips batch JSONLs for the 79-row Phase 5
+    labeling corpus."""
+
+    def test_fresh_only_writes_seventy_nine_gj_f_rows(
+        self, tmp_path: Path
+    ) -> None:
+        from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
+
+        csv_out = tmp_path / "sheet.csv"
+        report_out = tmp_path / "report.md"
+
+        result = build_full_sheet(
+            batch_jsonl_paths=None,
+            csv_output=csv_out,
+            report_output=report_out,
+            dry_run=False,
+            include_fresh_tasks=True,
+            fresh_only=True,
+        )
+
+        assert result.rows_written == 79
+        with csv_out.open(encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        assert len(rows) == 79
+        assert all(r["item_id"].startswith("GJ-F-") for r in rows)
+        assert all(r["provenance"] == "fresh-authored" for r in rows)
+        assert all(r["split"] == "test" for r in rows)
+        assert all(r["r1_goal_met"] == "" and r["r2_goal_met"] == "" for r in rows)
+        assert all(r["stratum"] for r in rows)
+
+    def test_fresh_tasks_merge_appended_after_batch_rows(
+        self, tmp_path: Path
+    ) -> None:
+        from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
+
+        batch = tmp_path / "ui_batch.jsonl"
+        _write_batch(batch, [_batch_row("GJ-001")])
+
+        csv_out = tmp_path / "sheet.csv"
+        report_out = tmp_path / "report.md"
+
+        result = build_full_sheet(
+            batch_jsonl_paths=[batch],
+            csv_output=csv_out,
+            report_output=report_out,
+            dry_run=False,
+            include_fresh_tasks=True,
+            fresh_only=False,
+        )
+
+        assert result.rows_written == 80  # 1 prod + 79 fresh
+        with csv_out.open(encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        gj_f = [r for r in rows if r["item_id"].startswith("GJ-F-")]
+        assert len(gj_f) == 79
+
+
 class TestCorpusSidecarJoin:
     """The Tier 3 extension: when ``--corpus`` is supplied, the builder
     loads corpus JSONLs, indexes by ``trace_id``, and joins

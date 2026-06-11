@@ -33,6 +33,7 @@ from services.governance.goaljudge_goldset_dataset import (
     compute_cell_coverage,
     compute_test_split_hash,
     evaluate_goldset_post_alpha_coverage,
+    gate_goldset_v1_floors,
     jaccard_similarity,
     project_trajectory_tools,
     row_to_goldset_item,
@@ -1625,3 +1626,161 @@ class TestBuildGoldsetManifest:
             "[0.0,0.1)": 30,
             "[0.1,0.2)": 10,
         }
+
+
+# ---------------------------------------------------------------------------
+# Phase 6-C — v0.9 provisional manifest gate
+# ---------------------------------------------------------------------------
+
+
+def _v1_manifest(**overrides: object) -> dict[str, object]:
+    """A minimal v1-shaped manifest (provisional=false, no gap summary).
+
+    Mirrors the shape that ``build_goldset_manifest`` produces on a
+    production freeze: all required keys present, ``provisional=False``,
+    ``floor_gap_summary={}``.
+    """
+    base: dict[str, object] = {
+        "dataset_name": "goaljudge_goldset_v1",
+        "total_items": 250,
+        "dev_count": 50,
+        "test_count": 200,
+        "test_split_sha256": "deadbeef" * 8,
+        "rubric_version": "stage4_confirmed",
+        "frozen_at": "2026-06-09T12:00:00Z",
+        "stratum_distribution": {},
+        "planning_depth_distribution": {"L0": 60, "L1": 100, "L2": 60},
+        "tool_cluster_distribution": {},
+        "failure_mode_distribution": {},
+        "routing_reason_distribution_observed": {},
+        "model_tier_distribution_observed": {},
+        "cost_fraction_bins_observed": {},
+        "goal_met_false_share": 0.8,
+        "provisional": False,
+        "floor_gap_summary": {},
+    }
+    base.update(overrides)
+    return base
+
+
+class TestBuildGoldsetManifestProvisional:
+    """The manifest builder must emit ``provisional`` + ``floor_gap_summary``
+    in every manifest it writes. Without these keys the v0.9/v1 gate has
+    nothing to read."""
+
+    def test_default_invocation_emits_v1_shaped_manifest(self) -> None:
+        """Calling ``build_goldset_manifest`` with no provisional kwargs
+        produces ``provisional=False`` and ``floor_gap_summary={}``. This is
+        the production-freeze shape — Stage 6's gate must PASS against it.
+        """
+        items = [_item("GJ-1", goal_met=False)]
+        manifest = build_goldset_manifest(
+            items,
+            test_split_sha256="abc",
+            rubric_version="stage4_confirmed",
+            frozen_at="2026-06-09T00:00:00Z",
+        )
+        assert manifest["provisional"] is False
+        assert manifest["floor_gap_summary"] == {}
+
+    def test_provisional_true_with_gap_summary_records_both(self) -> None:
+        """When the assembler is run with ``--provisional``, both flags
+        flow through into the manifest body verbatim — they're the inputs
+        Stage 6's gate reads."""
+        items = [_item("GJ-1", goal_met=False)]
+        gaps = {"L0": 28, "L1": 56, "L2": 35,
+                "web-bound": 16, "wrong-tool": 14}
+        manifest = build_goldset_manifest(
+            items,
+            test_split_sha256="abc",
+            rubric_version="stage4_confirmed",
+            frozen_at="2026-06-09T00:00:00Z",
+            provisional=True,
+            floor_gap_summary=gaps,
+        )
+        assert manifest["provisional"] is True
+        assert manifest["floor_gap_summary"] == gaps
+
+    def test_provisional_false_with_nonempty_gap_summary_raises(self) -> None:
+        """Refuse the contradictory combination: a v1 manifest (not
+        provisional) MUST have an empty gap summary. If callers try to
+        ship a v1 with unmet floors, the manifest builder fails loud —
+        the gate is a downstream re-check, not the only defense.
+        """
+        items = [_item("GJ-1", goal_met=False)]
+        with pytest.raises(ValueError, match=r"(?i)provisional.*floor_gap"):
+            build_goldset_manifest(
+                items,
+                test_split_sha256="abc",
+                rubric_version="stage4_confirmed",
+                frozen_at="2026-06-09T00:00:00Z",
+                provisional=False,
+                floor_gap_summary={"L0": 5},
+            )
+
+
+class TestGateGoldsetV1Floors:
+    """Stage 6 calls this before consuming a manifest. The gate FAILS-CLOSED
+    on anything that isn't a v1 production freeze:
+
+      * provisional=True (it's v0.9, not v1)
+      * floor_gap_summary non-empty (some cell is still under floor)
+      * missing required keys (malformed / incomplete manifest)
+
+    Idempotent on a healthy v1 manifest — no side effects, no mutation."""
+
+    # ── Acceptance: clean v1 manifest passes ──────────────────────────────
+
+    def test_v1_manifest_passes_silently(self) -> None:
+        """A properly-shaped v1 manifest returns ``None`` and raises
+        nothing. The "no return value" contract is intentional — the
+        function is a gate, not a query."""
+        manifest = _v1_manifest()
+        assert gate_goldset_v1_floors(manifest) is None
+
+    # ── Failure 1: provisional=True ───────────────────────────────────────
+
+    def test_provisional_true_raises(self) -> None:
+        manifest = _v1_manifest(provisional=True, floor_gap_summary={"L0": 5})
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)provisional"):
+            gate_goldset_v1_floors(manifest)
+
+    # ── Failure 2: non-empty floor_gap_summary on a non-provisional ──────
+
+    def test_nonempty_gap_summary_raises(self) -> None:
+        """Defense-in-depth: the manifest builder rejects this case, but
+        if a caller hand-rolled a manifest dict the gate must still catch
+        it."""
+        manifest = _v1_manifest(
+            provisional=False, floor_gap_summary={"web-bound": 16}
+        )
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)floor"):
+            gate_goldset_v1_floors(manifest)
+
+    # ── Failure 3: missing test_split_sha256 ──────────────────────────────
+
+    def test_missing_test_split_sha256_raises(self) -> None:
+        """The hash is the WHOLE POINT — a manifest missing it is
+        unusable for Stage 6's diff regardless of floor status."""
+        manifest = _v1_manifest()
+        del manifest["test_split_sha256"]
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)test_split_sha256"):
+            gate_goldset_v1_floors(manifest)
+
+    # ── Failure 4: blank test_split_sha256 ────────────────────────────────
+
+    def test_blank_test_split_sha256_raises(self) -> None:
+        manifest = _v1_manifest(test_split_sha256="")
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)test_split_sha256|blank|empty"):
+            gate_goldset_v1_floors(manifest)
+
+    # ── Idempotency: repeated calls don't mutate ──────────────────────────
+
+    def test_idempotent_no_side_effects(self) -> None:
+        """Calling the gate twice on the same manifest produces the same
+        result and never mutates the input dict."""
+        manifest = _v1_manifest()
+        snapshot = dict(manifest)
+        gate_goldset_v1_floors(manifest)
+        gate_goldset_v1_floors(manifest)
+        assert manifest == snapshot

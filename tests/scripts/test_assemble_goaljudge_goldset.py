@@ -287,3 +287,106 @@ class TestAssembleCliInvariant:
         combined = (proc.stdout + proc.stderr).lower()
         assert "goal_met" in combined or "share" in combined
         assert not manifest.exists()
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Phase 6-C — --provisional flag: write v0.9 manifest with floor_gap_summary.
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class TestAssembleCliProvisional:
+    """``--provisional`` is the v0.9 build flag: skips the cell-coverage
+    floors (like ``--skip-cell-coverage`` does) AND records the gap counts
+    into the manifest itself + sets ``provisional=true`` so downstream
+    readers can introspect what kind of artifact they're looking at."""
+
+    def test_provisional_writes_manifest_with_gap_summary(
+        self, tmp_path: Path
+    ) -> None:
+        """Standard 10-row fixture — too small to meet the production
+        floors. ``--provisional`` lets the run succeed and records the
+        gap as a per-cell summary."""
+        rows: list[dict[str, str]] = []
+        for i in range(10):
+            rows.append(
+                _make_row(
+                    item_id=f"GJ-P-{i:02d}",
+                    split="test",
+                    provenance="production",
+                    adjudicated_goal_met="false",
+                    adjudicated_failure_mode="subtask-dropped",
+                )
+            )
+
+        sheet = tmp_path / "sheet.csv"
+        manifest = tmp_path / "manifest.json"
+        _write_sheet(sheet, rows)
+
+        proc = subprocess.run(
+            [
+                sys.executable, str(SCRIPT),
+                "--sheet", str(sheet),
+                "--manifest", str(manifest),
+                "--dry-run",
+                "--provisional",
+                "--min-goal-met-false-share", "0.60",
+                "--frozen-at", "2026-06-11T00:00:00Z",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        assert proc.returncode == 0
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        # Provisional marker present + true.
+        assert payload["provisional"] is True
+        # Gap summary present and lists the cells that were under-floor.
+        gap_summary = payload["floor_gap_summary"]
+        assert isinstance(gap_summary, dict)
+        # 10 L1 rows ⇒ L1 short of 100 by 90; L0 and L2 short of their
+        # floors by their full floor values.
+        assert gap_summary.get("L1", 0) > 0
+        assert gap_summary.get("L0", 0) > 0
+        # Sanity: the standard manifest fields are still present.
+        assert payload["total_items"] == 10
+        assert payload["test_split_sha256"]
+
+    def test_non_provisional_emits_empty_gap_summary(
+        self, tmp_path: Path
+    ) -> None:
+        """The smoke path (``--skip-cell-coverage`` without
+        ``--provisional``) still emits the keys, but ``provisional=false``
+        and ``floor_gap_summary={}``. Stage 6's gate fails-closed on the
+        floor_gap_summary in this case (production must use
+        ``--provisional`` for under-sized data)."""
+        rows = [
+            _make_row(
+                item_id=f"GJ-F-{i:02d}",
+                split="test",
+                adjudicated_goal_met="false",
+                adjudicated_failure_mode="subtask-dropped",
+            )
+            for i in range(10)
+        ]
+
+        sheet = tmp_path / "sheet.csv"
+        manifest = tmp_path / "manifest.json"
+        _write_sheet(sheet, rows)
+
+        proc = subprocess.run(
+            [
+                sys.executable, str(SCRIPT),
+                "--sheet", str(sheet),
+                "--manifest", str(manifest),
+                "--dry-run",
+                "--skip-cell-coverage",
+                "--min-goal-met-false-share", "0.60",
+                "--frozen-at", "2026-06-11T00:00:00Z",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        payload = json.loads(manifest.read_text(encoding="utf-8"))
+        assert payload["provisional"] is False
+        assert payload["floor_gap_summary"] == {}

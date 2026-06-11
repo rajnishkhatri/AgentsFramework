@@ -45,6 +45,14 @@ class TestParseGoaljudgeThreadId:
         assert ctx.session_id == "session-gj-010"
         assert ctx.checkpoint_thread_id == "session-gj-010"
 
+    def test_parses_fresh_authored_case(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-F-001").hex
+        ctx = parse_goaljudge_thread_id(f"gj:GJ-F-001:{trace_id}")
+        assert ctx is not None
+        assert ctx.case_id == "GJ-F-001"
+        assert ctx.trace_id == trace_id
+        assert ctx.session_id == "session-gj-f-001"
+
 
 class TestSaturationSubjectMapping:
     def test_unknown_subject_not_saturation(self) -> None:

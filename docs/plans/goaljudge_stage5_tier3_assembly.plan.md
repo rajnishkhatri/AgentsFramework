@@ -115,7 +115,7 @@ This keeps the human-author burden bounded: authoring for D1/D5/D7 is feasible (
 | Registry cases (`CASE_BY_ID`) | 50 (rep 20, boundary 11, edge 10, red_team 3, impossible 6) | synthetic (authors saw rubric) | **dev only** | D1: mixed (router decides per prompt); D5: file_io 16, shell 10, web 6, compose 8, no-tool 4, wrong-tool 4, blocked-tool 2 |
 | Stress fixtures (`ALL_STRESS_CASES`) | 7 | synthetic | dev only | D5: red-team-heavy |
 | Production batch traces (Tier 2 unblock batches + future) | ≈22/batch deduped by `case_id` | production | dev + test | D1/D3/D4/D6 emergent; D5/D7 inherited from registry prompt |
-| **Fresh human-authored tasks** | **0 today → ~80 target** | production | dev + test | targets specific (D1, D5, D7) cells the production traces don't fill |
+| **Fresh human-authored tasks** | **80 landed (2026-06-10)** | production | test split backbone | targets (D1, D5, D7) cells; see Phase 4 handoff |
 
 The 100-item test split is the binding constraint. Path:
 - 3 walkthrough re-batches × ≈22 unique cases ≈ 22–30 production traces (dedupe by case_id; production cases) → **~25 prod-trace test candidates**.
@@ -278,6 +278,33 @@ Concretely the Phase 4 authoring brief is going to look like *"author 25 L1-file
 **Acceptance:** drift-guard tests pass; `--dry-run` on Phase 3 builder shows zero gaps (or only excused carve-outs).
 
 **Risk:** human authoring is the longest pole. Floor: **60 fresh items** (vs 80 target); test split shrinks to ~80 production-only items (32 % of 250) — still inside spec §6 60/40 tolerance band as a slight tilt to dev.
+
+#### Phase 4 handoff (2026-06-10 — M5 complete)
+
+**Corpus:** `tests/fixtures/goaljudge/fresh_test_tasks.py` — **80** `FreshTask` rows (`GJ-F-001`…`100` with §6 gaps; no renumbering). Authored 100, dropped **20** in §6 review using priority order **wrong-tool > HITL > stratum**.
+
+**D5 cluster spread (80 items):**
+
+| cluster | count | §6 note |
+|---|---:|---|
+| `compose` | 26 | includes 5 messy-English L2 (096–100) |
+| `file-only` | 15 | |
+| `shell-bound` | 11 | |
+| `web-bound` | 8 | |
+| `no-tool` | 7 | |
+| `wrong-tool` | **5** | kept sharp traps: 068, 070, 072, 074, 075 |
+| `blocked-tool` | **4** | kept: 080, 081, 084, 086 |
+| `request_approval` | **4** | kept high-stakes: 088–091 |
+
+**D8 stratum (actual vs `STRATA_SHARES` × 80):** representative **32/32** ✓ · boundary **22/24** (−2, carved) · edge **23/16** (+7, carved) · impossible **3/8** (−5, carved; 076 dropped in §6).
+
+**Carve-outs (documented in gap report):** edge overweight and impossible under-target accepted to preserve wrong-tool trap quality and messy-English L2 coverage; weak HITL boundary rows (092–095) dropped; `request_approval` runtime registry gap noted for Phase 5 labeling (`note` column: grade on approval ask / refusal intent).
+
+**Verification:** `pytest tests/services/test_fresh_task_authoring.py -q` → 9 passed; `pytest tests/components/test_router_d3_mece_review.py -q` → 6 passed; full repo **2479** passed. Pairwise fresh Jaccard worst **0.441** (019 vs 025) < 0.5.
+
+**Artifacts:** [`cache/goaljudge_eval/goldset_cell_coverage_report.md`](../../cache/goaljudge_eval/goldset_cell_coverage_report.md) (fresh-only snapshot); D3 MECE review fixtures in `tests/fixtures/goaljudge/d3_routing_review_cases.py`.
+
+**Next:** Phase 5 — distribute full sheet per [`full_set_labeling_protocol.md`](../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md); re-run Phase 3 builder dry-run when GCP batch JSONLs are merged for combined D1/D5 gap closure.
 
 ---
 
