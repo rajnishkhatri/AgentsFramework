@@ -27,14 +27,33 @@ import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
 import { browserRuntimeClient } from "@/lib/composition_browser";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
+import { deriveRunPhase, type RunPhase } from "@/lib/translators/run_phase";
+import { narrateTrajectory } from "@/lib/translators/run_narration";
+
+const PHASE_LABEL: Record<RunPhase, string> = {
+  connecting: "connecting…",
+  thinking: "thinking…",
+  tool: "using tools…",
+  writing: "writing…",
+  done: "done",
+  error: "error",
+};
 
 /**
- * F2 status slot: the in-progress feed lives in its OWN aria-live region,
- * never concatenated into the answer body. It collapses on terminal
- * state; `complete` leaves a subtle done marker instead.
+ * F2/F8/F10-T1 status slot: the in-progress feed lives in its OWN
+ * aria-live region, never concatenated into the answer body. The phase
+ * label derives from real events (deriveRunPhase, F8); beneath it the
+ * free Tier-1 narration line tells the trajectory story
+ * (narrateTrajectory, F10). Animation is gated by `evalMode` so frozen
+ * eval captures stay deterministic (decision D-A). On `complete` the
+ * slot collapses to a subtle done marker.
  */
-function RunStatusLine(props: { view: AssistantRunView }): React.JSX.Element | null {
-  const { view } = props;
+function RunStatusLine(props: {
+  view: AssistantRunView;
+  phase: RunPhase;
+  evalMode: boolean;
+}): React.JSX.Element | null {
+  const { view, phase } = props;
   if (view.status === "complete") {
     return (
       <p
@@ -53,26 +72,37 @@ function RunStatusLine(props: { view: AssistantRunView }): React.JSX.Element | n
   const label =
     runningTool && runningTool.kind === "tool"
       ? `using ${runningTool.request.tool_name}…`
-      : view.step
+      : view.step && phase === "thinking"
         ? `step ${view.step.count} · ${view.step.name}…`
-        : "working…";
+        : PHASE_LABEL[phase];
+  const narration = narrateTrajectory(view.segments);
   return (
-    <p
+    <div
       data-testid="run-status"
       aria-live="polite"
-      className="text-xs text-muted m-0 animate-pulse"
+      className="text-xs text-muted m-0 grid gap-0.5"
     >
-      {label}
-    </p>
+      <p className={props.evalMode ? "m-0" : "m-0 animate-pulse"}>{label}</p>
+      {narration ? (
+        <p data-testid="reasoning-narration" className="m-0">
+          {narration}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
-function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
+function AssistantMessage(props: {
+  turn: ChatTurn;
+  evalMode?: boolean;
+}): React.JSX.Element {
   const { assistant } = props.turn;
   const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
+  const phase = deriveRunPhase(assistant);
   return (
     <div
       data-state={assistant.status}
+      data-run-phase={phase}
       data-tool-count={toolCount}
       data-testid="assistant-message"
       className="grid gap-2"
@@ -90,7 +120,11 @@ function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
           {assistant.errorMessage ?? "The run failed."}
         </p>
       ) : null}
-      <RunStatusLine view={assistant} />
+      <RunStatusLine
+        view={assistant}
+        phase={phase}
+        evalMode={props.evalMode ?? false}
+      />
     </div>
   );
 }
