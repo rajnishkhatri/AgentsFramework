@@ -1,6 +1,9 @@
 # GoalJudge Eval UI — Trajectory + Admissible-Capture Phase
 
-> **Status:** PROPOSED (2026-06-11). Pre-Stage-6 UI workstream.
+> **Status:** IMPLEMENTED except F10-Tier2 (2026-06-11). Pre-Stage-6 UI workstream.
+> All phases landed on `feat/goaljudge-stage5-phase6-iaa-round1` — see §0 for the
+> commit-by-commit execution record. Remaining: F10 Tier 2 (cheap reasoning recap)
+> and the T3 `goaljudge-batch` admissibility validation.
 > **One-line:** Connect the already-built (and tested) AG-UI → UI-runtime → React
 > pipeline to the live chat shell, so the UI renders the **tool trajectory**, a
 > **live task list + synthesized reasoning**, a **guaranteed synthesized answer**, and
@@ -33,6 +36,46 @@
 > [`docs/skills/playwright-agentic-e2e`](../skills/playwright-agentic-e2e/SKILL.md) — the
 > repo already ships the tier scripts and specs (several skip today and light up as
 > F1–F3 land). Per-feature tier + assertions in **§8.8**.
+
+---
+
+## 0. Execution record (2026-06-11)
+
+Implemented phase-by-phase in the Appendix B interleaved order, backend emission
+first, all on `feat/goaljudge-stage5-phase6-iaa-round1` (decisions taken with the
+owner at kickoff). Every slice shipped TDD-first (failure paths first) with T1
+Playwright validation per §8.8.
+
+| Commit | Phase(s) | What landed |
+|---|---|---|
+| `d74193d` | prep | Pin vite ^7 so vitest 4 can start (frontend test runner was dead) |
+| `c123ddf` | Phase 0 | Backend emission: `StepProgressed` → `Custom step_meter`; `_translate_chain_end` emits `StateMutated` JSON-Patch `replace` for `/todos`, `/plan_ref`, `/selected_model`; telemetry-bridge skip list updated; wire artifacts regenerated |
+| `230804f` | F1 | Chat shell on the runtime port: `connectFetchSSE` transport (§8.6-E Option A), `streamRun(req)` port (§8.6-F), `lib/composition_browser.ts` browser root, pure `run_view_reducer`, `useAgentRun` hook |
+| `c887fcc` | F2/F3/F9 | Status slot separate from answer body; **"Using tools:" preview removed at the backend source** (GJ-012/GJ-F-008 root cause retired); tool-card testids + errored-status convention; live `TaskList` from `/todos` deltas (cancelled ≠ done) |
+| `c099e6f` | F8/F10-T1 | `deriveRunPhase` → `data-run-phase` (event-driven, no timers); `narrateTrajectory` free Tier-1 narration line |
+| `927c3a9` | F11 | `synthesizeFallbackAnswer` — answer slot never empty; "summary generated from tool results" marker |
+| `ee17c67` | F4/F12 | react-markdown + remark-gfm (no raw HTML), `CodeBlock` with copy, dangling-fence stabilizer; Geist Sans/Mono type system per Appendix A |
+| `deaf45f` | F5/F6/F7 | Model badge from `/selected_model` delta; copyable trace chip (forwarded `trace_id` only, F-R7); `?eval=GJ-…` capture surface (pinned case id, frozen animation, prod clean) |
+
+**Verification at close:** backend 738 passed; frontend 378 unit tests passed; T1
+chromium 14/14; visual tier 8/8 (baselines updated); architecture-layering tests
+green with the second composition root.
+
+**Plan corrections forced by code reality** (full detail in §8.6-F and the §8.6-C
+correction): the middleware is a single `POST /run/stream` whose response body *is*
+the SSE stream → the port is `streamRun(req)`, `createRun` removed; wire
+`RunFinished` carries **no** `final_message`, so F11's guarantee = graph forced
+synthesis + frontend fallback.
+
+**Remaining work:**
+- **F10 Tier 2** (deferred deliberately — Tier 1 ships the live information for $0):
+  once-per-run cheap-model recap over a `Custom {name:"reasoning_summary"}` channel,
+  Jinja prompt in `prompts/` (F-R5), lazy "Show reasoning" expander, pre-settled in
+  eval mode, cost guard skips 0–1-tool runs (§8 F10 / §8.6-B).
+- **T3 acceptance:** `goaljudge-batch` registry run against the full stack —
+  `tool_card_count > 0` where expected, `response_text` 100% non-empty (§8.8 / §5).
+- Out of band: 3 stale frontend checker-script tests (pre-existing, tracked
+  separately).
 
 ---
 
@@ -994,3 +1037,7 @@ Wave B:  F1 ──► F8 (loading)
 
 Recommended: confirm F1 emission → F2/F3/F9 (the eval-evidence core) → F8/F10-Tier1
 (free engagement) → F11 → F4/F12 in parallel → F10-Tier2 → F7 (stretch).
+
+**Execution status (2026-06-11):** done in exactly this order — Phase 0 ✅ →
+F1 ✅ → F2/F3/F9 ✅ → F8/F10-Tier1 ✅ → F11 ✅ → F4/F12 ✅ → F5/F6/F7 ✅.
+Only **F10-Tier2** remains. Commit map in §0.
