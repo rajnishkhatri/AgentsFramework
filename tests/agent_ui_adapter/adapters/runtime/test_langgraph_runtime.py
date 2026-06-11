@@ -23,6 +23,8 @@ from agent_ui_adapter.wire.domain_events import (
     LLMTokenEmitted,
     RunFinishedDomain,
     RunStartedDomain,
+    StateMutated,
+    StepProgressed,
     ToolCallStarted,
     ToolResultReceived,
 )
@@ -250,6 +252,149 @@ class TestLangGraphRuntimeStream:
         assert starts[0].tool_name == "calc"
         assert len(results) == 1
         assert results[0].result == "42"
+
+
+# ── Eval-UI Phase 0: node completion → StateMutated + StepProgressed ──
+
+
+def _chain_end(name: str, output: Any, run_id: str = "lc-chain-1") -> dict:
+    return {
+        "event": "on_chain_end",
+        "data": {"output": output},
+        "name": name,
+        "run_id": run_id,
+    }
+
+
+async def _collect(rt: LangGraphRuntime) -> list:
+    return [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
+
+
+class TestChainEndStateMutation:
+    """Node outputs carrying ``todos``/``plan_ref`` surface as StateMutated.
+
+    Failure paths first per TAP-4: malformed/irrelevant chain-end events
+    must emit nothing (and never crash) before the happy path is asserted.
+    """
+
+    @pytest.mark.asyncio
+    async def test_non_dict_output_emits_nothing(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", "a string")])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StateMutated)]
+
+    @pytest.mark.asyncio
+    async def test_output_without_state_keys_emits_no_state_mutated(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("execute_tool", {"messages": [], "tool_cache": {}})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StateMutated)]
+
+    @pytest.mark.asyncio
+    async def test_malformed_todos_not_a_list_is_ignored(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("execute_tool", {"todos": "not-a-list"})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StateMutated)]
+
+    @pytest.mark.asyncio
+    async def test_root_langgraph_chain_end_is_suppressed(self) -> None:
+        """The compiled graph's own on_chain_end restates the final state --
+        emitting it would duplicate the last node delta at stream end."""
+        todos = [{"id": "t1", "content": "x", "status": "completed"}]
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("LangGraph", {"todos": todos})])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StateMutated)]
+
+    @pytest.mark.asyncio
+    async def test_todos_in_node_output_emit_json_patch_replace(self) -> None:
+        todos = [
+            {"id": "t1", "content": "read file", "status": "completed"},
+            {"id": "t2", "content": "write file", "status": "pending"},
+        ]
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", {"todos": todos})])
+        )
+        out = await _collect(rt)
+        mutations = [e for e in out if isinstance(e, StateMutated)]
+        assert len(mutations) == 1
+        assert mutations[0].delta == [
+            {"op": "replace", "path": "/todos", "value": todos}
+        ]
+        assert mutations[0].trace_id == out[0].trace_id
+
+    @pytest.mark.asyncio
+    async def test_plan_ref_in_node_output_emits_json_patch_replace(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("execute_tool", {"plan_ref": ".plans/p1.json"})]
+            )
+        )
+        out = await _collect(rt)
+        mutations = [e for e in out if isinstance(e, StateMutated)]
+        assert len(mutations) == 1
+        assert mutations[0].delta == [
+            {"op": "replace", "path": "/plan_ref", "value": ".plans/p1.json"}
+        ]
+
+
+class TestChainEndStepMeter:
+    """``evaluate`` node completion == one ReAct lap → StepProgressed."""
+
+    @pytest.mark.asyncio
+    async def test_non_evaluate_chain_end_emits_no_step(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("route", {"selected_model": "m"}),
+                    _chain_end("execute_tool", {"messages": []}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StepProgressed)]
+
+    @pytest.mark.asyncio
+    async def test_evaluate_chain_ends_increment_step_meter(self) -> None:
+        scripted = [
+            _chain_end("evaluate", {"current_workflow_phase": "evaluation"}, "lc-1"),
+            _chain_end("evaluate", {"current_workflow_phase": "evaluation"}, "lc-2"),
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = await _collect(rt)
+        steps = [e for e in out if isinstance(e, StepProgressed)]
+        assert [s.step_count for s in steps] == [1, 2]
+        assert steps[0].step_name == "evaluation"
+
+    @pytest.mark.asyncio
+    async def test_evaluate_with_non_dict_output_still_counts(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("evaluate", None)])
+        )
+        out = await _collect(rt)
+        steps = [e for e in out if isinstance(e, StepProgressed)]
+        assert len(steps) == 1
+        assert steps[0].step_count == 1
+        assert steps[0].step_name == "evaluate"
+
+    @pytest.mark.asyncio
+    async def test_step_counter_resets_between_runs(self) -> None:
+        scripted = [_chain_end("evaluate", {"current_workflow_phase": "evaluation"})]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        first = [e for e in await _collect(rt) if isinstance(e, StepProgressed)]
+        second = [e for e in await _collect(rt) if isinstance(e, StepProgressed)]
+        assert [s.step_count for s in first] == [1]
+        assert [s.step_count for s in second] == [1]
 
 
 # ── Failure isolation: graph error becomes RunFinished(error=...) ─────

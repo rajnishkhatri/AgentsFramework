@@ -533,6 +533,20 @@ export interface components {
              */
             type: "STEP_FINISHED";
         };
+        /** StepProgressed */
+        StepProgressed: {
+            /** Step Count */
+            step_count: number;
+            /** Step Name */
+            step_name: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+            /** Trace Id */
+            trace_id: string;
+        };
         /** StepStarted */
         StepStarted: {
             /**

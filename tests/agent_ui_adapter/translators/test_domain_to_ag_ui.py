@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from agent_ui_adapter.translators.domain_to_ag_ui import to_ag_ui
 from agent_ui_adapter.wire.ag_ui_events import (
+    Custom,
     EventType,
     RunError,
     RunFinished,
@@ -32,6 +33,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
+    StepProgressed,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -210,3 +212,27 @@ def test_state_mutated_with_both_prefers_snapshot() -> None:
     )
     assert len(out) == 1
     assert isinstance(out[0], StateSnapshot)
+
+
+def test_step_progressed_raises_when_trace_id_empty() -> None:
+    """Failure path first: StepProgressed without trace_id is rejected."""
+    event = StepProgressed(trace_id="", step_count=1, step_name="evaluation")
+    with pytest.raises(ValueError, match="trace_id"):
+        to_ag_ui(event)
+
+
+def test_step_progressed_maps_to_custom_step_meter() -> None:
+    """Eval-UI Phase 0: StepProgressed rides the Custom 'step_meter' channel.
+
+    The frontend translator special-cases CUSTOM name=='step_meter' into a
+    step_progress UI-runtime event carrying the real count -- the wire
+    StepStarted shape has no count, so it is deliberately NOT used here.
+    """
+    out = to_ag_ui(
+        StepProgressed(trace_id=TRACE_ID, step_count=2, step_name="evaluation")
+    )
+    assert len(out) == 1
+    assert isinstance(out[0], Custom)
+    assert out[0].name == "step_meter"
+    assert out[0].value == {"step": 2, "step_name": "evaluation"}
+    assert out[0].raw_event == {"trace_id": TRACE_ID}

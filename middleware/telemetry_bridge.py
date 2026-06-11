@@ -25,6 +25,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
+    StepProgressed,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -42,7 +43,9 @@ _MAX_FIELD_BYTES = 4096
 # are buffered and folded into the matching ``llm.finished`` export), so it never
 # produces a direct observation — it belongs in the skipped set alongside the
 # events that are dropped outright.
-_SKIPPED_TYPES = (LLMTokenEmitted, StateMutated, ToolCallEnded)
+# StepProgressed is a UI step-meter affordance; Langfuse already carries
+# per-lap tool/llm observations, so exporting it would only add noise.
+_SKIPPED_TYPES = (LLMTokenEmitted, StateMutated, StepProgressed, ToolCallEnded)
 _llm_token_buffers: dict[tuple[str, str], list[str]] = {}
 
 

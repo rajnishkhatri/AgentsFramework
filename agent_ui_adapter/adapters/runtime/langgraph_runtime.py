@@ -21,9 +21,10 @@ LangChain event-name mapping (subset; v1 wire surface):
 | on_chat_model_end            | LLMMessageEnded               |
 | on_tool_start                | ToolCallStarted               |
 | on_tool_end                  | ToolResultReceived            |
+| on_chain_end (node)          | StateMutated (todos/plan_ref) |
+| on_chain_end (evaluate node) | StepProgressed (ReAct lap)    |
 
-Future enhancements (deferred): JSON Patch translation for state mutations,
-HITL ``request_approval`` wiring (S7).
+Future enhancements (deferred): HITL ``request_approval`` wiring (S7).
 """
 
 from __future__ import annotations
@@ -43,6 +44,8 @@ from agent_ui_adapter.wire.domain_events import (
     LLMTokenEmitted,
     RunFinishedDomain,
     RunStartedDomain,
+    StateMutated,
+    StepProgressed,
     ToolCallStarted,
     ToolResultReceived,
 )
@@ -86,6 +89,7 @@ class LangGraphRuntime:
         self._trace_emit = trace_emit
         self._run_tasks: dict[str, asyncio.Task] = {}
         self._streamed_run_ids: set[str] = set()
+        self._step_meter_count = 0
 
     def _emit_trace(
         self,
@@ -178,6 +182,7 @@ class LangGraphRuntime:
         }
         error: str | None = None
         self._streamed_run_ids = set()
+        self._step_meter_count = 0
         try:
             async for raw in self._graph.astream_events(
                 graph_input, config=config, version="v2"
@@ -477,7 +482,57 @@ class LangGraphRuntime:
                 result=str(output),
             )]
 
+        if ev_name == "on_chain_end":
+            return self._translate_chain_end(raw, data, trace_id)
+
         return []
+
+    def _translate_chain_end(
+        self, raw: dict, data: dict, trace_id: str
+    ) -> list[DomainEvent]:
+        """Graph-node completion → step meter + state-delta surface.
+
+        - ``evaluate`` node end marks one completed ReAct lap →
+          ``StepProgressed`` (wire: ``Custom name='step_meter'``).
+        - Any node whose output carries ``todos``/``plan_ref`` →
+          ``StateMutated`` with JSON-Patch ``replace`` ops (the loop
+          replaces these channels wholesale, never patches items).
+        - The compiled graph's own ``on_chain_end`` (name ``LangGraph``)
+          restates the final state; suppressed to avoid a duplicate
+          trailing delta.
+        """
+        node_name = raw.get("name", "")
+        if node_name == "LangGraph":
+            return []
+
+        events: list[DomainEvent] = []
+        output = data.get("output")
+
+        if isinstance(output, dict):
+            ops: list[dict] = []
+            todos = output.get("todos")
+            if isinstance(todos, list):
+                ops.append({"op": "replace", "path": "/todos", "value": todos})
+            plan_ref = output.get("plan_ref")
+            if isinstance(plan_ref, str) and plan_ref:
+                ops.append({"op": "replace", "path": "/plan_ref", "value": plan_ref})
+            if ops:
+                events.append(StateMutated(trace_id=trace_id, delta=ops))
+
+        if node_name == "evaluate":
+            self._step_meter_count += 1
+            step_name = ""
+            if isinstance(output, dict):
+                step_name = str(output.get("current_workflow_phase", "") or "")
+            events.append(
+                StepProgressed(
+                    trace_id=trace_id,
+                    step_count=self._step_meter_count,
+                    step_name=step_name or "evaluate",
+                )
+            )
+
+        return events
 
 
 __all__ = ["LangGraphRuntime"]
