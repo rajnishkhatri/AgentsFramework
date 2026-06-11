@@ -1,10 +1,17 @@
 /**
- * Chat shell — client component that wires Composer, StreamingMarkdown,
- * RunControls, ThreadSidebar, and ThemeToggle into a working chat UI.
+ * Chat shell -- client component wiring Composer, StreamingMarkdown,
+ * ToolCard, and ThemeToggle into a working chat UI on the architecture's
+ * runtime port (eval-UI F1; replaces the off-architecture placeholder).
  *
- * This is a placeholder integration: messages are stored in local state
- * and sent to the BFF `/api/run/stream` endpoint. The full AG-UI / CopilotKit
- * integration lands in later sprints.
+ * Per F-R1 this component holds NO run-lifecycle logic: `useAgentRun`
+ * drives `AgentRuntimeClient.streamRun()` and folds events through the
+ * pure run_view_reducer; this file only renders the resulting turns.
+ * Per F-R7 trace ids are forwarded from the backend, never generated.
+ *
+ * `data-state` on each assistant message root is the deterministic
+ * terminal-state hook (F2 expands its visual affordances): the batch
+ * harness waits on `[data-state="complete"]` instead of text-settle
+ * heuristics.
  */
 
 "use client";
@@ -14,145 +21,53 @@ import Link from "next/link";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
+import { ToolCard } from "@/components/tools/ToolCard";
+import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
+import { browserRuntimeClient } from "@/lib/composition_browser";
+import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
+function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
+  const { assistant } = props.turn;
+  const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
+  return (
+    <div
+      data-state={assistant.status}
+      data-tool-count={toolCount}
+      data-testid="assistant-message"
+      className="grid gap-2"
+    >
+      {assistant.segments.map((seg, i) =>
+        seg.kind === "text" ? (
+          <StreamingMarkdown key={`text-${i}`} text={seg.text} />
+        ) : (
+          <ToolCard key={seg.request.tool_call_id} request={seg.request} />
+        ),
+      )}
+      {assistant.status === "error" ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400 m-0">
+          {assistant.errorMessage ?? "The run failed."}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
-export function ChatShell(props: { userEmail: string }): React.JSX.Element {
-  const [messages, setMessages] = React.useState<Message[]>([]);
-  const [busy, setBusy] = React.useState(false);
+export function ChatShell(props: {
+  userEmail: string;
+  /** Test seam: defaults to the browser composition root's client. */
+  runtime?: AgentRuntimeClient;
+}): React.JSX.Element {
+  const injected = props.runtime;
+  const runtime = React.useMemo(
+    () => injected ?? browserRuntimeClient(),
+    [injected],
+  );
+  const { turns, busy, send } = useAgentRun(runtime);
   const bottomRef = React.useRef<HTMLDivElement>(null);
-  /** Stable LangGraph thread id for checkpointer + /run/stream (multiturn). */
-  const threadIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function handleSend(body: string): Promise<void> {
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text: body,
-    };
-    if (threadIdRef.current === null) {
-      threadIdRef.current = crypto.randomUUID();
-    }
-    const threadId = threadIdRef.current;
-    // Only the new user line: middleware uses `thread_id` + SqliteSaver so LangGraph
-    // appends to checkpoint state. Sending full chat history duplicates prior turns in
-    // `messages` and breaks tool follow-ups on turn 2+.
-    const messagesForApi = [{ role: "user" as const, content: body }];
-
-    setMessages((prev) => [...prev, userMsg]);
-    setBusy(true);
-
-    try {
-      const res = await fetch("/api/run/stream", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          thread_id: threadId,
-          input: { messages: messagesForApi },
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        let errorText: string;
-        if (res.status === 401) {
-          const contentType = res.headers.get("content-type") ?? "";
-          if (contentType.includes("application/json")) {
-            errorText = "Session expired — please sign in again.";
-          } else {
-            errorText = "Backend rejected credentials — contact your admin.";
-          }
-        } else if (res.status === 502 || res.status === 503 || res.status === 504) {
-          errorText = "Backend unreachable — try again in a moment.";
-        } else {
-          errorText = `Error: ${res.status} — ${res.statusText || "unexpected failure"}.`;
-        }
-        const assistantMsg: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text: errorText,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        return;
-      }
-
-      const assistantId = crypto.randomUUID();
-      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", text: "" }]);
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assistantText = "";
-
-      const flushEvent = (rawEvent: string): void => {
-        let eventName = "message";
-        const dataLines: string[] = [];
-        for (const line of rawEvent.split("\n")) {
-          if (line.startsWith("event:")) {
-            eventName = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            dataLines.push(line.slice(5).trimStart());
-          }
-        }
-        if (dataLines.length === 0) return;
-        const dataStr = dataLines.join("\n");
-        if (eventName === "done" || dataStr === "[DONE]") return;
-
-        try {
-          const payload = JSON.parse(dataStr) as {
-            type?: string;
-            delta?: string;
-            message?: string;
-          };
-          if (eventName === "TEXT_MESSAGE_CONTENT" && typeof payload.delta === "string") {
-            assistantText += payload.delta;
-            const snapshot = assistantText;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
-            );
-          } else if (eventName === "RUN_ERROR" && payload.message) {
-            assistantText += `\n\n_Error: ${payload.message}_`;
-            const snapshot = assistantText;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
-            );
-          }
-        } catch {
-          // Non-JSON data line — ignore.
-        }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let sepIdx: number;
-        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, sepIdx);
-          buffer = buffer.slice(sepIdx + 2);
-          if (rawEvent.trim().length > 0) flushEvent(rawEvent);
-        }
-      }
-      if (buffer.trim().length > 0) flushEvent(buffer);
-    } catch {
-      const errMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: "Connection error — make sure the backend is running.",
-      };
-      setMessages((prev) => [...prev, errMsg]);
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [turns]);
 
   return (
     <div className="min-h-dvh grid grid-rows-[auto_1fr_auto]">
@@ -174,7 +89,7 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
 
       {/* Messages area */}
       <main className="overflow-y-auto p-4">
-        {messages.length === 0 ? (
+        {turns.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted text-center">
             <div className="grid gap-2">
               <p className="text-2xl m-0">What can I help you with?</p>
@@ -183,21 +98,15 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
           </div>
         ) : (
           <div className="max-w-3xl mx-auto grid gap-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={
-                  msg.role === "user"
-                    ? "justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]"
-                    : "justify-self-start max-w-[80%]"
-                }
-              >
-                {msg.role === "assistant" ? (
-                  <StreamingMarkdown text={msg.text} />
-                ) : (
-                  <span className="whitespace-pre-wrap">{msg.text}</span>
-                )}
-              </div>
+            {turns.map((turn) => (
+              <React.Fragment key={turn.id}>
+                <div className="justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]">
+                  <span className="whitespace-pre-wrap">{turn.user}</span>
+                </div>
+                <div className="justify-self-start max-w-[80%] w-full">
+                  <AssistantMessage turn={turn} />
+                </div>
+              </React.Fragment>
             ))}
             <div ref={bottomRef} />
           </div>
@@ -206,7 +115,7 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
 
       {/* Composer */}
       <div className="max-w-3xl mx-auto w-full">
-        <Composer onSend={handleSend} busy={busy} />
+        <Composer onSend={send} busy={busy} />
       </div>
     </div>
   );

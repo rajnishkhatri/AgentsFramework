@@ -6,6 +6,13 @@
  * forwards the request bytes to the Python middleware which embeds the
  * LangGraph runtime.
  *
+ * Protocol (eval-UI F1): the middleware exposes a single
+ * `POST /run/stream` whose response body IS the SSE stream, so
+ * `streamRun(req)` both starts the run and yields its events. There is no
+ * separate create call. The BFF authenticates via session cookie
+ * (`credentials: "include"` on the transport); no bearer token is needed
+ * browser-side.
+ *
  * SDK isolation: this adapter intentionally does NOT import the
  * `@langchain/langgraph-sdk` package even though the package is installed.
  * The BFF + middleware are the only callers of that SDK -- the browser
@@ -13,18 +20,18 @@
  * user-agent code (FE-AP-7 + bundle budget).
  *
  * Layering (Rule A3): adapters depend ONLY on `ports/`, `wire/`,
- * `trust-view/`, and SDKs. The SSE transport (`transport/sse_client`) and
- * the AG-UI -> UIRuntime translator (`translators/ag_ui_to_ui_runtime`)
- * are NOT imported here -- the composition root assembles them into the
- * `openUIRuntimeStream` function that this adapter receives via
- * constructor injection.
+ * `trust-view/`, and SDKs. The fetch-SSE transport
+ * (`transport/fetch_sse_client`) and the AG-UI -> UIRuntime translator
+ * (`translators/ag_ui_to_ui_runtime`) are NOT imported here -- the browser
+ * composition root (`composition_browser.ts`) assembles them into the
+ * `openUIRuntimeStream` function this adapter receives via constructor
+ * injection.
  *
- * Error translation table (JSDoc, A5):
- *   401 -> AgentAuthError
- *   403 -> AgentAuthorizationError
- *   429 -> AgentRateLimitError
- *   5xx -> AgentServerError
- *   fetch reject / abort -> AgentNetworkError
+ * Error surface (A5): stream-path failures arrive as `run_error`
+ * UIRuntimeEvents with the closed `error_type` enum (401 -> auth_error,
+ * 403 -> authorization_error, 429 -> rate_limit_error, 5xx -> server_error,
+ * transport -> network_error), mapped in the composition stream.
+ * `cancel()` keeps the typed-error contract: 401 -> AgentAuthError.
  *
  * trace_id is forwarded from the backend via SSE; this adapter never
  * generates one (FE-AP-7 AUTO-REJECT).
@@ -32,122 +39,58 @@
  * SDK pin: see `frontend/package.json` (this adapter has no direct SDK dep).
  */
 
-import {
-  RunStateViewSchema,
-  type RunCreateRequest,
-  type RunStateView,
-} from "../../wire/agent_protocol";
+import type { RunCreateRequest } from "../../wire/agent_protocol";
 import type { UIRuntimeEvent } from "../../wire/ui_runtime_events";
 import type { AgentRuntimeClient } from "../../ports/agent_runtime_client";
 import { createAdapterLogger, type Logger } from "../_logger";
-import {
-  AgentAuthError,
-  AgentAuthorizationError,
-  AgentNetworkError,
-  AgentRateLimitError,
-  AgentServerError,
-} from "./errors";
+import { AgentAuthError } from "./errors";
 
 const log: Logger = createAdapterLogger("runtime");
 
 export interface SelfHostedLangGraphDevClientOptions {
   readonly baseUrl: string;
   readonly fetchImpl: typeof fetch;
-  readonly getAccessToken: () => Promise<string>;
   /**
-   * Composition-injected stream factory. Returns a UIRuntime event stream
-   * for the given `run_id`. The composition root assembles transport (SSE)
-   * + translator (AG-UI -> UIRuntime) into this single function so the
-   * adapter stays free of `transport/` and `translators/` imports (A3).
+   * Composition-injected stream factory. Starts the run described by the
+   * request and returns its UIRuntime event stream. The composition root
+   * assembles transport (fetch-SSE) + translators into this single
+   * function so the adapter stays free of `transport/` and `translators/`
+   * imports (A3).
    *
-   * Optional only so tests that exercise `createRun` / `cancel` need not
-   * provide one; calls to `streamRun()` without it throw.
+   * Optional only so tests that exercise `cancel` need not provide one;
+   * calls to `streamRun()` without it throw.
    */
   readonly openUIRuntimeStream?: (
-    runId: string,
+    req: RunCreateRequest,
   ) => AsyncIterable<UIRuntimeEvent>;
 }
 
 export class SelfHostedLangGraphDevClient implements AgentRuntimeClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
-  private readonly getAccessToken: () => Promise<string>;
   private readonly openUIRuntimeStream:
-    | ((runId: string) => AsyncIterable<UIRuntimeEvent>)
+    | ((req: RunCreateRequest) => AsyncIterable<UIRuntimeEvent>)
     | undefined;
 
   constructor(opts: SelfHostedLangGraphDevClientOptions) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     this.fetchImpl = opts.fetchImpl;
-    this.getAccessToken = opts.getAccessToken;
     this.openUIRuntimeStream = opts.openUIRuntimeStream;
   }
 
-  async createRun(req: RunCreateRequest): Promise<RunStateView> {
-    const token = await this.getAccessToken();
-    let res: Response;
-    try {
-      res = await this.fetchImpl(`${this.baseUrl}/run/stream`, {
-        method: "POST",
-        headers: {
-          authorization: `Bearer ${token}`,
-          "content-type": "application/json",
-          accept: "application/json",
-        },
-        body: JSON.stringify(req),
-      });
-    } catch (e) {
-      log.warn("createRun fetch rejected", {
-        adapter: "self_hosted_langgraph_dev_client",
-        error_type: "network_error",
-      });
-      throw new AgentNetworkError(
-        e instanceof Error ? e.message : String(e),
-        { cause: e },
-      );
-    }
-    if (res.status === 401) {
-      log.info("createRun auth rejected", {
-        adapter: "self_hosted_langgraph_dev_client",
-        status_code: 401,
-      });
-      throw new AgentAuthError(await res.text());
-    }
-    if (res.status === 403) {
-      log.info("createRun authorization rejected", {
-        adapter: "self_hosted_langgraph_dev_client",
-        status_code: 403,
-      });
-      throw new AgentAuthorizationError(await res.text());
-    }
-    if (res.status === 429) {
-      log.warn("createRun rate-limited", {
-        adapter: "self_hosted_langgraph_dev_client",
-        status_code: 429,
-      });
-      throw new AgentRateLimitError(await res.text());
-    }
-    if (res.status >= 500) {
-      log.error("createRun upstream 5xx", {
-        adapter: "self_hosted_langgraph_dev_client",
-        status_code: res.status,
-      });
-      throw new AgentServerError(await res.text());
-    }
-    if (!res.ok) throw new AgentServerError(`unexpected status ${res.status}`);
-    const json = (await res.json()) as unknown;
-    return RunStateViewSchema.parse(json);
-  }
-
-  streamRun(runId: string): AsyncIterable<UIRuntimeEvent> {
+  streamRun(req: RunCreateRequest): AsyncIterable<UIRuntimeEvent> {
     if (!this.openUIRuntimeStream) {
       throw new Error(
-        "streamRun requires an openUIRuntimeStream factory; the composition " +
-          "root must inject one (typically `composition.ts` wires " +
-          "`connectSSE` + `agUiToUiRuntime`).",
+        "streamRun requires an openUIRuntimeStream factory; the browser " +
+          "composition root must inject one (composition_browser.ts wires " +
+          "`connectFetchSSE` + `agUiToUiRuntime`).",
       );
     }
-    return this.openUIRuntimeStream(runId);
+    log.info("streamRun", {
+      adapter: "self_hosted_langgraph_dev_client",
+      thread_id: req.thread_id,
+    });
+    return this.openUIRuntimeStream(req);
   }
 
   async cancel(runId: string): Promise<void> {

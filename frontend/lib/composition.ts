@@ -30,14 +30,6 @@ import {
 import { EnvVarFlagsAdapter } from "./adapters/feature_flags/env_var_flags_adapter";
 import { CopilotKitRegistryAdapter } from "./adapters/tool_renderer/copilotkit_registry_adapter";
 import { CopilotKitUIRuntime } from "./adapters/ui_runtime/copilotkit_ui_runtime";
-import {
-  connectSSE,
-  isSSEHeartbeatTimeout,
-  isSSEParseError,
-  type EventSourceFactory,
-} from "./transport/sse_client";
-import { agUiToUiRuntime } from "./translators/ag_ui_to_ui_runtime";
-import type { UIRuntimeEvent } from "./wire/ui_runtime_events";
 import type {
   AgentRuntimeClient,
   AuthProvider,
@@ -58,12 +50,6 @@ export interface BuildAdaptersOptions {
   readonly threadRepo?: ThreadRepo; // composition wires Neon repo; tests inject in-memory
   readonly env: Readonly<Record<string, string | undefined>>;
   readonly baseUrl: string;
-  /**
-   * Browser-side EventSource constructor. Server-side (BFF) builds proxy
-   * SSE streams via `proxySSE`, so this can be omitted in node tests and
-   * route handlers; only browser code paths invoke `streamRun()`.
-   */
-  readonly eventSourceFactory?: EventSourceFactory;
 }
 
 export interface PortBag {
@@ -96,77 +82,6 @@ class NullTelemetrySink implements TelemetrySink {
   }
 }
 
-/**
- * Composition-time helper that assembles the SSE transport and the
- * AG-UI -> UIRuntime translator into a single `(runId) => stream` factory.
- *
- * Lives here (not in the adapter) so the runtime adapter remains free of
- * `transport/` and `translators/` imports -- Rule A3.
- *
- * On transport-level failures (parse error, heartbeat timeout) we
- * synthesize a `RunErrorEvent` with `trace_id: "no-trace"` -- this is a
- * documented sentinel, NOT browser-generated trace_id (FE-AP-7): there is
- * no real `trace_id` to forward when the SSE frame itself failed to
- * deserialize.
- */
-function makeOpenUIRuntimeStream(
-  baseUrl: string,
-  eventSourceFactory: EventSourceFactory | undefined,
-): (runId: string) => AsyncIterable<UIRuntimeEvent> {
-  return async function* openUIRuntimeStream(
-    runId: string,
-  ): AsyncGenerator<UIRuntimeEvent, void, void> {
-    if (!eventSourceFactory) {
-      throw new Error(
-        "openUIRuntimeStream requires an eventSourceFactory; the composition " +
-          "caller (browser-side) must pass one (typically " +
-          "`(url, init) => new EventSource(url, init)`).",
-      );
-    }
-    const stream = connectSSE({
-      url: `${baseUrl}/run/stream?run_id=${encodeURIComponent(runId)}`,
-      runId,
-      eventSourceFactory,
-    });
-    for await (const yielded of stream) {
-      if (isSSEParseError(yielded)) {
-        yield {
-          type: "run_error",
-          trace_id: "no-trace",
-          run_id: runId,
-          error_type: "wire_parse_error",
-          message: yielded.message,
-        };
-        return;
-      }
-      if (isSSEHeartbeatTimeout(yielded)) {
-        yield {
-          type: "run_error",
-          trace_id: "no-trace",
-          run_id: runId,
-          error_type: "network_error",
-          message: yielded.message,
-        };
-        return;
-      }
-      try {
-        for (const ui of agUiToUiRuntime(yielded)) {
-          yield ui;
-        }
-      } catch (e) {
-        yield {
-          type: "run_error",
-          trace_id: "no-trace",
-          run_id: runId,
-          error_type: "wire_parse_error",
-          message: e instanceof Error ? e.message : String(e),
-        };
-        return;
-      }
-    }
-  };
-}
-
 export function buildAdapters(opts: BuildAdaptersOptions): PortBag {
   if (opts.profile !== "v3" && opts.profile !== "v2") {
     throw new Error(`unknown profile: ${String(opts.profile)}`);
@@ -178,16 +93,14 @@ export function buildAdapters(opts: BuildAdaptersOptions): PortBag {
   registry.register("*", () => undefined);
 
   const baseUrl = opts.baseUrl.replace(/\/$/, "");
-  const openUIRuntimeStream = makeOpenUIRuntimeStream(
-    baseUrl,
-    opts.eventSourceFactory,
-  );
 
+  // Server-side bag: streaming is a browser concern -- the BFF proxies SSE
+  // bytes via `proxySSE` and never consumes `streamRun()`. The browser
+  // composition root (`composition_browser.ts`) injects the fetch-SSE
+  // stream factory (§8.6-E); here `streamRun` throws if ever invoked.
   const runtime = new SelfHostedLangGraphDevClient({
     baseUrl,
     fetchImpl: opts.fetchImpl,
-    getAccessToken: () => auth.getAccessToken(),
-    openUIRuntimeStream,
   });
 
   const threadStore = new NeonFreeThreadStore({

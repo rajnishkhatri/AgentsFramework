@@ -111,6 +111,22 @@ export const ToolCallRendererRequestSchema = z
   .strict();
 export type ToolCallRendererRequest = z.infer<typeof ToolCallRendererRequestSchema>;
 
+// ── Tool render (eval-UI F1/F3: trajectory segment on the union) ──────
+//
+// Carries one ToolCallRendererRequest snapshot per tool lifecycle change
+// (running → completed/errored). The composition root assembles it from
+// the `tool_event_to_renderer_request` aggregator so components receive
+// tool state on the same UIRuntime channel as text/lifecycle events.
+
+export const ToolRenderEventSchema = z
+  .object({
+    type: z.literal("tool_render"),
+    trace_id: traceId,
+    request: ToolCallRendererRequestSchema,
+  })
+  .strict();
+export type ToolRenderEvent = z.infer<typeof ToolRenderEventSchema>;
+
 // ── UIRuntime discriminated union ─────────────────────────────────────
 
 export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
@@ -120,5 +136,6 @@ export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
   ChatMessageDeltaEventSchema,
   StepProgressEventSchema,
   StateRenderEventSchema,
+  ToolRenderEventSchema,
 ]);
 export type UIRuntimeEvent = z.infer<typeof UIRuntimeEventSchema>;

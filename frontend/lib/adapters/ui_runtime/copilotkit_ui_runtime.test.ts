@@ -14,13 +14,6 @@ import type { UIRuntime } from "../../ports/ui_runtime";
 
 function fakeRuntimeClient(): AgentRuntimeClient {
   return {
-    createRun: vi.fn(async () => ({
-      run_id: "r1",
-      thread_id: "t1",
-      status: "running" as const,
-      started_at: "2026-04-24T00:00:00Z",
-      completed_at: null,
-    })),
     streamRun: () => (async function* () {})(),
     cancel: vi.fn(async () => undefined),
   };
