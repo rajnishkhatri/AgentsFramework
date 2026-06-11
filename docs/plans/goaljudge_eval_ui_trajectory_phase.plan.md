@@ -67,15 +67,34 @@ the SSE stream → the port is `streamRun(req)`, `createRun` removed; wire
 `RunFinished` carries **no** `final_message`, so F11's guarantee = graph forced
 synthesis + frontend fallback.
 
+**T3 acceptance — PASSED (2026-06-11, post-redeploy).** Full 22-case walkthrough
+batch against Cloud Run: 22/22 pass, `response_text` non-empty 22/22, zero F11
+fallback strings, `tool_card_count > 0` for 20/22 (GJ-009 declines shell
+execution with prose; GJ-022 is the *impossible* case answered without tools —
+both behaviorally correct). Artifacts: `cache/goaljudge_eval/ui_batch_t3_2026-06-11_v2.jsonl`
++ screenshots dir. The first T3 attempt surfaced **two backend blockers invisible
+to T1/T2 mocks**, fixed in `0df3664`:
+
+1. *Saturated checkpoint threads* — `gj:{case}:{trace}` resolved to a static
+   LangGraph checkpoint thread (`session-gj-XXX`) reused since 06-08; the
+   saturated thread ended every replay with one empty assistant message.
+   `checkpoint_thread_id` now gets a fresh per-parse suffix (mirrors the
+   fresh-`task_id` rule); `session_id` stays the deterministic telemetry key.
+2. *Tool calls never on the wire* — `execute_tool` runs tools via
+   `_execute_tools_impl` directly, so `on_tool_start` never fires; the runtime
+   now synthesizes `ToolCallStarted`/`ToolResultReceived` from the node's
+   chain-end `tool_results` records (deduped against live ids, `Error:`
+   prefix convention preserved).
+
 **Remaining work:**
 - **F10 Tier 2** (deferred deliberately — Tier 1 ships the live information for $0):
   once-per-run cheap-model recap over a `Custom {name:"reasoning_summary"}` channel,
   Jinja prompt in `prompts/` (F-R5), lazy "Show reasoning" expander, pre-settled in
-  eval mode, cost guard skips 0–1-tool runs (§8 F10 / §8.6-B).
-- **T3 acceptance:** `goaljudge-batch` registry run against the full stack —
-  `tool_card_count > 0` where expected, `response_text` 100% non-empty (§8.8 / §5).
-- Out of band: 3 stale frontend checker-script tests (pre-existing, tracked
-  separately).
+  eval mode, cost guard skips 0–1-tool runs (§8 F10 / §8.6-B). Decision locked
+  2026-06-11: computed **in-stream before RUN_FINISHED** (always-on with cost
+  guard), not via an on-demand endpoint.
+- ~~T3 acceptance~~ — done, see above.
+- ~~3 stale frontend checker-script tests~~ — fixed in `df3f534`.
 
 ---
 
