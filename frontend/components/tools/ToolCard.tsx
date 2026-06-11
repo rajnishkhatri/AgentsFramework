@@ -28,6 +28,9 @@ export function ToolCard(props: {
   return (
     <details
       open={props.defaultOpen ?? request.status === "running"}
+      data-testid="tool-card"
+      data-status={request.status}
+      data-tool-call-id={request.tool_call_id}
       className="border border-border rounded-md px-3 py-2 my-1 bg-surface"
     >
       <summary className="cursor-pointer flex gap-2 items-center font-mono text-sm">

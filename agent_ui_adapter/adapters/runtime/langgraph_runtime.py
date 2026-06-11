@@ -316,24 +316,6 @@ class LangGraphRuntime:
         return "\n".join(parts)
 
     @staticmethod
-    def _tool_calls_preview(obj: object) -> str:
-        """When the model returns only tool calls, surface a short line for the UI."""
-        tool_calls = getattr(obj, "tool_calls", None)
-        if not tool_calls:
-            return ""
-        names: list[str] = []
-        for tc in tool_calls:
-            if isinstance(tc, dict):
-                name = tc.get("name", "")
-            else:
-                name = getattr(tc, "name", "") or ""
-            if isinstance(name, str) and name:
-                names.append(name)
-        if not names:
-            return ""
-        return "Using tools: " + ", ".join(names) + "…"
-
-    @staticmethod
     def _suppress_llm_event_for_node(raw: dict) -> bool:
         """Hide LLM traffic from internal graph nodes (e.g. input guardrail).
 
@@ -404,8 +386,10 @@ class LangGraphRuntime:
             already_streamed = event_run_id in self._streamed_run_ids
             output = data.get("output")
             content = self._extract_content(output) if output else ""
-            if not content and output:
-                content = self._tool_calls_preview(output)
+            # Tool-call-only turns emit NO text token (eval-UI F2): the
+            # "Using tools: ..." preview used to land in the answer body
+            # and froze into inadmissible captures (GJ-012/GJ-F-008).
+            # Tool activity reaches the UI via ToolCallStarted events.
             if not already_streamed:
                 if content:
                     events.append(LLMTokenEmitted(

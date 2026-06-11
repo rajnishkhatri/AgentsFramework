@@ -20,11 +20,52 @@ import * as React from "react";
 import Link from "next/link";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
+import { TaskList } from "@/components/chat/TaskList";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
 import { browserRuntimeClient } from "@/lib/composition_browser";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
+import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
+
+/**
+ * F2 status slot: the in-progress feed lives in its OWN aria-live region,
+ * never concatenated into the answer body. It collapses on terminal
+ * state; `complete` leaves a subtle done marker instead.
+ */
+function RunStatusLine(props: { view: AssistantRunView }): React.JSX.Element | null {
+  const { view } = props;
+  if (view.status === "complete") {
+    return (
+      <p
+        data-testid="terminal-marker"
+        className="text-xs text-muted m-0"
+        aria-label="Run complete"
+      >
+        ✓ done
+      </p>
+    );
+  }
+  if (view.status !== "streaming") return null;
+  const runningTool = [...view.segments]
+    .reverse()
+    .find((s) => s.kind === "tool" && s.request.status === "running");
+  const label =
+    runningTool && runningTool.kind === "tool"
+      ? `using ${runningTool.request.tool_name}…`
+      : view.step
+        ? `step ${view.step.count} · ${view.step.name}…`
+        : "working…";
+  return (
+    <p
+      data-testid="run-status"
+      aria-live="polite"
+      className="text-xs text-muted m-0 animate-pulse"
+    >
+      {label}
+    </p>
+  );
+}
 
 function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
   const { assistant } = props.turn;
@@ -36,6 +77,7 @@ function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
       data-testid="assistant-message"
       className="grid gap-2"
     >
+      {assistant.todos ? <TaskList view={assistant.todos} /> : null}
       {assistant.segments.map((seg, i) =>
         seg.kind === "text" ? (
           <StreamingMarkdown key={`text-${i}`} text={seg.text} />
@@ -48,6 +90,7 @@ function AssistantMessage(props: { turn: ChatTurn }): React.JSX.Element {
           {assistant.errorMessage ?? "The run failed."}
         </p>
       ) : null}
+      <RunStatusLine view={assistant} />
     </div>
   );
 }

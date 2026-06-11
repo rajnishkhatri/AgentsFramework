@@ -17,16 +17,18 @@
  *   that segment in place (one card per call).
  * - After a terminal event (`run_completed`/`run_error`) the view is
  *   frozen: late events are ignored so eval captures stay stable.
- * - `state_render` is tolerated but unprojected here (the F9 task-list
- *   projection consumes it separately).
+ * - `state_render` feeds the F9 todo checklist via
+ *   `todo_list_projection`; payloads without a usable `/todos` shape are
+ *   tolerated unchanged.
  *
- * Imports: only `wire/`. No SDK, no React.
+ * Imports: `wire/` + sibling translators. No SDK, no React.
  */
 
 import type {
   ToolCallRendererRequest,
   UIRuntimeEvent,
 } from "../wire/ui_runtime_events";
+import { projectTodoList, type TodoListView } from "./todo_list_projection";
 
 export type MessageSegment =
   | { readonly kind: "text"; readonly text: string }
@@ -38,6 +40,7 @@ export interface AssistantRunView {
   readonly status: RunViewStatus;
   readonly segments: ReadonlyArray<MessageSegment>;
   readonly step: { readonly count: number; readonly name: string } | null;
+  readonly todos: TodoListView | null;
   readonly traceId: string | null;
   readonly runId: string | null;
   readonly threadId: string | null;
@@ -49,6 +52,7 @@ export function emptyRunView(): AssistantRunView {
     status: "streaming" as const,
     segments: Object.freeze([]),
     step: null,
+    todos: null,
     traceId: null,
     runId: null,
     threadId: null,
@@ -115,8 +119,9 @@ export function reduceRunView(
     case "run_error":
       return { ...view, status: "error", errorMessage: evt.message };
 
-    case "state_render":
-      // Projected by the F9 task-list consumer, not the message view.
-      return view;
+    case "state_render": {
+      const todos = projectTodoList(view.todos, evt);
+      return todos === view.todos ? view : { ...view, todos };
+    }
   }
 }

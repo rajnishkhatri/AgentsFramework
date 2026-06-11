@@ -26,7 +26,12 @@ test.describe("Streaming markdown (binary: Are tokens streamed politely?)", () =
     await sendMessage(page, PROMPTS.PLAIN_MARKDOWN);
     await page.waitForTimeout(2_000);
 
-    const liveRegions = page.locator("[aria-live]");
+    // Scope to the app's message surface: a bare [aria-live] scan also
+    // catches Next's framework-injected route announcer, which is
+    // aria-live="assertive" by design (playwright-agentic-e2e gotcha).
+    const liveRegions = page.locator(
+      "[data-testid='assistant-message'] [aria-live], article [aria-live]",
+    );
     const count = await liveRegions.count();
     test.skip(count === 0, "Skipped: no aria-live region found.");
 

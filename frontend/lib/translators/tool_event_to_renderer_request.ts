@@ -106,9 +106,13 @@ export function reduceToolEvent(
     return state;
   }
 
-  // TOOL_RESULT
+  // TOOL_RESULT. The wire has no error flag on tool results; the tool
+  // registry's convention (services/tools/registry.py ToolExecutionResult)
+  // is an output beginning with "Error:" -- surface that as an errored
+  // card while preserving the error text as evidence (eval-UI F3).
+  const errored = evt.content.startsWith("Error:");
   const renderers = replaceById(state.renderers, evt.tool_call_id, {
-    status: "completed",
+    status: errored ? "errored" : "completed",
     output: evt.content,
   });
   return Object.freeze({

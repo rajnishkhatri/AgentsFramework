@@ -111,6 +111,22 @@ export const ToolCallRendererRequestSchema = z
   .strict();
 export type ToolCallRendererRequest = z.infer<typeof ToolCallRendererRequestSchema>;
 
+// ── Todo item (eval-UI F9: typed projection of state_todo, §8.6-A) ────
+//
+// Mirrors services/tools/todo_tools.py TodoItem. Carried inside
+// StateDelta JSON-Patch ops (`{"op":"replace","path":"/todos","value":
+// [...]}`); the `todo_list_projection` translator validates each item
+// with this schema before it reaches the React layer.
+
+export const TodoItemSchema = z
+  .object({
+    id: z.string().min(1),
+    content: z.string().min(1),
+    status: z.enum(["pending", "in_progress", "completed", "cancelled"]),
+  })
+  .strict();
+export type TodoItem = z.infer<typeof TodoItemSchema>;
+
 // ── Tool render (eval-UI F1/F3: trajectory segment on the union) ──────
 //
 // Carries one ToolCallRendererRequest snapshot per tool lifecycle change

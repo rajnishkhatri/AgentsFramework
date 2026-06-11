@@ -19,6 +19,7 @@ from agent_ui_adapter.adapters.runtime.langgraph_runtime import LangGraphRuntime
 from agent_ui_adapter.ports.agent_runtime import AgentRuntime
 from agent_ui_adapter.wire.domain_events import (
     DomainEventBase,
+    LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
     RunFinishedDomain,
@@ -204,7 +205,13 @@ class TestLangGraphRuntimeStream:
         assert starts[0].input_text == "user: What is the capital of France?"
 
     @pytest.mark.asyncio
-    async def test_tool_only_chat_end_emits_preview(self) -> None:
+    async def test_tool_only_chat_end_emits_no_text_token(self) -> None:
+        """Eval-UI F2: the 'Using tools: ...' preview must NOT enter the
+        answer body -- tool activity is rendered from ToolCall events by
+        the UI's status slot / tool cards, never as message text. The
+        GJ-012/GJ-F-008 inadmissible captures were this preview frozen
+        mid-stream styled as a final answer."""
+
         class _ToolOnlyMsg:
             content = ""
             tool_calls = [{"name": "calculator"}]
@@ -223,8 +230,11 @@ class TestLangGraphRuntimeStream:
             ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
         ]
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
-        assert len(token_events) == 1
-        assert "calculator" in token_events[0].delta
+        assert token_events == []
+        # The message lifecycle still closes cleanly.
+        ended = [e for e in out if isinstance(e, LLMMessageEnded)]
+        assert len(ended) == 1
+        assert ended[0].output_text is None
 
     @pytest.mark.asyncio
     async def test_translates_tool_start_and_end(self) -> None:

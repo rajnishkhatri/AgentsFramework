@@ -163,6 +163,55 @@ export function toolCallError(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent>
 }
 
 /**
+ * `todoListRun` -- the agent maintains a `state_todo` checklist while
+ * working (eval-UI F9). Two STATE_DELTA frames carry JSON-Patch
+ * `replace /todos` ops exactly as `langgraph_runtime._translate_chain_end`
+ * emits them; one item finishes, one is cancelled (must stay visibly
+ * not-done), one stays pending.
+ */
+export function todoListRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent> {
+  const traceId = opts.traceId ?? DEFAULT_TRACE_ID;
+  const runId = opts.runId ?? DEFAULT_RUN_ID;
+  const threadId = opts.threadId ?? DEFAULT_THREAD_ID;
+  const messageId = opts.messageId ?? DEFAULT_MESSAGE_ID;
+  const h = header(traceId);
+
+  const todosV1 = [
+    { id: "t1", content: "read notes.md", status: "in_progress" },
+    { id: "t2", content: "strip TODO lines", status: "pending" },
+    { id: "t3", content: "publish summary", status: "pending" },
+  ];
+  const todosV2 = [
+    { id: "t1", content: "read notes.md", status: "completed" },
+    { id: "t2", content: "strip TODO lines", status: "completed" },
+    { id: "t3", content: "publish summary", status: "cancelled" },
+  ];
+
+  return [
+    { type: "RUN_STARTED", run_id: runId, thread_id: threadId, ...h },
+    {
+      type: "STATE_DELTA",
+      delta: [{ op: "replace", path: "/todos", value: todosV1 }],
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_START", message_id: messageId, role: "assistant", ...h },
+    {
+      type: "TEXT_MESSAGE_CONTENT",
+      message_id: messageId,
+      delta: "Working through the checklist.",
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_END", message_id: messageId, ...h },
+    {
+      type: "STATE_DELTA",
+      delta: [{ op: "replace", path: "/todos", value: todosV2 }],
+      ...h,
+    },
+    { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
+  ];
+}
+
+/**
  * `longStream` -- 50 deltas spaced by ~100ms (when used with `buildSSEStream`).
  * Exercises SS2.5 stop / regenerate -- the stream stays open long enough to
  * click Stop. With `buildSSEBody` (T1) the deltas all land at once; in that

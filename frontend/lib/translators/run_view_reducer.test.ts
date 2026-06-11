@@ -105,16 +105,37 @@ describe("run_view_reducer — failure paths first", () => {
     expect(view.status).toBe("streaming");
   });
 
-  it("state_render events are tolerated and do not change the view (F9 seam)", () => {
+  it("a malformed state_render payload is tolerated and changes nothing", () => {
     const before = reduceAll([started(), delta("x")]);
     const after = reduceRunView(before, {
       type: "state_render",
       trace_id: TRACE,
       key: "delta",
-      value: [{ op: "replace", path: "/todos", value: [] }],
+      value: "garbage",
+    });
+    expect(after).toBe(before);
+  });
+
+  it("a /todos state_render delta populates the checklist without touching segments (F9)", () => {
+    const before = reduceAll([started(), delta("x")]);
+    const after = reduceRunView(before, {
+      type: "state_render",
+      trace_id: TRACE,
+      key: "delta",
+      value: [
+        {
+          op: "replace",
+          path: "/todos",
+          value: [
+            { id: "t1", content: "read file", status: "completed" },
+            { id: "t2", content: "write file", status: "pending" },
+          ],
+        },
+      ],
     });
     expect(after.segments).toEqual(before.segments);
-    expect(after.status).toBe("streaming");
+    expect(after.todos?.total).toBe(2);
+    expect(after.todos?.done).toBe(1);
   });
 });
 
