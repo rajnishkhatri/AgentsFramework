@@ -686,6 +686,16 @@ never enters the client bundle; the layering test blesses it as composition-ring
 `tool_render` joined the `UIRuntimeEvent` union (typed projection of
 `ToolCallRendererRequest`) so trajectory segments ride the same channel as text.
 
+**Correction to §8.6-C (found during F11, 2026-06-11):** the wire `RunFinished` does
+**not** carry `final_message` — that premise was wrong. The implemented F11 contract:
+(a) the graph's continuation logic (`react_loop._should_continue`) already forces a
+synthesis pass after tool results on the normal path (the backend half, pre-existing);
+(b) the frontend `synthesizeFallbackAnswer` translator guarantees a non-empty answer
+slot for abnormal terminations (budget / max-steps / no-progress runs that complete
+without prose), rendered with a visible "summary generated from tool results" marker.
+Promoting `final_message` onto `RunFinished` remains open as a wire enhancement if the
+T3 batch shows the two layers above leave gaps.
+
 ---
 
 ## 8.7 TDD discipline (mandatory) — per `research/tdd_agentic_systems_prompt.md`

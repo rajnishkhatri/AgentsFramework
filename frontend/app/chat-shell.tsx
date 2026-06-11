@@ -29,6 +29,7 @@ import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 import { deriveRunPhase, type RunPhase } from "@/lib/translators/run_phase";
 import { narrateTrajectory } from "@/lib/translators/run_narration";
+import { synthesizeFallbackAnswer } from "@/lib/translators/fallback_answer";
 
 const PHASE_LABEL: Record<RunPhase, string> = {
   connecting: "connecting…",
@@ -99,6 +100,7 @@ function AssistantMessage(props: {
   const { assistant } = props.turn;
   const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
   const phase = deriveRunPhase(assistant);
+  const fallbackAnswer = synthesizeFallbackAnswer(assistant);
   return (
     <div
       data-state={assistant.status}
@@ -115,6 +117,14 @@ function AssistantMessage(props: {
           <ToolCard key={seg.request.tool_call_id} request={seg.request} />
         ),
       )}
+      {fallbackAnswer !== null ? (
+        <div data-testid="fallback-answer">
+          <StreamingMarkdown text={fallbackAnswer} />
+          <p className="text-xs text-muted m-0 italic">
+            summary generated from tool results
+          </p>
+        </div>
+      ) : null}
       {assistant.status === "error" ? (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400 m-0">
           {assistant.errorMessage ?? "The run failed."}

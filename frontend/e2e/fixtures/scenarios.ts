@@ -212,6 +212,45 @@ export function todoListRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent> {
 }
 
 /**
+ * `toolOnlyRun` -- the run ends on a tool result with NO prose at all
+ * (eval-UI F11): the GJ-F-008/GJ-012 root-cause shape. The UI must
+ * synthesize a fallback recap so the answer slot is never empty.
+ */
+export function toolOnlyRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent> {
+  const traceId = opts.traceId ?? DEFAULT_TRACE_ID;
+  const runId = opts.runId ?? DEFAULT_RUN_ID;
+  const threadId = opts.threadId ?? DEFAULT_THREAD_ID;
+  const toolCallId = "tc-only-1";
+  const h = header(traceId);
+
+  return [
+    { type: "RUN_STARTED", run_id: runId, thread_id: threadId, ...h },
+    {
+      type: "TOOL_CALL_START",
+      tool_call_id: toolCallId,
+      tool_call_name: "file_io",
+      parent_message_id: null,
+      ...h,
+    },
+    {
+      type: "TOOL_CALL_ARGS",
+      tool_call_id: toolCallId,
+      delta: '{"operation": "write", "path": "/workspace/f3.txt"}',
+      ...h,
+    },
+    { type: "TOOL_CALL_END", tool_call_id: toolCallId, ...h },
+    {
+      type: "TOOL_RESULT",
+      tool_call_id: toolCallId,
+      content: "wrote 42 bytes",
+      role: "tool",
+      ...h,
+    },
+    { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
+  ];
+}
+
+/**
  * `longStream` -- 50 deltas spaced by ~100ms (when used with `buildSSEStream`).
  * Exercises SS2.5 stop / regenerate -- the stream stays open long enough to
  * click Stop. With `buildSSEBody` (T1) the deltas all land at once; in that
