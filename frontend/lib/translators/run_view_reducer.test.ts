@@ -197,6 +197,28 @@ describe("run_view_reducer — trajectory assembly", () => {
     expect(ids).toEqual(["tc1", "tc2"]);
   });
 
+  it("a /selected_model state delta populates the model badge (F5)", () => {
+    const view = reduceAll([started()]);
+    const after = reduceRunView(view, {
+      type: "state_render",
+      trace_id: TRACE,
+      key: "delta",
+      value: [{ op: "replace", path: "/selected_model", value: "haiku-tier" }],
+    });
+    expect(after.modelBadge).toBe("haiku-tier");
+  });
+
+  it("a malformed /selected_model value is ignored (failure path)", () => {
+    const view = reduceAll([started()]);
+    const after = reduceRunView(view, {
+      type: "state_render",
+      trace_id: TRACE,
+      key: "delta",
+      value: [{ op: "replace", path: "/selected_model", value: 42 }],
+    });
+    expect(after.modelBadge).toBeNull();
+  });
+
   it("step_progress updates the step meter view", () => {
     const view = reduceAll([
       started(),

@@ -95,6 +95,35 @@ function RunStatusLine(props: {
   );
 }
 
+/**
+ * F6: copyable trace_id chip -- one-click UI ↔ Langfuse correlation for
+ * annotators. The trace_id is forwarded from the backend (F-R7), never
+ * generated here. Gated to eval mode so prod chat stays clean.
+ */
+function TraceChip(props: { traceId: string }): React.JSX.Element {
+  const [copied, setCopied] = React.useState(false);
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(props.traceId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1_500);
+    } catch {
+      /* clipboard unavailable -- chip stays idle */
+    }
+  }
+  return (
+    <button
+      type="button"
+      data-testid="trace-chip"
+      onClick={copy}
+      aria-label="Copy trace id"
+      className="justify-self-start font-mono text-xs text-muted bg-surface border border-border rounded-sm px-2 py-0.5 cursor-pointer hover:text-fg"
+    >
+      {copied ? "copied" : `trace ${props.traceId}`}
+    </button>
+  );
+}
+
 function AssistantMessage(props: {
   turn: ChatTurn;
   evalMode?: boolean;
@@ -103,6 +132,7 @@ function AssistantMessage(props: {
   const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
   const phase = deriveRunPhase(assistant);
   const fallbackAnswer = synthesizeFallbackAnswer(assistant);
+  let firstTextSeen = false;
   return (
     <div
       data-state={assistant.status}
@@ -112,13 +142,24 @@ function AssistantMessage(props: {
       className="grid gap-2"
     >
       {assistant.todos ? <TaskList view={assistant.todos} /> : null}
-      {assistant.segments.map((seg, i) =>
-        seg.kind === "text" ? (
-          <StreamingMarkdown key={`text-${i}`} text={seg.text} />
-        ) : (
-          <ToolCard key={seg.request.tool_call_id} request={seg.request} />
-        ),
-      )}
+      {assistant.segments.map((seg, i) => {
+        if (seg.kind !== "text") {
+          return <ToolCard key={seg.request.tool_call_id} request={seg.request} />;
+        }
+        // F5: badge + meter render once, on the first text segment.
+        const isFirstText = !firstTextSeen;
+        firstTextSeen = true;
+        return (
+          <StreamingMarkdown
+            key={`text-${i}`}
+            text={seg.text}
+            {...(isFirstText && assistant.modelBadge
+              ? { modelBadge: assistant.modelBadge }
+              : {})}
+            {...(isFirstText && assistant.step ? { step: assistant.step } : {})}
+          />
+        );
+      })}
       {fallbackAnswer !== null ? (
         <div data-testid="fallback-answer">
           <StreamingMarkdown text={fallbackAnswer} />
@@ -137,6 +178,9 @@ function AssistantMessage(props: {
         phase={phase}
         evalMode={props.evalMode ?? false}
       />
+      {props.evalMode && assistant.traceId ? (
+        <TraceChip traceId={assistant.traceId} />
+      ) : null}
     </div>
   );
 }
@@ -145,12 +189,19 @@ export function ChatShell(props: {
   userEmail: string;
   /** Test seam: defaults to the browser composition root's client. */
   runtime?: AgentRuntimeClient;
+  /**
+   * F7 eval-mode capture surface: when a case id is pinned (`?eval=GJ-…`)
+   * the UI freezes animation, pins the case id, and surfaces the trace
+   * chip so batch and human captures are identical and admissible.
+   */
+  evalCase?: string | null;
 }): React.JSX.Element {
   const injected = props.runtime;
   const runtime = React.useMemo(
     () => injected ?? browserRuntimeClient(),
     [injected],
   );
+  const evalMode = Boolean(props.evalCase);
   const { turns, busy, send } = useAgentRun(runtime);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
@@ -159,11 +210,22 @@ export function ChatShell(props: {
   }, [turns]);
 
   return (
-    <div className="min-h-dvh grid grid-rows-[auto_1fr_auto]">
+    <div
+      className="min-h-dvh grid grid-rows-[auto_1fr_auto]"
+      {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
+    >
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border-light">
         <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
         <div className="flex items-center gap-3">
+          {props.evalCase ? (
+            <span
+              data-testid="eval-banner"
+              className="font-mono text-xs uppercase tracking-wide px-2 py-0.5 rounded-sm bg-accent-light text-accent"
+            >
+              eval · {props.evalCase}
+            </span>
+          ) : null}
           <span className="text-sm text-muted">{props.userEmail}</span>
           <ThemeToggle />
           <Link
@@ -193,7 +255,7 @@ export function ChatShell(props: {
                   <span className="whitespace-pre-wrap">{turn.user}</span>
                 </div>
                 <div className="justify-self-start max-w-[80%] w-full">
-                  <AssistantMessage turn={turn} />
+                  <AssistantMessage turn={turn} evalMode={evalMode} />
                 </div>
               </React.Fragment>
             ))}

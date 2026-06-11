@@ -500,6 +500,13 @@ class LangGraphRuntime:
             plan_ref = output.get("plan_ref")
             if isinstance(plan_ref, str) and plan_ref:
                 ops.append({"op": "replace", "path": "/plan_ref", "value": plan_ref})
+            selected_model = output.get("selected_model")
+            if isinstance(selected_model, str) and selected_model:
+                ops.append({
+                    "op": "replace",
+                    "path": "/selected_model",
+                    "value": selected_model,
+                })
             if ops:
                 events.append(StateMutated(trace_id=trace_id, delta=ops))
 

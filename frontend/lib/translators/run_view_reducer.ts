@@ -40,6 +40,7 @@ export interface AssistantRunView {
   readonly status: RunViewStatus;
   readonly segments: ReadonlyArray<MessageSegment>;
   readonly step: { readonly count: number; readonly name: string } | null;
+  readonly modelBadge: string | null;
   readonly todos: TodoListView | null;
   readonly traceId: string | null;
   readonly runId: string | null;
@@ -52,6 +53,7 @@ export function emptyRunView(): AssistantRunView {
     status: "streaming" as const,
     segments: Object.freeze([]),
     step: null,
+    modelBadge: null,
     todos: null,
     traceId: null,
     runId: null,
@@ -121,7 +123,26 @@ export function reduceRunView(
 
     case "state_render": {
       const todos = projectTodoList(view.todos, evt);
-      return todos === view.todos ? view : { ...view, todos };
+      const modelBadge = modelFromDelta(evt) ?? view.modelBadge;
+      if (todos === view.todos && modelBadge === view.modelBadge) return view;
+      return { ...view, todos, modelBadge };
     }
   }
+}
+
+/** F5: the route node's `/selected_model` delta carries the model tier. */
+function modelFromDelta(evt: UIRuntimeEvent): string | null {
+  if (evt.type !== "state_render" || evt.key !== "delta") return null;
+  if (!Array.isArray(evt.value)) return null;
+  for (const op of evt.value) {
+    if (
+      typeof op === "object" &&
+      op !== null &&
+      (op as { path?: unknown }).path === "/selected_model"
+    ) {
+      const v = (op as { value?: unknown }).value;
+      if (typeof v === "string" && v.length > 0) return v;
+    }
+  }
+  return null;
 }

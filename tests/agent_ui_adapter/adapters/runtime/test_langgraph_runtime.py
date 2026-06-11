@@ -344,6 +344,22 @@ class TestChainEndStateMutation:
         assert mutations[0].trace_id == out[0].trace_id
 
     @pytest.mark.asyncio
+    async def test_selected_model_in_node_output_emits_json_patch_replace(self) -> None:
+        """Eval-UI F5: the route node's model selection surfaces as a state
+        delta so the UI can render the model badge (D6 telemetry seam)."""
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("route", {"selected_model": "haiku-tier"})]
+            )
+        )
+        out = await _collect(rt)
+        mutations = [e for e in out if isinstance(e, StateMutated)]
+        assert len(mutations) == 1
+        assert mutations[0].delta == [
+            {"op": "replace", "path": "/selected_model", "value": "haiku-tier"}
+        ]
+
+    @pytest.mark.asyncio
     async def test_plan_ref_in_node_output_emits_json_patch_replace(self) -> None:
         rt = LangGraphRuntime(
             graph=_FakeCompiledGraph(
