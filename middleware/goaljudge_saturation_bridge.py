@@ -21,9 +21,9 @@ from dataclasses import dataclass
 
 SATURATION_USER_ID = "synthetic-saturation-user"
 
-# gj:GJ-010:<32-hex trace_id>
+# gj:GJ-010:<32-hex> | gj:GJ-003B:<32-hex> | gj:GJ-F-001:<32-hex> | gj:GJ-STRESS-001:<32-hex>
 _GOALJUDGE_THREAD_RE = re.compile(
-    r"^gj:(?P<case_id>GJ-\d+[A-Z]?):(?P<trace_id>[0-9a-f]{32})$"
+    r"^gj:(?P<case_id>GJ-(?:F-\d+|STRESS-\d+|\d+[A-Z]?)):(?P<trace_id>[0-9a-f]{32})$"
 )
 
 

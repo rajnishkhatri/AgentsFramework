@@ -58,6 +58,7 @@ class GoldsetSplit(str, Enum):
 class GoldsetProvenance(str, Enum):
     PRODUCTION = "production"
     SYNTHETIC = "synthetic"
+    FRESH_AUTHORED = "fresh-authored"
 
 
 class GoldsetItem(BaseModel):
@@ -1071,6 +1072,8 @@ def build_goldset_manifest(
     tool_cluster_by_id: Mapping[str, str] | None = None,
     observed_distributions: Mapping[str, Mapping[str, int]] | None = None,
     dataset_name: str = GOALJUDGE_GOLDSET_V1,
+    provisional: bool = False,
+    floor_gap_summary: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     """Assemble the v1 manifest dict per Phase 6 / Tier 3 plan spec.
 
@@ -1106,6 +1109,12 @@ def build_goldset_manifest(
         raise ValueError("rubric_version is required and must be non-empty")
     if not frozen_at:
         raise ValueError("frozen_at is required and must be non-empty")
+    gap_summary: dict[str, int] = dict(floor_gap_summary or {})
+    if not provisional and gap_summary:
+        raise ValueError(
+            "provisional=False requires floor_gap_summary={} — refusing to ship "
+            f"a v1 manifest with unmet floors: {sorted(gap_summary)}"
+        )
 
     total_items = len(items)
     dev_count = sum(1 for i in items if i.split == GoldsetSplit.DEV)
@@ -1166,4 +1175,56 @@ def build_goldset_manifest(
         "cost_fraction_bins_observed":
             cost_fraction_bins_observed,
         "goal_met_false_share": goal_met_false_share,
+        "provisional": bool(provisional),
+        "floor_gap_summary": gap_summary,
     }
+
+
+_V1_GATE_REQUIRED_KEYS: tuple[str, ...] = (
+    "dataset_name",
+    "test_split_sha256",
+    "rubric_version",
+    "frozen_at",
+    "total_items",
+    "test_count",
+    "provisional",
+    "floor_gap_summary",
+)
+
+
+def gate_goldset_v1_floors(manifest: Mapping[str, Any]) -> None:
+    """Stage 6 entry-point gate. Raises ``AssemblyInvariantError`` unless
+    ``manifest`` is a production-freeze (v1) artifact with every floor met.
+
+    Fails-closed on:
+
+    * Missing any of the v1-required keys.
+    * Blank ``test_split_sha256`` (the hash IS the freeze).
+    * ``provisional=True`` (the manifest is an interim v0.9 / smoke shape).
+    * Non-empty ``floor_gap_summary`` (some D1/D5 cell is still under
+      floor).
+
+    Idempotent. Does not mutate ``manifest``. Returns ``None`` on success
+    — callers should treat the absence of an exception as the pass signal.
+    """
+    missing = [k for k in _V1_GATE_REQUIRED_KEYS if k not in manifest]
+    if missing:
+        raise AssemblyInvariantError(
+            f"manifest missing required v1 keys: {missing}"
+        )
+    sha = str(manifest.get("test_split_sha256", "")).strip()
+    if not sha:
+        raise AssemblyInvariantError(
+            "manifest test_split_sha256 is blank — refusing to gate v1"
+        )
+    if manifest.get("provisional"):
+        raise AssemblyInvariantError(
+            "manifest is provisional (v0.9) — Stage 6 v1 floors not yet met. "
+            f"Gap summary: {dict(manifest.get('floor_gap_summary') or {})}"
+        )
+    gaps = dict(manifest.get("floor_gap_summary") or {})
+    if gaps:
+        raise AssemblyInvariantError(
+            f"manifest claims non-provisional but has unmet floor gaps: "
+            f"{sorted(gaps)}"
+        )

@@ -10,7 +10,11 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from scripts.export_goaljudge_corpus import _resolve_failure_mode
+import json
+import tempfile
+import uuid
+
+from scripts.export_goaljudge_corpus import _case_map_from_jsonl, _resolve_failure_mode
 
 
 class TestResolveFailureMode:
@@ -35,3 +39,32 @@ class TestResolveFailureMode:
         assert _resolve_failure_mode({"failure_mode": "not-a-code"}, "fluent-evasion") == (
             "fluent-evasion"
         )
+
+
+class TestCaseMapFromJsonl:
+    def test_maps_fresh_authored_case_id(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-F-001").hex
+        row = {"case_id": "GJ-F-001", "trace_id": trace_id}
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
+            fh.write(json.dumps(row) + "\n")
+            path = fh.name
+
+        case_map = _case_map_from_jsonl(path)
+
+        assert trace_id in case_map
+        assert case_map[trace_id].stratum == "representative"
+        assert case_map[trace_id].provenance == "live"
+        assert case_map[trace_id].target_code == "unknown"
+
+    def test_maps_stress_case_id(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-STRESS-001").hex
+        row = {"case_id": "GJ-STRESS-001", "trace_id": trace_id}
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
+            fh.write(json.dumps(row) + "\n")
+            path = fh.name
+
+        case_map = _case_map_from_jsonl(path)
+
+        assert trace_id in case_map
+        assert case_map[trace_id].provenance == "synthetic"
+        assert case_map[trace_id].target_code == "fabricated-progress"

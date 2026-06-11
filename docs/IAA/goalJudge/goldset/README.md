@@ -5,11 +5,21 @@
 > the binary `goal_met` axis is scored with α. This is the gold-set-trust instrument — distinct from the
 > Stage 4 rubric-validity κ.
 >
-> **Status (2026-06-09, v7_full re-run):** Pilot batch `gcp_goldset_pilot_2026-06-09` complete (43/43 Playwright pass).
-> Double-labeling **complete** (50/50); **α = 0.8846 PASS** on `goal_met`. Stage 4 **G5 κ = 1.0 PASS**
-> ([results](../goaljudge_stage4_a2_iaa_results.md)). Shadow behavioral gate **CLEARED — 5/5 §10.2 anchors PASS on goal_met rail**
-> ([log §v7_full](../../../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)); A2 flips to CONFIRMED.
-> **Tier 2 CLEARED**; **Tier 3 plumbing LANDED** — all 7 phases of the [Tier 3 assembly plan](../../../plans/goaljudge_stage5_tier3_assembly.plan.md) closed under TDD discipline (test totals: 2473 passing, 0 failures). The live ~250 labeling run remains the human-paced critical path.
+> **Status (2026-06-11):** **Phase 5 COMPLETE + Phase 6 v0.9 PROVISIONAL manifest shipped.** Fresh corpus
+> (79 rows) labeled by A1 + A2 blind; round-1 α = 0.2682 (grader-bug residue); 22 disagreements adjudicated;
+> 79/79 frozen gold labels. Combined fresh + pilot-production sheet:
+> [`goaljudge_stage5_goldset_combined_sheet.csv`](goaljudge_stage5_goldset_combined_sheet.csv) (101 rows).
+> Provisional v0.9 manifest:
+> [`cache/goaljudge_eval/goldset_v0_9_manifest.json`](../../../../cache/goaljudge_eval/goldset_v0_9_manifest.json)
+> (hash `ad5eccc0…dbc453cd`, `provisional=true`, `floor_gap_summary` non-empty).
+> **v0.9 unblocks Stage 6 development**; v1 freeze gated on Phase 4 wave 2 (~150 prompts targeting under-floor cells).
+> See [v0.9 contract](goaljudge_stage5_goldset_v0_9_contract.md) for what's blessed against v0.9.
+>
+> **Prior gates (unchanged):** Pilot batch `gcp_goldset_pilot_2026-06-09` complete (43/43 Playwright pass).
+> Pilot double-labeling **α = 0.8846 PASS** on `goal_met`. Stage 4 **G5 κ = 1.0 PASS**
+> ([results](../goaljudge_stage4_a2_iaa_results.md)). Shadow behavioral gate **CLEARED — 5/5 §10.2 anchors PASS**
+> ([log §v7_full](../../../research/goaljudge_stage4_shadow_execution_log.md#v7_full-re-run-2026-06-09--cleared)).
+> **Tier 2 CLEARED**; Tier 3 plumbing + Phase 4 fixture **LANDED** ([assembly plan Phase 4 handoff](../../../plans/goaljudge_stage5_tier3_assembly.plan.md#phase-4--cell-targeted-fresh-task-authoring-medium-human-paced)).
 >
 > **Read before labeling:** [`full_set_labeling_protocol.md`](../../../research/goaljudge_stage5_goldset/full_set_labeling_protocol.md) — annotator runbook with the 5 refined rules + EvalGen loop.
 > **α computation:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py) — supports `--diff OUT.csv` for the adjudicator's working copy.

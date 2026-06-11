@@ -47,6 +47,7 @@ from services.governance.goaljudge_goldset_dataset import (
     InMemoryLangfuseDatasetClient,
     assert_assembly_invariants,
     build_goldset_manifest,
+    compute_cell_coverage,
     compute_test_split_hash,
     row_to_goldset_item,
 )
@@ -110,6 +111,16 @@ def main() -> None:
         help="Skip D1/D5 cell-coverage floors. Use for smoke runs only; "
         "the production freeze MUST run with floors enforced.",
     )
+    parser.add_argument(
+        "--provisional",
+        action="store_true",
+        help="Build a v0.9 provisional manifest: skips cell-coverage "
+        "floors (like --skip-cell-coverage) AND records the per-cell "
+        "gap summary into the manifest body, plus sets "
+        "'provisional': true. Stage 6's gate_goldset_v1_floors() "
+        "fails-closed on this — it's intended for downstream "
+        "development against an interim artifact.",
+    )
     args = parser.parse_args()
 
     # --- Step 1: read CSV --------------------------------------------------
@@ -138,8 +149,9 @@ def main() -> None:
         _build_dimension_maps(rows)
 
     # --- Step 3: assert assembly invariants -------------------------------
+    skip_floors = args.skip_cell_coverage or args.provisional
     try:
-        if args.skip_cell_coverage:
+        if skip_floors:
             assert_assembly_invariants(
                 items,
                 min_goal_met_false_share=args.min_goal_met_false_share,
@@ -157,6 +169,17 @@ def main() -> None:
     except AssemblyInvariantError as exc:
         print(f"assembly invariant violated: {exc}", file=sys.stderr)
         sys.exit(2)
+
+    # Provisional runs: compute per-cell floor gap summary to embed.
+    floor_gap_summary: dict[str, int] = {}
+    if args.provisional:
+        coverage = compute_cell_coverage(rows)
+        for cell, gap in coverage.d1_gaps.items():
+            if gap > 0:
+                floor_gap_summary[cell] = gap
+        for cell, gap in coverage.d5_gaps.items():
+            if gap > 0:
+                floor_gap_summary[cell] = gap
 
     # --- Step 4: test-split hash ------------------------------------------
     test_split_sha256 = compute_test_split_hash(items)
@@ -187,6 +210,8 @@ def main() -> None:
         planning_depth_by_id=planning_depth_by_id,
         tool_cluster_by_id=tool_cluster_by_id,
         dataset_name=args.dataset_name,
+        provisional=args.provisional,
+        floor_gap_summary=floor_gap_summary if args.provisional else None,
     )
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
     args.manifest.write_text(
