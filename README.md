@@ -11,7 +11,7 @@
 [![LangGraph](https://img.shields.io/badge/built%20on-LangGraph-ff69b4)](#-architecture)
 [![reproducible](https://img.shields.io/badge/installs-hash--locked-success)](#reproducible-builds)
 
-[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability)
+[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability) · [Presentations](#-presentations)
 
 </div>
 
@@ -210,6 +210,20 @@ A hash-pinned `requirements.lock` is the source of truth for reproducible instal
 **Agent runtime:** Python 3.13 · LangGraph · LiteLLM · Pydantic · Jinja2
 **Frontend:** Next.js 15 · React 19 · CopilotKit · AG-UI · WorkOS · Zod · Tailwind v4 / shadcn
 **Infra & quality:** Docker / Cloud Run · Terraform · OPA/Rego · OpenAPI · pytest · Hypothesis · Ruff
+
+---
+
+## 📽️ Presentations
+
+Slide decks introducing the framework, viewable directly on GitHub as PDFs (PowerPoint sources alongside):
+
+| Deck | Audience | What's inside |
+|---|---|---|
+| **[Framework Tour](presentations/AgentsFramework-Pitch-v3.pdf)** *(start here)* | Developers evaluating or learning from this repo | The six pillars — four-layer architecture, guardrail ML fine-tuning, goal-judge evaluation science, free SearXNG web search, policy-gated GCP deployment, and the 40+ recipes — each with verify-it-yourself commands. ([pptx](presentations/AgentsFramework-Pitch-v3.pptx)) |
+| **[Audit-Me Pitch](presentations/AgentsFramework-Pitch-v2.pdf)** | Technical leaders & skeptics | The same codebase argued QSCA-style: every claim falsifiable against the repo, including the failures left visible on purpose. ([pptx](presentations/AgentsFramework-Pitch-v2.pptx)) |
+| **[Overview](presentations/AgentsFramework-Pitch.pdf)** | General / first contact | One-pass summary of architecture, quality discipline, security & governance, and the full stack. ([pptx](presentations/AgentsFramework-Pitch.pptx)) |
+
+The decks were structured with the repo's own reasoning prompts ([SCQA](research/scqa_reframing_agent_prompt.md), [Pyramid Principle](research/pyramid_react_system_prompt.md)); the evidence base behind every figure is in [`presentations/pyramid-analysis-agentsframework.md`](presentations/pyramid-analysis-agentsframework.md).
 
 ---
 

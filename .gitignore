@@ -83,6 +83,11 @@ AgentsFrameworkRules.json
 # Accidental root npm lockfile (frontend lockfile lives in frontend/)
 /package-lock.json
 
+# Presentations — LibreOffice / Office temp and lock artifacts
+presentations/*.tmp
+presentations/.~lock.*
+presentations/~$*
+
 # Guardrails ONNX artifact (model.onnx + tokenizer.json + config.json; ~184MB).
 # Shipped via git-LFS / fetch-at-build; absent in default checkout => graceful degrade.
 services/governance/artifacts/
