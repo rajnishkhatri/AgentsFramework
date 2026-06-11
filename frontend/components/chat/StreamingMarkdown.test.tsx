@@ -43,3 +43,50 @@ describe("StreamingMarkdown a11y", () => {
     );
   });
 });
+
+describe("StreamingMarkdown rendering (eval-UI F4)", () => {
+  function render(text: string): Document {
+    return dom(
+      renderToStaticMarkup(React.createElement(StreamingMarkdown, { text })),
+    );
+  }
+
+  it("a dangling fence mid-stream does not throw and renders a code block (failure path)", () => {
+    const d = render("Working:\n```python\nprint('hi')\n");
+    expect(d.querySelector("[data-testid='code-block'] code")?.textContent).toBe(
+      "print('hi')",
+    );
+  });
+
+  it("raw HTML in the source is NOT rendered as elements (no dangerouslySetInnerHTML)", () => {
+    const d = render('hello <img src=x onerror="alert(1)"> world');
+    expect(d.querySelector("img")).toBeNull();
+  });
+
+  it("renders headings and lists as real elements", () => {
+    const d = render("## Section\n\n- one\n- two");
+    expect(d.querySelector("h2")?.textContent).toBe("Section");
+    expect(d.querySelectorAll("ul li").length).toBe(2);
+  });
+
+  it("fenced code renders with a language tag and a copy button", () => {
+    const d = render("```python\nx = 1\n```");
+    const block = d.querySelector("[data-testid='code-block']");
+    expect(block?.textContent).toContain("python");
+    expect(block?.querySelector("[data-testid='copy-code']")).toBeTruthy();
+    expect(block?.querySelector("code")?.textContent).toBe("x = 1");
+  });
+
+  it("inline code renders as a mono chip", () => {
+    const d = render("use `map` here");
+    const code = d.querySelector("p code");
+    expect(code?.textContent).toBe("map");
+    expect(code?.className).toContain("font-mono");
+  });
+
+  it("GFM tables render as bordered tables", () => {
+    const d = render("| a | b |\n|---|---|\n| 1 | 2 |");
+    expect(d.querySelectorAll("table th").length).toBe(2);
+    expect(d.querySelectorAll("table td").length).toBe(2);
+  });
+});

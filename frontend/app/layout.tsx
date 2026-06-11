@@ -15,6 +15,8 @@
  */
 
 import "./globals.css";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/app/theme-provider";
 
@@ -31,7 +33,11 @@ export default async function RootLayout({
   const h = await headers();
   const nonce = h.get("x-nonce") ?? "";
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+    >
       <head>
         <meta name="csp-nonce" content={nonce} />
       </head>

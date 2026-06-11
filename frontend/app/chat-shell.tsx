@@ -85,7 +85,9 @@ function RunStatusLine(props: {
     >
       <p className={props.evalMode ? "m-0" : "m-0 animate-pulse"}>{label}</p>
       {narration ? (
-        <p data-testid="reasoning-narration" className="m-0">
+        // Reasoning layer: sans italic muted (Appendix A) -- visually
+        // distinct from the answer so thinking is never read as prose.
+        <p data-testid="reasoning-narration" className="m-0 italic">
           {narration}
         </p>
       ) : null}
