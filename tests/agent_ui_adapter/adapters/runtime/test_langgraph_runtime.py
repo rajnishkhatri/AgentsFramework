@@ -498,6 +498,134 @@ class TestTraceIdPropagation:
         assert next(iter(trace_ids))  # non-empty
 
 
+def _tool_result_record(
+    tool_name: str = "file_io",
+    record_id: str = "1:call-1",
+    **overrides: Any,
+) -> dict:
+    rec = {
+        "record_id": record_id,
+        "step_id": 1,
+        "task_id": "task-1",
+        "tool_name": tool_name,
+        "tool_input": {"path": "/workspace/x.txt"},
+        "tool_output": "ok",
+        "ok": True,
+        "error": None,
+        "cached": False,
+        "offloaded": False,
+        "offload_ref": None,
+    }
+    rec.update(overrides)
+    return rec
+
+
+class TestExecuteToolChainEndSynthesis:
+    """``execute_tool`` runs tools via ``_execute_tools_impl`` directly, so
+    LangGraph never fires ``on_tool_start`` for them — the chain end's
+    ``tool_results`` is the only signal. The runtime must synthesize
+    ToolCallStarted + ToolResultReceived from it (eval-UI F3: tool cards
+    were invisible against the real graph, T3 finding 2026-06-11).
+
+    Failure paths first per TAP-4.
+    """
+
+    @pytest.mark.asyncio
+    async def test_execute_tool_end_without_tool_results_emits_nothing(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("execute_tool", {"messages": []})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, ToolCallStarted)]
+        assert not [e for e in out if isinstance(e, ToolResultReceived)]
+
+    @pytest.mark.asyncio
+    async def test_malformed_tool_results_entries_are_skipped(self) -> None:
+        output = {"tool_results": ["not-a-dict", 42, None]}
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", output)])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, ToolCallStarted)]
+
+    @pytest.mark.asyncio
+    async def test_other_nodes_tool_results_do_not_synthesize(self) -> None:
+        output = {"tool_results": [_tool_result_record()]}
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("evaluate", output)])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, ToolCallStarted)]
+
+    @pytest.mark.asyncio
+    async def test_synthesizes_started_and_result_per_record(self) -> None:
+        output = {
+            "tool_results": [
+                _tool_result_record("file_io", "1:call-1"),
+                _tool_result_record("web_search", "1:call-2", tool_output="hits"),
+            ]
+        }
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", output)])
+        )
+        out = await _collect(rt)
+        starts = [e for e in out if isinstance(e, ToolCallStarted)]
+        results = [e for e in out if isinstance(e, ToolResultReceived)]
+        assert [s.tool_name for s in starts] == ["file_io", "web_search"]
+        assert [s.tool_call_id for s in starts] == ["1:call-1", "1:call-2"]
+        assert '"path": "/workspace/x.txt"' in starts[0].args_json
+        assert [r.tool_call_id for r in results] == ["1:call-1", "1:call-2"]
+        assert results[1].result == "hits"
+
+    @pytest.mark.asyncio
+    async def test_failed_tool_result_surfaces_error_text(self) -> None:
+        output = {
+            "tool_results": [
+                _tool_result_record(
+                    "file_io", ok=False, error="permission denied", tool_output=""
+                )
+            ]
+        }
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", output)])
+        )
+        out = await _collect(rt)
+        results = [e for e in out if isinstance(e, ToolResultReceived)]
+        assert len(results) == 1
+        # "Error:" prefix is the registry convention the UI keys errored
+        # tool cards on.
+        assert results[0].result == "Error: permission denied"
+
+    @pytest.mark.asyncio
+    async def test_live_on_tool_start_suppresses_duplicate_synthesis(self) -> None:
+        """If LangGraph DID fire on_tool_start for a call id, the chain-end
+        record for the same call must not be re-emitted."""
+        scripted = [
+            {
+                "event": "on_tool_start",
+                "data": {"input": {"x": 1}, "tool_call_id": "call-1"},
+                "name": "calc",
+                "run_id": "lc-tool-1",
+            },
+            {
+                "event": "on_tool_end",
+                "data": {"output": "42", "tool_call_id": "call-1"},
+                "name": "calc",
+                "run_id": "lc-tool-1",
+            },
+            _chain_end(
+                "execute_tool",
+                {"tool_results": [_tool_result_record("calc", "1:call-1")]},
+            ),
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = await _collect(rt)
+        starts = [e for e in out if isinstance(e, ToolCallStarted)]
+        assert len(starts) == 1, "live + synthesized must dedupe to one start"
+
+
 # ── Helpers ───────────────────────────────────────────────────────────
 
 
