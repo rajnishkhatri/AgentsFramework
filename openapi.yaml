@@ -579,6 +579,28 @@ components:
       - step_name
       title: StepFinished
       type: object
+    StepProgressed:
+      additionalProperties: false
+      properties:
+        step_count:
+          title: Step Count
+          type: integer
+        step_name:
+          title: Step Name
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - step_count
+      - step_name
+      title: StepProgressed
+      type: object
     StepStarted:
       additionalProperties: false
       properties:

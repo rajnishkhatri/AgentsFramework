@@ -23,9 +23,16 @@ const E2E_BYPASS_AUTH =
   process.env.NODE_ENV !== "production" &&
   process.env.E2E_BYPASS_AUTH === "1";
 
-export default async function HomePage(): Promise<React.JSX.Element> {
+export default async function HomePage(props: {
+  searchParams: Promise<{ eval?: string }>;
+}): Promise<React.JSX.Element> {
+  // F7 eval-mode capture surface: `?eval=GJ-…` pins the case id and
+  // freezes the UI for deterministic, admissible captures.
+  const { eval: evalCase } = await props.searchParams;
   if (E2E_BYPASS_AUTH) {
-    return <ChatShell userEmail="e2e@example.com" />;
+    return (
+      <ChatShell userEmail="e2e@example.com" evalCase={evalCase ?? null} />
+    );
   }
 
   const { user } = await withAuth();
@@ -34,6 +41,7 @@ export default async function HomePage(): Promise<React.JSX.Element> {
     return (
       <ChatShell
         userEmail={user.email ?? user.firstName ?? "Agent"}
+        evalCase={evalCase ?? null}
       />
     );
   }

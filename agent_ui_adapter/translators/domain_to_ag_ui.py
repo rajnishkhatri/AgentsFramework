@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from agent_ui_adapter.wire.ag_ui_events import (
     AGUIEvent,
+    Custom,
     RunError,
     RunFinished,
     RunStarted,
@@ -36,6 +37,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
+    StepProgressed,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -167,6 +169,19 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
         raise ValueError(
             "StateMutated must carry either 'snapshot' or 'delta'"
         )
+
+    if isinstance(event, StepProgressed):
+        # Rides the Custom 'step_meter' channel: the frontend translator
+        # special-cases it into step_progress with the real count. The wire
+        # StepStarted shape carries no count (the frontend renders it as
+        # step 0), so it is deliberately not used for the meter.
+        return [
+            Custom(
+                name="step_meter",
+                value={"step": event.step_count, "step_name": event.step_name},
+                raw_event=raw,
+            )
+        ]
 
     raise TypeError(
         f"to_ag_ui() has no mapping for DomainEvent subclass "

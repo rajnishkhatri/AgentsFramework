@@ -109,6 +109,11 @@ function ringOf(filePath: string): string | null {
   const top = rel.split(path.sep)[0];
   if (top === "composition.ts") return "composition";
   if (top === "composition_react.tsx") return "composition";
+  // Browser composition root (eval-UI F1, §8.6-E): the client-bundle slice
+  // that wires the fetch-SSE transport + translators into the runtime
+  // adapter. Separate from composition.ts so server-only SDK adapters
+  // (WorkOS) never enter the client bundle.
+  if (top === "composition_browser.ts") return "composition";
   // BFF server composition is the server-side counterpart of the React
   // composition seam -- it is allowed to name concrete adapters and read
   // env. The chat / API surface code in `lib/bff/handlers.ts` and the

@@ -91,7 +91,15 @@ class StateMutated(DomainEventBase):
     delta: list[dict] | None = None
 
 
-# ── Union type alias (US-2.3 acceptance: 9 members) ───────────────────
+# ── Step progress (one ReAct lap; rides the Custom 'step_meter' wire) ─
+
+
+class StepProgressed(DomainEventBase):
+    step_count: int
+    step_name: str
+
+
+# ── Union type alias (US-2.3 acceptance, +StepProgressed: 10 members) ─
 
 
 DomainEvent = (
@@ -104,6 +112,7 @@ DomainEvent = (
     | RunStartedDomain
     | RunFinishedDomain
     | StateMutated
+    | StepProgressed
 )
 
 
@@ -116,6 +125,7 @@ __all__ = [
     "RunFinishedDomain",
     "RunStartedDomain",
     "StateMutated",
+    "StepProgressed",
     "ToolCallEnded",
     "ToolCallStarted",
     "ToolResultReceived",

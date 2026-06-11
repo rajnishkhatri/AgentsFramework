@@ -29,8 +29,21 @@ vi.mock("@workos-inc/authkit-nextjs", () => ({
   handleAuth: () => mockCallbackHandler,
 }));
 
+// Derived from the route module so the test can never drift from the
+// handler's real signature (`signOut()` returns Promise<void>, so the
+// handler is `Promise<void | Response>`).
+type AuthRouteGET = typeof import("./[...workos]/route").GET;
+
+/** Narrow `void | Response` with a real assertion that a Response came back. */
+function asResponse(res: Awaited<ReturnType<AuthRouteGET>>): Response {
+  if (!(res instanceof Response)) {
+    throw new Error("expected the handler to return a Response");
+  }
+  return res;
+}
+
 describe("auth route handler — failure paths first", () => {
-  let GET: (req: NextRequest, ctx: { params: Promise<{ workos: string[] }> }) => Promise<Response>;
+  let GET: AuthRouteGET;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -53,7 +66,7 @@ describe("auth route handler — failure paths first", () => {
 });
 
 describe("auth route handler — sign-in dispatch", () => {
-  let GET: (req: NextRequest, ctx: { params: Promise<{ workos: string[] }> }) => Promise<Response>;
+  let GET: AuthRouteGET;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -63,14 +76,16 @@ describe("auth route handler — sign-in dispatch", () => {
 
   it("redirects to WorkOS sign-in URL for /api/auth/sign-in", async () => {
     const req = new NextRequest("https://example.com/api/auth/sign-in");
-    const res = await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) });
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) }),
+    );
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(MOCK_SIGN_IN_URL);
   });
 });
 
 describe("auth route handler — sign-up dispatch", () => {
-  let GET: (req: NextRequest, ctx: { params: Promise<{ workos: string[] }> }) => Promise<Response>;
+  let GET: AuthRouteGET;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -80,14 +95,16 @@ describe("auth route handler — sign-up dispatch", () => {
 
   it("redirects to WorkOS sign-up URL for /api/auth/sign-up", async () => {
     const req = new NextRequest("https://example.com/api/auth/sign-up");
-    const res = await GET(req, { params: Promise.resolve({ workos: ["sign-up"] }) });
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["sign-up"] }) }),
+    );
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(MOCK_SIGN_UP_URL);
   });
 });
 
 describe("auth route handler — sign-out dispatch", () => {
-  let GET: (req: NextRequest, ctx: { params: Promise<{ workos: string[] }> }) => Promise<Response>;
+  let GET: AuthRouteGET;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -103,7 +120,7 @@ describe("auth route handler — sign-out dispatch", () => {
 });
 
 describe("auth route handler — callback dispatch", () => {
-  let GET: (req: NextRequest, ctx: { params: Promise<{ workos: string[] }> }) => Promise<Response>;
+  let GET: AuthRouteGET;
 
   beforeEach(async () => {
     vi.clearAllMocks();
@@ -116,7 +133,9 @@ describe("auth route handler — callback dispatch", () => {
       new Response(null, { status: 302, headers: { location: "/" } }),
     );
     const req = new NextRequest("https://example.com/api/auth/callback?code=abc123");
-    const res = await GET(req, { params: Promise.resolve({ workos: ["callback"] }) });
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["callback"] }) }),
+    );
     expect(mockCallbackHandler).toHaveBeenCalledWith(req);
     expect(res.status).toBe(302);
   });

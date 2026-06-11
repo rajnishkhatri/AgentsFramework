@@ -134,7 +134,6 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
   it("returns 204 even when called twice for the same run", async () => {
     const cancel = vi.fn(async () => undefined);
     const runtime: AgentRuntimeClient = {
-      createRun: vi.fn() as never,
       streamRun: vi.fn() as never,
       cancel,
     };
@@ -156,7 +155,6 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
     const handler = makeRunCancelHandler({
       auth: authYielding(null),
       agentRuntimeClient: {
-        createRun: vi.fn() as never,
         streamRun: vi.fn() as never,
         cancel: vi.fn() as never,
       },
