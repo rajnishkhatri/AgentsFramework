@@ -43,7 +43,22 @@ class TestParseGoaljudgeThreadId:
         assert ctx.case_id == "GJ-010"
         assert ctx.trace_id == trace_id
         assert ctx.session_id == "session-gj-010"
-        assert ctx.checkpoint_thread_id == "session-gj-010"
+
+    def test_checkpoint_thread_is_fresh_per_parse(self) -> None:
+        """Replaying a case must NOT resume the prior batch's LangGraph
+        checkpoint thread. A static ``session-gj-XXX`` checkpoint id
+        saturates across batch reruns until the agent ends every run with
+        an empty message (observed on Cloud Run 2026-06-11). The session_id
+        stays stable as the telemetry join key; only the checkpoint thread
+        gets a fresh suffix.
+        """
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-010").hex
+        first = parse_goaljudge_thread_id(f"gj:GJ-010:{trace_id}")
+        second = parse_goaljudge_thread_id(f"gj:GJ-010:{trace_id}")
+        assert first is not None and second is not None
+        assert first.checkpoint_thread_id != second.checkpoint_thread_id
+        assert first.checkpoint_thread_id.startswith("session-gj-010-")
+        assert second.session_id == first.session_id == "session-gj-010"
 
     def test_parses_fresh_authored_case(self) -> None:
         trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-F-001").hex
@@ -143,7 +158,9 @@ class TestRunStreamContext:
         )
         assert ctx.saturation is not None
         assert ctx.saturation.case_id == "GJ-010"
-        assert ctx.thread_id == "session-gj-010"
+        # Fresh checkpoint thread per run (suffix), stable session prefix.
+        assert ctx.thread_id.startswith("session-gj-010-")
+        assert ctx.thread_id != "session-gj-010"
         assert ctx.identity.owner == SATURATION_USER_ID
         assert ctx.telemetry_subject == SATURATION_USER_ID
         overlay = ctx.user_input["_goaljudge_saturation"]

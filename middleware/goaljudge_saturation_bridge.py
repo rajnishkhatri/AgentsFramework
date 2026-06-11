@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 import re
+import uuid
 from dataclasses import dataclass
 
 SATURATION_USER_ID = "synthetic-saturation-user"
@@ -38,7 +39,15 @@ class GoalJudgeSaturationContext:
 
 
 def parse_goaljudge_thread_id(thread_id: str) -> GoalJudgeSaturationContext | None:
-    """Parse ``gj:{case_id}:{trace_id}`` thread ids from Playwright batch runs."""
+    """Parse ``gj:{case_id}:{trace_id}`` thread ids from Playwright batch runs.
+
+    ``checkpoint_thread_id`` carries a fresh per-parse suffix: like
+    ``task_id`` (minted fresh by the runtime), the LangGraph checkpoint
+    thread must NOT be replayed across batch reruns — a static
+    ``session-gj-XXX`` thread accumulates state until the resumed graph
+    ends every run immediately with an empty assistant message.
+    ``session_id`` stays deterministic as the telemetry/Langfuse join key.
+    """
     match = _GOALJUDGE_THREAD_RE.match(thread_id.strip())
     if match is None:
         return None
@@ -49,7 +58,7 @@ def parse_goaljudge_thread_id(thread_id: str) -> GoalJudgeSaturationContext | No
         case_id=case_id,
         trace_id=trace_id,
         session_id=session_id,
-        checkpoint_thread_id=session_id,
+        checkpoint_thread_id=f"{session_id}-{uuid.uuid4().hex[:8]}",
     )
 
 

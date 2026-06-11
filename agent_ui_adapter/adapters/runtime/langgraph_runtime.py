@@ -90,6 +90,7 @@ class LangGraphRuntime:
         self._run_tasks: dict[str, asyncio.Task] = {}
         self._streamed_run_ids: set[str] = set()
         self._step_meter_count = 0
+        self._live_tool_call_ids: set[str] = set()
 
     def _emit_trace(
         self,
@@ -183,6 +184,7 @@ class LangGraphRuntime:
         error: str | None = None
         self._streamed_run_ids = set()
         self._step_meter_count = 0
+        self._live_tool_call_ids = set()
         try:
             async for raw in self._graph.astream_events(
                 graph_input, config=config, version="v2"
@@ -446,6 +448,7 @@ class LangGraphRuntime:
                 args_json = json.dumps(args_raw, default=str, sort_keys=True)
             except (TypeError, ValueError):
                 args_json = str(args_raw)
+            self._live_tool_call_ids.add(str(tool_call_id))
             return [ToolCallStarted(
                 trace_id=trace_id,
                 tool_call_id=tool_call_id,
@@ -510,6 +513,11 @@ class LangGraphRuntime:
             if ops:
                 events.append(StateMutated(trace_id=trace_id, delta=ops))
 
+        if node_name == "execute_tool" and isinstance(output, dict):
+            events.extend(
+                self._synthesize_tool_events(output.get("tool_results"), trace_id)
+            )
+
         if node_name == "evaluate":
             self._step_meter_count += 1
             step_name = ""
@@ -523,6 +531,57 @@ class LangGraphRuntime:
                 )
             )
 
+        return events
+
+    def _synthesize_tool_events(
+        self, tool_results: Any, trace_id: str
+    ) -> list[DomainEvent]:
+        """``execute_tool`` invokes tools via ``_execute_tools_impl`` directly,
+        so LangGraph never fires ``on_tool_start``/``on_tool_end`` for them.
+        The node's ``tool_results`` records are the only tool-activity signal
+        (eval-UI F3: without this, tool cards never render against the real
+        graph). Records whose call id already streamed live are skipped.
+        """
+        if not isinstance(tool_results, list):
+            return []
+        events: list[DomainEvent] = []
+        for rec in tool_results:
+            if not isinstance(rec, dict):
+                continue
+            record_id = str(rec.get("record_id") or "") or uuid.uuid4().hex
+            bare_id = record_id.split(":", 1)[-1]
+            if record_id in self._live_tool_call_ids or bare_id in self._live_tool_call_ids:
+                continue
+            try:
+                args_json = json.dumps(
+                    rec.get("tool_input", {}), default=str, sort_keys=True
+                )
+            except (TypeError, ValueError):
+                args_json = str(rec.get("tool_input", {}))
+            events.append(
+                ToolCallStarted(
+                    trace_id=trace_id,
+                    tool_call_id=record_id,
+                    tool_name=str(rec.get("tool_name", "")),
+                    args_json=args_json,
+                )
+            )
+            result_text = str(rec.get("tool_output", "") or "")
+            if not rec.get("ok", True) and not result_text.startswith("Error:"):
+                # "Error:" prefix is the registry convention the UI keys
+                # errored tool cards on (ToolExecutionResult).
+                error = str(rec.get("error", "") or "tool returned failure")
+                result_text = (
+                    f"Error: {error}" if not result_text
+                    else f"{result_text}\nError: {error}"
+                )
+            events.append(
+                ToolResultReceived(
+                    trace_id=trace_id,
+                    tool_call_id=record_id,
+                    result=result_text,
+                )
+            )
         return events
 
 
