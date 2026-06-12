@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from typing import Literal
 
@@ -137,6 +139,33 @@ def _extract_branches(task_input: str) -> list[str]:
 
     branches = [b for b in branches if b]
     return branches or ["Solve the user request directly"]
+
+
+def compute_plan_fingerprint(
+    planning_depth: PlanningDepth, artifact: PlanArtifact
+) -> str:
+    """Deterministic SHA-256 over the plan's identity (Phase 4, E10 dedup).
+
+    Two consecutive plans with the same depth, ordered steps, constraints, and
+    success conditions hash identically — that equality is what lets the relay
+    suppress the duplicate ``step.planned`` *export* (the canonical JSONL row is
+    still recorded every iteration with ``plan_changed=False``).
+
+    Order-sensitive over ``ordered_steps`` (reordering is a different plan).
+    Lives in ``components/`` (INV-6/AP-5): orchestration only calls it and
+    compares the result; it owns no planning logic.
+    """
+    payload = {
+        "planning_depth": planning_depth,
+        "ordered_steps": [
+            {"step_id": s.step_id, "title": s.title, "goal": s.goal}
+            for s in artifact.ordered_steps
+        ],
+        "constraints": list(artifact.constraints),
+        "success_conditions": list(artifact.success_conditions),
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def build_plan_artifact(

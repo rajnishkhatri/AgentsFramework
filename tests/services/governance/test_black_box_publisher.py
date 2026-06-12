@@ -105,6 +105,47 @@ class TestEventTypeMapping:
         assert result["level"] == "DEFAULT"
 
 
+class TestGuardrailLevel:
+    """Phase 4: a clean guardrail pass is DEBUG (filterable noise); a blocked or
+    redacting check is WARNING (a real signal). ERROR_OCCURRED stays ERROR."""
+
+    def test_clean_pass_is_debug(self) -> None:
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"checked": True, "blocked": False, "redacted": False, "failed_rules": []},
+        )
+        assert to_export_kwargs(ev)["level"] == "DEBUG"
+
+    def test_blocked_is_warning(self) -> None:
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"checked": True, "blocked": True, "redacted": False, "failed_rules": ["r1"]},
+        )
+        assert to_export_kwargs(ev)["level"] == "WARNING"
+
+    def test_redacted_is_warning(self) -> None:
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"checked": True, "blocked": False, "redacted": True, "failed_rules": []},
+        )
+        assert to_export_kwargs(ev)["level"] == "WARNING"
+
+    def test_failed_rules_nonempty_is_warning(self) -> None:
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"checked": True, "blocked": False, "redacted": False, "failed_rules": ["x"]},
+        )
+        assert to_export_kwargs(ev)["level"] == "WARNING"
+
+    def test_missing_flags_default_to_debug(self) -> None:
+        """A sparse clean-pass payload (only ``checked``) is still DEBUG."""
+        ev = _event(EventType.GUARDRAIL_CHECKED, details={"checked": True})
+        assert to_export_kwargs(ev)["level"] == "DEBUG"
+
+    def test_error_occurred_still_error(self) -> None:
+        assert to_export_kwargs(_event(EventType.ERROR_OCCURRED))["level"] == "ERROR"
+
+
 # ─────────────────────────────────────────────────────────────────────
 # B. Attributes contract — every export has the required keys
 # ─────────────────────────────────────────────────────────────────────

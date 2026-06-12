@@ -30,6 +30,7 @@ from components.evaluator import (
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
+from components.plan_builder import compute_plan_fingerprint
 from components.plan_builder import validate_plan_mece
 from components.schemas import ErrorRecord, TaskUnderstanding
 from components.task_understanding import (
@@ -880,6 +881,14 @@ def build_graph(
 
             plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
 
+            # Phase 4 (E10): fingerprint the plan's identity and compare against
+            # the last one. ``route_node`` re-runs every iteration, re-emitting
+            # an identical plan; the fingerprint lets the relay suppress the
+            # duplicate EXPORT while the JSONL row is still recorded with
+            # ``plan_changed`` every iteration (canonical record stays complete).
+            plan_fingerprint = compute_plan_fingerprint(planning_depth, plan_artifact)
+            plan_changed = plan_fingerprint != state.get("last_plan_fingerprint")
+
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
@@ -900,6 +909,8 @@ def build_graph(
                     "conditions_source": understanding.get("source", "deterministic"),
                     "plan_ref": plan_ref,
                     "decision_id": tu_decision_id,
+                    "plan_fingerprint": plan_fingerprint,
+                    "plan_changed": plan_changed,
                 },
             ))
 
@@ -994,6 +1005,7 @@ def build_graph(
                     plan_ref: json.dumps(plan_payload, sort_keys=True),
                 },
                 "plan_ref": plan_ref,
+                "last_plan_fingerprint": plan_fingerprint,
                 "model_history": [
                     {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
                 ],

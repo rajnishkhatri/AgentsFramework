@@ -52,13 +52,23 @@ def _observation_type(event_name: str) -> ObservationType:
     return "span"
 
 
+# Phase 4 (E3): metadata is a small allowlist of join/filter keys. Bulky or
+# duplicative fields (input_text, details, args_json, result, integrity_hash,
+# timestamps) ride ONLY on the observation ``input`` — never copied into
+# metadata, which previously doubled the payload of every observation.
+_METADATA_ALLOWLIST = frozenset(
+    {"step", "workflow_id", "event_id", "tool_name", "model", "subject"}
+)
+
+
 def _metadata(attributes: Mapping[str, Any] | None) -> dict[str, str] | None:
-    """Coerce attributes to Langfuse v4 metadata (dict[str, str], max 200 chars)."""
+    """Coerce allowlisted attributes to Langfuse v4 metadata (dict[str, str],
+    max 200 chars)."""
     if not attributes:
         return None
     out: dict[str, str] = {}
     for key, value in attributes.items():
-        if value is None:
+        if key not in _METADATA_ALLOWLIST or value is None:
             continue
         text = str(value)
         if len(text) > 200:

@@ -24,6 +24,13 @@
 > (four-layer boundary). The trace surfaces **token counts** (which the runtime
 > legitimately has from `usage_metadata`); cost stays single-sourced on the
 > canonical `STEP_EXECUTED` record (`react_loop.py:1099`).
+> **Phase 4 DONE** (curated-view flag `LANGFUSE_RELAY_CURATED`, default on, read
+> at both composition roots: suppresses the EXPORT of `TOOL_CALLED`/`STEP_EXECUTED`
+> and unchanged-plan `STEP_PLANNED` — processed-not-published, offset advances, no
+> DLQ; `compute_plan_fingerprint` in `components/plan_builder.py` + `plan_changed`
+> on every `STEP_PLANNED` (JSONL records every iteration, E10); guardrail level
+> DEBUG on clean pass / WARNING on blocked-or-redacted; exporter metadata
+> allowlist drops bulky/duplicative fields, input keeps full payload).
 > **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
 > on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
 > `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
