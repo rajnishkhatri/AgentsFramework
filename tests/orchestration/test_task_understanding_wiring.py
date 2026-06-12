@@ -200,6 +200,11 @@ class TestFailureModeMatrix:
         conditions = _judge_conditions(handles["judge"])
         assert any("Compare options" in c for c in conditions)
         assert _sink.goal_judge[0]["ai_input"]["conditions_source"] == "deterministic"
+        # A transport raise on the first attempt is 1 attempt made, with no
+        # rejected text to archive (bug-#1 accounting on the non-gate path).
+        tu = _sink.task_understanding[0]["ai_response"]
+        assert tu["attempts"] == 1
+        assert tu["rejected_conditions"] == []
         # Reasoning pillar: the fallback Decision names the failure class.
         decisions = [
             d for d in _decisions(tmp_path, "wf-tu-raise")
@@ -215,14 +220,25 @@ class TestFailureModeMatrix:
         """Round 2: the generator retries once on a gate rejection and fires
         ``on_gate_rejection`` per rejected attempt. Both attempts ungrounded →
         TWO GUARDRAIL_CHECKED events (attempt 0 and 1), then raise → fallback
-        to the deterministic floor."""
+        to the deterministic floor.
+
+        R3 telemetry fixes asserted here: every rejected attempt's condition
+        TEXT is archived in the guardrail event and the eval record (bug #2 —
+        round 2's root cause was mis-diagnosed because the text was never
+        captured), and ``attempts`` reports the attempts actually MADE — a
+        2-attempt terminal fallback is 2, not 3 (bug #1 off-by-one)."""
         _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+        _rejected = [
+            ["The agent does the thing.", "Zorblat frequencies harmonized."],
+            ["The agent does the thing.", "Quantum flux capacitors aligned."],
+        ]
 
         async def _reject_both(*, task_input, on_gate_rejection=None):
-            # The real generator calls the callback for each rejected attempt.
+            # The real generator calls the callback for each rejected attempt
+            # with that attempt's rejected condition text.
             if on_gate_rejection is not None:
-                on_gate_rejection(_issues, 0)
-                on_gate_rejection(_issues, 1)
+                on_gate_rejection(_issues, 0, _rejected[0])
+                on_gate_rejection(_issues, 1, _rejected[1])
             raise TaskUnderstandingValidationError([*_issues, *_issues])
 
         generate = AsyncMock(side_effect=_reject_both)
@@ -236,7 +252,8 @@ class TestFailureModeMatrix:
         assert any("Compare options" in c for c in conditions)
         assert _sink.goal_judge[0]["ai_input"]["conditions_source"] == "deterministic"
         # Validation pillar: each rejected attempt is its own GUARDRAIL_CHECKED
-        # event, carrying the attempt index and the failing gate name.
+        # event, carrying the attempt index, the failing gate name, and the
+        # rejected condition text itself.
         guardrails = [
             e for e in _events(tmp_path, "wf-tu-gate")
             if e["event_type"] == "guardrail_checked"
@@ -246,6 +263,13 @@ class TestFailureModeMatrix:
         assert {g["details"]["attempt"] for g in guardrails} == {0, 1}
         assert all(g["details"]["passed"] is False for g in guardrails)
         assert all("grounding" in str(g["details"]["issues"]) for g in guardrails)
+        assert [g["details"]["conditions"] for g in guardrails] == _rejected
+        # Eval record: terminal fallback after 2 rejected attempts → attempts
+        # is exactly 2 (bug #1), and the rejected text rides along (bug #2) so
+        # future rounds can be re-simulated offline without regeneration.
+        tu = _sink.task_understanding[0]["ai_response"]
+        assert tu["attempts"] == 2
+        assert [r["conditions"] for r in tu["rejected_conditions"]] == _rejected
 
     @pytest.mark.asyncio
     async def test_gate_rejection_then_retry_recovers_consumes_generated(
@@ -253,12 +277,14 @@ class TestFailureModeMatrix:
     ):
         """Round 2: attempt 0 rejected, attempt 1 recovers → judge consumes the
         GENERATED conditions; exactly ONE GUARDRAIL_CHECKED (attempt 0); the
-        Decision rationale records the retry recovery."""
+        Decision rationale records the retry recovery; ``attempts`` counts the
+        rejected attempt plus the recovery (= 2)."""
         _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+        _rejected0 = ["The agent compares options.", "Zorblat frequencies harmonized."]
 
         async def _reject_then_recover(*, task_input, on_gate_rejection=None):
             if on_gate_rejection is not None:
-                on_gate_rejection(_issues, 0)
+                on_gate_rejection(_issues, 0, _rejected0)
             return _GENERATED
 
         generate = AsyncMock(side_effect=_reject_then_recover)
@@ -279,6 +305,12 @@ class TestFailureModeMatrix:
         ]
         assert len(guardrails) == 1
         assert guardrails[0]["details"]["attempt"] == 0
+        assert guardrails[0]["details"]["conditions"] == _rejected0
+        # Recovery after one rejection = 2 attempts made; the rejected text
+        # from attempt 0 is archived alongside the consumed artifact.
+        tu = _sink.task_understanding[0]["ai_response"]
+        assert tu["attempts"] == 2
+        assert [r["conditions"] for r in tu["rejected_conditions"]] == [_rejected0]
         # Reasoning pillar: the Decision rationale flags the retry recovery.
         decisions = [
             d for d in _decisions(tmp_path, "wf-tu-retry")
@@ -489,6 +521,9 @@ class TestGovernanceRecording:
         assert record["ai_response"]["source"] == "generated"
         assert record["ai_response"]["restated_intent"] == _GENERATED.restated_intent
         assert record["model"] == "gpt-4o-mini"
+        # First-attempt success: exactly 1 attempt, nothing rejected.
+        assert record["ai_response"]["attempts"] == 1
+        assert record["ai_response"]["rejected_conditions"] == []
 
 
 # ─────────────────────────────────────────────────────────────────────

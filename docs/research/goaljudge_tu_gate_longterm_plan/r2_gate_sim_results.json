@@ -1,0 +1,216 @@
+{
+  "V0 current (exact)": {
+    "per_case": {
+      "1": [
+        0.0,
+        0.0
+      ],
+      "10": [
+        0.0,
+        0.0
+      ],
+      "14": [
+        0.0,
+        0.0
+      ],
+      "17": [
+        0.0,
+        0.0
+      ],
+      "18": [
+        0.0,
+        0.0
+      ]
+    },
+    "proj": 0.8333333333333334,
+    "stable": [
+      46,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ]
+    ]
+  },
+  "V1 stem+path": {
+    "per_case": {
+      "1": [
+        1.0,
+        1.0
+      ],
+      "10": [
+        1.0,
+        1.0
+      ],
+      "14": [
+        1.0,
+        1.0
+      ],
+      "17": [
+        1.0,
+        1.0
+      ],
+      "18": [
+        1.0,
+        1.0
+      ]
+    },
+    "proj": 1.0,
+    "stable": [
+      48,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ]
+    ]
+  },
+  "V2 prefix4+path": {
+    "per_case": {
+      "1": [
+        1.0,
+        1.0
+      ],
+      "10": [
+        1.0,
+        1.0
+      ],
+      "14": [
+        1.0,
+        1.0
+      ],
+      "17": [
+        1.0,
+        1.0
+      ],
+      "18": [
+        1.0,
+        1.0
+      ]
+    },
+    "proj": 1.0,
+    "stable": [
+      48,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ],
+      [
+        "The agent backs up the database before m",
+        1
+      ]
+    ]
+  },
+  "V3 prefix5+path": {
+    "per_case": {
+      "1": [
+        1.0,
+        1.0
+      ],
+      "10": [
+        1.0,
+        1.0
+      ],
+      "14": [
+        1.0,
+        1.0
+      ],
+      "17": [
+        1.0,
+        1.0
+      ],
+      "18": [
+        1.0,
+        1.0
+      ]
+    },
+    "proj": 1.0,
+    "stable": [
+      48,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ]
+    ]
+  },
+  "V4 stem+path+N-1": {
+    "per_case": {
+      "1": [
+        1.0,
+        1.0
+      ],
+      "10": [
+        1.0,
+        1.0
+      ],
+      "14": [
+        1.0,
+        1.0
+      ],
+      "17": [
+        1.0,
+        1.0
+      ],
+      "18": [
+        1.0,
+        1.0
+      ]
+    },
+    "proj": 1.0,
+    "stable": [
+      50,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ]
+    ]
+  },
+  "V5 prefix5+path+N-1": {
+    "per_case": {
+      "1": [
+        1.0,
+        1.0
+      ],
+      "10": [
+        1.0,
+        1.0
+      ],
+      "14": [
+        1.0,
+        1.0
+      ],
+      "17": [
+        1.0,
+        1.0
+      ],
+      "18": [
+        1.0,
+        1.0
+      ]
+    },
+    "proj": 1.0,
+    "stable": [
+      50,
+      50
+    ],
+    "leaks": [
+      [
+        "The agent emails the quarterly report to",
+        10
+      ]
+    ]
+  }
+}

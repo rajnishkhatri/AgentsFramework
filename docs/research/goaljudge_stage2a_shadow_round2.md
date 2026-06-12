@@ -31,6 +31,17 @@ and round 2 reveals *why* it will not reach 95% by generator tuning alone.
 
 ## Root cause: the grounding gate over-fires (not a generator problem)
 
+> **ERRATUM (2026-06-12, post-report local simulation —
+> `goaljudge_tu_gate_longterm_plan.md`):** the diagnosis below is superseded.
+> Regenerating the 5 failed cases locally with the deployed prompt showed the
+> rejected conditions DO reuse task vocabulary verbatim; they were rejected
+> because `_content_tokens` glues sentence-final punctuation onto tokens
+> (`data.` ≠ `data` — every failed task ends in its key noun) and has no
+> morphological normalization. Punctuation-stripping alone recovers 20/20
+> rejected samples. The gate over-fires for a *mechanical* reason, not because
+> completion-style/refusal conditions are inherently ungroundable; the N−1
+> relaxation recommended below is withdrawn as unnecessary.
+
 The 5 remaining fallbacks (cases 01, 10, 14, 17, 18) share a precise
 signature: **the SAME condition index fails grounding on BOTH attempts**
 (index 2 for 10/14/17/18; indices 0+2 for 01). Retry cannot recover them

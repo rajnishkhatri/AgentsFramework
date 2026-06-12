@@ -329,12 +329,19 @@ _GROUNDED = _payload(
 class TestTaskUnderstandingRetry:
     @pytest.mark.asyncio
     async def test_retry_recovers_after_one_gate_rejection(self):
-        """Attempt 0 ungrounded → reject → attempt 1 grounded → success."""
+        """Attempt 0 ungrounded → reject → attempt 1 grounded → success.
+
+        The callback carries the rejected condition TEXT (round-2 telemetry
+        bug #2): issue strings alone forced round 2's root-cause to be
+        inferred blind — and wrong. No diagnosis without the artifact text.
+        """
         generator, llm = _generator([_UNGROUNDED, _GROUNDED])
-        seen: list[tuple[list[str], int]] = []
+        seen: list[tuple[list[str], int, list[str]]] = []
         artifact = await generator.generate(
             task_input=_TASK,
-            on_gate_rejection=lambda issues, attempt: seen.append((issues, attempt)),
+            on_gate_rejection=lambda issues, attempt, conditions: seen.append(
+                (issues, attempt, conditions)
+            ),
         )
         assert artifact.source == "generated"
         # The LLM was invoked twice (original + one retry).
@@ -343,6 +350,8 @@ class TestTaskUnderstandingRetry:
         assert len(seen) == 1
         assert seen[0][1] == 0
         assert any("grounding" in issue for issue in seen[0][0])
+        # The rejected attempt's conditions arrive verbatim.
+        assert any("Zorblat" in c for c in seen[0][2])
 
     @pytest.mark.asyncio
     async def test_retry_prompt_carries_rejection_feedback(self):
@@ -361,16 +370,21 @@ class TestTaskUnderstandingRetry:
     @pytest.mark.asyncio
     async def test_two_rejections_raise_with_both_attempts(self):
         """Both attempts ungrounded → raise; callback fired for attempts 0 AND
-        1; the error references both attempts' issues."""
+        1 with each attempt's rejected text; the error references both
+        attempts' issues."""
         generator, llm = _generator([_UNGROUNDED, _UNGROUNDED])
-        seen: list[int] = []
+        seen: list[tuple[int, list[str]]] = []
         with pytest.raises(TaskUnderstandingValidationError) as exc_info:
             await generator.generate(
                 task_input=_TASK,
-                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+                on_gate_rejection=lambda issues, attempt, conditions: seen.append(
+                    (attempt, conditions)
+                ),
             )
         assert len(llm.calls) == 2
-        assert seen == [0, 1]
+        assert [attempt for attempt, _ in seen] == [0, 1]
+        # Every rejected attempt's condition text is captured (bug #2).
+        assert all(any("Zorblat" in c for c in conds) for _, conds in seen)
         # The raised error carries issues from both attempts.
         assert len(exc_info.value.issues) >= 2
 
@@ -383,7 +397,7 @@ class TestTaskUnderstandingRetry:
         with pytest.raises(Exception):
             await generator.generate(
                 task_input=_TASK,
-                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+                on_gate_rejection=lambda issues, attempt, conditions: seen.append(attempt),
             )
         assert len(llm.calls) == 1
         assert seen == []
@@ -399,7 +413,7 @@ class TestTaskUnderstandingRetry:
         with pytest.raises(RuntimeError):
             await generator.generate(
                 task_input=_TASK,
-                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+                on_gate_rejection=lambda issues, attempt, conditions: seen.append(attempt),
             )
         assert len(llm.calls) == 1
         assert seen == []
@@ -419,7 +433,7 @@ class TestTaskUnderstandingRetry:
         seen: list[int] = []
         await generator.generate(
             task_input=_TASK,
-            on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+            on_gate_rejection=lambda issues, attempt, conditions: seen.append(attempt),
         )
         assert len(llm.calls) == 1
         assert seen == []
