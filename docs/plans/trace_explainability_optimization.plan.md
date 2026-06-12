@@ -1,6 +1,8 @@
 # Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox
 
-> **Status:** IN PROGRESS 2026-06-12. Branch: `feat/trace-explainability-optimization`
+> **Status:** ✅ COMPLETE & PROD-VERIFIED 2026-06-12 (all phases 0–5 landed and
+> confirmed on production traces; final token-usage seam fix verified on trace
+> `6dd81c1d…`). Branch: `feat/trace-explainability-optimization`
 > off the `feat/goaljudge-task-understanding-gate` tip (its committed cap lift +
 > react_loop changes are the dependency Phase 0.1 verifies; branching off that tip
 > rather than `main` keeps them in lineage — user-confirmed). **Phase 0 DONE** (0.3
