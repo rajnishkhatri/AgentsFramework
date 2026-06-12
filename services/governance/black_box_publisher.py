@@ -48,6 +48,29 @@ _SAFE_NUMERIC_KEYS: frozenset[str] = frozenset({
     "output_tokens",
     "budget_limit",
     "total_tokens",
+    # Phase 1 (E4): terminal/judge scores must stay numeric so Langfuse can
+    # filter and aggregate them (the reviewed trace carried "criteria_met":
+    # "0.0", "task_completion_score": "0.887" as strings — unfilterable).
+    "criteria_met",
+    "task_completion_score",
+    "branch_coverage",
+    "cost_fraction",
+})
+
+# Phase 1 (E4): boolean governance flags keep native ``bool`` so the trace
+# carries true/false, not the strings "True"/"False" (which sort and filter
+# wrong, and read as noise). Order-independent; values are passed through
+# untouched (a bool is never PII and never oversized).
+_SAFE_BOOL_KEYS: frozenset[str] = frozenset({
+    "plan_valid",
+    "checked",
+    "blocked",
+    "redacted",
+    "goal_met",
+    "termination_clean",
+    "cached",
+    "would_downgrade",
+    "plan_changed",
 })
 
 _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
@@ -56,7 +79,11 @@ _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     EventType.STEP_PLANNED: ("chain", "step.planned"),
     EventType.STEP_EXECUTED: ("span", "step.executed"),
     EventType.TOOL_CALLED: ("tool", "tool.called"),
-    EventType.MODEL_SELECTED: ("generation", "model.selected"),
+    # E5: MODEL_SELECTED is a routing DECISION, not an LLM call — it carries no
+    # usage/cost. Typed ``generation`` it polluted generation-level cost/latency
+    # analytics and violated "a generation == one model call". The real LLM call
+    # is the wire ``llm.call`` generation (Phase 3). Retyped to ``chain``.
+    EventType.MODEL_SELECTED: ("chain", "model.selected"),
     EventType.GUARDRAIL_CHECKED: ("guardrail", "guardrail.checked"),
     EventType.PARAMETER_CHANGED: ("span", "parameter.changed"),
     EventType.ERROR_OCCURRED: ("span", "error.occurred"),
@@ -82,30 +109,43 @@ def redact_text(text: str, *, max_len: int | None = _MAX_DETAIL_VALUE_LEN) -> st
     return text
 
 
-def redact_details(details: dict[str, Any]) -> dict[str, str]:
-    """Redact PII, API keys, and truncate values to ``_MAX_DETAIL_VALUE_LEN``.
+def redact_details(details: dict[str, Any]) -> dict[str, Any]:
+    """Redact PII / API keys and truncate string values, preserving native
+    types for known-safe telemetry keys.
 
-    Every value is coerced to ``str`` before processing so the relay can
-    safely serialize the result without type surprises.
+    Type handling (Phase 1 / E4 — stop stringifying everything):
+      - ``None`` passes through as ``None`` (not the string ``"None"``).
+      - Safe **bool** keys keep their native ``bool`` (true/false, not "True").
+      - Safe **numeric** keys keep their native ``int``/``float`` when already
+        numeric; a numeric key carrying a string is length-capped (defensive)
+        but never regex-redacted (the credit-card pattern would corrupt it).
+      - Every other value is coerced to ``str`` so PII/API-key redaction
+        applies to arbitrary content and nested structures stay flat.
 
-    Known-safe numeric keys (latency_ms, cost_usd, tokens_in, etc.) are
-    exempt from regex redaction to prevent false-positive corruption of
-    telemetry data by the credit-card pattern.
-
-    Processing order: coerce → truncate → redact.  Truncation before
-    redaction ensures that a long string ending with PII gets capped first
-    (the PII may be cut off by truncation, which is acceptable — it's
-    better to lose the tail than to leak secrets).
+    Processing order for redacted strings: coerce → truncate → redact.
+    Truncation before redaction caps a long PII-tailed string first (losing the
+    tail is acceptable — better than leaking secrets).
     """
-    result: dict[str, str] = {}
+    result: dict[str, Any] = {}
     for key, value in details.items():
-        text = str(value)
+        if value is None:
+            result[key] = None
+            continue
+        if key in _SAFE_BOOL_KEYS and isinstance(value, bool):
+            result[key] = value
+            continue
         if key in _SAFE_NUMERIC_KEYS:
-            if len(text) > _MAX_DETAIL_VALUE_LEN:
-                text = text[:_MAX_DETAIL_VALUE_LEN]
-        else:
-            text = redact_text(text)
-        result[key] = text
+            # Native numbers pass through untouched; a stringy numeric is only
+            # length-capped, never regex-scrubbed.
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                result[key] = value
+            else:
+                text = str(value)
+                if len(text) > _MAX_DETAIL_VALUE_LEN:
+                    text = text[:_MAX_DETAIL_VALUE_LEN]
+                result[key] = text
+            continue
+        result[key] = redact_text(str(value))
     return result
 
 
@@ -184,30 +224,13 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
     ):
         result["parent_observation_id"] = f"{event.workflow_id}:step:{event.step}"
 
-    # I5: Promote native generation fields for GENERATION-typed observations.
+    # I5: Promote native generation fields. After E5 retyped MODEL_SELECTED to
+    # ``chain``, no relay event maps to ``generation`` — the only event carrying
+    # real LLM usage/cost is STEP_EXECUTED (a span that wraps the model call).
+    # The wire ``llm.call`` generation (Phase 3) is the primary cost carrier;
+    # STEP_EXECUTED remains the relay-side carrier until its export is suppressed
+    # in the curated view (Phase 4).
     details = event.details
-    if obs_type == "generation":
-        model_name = details.get("model")
-        if model_name:
-            result["model"] = model_name
-
-        tokens_in = details.get("tokens_in") or details.get("input_tokens")
-        tokens_out = details.get("tokens_out") or details.get("output_tokens")
-        if tokens_in is not None or tokens_out is not None:
-            result["usage"] = {}
-            if tokens_in is not None:
-                result["usage"]["input"] = int(tokens_in)
-            if tokens_out is not None:
-                result["usage"]["output"] = int(tokens_out)
-            total = (int(tokens_in or 0)) + (int(tokens_out or 0))
-            if total:
-                result["usage"]["total"] = total
-
-        cost_usd = details.get("cost_usd")
-        if cost_usd is not None:
-            result["cost"] = float(cost_usd)
-
-    # For STEP_EXECUTED (span type but carries generation-like data), also promote.
     if event.event_type == EventType.STEP_EXECUTED:
         model_name = details.get("model")
         if model_name:

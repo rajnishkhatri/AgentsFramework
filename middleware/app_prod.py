@@ -154,6 +154,9 @@ def build_combined_app() -> FastAPI:
         relay = adapters.black_box_relay
         relay_task: asyncio.Task | None = None
         if relay is not None:
+            # E7: join the relay (adapters factory) with the AgentFacts registry
+            # (components factory) so compliance bundles carry identity_cards.
+            relay.set_agent_facts_registry(agent_facts_registry)
             relay_task = asyncio.create_task(relay.run_forever(interval_s=1.0))
             logger.info("BlackBox→Langfuse relay started (in-process)")
 

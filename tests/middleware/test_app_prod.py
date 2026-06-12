@@ -665,6 +665,11 @@ class _StubRelay:
         self.started = False
         self.stopped = False
         self._stop = False
+        self.injected_registry: object = None
+
+    def set_agent_facts_registry(self, registry: object) -> None:
+        # E7: composition root injects the AgentFacts registry before start.
+        self.injected_registry = registry
 
     async def run_forever(self, interval_s: float = 1.0) -> None:
         self.started = True

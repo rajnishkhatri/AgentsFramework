@@ -325,6 +325,11 @@ def build_dev_app() -> FastAPI:
         )
 
     dev_relay = _build_dev_relay(dev_telemetry, cache_dir)
+    if dev_relay is not None:
+        # E7: forward the AgentFacts registry so compliance bundles carry
+        # identity_cards (the registry is built in components, the relay in the
+        # telemetry path — joined here at the composition root).
+        dev_relay.set_agent_facts_registry(agent_facts_registry)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):

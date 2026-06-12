@@ -1478,6 +1478,11 @@ def build_graph(
                 # goal_met/criteria_met/unmet_conditions. Failures fall back to the
                 # heuristic so the judge is best-effort, never load-bearing.
                 downgrade_reason: str | None = None
+                # Phase 1 (E1): shape-stable shadow signal. ``False`` whenever the
+                # judge is skipped/failed so TASK_COMPLETED always carries it and a
+                # reader sees the gate's would-fire intent without opening
+                # eval.goal_judge. Set True below only in the genuine shadow case.
+                would_downgrade = False
                 gj_cfg = gj_reader.get()
                 if gj_cfg.goal_judge_enabled and content:
                     try:
@@ -1616,6 +1621,7 @@ def build_graph(
                         "termination_clean": task_outcome.termination_clean,
                         "termination_reason": task_outcome.termination_reason,
                         "goal_met": task_outcome.goal_met,
+                        "would_downgrade": would_downgrade,
                         "downgrade_reason": downgrade_reason,
                     },
                 ))

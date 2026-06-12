@@ -376,9 +376,13 @@ class TestScoreAttachment:
         relay = _build_relay(storage, exporter, compliance_publisher)
         relay.run_once()
 
-        scores = compliance_publisher.scores
-        assert len(scores) == 1
-        assert scores[0]["trace_id"] == "wf-trace-match"
+        # Phase 1 adds outcome scores alongside hash_chain_valid; assert on the
+        # hash_chain_valid score specifically rather than the total count.
+        chain_scores = [
+            s for s in compliance_publisher.scores if s["name"] == "hash_chain_valid"
+        ]
+        assert len(chain_scores) == 1
+        assert chain_scores[0]["trace_id"] == "wf-trace-match"
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -606,10 +610,14 @@ class TestG8BrokenChainTrace:
         relay = _build_relay(storage, exporter, compliance_publisher)
         relay.run_once()
 
-        scores = [s for s in compliance_publisher.scores if s["trace_id"] == wf_id]
-        assert len(scores) == 1
-        assert scores[0]["name"] == "hash_chain_valid"
-        assert scores[0]["value"] == scenario.compliance.hash_chain_valid_score == 0.0
+        # Phase 1 may add terminal outcome scores alongside hash_chain_valid;
+        # assert on the chain-validity score specifically.
+        chain_scores = [
+            s for s in compliance_publisher.scores
+            if s["trace_id"] == wf_id and s["name"] == "hash_chain_valid"
+        ]
+        assert len(chain_scores) == 1
+        assert chain_scores[0]["value"] == scenario.compliance.hash_chain_valid_score == 0.0
 
 
 class TestG7FailedAgentFactsTrace:
@@ -784,3 +792,226 @@ class TestNegativeScenarioEventCoverage:
             if not r.passed
         ]
         assert not failures, "\n".join(f.description for f in failures)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# G. Phase 1 — terminal outcome scores on the trace (E1/E9)
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _record_workflow_with_outcome(
+    storage_dir: Path,
+    workflow_id: str,
+    *,
+    completed_details: dict[str, Any],
+    agent_id: str | None = None,
+) -> Path:
+    """Record TASK_STARTED → STEP_EXECUTED → TASK_COMPLETED with rich terminal
+    details (and an optional agent_id on TASK_STARTED for identity tests)."""
+    recorder = BlackBoxRecorder(storage_dir=storage_dir)
+    started_details: dict[str, Any] = {"task": "test task"}
+    if agent_id is not None:
+        started_details["agent_id"] = agent_id
+    recorder.record(_make_event(
+        EventType.TASK_STARTED, workflow_id=workflow_id, step=0,
+        details=started_details,
+    ))
+    recorder.record(_make_event(
+        EventType.STEP_EXECUTED, workflow_id=workflow_id, step=1,
+        details={"action": "test action"},
+    ))
+    recorder.record(_make_event(
+        EventType.TASK_COMPLETED, workflow_id=workflow_id, step=2,
+        details=completed_details,
+    ))
+    return storage_dir / workflow_id / "trace.jsonl"
+
+
+class TestOutcomeScores:
+    """TASK_COMPLETED publishes goal_met / criteria_met / task_completion_score
+    as trace-level scores so a run is triageable from the Langfuse list view
+    without opening the trace (review finding E9)."""
+
+    def test_outcome_scores_published(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow_with_outcome(
+            storage, "wf-scores",
+            completed_details={
+                "outcome": "success",
+                "goal_met": False,
+                "criteria_met": 0.0,
+                "task_completion_score": 0.887,
+            },
+        )
+        (storage / "wf-scores" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+
+        by_name = {s["name"]: s for s in compliance_publisher.scores}
+        assert by_name["goal_met"]["value"] == 0.0  # False → 0.0
+        assert by_name["criteria_met"]["value"] == 0.0
+        assert by_name["task_completion_score"]["value"] == 0.887
+        for name in ("goal_met", "criteria_met", "task_completion_score"):
+            assert by_name[name]["trace_id"] == "wf-scores"
+
+    def test_goal_met_true_scores_one(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow_with_outcome(
+            storage, "wf-goalmet",
+            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+        )
+        (storage / "wf-goalmet" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+        by_name = {s["name"]: s for s in compliance_publisher.scores}
+        assert by_name["goal_met"]["value"] == 1.0
+
+    # ── failure paths first ──────────────────────────────────────────
+
+    def test_missing_outcome_fields_emit_no_score_and_no_raise(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """A terminal event missing goal_met/criteria_met (e.g. a rejected or
+        budget-exceeded shape) must NOT fabricate a score and must NOT raise."""
+        _record_workflow_with_outcome(
+            storage, "wf-partial",
+            completed_details={"outcome": "failure"},  # no goal_met / criteria_met
+        )
+        (storage / "wf-partial" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()  # must not raise
+
+        score_names = {s["name"] for s in compliance_publisher.scores}
+        assert "goal_met" not in score_names
+        assert "criteria_met" not in score_names
+        assert "task_completion_score" not in score_names
+        # hash_chain_valid still attached — outcome-score absence doesn't block it.
+        assert "hash_chain_valid" in score_names
+
+    def test_none_outcome_field_emits_no_score(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """goal_met=None (judge never ran) → no goal_met score, no raise."""
+        _record_workflow_with_outcome(
+            storage, "wf-nonegoal",
+            completed_details={"outcome": "success", "goal_met": None, "criteria_met": 0.5},
+        )
+        (storage / "wf-nonegoal" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, compliance_publisher)
+        relay.run_once()
+        by_name = {s["name"]: s for s in compliance_publisher.scores}
+        assert "goal_met" not in by_name
+        assert by_name["criteria_met"]["value"] == 0.5
+
+    def test_score_failure_does_not_block_bundle_publish(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """If score_trace raises, the compliance bundle still publishes (O1)."""
+        publisher = FakeCompliancePublisher(fail_on_publish=True)
+        _record_workflow_with_outcome(
+            storage, "wf-scorefail",
+            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+        )
+        (storage / "wf-scorefail" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, publisher)
+        # Must not raise even though every publisher call raises.
+        relay.run_once()
+
+
+# ─────────────────────────────────────────────────────────────────────
+# H. Phase 1 — identity pillar reaches the bundle (E7)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class _FakeFacts:
+    def __init__(self, agent_id: str) -> None:
+        self._agent_id = agent_id
+
+    def model_dump(self, mode: str = "python") -> dict[str, Any]:
+        return {"agent_id": self._agent_id, "agent_name": "test-agent", "version": "1.0.0"}
+
+
+class _FakeAuditEntry:
+    def model_dump(self, mode: str = "python") -> dict[str, Any]:
+        return {"action": "registered"}
+
+
+class _FakeAgentFactsRegistry:
+    """Minimal registry honoring the export_for_compliance contract."""
+
+    def __init__(self, known: set[str]) -> None:
+        self._known = known
+
+    def get(self, agent_id: str) -> _FakeFacts:
+        if agent_id not in self._known:
+            raise KeyError(agent_id)
+        return _FakeFacts(agent_id)
+
+    def audit_trail(self, agent_id: str) -> list[_FakeAuditEntry]:
+        return [_FakeAuditEntry()]
+
+
+class TestIdentityInBundle:
+    """The relay forwards an injected AgentFacts registry into
+    export_for_compliance so the compliance bundle carries identity_cards
+    (review finding E7: the registry was never passed, so the Identity pillar
+    was dead in practice)."""
+
+    def test_identity_cards_present_when_registry_supplied(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        _record_workflow_with_outcome(
+            storage, "wf-identity",
+            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            agent_id="agent-007",
+        )
+        (storage / "wf-identity" / ".langfuse_offset").write_text("0")
+
+        registry = _FakeAgentFactsRegistry(known={"agent-007"})
+        relay = _build_relay(
+            storage, exporter, compliance_publisher, agent_facts_registry=registry,
+        )
+        relay.run_once()
+
+        item = _published_item(compliance_publisher, "wf-identity")
+        bundle = item["input_data"]
+        assert "identity_cards" in bundle
+        assert "agent-007" in bundle["identity_cards"]
+        assert bundle["identity_cards"]["agent-007"]["agent_id"] == "agent-007"
+
+    def test_no_registry_means_no_identity_cards(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """Failure path: without a registry the bundle simply omits identity_cards
+        (no crash, no empty-shell key)."""
+        _record_workflow_with_outcome(
+            storage, "wf-noreg",
+            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            agent_id="agent-007",
+        )
+        (storage / "wf-noreg" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, compliance_publisher)  # no registry
+        relay.run_once()
+        bundle = _published_item(compliance_publisher, "wf-noreg")["input_data"]
+        assert "identity_cards" not in bundle
+
+    def test_setter_injects_registry_post_construction(
+        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+    ) -> None:
+        """The composition root joins relay (from adapters) and registry (from
+        components) after construction, so a setter must work like the ctor arg
+        (mirrors eval_telemetry.set_sink — avoids AP-2 adapter/registry coupling)."""
+        _record_workflow_with_outcome(
+            storage, "wf-setter",
+            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            agent_id="agent-007",
+        )
+        (storage / "wf-setter" / ".langfuse_offset").write_text("0")
+        relay = _build_relay(storage, exporter, compliance_publisher)  # no ctor registry
+        relay.set_agent_facts_registry(_FakeAgentFactsRegistry(known={"agent-007"}))
+        relay.run_once()
+        bundle = _published_item(compliance_publisher, "wf-setter")["input_data"]
+        assert bundle["identity_cards"]["agent-007"]["agent_id"] == "agent-007"

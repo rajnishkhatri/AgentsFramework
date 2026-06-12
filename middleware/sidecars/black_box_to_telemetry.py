@@ -61,18 +61,31 @@ class BlackBoxToTelemetryRelay:
     DATASET_AUDIT = "agent-compliance-audit"
     DATASET_INCIDENT = "agent-incident-replay"
 
+    # Phase 1 (E1/E9): terminal verdict fields lifted from TASK_COMPLETED details
+    # to trace-level Langfuse scores so a run is triageable from the list view.
+    # ``goal_met`` is a bool → 0.0/1.0; the rest are already 0..1 numerics.
+    _OUTCOME_SCORE_FIELDS: tuple[str, ...] = (
+        "goal_met",
+        "criteria_met",
+        "task_completion_score",
+    )
+
     def __init__(
         self,
         storage_dir: Path | str,
         exporter: TelemetryExporter,
         compliance_publisher: CompliancePublisher | None = None,
         *,
+        agent_facts_registry: Any = None,
         max_retries: int = 5,
         base_delay_s: float = 1.0,
     ) -> None:
         self._storage_dir = Path(storage_dir)
         self._exporter = exporter
         self._compliance_publisher = compliance_publisher
+        # E7: forwarded into ``export_for_compliance`` so the compliance bundle
+        # carries ``identity_cards`` (the Identity pillar was dead without it).
+        self._agent_facts_registry = agent_facts_registry
         self._max_retries = max_retries
         self._base_delay_s = base_delay_s
         self._mtimes: dict[str, float] = {}
@@ -86,6 +99,17 @@ class BlackBoxToTelemetryRelay:
         self._wf_locks_guard = threading.Lock()
 
     # ── public API ──────────────────────────────────────────────────
+
+    def set_agent_facts_registry(self, registry: Any) -> None:
+        """Inject the AgentFacts registry after construction (E7).
+
+        The composition root builds the relay (adapters factory) and the
+        registry (components factory) independently and joins them later; this
+        setter mirrors ``eval_telemetry.set_sink`` so the relay can forward the
+        registry into ``export_for_compliance`` without the adapters factory
+        importing the components/registry (avoids AP-2 coupling).
+        """
+        self._agent_facts_registry = registry
 
     def run_once(self) -> int:
         """Scan all workflow dirs, publish new events.  Returns count published."""
@@ -284,7 +308,9 @@ class BlackBoxToTelemetryRelay:
             recorder = BlackBoxRecorder(storage_dir=self._storage_dir)
             phase_logger = PhaseLogger(storage_dir=self._storage_dir.parent / "phase_logs")
             bundle = recorder.export_for_compliance(
-                workflow_id, phase_logger=phase_logger
+                workflow_id,
+                agent_facts_registry=self._agent_facts_registry,
+                phase_logger=phase_logger,
             )
         except Exception as exc:
             logger.warning(
@@ -294,6 +320,10 @@ class BlackBoxToTelemetryRelay:
 
         chain_valid = bundle.get("hash_chain_valid", False)
         outcome = task_details.get("outcome", "")
+
+        # E1/E9: publish the terminal verdict as trace-level scores. Best-effort
+        # and independent of the bundle publish (O1).
+        self._publish_outcome_scores(workflow_id, task_details)
 
         try:
             self._compliance_publisher.score_trace(
@@ -332,6 +362,39 @@ class BlackBoxToTelemetryRelay:
                 logger.warning(
                     "Failed to publish incident dataset item for %s: %s",
                     workflow_id, exc,
+                )
+
+    def _publish_outcome_scores(
+        self, workflow_id: str, task_details: dict[str, Any]
+    ) -> None:
+        """Publish goal_met / criteria_met / task_completion_score as trace scores.
+
+        Fields absent or ``None`` in the terminal details are skipped (a rejected
+        or budget-exceeded terminal shape need not carry every field — we never
+        fabricate a score). ``goal_met`` (bool) maps to 0.0/1.0. Per-field and
+        overall failures are swallowed (O1) so scoring never blocks the run or
+        the bundle publish.
+        """
+        if self._compliance_publisher is None:
+            return
+        for field in self._OUTCOME_SCORE_FIELDS:
+            value = task_details.get(field)
+            if value is None:
+                continue
+            try:
+                numeric = 1.0 if value is True else 0.0 if value is False else float(value)
+            except (TypeError, ValueError):
+                continue
+            try:
+                self._compliance_publisher.score_trace(
+                    trace_id=workflow_id,
+                    name=field,
+                    value=numeric,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to publish outcome score %s for %s: %s",
+                    field, workflow_id, exc,
                 )
 
     @staticmethod
