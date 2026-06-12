@@ -1,9 +1,16 @@
 # Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox
 
-> **Status:** PLANNED 2026-06-12. Branch: `feat/trace-explainability-optimization` off
-> `main`, **after** `feat/goaljudge-task-understanding-gate` merges (that branch carries
-> the eval-telemetry cap lift this plan's Phase 0 verifies; it also touches
-> `orchestration/react_loop.py`, which Phases 1/2/4/5 edit).
+> **Status:** IN PROGRESS 2026-06-12. Branch: `feat/trace-explainability-optimization`
+> off the `feat/goaljudge-task-understanding-gate` tip (its committed cap lift +
+> react_loop changes are the dependency Phase 0.1 verifies; branching off that tip
+> rather than `main` keeps them in lineage — user-confirmed). **Phase 0 DONE** (0.3
+> service.name + 0.2 spikes D-0a/D-0b resolved; 0.1 GCP cap-lift smoke user-run).
+> **Phase 1 DONE** (native types, model.selected→chain, trace-level outcome scores,
+> would_downgrade on TASK_COMPLETED, identity registry into the compliance bundle).
+> **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
+> on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
+> `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
+> `-k 'not swap_radius'` until the user resolves it on the TU-gate branch.
 > **Origin:** 2026-06-12 critical trace review of run `3869d6160cf8404a8f6d74db94212ebd`
 > against the governance-triangle intent. Headline findings: (1) the terminal verdict is
 > self-contradictory (`outcome: success`, `goal_met: False`, `criteria_met: 0.0`,
