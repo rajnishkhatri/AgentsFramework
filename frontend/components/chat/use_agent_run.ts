@@ -10,6 +10,15 @@
  * testable in node without React: it streams events into a dispatch
  * callback and guarantees a terminal view even if iteration throws.
  *
+ * Phase 4 soft-gate edit round trip (task_understanding plan §4.6):
+ * `pauseForEdit` aborts the in-flight stream (the checkpoint survives
+ * server-side), `saveUnderstanding` POSTs the edited artifact through the
+ * port and resumes the SAME turn with `input: {_resume: true}` --
+ * `performUnderstandingEdit` is the React-free orchestration of that
+ * sequence. While paused, the dispatch swallows the abort-induced
+ * `run_error` so the view stays `streaming` (the reducer would otherwise
+ * freeze the turn).
+ *
  * The turn `id` is a local React list key only -- never sent anywhere,
  * never a trace_id (F-R7: trace ids arrive from the backend via
  * `run_started`).
@@ -31,6 +40,12 @@ export interface ChatTurn {
   readonly id: string;
   readonly user: string;
   readonly assistant: AssistantRunView;
+}
+
+/** The card's editable fields; trace_id/thread_id are supplied by the hook. */
+export interface UnderstandingEditPayload {
+  readonly restated_intent: string;
+  readonly success_conditions: ReadonlyArray<string>;
 }
 
 /**
@@ -58,15 +73,99 @@ export async function consumeRunStream(
   }
 }
 
+/**
+ * React-free Phase 4 edit-and-resume sequence: POST the edited artifact,
+ * then continue the paused thread by re-invoking the stream with the
+ * `_resume` sentinel (the runtime recovers the trace from the checkpoint;
+ * the browser sends no trace on the resume leg -- F-R7).
+ *
+ * The POST happens BEFORE the resume so the judge can only ever see the
+ * edited conditions. If the POST rejects, the thread stays paused and the
+ * error propagates to the caller (the card surfaces it; resume is not
+ * attempted against an unedited artifact the user believes is corrected).
+ */
+export async function performUnderstandingEdit(opts: {
+  runtime: AgentRuntimeClient;
+  threadId: string;
+  traceId: string;
+  edit: UnderstandingEditPayload;
+  dispatch: (evt: UIRuntimeEvent) => void;
+  /** Called after the POST is accepted, before the resume stream opens
+   *  (the hook clears its paused state here so resume events flow). */
+  onEditAccepted?: () => void;
+  signal?: AbortSignal;
+}): Promise<void> {
+  await opts.runtime.updateUnderstanding(opts.threadId, {
+    trace_id: opts.traceId,
+    restated_intent: opts.edit.restated_intent,
+    success_conditions: [...opts.edit.success_conditions],
+  });
+  opts.onEditAccepted?.();
+  await resumeRunStream(opts);
+}
+
+/** Continue a paused thread without an edit (the cancel-edit path). */
+export async function resumeRunStream(opts: {
+  runtime: AgentRuntimeClient;
+  threadId: string;
+  dispatch: (evt: UIRuntimeEvent) => void;
+  signal?: AbortSignal;
+}): Promise<void> {
+  await consumeRunStream(
+    opts.runtime.streamRun(
+      { thread_id: opts.threadId, input: { _resume: true } },
+      opts.signal ? { signal: opts.signal } : undefined,
+    ),
+    opts.dispatch,
+  );
+}
+
 export function useAgentRun(runtime: AgentRuntimeClient): {
   turns: ReadonlyArray<ChatTurn>;
   busy: boolean;
   send: (body: string) => Promise<void>;
+  /** Turn currently paused for a card edit, or null. */
+  pausedTurnId: string | null;
+  /** Last edit-POST failure (the card renders it); cleared on retry/cancel. */
+  editError: string | null;
+  pauseForEdit: (turnId: string) => void;
+  saveUnderstanding: (
+    turnId: string,
+    edit: UnderstandingEditPayload,
+  ) => Promise<void>;
+  cancelEditAndResume: (turnId: string) => Promise<void>;
 } {
   const [turns, setTurns] = React.useState<ReadonlyArray<ChatTurn>>([]);
   const [busy, setBusy] = React.useState(false);
+  const [pausedTurnId, setPausedTurnId] = React.useState<string | null>(null);
+  const [editError, setEditError] = React.useState<string | null>(null);
   /** Stable LangGraph thread id for checkpointer multiturn continuity. */
   const threadIdRef = React.useRef<string | null>(null);
+  /** Abort handle for the in-flight stream (pause = abort, F1 transport). */
+  const controllerRef = React.useRef<AbortController | null>(null);
+  /** True between pauseForEdit and the resume leg: swallow abort fallout. */
+  const pausedRef = React.useRef(false);
+  /** Render-time mirror so callbacks read current turns without re-binding. */
+  const turnsRef = React.useRef<ReadonlyArray<ChatTurn>>(turns);
+  turnsRef.current = turns;
+
+  const dispatchFor = React.useCallback(
+    (turnId: string) =>
+      (evt: UIRuntimeEvent): void => {
+        // An intentional pause aborts the fetch; the transport surfaces
+        // that as run_error. Swallow it so the view stays `streaming`
+        // and the resume leg can fold into the same turn.
+        if (pausedRef.current && evt.type === "run_error") return;
+        setTurns((prev) =>
+          prev.map((t) =>
+            t.id === turnId
+              ? { ...t, assistant: reduceRunView(t.assistant, evt) }
+              : t,
+          ),
+        );
+      },
+    [],
+  );
 
   const send = React.useCallback(
     async (body: string): Promise<void> => {
@@ -77,15 +176,9 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
         { id: turnId, user: body, assistant: emptyRunView() },
       ]);
       setBusy(true);
-      const dispatch = (evt: UIRuntimeEvent): void => {
-        setTurns((prev) =>
-          prev.map((t) =>
-            t.id === turnId
-              ? { ...t, assistant: reduceRunView(t.assistant, evt) }
-              : t,
-          ),
-        );
-      };
+      const dispatch = dispatchFor(turnId);
+      const controller = new AbortController();
+      controllerRef.current = controller;
       try {
         // Only the new user line: the middleware keys checkpoint state by
         // `thread_id`, so LangGraph appends to prior turns server-side.
@@ -93,7 +186,10 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
           thread_id: threadIdRef.current,
           body,
         });
-        await consumeRunStream(runtime.streamRun(req), dispatch);
+        await consumeRunStream(
+          runtime.streamRun(req, { signal: controller.signal }),
+          dispatch,
+        );
       } catch (e) {
         // streamRun threw synchronously (e.g. missing composition wiring).
         dispatch({
@@ -104,11 +200,93 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
           message: e instanceof Error ? e.message : String(e),
         });
       } finally {
+        if (controllerRef.current === controller) controllerRef.current = null;
         setBusy(false);
       }
     },
-    [runtime],
+    [runtime, dispatchFor],
   );
 
-  return { turns, busy, send };
+  const pauseForEdit = React.useCallback((turnId: string): void => {
+    pausedRef.current = true;
+    setPausedTurnId(turnId);
+    setEditError(null);
+    controllerRef.current?.abort();
+  }, []);
+
+  const resumeInto = React.useCallback(
+    async (
+      turnId: string,
+      edit: UnderstandingEditPayload | null,
+    ): Promise<void> => {
+      const threadId = threadIdRef.current;
+      if (!threadId) return;
+      const dispatch = dispatchFor(turnId);
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const clearPause = (): void => {
+        pausedRef.current = false;
+        setPausedTurnId(null);
+        setEditError(null);
+      };
+      setBusy(true);
+      try {
+        if (edit) {
+          const traceId = turnsRef.current.find((t) => t.id === turnId)
+            ?.assistant.traceId;
+          if (!traceId) {
+            throw new Error("no trace_id on this turn yet; cannot edit");
+          }
+          // POST first; only an accepted edit clears the pause and resumes.
+          await performUnderstandingEdit({
+            runtime,
+            threadId,
+            traceId,
+            edit,
+            dispatch,
+            onEditAccepted: clearPause,
+            signal: controller.signal,
+          });
+        } else {
+          clearPause();
+          await resumeRunStream({
+            runtime,
+            threadId,
+            dispatch,
+            signal: controller.signal,
+          });
+        }
+      } catch (e) {
+        // Only the edit POST can throw (resume failures arrive as
+        // run_error events). Stay paused; the user can retry or cancel.
+        setEditError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (controllerRef.current === controller) controllerRef.current = null;
+        setBusy(false);
+      }
+    },
+    [runtime, dispatchFor],
+  );
+
+  const saveUnderstanding = React.useCallback(
+    async (turnId: string, edit: UnderstandingEditPayload): Promise<void> =>
+      resumeInto(turnId, edit),
+    [resumeInto],
+  );
+
+  const cancelEditAndResume = React.useCallback(
+    async (turnId: string): Promise<void> => resumeInto(turnId, null),
+    [resumeInto],
+  );
+
+  return {
+    turns,
+    busy,
+    send,
+    pausedTurnId,
+    editError,
+    pauseForEdit,
+    saveUnderstanding,
+    cancelEditAndResume,
+  };
 }

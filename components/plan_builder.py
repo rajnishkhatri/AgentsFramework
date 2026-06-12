@@ -188,7 +188,10 @@ def derive_success_conditions(branches: list[str]) -> list[str]:
         text = branch.strip()
         if not text:
             continue
-        condition = f"The final answer addresses: {text[:160]}"
+        # Bare branch text: the checklist framing (judge prompt / UI card)
+        # already says these are success conditions, and boilerplate prefix
+        # tokens dilute the evaluator's lexical criteria_met match.
+        condition = text[:160]
         key = condition.lower()
         if key in seen:
             continue

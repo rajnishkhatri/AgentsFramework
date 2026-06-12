@@ -133,7 +133,36 @@ class LangGraphRuntime:
     ) -> AsyncIterator[DomainEvent]:
         graph_input = dict(input)
         saturation = graph_input.pop("_goaljudge_saturation", None)
-        if saturation is not None:
+        resume = bool(graph_input.pop("_resume", False))
+        if resume:
+            # task_understanding plan Phase 4: continue a paused thread from
+            # its checkpoint. The trace_id is recovered, never re-minted
+            # (F-R7: one trace per run), and the graph input is None — the
+            # canonical LangGraph checkpoint-resume invocation.
+            snapshot = await self._graph.aget_state(
+                {"configurable": {"thread_id": thread_id}}
+            )
+            values = (
+                getattr(snapshot, "values", None) if snapshot is not None else None
+            )
+            if not values:
+                raise KeyError(f"no checkpoint for thread {thread_id!r}")
+            if not getattr(snapshot, "next", ()):
+                raise RuntimeError(
+                    f"run already completed for thread {thread_id!r}; "
+                    "nothing to resume"
+                )
+            workflow_id = str(values.get("workflow_id") or "")
+            if not workflow_id:
+                raise ValueError(
+                    f"checkpoint for thread {thread_id!r} has no workflow_id; "
+                    "it was not seeded by this runtime"
+                )
+            trace_id = workflow_id
+            task_id = str(values.get("task_id") or workflow_id)
+            eval_user_id = identity.owner
+            run_id = uuid.uuid4().hex
+        elif saturation is not None:
             trace_id = str(saturation["trace_id"])
             # ``task_id`` MUST be fresh per invocation even in saturation mode:
             # it scopes the planner's per-task tool-result count
@@ -182,12 +211,18 @@ class LangGraphRuntime:
         )
         # Seed correlation keys into state so graph nodes can key black-box
         # recordings and phase logs under the same trace_id that SSE emits.
-        graph_input = {
-            **graph_input,
-            "workflow_id": trace_id,
-            "task_id": task_id,
-            "registered_agent_id": identity.agent_id,
-        }
+        # In resume mode the checkpoint already holds them and the graph
+        # input MUST be None (any dict would overwrite checkpoint channels).
+        stream_input: dict[str, Any] | None
+        if resume:
+            stream_input = None
+        else:
+            stream_input = {
+                **graph_input,
+                "workflow_id": trace_id,
+                "task_id": task_id,
+                "registered_agent_id": identity.agent_id,
+            }
         error: str | None = None
         self._streamed_run_ids = set()
         self._step_meter_count = 0
@@ -195,7 +230,7 @@ class LangGraphRuntime:
         self._last_task_understanding = None
         try:
             async for raw in self._graph.astream_events(
-                graph_input, config=config, version="v2"
+                stream_input, config=config, version="v2"
             ):
                 for event in self._translate_event(raw, trace_id):
                     yield event

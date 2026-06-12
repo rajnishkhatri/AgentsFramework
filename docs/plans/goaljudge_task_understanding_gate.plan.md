@@ -1,14 +1,20 @@
 # GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)
 
-> **Status:** IMPLEMENTED 2026-06-12 (Phases 0–4 backend + display UI) on
-> `feat/goaljudge-task-understanding-gate`. Phases 0/1/2/3 complete; Phase 4
-> backend seam complete (runtime-adapter `update_task_understanding`,
-> middleware `POST /run/understanding/{thread_id}` on dev + prod apps,
-> PARAMETER_CHANGED governance recording, BFF handler + route, cross-instance
-> hash-chain fix in BlackBoxRecorder). REMAINING: card edit-mode UI + a
-> runtime/stream resume capability (`runtime.run` cannot yet resume a paused
-> thread with None input) + T2 E2E; Phase 2 rollout gates (2a shadow ≥95%,
-> 2b goldset replay α vs 0.50) and the Phase 0 GCP live smoke are user-run.
+> **Status:** IMPLEMENTED 2026-06-12 — ALL phases 0–4 complete (Phase 5
+> wave-2 batch is user-run). Phase 4 full round trip shipped: runtime
+> resume via `input={"_resume": true}` (`LangGraphRuntime.run` recovers the
+> checkpoint's trace_id and streams `astream_events(None, config)`),
+> `streamRun(req, {signal})` pause through the port, card edit mode
+> (`TaskUnderstandingCard` editable form), `updateUnderstanding` port
+> method, hook orchestration (`pauseForEdit`/`saveUnderstanding`/
+> `cancelEditAndResume`), interactive jsdom flow test
+> (`understanding_edit_flow.test.tsx`), and the T2 spec
+> (`e2e/integration/understanding-edit-roundtrip.spec.ts`, pausable mock
+> middleware). Refinement: the deterministic floor emits bare branch text
+> (the "The final answer addresses:" prefix was dropped). REMAINING
+> (user-run): T2 browser run (MOCK_MIDDLEWARE=1 + E2E_AUTHENTICATED=1),
+> live GCP span assertion (PARAMETER_CHANGED + conditions_source=
+> user_edited), Phase 0 live smoke, 2a/2b rollout gates, wave-2 batch.
 > **Origin:** Stage 6 replay audit [§3 finding](../research/goaljudge_stage6_replay_audit.md):
 > all 100/100 production `eval.goal_judge` spans carry the identical generic
 > `success_conditions` pair hardcoded at `components/plan_builder.py:158-161`. No

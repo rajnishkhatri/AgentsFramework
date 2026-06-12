@@ -17,8 +17,22 @@
  * behind it.
  */
 
-import type { RunCreateRequest } from "../wire/agent_protocol";
+import type {
+  RunCreateRequest,
+  TaskUnderstandingEditRequest,
+} from "../wire/agent_protocol";
 import type { UIRuntimeEvent } from "../wire/ui_runtime_events";
+
+/**
+ * Options for `streamRun`. A type alias, not an interface (P1: one
+ * interface per port file). Aborting the signal closes the stream
+ * client-side (the Phase 4 soft-gate "pause": the backend checkpoint
+ * survives, so the run can resume via a new `streamRun` whose `input`
+ * carries `_resume: true`).
+ */
+export type StreamRunOptions = {
+  readonly signal?: AbortSignal;
+};
 
 /**
  * Vendor-neutral runtime client for the LangGraph backend.
@@ -41,7 +55,10 @@ export interface AgentRuntimeClient {
    * either a `run_completed` or `run_error` UIRuntimeEvent (Runtime
    * Contract §1).
    */
-  streamRun(req: RunCreateRequest): AsyncIterable<UIRuntimeEvent>;
+  streamRun(
+    req: RunCreateRequest,
+    opts?: StreamRunOptions,
+  ): AsyncIterable<UIRuntimeEvent>;
 
   /**
    * Cancel an in-flight run. Idempotent (A6). Resolves successfully even
@@ -50,4 +67,20 @@ export interface AgentRuntimeClient {
    * @throws AgentNetworkError on transport failure
    */
   cancel(runId: string): Promise<void>;
+
+  /**
+   * Apply a user edit to the run's TaskUnderstanding artifact (Phase 4
+   * soft-gate card). The `trace_id` in the request is echoed verbatim from
+   * the `run_started` event (F-R7: never generated browser-side). The
+   * caller pauses the stream first and resumes after this resolves.
+   *
+   * @throws AgentAuthError on 401
+   * @throws AgentRuntimeError on any other non-2xx (the message carries
+   *   the upstream detail, e.g. a 409 "run already completed")
+   * @throws AgentNetworkError on transport failure
+   */
+  updateUnderstanding(
+    threadId: string,
+    req: TaskUnderstandingEditRequest,
+  ): Promise<void>;
 }

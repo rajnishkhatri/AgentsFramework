@@ -137,6 +137,105 @@ function jsonResponse(
   res.end(JSON.stringify(payload));
 }
 
+// ── Phase 4 soft-gate edit round trip (T2) ────────────────────────────
+//
+// A message containing "understanding" selects a PAUSABLE run: the stream
+// emits RUN_STARTED + the CUSTOM task_understanding card, then stays open
+// (heartbeats) until the browser aborts -- exactly how a paused middleware
+// run behaves. POST /run/understanding/{threadId} stores the edit; a
+// /run/stream whose input carries `_resume: true` then plays the resumed
+// leg with the edited (or original) artifact and the final answer.
+
+interface UnderstandingEdit {
+  restated_intent: string;
+  success_conditions: string[];
+}
+
+const understandingEdits = new Map<string, UnderstandingEdit>();
+
+const ORIGINAL_UNDERSTANDING = {
+  restated_intent: "Create /workspace/f3.txt and verify its contents.",
+  success_conditions: [
+    "The file /workspace/f3.txt exists with 'hello'.",
+    "The file contents were listed via a shell command.",
+  ],
+};
+
+function understandingCardEvent(
+  artifact: UnderstandingEdit,
+  source: "generated" | "user_edited",
+): AGUIEvent {
+  return {
+    type: "CUSTOM",
+    name: "task_understanding",
+    value: { ...artifact, confidence: 0.85, source },
+    raw_event: { trace_id: DEFAULT_TRACE_ID },
+  } as AGUIEvent;
+}
+
+/** Initial leg: card, then hold the stream open until the client aborts. */
+async function writeUnderstandingPausable(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  threadId: string,
+): Promise<void> {
+  understandingEdits.delete(threadId); // fresh run, fresh state
+  res.writeHead(200, {
+    "content-type": "text/event-stream",
+    "cache-control": "no-cache, no-transform",
+    "x-accel-buffering": "no",
+    "x-trace-id": DEFAULT_TRACE_ID,
+    connection: "keep-alive",
+  });
+  const h = { raw_event: { trace_id: DEFAULT_TRACE_ID } };
+  const events: AGUIEvent[] = [
+    { type: "RUN_STARTED", run_id: "run-tu-1", thread_id: threadId, ...h } as AGUIEvent,
+    understandingCardEvent(ORIGINAL_UNDERSTANDING, "generated"),
+  ];
+  for (const evt of events) {
+    res.write(`data: ${JSON.stringify(evt)}\n\n`);
+  }
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      /* already closed */
+    }
+  }, 1_000);
+  await new Promise<void>((resolve) => {
+    req.on("close", resolve);
+    setTimeout(resolve, 30_000); // safety: never wedge the suite
+  });
+  clearInterval(heartbeat);
+  res.end();
+}
+
+/** Resume leg: re-emit the (possibly edited) card, answer, RUN_FINISHED. */
+async function writeUnderstandingResume(
+  res: http.ServerResponse,
+  threadId: string,
+): Promise<void> {
+  const edited = understandingEdits.get(threadId);
+  const h = { raw_event: { trace_id: DEFAULT_TRACE_ID } };
+  const events: AGUIEvent[] = [
+    { type: "RUN_STARTED", run_id: "run-tu-2", thread_id: threadId, ...h } as AGUIEvent,
+    understandingCardEvent(
+      edited ?? ORIGINAL_UNDERSTANDING,
+      edited ? "user_edited" : "generated",
+    ),
+    { type: "TEXT_MESSAGE_START", message_id: "m-tu", role: "assistant", ...h } as AGUIEvent,
+    {
+      type: "TEXT_MESSAGE_CONTENT",
+      message_id: "m-tu",
+      delta: "Resumed and completed against the corrected understanding.",
+      ...h,
+    } as AGUIEvent,
+    { type: "TEXT_MESSAGE_END", message_id: "m-tu", ...h } as AGUIEvent,
+    { type: "RUN_FINISHED", run_id: "run-tu-2", thread_id: threadId, ...h } as AGUIEvent,
+  ];
+  await writeSSE(res, events, DELAY_MS);
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${PORT}`);
   const path = url.pathname;
@@ -157,12 +256,61 @@ const server = http.createServer(async (req, res) => {
 
   if (path === "/run/stream" && method === "POST") {
     const body = await readBody(req);
+    let parsed: { thread_id?: string; input?: Record<string, unknown> } = {};
+    try {
+      parsed = JSON.parse(body) as typeof parsed;
+    } catch {
+      /* scenario selection below falls back to text matching */
+    }
+    const threadId = String(parsed.thread_id ?? "t-understanding");
+    if (parsed.input?.["_resume"] === true) {
+      await writeUnderstandingResume(res, threadId);
+      return;
+    }
+    if (body.toLowerCase().includes("understanding")) {
+      await writeUnderstandingPausable(req, res, threadId);
+      return;
+    }
     const scenarioOverride = url.searchParams.get("scenario") as ScenarioName | null;
     const scenarioName: ScenarioName = scenarioOverride && SCENARIOS[scenarioOverride]
       ? scenarioOverride
       : selectScenario(body);
     const events = SCENARIOS[scenarioName]({ traceId: DEFAULT_TRACE_ID });
     await writeSSE(res, events, DELAY_MS);
+    return;
+  }
+
+  const understandingMatch = path.match(/^\/run\/understanding\/([^/]+)$/);
+  if (understandingMatch && method === "POST") {
+    const threadId = decodeURIComponent(understandingMatch[1]!);
+    const body = await readBody(req);
+    let payload: {
+      trace_id?: string;
+      restated_intent?: string;
+      success_conditions?: string[];
+    };
+    try {
+      payload = JSON.parse(body) as typeof payload;
+    } catch {
+      jsonResponse(res, 422, { detail: "invalid JSON" });
+      return;
+    }
+    if (payload.trace_id !== DEFAULT_TRACE_ID) {
+      jsonResponse(res, 400, { detail: "trace_id mismatch" });
+      return;
+    }
+    understandingEdits.set(threadId, {
+      restated_intent: String(payload.restated_intent ?? ""),
+      success_conditions: (payload.success_conditions ?? []).map(String),
+    });
+    jsonResponse(res, 200, {
+      ok: true,
+      trace_id: DEFAULT_TRACE_ID,
+      thread_id: threadId,
+      source: "user_edited",
+      restated_intent: payload.restated_intent,
+      success_conditions: payload.success_conditions,
+    });
     return;
   }
 

@@ -567,3 +567,144 @@ class TestEditResumeSimulation:
         gj = _sink.goal_judge[0]["ai_input"]
         assert gj["conditions_source"] == "user_edited"
         assert gj["restated_intent"] == "Only compare the options."
+
+    @pytest.mark.asyncio
+    async def test_full_runtime_stream_pause_edit_resume(self, tmp_path, _sink):
+        """Same scenario driven through ``LangGraphRuntime`` end to end:
+        the first ``run()`` pauses at the interrupt, the edit goes through
+        ``update_task_understanding`` (what the middleware endpoint calls),
+        and the resume leg is ``run(input={"_resume": True})`` — asserting
+        the resumed stream keeps the original trace_id, re-emits the
+        user_edited card, and the judge scores the edited conditions."""
+        from langgraph.checkpoint.memory import MemorySaver
+        from pydantic import BaseModel
+
+        from agent_ui_adapter.adapters.runtime.langgraph_runtime import (
+            LangGraphRuntime,
+        )
+        from agent_ui_adapter.wire.domain_events import (
+            RunStartedDomain,
+            TaskUnderstood,
+        )
+        from services.tools.registry import ToolDefinition, ToolRegistry
+        from trust.models import AgentFacts
+
+        class _EchoInput(BaseModel):
+            text: str
+
+        registry = ToolRegistry({
+            "echo": ToolDefinition(
+                executor=lambda args: str(args.get("text", "")),
+                schema=_EchoInput,
+                cacheable=False,
+            )
+        })
+
+        def _resp(content: str, tool_calls: list[dict], idx: int) -> MagicMock:
+            r = MagicMock()
+            r.content = content
+            r.tool_calls = [
+                {"name": tc["name"], "args": tc["args"],
+                 "id": f"tc-{idx}-{p}", "type": "tool_call"}
+                for p, tc in enumerate(tool_calls)
+            ]
+            r.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+            r.response_metadata = {"model_name": "gpt-4o-mini"}
+            return r
+
+        responses = [
+            _resp("", [{"name": "echo", "args": {"text": "ping"}}], 0),
+            _resp("FINAL ANSWER: compared options and proposed the migration.", [], 1),
+        ]
+
+        judge = AsyncMock(return_value=GoalVerdict(goal_met=True, criteria_met=1.0))
+        generate = AsyncMock(return_value=_GENERATED)
+        reader = InMemoryGoalJudgeConfigReader(
+            goal_judge_enabled=True,
+            success_conditions_source="generated",
+        )
+        identity = AgentFacts(
+            agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
+        )
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+            patch("orchestration.react_loop.GoalJudge.evaluate", judge),
+            patch(
+                "orchestration.react_loop.TaskUnderstandingGenerator.generate",
+                generate,
+            ),
+        ):
+            llm = MockLLM.return_value
+            llm.bind_tools.return_value = llm
+            llm.ainvoke = AsyncMock(side_effect=responses)
+
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=AgentConfig(
+                    default_model="gpt-4o-mini",
+                    models=[_fast_profile()],
+                    goal_judge_enabled=True,
+                ),
+                tool_registry=registry,
+                cache_dir=tmp_path / "cache",
+                checkpointer=MemorySaver(),
+                goal_judge_config_reader=reader,
+                interrupt_before_execute_tool=True,
+            )
+            rt = LangGraphRuntime(graph=graph)
+
+            # Leg 1: stream until the interrupt pauses the graph.
+            first_leg = [
+                ev
+                async for ev in rt.run(
+                    thread_id="thread-edit-rt",
+                    input={"task_input": _TASK, "messages": []},
+                    identity=identity,
+                )
+            ]
+            trace_id = next(
+                ev.trace_id for ev in first_leg
+                if isinstance(ev, RunStartedDomain)
+            )
+            assert judge.await_count == 0, "paused run must not reach the judge"
+
+            # Leg 2: the edit (what POST /run/understanding/{thread_id} does).
+            _old, new = await rt.update_task_understanding(
+                thread_id="thread-edit-rt",
+                trace_id=trace_id,
+                restated_intent="Only compare the options.",
+                success_conditions=[
+                    "The answer compares the available options.",
+                    "The comparison is grounded in the task text.",
+                ],
+            )
+            assert new["source"] == "user_edited"
+
+            # Leg 3: resume through the stream path.
+            resumed = [
+                ev
+                async for ev in rt.run(
+                    thread_id="thread-edit-rt",
+                    input={"_resume": True},
+                    identity=identity,
+                )
+            ]
+
+        resumed_start = next(
+            ev for ev in resumed if isinstance(ev, RunStartedDomain)
+        )
+        assert resumed_start.trace_id == trace_id, "resume must keep the trace"
+        cards = [ev for ev in resumed if isinstance(ev, TaskUnderstood)]
+        assert cards and cards[-1].source == "user_edited"
+        assert judge.await_count == 1
+        assert _judge_conditions(judge) == new["success_conditions"]
+        gj = _sink.goal_judge[0]["ai_input"]
+        assert gj["conditions_source"] == "user_edited"
+        assert gj["restated_intent"] == "Only compare the options."

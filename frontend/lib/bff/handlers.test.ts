@@ -135,6 +135,7 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
     const cancel = vi.fn(async () => undefined);
     const runtime: AgentRuntimeClient = {
       streamRun: vi.fn() as never,
+      updateUnderstanding: vi.fn() as never,
       cancel,
     };
     const handler = makeRunCancelHandler({
@@ -156,6 +157,7 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
       auth: authYielding(null),
       agentRuntimeClient: {
         streamRun: vi.fn() as never,
+        updateUnderstanding: vi.fn() as never,
         cancel: vi.fn() as never,
       },
     });

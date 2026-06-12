@@ -16,6 +16,7 @@ function fakeRuntimeClient(): AgentRuntimeClient {
   return {
     streamRun: () => (async function* () {})(),
     cancel: vi.fn(async () => undefined),
+    updateUnderstanding: vi.fn(async () => undefined),
   };
 }
 

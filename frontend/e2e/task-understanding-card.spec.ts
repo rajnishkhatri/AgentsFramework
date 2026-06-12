@@ -65,5 +65,9 @@ test.describe("Task understanding card (Phase 3 soft gate)", () => {
 
     // FD5: the card is its own layer — the answer body still rendered.
     await expect(message).toContainText("Created the file and verified its contents.");
+
+    // Phase 4: edits are only possible while the run is live (the server
+    // 409s late edits) — a completed run renders NO edit affordance.
+    await expect(page.locator("[data-testid='understanding-edit']")).toHaveCount(0);
   });
 });
