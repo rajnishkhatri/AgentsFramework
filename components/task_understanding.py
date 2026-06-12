@@ -80,7 +80,19 @@ class TaskUnderstandingValidationError(ValueError):
 
 
 def _content_tokens(text: str) -> set[str]:
-    return {t for t in _TOKEN.findall(text.lower()) if t not in _STOPWORDS}
+    """Tokenize for the grounding gate: stopword-filter raw tokens, then
+    strip ``"._/-"`` from token edges (R3 fix, tu-gate longterm plan §5).
+
+    The ``.`` in ``_TOKEN`` keeps paths like ``workspace/status.txt`` whole,
+    but it also glued sentence-final punctuation onto the last token —
+    ``data.`` ≠ ``data`` rejected verbatim quotes and capped round 2 at 83%.
+    Edge-strip preserves interior dots/slashes. Order matters: filtering
+    stopwords BEFORE stripping means every pre-fix match maps to a stripped
+    match, so the fix is strictly monotone (verified 20/20 recovery, 48/50
+    stability on the archived corpus — see gate_benchmark_v1.json).
+    """
+    raw = {t for t in _TOKEN.findall(text.lower()) if t not in _STOPWORDS}
+    return {t.strip("._/-") for t in raw} - {""}
 
 
 def validate_conditions(
@@ -161,18 +173,22 @@ class TaskUnderstandingGenerator:
         self,
         *,
         task_input: str,
-        on_gate_rejection: Callable[[list[str], int], None] | None = None,
+        on_gate_rejection: Callable[[list[str], int, list[str]], None] | None = None,
     ) -> TaskUnderstanding:
         """Generate, gate-validate, and return the artifact. Raises on failure.
 
         On a validation-gate rejection the generator retries ONCE, re-rendering
         the prompt with the rejected conditions + gate issues fed back (the
         model paraphrased instead of quoting the task; the feedback names the
-        violation). ``on_gate_rejection(issues, attempt)`` — when injected — is
-        called for every rejected attempt so orchestration can record a
-        GUARDRAIL_CHECKED event per attempt. Parse / LLM-transport errors are
-        NOT retried: they propagate from the first attempt, preserving the
-        original raise-on-failure contract.
+        violation). ``on_gate_rejection(issues, attempt, conditions)`` — when
+        injected — is called for every rejected attempt with that attempt's
+        rejected condition TEXT, so orchestration can record a
+        GUARDRAIL_CHECKED event per attempt AND archive the artifact itself
+        (R3 telemetry bug #2: issue strings alone forced round 2's root cause
+        to be inferred blind, and it was wrong — no diagnosis without the
+        artifact text). Parse / LLM-transport errors are NOT retried: they
+        propagate from the first attempt, preserving the original
+        raise-on-failure contract.
         """
         rejection_feedback = ""
         last_issues: list[str] = []
@@ -196,7 +212,7 @@ class TaskUnderstandingGenerator:
             # Gate rejection — observable to orchestration, then retry-with-
             # feedback while attempts remain.
             if on_gate_rejection is not None:
-                on_gate_rejection(issues, attempt)
+                on_gate_rejection(issues, attempt, conditions)
             last_issues = [*last_issues, *issues]
             rejection_feedback = _format_rejection_feedback(conditions, issues)
 
