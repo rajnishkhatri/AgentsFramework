@@ -764,6 +764,39 @@
       "title": "StepStarted",
       "type": "object"
     },
+    "TaskUnderstandingEditRequest": {
+      "additionalProperties": false,
+      "description": "Edit payload for the soft-gate understanding card (Phase 4).\n\nWire shape consumed by the middleware edit endpoint — NEVER the\ncomponents Pydantic type (M1: middleware never imports components/).\nBounds mirror the components validation gates minus lexical grounding\n(``user_edited`` skips it: the human is the authority). ``trace_id``\nis echoed verbatim from the run (F-R7 — the browser never mints one).",
+      "properties": {
+        "restated_intent": {
+          "maxLength": 600,
+          "minLength": 1,
+          "title": "Restated Intent",
+          "type": "string"
+        },
+        "success_conditions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 7,
+          "minItems": 2,
+          "title": "Success Conditions",
+          "type": "array"
+        },
+        "trace_id": {
+          "minLength": 1,
+          "title": "Trace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "trace_id",
+        "restated_intent",
+        "success_conditions"
+      ],
+      "title": "TaskUnderstandingEditRequest",
+      "type": "object"
+    },
     "TextMessageContent": {
       "additionalProperties": false,
       "properties": {

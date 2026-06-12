@@ -271,11 +271,12 @@ def test_domain_event_base_is_frozen_and_strict():
 
 
 def test_domain_event_union_covers_all_types():
-    """US-2.3 acceptance (extended by eval-UI Phase 0 + F10-T2): 11 members."""
-    from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+    """US-2.3 acceptance (extended by eval-UI Phase 0 + F10-T2 +
+    task_understanding Phase 3): 12 members."""
+    from agent_ui_adapter.wire.domain_events import ReasoningSummarized, TaskUnderstood
 
     args = get_args(DomainEvent)
-    assert len(args) == 11
+    assert len(args) == 12
     assert set(args) == {
         LLMTokenEmitted,
         LLMMessageStarted,
@@ -288,6 +289,7 @@ def test_domain_event_union_covers_all_types():
         StateMutated,
         StepProgressed,
         ReasoningSummarized,
+        TaskUnderstood,
     }
 
 
@@ -295,3 +297,43 @@ def test_domain_event_base_is_abstract_in_practice():
     """DomainEventBase is a base class, not constructable as a meaningful event."""
     base = DomainEventBase(trace_id="tr1")
     assert base.trace_id == "tr1"
+
+
+def test_task_understood_rejects_extra_fields():
+    """Failure path first: the wire shape is strict (extra='forbid')."""
+    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+    with pytest.raises(ValidationError):
+        TaskUnderstood.model_validate(
+            {
+                "trace_id": "tr1",
+                "restated_intent": "x",
+                "success_conditions": ["a"],
+                "confidence": 0.5,
+                "source": "generated",
+                "bogus": 1,
+            }
+        )
+
+
+def test_task_understood_carries_artifact_fields():
+    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+    ev = TaskUnderstood(
+        trace_id="tr1",
+        restated_intent="Create the file and verify it.",
+        success_conditions=["file exists", "contents verified"],
+        confidence=0.8,
+        source="generated",
+    )
+    assert ev.trace_id == "tr1"
+    assert ev.success_conditions == ["file exists", "contents verified"]
+
+
+def test_domain_event_union_includes_task_understood():
+    """+TaskUnderstood (task_understanding plan Phase 3): 12 members."""
+    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+    args = get_args(DomainEvent)
+    assert len(args) == 12
+    assert TaskUnderstood in set(args)

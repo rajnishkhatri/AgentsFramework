@@ -110,6 +110,22 @@ class TestVerdictParsingFailures:
                 success_conditions=[],
             )
 
+    @pytest.mark.asyncio
+    async def test_malformed_per_criterion_entries_still_raise(self):
+        """Non-dict entries must not be silently repaired into a verdict —
+        the criteria_met derivation skips them and schema validation raises,
+        preserving the heuristic-fallback contract."""
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": 0.0, "per_criterion": [1, 2], '
+            '"rationale": "broken breakdown"}'
+        )
+        with pytest.raises(Exception):
+            await judge.evaluate(
+                task_input="task",
+                final_answer="answer",
+                success_conditions=[],
+            )
+
 
 # ─────────────────────────────────────────────────────────────────────
 # Happy path + structural contract
@@ -170,6 +186,158 @@ class TestVerdictParsing:
         )
         assert 0.0 <= verdict.criteria_met <= 1.0
         assert verdict.criteria_met == pytest.approx(0.8)
+        assert verdict.criteria_met_derived is False
+
+
+# ─────────────────────────────────────────────────────────────────────
+# criteria_met repair: when the model omits or contradicts its own
+# per_criterion breakdown, the met-flag mean is authoritative (production
+# trace shipped criteria_met=0.0 alongside 4/4 met=true, corrupting the
+# Stage 5/6 calibration slices). ``criteria_met_derived`` marks the repair.
+# ─────────────────────────────────────────────────────────────────────
+
+_FOUR_MET = (
+    '{"criterion": "a", "met": true, "evidence": "e"},'
+    '{"criterion": "b", "met": true, "evidence": "e"},'
+    '{"criterion": "c", "met": true, "evidence": "e"},'
+    '{"criterion": "d", "met": true, "evidence": "e"}'
+)
+_THREE_OF_FOUR_MET = (
+    '{"criterion": "a", "met": true, "evidence": "e"},'
+    '{"criterion": "b", "met": true, "evidence": "e"},'
+    '{"criterion": "c", "met": false, "evidence": ""},'
+    '{"criterion": "d", "met": true, "evidence": "e"}'
+)
+
+
+class TestCriteriaMetDerivation:
+    @pytest.mark.asyncio
+    async def test_omitted_criteria_met_derived_from_per_criterion(self):
+        judge, _ = _judge(
+            '{"goal_met": false, "per_criterion": ['
+            + _THREE_OF_FOUR_MET
+            + '], "rationale": "no fraction given"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.75)
+        assert verdict.criteria_met_derived is True
+
+    @pytest.mark.asyncio
+    async def test_contradictory_zero_overridden_by_breakdown(self):
+        """The production-trace shape: criteria_met=0.0 with 4/4 met=true."""
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": 0.0, "per_criterion": ['
+            + _FOUR_MET
+            + '], "rationale": "contradictory"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(1.0)
+        assert verdict.criteria_met_derived is True
+
+    @pytest.mark.asyncio
+    async def test_consistent_criteria_met_kept_and_not_flagged(self):
+        """A value within half a criterion's weight of the mean is the model's."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.7, "per_criterion": ['
+            + _THREE_OF_FOUR_MET
+            + '], "rationale": "close enough"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.7)
+        assert verdict.criteria_met_derived is False
+
+    @pytest.mark.asyncio
+    async def test_percentage_rescale_consistent_with_breakdown_not_flagged(self):
+        """The 0-100 rescale path still applies before the consistency check."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 75, "per_criterion": ['
+            + _THREE_OF_FOUR_MET
+            + '], "rationale": "pct"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.75)
+        assert verdict.criteria_met_derived is False
+
+    @pytest.mark.asyncio
+    async def test_unparseable_criteria_met_derived_when_breakdown_present(self):
+        judge, _ = _judge(
+            '{"goal_met": true, "criteria_met": "most", "per_criterion": ['
+            + _FOUR_MET
+            + '], "rationale": "stringy"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(1.0)
+        assert verdict.criteria_met_derived is True
+
+    @pytest.mark.asyncio
+    async def test_deviation_of_exactly_half_a_criterion_is_kept(self):
+        """The tolerance is strict (>): at exactly 0.5/N the model value wins.
+
+        N=4 -> tolerance 0.125; 0.625 vs mean 0.75 sits on the knife edge
+        (all exact binary fractions, so no float fuzz in the comparison).
+        """
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.625, "per_criterion": ['
+            + _THREE_OF_FOUR_MET
+            + '], "rationale": "boundary"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.625)
+        assert verdict.criteria_met_derived is False
+
+    @pytest.mark.asyncio
+    async def test_deviation_beyond_half_a_criterion_is_repaired(self):
+        """Just past the 0.5/N boundary (0.6 vs mean 0.75) the breakdown wins."""
+        judge, _ = _judge(
+            '{"goal_met": false, "criteria_met": 0.6, "per_criterion": ['
+            + _THREE_OF_FOUR_MET
+            + '], "rationale": "past boundary"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.75)
+        assert verdict.criteria_met_derived is True
+
+    @pytest.mark.asyncio
+    async def test_string_met_flags_are_coerced_not_truthy(self):
+        """A ``"false"`` string met-flag counts as not met (bool("false") is
+        True — the derivation must mirror pydantic's coercion, not truthiness)."""
+        judge, _ = _judge(
+            '{"goal_met": false, "per_criterion": ['
+            '{"criterion": "a", "met": "true", "evidence": "e"},'
+            '{"criterion": "b", "met": "false", "evidence": ""}'
+            '], "rationale": "stringly typed"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == pytest.approx(0.5)
+        assert verdict.criteria_met_derived is True
+
+    @pytest.mark.asyncio
+    async def test_empty_per_criterion_keeps_omitted_default_unflagged(self):
+        """No breakdown -> nothing to derive from; the 0.0 default stands."""
+        judge, _ = _judge(
+            '{"goal_met": false, "per_criterion": [], "rationale": "bare"}'
+        )
+        verdict = await judge.evaluate(
+            task_input="t", final_answer="a", success_conditions=[]
+        )
+        assert verdict.criteria_met == 0.0
+        assert verdict.criteria_met_derived is False
 
 
 # ─────────────────────────────────────────────────────────────────────

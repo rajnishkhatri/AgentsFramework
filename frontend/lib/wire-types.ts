@@ -586,6 +586,48 @@ export interface components {
              */
             type: "STEP_STARTED";
         };
+        /**
+         * TaskUnderstandingEditRequest
+         * @description Edit payload for the soft-gate understanding card (Phase 4).
+         *
+         *     Wire shape consumed by the middleware edit endpoint — NEVER the
+         *     components Pydantic type (M1: middleware never imports components/).
+         *     Bounds mirror the components validation gates minus lexical grounding
+         *     (``user_edited`` skips it: the human is the authority). ``trace_id``
+         *     is echoed verbatim from the run (F-R7 — the browser never mints one).
+         */
+        TaskUnderstandingEditRequest: {
+            /** Restated Intent */
+            restated_intent: string;
+            /** Success Conditions */
+            success_conditions: string[];
+            /** Trace Id */
+            trace_id: string;
+        };
+        /**
+         * TaskUnderstood
+         * @description task_understanding plan Phase 3: plan-time intent restatement +
+         *     success checklist for the soft-gate card (wire: Custom
+         *     ``task_understanding``). ``source`` is the provenance tier
+         *     (deterministic | generated | user_edited).
+         */
+        TaskUnderstood: {
+            /** Confidence */
+            confidence: number;
+            /** Restated Intent */
+            restated_intent: string;
+            /** Source */
+            source: string;
+            /** Success Conditions */
+            success_conditions: string[];
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+            /** Trace Id */
+            trace_id: string;
+        };
         /** TextMessageContent */
         TextMessageContent: {
             /** Delta */

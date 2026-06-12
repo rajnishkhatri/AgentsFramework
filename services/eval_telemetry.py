@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Protocol, runtime_checkable
 
 from services.governance.black_box_publisher import redact_text
@@ -20,6 +21,28 @@ from services.governance.black_box_publisher import redact_text
 logger = logging.getLogger("services.eval_telemetry")
 
 _EVAL_OBSERVATION_NAME = "eval.goal_judge"
+
+# Phase 0 cap lift (task_understanding plan §5, Stage 6 audit §2): eval.*
+# observations are exempt from the publisher's 200-char detail cap — the
+# wave-1 corpus lost every judge input past 200 chars. The exemption is a
+# larger bound, not unbounded; PII redaction still applies (redact ≠ truncate).
+# Applies ONLY to this publish path; BlackBox relay events keep the 200 cap.
+_DEFAULT_EVAL_MAX_VALUE_LEN = 8192
+
+
+def eval_value_max_len() -> int:
+    """Per-value char bound for eval.* observation attributes."""
+    raw = os.environ.get("EVAL_TELEMETRY_MAX_VALUE_LEN", "")
+    try:
+        value = int(raw)
+    except ValueError:
+        return _DEFAULT_EVAL_MAX_VALUE_LEN
+    return value if value > 0 else _DEFAULT_EVAL_MAX_VALUE_LEN
+
+
+def clip_eval_text(text: str) -> str:
+    """Clip eval payload text to the configured bound (replaces ad-hoc slices)."""
+    return text[: eval_value_max_len()]
 
 
 @runtime_checkable
@@ -40,6 +63,20 @@ class EvalTelemetrySink(Protocol):
         """Emit one goal_judge eval record. MUST NOT raise (O1)."""
         ...
 
+    def publish_task_understanding(
+        self,
+        *,
+        trace_id: str,
+        user_id: str,
+        task_id: str,
+        ai_input: dict[str, Any],
+        ai_response: dict[str, Any],
+        step: int,
+        model: str | None,
+    ) -> None:
+        """Emit one task_understanding eval record. MUST NOT raise (O1)."""
+        ...
+
 
 _sink: EvalTelemetrySink | None = None
 
@@ -56,7 +93,7 @@ def get_sink() -> EvalTelemetrySink | None:
 
 def _redact_value(value: Any) -> Any:
     if isinstance(value, str):
-        return redact_text(value)
+        return redact_text(value, max_len=eval_value_max_len())
     if isinstance(value, list):
         return [_redact_value(item) for item in value]
     if isinstance(value, dict):
@@ -83,6 +120,44 @@ async def publish_goal_judge(
         return
     try:
         _sink.publish_goal_judge(
+            trace_id=trace_id,
+            user_id=user_id,
+            task_id=task_id,
+            ai_input=_redact_mapping(ai_input),
+            ai_response=_redact_mapping(ai_response),
+            step=step,
+            model=model,
+        )
+    except Exception:
+        logger.warning(
+            "eval telemetry publish failed (swallowed)",
+            exc_info=True,
+        )
+
+
+async def publish_task_understanding(
+    *,
+    trace_id: str,
+    user_id: str,
+    task_id: str,
+    ai_input: dict[str, Any],
+    ai_response: dict[str, Any],
+    step: int,
+    model: str | None,
+) -> None:
+    """Publish a task_understanding eval record when a sink is registered.
+
+    Mirrors ``publish_goal_judge`` (task_understanding plan §4.7): full
+    restated_intent + conditions + provenance reach Langfuse uncapped (the
+    Phase 0 exemption) while PII redaction still applies.
+    """
+    if _sink is None:
+        return
+    publish = getattr(_sink, "publish_task_understanding", None)
+    if publish is None:
+        return
+    try:
+        publish(
             trace_id=trace_id,
             user_id=user_id,
             task_id=task_id,

@@ -208,7 +208,14 @@ class TestPhaseWiringIntegration:
 
         pl = PhaseLogger(storage_dir=cache_dir / "phase_logs")
         decisions = pl.export_workflow_log(workflow_id)
-        routing_rows = [d for d in decisions if d.get("phase") == WorkflowPhase.ROUTING.value]
+        # ROUTING now logs two decisions (success-conditions source + model
+        # selection); join on the model-selection row by description.
+        routing_rows = [
+            d
+            for d in decisions
+            if d.get("phase") == WorkflowPhase.ROUTING.value
+            and d.get("description", "").startswith("Selected ")
+        ]
         assert routing_rows
         decision_id = routing_rows[0]["decision_id"]
         assert decision_id

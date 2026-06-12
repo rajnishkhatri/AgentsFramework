@@ -31,7 +31,11 @@ from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
 from components.plan_builder import validate_plan_mece
-from components.schemas import ErrorRecord
+from components.schemas import ErrorRecord, TaskUnderstanding
+from components.task_understanding import (
+    TaskUnderstandingGenerator,
+    TaskUnderstandingValidationError,
+)
 from components.router import select_model
 from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
@@ -534,6 +538,16 @@ def build_graph(
         defaults_downgrade=agent_config.goal_judge_downgrade_enabled,
     )
 
+    # task_understanding plan §4.5: plan-time intent restatement + checklist,
+    # same fast-tier profile as the judge (H2). Cheap to construct; no LLM
+    # call until generate(), and only when the success_conditions_source flag
+    # is "shadow" or "generated".
+    tu_generator = TaskUnderstandingGenerator(
+        llm_service=llm_service,
+        prompt_service=prompt_service,
+        profile=judge_profile,
+    )
+
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
     # ── Story 1.2 + 1.4: guard_input_node with rejection branching + AgentFacts ──
@@ -758,6 +772,114 @@ def build_graph(
                 task_input=state.get("task_input", ""),
             )
 
+            # task_understanding plan §4.5: generate the TaskUnderstanding
+            # artifact once per run (memoized on the state key — route_node
+            # re-enters every evaluate→continue→route iteration). Thin
+            # wrapper (AP-5): one try/except; validation lives in components.
+            understanding: dict[str, Any] = dict(state.get("task_understanding") or {})
+            tu_decision_id = ""
+            if not understanding:
+                tu_mode = gj_reader.get().success_conditions_source
+                generated_artifact: TaskUnderstanding | None = None
+                tu_failure = ""
+                if tu_mode in ("shadow", "generated"):
+                    try:
+                        generated_artifact = await tu_generator.generate(
+                            task_input=state.get("task_input", ""),
+                        )
+                    except TaskUnderstandingValidationError as exc:
+                        tu_failure = f"{type(exc).__name__}: {exc}"
+                        # §4.7 Validation pillar: a gate rejection is a
+                        # guardrail outcome — record the failing gate names.
+                        black_box.record(TraceEvent(
+                            event_id=str(uuid.uuid4()),
+                            workflow_id=workflow_id,
+                            event_type=EventType.GUARDRAIL_CHECKED,
+                            timestamp=datetime.now(UTC),
+                            step=state.get("step_count", 0),
+                            details={
+                                "guardrail": "task_understanding_gates",
+                                "passed": False,
+                                "issues": exc.issues,
+                            },
+                        ))
+                    except Exception as exc:
+                        tu_failure = f"{type(exc).__name__}: {exc}"
+                consumed_generated = (
+                    tu_mode == "generated" and generated_artifact is not None
+                )
+                if consumed_generated and generated_artifact is not None:
+                    understanding = generated_artifact.model_dump(mode="json")
+                else:
+                    understanding = TaskUnderstanding(
+                        restated_intent=state.get("task_input", "").strip()[:300],
+                        success_conditions=list(plan_artifact.success_conditions),
+                        source="deterministic",
+                    ).model_dump(mode="json")
+
+                # §4.7 Reasoning pillar: why THIS run uses generated vs
+                # deterministic conditions. decision_id is the cross-pillar
+                # join key (the MODEL_SELECTED idiom below).
+                if tu_mode == "deterministic":
+                    tu_rationale = "flag deterministic: generation not attempted"
+                elif generated_artifact is None:
+                    tu_rationale = f"fallback to deterministic: {tu_failure}"
+                elif consumed_generated:
+                    tu_rationale = "generated ok"
+                else:
+                    tu_rationale = "shadow: generated ok, judge consumes deterministic"
+                tu_decision = phase_logger.log_decision(workflow_id, Decision(
+                    phase=WorkflowPhase.ROUTING,
+                    description="success-conditions source",
+                    alternatives=["generated", "deterministic-fallback"],
+                    rationale=tu_rationale,
+                    confidence=(
+                        generated_artifact.confidence
+                        if generated_artifact is not None
+                        else 1.0
+                    ),
+                ))
+                tu_decision_id = tu_decision.decision_id
+
+                if tu_mode in ("shadow", "generated"):
+                    from services import eval_capture, eval_telemetry
+
+                    tu_ai_input = {
+                        "task_input": eval_telemetry.clip_eval_text(
+                            state.get("task_input", "")
+                        ),
+                    }
+                    tu_ai_response = {
+                        **(
+                            generated_artifact.model_dump(mode="json")
+                            if generated_artifact is not None
+                            else {}
+                        ),
+                        "consumed": consumed_generated,
+                        "fallback_reason": tu_failure,
+                        "mode": tu_mode,
+                    }
+                    await eval_capture.record(
+                        target="task_understanding",
+                        ai_input=tu_ai_input,
+                        ai_response=tu_ai_response,
+                        config=config,
+                        step=state.get("step_count", 0),
+                        model=tu_generator.model_name,
+                    )
+                    _tu_trace = workflow_id or configurable.get("task_id", "")
+                    await eval_telemetry.publish_task_understanding(
+                        trace_id=_tu_trace,
+                        user_id=configurable.get("user_id", "anonymous"),
+                        task_id=configurable.get("task_id", _tu_trace),
+                        ai_input=tu_ai_input,
+                        ai_response=tu_ai_response,
+                        step=state.get("step_count", 0),
+                        model=tu_generator.model_name,
+                    )
+
+            plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
+
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
@@ -768,7 +890,16 @@ def build_graph(
                     "planning_depth": planning_depth,
                     "plan_steps": len(plan_artifact.ordered_steps),
                     "constraints": len(plan_artifact.constraints),
-                    "success_conditions": len(plan_artifact.success_conditions),
+                    "success_conditions": len(
+                        understanding.get("success_conditions")
+                        or plan_artifact.success_conditions
+                    ),
+                    # §4.7 Recording pillar: join keys, not content. The
+                    # artifact text lives in the plan payload and the
+                    # eval.task_understanding observation.
+                    "conditions_source": understanding.get("source", "deterministic"),
+                    "plan_ref": plan_ref,
+                    "decision_id": tu_decision_id,
                 },
             ))
 
@@ -845,15 +976,16 @@ def build_graph(
                 },
             ))
 
-            plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
             plan_payload = {
                 "planning_depth": planning_depth,
                 "planning_depth_reason": planning_depth_reason,
                 "artifact": plan_artifact.model_dump(mode="json"),
                 "validation": plan_validation.model_dump(mode="json"),
+                "task_understanding": understanding,
             }
 
             return {
+                "task_understanding": understanding,
                 "selected_model": profile.name,
                 "routing_reason": reason,
                 "planning_depth": planning_depth,
@@ -1306,6 +1438,15 @@ def build_graph(
                 success_conditions = plan_artifact.get("success_conditions", [])
                 plan_steps = plan_artifact.get("ordered_steps", [])
 
+                # task_understanding plan §4.5: the artifact owns the success
+                # definition when present (generated or user_edited); the plan
+                # artifact's deterministic floor is the fallback.
+                understanding = state.get("task_understanding") or {}
+                if understanding.get("success_conditions"):
+                    success_conditions = list(understanding["success_conditions"])
+                conditions_source = understanding.get("source", "deterministic")
+                restated_intent = understanding.get("restated_intent", "")
+
                 termination_reason = outcome
                 if updated_step_count >= agent_config.max_steps:
                     termination_reason = "max_steps"
@@ -1396,9 +1537,13 @@ def build_graph(
                             state.get("total_cost_usd", 0.0) / _gj_max_cost, 3
                         )
                         gj_ai_input = {
-                            "task_input": state.get("task_input", "")[:500],
+                            "task_input": eval_telemetry.clip_eval_text(
+                                state.get("task_input", "")
+                            ),
                             "success_conditions": success_conditions,
-                            "final_answer": (content or "")[:500],
+                            "final_answer": eval_telemetry.clip_eval_text(
+                                content or ""
+                            ),
                             "evidence_digest": _summarize_evidence(gj_tool_results),
                             "tool_calls_summary": summarize_tool_calls(gj_tool_results),
                             "plan_steps": len(plan_steps),
@@ -1406,6 +1551,11 @@ def build_graph(
                             "routing_reason": state.get("routing_reason", ""),
                             "model_tier": _gj_model_tier,
                             "cost_fraction": _gj_cost_fraction,
+                            # task_understanding plan §4.7: judge verdicts are
+                            # stratifiable by condition provenance from the
+                            # Langfuse observation alone.
+                            "conditions_source": conditions_source,
+                            "restated_intent": restated_intent,
                         }
                         gj_ai_response = {
                             **verdict.model_dump(),

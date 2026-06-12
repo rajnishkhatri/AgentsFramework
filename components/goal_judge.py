@@ -119,14 +119,33 @@ class GoalJudge:
             raise ValueError("goal judge verdict is not a JSON object")
         # ``criteria_met`` may arrive as a 0-100 percentage from some models;
         # clamp into the 0..1 contract.
-        criteria = data.get("criteria_met", 0.0)
+        supplied: float | None
         try:
-            criteria = float(criteria)
-        except (TypeError, ValueError):
-            criteria = 0.0
-        if criteria > 1.0:
-            criteria = criteria / 100.0
-        data["criteria_met"] = max(0.0, min(1.0, criteria))
+            supplied = float(data["criteria_met"])
+        except (KeyError, TypeError, ValueError):
+            supplied = None
+        if supplied is not None:
+            if supplied > 1.0:
+                supplied = supplied / 100.0
+            supplied = max(0.0, min(1.0, supplied))
+        # Models sometimes omit or zero ``criteria_met`` while still filling
+        # ``per_criterion`` (production trace: 0.0 alongside 4/4 met=true),
+        # shipping an internally contradictory verdict into the Stage 5/6
+        # calibration slices. The breakdown is authoritative: its met-flag
+        # mean replaces a missing/unparseable value, or one that implies a
+        # different met-count (off by more than half a criterion's weight,
+        # 0.5/N). ``criteria_met_derived`` marks the repair so calibration
+        # can stratify repaired verdicts from model-supplied ones.
+        met_flags = _met_flags(data.get("per_criterion"))
+        criteria = supplied if supplied is not None else 0.0
+        derived = False
+        if met_flags:
+            mean_met = sum(met_flags) / len(met_flags)
+            if supplied is None or abs(supplied - mean_met) > 0.5 / len(met_flags):
+                criteria = mean_met
+                derived = True
+        data["criteria_met"] = criteria
+        data["criteria_met_derived"] = derived
         # ``partial_fraction`` is telemetry-only completion metadata; clamp it
         # into the 0..1 contract mirroring ``criteria_met`` (a 0-100 percentage
         # from some models is rescaled before clamping).
@@ -158,6 +177,28 @@ def _extract_json(content: str) -> str:
     if start != -1 and end != -1 and end > start:
         return text[start : end + 1]
     return text
+
+
+def _met_flags(per_criterion: Any) -> list[bool]:
+    """Extract ``met`` flags from a raw ``per_criterion`` payload.
+
+    Returns ``[]`` when the payload is absent or malformed — shape problems
+    are ``GoalVerdict.model_validate``'s to report, not the repair path's.
+    String flags get explicit falsy-spelling handling (mirroring pydantic's
+    bool coercion) so a ``"false"`` from the model does not count as met.
+    """
+    if not isinstance(per_criterion, list):
+        return []
+    flags: list[bool] = []
+    for entry in per_criterion:
+        if not isinstance(entry, dict):
+            return []
+        met = entry.get("met")
+        if isinstance(met, str):
+            flags.append(met.strip().lower() not in {"false", "f", "no", "n", "off", "0"})
+        else:
+            flags.append(bool(met))
+    return flags
 
 
 def _summarize_evidence(

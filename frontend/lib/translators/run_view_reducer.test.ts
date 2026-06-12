@@ -273,3 +273,45 @@ describe("run_view_reducer — reasoning recap (F10 Tier-2)", () => {
     expect(view.reasoning).toBe("recap");
   });
 });
+
+describe("run_view_reducer — task understanding card (Phase 3)", () => {
+  const artifact = {
+    type: "task_understanding" as const,
+    trace_id: TRACE,
+    restated_intent: "Create the file and verify it.",
+    success_conditions: ["file exists", "contents verified"],
+    confidence: 0.8,
+    source: "generated" as const,
+  };
+
+  it("emptyRunView carries no understanding", () => {
+    expect(emptyRunView().understanding).toBeNull();
+  });
+
+  it("task_understanding populates view.understanding without touching segments", () => {
+    const before = reduceAll([started(), delta("streaming answer")]);
+    const after = reduceRunView(before, artifact);
+    expect(after.understanding).toMatchObject({
+      restated_intent: "Create the file and verify it.",
+      success_conditions: ["file exists", "contents verified"],
+      source: "generated",
+    });
+    expect(after.segments).toEqual(before.segments);
+  });
+
+  it("a later artifact (user edit) replaces the card content", () => {
+    const v = reduceAll([
+      started(),
+      artifact,
+      { ...artifact, success_conditions: ["file exists"], source: "user_edited" as const },
+    ]);
+    expect(v.understanding?.source).toBe("user_edited");
+    expect(v.understanding?.success_conditions).toEqual(["file exists"]);
+  });
+
+  it("understanding survives the terminal freeze", () => {
+    const v = reduceAll([started(), artifact, completed()]);
+    expect(v.status).toBe("complete");
+    expect(v.understanding?.restated_intent).toBe("Create the file and verify it.");
+  });
+});

@@ -188,6 +188,167 @@ class TestEvalTelemetryPublish:
         assert attrs["cost_fraction"] == 0.42
 
     @pytest.mark.asyncio
+    async def test_long_values_survive_publish_intact(self):
+        """Phase 0 cap lift (task_understanding plan §5, audit §2).
+
+        The wave-1 corpus lost every judge input past 200 chars because the
+        eval publish path reused ``redact_text``'s default cap. Generated
+        success-condition lists and full final answers must reach the sink
+        intact — the exemption is the whole point of Phase 0.
+        """
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        long_condition = "The agent enumerates every file in /workspace " + "x" * 600
+        long_answer = "answer " * 300  # ~2100 chars
+
+        await publish_goal_judge(
+            trace_id="trace-long",
+            user_id="u",
+            task_id="trace-long",
+            ai_input={
+                "task_input": "t" * 1500,
+                "success_conditions": [long_condition, "short one"],
+                "final_answer": long_answer,
+            },
+            ai_response={"goal_met": True, "partial_fraction": 1.0},
+            step=1,
+            model="gpt-4o-mini",
+        )
+
+        attrs = exporter.calls[0]["attributes"]
+        assert attrs["success_conditions"][0] == long_condition
+        assert attrs["final_answer"] == long_answer
+        assert attrs["task_input"] == "t" * 1500
+
+    @pytest.mark.asyncio
+    async def test_pii_redacted_on_long_values_without_truncation(self):
+        """Redact ≠ truncate: the redactor still runs on exempted long values."""
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        tail = "contact me at jane.doe@example.com for the key sk-1234567890abcdef"
+        long_with_pii = "p" * 400 + " " + tail
+
+        await publish_goal_judge(
+            trace_id="trace-pii",
+            user_id="u",
+            task_id="trace-pii",
+            ai_input={"task_input": long_with_pii, "success_conditions": ["c"]},
+            ai_response={"goal_met": True},
+            step=1,
+            model=None,
+        )
+
+        published = exporter.calls[0]["attributes"]["task_input"]
+        assert len(published) > 200  # not capped at the publisher default
+        assert "jane.doe@example.com" not in published
+        assert "sk-1234567890abcdef" not in published
+
+    @pytest.mark.asyncio
+    async def test_eval_value_cap_is_config_driven(self, monkeypatch):
+        """The exemption is a larger bound, not unbounded — and env-tunable
+        (numeric knob, AGENTS.md config convention)."""
+        from services import eval_telemetry
+
+        monkeypatch.setenv("EVAL_TELEMETRY_MAX_VALUE_LEN", "50")
+
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        await publish_goal_judge(
+            trace_id="trace-knob",
+            user_id="u",
+            task_id="trace-knob",
+            ai_input={"task_input": "k" * 500, "success_conditions": ["c"]},
+            ai_response={"goal_met": True},
+            step=1,
+            model=None,
+        )
+
+        assert exporter.calls[0]["attributes"]["task_input"] == "k" * 50
+        # Default bound (env unset) is generous but finite.
+        monkeypatch.delenv("EVAL_TELEMETRY_MAX_VALUE_LEN")
+        assert eval_telemetry.eval_value_max_len() >= 4000
+
+    def test_clip_eval_text_uses_configured_bound(self, monkeypatch):
+        """``clip_eval_text`` replaces the ad-hoc ``[:500]`` snippets in
+        ``react_loop`` gj_ai_input construction (audit §2 lift)."""
+        from services.eval_telemetry import clip_eval_text, eval_value_max_len
+
+        text = "z" * (eval_value_max_len() + 100)
+        assert clip_eval_text(text) == "z" * eval_value_max_len()
+        assert clip_eval_text("short") == "short"
+
+        monkeypatch.setenv("EVAL_TELEMETRY_MAX_VALUE_LEN", "10")
+        assert clip_eval_text("0123456789abcdef") == "0123456789"
+
+    @pytest.mark.asyncio
+    async def test_task_understanding_sink_failure_does_not_raise(self):
+        """O1 (exception-swallowing FIRST): a broken sink must never abort
+        the run — telemetry is best-effort, never load-bearing."""
+        from services.eval_telemetry import publish_task_understanding
+
+        broken = MagicMock()
+        broken.publish_task_understanding.side_effect = RuntimeError("langfuse down")
+        set_sink(broken)
+
+        await publish_task_understanding(
+            trace_id="t",
+            user_id="u",
+            task_id="t",
+            ai_input={"task_input": "x"},
+            ai_response={"restated_intent": "x", "success_conditions": ["a"]},
+            step=0,
+            model=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_task_understanding_no_sink_is_noop(self):
+        from services.eval_telemetry import publish_task_understanding
+
+        await publish_task_understanding(
+            trace_id="t",
+            user_id="u",
+            task_id="t",
+            ai_input={},
+            ai_response={},
+            step=0,
+            model=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_task_understanding_published_redacted_and_uncapped(self):
+        from services.eval_telemetry import publish_task_understanding
+
+        exporter = _RecordingExporter()
+        set_sink(LangfuseEvalTelemetrySink(exporter))
+
+        long_condition = "The report must list every file in /workspace " + "y" * 400
+        await publish_task_understanding(
+            trace_id="trace-tu",
+            user_id="u",
+            task_id="trace-tu",
+            ai_input={"task_input": "list files, email jane.doe@example.com"},
+            ai_response={
+                "restated_intent": "List the files and email the result.",
+                "success_conditions": [long_condition, "second"],
+                "confidence": 0.8,
+                "source": "generated",
+                "fallback_reason": "",
+            },
+            step=0,
+            model="gpt-4o-mini",
+        )
+
+        assert len(exporter.calls) == 1
+        call = exporter.calls[0]
+        assert call["name"] == "eval.task_understanding"
+        attrs = call["attributes"]
+        assert "jane.doe@example.com" not in str(attrs)
+        assert attrs["__output"]["success_conditions"][0] == long_condition
+
+    @pytest.mark.asyncio
     async def test_sink_failure_does_not_raise(self):
         broken = MagicMock()
         broken.publish_goal_judge.side_effect = RuntimeError("langfuse down")

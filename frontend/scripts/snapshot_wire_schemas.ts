@@ -42,6 +42,7 @@ const TRACKED_MODELS = [
   "RunCreateRequest",
   "RunStateView",
   "HealthResponse",
+  "TaskUnderstandingEditRequest",
   // domain_events.py
   "LLMTokenEmitted",
   "LLMMessageStarted",

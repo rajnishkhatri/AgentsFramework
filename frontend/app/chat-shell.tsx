@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 import { TaskList } from "@/components/chat/TaskList";
+import { TaskUnderstandingCard } from "@/components/chat/TaskUnderstandingCard";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
@@ -141,6 +142,12 @@ function AssistantMessage(props: {
       data-testid="assistant-message"
       className="grid gap-2"
     >
+      {assistant.understanding ? (
+        // Phase 3 soft gate: the card shows the agent's restated intent +
+        // success checklist while tokens keep streaming (FD5 — it must
+        // never block the answer).
+        <TaskUnderstandingCard understanding={assistant.understanding} />
+      ) : null}
       {assistant.todos ? <TaskList view={assistant.todos} /> : null}
       {assistant.segments.map((seg, i) => {
         if (seg.kind !== "text") {

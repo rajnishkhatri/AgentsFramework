@@ -453,7 +453,12 @@ gates. **It does not start until the Stage 5 Dataset gate (§3.2) is green** —
 Stage 6 then reports **P/R/F1 on `goal_met=False`**, κ vs human labels, ECE (diagnostic-only), and the
 CoT-gaming verdict-flip rate, and gates deployment on
 [§2.8](../research/fix2_goaljudge_rubric_feasibility_pyramid.md): precision ≥ 0.90, recall ≥ 0.70,
-false-downgrade ≤ 2 %, flip ≤ 5 %, κ ≥ 0.6 — **flag default-off until all clear.** A separate Stage 6 plan will own that work; with Tier 3 plumbing LANDED, **Stage 6 calibration is now unblocked at the engineering level** (only the live labeling run separates the two stages).
+false-downgrade ≤ 2 %, flip ≤ 5 %, κ ≥ 0.6 — **flag default-off until all clear.** That work is owned by
+the **[Stage 6 calibration plan](goaljudge_stage6_calibration.plan.md)** (authored 2026-06-12): Phases 0–5
+are developable against the **v0.9 provisional manifest** today
+([v0.9 contract](../IAA/goalJudge/goldset/goaljudge_stage5_goldset_v0_9_contract.md)); the §2.8 enable
+*decision* run is hard-gated on the v1 freeze (Phase 4 wave 2 —
+[wave-2 plan](goaljudge_stage5_phase6c_v09_and_wave2.plan.md)).
 
 ---
 

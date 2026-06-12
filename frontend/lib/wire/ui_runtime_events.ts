@@ -112,6 +112,24 @@ export const ReasoningSummaryEventSchema = z
   .strict();
 export type ReasoningSummaryEvent = z.infer<typeof ReasoningSummaryEventSchema>;
 
+// ── Task understanding card (Custom 'task_understanding', Phase 3) ────
+//
+// Plan-time intent restatement + success checklist generated at step 0
+// (task_understanding plan §4.6). Soft gate: the card renders while the
+// run streams; `source` is the provenance tier shown on the card.
+
+export const TaskUnderstandingEventSchema = z
+  .object({
+    type: z.literal("task_understanding"),
+    trace_id: traceId,
+    restated_intent: z.string().min(1),
+    success_conditions: z.array(z.string().min(1)).min(1),
+    confidence: z.number().min(0).max(1),
+    source: z.enum(["deterministic", "generated", "user_edited"]),
+  })
+  .strict();
+export type TaskUnderstandingEvent = z.infer<typeof TaskUnderstandingEventSchema>;
+
 // ── Tool renderer request (F5 tool cards via useFrontendTool) ─────────
 
 export const ToolCallRendererRequestSchema = z
@@ -168,6 +186,7 @@ export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
   StepProgressEventSchema,
   StateRenderEventSchema,
   ReasoningSummaryEventSchema,
+  TaskUnderstandingEventSchema,
   ToolRenderEventSchema,
 ]);
 export type UIRuntimeEvent = z.infer<typeof UIRuntimeEventSchema>;

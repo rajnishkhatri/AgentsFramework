@@ -16,6 +16,7 @@
 
 import type { AGUIEvent } from "../wire/ag_ui_events";
 import type { UIRuntimeEvent } from "../wire/ui_runtime_events";
+import { TaskUnderstandingEventSchema } from "../wire/ui_runtime_events";
 
 function traceOf(evt: AGUIEvent): string {
   const t = evt.raw_event?.trace_id;
@@ -151,6 +152,18 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
             text: v.text,
           },
         ];
+      }
+      if (evt.name === "task_understanding") {
+        // Phase 3 soft-gate card: validate with the wire schema so a
+        // malformed artifact never reaches the React layer.
+        const parsed = TaskUnderstandingEventSchema.safeParse({
+          type: "task_understanding",
+          trace_id,
+          ...(typeof evt.value === "object" && evt.value !== null
+            ? evt.value
+            : {}),
+        });
+        return parsed.success ? [parsed.data] : [];
       }
       if (evt.name === "step_meter") {
         const v = evt.value as { step?: unknown; step_name?: unknown };

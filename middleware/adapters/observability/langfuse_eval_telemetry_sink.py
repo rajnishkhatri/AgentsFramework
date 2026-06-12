@@ -55,6 +55,10 @@ class LangfuseEvalTelemetrySink:
                     "routing_reason": ai_input.get("routing_reason", ""),
                     "model_tier": ai_input.get("model_tier", ""),
                     "cost_fraction": ai_input.get("cost_fraction", 0.0),
+                    # task_understanding plan §4.7 — stratify verdicts by
+                    # condition provenance without trace re-joins.
+                    "conditions_source": ai_input.get("conditions_source", ""),
+                    "restated_intent": ai_input.get("restated_intent", ""),
                     "__output": serialize_ai_response(ai_response),
                     "__bb_observation_type": "evaluator",
                 },
@@ -62,5 +66,41 @@ class LangfuseEvalTelemetrySink:
         except Exception:
             logger.warning(
                 "LangfuseEvalTelemetrySink.publish_goal_judge failed (swallowed)",
+                exc_info=True,
+            )
+
+    def publish_task_understanding(
+        self,
+        *,
+        trace_id: str,
+        user_id: str,
+        task_id: str,
+        ai_input: dict[str, Any],
+        ai_response: dict[str, Any],
+        step: int,
+        model: str | None,
+    ) -> None:
+        """task_understanding plan §4.7 — eval.task_understanding observation."""
+        try:
+            self._exporter.export_event(
+                name=observation_name_for_target("task_understanding"),
+                trace_id=trace_id,
+                attributes={
+                    "target": "task_understanding",
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "step": step,
+                    "model": model or "",
+                    "subject": user_id,
+                    "task_input": ai_input.get("task_input", ""),
+                    "conditions_source": ai_response.get("source", ""),
+                    "fallback_reason": ai_response.get("fallback_reason", ""),
+                    "__output": serialize_ai_response(ai_response),
+                    "__bb_observation_type": "evaluator",
+                },
+            )
+        except Exception:
+            logger.warning(
+                "LangfuseEvalTelemetrySink.publish_task_understanding failed (swallowed)",
                 exc_info=True,
             )

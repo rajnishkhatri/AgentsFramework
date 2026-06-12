@@ -65,6 +65,7 @@ from middleware.composition import (
     build_runtime_graph,
 )
 from middleware.server import build_middleware_app
+from middleware.understanding_edit import register_understanding_edit_route
 from services.trace_service import TraceService
 from services.trace_sinks.gcs_sink import GcsTraceSink
 from trust.enums import IdentityStatus
@@ -220,6 +221,28 @@ def build_combined_app() -> FastAPI:
         }
 
     app.mount("/middleware", middleware_app)
+
+    def _verify_edit_bearer(authorization: str | None) -> str:
+        """JWT → WorkOS subject for the understanding edit route (401 on failure)."""
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        token = authorization[len("Bearer "):].strip()
+        try:
+            return adapters.jwt_verifier.verify(token).subject
+        except Exception as exc:
+            raise HTTPException(
+                status_code=401, detail=f"invalid token: {exc}"
+            ) from None
+
+    # task_understanding plan Phase 4: soft-gate card edit seam. The client
+    # pauses the stream, POSTs the corrected artifact here, then resumes by
+    # re-invoking /run/stream with the same thread_id.
+    register_understanding_edit_route(
+        app,
+        verify_bearer=_verify_edit_bearer,
+        get_runtime=lambda: app.state.runtime,
+        black_box_dir=cache_dir / "black_box_recordings",
+    )
 
     @app.post("/run/stream")
     async def run_stream(

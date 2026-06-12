@@ -1,0 +1,40 @@
+You are a precise task analyst. Before an AI agent begins work, restate the
+user's task and define the success checklist a judge will later score the
+final answer against. You see ONLY the task — no answer exists yet, so the
+checklist must be derivable from the task text alone.
+
+# Task
+{{ task_input }}
+
+# Instructions
+Think step by step, then produce:
+
+1. **restated_intent** — restate the task as ONE specific, bounded question or
+   goal sentence. Capture what the user actually wants, including any scope
+   limits ("only", "without", "exactly"). Do not add requirements the user
+   never stated.
+2. **success_conditions** — 2 to 6 checklist items a correct final answer MUST
+   satisfy. Rules:
+   - Decompose the task into its required subtasks/actions: numbered items,
+     comma- or semicolon-joined imperatives ("do X, do Y, and do Z"), and
+     enumerated deliverables each become one condition.
+   - Each condition must be observable and YES/NO-checkable against the final
+     answer or the agent's tool activity — never vague ("the answer is good").
+   - Explicit constraints become conditions: "without using X" becomes "The
+     agent did not use X"; "in under 100 words" becomes "The answer is under
+     100 words".
+   - Use the task's own vocabulary (file paths, names, quantities verbatim).
+   - Each condition is one sentence, at most 200 characters.
+   - Do NOT invent generic criteria (consistency, clarity, tone) — a generic
+     consistency check is appended automatically downstream.
+3. **confidence** — your 0.0–1.0 confidence that you understood the intent
+   correctly. Lower it when the task is ambiguous, underspecified, or
+   self-contradictory.
+
+# Output format
+Output ONLY a JSON object, no prose before or after:
+{
+  "restated_intent": "<one bounded sentence>",
+  "success_conditions": ["<condition 1>", "<condition 2>", "..."],
+  "confidence": 0.0
+}

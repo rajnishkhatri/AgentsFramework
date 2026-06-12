@@ -67,6 +67,7 @@ from agent_ui_adapter.transport.sse import (
 from agent_ui_adapter.wire.domain_events import RunFinishedDomain
 from middleware import telemetry_bridge
 from middleware.run_stream_context import build_run_stream_context
+from middleware.understanding_edit import register_understanding_edit_route
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
@@ -427,6 +428,20 @@ def build_dev_app() -> FastAPI:
             "runtime": "langgraph",
             "goal_judge": goal_judge_reader.health_posture(),
         }
+
+    # ── POST /run/understanding/{thread_id} (Phase 4 edit seam) ─────
+
+    def _verify_edit_bearer(authorization: str | None) -> str:
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        return "dev-user"
+
+    register_understanding_edit_route(
+        app,
+        verify_bearer=_verify_edit_bearer,
+        get_runtime=lambda: app.state.runtime,
+        black_box_dir=cache_dir / "black_box_recordings",
+    )
 
     # ── POST /run/stream ───────────────────────────────────────────
 

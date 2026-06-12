@@ -81,6 +81,111 @@ def test_extract_branches_does_not_split_file_path_period() -> None:
     assert "/workspace/f3.txt" in artifact.ordered_steps[0].goal
 
 
+# ---------------------------------------------------------------------------
+# Deterministic success-conditions floor (Option A — task_understanding plan
+# Phase 1, §4.3). Replaces the constant generic pair the Stage 6 audit §3
+# found on 100/100 production spans. Exact-string asserts are allowed here:
+# this is a pure regex pipeline, not an LLM (TAP-3 N/A).
+# ---------------------------------------------------------------------------
+
+GENERIC_PAIR = (
+    "All planned branches are addressed in the final synthesis.",
+    "Final answer is concise, actionable, and internally consistent.",
+)
+
+
+def test_floor_empty_task_input_yields_nonempty_generic_fallback() -> None:
+    """Rejection case first: even a blank task must produce ≥1 condition —
+    ``validate_plan_mece`` fails on empty conditions and would trigger the
+    capable-tier escalation side effect."""
+    artifact = build_plan_artifact("L1", task_input="")
+    assert artifact.success_conditions
+    assert all(c.strip() for c in artifact.success_conditions)
+
+
+def test_floor_duplicate_branches_do_not_yield_duplicate_conditions() -> None:
+    task = "Check the logs.\nCheck the logs.\nCheck the logs."
+    artifact = build_plan_artifact("L2", task_input=task)
+    normalized = [c.strip().lower() for c in artifact.success_conditions]
+    assert len(normalized) == len(set(normalized))
+
+
+def test_floor_output_always_passes_mece_validation() -> None:
+    for task in ["", "One task.", "Do A. Do B. Do C. Do D. Do E. Do F. Do G. Do H."]:
+        artifact = build_plan_artifact("L0", task_input=task)
+        assert validate_plan_mece(artifact).is_valid, task
+
+
+def test_floor_multiclause_task_yields_per_branch_conditions() -> None:
+    task = (
+        "Create a file /workspace/f3.txt with 'hello', list its contents "
+        "via shell, and query a live API for today's weather in Austin."
+    )
+    artifact = build_plan_artifact("L1", task_input=task)
+    conditions = artifact.success_conditions
+    joined = " ".join(conditions)
+    assert "/workspace/f3.txt" in joined
+    assert "list" in joined.lower()
+    assert "weather" in joined.lower()
+    # One condition per branch + the generic tail.
+    assert len(conditions) == 4
+
+
+def test_floor_uses_all_branches_not_depth_truncated_slice() -> None:
+    """An L0 plan keeps only 1 step, but the judge must still see ALL
+    subtasks as conditions — the depth cap bounds execution granularity,
+    not the success definition."""
+    task = "Compare options. Evaluate risks. Propose migration."
+    artifact = build_plan_artifact("L0", task_input=task)
+    assert len(artifact.ordered_steps) == 1
+    joined = " ".join(artifact.success_conditions).lower()
+    assert "compare options" in joined
+    assert "evaluate risks" in joined
+    assert "propose migration" in joined
+
+
+def test_floor_generic_tail_always_last() -> None:
+    for task in ["", "Single ask.", "Do A. Do B."]:
+        artifact = build_plan_artifact("L1", task_input=task)
+        tail = artifact.success_conditions[-1]
+        assert "internally consistent" in tail
+
+
+def test_floor_generic_pair_never_returns() -> None:
+    """Exit check for Phase 1: the audit §3 boilerplate pair must be gone."""
+    for task in ["", "Compare options. Evaluate risks.", "hello"]:
+        artifact = build_plan_artifact("L2", task_input=task)
+        for generic in GENERIC_PAIR:
+            assert generic not in artifact.success_conditions
+
+
+def test_floor_branch_count_capped_at_six_plus_tail() -> None:
+    task = ". ".join(f"Do subtask number {w}" for w in
+                     ["one", "two", "three", "four", "five", "six", "seven", "eight"]) + "."
+    artifact = build_plan_artifact("L2", task_input=task)
+    assert len(artifact.success_conditions) <= 7
+
+
+def test_floor_property_bounds_dedupe_tail() -> None:
+    """Property-based (Pattern 1): arbitrary non-empty task strings give
+    1 ≤ n ≤ 7 unique conditions with the generic tail present."""
+    from hypothesis import given, settings
+    from hypothesis import strategies as st
+
+    @settings(max_examples=200, deadline=None)
+    @given(st.text(min_size=1, max_size=400))
+    def check(task: str) -> None:
+        artifact = build_plan_artifact("L1", task_input=task)
+        conditions = artifact.success_conditions
+        assert 1 <= len(conditions) <= 7
+        normalized = [c.strip().lower() for c in conditions]
+        assert len(normalized) == len(set(normalized))
+        assert "internally consistent" in conditions[-1]
+        assert validate_plan_mece(artifact).is_valid
+
+    check()
+
+
 def test_validate_plan_mece_rejects_overlapping_goals() -> None:
     artifact = PlanArtifact(
         ordered_steps=[

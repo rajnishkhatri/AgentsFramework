@@ -155,15 +155,49 @@ def build_plan_artifact(
     constraints = ["Preserve user intent and requested constraints."]
     if "without" in (task_input or "").lower():
         constraints.append("Respect explicit exclusion constraints from the request.")
-    success_conditions = [
-        "All planned branches are addressed in the final synthesis.",
-        "Final answer is concise, actionable, and internally consistent.",
-    ]
     return PlanArtifact(
         ordered_steps=steps,
         constraints=constraints,
-        success_conditions=success_conditions,
+        success_conditions=derive_success_conditions(branches),
     )
+
+
+# Generic tail condition appended to every floor output. Matches the judge
+# prompt's "supplemental constraints" framing and guarantees
+# ``validate_plan_mece``'s non-empty-conditions check can never fail.
+_GENERIC_TAIL_CONDITION = (
+    "The final answer is internally consistent and directly responds to the request."
+)
+
+# Deliberately above the L2 depth cap: the depth cap bounds execution
+# granularity, not the success definition the judge scores against.
+_MAX_BRANCH_CONDITIONS = 6
+
+
+def derive_success_conditions(branches: list[str]) -> list[str]:
+    """Deterministic success-conditions floor (Option A).
+
+    One observable condition per extracted branch — ALL branches, not the
+    depth-truncated step slice — deduplicated, capped, plus the generic tail.
+    This is the fallback the orchestration uses when the LLM-generated
+    TaskUnderstanding is unavailable; it must never be empty.
+    """
+    conditions: list[str] = []
+    seen: set[str] = set()
+    for branch in branches:
+        text = branch.strip()
+        if not text:
+            continue
+        condition = f"The final answer addresses: {text[:160]}"
+        key = condition.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        conditions.append(condition)
+        if len(conditions) >= _MAX_BRANCH_CONDITIONS:
+            break
+    conditions.append(_GENERIC_TAIL_CONDITION)
+    return conditions
 
 
 def validate_plan_mece(plan: PlanArtifact) -> PlanValidationResult:
