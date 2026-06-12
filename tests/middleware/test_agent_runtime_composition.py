@@ -30,6 +30,24 @@ class TestBuildComponentsLocal:
         resolved = components.goal_judge_config_reader.get()
         assert resolved.source in ("env", "default")
 
+    def test_file_io_is_not_cacheable(self, tmp_path, monkeypatch):
+        """Regression (2026-06-12 live stress run): cached file_io reads served
+        stale content after the same path was overwritten in-thread."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings(agent_env="local")
+        components = build_components(settings, agent_root=tmp_path)
+        assert components.tool_registry.is_cacheable("file_io") is False
+
+    def test_shell_is_not_cacheable(self, tmp_path, monkeypatch):
+        """Same hazard as file_io: every allowlisted shell command reads mutable
+        filesystem state, and the thread-level tool_cache never invalidates."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings(agent_env="local")
+        components = build_components(settings, agent_root=tmp_path)
+        assert components.tool_registry.is_cacheable("shell") is False
+
 
 class TestBuildComponentsProd:
     def test_prod_requires_gcs_facts_bucket(self, tmp_path):

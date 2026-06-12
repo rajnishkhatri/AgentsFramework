@@ -56,8 +56,10 @@ def _build_default_tool_registry() -> Any:
         _provider = StubProvider()
 
     return ToolRegistry({
-        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=True),
-        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=True),
+        # shell/file_io not cacheable: thread tool_cache never invalidates, so
+        # repeating an identical command/read after the file changes is stale.
+        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
+        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=False),
         "web_search": ToolDefinition(
             executor=build_web_search_executor(_provider), schema=WebSearchInput, cacheable=True
         ),

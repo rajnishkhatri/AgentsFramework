@@ -19,6 +19,7 @@ from components.schemas import StepResult  # noqa: F401  (ensures pydantic is wi
 from services.base_config import AgentConfig, ModelProfile
 from services.governance.black_box import BlackBoxRecorder, EventType
 from services.trace_service import InMemoryTraceSink, TraceService
+from services.tools.file_io import FileIOOutput
 from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
 from services.tools.task_tool import TaskToolInput, execute_task_tool
 from services.tools.think_tool import ThinkToolInput, execute_think_tool
@@ -992,3 +993,206 @@ class TestParameterChangedEscalation:
         assert detail["parameter"] == "model_tier"
         assert "escalate" in detail["reason"]
         assert detail["new_value"] == "capable"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# L2 Contract regression: file_io overwrite must not serve stale reads
+# (live repro 2026-06-12: write "7" → read "7" → overwrite "9" → read
+# returned stale "7" because file_io was registered cacheable=True and the
+# thread-level tool_cache never invalidates on write)
+#
+# The registry here mirrors the production wiring in-layer (real
+# execute_file_io, no mocks). The cacheable=False flag itself is pinned at
+# the composition layer by
+# tests/middleware/test_agent_runtime_composition.py::test_file_io_is_not_cacheable
+# — test imports follow layer rules, so this file does not import middleware.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _file_io_registry(*, cacheable: bool) -> ToolRegistry:
+    from services.tools.file_io import FileIOInput, execute_file_io
+
+    return ToolRegistry({
+        "file_io": ToolDefinition(
+            executor=execute_file_io, schema=FileIOInput, cacheable=cacheable
+        ),
+    })
+
+
+class TestFileIOOverwriteFreshness:
+    def _run_file_io(self, registry, bb, args: dict, cache: dict) -> tuple[str, dict]:
+        from orchestration.react_loop import _execute_tools_impl
+
+        state = _build_tool_message_state("file_io", args, cache=cache)
+        result = _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+        return result["messages"][0].content, result["tool_cache"]
+
+    def test_cacheable_file_io_serves_stale_read_after_overwrite(
+        self, tmp_path, monkeypatch
+    ):
+        """Failure mode (rejection test first): demonstrates WHY file_io must
+        not be cacheable — with cacheable=True the identical read after an
+        overwrite is served from the thread cache and returns stale content."""
+        monkeypatch.setenv("WORKSPACE_DIR", str(tmp_path / "ws"))
+        registry = _file_io_registry(cacheable=True)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        path = str(tmp_path / "ws" / "stress" / "bananas.txt")
+        cache: dict = {}
+
+        _, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "write", "content": "7"}, cache
+        )
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "read"}, cache
+        )
+        assert json.loads(out)["content"] == "7"
+        _, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "write", "content": "9"}, cache
+        )
+
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "read"}, cache
+        )
+        assert json.loads(out)["content"] == "7", (
+            "expected the stale cached read — if this fails the cache layer "
+            "now invalidates on write and file_io could be cacheable again"
+        )
+
+    def test_read_after_overwrite_returns_new_content(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("WORKSPACE_DIR", str(tmp_path / "ws"))
+        registry = _file_io_registry(cacheable=False)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        path = str(tmp_path / "ws" / "stress" / "bananas.txt")
+        cache: dict = {}
+
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "write", "content": "7"}, cache
+        )
+        assert json.loads(out)["success"] is True
+
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "read"}, cache
+        )
+        assert json.loads(out)["content"] == "7"
+
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "write", "content": "9"}, cache
+        )
+        assert json.loads(out)["success"] is True
+
+        # Identical read args to the earlier read — must NOT serve the stale "7".
+        out, cache = self._run_file_io(
+            registry, bb, {"path": path, "operation": "read"}, cache
+        )
+        assert json.loads(out)["content"] == "9"
+
+    def test_read_is_fresh_even_with_poisoned_cache_entry(self, tmp_path, monkeypatch):
+        """Even if a stale entry exists under the read's cache key (e.g. written
+        by an older deployment's checkpoint), file_io must bypass it."""
+        from orchestration.react_loop import _compute_tool_cache_key
+
+        monkeypatch.setenv("WORKSPACE_DIR", str(tmp_path / "ws"))
+        registry = _file_io_registry(cacheable=False)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        path = str(tmp_path / "ws" / "stress" / "bananas.txt")
+        read_args = {"path": path, "operation": "read"}
+
+        (tmp_path / "ws" / "stress").mkdir(parents=True, exist_ok=True)
+        (tmp_path / "ws" / "stress" / "bananas.txt").write_text("9")
+
+        stale_key = _compute_tool_cache_key("file_io", read_args)
+        stale_payload = FileIOOutput(content="7", success=True).model_dump_json()
+
+        out, _ = self._run_file_io(registry, bb, read_args, {stale_key: stale_payload})
+        assert json.loads(out)["content"] == "9"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# L2 Contract regression: shell must not serve stale command output
+# (same hazard as file_io above: every allowlisted shell command — cat,
+# ls, grep, ... — reads mutable filesystem state, so a cached result is
+# silently stale once the file changes later in the thread)
+#
+# The cacheable=False flag itself is pinned at the composition layer by
+# tests/middleware/test_agent_runtime_composition.py::test_shell_is_not_cacheable.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _shell_registry(*, cacheable: bool) -> ToolRegistry:
+    from services.tools.shell import ShellToolInput, execute_shell
+
+    return ToolRegistry({
+        "shell": ToolDefinition(
+            executor=execute_shell, schema=ShellToolInput, cacheable=cacheable
+        ),
+    })
+
+
+class TestShellCommandFreshness:
+    def _run_shell(self, registry, bb, command: str, cache: dict) -> tuple[str, dict]:
+        from orchestration.react_loop import _execute_tools_impl
+
+        state = _build_tool_message_state("shell", {"command": command}, cache=cache)
+        result = _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+        return result["messages"][0].content, result["tool_cache"]
+
+    def test_cacheable_shell_serves_stale_output_after_file_change(self, tmp_path):
+        """Failure mode (rejection test first): demonstrates WHY shell must not
+        be cacheable — the identical `cat` repeated after the file changed is
+        served from the thread cache and returns the old content."""
+        registry = _shell_registry(cacheable=True)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        target = tmp_path / "observed.txt"
+        target.write_text("7")
+        cache: dict = {}
+
+        out, cache = self._run_shell(registry, bb, f"cat {target}", cache)
+        assert json.loads(out)["stdout"] == "7"
+
+        target.write_text("9")
+
+        out, cache = self._run_shell(registry, bb, f"cat {target}", cache)
+        assert json.loads(out)["stdout"] == "7", (
+            "expected the stale cached output — if this fails the cache layer "
+            "now invalidates within a thread and shell could be cacheable again"
+        )
+
+    def test_repeated_command_returns_fresh_output_after_file_change(self, tmp_path):
+        registry = _shell_registry(cacheable=False)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        target = tmp_path / "observed.txt"
+        target.write_text("7")
+        cache: dict = {}
+
+        out, cache = self._run_shell(registry, bb, f"cat {target}", cache)
+        assert json.loads(out)["stdout"] == "7"
+
+        target.write_text("9")
+
+        # Identical command to the earlier one — must NOT serve the stale "7".
+        out, cache = self._run_shell(registry, bb, f"cat {target}", cache)
+        assert json.loads(out)["stdout"] == "9"
+
+    def test_command_is_fresh_even_with_poisoned_cache_entry(self, tmp_path):
+        """Even if a stale entry exists under the command's cache key (e.g.
+        written by an older deployment's checkpoint), shell must bypass it."""
+        from orchestration.react_loop import _compute_tool_cache_key
+        from services.tools.shell import ShellToolOutput
+
+        registry = _shell_registry(cacheable=False)
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        target = tmp_path / "observed.txt"
+        target.write_text("9")
+        command = f"cat {target}"
+
+        stale_key = _compute_tool_cache_key("shell", {"command": command})
+        stale_payload = ShellToolOutput(
+            stdout="7", stderr="", exit_code=0
+        ).model_dump_json()
+
+        out, _ = self._run_shell(registry, bb, command, {stale_key: stale_payload})
+        assert json.loads(out)["stdout"] == "9"
