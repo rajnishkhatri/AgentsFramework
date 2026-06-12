@@ -23,7 +23,10 @@ Think step by step, then produce:
    - Explicit constraints become conditions: "without using X" becomes "The
      agent did not use X"; "in under 100 words" becomes "The answer is under
      100 words".
-   - Use the task's own vocabulary (file paths, names, quantities verbatim).
+   - **Every condition MUST quote at least one exact word, path, command, or
+     quantity from the Task text above.** A condition that shares no word with
+     the task will be rejected. Do not paraphrase — copy the task's terms
+     verbatim (file paths, names, quantities, command names).
    - Each condition is one sentence, at most 200 characters.
    - Do NOT invent generic criteria (consistency, clarity, tone) — a generic
      consistency check is appended automatically downstream.
@@ -31,6 +34,16 @@ Think step by step, then produce:
    correctly. Lower it when the task is ambiguous, underspecified, or
    self-contradictory.
 
+{% if rejection_feedback %}
+# Your previous attempt was rejected
+Your last checklist failed the grounding check — these conditions share no
+exact word with the Task text:
+
+{{ rejection_feedback }}
+
+Rewrite ALL conditions from scratch. Each one MUST quote at least one exact
+word, path, command, or quantity that appears verbatim in the Task above.
+{% endif %}
 # Output format
 Output ONLY a JSON object, no prose before or after:
 {

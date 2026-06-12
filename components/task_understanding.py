@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from components.schemas import TaskUnderstanding
 
@@ -151,39 +151,79 @@ class TaskUnderstandingGenerator:
     def model_name(self) -> str:
         return getattr(self._profile, "name", "")
 
-    async def generate(self, *, task_input: str) -> TaskUnderstanding:
-        """Generate, gate-validate, and return the artifact. Raises on failure."""
-        rendered = self._prompt_service.render_prompt(
-            self.PROMPT_NAME,
-            task_input=task_input,
-        )
-        response = await self._llm_service.invoke(
-            self._profile,
-            [{"role": "user", "content": rendered}],
-        )
-        content = str(getattr(response, "content", response))
+    # Bounded retry budget: one original attempt + one feedback retry. Round-1
+    # failures were all single-condition grounding-gate paraphrases the model
+    # recovers from when shown the rejected conditions; a second retry adds cost
+    # without evidence of further recovery.
+    _MAX_ATTEMPTS = 2
+
+    async def generate(
+        self,
+        *,
+        task_input: str,
+        on_gate_rejection: Callable[[list[str], int], None] | None = None,
+    ) -> TaskUnderstanding:
+        """Generate, gate-validate, and return the artifact. Raises on failure.
+
+        On a validation-gate rejection the generator retries ONCE, re-rendering
+        the prompt with the rejected conditions + gate issues fed back (the
+        model paraphrased instead of quoting the task; the feedback names the
+        violation). ``on_gate_rejection(issues, attempt)`` — when injected — is
+        called for every rejected attempt so orchestration can record a
+        GUARDRAIL_CHECKED event per attempt. Parse / LLM-transport errors are
+        NOT retried: they propagate from the first attempt, preserving the
+        original raise-on-failure contract.
+        """
+        rejection_feedback = ""
+        last_issues: list[str] = []
+        for attempt in range(self._MAX_ATTEMPTS):
+            rendered = self._prompt_service.render_prompt(
+                self.PROMPT_NAME,
+                task_input=task_input,
+                rejection_feedback=rejection_feedback,
+            )
+            response = await self._llm_service.invoke(
+                self._profile,
+                [{"role": "user", "content": rendered}],
+            )
+            content = str(getattr(response, "content", response))
+            conditions, data = self._parse(content)
+
+            issues = validate_conditions(conditions, task_input=task_input)
+            if not issues:
+                return self._build(conditions, data)
+
+            # Gate rejection — observable to orchestration, then retry-with-
+            # feedback while attempts remain.
+            if on_gate_rejection is not None:
+                on_gate_rejection(issues, attempt)
+            last_issues = [*last_issues, *issues]
+            rejection_feedback = _format_rejection_feedback(conditions, issues)
+
+        raise TaskUnderstandingValidationError(last_issues)
+
+    def _parse(self, content: str) -> tuple[list[str], dict]:
+        """Extract + normalize conditions from a raw LLM response.
+
+        Raises (not retried) on malformed JSON or wrong-typed fields — these
+        are response-shape failures, not gate rejections.
+        """
         data = json.loads(_extract_json(content))
         if not isinstance(data, dict):
             raise ValueError("task understanding response is not a JSON object")
-
         conditions = data.get("success_conditions")
         if not isinstance(conditions, list):
             raise ValueError("success_conditions is not a list")
-        conditions = [str(c).strip() for c in conditions if str(c).strip()]
+        return [str(c).strip() for c in conditions if str(c).strip()], data
 
-        issues = validate_conditions(conditions, task_input=task_input)
-        if issues:
-            raise TaskUnderstandingValidationError(issues)
-
+    def _build(self, conditions: list[str], data: dict) -> TaskUnderstanding:
         if GENERIC_TAIL_CONDITION not in conditions:
             conditions = [*conditions, GENERIC_TAIL_CONDITION]
-
         confidence = data.get("confidence", 0.0)
         try:
             confidence = float(confidence)
         except (TypeError, ValueError):
             confidence = 0.0
-
         return TaskUnderstanding(
             restated_intent=str(data.get("restated_intent", "")).strip(),
             success_conditions=conditions,
@@ -191,6 +231,18 @@ class TaskUnderstandingGenerator:
             source="generated",
             model=self.model_name,
         )
+
+
+def _format_rejection_feedback(conditions: list[str], issues: list[str]) -> str:
+    """Render the rejected conditions + gate issues for the retry prompt.
+
+    Returned as plain text and passed through ``render_prompt`` as a context
+    variable — the ``.j2`` owns the framing (H1; never string-concatenated into
+    a prompt in Python). Empty string means "first attempt, no feedback".
+    """
+    listed = "\n".join(f"- {c}" for c in conditions)
+    reasons = "\n".join(f"- {i}" for i in issues)
+    return f"Rejected conditions:\n{listed}\n\nGate issues:\n{reasons}"
 
 
 def _extract_json(content: str) -> str:

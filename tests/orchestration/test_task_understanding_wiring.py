@@ -209,14 +209,23 @@ class TestFailureModeMatrix:
         assert "RuntimeError" in decisions[0]["rationale"]
 
     @pytest.mark.asyncio
-    async def test_gate_rejection_falls_back_and_records_guardrail(
+    async def test_gate_rejection_falls_back_and_records_guardrail_per_attempt(
         self, tmp_path, _sink
     ):
-        generate = AsyncMock(
-            side_effect=TaskUnderstandingValidationError(
-                ["grounding gate: condition 1 shares no content token with the task input"]
-            )
-        )
+        """Round 2: the generator retries once on a gate rejection and fires
+        ``on_gate_rejection`` per rejected attempt. Both attempts ungrounded →
+        TWO GUARDRAIL_CHECKED events (attempt 0 and 1), then raise → fallback
+        to the deterministic floor."""
+        _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+
+        async def _reject_both(*, task_input, on_gate_rejection=None):
+            # The real generator calls the callback for each rejected attempt.
+            if on_gate_rejection is not None:
+                on_gate_rejection(_issues, 0)
+                on_gate_rejection(_issues, 1)
+            raise TaskUnderstandingValidationError([*_issues, *_issues])
+
+        generate = AsyncMock(side_effect=_reject_both)
         handles = await _run(
             tmp_path,
             workflow_id="wf-tu-gate",
@@ -226,16 +235,57 @@ class TestFailureModeMatrix:
         conditions = _judge_conditions(handles["judge"])
         assert any("Compare options" in c for c in conditions)
         assert _sink.goal_judge[0]["ai_input"]["conditions_source"] == "deterministic"
-        # Validation pillar: gate rejection is visible as GUARDRAIL_CHECKED
-        # with the failing gate named.
+        # Validation pillar: each rejected attempt is its own GUARDRAIL_CHECKED
+        # event, carrying the attempt index and the failing gate name.
         guardrails = [
             e for e in _events(tmp_path, "wf-tu-gate")
             if e["event_type"] == "guardrail_checked"
             and e["details"].get("guardrail") == "task_understanding_gates"
         ]
+        assert len(guardrails) == 2
+        assert {g["details"]["attempt"] for g in guardrails} == {0, 1}
+        assert all(g["details"]["passed"] is False for g in guardrails)
+        assert all("grounding" in str(g["details"]["issues"]) for g in guardrails)
+
+    @pytest.mark.asyncio
+    async def test_gate_rejection_then_retry_recovers_consumes_generated(
+        self, tmp_path, _sink
+    ):
+        """Round 2: attempt 0 rejected, attempt 1 recovers → judge consumes the
+        GENERATED conditions; exactly ONE GUARDRAIL_CHECKED (attempt 0); the
+        Decision rationale records the retry recovery."""
+        _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+
+        async def _reject_then_recover(*, task_input, on_gate_rejection=None):
+            if on_gate_rejection is not None:
+                on_gate_rejection(_issues, 0)
+            return _GENERATED
+
+        generate = AsyncMock(side_effect=_reject_then_recover)
+        handles = await _run(
+            tmp_path,
+            workflow_id="wf-tu-retry",
+            conditions_source="generated",
+            generate=generate,
+        )
+        # The recovered (generated) conditions reach the judge.
+        assert _judge_conditions(handles["judge"]) == _GENERATED.success_conditions
+        assert _sink.goal_judge[0]["ai_input"]["conditions_source"] == "generated"
+        # Exactly one rejected attempt → one GUARDRAIL_CHECKED (attempt 0).
+        guardrails = [
+            e for e in _events(tmp_path, "wf-tu-retry")
+            if e["event_type"] == "guardrail_checked"
+            and e["details"].get("guardrail") == "task_understanding_gates"
+        ]
         assert len(guardrails) == 1
-        assert guardrails[0]["details"]["passed"] is False
-        assert "grounding" in str(guardrails[0]["details"]["issues"])
+        assert guardrails[0]["details"]["attempt"] == 0
+        # Reasoning pillar: the Decision rationale flags the retry recovery.
+        decisions = [
+            d for d in _decisions(tmp_path, "wf-tu-retry")
+            if "success-conditions" in d.get("description", "")
+        ]
+        assert len(decisions) == 1
+        assert "retry" in decisions[0]["rationale"].lower()
 
     @pytest.mark.asyncio
     async def test_shadow_generates_but_judge_consumes_deterministic(
