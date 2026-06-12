@@ -61,3 +61,14 @@ class TestLLMService:
         svc = LLMService(config=cfg)
         llm = svc.get_llm(_fast_profile())
         assert llm is not None
+
+    def test_get_llm_streams(self):
+        """The model streams (drives the runtime token deltas). Token *usage*
+        does not ride the streamed end event — it is carried on the canonical
+        STEP_EXECUTED record and relayed as native ``usage`` (see the
+        curated-view note in black_box_to_telemetry.py); a stream_options
+        toggle here is a no-op (langchain_litellm already defaults it)."""
+        cfg = AgentConfig(models=[_fast_profile()])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(_fast_profile())
+        assert getattr(llm, "streaming", False) is True

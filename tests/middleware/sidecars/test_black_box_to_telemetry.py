@@ -835,18 +835,32 @@ class TestCuratedViewSuppression:
         assert self._offset(storage, "wf-c1") == trace_file.stat().st_size
         assert not self._dlq(storage, "wf-c1").exists()
 
-    def test_step_executed_suppressed_when_curated_on(
+    def test_step_executed_exported_with_usage_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-c2")
-        trace_file = _record_events(storage, "wf-c2", [ev])
+        """Token-usage seam fix (2026-06-12): STEP_EXECUTED must EXPORT in the
+        curated view — the wire ``llm.call`` generation does NOT carry token
+        usage under streaming (proven in prod), so STEP_EXECUTED is the sole
+        reliable token carrier and the publisher maps its tokens to native
+        ``usage``. Suppressing it dropped tokens from the curated trace entirely.
+        """
+        ev = _make_event(
+            EventType.STEP_EXECUTED,
+            workflow_id="wf-c2",
+            details={"model": "gpt-4o-mini", "tokens_in": 50, "tokens_out": 20,
+                     "cost_usd": 0.001},
+        )
+        _record_events(storage, "wf-c2", [ev])
         (storage / "wf-c2" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter, curated_view=True)
-        relay.run_once()
+        published = relay.run_once()
 
-        assert len(exporter.events) == 0
-        assert self._offset(storage, "wf-c2") == trace_file.stat().st_size
+        assert published == 1
+        assert exporter.events[0]["name"] == "step.executed"
+        usage = exporter.events[0]["attributes"].get("__bb_usage") or {}
+        assert usage.get("input") == 50
+        assert usage.get("output") == 20
         assert not self._dlq(storage, "wf-c2").exists()
 
     def test_unchanged_plan_suppressed_when_curated_on(
