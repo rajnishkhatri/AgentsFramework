@@ -419,6 +419,40 @@ class TestInitFailure:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Service name resource attribute (E11 / Phase 0.3)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestServiceName:
+    """The exporter sets a default ``OTEL_SERVICE_NAME`` so traces stop
+    surfacing ``service.name: unknown_service`` (review finding E11), while
+    an explicit operator-provided value always wins.
+    """
+
+    def test_default_service_name_set_when_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("OTEL_SERVICE_NAME", raising=False)
+        with patch("langfuse.Langfuse", create=True) as fake_ctor:
+            exp = LangfuseCloudExporter(public_key="pk-test", secret_key="sk-test")
+            exp.export_event(name="run.started", trace_id="trace-001")
+        # The SDK reads OTEL_SERVICE_NAME from the env at Resource.create time,
+        # so the env var must be populated *before* Langfuse() is constructed.
+        assert fake_ctor.called
+        assert os.environ.get("OTEL_SERVICE_NAME")
+        assert os.environ["OTEL_SERVICE_NAME"] != "unknown_service"
+
+    def test_explicit_service_name_preserved(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("OTEL_SERVICE_NAME", "agent-runtime-prod")
+        with patch("langfuse.Langfuse", create=True):
+            exp = LangfuseCloudExporter(public_key="pk-test", secret_key="sk-test")
+            exp.export_event(name="run.started", trace_id="trace-001")
+        assert os.environ["OTEL_SERVICE_NAME"] == "agent-runtime-prod"
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Export Failure Handling (O1)
 # ─────────────────────────────────────────────────────────────────────
 

@@ -230,9 +230,11 @@ dataset item contains `identity_cards`.
     observation in the canonical record.
   - bridge tool exports carry `step` (parsed from the `"{step}:call_..."` prefix of
     `tool_call_id`); malformed prefix → `step` omitted, **no raise**.
-* `tests/middleware/adapters/observability/test_langfuse_cloud_exporter.py` (per D-0a
-  outcome): relayed observations are stamped with `details.timestamp` when the SDK
-  supports it; otherwise assert the attribute is surfaced as `event_time` first-class.
+* `tests/services/governance/test_black_box_publisher.py` (per **D-0a = no backdating**):
+  every relayed observation's attributes include `event_time` (= `event.timestamp`
+  ISO string) so the authoritative event instant survives even though the Langfuse
+  span is stamped at relay-export time. Assert `event_time` present on a sample of each
+  observation type; assert we do **not** attempt a fabricated `start_time`/`end_time`.
 
 **GREEN**
 * `orchestration/react_loop.py` `TOOL_CALLED` emissions (`:217`, `:280`): add
@@ -345,15 +347,14 @@ verify the dual view returns; flipped back ON.
   - `TASK_STARTED` details include `agent_name`, `agent_version`, `agent_facts_id`
     (sourced from config/registry at graph-build time — **ask-first item is not
     triggered**: no new node, only details on an existing emission).
-* `tests/middleware/test_telemetry_bridge.py`: trace-level input/output per D-0b —
-  `run.started` carries `task_input` (clipped) as trace input; `run.finished` carries
-  the final answer snippet as trace output (**D-5a discovery:** source it from the last
-  buffered `llm.call` output per trace; orphan path → output omitted).
+* (Trace-level input/output is **dropped** per D-0b — `set_current_trace_io` is
+  deprecated and context-incompatible. Triage-without-opening is delivered by the
+  Phase 1 trace scores + a meaningful trace name; task input / final answer stay on
+  `task.started` / `task.completed` / `llm.call`.)
 
 **GREEN**
 * `orchestration/react_loop.py`: the three detail enrichments (data already in scope;
   nodes stay thin).
-* `middleware/telemetry_bridge.py` + exporter: trace input/output wiring per D-0b.
 
 **Exit — the pillar acceptance test (manual, on a smoke trace):**
 
@@ -399,11 +400,11 @@ the full T1 tier locally.
 
 | ID | Question | Outcome |
 |---|---|---|
-| D-0a | SDK v4 explicit start/end times on observations? | _spike_ |
-| D-0b | Trace-level input/output mechanism in v4 | _spike_ |
-| D-2a | `step` attachable to LLM wire events cheaply? | _discovery_ |
-| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | _grep before merge_ |
-| D-5a | Final-answer source for trace output | _discovery_ |
+| D-0a | SDK v4 explicit start/end times on observations? | **RESOLVED (langfuse 4.7.1, 2026-06-12): NO start-time backdating.** `start_observation()` exposes only `completion_start_time` (TTFT for generations), never a span `start_time`; the OTel span starts at the `start_observation()` call. `.end(end_time=...)` accepts an explicit end but a real-start + backdated-end inverts the span. **Decision:** do NOT fabricate timings. Relayed observations stay point-in-time at relay-export instant; the authoritative event instant is surfaced first-class as `event_time` (= `details.timestamp`) on every relayed observation so a reader can reconstruct the true order. Phase 2 RED/GREEN adjusted accordingly. |
+| D-0b | Trace-level input/output mechanism in v4 | **RESOLVED (4.7.1): `set_current_trace_io(input=, output=)` exists but is (1) `@deprecated` (legacy LLM-as-judge only, slated for removal) and (2) requires a *current OTel span context* (`_get_current_otel_span()`), which our `start_observation(trace_context=...)+.end()` pattern never establishes.** **Decision:** do NOT use `set_current_trace_io`. For list-view scannability rely on (a) `propagate_attributes(trace_name=...)` for a meaningful trace name and (b) the Phase 1 trace-level **scores** (goal_met / criteria_met / completion_score) — those already give triage-without-opening. The task input + final answer remain visible on `task.started` / `task.completed` / the `llm.call` generation rather than as deprecated trace-level I/O. Phase 5.3 (trace input/output wiring) is **dropped**; Phase 5 reduces to content/identity enrichment on existing observations. |
+| D-2a | `step` attachable to LLM wire events cheaply? | _discovery (Phase 2)_ |
+| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | _grep before merge (Phase 3)_ |
+| D-5a | Final-answer source for trace output | **MOOT** — folded into D-0b resolution; no trace-level output to source. |
 
 ## 9. Success metrics
 
