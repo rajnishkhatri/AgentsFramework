@@ -39,10 +39,25 @@ class _FakeResponse:
 
 
 class FakeLLMService:
-    """In-memory LLM stub: replays a canned response, records the call."""
+    """In-memory LLM stub: replays canned response(s), records each call.
 
-    def __init__(self, response_content: str, *, raises: Exception | None = None) -> None:
-        self._response_content = response_content
+    ``response_content`` may be a single string (the original single-shot
+    behavior) or a list of strings replayed one-per-``invoke`` so the retry
+    path can be exercised (attempt 0 → response[0], attempt 1 → response[1]).
+    Once the list is exhausted the last response repeats.
+    """
+
+    def __init__(
+        self,
+        response_content: str | list[str],
+        *,
+        raises: Exception | None = None,
+    ) -> None:
+        self._responses = (
+            [response_content]
+            if isinstance(response_content, str)
+            else list(response_content)
+        )
         self._raises = raises
         self.calls: list[tuple[ModelProfile, list[dict]]] = []
 
@@ -50,7 +65,8 @@ class FakeLLMService:
         self.calls.append((profile, messages))
         if self._raises is not None:
             raise self._raises
-        return _FakeResponse(self._response_content)
+        index = min(len(self.calls) - 1, len(self._responses) - 1)
+        return _FakeResponse(self._responses[index])
 
 
 def _profile() -> ModelProfile:
@@ -65,7 +81,7 @@ def _profile() -> ModelProfile:
 
 
 def _generator(
-    response_content: str, *, raises: Exception | None = None
+    response_content: str | list[str], *, raises: Exception | None = None
 ) -> tuple[TaskUnderstandingGenerator, FakeLLMService]:
     llm = FakeLLMService(response_content, raises=raises)
     generator = TaskUnderstandingGenerator(
@@ -279,3 +295,131 @@ class TestTaskUnderstandingGenerator:
         rendered = llm.calls[0][1][0]["content"]
         assert "/workspace/f3.txt" in rendered
         assert "JSON" in rendered
+
+
+# ─────────────────────────────────────────────────────────────────────
+# L2 — bounded retry-with-feedback on gate rejection (Stage 2a round 2)
+#
+# Round 1 failed at 73% gate-pass: gpt-4o-mini paraphrased 1–2 conditions
+# and the all-or-nothing grounding gate discarded the whole artifact. The
+# generator now retries ONCE with the rejected conditions + gate issues fed
+# back through the prompt. Retry fires ONLY on a validation-gate rejection,
+# never on a JSON-parse or LLM-transport error (those keep raising on the
+# first attempt — round 1 had zero of them). Failure paths first (TAP-4).
+# ─────────────────────────────────────────────────────────────────────
+
+
+# An ungrounded condition list: "Zorblat …" shares no content token with the
+# task, so the grounding gate rejects it on the FIRST attempt.
+_UNGROUNDED = _payload(
+    success_conditions=[
+        "The file /workspace/f3.txt exists.",
+        "Zorblat frequencies harmonized completely.",
+    ]
+)
+# A grounded list that clears every gate — the recovered SECOND attempt.
+_GROUNDED = _payload(
+    success_conditions=[
+        "The file /workspace/f3.txt exists and contains 'hello'.",
+        "The file contents were listed via a shell command.",
+    ]
+)
+
+
+class TestTaskUnderstandingRetry:
+    @pytest.mark.asyncio
+    async def test_retry_recovers_after_one_gate_rejection(self):
+        """Attempt 0 ungrounded → reject → attempt 1 grounded → success."""
+        generator, llm = _generator([_UNGROUNDED, _GROUNDED])
+        seen: list[tuple[list[str], int]] = []
+        artifact = await generator.generate(
+            task_input=_TASK,
+            on_gate_rejection=lambda issues, attempt: seen.append((issues, attempt)),
+        )
+        assert artifact.source == "generated"
+        # The LLM was invoked twice (original + one retry).
+        assert len(llm.calls) == 2
+        # The callback fired exactly once, for the first (attempt 0) rejection.
+        assert len(seen) == 1
+        assert seen[0][1] == 0
+        assert any("grounding" in issue for issue in seen[0][0])
+
+    @pytest.mark.asyncio
+    async def test_retry_prompt_carries_rejection_feedback(self):
+        """The retry render feeds the rejected conditions + gate issues back
+        through the .j2 (H1 — never string-concatenated in Python)."""
+        generator, llm = _generator([_UNGROUNDED, _GROUNDED])
+        await generator.generate(task_input=_TASK)
+        assert len(llm.calls) == 2
+        first_prompt = llm.calls[0][1][0]["content"]
+        retry_prompt = llm.calls[1][1][0]["content"]
+        # Only the retry render carries the feedback block + rejected text.
+        assert "Zorblat" not in first_prompt
+        assert "Zorblat" in retry_prompt
+        assert "grounding" in retry_prompt.lower()
+
+    @pytest.mark.asyncio
+    async def test_two_rejections_raise_with_both_attempts(self):
+        """Both attempts ungrounded → raise; callback fired for attempts 0 AND
+        1; the error references both attempts' issues."""
+        generator, llm = _generator([_UNGROUNDED, _UNGROUNDED])
+        seen: list[int] = []
+        with pytest.raises(TaskUnderstandingValidationError) as exc_info:
+            await generator.generate(
+                task_input=_TASK,
+                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+            )
+        assert len(llm.calls) == 2
+        assert seen == [0, 1]
+        # The raised error carries issues from both attempts.
+        assert len(exc_info.value.issues) >= 2
+
+    @pytest.mark.asyncio
+    async def test_no_retry_on_malformed_json(self):
+        """A parse failure is not a gate rejection — raise on attempt 0, no
+        retry, callback never fires."""
+        generator, llm = _generator(["this is not json", _GROUNDED])
+        seen: list[int] = []
+        with pytest.raises(Exception):
+            await generator.generate(
+                task_input=_TASK,
+                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+            )
+        assert len(llm.calls) == 1
+        assert seen == []
+
+    @pytest.mark.asyncio
+    async def test_no_retry_on_llm_transport_error(self):
+        """An LLM/transport error is not a gate rejection — raise immediately,
+        no retry, callback never fires."""
+        generator, llm = _generator(
+            [_GROUNDED, _GROUNDED], raises=RuntimeError("provider down")
+        )
+        seen: list[int] = []
+        with pytest.raises(RuntimeError):
+            await generator.generate(
+                task_input=_TASK,
+                on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+            )
+        assert len(llm.calls) == 1
+        assert seen == []
+
+    @pytest.mark.asyncio
+    async def test_callback_is_optional(self):
+        """Recovery still works with no callback injected (back-compat)."""
+        generator, llm = _generator([_UNGROUNDED, _GROUNDED])
+        artifact = await generator.generate(task_input=_TASK)
+        assert artifact.source == "generated"
+        assert len(llm.calls) == 2
+
+    @pytest.mark.asyncio
+    async def test_first_attempt_success_does_not_retry(self):
+        """Happy path is unchanged: one invoke, no callback, no feedback."""
+        generator, llm = _generator(_GROUNDED)
+        seen: list[int] = []
+        await generator.generate(
+            task_input=_TASK,
+            on_gate_rejection=lambda issues, attempt: seen.append(attempt),
+        )
+        assert len(llm.calls) == 1
+        assert seen == []

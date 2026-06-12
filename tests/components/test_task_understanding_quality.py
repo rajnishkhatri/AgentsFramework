@@ -56,9 +56,29 @@ def _sample_tasks() -> list[str]:
     return tasks[::step][:_SAMPLE_SIZE]
 
 
+def _is_real_branch(branch: str) -> bool:
+    """Filter out ``_extract_branches`` splitter artifacts — CONSERVATIVELY.
+
+    Round-1 coverage read 50% mostly because the extractor emits enumeration
+    headers ("Compare two inputs:") whose content tokens ("compare") don't
+    appear in otherwise-complete checklists. We drop only what is unambiguously
+    not a subtask: enumeration headers (text ending in ':') and near-empty
+    fragments (fewer than 2 content tokens). Deliberately conservative — a
+    2-token trailing fragment like "name them" is indistinguishable from a real
+    short branch like "Open /workspace/notes.md", so it STAYS in the denominator
+    rather than risk dropping a genuine subtask (under-extraction weakens the
+    gate). This is a metric-only filter; the production floor
+    (`_extract_branches`) is untouched, so the deterministic 2b baseline does
+    not move.
+    """
+    if branch.strip().endswith(":"):
+        return False
+    return len(_content_tokens(branch)) >= 2
+
+
 def _covers_branches(conditions: list[str], task: str) -> bool:
-    """Each extracted branch shares ≥1 content token with ≥1 condition."""
-    branches = _extract_branches(task)
+    """Each real extracted branch shares ≥1 content token with ≥1 condition."""
+    branches = [b for b in _extract_branches(task) if _is_real_branch(b)]
     condition_tokens = [_content_tokens(c) for c in conditions]
     for branch in branches:
         branch_tokens = _content_tokens(branch)
@@ -93,7 +113,8 @@ async def test_generated_conditions_quality_over_goldset_sample():
         except Exception as exc:
             failures.append(f"{task[:60]!r}: {type(exc).__name__}: {exc}")
             continue
-        if len(_extract_branches(task)) >= 2:
+        real_branches = [b for b in _extract_branches(task) if _is_real_branch(b)]
+        if len(real_branches) >= 2:
             multi_branch_total += 1
             if _covers_branches(artifact.success_conditions, task):
                 coverage_passes += 1

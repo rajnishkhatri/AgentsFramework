@@ -793,28 +793,40 @@ def build_graph(
                 tu_mode = gj_reader.get().success_conditions_source
                 generated_artifact: TaskUnderstanding | None = None
                 tu_failure = ""
+                # Per-attempt rejection trail (round 2): the generator retries
+                # once on a gate rejection and calls back per rejected attempt.
+                tu_rejections: list[dict[str, Any]] = []
+
+                def _record_tu_rejection(issues: list[str], attempt: int) -> None:
+                    # Record-only (AP-5): one GUARDRAIL_CHECKED per rejected
+                    # attempt; the retry policy lives in the component. The
+                    # ``attempt`` key marks that a rejection no longer implies a
+                    # fallback — attempt 0 may be followed by a recovered run.
+                    tu_rejections.append({"attempt": attempt, "issues": issues})
+                    black_box.record(TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.GUARDRAIL_CHECKED,
+                        timestamp=datetime.now(UTC),
+                        step=state.get("step_count", 0),
+                        details={
+                            "guardrail": "task_understanding_gates",
+                            "passed": False,
+                            "attempt": attempt,
+                            "issues": issues,
+                        },
+                    ))
+
                 if tu_mode in ("shadow", "generated"):
                     try:
                         generated_artifact = await tu_generator.generate(
                             task_input=state.get("task_input", ""),
+                            on_gate_rejection=_record_tu_rejection,
                         )
-                    except TaskUnderstandingValidationError as exc:
-                        tu_failure = f"{type(exc).__name__}: {exc}"
-                        # §4.7 Validation pillar: a gate rejection is a
-                        # guardrail outcome — record the failing gate names.
-                        black_box.record(TraceEvent(
-                            event_id=str(uuid.uuid4()),
-                            workflow_id=workflow_id,
-                            event_type=EventType.GUARDRAIL_CHECKED,
-                            timestamp=datetime.now(UTC),
-                            step=state.get("step_count", 0),
-                            details={
-                                "guardrail": "task_understanding_gates",
-                                "passed": False,
-                                "issues": exc.issues,
-                            },
-                        ))
                     except Exception as exc:
+                        # Gate rejections are already recorded per attempt via
+                        # the callback; this only captures the terminal failure
+                        # class for the fallback rationale.
                         tu_failure = f"{type(exc).__name__}: {exc}"
                 consumed_generated = (
                     tu_mode == "generated" and generated_artifact is not None
@@ -831,14 +843,18 @@ def build_graph(
                 # §4.7 Reasoning pillar: why THIS run uses generated vs
                 # deterministic conditions. decision_id is the cross-pillar
                 # join key (the MODEL_SELECTED idiom below).
+                _retry_note = " after retry" if tu_rejections else ""
                 if tu_mode == "deterministic":
                     tu_rationale = "flag deterministic: generation not attempted"
                 elif generated_artifact is None:
                     tu_rationale = f"fallback to deterministic: {tu_failure}"
                 elif consumed_generated:
-                    tu_rationale = "generated ok"
+                    tu_rationale = f"generated ok{_retry_note}"
                 else:
-                    tu_rationale = "shadow: generated ok, judge consumes deterministic"
+                    tu_rationale = (
+                        f"shadow: generated ok{_retry_note}, "
+                        "judge consumes deterministic"
+                    )
                 tu_decision = phase_logger.log_decision(workflow_id, Decision(
                     phase=WorkflowPhase.ROUTING,
                     description="success-conditions source",
@@ -869,6 +885,11 @@ def build_graph(
                         "consumed": consumed_generated,
                         "fallback_reason": tu_failure,
                         "mode": tu_mode,
+                        # Round-2 evidence: how many attempts, and the conditions
+                        # each rejected attempt produced (closes the round-1 gap
+                        # where rejected text was never archived).
+                        "attempts": len(tu_rejections) + 1,
+                        "rejected_conditions": tu_rejections,
                     }
                     await eval_capture.record(
                         target="task_understanding",
