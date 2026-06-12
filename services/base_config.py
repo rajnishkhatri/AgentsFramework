@@ -22,6 +22,11 @@ class ModelProfile(BaseModel):
 
 
 class AgentConfig(BaseModel):
+    # Identity (E9): surfaced on TASK_STARTED so the trace answers "who did it?"
+    # from the first event without a registry round-trip. The registry, when
+    # present and verified, refines agent_facts_id to the resolved agent id.
+    agent_name: str = "governance-agent"
+    agent_version: str = "0.0.0"
     max_steps: int = 20
     max_cost_usd: float = 1.0
     default_model: str = "gpt-4o-mini"

@@ -31,6 +31,16 @@
 > on every `STEP_PLANNED` (JSONL records every iteration, E10); guardrail level
 > DEBUG on clean pass / WARNING on blocked-or-redacted; exporter metadata
 > allowlist drops bulky/duplicative fields, input keeps full payload).
+> **Phase 5 DONE** (content/identity enrichment — data already in scope, nodes
+> stay thin: E7 `rationale`+`alternatives` mirrored onto `MODEL_SELECTED` details
+> from the same PhaseLogger `Decision`; E8 `plan_summary` (≤5 ordered-step titles,
+> each ≤120 chars) on **changed-only** `STEP_PLANNED`; E9 `agent_name`/
+> `agent_version`/`agent_facts_id` on `TASK_STARTED` — name/version config-sourced
+> via new `AgentConfig.agent_name`/`agent_version` defaults (always present, no
+> registry round-trip), facts_id = resolved `registered_agent_id` hoisted before
+> the first event. Phase 5.3 trace-level I/O stays DROPPED per D-0b. All four
+> pillar-acceptance rows answerable from the trace alone). **All phases DONE —
+> awaiting the consolidated GCP trace review after deploy.**
 > **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
 > on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
 > `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
