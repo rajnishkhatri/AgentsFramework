@@ -87,7 +87,10 @@ export default defineConfig({
     baseURL: BASE_URL,
     locale: "en-US",
     trace: "retain-on-failure",
-    screenshot: "only-on-failure",
+    // E2E_SCREENSHOTS=1 captures a final-state screenshot for every test
+    // (pass and fail) so smoke runs leave reviewable visual evidence;
+    // pair with --output=<dir> to collect them in one place.
+    screenshot: process.env.E2E_SCREENSHOTS === "1" ? "on" : "only-on-failure",
     // When E2E_AUTHENTICATED=1, every test (including the visual suite that
     // uses plain `test` from @playwright/test) inherits the sealed
     // `wos-session` cookie produced by `e2e/global-setup.ts`. The
