@@ -39,8 +39,26 @@
 > via new `AgentConfig.agent_name`/`agent_version` defaults (always present, no
 > registry round-trip), facts_id = resolved `registered_agent_id` hoisted before
 > the first event. Phase 5.3 trace-level I/O stays DROPPED per D-0b. All four
-> pillar-acceptance rows answerable from the trace alone). **All phases DONE —
-> awaiting the consolidated GCP trace review after deploy.**
+> pillar-acceptance rows answerable from the trace alone).
+> **Consolidated GCP review (2026-06-12):** two from-step-0 traces verified 11/12
+> matrix cells green in production (E9 identity present on `task.started`; E7/E8
+> rationale+alternatives+plan_summary present; P4 dedup confirmed — ONE
+> `step.planned` across a 12-step run; obs/step ≤4; `tool.{shell,think}` rename
+> generalizes; P2 `tool_call_id` join + first-class `event_time`; P1 scores +
+> goal-judge partial-credit; `service.name` + cap-lift). **One real finding:**
+> every `llm.call` GENERATION carried `latency_ms` but **no native token usage** —
+> root-caused to `ChatLiteLLM(streaming=True)` omitting the provider usage chunk.
+> **FIXED (commit `c670e23`):** `stream_options={"include_usage": True}` in
+> `services/llm_config.py` → provider emits the usage chunk → LangChain populates
+> `usage_metadata` → existing `_extract_usage`→`LLMMessageEnded`→`__bb_usage`→
+> exporter `usage_details` chain handles it (no wire/bridge change). **SMOKE-PENDING:**
+> provider-dependent — needs one deployed trace showing `usage`/`tokens_in/out` on
+> `llm.call` to close P3. **All phases DONE; token-usage fix awaits deploy verify.**
+> **UI gap (review of two eval-UI screenshots):** the eval UI surfaces none of the
+> Phase-1 verdict scores, `conditions_source`, or token usage, so it reproduces the
+> corrupt-success problem on-screen ("successfully created" above "cannot complete").
+> Captured as a separate future workstream:
+> [eval_ui_honesty_improvements.plan.md](eval_ui_honesty_improvements.plan.md).
 > **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
 > on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
 > `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
@@ -416,7 +434,7 @@ verify the dual view returns; flipped back ON.
 | 0 | — | cap-lift check on `eval.goal_judge`; service.name visible |
 | 1 | `tests/services/governance`, `tests/middleware/sidecars`, `tests/orchestration/test_phase_wiring.py`, `tests/architecture` | 3 scores visible in trace list; no `"None"` strings in `task.completed`; `identity_cards` in dataset item |
 | 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events — **✅ PASSED on rev 00062 (trace `e1c0cbc5…`, 2026-06-12):** relay `tool.called` `details.tool_call_id` (e.g. `call_eOXZQK…`) = suffix of bridge `tool.{started,finished}` `tool_call_id` (`7:call_eOXZQK…`); bridge tool obs carry `step:7` (prefix-derived); `event_time` first-class on every relayed obs and ~0.5s ahead of the span `startTime` (D-0a lag visible); no `start_time`/`end_time` |
-| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py` | 1 generation + N tools per step; native token usage + model on generation (cost on canonical STEP_EXECUTED, not the wire) |
+| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py`, `tests/services/test_llm_config.py` | 1 generation + N tools per step ✅ (traces `f54fdd3d…`/`5b1607f4…`); **native token usage was ABSENT in prod** — fixed by `stream_options={"include_usage": True}` (`c670e23`), **SMOKE-PENDING** one deployed trace must show `usage`/`tokens_in/out` on `llm.call`; model+cost stay on canonical STEP_EXECUTED, not the wire |
 | 4 | suppression + fingerprint + exporter suites | obs/step ≤8; flag-off restores dual view (once, dev) |
 | 5 | phase-wiring + bridge suites | pillar acceptance table above |
 
