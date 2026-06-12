@@ -9,8 +9,91 @@ from components.plan_builder import (
     PlanStep,
     build_plan_artifact,
     build_planning_instructions,
+    compute_plan_fingerprint,
     validate_plan_mece,
 )
+
+
+# ── Phase 4: plan fingerprint (E10 dedup) ─────────────────────────────
+
+
+def _artifact(goal: str = "a") -> PlanArtifact:
+    return PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="Step 1", goal=goal)],
+        constraints=["c"],
+        success_conditions=["s"],
+    )
+
+
+def test_fingerprint_is_deterministic() -> None:
+    """Same (depth, artifact) → identical fingerprint across calls."""
+    a = _artifact()
+    assert compute_plan_fingerprint("L0", a) == compute_plan_fingerprint("L0", a)
+
+
+def test_fingerprint_changes_with_steps() -> None:
+    assert compute_plan_fingerprint("L0", _artifact("a")) != compute_plan_fingerprint(
+        "L0", _artifact("b")
+    )
+
+
+def test_fingerprint_changes_with_depth() -> None:
+    a = _artifact()
+    assert compute_plan_fingerprint("L0", a) != compute_plan_fingerprint("L1", a)
+
+
+def test_fingerprint_changes_with_constraints() -> None:
+    a = PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="S", goal="a")],
+        constraints=["c1"],
+        success_conditions=["s"],
+    )
+    b = PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="S", goal="a")],
+        constraints=["c1", "c2"],
+        success_conditions=["s"],
+    )
+    assert compute_plan_fingerprint("L0", a) != compute_plan_fingerprint("L0", b)
+
+
+def test_fingerprint_changes_with_success_conditions() -> None:
+    a = PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="S", goal="a")],
+        constraints=["c"],
+        success_conditions=["s1"],
+    )
+    b = PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="S", goal="a")],
+        constraints=["c"],
+        success_conditions=["s1", "s2"],
+    )
+    assert compute_plan_fingerprint("L0", a) != compute_plan_fingerprint("L0", b)
+
+
+def test_fingerprint_is_order_sensitive_on_steps() -> None:
+    """Reordering steps changes the plan → changes the fingerprint."""
+    a = PlanArtifact(
+        ordered_steps=[
+            PlanStep(step_id=1, title="S1", goal="x"),
+            PlanStep(step_id=2, title="S2", goal="y"),
+        ],
+        constraints=[],
+        success_conditions=[],
+    )
+    b = PlanArtifact(
+        ordered_steps=[
+            PlanStep(step_id=1, title="S1", goal="y"),
+            PlanStep(step_id=2, title="S2", goal="x"),
+        ],
+        constraints=[],
+        success_conditions=[],
+    )
+    assert compute_plan_fingerprint("L0", a) != compute_plan_fingerprint("L0", b)
+
+
+def test_fingerprint_is_a_hex_string() -> None:
+    fp = compute_plan_fingerprint("L0", _artifact())
+    assert isinstance(fp, str) and len(fp) == 64  # sha256 hexdigest
 
 
 @pytest.mark.parametrize(

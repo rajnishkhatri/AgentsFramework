@@ -30,6 +30,7 @@ from components.evaluator import (
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
+from components.plan_builder import compute_plan_fingerprint
 from components.plan_builder import validate_plan_mece
 from components.schemas import ErrorRecord, TaskUnderstanding
 from components.task_understanding import (
@@ -220,7 +221,7 @@ def _execute_tools_impl(
                 event_type=EventType.TOOL_CALLED,
                 timestamp=datetime.now(UTC),
                 step=state.get("step_count", 0),
-                details={"tool": tool_name, "args": tool_args, "cached": True},
+                details={"tool": tool_name, "args": tool_args, "cached": True, "tool_call_id": tool_id},
             ))
             results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
             tool_results.append({
@@ -283,7 +284,7 @@ def _execute_tools_impl(
             event_type=EventType.TOOL_CALLED,
             timestamp=datetime.now(UTC),
             step=state.get("step_count", 0),
-            details={"tool": tool_name, "args": tool_args, "cached": False},
+            details={"tool": tool_name, "args": tool_args, "cached": False, "tool_call_id": tool_id},
         ))
 
         if not execution_result.ok:
@@ -560,13 +561,27 @@ def build_graph(
         workflow_id = state.get("workflow_id", "")
         task_input = state.get("task_input", "")
 
+        # E9 (Identity pillar): resolve the agent id before the first event so
+        # TASK_STARTED can answer "who did it?". agent_name/agent_version are
+        # config-sourced (always present, no registry round-trip); agent_facts_id
+        # is the resolved registered id.
+        registered_agent_id = (
+            config.get("configurable", {}).get("registered_agent_id")
+            or state.get("registered_agent_id", "")
+        )
+
         async with phase_logger.phase(workflow_id, WorkflowPhase.INITIALIZATION, step_count):
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
                 event_type=EventType.TASK_STARTED,
                 timestamp=datetime.now(UTC),
-                details={"task_input": task_input[:200]},
+                details={
+                    "task_input": task_input[:200],
+                    "agent_name": agent_config.agent_name,
+                    "agent_version": agent_config.agent_version,
+                    "agent_facts_id": registered_agent_id,
+                },
             ))
 
         # Story 1.4: AgentFacts identity verification
@@ -574,10 +589,6 @@ def build_graph(
         agent_capabilities: list[str] = []
         rejection_payload: dict[str, Any] | None = None
         if agent_facts_registry is not None:
-            registered_agent_id = (
-                config.get("configurable", {}).get("registered_agent_id")
-                or state.get("registered_agent_id", "")
-            )
             if registered_agent_id:
                 agent_facts_verified = agent_facts_registry.verify(registered_agent_id)
                 if agent_facts_verified:
@@ -880,27 +891,48 @@ def build_graph(
 
             plan_ref = f".agent_plans/{workflow_id or 'wf'}_step_{state.get('step_count', 0)}.json"
 
+            # Phase 4 (E10): fingerprint the plan's identity and compare against
+            # the last one. ``route_node`` re-runs every iteration, re-emitting
+            # an identical plan; the fingerprint lets the relay suppress the
+            # duplicate EXPORT while the JSONL row is still recorded with
+            # ``plan_changed`` every iteration (canonical record stays complete).
+            plan_fingerprint = compute_plan_fingerprint(planning_depth, plan_artifact)
+            plan_changed = plan_fingerprint != state.get("last_plan_fingerprint")
+
+            step_planned_details: dict[str, Any] = {
+                "planning_depth": planning_depth,
+                "plan_steps": len(plan_artifact.ordered_steps),
+                "constraints": len(plan_artifact.constraints),
+                "success_conditions": len(
+                    understanding.get("success_conditions")
+                    or plan_artifact.success_conditions
+                ),
+                # §4.7 Recording pillar: join keys, not content. The
+                # artifact text lives in the plan payload and the
+                # eval.task_understanding observation.
+                "conditions_source": understanding.get("source", "deterministic"),
+                "plan_ref": plan_ref,
+                "decision_id": tu_decision_id,
+                "plan_fingerprint": plan_fingerprint,
+                "plan_changed": plan_changed,
+            }
+            # E8 (Reasoning pillar): on a CHANGED plan, carry a capped summary of
+            # the ordered-step titles so the trace shows WHAT was planned without
+            # opening the plan payload. Unchanged re-emissions stay lean (the
+            # relay suppresses them; repeating the summary would just be noise).
+            if plan_changed:
+                step_planned_details["plan_summary"] = [
+                    (s.title or "")[:120]
+                    for s in plan_artifact.ordered_steps[:5]
+                ]
+
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
                 event_type=EventType.STEP_PLANNED,
                 timestamp=datetime.now(UTC),
                 step=state.get("step_count", 0),
-                details={
-                    "planning_depth": planning_depth,
-                    "plan_steps": len(plan_artifact.ordered_steps),
-                    "constraints": len(plan_artifact.constraints),
-                    "success_conditions": len(
-                        understanding.get("success_conditions")
-                        or plan_artifact.success_conditions
-                    ),
-                    # §4.7 Recording pillar: join keys, not content. The
-                    # artifact text lives in the plan payload and the
-                    # eval.task_understanding observation.
-                    "conditions_source": understanding.get("source", "deterministic"),
-                    "plan_ref": plan_ref,
-                    "decision_id": tu_decision_id,
-                },
+                details=step_planned_details,
             ))
 
             plan_validation = validate_plan_mece(plan_artifact)
@@ -973,6 +1005,12 @@ def build_graph(
                     "plan_depth": planning_depth,
                     "plan_valid": plan_validation.is_valid,
                     "decision_id": decision.decision_id,
+                    # E7 (Reasoning pillar): mirror the PhaseLogger Decision's
+                    # rationale + alternatives onto the event so the "why" of the
+                    # model choice is answerable from the trace without joining
+                    # to the phase log. Same data, two sinks.
+                    "rationale": rationale,
+                    "alternatives": alternatives,
                 },
             ))
 
@@ -994,6 +1032,7 @@ def build_graph(
                     plan_ref: json.dumps(plan_payload, sort_keys=True),
                 },
                 "plan_ref": plan_ref,
+                "last_plan_fingerprint": plan_fingerprint,
                 "model_history": [
                     {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
                 ],

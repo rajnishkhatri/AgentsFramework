@@ -163,6 +163,11 @@ def _build_relay(
 ):
     from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
 
+    # This is the audit-complete (Option-B) pipeline harness — it verifies that
+    # ALL nine event types (incl. STEP_EXECUTED / TOOL_CALLED) flow through with
+    # correct types, redaction, and idempotency. Default to the dual view so the
+    # Phase 4 curated suppression doesn't hide the events under test.
+    kwargs.setdefault("curated_view", False)
     return BlackBoxToTelemetryRelay(
         storage_dir=storage,
         exporter=exporter,

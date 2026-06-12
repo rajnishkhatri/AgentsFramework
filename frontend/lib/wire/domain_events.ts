@@ -47,6 +47,9 @@ export const LLMMessageEndedSchema = z
     timestamp,
     message_id: z.string(),
     output_text: z.string().nullable().default(null),
+    tokens_in: z.number().int().nullable().default(null),
+    tokens_out: z.number().int().nullable().default(null),
+    model: z.string().nullable().default(null),
   })
   .strict();
 export type LLMMessageEnded = z.infer<typeof LLMMessageEndedSchema>;

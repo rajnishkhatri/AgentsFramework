@@ -178,6 +178,27 @@ def redact_compliance_bundle(bundle: dict[str, Any]) -> dict[str, Any]:
     return redacted
 
 
+def _level_for(event: TraceEvent) -> str:
+    """Langfuse observation level (Phase 4).
+
+    ``ERROR_OCCURRED`` → ``ERROR``. A ``GUARDRAIL_CHECKED`` that blocked,
+    redacted, or has any failed rule → ``WARNING`` (a real signal worth
+    surfacing); an otherwise-clean pass → ``DEBUG`` (filterable noise, but kept
+    so demos can still show the provable negative). Everything else → ``DEFAULT``.
+    """
+    if event.event_type == EventType.ERROR_OCCURRED:
+        return "ERROR"
+    if event.event_type == EventType.GUARDRAIL_CHECKED:
+        details = event.details or {}
+        blocked = bool(details.get("blocked"))
+        redacted = bool(details.get("redacted"))
+        failed_rules = details.get("failed_rules") or []
+        if blocked or redacted or failed_rules:
+            return "WARNING"
+        return "DEBUG"
+    return "DEFAULT"
+
+
 def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
     """Map a ``TraceEvent`` to keyword arguments for ``TelemetryExporter.export_event``.
 
@@ -195,13 +216,21 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
     """
     obs_type, name = _EVENT_TYPE_TO_OBSERVATION[event.event_type]
 
-    level = "ERROR" if event.event_type == EventType.ERROR_OCCURRED else "DEFAULT"
+    level = _level_for(event)
 
+    # D-0a (langfuse 4.7.1): the SDK offers no observation start-time backdating,
+    # so the relayed Langfuse span is stamped at relay-export time (~0.9s late).
+    # Surface the authoritative event instant first-class as ``event_time`` so a
+    # reader can reconstruct true ordering. ``timestamp`` is retained verbatim for
+    # back-compat. We deliberately emit NO ``start_time``/``end_time`` — a real
+    # start with a backdated end would invert the span.
+    event_time = event.timestamp.isoformat()
     attributes: dict[str, Any] = {
         "event_id": event.event_id,
         "workflow_id": event.workflow_id,
         "step": event.step,
-        "timestamp": event.timestamp.isoformat(),
+        "event_time": event_time,
+        "timestamp": event_time,
         "integrity_hash": event.integrity_hash,
         "details": redact_details(event.details),
     }

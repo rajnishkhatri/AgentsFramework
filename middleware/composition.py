@@ -317,10 +317,15 @@ def _build_relay(
 
     compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
 
+    # Phase 4: curated view on by default; LANGFUSE_RELAY_CURATED=false restores
+    # the audit-complete dual view (Option B) without a redeploy of logic.
+    curated_view = e.get("LANGFUSE_RELAY_CURATED", "true").strip().lower() != "false"
+
     return BlackBoxToTelemetryRelay(
         storage_dir=storage_dir,
         exporter=exporter,
         compliance_publisher=compliance_publisher,
+        curated_view=curated_view,
     )
 
 

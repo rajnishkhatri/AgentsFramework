@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from agent_ui_adapter.wire.domain_events import LLMMessageStarted
+from agent_ui_adapter.wire.domain_events import LLMMessageEnded, LLMMessageStarted
 from middleware.telemetry_bridge import emit_domain_event
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
 from services.governance.black_box_publisher import redact_text
@@ -92,7 +92,9 @@ class TestRelayOutputRedaction:
 
 
 class TestBridgeInputRedaction:
-    def test_llm_started_input_text_redacted(self) -> None:
+    def test_llm_input_text_redacted_on_merged_call(self) -> None:
+        """Phase 3: input_text is redacted at buffer time and surfaces on the
+        merged ``llm.call`` obs emitted by LLMMessageEnded."""
         exporter = _StubExporter()
         emit_domain_event(
             exporter,
@@ -102,7 +104,12 @@ class TestBridgeInputRedaction:
                 input_text=f"User said {_EMAIL} with {_SECRET}",
             ),
         )
+        emit_domain_event(
+            exporter,
+            LLMMessageEnded(trace_id="trace-1", message_id="msg-1", output_text="ok"),
+        )
         assert len(exporter.events) == 1
+        assert exporter.events[0]["name"] == "llm.call"
         input_text = exporter.events[0]["attributes"]["input_text"]
         assert _EMAIL not in input_text
         assert _SECRET not in input_text

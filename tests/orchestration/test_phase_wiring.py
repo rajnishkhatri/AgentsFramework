@@ -295,3 +295,219 @@ class TestPhaseWiringIntegration:
         step_counts = {e["step_count"] for e in routing_ends}
         assert 0 in step_counts
         assert len(routing_ends) >= 1
+
+    @pytest.mark.asyncio
+    async def test_step_planned_carries_fingerprint_and_plan_changed(
+        self, tmp_path, mock_llm
+    ):
+        """Phase 4 (E10): every STEP_PLANNED row carries plan_fingerprint +
+        plan_changed. The first emission is plan_changed=True; an identical
+        consecutive plan is still RECORDED to JSONL with plan_changed=False
+        (canonical record stays complete — only the relay EXPORT is deduped)."""
+        from orchestration.react_loop import build_graph
+
+        cache_dir = tmp_path / "cache"
+        workflow_id = "wf-plan-fingerprint"
+        graph = build_graph(
+            agent_config=_agent_config(max_steps=5),
+            cache_dir=cache_dir,
+            interrupt_before_execute_tool=False,
+        )
+        await graph.ainvoke(
+            {
+                "task_id": "plan-fp",
+                "task_input": "Count to three then stop.",
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "agent-test",
+            },
+            config={"configurable": {"task_id": "plan-fp", "user_id": "test"}},
+        )
+
+        bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
+        export = bb.export(workflow_id)
+        planned = [
+            e for e in export["events"]
+            if e.get("event_type") == EventType.STEP_PLANNED.value
+            and "plan_fingerprint" in e.get("details", {})
+        ]
+        assert planned, "expected at least one fingerprinted STEP_PLANNED"
+        for e in planned:
+            assert isinstance(e["details"]["plan_fingerprint"], str)
+            assert "plan_changed" in e["details"]
+        # First fingerprinted plan is a change.
+        assert planned[0]["details"]["plan_changed"] is True
+        # If the same plan recurs consecutively, it is still recorded with
+        # plan_changed=False (the canonical record is never deduped).
+        if len(planned) > 1:
+            fps = [e["details"]["plan_fingerprint"] for e in planned]
+            for i in range(1, len(planned)):
+                if fps[i] == fps[i - 1]:
+                    assert planned[i]["details"]["plan_changed"] is False
+
+
+class TestPhase5ContentIdentityEnrichment:
+    """Phase 5 (E7/E8/E9): rationale+alternatives on MODEL_SELECTED, plan_summary
+    on changed STEP_PLANNED, agent identity on TASK_STARTED. Data is already in
+    scope at each emission site — the nodes stay thin (Reasoning + Identity
+    pillars answerable from the trace alone)."""
+
+    @pytest.mark.asyncio
+    async def test_model_selected_carries_rationale_and_alternatives(
+        self, tmp_path, mock_llm
+    ):
+        """E7: the same Decision rationale+alternatives logged to the PhaseLogger
+        are mirrored onto MODEL_SELECTED.details so the 'why' is answerable from
+        the trace without joining to the phase log."""
+        from orchestration.react_loop import build_graph
+
+        cache_dir = tmp_path / "cache"
+        workflow_id = "wf-p5-model-rationale"
+        graph = build_graph(
+            agent_config=_agent_config(),
+            cache_dir=cache_dir,
+            interrupt_before_execute_tool=False,
+        )
+        await graph.ainvoke(
+            {
+                "task_id": "p5-model",
+                "task_input": "What is the capital of France?",
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "agent-test",
+            },
+            config={"configurable": {"task_id": "p5-model", "user_id": "test"}},
+        )
+
+        bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
+        export = bb.export(workflow_id)
+        selected = [
+            e for e in export["events"]
+            if e.get("event_type") == EventType.MODEL_SELECTED.value
+        ]
+        assert selected, "expected at least one MODEL_SELECTED"
+        d = selected[0]["details"]
+        assert isinstance(d.get("rationale"), str) and d["rationale"]
+        assert isinstance(d.get("alternatives"), list)
+        # The rationale must carry the same human-readable reason context the
+        # PhaseLogger Decision recorded (not just the bare reason token).
+        assert d["reason"] in d["rationale"]
+
+    @pytest.mark.asyncio
+    async def test_step_planned_changed_carries_plan_summary(
+        self, tmp_path, mock_llm
+    ):
+        """E8: a CHANGED plan carries a capped plan_summary (≤5 ordered-step
+        titles, each ≤120 chars) so the trace shows what was planned without
+        opening the plan payload. Unchanged re-emissions need not repeat it."""
+        from orchestration.react_loop import build_graph
+
+        cache_dir = tmp_path / "cache"
+        workflow_id = "wf-p5-plan-summary"
+        graph = build_graph(
+            agent_config=_agent_config(max_steps=5),
+            cache_dir=cache_dir,
+            interrupt_before_execute_tool=False,
+        )
+        await graph.ainvoke(
+            {
+                "task_id": "p5-plan",
+                "task_input": "Count to three then stop.",
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "agent-test",
+            },
+            config={"configurable": {"task_id": "p5-plan", "user_id": "test"}},
+        )
+
+        bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
+        export = bb.export(workflow_id)
+        changed = [
+            e for e in export["events"]
+            if e.get("event_type") == EventType.STEP_PLANNED.value
+            and e.get("details", {}).get("plan_changed") is True
+        ]
+        assert changed, "expected at least one CHANGED STEP_PLANNED"
+        summary = changed[0]["details"].get("plan_summary")
+        assert isinstance(summary, list)
+        assert len(summary) <= 5
+        for title in summary:
+            assert isinstance(title, str)
+            assert len(title) <= 120
+
+    @pytest.mark.asyncio
+    async def test_task_started_carries_agent_identity(self, tmp_path, mock_llm):
+        """E9: TASK_STARTED carries agent_name/agent_version/agent_facts_id so the
+        Identity pillar ('who did it?') is answerable from the first event.
+        Sourced at graph-build time (config defaults + resolved agent id) — no
+        new node, no registry dependency for the always-present fields."""
+        from orchestration.react_loop import build_graph
+
+        cache_dir = tmp_path / "cache"
+        workflow_id = "wf-p5-identity"
+        graph = build_graph(
+            agent_config=_agent_config(),
+            cache_dir=cache_dir,
+            interrupt_before_execute_tool=False,
+        )
+        await graph.ainvoke(
+            {
+                "task_id": "p5-id",
+                "task_input": "What is 2+2?",
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "agent-test",
+            },
+            config={"configurable": {"task_id": "p5-id", "user_id": "test"}},
+        )
+
+        bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
+        export = bb.export(workflow_id)
+        started = [
+            e for e in export["events"]
+            if e.get("event_type") == EventType.TASK_STARTED.value
+        ]
+        assert started, "expected a TASK_STARTED"
+        d = started[0]["details"]
+        assert isinstance(d.get("agent_name"), str) and d["agent_name"]
+        assert isinstance(d.get("agent_version"), str) and d["agent_version"]
+        # The resolved registered agent id is the facts id on the event.
+        assert d.get("agent_facts_id") == "agent-test"
+
+    @pytest.mark.asyncio
+    async def test_agent_identity_uses_config_overrides(self, tmp_path, mock_llm):
+        """E9: identity fields are config-sourced — overriding AgentConfig
+        agent_name/agent_version flows through to TASK_STARTED.details."""
+        from orchestration.react_loop import build_graph
+
+        cache_dir = tmp_path / "cache"
+        workflow_id = "wf-p5-identity-cfg"
+        graph = build_graph(
+            agent_config=_agent_config(
+                agent_name="governance-agent", agent_version="2.4.0"
+            ),
+            cache_dir=cache_dir,
+            interrupt_before_execute_tool=False,
+        )
+        await graph.ainvoke(
+            {
+                "task_id": "p5-id-cfg",
+                "task_input": "What is 2+2?",
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "agent-xyz",
+            },
+            config={"configurable": {"task_id": "p5-id-cfg", "user_id": "test"}},
+        )
+
+        bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
+        export = bb.export(workflow_id)
+        started = [
+            e for e in export["events"]
+            if e.get("event_type") == EventType.TASK_STARTED.value
+        ]
+        assert started
+        d = started[0]["details"]
+        assert d["agent_name"] == "governance-agent"
+        assert d["agent_version"] == "2.4.0"
+        assert d["agent_facts_id"] == "agent-xyz"

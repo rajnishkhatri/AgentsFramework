@@ -292,6 +292,67 @@ class TestTraceGrouping:
         }
 
 
+class TestMetadataAllowlist:
+    """Phase 4 (E3): metadata is a small allowlist of join keys — bulky fields
+    (input_text, details, args_json, result) live ONLY in ``input``, never
+    duplicated into metadata."""
+
+    _ALLOWED = {"step", "workflow_id", "event_id", "tool_name", "model", "subject"}
+
+    def test_bulky_fields_not_duplicated_into_metadata(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="llm.call",
+            trace_id="trace-001",
+            attributes={
+                "input_text": "A" * 5000,
+                "step": 7,
+                "workflow_id": "wf-1",
+                "model": "gpt-4o-mini",
+            },
+        )
+        meta = fake_client.spans[0]["metadata"] or {}
+        assert "input_text" not in meta
+        # The full content still rides on ``input``.
+        assert fake_client.spans[0]["input"]["input_text"].startswith("A")
+
+    def test_metadata_keys_are_allowlisted(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="tool.file_io",
+            trace_id="trace-001",
+            attributes={
+                "tool_name": "file_io",
+                "step": 7,
+                "workflow_id": "wf-1",
+                "event_id": "e-1",
+                "args_json": '{"path":"/x"}',
+                "result": "12",
+                "integrity_hash": "deadbeef",
+            },
+        )
+        meta = fake_client.spans[0]["metadata"] or {}
+        assert set(meta).issubset(self._ALLOWED)
+        assert "args_json" not in meta
+        assert "result" not in meta
+        assert "integrity_hash" not in meta
+        assert meta["tool_name"] == "file_io"
+        assert meta["step"] == "7"
+
+    def test_empty_when_no_allowlisted_keys(
+        self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
+    ) -> None:
+        exporter.export_event(
+            name="run.started",
+            trace_id="trace-001",
+            attributes={"run_id": "r-1", "thread_id": "th-1"},
+        )
+        meta = fake_client.spans[0]["metadata"]
+        assert meta is None or set(meta).issubset(self._ALLOWED)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # release_trace() Contract
 # ─────────────────────────────────────────────────────────────────────

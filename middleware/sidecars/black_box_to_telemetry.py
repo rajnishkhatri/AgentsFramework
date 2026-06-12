@@ -77,12 +77,20 @@ class BlackBoxToTelemetryRelay:
         compliance_publisher: CompliancePublisher | None = None,
         *,
         agent_facts_registry: Any = None,
+        curated_view: bool = True,
         max_retries: int = 5,
         base_delay_s: float = 1.0,
     ) -> None:
         self._storage_dir = Path(storage_dir)
         self._exporter = exporter
         self._compliance_publisher = compliance_publisher
+        # Phase 4: when True (default), the curated view suppresses the EXPORT of
+        # governance-duplicate events (TOOL_CALLED / STEP_EXECUTED — the wire
+        # bridge owns the same facts) and unchanged-plan STEP_PLANNED
+        # re-emissions. The canonical JSONL / replay / compliance bundle are
+        # untouched; one flag flip (LANGFUSE_RELAY_CURATED=false) restores the
+        # audit-complete dual view (Option B).
+        self._curated_view = curated_view
         # E7: forwarded into ``export_for_compliance`` so the compliance bundle
         # carries ``identity_cards`` (the Identity pillar was dead without it).
         self._agent_facts_registry = agent_facts_registry
@@ -232,8 +240,49 @@ class BlackBoxToTelemetryRelay:
             self._mtimes[wf_id] = current_mtime
             return published
 
+    # Phase 4: events the curated view never exports — the wire bridge already
+    # carries the same facts (TOOL_CALLED ↔ tool.{name}; STEP_EXECUTED usage ↔
+    # llm.call). STEP_PLANNED is conditionally suppressed (unchanged plan only),
+    # handled separately so the back-compat (key-absent) case still exports.
+    _CURATED_SUPPRESSED = frozenset({"tool_called", "step_executed"})
+
+    def _is_curated_suppressed(self, event: TraceEvent) -> bool:
+        """True when the curated view should suppress this event's EXPORT.
+
+        Suppression is export-only: the line is still consumed (offset advances)
+        and is NEVER dead-lettered — it is processed-not-published.
+        """
+        if not self._curated_view:
+            return False
+        etype = event.event_type
+        if etype.value in self._CURATED_SUPPRESSED:
+            return True
+        if etype == EventType.STEP_PLANNED:
+            # Suppress only an explicitly-unchanged plan re-emission. A missing
+            # ``plan_changed`` key (legacy rows / no-progress directive) exports.
+            details = event.details or {}
+            return details.get("plan_changed") is False
+        return False
+
     def _process_line(self, wf_dir: Path, line: str) -> bool:
-        """Parse, map, and export a single JSONL line.  Returns True on success."""
+        """Parse, map, and export a single JSONL line.  Returns True on success.
+
+        Phase 4: a curated-suppressed event returns ``False`` WITHOUT writing a
+        DLQ entry — it is processed-not-published (the caller's offset advances
+        regardless). Only a genuine parse/export failure dead-letters.
+        """
+        # Curated-view suppression: decide before the export/retry loop so a
+        # suppressed line never reaches the exporter or the DLQ.
+        if self._curated_view:
+            try:
+                pre = TraceEvent.model_validate(json.loads(line))
+                if self._is_curated_suppressed(pre):
+                    return False
+            except Exception:
+                # Unparseable here → fall through to the normal path, which
+                # owns the retry + DLQ semantics for poison lines.
+                pass
+
         last_exc: Exception | None = None
         for attempt in range(self._max_retries + 1):
             try:

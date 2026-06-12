@@ -79,6 +79,11 @@ class AgentState(MessagesState):
     files: Annotated[dict[str, str], _merge_dict]
     todos: list[TodoItem]
     plan_ref: str
+    # Phase 4 (E10): SHA-256 of the last emitted plan's identity. route_node
+    # re-runs every iteration; comparing the new fingerprint against this lets
+    # it stamp ``plan_changed`` on each STEP_PLANNED so the relay can suppress
+    # the duplicate EXPORT (the JSONL row is recorded every iteration).
+    last_plan_fingerprint: str
     # task_understanding plan §4.5: plan-time TaskUnderstanding artifact
     # (restated_intent + success_conditions + provenance), written once at
     # step 0 in route_node and memoized — route_node re-runs every loop

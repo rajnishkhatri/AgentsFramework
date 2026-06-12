@@ -119,9 +119,18 @@ def exporter() -> FakeExporter:
 
 
 def _build_relay(storage: Path, exporter: FakeExporter, **kwargs: Any):
-    """Lazy import to let RED phase fail on ImportError."""
+    """Lazy import to let RED phase fail on ImportError.
+
+    These export-mechanics tests predate the Phase 4 curated view and assert
+    that every event (incl. STEP_EXECUTED / TOOL_CALLED) is exported. Default
+    them to the audit-complete dual view (``curated_view=False``) so they keep
+    testing offset/idempotency/drain mechanics, not the curated policy. The
+    ``TestCuratedViewSuppression`` class passes the flag explicitly to exercise
+    the production default.
+    """
     from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
 
+    kwargs.setdefault("curated_view", False)
     return BlackBoxToTelemetryRelay(
         storage_dir=storage,
         exporter=exporter,
@@ -785,3 +794,172 @@ class TestSingleWriterIdempotency:
 
         task_spans = [s for s in sdk.spans if s["name"] == "task.completed"]
         assert len(task_spans) == 1, "duplicate event_id must export exactly once"
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 4 — Curated-view flag: relay-side export suppression (E2, E3, E10)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestCuratedViewSuppression:
+    """The curated flag (default ON) suppresses the EXPORT of governance-
+    duplicate events (TOOL_CALLED, STEP_EXECUTED) and unchanged-plan
+    STEP_PLANNED re-emissions. Suppression is processed-not-published: the
+    offset advances, NO DLQ entry is written, and no export_event fires.
+
+    Rejection paths first.
+    """
+
+    def _offset(self, storage: Path, wf: str) -> int:
+        return int((storage / wf / ".langfuse_offset").read_text().strip())
+
+    def _dlq(self, storage: Path, wf: str) -> Path:
+        return storage / wf / ".langfuse_failures.jsonl"
+
+    # ── ON (default): governance-duplicate events suppressed ──────────
+
+    def test_tool_called_suppressed_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c1",
+                         details={"tool": "shell", "tool_call_id": "1:c"})
+        trace_file = _record_events(storage, "wf-c1", [ev])
+        (storage / "wf-c1" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        published = relay.run_once()
+
+        assert published == 0
+        assert len(exporter.events) == 0
+        # offset advanced past the suppressed line; no DLQ.
+        assert self._offset(storage, "wf-c1") == trace_file.stat().st_size
+        assert not self._dlq(storage, "wf-c1").exists()
+
+    def test_step_executed_suppressed_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-c2")
+        trace_file = _record_events(storage, "wf-c2", [ev])
+        (storage / "wf-c2" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        relay.run_once()
+
+        assert len(exporter.events) == 0
+        assert self._offset(storage, "wf-c2") == trace_file.stat().st_size
+        assert not self._dlq(storage, "wf-c2").exists()
+
+    def test_unchanged_plan_suppressed_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c3",
+                         details={"planning_depth": "L0", "plan_changed": False})
+        _record_events(storage, "wf-c3", [ev])
+        (storage / "wf-c3" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        relay.run_once()
+        assert len(exporter.events) == 0
+        assert not self._dlq(storage, "wf-c3").exists()
+
+    # ── ON: real-signal events still exported ─────────────────────────
+
+    def test_changed_plan_exported_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c4",
+                         details={"planning_depth": "L0", "plan_changed": True})
+        _record_events(storage, "wf-c4", [ev])
+        (storage / "wf-c4" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        published = relay.run_once()
+        assert published == 1
+        assert exporter.events[0]["name"] == "step.planned"
+
+    def test_plan_changed_absent_exported_back_compat(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """Old JSONL rows have no plan_changed key — they must still export."""
+        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c5",
+                         details={"planning_depth": "L0"})
+        _record_events(storage, "wf-c5", [ev])
+        (storage / "wf-c5" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        published = relay.run_once()
+        assert published == 1
+
+    def test_task_completed_still_exports_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-c6",
+                         details={"outcome": "success", "goal_met": True})
+        _record_events(storage, "wf-c6", [ev])
+        (storage / "wf-c6" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        published = relay.run_once()
+        assert published == 1
+        assert exporter.events[0]["name"] == "task.completed"
+
+    def test_non_suppressed_event_exported_when_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.MODEL_SELECTED, workflow_id="wf-c7",
+                         details={"model": "gpt-4o-mini"})
+        _record_events(storage, "wf-c7", [ev])
+        (storage / "wf-c7" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=True)
+        assert relay.run_once() == 1
+
+    # ── OFF: Option-B escape hatch — everything exports as before ──────
+
+    def test_tool_called_exported_when_curated_off(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c8",
+                         details={"tool": "shell", "tool_call_id": "1:c"})
+        _record_events(storage, "wf-c8", [ev])
+        (storage / "wf-c8" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=False)
+        published = relay.run_once()
+        assert published == 1
+        assert exporter.events[0]["name"] == "tool.called"
+
+    def test_step_executed_and_unchanged_plan_exported_when_curated_off(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        evs = [
+            _make_event(EventType.STEP_EXECUTED, workflow_id="wf-c9", step=1),
+            _make_event(EventType.STEP_PLANNED, workflow_id="wf-c9", step=1,
+                       details={"plan_changed": False}),
+        ]
+        _record_events(storage, "wf-c9", evs)
+        (storage / "wf-c9" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter, curated_view=False)
+        published = relay.run_once()
+        assert published == 2
+
+    def test_default_is_curated_on(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """The production constructor default is curated_view=True (built here
+        directly, bypassing the test helper's dual-view default)."""
+        from middleware.sidecars.black_box_to_telemetry import (
+            BlackBoxToTelemetryRelay,
+        )
+
+        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c10",
+                         details={"tool": "shell"})
+        _record_events(storage, "wf-c10", [ev])
+        (storage / "wf-c10" / ".langfuse_offset").write_text("0")
+
+        relay = BlackBoxToTelemetryRelay(
+            storage_dir=storage, exporter=exporter, base_delay_s=0.0,
+        )  # no curated_view kwarg → production default
+        assert relay.run_once() == 0
+        assert len(exporter.events) == 0

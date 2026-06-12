@@ -236,6 +236,82 @@ class TestLangGraphRuntimeStream:
         assert len(ended) == 1
         assert ended[0].output_text is None
 
+    def test_extract_usage_from_message(self) -> None:
+        """Phase 3: tokens + model pulled from usage_metadata/response_metadata."""
+
+        class _Msg:
+            content = "hi"
+            usage_metadata = {"input_tokens": 2144, "output_tokens": 113}
+            response_metadata = {"model_name": "gpt-4o-mini"}
+
+        ti, to, model = LangGraphRuntime._extract_usage(_Msg())
+        assert ti == 2144
+        assert to == 113
+        assert model == "gpt-4o-mini"
+
+    def test_extract_usage_absent_returns_none(self) -> None:
+        """Failure path: no usage metadata → all None, no raise."""
+
+        class _Bare:
+            content = "hi"
+
+        assert LangGraphRuntime._extract_usage(_Bare()) == (None, None, None)
+
+    def test_extract_usage_never_raises_on_garbage(self) -> None:
+        assert LangGraphRuntime._extract_usage(object()) == (None, None, None)
+        assert LangGraphRuntime._extract_usage(None) == (None, None, None)
+
+    @pytest.mark.asyncio
+    async def test_chat_model_end_populates_usage_on_message_ended(self) -> None:
+        """The emitted LLMMessageEnded carries tokens/model from the message."""
+
+        class _Msg:
+            content = "Paris"
+            usage_metadata = {"input_tokens": 50, "output_tokens": 20}
+            response_metadata = {"model_name": "gpt-4o-mini"}
+
+        scripted = [
+            {
+                "event": "on_chat_model_end",
+                "data": {"output": _Msg()},
+                "name": "ChatModel",
+                "run_id": "lc-usage",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        ended = [e for e in out if isinstance(e, LLMMessageEnded)]
+        assert len(ended) == 1
+        assert ended[0].tokens_in == 50
+        assert ended[0].tokens_out == 20
+        assert ended[0].model == "gpt-4o-mini"
+
+    @pytest.mark.asyncio
+    async def test_chat_model_end_without_usage_keeps_fields_none(self) -> None:
+        class _Msg:
+            content = "Paris"
+
+        scripted = [
+            {
+                "event": "on_chat_model_end",
+                "data": {"output": _Msg()},
+                "name": "ChatModel",
+                "run_id": "lc-nousage",
+                "metadata": {"langgraph_node": "call_llm"},
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        ended = [e for e in out if isinstance(e, LLMMessageEnded)]
+        assert len(ended) == 1
+        assert ended[0].tokens_in is None
+        assert ended[0].model is None
+
     @pytest.mark.asyncio
     async def test_translates_tool_start_and_end(self) -> None:
         scripted = [

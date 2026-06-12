@@ -15,6 +15,7 @@ try/except. A broken exporter never aborts the agent run.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from agent_ui_adapter.wire.domain_events import (
@@ -41,10 +42,10 @@ logger = logging.getLogger("middleware.telemetry_bridge")
 __all__ = ["emit_domain_event", "emit_run_finished"]
 
 _MAX_FIELD_BYTES = 4096
-# ``LLMTokenEmitted`` is intercepted earlier in ``emit_domain_event`` (its deltas
-# are buffered and folded into the matching ``llm.finished`` export), so it never
-# produces a direct observation — it belongs in the skipped set alongside the
-# events that are dropped outright.
+# Phase 3: ``LLMMessageStarted``/``ToolCallStarted``/``LLMTokenEmitted`` are
+# BUFFERED (folded into the merged terminal observation), not skipped — they are
+# intercepted in ``emit_domain_event`` before ``_build_attributes`` and so never
+# reach ``_SKIPPED_TYPES``.
 # StepProgressed is a UI step-meter affordance; Langfuse already carries
 # per-lap tool/llm observations, so exporting it would only add noise.
 # ReasoningSummarized likewise: the recap's own LLM call is already exported
@@ -53,14 +54,20 @@ _MAX_FIELD_BYTES = 4096
 # eval.task_understanding observation and joined via STEP_PLANNED; the
 # domain event only feeds the soft-gate card.
 _SKIPPED_TYPES = (
-    LLMTokenEmitted,
     ReasoningSummarized,
     StateMutated,
     StepProgressed,
     TaskUnderstood,
     ToolCallEnded,
 )
+
+# Per-trace buffers, keyed ``(trace_id, key)``. Cleared on RunFinishedDomain.
+# ``_llm_token_buffers``: streamed output deltas, folded into the merged llm.call.
+# ``_llm_start_buffers``: (input attrs, monotonic start) from LLMMessageStarted.
+# ``_tool_start_buffers``: (start attrs, monotonic start) from ToolCallStarted.
 _llm_token_buffers: dict[tuple[str, str], list[str]] = {}
+_llm_start_buffers: dict[tuple[str, str], tuple[dict[str, Any], float]] = {}
+_tool_start_buffers: dict[tuple[str, str], tuple[dict[str, Any], float]] = {}
 
 
 def _truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
@@ -71,6 +78,37 @@ def _truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
 
 def _redact_and_truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
     return _truncate(redact_text(value, max_len=limit), limit)
+
+
+def _clear_trace_buffers(trace_id: str) -> None:
+    """Drop every per-trace buffer entry for ``trace_id`` (Phase 3 hygiene).
+
+    Started-but-never-finished LLM/tool calls would otherwise linger in the
+    buffer maps after a run ends; clearing on RunFinishedDomain bounds memory
+    and prevents cross-run leakage. Other traces are untouched.
+    """
+    for buf in (_llm_token_buffers, _llm_start_buffers, _tool_start_buffers):
+        for key in [k for k in buf if k[0] == trace_id]:
+            del buf[key]
+
+
+def _derive_step_from_tool_call_id(tool_call_id: str | None) -> int | None:
+    """Recover the loop step from a ``"{step}:{tool_id}"`` tool_call_id.
+
+    Phase 2 (E2 join): the replay/fallback runtime path uses the relay
+    ``record_id`` (``"{step}:{tool_id}"``) as the wire ``tool_call_id``, so the
+    step is recoverable from its prefix. The live-stream path uses a bare
+    LangChain id (e.g. ``call_abc123``) with no step prefix — there the step is
+    not cheaply knowable (D-2a), so it is simply omitted. A malformed or
+    missing prefix MUST NOT raise (O1).
+    """
+    if not tool_call_id:
+        return None
+    prefix, sep, _ = tool_call_id.partition(":")
+    if not sep or not prefix.isdigit():
+        # ``isdigit`` rejects empty, negative ("-1"), and non-numeric prefixes.
+        return None
+    return int(prefix)
 
 
 def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dict[str, Any]] | None:
@@ -92,28 +130,34 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         attrs["error"] = event.error
         attrs["__output"] = {"status": "error" if event.error else "success", "error": event.error}
 
-    elif isinstance(event, ToolCallStarted):
-        name = "tool.started"
-        attrs["tool_name"] = event.tool_name
-        attrs["tool_call_id"] = event.tool_call_id
-        attrs["args_json"] = _redact_and_truncate(event.args_json)
-
     elif isinstance(event, ToolResultReceived):
-        name = "tool.finished"
+        # Phase 3: merge the buffered ToolCallStarted into ONE tool.{name} obs.
+        key = (event.trace_id, event.tool_call_id)
+        start_attrs, start_ts = _tool_start_buffers.pop(key, ({}, None))
+        tool_name = start_attrs.get("tool_name") or "unknown"
+        name = f"tool.{tool_name}"
         attrs["tool_call_id"] = event.tool_call_id
+        if "tool_name" in start_attrs:
+            attrs["tool_name"] = start_attrs["tool_name"]
+        if "args_json" in start_attrs:
+            attrs["args_json"] = start_attrs["args_json"]
+        step = _derive_step_from_tool_call_id(event.tool_call_id)
+        if step is not None:
+            attrs["step"] = step
+        if start_ts is not None:
+            attrs["latency_ms"] = (time.monotonic() - start_ts) * 1000.0
         attrs["result"] = _redact_and_truncate(event.result)
         attrs["__output"] = {"result": _redact_and_truncate(event.result)}
 
-    elif isinstance(event, LLMMessageStarted):
-        name = "llm.started"
-        attrs["message_id"] = event.message_id
-        if event.input_text:
-            attrs["input_text"] = _redact_and_truncate(event.input_text)
-
     elif isinstance(event, LLMMessageEnded):
-        name = "llm.finished"
+        # Phase 3: merge the buffered LLMMessageStarted + token deltas into ONE
+        # llm.call generation carrying input, output, model, usage, cost, latency.
+        name = "llm.call"
         attrs["message_id"] = event.message_id
         key = (event.trace_id, event.message_id)
+        start_attrs, start_ts = _llm_start_buffers.pop(key, ({}, None))
+        if "input_text" in start_attrs:
+            attrs["input_text"] = start_attrs["input_text"]
         buffered = "".join(_llm_token_buffers.pop(key, []))
         content = event.output_text or buffered or None
         output: dict[str, Any] = {
@@ -123,6 +167,16 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         if content:
             output["content"] = _redact_and_truncate(content)
         attrs["__output"] = output
+        if start_ts is not None:
+            attrs["latency_ms"] = (time.monotonic() - start_ts) * 1000.0
+        if event.model is not None:
+            attrs["__bb_model"] = event.model
+        # Native token usage on the generation (cost is not a wire concern —
+        # it lives on the canonical STEP_EXECUTED record; see LLMMessageEnded).
+        if event.tokens_in is not None or event.tokens_out is not None:
+            ti = event.tokens_in or 0
+            to = event.tokens_out or 0
+            attrs["__bb_usage"] = {"input": ti, "output": to, "total": ti + to}
 
     else:
         return None
@@ -142,10 +196,13 @@ def emit_domain_event(
 ) -> None:
     """Map a DomainEvent to a Langfuse export call via the TelemetryExporter port.
 
-    ``LLMTokenEmitted`` events are buffered and folded into the matching
-    ``llm.finished`` export. Skipped events (``StateMutated``, ``ToolCallEnded``)
-    produce zero export calls. On RunFinishedDomain, release_trace() is called
-    to free in-memory handles.
+    Phase 3: ``LLMMessageStarted``/``ToolCallStarted``/``LLMTokenEmitted`` are
+    buffered and folded into the single merged terminal observation
+    (``llm.call`` on ``LLMMessageEnded``; ``tool.{tool_name}`` on
+    ``ToolResultReceived``) carrying input + output + model/usage/cost +
+    ``latency_ms``. Skipped events (``StateMutated``, ``ToolCallEnded``) produce
+    zero export calls. On RunFinishedDomain, per-trace buffers are cleared and
+    release_trace() frees in-memory handles.
 
     ``release_on_finish`` (I6): when ``False``, ``release_trace`` is **not**
     called on ``RunFinishedDomain``. The SSE ``finally`` in ``app_prod`` sets
@@ -158,9 +215,30 @@ def emit_domain_event(
     MUST NOT raise — per O1, telemetry failures are silent.
     """
     try:
+        # ── Phase 3: buffer the start/streaming events; the terminal event
+        #    (LLMMessageEnded / ToolResultReceived) folds them into one obs. ──
         if isinstance(domain_event, LLMTokenEmitted):
             key = (domain_event.trace_id, domain_event.message_id)
             _llm_token_buffers.setdefault(key, []).append(domain_event.delta)
+            return
+
+        if isinstance(domain_event, LLMMessageStarted):
+            key = (domain_event.trace_id, domain_event.message_id)
+            start_attrs: dict[str, Any] = {}
+            if domain_event.input_text:
+                start_attrs["input_text"] = _redact_and_truncate(domain_event.input_text)
+            _llm_start_buffers[key] = (start_attrs, time.monotonic())
+            return
+
+        if isinstance(domain_event, ToolCallStarted):
+            key = (domain_event.trace_id, domain_event.tool_call_id)
+            _tool_start_buffers[key] = (
+                {
+                    "tool_name": domain_event.tool_name,
+                    "args_json": _redact_and_truncate(domain_event.args_json),
+                },
+                time.monotonic(),
+            )
             return
 
         result = _build_attributes(domain_event, subject)
@@ -170,8 +248,13 @@ def emit_domain_event(
         name, attrs = result
         exporter.export_event(name=name, trace_id=domain_event.trace_id, attributes=attrs)
 
-        if isinstance(domain_event, RunFinishedDomain) and release_on_finish:
-            exporter.release_trace(domain_event.trace_id)
+        if isinstance(domain_event, RunFinishedDomain):
+            # Clear bridge-owned buffers on every run-finish (independent of the
+            # exporter trace-handle lifecycle) so started-but-never-finished
+            # calls never leak across runs.
+            _clear_trace_buffers(domain_event.trace_id)
+            if release_on_finish:
+                exporter.release_trace(domain_event.trace_id)
     except Exception as exc:
         logger.debug(
             "telemetry_bridge emit_domain_event swallowed: %s: %s",

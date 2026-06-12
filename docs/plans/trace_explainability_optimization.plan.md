@@ -7,6 +7,40 @@
 > service.name + 0.2 spikes D-0a/D-0b resolved; 0.1 GCP cap-lift smoke user-run).
 > **Phase 1 DONE** (native types, model.selected→chain, trace-level outcome scores,
 > would_downgrade on TASK_COMPLETED, identity registry into the compliance bundle).
+> **Phase 2 DONE** (`tool_call_id` join key on relay `TOOL_CALLED`; bridge `step`
+> derived from the `record_id` prefix when present, omitted on the bare live-stream
+> id — no raise; `event_time` first-class on every relayed observation per D-0a, no
+> fabricated start/end times; D-2a RESOLVED; GCP smoke ✅ rev 00062).
+> **Phase 3 DONE** (started/token events buffer per-trace; one merged `llm.call`
+> generation per LLM call with `tokens_in/out` + `model` (native `usage_details`)
+> + `latency_ms`; one merged `tool.{tool_name}` per tool call with
+> args+result+`latency_ms`; orphan terminals export safely; buffers cleared on
+> run-finish; wire ring evolved additively (`LLMMessageEnded` optional fields,
+> openapi.yaml + wire-types.ts regenerated); D-3a RESOLVED — grep found no live
+> dashboards/queries on the old names, only historical IAA docs (left intact)).
+> **Cost decision (2026-06-12, user):** `cost_usd` is **not** a wire/generation
+> field — cost needs the model pricing table (`cost_per_1k_*`), which is
+> service/config-layer state the framework-neutral wire adapter must not own
+> (four-layer boundary). The trace surfaces **token counts** (which the runtime
+> legitimately has from `usage_metadata`); cost stays single-sourced on the
+> canonical `STEP_EXECUTED` record (`react_loop.py:1099`).
+> **Phase 4 DONE** (curated-view flag `LANGFUSE_RELAY_CURATED`, default on, read
+> at both composition roots: suppresses the EXPORT of `TOOL_CALLED`/`STEP_EXECUTED`
+> and unchanged-plan `STEP_PLANNED` — processed-not-published, offset advances, no
+> DLQ; `compute_plan_fingerprint` in `components/plan_builder.py` + `plan_changed`
+> on every `STEP_PLANNED` (JSONL records every iteration, E10); guardrail level
+> DEBUG on clean pass / WARNING on blocked-or-redacted; exporter metadata
+> allowlist drops bulky/duplicative fields, input keeps full payload).
+> **Phase 5 DONE** (content/identity enrichment — data already in scope, nodes
+> stay thin: E7 `rationale`+`alternatives` mirrored onto `MODEL_SELECTED` details
+> from the same PhaseLogger `Decision`; E8 `plan_summary` (≤5 ordered-step titles,
+> each ≤120 chars) on **changed-only** `STEP_PLANNED`; E9 `agent_name`/
+> `agent_version`/`agent_facts_id` on `TASK_STARTED` — name/version config-sourced
+> via new `AgentConfig.agent_name`/`agent_version` defaults (always present, no
+> registry round-trip), facts_id = resolved `registered_agent_id` hoisted before
+> the first event. Phase 5.3 trace-level I/O stays DROPPED per D-0b. All four
+> pillar-acceptance rows answerable from the trace alone). **All phases DONE —
+> awaiting the consolidated GCP trace review after deploy.**
 > **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
 > on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
 > `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
@@ -56,7 +90,7 @@ and each pillar question answerable from the trace in one click.
 | Constraint | **Readability only** — no delta-encoding of prompts; a self-contained full input per generation is the Langfuse norm | Byte-shaving |
 | Consumers | All three: ops triage, GoalJudge Stage 5/6 calibration, compliance demos | — |
 | Guardrail clean passes | **Keep, at `DEBUG` level** (filterable; demos can still show the provable negative). Blocked → `WARNING` | Suppress from relay; keep all at DEFAULT |
-| Usage source for the merged generation | **Optional fields on `LLMMessageEnded`** (`tokens_in`, `tokens_out`, `cost_usd`, `model`), populated by the runtime adapter | Keep relaying slim `STEP_EXECUTED` as the usage carrier |
+| Usage source for the merged generation | **Optional fields on `LLMMessageEnded`** (`tokens_in`, `tokens_out`, `model`), populated by the runtime adapter. `cost_usd` is NOT a wire field — pricing is service/config-layer (four-layer boundary); cost stays on canonical `STEP_EXECUTED` | Keep relaying slim `STEP_EXECUTED` as the usage carrier; put cost on the wire |
 | Rollout | **Flag-gated relay suppression** (`LANGFUSE_RELAY_CURATED`, default on) + per-phase GCP smoke. One flag flip restores the audit-complete dual view | Hard removal, single final verification |
 | Branch | Off `main` after TU-gate merge | Stacking on `feat/goaljudge-task-understanding-gate` |
 
@@ -123,7 +157,7 @@ trace: agent-run  (input: task_input; output: final answer;
 ├─ step.N              (span)   — one per loop iteration
 │  ├─ step.planned     (chain)  — ONLY when plan changed; plan summary + fingerprint
 │  ├─ model.selected   (chain)  — model, reason, rationale, alternatives, decision_id
-│  ├─ llm.call         (generation) — full input, output, model, usage, cost, latency_ms
+│  ├─ llm.call         (generation) — full input, output, model, token usage, latency_ms
 │  ├─ tool.{name} ×k   (tool)   — args + result + ok + latency_ms (one per call)
 │  ├─ guardrail.checked (guardrail) — DEBUG when clean, WARNING when blocked/redacted
 │  ├─ parameter.changed (span)  — when it occurs
@@ -140,7 +174,7 @@ trace: agent-run  (input: task_input; output: final answer;
 | `task.started` / `task.completed` | relay | agent | Who ran this? Did it succeed and why? | never |
 | `step.planned` (changed only) | relay | chain | What was the plan? | when `plan_changed=False` and curated flag on |
 | `model.selected` | relay | chain | Why this model? | never |
-| `llm.call` (merged) | bridge | generation | What did the model see/say? cost? | never |
+| `llm.call` (merged) | bridge | generation | What did the model see/say? how many tokens? | never |
 | `tool.{name}` (merged) | bridge | tool | What did the agent actually do/observe? | never |
 | `tool.called` | relay | tool | (duplicate of above) | **always when curated flag on** (JSONL keeps it) |
 | `step.executed` | relay | span | (usage duplicate) | **always when curated flag on** (JSONL keeps it) |
@@ -263,9 +297,9 @@ dataset item contains `identity_cards`.
 **RED**
 * `tests/agent_ui_adapter/wire/test_domain_events.py`:
   - `LLMMessageEnded` accepts optional `tokens_in: int | None`, `tokens_out: int | None`,
-    `cost_usd: float | None`, `model: str | None`; **backward-compat rejection test:** a
-    pre-existing payload without the new fields still validates; unknown-field behavior
-    unchanged.
+    `model: str | None`; **backward-compat rejection test:** a pre-existing payload
+    without the new fields still validates; unknown-field behavior unchanged. **`cost_usd`
+    is rejected** (`extra="forbid`): cost is service/config-layer, not a wire concern.
 * `tests/agent_ui_adapter/adapters/runtime/test_langgraph_runtime.py`: runtime populates
   usage/model on `LLMMessageEnded` from `usage_metadata` when present; absent metadata →
   fields `None`, event still emitted.
@@ -278,9 +312,9 @@ dataset item contains `identity_cards`.
     do not leak — assert buffer maps empty after release).
   - Happy paths: `LLMMessageStarted` produces **zero** exports; one `llm.call`
     export on `LLMMessageEnded` carrying `input_text`, output (token-buffer fold
-    unchanged), `__bb_model`, `__bb_usage`, `__bb_cost`, and `latency_ms` (wall time
-    started→finished). `ToolCallStarted` produces zero exports; one `tool.{tool_name}`
-    export on `ToolResultReceived` with args + result + `latency_ms`.
+    unchanged), `__bb_model`, `__bb_usage` (token counts), and `latency_ms` (wall time
+    started→finished); **no `__bb_cost`**. `ToolCallStarted` produces zero exports; one
+    `tool.{tool_name}` export on `ToolResultReceived` with args + result + `latency_ms`.
 * `tests/middleware/test_telemetry_redaction.py`: redaction still applied to the merged
   payloads (input, args, result).
 
@@ -296,8 +330,9 @@ dataset item contains `identity_cards`.
   dashboards/queries for the old names before the rename lands; `eval.goal_judge` and
   all relay names are untouched, so Stage 5/6 tooling is unaffected.
 
-**Exit:** smoke trace shows exactly one generation (with cost/usage rendered natively by
-Langfuse) and one tool observation per call; bridge buffer maps empty after each run.
+**Exit:** smoke trace shows exactly one generation (with token usage + model rendered
+natively by Langfuse) and one tool observation per call; bridge buffer maps empty after
+each run.
 
 ---### Phase 4 — De-duplication: the curated view flag (E2, E3-metadata, E10 + guardrail levels)
 
@@ -380,8 +415,8 @@ verify the dual view returns; flipped back ON.
 |---|---|---|
 | 0 | — | cap-lift check on `eval.goal_judge`; service.name visible |
 | 1 | `tests/services/governance`, `tests/middleware/sidecars`, `tests/orchestration/test_phase_wiring.py`, `tests/architecture` | 3 scores visible in trace list; no `"None"` strings in `task.completed`; `identity_cards` in dataset item |
-| 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events |
-| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py` | 1 generation + N tools per step; native cost on generation |
+| 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events — **✅ PASSED on rev 00062 (trace `e1c0cbc5…`, 2026-06-12):** relay `tool.called` `details.tool_call_id` (e.g. `call_eOXZQK…`) = suffix of bridge `tool.{started,finished}` `tool_call_id` (`7:call_eOXZQK…`); bridge tool obs carry `step:7` (prefix-derived); `event_time` first-class on every relayed obs and ~0.5s ahead of the span `startTime` (D-0a lag visible); no `start_time`/`end_time` |
+| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py` | 1 generation + N tools per step; native token usage + model on generation (cost on canonical STEP_EXECUTED, not the wire) |
 | 4 | suppression + fingerprint + exporter suites | obs/step ≤8; flag-off restores dual view (once, dev) |
 | 5 | phase-wiring + bridge suites | pillar acceptance table above |
 
@@ -409,8 +444,8 @@ the full T1 tier locally.
 |---|---|---|
 | D-0a | SDK v4 explicit start/end times on observations? | **RESOLVED (langfuse 4.7.1, 2026-06-12): NO start-time backdating.** `start_observation()` exposes only `completion_start_time` (TTFT for generations), never a span `start_time`; the OTel span starts at the `start_observation()` call. `.end(end_time=...)` accepts an explicit end but a real-start + backdated-end inverts the span. **Decision:** do NOT fabricate timings. Relayed observations stay point-in-time at relay-export instant; the authoritative event instant is surfaced first-class as `event_time` (= `details.timestamp`) on every relayed observation so a reader can reconstruct the true order. Phase 2 RED/GREEN adjusted accordingly. |
 | D-0b | Trace-level input/output mechanism in v4 | **RESOLVED (4.7.1): `set_current_trace_io(input=, output=)` exists but is (1) `@deprecated` (legacy LLM-as-judge only, slated for removal) and (2) requires a *current OTel span context* (`_get_current_otel_span()`), which our `start_observation(trace_context=...)+.end()` pattern never establishes.** **Decision:** do NOT use `set_current_trace_io`. For list-view scannability rely on (a) `propagate_attributes(trace_name=...)` for a meaningful trace name and (b) the Phase 1 trace-level **scores** (goal_met / criteria_met / completion_score) — those already give triage-without-opening. The task input + final answer remain visible on `task.started` / `task.completed` / the `llm.call` generation rather than as deprecated trace-level I/O. Phase 5.3 (trace input/output wiring) is **dropped**; Phase 5 reduces to content/identity enrichment on existing observations. |
-| D-2a | `step` attachable to LLM wire events cheaply? | _discovery (Phase 2)_ |
-| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | _grep before merge (Phase 3)_ |
+| D-2a | `step` attachable to LLM wire events cheaply? | **RESOLVED (Phase 2):** Not on the *live* wire path. The runtime's live `on_tool_start`/`on_tool_end` translators (`langgraph_runtime.py:539,558`) carry a bare LangChain tool id (`call_abc…`) with no step. Only the **replay/fallback** path (`:683-713`) sets `tool_call_id = record_id = "{step}:{tool_id}"`, so `step` is recoverable there via prefix parse. LLM wire events (`LLMMessageStarted/Ended`) carry only `message_id` (the run id) — no step at all. **Decision:** do NOT contort the wire ring. The bridge derives `step` from the `tool_call_id` prefix when present (`_derive_step_from_tool_call_id`), omits it otherwise; the durable join is `tool_call_id` itself (now on relay `TOOL_CALLED` ↔ bridge tool obs ↔ JSONL `record_id`). LLM generation↔`STEP_EXECUTED` join is deferred to step-by-containment once Phase 3 nests bridge events under `step.N`. |
+| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | **RESOLVED (Phase 3, 2026-06-12):** Repo-wide grep for `llm.started`/`llm.finished`/`tool.started`/`tool.finished` outside tests found **zero live consumers** — only (a) `telemetry_bridge.py` itself (the file being changed) and (b) historical records: the `docs/IAA/goalJudge/…2026-06-09.md` walkthroughs and the superseded `blackbox_langfuse_gap_closure` / `langfuse_gcp_integration` plan docs describing the OLD mapping. No dashboards, SQL, or live queries. The IAA docs are point-in-time evidence of past traces — left intact (renaming would falsify the record). Stage 5/6 tooling keys on `eval.goal_judge` (untouched). Rename landed: merged LLM obs = `llm.call`, merged tool obs = `tool.{tool_name}`. |
 | D-5a | Final-answer source for trace output | **MOOT** — folded into D-0b resolution; no trace-level output to source. |
 
 ## 9. Success metrics
