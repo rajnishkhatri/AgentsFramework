@@ -384,7 +384,7 @@ verify the dual view returns; flipped back ON.
 |---|---|---|
 | 0 | — | cap-lift check on `eval.goal_judge`; service.name visible |
 | 1 | `tests/services/governance`, `tests/middleware/sidecars`, `tests/orchestration/test_phase_wiring.py`, `tests/architecture` | 3 scores visible in trace list; no `"None"` strings in `task.completed`; `identity_cards` in dataset item |
-| 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events |
+| 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events — **✅ PASSED on rev 00062 (trace `e1c0cbc5…`, 2026-06-12):** relay `tool.called` `details.tool_call_id` (e.g. `call_eOXZQK…`) = suffix of bridge `tool.{started,finished}` `tool_call_id` (`7:call_eOXZQK…`); bridge tool obs carry `step:7` (prefix-derived); `event_time` first-class on every relayed obs and ~0.5s ahead of the span `startTime` (D-0a lag visible); no `start_time`/`end_time` |
 | 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py` | 1 generation + N tools per step; native cost on generation |
 | 4 | suppression + fingerprint + exporter suites | obs/step ≤8; flag-off restores dual view (once, dev) |
 | 5 | phase-wiring + bridge suites | pillar acceptance table above |
