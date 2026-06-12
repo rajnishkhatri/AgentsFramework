@@ -220,7 +220,7 @@ def _execute_tools_impl(
                 event_type=EventType.TOOL_CALLED,
                 timestamp=datetime.now(UTC),
                 step=state.get("step_count", 0),
-                details={"tool": tool_name, "args": tool_args, "cached": True},
+                details={"tool": tool_name, "args": tool_args, "cached": True, "tool_call_id": tool_id},
             ))
             results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
             tool_results.append({
@@ -283,7 +283,7 @@ def _execute_tools_impl(
             event_type=EventType.TOOL_CALLED,
             timestamp=datetime.now(UTC),
             step=state.get("step_count", 0),
-            details={"tool": tool_name, "args": tool_args, "cached": False},
+            details={"tool": tool_name, "args": tool_args, "cached": False, "tool_call_id": tool_id},
         ))
 
         if not execution_result.ok:

@@ -73,6 +73,25 @@ def _redact_and_truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
     return _truncate(redact_text(value, max_len=limit), limit)
 
 
+def _derive_step_from_tool_call_id(tool_call_id: str | None) -> int | None:
+    """Recover the loop step from a ``"{step}:{tool_id}"`` tool_call_id.
+
+    Phase 2 (E2 join): the replay/fallback runtime path uses the relay
+    ``record_id`` (``"{step}:{tool_id}"``) as the wire ``tool_call_id``, so the
+    step is recoverable from its prefix. The live-stream path uses a bare
+    LangChain id (e.g. ``call_abc123``) with no step prefix — there the step is
+    not cheaply knowable (D-2a), so it is simply omitted. A malformed or
+    missing prefix MUST NOT raise (O1).
+    """
+    if not tool_call_id:
+        return None
+    prefix, sep, _ = tool_call_id.partition(":")
+    if not sep or not prefix.isdigit():
+        # ``isdigit`` rejects empty, negative ("-1"), and non-numeric prefixes.
+        return None
+    return int(prefix)
+
+
 def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dict[str, Any]] | None:
     """Return (langfuse_name, attributes) or None if the event should be skipped."""
     if isinstance(event, _SKIPPED_TYPES):
@@ -96,11 +115,17 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         name = "tool.started"
         attrs["tool_name"] = event.tool_name
         attrs["tool_call_id"] = event.tool_call_id
+        step = _derive_step_from_tool_call_id(event.tool_call_id)
+        if step is not None:
+            attrs["step"] = step
         attrs["args_json"] = _redact_and_truncate(event.args_json)
 
     elif isinstance(event, ToolResultReceived):
         name = "tool.finished"
         attrs["tool_call_id"] = event.tool_call_id
+        step = _derive_step_from_tool_call_id(event.tool_call_id)
+        if step is not None:
+            attrs["step"] = step
         attrs["result"] = _redact_and_truncate(event.result)
         attrs["__output"] = {"result": _redact_and_truncate(event.result)}
 

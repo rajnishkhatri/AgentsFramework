@@ -211,6 +211,62 @@ class TestToolCache:
         tool_events = [e for e in events if e["event_type"] == "tool_called"]
         assert tool_events and tool_events[0]["details"]["cached"] is True
 
+    def test_tool_called_details_carry_tool_call_id_join_key(self, tmp_path):
+        """Phase 2 (E2 join): TOOL_CALLED details carry ``tool_call_id`` so the
+        relay's ``tool.called`` observation is joinable to the bridge tool
+        observation and to the JSONL ``record_id`` (``"{step}:{tool_id}"``).
+
+        Cache-hit path.
+        """
+        from orchestration.react_loop import _compute_tool_cache_key, _execute_tools_impl
+
+        registry = _build_registry({})
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        key = _compute_tool_cache_key("echo", {"value": "x"})
+        state = _build_tool_message_state("echo", {"value": "x"}, cache={key: "c"})
+        _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+
+        events = _read_bb_events(tmp_path / "bb", "wf-contract")
+        tool_events = _events_of_type(events, "tool_called")
+        assert tool_events, "expected a tool_called event"
+        details = tool_events[0]["details"]
+        # The wire/loop tool id; joinable to record_id "0:call-1".
+        assert details["tool_call_id"] == "call-1"
+
+    def test_tool_called_details_carry_tool_call_id_on_execution_path(self, tmp_path):
+        """Non-cache (real execution) path also stamps the join key."""
+        from orchestration.react_loop import _execute_tools_impl
+
+        registry = _build_registry({})
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        state = _build_tool_message_state("echo", {"value": "run"})
+        _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+
+        events = _read_bb_events(tmp_path / "bb", "wf-contract")
+        tool_events = _events_of_type(events, "tool_called")
+        assert tool_events
+        assert tool_events[0]["details"]["tool_call_id"] == "call-1"
+
+    def test_tool_call_id_matches_record_id_prefix(self, tmp_path):
+        """The join key equals the bare id embedded in record_id ``step:id``."""
+        from orchestration.react_loop import _execute_tools_impl
+
+        registry = _build_registry({})
+        bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
+        state = _build_tool_message_state("echo", {"value": "run"})
+        result = _execute_tools_impl(
+            state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
+        )
+
+        record_id = result["tool_results"][0]["record_id"]  # "0:call-1"
+        events = _read_bb_events(tmp_path / "bb", "wf-contract")
+        tool_call_id = _events_of_type(events, "tool_called")[0]["details"]["tool_call_id"]
+        assert record_id.split(":", 1)[-1] == tool_call_id
+
     def test_non_cacheable_tool_bypasses_cache(self, tmp_path):
         from orchestration.react_loop import _execute_tools_impl
 

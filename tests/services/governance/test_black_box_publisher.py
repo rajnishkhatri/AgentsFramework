@@ -141,6 +141,60 @@ class TestExportAttributes:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# B2. Honest timestamps — event_time first-class (Phase 2, D-0a)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestEventTimeFirstClass:
+    """D-0a resolution (langfuse 4.7.1): no observation start-time backdating.
+
+    The Langfuse span is stamped at relay-export time (~0.9s after the real
+    event). So the authoritative event instant must survive *in the
+    attributes* as ``event_time`` (= ``event.timestamp`` ISO string), letting a
+    reader reconstruct true ordering. We do NOT fabricate ``start_time`` /
+    ``end_time`` — that would invert the span (real start, backdated end).
+    """
+
+    _SAMPLE_TYPES = [
+        EventType.TASK_STARTED,
+        EventType.STEP_EXECUTED,
+        EventType.TOOL_CALLED,
+        EventType.MODEL_SELECTED,
+        EventType.GUARDRAIL_CHECKED,
+        EventType.TASK_COMPLETED,
+    ]
+
+    @pytest.mark.parametrize("event_type", _SAMPLE_TYPES)
+    def test_event_time_present_on_every_observation_type(
+        self, event_type: EventType
+    ) -> None:
+        ev = _event(event_type)
+        attrs = to_export_kwargs(ev)["attributes"]
+        assert attrs["event_time"] == ev.timestamp.isoformat()
+
+    def test_event_time_is_authoritative_instant_not_export_time(self) -> None:
+        """event_time reflects the recorded event, not 'now'."""
+        ev = _event(EventType.TOOL_CALLED)
+        attrs = to_export_kwargs(ev)["attributes"]
+        assert attrs["event_time"] == "2026-05-28T12:00:00+00:00"
+
+    def test_no_fabricated_start_or_end_time(self) -> None:
+        """We must never emit span start_time/end_time kwargs (D-0a: NO backdating)."""
+        ev = _event(EventType.STEP_EXECUTED)
+        result = to_export_kwargs(ev)
+        assert "start_time" not in result
+        assert "end_time" not in result
+        assert "start_time" not in result["attributes"]
+        assert "end_time" not in result["attributes"]
+
+    def test_legacy_timestamp_key_retained_for_back_compat(self) -> None:
+        """The pre-existing ``timestamp`` attribute stays (consumers may read it)."""
+        ev = _event(EventType.TASK_COMPLETED)
+        attrs = to_export_kwargs(ev)["attributes"]
+        assert attrs["timestamp"] == ev.timestamp.isoformat()
+
+
+# ─────────────────────────────────────────────────────────────────────
 # C. Redaction — PII stripping
 # ─────────────────────────────────────────────────────────────────────
 

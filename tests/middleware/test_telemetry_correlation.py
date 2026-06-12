@@ -59,6 +59,7 @@ from middleware.ports.telemetry_exporter import TelemetryExporter
 from middleware.telemetry_bridge import (
     _SKIPPED_TYPES,
     _build_attributes,
+    _derive_step_from_tool_call_id,
     emit_domain_event,
     emit_run_finished,
 )
@@ -628,6 +629,108 @@ class TestVerticalIntegration:
         emit_domain_event(exporter, event)
         sdk_args = fake_client.spans[0]["input"]["args_json"]
         assert len(sdk_args) <= 4096
+
+
+# ═════════════════════════════════════════════════════════════════════
+# Phase 2 — Correlation keys: tool_call_id join + step derivation (E2, E6)
+# ═════════════════════════════════════════════════════════════════════
+
+
+class TestStepDerivationFromToolCallId:
+    """The bridge derives ``step`` from the ``"{step}:{tool_id}"`` prefix of a
+    tool_call_id when present (the replay/fallback path uses ``record_id`` of
+    that form). The live-stream path uses a bare LangChain id with no prefix —
+    there ``step`` is simply omitted. A malformed prefix must NEVER raise (O1).
+
+    Failure paths first.
+    """
+
+    # ── Failure / omission paths ─────────────────────────────────────
+
+    def test_bare_id_no_prefix_yields_none(self) -> None:
+        """Live-stream id like ``call_abc123`` carries no step → None, no raise."""
+        assert _derive_step_from_tool_call_id("call_abc123") is None
+
+    def test_non_numeric_prefix_yields_none(self) -> None:
+        """A colon with a non-numeric left side is not a step prefix → None."""
+        assert _derive_step_from_tool_call_id("abc:def") is None
+
+    def test_empty_string_yields_none(self) -> None:
+        assert _derive_step_from_tool_call_id("") is None
+
+    def test_none_input_yields_none(self) -> None:
+        assert _derive_step_from_tool_call_id(None) is None
+
+    def test_negative_prefix_yields_none(self) -> None:
+        """A negative number is not a valid step index → None, no raise."""
+        assert _derive_step_from_tool_call_id("-1:tool-xyz") is None
+
+    # ── Happy paths ──────────────────────────────────────────────────
+
+    def test_numeric_prefix_parsed(self) -> None:
+        """``"{step}:{tool_id}"`` (the relay ``record_id`` form) → int step."""
+        assert _derive_step_from_tool_call_id("7:call_abc123") == 7
+
+    def test_zero_step_prefix_parsed(self) -> None:
+        assert _derive_step_from_tool_call_id("0:tool-1") == 0
+
+    def test_extra_colons_only_split_once(self) -> None:
+        """Only the first colon delimits the step; the rest is the id."""
+        assert _derive_step_from_tool_call_id("3:weird:id:with:colons") == 3
+
+
+class TestBridgeToolEventsCarryStep:
+    """A bridge tool export carries ``step`` when the tool_call_id encodes it,
+    and omits it (no raise) when it does not.
+    """
+
+    def test_tool_started_with_prefixed_id_carries_step(
+        self, stub: StubTelemetryExporter
+    ) -> None:
+        emit_domain_event(
+            stub,
+            ToolCallStarted(
+                trace_id="t-step", tool_call_id="5:call_xyz",
+                tool_name="shell", args_json="{}",
+            ),
+        )
+        assert stub.events[0]["attributes"]["step"] == 5
+
+    def test_tool_finished_with_prefixed_id_carries_step(
+        self, stub: StubTelemetryExporter
+    ) -> None:
+        emit_domain_event(
+            stub,
+            ToolResultReceived(
+                trace_id="t-step", tool_call_id="5:call_xyz", result="ok",
+            ),
+        )
+        assert stub.events[0]["attributes"]["step"] == 5
+
+    def test_tool_started_with_bare_id_omits_step(
+        self, stub: StubTelemetryExporter
+    ) -> None:
+        emit_domain_event(
+            stub,
+            ToolCallStarted(
+                trace_id="t-step", tool_call_id="call_bare",
+                tool_name="shell", args_json="{}",
+            ),
+        )
+        assert "step" not in stub.events[0]["attributes"]
+
+    def test_malformed_prefix_does_not_break_export(
+        self, stub: StubTelemetryExporter
+    ) -> None:
+        """Malformed prefix → step omitted, tool export still happens (O1)."""
+        emit_domain_event(
+            stub,
+            ToolResultReceived(
+                trace_id="t-step", tool_call_id="garbage:prefix", result="ok",
+            ),
+        )
+        assert len(stub.events) == 1
+        assert "step" not in stub.events[0]["attributes"]
 
 
 # ═════════════════════════════════════════════════════════════════════

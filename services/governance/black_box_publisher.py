@@ -197,11 +197,19 @@ def to_export_kwargs(event: TraceEvent) -> dict[str, Any]:
 
     level = "ERROR" if event.event_type == EventType.ERROR_OCCURRED else "DEFAULT"
 
+    # D-0a (langfuse 4.7.1): the SDK offers no observation start-time backdating,
+    # so the relayed Langfuse span is stamped at relay-export time (~0.9s late).
+    # Surface the authoritative event instant first-class as ``event_time`` so a
+    # reader can reconstruct true ordering. ``timestamp`` is retained verbatim for
+    # back-compat. We deliberately emit NO ``start_time``/``end_time`` — a real
+    # start with a backdated end would invert the span.
+    event_time = event.timestamp.isoformat()
     attributes: dict[str, Any] = {
         "event_id": event.event_id,
         "workflow_id": event.workflow_id,
         "step": event.step,
-        "timestamp": event.timestamp.isoformat(),
+        "event_time": event_time,
+        "timestamp": event_time,
         "integrity_hash": event.integrity_hash,
         "details": redact_details(event.details),
     }
