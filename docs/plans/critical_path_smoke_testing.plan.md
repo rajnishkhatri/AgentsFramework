@@ -1,6 +1,6 @@
 # Critical-Path Smoke Testing Plan
 
-**Status:** APPROVED 2026-06-12 — Phase 1 PASSED; Phase 2 pending redeploy
+**Status:** COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)
 **Owner:** frontend E2E verification for the eval-UI / GoalJudge stack
 **Supersedes:** full T1 Playwright tier as a local verification gate
 
@@ -36,10 +36,10 @@ All 6 use **mocked SSE** (`page.route("**/api/run/stream")` + fixtures in
 ## Phase 1 — local smoke run (gate for frontend-touching commits)
 
 ```bash
-cd frontend && E2E_BYPASS_AUTH=1 npx playwright test \
+cd frontend && E2E_BYPASS_AUTH=1 E2E_SCREENSHOTS=1 npx playwright test \
   smoke.spec.ts streaming.spec.ts chat-shell.spec.ts \
   tool-cards.spec.ts guaranteed-answer.spec.ts reasoning-summary.spec.ts \
-  --project=chromium-desktop \
+  --project=chromium-desktop --output=smoke-screenshots \
   --reporter=json > smoke-results.json
 ```
 
@@ -54,6 +54,19 @@ Operational rules:
   `next-server` processes from killed runs are the usual culprit.
 - Read the verdict from `smoke-results.json` → `.stats` (expected/unexpected/
   skipped), not from terminal scrollback.
+
+### Screenshot evidence (both phases)
+
+Every smoke run leaves visual evidence, pass or fail:
+- **Phase 1:** `E2E_SCREENSHOTS=1` flips the Playwright `screenshot` option
+  from `only-on-failure` to `on`, so each test saves a final-state
+  screenshot; `--output=smoke-screenshots` collects them under
+  `frontend/smoke-screenshots/<test-dir>/test-finished-1.png`.
+- **Phase 2:** the live spec writes `recap-live.png` (pass) or
+  `recap-live_FAILED.png` (fail) directly to `frontend/smoke-screenshots/`
+  (override via `SMOKE_SCREENSHOT_DIR`) and attaches it to the report.
+- `frontend/smoke-screenshots/` is a run artifact — gitignored, never
+  committed.
 
 Pass criteria: **0 unexpected** (expected shape: 15 passed / 12 skipped).
 The 12 skips are by design, not failures: most of `smoke.spec.ts` plus
@@ -78,7 +91,8 @@ One bounded test (~3 min) against
   `frontend/e2e/` auth setup; stale `.env` creds are a known gotcha).
 
 This is the only test that touches the real stack; everything else stays
-mocked.
+mocked. Implemented as `frontend/e2e/full-stack/reasoning-recap-live.spec.ts`;
+runnable via the `gcp-live-smoke` skill (`docs/skills/gcp-live-smoke/`).
 
 ## Out of scope (explicitly)
 
@@ -100,7 +114,15 @@ mocked.
   skip-guard convention; the assertion is unchanged for deployed targets).
 - 2026-06-12: Phase 1 rerun — **PASSED**: 15 passed / 12 by-design skipped /
   0 unexpected in 34s (`frontend/smoke-results.json`). Phase 1 gate green.
-- Phase 2 (live GCP smoke): pending redeploy of `agent-backend-combined` +
-  frontend with commit `345a619` (F10-Tier2 reasoning recap).
+- 2026-06-12: Phase 2 — **PASSED** after Rajnish redeployed with `345a619`.
+  New spec `frontend/e2e/full-stack/reasoning-recap-live.spec.ts` (auth
+  fixture + fresh WorkOS login via global-setup) drove one real 2-tool run
+  (write `recap_smoke.txt`, read it back) against
+  `https://agent-frontend-w65nrxwkiq-uc.a.run.app`. All three criteria held:
+  `data-state="complete"`, ≥1 tool card, non-empty recap in the
+  `reasoning-summary` expander (collapsed by default). 1 passed / 0
+  unexpected, test 7.5s, 15.3s wall incl. login
+  (`frontend/recap-live-results.json`). Note: `--reporter=json` stdout gets
+  a global-setup log line prepended — parse from the first `{`.
 - Lessons captured: macOS has no GNU `timeout` — use Playwright's
   `--global-timeout=600000` for the 10-minute bound instead.

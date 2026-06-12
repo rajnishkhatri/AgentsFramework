@@ -23,3 +23,9 @@ playwright-report/
 test-results/
 blob-report/
 e2e/.auth/
+
+# Smoke-run artifacts (critical_path_smoke_testing.plan.md)
+smoke-screenshots/
+smoke-results.json
+recap-live-results.json
+recap-live-stderr.log
