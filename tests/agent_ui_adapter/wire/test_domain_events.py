@@ -96,8 +96,14 @@ class TestLLMMessageEnded:
         ev = LLMMessageEnded(trace_id="tr1", message_id="m1")
         assert ev.tokens_in is None
         assert ev.tokens_out is None
-        assert ev.cost_usd is None
         assert ev.model is None
+
+    def test_cost_usd_is_not_a_wire_field(self):
+        """Cost requires the model pricing table (service/config layer); it must
+        NOT leak onto the framework-neutral wire event (four-layer boundary).
+        Cost stays single-sourced on STEP_EXECUTED."""
+        with pytest.raises(ValidationError):
+            LLMMessageEnded(trace_id="tr1", message_id="m1", cost_usd=0.1)  # type: ignore[call-arg]
 
     def test_legacy_json_without_usage_fields_validates(self):
         """A pre-existing serialized event (no usage keys) still deserializes."""
@@ -113,18 +119,16 @@ class TestLLMMessageEnded:
             output_text="hi",
             tokens_in=2144,
             tokens_out=113,
-            cost_usd=0.00039,
             model="gpt-4o-mini",
         )
         assert ev.tokens_in == 2144
         assert ev.tokens_out == 113
-        assert ev.cost_usd == 0.00039
         assert ev.model == "gpt-4o-mini"
 
     def test_usage_round_trip(self):
         original = LLMMessageEnded(
             trace_id="tr1", message_id="m1", tokens_in=10, tokens_out=5,
-            cost_usd=0.1, model="gpt-4o",
+            model="gpt-4o",
         )
         assert LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
 

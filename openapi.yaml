@@ -131,12 +131,6 @@ components:
     LLMMessageEnded:
       additionalProperties: false
       properties:
-        cost_usd:
-          anyOf:
-          - type: number
-          - type: 'null'
-          default: null
-          title: Cost Usd
         message_id:
           title: Message Id
           type: string

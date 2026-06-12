@@ -279,9 +279,11 @@ class TestLLMContentExport:
         assert attrs["input_text"].startswith("user:")  # carried from the buffer
         assert attrs["__output"]["content"] == "Paris is the capital."
 
-    def test_merged_call_carries_model_usage_cost(
+    def test_merged_call_carries_model_and_usage(
         self, stub_exporter: StubTelemetryExporter
     ) -> None:
+        """Native model + token usage on the generation. Cost is intentionally
+        NOT carried (it lives on the canonical STEP_EXECUTED record)."""
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(
@@ -291,13 +293,13 @@ class TestLLMContentExport:
             stub_exporter,
             LLMMessageEnded(
                 trace_id="t1", message_id="m", output_text="a",
-                tokens_in=2144, tokens_out=113, cost_usd=0.00039, model="gpt-4o-mini",
+                tokens_in=2144, tokens_out=113, model="gpt-4o-mini",
             ),
         )
         attrs = stub_exporter.events[0]["attributes"]
         assert attrs["__bb_model"] == "gpt-4o-mini"
         assert attrs["__bb_usage"] == {"input": 2144, "output": 113, "total": 2257}
-        assert attrs["__bb_cost"] == 0.00039
+        assert "__bb_cost" not in attrs  # cost is not a wire/generation concern
 
     def test_merged_call_carries_latency_ms(
         self, stub_exporter: StubTelemetryExporter
@@ -320,7 +322,7 @@ class TestLLMContentExport:
     def test_usage_fields_omitted_when_none(
         self, stub_exporter: StubTelemetryExporter
     ) -> None:
-        """Absent usage/cost/model → no __bb_* keys (Langfuse renders nothing)."""
+        """Absent usage/model → no __bb_* keys (Langfuse renders nothing)."""
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(

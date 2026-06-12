@@ -49,12 +49,17 @@ class LLMMessageStarted(DomainEventBase):
 class LLMMessageEnded(DomainEventBase):
     message_id: str
     output_text: str | None = None
-    # Phase 3 (W rule, additive): optional usage/cost/model carried from the
-    # runtime adapter so the merged ``llm.call`` generation renders native
-    # token/cost analytics in Langfuse. Absent on legacy payloads → None.
+    # Phase 3 (W rule, additive): optional token usage + model carried from the
+    # runtime adapter so the merged ``llm.call`` generation renders native token
+    # analytics in Langfuse. Absent on legacy payloads → None.
+    #
+    # ``cost_usd`` is deliberately NOT a wire field: cost requires the model
+    # pricing table (``cost_per_1k_*``), which belongs to the service/config
+    # layer, not the framework-neutral wire adapter (four-layer boundary). Cost
+    # stays single-sourced on the canonical ``STEP_EXECUTED`` record
+    # (``react_loop.py``); the trace surfaces token counts instead.
     tokens_in: int | None = None
     tokens_out: int | None = None
-    cost_usd: float | None = None
     model: str | None = None
 
 

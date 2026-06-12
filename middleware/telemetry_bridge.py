@@ -171,12 +171,12 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
             attrs["latency_ms"] = (time.monotonic() - start_ts) * 1000.0
         if event.model is not None:
             attrs["__bb_model"] = event.model
+        # Native token usage on the generation (cost is not a wire concern —
+        # it lives on the canonical STEP_EXECUTED record; see LLMMessageEnded).
         if event.tokens_in is not None or event.tokens_out is not None:
             ti = event.tokens_in or 0
             to = event.tokens_out or 0
             attrs["__bb_usage"] = {"input": ti, "output": to, "total": ti + to}
-        if event.cost_usd is not None:
-            attrs["__bb_cost"] = event.cost_usd
 
     else:
         return None

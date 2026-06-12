@@ -183,11 +183,6 @@ export interface components {
         };
         /** LLMMessageEnded */
         LLMMessageEnded: {
-            /**
-             * Cost Usd
-             * @default null
-             */
-            cost_usd: number | null;
             /** Message Id */
             message_id: string;
             /**
