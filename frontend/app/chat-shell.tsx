@@ -173,6 +173,20 @@ function AssistantMessage(props: {
           {assistant.errorMessage ?? "The run failed."}
         </p>
       ) : null}
+      {assistant.reasoning ? (
+        // F10 Tier-2: progressive disclosure -- the recap stays collapsed
+        // unless expanded. Eval mode pre-opens it so the settled recap is
+        // part of the capture. Reasoning layer typography (Appendix A):
+        // never styled like the answer.
+        <details
+          data-testid="reasoning-summary"
+          open={props.evalMode ?? false}
+          className="text-xs text-muted"
+        >
+          <summary className="cursor-pointer select-none">Show reasoning</summary>
+          <p className="m-0 mt-1 italic">{assistant.reasoning}</p>
+        </details>
+      ) : null}
       <RunStatusLine
         view={assistant}
         phase={phase}

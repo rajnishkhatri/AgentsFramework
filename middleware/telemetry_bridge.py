@@ -22,6 +22,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
@@ -45,7 +46,15 @@ _MAX_FIELD_BYTES = 4096
 # events that are dropped outright.
 # StepProgressed is a UI step-meter affordance; Langfuse already carries
 # per-lap tool/llm observations, so exporting it would only add noise.
-_SKIPPED_TYPES = (LLMTokenEmitted, StateMutated, StepProgressed, ToolCallEnded)
+# ReasoningSummarized likewise: the recap's own LLM call is already exported
+# as an llm observation; the domain event is a pure UI affordance.
+_SKIPPED_TYPES = (
+    LLMTokenEmitted,
+    ReasoningSummarized,
+    StateMutated,
+    StepProgressed,
+    ToolCallEnded,
+)
 _llm_token_buffers: dict[tuple[str, str], list[str]] = {}
 
 

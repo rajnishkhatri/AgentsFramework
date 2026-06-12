@@ -236,3 +236,25 @@ def test_step_progressed_maps_to_custom_step_meter() -> None:
     assert out[0].name == "step_meter"
     assert out[0].value == {"step": 2, "step_name": "evaluation"}
     assert out[0].raw_event == {"trace_id": TRACE_ID}
+
+
+def test_reasoning_summarized_raises_when_trace_id_empty() -> None:
+    """Failure path first: ReasoningSummarized without trace_id is rejected."""
+    from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
+    event = ReasoningSummarized(trace_id="", text="recap")
+    with pytest.raises(ValueError, match="trace_id"):
+        to_ag_ui(event)
+
+
+def test_reasoning_summarized_maps_to_custom_reasoning_summary() -> None:
+    """F10 Tier-2: the recap rides Custom{name='reasoning_summary'} -- zero
+    wire change, the frontend translator special-cases the name."""
+    from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
+    out = to_ag_ui(ReasoningSummarized(trace_id=TRACE_ID, text="Did A then B."))
+    assert len(out) == 1
+    assert isinstance(out[0], Custom)
+    assert out[0].name == "reasoning_summary"
+    assert out[0].value == {"text": "Did A then B."}
+    assert out[0].raw_event == {"trace_id": TRACE_ID}

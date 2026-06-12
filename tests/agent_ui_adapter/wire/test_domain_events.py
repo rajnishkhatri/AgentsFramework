@@ -271,9 +271,11 @@ def test_domain_event_base_is_frozen_and_strict():
 
 
 def test_domain_event_union_covers_all_types():
-    """US-2.3 acceptance (extended by eval-UI Phase 0): 10 union members."""
+    """US-2.3 acceptance (extended by eval-UI Phase 0 + F10-T2): 11 members."""
+    from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
     args = get_args(DomainEvent)
-    assert len(args) == 10
+    assert len(args) == 11
     assert set(args) == {
         LLMTokenEmitted,
         LLMMessageStarted,
@@ -285,6 +287,7 @@ def test_domain_event_union_covers_all_types():
         RunFinishedDomain,
         StateMutated,
         StepProgressed,
+        ReasoningSummarized,
     }
 
 

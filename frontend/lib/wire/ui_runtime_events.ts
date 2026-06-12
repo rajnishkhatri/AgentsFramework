@@ -97,6 +97,21 @@ export const StateRenderEventSchema = z
   .strict();
 export type StateRenderEvent = z.infer<typeof StateRenderEventSchema>;
 
+// ── Reasoning recap (F10 Tier-2: Custom 'reasoning_summary') ──────────
+//
+// One cheap-tier "why/how" paragraph per multi-tool run, emitted by the
+// backend reasoning_recap node before RUN_FINISHED. Rendered behind the
+// "Show reasoning" expander, never inside the answer body.
+
+export const ReasoningSummaryEventSchema = z
+  .object({
+    type: z.literal("reasoning_summary"),
+    trace_id: traceId,
+    text: z.string().min(1),
+  })
+  .strict();
+export type ReasoningSummaryEvent = z.infer<typeof ReasoningSummaryEventSchema>;
+
 // ── Tool renderer request (F5 tool cards via useFrontendTool) ─────────
 
 export const ToolCallRendererRequestSchema = z
@@ -152,6 +167,7 @@ export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
   ChatMessageDeltaEventSchema,
   StepProgressEventSchema,
   StateRenderEventSchema,
+  ReasoningSummaryEventSchema,
   ToolRenderEventSchema,
 ]);
 export type UIRuntimeEvent = z.infer<typeof UIRuntimeEventSchema>;

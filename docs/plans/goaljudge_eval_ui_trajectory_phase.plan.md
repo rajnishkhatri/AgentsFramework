@@ -1,9 +1,9 @@
 # GoalJudge Eval UI — Trajectory + Admissible-Capture Phase
 
-> **Status:** IMPLEMENTED except F10-Tier2 (2026-06-11). Pre-Stage-6 UI workstream.
-> All phases landed on `feat/goaljudge-stage5-phase6-iaa-round1` — see §0 for the
-> commit-by-commit execution record. Remaining: F10 Tier 2 (cheap reasoning recap)
-> and the T3 `goaljudge-batch` admissibility validation.
+> **Status:** FULLY IMPLEMENTED (2026-06-11). Pre-Stage-6 UI workstream.
+> All phases landed — see §0 for the commit-by-commit execution record,
+> including F10 Tier 2 and the T3 `goaljudge-batch` admissibility validation
+> (22/22 pass against Cloud Run).
 > **One-line:** Connect the already-built (and tested) AG-UI → UI-runtime → React
 > pipeline to the live chat shell, so the UI renders the **tool trajectory**, a
 > **live task list + synthesized reasoning**, a **guaranteed synthesized answer**, and
@@ -67,15 +67,47 @@ the SSE stream → the port is `streamRun(req)`, `createRun` removed; wire
 `RunFinished` carries **no** `final_message`, so F11's guarantee = graph forced
 synthesis + frontend fallback.
 
-**Remaining work:**
-- **F10 Tier 2** (deferred deliberately — Tier 1 ships the live information for $0):
-  once-per-run cheap-model recap over a `Custom {name:"reasoning_summary"}` channel,
-  Jinja prompt in `prompts/` (F-R5), lazy "Show reasoning" expander, pre-settled in
-  eval mode, cost guard skips 0–1-tool runs (§8 F10 / §8.6-B).
-- **T3 acceptance:** `goaljudge-batch` registry run against the full stack —
-  `tool_card_count > 0` where expected, `response_text` 100% non-empty (§8.8 / §5).
-- Out of band: 3 stale frontend checker-script tests (pre-existing, tracked
-  separately).
+**T3 acceptance — PASSED (2026-06-11, post-redeploy).** Full 22-case walkthrough
+batch against Cloud Run: 22/22 pass, `response_text` non-empty 22/22, zero F11
+fallback strings, `tool_card_count > 0` for 20/22 (GJ-009 declines shell
+execution with prose; GJ-022 is the *impossible* case answered without tools —
+both behaviorally correct). Artifacts: `cache/goaljudge_eval/ui_batch_t3_2026-06-11_v2.jsonl`
++ screenshots dir. The first T3 attempt surfaced **two backend blockers invisible
+to T1/T2 mocks**, fixed in `0df3664`:
+
+1. *Saturated checkpoint threads* — `gj:{case}:{trace}` resolved to a static
+   LangGraph checkpoint thread (`session-gj-XXX`) reused since 06-08; the
+   saturated thread ended every replay with one empty assistant message.
+   `checkpoint_thread_id` now gets a fresh per-parse suffix (mirrors the
+   fresh-`task_id` rule); `session_id` stays the deterministic telemetry key.
+2. *Tool calls never on the wire* — `execute_tool` runs tools via
+   `_execute_tools_impl` directly, so `on_tool_start` never fires; the runtime
+   now synthesizes `ToolCallStarted`/`ToolResultReceived` from the node's
+   chain-end `tool_results` records (deduped against live ids, `Error:`
+   prefix convention preserved).
+
+**F10 Tier 2 — SHIPPED (2026-06-11).** Decision locked: computed **in-stream
+before RUN_FINISHED** (always-on with cost guard), not an on-demand endpoint —
+eval captures get the recap settled for free. Implementation:
+- `prompts/reasoning_recap.j2` (F-R5) + `_reasoning_recap_impl` /
+  `reasoning_recap` graph node on the `evaluate→done` branch: one
+  fast-tier completion per run; cost guard skips `len(tool_results) < 2`;
+  any failure returns `{}` (the recap never breaks a run);
+  budget-exceeded runs end at `call_llm` and skip it.
+- New `ReasoningSummarized` domain event (11th union member) →
+  `Custom{name:"reasoning_summary", value:{text}}` (zero wire change);
+  telemetry bridge skips it (the recap's own LLM call is already exported).
+- Runtime suppresses the recap call's chat-model events (existing
+  `langgraph_node != call_llm` rule + explicit `reasoning_recap` tag) so
+  recap tokens never leak into the answer stream.
+- Frontend: typed `reasoning_summary` UIRuntime event (malformed payloads
+  dropped), `view.reasoning` on the reducer, `<details
+  data-testid="reasoning-summary">` expander — collapsed by default,
+  pre-opened in eval mode, reasoning-layer typography per Appendix A.
+
+**Remaining work:** none — all plan phases landed.
+- ~~T3 acceptance~~ — done, see above.
+- ~~3 stale frontend checker-script tests~~ — fixed in `df3f534`.
 
 ---
 
@@ -1039,5 +1071,5 @@ Recommended: confirm F1 emission → F2/F3/F9 (the eval-evidence core) → F8/F1
 (free engagement) → F11 → F4/F12 in parallel → F10-Tier2 → F7 (stretch).
 
 **Execution status (2026-06-11):** done in exactly this order — Phase 0 ✅ →
-F1 ✅ → F2/F3/F9 ✅ → F8/F10-Tier1 ✅ → F11 ✅ → F4/F12 ✅ → F5/F6/F7 ✅.
-Only **F10-Tier2** remains. Commit map in §0.
+F1 ✅ → F2/F3/F9 ✅ → F8/F10-Tier1 ✅ → F11 ✅ → F4/F12 ✅ → F5/F6/F7 ✅ →
+F10-Tier2 ✅. T3 batch validation passed 22/22. Commit map in §0.

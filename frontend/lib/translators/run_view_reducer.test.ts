@@ -245,3 +245,31 @@ describe("run_view_reducer — trajectory assembly", () => {
     expect(v0).toEqual(frozen);
   });
 });
+
+describe("run_view_reducer — reasoning recap (F10 Tier-2)", () => {
+  it("emptyRunView carries no reasoning", () => {
+    expect(emptyRunView().reasoning).toBeNull();
+  });
+
+  it("reasoning_summary populates view.reasoning without touching segments", () => {
+    const before = reduceAll([started(), delta("answer")]);
+    const after = reduceRunView(before, {
+      type: "reasoning_summary",
+      trace_id: TRACE,
+      text: "Did A then B because C.",
+    });
+    expect(after.reasoning).toBe("Did A then B because C.");
+    expect(after.segments).toEqual(before.segments);
+  });
+
+  it("reasoning arriving before run_completed survives the terminal freeze", () => {
+    const view = reduceAll([
+      started(),
+      delta("answer"),
+      { type: "reasoning_summary", trace_id: TRACE, text: "recap" },
+      completed(),
+    ]);
+    expect(view.status).toBe("complete");
+    expect(view.reasoning).toBe("recap");
+  });
+});

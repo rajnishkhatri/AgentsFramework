@@ -137,6 +137,21 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
       return [];
 
     case "CUSTOM": {
+      if (evt.name === "reasoning_summary") {
+        // F10 Tier-2: typed like step_meter. Malformed payloads emit
+        // nothing -- a broken recap must never reach the React layer.
+        const v = evt.value as { text?: unknown };
+        if (typeof v?.text !== "string" || v.text.length === 0) {
+          return [];
+        }
+        return [
+          {
+            type: "reasoning_summary",
+            trace_id,
+            text: v.text,
+          },
+        ];
+      }
       if (evt.name === "step_meter") {
         const v = evt.value as { step?: unknown; step_name?: unknown };
         const step = typeof v.step === "number" ? v.step : 0;

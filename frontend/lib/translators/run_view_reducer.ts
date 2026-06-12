@@ -42,6 +42,8 @@ export interface AssistantRunView {
   readonly step: { readonly count: number; readonly name: string } | null;
   readonly modelBadge: string | null;
   readonly todos: TodoListView | null;
+  /** F10 Tier-2: one cheap-tier "why/how" recap, shown behind "Show reasoning". */
+  readonly reasoning: string | null;
   readonly traceId: string | null;
   readonly runId: string | null;
   readonly threadId: string | null;
@@ -55,6 +57,7 @@ export function emptyRunView(): AssistantRunView {
     step: null,
     modelBadge: null,
     todos: null,
+    reasoning: null,
     traceId: null,
     runId: null,
     threadId: null,
@@ -114,6 +117,9 @@ export function reduceRunView(
 
     case "step_progress":
       return { ...view, step: { count: evt.step, name: evt.step_name } };
+
+    case "reasoning_summary":
+      return { ...view, reasoning: evt.text };
 
     case "run_completed":
       return { ...view, status: "complete" };
