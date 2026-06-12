@@ -93,6 +93,46 @@ describe("reduceToolEvent (pure aggregator) [T1, T2]", () => {
     expect(state.renderers[0]!.output).toBe("file1\nfile2");
   });
 
+  it("TOOL_RESULT with the registry's `Error:` convention flips status to 'errored' (eval-UI F3)", () => {
+    let state = emptyToolAggregatorState();
+    state = reduceToolEvent(state, {
+      type: "TOOL_CALL_START",
+      tool_call_id: "tc1",
+      tool_call_name: "shell",
+      parent_message_id: null,
+      ...RAW,
+    } as never);
+    state = reduceToolEvent(state, {
+      type: "TOOL_RESULT",
+      tool_call_id: "tc1",
+      content: "Error: command 'cat /etc/shadow' rejected by allowlist",
+      role: "tool",
+      ...RAW,
+    } as never);
+    expect(state.renderers[0]!.status).toBe("errored");
+    // The error text is still surfaced as the output (evidence preserved).
+    expect(state.renderers[0]!.output).toContain("rejected by allowlist");
+  });
+
+  it("a result merely containing the word Error mid-text stays 'completed'", () => {
+    let state = emptyToolAggregatorState();
+    state = reduceToolEvent(state, {
+      type: "TOOL_CALL_START",
+      tool_call_id: "tc1",
+      tool_call_name: "file_io",
+      parent_message_id: null,
+      ...RAW,
+    } as never);
+    state = reduceToolEvent(state, {
+      type: "TOOL_RESULT",
+      tool_call_id: "tc1",
+      content: "wrote log line: Error rates nominal",
+      role: "tool",
+      ...RAW,
+    } as never);
+    expect(state.renderers[0]!.status).toBe("completed");
+  });
+
   it("TOOL_CALL_END alone keeps the renderer 'running' until TOOL_RESULT arrives", () => {
     let state = emptyToolAggregatorState();
     state = reduceToolEvent(state, {

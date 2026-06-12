@@ -14,6 +14,7 @@ interface signatures shown in
 in three ports:
 
 - `AgentRuntimeClient` — `stream()` split into `createRun()` + `streamRun()`; `getState()` removed.
+  **Revised 2026-06-11 (D-V3-P1-R1, below):** re-merged to a single `streamRun(req)`; `createRun()` removed.
 - `AuthProvider` — `signIn()` removed; `getSession()` returns `IdentityClaim` instead of `Session`.
 - `ThreadStore` — `update()` / `delete()` / `getMessages()` removed; `get()` / `rename()` added; every method takes an `IdentityClaim` first.
 
@@ -84,6 +85,60 @@ two additions specific to the split:
 2. `streamRun(runId)` always terminates with either a `run_completed`
    or `run_error` UIRuntime event (Runtime Contract §1: terminal event
    always emitted).
+
+---
+
+## D-V3-P1-R1 (2026-06-11) — `AgentRuntimeClient`: single-POST protocol; `streamRun(req)`, `createRun()` removed
+
+**Status:** Accepted; supersedes the D-V3-P1 signature above. Decided
+during the eval-UI trajectory phase
+(`docs/plans/goaljudge_eval_ui_trajectory_phase.plan.md` §8.6-F).
+
+### Implemented (canonical)
+
+```typescript
+interface AgentRuntimeClient {
+  streamRun(req: RunCreateRequest): AsyncIterable<UIRuntimeEvent>;
+  cancel(runId: string): Promise<void>;
+}
+```
+
+### Why the split was reversed
+
+The D-V3-P1 two-step flow (`createRun` → `streamRun(runId)`) assumed
+the middleware exposed a run-creation endpoint separate from the event
+stream. The live middleware protocol has no such endpoint: the only
+run-starting route is `POST /run/stream`, and **the HTTP response body
+of that POST is the SSE stream itself**. There is no moment at which a
+`run_id` exists before the first frame; the `run_id` arrives inside
+the first `RUN_STARTED` event. Keeping `createRun()` would have forced
+the adapter to fabricate a `RunStateView` (a lie at the port boundary)
+or to open the stream early and buffer it (hidden state across two
+port calls).
+
+The D-V3-P1 rationale items fall away with it:
+
+| D-V3-P1 rationale | Status under single-POST |
+|---|---|
+| `Last-Event-ID` resumption needs run id before reconnect | Resumption is not part of the middleware protocol; reconnect = new run. Dropped. |
+| Telemetry attaches run id to spans before first frame | Run id does not exist before the first frame; spans attach on `RUN_STARTED`. |
+| UI shows "running" immediately | The UI renders its `connecting` phase from the moment of send; no port support needed. |
+
+### What is preserved
+
+- Yields `UIRuntimeEvent` (post-translation), never raw `AGUIEvent` or
+  an SDK type (**F-R8**, **A4**) — unchanged from D-V3-P1.
+- Runtime Contract §1: the iterable always terminates with
+  `run_completed` or `run_error`; if the underlying stream ends without
+  a terminal event, the composition-root stream synthesizes
+  `run_error{network_error}`.
+- `trace_id` forwarded verbatim from the backend on every event
+  (**F-R7**); browser-side transport reads the stream via
+  `fetch` + `ReadableStream` (`lib/transport/fetch_sse_client.ts`),
+  never `EventSource`.
+- The browser-bundle wiring lives in the `lib/composition_browser.ts`
+  composition root (keeps server-only SDK adapters out of the client
+  bundle); `lib/composition.ts` remains the server-side root.
 
 ---
 
@@ -186,7 +241,7 @@ in the implementation (`ports/thread_store.ts` JSDoc) and tested in
 
 | Port | Status vs spec | Methods preserved | Methods removed | Methods added |
 |------|----------------|-------------------|-----------------|---------------|
-| `AgentRuntimeClient` | refined | `cancel` | `stream`, `getState` | `createRun`, `streamRun` |
+| `AgentRuntimeClient` | refined (R1 2026-06-11) | `cancel` | `stream`, `getState`, `createRun` (added then removed by R1) | `streamRun(req)` |
 | `AuthProvider` | refined | `getAccessToken`, `signOut` | `signIn` | — (redirect-based flow replaces it) |
 | `AuthProvider.getSession` return type | tightened | — | `Session` | `IdentityClaim` (stricter; no token leak) |
 | `ThreadStore` | refined + scoped | `create`, `list`, `archive` | `update`, `delete`, `getMessages` | `get`, `rename` (and identity scoping on every method) |
@@ -210,9 +265,13 @@ following triggers hit:
 | Generic thread metadata UI (tags, custom fields) | `ThreadStore.update(identity, threadId, patch)` with Zod-validated patch | Possible — but `setMetadata` / `setTags` per-concern preferred |
 | Hard-delete required for legal compliance (GDPR right-to-erasure) | `ThreadStore.purge(identity, threadId)` (note: not `delete`) | Yes — additive, never replacing `archive` |
 
-The split `createRun` + `streamRun` and the identity-scoped methods are
-**not** scheduled for reversal under any foreseen trigger — those are
-the new floor.
+The identity-scoped `ThreadStore` methods are **not** scheduled for
+reversal under any foreseen trigger. The `createRun` + `streamRun`
+split **was** reversed (D-V3-P1-R1, 2026-06-11) once the live
+middleware protocol showed run creation and streaming are one POST; a
+future deviation could reintroduce a two-step flow only if the
+middleware grows a separate run-creation endpoint (e.g. for
+`Last-Event-ID` resumption).
 
 ---
 

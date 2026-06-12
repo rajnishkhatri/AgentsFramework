@@ -21,9 +21,10 @@ LangChain event-name mapping (subset; v1 wire surface):
 | on_chat_model_end            | LLMMessageEnded               |
 | on_tool_start                | ToolCallStarted               |
 | on_tool_end                  | ToolResultReceived            |
+| on_chain_end (node)          | StateMutated (todos/plan_ref) |
+| on_chain_end (evaluate node) | StepProgressed (ReAct lap)    |
 
-Future enhancements (deferred): JSON Patch translation for state mutations,
-HITL ``request_approval`` wiring (S7).
+Future enhancements (deferred): HITL ``request_approval`` wiring (S7).
 """
 
 from __future__ import annotations
@@ -43,6 +44,8 @@ from agent_ui_adapter.wire.domain_events import (
     LLMTokenEmitted,
     RunFinishedDomain,
     RunStartedDomain,
+    StateMutated,
+    StepProgressed,
     ToolCallStarted,
     ToolResultReceived,
 )
@@ -86,6 +89,7 @@ class LangGraphRuntime:
         self._trace_emit = trace_emit
         self._run_tasks: dict[str, asyncio.Task] = {}
         self._streamed_run_ids: set[str] = set()
+        self._step_meter_count = 0
 
     def _emit_trace(
         self,
@@ -178,6 +182,7 @@ class LangGraphRuntime:
         }
         error: str | None = None
         self._streamed_run_ids = set()
+        self._step_meter_count = 0
         try:
             async for raw in self._graph.astream_events(
                 graph_input, config=config, version="v2"
@@ -311,24 +316,6 @@ class LangGraphRuntime:
         return "\n".join(parts)
 
     @staticmethod
-    def _tool_calls_preview(obj: object) -> str:
-        """When the model returns only tool calls, surface a short line for the UI."""
-        tool_calls = getattr(obj, "tool_calls", None)
-        if not tool_calls:
-            return ""
-        names: list[str] = []
-        for tc in tool_calls:
-            if isinstance(tc, dict):
-                name = tc.get("name", "")
-            else:
-                name = getattr(tc, "name", "") or ""
-            if isinstance(name, str) and name:
-                names.append(name)
-        if not names:
-            return ""
-        return "Using tools: " + ", ".join(names) + "…"
-
-    @staticmethod
     def _suppress_llm_event_for_node(raw: dict) -> bool:
         """Hide LLM traffic from internal graph nodes (e.g. input guardrail).
 
@@ -399,8 +386,10 @@ class LangGraphRuntime:
             already_streamed = event_run_id in self._streamed_run_ids
             output = data.get("output")
             content = self._extract_content(output) if output else ""
-            if not content and output:
-                content = self._tool_calls_preview(output)
+            # Tool-call-only turns emit NO text token (eval-UI F2): the
+            # "Using tools: ..." preview used to land in the answer body
+            # and froze into inadmissible captures (GJ-012/GJ-F-008).
+            # Tool activity reaches the UI via ToolCallStarted events.
             if not already_streamed:
                 if content:
                     events.append(LLMTokenEmitted(
@@ -477,7 +466,64 @@ class LangGraphRuntime:
                 result=str(output),
             )]
 
+        if ev_name == "on_chain_end":
+            return self._translate_chain_end(raw, data, trace_id)
+
         return []
+
+    def _translate_chain_end(
+        self, raw: dict, data: dict, trace_id: str
+    ) -> list[DomainEvent]:
+        """Graph-node completion → step meter + state-delta surface.
+
+        - ``evaluate`` node end marks one completed ReAct lap →
+          ``StepProgressed`` (wire: ``Custom name='step_meter'``).
+        - Any node whose output carries ``todos``/``plan_ref`` →
+          ``StateMutated`` with JSON-Patch ``replace`` ops (the loop
+          replaces these channels wholesale, never patches items).
+        - The compiled graph's own ``on_chain_end`` (name ``LangGraph``)
+          restates the final state; suppressed to avoid a duplicate
+          trailing delta.
+        """
+        node_name = raw.get("name", "")
+        if node_name == "LangGraph":
+            return []
+
+        events: list[DomainEvent] = []
+        output = data.get("output")
+
+        if isinstance(output, dict):
+            ops: list[dict] = []
+            todos = output.get("todos")
+            if isinstance(todos, list):
+                ops.append({"op": "replace", "path": "/todos", "value": todos})
+            plan_ref = output.get("plan_ref")
+            if isinstance(plan_ref, str) and plan_ref:
+                ops.append({"op": "replace", "path": "/plan_ref", "value": plan_ref})
+            selected_model = output.get("selected_model")
+            if isinstance(selected_model, str) and selected_model:
+                ops.append({
+                    "op": "replace",
+                    "path": "/selected_model",
+                    "value": selected_model,
+                })
+            if ops:
+                events.append(StateMutated(trace_id=trace_id, delta=ops))
+
+        if node_name == "evaluate":
+            self._step_meter_count += 1
+            step_name = ""
+            if isinstance(output, dict):
+                step_name = str(output.get("current_workflow_phase", "") or "")
+            events.append(
+                StepProgressed(
+                    trace_id=trace_id,
+                    step_count=self._step_meter_count,
+                    step_name=step_name or "evaluate",
+                )
+            )
+
+        return events
 
 
 __all__ = ["LangGraphRuntime"]

@@ -46,19 +46,20 @@ The **two TypeScript shared kernels** anchor dependency direction inside the bro
 
 ---
 
-## The Three Composition Roots
+## The Composition Roots
 
-The Frontend Ring has exactly three composition roots. Each is the **only place that names a concrete adapter**. All other code receives adapters through the port interface only.
-
-
-| Composition root              | Process                         | Role                                                                                                                                                   |
-| ----------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `frontend/lib/composition.ts` | Browser + Vercel/Cloudflare BFF | Wires the 8 `frontend/lib/ports/` implementations; selects adapters by `ARCHITECTURE_PROFILE` env var (`v2` or `v3`); provides them via React context. |
-| `middleware/composition.py`   | Cloud Run or Fargate middleware | Wires auth verifier, memory client, telemetry exporter, and the downstream `agent_ui_adapter` HTTP client; selects adapters by `ARCHITECTURE_PROFILE`. |
-| `agent_ui_adapter/server.py`  | Python API process              | The existing composition root (unchanged). The seam between the frontend ring and the `agent_ui_adapter` ring.                                         |
+The Frontend Ring has exactly four composition roots. Each is the **only place that names a concrete adapter**. All other code receives adapters through the port interface only.
 
 
-**Rule C1:** No module outside a composition root may contain an `import` of a concrete adapter class. Composition roots may import everything in the ring; nothing imports a composition root.
+| Composition root                      | Process                         | Role                                                                                                                                                   |
+| ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `frontend/lib/composition.ts`         | Vercel/Cloudflare BFF (server)  | Wires the 8 `frontend/lib/ports/` implementations; selects adapters by `ARCHITECTURE_PROFILE` env var (`v2` or `v3`); provides them via React context. |
+| `frontend/lib/composition_browser.ts` | Browser (client bundle)         | Added 2026-06-11 (eval-UI F1). Wires the browser-side `AgentRuntimeClient` over `transport/fetch_sse_client.ts`; exists so server-only SDK adapters (WorkOS) never enter the client bundle. |
+| `middleware/composition.py`           | Cloud Run or Fargate middleware | Wires auth verifier, memory client, telemetry exporter, and the downstream `agent_ui_adapter` HTTP client; selects adapters by `ARCHITECTURE_PROFILE`. |
+| `agent_ui_adapter/server.py`          | Python API process              | The existing composition root (unchanged). The seam between the frontend ring and the `agent_ui_adapter` ring.                                         |
+
+
+**Rule C1:** No module outside a composition root may contain an `import` of a concrete adapter class. Composition roots may import everything in the ring; nothing in `lib/` imports a composition root. Page-level entry components in `app/` (e.g. `app/chat-shell.tsx`) may obtain wired port instances from a composition root (direct import or React context) and must pass them down as props — they may not import adapters directly.
 
 ---
 

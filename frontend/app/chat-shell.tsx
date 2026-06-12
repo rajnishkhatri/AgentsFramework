@@ -1,10 +1,17 @@
 /**
- * Chat shell — client component that wires Composer, StreamingMarkdown,
- * RunControls, ThreadSidebar, and ThemeToggle into a working chat UI.
+ * Chat shell -- client component wiring Composer, StreamingMarkdown,
+ * ToolCard, and ThemeToggle into a working chat UI on the architecture's
+ * runtime port (eval-UI F1; replaces the off-architecture placeholder).
  *
- * This is a placeholder integration: messages are stored in local state
- * and sent to the BFF `/api/run/stream` endpoint. The full AG-UI / CopilotKit
- * integration lands in later sprints.
+ * Per F-R1 this component holds NO run-lifecycle logic: `useAgentRun`
+ * drives `AgentRuntimeClient.streamRun()` and folds events through the
+ * pure run_view_reducer; this file only renders the resulting turns.
+ * Per F-R7 trace ids are forwarded from the backend, never generated.
+ *
+ * `data-state` on each assistant message root is the deterministic
+ * terminal-state hook (F2 expands its visual affordances): the batch
+ * harness waits on `[data-state="complete"]` instead of text-settle
+ * heuristics.
  */
 
 "use client";
@@ -13,153 +20,212 @@ import * as React from "react";
 import Link from "next/link";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
+import { TaskList } from "@/components/chat/TaskList";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
+import { ToolCard } from "@/components/tools/ToolCard";
+import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
+import { browserRuntimeClient } from "@/lib/composition_browser";
+import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
+import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
+import { deriveRunPhase, type RunPhase } from "@/lib/translators/run_phase";
+import { narrateTrajectory } from "@/lib/translators/run_narration";
+import { synthesizeFallbackAnswer } from "@/lib/translators/fallback_answer";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
+const PHASE_LABEL: Record<RunPhase, string> = {
+  connecting: "connecting…",
+  thinking: "thinking…",
+  tool: "using tools…",
+  writing: "writing…",
+  done: "done",
+  error: "error",
+};
+
+/**
+ * F2/F8/F10-T1 status slot: the in-progress feed lives in its OWN
+ * aria-live region, never concatenated into the answer body. The phase
+ * label derives from real events (deriveRunPhase, F8); beneath it the
+ * free Tier-1 narration line tells the trajectory story
+ * (narrateTrajectory, F10). Animation is gated by `evalMode` so frozen
+ * eval captures stay deterministic (decision D-A). On `complete` the
+ * slot collapses to a subtle done marker.
+ */
+function RunStatusLine(props: {
+  view: AssistantRunView;
+  phase: RunPhase;
+  evalMode: boolean;
+}): React.JSX.Element | null {
+  const { view, phase } = props;
+  if (view.status === "complete") {
+    return (
+      <p
+        data-testid="terminal-marker"
+        className="text-xs text-muted m-0"
+        aria-label="Run complete"
+      >
+        ✓ done
+      </p>
+    );
+  }
+  if (view.status !== "streaming") return null;
+  const runningTool = [...view.segments]
+    .reverse()
+    .find((s) => s.kind === "tool" && s.request.status === "running");
+  const label =
+    runningTool && runningTool.kind === "tool"
+      ? `using ${runningTool.request.tool_name}…`
+      : view.step && phase === "thinking"
+        ? `step ${view.step.count} · ${view.step.name}…`
+        : PHASE_LABEL[phase];
+  const narration = narrateTrajectory(view.segments);
+  return (
+    <div
+      data-testid="run-status"
+      aria-live="polite"
+      className="text-xs text-muted m-0 grid gap-0.5"
+    >
+      <p className={props.evalMode ? "m-0" : "m-0 animate-pulse"}>{label}</p>
+      {narration ? (
+        // Reasoning layer: sans italic muted (Appendix A) -- visually
+        // distinct from the answer so thinking is never read as prose.
+        <p data-testid="reasoning-narration" className="m-0 italic">
+          {narration}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
-export function ChatShell(props: { userEmail: string }): React.JSX.Element {
-  const [messages, setMessages] = React.useState<Message[]>([]);
-  const [busy, setBusy] = React.useState(false);
+/**
+ * F6: copyable trace_id chip -- one-click UI ↔ Langfuse correlation for
+ * annotators. The trace_id is forwarded from the backend (F-R7), never
+ * generated here. Gated to eval mode so prod chat stays clean.
+ */
+function TraceChip(props: { traceId: string }): React.JSX.Element {
+  const [copied, setCopied] = React.useState(false);
+  async function copy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(props.traceId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1_500);
+    } catch {
+      /* clipboard unavailable -- chip stays idle */
+    }
+  }
+  return (
+    <button
+      type="button"
+      data-testid="trace-chip"
+      onClick={copy}
+      aria-label="Copy trace id"
+      className="justify-self-start font-mono text-xs text-muted bg-surface border border-border rounded-sm px-2 py-0.5 cursor-pointer hover:text-fg"
+    >
+      {copied ? "copied" : `trace ${props.traceId}`}
+    </button>
+  );
+}
+
+function AssistantMessage(props: {
+  turn: ChatTurn;
+  evalMode?: boolean;
+}): React.JSX.Element {
+  const { assistant } = props.turn;
+  const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
+  const phase = deriveRunPhase(assistant);
+  const fallbackAnswer = synthesizeFallbackAnswer(assistant);
+  let firstTextSeen = false;
+  return (
+    <div
+      data-state={assistant.status}
+      data-run-phase={phase}
+      data-tool-count={toolCount}
+      data-testid="assistant-message"
+      className="grid gap-2"
+    >
+      {assistant.todos ? <TaskList view={assistant.todos} /> : null}
+      {assistant.segments.map((seg, i) => {
+        if (seg.kind !== "text") {
+          return <ToolCard key={seg.request.tool_call_id} request={seg.request} />;
+        }
+        // F5: badge + meter render once, on the first text segment.
+        const isFirstText = !firstTextSeen;
+        firstTextSeen = true;
+        return (
+          <StreamingMarkdown
+            key={`text-${i}`}
+            text={seg.text}
+            {...(isFirstText && assistant.modelBadge
+              ? { modelBadge: assistant.modelBadge }
+              : {})}
+            {...(isFirstText && assistant.step ? { step: assistant.step } : {})}
+          />
+        );
+      })}
+      {fallbackAnswer !== null ? (
+        <div data-testid="fallback-answer">
+          <StreamingMarkdown text={fallbackAnswer} />
+          <p className="text-xs text-muted m-0 italic">
+            summary generated from tool results
+          </p>
+        </div>
+      ) : null}
+      {assistant.status === "error" ? (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400 m-0">
+          {assistant.errorMessage ?? "The run failed."}
+        </p>
+      ) : null}
+      <RunStatusLine
+        view={assistant}
+        phase={phase}
+        evalMode={props.evalMode ?? false}
+      />
+      {props.evalMode && assistant.traceId ? (
+        <TraceChip traceId={assistant.traceId} />
+      ) : null}
+    </div>
+  );
+}
+
+export function ChatShell(props: {
+  userEmail: string;
+  /** Test seam: defaults to the browser composition root's client. */
+  runtime?: AgentRuntimeClient;
+  /**
+   * F7 eval-mode capture surface: when a case id is pinned (`?eval=GJ-…`)
+   * the UI freezes animation, pins the case id, and surfaces the trace
+   * chip so batch and human captures are identical and admissible.
+   */
+  evalCase?: string | null;
+}): React.JSX.Element {
+  const injected = props.runtime;
+  const runtime = React.useMemo(
+    () => injected ?? browserRuntimeClient(),
+    [injected],
+  );
+  const evalMode = Boolean(props.evalCase);
+  const { turns, busy, send } = useAgentRun(runtime);
   const bottomRef = React.useRef<HTMLDivElement>(null);
-  /** Stable LangGraph thread id for checkpointer + /run/stream (multiturn). */
-  const threadIdRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function handleSend(body: string): Promise<void> {
-    const userMsg: Message = {
-      id: crypto.randomUUID(),
-      role: "user",
-      text: body,
-    };
-    if (threadIdRef.current === null) {
-      threadIdRef.current = crypto.randomUUID();
-    }
-    const threadId = threadIdRef.current;
-    // Only the new user line: middleware uses `thread_id` + SqliteSaver so LangGraph
-    // appends to checkpoint state. Sending full chat history duplicates prior turns in
-    // `messages` and breaks tool follow-ups on turn 2+.
-    const messagesForApi = [{ role: "user" as const, content: body }];
-
-    setMessages((prev) => [...prev, userMsg]);
-    setBusy(true);
-
-    try {
-      const res = await fetch("/api/run/stream", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          thread_id: threadId,
-          input: { messages: messagesForApi },
-        }),
-      });
-
-      if (!res.ok || !res.body) {
-        let errorText: string;
-        if (res.status === 401) {
-          const contentType = res.headers.get("content-type") ?? "";
-          if (contentType.includes("application/json")) {
-            errorText = "Session expired — please sign in again.";
-          } else {
-            errorText = "Backend rejected credentials — contact your admin.";
-          }
-        } else if (res.status === 502 || res.status === 503 || res.status === 504) {
-          errorText = "Backend unreachable — try again in a moment.";
-        } else {
-          errorText = `Error: ${res.status} — ${res.statusText || "unexpected failure"}.`;
-        }
-        const assistantMsg: Message = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          text: errorText,
-        };
-        setMessages((prev) => [...prev, assistantMsg]);
-        return;
-      }
-
-      const assistantId = crypto.randomUUID();
-      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", text: "" }]);
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let assistantText = "";
-
-      const flushEvent = (rawEvent: string): void => {
-        let eventName = "message";
-        const dataLines: string[] = [];
-        for (const line of rawEvent.split("\n")) {
-          if (line.startsWith("event:")) {
-            eventName = line.slice(6).trim();
-          } else if (line.startsWith("data:")) {
-            dataLines.push(line.slice(5).trimStart());
-          }
-        }
-        if (dataLines.length === 0) return;
-        const dataStr = dataLines.join("\n");
-        if (eventName === "done" || dataStr === "[DONE]") return;
-
-        try {
-          const payload = JSON.parse(dataStr) as {
-            type?: string;
-            delta?: string;
-            message?: string;
-          };
-          if (eventName === "TEXT_MESSAGE_CONTENT" && typeof payload.delta === "string") {
-            assistantText += payload.delta;
-            const snapshot = assistantText;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
-            );
-          } else if (eventName === "RUN_ERROR" && payload.message) {
-            assistantText += `\n\n_Error: ${payload.message}_`;
-            const snapshot = assistantText;
-            setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, text: snapshot } : m)),
-            );
-          }
-        } catch {
-          // Non-JSON data line — ignore.
-        }
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        let sepIdx: number;
-        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
-          const rawEvent = buffer.slice(0, sepIdx);
-          buffer = buffer.slice(sepIdx + 2);
-          if (rawEvent.trim().length > 0) flushEvent(rawEvent);
-        }
-      }
-      if (buffer.trim().length > 0) flushEvent(buffer);
-    } catch {
-      const errMsg: Message = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        text: "Connection error — make sure the backend is running.",
-      };
-      setMessages((prev) => [...prev, errMsg]);
-    } finally {
-      setBusy(false);
-    }
-  }
+  }, [turns]);
 
   return (
-    <div className="min-h-dvh grid grid-rows-[auto_1fr_auto]">
+    <div
+      className="min-h-dvh grid grid-rows-[auto_1fr_auto]"
+      {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
+    >
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border-light">
         <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
         <div className="flex items-center gap-3">
+          {props.evalCase ? (
+            <span
+              data-testid="eval-banner"
+              className="font-mono text-xs uppercase tracking-wide px-2 py-0.5 rounded-sm bg-accent-light text-accent"
+            >
+              eval · {props.evalCase}
+            </span>
+          ) : null}
           <span className="text-sm text-muted">{props.userEmail}</span>
           <ThemeToggle />
           <Link
@@ -174,7 +240,7 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
 
       {/* Messages area */}
       <main className="overflow-y-auto p-4">
-        {messages.length === 0 ? (
+        {turns.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted text-center">
             <div className="grid gap-2">
               <p className="text-2xl m-0">What can I help you with?</p>
@@ -183,21 +249,15 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
           </div>
         ) : (
           <div className="max-w-3xl mx-auto grid gap-4">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={
-                  msg.role === "user"
-                    ? "justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]"
-                    : "justify-self-start max-w-[80%]"
-                }
-              >
-                {msg.role === "assistant" ? (
-                  <StreamingMarkdown text={msg.text} />
-                ) : (
-                  <span className="whitespace-pre-wrap">{msg.text}</span>
-                )}
-              </div>
+            {turns.map((turn) => (
+              <React.Fragment key={turn.id}>
+                <div className="justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]">
+                  <span className="whitespace-pre-wrap">{turn.user}</span>
+                </div>
+                <div className="justify-self-start max-w-[80%] w-full">
+                  <AssistantMessage turn={turn} evalMode={evalMode} />
+                </div>
+              </React.Fragment>
             ))}
             <div ref={bottomRef} />
           </div>
@@ -206,7 +266,7 @@ export function ChatShell(props: { userEmail: string }): React.JSX.Element {
 
       {/* Composer */}
       <div className="max-w-3xl mx-auto w-full">
-        <Composer onSend={handleSend} busy={busy} />
+        <Composer onSend={send} busy={busy} />
       </div>
     </div>
   );

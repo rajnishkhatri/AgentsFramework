@@ -25,7 +25,7 @@ export function Composer(props: { onSend: (b: string) => void }): React.JSX.Elem
   const taRef = React.useRef<HTMLTextAreaElement>(null);
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.nativeEvent.isComposing) return;
-    const isSubmit = (e.metaKey || e.ctrlKey) && e.key === "Enter";
+    const isSubmit = e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey;
     if (isSubmit) {
       e.preventDefault();
       props.onSend(body);
@@ -70,7 +70,7 @@ export function Bad(): React.JSX.Element {
 import * as React from "react";
 export function Bad(): React.JSX.Element {
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { /* submit */ }
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey) { /* submit */ }
   }
   return <textarea aria-label="x" rows={2} onKeyDown={onKeyDown} />;
 }
@@ -87,7 +87,7 @@ import * as React from "react";
 export function Bad(): React.JSX.Element {
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.nativeEvent.isComposing) return;
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { /* submit */ }
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey) { /* submit */ }
   }
   return <textarea aria-label="x" rows={1} onKeyDown={onKeyDown} />;
 }
@@ -103,7 +103,7 @@ import * as React from "react";
 export function Bad(): React.JSX.Element {
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.nativeEvent.isComposing) return;
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { /* submit */ }
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey) { /* submit */ }
   }
   return <textarea rows={2} onKeyDown={onKeyDown} />;
 }
@@ -120,7 +120,7 @@ export function Bad(props: { stream: string }): React.JSX.Element {
   const taRef = React.useRef<HTMLTextAreaElement>(null);
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void {
     if (e.nativeEvent.isComposing) return;
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") { /* submit */ }
+    if (e.key === "Enter" && !e.metaKey && !e.ctrlKey && !e.shiftKey) { /* submit */ }
   }
   React.useEffect(() => { taRef.current?.focus(); }, [props.stream]);
   return <textarea ref={taRef} aria-label="x" rows={2} onKeyDown={onKeyDown} className="field-sizing: content" />;

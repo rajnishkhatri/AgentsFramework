@@ -1,6 +1,9 @@
 # GoalJudge Eval UI — Trajectory + Admissible-Capture Phase
 
-> **Status:** PROPOSED (2026-06-11). Pre-Stage-6 UI workstream.
+> **Status:** IMPLEMENTED except F10-Tier2 (2026-06-11). Pre-Stage-6 UI workstream.
+> All phases landed on `feat/goaljudge-stage5-phase6-iaa-round1` — see §0 for the
+> commit-by-commit execution record. Remaining: F10 Tier 2 (cheap reasoning recap)
+> and the T3 `goaljudge-batch` admissibility validation.
 > **One-line:** Connect the already-built (and tested) AG-UI → UI-runtime → React
 > pipeline to the live chat shell, so the UI renders the **tool trajectory**, a
 > **live task list + synthesized reasoning**, a **guaranteed synthesized answer**, and
@@ -33,6 +36,46 @@
 > [`docs/skills/playwright-agentic-e2e`](../skills/playwright-agentic-e2e/SKILL.md) — the
 > repo already ships the tier scripts and specs (several skip today and light up as
 > F1–F3 land). Per-feature tier + assertions in **§8.8**.
+
+---
+
+## 0. Execution record (2026-06-11)
+
+Implemented phase-by-phase in the Appendix B interleaved order, backend emission
+first, all on `feat/goaljudge-stage5-phase6-iaa-round1` (decisions taken with the
+owner at kickoff). Every slice shipped TDD-first (failure paths first) with T1
+Playwright validation per §8.8.
+
+| Commit | Phase(s) | What landed |
+|---|---|---|
+| `d74193d` | prep | Pin vite ^7 so vitest 4 can start (frontend test runner was dead) |
+| `c123ddf` | Phase 0 | Backend emission: `StepProgressed` → `Custom step_meter`; `_translate_chain_end` emits `StateMutated` JSON-Patch `replace` for `/todos`, `/plan_ref`, `/selected_model`; telemetry-bridge skip list updated; wire artifacts regenerated |
+| `230804f` | F1 | Chat shell on the runtime port: `connectFetchSSE` transport (§8.6-E Option A), `streamRun(req)` port (§8.6-F), `lib/composition_browser.ts` browser root, pure `run_view_reducer`, `useAgentRun` hook |
+| `c887fcc` | F2/F3/F9 | Status slot separate from answer body; **"Using tools:" preview removed at the backend source** (GJ-012/GJ-F-008 root cause retired); tool-card testids + errored-status convention; live `TaskList` from `/todos` deltas (cancelled ≠ done) |
+| `c099e6f` | F8/F10-T1 | `deriveRunPhase` → `data-run-phase` (event-driven, no timers); `narrateTrajectory` free Tier-1 narration line |
+| `927c3a9` | F11 | `synthesizeFallbackAnswer` — answer slot never empty; "summary generated from tool results" marker |
+| `ee17c67` | F4/F12 | react-markdown + remark-gfm (no raw HTML), `CodeBlock` with copy, dangling-fence stabilizer; Geist Sans/Mono type system per Appendix A |
+| `deaf45f` | F5/F6/F7 | Model badge from `/selected_model` delta; copyable trace chip (forwarded `trace_id` only, F-R7); `?eval=GJ-…` capture surface (pinned case id, frozen animation, prod clean) |
+
+**Verification at close:** backend 738 passed; frontend 378 unit tests passed; T1
+chromium 14/14; visual tier 8/8 (baselines updated); architecture-layering tests
+green with the second composition root.
+
+**Plan corrections forced by code reality** (full detail in §8.6-F and the §8.6-C
+correction): the middleware is a single `POST /run/stream` whose response body *is*
+the SSE stream → the port is `streamRun(req)`, `createRun` removed; wire
+`RunFinished` carries **no** `final_message`, so F11's guarantee = graph forced
+synthesis + frontend fallback.
+
+**Remaining work:**
+- **F10 Tier 2** (deferred deliberately — Tier 1 ships the live information for $0):
+  once-per-run cheap-model recap over a `Custom {name:"reasoning_summary"}` channel,
+  Jinja prompt in `prompts/` (F-R5), lazy "Show reasoning" expander, pre-settled in
+  eval mode, cost guard skips 0–1-tool runs (§8 F10 / §8.6-B).
+- **T3 acceptance:** `goaljudge-batch` registry run against the full stack —
+  `tool_card_count > 0` where expected, `response_text` 100% non-empty (§8.8 / §5).
+- Out of band: 3 stale frontend checker-script tests (pre-existing, tracked
+  separately).
 
 ---
 
@@ -129,6 +172,14 @@ through the **`AgentRuntimeClient` port** obtained from `composition.ts`:
 by `ag_ui_to_ui_runtime` inside the adapter — components never see raw `AGUIEvent`, per
 deviation D-V3-P1 + F-R8). The per-message reducer over `UIRuntimeEvent` lives behind
 the **`UIRuntime`** port / a hook — **not in the component** (F-R1).
+
+**Transport (decided — §8.6 gap E, Option A):** the chat-shell `fetch`-SSE reader is not
+deleted outright — its frame-parse loop (`chat-shell.tsx:90-144`) is **promoted into a
+`connectFetchSSE` transport adapter** (`lib/transport/`) that yields `AGUIEvent`s over
+`fetch`+`ReadableStream`. `makeOpenUIRuntimeStream` wires `connectFetchSSE` (not the
+`EventSource`-based `connectSSE`) so the browser reads the BFF stream over `fetch` —
+**this is what keeps the existing T1 `page.route` mocks alive.** Heartbeat + Last-Event-ID
+resumption are intentionally dropped on this path. `connectSSE` stays for server-side use.
 
 **Per-assistant-message view state** (derived in the UIRuntime layer, passed as props):
 ```
@@ -612,22 +663,81 @@ aren't "adapters." *Suggestion:* add a short "Presentation layer" section to
 `adapters/` or SDKs — i.e. make the implicit F-R1 boundary for the view layer explicit,
 and note that `app/chat-shell.tsx` is the current exception to fix (tech-debt callout).
 
-**E. Browser-facing stream transport must stay `fetch`-readable (testability +
-existing T1 specs).** The runtime adapter's `streamRun()` is wired through
-`transport/sse_client.ts`, which uses **`EventSource`** — and `page.route` cannot
-intercept `EventSource` ([Playwright #15353](https://github.com/microsoft/playwright/issues/15353)),
-so the repo's existing T1 stream mocks (which `page.route("**/api/run/stream")`) would
-silently stop working the moment F1 routes the browser through it. *Suggestion:* make it
-an explicit architecture rule that the **BFF→browser hop is a `fetch`-readable
-`ReadableStream`** (the `edge_proxy` already forwards SSE byte-for-byte over `fetch`);
-`EventSource` may be used *server-side inside the adapter* but the browser consumes the
-BFF stream via `fetch` (as `chat-shell.tsx` does today). This preserves per-commit T1
-mockability. Document it next to the `transport/` import rules. Full analysis in §8.8.
+**E. Browser-facing stream transport stays `fetch`-readable — RESOLVED (Option A).**
+The runtime adapter's `streamRun()` is currently wired through
+`transport/sse_client.ts`, whose `connectSSE` uses **`EventSource`**, and the
+composition root (`makeOpenUIRuntimeStream`, `lib/composition.ts:112-130`) requires a
+browser-side `eventSourceFactory`. `page.route` cannot intercept `EventSource`
+([Playwright #15353](https://github.com/microsoft/playwright/issues/15353)), so the
+repo's existing T1 stream mocks (which `page.route("**/api/run/stream")`) would silently
+stop intercepting the moment F1 routes the browser through `streamRun()` as currently
+composed.
+
+**Decision (taken 2026-06-11):** the **browser consumes the BFF SSE stream over
+`fetch`+`ReadableStream`, never `EventSource`.** This is now a binding architecture rule,
+not an open question. Concretely:
+
+- **Add a `connectFetchSSE` transport adapter** in `lib/transport/` that does
+  `fetch()` → `res.body.getReader()` → SSE frame-parse → `AGUIEventSchema.parse` →
+  `yield AGUIEvent`. It is a drop-in alternative to `connectSSE` behind the same
+  `(opts) => AsyncGenerator<SSEYield>` shape, so `makeOpenUIRuntimeStream` swaps the
+  transport **behind the `AgentRuntimeClient.streamRun()` port** — the browser still
+  consumes the port (F-R1/F-R7/F-R8 satisfied), only the wire mechanism changes.
+- **Source it from the working code we already have.** `chat-shell.tsx:90-144` is a
+  functioning fetch-SSE reader today; F1 *promotes* that loop into `connectFetchSSE`
+  rather than deleting it. The translator (`agUiToUiRuntime`), the wire schema
+  (`AGUIEventSchema`), and the parse-error sentinel pattern are reused verbatim.
+- **`connectSSE`/`EventSource` stays in the tree, unused by the browser.** It remains
+  available for any *server-side* consumer that wants `EventSource` semantics; it is no
+  longer on the browser composition path.
+- **Drop `connectSSE`'s heartbeat-timeout + Last-Event-ID resumption** (decided
+  2026-06-11). `connectFetchSSE` reads to EOF with no resumption — matching today's
+  `chat-shell.tsx`, which already has neither. Rationale: eval runs are short (~30 s
+  traces) and reload-to-retry is acceptable; resumption is a long-agent concern, not an
+  eval-trace one. If a long-run consumer ever needs it, `connectSSE` is the place for it,
+  server-side. *(This trade is recorded so it isn't silently lost: the fetch path is
+  intentionally thinner than the EventSource path.)*
+
+Why Option A over the alternatives (full trade-off table in §8.8): mocking at **T2**
+(mock backend) instead would push a server process into the per-commit gate and rewrite
+3 specs (friction the Playwright skill warns against); an **env-selected dual transport**
+(fetch in test, EventSource in prod) is **Determinism Theater** (TDD Anti-Pattern #3) —
+it green-lights a browser path the user never runs. Option A is the only choice that
+keeps the per-commit T1 net **and** tests the real browser path **and** lands the shell
+on the architecture's port. Document the rule next to the `transport/` import rules in
+`FRONTEND_ARCHITECTURE.md`. Full analysis in §8.8.
 
 **Also worth a doc note (not a change):** `FRONTEND_PORT_DEVIATIONS_V3.md` already
 records that `streamRun()` yields **`UIRuntimeEvent`** (post-translation), not raw
 `AGUIEvent` — so any plan text implying components see `AGUIEvent` is wrong. Wave A/B
 components consume `UIRuntimeEvent` only. (This plan's §3/§8 specs are updated to say so.)
+
+**F. Port surface follows the single-POST protocol — RESOLVED during F1 (2026-06-11).**
+Implementation surfaced a fact the §3-F1 text missed: the middleware exposes exactly
+`POST /run/stream` (response body IS the SSE stream) + `POST /run/cancel`. There is no
+create-then-stream-by-id pair, so `createRun(req) → RunStateView` could never work
+against the real BFF (it expected JSON from an SSE endpoint) and `streamRun(runId)` had
+nothing to stream from. **Decision:** the port models the consumer's need directly —
+`AgentRuntimeClient.streamRun(req: RunCreateRequest)` starts the run and yields its
+`UIRuntimeEvent`s; `createRun` is removed (a future create/stream substrate, e.g.
+LangGraph Platform SaaS, composes both calls behind the same method). HTTP-status →
+`run_error{error_type}` mapping (401/403/429/5xx) moved from thrown adapter errors into
+the composition stream, using the closed `RunErrorType` enum. A second composition entry,
+`lib/composition_browser.ts`, owns the browser slice (fetch-SSE + translators + tool
+aggregator + Runtime-Contract-§1 terminal-event enforcement) so the WorkOS server SDK
+never enters the client bundle; the layering test blesses it as composition-ring.
+`tool_render` joined the `UIRuntimeEvent` union (typed projection of
+`ToolCallRendererRequest`) so trajectory segments ride the same channel as text.
+
+**Correction to §8.6-C (found during F11, 2026-06-11):** the wire `RunFinished` does
+**not** carry `final_message` — that premise was wrong. The implemented F11 contract:
+(a) the graph's continuation logic (`react_loop._should_continue`) already forces a
+synthesis pass after tool results on the normal path (the backend half, pre-existing);
+(b) the frontend `synthesizeFallbackAnswer` translator guarantees a non-empty answer
+slot for abnormal terminations (budget / max-steps / no-progress runs that complete
+without prose), rendered with a visible "summary generated from tool results" marker.
+Promoting `final_message` onto `RunFinished` remains open as a wire enhancement if the
+T3 batch shows the two layers above leave gaps.
 
 ---
 
@@ -740,27 +850,42 @@ criteria, already in-tree:
 | [`e2e/chat-shell.spec.ts`](../../frontend/e2e/chat-shell.spec.ts), `run-controls`, `observability` | shell wiring, run lifecycle, trace propagation | **F1/F2/F6** |
 | [`e2e/full-stack/goaljudge-batch.spec.ts`](../../frontend/e2e/full-stack/goaljudge-batch.spec.ts) | the registry batch; `tool_card_count`, `response_text`, screenshots | **F3/F11** (T3) |
 
-### ⚠ Transport decision that makes-or-breaks T1 mocking
+### ✅ Transport decision that makes-or-breaks T1 mocking — DECIDED (Option A, 2026-06-11)
 
 The single most consequential field (skill §"the one decision"): **`stream_transport`.**
-There is a split in the repo **right now**:
+There was a split in the repo, now resolved by an explicit rule (§8.6 gap E). The facts
+that forced the decision:
 
 * `app/chat-shell.tsx` streams via **`fetch()` + `getReader()`** → `page.route` **can**
   intercept it. Today's T1 specs mock `**/api/run/stream` and work *because* of this.
-* `lib/transport/sse_client.ts` (the architecture's transport) uses **`EventSource`**,
-  and the runtime adapter's `streamRun()` is wired through it. **`page.route` does NOT
+* `lib/transport/sse_client.ts`'s `connectSSE` uses **`EventSource`**, and the
+  composition root (`makeOpenUIRuntimeStream`, `lib/composition.ts:112`) requires a
+  browser-side `eventSourceFactory` to feed `streamRun()`. **`page.route` does NOT
   intercept `EventSource`** ([Playwright #15353](https://github.com/microsoft/playwright/issues/15353)).
+* **Nothing in the browser calls `streamRun()` today** — the `EventSource` path is
+  unit-tested but never exercised by a real composition root, so choosing the fetch path
+  costs us no shipped behavior.
 
-**Consequence for F1:** when we move the shell onto the runtime port (§8.5), if
-`streamRun()` reaches the browser over `EventSource`, **every existing T1 `page.route`
-mock silently stops intercepting** — the specs would hit the real endpoint and "mock
-nothing." **Decision required (added to §8.6 as gap E):** either (a) keep the
-BFF→browser hop as a **`fetch`-readable stream** (the `EventSource` stays server-side
-in the adapter, browser consumes the BFF `fetch` stream — preserves T1), or (b) accept
-that streaming validation moves to **T2** (mock-middleware HTTP server, which *can*
-chunk real bytes) and keep T1 for non-streaming structure only. **Recommendation: (a)**
-— it preserves the per-commit T1 safety net and the existing spec suite. Confirm before
-F1 lands.
+**Decision: the browser reads the BFF SSE stream over `fetch`+`ReadableStream`, never
+`EventSource`.** F1 adds a `connectFetchSSE` transport adapter (promoted from
+`chat-shell.tsx:90-144`) and wires it into `makeOpenUIRuntimeStream` **behind the
+`streamRun()` port** — the browser still consumes the port, only the wire mechanism
+changes. `connectSSE`/`EventSource` stays in the tree for any future server-side
+consumer. Heartbeat-timeout + Last-Event-ID resumption are **intentionally dropped** on
+the fetch path (eval runs are short; reload-to-retry is fine). Full rule + rationale in
+§8.6 gap E.
+
+This **preserves the per-commit T1 safety net** (`page.route` keeps intercepting), tests
+the **real browser path** (no Determinism Theater), and lands the shell on the
+architecture's port. The two alternatives were rejected: **(b) move streaming to T2**
+(mock-middleware HTTP) pushes a server process into the fast gate and rewrites 3 specs;
+**(c) env-selected dual transport** tests a path the user never runs (TDD Anti-Pattern #3).
+
+| Option | T1 net | Tests real path | New code | Verdict |
+|---|---|---|---|---|
+| **A — fetch reader behind `streamRun()`** | ✅ preserved | ✅ yes | `connectFetchSSE` (~80 LOC, promoted from chat-shell) | **CHOSEN** |
+| B — keep EventSource, mock at T2 | ❌ T1 streaming goes dark | ✅ yes | rewrite 3 specs + CI mock backend per-commit | rejected (slow gate) |
+| C — env-selected dual transport | ✅ in test | ❌ prod path untested | dual wiring | rejected (Determinism Theater) |
 
 ### Per-feature Playwright validation (tier + what to assert)
 
@@ -912,3 +1037,7 @@ Wave B:  F1 ──► F8 (loading)
 
 Recommended: confirm F1 emission → F2/F3/F9 (the eval-evidence core) → F8/F10-Tier1
 (free engagement) → F11 → F4/F12 in parallel → F10-Tier2 → F7 (stretch).
+
+**Execution status (2026-06-11):** done in exactly this order — Phase 0 ✅ →
+F1 ✅ → F2/F3/F9 ✅ → F8/F10-Tier1 ✅ → F11 ✅ → F4/F12 ✅ → F5/F6/F7 ✅.
+Only **F10-Tier2** remains. Commit map in §0.

@@ -21,6 +21,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
+    StepProgressed,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -232,6 +233,33 @@ class TestStateMutated:
         assert StateMutated.model_validate_json(original.model_dump_json()) == original
 
 
+# ── StepProgressed ────────────────────────────────────────────────────
+
+
+class TestStepProgressed:
+    def test_rejects_missing_trace_id(self):
+        with pytest.raises(ValidationError):
+            StepProgressed(step_count=1, step_name="evaluation")  # type: ignore[call-arg]
+
+    def test_rejects_missing_step_count(self):
+        with pytest.raises(ValidationError):
+            StepProgressed(trace_id="tr1", step_name="evaluation")  # type: ignore[call-arg]
+
+    def test_valid(self):
+        ev = StepProgressed(trace_id="tr1", step_count=3, step_name="evaluation")
+        assert ev.step_count == 3
+        assert ev.step_name == "evaluation"
+
+    def test_round_trip(self):
+        original = StepProgressed(
+            trace_id="tr1",
+            timestamp=_now(),
+            step_count=2,
+            step_name="tool_execution",
+        )
+        assert StepProgressed.model_validate_json(original.model_dump_json()) == original
+
+
 # ── Cross-cutting: union completeness ─────────────────────────────────
 
 
@@ -243,9 +271,9 @@ def test_domain_event_base_is_frozen_and_strict():
 
 
 def test_domain_event_union_covers_all_types():
-    """US-2.3 acceptance: len(get_args(DomainEvent)) == 9."""
+    """US-2.3 acceptance (extended by eval-UI Phase 0): 10 union members."""
     args = get_args(DomainEvent)
-    assert len(args) == 9
+    assert len(args) == 10
     assert set(args) == {
         LLMTokenEmitted,
         LLMMessageStarted,
@@ -256,6 +284,7 @@ def test_domain_event_union_covers_all_types():
         RunStartedDomain,
         RunFinishedDomain,
         StateMutated,
+        StepProgressed,
     }
 
 
