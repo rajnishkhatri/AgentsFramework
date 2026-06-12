@@ -36,6 +36,14 @@ class LLMService:
             temperature=0,
             max_tokens=4096,
             streaming=True,
+            # Phase 3 token-usage fix: with ``streaming=True`` the provider does
+            # not emit a usage chunk unless asked, so the aggregated streamed
+            # AIMessage carries no ``usage_metadata`` and the ``llm.call``
+            # generation renders no token counts. ``include_usage`` makes LiteLLM
+            # request the final usage chunk; LangChain folds it into
+            # ``usage_metadata``, which ``_extract_usage`` reads and the bridge
+            # maps to the generation's native ``usage_details``.
+            stream_options={"include_usage": True},
         )
 
     async def invoke(

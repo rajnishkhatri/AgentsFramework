@@ -61,3 +61,16 @@ class TestLLMService:
         svc = LLMService(config=cfg)
         llm = svc.get_llm(_fast_profile())
         assert llm is not None
+
+    def test_get_llm_requests_usage_in_stream(self):
+        """Phase 3 token-usage fix: ``streaming=True`` suppresses the final
+        message's ``usage_metadata`` unless the provider is asked to emit a
+        usage chunk. Setting ``stream_options={'include_usage': True}`` makes
+        LiteLLM request it, so the aggregated streamed AIMessage carries
+        ``usage_metadata`` — which ``_extract_usage`` reads and the bridge folds
+        into the ``llm.call`` generation's native ``usage_details``."""
+        cfg = AgentConfig(models=[_fast_profile()])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(_fast_profile())
+        assert getattr(llm, "streaming", False) is True
+        assert getattr(llm, "stream_options", None) == {"include_usage": True}
