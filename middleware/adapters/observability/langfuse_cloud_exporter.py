@@ -121,6 +121,14 @@ class LangfuseCloudExporter:
         try:
             from langfuse import Langfuse
 
+            # E11: the Langfuse SDK builds its OTel Resource from
+            # ``OTEL_SERVICE_NAME``; when unset, every span surfaces
+            # ``service.name: unknown_service`` (which breaks environment
+            # filtering in the trace view). Seed a sane default *before*
+            # constructing the client so the resource picks it up, but let an
+            # operator-supplied value always win (deploy config / CI).
+            os.environ.setdefault("OTEL_SERVICE_NAME", "agent-runtime")
+
             self._sdk_client = Langfuse(
                 public_key=self._public_key,
                 secret_key=self._secret_key,

@@ -165,9 +165,10 @@ def _seed_recorded_workflow(
     """Use the real BlackBoxRecorder so the hash chain is valid."""
     recorder = BlackBoxRecorder(recordings_dir)
     rng_seed = (workflow_id, base_time.isoformat())
+    _evt_counter = iter(range(10_000))
 
     def _evt_id() -> str:
-        return f"evt-{workflow_id}-{abs(hash(rng_seed + (recorder._last_hash.get(workflow_id, ''),)))}"
+        return f"evt-{workflow_id}-{abs(hash(rng_seed + (next(_evt_counter),)))}"
 
     t = base_time
     recorder.record(

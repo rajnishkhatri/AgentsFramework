@@ -39,6 +39,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunStartedDomain,
     StateMutated,
     StepProgressed,
+    TaskUnderstood,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -191,6 +192,22 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
             Custom(
                 name="reasoning_summary",
                 value={"text": event.text},
+                raw_event=raw,
+            )
+        ]
+
+    if isinstance(event, TaskUnderstood):
+        # task_understanding plan Phase 3: rides Custom 'task_understanding'
+        # (zero wire change); the frontend translator special-cases the name.
+        return [
+            Custom(
+                name="task_understanding",
+                value={
+                    "restated_intent": event.restated_intent,
+                    "success_conditions": list(event.success_conditions),
+                    "confidence": event.confidence,
+                    "source": event.source,
+                },
                 raw_event=raw,
             )
         ]

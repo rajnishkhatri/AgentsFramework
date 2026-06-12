@@ -138,6 +138,8 @@ class TestNoSpuriousDowngrade:
         )
         assert details["outcome"] == "success"
         assert details["downgrade_reason"] is None
+        # goal_met=True → the gate would never fire.
+        assert details["would_downgrade"] is False
 
     @pytest.mark.asyncio
     async def test_flag_off_is_shadow_only(self, tmp_path):
@@ -151,6 +153,9 @@ class TestNoSpuriousDowngrade:
         assert details["outcome"] == "success"
         assert details["downgrade_reason"] is None
         assert details["goal_met"] is False  # overlay still records the verdict
+        # Phase 1 (E1): the shadow signal is surfaced on TASK_COMPLETED so a
+        # reader sees the gate *would* have fired without opening eval.goal_judge.
+        assert details["would_downgrade"] is True
 
     @pytest.mark.asyncio
     async def test_no_progress_source_is_never_downgraded(self, tmp_path):

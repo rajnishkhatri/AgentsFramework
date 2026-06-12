@@ -518,6 +518,32 @@ class TestEvaluateTaskOutcome:
         assert result.outcome == "success"
         assert result.branch_coverage > 0.0
 
+    def test_keyword_criteria_met_positive_with_floor_conditions(self):
+        """Load-bearing assertion for the Phase 1 floor (task_understanding
+        plan §5): with per-branch conditions, an answer that covers the
+        branches gets ``criteria_met`` > 0 from ``_keyword_overlap``. With
+        the old generic pair this was impossible — the conditions shared no
+        vocabulary with any task."""
+        from components.evaluator import evaluate_task_outcome
+        from components.plan_builder import build_plan_artifact
+
+        task = (
+            "Create a file /workspace/f3.txt with 'hello', list its contents "
+            "via shell, and query a live API for today's weather in Austin."
+        )
+        artifact = build_plan_artifact("L1", task_input=task)
+        result = evaluate_task_outcome(
+            final_answer=(
+                "Created /workspace/f3.txt containing hello, listed its "
+                "contents via shell, and queried a live API: today's weather "
+                "in Austin is sunny."
+            ),
+            success_conditions=artifact.success_conditions,
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert result.criteria_met > 0
+
     def test_unmet_conditions_reported(self):
         from components.evaluator import evaluate_task_outcome
 

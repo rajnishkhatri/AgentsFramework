@@ -10,7 +10,7 @@ EvalRecord uses schema_version for forward compatibility.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -158,6 +158,11 @@ class GoalVerdict(BaseModel):
       - goal_met: did the answer actually satisfy the task's goal?
       - criteria_met: fraction (0..1) of declared success conditions satisfied.
       - per_criterion: per-condition breakdown with evidence.
+      - criteria_met_derived: parser-set repair marker — ``criteria_met`` was
+        derived from the ``per_criterion`` met-flags because the model omitted
+        the value or contradicted its own breakdown. TELEMETRY-ONLY, like
+        ``partial_fraction`` — calibration stratifies on it; it MUST NOT be
+        wired into gating.
       - rationale: short chain-of-thought summary (audit trail).
       - graceful_failure: the agent correctly reported an impossible task
         (behaved correctly, goal not met). Pure metadata — distinguishes a
@@ -175,6 +180,7 @@ class GoalVerdict(BaseModel):
     goal_met: bool
     criteria_met: float = 0.0
     per_criterion: list[CriterionVerdict] = Field(default_factory=list)
+    criteria_met_derived: bool = False
     rationale: str = ""
     graceful_failure: bool = False
     partial_fraction: float = 0.0
@@ -209,3 +215,21 @@ class GoalVerdict(BaseModel):
     def unmet_conditions(self) -> list[str]:
         """Success conditions the judge marked as not met."""
         return [c.criterion for c in self.per_criterion if not c.met]
+
+
+class TaskUnderstanding(BaseModel):
+    """Restated task intent + task-specific success checklist (plan-time D1).
+
+    Generated once at step 0 by ``components.task_understanding`` (fast-tier
+    LLM), or built from the deterministic plan_builder floor when generation
+    fails. Consumed at the terminal evaluate by the keyword evaluator, the
+    GoalJudge, and the eval telemetry. ``source`` is the provenance tier:
+    deterministic < generated < user_edited (a user edit via the soft-gate
+    card is the highest authority and skips lexical grounding).
+    """
+
+    restated_intent: str
+    success_conditions: list[str] = Field(min_length=1)
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    source: Literal["deterministic", "generated", "user_edited"] = "deterministic"
+    model: str = ""

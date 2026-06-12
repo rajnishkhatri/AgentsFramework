@@ -62,21 +62,42 @@ class TraceEvent(BaseModel):
 class BlackBoxRecorder:
     def __init__(self, storage_dir: Path | str) -> None:
         self._storage_dir = Path(storage_dir)
-        self._last_hash: dict[str, str] = {}
+
+    def _prev_hash(self, trace_file: Path) -> str:
+        """Previous chain hash from the file tail, never a memory cache.
+
+        Multiple recorder instances legitimately interleave on one trace
+        (the graph's instance + the middleware edit endpoint appending
+        PARAMETER_CHANGED mid-run); a per-instance cache would fork the
+        chain at the first cross-instance write.
+        """
+        if not trace_file.exists():
+            return "0" * 64
+        last_line = ""
+        with open(trace_file, "rb") as f:
+            for raw in f:
+                line = raw.strip()
+                if line:
+                    last_line = line.decode("utf-8")
+        if not last_line:
+            return "0" * 64
+        try:
+            return json.loads(last_line).get("integrity_hash", "0" * 64)
+        except json.JSONDecodeError:
+            return "0" * 64
 
     def record(self, event: TraceEvent) -> None:
         wf_dir = self._storage_dir / event.workflow_id
         wf_dir.mkdir(parents=True, exist_ok=True)
         trace_file = wf_dir / "trace.jsonl"
 
-        prev_hash = self._last_hash.get(event.workflow_id, "0" * 64)
+        prev_hash = self._prev_hash(trace_file)
         event_data = event.model_dump(mode="json")
         event_data.pop("integrity_hash", None)
         payload = json.dumps(event_data, sort_keys=True, default=str) + prev_hash
         integrity_hash = hashlib.sha256(payload.encode()).hexdigest()
 
         event_data["integrity_hash"] = integrity_hash
-        self._last_hash[event.workflow_id] = integrity_hash
 
         with open(trace_file, "a") as f:
             f.write(json.dumps(event_data, default=str) + "\n")

@@ -648,6 +648,77 @@ components:
       - step_name
       title: StepStarted
       type: object
+    TaskUnderstandingEditRequest:
+      additionalProperties: false
+      description: "Edit payload for the soft-gate understanding card (Phase 4).\n\
+        \nWire shape consumed by the middleware edit endpoint \u2014 NEVER the\ncomponents\
+        \ Pydantic type (M1: middleware never imports components/).\nBounds mirror\
+        \ the components validation gates minus lexical grounding\n(``user_edited``\
+        \ skips it: the human is the authority). ``trace_id``\nis echoed verbatim\
+        \ from the run (F-R7 \u2014 the browser never mints one)."
+      properties:
+        restated_intent:
+          maxLength: 600
+          minLength: 1
+          title: Restated Intent
+          type: string
+        success_conditions:
+          items:
+            type: string
+          maxItems: 7
+          minItems: 2
+          title: Success Conditions
+          type: array
+        trace_id:
+          minLength: 1
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - restated_intent
+      - success_conditions
+      title: TaskUnderstandingEditRequest
+      type: object
+    TaskUnderstood:
+      additionalProperties: false
+      description: 'task_understanding plan Phase 3: plan-time intent restatement
+        +
+
+        success checklist for the soft-gate card (wire: Custom
+
+        ``task_understanding``). ``source`` is the provenance tier
+
+        (deterministic | generated | user_edited).'
+      properties:
+        confidence:
+          title: Confidence
+          type: number
+        restated_intent:
+          title: Restated Intent
+          type: string
+        source:
+          title: Source
+          type: string
+        success_conditions:
+          items:
+            type: string
+          title: Success Conditions
+          type: array
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - restated_intent
+      - success_conditions
+      - confidence
+      - source
+      title: TaskUnderstood
+      type: object
     TextMessageContent:
       additionalProperties: false
       properties:

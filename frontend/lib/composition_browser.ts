@@ -35,7 +35,10 @@ import {
 } from "./translators/tool_event_to_renderer_request";
 import type { RunCreateRequest } from "./wire/agent_protocol";
 import type { RunErrorType, UIRuntimeEvent } from "./wire/ui_runtime_events";
-import type { AgentRuntimeClient } from "./ports/agent_runtime_client";
+import type {
+  AgentRuntimeClient,
+  StreamRunOptions,
+} from "./ports/agent_runtime_client";
 
 function statusToErrorType(status: number): RunErrorType {
   if (status === 401) return "auth_error";
@@ -60,10 +63,14 @@ const TOOL_EVENT_TYPES = new Set([
 export function makeFetchUIRuntimeStream(
   baseUrl: string,
   fetchImpl: typeof fetch,
-): (req: RunCreateRequest) => AsyncIterable<UIRuntimeEvent> {
+): (
+  req: RunCreateRequest,
+  opts?: StreamRunOptions,
+) => AsyncIterable<UIRuntimeEvent> {
   const base = baseUrl.replace(/\/$/, "");
   return async function* openUIRuntimeStream(
     req: RunCreateRequest,
+    opts?: StreamRunOptions,
   ): AsyncGenerator<UIRuntimeEvent, void, void> {
     let traceId = "no-trace";
     let runId = "";
@@ -84,6 +91,7 @@ export function makeFetchUIRuntimeStream(
       url: `${base}/run/stream`,
       body: req,
       fetchImpl,
+      ...(opts?.signal ? { signal: opts.signal } : {}),
     });
 
     for await (const yielded of stream) {

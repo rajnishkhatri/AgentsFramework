@@ -135,6 +135,7 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
     const cancel = vi.fn(async () => undefined);
     const runtime: AgentRuntimeClient = {
       streamRun: vi.fn() as never,
+      updateUnderstanding: vi.fn() as never,
       cancel,
     };
     const handler = makeRunCancelHandler({
@@ -156,6 +157,7 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
       auth: authYielding(null),
       agentRuntimeClient: {
         streamRun: vi.fn() as never,
+        updateUnderstanding: vi.fn() as never,
         cancel: vi.fn() as never,
       },
     });
@@ -166,5 +168,71 @@ describe("makeRunCancelHandler [A6 idempotent]", () => {
       }),
     );
     expect(res.status).toBe(401);
+  });
+});
+
+describe("makeUnderstandingEditHandler (Phase 4 edit seam)", () => {
+  const validBody = {
+    trace_id: "tr-1",
+    restated_intent: "Create the file and verify it.",
+    success_conditions: ["file exists", "contents verified"],
+  };
+  const req = (body: unknown) =>
+    new Request("http://x/api/run/understanding/thread-1", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+  it("returns 401 when caller has no session (rejection path first)", async () => {
+    const { makeUnderstandingEditHandler } = await import("./handlers");
+    const forward = vi.fn();
+    const handler = makeUnderstandingEditHandler({
+      auth: authYielding(null),
+      forward,
+    });
+    const res = await handler(req(validBody), "thread-1");
+    expect(res.status).toBe(401);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("returns 422 on a malformed edit (single condition) without forwarding", async () => {
+    const { makeUnderstandingEditHandler } = await import("./handlers");
+    const forward = vi.fn();
+    const handler = makeUnderstandingEditHandler({
+      auth: authYielding(ALICE),
+      forward,
+    });
+    const res = await handler(
+      req({ ...validBody, success_conditions: ["only one"] }),
+      "thread-1",
+    );
+    expect(res.status).toBe(422);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("forwards a valid edit with the bearer token and relays the upstream response", async () => {
+    const { makeUnderstandingEditHandler } = await import("./handlers");
+    const forward = vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true, source: "user_edited" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    const handler = makeUnderstandingEditHandler({
+      auth: authYielding(ALICE),
+      forward,
+    });
+    const res = await handler(req(validBody), "thread-1");
+    expect(res.status).toBe(200);
+    expect((await res.json()).source).toBe("user_edited");
+    expect(forward).toHaveBeenCalledWith(
+      "/run/understanding/thread-1",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer tok",
+        }),
+      }),
+    );
   });
 });

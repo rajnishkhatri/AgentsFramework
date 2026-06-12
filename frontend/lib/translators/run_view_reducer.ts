@@ -25,6 +25,7 @@
  */
 
 import type {
+  TaskUnderstandingEvent,
   ToolCallRendererRequest,
   UIRuntimeEvent,
 } from "../wire/ui_runtime_events";
@@ -44,6 +45,9 @@ export interface AssistantRunView {
   readonly todos: TodoListView | null;
   /** F10 Tier-2: one cheap-tier "why/how" recap, shown behind "Show reasoning". */
   readonly reasoning: string | null;
+  /** Phase 3 soft-gate card: plan-time intent + success checklist. A later
+   *  event (user edit) replaces the whole artifact. */
+  readonly understanding: Omit<TaskUnderstandingEvent, "type"> | null;
   readonly traceId: string | null;
   readonly runId: string | null;
   readonly threadId: string | null;
@@ -58,6 +62,7 @@ export function emptyRunView(): AssistantRunView {
     modelBadge: null,
     todos: null,
     reasoning: null,
+    understanding: null,
     traceId: null,
     runId: null,
     threadId: null,
@@ -120,6 +125,11 @@ export function reduceRunView(
 
     case "reasoning_summary":
       return { ...view, reasoning: evt.text };
+
+    case "task_understanding": {
+      const { type: _type, ...artifact } = evt;
+      return { ...view, understanding: artifact };
+    }
 
     case "run_completed":
       return { ...view, status: "complete" };

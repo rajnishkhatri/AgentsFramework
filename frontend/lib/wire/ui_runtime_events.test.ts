@@ -234,3 +234,44 @@ describe("UIRuntimeEventSchema (discriminated union)", () => {
     }
   });
 });
+
+describe("TaskUnderstandingEvent (soft-gate card, Phase 3)", () => {
+  it("rejects empty success_conditions — failure path first", async () => {
+    const { TaskUnderstandingEventSchema } = await import("./ui_runtime_events");
+    const r = TaskUnderstandingEventSchema.safeParse({
+      type: "task_understanding",
+      trace_id: "tr1",
+      restated_intent: "x",
+      success_conditions: [],
+      confidence: 0.5,
+      source: "generated",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("rejects unknown source tier", async () => {
+    const { TaskUnderstandingEventSchema } = await import("./ui_runtime_events");
+    const r = TaskUnderstandingEventSchema.safeParse({
+      type: "task_understanding",
+      trace_id: "tr1",
+      restated_intent: "x",
+      success_conditions: ["a"],
+      confidence: 0.5,
+      source: "oracle",
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("parses a valid artifact", async () => {
+    const { TaskUnderstandingEventSchema } = await import("./ui_runtime_events");
+    const v = TaskUnderstandingEventSchema.parse({
+      type: "task_understanding",
+      trace_id: "tr1",
+      restated_intent: "Create the file and verify it.",
+      success_conditions: ["file exists"],
+      confidence: 0.8,
+      source: "user_edited",
+    });
+    expect(v.source).toBe("user_edited");
+  });
+});

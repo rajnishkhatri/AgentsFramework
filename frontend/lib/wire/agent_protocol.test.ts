@@ -152,3 +152,41 @@ describe("HealthResponseSchema", () => {
     expect(HealthResponseSchema.parse(v)).toEqual(v);
   });
 });
+
+describe("TaskUnderstandingEditRequest (Phase 4 edit payload)", () => {
+  const valid = {
+    trace_id: "tr-1",
+    restated_intent: "Create the file and verify it.",
+    success_conditions: ["file exists", "contents verified"],
+  };
+
+  it("rejects a single condition — failure path first", async () => {
+    const { TaskUnderstandingEditRequestSchema } = await import("./agent_protocol");
+    expect(
+      TaskUnderstandingEditRequestSchema.safeParse({
+        ...valid,
+        success_conditions: ["only one"],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a 201-char condition and an empty trace_id", async () => {
+    const { TaskUnderstandingEditRequestSchema } = await import("./agent_protocol");
+    expect(
+      TaskUnderstandingEditRequestSchema.safeParse({
+        ...valid,
+        success_conditions: ["ok", "x".repeat(201)],
+      }).success,
+    ).toBe(false);
+    expect(
+      TaskUnderstandingEditRequestSchema.safeParse({ ...valid, trace_id: "" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("parses a valid edit", async () => {
+    const { TaskUnderstandingEditRequestSchema } = await import("./agent_protocol");
+    const r = TaskUnderstandingEditRequestSchema.parse(valid);
+    expect(r.success_conditions).toHaveLength(2);
+  });
+});

@@ -11,7 +11,10 @@
  * Imports: ports/, transport/edge_proxy, wire/. No SDK, no React.
  */
 
-import { ThreadCreateRequestSchema } from "../wire/agent_protocol";
+import {
+  TaskUnderstandingEditRequestSchema,
+  ThreadCreateRequestSchema,
+} from "../wire/agent_protocol";
 import type { AuthProvider } from "../ports/auth_provider";
 import type { AgentRuntimeClient } from "../ports/agent_runtime_client";
 import type { ThreadStore } from "../ports/thread_store";
@@ -108,5 +111,51 @@ export function makeRunCancelHandler(
     if (typeof body.run_id !== "string") return badRequest("run_id_required");
     await deps.agentRuntimeClient.cancel(body.run_id);
     return new Response(null, { status: 204, headers: NO_STORE });
+  };
+}
+
+// ── Understanding edit (task_understanding plan Phase 4) ──────────────
+
+interface UnderstandingEditDeps {
+  readonly auth: AuthProvider;
+  /** `forwardToMiddleware`-shaped dependency (F-R9: bearer in, no creds). */
+  readonly forward: (
+    path: string,
+    init: { method: string; headers: Record<string, string>; body: string },
+  ) => Promise<Response>;
+}
+
+export function makeUnderstandingEditHandler(
+  deps: UnderstandingEditDeps,
+): (req: Request, threadId: string) => Promise<Response> {
+  return async (req, threadId) => {
+    const claim = await deps.auth.getSession();
+    if (!claim) return unauthorized();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return badRequest("invalid_json");
+    }
+    const parsed = TaskUnderstandingEditRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return json(422, { error: "invalid_edit", issues: parsed.error.issues });
+    }
+    const token = await deps.auth.getAccessToken();
+    const upstream = await deps.forward(
+      `/run/understanding/${encodeURIComponent(threadId)}`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(parsed.data),
+      },
+    );
+    return new Response(await upstream.text(), {
+      status: upstream.status,
+      headers: { "content-type": "application/json", ...NO_STORE },
+    });
   };
 }

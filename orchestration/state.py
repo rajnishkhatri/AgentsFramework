@@ -79,6 +79,11 @@ class AgentState(MessagesState):
     files: Annotated[dict[str, str], _merge_dict]
     todos: list[TodoItem]
     plan_ref: str
+    # task_understanding plan §4.5: plan-time TaskUnderstanding artifact
+    # (restated_intent + success_conditions + provenance), written once at
+    # step 0 in route_node and memoized — route_node re-runs every loop
+    # iteration but generation must fire at most once per run.
+    task_understanding: dict[str, Any]
     # F10 Tier-2: one cheap-tier "why/how" recap written by reasoning_recap
     # at run end; surfaced to the UI as Custom{name="reasoning_summary"}.
     reasoning_summary: str

@@ -15,6 +15,7 @@ from pydantic import ValidationError
 
 from agent_ui_adapter.wire.agent_protocol import (
     HealthResponse,
+    TaskUnderstandingEditRequest,
     RunCreateRequest,
     RunStateView,
     ThreadCreateRequest,
@@ -206,3 +207,52 @@ def test_thread_state_round_trip(thread_id: str, user_id: str):
     )
     rehydrated = ThreadState.model_validate_json(original.model_dump_json())
     assert rehydrated == original
+
+
+class TestTaskUnderstandingEditRequest:
+    """task_understanding plan Phase 4: the edit payload is a wire shape
+    (M1 — middleware never imports the components Pydantic type). Bounds
+    mirror the §4.2 gates minus lexical grounding (the human is the
+    authority): 2–7 conditions, each 1–200 chars, non-empty intent,
+    trace_id echoed verbatim (F-R7)."""
+
+    _VALID = {
+        "trace_id": "tr-1",
+        "restated_intent": "Create the file and verify it.",
+        "success_conditions": ["file exists", "contents verified"],
+    }
+
+    def test_rejects_single_condition(self):
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate(
+                {**self._VALID, "success_conditions": ["only one"]}
+            )
+
+    def test_rejects_eight_conditions(self):
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate(
+                {**self._VALID, "success_conditions": [f"c{i}" for i in range(8)]}
+            )
+
+    def test_rejects_201_char_condition(self):
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate(
+                {**self._VALID, "success_conditions": ["ok", "x" * 201]}
+            )
+
+    def test_rejects_empty_trace_id_and_intent(self):
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate({**self._VALID, "trace_id": ""})
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate(
+                {**self._VALID, "restated_intent": ""}
+            )
+
+    def test_rejects_extra_fields(self):
+        with pytest.raises(ValidationError):
+            TaskUnderstandingEditRequest.model_validate({**self._VALID, "source": "x"})
+
+    def test_accepts_valid_edit(self):
+        req = TaskUnderstandingEditRequest.model_validate(self._VALID)
+        assert req.trace_id == "tr-1"
+        assert len(req.success_conditions) == 2

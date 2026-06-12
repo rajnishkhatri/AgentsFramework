@@ -55,6 +55,77 @@ class TestGoalJudgeRuntimeConfigSchema:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# success_conditions_source flag (task_understanding plan Phase 2)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestSuccessConditionsSourceFlag:
+    def test_schema_rejects_unknown_source_value(self):
+        payload = {**_VALID_JSON, "success_conditions_source": "oracle"}
+        with pytest.raises(ValidationError):
+            GoalJudgeRuntimeConfig.model_validate(payload)
+
+    def test_schema_default_is_deterministic(self):
+        cfg = GoalJudgeRuntimeConfig.model_validate(
+            {"goal_judge_enabled": False, "goal_judge_downgrade_enabled": False}
+        )
+        assert cfg.success_conditions_source == "deterministic"
+
+    def test_resolved_default_is_deterministic_without_uri_or_env(self, monkeypatch):
+        monkeypatch.delenv("SUCCESS_CONDITIONS_SOURCE", raising=False)
+        reader = GoalJudgeRuntimeConfigReader(
+            uri=None,
+            env_enabled=False,
+            env_downgrade=False,
+        )
+        assert reader.get().success_conditions_source == "deterministic"
+
+    def test_env_fallback_reads_success_conditions_source(self, monkeypatch):
+        monkeypatch.setenv("SUCCESS_CONDITIONS_SOURCE", "shadow")
+        reader = GoalJudgeRuntimeConfigReader(
+            uri=None,
+            env_enabled=True,
+            env_downgrade=False,
+        )
+        assert reader.get().success_conditions_source == "shadow"
+
+    def test_invalid_env_value_degrades_to_deterministic(self, monkeypatch):
+        monkeypatch.setenv("SUCCESS_CONDITIONS_SOURCE", "yolo")
+        reader = GoalJudgeRuntimeConfigReader(
+            uri=None,
+            env_enabled=True,
+            env_downgrade=False,
+        )
+        assert reader.get().success_conditions_source == "deterministic"
+
+    def test_file_uri_carries_source_and_stale_fallback_preserves_it(self, tmp_path):
+        cfg_file = tmp_path / "gj.json"
+        cfg_file.write_text(
+            json.dumps({**_VALID_JSON, "success_conditions_source": "generated"}),
+            encoding="utf-8",
+        )
+        reader = GoalJudgeRuntimeConfigReader(
+            uri=f"file://{cfg_file}",
+            ttl_s=0,
+            timeout_s=2,
+        )
+        assert reader.get().success_conditions_source == "generated"
+        # Corrupt the file → stale-on-error keeps the last-good posture.
+        cfg_file.write_text("{not json", encoding="utf-8")
+        resolved = reader.get()
+        assert resolved.source == "stale"
+        assert resolved.success_conditions_source == "generated"
+
+    def test_in_memory_reader_exposes_source(self):
+        reader = InMemoryGoalJudgeConfigReader(
+            goal_judge_enabled=True,
+            success_conditions_source="generated",
+        )
+        assert reader.get().success_conditions_source == "generated"
+        assert reader.health_posture()["success_conditions_source"] == "generated"
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Reader failure paths
 # ─────────────────────────────────────────────────────────────────────
 

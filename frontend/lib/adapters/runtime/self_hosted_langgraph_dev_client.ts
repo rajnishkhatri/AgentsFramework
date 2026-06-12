@@ -39,11 +39,21 @@
  * SDK pin: see `frontend/package.json` (this adapter has no direct SDK dep).
  */
 
-import type { RunCreateRequest } from "../../wire/agent_protocol";
+import type {
+  RunCreateRequest,
+  TaskUnderstandingEditRequest,
+} from "../../wire/agent_protocol";
 import type { UIRuntimeEvent } from "../../wire/ui_runtime_events";
-import type { AgentRuntimeClient } from "../../ports/agent_runtime_client";
+import type {
+  AgentRuntimeClient,
+  StreamRunOptions,
+} from "../../ports/agent_runtime_client";
 import { createAdapterLogger, type Logger } from "../_logger";
-import { AgentAuthError } from "./errors";
+import {
+  AgentAuthError,
+  AgentNetworkError,
+  AgentRuntimeError,
+} from "./errors";
 
 const log: Logger = createAdapterLogger("runtime");
 
@@ -62,6 +72,7 @@ export interface SelfHostedLangGraphDevClientOptions {
    */
   readonly openUIRuntimeStream?: (
     req: RunCreateRequest,
+    opts?: StreamRunOptions,
   ) => AsyncIterable<UIRuntimeEvent>;
 }
 
@@ -69,7 +80,10 @@ export class SelfHostedLangGraphDevClient implements AgentRuntimeClient {
   private readonly baseUrl: string;
   private readonly fetchImpl: typeof fetch;
   private readonly openUIRuntimeStream:
-    | ((req: RunCreateRequest) => AsyncIterable<UIRuntimeEvent>)
+    | ((
+        req: RunCreateRequest,
+        opts?: StreamRunOptions,
+      ) => AsyncIterable<UIRuntimeEvent>)
     | undefined;
 
   constructor(opts: SelfHostedLangGraphDevClientOptions) {
@@ -78,7 +92,10 @@ export class SelfHostedLangGraphDevClient implements AgentRuntimeClient {
     this.openUIRuntimeStream = opts.openUIRuntimeStream;
   }
 
-  streamRun(req: RunCreateRequest): AsyncIterable<UIRuntimeEvent> {
+  streamRun(
+    req: RunCreateRequest,
+    opts?: StreamRunOptions,
+  ): AsyncIterable<UIRuntimeEvent> {
     if (!this.openUIRuntimeStream) {
       throw new Error(
         "streamRun requires an openUIRuntimeStream factory; the browser " +
@@ -90,7 +107,43 @@ export class SelfHostedLangGraphDevClient implements AgentRuntimeClient {
       adapter: "self_hosted_langgraph_dev_client",
       thread_id: req.thread_id,
     });
-    return this.openUIRuntimeStream(req);
+    return this.openUIRuntimeStream(req, opts);
+  }
+
+  async updateUnderstanding(
+    threadId: string,
+    req: TaskUnderstandingEditRequest,
+  ): Promise<void> {
+    let res: Response;
+    try {
+      res = await this.fetchImpl(
+        `${this.baseUrl}/run/understanding/${encodeURIComponent(threadId)}`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(req),
+        },
+      );
+    } catch (e) {
+      throw new AgentNetworkError(
+        e instanceof Error ? e.message : String(e),
+        { cause: e },
+      );
+    }
+    if (res.ok) return;
+    if (res.status === 401) {
+      throw new AgentAuthError("understanding edit requires auth");
+    }
+    let detail = res.statusText;
+    try {
+      const payload = (await res.json()) as { detail?: unknown };
+      if (typeof payload.detail === "string") detail = payload.detail;
+    } catch {
+      /* keep statusText */
+    }
+    throw new AgentRuntimeError(
+      `understanding edit rejected (${res.status}): ${detail}`,
+    );
   }
 
   async cancel(runId: string): Promise<void> {

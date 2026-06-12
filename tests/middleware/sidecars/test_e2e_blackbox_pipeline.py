@@ -139,7 +139,7 @@ EXPECTED_OBSERVATION_TYPES = {
     "step.planned": "chain",
     "step.executed": "span",
     "tool.called": "tool",
-    "model.selected": "generation",
+    "model.selected": "chain",  # E5: routing decision, not an LLM call
     "guardrail.checked": "guardrail",
     "parameter.changed": "span",
     "error.occurred": "span",

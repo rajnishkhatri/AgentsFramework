@@ -47,6 +47,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunStartedDomain,
     StateMutated,
     StepProgressed,
+    TaskUnderstood,
     ToolCallStarted,
     ToolResultReceived,
 )
@@ -92,6 +93,11 @@ class LangGraphRuntime:
         self._streamed_run_ids: set[str] = set()
         self._step_meter_count = 0
         self._live_tool_call_ids: set[str] = set()
+        # task_understanding plan Phase 3: route re-runs every loop iteration
+        # with the memoized artifact; dedupe card emission on the payload so
+        # the card renders once and re-renders only on a real change
+        # (e.g. a Phase 4 user edit).
+        self._last_task_understanding: dict | None = None
 
     def _emit_trace(
         self,
@@ -127,7 +133,36 @@ class LangGraphRuntime:
     ) -> AsyncIterator[DomainEvent]:
         graph_input = dict(input)
         saturation = graph_input.pop("_goaljudge_saturation", None)
-        if saturation is not None:
+        resume = bool(graph_input.pop("_resume", False))
+        if resume:
+            # task_understanding plan Phase 4: continue a paused thread from
+            # its checkpoint. The trace_id is recovered, never re-minted
+            # (F-R7: one trace per run), and the graph input is None — the
+            # canonical LangGraph checkpoint-resume invocation.
+            snapshot = await self._graph.aget_state(
+                {"configurable": {"thread_id": thread_id}}
+            )
+            values = (
+                getattr(snapshot, "values", None) if snapshot is not None else None
+            )
+            if not values:
+                raise KeyError(f"no checkpoint for thread {thread_id!r}")
+            if not getattr(snapshot, "next", ()):
+                raise RuntimeError(
+                    f"run already completed for thread {thread_id!r}; "
+                    "nothing to resume"
+                )
+            workflow_id = str(values.get("workflow_id") or "")
+            if not workflow_id:
+                raise ValueError(
+                    f"checkpoint for thread {thread_id!r} has no workflow_id; "
+                    "it was not seeded by this runtime"
+                )
+            trace_id = workflow_id
+            task_id = str(values.get("task_id") or workflow_id)
+            eval_user_id = identity.owner
+            run_id = uuid.uuid4().hex
+        elif saturation is not None:
             trace_id = str(saturation["trace_id"])
             # ``task_id`` MUST be fresh per invocation even in saturation mode:
             # it scopes the planner's per-task tool-result count
@@ -176,19 +211,26 @@ class LangGraphRuntime:
         )
         # Seed correlation keys into state so graph nodes can key black-box
         # recordings and phase logs under the same trace_id that SSE emits.
-        graph_input = {
-            **graph_input,
-            "workflow_id": trace_id,
-            "task_id": task_id,
-            "registered_agent_id": identity.agent_id,
-        }
+        # In resume mode the checkpoint already holds them and the graph
+        # input MUST be None (any dict would overwrite checkpoint channels).
+        stream_input: dict[str, Any] | None
+        if resume:
+            stream_input = None
+        else:
+            stream_input = {
+                **graph_input,
+                "workflow_id": trace_id,
+                "task_id": task_id,
+                "registered_agent_id": identity.agent_id,
+            }
         error: str | None = None
         self._streamed_run_ids = set()
         self._step_meter_count = 0
         self._live_tool_call_ids = set()
+        self._last_task_understanding = None
         try:
             async for raw in self._graph.astream_events(
-                graph_input, config=config, version="v2"
+                stream_input, config=config, version="v2"
             ):
                 for event in self._translate_event(raw, trace_id):
                     yield event
@@ -248,6 +290,54 @@ class LangGraphRuntime:
             created_at=now,
             updated_at=now,
         )
+
+    async def update_task_understanding(
+        self,
+        *,
+        thread_id: str,
+        trace_id: str,
+        restated_intent: str,
+        success_conditions: list[str],
+    ) -> tuple[dict, dict]:
+        """Write a user-edited TaskUnderstanding to the thread checkpoint.
+
+        task_understanding plan Phase 4 (§4.6): the soft-gate card's edit
+        round-trip — validate the thread + trace echo, write the
+        ``user_edited`` artifact via ``aupdate_state``, return ``(old, new)``
+        so the caller can record PARAMETER_CHANGED with content hashes.
+
+        Raises:
+            KeyError: no checkpoint exists for ``thread_id``.
+            ValueError: ``trace_id`` does not echo the run's workflow_id
+                (F-R7 — the browser never mints a trace_id).
+            RuntimeError: the run already completed (nothing to resume; a
+                late edit is an explicit no-op error, plan §9.3).
+        """
+        config = {"configurable": {"thread_id": thread_id}}
+        snapshot = await self._graph.aget_state(config)
+        values = getattr(snapshot, "values", None) if snapshot is not None else None
+        if not values:
+            raise KeyError(f"no checkpoint for thread {thread_id!r}")
+        workflow_id = str(values.get("workflow_id", ""))
+        if trace_id != workflow_id:
+            raise ValueError(
+                f"trace_id mismatch: edit carries {trace_id!r}, "
+                f"run is {workflow_id!r}"
+            )
+        if not getattr(snapshot, "next", ()):
+            raise RuntimeError(
+                f"run already completed for thread {thread_id!r}; "
+                "late edits are not applied"
+            )
+        old = dict(values.get("task_understanding") or {})
+        new = {
+            **old,
+            "restated_intent": restated_intent,
+            "success_conditions": list(success_conditions),
+            "source": "user_edited",
+        }
+        await self._graph.aupdate_state(config, {"task_understanding": new})
+        return old, new
 
     # ── translation ───────────────────────────────────────────────────
 
@@ -525,6 +615,33 @@ class LangGraphRuntime:
             events.extend(
                 self._synthesize_tool_events(output.get("tool_results"), trace_id)
             )
+
+        if node_name == "route" and isinstance(output, dict):
+            understanding = output.get("task_understanding")
+            if (
+                isinstance(understanding, dict)
+                and isinstance(understanding.get("restated_intent"), str)
+                and understanding.get("restated_intent")
+                and isinstance(understanding.get("success_conditions"), list)
+                and understanding.get("success_conditions")
+                and understanding != self._last_task_understanding
+            ):
+                self._last_task_understanding = understanding
+                try:
+                    confidence = float(understanding.get("confidence", 0.0))
+                except (TypeError, ValueError):
+                    confidence = 0.0
+                events.append(
+                    TaskUnderstood(
+                        trace_id=trace_id,
+                        restated_intent=understanding["restated_intent"],
+                        success_conditions=[
+                            str(c) for c in understanding["success_conditions"]
+                        ],
+                        confidence=confidence,
+                        source=str(understanding.get("source", "deterministic")),
+                    )
+                )
 
         if node_name == "reasoning_recap" and isinstance(output, dict):
             summary = output.get("reasoning_summary")

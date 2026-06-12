@@ -16,7 +16,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ThreadCreateRequest(BaseModel):
@@ -78,3 +78,33 @@ __all__ = [
     "ThreadCreateRequest",
     "ThreadState",
 ]
+
+
+class TaskUnderstandingEditRequest(BaseModel):
+    """Edit payload for the soft-gate understanding card (Phase 4).
+
+    Wire shape consumed by the middleware edit endpoint — NEVER the
+    components Pydantic type (M1: middleware never imports components/).
+    Bounds mirror the components validation gates minus lexical grounding
+    (``user_edited`` skips it: the human is the authority). ``trace_id``
+    is echoed verbatim from the run (F-R7 — the browser never mints one).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    trace_id: str = Field(min_length=1)
+    restated_intent: str = Field(min_length=1, max_length=600)
+    success_conditions: list[str] = Field(min_length=2, max_length=7)
+
+    @field_validator("success_conditions")
+    @classmethod
+    def _bound_condition_lengths(cls, value: list[str]) -> list[str]:
+        for index, condition in enumerate(value):
+            stripped = condition.strip()
+            if not stripped:
+                raise ValueError(f"condition {index} is empty")
+            if len(stripped) > 200:
+                raise ValueError(
+                    f"condition {index} is {len(stripped)} chars (max 200)"
+                )
+        return [c.strip() for c in value]

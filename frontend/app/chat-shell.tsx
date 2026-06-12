@@ -21,6 +21,7 @@ import Link from "next/link";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 import { TaskList } from "@/components/chat/TaskList";
+import { TaskUnderstandingCard } from "@/components/chat/TaskUnderstandingCard";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
@@ -127,6 +128,16 @@ function TraceChip(props: { traceId: string }): React.JSX.Element {
 function AssistantMessage(props: {
   turn: ChatTurn;
   evalMode?: boolean;
+  /** Phase 4 edit seam: present only on the editable (latest live) turn. */
+  understandingEdit?: {
+    editError: string | null;
+    onEditStart: () => void;
+    onSave: (draft: {
+      restated_intent: string;
+      success_conditions: ReadonlyArray<string>;
+    }) => void;
+    onCancel: () => void;
+  };
 }): React.JSX.Element {
   const { assistant } = props.turn;
   const toolCount = assistant.segments.filter((s) => s.kind === "tool").length;
@@ -141,6 +152,24 @@ function AssistantMessage(props: {
       data-testid="assistant-message"
       className="grid gap-2"
     >
+      {assistant.understanding ? (
+        // Phase 3 soft gate: the card shows the agent's restated intent +
+        // success checklist while tokens keep streaming (FD5 — it must
+        // never block the answer). Phase 4: on the live turn the card is
+        // editable — Edit pauses the run, Save POSTs + resumes.
+        <TaskUnderstandingCard
+          understanding={assistant.understanding}
+          {...(props.understandingEdit
+            ? {
+                editable: true,
+                editError: props.understandingEdit.editError,
+                onEditStart: props.understandingEdit.onEditStart,
+                onSave: props.understandingEdit.onSave,
+                onCancel: props.understandingEdit.onCancel,
+              }
+            : {})}
+        />
+      ) : null}
       {assistant.todos ? <TaskList view={assistant.todos} /> : null}
       {assistant.segments.map((seg, i) => {
         if (seg.kind !== "text") {
@@ -216,8 +245,29 @@ export function ChatShell(props: {
     [injected],
   );
   const evalMode = Boolean(props.evalCase);
-  const { turns, busy, send } = useAgentRun(runtime);
+  const {
+    turns,
+    busy,
+    send,
+    pausedTurnId,
+    editError,
+    pauseForEdit,
+    saveUnderstanding,
+    cancelEditAndResume,
+  } = useAgentRun(runtime);
   const bottomRef = React.useRef<HTMLDivElement>(null);
+
+  // The understanding card is editable only on the latest turn while its
+  // run is live (streaming or paused for this edit) — late edits are
+  // rejected server-side anyway (409).
+  const lastTurn = turns[turns.length - 1];
+  const editableTurnId =
+    lastTurn &&
+    lastTurn.assistant.understanding &&
+    lastTurn.assistant.status === "streaming" &&
+    (busy || pausedTurnId === lastTurn.id)
+      ? lastTurn.id
+      : null;
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -269,7 +319,27 @@ export function ChatShell(props: {
                   <span className="whitespace-pre-wrap">{turn.user}</span>
                 </div>
                 <div className="justify-self-start max-w-[80%] w-full">
-                  <AssistantMessage turn={turn} evalMode={evalMode} />
+                  <AssistantMessage
+                    turn={turn}
+                    evalMode={evalMode}
+                    {...(turn.id === editableTurnId
+                      ? {
+                          understandingEdit: {
+                            editError:
+                              pausedTurnId === turn.id ? editError : null,
+                            onEditStart: () => pauseForEdit(turn.id),
+                            onSave: (draft) =>
+                              void saveUnderstanding(turn.id, {
+                                restated_intent: draft.restated_intent,
+                                success_conditions: [
+                                  ...draft.success_conditions,
+                                ],
+                              }),
+                            onCancel: () => void cancelEditAndResume(turn.id),
+                          },
+                        }
+                      : {})}
+                  />
                 </div>
               </React.Fragment>
             ))}
@@ -280,7 +350,7 @@ export function ChatShell(props: {
 
       {/* Composer */}
       <div className="max-w-3xl mx-auto w-full">
-        <Composer onSend={send} busy={busy} />
+        <Composer onSend={send} busy={busy || pausedTurnId !== null} />
       </div>
     </div>
   );

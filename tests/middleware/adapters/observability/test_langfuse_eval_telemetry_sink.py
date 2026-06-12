@@ -61,6 +61,32 @@ class TestLangfuseEvalTelemetrySink:
         assert attrs["__bb_observation_type"] == "evaluator"
         assert attrs["__output"]["partial_fraction"] == 0.67
 
+    def test_long_success_conditions_round_trip_unmodified(self):
+        """Phase 0 cap lift: the sink itself must not shorten values — caps
+        live upstream (eval_telemetry) and are exempted there."""
+        exporter = _StubExporter()
+        sink = LangfuseEvalTelemetrySink(exporter)
+
+        conditions = ["c-" + "y" * 600, "second condition"]
+        sink.publish_goal_judge(
+            trace_id="wf-long",
+            user_id="u",
+            task_id="wf-long",
+            ai_input={
+                "task_input": "t" * 1500,
+                "success_conditions": conditions,
+                "final_answer": "a" * 900,
+            },
+            ai_response={"goal_met": True},
+            step=1,
+            model="m",
+        )
+
+        attrs = exporter.last["attributes"]
+        assert attrs["success_conditions"] == conditions
+        assert attrs["task_input"] == "t" * 1500
+        assert attrs["final_answer"] == "a" * 900
+
     def test_exporter_exception_is_swallowed(self):
         class _RaisingExporter:
             def export_event(self, **kwargs: Any) -> bool:

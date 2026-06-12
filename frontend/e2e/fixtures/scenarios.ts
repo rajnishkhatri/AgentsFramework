@@ -399,3 +399,43 @@ export function reasoningRecapRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEv
     { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
   ];
 }
+
+/**
+ * `taskUnderstandingRun` -- a run whose backend emitted the plan-time
+ * TaskUnderstanding artifact (`CUSTOM task_understanding`, Phase 3 soft
+ * gate) before the answer streamed. Exercises the understanding card.
+ */
+export function taskUnderstandingRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent> {
+  const traceId = opts.traceId ?? DEFAULT_TRACE_ID;
+  const runId = opts.runId ?? DEFAULT_RUN_ID;
+  const threadId = opts.threadId ?? DEFAULT_THREAD_ID;
+  const messageId = opts.messageId ?? DEFAULT_MESSAGE_ID;
+  const h = header(traceId);
+
+  return [
+    { type: "RUN_STARTED", run_id: runId, thread_id: threadId, ...h },
+    {
+      type: "CUSTOM",
+      name: "task_understanding",
+      value: {
+        restated_intent: "Create /workspace/f3.txt and verify its contents.",
+        success_conditions: [
+          "The file /workspace/f3.txt exists with 'hello'.",
+          "The file contents were listed via a shell command.",
+        ],
+        confidence: 0.85,
+        source: "generated",
+      },
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_START", message_id: messageId, role: "assistant", ...h },
+    {
+      type: "TEXT_MESSAGE_CONTENT",
+      message_id: messageId,
+      delta: "Created the file and verified its contents.",
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_END", message_id: messageId, ...h },
+    { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
+  ];
+}

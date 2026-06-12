@@ -37,6 +37,7 @@ from typing import Any, get_args
 import pytest
 
 from agent_ui_adapter.wire.domain_events import (
+    TaskUnderstood,
     DomainEvent,
     DomainEventBase,
     LLMMessageEnded,
@@ -191,6 +192,7 @@ class TestEventCompleteness:
         ReasoningSummarized,
         StateMutated,
         StepProgressed,
+        TaskUnderstood,
         ToolCallEnded,
     }
 
@@ -247,9 +249,9 @@ class TestEventCompleteness:
         assert result is None, "Unknown event type must return None, not raise"
 
     def test_event_count_matches_union(self) -> None:
-        """Guard: domain_events.DomainEvent union has exactly 11 members."""
-        assert len(self.ALL_EVENT_TYPES) == 11, (
-            f"Expected 11 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
+        """Guard: domain_events.DomainEvent union has exactly 12 members."""
+        assert len(self.ALL_EVENT_TYPES) == 12, (
+            f"Expected 12 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
             "Update telemetry_bridge.py and this test."
         )
 
@@ -676,6 +678,14 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
         return StepProgressed(trace_id=trace_id, step_count=1, step_name="evaluation")
     if event_type is ReasoningSummarized:
         return ReasoningSummarized(trace_id=trace_id, text="Did A then B.")
+    if event_type is TaskUnderstood:
+        return TaskUnderstood(
+            trace_id=trace_id,
+            restated_intent="Create the file.",
+            success_conditions=["file exists"],
+            confidence=0.8,
+            source="generated",
+        )
     raise ValueError(f"Unknown event type: {event_type}")
 
 

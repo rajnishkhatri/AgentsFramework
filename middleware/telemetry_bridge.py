@@ -27,6 +27,7 @@ from agent_ui_adapter.wire.domain_events import (
     RunStartedDomain,
     StateMutated,
     StepProgressed,
+    TaskUnderstood,
     ToolCallEnded,
     ToolCallStarted,
     ToolResultReceived,
@@ -48,11 +49,15 @@ _MAX_FIELD_BYTES = 4096
 # per-lap tool/llm observations, so exporting it would only add noise.
 # ReasoningSummarized likewise: the recap's own LLM call is already exported
 # as an llm observation; the domain event is a pure UI affordance.
+# TaskUnderstood likewise: the artifact is already exported as the
+# eval.task_understanding observation and joined via STEP_PLANNED; the
+# domain event only feeds the soft-gate card.
 _SKIPPED_TYPES = (
     LLMTokenEmitted,
     ReasoningSummarized,
     StateMutated,
     StepProgressed,
+    TaskUnderstood,
     ToolCallEnded,
 )
 _llm_token_buffers: dict[tuple[str, str], list[str]] = {}

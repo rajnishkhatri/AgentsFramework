@@ -16,7 +16,7 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -35,6 +35,21 @@ def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
 
 
+# task_understanding plan Phase 2: rollout stages for the TaskUnderstanding
+# generator. "deterministic" = floor only (no generation); "shadow" = generate
+# + validate + log, judge still consumes the deterministic floor (stage 2a);
+# "generated" = judge consumes the generated conditions (stage 2b).
+ConditionsSource = Literal["deterministic", "shadow", "generated"]
+_VALID_CONDITIONS_SOURCES = ("deterministic", "shadow", "generated")
+
+
+def _env_conditions_source() -> ConditionsSource:
+    raw = os.environ.get("SUCCESS_CONDITIONS_SOURCE", "").strip().lower()
+    if raw in _VALID_CONDITIONS_SOURCES:
+        return raw  # type: ignore[return-value]
+    return "deterministic"
+
+
 class GoalJudgeRuntimeConfig(BaseModel):
     """Versioned on-disk / GCS posture document."""
 
@@ -43,6 +58,7 @@ class GoalJudgeRuntimeConfig(BaseModel):
     schema_version: int = 1
     goal_judge_enabled: bool
     goal_judge_downgrade_enabled: bool
+    success_conditions_source: ConditionsSource = "deterministic"
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_by: str = "unknown"
 
@@ -54,6 +70,7 @@ class ResolvedGoalJudgeConfig:
     goal_judge_enabled: bool
     goal_judge_downgrade_enabled: bool
     source: str
+    success_conditions_source: ConditionsSource = "deterministic"
     schema_version: int | None = None
     updated_at: datetime | None = None
     updated_by: str | None = None
@@ -67,6 +84,7 @@ class InMemoryGoalJudgeConfigReader:
         *,
         goal_judge_enabled: bool = False,
         goal_judge_downgrade_enabled: bool = False,
+        success_conditions_source: ConditionsSource = "deterministic",
         source: str = "test",
         schema_version: int | None = 1,
         updated_at: datetime | None = None,
@@ -75,6 +93,7 @@ class InMemoryGoalJudgeConfigReader:
         self._resolved = ResolvedGoalJudgeConfig(
             goal_judge_enabled=goal_judge_enabled,
             goal_judge_downgrade_enabled=goal_judge_downgrade_enabled,
+            success_conditions_source=success_conditions_source,
             source=source,
             schema_version=schema_version,
             updated_at=updated_at,
@@ -89,6 +108,7 @@ class InMemoryGoalJudgeConfigReader:
         return {
             "enabled": r.goal_judge_enabled,
             "downgrade_enabled": r.goal_judge_downgrade_enabled,
+            "success_conditions_source": r.success_conditions_source,
             "source": r.source,
             "schema_version": r.schema_version,
             "updated_at": r.updated_at.isoformat() if r.updated_at else None,
@@ -186,6 +206,7 @@ class GoalJudgeRuntimeConfigReader:
         return {
             "enabled": resolved.goal_judge_enabled,
             "downgrade_enabled": resolved.goal_judge_downgrade_enabled,
+            "success_conditions_source": resolved.success_conditions_source,
             "source": resolved.source,
             "schema_version": resolved.schema_version,
             "updated_at": resolved.updated_at.isoformat() if resolved.updated_at else None,
@@ -203,6 +224,7 @@ class GoalJudgeRuntimeConfigReader:
             resolved = ResolvedGoalJudgeConfig(
                 goal_judge_enabled=parsed.goal_judge_enabled,
                 goal_judge_downgrade_enabled=parsed.goal_judge_downgrade_enabled,
+                success_conditions_source=parsed.success_conditions_source,
                 source=source,
                 schema_version=parsed.schema_version,
                 updated_at=parsed.updated_at,
@@ -221,6 +243,7 @@ class GoalJudgeRuntimeConfigReader:
                     return ResolvedGoalJudgeConfig(
                         goal_judge_enabled=self._last_good.goal_judge_enabled,
                         goal_judge_downgrade_enabled=self._last_good.goal_judge_downgrade_enabled,
+                        success_conditions_source=self._last_good.success_conditions_source,
                         source="stale",
                         schema_version=self._last_good.schema_version,
                         updated_at=self._last_good.updated_at,
@@ -233,11 +256,13 @@ class GoalJudgeRuntimeConfigReader:
             return ResolvedGoalJudgeConfig(
                 goal_judge_enabled=self._env_enabled,
                 goal_judge_downgrade_enabled=self._env_downgrade,
+                success_conditions_source=_env_conditions_source(),
                 source=source or "env",
             )
         return ResolvedGoalJudgeConfig(
             goal_judge_enabled=self._defaults_enabled,
             goal_judge_downgrade_enabled=self._defaults_downgrade,
+            success_conditions_source=_env_conditions_source(),
             source=source or "default",
         )
 

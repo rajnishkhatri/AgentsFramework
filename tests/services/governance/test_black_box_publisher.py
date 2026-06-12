@@ -59,7 +59,11 @@ _EXPECTED_MAPPINGS: list[tuple[EventType, str, str]] = [
     (EventType.STEP_PLANNED, "chain", "step.planned"),
     (EventType.STEP_EXECUTED, "span", "step.executed"),
     (EventType.TOOL_CALLED, "tool", "tool.called"),
-    (EventType.MODEL_SELECTED, "generation", "model.selected"),
+    # Phase 1 (E5): MODEL_SELECTED is a routing DECISION, not an LLM call. It
+    # carries no usage/cost, so typing it ``generation`` polluted generation-level
+    # cost analytics. Retyped to ``chain``; the real LLM call is the wire
+    # ``llm.call`` generation (Phase 3).
+    (EventType.MODEL_SELECTED, "chain", "model.selected"),
     (EventType.GUARDRAIL_CHECKED, "guardrail", "guardrail.checked"),
     (EventType.PARAMETER_CHANGED, "span", "parameter.changed"),
     (EventType.ERROR_OCCURRED, "span", "error.occurred"),
@@ -251,12 +255,16 @@ class TestRedactAPIKeys:
         assert "[REDACTED]" in result["config"]
 
     def test_safe_numeric_keys_not_corrupted_by_key_rule(self) -> None:
-        """The broadened sk- rule must not touch known-safe numeric telemetry."""
+        """The broadened sk- rule must not touch known-safe numeric telemetry.
+
+        Phase 1 (E4): safe numerics now keep their native type rather than being
+        stringified, so they remain numerically filterable in Langfuse.
+        """
         details = {"latency_ms": 1234567890, "step": 42, "cost_usd": 0.0123}
         result = redact_details(details)
-        assert result["latency_ms"] == "1234567890"
-        assert result["step"] == "42"
-        assert result["cost_usd"] == "0.0123"
+        assert result["latency_ms"] == 1234567890
+        assert result["step"] == 42
+        assert result["cost_usd"] == 0.0123
 
     def test_aws_access_key_redacted(self) -> None:
         details = {"cred": "AKIAIOSFODNN7EXAMPLE"}
@@ -312,17 +320,77 @@ class TestEdgeCases:
         result = redact_details({})
         assert result == {}
 
-    def test_non_string_values_coerced(self) -> None:
+    def test_unknown_non_string_values_coerced(self) -> None:
+        """Unknown keys (not in safe sets) still stringify so PII redaction
+        applies to arbitrary content and nested structures stay flat."""
         details = {"count": 42, "flag": True, "nested": {"a": 1}}
         result = redact_details(details)
         assert isinstance(result["count"], str)
         assert isinstance(result["flag"], str)
         assert isinstance(result["nested"], str)
 
-    def test_none_value_handled(self) -> None:
+    def test_none_value_passes_through_as_none(self) -> None:
+        """Phase 1 (E4): a ``None`` detail must surface as null, not the string
+        'None' — stringified Nones are pure trace noise (``error: 'None'``,
+        ``downgrade_reason: 'None'`` in the reviewed trace)."""
         details = {"missing": None}
         result = redact_details(details)
-        assert result["missing"] == "None"
+        assert result["missing"] is None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# F2. Native type preservation for safe keys (Phase 1 / E4)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestNativeTypePreservation:
+    """Safe numeric/bool telemetry keys keep their native type so Langfuse can
+    filter and aggregate them numerically (the reviewed trace carried
+    ``"criteria_met": "0.0"`` and ``"plan_valid": "True"`` as strings)."""
+
+    def test_safe_numeric_keys_keep_native_numbers(self) -> None:
+        details = {
+            "criteria_met": 0.0,
+            "task_completion_score": 0.887,
+            "branch_coverage": 0.625,
+            "cost_fraction": 0.01,
+            "tokens_in": 2153,
+        }
+        result = redact_details(details)
+        assert result["criteria_met"] == 0.0
+        assert isinstance(result["criteria_met"], float)
+        assert result["task_completion_score"] == 0.887
+        assert result["branch_coverage"] == 0.625
+        assert result["cost_fraction"] == 0.01
+        assert result["tokens_in"] == 2153
+        assert isinstance(result["tokens_in"], int)
+
+    def test_safe_bool_keys_keep_native_bools(self) -> None:
+        details = {
+            "plan_valid": True,
+            "blocked": False,
+            "redacted": False,
+            "goal_met": False,
+            "termination_clean": True,
+            "would_downgrade": True,
+            "cached": False,
+            "plan_changed": True,
+        }
+        result = redact_details(details)
+        for key, expected in details.items():
+            assert result[key] is expected, f"{key} lost native bool"
+
+    def test_safe_numeric_none_still_passes_through(self) -> None:
+        """A safe key carrying None (e.g. goal_met before judge ran) is null."""
+        result = redact_details({"goal_met": None, "criteria_met": None})
+        assert result["goal_met"] is None
+        assert result["criteria_met"] is None
+
+    def test_oversized_safe_string_still_capped(self) -> None:
+        """Failure path: a safe key carrying a huge string is still length-capped
+        (native preservation applies to numbers/bools, not giant strings)."""
+        result = redact_details({"latency_ms": "9" * 300})
+        assert len(str(result["latency_ms"])) <= 200
 
     def test_to_export_kwargs_applies_redaction_to_details(self) -> None:
         """Integration: to_export_kwargs should use redacted details."""
@@ -369,16 +437,18 @@ class TestNumericKeysSurviveRedaction:
         ],
     )
     def test_safe_numeric_key_survives_unredacted(self, key, value) -> None:
+        # Phase 1 (E4): safe numerics now keep their native type (no longer
+        # stringified), but the I4 intent holds — they are never regex-redacted.
         result = redact_details({key: value})
-        assert result[key] == str(value)
-        assert "[REDACTED]" not in result[key]
+        assert result[key] == value
+        assert "[REDACTED]" not in str(result[key])
 
     def test_credit_card_shaped_float_on_safe_key_not_redacted(self) -> None:
-        """The exact I4 regression: a 16-digit cost float must survive."""
+        """The exact I4 regression: a 16-digit cost float must survive intact."""
         cc_shaped = 4242424242424242.0
         result = redact_details({"total_cost_usd": cc_shaped})
-        assert "[REDACTED]" not in result["total_cost_usd"]
-        assert result["total_cost_usd"].startswith("424242424242424")
+        assert result["total_cost_usd"] == cc_shaped
+        assert "[REDACTED]" not in str(result["total_cost_usd"])
 
     def test_same_value_on_unsafe_key_is_still_redacted(self) -> None:
         """Proves the redaction is still live — only the safe keys are exempt."""
@@ -392,14 +462,22 @@ class TestNumericKeysSurviveRedaction:
 
 
 class TestNativeGenerationFields:
-    """MODEL_SELECTED / STEP_EXECUTED promote native model/usage/cost fields."""
+    """STEP_EXECUTED promotes native model/usage/cost fields.
 
-    def test_model_selected_promotes_model(self) -> None:
+    Phase 1 (E5): MODEL_SELECTED no longer promotes generation fields — it is a
+    ``chain`` routing decision with no LLM usage. STEP_EXECUTED remains the
+    relay's usage carrier until the wire ``llm.call`` generation takes over
+    (Phase 3) and STEP_EXECUTED export is suppressed (Phase 4).
+    """
+
+    def test_model_selected_does_not_promote_model(self) -> None:
+        """Failure path: a routing decision must NOT emit a native model field."""
         ev = _event(EventType.MODEL_SELECTED, details={"model": "gpt-4o-mini"})
         result = to_export_kwargs(ev)
-        assert result["model"] == "gpt-4o-mini"
+        assert "model" not in result
 
-    def test_model_selected_promotes_usage_and_cost(self) -> None:
+    def test_model_selected_does_not_promote_usage_or_cost(self) -> None:
+        """Failure path: MODEL_SELECTED never carries usage/cost into analytics."""
         ev = _event(
             EventType.MODEL_SELECTED,
             details={
@@ -410,8 +488,8 @@ class TestNativeGenerationFields:
             },
         )
         result = to_export_kwargs(ev)
-        assert result["usage"] == {"input": 100, "output": 50, "total": 150}
-        assert result["cost"] == pytest.approx(0.0012)
+        assert "usage" not in result
+        assert "cost" not in result
 
     def test_step_executed_promotes_usage_and_cost(self) -> None:
         ev = _event(
@@ -427,15 +505,6 @@ class TestNativeGenerationFields:
         assert result["model"] == "gpt-4o-mini"
         assert result["usage"] == {"input": 80, "output": 30, "total": 110}
         assert result["cost"] == pytest.approx(0.0009)
-
-    def test_input_output_tokens_alias_promoted(self) -> None:
-        """GENERATION events may carry input_tokens/output_tokens aliases."""
-        ev = _event(
-            EventType.MODEL_SELECTED,
-            details={"model": "m", "input_tokens": 10, "output_tokens": 5},
-        )
-        result = to_export_kwargs(ev)
-        assert result["usage"] == {"input": 10, "output": 5, "total": 15}
 
     def test_non_generation_event_does_not_promote_native_fields(self) -> None:
         """Failure path: a tool event must NOT leak model/usage/cost kwargs."""

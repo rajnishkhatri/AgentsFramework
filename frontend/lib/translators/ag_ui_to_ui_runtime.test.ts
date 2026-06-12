@@ -218,3 +218,52 @@ describe("CUSTOM reasoning_summary (F10 Tier-2)", () => {
     });
   });
 });
+
+describe("CUSTOM task_understanding (soft-gate card, Phase 3)", () => {
+  it("malformed value (missing fields) emits nothing — failure path first", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "task_understanding",
+      value: { restated_intent: "x" },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("non-array success_conditions emits nothing", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "task_understanding",
+      value: {
+        restated_intent: "x",
+        success_conditions: "not a list",
+        confidence: 0.5,
+        source: "generated",
+      },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("valid value -> one task_understanding event carrying the artifact", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "task_understanding",
+      value: {
+        restated_intent: "Create the file and verify it.",
+        success_conditions: ["file exists", "contents verified"],
+        confidence: 0.8,
+        source: "generated",
+      },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "task_understanding",
+      restated_intent: "Create the file and verify it.",
+      success_conditions: ["file exists", "contents verified"],
+      confidence: 0.8,
+      source: "generated",
+    });
+  });
+});

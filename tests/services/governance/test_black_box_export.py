@@ -335,3 +335,29 @@ class TestBlackBoxReplay:
         assert all(e.workflow_id == wf for e in replayed)
         assert replayed[0].event_type == EventType.TASK_STARTED
         assert replayed[1].event_type == EventType.STEP_EXECUTED
+
+
+class TestCrossInstanceChainContinuity:
+    """task_understanding plan Phase 4 (§4.7): the middleware edit endpoint
+    appends PARAMETER_CHANGED to a trace the graph's own recorder instance
+    started — and the graph keeps appending after the resume. The chain
+    must stay valid across interleaved recorder instances, which requires
+    recovering the previous hash from the file tail, never trusting a
+    per-instance memory cache."""
+
+    def test_second_instance_appends_without_breaking_chain(self, tmp_path):
+        wf = "wf-cross-instance"
+        first = BlackBoxRecorder(storage_dir=tmp_path)
+        first.record(_make_event(wf, EventType.TASK_STARTED))
+        first.record(_make_event(wf, EventType.STEP_PLANNED, step=0))
+
+        # A fresh instance (the edit endpoint) appends to the same trace.
+        second = BlackBoxRecorder(storage_dir=tmp_path)
+        second.record(_make_event(wf, EventType.PARAMETER_CHANGED, step=1))
+
+        # The original instance (the resumed graph) appends after that.
+        first.record(_make_event(wf, EventType.TASK_COMPLETED, step=2))
+
+        bundle = BlackBoxRecorder(storage_dir=tmp_path).export(wf)
+        assert bundle["event_count"] == 4
+        assert bundle["hash_chain_valid"] is True

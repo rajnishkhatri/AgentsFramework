@@ -197,6 +197,15 @@ deficits) is **~88 rows**; realistic with reasonable cell-overlap is **~150 rows
 
 #### 5.2 GCP playwright run on wave 2
 
+* **PREREQUISITE (added 2026-06-12 by the
+  [Stage 6 Phase 0 replay audit](../research/goaljudge_stage6_replay_audit.md) §2):**
+  lift the eval-telemetry truncation caps **before** this batch runs, or wave-2
+  traces will persist only 200-char judge inputs and v1 calibration inherits wave 1's
+  fidelity ceiling. Two edits: the `[:500]` caps on `task_input`/`final_answer` in
+  `orchestration/react_loop.py` gj_ai_input (lift or make config-driven), and an
+  exemption/larger bound for `eval.goal_judge` attributes vs.
+  `_MAX_DETAIL_VALUE_LEN=200` in `services/governance/black_box_publisher.py`'s
+  publish path. Deploy before the batch (user-owned deploy).
 * Same `goaljudge-batch` spec as wave 1: `frontend/e2e/full-stack/goaljudge-batch.spec.ts`.
 * Batch tag: `gcp_wave2_2026-MM-DD` (date the run lands).
 * Capture both: UI batch JSONL (live-region DOM evidence) **and** corpus JSONL (Langfuse

@@ -73,3 +73,20 @@ export const HealthResponseSchema = z
   .strict();
 
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;
+
+// ── Task understanding edit (Phase 4 soft-gate card) ──────────────────
+//
+// Mirrors agent_ui_adapter/wire/agent_protocol.py
+// TaskUnderstandingEditRequest. Bounds = components gates minus lexical
+// grounding (user_edited skips it); trace_id echoed verbatim (F-R7).
+
+export const TaskUnderstandingEditRequestSchema = z
+  .object({
+    trace_id: z.string().min(1),
+    restated_intent: z.string().min(1).max(600),
+    success_conditions: z.array(z.string().min(1).max(200)).min(2).max(7),
+  })
+  .strict();
+export type TaskUnderstandingEditRequest = z.infer<
+  typeof TaskUnderstandingEditRequestSchema
+>;

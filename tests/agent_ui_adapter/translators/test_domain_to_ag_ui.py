@@ -258,3 +258,43 @@ def test_reasoning_summarized_maps_to_custom_reasoning_summary() -> None:
     assert out[0].name == "reasoning_summary"
     assert out[0].value == {"text": "Did A then B."}
     assert out[0].raw_event == {"trace_id": TRACE_ID}
+
+
+def test_task_understood_raises_when_trace_id_empty() -> None:
+    """Failure path first: TaskUnderstood without trace_id is rejected."""
+    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+    event = TaskUnderstood(
+        trace_id="",
+        restated_intent="x",
+        success_conditions=["a"],
+        confidence=0.5,
+        source="generated",
+    )
+    with pytest.raises(ValueError, match="trace_id"):
+        to_ag_ui(event)
+
+
+def test_task_understood_maps_to_custom_task_understanding() -> None:
+    """task_understanding plan Phase 3: the card rides
+    Custom{name='task_understanding'} -- zero wire change, the frontend
+    translator special-cases the name (the F10 reasoning_summary idiom)."""
+    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+    out = to_ag_ui(TaskUnderstood(
+        trace_id=TRACE_ID,
+        restated_intent="Create the file and verify it.",
+        success_conditions=["file exists", "contents verified"],
+        confidence=0.8,
+        source="generated",
+    ))
+    assert len(out) == 1
+    assert isinstance(out[0], Custom)
+    assert out[0].name == "task_understanding"
+    assert out[0].value == {
+        "restated_intent": "Create the file and verify it.",
+        "success_conditions": ["file exists", "contents verified"],
+        "confidence": 0.8,
+        "source": "generated",
+    }
+    assert out[0].raw_event == {"trace_id": TRACE_ID}

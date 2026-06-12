@@ -722,3 +722,88 @@ class _FakeChunk:
 
     def __init__(self, content: str = "") -> None:
         self.content = content
+
+
+class TestTaskUnderstandingChainEnd:
+    """task_understanding plan Phase 3: the ``route`` node's output carries
+    the memoized ``task_understanding`` dict; the runtime surfaces it as
+    TaskUnderstood exactly once per distinct payload (route re-runs every
+    evaluate→continue→route iteration with the same memoized artifact —
+    re-emitting would re-render the card every lap)."""
+
+    _ARTIFACT = {
+        "restated_intent": "Create the file and verify it.",
+        "success_conditions": ["file exists", "contents verified"],
+        "confidence": 0.8,
+        "source": "generated",
+        "model": "gpt-4o-mini",
+    }
+
+    @pytest.mark.asyncio
+    async def test_missing_or_malformed_artifact_emits_nothing(self) -> None:
+        from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("route", {"selected_model": "m"}),
+                    _chain_end("route", {"task_understanding": {}}),
+                    _chain_end("route", {"task_understanding": "not a dict"}),
+                    _chain_end("route", {"task_understanding": {"source": "generated"}}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, TaskUnderstood)]
+
+    @pytest.mark.asyncio
+    async def test_other_nodes_artifact_is_ignored(self) -> None:
+        from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("evaluate", {"task_understanding": self._ARTIFACT})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, TaskUnderstood)]
+
+    @pytest.mark.asyncio
+    async def test_route_artifact_surfaces_once_and_dedupes_reruns(self) -> None:
+        from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("route", {"task_understanding": self._ARTIFACT}),
+                    # Memoized re-entry: identical payload must not re-emit.
+                    _chain_end("route", {"task_understanding": self._ARTIFACT}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        cards = [e for e in out if isinstance(e, TaskUnderstood)]
+        assert len(cards) == 1
+        assert cards[0].restated_intent == "Create the file and verify it."
+        assert cards[0].success_conditions == ["file exists", "contents verified"]
+        assert cards[0].source == "generated"
+
+    @pytest.mark.asyncio
+    async def test_changed_artifact_re_emits(self) -> None:
+        """A user edit (Phase 4) changes the payload — the card must update."""
+        from agent_ui_adapter.wire.domain_events import TaskUnderstood
+
+        edited = {**self._ARTIFACT, "source": "user_edited",
+                  "success_conditions": ["file exists"]}
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("route", {"task_understanding": self._ARTIFACT}),
+                    _chain_end("route", {"task_understanding": edited}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        cards = [e for e in out if isinstance(e, TaskUnderstood)]
+        assert len(cards) == 2
+        assert cards[1].source == "user_edited"

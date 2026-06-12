@@ -109,3 +109,89 @@ describe("SelfHostedLangGraphDevClient port conformance", () => {
     expect(typeof _typed.cancel).toBe("function");
   });
 });
+
+describe("SelfHostedLangGraphDevClient.updateUnderstanding — failure path first (Phase 4)", () => {
+  const EDIT = {
+    trace_id: "tr-1",
+    restated_intent: "Only compare the options.",
+    success_conditions: ["compares options", "grounded in task"],
+  };
+
+  it("throws AgentAuthError on 401", async () => {
+    const client = new SelfHostedLangGraphDevClient({
+      baseUrl: "/api",
+      fetchImpl: fakeFetch(new Response("nope", { status: 401 })),
+    });
+    await expect(client.updateUnderstanding("t1", EDIT)).rejects.toThrow(
+      /auth/i,
+    );
+  });
+
+  it("throws with the upstream detail on 409 (run already completed)", async () => {
+    const client = new SelfHostedLangGraphDevClient({
+      baseUrl: "/api",
+      fetchImpl: fakeFetch(
+        new Response(JSON.stringify({ detail: "run already completed" }), {
+          status: 409,
+        }),
+      ),
+    });
+    await expect(client.updateUnderstanding("t1", EDIT)).rejects.toThrow(
+      /already completed/,
+    );
+  });
+
+  it("throws AgentNetworkError when the network is down", async () => {
+    const client = new SelfHostedLangGraphDevClient({
+      baseUrl: "/api",
+      fetchImpl: (() => Promise.reject(new Error("offline"))) as typeof fetch,
+    });
+    await expect(client.updateUnderstanding("t1", EDIT)).rejects.toThrow(
+      /offline/,
+    );
+  });
+
+  it("POSTs the edit to /run/understanding/{threadId} and resolves on 200", async () => {
+    const seen: Array<{ url: string; body: unknown }> = [];
+    const client = new SelfHostedLangGraphDevClient({
+      baseUrl: "/api",
+      fetchImpl: ((url: string, init?: RequestInit) => {
+        seen.push({ url, body: JSON.parse(String(init?.body)) });
+        return Promise.resolve(
+          new Response(JSON.stringify({ ok: true }), { status: 200 }),
+        );
+      }) as typeof fetch,
+    });
+    await client.updateUnderstanding("thread/1", EDIT);
+    expect(seen).toHaveLength(1);
+    // Thread id is URL-encoded (it lands in a path segment).
+    expect(seen[0]?.url).toBe("/api/run/understanding/thread%2F1");
+    expect(seen[0]?.body).toEqual(EDIT);
+  });
+});
+
+describe("SelfHostedLangGraphDevClient.streamRun — abort signal passthrough (Phase 4 pause)", () => {
+  it("forwards the AbortSignal to the composition-injected factory", async () => {
+    const seenSignals: Array<AbortSignal | undefined> = [];
+    const client = new SelfHostedLangGraphDevClient({
+      baseUrl: "/api",
+      fetchImpl: fakeFetch(new Response(null, { status: 204 })),
+      openUIRuntimeStream: (req, opts) => {
+        seenSignals.push(opts?.signal);
+        return (async function* () {
+          yield {
+            type: "run_completed" as const,
+            trace_id: "trace-1",
+            run_id: "r1",
+            thread_id: req.thread_id,
+          };
+        })();
+      },
+    });
+    const controller = new AbortController();
+    for await (const _evt of client.streamRun(REQ, { signal: controller.signal })) {
+      /* drain */
+    }
+    expect(seenSignals).toEqual([controller.signal]);
+  });
+});

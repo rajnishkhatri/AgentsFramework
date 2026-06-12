@@ -106,7 +106,19 @@ class ReasoningSummarized(DomainEventBase):
     text: str
 
 
-# ── Union type alias (US-2.3 acceptance, +ReasoningSummarized: 11 members) ─
+class TaskUnderstood(DomainEventBase):
+    """task_understanding plan Phase 3: plan-time intent restatement +
+    success checklist for the soft-gate card (wire: Custom
+    ``task_understanding``). ``source`` is the provenance tier
+    (deterministic | generated | user_edited)."""
+
+    restated_intent: str
+    success_conditions: list[str]
+    confidence: float
+    source: str
+
+
+# ── Union type alias (US-2.3 acceptance, +TaskUnderstood: 12 members) ─
 
 
 DomainEvent = (
@@ -121,6 +133,7 @@ DomainEvent = (
     | StateMutated
     | StepProgressed
     | ReasoningSummarized
+    | TaskUnderstood
 )
 
 
@@ -135,6 +148,7 @@ __all__ = [
     "RunStartedDomain",
     "StateMutated",
     "StepProgressed",
+    "TaskUnderstood",
     "ToolCallEnded",
     "ToolCallStarted",
     "ToolResultReceived",
