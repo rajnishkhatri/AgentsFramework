@@ -45,15 +45,23 @@
 > rationale+alternatives+plan_summary present; P4 dedup confirmed — ONE
 > `step.planned` across a 12-step run; obs/step ≤4; `tool.{shell,think}` rename
 > generalizes; P2 `tool_call_id` join + first-class `event_time`; P1 scores +
-> goal-judge partial-credit; `service.name` + cap-lift). **One real finding:**
-> every `llm.call` GENERATION carried `latency_ms` but **no native token usage** —
-> root-caused to `ChatLiteLLM(streaming=True)` omitting the provider usage chunk.
-> **FIXED (commit `c670e23`):** `stream_options={"include_usage": True}` in
-> `services/llm_config.py` → provider emits the usage chunk → LangChain populates
-> `usage_metadata` → existing `_extract_usage`→`LLMMessageEnded`→`__bb_usage`→
-> exporter `usage_details` chain handles it (no wire/bridge change). **SMOKE-PENDING:**
-> provider-dependent — needs one deployed trace showing `usage`/`tokens_in/out` on
-> `llm.call` to close P3. **All phases DONE; token-usage fix awaits deploy verify.**
+> goal-judge partial-credit; `service.name` + cap-lift). **One real finding —
+> token-usage seam bug (now FIXED):** every `llm.call` GENERATION carried
+> `latency_ms` but **no native token usage**, across three traces. First fix
+> attempt (`c670e23`, `stream_options={"include_usage": True}`) was a **no-op** —
+> `langchain_litellm` 0.6.6 already defaults it. True root cause, proven by
+> reproducing `generate_from_stream` aggregation: under `streaming=True` the
+> runtime adapter's `on_chat_model_end` event does NOT carry `usage_metadata`
+> (the `.ainvoke` RETURN value does — which is why cost on the canonical
+> STEP_EXECUTED record is correct — but the streamed end callback the wire bridge
+> observes does not). **Phase 4 had suppressed STEP_EXECUTED from the curated view
+> on the false premise the wire `llm.call` carried its tokens**, so tokens fell
+> through the seam and vanished from the curated trace entirely. **FIX:**
+> stop suppressing STEP_EXECUTED in the relay (`_CURATED_SUPPRESSED = {"tool_called"}`);
+> the publisher already maps its `tokens_in/out` to native `usage`. STEP_EXECUTED
+> is one lean span/step, not a volume problem. The `stream_options` no-op was
+> reverted. **SMOKE-PENDING:** one deployed trace must show native `usage` on the
+> relayed `step.executed` span. **All phases DONE; token-usage seam fix awaits deploy verify.**
 > **UI gap (review of two eval-UI screenshots):** the eval UI surfaces none of the
 > Phase-1 verdict scores, `conditions_source`, or token usage, so it reproduces the
 > corrupt-success problem on-screen ("successfully created" above "cannot complete").
@@ -434,7 +442,7 @@ verify the dual view returns; flipped back ON.
 | 0 | — | cap-lift check on `eval.goal_judge`; service.name visible |
 | 1 | `tests/services/governance`, `tests/middleware/sidecars`, `tests/orchestration/test_phase_wiring.py`, `tests/architecture` | 3 scores visible in trace list; no `"None"` strings in `task.completed`; `identity_cards` in dataset item |
 | 2 | `tests/middleware/test_telemetry_correlation.py` + above | join `tool_call_id` across bridge obs ↔ bundle events — **✅ PASSED on rev 00062 (trace `e1c0cbc5…`, 2026-06-12):** relay `tool.called` `details.tool_call_id` (e.g. `call_eOXZQK…`) = suffix of bridge `tool.{started,finished}` `tool_call_id` (`7:call_eOXZQK…`); bridge tool obs carry `step:7` (prefix-derived); `event_time` first-class on every relayed obs and ~0.5s ahead of the span `startTime` (D-0a lag visible); no `start_time`/`end_time` |
-| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py`, `tests/services/test_llm_config.py` | 1 generation + N tools per step ✅ (traces `f54fdd3d…`/`5b1607f4…`); **native token usage was ABSENT in prod** — fixed by `stream_options={"include_usage": True}` (`c670e23`), **SMOKE-PENDING** one deployed trace must show `usage`/`tokens_in/out` on `llm.call`; model+cost stay on canonical STEP_EXECUTED, not the wire |
+| 3 | `tests/agent_ui_adapter/*`, `tests/middleware/test_telemetry_bridge.py`, `test_telemetry_redaction.py`, `tests/middleware/sidecars/test_black_box_to_telemetry.py` | 1 generation + N tools per step ✅ (traces `f54fdd3d…`/`5b1607f4…`/`bda76734…`); **native token usage was ABSENT on `llm.call` in all three** — root cause: streamed `on_chat_model_end` lacks `usage_metadata` (cost still correct via `.ainvoke` return). **FIX:** un-suppress STEP_EXECUTED in the curated relay (its tokens→native `usage` via publisher); `c670e23` no-op reverted. **SMOKE-PENDING** one deployed trace must show native `usage` on the relayed `step.executed` span |
 | 4 | suppression + fingerprint + exporter suites | obs/step ≤8; flag-off restores dual view (once, dev) |
 | 5 | phase-wiring + bridge suites | pillar acceptance table above |
 

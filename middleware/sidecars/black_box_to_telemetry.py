@@ -240,11 +240,22 @@ class BlackBoxToTelemetryRelay:
             self._mtimes[wf_id] = current_mtime
             return published
 
-    # Phase 4: events the curated view never exports — the wire bridge already
-    # carries the same facts (TOOL_CALLED ↔ tool.{name}; STEP_EXECUTED usage ↔
-    # llm.call). STEP_PLANNED is conditionally suppressed (unchanged plan only),
-    # handled separately so the back-compat (key-absent) case still exports.
-    _CURATED_SUPPRESSED = frozenset({"tool_called", "step_executed"})
+    # Phase 4: events the curated view never exports because the wire bridge
+    # carries the SAME facts — TOOL_CALLED ↔ tool.{name} (proven in prod traces).
+    # STEP_PLANNED is conditionally suppressed (unchanged plan only), handled
+    # separately so the back-compat (key-absent) case still exports.
+    #
+    # NOTE (token-usage seam fix, 2026-06-12): STEP_EXECUTED was originally in
+    # this set on the premise that the wire ``llm.call`` generation carried its
+    # token usage. Production traces proved that premise FALSE — under
+    # ``streaming=True`` the ``on_chat_model_end`` callback the runtime adapter
+    # observes does not carry ``usage_metadata`` (the .ainvoke RETURN value does,
+    # which is why cost on the canonical record is correct, but the wire event
+    # does not), so the merged generation renders no tokens. STEP_EXECUTED is the
+    # only reliable token carrier and the publisher already maps its tokens to
+    # native ``usage`` — so it must NOT be suppressed. It is one lean span per
+    # step, not a volume problem.
+    _CURATED_SUPPRESSED = frozenset({"tool_called"})
 
     def _is_curated_suppressed(self, event: TraceEvent) -> bool:
         """True when the curated view should suppress this event's EXPORT.

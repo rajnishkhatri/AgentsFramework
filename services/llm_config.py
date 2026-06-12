@@ -31,19 +31,20 @@ class LLMService:
         """Returns a ChatLiteLLM instance for the given profile."""
         from langchain_litellm import ChatLiteLLM
 
+        # NOTE: ``streaming=True`` here means token usage does NOT reach the
+        # runtime adapter's ``on_chat_model_end`` event (the .ainvoke return
+        # value carries ``usage_metadata`` — which is why cost on the canonical
+        # STEP_EXECUTED record is correct — but the streamed end callback the
+        # wire bridge observes does not). ``stream_options={"include_usage":...}``
+        # is a no-op: langchain_litellm already defaults it. The durable token
+        # carrier in the trace is the relayed STEP_EXECUTED span (publisher maps
+        # its tokens to native ``usage``); see the curated-view note in
+        # middleware/sidecars/black_box_to_telemetry.py.
         return ChatLiteLLM(
             model=profile.litellm_id,
             temperature=0,
             max_tokens=4096,
             streaming=True,
-            # Phase 3 token-usage fix: with ``streaming=True`` the provider does
-            # not emit a usage chunk unless asked, so the aggregated streamed
-            # AIMessage carries no ``usage_metadata`` and the ``llm.call``
-            # generation renders no token counts. ``include_usage`` makes LiteLLM
-            # request the final usage chunk; LangChain folds it into
-            # ``usage_metadata``, which ``_extract_usage`` reads and the bridge
-            # maps to the generation's native ``usage_details``.
-            stream_options={"include_usage": True},
         )
 
     async def invoke(
