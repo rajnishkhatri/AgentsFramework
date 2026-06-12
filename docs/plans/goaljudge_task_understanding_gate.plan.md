@@ -1,6 +1,14 @@
 # GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)
 
-> **Status:** AUTHORED 2026-06-12, detailed phase-wise v2 — design locked in session, no code yet.
+> **Status:** IMPLEMENTED 2026-06-12 (Phases 0–4 backend + display UI) on
+> `feat/goaljudge-task-understanding-gate`. Phases 0/1/2/3 complete; Phase 4
+> backend seam complete (runtime-adapter `update_task_understanding`,
+> middleware `POST /run/understanding/{thread_id}` on dev + prod apps,
+> PARAMETER_CHANGED governance recording, BFF handler + route, cross-instance
+> hash-chain fix in BlackBoxRecorder). REMAINING: card edit-mode UI + a
+> runtime/stream resume capability (`runtime.run` cannot yet resume a paused
+> thread with None input) + T2 E2E; Phase 2 rollout gates (2a shadow ≥95%,
+> 2b goldset replay α vs 0.50) and the Phase 0 GCP live smoke are user-run.
 > **Origin:** Stage 6 replay audit [§3 finding](../research/goaljudge_stage6_replay_audit.md):
 > all 100/100 production `eval.goal_judge` spans carry the identical generic
 > `success_conditions` pair hardcoded at `components/plan_builder.py:158-161`. No
