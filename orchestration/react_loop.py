@@ -379,6 +379,65 @@ def _execute_tools_impl(
     return response
 
 
+async def _reasoning_recap_impl(
+    state: dict[str, Any],
+    *,
+    llm_service: Any,
+    prompt_service: Any,
+    agent_config: AgentConfig,
+) -> dict[str, Any]:
+    """F10 Tier-2 reasoning recap: one cheap-tier completion per run.
+
+    Cost guard: 0–1-tool runs are skipped (Tier-1 narration already covers
+    them for $0). The ``reasoning_recap`` tag lets the UI runtime suppress
+    the call's chat-model events so recap tokens never leak into the
+    answer stream. The recap is a UI affordance — any failure returns ``{}``
+    and never breaks the run.
+    """
+    tool_results = state.get("tool_results") or []
+    if len(tool_results) < 2:
+        return {}
+    try:
+        final_answer = ""
+        for msg in reversed(state.get("messages") or []):
+            content = getattr(msg, "content", "")
+            if content and not getattr(msg, "tool_calls", []):
+                final_answer = str(content)
+                break
+        tool_steps = [
+            {
+                "tool_name": str(rec.get("tool_name", "")),
+                "tool_input": rec.get("tool_input", {}),
+                "ok": bool(rec.get("ok", True)),
+                "error": rec.get("error") or "",
+            }
+            for rec in tool_results
+            if isinstance(rec, dict)
+        ]
+        prompt = prompt_service.render_prompt(
+            "reasoning_recap",
+            task_input=str(state.get("task_input", "")),
+            tool_steps=tool_steps,
+            final_answer=final_answer,
+        )
+        profile = next(
+            (m for m in agent_config.models if m.tier == "fast"),
+            default_fast_profile(),
+        )
+        response = await llm_service.invoke(
+            profile,
+            [{"role": "user", "content": prompt}],
+            config={"tags": ["reasoning_recap"]},
+        )
+        text = str(getattr(response, "content", "") or "").strip()
+        if not text:
+            return {}
+        return {"reasoning_summary": text}
+    except Exception:
+        logger.exception("reasoning recap failed; run continues without it")
+        return {}
+
+
 def build_graph(
     agent_config: AgentConfig,
     routing_config: RoutingConfig | None = None,
@@ -1470,6 +1529,19 @@ def build_graph(
     builder.add_node("execute_tool", execute_tool_node)
     builder.add_node("evaluate", evaluate_node)
 
+    # F10 Tier-2: post-loop cheap recap; runs once on the "done" branch so
+    # the summary is on the stream before RUN_FINISHED (eval captures are
+    # settled). Budget-exceeded runs end at call_llm and skip it.
+    async def reasoning_recap_node(state: AgentState, config: RunnableConfig) -> dict:
+        return await _reasoning_recap_impl(
+            dict(state),
+            llm_service=llm_service,
+            prompt_service=prompt_service,
+            agent_config=agent_config,
+        )
+
+    builder.add_node("reasoning_recap", reasoning_recap_node)
+
     builder.add_edge(START, "guard_input")
 
     # Story 1.2: conditional edge for guard rejection
@@ -1504,8 +1576,9 @@ def build_graph(
     builder.add_conditional_edges(
         "evaluate",
         _should_continue,
-        {"continue": "route", "done": END},
+        {"continue": "route", "done": "reasoning_recap"},
     )
+    builder.add_edge("reasoning_recap", END)
 
     # Story 2.1: checkpointer support
     # Story 2.2: interrupt_before for non-cacheable tools (only with checkpointer)

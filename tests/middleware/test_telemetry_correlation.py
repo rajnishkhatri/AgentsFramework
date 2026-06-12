@@ -42,6 +42,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
@@ -173,7 +174,7 @@ class TestEventCompleteness:
     Prevents silent event loss (Gap Blindness anti-pattern).
     """
 
-    # The union type lists all 10 concrete event types.
+    # The union type lists all 11 concrete event types.
     ALL_EVENT_TYPES: set[type] = set(get_args(DomainEvent))
 
     MAPPED_TYPES: set[type] = {
@@ -187,6 +188,7 @@ class TestEventCompleteness:
 
     SKIPPED_TYPES: set[type] = {
         LLMTokenEmitted,
+        ReasoningSummarized,
         StateMutated,
         StepProgressed,
         ToolCallEnded,
@@ -245,9 +247,9 @@ class TestEventCompleteness:
         assert result is None, "Unknown event type must return None, not raise"
 
     def test_event_count_matches_union(self) -> None:
-        """Guard: domain_events.DomainEvent union has exactly 10 members."""
-        assert len(self.ALL_EVENT_TYPES) == 10, (
-            f"Expected 10 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
+        """Guard: domain_events.DomainEvent union has exactly 11 members."""
+        assert len(self.ALL_EVENT_TYPES) == 11, (
+            f"Expected 11 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
             "Update telemetry_bridge.py and this test."
         )
 
@@ -672,6 +674,8 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
         return StateMutated(trace_id=trace_id, snapshot={"k": "v"})
     if event_type is StepProgressed:
         return StepProgressed(trace_id=trace_id, step_count=1, step_name="evaluation")
+    if event_type is ReasoningSummarized:
+        return ReasoningSummarized(trace_id=trace_id, text="Did A then B.")
     raise ValueError(f"Unknown event type: {event_type}")
 
 

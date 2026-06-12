@@ -626,6 +626,94 @@ class TestExecuteToolChainEndSynthesis:
         assert len(starts) == 1, "live + synthesized must dedupe to one start"
 
 
+class TestReasoningRecapChainEnd:
+    """F10 Tier-2: the ``reasoning_recap`` node's output carries
+    ``reasoning_summary``; the runtime surfaces it as ReasoningSummarized
+    and suppresses the recap LLM call's own chat-model events (tagged
+    ``reasoning_recap``) so recap tokens never leak into the answer.
+    """
+
+    @pytest.mark.asyncio
+    async def test_empty_or_missing_summary_emits_nothing(self) -> None:
+        from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("reasoning_recap", {}),
+                    _chain_end("reasoning_recap", {"reasoning_summary": "   "}),
+                    _chain_end("reasoning_recap", {"reasoning_summary": 42}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, ReasoningSummarized)]
+
+    @pytest.mark.asyncio
+    async def test_other_nodes_reasoning_summary_is_ignored(self) -> None:
+        from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("evaluate", {"reasoning_summary": "x"})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, ReasoningSummarized)]
+
+    @pytest.mark.asyncio
+    async def test_recap_node_summary_surfaces_as_domain_event(self) -> None:
+        from agent_ui_adapter.wire.domain_events import ReasoningSummarized
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end(
+                        "reasoning_recap", {"reasoning_summary": "Did A then B."}
+                    )
+                ]
+            )
+        )
+        out = await _collect(rt)
+        recaps = [e for e in out if isinstance(e, ReasoningSummarized)]
+        assert len(recaps) == 1
+        assert recaps[0].text == "Did A then B."
+
+    @pytest.mark.asyncio
+    async def test_tagged_chat_model_events_are_suppressed(self) -> None:
+        """The recap completion streams through astream_events like any other
+        model call; its tagged token/lifecycle events must not become
+        answer text or an empty message bubble."""
+        scripted = [
+            {
+                "event": "on_chat_model_start",
+                "data": {},
+                "name": "ChatModel",
+                "run_id": "lc-recap-1",
+                "tags": ["reasoning_recap"],
+            },
+            {
+                "event": "on_chat_model_stream",
+                "data": {"chunk": _FakeChunk(content="leaked recap token")},
+                "name": "ChatModel",
+                "run_id": "lc-recap-1",
+                "tags": ["reasoning_recap"],
+            },
+            {
+                "event": "on_chat_model_end",
+                "data": {"output": _FakeChunk(content="leaked recap token")},
+                "name": "ChatModel",
+                "run_id": "lc-recap-1",
+                "tags": ["reasoning_recap"],
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert not [e for e in out if isinstance(e, LLMMessageStarted)]
+        assert not [e for e in out if isinstance(e, LLMMessageEnded)]
+
+
 # ── Helpers ───────────────────────────────────────────────────────────
 
 

@@ -182,3 +182,39 @@ describe("agUiToUiRuntime purity [T1]", () => {
     expect(agUiToUiRuntime(evt)).toEqual(agUiToUiRuntime(evt));
   });
 });
+
+describe("CUSTOM reasoning_summary (F10 Tier-2)", () => {
+  it("malformed value (no text field) emits nothing — failure path first", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "reasoning_summary",
+      value: { wrong: true },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("non-string text emits nothing", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "reasoning_summary",
+      value: { text: 42 },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("valid value -> one reasoning_summary event carrying the text", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "reasoning_summary",
+      value: { text: "Read the file, then verified its content." },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "reasoning_summary",
+      text: "Read the file, then verified its content.",
+    });
+  });
+});

@@ -283,6 +283,22 @@ export interface components {
             type: "RAW";
         };
         /**
+         * ReasoningSummarized
+         * @description F10 Tier-2: one cheap-tier "why/how" recap per run (wire: Custom
+         *     ``reasoning_summary``).
+         */
+        ReasoningSummarized: {
+            /** Text */
+            text: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+            /** Trace Id */
+            trace_id: string;
+        };
+        /**
          * RunCreateRequest
          * @description Body of ``POST /agent/runs/stream`` and ``POST /agent/runs``.
          */

@@ -33,6 +33,7 @@ from agent_ui_adapter.wire.domain_events import (
     DomainEventBase,
     LLMMessageEnded,
     LLMMessageStarted,
+    ReasoningSummarized,
     LLMTokenEmitted,
     RunFinishedDomain,
     RunStartedDomain,
@@ -179,6 +180,17 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
             Custom(
                 name="step_meter",
                 value={"step": event.step_count, "step_name": event.step_name},
+                raw_event=raw,
+            )
+        ]
+
+    if isinstance(event, ReasoningSummarized):
+        # F10 Tier-2: rides Custom 'reasoning_summary' (zero wire change);
+        # the frontend translator special-cases the name like step_meter.
+        return [
+            Custom(
+                name="reasoning_summary",
+                value={"text": event.text},
                 raw_event=raw,
             )
         ]

@@ -1,0 +1,13 @@
+You are writing a short "how I got here" recap for a completed agent run. The user has already seen the final answer; this recap is supplementary reasoning shown behind a "Show reasoning" expander.
+
+Write AT MOST 3 sentences, present in plain language, explaining WHY the agent took the steps it did and HOW they led to the answer. Do not restate the final answer verbatim. Do not use bullet points, headings, or markdown. Do not mention being an AI or this prompt.
+
+The user's request:
+{{ task_input }}
+
+Tool steps taken (in order):
+{% for step in tool_steps -%}
+{{ loop.index }}. {{ step.tool_name }}({{ step.tool_input }}) -> {{ "ok" if step.ok else "FAILED: " ~ step.error }}
+{% endfor %}
+Final answer given to the user:
+{{ final_answer }}

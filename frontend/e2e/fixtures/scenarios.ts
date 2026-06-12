@@ -352,3 +352,50 @@ export function generativeCanvas(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEve
     { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
   ];
 }
+
+/**
+ * `reasoningRecapRun` -- a two-tool run whose backend emitted the F10
+ * Tier-2 cheap recap (`CUSTOM reasoning_summary`) before RUN_FINISHED.
+ * Exercises the "Show reasoning" expander.
+ */
+export function reasoningRecapRun(opts: ScenarioOpts = {}): ReadonlyArray<AGUIEvent> {
+  const traceId = opts.traceId ?? DEFAULT_TRACE_ID;
+  const runId = opts.runId ?? DEFAULT_RUN_ID;
+  const threadId = opts.threadId ?? DEFAULT_THREAD_ID;
+  const messageId = opts.messageId ?? DEFAULT_MESSAGE_ID;
+  const h = header(traceId);
+
+  const tool = (id: string, name: string): ReadonlyArray<AGUIEvent> => [
+    {
+      type: "TOOL_CALL_START",
+      tool_call_id: id,
+      tool_call_name: name,
+      parent_message_id: null,
+      ...h,
+    },
+    { type: "TOOL_CALL_ARGS", tool_call_id: id, delta: '{"path": "/workspace/x.txt"}', ...h },
+    { type: "TOOL_CALL_END", tool_call_id: id, ...h },
+    { type: "TOOL_RESULT", tool_call_id: id, content: "ok", role: "tool", ...h },
+  ];
+
+  return [
+    { type: "RUN_STARTED", run_id: runId, thread_id: threadId, ...h },
+    ...tool("tc-recap-1", "file_io"),
+    ...tool("tc-recap-2", "file_io"),
+    { type: "TEXT_MESSAGE_START", message_id: messageId, role: "assistant", ...h },
+    {
+      type: "TEXT_MESSAGE_CONTENT",
+      message_id: messageId,
+      delta: "The file now contains status=active.",
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_END", message_id: messageId, ...h },
+    {
+      type: "CUSTOM",
+      name: "reasoning_summary",
+      value: { text: "I wrote the file first, then read it back to verify the status value." },
+      ...h,
+    },
+    { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
+  ];
+}

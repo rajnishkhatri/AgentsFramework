@@ -42,6 +42,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
     StateMutated,
@@ -324,7 +325,14 @@ class LangGraphRuntime:
         LangGraph tags the emitting node in ``metadata.langgraph_node``. A key
         may be present with a null/empty value on some runs; those must **not**
         be treated as ``!= "call_llm"`` or we drop the main model stream.
+
+        The F10 Tier-2 recap completion is additionally tagged
+        ``reasoning_recap`` on its invoke config — suppress on the tag too so
+        recap tokens never leak into the answer even if node metadata is
+        absent.
         """
+        if "reasoning_recap" in (raw.get("tags") or []):
+            return True
         meta = raw.get("metadata") or {}
         node = meta.get("langgraph_node")
         if not isinstance(node, str) or not node.strip():
@@ -517,6 +525,13 @@ class LangGraphRuntime:
             events.extend(
                 self._synthesize_tool_events(output.get("tool_results"), trace_id)
             )
+
+        if node_name == "reasoning_recap" and isinstance(output, dict):
+            summary = output.get("reasoning_summary")
+            if isinstance(summary, str) and summary.strip():
+                events.append(
+                    ReasoningSummarized(trace_id=trace_id, text=summary.strip())
+                )
 
         if node_name == "evaluate":
             self._step_meter_count += 1

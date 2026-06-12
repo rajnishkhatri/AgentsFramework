@@ -99,7 +99,14 @@ class StepProgressed(DomainEventBase):
     step_name: str
 
 
-# ── Union type alias (US-2.3 acceptance, +StepProgressed: 10 members) ─
+class ReasoningSummarized(DomainEventBase):
+    """F10 Tier-2: one cheap-tier "why/how" recap per run (wire: Custom
+    ``reasoning_summary``)."""
+
+    text: str
+
+
+# ── Union type alias (US-2.3 acceptance, +ReasoningSummarized: 11 members) ─
 
 
 DomainEvent = (
@@ -113,6 +120,7 @@ DomainEvent = (
     | RunFinishedDomain
     | StateMutated
     | StepProgressed
+    | ReasoningSummarized
 )
 
 
@@ -122,6 +130,7 @@ __all__ = [
     "LLMMessageEnded",
     "LLMMessageStarted",
     "LLMTokenEmitted",
+    "ReasoningSummarized",
     "RunFinishedDomain",
     "RunStartedDomain",
     "StateMutated",

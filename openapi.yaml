@@ -259,6 +259,27 @@ components:
       - event
       title: Raw
       type: object
+    ReasoningSummarized:
+      additionalProperties: false
+      description: 'F10 Tier-2: one cheap-tier "why/how" recap per run (wire: Custom
+
+        ``reasoning_summary``).'
+      properties:
+        text:
+          title: Text
+          type: string
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - text
+      title: ReasoningSummarized
+      type: object
     RunCreateRequest:
       additionalProperties: false
       description: Body of ``POST /agent/runs/stream`` and ``POST /agent/runs``.

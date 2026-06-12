@@ -79,6 +79,9 @@ class AgentState(MessagesState):
     files: Annotated[dict[str, str], _merge_dict]
     todos: list[TodoItem]
     plan_ref: str
+    # F10 Tier-2: one cheap-tier "why/how" recap written by reasoning_recap
+    # at run end; surfaced to the UI as Custom{name="reasoning_summary"}.
+    reasoning_summary: str
     planning_depth: Literal["L0", "L1", "L2"]
     planning_depth_reason: str
 
