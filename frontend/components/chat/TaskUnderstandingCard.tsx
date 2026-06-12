@@ -69,20 +69,23 @@ export function TaskUnderstandingCard(props: {
   onCancel?: () => void;
 }): React.JSX.Element {
   const { understanding } = props;
-  const [editing, setEditing] = React.useState(false);
+  // Edit mode is keyed to the artifact identity the draft was opened
+  // against: a fresh artifact event (e.g. the post-resume user_edited
+  // re-emit) supersedes the draft by derivation. Deliberately NOT an
+  // effect -- a passive `setEditing(false)` reset races a fast Edit click
+  // (the mount-commit effect can flush after the click and silently close
+  // the form the user just opened).
+  const [editingFor, setEditingFor] = React.useState<
+    typeof understanding | null
+  >(null);
   const [intent, setIntent] = React.useState("");
   const [conditions, setConditions] = React.useState<ReadonlyArray<string>>([]);
-
-  // A fresh artifact event (e.g. the post-resume user_edited re-emit)
-  // supersedes any open draft.
-  React.useEffect(() => {
-    setEditing(false);
-  }, [understanding]);
+  const editing = editingFor === understanding;
 
   function startEdit(): void {
     setIntent(understanding.restated_intent);
     setConditions(understanding.success_conditions);
-    setEditing(true);
+    setEditingFor(understanding);
     props.onEditStart?.();
   }
 
@@ -154,7 +157,7 @@ export function TaskUnderstandingCard(props: {
             type="button"
             data-testid="understanding-cancel-edit"
             onClick={() => {
-              setEditing(false);
+              setEditingFor(null);
               props.onCancel?.();
             }}
             className="text-xs text-muted hover:text-fg cursor-pointer bg-transparent border border-border rounded-sm px-2 py-0.5"
