@@ -77,8 +77,10 @@ def main() -> None:
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({
-        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=True),
-        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=True),
+        # shell/file_io not cacheable: thread tool_cache never invalidates, so
+        # repeating an identical command/read after the file changes is stale.
+        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
+        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=False),
         "state_file": ToolDefinition(executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False),
         "state_todo": ToolDefinition(executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False),
         "task": ToolDefinition(

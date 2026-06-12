@@ -13,9 +13,11 @@ description: >-
 
 # GCP Live Smoke (Phase 2 of the critical-path smoke plan)
 
-One bounded Playwright test against the deployed frontend. It signs in to
-WorkOS for real, sends a prompt that forces ≥2 tool calls (write a file,
-read it back), and asserts the three things the eval pipeline depends on:
+Two bounded Playwright tests against the deployed frontend, always run
+together. Both sign in to WorkOS for real.
+
+**Test 1 — quick recap smoke.** One prompt forcing ≥2 tool calls (write a
+file, read it back); asserts the three things the eval pipeline depends on:
 
 1. The assistant message reaches `data-state="complete"` (the same
    terminal anchor the GoalJudge batch harness waits on).
@@ -23,6 +25,19 @@ read it back), and asserts the three things the eval pipeline depends on:
 3. The `[data-testid='reasoning-summary']` expander exists, is collapsed
    by default, and reveals non-empty recap text — proving the in-stream
    `CUSTOM reasoning_summary` event flows through the deployed build.
+
+**Test 2 — L2 planning stress (τ-bench-style).** A three-turn conversation
+in one thread: a multi-file pipeline plan, then a non-collaborative
+mid-task revision ("bananas should be 9, not 7 — and add dates.txt"),
+then a continuation that only works if checkpointer state survived the
+earlier turns. Asserts every turn settles to `complete`, ≥6 tool cards
+total with **zero** `data-status="errored"`, ≥1 reasoning recap, and
+**cross-turn continuity**: the last read of bananas.txt must return the
+revised value ("9"). The continuity check exists because tool calls can
+report success while an overwrite silently fails to stick (seen live
+2026-06-12 — stale file_io reads); a continuity failure with zero errored
+cards means exactly that bug shape, not a test problem. This is the turn
+shape where ReAct agents and stale state historically break.
 
 Plan context: `docs/plans/critical_path_smoke_testing.plan.md` §Phase 2.
 This is the only test that touches the real stack; never expand it into a
@@ -55,8 +70,9 @@ npx playwright test full-stack/reasoning-recap-live.spec.ts \
 ```
 
 Notes:
-- Expected wall time is ~15–30 s (login + one run). Anything past 10
-  minutes is a hang; the global timeout kills it — treat that as a failure.
+- Expected wall time is ~2–4 min (login + quick smoke ~20 s + 3-turn
+  stress run). Anything past 10 minutes is a hang; the global timeout
+  kills it — treat that as a failure.
 - `E2E_AUTHENTICATED=1` triggers `e2e/global-setup.ts`, which performs a
   fresh WorkOS password login and writes `e2e/.auth/state.json`. Do not
   set `E2E_REUSE_STORAGE=1` unless a login just succeeded in this session
@@ -78,13 +94,18 @@ print(d['stats'])
 "
 ```
 
-Pass = `stats.expected == 1` and `stats.unexpected == 0`. Report the
+Pass = `stats.expected == 2` and `stats.unexpected == 0`. Report the
 verdict from this file, never from terminal scrollback.
 
 Screenshot evidence lands in `frontend/smoke-screenshots/`:
-`recap-live.png` on pass, `recap-live_FAILED.png` on fail (gitignored run
-artifacts). Mention the path in your report so the user can eyeball the
-final UI state.
+`recap-live.png` / `stress-live.png` on pass, `*_FAILED.png` on fail
+(one evidence shot per test; gitignored run
+artifacts; each run overwrites the previous file of the same outcome).
+All tool cards and the reasoning expander are force-opened before
+capture, so the screenshot shows every tool's input/output — on a
+failure, look there for the errored tool's payload (`data-status`
+distinguishes completed vs errored cards). Mention the path in your
+report so the user can eyeball the final UI state.
 
 ## If it fails: first-pass diagnosis
 

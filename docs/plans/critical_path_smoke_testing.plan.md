@@ -65,6 +65,8 @@ Every smoke run leaves visual evidence, pass or fail:
 - **Phase 2:** the live spec writes `recap-live.png` (pass) or
   `recap-live_FAILED.png` (fail) directly to `frontend/smoke-screenshots/`
   (override via `SMOKE_SCREENSHOT_DIR`) and attaches it to the report.
+  Tool cards + reasoning expander are force-opened before capture so the
+  evidence shows each tool's input/output (incl. errored payloads).
 - `frontend/smoke-screenshots/` is a run artifact — gitignored, never
   committed.
 
@@ -90,7 +92,12 @@ One bounded test (~3 min) against
 - Auth via the saved WorkOS storage state (see
   `frontend/e2e/` auth setup; stale `.env` creds are a known gotcha).
 
-This is the only test that touches the real stack; everything else stays
+Also includes an **L2 planning stress test** (τ-bench-style): a 3-turn
+conversation in one thread — multi-file pipeline plan, mid-task revision,
+state-dependent continuation — asserting all turns complete, ≥6 tool
+cards with zero errored, ≥1 recap. Both tests always run together.
+
+These are the only tests that touch the real stack; everything else stays
 mocked. Implemented as `frontend/e2e/full-stack/reasoning-recap-live.spec.ts`;
 runnable via the `gcp-live-smoke` skill (`docs/skills/gcp-live-smoke/`).
 
@@ -126,3 +133,11 @@ runnable via the `gcp-live-smoke` skill (`docs/skills/gcp-live-smoke/`).
   a global-setup log line prepended — parse from the first `{`.
 - Lessons captured: macOS has no GNU `timeout` — use Playwright's
   `--global-timeout=600000` for the 10-minute bound instead.
+- 2026-06-12: Phase 2 wrapped as the `gcp-live-smoke` skill
+  (`docs/skills/gcp-live-smoke/SKILL.md`); screenshots now captured on
+  pass AND fail (see §Screenshot evidence). Skill validation caught a
+  real backend bug: a Cloud SQL connection reset (09:24 UTC) left the
+  checkpointer's pooled Postgres connection dead — runs failed with
+  `OperationalError` until a fix was deployed. Post-fix rerun via the
+  skill: **PASSED** 1/1 in 36.6s (run start 09:56 UTC), evidence
+  `frontend/smoke-screenshots/recap-live.png`.

@@ -516,10 +516,16 @@ def build_components(
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({
         "shell": ToolDefinition(
-            executor=execute_shell, schema=ShellToolInput, cacheable=True
+            # Not cacheable: same hazard as file_io below — shell reads mutable
+            # filesystem state (cat/ls/grep/...), so a cached result is silently
+            # stale after the file changes later in the thread.
+            executor=execute_shell, schema=ShellToolInput, cacheable=False
         ),
         "file_io": ToolDefinition(
-            executor=execute_file_io, schema=FileIOInput, cacheable=True
+            # Not cacheable: the thread-level tool_cache keys on exact args and
+            # never invalidates, so a cached read returns stale content after
+            # the same path is overwritten later in the thread.
+            executor=execute_file_io, schema=FileIOInput, cacheable=False
         ),
         "state_file": ToolDefinition(
             executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
