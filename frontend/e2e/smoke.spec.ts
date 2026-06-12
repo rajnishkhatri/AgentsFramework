@@ -25,6 +25,16 @@ import { PROMPTS } from "./fixtures/prompts";
 
 const E2E_USER_EMAIL = process.env.E2E_USER_EMAIL ?? "beta@example.com";
 
+function isLocalTarget(): boolean {
+  const url = process.env.BASE_URL ?? "http://localhost:3000";
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return true;
+  }
+}
+
 async function waitForSelector(page: Page, selector: string, timeoutMs = 10_000) {
   await page.waitForSelector(selector, { timeout: timeoutMs });
 }
@@ -32,6 +42,14 @@ async function waitForSelector(page: Page, selector: string, timeoutMs = 10_000)
 // ── Security Headers (S3.7.2 / S4.1.1 cross-check) ─────────────────────
 
 test.describe("Security headers (binary: Are security headers present?)", () => {
+  // The strict (nonce-only) CSP ships in production builds; against
+  // localhost the Playwright webServer is `next dev`, which serves the
+  // dev CSP ('unsafe-eval'/'unsafe-inline' are required by dev mode).
+  test.skip(
+    isLocalTarget(),
+    "Skipped: dev server serves the dev CSP. Run against a deployed target."
+  );
+
   test("response includes strict CSP and security headers", async ({ page }) => {
     const response = await page.goto("/");
     expect(response).not.toBeNull();
