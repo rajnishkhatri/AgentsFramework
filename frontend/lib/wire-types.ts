@@ -183,8 +183,18 @@ export interface components {
         };
         /** LLMMessageEnded */
         LLMMessageEnded: {
+            /**
+             * Cost Usd
+             * @default null
+             */
+            cost_usd: number | null;
             /** Message Id */
             message_id: string;
+            /**
+             * Model
+             * @default null
+             */
+            model: string | null;
             /**
              * Output Text
              * @default null
@@ -195,6 +205,16 @@ export interface components {
              * Format: date-time
              */
             timestamp?: string;
+            /**
+             * Tokens In
+             * @default null
+             */
+            tokens_in: number | null;
+            /**
+             * Tokens Out
+             * @default null
+             */
+            tokens_out: number | null;
             /** Trace Id */
             trace_id: string;
         };

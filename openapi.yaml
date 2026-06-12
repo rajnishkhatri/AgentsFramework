@@ -131,9 +131,21 @@ components:
     LLMMessageEnded:
       additionalProperties: false
       properties:
+        cost_usd:
+          anyOf:
+          - type: number
+          - type: 'null'
+          default: null
+          title: Cost Usd
         message_id:
           title: Message Id
           type: string
+        model:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Model
         output_text:
           anyOf:
           - type: string
@@ -144,6 +156,18 @@ components:
           format: date-time
           title: Timestamp
           type: string
+        tokens_in:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          title: Tokens In
+        tokens_out:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          default: null
+          title: Tokens Out
         trace_id:
           title: Trace Id
           type: string

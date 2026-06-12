@@ -450,13 +450,12 @@ class TestDevTelemetryWiring:
         r = _dev_post_stream(client)
         assert r.status_code == 200
 
+        # Phase 3: started events buffer; one merged obs per LLM/tool call.
         exported_names = [e["name"] for e in stub.events]
         assert exported_names == [
             "run.started",
-            "llm.started",
-            "llm.finished",
-            "tool.started",
-            "tool.finished",
+            "llm.call",
+            "tool.shell",
             "run.finished",
         ]
 

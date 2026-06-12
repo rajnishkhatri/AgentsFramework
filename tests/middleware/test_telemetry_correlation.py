@@ -179,17 +179,23 @@ class TestEventCompleteness:
     # The union type lists all 11 concrete event types.
     ALL_EVENT_TYPES: set[type] = set(get_args(DomainEvent))
 
+    # Phase 3: ``*.started`` events are BUFFERED (folded into the merged
+    # terminal observation), distinct from MAPPED (export directly) and
+    # SKIPPED (intentionally dropped).
     MAPPED_TYPES: set[type] = {
         RunStartedDomain,
         RunFinishedDomain,
-        ToolCallStarted,
         ToolResultReceived,
-        LLMMessageStarted,
         LLMMessageEnded,
     }
 
-    SKIPPED_TYPES: set[type] = {
+    BUFFERED_TYPES: set[type] = {
+        LLMMessageStarted,
+        ToolCallStarted,
         LLMTokenEmitted,
+    }
+
+    SKIPPED_TYPES: set[type] = {
         ReasoningSummarized,
         StateMutated,
         StepProgressed,
@@ -197,18 +203,19 @@ class TestEventCompleteness:
         ToolCallEnded,
     }
 
-    def test_mapped_plus_skipped_equals_all(self) -> None:
-        """Union of mapped + skipped must equal all DomainEvent types."""
-        covered = self.MAPPED_TYPES | self.SKIPPED_TYPES
+    def test_mapped_plus_buffered_plus_skipped_equals_all(self) -> None:
+        """Union of mapped + buffered + skipped must equal all DomainEvent types."""
+        covered = self.MAPPED_TYPES | self.BUFFERED_TYPES | self.SKIPPED_TYPES
         assert covered == self.ALL_EVENT_TYPES, (
             f"Uncovered types: {self.ALL_EVENT_TYPES - covered}; "
             f"Extra types: {covered - self.ALL_EVENT_TYPES}"
         )
 
-    def test_mapped_and_skipped_are_disjoint(self) -> None:
-        """No type appears in both mapped and skipped."""
-        overlap = self.MAPPED_TYPES & self.SKIPPED_TYPES
-        assert overlap == set(), f"Overlapping types: {overlap}"
+    def test_categories_are_disjoint(self) -> None:
+        """No type appears in more than one category."""
+        assert self.MAPPED_TYPES & self.SKIPPED_TYPES == set()
+        assert self.MAPPED_TYPES & self.BUFFERED_TYPES == set()
+        assert self.BUFFERED_TYPES & self.SKIPPED_TYPES == set()
 
     def test_skipped_types_constant_matches_bridge(self) -> None:
         """The bridge's internal _SKIPPED_TYPES matches our expectation."""
@@ -219,11 +226,22 @@ class TestEventCompleteness:
     def test_mapped_type_produces_export_call(
         self, stub: StubTelemetryExporter, event_type: type
     ) -> None:
-        """Every mapped type produces exactly one export call."""
+        """Every mapped (terminal) type produces exactly one export call."""
         event = _make_event(event_type)
         emit_domain_event(stub, event)
         assert len(stub.events) == 1, (
             f"{event_type.__name__} should produce 1 export call"
+        )
+
+    @pytest.mark.parametrize("event_type", sorted(BUFFERED_TYPES, key=lambda t: t.__name__))
+    def test_buffered_type_produces_zero_direct_calls(
+        self, stub: StubTelemetryExporter, event_type: type
+    ) -> None:
+        """Buffered types fold into the merged terminal obs — no direct export."""
+        event = _make_event(event_type)
+        emit_domain_event(stub, event)
+        assert len(stub.events) == 0, (
+            f"{event_type.__name__} (buffered) should produce 0 direct export calls"
         )
 
     @pytest.mark.parametrize("event_type", sorted(SKIPPED_TYPES, key=lambda t: t.__name__))
@@ -325,6 +343,7 @@ class TestConcurrentTraceIsolation:
             stub,
             RunStartedDomain(trace_id="t-B", run_id="rB", thread_id="thB"),
         )
+        # Phase 3: a full tool call (start buffers, result emits) per trace.
         emit_domain_event(
             stub,
             ToolCallStarted(
@@ -334,16 +353,27 @@ class TestConcurrentTraceIsolation:
         )
         emit_domain_event(
             stub,
+            ToolResultReceived(trace_id="t-A", tool_call_id="tc-A1", result="a"),
+        )
+        emit_domain_event(
+            stub,
             ToolCallStarted(
                 trace_id="t-B", tool_call_id="tc-B1", tool_name="file",
                 args_json="{}",
             ),
         )
+        emit_domain_event(
+            stub,
+            ToolResultReceived(trace_id="t-B", tool_call_id="tc-B1", result="b"),
+        )
 
         a_events = [e for e in stub.events if e["trace_id"] == "t-A"]
         b_events = [e for e in stub.events if e["trace_id"] == "t-B"]
+        # run.started + merged tool.shell / tool.file per trace.
         assert len(a_events) == 2
         assert len(b_events) == 2
+        assert a_events[1]["name"] == "tool.shell"
+        assert b_events[1]["name"] == "tool.file"
 
     def test_interleaved_traces_produce_separate_sdk_traces(
         self,
@@ -513,45 +543,57 @@ class TestVerticalIntegration:
         assert len(fake_client.traces) == 1
         assert trace_id in fake_client.traces
 
+        # Phase 3: started events buffer; one merged obs per call.
         span_names = [s["name"] for s in fake_client.spans]
         assert span_names == [
             "run.started",
-            "llm.started",
-            "llm.finished",
-            "tool.started",
-            "tool.finished",
+            "llm.call",
+            "tool.shell",
             "run.finished",
         ]
 
-    def test_span_attributes_carry_tool_details(
+    def test_merged_tool_span_carries_tool_details(
         self,
         exporter: LangfuseCloudExporter,
         fake_client: FakeLangfuseClient,
     ) -> None:
-        """tool.started span carries tool_name and tool_call_id."""
-        event = ToolCallStarted(
-            trace_id="vert-002",
-            tool_call_id="tc-99",
-            tool_name="file_write",
-            args_json='{"path": "/tmp/x"}',
+        """Phase 3: the merged ``tool.{name}`` span carries tool_name,
+        tool_call_id and args (buffered from the start event)."""
+        emit_domain_event(
+            exporter,
+            ToolCallStarted(
+                trace_id="vert-002", tool_call_id="tc-99",
+                tool_name="file_write", args_json='{"path": "/tmp/x"}',
+            ),
         )
-        emit_domain_event(exporter, event)
+        assert len(fake_client.spans) == 0  # started buffers
+        emit_domain_event(
+            exporter,
+            ToolResultReceived(trace_id="vert-002", tool_call_id="tc-99", result="ok"),
+        )
 
         assert len(fake_client.spans) == 1
-        span_input = fake_client.spans[0]["input"]
+        span = fake_client.spans[0]
+        assert span["name"] == "tool.file_write"
+        span_input = span["input"]
         assert span_input["tool_name"] == "file_write"
         assert span_input["tool_call_id"] == "tc-99"
         assert span_input["args_json"] == '{"path": "/tmp/x"}'
 
-    def test_span_attributes_carry_llm_message_id(
+    def test_merged_llm_span_carries_message_id(
         self,
         exporter: LangfuseCloudExporter,
         fake_client: FakeLangfuseClient,
     ) -> None:
-        """llm.started span carries message_id."""
-        event = LLMMessageStarted(trace_id="vert-003", message_id="msg-42")
-        emit_domain_event(exporter, event)
-
+        """Phase 3: the merged ``llm.call`` span carries message_id."""
+        emit_domain_event(
+            exporter, LLMMessageStarted(trace_id="vert-003", message_id="msg-42"),
+        )
+        assert len(fake_client.spans) == 0  # started buffers
+        emit_domain_event(
+            exporter, LLMMessageEnded(trace_id="vert-003", message_id="msg-42"),
+        )
+        assert fake_client.spans[0]["name"] == "llm.call"
         assert fake_client.spans[0]["input"]["message_id"] == "msg-42"
 
     def test_run_finished_with_error_carries_error_detail(
@@ -618,15 +660,22 @@ class TestVerticalIntegration:
         exporter: LangfuseCloudExporter,
         fake_client: FakeLangfuseClient,
     ) -> None:
-        """4KB truncation from bridge is preserved in SDK span input."""
+        """4KB truncation from bridge is preserved in SDK span input.
+
+        Phase 3: args buffer on start and surface on the merged tool obs.
+        """
         large_args = "A" * 8000
-        event = ToolCallStarted(
-            trace_id="vert-008",
-            tool_call_id="tc-big",
-            tool_name="shell",
-            args_json=large_args,
+        emit_domain_event(
+            exporter,
+            ToolCallStarted(
+                trace_id="vert-008", tool_call_id="tc-big",
+                tool_name="shell", args_json=large_args,
+            ),
         )
-        emit_domain_event(exporter, event)
+        emit_domain_event(
+            exporter,
+            ToolResultReceived(trace_id="vert-008", tool_call_id="tc-big", result="ok"),
+        )
         sdk_args = fake_client.spans[0]["input"]["args_json"]
         assert len(sdk_args) <= 4096
 
@@ -684,9 +733,10 @@ class TestBridgeToolEventsCarryStep:
     and omits it (no raise) when it does not.
     """
 
-    def test_tool_started_with_prefixed_id_carries_step(
+    def test_merged_tool_obs_with_prefixed_id_carries_step(
         self, stub: StubTelemetryExporter
     ) -> None:
+        """Phase 3: step (prefix-derived) surfaces on the merged tool obs."""
         emit_domain_event(
             stub,
             ToolCallStarted(
@@ -694,11 +744,17 @@ class TestBridgeToolEventsCarryStep:
                 tool_name="shell", args_json="{}",
             ),
         )
+        emit_domain_event(
+            stub,
+            ToolResultReceived(trace_id="t-step", tool_call_id="5:call_xyz", result="ok"),
+        )
+        assert len(stub.events) == 1
         assert stub.events[0]["attributes"]["step"] == 5
 
     def test_tool_finished_with_prefixed_id_carries_step(
         self, stub: StubTelemetryExporter
     ) -> None:
+        """Orphan result (no prior start) still carries the prefix-derived step."""
         emit_domain_event(
             stub,
             ToolResultReceived(
@@ -707,7 +763,7 @@ class TestBridgeToolEventsCarryStep:
         )
         assert stub.events[0]["attributes"]["step"] == 5
 
-    def test_tool_started_with_bare_id_omits_step(
+    def test_merged_tool_obs_with_bare_id_omits_step(
         self, stub: StubTelemetryExporter
     ) -> None:
         emit_domain_event(
@@ -716,6 +772,10 @@ class TestBridgeToolEventsCarryStep:
                 trace_id="t-step", tool_call_id="call_bare",
                 tool_name="shell", args_json="{}",
             ),
+        )
+        emit_domain_event(
+            stub,
+            ToolResultReceived(trace_id="t-step", tool_call_id="call_bare", result="ok"),
         )
         assert "step" not in stub.events[0]["attributes"]
 

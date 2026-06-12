@@ -49,6 +49,13 @@ class LLMMessageStarted(DomainEventBase):
 class LLMMessageEnded(DomainEventBase):
     message_id: str
     output_text: str | None = None
+    # Phase 3 (W rule, additive): optional usage/cost/model carried from the
+    # runtime adapter so the merged ``llm.call`` generation renders native
+    # token/cost analytics in Langfuse. Absent on legacy payloads → None.
+    tokens_in: int | None = None
+    tokens_out: int | None = None
+    cost_usd: float | None = None
+    model: str | None = None
 
 
 # ── Tool call lifecycle ───────────────────────────────────────────────

@@ -124,41 +124,20 @@ class TestEmitDomainEvent:
                 id="RunFinishedDomain-with-error",
             ),
             pytest.param(
-                ToolCallStarted(
-                    trace_id="t1",
-                    tool_call_id="tc-1",
-                    tool_name="shell",
-                    args_json='{"cmd": "ls"}',
-                ),
-                "tool.started",
-                {
-                    "tool_name": "shell",
-                    "tool_call_id": "tc-1",
-                    "args_json": '{"cmd": "ls"}',
-                },
-                id="ToolCallStarted",
-            ),
-            pytest.param(
                 ToolResultReceived(
                     trace_id="t1",
                     tool_call_id="tc-1",
                     result="file1.txt\nfile2.txt",
                 ),
-                "tool.finished",
+                "tool.unknown",
                 {"tool_call_id": "tc-1", "result": "file1.txt\nfile2.txt"},
-                id="ToolResultReceived",
-            ),
-            pytest.param(
-                LLMMessageStarted(trace_id="t1", message_id="msg-1"),
-                "llm.started",
-                {"message_id": "msg-1"},
-                id="LLMMessageStarted",
+                id="ToolResultReceived-orphan-names-tool.unknown",
             ),
             pytest.param(
                 LLMMessageEnded(trace_id="t1", message_id="msg-1"),
-                "llm.finished",
+                "llm.call",
                 {"message_id": "msg-1"},
-                id="LLMMessageEnded",
+                id="LLMMessageEnded-names-llm.call",
             ),
         ],
     )
@@ -169,6 +148,10 @@ class TestEmitDomainEvent:
         expected_name: str,
         expected_attrs: dict,
     ) -> None:
+        """Phase 3: ``*.started`` events buffer (zero export); the terminal
+        event emits the single merged observation. A ``ToolResultReceived``
+        with no prior ``ToolCallStarted`` is an orphan: it still exports, named
+        ``tool.unknown`` (tool_name not yet buffered)."""
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(stub_exporter, domain_event)
@@ -178,6 +161,33 @@ class TestEmitDomainEvent:
         assert exported["trace_id"] == "t1"
         for key, value in expected_attrs.items():
             assert exported["attributes"][key] == value
+
+    @pytest.mark.parametrize(
+        "started_event",
+        [
+            pytest.param(
+                ToolCallStarted(
+                    trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                    args_json='{"cmd": "ls"}',
+                ),
+                id="ToolCallStarted-buffers",
+            ),
+            pytest.param(
+                LLMMessageStarted(
+                    trace_id="t1", message_id="msg-1", input_text="hi",
+                ),
+                id="LLMMessageStarted-buffers",
+            ),
+        ],
+    )
+    def test_started_events_buffer_and_produce_no_export(
+        self, stub_exporter: StubTelemetryExporter, started_event: DomainEvent
+    ) -> None:
+        """Phase 3: started events are buffered, not exported on their own."""
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(stub_exporter, started_event)
+        assert len(stub_exporter.events) == 0
 
     def test_subject_included_in_attributes_when_provided(
         self, stub_exporter: StubTelemetryExporter
@@ -235,9 +245,10 @@ class TestSkippedEvents:
 
 
 class TestLLMContentExport:
-    """LLM prompt/response text is folded into llm.started / llm.finished exports."""
+    """Phase 3: input, streamed output, model, usage, cost, and latency are
+    folded into ONE merged ``llm.call`` generation on LLMMessageEnded."""
 
-    def test_token_events_buffer_into_llm_finished(
+    def test_started_plus_tokens_plus_ended_produce_one_llm_call(
         self, stub_exporter: StubTelemetryExporter
     ) -> None:
         from middleware.telemetry_bridge import emit_domain_event
@@ -260,11 +271,68 @@ class TestLLMContentExport:
         )
         emit_domain_event(stub_exporter, LLMMessageEnded(trace_id="t1", message_id="msg-1"))
 
-        assert len(stub_exporter.events) == 2
-        assert stub_exporter.events[0]["attributes"]["input_text"].startswith("user:")
-        assert stub_exporter.events[1]["attributes"]["__output"]["content"] == (
-            "Paris is the capital."
+        # ONE merged observation (started buffered, not exported).
+        assert len(stub_exporter.events) == 1
+        merged = stub_exporter.events[0]
+        assert merged["name"] == "llm.call"
+        attrs = merged["attributes"]
+        assert attrs["input_text"].startswith("user:")  # carried from the buffer
+        assert attrs["__output"]["content"] == "Paris is the capital."
+
+    def test_merged_call_carries_model_usage_cost(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
         )
+        emit_domain_event(
+            stub_exporter,
+            LLMMessageEnded(
+                trace_id="t1", message_id="m", output_text="a",
+                tokens_in=2144, tokens_out=113, cost_usd=0.00039, model="gpt-4o-mini",
+            ),
+        )
+        attrs = stub_exporter.events[0]["attributes"]
+        assert attrs["__bb_model"] == "gpt-4o-mini"
+        assert attrs["__bb_usage"] == {"input": 2144, "output": 113, "total": 2257}
+        assert attrs["__bb_cost"] == 0.00039
+
+    def test_merged_call_carries_latency_ms(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """latency_ms = wall time from started to ended."""
+        import time
+
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
+        )
+        time.sleep(0.01)
+        emit_domain_event(
+            stub_exporter, LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
+        )
+        latency = stub_exporter.events[0]["attributes"]["latency_ms"]
+        assert latency >= 10.0
+
+    def test_usage_fields_omitted_when_none(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """Absent usage/cost/model → no __bb_* keys (Langfuse renders nothing)."""
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
+        )
+        emit_domain_event(
+            stub_exporter, LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
+        )
+        attrs = stub_exporter.events[0]["attributes"]
+        assert "__bb_model" not in attrs
+        assert "__bb_usage" not in attrs
+        assert "__bb_cost" not in attrs
 
     def test_llm_token_emitted_alone_produces_no_export(
         self, stub_exporter: StubTelemetryExporter
@@ -278,6 +346,151 @@ class TestLLMContentExport:
         assert len(stub_exporter.events) == 0
 
 
+class TestMergedToolCall:
+    """Phase 3: ToolCallStarted buffers args; ToolResultReceived emits ONE
+    ``tool.{tool_name}`` observation with args + result + latency."""
+
+    def test_started_plus_result_produce_one_named_tool_obs(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            ToolCallStarted(
+                trace_id="t1", tool_call_id="7:c1", tool_name="file_io",
+                args_json='{"path": "/x"}',
+            ),
+        )
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="7:c1", result="12"),
+        )
+
+        assert len(stub_exporter.events) == 1
+        obs = stub_exporter.events[0]
+        assert obs["name"] == "tool.file_io"  # function-named per D-3a
+        attrs = obs["attributes"]
+        assert attrs["tool_name"] == "file_io"
+        assert attrs["args_json"] == '{"path": "/x"}'  # carried from buffer
+        assert attrs["__output"]["result"] == "12"
+        assert attrs["step"] == 7  # prefix-derived (Phase 2)
+
+    def test_tool_obs_carries_latency_ms(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        import time
+
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            ToolCallStarted(
+                trace_id="t1", tool_call_id="c1", tool_name="shell", args_json="{}",
+            ),
+        )
+        time.sleep(0.01)
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="c1", result="ok"),
+        )
+        assert stub_exporter.events[0]["attributes"]["latency_ms"] >= 10.0
+
+    def test_orphan_result_without_start_exports_tool_unknown(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """Failure path: result with no prior start → result-only, tool.unknown,
+        no raise."""
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="orphan", result="r"),
+        )
+        assert len(stub_exporter.events) == 1
+        obs = stub_exporter.events[0]
+        assert obs["name"] == "tool.unknown"
+        assert obs["attributes"]["__output"]["result"] == "r"
+        assert "args_json" not in obs["attributes"]
+
+
+class TestOrphanAndCleanup:
+    """Failure paths and per-trace buffer hygiene (no cross-run leakage)."""
+
+    def test_orphan_llm_ended_without_started_exports_output_only(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            LLMMessageEnded(trace_id="t1", message_id="never-started", output_text="a"),
+        )
+        assert len(stub_exporter.events) == 1
+        obs = stub_exporter.events[0]
+        assert obs["name"] == "llm.call"
+        assert obs["attributes"]["__output"]["content"] == "a"
+        assert "input_text" not in obs["attributes"]  # no buffered input
+
+    def test_run_finished_clears_all_per_trace_buffers(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """Started-but-never-finished calls do not leak after release."""
+        from middleware.telemetry_bridge import (
+            _llm_start_buffers,
+            _tool_start_buffers,
+            _llm_token_buffers,
+            emit_domain_event,
+        )
+
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="t-leak", message_id="m", input_text="q"),
+        )
+        emit_domain_event(
+            stub_exporter,
+            ToolCallStarted(
+                trace_id="t-leak", tool_call_id="c", tool_name="shell", args_json="{}",
+            ),
+        )
+        emit_domain_event(
+            stub_exporter, LLMTokenEmitted(trace_id="t-leak", message_id="m", delta="x"),
+        )
+        # Buffers are populated mid-run.
+        assert any(k[0] == "t-leak" for k in _llm_start_buffers)
+        assert any(k[0] == "t-leak" for k in _tool_start_buffers)
+
+        emit_domain_event(
+            stub_exporter,
+            RunFinishedDomain(trace_id="t-leak", run_id="r", thread_id="th", error=None),
+        )
+
+        # All per-trace buffers for this trace are gone.
+        assert not any(k[0] == "t-leak" for k in _llm_start_buffers)
+        assert not any(k[0] == "t-leak" for k in _tool_start_buffers)
+        assert not any(k[0] == "t-leak" for k in _llm_token_buffers)
+
+    def test_buffer_cleanup_does_not_touch_other_traces(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        from middleware.telemetry_bridge import (
+            _llm_start_buffers,
+            emit_domain_event,
+        )
+
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="keep", message_id="m", input_text="q"),
+        )
+        emit_domain_event(
+            stub_exporter, LLMMessageStarted(trace_id="drop", message_id="m", input_text="q"),
+        )
+        emit_domain_event(
+            stub_exporter,
+            RunFinishedDomain(trace_id="drop", run_id="r", thread_id="th", error=None),
+        )
+        assert any(k[0] == "keep" for k in _llm_start_buffers)
+        assert not any(k[0] == "drop" for k in _llm_start_buffers)
+
+
 # ─────────────────────────────────────────────────────────────────────
 # Truncation (4KB limit on args_json and result)
 # ─────────────────────────────────────────────────────────────────────
@@ -289,16 +502,22 @@ class TestTruncation:
     def test_tool_call_started_truncates_args_json(
         self, stub_exporter: StubTelemetryExporter
     ) -> None:
+        """Phase 3: args buffer on start (truncated) and surface on the merged
+        tool obs emitted by ToolResultReceived."""
         from middleware.telemetry_bridge import emit_domain_event
 
         large_args = "x" * 8000
-        event = ToolCallStarted(
-            trace_id="t1",
-            tool_call_id="tc-1",
-            tool_name="shell",
-            args_json=large_args,
+        emit_domain_event(
+            stub_exporter,
+            ToolCallStarted(
+                trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                args_json=large_args,
+            ),
         )
-        emit_domain_event(stub_exporter, event)
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="tc-1", result="ok"),
+        )
         exported_args = stub_exporter.events[0]["attributes"]["args_json"]
         assert len(exported_args) <= 4096
 
@@ -323,13 +542,17 @@ class TestTruncation:
         from middleware.telemetry_bridge import emit_domain_event
 
         small_args = '{"cmd": "ls"}'
-        event = ToolCallStarted(
-            trace_id="t1",
-            tool_call_id="tc-1",
-            tool_name="shell",
-            args_json=small_args,
+        emit_domain_event(
+            stub_exporter,
+            ToolCallStarted(
+                trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                args_json=small_args,
+            ),
         )
-        emit_domain_event(stub_exporter, event)
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="tc-1", result="ok"),
+        )
         assert stub_exporter.events[0]["attributes"]["args_json"] == small_args
 
 

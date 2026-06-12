@@ -88,6 +88,46 @@ class TestLLMMessageEnded:
         original = LLMMessageEnded(trace_id="tr1", timestamp=_now(), message_id="m1")
         assert LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
 
+    # ── Phase 3: optional usage/cost/model fields (additive, W rule) ──
+
+    def test_usage_fields_default_none(self):
+        """Back-compat: a payload without the new fields still validates and the
+        fields default to None (the wire ring evolves additively — W rule)."""
+        ev = LLMMessageEnded(trace_id="tr1", message_id="m1")
+        assert ev.tokens_in is None
+        assert ev.tokens_out is None
+        assert ev.cost_usd is None
+        assert ev.model is None
+
+    def test_legacy_json_without_usage_fields_validates(self):
+        """A pre-existing serialized event (no usage keys) still deserializes."""
+        legacy = '{"trace_id":"tr1","message_id":"m1","output_text":"hi"}'
+        ev = LLMMessageEnded.model_validate_json(legacy)
+        assert ev.message_id == "m1"
+        assert ev.tokens_in is None
+
+    def test_usage_fields_populated(self):
+        ev = LLMMessageEnded(
+            trace_id="tr1",
+            message_id="m1",
+            output_text="hi",
+            tokens_in=2144,
+            tokens_out=113,
+            cost_usd=0.00039,
+            model="gpt-4o-mini",
+        )
+        assert ev.tokens_in == 2144
+        assert ev.tokens_out == 113
+        assert ev.cost_usd == 0.00039
+        assert ev.model == "gpt-4o-mini"
+
+    def test_usage_round_trip(self):
+        original = LLMMessageEnded(
+            trace_id="tr1", message_id="m1", tokens_in=10, tokens_out=5,
+            cost_usd=0.1, model="gpt-4o",
+        )
+        assert LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
+
 
 # ── ToolCallStarted ───────────────────────────────────────────────────
 

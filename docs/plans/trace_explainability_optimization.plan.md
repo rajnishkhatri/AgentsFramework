@@ -10,7 +10,14 @@
 > **Phase 2 DONE** (`tool_call_id` join key on relay `TOOL_CALLED`; bridge `step`
 > derived from the `record_id` prefix when present, omitted on the bare live-stream
 > id — no raise; `event_time` first-class on every relayed observation per D-0a, no
-> fabricated start/end times; D-2a RESOLVED).
+> fabricated start/end times; D-2a RESOLVED; GCP smoke ✅ rev 00062).
+> **Phase 3 DONE** (started/token events buffer per-trace; one merged `llm.call`
+> generation per LLM call with optional `tokens_in/out`, `cost_usd`, `model` from
+> the runtime + `latency_ms`; one merged `tool.{tool_name}` per tool call with
+> args+result+`latency_ms`; orphan terminals export safely; buffers cleared on
+> run-finish; wire ring evolved additively (`LLMMessageEnded` optional fields,
+> openapi.yaml + wire-types.ts regenerated); D-3a RESOLVED — grep found no live
+> dashboards/queries on the old names, only historical IAA docs (left intact)).
 > **Known inherited condition:** `tests/architecture/test_mphase2_swap_radius.py` fails
 > on this branch — a pre-existing TU-gate artifact (TU-gate commits touch both
 > `agent_ui_adapter/adapters/` and `components/` in one range). Architecture gate run as
@@ -414,7 +421,7 @@ the full T1 tier locally.
 | D-0a | SDK v4 explicit start/end times on observations? | **RESOLVED (langfuse 4.7.1, 2026-06-12): NO start-time backdating.** `start_observation()` exposes only `completion_start_time` (TTFT for generations), never a span `start_time`; the OTel span starts at the `start_observation()` call. `.end(end_time=...)` accepts an explicit end but a real-start + backdated-end inverts the span. **Decision:** do NOT fabricate timings. Relayed observations stay point-in-time at relay-export instant; the authoritative event instant is surfaced first-class as `event_time` (= `details.timestamp`) on every relayed observation so a reader can reconstruct the true order. Phase 2 RED/GREEN adjusted accordingly. |
 | D-0b | Trace-level input/output mechanism in v4 | **RESOLVED (4.7.1): `set_current_trace_io(input=, output=)` exists but is (1) `@deprecated` (legacy LLM-as-judge only, slated for removal) and (2) requires a *current OTel span context* (`_get_current_otel_span()`), which our `start_observation(trace_context=...)+.end()` pattern never establishes.** **Decision:** do NOT use `set_current_trace_io`. For list-view scannability rely on (a) `propagate_attributes(trace_name=...)` for a meaningful trace name and (b) the Phase 1 trace-level **scores** (goal_met / criteria_met / completion_score) — those already give triage-without-opening. The task input + final answer remain visible on `task.started` / `task.completed` / the `llm.call` generation rather than as deprecated trace-level I/O. Phase 5.3 (trace input/output wiring) is **dropped**; Phase 5 reduces to content/identity enrichment on existing observations. |
 | D-2a | `step` attachable to LLM wire events cheaply? | **RESOLVED (Phase 2):** Not on the *live* wire path. The runtime's live `on_tool_start`/`on_tool_end` translators (`langgraph_runtime.py:539,558`) carry a bare LangChain tool id (`call_abc…`) with no step. Only the **replay/fallback** path (`:683-713`) sets `tool_call_id = record_id = "{step}:{tool_id}"`, so `step` is recoverable there via prefix parse. LLM wire events (`LLMMessageStarted/Ended`) carry only `message_id` (the run id) — no step at all. **Decision:** do NOT contort the wire ring. The bridge derives `step` from the `tool_call_id` prefix when present (`_derive_step_from_tool_call_id`), omits it otherwise; the durable join is `tool_call_id` itself (now on relay `TOOL_CALLED` ↔ bridge tool obs ↔ JSONL `record_id`). LLM generation↔`STEP_EXECUTED` join is deferred to step-by-containment once Phase 3 nests bridge events under `step.N`. |
-| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | _grep before merge (Phase 3)_ |
+| D-3a | Observation rename fallout (`llm.call`, `tool.{name}`) | **RESOLVED (Phase 3, 2026-06-12):** Repo-wide grep for `llm.started`/`llm.finished`/`tool.started`/`tool.finished` outside tests found **zero live consumers** — only (a) `telemetry_bridge.py` itself (the file being changed) and (b) historical records: the `docs/IAA/goalJudge/…2026-06-09.md` walkthroughs and the superseded `blackbox_langfuse_gap_closure` / `langfuse_gcp_integration` plan docs describing the OLD mapping. No dashboards, SQL, or live queries. The IAA docs are point-in-time evidence of past traces — left intact (renaming would falsify the record). Stage 5/6 tooling keys on `eval.goal_judge` (untouched). Rename landed: merged LLM obs = `llm.call`, merged tool obs = `tool.{tool_name}`. |
 | D-5a | Final-answer source for trace output | **MOOT** — folded into D-0b resolution; no trace-level output to source. |
 
 ## 9. Success metrics

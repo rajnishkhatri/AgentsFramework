@@ -362,6 +362,32 @@ class LangGraphRuntime:
         return ""
 
     @staticmethod
+    def _extract_usage(output: object) -> tuple[int | None, int | None, str | None]:
+        """Pull ``(tokens_in, tokens_out, model)`` from a LangChain message.
+
+        Reads ``usage_metadata`` (``{input_tokens, output_tokens}``) and
+        ``response_metadata`` (``model_name``). For ``on_llm_end`` the output is
+        a dict carrying ``generations`` / ``llm_output`` instead of a message;
+        handled best-effort. Missing data → ``None`` (the wire field stays None,
+        the merged generation simply renders no usage). MUST NOT raise.
+        """
+        try:
+            usage = getattr(output, "usage_metadata", None)
+            resp = getattr(output, "response_metadata", None) or {}
+            if usage is None and isinstance(output, dict):
+                llm_output = output.get("llm_output") or {}
+                usage = llm_output.get("usage") or llm_output.get("token_usage")
+                resp = llm_output.get("model_name") and {"model_name": llm_output["model_name"]} or resp
+            tokens_in = tokens_out = None
+            if isinstance(usage, dict):
+                tokens_in = usage.get("input_tokens") or usage.get("prompt_tokens")
+                tokens_out = usage.get("output_tokens") or usage.get("completion_tokens")
+            model = resp.get("model_name") if isinstance(resp, dict) else None
+            return tokens_in, tokens_out, model
+        except Exception:
+            return None, None, None
+
+    @staticmethod
     def _extract_llm_chunk_text(chunk: object) -> str:
         """Text from a chat chunk, or legacy ``GenerationChunk.text``."""
         text = LangGraphRuntime._extract_content(chunk)
@@ -495,11 +521,15 @@ class LangGraphRuntime:
                     events.append(LLMTokenEmitted(
                         trace_id=trace_id, message_id=event_run_id, delta=content
                     ))
+            tokens_in, tokens_out, model = self._extract_usage(output)
             events.append(
                 LLMMessageEnded(
                     trace_id=trace_id,
                     message_id=event_run_id,
                     output_text=content or None,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    model=model,
                 )
             )
             self._streamed_run_ids.discard(event_run_id)
@@ -525,11 +555,15 @@ class LangGraphRuntime:
                     events.append(LLMTokenEmitted(
                         trace_id=trace_id, message_id=event_run_id, delta=text
                     ))
+            tokens_in, tokens_out, model = self._extract_usage(data.get("output"))
             events.append(
                 LLMMessageEnded(
                     trace_id=trace_id,
                     message_id=event_run_id,
                     output_text=text or None,
+                    tokens_in=tokens_in,
+                    tokens_out=tokens_out,
+                    model=model,
                 )
             )
             self._streamed_run_ids.discard(event_run_id)
