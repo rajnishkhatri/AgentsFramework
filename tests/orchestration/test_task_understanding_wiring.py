@@ -452,6 +452,120 @@ class TestMemoization:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Cross-turn regeneration — thread state outlives the turn
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestCrossTurnRegeneration:
+    @pytest.mark.asyncio
+    async def test_new_turn_regenerates_and_judge_consumes_fresh_conditions(
+        self, tmp_path, _sink
+    ):
+        """Cross-turn staleness (governance audit 3921c61b, 2026-06-12): the
+        ``task_understanding`` state key persists across runs via the
+        checkpointer while ``task_id`` is minted per turn, so without a task
+        binding the turn-2 judge consumes turn-1's conditions (live false
+        verdict: criteria_met 0.0 on a healthy run). Each new turn must
+        regenerate and be judged against ITS OWN task's conditions."""
+        from langgraph.checkpoint.memory import MemorySaver
+
+        task_1 = "Compare options. Evaluate risks. Propose migration."
+        task_2 = "Summarize the risk register and name the top risk."
+        turn_1 = _GENERATED
+        turn_2 = TaskUnderstanding(
+            restated_intent="Summarize the risk register, naming the top risk.",
+            success_conditions=[
+                "The answer summarizes the risk register.",
+                "The answer names the top risk explicitly.",
+                GENERIC_TAIL_CONDITION,
+            ],
+            confidence=0.9,
+            source="generated",
+            model="gpt-4o-mini",
+        )
+
+        def _resp() -> MagicMock:
+            r = MagicMock()
+            r.content = "FINAL ANSWER: done."
+            r.tool_calls = []
+            r.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+            r.response_metadata = {"model_name": "gpt-4o-mini"}
+            return r
+
+        generate = AsyncMock(side_effect=[turn_1, turn_2])
+        judge = AsyncMock(
+            return_value=GoalVerdict(goal_met=True, criteria_met=1.0)
+        )
+        reader = InMemoryGoalJudgeConfigReader(
+            goal_judge_enabled=True,
+            goal_judge_downgrade_enabled=False,
+            success_conditions_source="generated",
+        )
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+            patch("orchestration.react_loop.GoalJudge.evaluate", judge),
+            patch(
+                "orchestration.react_loop.TaskUnderstandingGenerator.generate",
+                generate,
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(side_effect=_resp)
+
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=AgentConfig(
+                    default_model="gpt-4o-mini",
+                    models=[_fast_profile()],
+                    goal_judge_enabled=True,
+                ),
+                cache_dir=tmp_path / "cache",
+                checkpointer=MemorySaver(),
+                goal_judge_config_reader=reader,
+            )
+            # Turn 1 and turn 2 on the SAME thread — fresh task_id each, the
+            # runtime adapter's per-run contract (langgraph_runtime.run()).
+            for task_id, task_input, wf in (
+                ("task-1", task_1, "wf-tu-turn-1"),
+                ("task-2", task_2, "wf-tu-turn-2"),
+            ):
+                await graph.ainvoke(
+                    {
+                        "task_id": task_id,
+                        "task_input": task_input,
+                        "messages": [],
+                        "workflow_id": wf,
+                    },
+                    config={"configurable": {
+                        "thread_id": "thread-multi-turn",
+                        "task_id": task_id,
+                        "user_id": "u",
+                    }},
+                )
+
+        # Generation fired once PER TURN (not once per thread).
+        assert generate.await_count == 2
+        # Each turn's judge consumed that turn's conditions — turn 2 must NOT
+        # be scored against turn 1's checklist.
+        assert judge.await_count == 2
+        first_call, second_call = judge.call_args_list
+        assert first_call.kwargs["success_conditions"] == turn_1.success_conditions
+        assert second_call.kwargs["success_conditions"] == turn_2.success_conditions
+        # Shadow/consume telemetry published per turn.
+        assert len(_sink.task_understanding) == 2
+        assert (
+            _sink.task_understanding[1]["ai_response"]["restated_intent"]
+            == turn_2.restated_intent
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────
 # Governance recording (§4.7) — Recording + Reasoning pillars
 # ─────────────────────────────────────────────────────────────────────
 
