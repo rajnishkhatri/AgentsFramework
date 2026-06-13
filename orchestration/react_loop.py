@@ -788,8 +788,17 @@ def build_graph(
             # re-enters every evaluate→continue→route iteration). Thin
             # wrapper (AP-5): one try/except; validation lives in components.
             understanding: dict[str, Any] = dict(state.get("task_understanding") or {})
+            # Cross-turn staleness guard (governance audit 3921c61b): thread
+            # state outlives the turn, task_id is minted per run. An artifact
+            # bound to a previous turn's task is regenerated — including
+            # user_edited ones (the edit blessed the OLD turn's criteria).
+            # Within a run task_id is constant, so at-most-once memoization
+            # per run is preserved.
+            tu_stale = bool(understanding) and (
+                state.get("task_understanding_task_id", "") != current_task_id
+            )
             tu_decision_id = ""
-            if not understanding:
+            if not understanding or tu_stale:
                 tu_mode = gj_reader.get().success_conditions_source
                 generated_artifact: TaskUnderstanding | None = None
                 tu_failure = ""
@@ -871,6 +880,8 @@ def build_graph(
                         f"shadow: generated ok{_retry_note}, "
                         "judge consumes deterministic"
                     )
+                if tu_stale:
+                    tu_rationale += " (regenerated: new task on thread)"
                 tu_decision = phase_logger.log_decision(workflow_id, Decision(
                     phase=WorkflowPhase.ROUTING,
                     description="success-conditions source",
@@ -1069,6 +1080,7 @@ def build_graph(
 
             return {
                 "task_understanding": understanding,
+                "task_understanding_task_id": current_task_id,
                 "selected_model": profile.name,
                 "routing_reason": reason,
                 "planning_depth": planning_depth,

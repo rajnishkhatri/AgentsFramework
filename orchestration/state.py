@@ -89,6 +89,14 @@ class AgentState(MessagesState):
     # step 0 in route_node and memoized — route_node re-runs every loop
     # iteration but generation must fire at most once per run.
     task_understanding: dict[str, Any]
+    # The task_id the artifact above was derived for. Thread state outlives
+    # the turn (checkpointer) while task_id is minted per run, so route_node
+    # regenerates when these diverge — a later turn must never be judged
+    # against an earlier turn's conditions (governance audit 3921c61b).
+    # Kept OUTSIDE the artifact dict: its shape is wire-synced to the
+    # frontend kernel, and the edit endpoint replaces the whole dict — a
+    # sibling key survives user edits.
+    task_understanding_task_id: str
     # F10 Tier-2: one cheap-tier "why/how" recap written by reasoning_recap
     # at run end; surfaced to the UI as Custom{name="reasoning_summary"}.
     reasoning_summary: str
