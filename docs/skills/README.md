@@ -16,6 +16,26 @@ Related research: [`goaljudge_evaluation_pipeline_open_axial_coding_rubric.md`](
 
 ---
 
+## Governance trace audit
+
+| Skill | Scope | Start here |
+| --- | --- | --- |
+| [`governance-trace-audit`](governance-trace-audit/SKILL.md) | **This repo only.** Audit a production Langfuse trace against the governance-triangle intent — the four pillars (Recording / Identity / Validation / Reasoning) — and produce a verdict report with a per-pillar scorecard. Corrupt-success check always first; encodes the trace-explainability session's judgment (zero-carrier token seam, accepted-by-design limitations, short-form-for-clean-traces, one-line instrumentation-vs-run-honesty summary). Run it post-deploy or as a compliance/post-implementation review. | [SKILL.md](governance-trace-audit/SKILL.md) |
+
+Benchmarked over two iterations vs no-skill baselines on real production trace
+fixtures: **with-skill 26/27 (96%) vs baseline 11/27 (41%)** — baselines detect
+the anomalies but misclassify caught corrupt-successes as instrumentation
+failures and miss zero-carrier facts. `evals/` (3 real-trace fixtures + 27
+assertions) is included here on purpose: the fixtures double as reference
+traces for the check catalog. `governance-trace-audit.skill` is the packaged,
+installable archive.
+
+Origin/plan: [`docs/plans/trace_explainability_optimization.plan.md`](../plans/trace_explainability_optimization.plan.md)
+(the trace-explainability work this skill enforces). Related:
+[`governanaceTriangle/`](../../governanaceTriangle/) tutorial docs.
+
+---
+
 ## Playwright E2E Skills
 
 Two complementary skills for end-to-end testing this app's streaming agent UI with

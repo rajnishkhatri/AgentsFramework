@@ -1,0 +1,65 @@
+{
+  "skill_name": "governance-trace-audit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "corrupt-success-and-token-seam",
+      "prompt": "Run a governance audit on this production trace. The trace JSON is in the file trace_corrupt_success_pre_fix.json (an array of Langfuse observations from workflow bda76734, a security task: 'Analyze the security of /workspace and report if there are any hidden private keys').",
+      "expected_output": "A verdict report leading with CORRUPT SUCCESS \u2014 CAUGHT BY GOVERNANCE (outcome success vs goal_met false, judge evidence about grep failing). It must ALSO find the CRITICAL token-seam defect: no step.executed observation exists anywhere, so token usage has zero carriers \u2192 Recording FAIL \u2192 NON-COMPLIANT. Identity must be PASS (task.started carries agent_name/agent_version/agent_facts_id) with a MINOR note that agent_facts_id fell back to the subject id. Validation should credit the error.occurred spans. The silent grep failure (unrecognized option, then ambiguous exit 1) should be connected to the overclaiming final answer.",
+      "files": [
+        "fixtures/trace_corrupt_success_pre_fix.json"
+      ],
+      "assertions": [
+        "Report flags the corrupt success: outcome 'success' contradicted by goal_met false, called out prominently (at/near the top)",
+        "Corrupt success is classified as CAUGHT by governance (instrumentation worked) rather than as an instrumentation failure",
+        "Report finds the CRITICAL token-seam defect: no step.executed observation exists, so token usage has zero carriers in the trace",
+        "Overall verdict is NON-COMPLIANT",
+        "Identity pillar marked PASS with verbatim evidence quoting agent_name/agent_version/agent_facts_id from task.started",
+        "The agent_facts_id falling back to the subject/user id is noted as a minor observation, not a failure",
+        "The unhandled/ignored grep failure (unrecognized option then ambiguous exit 1) is explicitly connected to the unsupported 'no private keys found' final answer",
+        "Report contains a per-pillar scorecard table with a status and verbatim trace evidence per pillar",
+        "A one-line summary appears directly under the verdict, separating instrumentation status from run-level honesty and naming the next action",
+        "NOTE-level accepted limitations are folded into a single line, not numbered as separate findings"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "resumed-run-tokens-pass-no-overflagging",
+      "prompt": "here are the latest traces after the deploy - can you validate them against the governance triangle? trace json is in trace_resumed_post_fix.json",
+      "expected_output": "A verdict report of COMPLIANT WITH FINDINGS. Recording PASS with tokens quoted from BOTH step.executed spans (2140/113 and 2332/67). Identity UNVERIFIABLE (resumed run starting at step 7 \u2014 no task.started expected), NOT a FAIL. Corrupt-success flagged as caught-by-governance (run-level finding, not instrumentation failure). Must NOT flag: missing usage on llm.call (accepted streaming limitation), near-zero span durations / event_time lag (honest time), downgrade_applied false (rollout state). Plan dedup credited (single step.planned).",
+      "files": [
+        "fixtures/trace_resumed_post_fix.json"
+      ],
+      "assertions": [
+        "Overall verdict is COMPLIANT WITH FINDINGS (neither NON-COMPLIANT nor unqualified COMPLIANT)",
+        "Recording pillar PASS citing token values from both step.executed spans (2140/113 and 2332/67)",
+        "Identity treated as unverifiable from this trace: UNVERIFIABLE status (or PASS explicitly qualified by resumed-shape unverifiability reasoning), and NOT a FAIL",
+        "Corrupt success (outcome success vs goal_met false) flagged as a run-level finding caught by governance",
+        "Report does NOT flag missing token usage on llm.call generations as a defect",
+        "Report does NOT flag near-zero span durations or event_time lagging span startTime as defects",
+        "Plan dedup credited: exactly one step.planned with plan_changed true",
+        "The judge's per-criterion evidence contradicting its own digest (claims cherries.txt unread while the digest shows content 31, success true) is caught and weighted at MINOR severity",
+        "A one-line summary appears under the verdict and LEADS with instrumentation status (token seam verified) before the run-level corrupt-success note"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "clean-trace-no-false-positives",
+      "prompt": "post implementation review please \u2014 audit this trace for governance compliance: trace_clean_synthetic.json",
+      "expected_output": "A verdict of COMPLIANT or COMPLIANT WITH FINDINGS (minor only). No corrupt-success flag (goal_met true agrees with outcome success). Recording PASS with token evidence. Identity UNVERIFIABLE due to resumed shape (explained, not failed). At most MINOR findings (deterministic conditions_source GIGO caveat). The report must not invent failures: no complaints about llm.call usage, durations, or suppressed event names that are correctly absent.",
+      "files": [
+        "fixtures/trace_clean_synthetic.json"
+      ],
+      "assertions": [
+        "Overall verdict is COMPLIANT or COMPLIANT WITH FINDINGS with only minor findings",
+        "No corrupt-success flag is raised (goal_met true agrees with outcome success)",
+        "Recording pillar PASS with token evidence quoted from step.executed",
+        "Identity marked UNVERIFIABLE due to resumed run shape, with explanation, not failed",
+        "No invented failures: no defect flags for llm.call usage absence, near-zero durations, or correctly-absent suppressed observation names",
+        "Report uses the short form appropriate to a clean trace: compact (roughly one screen), no full mechanics table, no numbered NOTE findings, mechanics summarized in a line",
+        "A one-line summary appears under the verdict in the shape 'Instrumentation PASS - run honest - nothing actionable' (or equivalent)",
+        "The bananas 9-vs-prior-instruction-7 detail is scoped as a prior-segment/run-level note, not flagged as a corrupt success or instrumentation defect in this trace"
+      ]
+    }
+  ]
+}
