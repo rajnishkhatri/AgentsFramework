@@ -136,8 +136,15 @@ relaxation and completion-exemptions are **withdrawn** as unnecessary.
 
 ### R3 — fidelity + truthful telemetry (days; redeploy)
 
-> **Status 2026-06-12: items 1–3 + 5 IMPLEMENTED on main-tree (TDD,
-> failure-first); items 4 (redeploy + 101-row drive) pending.**
+> **Status 2026-06-13: R3 COMPLETE — all items done + verified in prod.**
+> Item 4 (redeploy + 101-row drive) PASSED 2026-06-13: gate-pass **98/101 =
+> 97.0%** (≥96 bar), coverage **77/81 = 95.1%** (≥80%), shadow invariant
+> 101/101, 2 retry recoveries on now-truthful feedback. All 3 fallbacks are
+> the known all-or-nothing grounding false positive (audit `4b8c3f68`),
+> ZERO R3 regressions. Cross-turn staleness fix + R3 telemetry + Identity
+> all verified live (audits `0b54f4e1`, `04fa2506`). Report:
+> `goaljudge_stage2a_shadow_round3.md`. Gate program unblocked for 2b.
+> (Below: 2026-06-12 status during implementation.)
 > Gate meta-benchmark: `tests/fixtures/task_understanding/gate_benchmark_v1.json`
 > (68 must-accept / 2 must-reject / 30-pair adversarial matrix; builder +
 > provenance in `goaljudge_tu_gate_longterm_plan/build_gate_benchmark_fixture.py`)
@@ -174,7 +181,13 @@ relaxation and completion-exemptions are **withdrawn** as unnecessary.
    ~98–99% true rate (occasional case-16-style inventions, retry-recoverable)
    → pass probability ≥98%. Caveat: the corpus only covers the 30-row
    subset's tasks; the other 71 goldset rows are unseen — the gate decision
-   rests on the live n=101 run, not this projection. ⏳ pending.
+   rests on the live n=101 run, not this projection. ✅ PASSED 2026-06-13 —
+   98/101 = 97.0% (Wilson 95% LB ≈ 0.916; binomial P(pass|true 0.97)=0.92).
+   Projection held: trailing-punct cohort fully recovered, 0 R3 regressions.
+   The 3 fallbacks (cases 002/038/065) are the all-or-nothing grounding
+   false positive on action/recommendation conditions (finding #4), fixable
+   by the generic-condition exemption — projected 101/101 with it, NOT
+   required to pass. See `goaljudge_stage2a_shadow_round3.md`.
 5. Coverage reads through the same fixed tokenizer (the metric imports
    `_content_tokens`); expect ≥80% as trailing-dot branch mismatches vanish.
    Thresholds stay ≥95%/≥80% (locked); shadow flag stays ON. ✅ automatic —
