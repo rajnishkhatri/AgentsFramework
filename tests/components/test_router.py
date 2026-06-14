@@ -316,10 +316,10 @@ class TestPlanningDepth:
 class TestDepthCollapseRegression:
     """Depth-collapse fix (planning-pipeline Phase 0).
 
-    Oracle: ``cache/goaljudge_eval/depth_strata_rich.jsonl`` carries the
-    *untruncated* prompts plus the intended depth (``want_depth``) per stratum.
-    (The companion ``depth_strata_corpus.jsonl`` clips ``task`` at 50 chars and
-    is unusable for re-scoring the long L2 rows — use the rich file.)
+    Oracle: ``tests/fixtures/planning_depth/depth_strata_rich.json`` carries
+    the *untruncated* prompts plus the intended depth (``want_depth``) per
+    stratum. Derived from the offline GoalJudge depth-strata run
+    (``cache/goaljudge_eval/depth_strata_rich.jsonl`` when present locally).
 
     Pre-fix, the additive lexical scorer under-scored short single-intent tasks
     ("Plan the Postgres migration.", "Refactor the auth module.") and long
@@ -335,20 +335,15 @@ class TestDepthCollapseRegression:
         from pathlib import Path
 
         path = (
-            Path(__file__).resolve().parents[2]
-            / "cache"
-            / "goaljudge_eval"
-            / "depth_strata_rich.jsonl"
+            Path(__file__).resolve().parents[1]
+            / "fixtures"
+            / "planning_depth"
+            / "depth_strata_rich.json"
         )
+        records = json.loads(path.read_text())
         rows: dict[str, str] = {}
-        with path.open() as handle:
-            for line in handle:
-                line = line.strip()
-                if not line:
-                    continue
-                record = json.loads(line)
-                # dedup on the full prompt; keep the declared intended depth
-                rows[record["prompt"]] = record["want_depth"]
+        for record in records:
+            rows[record["prompt"]] = record["want_depth"]
         return sorted(rows.items())
 
     def test_rich_corpus_reaches_intended_depth(self) -> None:
