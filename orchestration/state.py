@@ -110,6 +110,20 @@ class AgentState(MessagesState):
     # stable for the whole task instead of flipping to L0 after the first
     # tool call. Thread state outlives the turn; a new task_id regenerates.
     planning_depth_task_id: str
+    # Phase 1 (T1 plan-and-execute): the chosen plan artifact (LLM-generated or
+    # the deterministic floor), serialized via PlanArtifact.model_dump. Built
+    # once per task at step 0 and memoized on plan_artifact_task_id — route_node
+    # re-runs every iteration, so without this the LLM plan would be re-requested
+    # (cost) or silently swapped for the deterministic floor on re-entry
+    # (fingerprint churn). The replan gate reuses this stored plan and rebuilds
+    # only when a tool result invalidates it (plan_is_stale). Same memoize-on-
+    # task_id discipline as task_understanding_task_id.
+    plan_artifact: dict[str, Any]
+    plan_artifact_task_id: str
+    # Phase 1 (T1): how many times the plan was rebuilt mid-task because a tool
+    # result invalidated it (plan_is_stale). operator.add like rollback_count;
+    # surfaced on STEP_PLANNED so the trace shows replan activity.
+    replan_count: Annotated[int, operator.add]
 
     workflow_id: str
     registered_agent_id: str

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Literal
+from typing import Callable, Literal
 
 from pydantic import BaseModel, Field
 
@@ -189,6 +189,124 @@ def build_plan_artifact(
         constraints=constraints,
         success_conditions=derive_success_conditions(branches),
     )
+
+
+def _parse_plan(raw: dict, planning_depth: PlanningDepth) -> PlanArtifact:
+    """Coerce a raw LLM plan ``dict`` into a ``PlanArtifact`` (Phase 1, T1).
+
+    Tolerant of the two shapes a model commonly returns for ordered steps —
+    a list of objects (``{"title": ..., "goal": ...}``) or a list of bare
+    strings (the goal). ``step_id`` is always re-assigned contiguously from 1
+    so the artifact passes ``validate_plan_mece`` regardless of what the model
+    numbered. Raises (caught by the caller's floor fallback) on a non-dict or a
+    missing/empty ``ordered_steps`` — a plan with no steps is not a plan.
+
+    Pure (AP-5): no I/O, no LLM. The LLM call happens in the orchestration node
+    and is handed in as the already-decoded ``raw`` dict.
+    """
+    if not isinstance(raw, dict):
+        raise ValueError("plan response is not a JSON object")
+    raw_steps = raw.get("ordered_steps") or raw.get("steps")
+    if not isinstance(raw_steps, list) or not raw_steps:
+        raise ValueError("plan response has no ordered_steps")
+
+    steps: list[PlanStep] = []
+    for index, item in enumerate(raw_steps):
+        if isinstance(item, dict):
+            goal = str(item.get("goal") or item.get("title") or "").strip()
+            title = str(item.get("title") or f"Step {index + 1}").strip()
+        else:
+            goal = str(item).strip()
+            title = f"Step {index + 1}"
+        if not goal:
+            continue
+        steps.append(PlanStep(step_id=len(steps) + 1, title=title, goal=goal))
+    if not steps:
+        raise ValueError("plan response yielded no non-empty steps")
+
+    constraints = [
+        str(c).strip()
+        for c in (raw.get("constraints") or [])
+        if str(c).strip()
+    ] or ["Preserve user intent and requested constraints."]
+    success_conditions = [
+        str(s).strip()
+        for s in (raw.get("success_conditions") or [])
+        if str(s).strip()
+    ]
+    if _GENERIC_TAIL_CONDITION not in success_conditions:
+        success_conditions.append(_GENERIC_TAIL_CONDITION)
+
+    return PlanArtifact(
+        ordered_steps=steps,
+        constraints=constraints,
+        success_conditions=success_conditions,
+    )
+
+
+def build_plan_artifact_llm(
+    planning_depth: PlanningDepth,
+    *,
+    task_input: str,
+    generate: Callable[[str], dict],
+) -> PlanArtifact:
+    """LLM-backed plan with a deterministic floor on any failure (Phase 1, T1).
+
+    Mirrors the TaskUnderstanding generated/deterministic shadow pattern
+    (``react_loop`` route_node ~801): the ``generate`` callable — injected by
+    the orchestration node, the only LLM boundary — returns a raw plan dict.
+    On ANY generation / parse / validation failure the function falls back to
+    :func:`build_plan_artifact`, the deterministic floor that already exists, so
+    the run ALWAYS has a valid, non-empty plan. Framework-agnostic (AP-5): no
+    ``langgraph`` / orchestration import; the LLM is a plain callable.
+
+    ``planning_depth`` still bounds the floor's step count; an LLM plan is
+    trusted to size itself but is validated by :func:`validate_plan_mece`
+    (contiguous step_ids, non-empty MECE goals, non-empty success conditions)
+    before being accepted.
+    """
+    try:
+        raw = generate(task_input)
+        artifact = _parse_plan(raw, planning_depth)
+        if validate_plan_mece(artifact).is_valid:
+            return artifact
+    except Exception:
+        pass
+    return build_plan_artifact(planning_depth, task_input=task_input)
+
+
+def plan_is_stale(plan: PlanArtifact, last_tool_result: dict | None) -> bool:
+    """Whether the most recent tool result invalidates the current plan (T1).
+
+    The replan gate (Phase 1): a *surprising* tool result should re-plan rather
+    than execute an already-wrong plan (plan §2.2 brittle-plan fix). "Surprising"
+    is observed conservatively from scalars on the tool result — no LLM, no
+    AgentState (OBP-2 pure predicate). A result is stale when ANY of:
+
+      - the tool failed: ``ok is False`` OR a non-empty ``error`` (the live
+        ``execute_tool`` schema records ``ok``/``error``), OR
+      - it carries an explicit failure ``outcome`` (``error``/``failed``), OR
+      - it is explicitly flagged ``surprising`` / ``replan`` by an upstream
+        component.
+
+    A successful, expected result is NOT stale — an L0 task or a plan that is
+    tracking reality continues straight to ``evaluate``. Returns ``False`` for
+    an empty plan or a missing/empty tool result (nothing to invalidate).
+    """
+    if not plan.ordered_steps or not last_tool_result:
+        return False
+    if last_tool_result.get("ok") is False:
+        return True
+    if str(last_tool_result.get("error") or "").strip():
+        return True
+    outcome = str(last_tool_result.get("outcome", "")).strip().lower()
+    if outcome in ("error", "failed", "failure"):
+        return True
+    if bool(last_tool_result.get("surprising")) or bool(
+        last_tool_result.get("replan")
+    ):
+        return True
+    return False
 
 
 # Generic tail condition appended to every floor output. Matches the judge

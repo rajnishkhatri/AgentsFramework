@@ -30,8 +30,12 @@ from components.evaluator import (
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
+from components.plan_builder import build_plan_artifact_llm
+from components.plan_builder import PlanArtifact
 from components.plan_builder import compute_plan_fingerprint
+from components.plan_builder import plan_is_stale
 from components.plan_builder import validate_plan_mece
+from components.plan_generator import PlanGenerator
 from components.schemas import ErrorRecord, TaskUnderstanding
 from components.task_understanding import (
     TaskUnderstandingGenerator,
@@ -549,6 +553,16 @@ def build_graph(
         profile=judge_profile,
     )
 
+    # Phase 1 (T1 plan-and-execute): fast-tier LLM plan decomposition. Same
+    # shadow-first discipline as task_understanding — no LLM call until the
+    # plan_source flag is "shadow"/"generated" and only at step 0 (route_node
+    # memoizes the depth per task, so the plan is built once per task).
+    plan_generator = PlanGenerator(
+        llm_service=llm_service,
+        prompt_service=prompt_service,
+        profile=judge_profile,
+    )
+
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
     # ── Story 1.2 + 1.4: guard_input_node with rejection branching + AgentFacts ──
@@ -794,10 +808,73 @@ def build_graph(
                     task_input=state.get("task_input", ""),
                     task_tool_results_count=task_tool_results_count,
                 )
-            plan_artifact = build_plan_artifact(
-                planning_depth,
-                task_input=state.get("task_input", ""),
+
+            # ── Phase 1 (T1): build / reuse / replan the plan artifact ──────
+            # The plan is built once per task and memoized (mirroring depth).
+            # On re-entry it is reused as-is UNLESS the latest tool result
+            # invalidated it (plan_is_stale) — the replan gate (plan §2.2). A
+            # rebuild after a surprising result re-decomposes from the task
+            # rather than executing an already-wrong plan.
+            plan_source = getattr(agent_config, "plan_source", "deterministic")
+            stored_plan_raw = state.get("plan_artifact") or {}
+            plan_is_fresh = (
+                bool(stored_plan_raw)
+                and state.get("plan_artifact_task_id", "") == current_task_id
             )
+            task_tool_rows = [
+                tr
+                for tr in (state.get("tool_results") or [])
+                if tr.get("task_id", "") == current_task_id
+            ]
+            last_tool_result = task_tool_rows[-1] if task_tool_rows else None
+            replan_increment = 0
+            plan_generated = False
+            plan_gen_failure = ""
+
+            if plan_is_fresh:
+                try:
+                    plan_artifact = PlanArtifact.model_validate(stored_plan_raw)
+                except Exception:
+                    plan_artifact = build_plan_artifact(
+                        planning_depth, task_input=state.get("task_input", "")
+                    )
+                if plan_is_stale(plan_artifact, last_tool_result):
+                    # Surprising tool result — re-plan from scratch (deterministic
+                    # rebuild; the LLM re-plan would re-incur cost and the floor
+                    # is the safe brittle-plan backstop). Counts as a replan.
+                    plan_artifact = build_plan_artifact(
+                        planning_depth, task_input=state.get("task_input", "")
+                    )
+                    replan_increment = 1
+            else:
+                # Step-0 build for this task. plan_source gates the LLM call:
+                # "deterministic" never calls the model; "shadow" generates but
+                # consumes the floor; "generated" consumes the LLM plan with the
+                # floor as fallback. Shadow/generated both reach for the LLM here.
+                plan_artifact = build_plan_artifact(
+                    planning_depth, task_input=state.get("task_input", "")
+                )
+                if plan_source in ("shadow", "generated"):
+                    raw_plan: dict[str, Any] | None = None
+                    try:
+                        raw_plan = await plan_generator.generate(
+                            task_input=state.get("task_input", ""),
+                            planning_depth=planning_depth,
+                        )
+                    except Exception as exc:
+                        plan_gen_failure = f"{type(exc).__name__}: {exc}"
+                    if raw_plan is not None:
+                        # build_plan_artifact_llm owns parse/validate + floor.
+                        generated_artifact = build_plan_artifact_llm(
+                            planning_depth,
+                            task_input=state.get("task_input", ""),
+                            generate=lambda _t, _r=raw_plan: _r,
+                        )
+                        plan_generated = generated_artifact != build_plan_artifact(
+                            planning_depth, task_input=state.get("task_input", "")
+                        )
+                        if plan_source == "generated":
+                            plan_artifact = generated_artifact
 
             # task_understanding plan §4.5: generate the TaskUnderstanding
             # artifact once per run (memoized on the state key — route_node
@@ -987,7 +1064,17 @@ def build_graph(
                 "decision_id": tu_decision_id,
                 "plan_fingerprint": plan_fingerprint,
                 "plan_changed": plan_changed,
+                # Phase 1 (T1) provenance: how this plan was produced and
+                # whether the replan gate fired this pass. plan_source is the
+                # flag; plan_generated marks that an LLM plan was consumed (vs
+                # the deterministic floor); replanned marks a mid-task rebuild
+                # after a surprising tool result.
+                "plan_source": plan_source,
+                "plan_generated": plan_generated,
+                "replanned": bool(replan_increment),
             }
+            if plan_gen_failure:
+                step_planned_details["plan_gen_failure"] = plan_gen_failure
             # E8 (Reasoning pillar): on a CHANGED plan, carry a capped summary of
             # the ordered-step titles so the trace shows WHAT was planned without
             # opening the plan payload. Unchanged re-emissions stay lean (the
@@ -1102,6 +1189,9 @@ def build_graph(
                 "planning_depth": planning_depth,
                 "planning_depth_reason": planning_depth_reason,
                 "planning_depth_task_id": current_task_id,
+                "plan_artifact": plan_artifact.model_dump(mode="json"),
+                "plan_artifact_task_id": current_task_id,
+                "replan_count": replan_increment,
                 "files": {
                     plan_ref: json.dumps(plan_payload, sort_keys=True),
                 },

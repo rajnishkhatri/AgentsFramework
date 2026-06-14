@@ -8,6 +8,8 @@ AgentConfig holds global agent-level configuration.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -49,6 +51,15 @@ class AgentConfig(BaseModel):
     # (gather verdicts, change nothing) before the gate is enabled. Default
     # off — stays off until the gold-set production-enable gate is met.
     goal_judge_downgrade_enabled: bool = False
+    # Phase 1 (T1 plan-and-execute): source of the route_node plan artifact.
+    #   "deterministic" — regex ``build_plan_artifact`` (steady-state, default).
+    #   "shadow"        — LLM plan is generated + captured for eval, but the
+    #                     deterministic artifact is what the run consumes.
+    #   "generated"     — LLM plan is consumed, with ``build_plan_artifact`` as
+    #                     the floor on any parse/validation failure.
+    # Default stays deterministic so CI is L2-pure (no live LLM) and steady
+    # state is unchanged; promote on evidence (GoalJudge shadow->consume idiom).
+    plan_source: Literal["deterministic", "shadow", "generated"] = "deterministic"
 
 
 def default_fast_profile() -> ModelProfile:

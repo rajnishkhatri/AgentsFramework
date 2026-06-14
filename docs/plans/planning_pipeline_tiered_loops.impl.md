@@ -178,10 +178,51 @@ tool, `task_tool_results_count > 0 → L0` flips a correct L1/L2 to L0 on the *n
 
 ---
 
-## 4. Phase 1 — T1 Plan-and-Execute + replan gate
+## 4. Phase 1 — T1 Plan-and-Execute + replan gate ✅ DONE (2026-06-14)
 
-**Goal.** Replace the regex plan with an LLM plan (deterministic floor on failure) and add the replan back-edge
+**Goal.** Replace the regex plan with an LLM plan (deterministic floor on failure) and add the replan gate
 so a surprising tool result re-plans instead of executing an already-wrong plan (plan §2.2 brittle-plan fix).
+
+> **Status: implemented and verified (1834 passed, 0 failed).** Two scoping decisions settled before authoring
+> diverged from the §4.2 sketch below and are now the as-built reality:
+>
+> 1. **Planner sited in-place in `route_node`, not a separate `planner_node`.** The plan was *already* built
+>    inside `route_node` (the `build_plan_artifact` call, with fingerprint + `STEP_PLANNED` + the memoize gate all
+>    living there). Adding a parallel node would duplicate that machinery and rewire the entry topology. Instead
+>    the in-place `build_plan_artifact` call was upgraded to the shadow-first generated/floor logic, keeping
+>    orchestration thin (the node unpacks state → calls the component → returns a delta; no planning logic) and
+>    the diff small + revertible. Four-layer + AGENTS.md compliance held: `plan_builder.py` stays pure, the new
+>    `PlanGenerator` is framework-agnostic (no `langgraph`/orchestration import — verified by the directory-wide
+>    `test_components_no_framework_imports` scan).
+> 2. **Shadow-first rollout.** New `AgentConfig.plan_source: "deterministic"|"shadow"|"generated" = "deterministic"`.
+>    Default is deterministic so CI stays L2-pure (no live LLM) and steady state is unchanged; `shadow` generates +
+>    captures the LLM plan but consumes the floor; `generated` consumes the LLM plan with the floor as the failure
+>    backstop. Same shadow→consume discipline as GoalJudge.
+> 3. **No new graph edge for replan.** The §4.2 "convert `execute_tool → evaluate` to a conditional back-edge"
+>    proved harmful — it would skip `evaluate` (cost tracking, continuation, GoalJudge continuity). The replan gate
+>    instead lives in `route_node`'s stale check: the existing loop `route → call_llm → execute_tool → evaluate →
+>    [continue] → route` already returns to `route`, which reuses the memoized plan and rebuilds only when
+>    `plan_is_stale` fires on the latest tool result. Topology is unchanged — strictly more revertible.
+
+### 4.0 As-built file map
+
+| File | Change |
+|---|---|
+| [`components/plan_builder.py`](../../components/plan_builder.py) | `build_plan_artifact_llm(planning_depth, *, task_input, generate)` (parse/validate/floor), `_parse_plan` (tolerant: object-steps or bare-string steps, re-numbers `step_id`), `plan_is_stale(plan, last_tool_result)` (pure predicate over the live `ok`/`error` schema + `outcome`/`surprising`/`replan` flags). |
+| [`components/plan_generator.py`](../../components/plan_generator.py) | **NEW.** `PlanGenerator` — the LLM boundary: renders `plan_builder_prompt.j2`, invokes fast-tier, returns the decoded raw dict (or raises). Mirrors `TaskUnderstandingGenerator`. Floor/validate is the caller's job. |
+| [`prompts/plan_builder_prompt.j2`](../../prompts/plan_builder_prompt.j2) | **NEW.** Ordered-steps + constraints + success_conditions, depth-gated. |
+| [`services/base_config.py`](../../services/base_config.py) | `plan_source` flag (above). |
+| [`orchestration/state.py`](../../orchestration/state.py) | `plan_artifact: dict` + `plan_artifact_task_id: str` (memoize the chosen plan per task; stable fingerprint across re-entry) + `replan_count: Annotated[int, operator.add]`. |
+| [`orchestration/react_loop.py`](../../orchestration/react_loop.py) | Construct `PlanGenerator`; in `route_node` reuse/replan/build the plan; carry `plan_source`/`plan_generated`/`replanned` on `STEP_PLANNED`; persist the new state keys. |
+
+### 4.0a Tests (failure-first, all green)
+
+- **Protocol C** ([`tests/components/test_plan_builder.py`](../../tests/components/test_plan_builder.py)): the four floor-fallback rows (raise / empty-steps / garbage-shape / MECE-fail) land **before** the consume-success row; `plan_is_stale` matrix incl. the live `ok`/`error` schema and the not-stale default.
+- **Protocol C** ([`tests/components/test_plan_generator.py`](../../tests/components/test_plan_generator.py)): mocked LLM, failure paths (transport raise / malformed JSON / array response) first, then the decoded-dict + fenced-JSON happy paths. Never asserts exact prompt text (AP3).
+- **Protocol D** ([`tests/orchestration/test_tier_topology_sim.py`](../../tests/orchestration/test_tier_topology_sim.py)): the brittle-plan row — a failed tool result drives `replan_count ≥ 1` (and depth holds L1, no collapse); the stable control never replans; `plan_source="generated"` consumes the 3-step LLM plan end-to-end.
+- **No regression:** 1834 passed across `orchestration/ components/ architecture/ services/ middleware/`.
+
+### 4.x Original sketch (superseded by the as-built notes above)
 
 ### 4.1 Component change — `components/plan_builder.py` (OBP-1)
 
