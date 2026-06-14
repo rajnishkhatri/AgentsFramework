@@ -1,0 +1,59 @@
+{
+  "expectations": [
+    {
+      "text": "Ships a Tier-A deterministic L1 check (100%)",
+      "passed": false,
+      "evidence": "missing: tier-?a"
+    },
+    {
+      "text": "L1 check lives in services/ with no framework imports",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Adds an offline CI regression row",
+      "passed": false,
+      "evidence": "missing: benchmark"
+    },
+    {
+      "text": "Uses python -m meta.run_eval to score",
+      "passed": true,
+      "evidence": "meta.run_eval"
+    },
+    {
+      "text": "Open coding precedes the rubric",
+      "passed": false,
+      "evidence": "missing: open coding"
+    },
+    {
+      "text": "Explicitly says NOT to build a judge on day one",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Picks an altitude explicitly (span)",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Notes the seam is deterministic (no LLM) \u2192 truncation/omission failures",
+      "passed": true,
+      "evidence": "truncation"
+    },
+    {
+      "text": "Requires the telemetry publish/sink, not just eval_capture.record",
+      "passed": true,
+      "evidence": "publish_"
+    },
+    {
+      "text": "100% framed as compaction invocations (rare), not all traffic",
+      "passed": false,
+      "evidence": ""
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.3,
+    "passed": 3,
+    "total": 10
+  }
+}

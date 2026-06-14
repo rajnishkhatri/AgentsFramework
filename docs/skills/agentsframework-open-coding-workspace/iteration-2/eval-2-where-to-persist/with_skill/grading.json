@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Recommends a Langfuse DATASET over scores and annotation queue",
+      "passed": true,
+      "evidence": "recommends dataset"
+    },
+    {
+      "text": "Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)",
+      "passed": true,
+      "evidence": "scores scatter; queue run.started; hobby cap"
+    },
+    {
+      "text": "Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow",
+      "passed": true,
+      "evidence": "names exporter + idempotent"
+    }
+  ]
+}

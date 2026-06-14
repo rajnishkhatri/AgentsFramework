@@ -1,0 +1,8 @@
+{"eval_id":0,"eval_name":"code-three-traces-end-to-end","prompt":"Set me up to open-code 3 traces and show how the coded result reaches a Langfuse dataset, stopping before --write.",
+ "assertions":[
+  {"text":"Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py","key":"uses_bundled_server"},
+  {"text":"Makes a session work dir and copies/uses coder.html there rather than editing a coder in place","key":"workdir_copy"},
+  {"text":"Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)","key":"enter_to_commit"},
+  {"text":"Runs the dataset exporter as a DRY RUN and stops before --write","key":"dry_run_stop"},
+  {"text":"States the Langfuse dataset is the review surface","key":"dataset_surface"}
+ ]}

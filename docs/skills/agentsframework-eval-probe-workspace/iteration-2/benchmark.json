@@ -1,0 +1,463 @@
+{
+  "metadata": {
+    "skill_name": "agentsframework-eval-probe",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-06-13T22:03:47Z",
+    "evals_run": [
+      0,
+      1,
+      2
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 11,
+        "failed": 0,
+        "total": 11,
+        "time_seconds": 155.9,
+        "tokens": 74634,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Picks TRACE altitude (not span) for the planner",
+          "passed": true,
+          "evidence": "TRACE altitude"
+        },
+        {
+          "text": "Justifies altitude by trajectory dependence",
+          "passed": true,
+          "evidence": "trajectory"
+        },
+        {
+          "text": "Identifies the real seam (router/select_planning_depth) since plan_builder is deterministic",
+          "passed": true,
+          "evidence": "select_planning_depth"
+        },
+        {
+          "text": "Capture payload carries planning_depth + depth_reason for trace scoring",
+          "passed": true,
+          "evidence": "planning_depth | reason"
+        },
+        {
+          "text": "Starts with Phase 0 / open coding BEFORE a judge",
+          "passed": true,
+          "evidence": "Phase 0 | Open coding"
+        },
+        {
+          "text": "Ships a Tier-A deterministic L1 check first",
+          "passed": true,
+          "evidence": "Tier-A | L1 | deterministic"
+        },
+        {
+          "text": "Defers the gold-set/judge track as on-demand",
+          "passed": true,
+          "evidence": "on-demand"
+        },
+        {
+          "text": "Cadence-first loop trigger (2-4 weeks)",
+          "passed": true,
+          "evidence": "2\u20134 week"
+        },
+        {
+          "text": "Includes the bias-corrected success rate \u03b8\u0302",
+          "passed": true,
+          "evidence": "\u03b8\u0302"
+        },
+        {
+          "text": "References the fail-closed \u00a72.8 enable-gate",
+          "passed": true,
+          "evidence": "fail-closed"
+        },
+        {
+          "text": "Does NOT propose a 1-5 Likert judge (binary only)",
+          "passed": true,
+          "evidence": "absent or only negated"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 10,
+        "failed": 0,
+        "total": 10,
+        "time_seconds": 147.8,
+        "tokens": 69010,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Ships a Tier-A deterministic L1 check (100%)",
+          "passed": true,
+          "evidence": "Tier-A | deterministic | 100%"
+        },
+        {
+          "text": "L1 check lives in services/ with no framework imports",
+          "passed": true,
+          "evidence": "services/summarizer_eval.py`, no framework"
+        },
+        {
+          "text": "Adds an offline CI regression row",
+          "passed": true,
+          "evidence": "benchmark | regression"
+        },
+        {
+          "text": "Uses python -m meta.run_eval to score",
+          "passed": true,
+          "evidence": "meta.run_eval"
+        },
+        {
+          "text": "Open coding precedes the rubric",
+          "passed": true,
+          "evidence": "Open coding | Phase 2"
+        },
+        {
+          "text": "Explicitly says NOT to build a judge on day one",
+          "passed": true,
+          "evidence": "did **not** build a judge"
+        },
+        {
+          "text": "Picks an altitude explicitly (span)",
+          "passed": true,
+          "evidence": "Altitude: span"
+        },
+        {
+          "text": "Notes the seam is deterministic (no LLM) \u2192 truncation/omission failures",
+          "passed": true,
+          "evidence": "no model"
+        },
+        {
+          "text": "Requires the telemetry publish/sink, not just eval_capture.record",
+          "passed": true,
+          "evidence": "publish_"
+        },
+        {
+          "text": "100% framed as compaction invocations (rare), not all traffic",
+          "passed": true,
+          "evidence": "100% of compaction"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 141.9,
+        "tokens": 56296,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reaches for the transition failure matrix",
+          "passed": true,
+          "evidence": "transition failure matrix"
+        },
+        {
+          "text": "Data-driven, explicitly NOT by gut/intuition",
+          "passed": true,
+          "evidence": "don't pick by gut"
+        },
+        {
+          "text": "Rows/cols = last-clean-state x first-failure-state",
+          "passed": true,
+          "evidence": "Row | Column | first-failure"
+        },
+        {
+          "text": "Reuses existing first-failure attribution sources",
+          "passed": true,
+          "evidence": "guardrail_validator | goal_judge | synthesis_validator"
+        },
+        {
+          "text": "Notes the meta/analysis.py aggregator is not yet built",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Picks the highest-count cell as the next seam",
+          "passed": true,
+          "evidence": "highest-count cell"
+        },
+        {
+          "text": "Run the matrix anyway on thin data (directional)",
+          "passed": true,
+          "evidence": "directional"
+        },
+        {
+          "text": "Re-attributes the completion/evaluation attribution sink",
+          "passed": true,
+          "evidence": "attribution sink"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 0,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.8181818181818182,
+        "passed": 9,
+        "failed": 0,
+        "total": 11,
+        "time_seconds": 108.3,
+        "tokens": 56556,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Picks TRACE altitude (not span) for the planner",
+          "passed": true,
+          "evidence": "trace-altitude"
+        },
+        {
+          "text": "Justifies altitude by trajectory dependence",
+          "passed": true,
+          "evidence": "trajectory"
+        },
+        {
+          "text": "Identifies the real seam (router/select_planning_depth) since plan_builder is deterministic",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Capture payload carries planning_depth + depth_reason for trace scoring",
+          "passed": false,
+          "evidence": "missing: depth_reason|reason"
+        },
+        {
+          "text": "Starts with Phase 0 / open coding BEFORE a judge",
+          "passed": true,
+          "evidence": "Phase 0 | Open coding"
+        },
+        {
+          "text": "Ships a Tier-A deterministic L1 check first",
+          "passed": true,
+          "evidence": "Tier-A | L1 | deterministic"
+        },
+        {
+          "text": "Defers the gold-set/judge track as on-demand",
+          "passed": true,
+          "evidence": "on-demand"
+        },
+        {
+          "text": "Cadence-first loop trigger (2-4 weeks)",
+          "passed": true,
+          "evidence": "2\u20134 week"
+        },
+        {
+          "text": "Includes the bias-corrected success rate \u03b8\u0302",
+          "passed": true,
+          "evidence": "\u03b8\u0302"
+        },
+        {
+          "text": "References the fail-closed \u00a72.8 enable-gate",
+          "passed": true,
+          "evidence": "fail-closed"
+        },
+        {
+          "text": "Does NOT propose a 1-5 Likert judge (binary only)",
+          "passed": true,
+          "evidence": "absent or only negated"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 1,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.3,
+        "passed": 3,
+        "failed": 0,
+        "total": 10,
+        "time_seconds": 131.7,
+        "tokens": 68747,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Ships a Tier-A deterministic L1 check (100%)",
+          "passed": false,
+          "evidence": "missing: tier-?a"
+        },
+        {
+          "text": "L1 check lives in services/ with no framework imports",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Adds an offline CI regression row",
+          "passed": false,
+          "evidence": "missing: benchmark"
+        },
+        {
+          "text": "Uses python -m meta.run_eval to score",
+          "passed": true,
+          "evidence": "meta.run_eval"
+        },
+        {
+          "text": "Open coding precedes the rubric",
+          "passed": false,
+          "evidence": "missing: open coding"
+        },
+        {
+          "text": "Explicitly says NOT to build a judge on day one",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Picks an altitude explicitly (span)",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Notes the seam is deterministic (no LLM) \u2192 truncation/omission failures",
+          "passed": true,
+          "evidence": "truncation"
+        },
+        {
+          "text": "Requires the telemetry publish/sink, not just eval_capture.record",
+          "passed": true,
+          "evidence": "publish_"
+        },
+        {
+          "text": "100% framed as compaction invocations (rare), not all traffic",
+          "passed": false,
+          "evidence": ""
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 2,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 0,
+        "total": 8,
+        "time_seconds": 74.3,
+        "tokens": 40422,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "Reaches for the transition failure matrix",
+          "passed": true,
+          "evidence": "transition failure matrix"
+        },
+        {
+          "text": "Data-driven, explicitly NOT by gut/intuition",
+          "passed": true,
+          "evidence": "not pick by gut"
+        },
+        {
+          "text": "Rows/cols = last-clean-state x first-failure-state",
+          "passed": true,
+          "evidence": "Row | Column | first-failure"
+        },
+        {
+          "text": "Reuses existing first-failure attribution sources",
+          "passed": true,
+          "evidence": "guardrail_validator | goal_judge | synthesis_validator"
+        },
+        {
+          "text": "Notes the meta/analysis.py aggregator is not yet built",
+          "passed": false,
+          "evidence": ""
+        },
+        {
+          "text": "Picks the highest-count cell as the next seam",
+          "passed": true,
+          "evidence": "highest-count cell"
+        },
+        {
+          "text": "Run the matrix anyway on thin data (directional)",
+          "passed": true,
+          "evidence": "directional"
+        },
+        {
+          "text": "Re-attributes the completion/evaluation attribution sink",
+          "passed": true,
+          "evidence": "attribution sink"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.9583,
+        "stddev": 0.0722,
+        "min": 0.875,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 148.5333,
+        "stddev": 7.0288,
+        "min": 141.9,
+        "max": 155.9
+      },
+      "tokens": {
+        "mean": 66646.6667,
+        "stddev": 9394.6564,
+        "min": 56296,
+        "max": 74634
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.6644,
+        "stddev": 0.3169,
+        "min": 0.3,
+        "max": 0.875
+      },
+      "time_seconds": {
+        "mean": 104.7667,
+        "stddev": 28.8627,
+        "min": 74.3,
+        "max": 131.7
+      },
+      "tokens": {
+        "mean": 55241.6667,
+        "stddev": 14208.167,
+        "min": 40422,
+        "max": 68747
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.29",
+      "time_seconds": "+43.8",
+      "tokens": "+11405"
+    }
+  },
+  "notes": []
+}

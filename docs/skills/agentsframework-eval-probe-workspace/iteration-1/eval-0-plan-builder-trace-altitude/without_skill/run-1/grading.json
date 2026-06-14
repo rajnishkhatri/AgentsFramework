@@ -1,0 +1,64 @@
+{
+  "expectations": [
+    {
+      "text": "Picks TRACE altitude (not span) for the planner",
+      "passed": true,
+      "evidence": "trace explains the plan's altitude"
+    },
+    {
+      "text": "Justifies altitude by trajectory dependence",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Identifies the real seam (router/select_planning_depth) since plan_builder is deterministic",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Capture payload carries planning_depth + depth_reason for trace scoring",
+      "passed": true,
+      "evidence": "planning_depth | Reason"
+    },
+    {
+      "text": "Starts with Phase 0 / open coding BEFORE a judge",
+      "passed": false,
+      "evidence": "missing: phase 0"
+    },
+    {
+      "text": "Ships a Tier-A deterministic L1 check first",
+      "passed": false,
+      "evidence": "missing: tier-?a"
+    },
+    {
+      "text": "Defers the gold-set/judge track as on-demand",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Cadence-first loop trigger (2-4 weeks)",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Includes the bias-corrected success rate \u03b8\u0302",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "References the fail-closed \u00a72.8 enable-gate",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "Does NOT propose a 1-5 Likert judge (binary only)",
+      "passed": true,
+      "evidence": "absent or only negated"
+    }
+  ],
+  "summary": {
+    "pass_rate": 0.2727272727272727,
+    "passed": 3,
+    "total": 11
+  }
+}

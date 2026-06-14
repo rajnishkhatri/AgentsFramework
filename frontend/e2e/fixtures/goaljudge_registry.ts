@@ -8,6 +8,7 @@
  */
 import registry from "./goaljudge_registry.json" with { type: "json" };
 import freshTasks from "./goaljudge_fresh_tasks.json" with { type: "json" };
+import depthStrata from "./goaljudge_depth_strata.json" with { type: "json" };
 
 export type GoalJudgeRegistryCase = {
   id: string;
@@ -101,6 +102,18 @@ export function freshRegistryCases(): GoalJudgeRegistryCase[] {
   );
 }
 
+/**
+ * Planning-depth strata (GJ-DEPTH-*): prompts engineered to span L0/L1/L2 to
+ * stress the D1 planning-depth dimension the registry doesn't cover. The
+ * intended depth + trigger family lives in `stratum` (`depth:Lx:family`).
+ * Regenerate: `python scripts/export_goaljudge_depth_strata_json.py`.
+ */
+export function depthStrataCases(): GoalJudgeRegistryCase[] {
+  return (depthStrata as GoalJudgeRegistryCase[]).sort((a, b) =>
+    a.id.localeCompare(b.id, undefined, { numeric: true }),
+  );
+}
+
 function batchModeCases(): GoalJudgeRegistryCase[] {
   const mode = process.env.GOALJUDGE_BATCH_MODE ?? "walkthrough";
   if (mode === "pilot") {
@@ -108,6 +121,9 @@ function batchModeCases(): GoalJudgeRegistryCase[] {
   }
   if (mode === "fresh") {
     return freshRegistryCases();
+  }
+  if (mode === "depth") {
+    return depthStrataCases();
   }
   return walkthroughCases();
 }

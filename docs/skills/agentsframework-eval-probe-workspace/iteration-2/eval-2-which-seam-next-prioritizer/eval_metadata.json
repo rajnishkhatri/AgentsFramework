@@ -1,0 +1,25 @@
+{
+  "eval_id": 2,
+  "eval_name": "which-seam-next-prioritizer",
+  "prompt": "We have a dozen LLM calls across the pipeline and limited time. Which component should we instrument for eval first, and how would you decide?",
+  "assertions": [
+    {
+      "text": "Reaches for the transition failure matrix"
+    },
+    {
+      "text": "Data-driven, explicitly NOT by gut/intuition"
+    },
+    {
+      "text": "Rows/cols = last-clean-state x first-failure-state"
+    },
+    {
+      "text": "Reuses existing first-failure attribution sources"
+    },
+    {
+      "text": "Notes the meta/analysis.py aggregator is not yet built"
+    },
+    {
+      "text": "Picks the highest-count cell as the next seam"
+    }
+  ]
+}

@@ -1,0 +1,1390 @@
+{
+  "exit_reason": "max_iterations (5)",
+  "original_description": "Add and operate a continuous-evaluation PROBE on any LLM-call seam in THIS repository (the AgentsFramework `agent` monorepo). Walks a component from open coding -> failure/improvement taxonomy -> axial coding -> rubric -> judge -> a registered probe (L1 deterministic 100%, L2 sampled judge 5-10%, L3 drift, offline CI regression, per-component enable-gate), then keeps it healthy with a cadence + drift loop that re-opens error analysis. Tiered: a light Tier-A probe ships first; the gold-set + judge track is earned on-demand. Use this whenever the work is \"add an eval probe\", \"monitor this component\", \"instrument a seam for evaluation\", \"add a regression benchmark\", \"wire up drift detection\", \"which component should we evaluate next\", \"build a judge/rubric for X\", \"add continuous monitoring\", or \"close the production-failure -> regression-test loop\" \u2014 even when the user names only the component (summarizer, plan_builder, router, a tool call) and not the word \"probe\". Builds on meta/drift.py, meta/judge.py, eval_capture, observability, and the guardrail/GoalJudge precedents. For the GoalJudge-specific calibration flip path defer to agentsframework-eval; for the generic provider-agnostic methodology defer to llm-eval-grounded-theory; for trace-pillar audits defer to governance-trace-audit.",
+  "best_description": "Add and operate a continuous-evaluation PROBE on any LLM-call seam in THIS repository (the AgentsFramework `agent` monorepo). Walks a component from open coding -> failure/improvement taxonomy -> axial coding -> rubric -> judge -> a registered probe (L1 deterministic 100%, L2 sampled judge 5-10%, L3 drift, offline CI regression, per-component enable-gate), then keeps it healthy with a cadence + drift loop that re-opens error analysis. Tiered: a light Tier-A probe ships first; the gold-set + judge track is earned on-demand. Use this whenever the work is \"add an eval probe\", \"monitor this component\", \"instrument a seam for evaluation\", \"add a regression benchmark\", \"wire up drift detection\", \"which component should we evaluate next\", \"build a judge/rubric for X\", \"add continuous monitoring\", or \"close the production-failure -> regression-test loop\" \u2014 even when the user names only the component (summarizer, plan_builder, router, a tool call) and not the word \"probe\". Builds on meta/drift.py, meta/judge.py, eval_capture, observability, and the guardrail/GoalJudge precedents. For the GoalJudge-specific calibration flip path defer to agentsframework-eval; for the generic provider-agnostic methodology defer to llm-eval-grounded-theory; for trace-pillar audits defer to governance-trace-audit.",
+  "best_score": "4/8",
+  "best_train_score": "6/12",
+  "best_test_score": "4/8",
+  "final_description": "Use this skill when you want to prevent LLM component bugs from regressing. Triggers for requests to: monitor a component's quality over time (summarizer, plan_builder, router, output_validation, guardrail_validator, etc.), create regression tests from production failures, add evaluation or instrumentation to catch issues before production, build scoring rubrics or judges, set up drift detection or quality alerts, or ensure a fixed bug stays fixed. Also triggers when describing ongoing component issues without using eval terminology\u2014phrases like \"the summarizer keeps dropping items\", \"validation fails too often\", \"I want fixtures for must-accept/must-reject cases\", or \"instrument X so we catch this in CI\". Walks you from analyzing failures to shipping deterministic checks and CI gates, optionally adding LLM judges and continuous monitoring.",
+  "iterations_run": 5,
+  "holdout": 0.4,
+  "train_size": 12,
+  "test_size": 8,
+  "history": [
+    {
+      "iteration": 1,
+      "description": "Add and operate a continuous-evaluation PROBE on any LLM-call seam in THIS repository (the AgentsFramework `agent` monorepo). Walks a component from open coding -> failure/improvement taxonomy -> axial coding -> rubric -> judge -> a registered probe (L1 deterministic 100%, L2 sampled judge 5-10%, L3 drift, offline CI regression, per-component enable-gate), then keeps it healthy with a cadence + drift loop that re-opens error analysis. Tiered: a light Tier-A probe ships first; the gold-set + judge track is earned on-demand. Use this whenever the work is \"add an eval probe\", \"monitor this component\", \"instrument a seam for evaluation\", \"add a regression benchmark\", \"wire up drift detection\", \"which component should we evaluate next\", \"build a judge/rubric for X\", \"add continuous monitoring\", or \"close the production-failure -> regression-test loop\" \u2014 even when the user names only the component (summarizer, plan_builder, router, a tool call) and not the word \"probe\". Builds on meta/drift.py, meta/judge.py, eval_capture, observability, and the guardrail/GoalJudge precedents. For the GoalJudge-specific calibration flip path defer to agentsframework-eval; for the generic provider-agnostic methodology defer to llm-eval-grounded-theory; for trace-pillar audits defer to governance-trace-audit.",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "close the loop between production failures and our regression tests for the synthesis component \u2014 when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what \u2014 how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch \u2014 open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "test_summarizer.py is flaky \u2014 it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "description": "Use this to add continuous evaluation and regression testing to any LLM component in the AgentsFramework agent monorepo. Triggers when you need to: instrument a component so failures don't regress silently, build a judge or rubric to score quality, set up drift detection or alerts when metrics slide, freeze production failures into CI benchmarks (must-accept/must-reject fixtures), catch regressions in the build instead of three weeks later, score or monitor a specific component (summarizer, plan_builder, router, output_validation, guardrail_validator, etc.), or close the loop from \"we fixed this bug\" to \"it can never break again without CI failing\". Covers the full path: read failures \u2192 build taxonomy \u2192 ship deterministic checks + offline regression tests \u2192 optionally add a sampled judge + drift loop. Even if the user just says \"the summarizer keeps dropping action items\" or \"I want to make sure validation quality doesn't slide\", treat it as a probe/eval request.",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "close the loop between production failures and our regression tests for the synthesis component \u2014 when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what \u2014 how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "test_summarizer.py is flaky \u2014 it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch \u2014 open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "description": "Use this skill when you need to prevent LLM component regressions in the AgentsFramework repo. Triggers for: \"build a rubric for [component]\", \"add drift detection\", \"instrument [component] for evaluation\", \"freeze this bug so it can't regress\", \"catch [component] failures in CI\", \"set up monitoring/alerts for quality slide\", \"make sure [issue] never happens again\", or any mention of specific components (summarizer, plan_builder, router, output_validation, guardrail_validator) paired with quality/failure concerns. Also triggers when describing repeated production failures even without the word \"eval\" \u2014 e.g. \"the summarizer keeps dropping action items\" or \"validation fails more than expected\". Walks you from failure analysis \u2192 deterministic checks + CI benchmarks \u2192 optional LLM judge + drift monitoring. The goal: close the loop from \"we fixed this\" to \"CI fails if it breaks again\".",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "close the loop between production failures and our regression tests for the synthesis component \u2014 when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what \u2014 how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "test_summarizer.py is flaky \u2014 it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch \u2014 open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "description": "Use this skill to freeze production failures into regression tests and prevent LLM component quality from sliding. Triggers when you want to: create a benchmark that fails CI if a bug comes back, score or monitor a specific component's output quality (summarizer, plan_builder, router, output_validation, guardrail_validator), set up alerts when metrics degrade, instrument a component so you catch failures in the build instead of weeks later in prod, build a rubric or judge for quality measurement, or close the loop from \"we fixed this\" to \"it can never break again silently\". Also triggers when describing repeated failures even without eval terminology\u2014like \"the summarizer keeps dropping action items\" or \"validation fails more than expected\" or \"I want a must-accept/must-reject fixture\". Walks from failure analysis to deterministic checks and CI gates, with optional LLM-judge monitoring.",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "close the loop between production failures and our regression tests for the synthesis component \u2014 when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what \u2014 how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "test_summarizer.py is flaky \u2014 it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch \u2014 open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "description": "Use this skill when you want to prevent LLM component bugs from regressing. Triggers for requests to: monitor a component's quality over time (summarizer, plan_builder, router, output_validation, guardrail_validator, etc.), create regression tests from production failures, add evaluation or instrumentation to catch issues before production, build scoring rubrics or judges, set up drift detection or quality alerts, or ensure a fixed bug stays fixed. Also triggers when describing ongoing component issues without using eval terminology\u2014phrases like \"the summarizer keeps dropping items\", \"validation fails too often\", \"I want fixtures for must-accept/must-reject cases\", or \"instrument X so we catch this in CI\". Walks you from analyzing failures to shipping deterministic checks and CI gates, optionally adding LLM judges and continuous monitoring.",
+      "train_passed": 6,
+      "train_failed": 6,
+      "train_total": 12,
+      "train_results": [
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 4,
+      "test_failed": 4,
+      "test_total": 8,
+      "test_results": [
+        {
+          "query": "close the loop between production failures and our regression tests for the synthesis component \u2014 when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what \u2014 how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "test_summarizer.py is flaky \u2014 it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch \u2014 open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 6,
+      "failed": 6,
+      "total": 12,
+      "results": [
+        {
+          "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod \u2014 can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace JSON dump from this morning's deploy \u2014 array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "refactor services/eval_capture.py \u2014 the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off \u2014 the \u00a72.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "explain how llm-as-a-judge calibration works in general \u2014 what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

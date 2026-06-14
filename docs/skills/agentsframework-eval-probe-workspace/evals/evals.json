@@ -1,0 +1,29 @@
+{
+  "skill_name": "agentsframework-eval-probe",
+  "evals": [
+    {
+      "id": 0,
+      "name": "plan-builder-trace-altitude",
+      "prompt": "I want to add evaluation monitoring to our plan_builder component (components/plan_builder.py). It generates the multi-step plan the agent executes. Walk me through adding an eval probe for it — where do I start and what's the full path?",
+      "expected_output": "A phased walkthrough that (a) picks TRACE altitude (not span) because plan quality depends on the trajectory, (b) starts with Phase 0 prioritization and Phase 2 open coding BEFORE any judge, (c) ships a Tier-A deterministic L1 check (plan non-empty, depth in range) + offline CI regression row first, and (d) defers the gold-set/judge track as on-demand. Should NOT jump straight to writing a 1-5 'plan quality' LLM judge.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 1,
+      "name": "summarizer-tier-a-greenfield",
+      "prompt": "Add an eval probe to our summarizer (services/summarizer.py). It's not monitored at all right now.",
+      "expected_output": "Ships a Tier-A probe: a deterministic L1 check (length bound, non-empty, no truncation) on 100% of traffic + a frozen offline CI regression row, scored via `python -m meta.run_eval`. Explicitly does NOT build a gold set or LLM judge on day one — defers that to on-demand once Tier-A shadow data justifies it. Open coding precedes the rubric. L1 check lives in services/ with no framework imports.",
+      "files": [],
+      "assertions": []
+    },
+    {
+      "id": 2,
+      "name": "which-seam-next-prioritizer",
+      "prompt": "We have a dozen LLM calls across the pipeline and limited time. Which component should we instrument for eval first, and how would you decide?",
+      "expected_output": "Reaches for the transition failure matrix over phases.jsonl / WorkflowPhase as a DATA-DRIVEN prioritizer — rows = last clean state, cols = first-failure state, highest-count cell wins. Reuses existing first-failure attribution (synthesis_validator, guardrail_validator, goal_judge). Does NOT prioritize by intuition/gut feel. Notes the matrix-builder is a planned meta/analysis.py deliverable but the inputs already exist.",
+      "files": [],
+      "assertions": []
+    }
+  ]
+}
