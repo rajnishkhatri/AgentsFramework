@@ -484,10 +484,65 @@ reflexion `goal_judge` present; corrupt-success check honest.
 
 ---
 
-## 6. Phase 3 — Hybrid escalation routing
+## 6. Phase 3 — Hybrid escalation routing ✅ DONE (2026-06-14)
 
 **Goal.** Promote the §5 escalation signals into one predicate and **measure** entry-router accuracy and
 escalation precision separately. **Given D2 = heuristic-only, this phase adds no new LLM call.**
+
+> **Status: implemented and verified (1873 passed, 0 failed; +15 over P2's 1858).** Phase 3 is the
+> refactor-to-predicate + measurement phase the spec promised — **no new control flow, no new LLM call, no new
+> exported trace fact.** As-built notes (where reality refined the §6.1 sketch):
+>
+> 1. **`decide_escalation` *composes* `decide_reentry` rather than re-implementing the ceiling.** The §6.1 sketch
+>    listed `goal_verdict`/`attempt`/`max_attempts` as independent inputs; the as-built predicate delegates the
+>    primary (verdict + budget-ceiling) branch to the already-tested `decide_reentry` so the budget ceiling has a
+>    **single source of truth**. This adds one intra-`components/` import (`router → reflexion`) — allowed: the
+>    architecture gate only forbids components→framework / components→orchestration (verified: 94 passed), and
+>    `router.py` already imports a sibling (`routing_config`). `unmet_conditions` is carried for the node's critique
+>    but does not affect the decision (the verdict does), so it is accepted-and-ignored by the predicate.
+> 2. **`prose_kind` (not raw lists) is the D3 input.** The node still classifies via `classify_no_progress` (it
+>    needs `messages`/`tool_results`), then passes the resulting *scalar* kind to the pure predicate — keeping
+>    `decide_escalation` over scalars only (OBP-2). `tool_repeat` deliberately does **not** escalate (it is
+>    `check_continuation`'s job — the secondary, non-reflexion signal).
+> 3. **`_should_continue_or_escalate` now delegates** — the Phase 2 inline `decide_reentry` + prose-branch logic is
+>    replaced by one `decide_escalation(...)` call; the node only gathers scalars. `decide_reentry`'s direct import
+>    in `react_loop.py` is dropped (it now lives behind `decide_escalation`). The topology-sim + reflexion suites
+>    are unchanged and green → the refactor is behaviour-preserving (byte-identical branches).
+> 4. **Escalation precision is measured by an offline oracle, not a live trace.** §6.3 named
+>    `diagnose_planning_depth.py` for *entry* accuracy (live, Langfuse) — that is the other half and is untouched.
+>    For the *escalation* half (pure, D2, no LLM) the as-built artifact is `scripts/measure_escalation_precision.py`
+>    over a labelled fixture, reporting **precision (thrash risk) and recall (ships-wrong-answer risk) separately**
+>    (MAST cost asymmetry, plan §9). Live traces are the wrong tool here: escalation is deterministic, and the
+>    Langfuse monthly quota is currently exhausted.
+
+### 6.0 As-built file map
+
+| File | Change |
+|---|---|
+| [`components/router.py`](../../components/router.py) | **NEW** `decide_escalation(*, goal_verdict, unmet_conditions, prose_kind, attempt, max_attempts) -> Literal["escalate","hold"]` (OBP-2, composes `decide_reentry`; budget-first; verdict→primary, prose_repeat→tertiary, tool_repeat→never). |
+| [`orchestration/react_loop.py`](../../orchestration/react_loop.py) | `_should_continue_or_escalate` refactored to classify `prose_kind` then delegate to `decide_escalation`; dropped the now-internal `decide_reentry` import. |
+| [`scripts/measure_escalation_precision.py`](../../scripts/measure_escalation_precision.py) | **NEW** read-only oracle: scores `decide_escalation` over the labelled corpus, prints precision/recall/accuracy + confusion + mismatches; exit 1 on any mismatch. |
+| [`tests/fixtures/planning_depth/escalation_precision_corpus.json`](../../tests/fixtures/planning_depth/escalation_precision_corpus.json) | **NEW** 10 labelled rows (5 escalate / 5 hold) covering every §5 branch incl. ceiling + tool_repeat + zero-budget. |
+| [`tests/components/test_router.py`](../../tests/components/test_router.py) | **NEW** `TestDecideEscalation` — failure-first matrix (hold rows before escalate rows); ceiling, clean-verdict, tool_repeat, zero-budget all hold; bad-verdict + prose-thrash escalate. |
+| [`tests/scripts/test_measure_escalation_precision.py`](../../tests/scripts/test_measure_escalation_precision.py) | **NEW** CI gate: oracle scores the committed corpus perfectly (zero mismatches), corpus is balanced (not all-positive), rows well-formed. |
+
+### 6.0a Gate (met)
+
+- **Escalation precision (offline oracle):** `python -m scripts.measure_escalation_precision` → 10 rows,
+  **precision 1.000 / recall 1.000 / accuracy 1.000**, confusion `tp=5 fp=0 tn=5 fn=0`. CI-gated by
+  `tests/scripts/test_measure_escalation_precision.py`.
+- **Entry-router accuracy:** unchanged half — `scripts/diagnose_planning_depth.py` against live traces (Phase 0
+  already verified the depth heuristic live, trace `a78656ae…`). Phase 3 does not touch `select_planning_depth`.
+- **No regression / behaviour-preserving refactor:** 1873 passed, 0 failed across
+  `orchestration/ components/ architecture/ services/ middleware/ scripts/`. The Phase 2 topology-sim
+  (thrash-bound / disabled-control / corrupt-success) and reflexion suites are unchanged and green.
+- **Layer boundary (P7):** architecture suite 94 passed — `router → reflexion` is an allowed intra-layer import;
+  no components→framework / components→orchestration violation.
+- **Governance trace (cross-phase gate #3):** Phase 3 exports **no new fact** (pure refactor; same `reflect`/`done`
+  branches Phase 2 already routed; reflexion carriers already covered by Phase 2's governance check). No new carrier
+  to audit, so no new from-step-0 trace is required for this phase.
+
+### 6.x Original sketch (superseded by the as-built notes above)
 
 ### 6.1 Component change — `components/router.py` (OBP-2)
 
@@ -564,7 +619,7 @@ flowchart LR
 - **Phase 0 is the hard prerequisite** — every later tier inherits the L0 collapse if skipped (plan §9).
 - **Phase 2 depends on Phase 1** (reflexion re-enters through `route → planner`; the planner must exist).
 - **Phase 3 partly refactors Phase 2** (lifts the inline escalation logic into `decide_escalation`) and adds
-  measurement; it adds no new control flow given D2.
+  measurement; it adds no new control flow given D2. **✅ DONE — all four phases shipped 2026-06-14.**
 - Each phase ships behind a flag tier (steady-state parity first), promoted on evidence — mirroring the GoalJudge
   shadow→consume discipline (plan §8).
 

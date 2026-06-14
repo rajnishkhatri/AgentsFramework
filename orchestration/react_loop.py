@@ -28,7 +28,7 @@ from components.evaluator import (
     evaluate_task_outcome,
     parse_llm_response,
 )
-from components.reflexion import decide_reentry, generate_reflection
+from components.reflexion import generate_reflection
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
@@ -43,6 +43,7 @@ from components.task_understanding import (
     TaskUnderstandingGenerator,
     TaskUnderstandingValidationError,
 )
+from components.router import decide_escalation
 from components.router import select_model
 from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
@@ -1976,31 +1977,32 @@ def build_graph(
         attempt = len(state.get("reflections") or [])
         verdict = state.get("last_task_outcome", "")
 
-        # Primary §5 signal: a failed/partial verdict re-enters until the ceiling.
-        if decide_reentry(
+        # Classify the no-tool prose thrash (D3) so the pure escalation predicate
+        # sees a scalar. tool_repeat is intentionally NOT a reflexion trigger —
+        # check_continuation already terminates it (it surfaced via ``base``).
+        recent_prose = [
+            str(getattr(m, "content", ""))
+            for m in (state.get("messages") or [])
+            if isinstance(m, AIMessage)
+        ]
+        prose_kind = classify_no_progress(
+            state.get("tool_results") or [],
+            recent_prose,
+            tool_threshold=agent_config.no_progress_repeat_threshold,
+            prose_threshold=agent_config.no_progress_repeat_threshold,
+        )
+
+        # Phase 3: the §5 trigger matrix lives in one pure predicate now. The
+        # node only gathers the scalars; decide_escalation owns the priority
+        # order and the budget ceiling (so it can never thrash).
+        decision = decide_escalation(
+            goal_verdict=verdict,
+            unmet_conditions=list(state.get("last_unmet_conditions") or []),
+            prose_kind=prose_kind,
             attempt=attempt,
             max_attempts=agent_config.max_reflexion_attempts,
-            last_verdict=verdict,
-        ) == "reflect":
-            return "reflect"
-
-        # Tertiary §5 / D3: no-tool prose thrash, budget permitting. Guarded by
-        # the same ceiling so it can never thrash past the budget.
-        if attempt < agent_config.max_reflexion_attempts:
-            recent_prose = [
-                str(getattr(m, "content", ""))
-                for m in (state.get("messages") or [])
-                if isinstance(m, AIMessage)
-            ]
-            if classify_no_progress(
-                state.get("tool_results") or [],
-                recent_prose,
-                tool_threshold=agent_config.no_progress_repeat_threshold,
-                prose_threshold=agent_config.no_progress_repeat_threshold,
-            ) == "prose_repeat":
-                return "reflect"
-
-        return "done"
+        )
+        return "reflect" if decision == "escalate" else "done"
 
     builder = StateGraph(AgentState)
 

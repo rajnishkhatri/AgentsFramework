@@ -19,6 +19,7 @@ from __future__ import annotations
 import re
 from typing import Literal
 
+from components.reflexion import decide_reentry
 from components.routing_config import RoutingConfig
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 
@@ -226,6 +227,60 @@ def select_planning_depth(
         return "L1", "sequenced-multistep"
 
     return "L0", "simple-initial-task"
+
+
+EscalationDecision = Literal["escalate", "hold"]
+
+
+def decide_escalation(
+    *,
+    goal_verdict: str,            # "success"|"partial"|"failed" (primary, §5)
+    unmet_conditions: list[str],
+    prose_kind: str,              # "tool_repeat"|"prose_repeat"|"none" (tertiary, §5/D3)
+    attempt: int,
+    max_attempts: int,
+) -> EscalationDecision:
+    """Whether any §5 escalation signal fires for the current terminal turn. OBP-2.
+
+    A *pure* predicate over scalars (LP-2: the router imports no
+    ``goal_judge``/``evaluator``; the node reads the verdict and passes it in).
+    This consolidates the escalation logic Phase 2 wired inline in
+    ``_should_continue_or_escalate`` into one named, testable place.
+
+    Budget-first contract (mirrors ``decide_reentry``): at/above the ceiling
+    ALWAYS ``hold`` — no signal can override the budget, so the loop can never
+    thrash. Below the ceiling the §5 priority order applies:
+
+      - **Primary** — a ``failed``/``partial`` GoalJudge verdict escalates. This
+        is the only signal that catches confidently-wrong output (plan §5).
+        ``unmet_conditions`` is the evidence carried for the critique; the
+        verdict alone decides.
+      - **Tertiary (D3)** — a ``prose_repeat`` no-tool thrash escalates even when
+        the verdict is clean, catching the OpenManus ``is_stuck`` failure that a
+        verdict-only gate misses. ``tool_repeat`` does **not** escalate here: the
+        existing ``check_continuation`` backstop already terminates it (it is the
+        secondary, *non*-reflexion signal — see plan §5).
+
+    Returns ``"hold"`` for every non-escalating case (the failure paths, AP6).
+    """
+    # Primary §5 — the verdict-reentry decision is the single source of truth for
+    # the budget ceiling. Reusing it (not re-implementing the threshold) keeps
+    # one place to change if the ceiling semantics ever move.
+    if (
+        decide_reentry(
+            attempt=attempt, max_attempts=max_attempts, last_verdict=goal_verdict
+        )
+        == "reflect"
+    ):
+        return "escalate"
+    # Budget already exhausted -> nothing escalates, including a prose thrash.
+    if attempt >= max_attempts:
+        return "hold"
+    # Tertiary §5 / D3 — a prose thrash on an otherwise-clean verdict, budget
+    # permitting. (tool_repeat is handled by check_continuation, not here.)
+    if prose_kind == "prose_repeat":
+        return "escalate"
+    return "hold"
 
 
 def select_model(

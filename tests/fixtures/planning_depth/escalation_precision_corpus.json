@@ -1,0 +1,102 @@
+[
+  {
+    "case": "failed-verdict-under-budget",
+    "goal_verdict": "failed",
+    "unmet_conditions": ["the migration is reversible"],
+    "prose_kind": "none",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": true,
+    "rationale": "primary §5 signal: a failed verdict with budget left re-enters"
+  },
+  {
+    "case": "partial-verdict-mid-budget",
+    "goal_verdict": "partial",
+    "unmet_conditions": ["covers the error path"],
+    "prose_kind": "none",
+    "attempt": 1,
+    "max_attempts": 2,
+    "want_escalate": true,
+    "rationale": "partial is also a bad verdict that escalates under budget"
+  },
+  {
+    "case": "prose-thrash-clean-verdict",
+    "goal_verdict": "success",
+    "unmet_conditions": [],
+    "prose_kind": "prose_repeat",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": true,
+    "rationale": "tertiary D3: no-tool prose thrash escalates even on a clean verdict"
+  },
+  {
+    "case": "both-signals-fire",
+    "goal_verdict": "failed",
+    "unmet_conditions": ["x"],
+    "prose_kind": "prose_repeat",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": true,
+    "rationale": "verdict + prose both fire; action is still escalate"
+  },
+  {
+    "case": "clean-success-no-thrash",
+    "goal_verdict": "success",
+    "unmet_conditions": [],
+    "prose_kind": "none",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": false,
+    "rationale": "a clean run with no thrash must not loop (the headline false-positive guard)"
+  },
+  {
+    "case": "budget-exhausted-on-failure",
+    "goal_verdict": "failed",
+    "unmet_conditions": ["still failing"],
+    "prose_kind": "prose_repeat",
+    "attempt": 2,
+    "max_attempts": 2,
+    "want_escalate": false,
+    "rationale": "at the ceiling, even a failed verdict + thrash holds (no thrash past budget)"
+  },
+  {
+    "case": "tool-repeat-not-a-reflexion-trigger",
+    "goal_verdict": "success",
+    "unmet_conditions": [],
+    "prose_kind": "tool_repeat",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": false,
+    "rationale": "tool_repeat is check_continuation's job, not reflexion (secondary, non-reflexion signal)"
+  },
+  {
+    "case": "zero-budget-never-escalates",
+    "goal_verdict": "failed",
+    "unmet_conditions": ["x"],
+    "prose_kind": "prose_repeat",
+    "attempt": 0,
+    "max_attempts": 0,
+    "want_escalate": false,
+    "rationale": "reflexion disabled by a zero ceiling never escalates"
+  },
+  {
+    "case": "unknown-verdict-no-thrash",
+    "goal_verdict": "unknown",
+    "unmet_conditions": [],
+    "prose_kind": "none",
+    "attempt": 0,
+    "max_attempts": 2,
+    "want_escalate": false,
+    "rationale": "an unrecognized verdict is treated as non-failing -> hold"
+  },
+  {
+    "case": "prose-thrash-budget-left-last-slot",
+    "goal_verdict": "success",
+    "unmet_conditions": [],
+    "prose_kind": "prose_repeat",
+    "attempt": 1,
+    "max_attempts": 2,
+    "want_escalate": true,
+    "rationale": "one budget slot remains -> the prose thrash still gets one reflexion"
+  }
+]
