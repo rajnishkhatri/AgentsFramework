@@ -6,11 +6,25 @@ Protocol A (Red-Green-Refactor) with failure-mode parametrized matrix.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from components.router import select_model, select_planning_depth
 from components.routing_config import RoutingConfig
 from services.base_config import AgentConfig, ModelProfile
+
+_DEPTH_STRATA_FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "planning_depth"
+    / "depth_strata_rich.json"
+)
+_DEPTH_STRATA_CORPUS: list[tuple[str, str]] = sorted(
+    (record["prompt"], record["want_depth"])
+    for record in json.loads(_DEPTH_STRATA_FIXTURE.read_text())
+)
 
 
 def _fast_profile():
@@ -329,29 +343,11 @@ class TestDepthCollapseRegression:
     L1-discipline: pure, deterministic, no LLM (Protocol A).
     """
 
-    @staticmethod
-    def _load_rich_corpus() -> list[tuple[str, str]]:
-        import json
-        from pathlib import Path
-
-        path = (
-            Path(__file__).resolve().parents[1]
-            / "fixtures"
-            / "planning_depth"
-            / "depth_strata_rich.json"
-        )
-        records = json.loads(path.read_text())
-        rows: dict[str, str] = {}
-        for record in records:
-            rows[record["prompt"]] = record["want_depth"]
-        return sorted(rows.items())
-
     def test_rich_corpus_reaches_intended_depth(self) -> None:
-        corpus = self._load_rich_corpus()
-        assert corpus, "rich depth-strata corpus is empty or missing"
+        assert _DEPTH_STRATA_CORPUS, "rich depth-strata corpus is empty or missing"
 
         mismatches: list[str] = []
-        for prompt, want in corpus:
+        for prompt, want in _DEPTH_STRATA_CORPUS:
             fired, reason = select_planning_depth(
                 task_input=prompt,
                 task_tool_results_count=0,
