@@ -1,0 +1,22 @@
+[
+  {"query": "I've got about 14 GoalJudge traces from yesterday's batch that I want to go through one by one and tag what went wrong on each — like 'fabricated-progress', 'tool-error-unhandled' that kind of thing. set me up to do that", "should_trigger": true},
+  {"query": "open code these traces for me, I want to label the failure modes by hand", "should_trigger": true},
+  {"query": "I have a coded.jsonl from the html coder and I want all the cases in one place in langfuse so my teammate can review the codes I assigned and the agent's answer side by side", "should_trigger": true},
+  {"query": "spin up the local coder thing on 3117 so I can tag these depth-strata cases, then push them to a dataset", "should_trigger": true},
+  {"query": "my codes aren't showing up when I export to langfuse — I typed them all into the coder and saved. what happened?", "should_trigger": true},
+  {"query": "turn this set of sampled agent runs into a reviewable langfuse dataset where each item has the task, the final answer, and the qualitative codes I tagged", "should_trigger": true},
+  {"query": "I want to do error analysis on these 11 traces by reading each one and writing down short descriptive codes, then roll them up later. how do I run that pass and save it", "should_trigger": true},
+  {"query": "label/annotate these failures from the strata run so we have a record of the failure taxonomy — I'll do the tagging myself, just give me the surface", "should_trigger": true},
+  {"query": "should I use langfuse scores or an annotation queue to store the open codes I assigned to these cases so we can edit them later?", "should_trigger": true},
+  {"query": "help me design the overall grounded-theory eval pipeline for our new agent feature — taxonomy, rubric, gold set, judge calibration, the whole thing", "should_trigger": false},
+  {"query": "calibrate the GoalJudge LLM-as-judge against our double-labeled gold set and report precision/recall on the action-triggering class", "should_trigger": false},
+  {"query": "audit this langfuse trace JSON against the four governance pillars and give me a per-pillar scorecard", "should_trigger": false},
+  {"query": "run the playwright T3 batch against Cloud Run and export the GoalJudge traces to langfuse", "should_trigger": false},
+  {"query": "write a langfuse dataset of our production prompts so we can run regression evals against the judge on every deploy", "should_trigger": false},
+  {"query": "create a langfuse annotation queue and add these 5 traces to it for the on-call to review", "should_trigger": false},
+  {"query": "the agent under-plans complex tasks — fix select_planning_depth so a lone strong marker promotes to L1 instead of capping at L0", "should_trigger": false},
+  {"query": "build me a quick html dashboard that charts our weekly trace volume by stratum from the corpus jsonl", "should_trigger": false},
+  {"query": "summarize what these 11 agent traces did — just give me a paragraph each, I don't need to tag anything", "should_trigger": false},
+  {"query": "set up the categorical score config in langfuse for the 12 planning-depth codes and backfill the scores onto the traces", "should_trigger": false},
+  {"query": "explain what open coding and axial coding are in grounded theory and when I'd use each", "should_trigger": false}
+]
