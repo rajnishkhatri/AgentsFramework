@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)",
+      "passed": true,
+      "evidence": "codes-vs-memo trap, Enter/chip"
+    },
+    {
+      "text": "Identifies the specific uncoded rows / reports the NO-codes count via the verify step",
+      "passed": true,
+      "evidence": "reports uncoded rows/count"
+    },
+    {
+      "text": "Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them",
+      "passed": true,
+      "evidence": "sends user to re-commit, no autogen"
+    }
+  ]
+}

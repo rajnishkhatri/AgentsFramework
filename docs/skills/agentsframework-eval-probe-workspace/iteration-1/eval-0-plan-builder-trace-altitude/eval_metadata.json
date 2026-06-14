@@ -1,0 +1,34 @@
+{
+  "eval_id": 0,
+  "eval_name": "plan-builder-trace-altitude",
+  "prompt": "I want to add evaluation monitoring to our plan_builder component (components/plan_builder.py). It generates the multi-step plan the agent executes. Walk me through adding an eval probe for it \u2014 where do I start and what's the full path?",
+  "assertions": [
+    {
+      "text": "Picks TRACE altitude (not span) for the planner"
+    },
+    {
+      "text": "Justifies altitude by trajectory dependence"
+    },
+    {
+      "text": "Starts with Phase 0 / open coding BEFORE a judge"
+    },
+    {
+      "text": "Ships a Tier-A deterministic L1 check first"
+    },
+    {
+      "text": "Defers the gold-set/judge track as on-demand"
+    },
+    {
+      "text": "Cadence-first loop trigger (2-4 weeks)"
+    },
+    {
+      "text": "Includes the bias-corrected success rate \u03b8\u0302"
+    },
+    {
+      "text": "References the fail-closed \u00a72.8 enable-gate"
+    },
+    {
+      "text": "Does NOT propose a 1-5 Likert judge (binary only)"
+    }
+  ]
+}

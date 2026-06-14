@@ -15,28 +15,35 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 
 from components.evaluator import (
     build_step_result,
     check_continuation,
+    classify_no_progress,
     classify_outcome,
     count_trailing_repeats as _count_trailing_repeats,
     evaluate_task_outcome,
     parse_llm_response,
 )
+from components.reflexion import generate_reflection
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
+from components.plan_builder import build_plan_artifact_llm
+from components.plan_builder import PlanArtifact
 from components.plan_builder import compute_plan_fingerprint
+from components.plan_builder import plan_is_stale
 from components.plan_builder import validate_plan_mece
+from components.plan_generator import PlanGenerator
 from components.schemas import ErrorRecord, TaskUnderstanding
 from components.task_understanding import (
     TaskUnderstandingGenerator,
     TaskUnderstandingValidationError,
 )
+from components.router import decide_escalation
 from components.router import select_model
 from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
@@ -549,6 +556,16 @@ def build_graph(
         profile=judge_profile,
     )
 
+    # Phase 1 (T1 plan-and-execute): fast-tier LLM plan decomposition. Same
+    # shadow-first discipline as task_understanding — no LLM call until the
+    # plan_source flag is "shadow"/"generated" and only at step 0 (route_node
+    # memoizes the depth per task, so the plan is built once per task).
+    plan_generator = PlanGenerator(
+        llm_service=llm_service,
+        prompt_service=prompt_service,
+        profile=judge_profile,
+    )
+
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
     # ── Story 1.2 + 1.4: guard_input_node with rejection branching + AgentFacts ──
@@ -769,19 +786,98 @@ def build_graph(
                     ))
 
             current_task_id = state.get("task_id", "")
-            task_tool_results_count = sum(
-                1
+            # Memoize planning depth at step 0, per task. route_node re-runs
+            # every evaluate→continue→route iteration; select_planning_depth
+            # collapses to L0 once this task has produced a tool result
+            # (post-tool-synthesis), so recomputing every pass would flip the
+            # intended depth to L0 after the first tool call and cap the plan
+            # at one step. Reuse the stored depth while the task is unchanged —
+            # same memoize-on-task_id discipline as task_understanding.
+            stored_depth = state.get("planning_depth", "")
+            depth_is_fresh = (
+                bool(stored_depth)
+                and state.get("planning_depth_task_id", "") == current_task_id
+            )
+            if depth_is_fresh:
+                planning_depth = stored_depth
+                planning_depth_reason = state.get("planning_depth_reason", "")
+            else:
+                task_tool_results_count = sum(
+                    1
+                    for tr in (state.get("tool_results") or [])
+                    if tr.get("task_id", "") == current_task_id
+                )
+                planning_depth, planning_depth_reason = select_planning_depth(
+                    task_input=state.get("task_input", ""),
+                    task_tool_results_count=task_tool_results_count,
+                )
+
+            # ── Phase 1 (T1): build / reuse / replan the plan artifact ──────
+            # The plan is built once per task and memoized (mirroring depth).
+            # On re-entry it is reused as-is UNLESS the latest tool result
+            # invalidated it (plan_is_stale) — the replan gate (plan §2.2). A
+            # rebuild after a surprising result re-decomposes from the task
+            # rather than executing an already-wrong plan.
+            plan_source = getattr(agent_config, "plan_source", "deterministic")
+            stored_plan_raw = state.get("plan_artifact") or {}
+            plan_is_fresh = (
+                bool(stored_plan_raw)
+                and state.get("plan_artifact_task_id", "") == current_task_id
+            )
+            task_tool_rows = [
+                tr
                 for tr in (state.get("tool_results") or [])
                 if tr.get("task_id", "") == current_task_id
-            )
-            planning_depth, planning_depth_reason = select_planning_depth(
-                task_input=state.get("task_input", ""),
-                task_tool_results_count=task_tool_results_count,
-            )
-            plan_artifact = build_plan_artifact(
-                planning_depth,
-                task_input=state.get("task_input", ""),
-            )
+            ]
+            last_tool_result = task_tool_rows[-1] if task_tool_rows else None
+            replan_increment = 0
+            plan_generated = False
+            plan_gen_failure = ""
+
+            if plan_is_fresh:
+                try:
+                    plan_artifact = PlanArtifact.model_validate(stored_plan_raw)
+                except Exception:
+                    plan_artifact = build_plan_artifact(
+                        planning_depth, task_input=state.get("task_input", "")
+                    )
+                if plan_is_stale(plan_artifact, last_tool_result):
+                    # Surprising tool result — re-plan from scratch (deterministic
+                    # rebuild; the LLM re-plan would re-incur cost and the floor
+                    # is the safe brittle-plan backstop). Counts as a replan.
+                    plan_artifact = build_plan_artifact(
+                        planning_depth, task_input=state.get("task_input", "")
+                    )
+                    replan_increment = 1
+            else:
+                # Step-0 build for this task. plan_source gates the LLM call:
+                # "deterministic" never calls the model; "shadow" generates but
+                # consumes the floor; "generated" consumes the LLM plan with the
+                # floor as fallback. Shadow/generated both reach for the LLM here.
+                plan_artifact = build_plan_artifact(
+                    planning_depth, task_input=state.get("task_input", "")
+                )
+                if plan_source in ("shadow", "generated"):
+                    raw_plan: dict[str, Any] | None = None
+                    try:
+                        raw_plan = await plan_generator.generate(
+                            task_input=state.get("task_input", ""),
+                            planning_depth=planning_depth,
+                        )
+                    except Exception as exc:
+                        plan_gen_failure = f"{type(exc).__name__}: {exc}"
+                    if raw_plan is not None:
+                        # build_plan_artifact_llm owns parse/validate + floor.
+                        generated_artifact = build_plan_artifact_llm(
+                            planning_depth,
+                            task_input=state.get("task_input", ""),
+                            generate=lambda _t, _r=raw_plan: _r,
+                        )
+                        plan_generated = generated_artifact != build_plan_artifact(
+                            planning_depth, task_input=state.get("task_input", "")
+                        )
+                        if plan_source == "generated":
+                            plan_artifact = generated_artifact
 
             # task_understanding plan §4.5: generate the TaskUnderstanding
             # artifact once per run (memoized on the state key — route_node
@@ -971,7 +1067,17 @@ def build_graph(
                 "decision_id": tu_decision_id,
                 "plan_fingerprint": plan_fingerprint,
                 "plan_changed": plan_changed,
+                # Phase 1 (T1) provenance: how this plan was produced and
+                # whether the replan gate fired this pass. plan_source is the
+                # flag; plan_generated marks that an LLM plan was consumed (vs
+                # the deterministic floor); replanned marks a mid-task rebuild
+                # after a surprising tool result.
+                "plan_source": plan_source,
+                "plan_generated": plan_generated,
+                "replanned": bool(replan_increment),
             }
+            if plan_gen_failure:
+                step_planned_details["plan_gen_failure"] = plan_gen_failure
             # E8 (Reasoning pillar): on a CHANGED plan, carry a capped summary of
             # the ordered-step titles so the trace shows WHAT was planned without
             # opening the plan payload. Unchanged re-emissions stay lean (the
@@ -1085,6 +1191,10 @@ def build_graph(
                 "routing_reason": reason,
                 "planning_depth": planning_depth,
                 "planning_depth_reason": planning_depth_reason,
+                "planning_depth_task_id": current_task_id,
+                "plan_artifact": plan_artifact.model_dump(mode="json"),
+                "plan_artifact_task_id": current_task_id,
+                "replan_count": replan_increment,
                 "files": {
                     plan_ref: json.dumps(plan_payload, sort_keys=True),
                 },
@@ -1110,12 +1220,30 @@ def build_graph(
         except KeyError:
             profile = agent_config.models[0] if agent_config.models else default_fast_profile()
 
+        # Phase 2 (T2): fold accumulated reflexion critiques into the planning
+        # instructions on re-entry — the semantic gradient that steers the retry.
+        # Append-only, so each loop pass sees every prior critique (arxiv
+        # 2303.11366). No-op when reflexion is disabled or none have accrued.
+        planning_instructions = build_planning_instructions(
+            state.get("planning_depth", "L0"),
+            task_input=state.get("task_input", ""),
+        )
+        reflections = state.get("reflections") or []
+        if reflections:
+            critiques = "\n".join(
+                f"- {r.get('critique', '').strip()}"
+                for r in reflections
+                if r.get("critique", "").strip()
+            )
+            if critiques:
+                planning_instructions += (
+                    "\n\nPrior attempts fell short. Apply these critiques before "
+                    f"answering:\n{critiques}"
+                )
+
         system_prompt = prompt_service.render_prompt(
             "system_prompt",
-            additional_instructions=build_planning_instructions(
-                state.get("planning_depth", "L0"),
-                task_input=state.get("task_input", ""),
-            ),
+            additional_instructions=planning_instructions,
             include_routing_policy=True,
             budget_downgrade_pct=int(routing_config.budget_downgrade_threshold * 100),
             escalate_after_failures=routing_config.escalate_after_failures,
@@ -1698,6 +1826,13 @@ def build_graph(
 
                 effective_outcome = task_outcome.outcome
 
+                # Phase 2 (T2): persist the routing carriers so the post-evaluate
+                # reflect-vs-done decision (_should_continue_or_escalate) can read
+                # the verdict without re-running the judge. Last-write-wins.
+                result["last_task_outcome"] = effective_outcome
+                result["last_unmet_conditions"] = list(task_outcome.unmet_conditions)
+                result["last_final_answer"] = content or ""
+
                 black_box.record(TraceEvent(
                     event_id=str(uuid.uuid4()),
                     workflow_id=workflow_id,
@@ -1773,6 +1908,102 @@ def build_graph(
         branch = "continue" if result == "continue" else "done"
         return branch
 
+    async def reflect_node(state: AgentState, config: RunnableConfig) -> dict:
+        """OBP-3 thin wrapper: build a critique and append it to ``reflections``.
+
+        Unpacks the routing carriers evaluate_node persisted, calls the pure
+        ``generate_reflection`` (the LLM is injected as a fast-tier callable),
+        appends one entry, and returns the delta. No logic — the reflect-vs-stop
+        decision was already made by ``_should_continue_or_escalate``.
+        """
+        attempt = len(state.get("reflections") or [])
+        unmet = list(state.get("last_unmet_conditions") or [])
+        last_answer = state.get("last_final_answer", "") or ""
+
+        async def _critique(prompt: str) -> str:
+            response = await llm_service.invoke(
+                judge_profile, [{"role": "user", "content": prompt}]
+            )
+            return str(getattr(response, "content", response))
+
+        # generate_reflection is sync (pure); run the injected async critique
+        # eagerly and hand it the result via a closure, mirroring Phase 1's
+        # build_plan_artifact_llm async boundary.
+        try:
+            critique_text = await _critique(
+                "You are critiquing a failed task attempt to guide a retry. "
+                "Unmet success conditions:\n"
+                + "\n".join(f"- {c}" for c in unmet if c and c.strip())
+                + "\n\nPrevious answer:\n"
+                + last_answer.strip()
+                + "\n\nWrite a brief, specific critique naming what to fix next."
+            )
+            critique = generate_reflection(
+                unmet_conditions=unmet,
+                last_answer=last_answer,
+                generate=lambda _p, _c=critique_text: _c,
+            )
+        except Exception:
+            critique = generate_reflection(
+                unmet_conditions=unmet, last_answer=last_answer
+            )
+
+        return {
+            "reflections": [
+                {
+                    "step_id": state.get("step_count", 0),
+                    "attempt": attempt,
+                    "critique": critique,
+                    "unmet_conditions": unmet,
+                }
+            ],
+        }
+
+    def _should_continue_or_escalate(state: AgentState) -> str:
+        """Extend ``_should_continue`` with the Phase 2 reflect branch.
+
+        Existing continue/done semantics are preserved exactly: the reflect
+        branch is only ever taken when the base decision is ``done`` (a terminal
+        turn) AND reflexion is enabled AND the budget has room. So an L0 task, a
+        disabled-reflexion run, or a clean success takes the identical path it
+        took before Phase 2.
+        """
+        base = _should_continue(state)
+        if base == "continue":
+            return "continue"
+        if not agent_config.reflexion_enabled:
+            return "done"
+
+        attempt = len(state.get("reflections") or [])
+        verdict = state.get("last_task_outcome", "")
+
+        # Classify the no-tool prose thrash (D3) so the pure escalation predicate
+        # sees a scalar. tool_repeat is intentionally NOT a reflexion trigger —
+        # check_continuation already terminates it (it surfaced via ``base``).
+        recent_prose = [
+            str(getattr(m, "content", ""))
+            for m in (state.get("messages") or [])
+            if isinstance(m, AIMessage)
+        ]
+        prose_kind = classify_no_progress(
+            state.get("tool_results") or [],
+            recent_prose,
+            tool_threshold=agent_config.no_progress_repeat_threshold,
+            prose_threshold=agent_config.no_progress_repeat_threshold,
+        )
+
+        # Phase 3: the §5 trigger matrix lives in one pure predicate now. The
+        # node only gathers the scalars; decide_escalation owns the priority
+        # order and the budget ceiling (so it can never thrash).
+        decision = decide_escalation(
+            goal_verdict=verdict,
+            unmet_conditions=list(state.get("last_unmet_conditions") or []),
+            prose_kind=prose_kind,
+            attempt=attempt,
+            max_attempts=agent_config.max_reflexion_attempts,
+        )
+        return "reflect" if decision == "escalate" else "done"
+
     builder = StateGraph(AgentState)
 
     builder.add_node("guard_input", guard_input_node)
@@ -1793,6 +2024,10 @@ def build_graph(
         )
 
     builder.add_node("reasoning_recap", reasoning_recap_node)
+    # Phase 2 (T2): the reflexion re-entry node. Edge wired below the evaluate
+    # fork. Always added so the graph shape is stable; the routing predicate
+    # gates whether it is ever reached (off unless reflexion_enabled).
+    builder.add_node("reflect", reflect_node)
 
     builder.add_edge(START, "guard_input")
 
@@ -1827,9 +2062,16 @@ def build_graph(
     builder.add_edge("execute_tool", "evaluate")
     builder.add_conditional_edges(
         "evaluate",
-        _should_continue,
-        {"continue": "route", "done": "reasoning_recap"},
+        _should_continue_or_escalate,
+        {
+            "continue": "route",
+            "reflect": "reflect",  # Phase 2: failed/partial+budget, or D3 prose thrash
+            "done": "reasoning_recap",
+        },
     )
+    # Phase 2: re-enter the loop through shared state — the appended critique is
+    # folded into the system prompt on the next call_llm pass.
+    builder.add_edge("reflect", "route")
     builder.add_edge("reasoning_recap", END)
 
     # Story 2.1: checkpointer support

@@ -8,6 +8,8 @@ AgentConfig holds global agent-level configuration.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -49,6 +51,26 @@ class AgentConfig(BaseModel):
     # (gather verdicts, change nothing) before the gate is enabled. Default
     # off — stays off until the gold-set production-enable gate is met.
     goal_judge_downgrade_enabled: bool = False
+    # Phase 1 (T1 plan-and-execute): source of the route_node plan artifact.
+    #   "deterministic" — regex ``build_plan_artifact`` (steady-state, default).
+    #   "shadow"        — LLM plan is generated + captured for eval, but the
+    #                     deterministic artifact is what the run consumes.
+    #   "generated"     — LLM plan is consumed, with ``build_plan_artifact`` as
+    #                     the floor on any parse/validation failure.
+    # Default stays deterministic so CI is L2-pure (no live LLM) and steady
+    # state is unchanged; promote on evidence (GoalJudge shadow->consume idiom).
+    plan_source: Literal["deterministic", "shadow", "generated"] = "deterministic"
+    # Phase 2 (T2 reflexion): enable the evaluate->reflect->route re-entry loop.
+    # When True, a GoalJudge failed/partial verdict (or a D3 prose-thrash) below
+    # the budget ceiling writes a verbal critique and re-enters the loop. Off by
+    # default — the reflect edge exists in the graph but decide_reentry returns
+    # "stop" until flipped, so CI/prod behavior is unchanged (shadow-first, same
+    # discipline as plan_source). Promote on evidence.
+    reflexion_enabled: bool = False
+    # D1: reflexion budget ceiling. decide_reentry returns "stop" once
+    # len(reflections) >= this, even on a failed verdict — bounds the loop so
+    # it can never thrash (Reflexion, arxiv 2303.11366; thrash-bound sim guard).
+    max_reflexion_attempts: int = 2
 
 
 def default_fast_profile() -> ModelProfile:

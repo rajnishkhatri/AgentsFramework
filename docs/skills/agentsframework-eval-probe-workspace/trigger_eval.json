@@ -1,0 +1,83 @@
+[
+  {
+    "query": "we keep finding the summarizer drops half the action items when it compacts a long thread. i want to actually catch this in CI instead of noticing it three weeks later in prod — can you set up some kind of eval on services/summarizer.py so a regression like that fails the build?",
+    "should_trigger": true
+  },
+  {
+    "query": "ok next seam i want to instrument for evaluation is the router. select_planning_depth keeps picking shallow when the task is obviously multi-step. walk me through adding a probe for it",
+    "should_trigger": true
+  },
+  {
+    "query": "i added eval_capture.record to the tool-execution node last week and the traces are showing up in langfuse. now what — how do i turn that captured data into an actual scored eval that runs on a schedule and tells me when it drifts?",
+    "should_trigger": true
+  },
+  {
+    "query": "which component in the agent pipeline should we put an evaluation on next? we have limited time and i don't want to just guess based on vibes",
+    "should_trigger": true
+  },
+  {
+    "query": "i want to wire up drift detection for the guardrail validator so we get an alert when the PII/api-key catch rate starts sliding. is there already a drift harness in this repo i can lean on or do i build from scratch",
+    "should_trigger": true
+  },
+  {
+    "query": "need to build a rubric + judge for the plan_builder output quality. it's a trace-level thing i think since whether the plan was good depends on the whole run not one span. where do i even start",
+    "should_trigger": true
+  },
+  {
+    "query": "we shipped a fix for the goal-judge false-downgrade bug and now i want a benchmark that freezes the failures we found so they can never regress silently. like a must-accept / must-reject fixture that pytest runs",
+    "should_trigger": true
+  },
+  {
+    "query": "close the loop between production failures and our regression tests for the synthesis component — when QA flags a bad output i want a clean path from 'open code that failure' to 'it's now a permanent test case'",
+    "should_trigger": true
+  },
+  {
+    "query": "add continuous monitoring to the model-invocation seam. i don't want a full gold-set calibration project right now, just something lightweight that runs 100% deterministic checks first and we earn the judge later if we need it",
+    "should_trigger": true
+  },
+  {
+    "query": "the output_validation phase fails way more often than i'd expect. i want to instrument it so we can score how often validation actually catches a bad generation vs lets it through, and watch that number over time",
+    "should_trigger": true
+  },
+
+  {
+    "query": "we're finally ready to flip goal_judge_downgrade_enabled to true in prod. walk me through the calibration sign-off — the §2.8 gates, the bias-corrected success rate, and the runtime-config write so the downgrade actually goes live",
+    "should_trigger": false
+  },
+  {
+    "query": "here's a langfuse trace JSON dump from this morning's deploy — array of observations, run.started through task.completed. can you audit it against the four governance pillars and tell me if it's actually telling the truth or just looks healthy",
+    "should_trigger": false
+  },
+  {
+    "query": "i'm writing a blog post / internal guide on how to do LLM evals properly from scratch — open coding, axial coding, building a gold set, calibrating a judge. keep it generic and provider-agnostic, nothing tied to our repo",
+    "should_trigger": false
+  },
+  {
+    "query": "the goaljudge gold set is still at v0.9 provisional (101 rows) and the evaluator is returning REFUSE_PROVISIONAL. what do we need to do to get to v1 and lift the floor gate?",
+    "should_trigger": false
+  },
+  {
+    "query": "our p99 latency on the /chat endpoint jumped from 800ms to 2.1s after the last deploy. set up a Grafana alert and add some prometheus histograms so we catch this kind of perf regression earlier",
+    "should_trigger": false
+  },
+  {
+    "query": "test_summarizer.py is flaky — it fails maybe 1 in 5 runs on CI but passes locally every time. can you figure out the race condition and stabilize it",
+    "should_trigger": false
+  },
+  {
+    "query": "can you review the latest production traces from the goaljudge batch run? just confirm the recording/identity/validation/reasoning pillars all look right after yesterday's telemetry change",
+    "should_trigger": false
+  },
+  {
+    "query": "explain how llm-as-a-judge calibration works in general — what's the difference between cohen's kappa and just measuring accuracy, and why does TPR/TNR on a held-out set matter more than agreement",
+    "should_trigger": false
+  },
+  {
+    "query": "refactor services/eval_capture.py — the record() function has too many optional kwargs and the trace_id plumbing is duplicated in three places. clean it up without changing behavior",
+    "should_trigger": false
+  },
+  {
+    "query": "add a unit test for validate_plan_mece in components/plan_builder.py that checks it rejects a plan with overlapping subtasks. just a normal pytest, nothing fancy",
+    "should_trigger": false
+  }
+]

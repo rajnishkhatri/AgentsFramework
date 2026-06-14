@@ -12,7 +12,7 @@ parse_response_structured: optional pydantic-ai typed parsing (graceful fallback
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, Literal
 
 from components.schemas import ErrorRecord, StepResult
 from services.base_config import AgentConfig
@@ -94,6 +94,49 @@ def count_trailing_repeats(tool_results: list[dict[str, Any]]) -> int:
         else:
             break
     return count
+
+
+NoProgressKind = Literal["tool_repeat", "prose_repeat", "none"]
+
+
+def classify_no_progress(
+    tool_results: list[dict[str, Any]],
+    recent_assistant_messages: list[str],
+    *,
+    tool_threshold: int,
+    prose_threshold: int,
+    min_content_len: int = 1,
+) -> NoProgressKind:
+    """Classify the *kind* of no-progress (D3). Pure predicate over scalars/lists.
+
+    Sibling to :func:`count_trailing_repeats` (left intact for the existing
+    int-contract backstop at react_loop.py). The new edge consumes the *kind*:
+
+      - ``tool_repeat``: ``count_trailing_repeats(tool_results) >= tool_threshold``
+        — the existing, stronger tool-thrash signal. Takes precedence.
+      - ``prose_repeat``: the trailing run of no-tool assistant messages repeats
+        identical content ``>= prose_threshold`` times AND the last content is at
+        least ``min_content_len`` chars. This catches the OpenManus ``is_stuck``
+        failure (the model emits the same prose with zero tool calls, making no
+        progress) that ``count_trailing_repeats`` is blind to (it inspects only
+        ``tool_results``).
+      - ``none``: otherwise.
+
+    ``min_content_len`` mirrors ``bool(last_output)``: a trailing run of a short
+    terminal reply like ``"Done."`` must NOT classify as ``prose_repeat`` (it is
+    a legitimate finish, not a thrash). OBP-2: no AgentState, no LLM.
+    """
+    if count_trailing_repeats(tool_results) >= tool_threshold:
+        return "tool_repeat"
+
+    messages = [str(m) for m in (recent_assistant_messages or [])]
+    if len(messages) >= prose_threshold and prose_threshold >= 1:
+        last = messages[-1].strip()
+        if len(last) >= min_content_len:
+            trailing = messages[-prose_threshold:]
+            if all(m.strip() == last for m in trailing):
+                return "prose_repeat"
+    return "none"
 
 
 def classify_outcome(

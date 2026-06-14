@@ -44,7 +44,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "todo-1",
@@ -101,7 +101,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "todo-2",

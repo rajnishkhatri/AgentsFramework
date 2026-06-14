@@ -1,0 +1,28 @@
+{
+  "eval_id": 1,
+  "eval_name": "summarizer-tier-a-greenfield",
+  "prompt": "Add an eval probe to our summarizer (services/summarizer.py). It's not monitored at all right now.",
+  "assertions": [
+    {
+      "text": "Ships a Tier-A deterministic L1 check (100%)"
+    },
+    {
+      "text": "L1 check lives in services/ with no framework imports"
+    },
+    {
+      "text": "Adds an offline CI regression row"
+    },
+    {
+      "text": "Uses python -m meta.run_eval to score"
+    },
+    {
+      "text": "Open coding precedes the rubric"
+    },
+    {
+      "text": "Explicitly says NOT to build a judge on day one"
+    },
+    {
+      "text": "Picks an altitude explicitly (span)"
+    }
+  ]
+}

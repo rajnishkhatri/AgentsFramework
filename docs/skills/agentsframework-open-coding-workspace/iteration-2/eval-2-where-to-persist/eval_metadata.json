@@ -1,0 +1,6 @@
+{"eval_id":2,"eval_name":"where-to-persist","prompt":"Scores, annotation queue, or something else for reviewing ~15 coded traces together?",
+ "assertions":[
+  {"text":"Recommends a Langfuse DATASET over scores and annotation queue","key":"recommend_dataset"},
+  {"text":"Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)","key":"explain_why"},
+  {"text":"Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow","key":"names_exporter"}
+ ]}

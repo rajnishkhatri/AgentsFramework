@@ -1,0 +1,49 @@
+{
+  "expectations": [
+    {
+      "text": "Reaches for the transition failure matrix",
+      "passed": true,
+      "evidence": "transition failure matrix"
+    },
+    {
+      "text": "Data-driven, explicitly NOT by gut/intuition",
+      "passed": true,
+      "evidence": "don't pick by gut"
+    },
+    {
+      "text": "Rows/cols = last-clean-state x first-failure-state",
+      "passed": true,
+      "evidence": "Row | Column | first failure"
+    },
+    {
+      "text": "Reuses existing first-failure attribution sources",
+      "passed": true,
+      "evidence": "guardrail_validator | goal_judge | synthesis_validator"
+    },
+    {
+      "text": "Notes the meta/analysis.py aggregator is not yet built",
+      "passed": true,
+      "evidence": "not yet"
+    },
+    {
+      "text": "Picks the highest-count cell as the next seam",
+      "passed": true,
+      "evidence": "highest-count cell"
+    },
+    {
+      "text": "Run the matrix anyway on thin data (directional)",
+      "passed": true,
+      "evidence": "directional"
+    },
+    {
+      "text": "Re-attributes the completion/evaluation attribution sink",
+      "passed": true,
+      "evidence": "attribution sink"
+    }
+  ],
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 8,
+    "total": 8
+  }
+}

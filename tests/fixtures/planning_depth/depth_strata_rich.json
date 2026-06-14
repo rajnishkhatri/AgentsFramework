@@ -1,0 +1,68 @@
+[
+  {
+    "prompt": "Echo the phrase quarterly review verbatim.",
+    "want_depth": "L0",
+    "stratum": "depth:L0:single-action",
+    "trigger_family": "single-action"
+  },
+  {
+    "prompt": "Overwrite /workspace/status.txt with the single character OK.",
+    "want_depth": "L0",
+    "stratum": "depth:L0:single-action",
+    "trigger_family": "single-action"
+  },
+  {
+    "prompt": "Read the first line of /workspace/notes.txt and print it.",
+    "want_depth": "L0",
+    "stratum": "depth:L0:single-action",
+    "trigger_family": "single-action"
+  },
+  {
+    "prompt": "Add caching and then update the docs.",
+    "want_depth": "L1",
+    "stratum": "depth:L1:control:short-multipart",
+    "trigger_family": "control:short-multipart"
+  },
+  {
+    "prompt": "Design a rate limiter for the API.",
+    "want_depth": "L1",
+    "stratum": "depth:L1:lone-marker:design",
+    "trigger_family": "lone-marker:design"
+  },
+  {
+    "prompt": "Plan the Postgres migration.",
+    "want_depth": "L1",
+    "stratum": "depth:L1:lone-marker:migration",
+    "trigger_family": "lone-marker:migration"
+  },
+  {
+    "prompt": "Refactor the auth module.",
+    "want_depth": "L1",
+    "stratum": "depth:L1:lone-marker:refactor",
+    "trigger_family": "lone-marker:refactor"
+  },
+  {
+    "prompt": "Walk me through what the login endpoint does when a session cookie is present but expired, including how the refresh path is triggered and what the client sees if refresh fails.",
+    "want_depth": "L1",
+    "stratum": "depth:L1:moderate-length",
+    "trigger_family": "moderate-length"
+  },
+  {
+    "prompt": "Compare Redis and Memcached for our cache, (1) benchmark read latency (2) measure memory overhead (3) test eviction, and then recommend one.",
+    "want_depth": "L2",
+    "stratum": "depth:L2:marker+enum+conj",
+    "trigger_family": "marker+enum+conj"
+  },
+  {
+    "prompt": "Our checkout sometimes double-charges customers when the payment provider times out but later confirms; figure out where the idempotency boundary should live and what state we need to track so a retried request is recognized as the same purchase.",
+    "want_depth": "L2",
+    "stratum": "depth:L2:adversarial:bare-complex",
+    "trigger_family": "adversarial:bare-complex"
+  },
+  {
+    "prompt": "Users report the feed shows stale posts after they publish; trace how a write propagates to the read path and identify every cache or replica that could be serving the old version.",
+    "want_depth": "L2",
+    "stratum": "depth:L2:adversarial:bare-complex",
+    "trigger_family": "adversarial:bare-complex"
+  }
+]

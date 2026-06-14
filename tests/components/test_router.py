@@ -6,11 +6,25 @@ Protocol A (Red-Green-Refactor) with failure-mode parametrized matrix.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
-from components.router import select_model, select_planning_depth
+from components.router import decide_escalation, select_model, select_planning_depth
 from components.routing_config import RoutingConfig
 from services.base_config import AgentConfig, ModelProfile
+
+_DEPTH_STRATA_FIXTURE = (
+    Path(__file__).resolve().parents[1]
+    / "fixtures"
+    / "planning_depth"
+    / "depth_strata_rich.json"
+)
+_DEPTH_STRATA_CORPUS: list[tuple[str, str]] = sorted(
+    (record["prompt"], record["want_depth"])
+    for record in json.loads(_DEPTH_STRATA_FIXTURE.read_text())
+)
 
 
 def _fast_profile():
@@ -311,3 +325,179 @@ class TestPlanningDepth:
         )
         assert depth == expected_depth
         assert reason == expected_reason
+
+
+class TestDepthCollapseRegression:
+    """Depth-collapse fix (planning-pipeline Phase 0).
+
+    Oracle: ``tests/fixtures/planning_depth/depth_strata_rich.json`` carries
+    the *untruncated* prompts plus the intended depth (``want_depth``) per
+    stratum. Derived from the offline GoalJudge depth-strata run
+    (``cache/goaljudge_eval/depth_strata_rich.jsonl`` when present locally).
+
+    Pre-fix, the additive lexical scorer under-scored short single-intent tasks
+    ("Plan the Postgres migration.", "Refactor the auth module.") and long
+    no-other-signal tasks down to L0, collapsing the plan to one step. This is
+    the **failure-first** regression test: it asserts every rich-corpus row
+    reaches its intended depth when scored fresh (``task_tool_results_count=0``).
+    L1-discipline: pure, deterministic, no LLM (Protocol A).
+    """
+
+    def test_rich_corpus_reaches_intended_depth(self) -> None:
+        assert _DEPTH_STRATA_CORPUS, "rich depth-strata corpus is empty or missing"
+
+        mismatches: list[str] = []
+        for prompt, want in _DEPTH_STRATA_CORPUS:
+            fired, reason = select_planning_depth(
+                task_input=prompt,
+                task_tool_results_count=0,
+            )
+            if fired != want:
+                mismatches.append(
+                    f"want={want} fired={fired} ({reason}) :: {prompt[:70]!r}"
+                )
+
+        assert not mismatches, "depth collapse — rows under intended depth:\n" + "\n".join(
+            mismatches
+        )
+
+    def test_post_tool_synthesis_still_collapses_to_l0(self) -> None:
+        # Do not over-correct: a genuine post-tool-synthesis turn (this task has
+        # already produced a tool result) must still route L0, even for a prompt
+        # that scores high when fresh. Guards the per-task-scoped count contract.
+        depth, reason = select_planning_depth(
+            task_input="Plan the Postgres migration and audit the rollout.",
+            task_tool_results_count=1,
+        )
+        assert depth == "L0"
+        assert reason == "post-tool-synthesis"
+
+
+class TestDecideEscalation:
+    """Phase 3 hybrid-escalation predicate (``decide_escalation``).
+
+    The §5 trigger matrix as one pure scalar predicate (OBP-2, no LLM — D2).
+    Failure-first (AP6): the **not-fired** ``hold`` rows — budget exhausted, a
+    clean verdict, a non-prose no-progress kind — land BEFORE the ``escalate``
+    rows, because the headline contract is that escalation is *bounded* and only
+    fires on real evidence (it must never thrash, and a clean run must not loop).
+    L1-discipline: pure, deterministic, zero flake (Protocol A/C).
+    """
+
+    # ── hold (failure-first) ──────────────────────────────────────────────
+
+    @pytest.mark.parametrize("verdict", ["failed", "partial", "success"])
+    def test_holds_at_budget_ceiling_even_on_failure(self, verdict: str) -> None:
+        """At/above the ceiling, ALWAYS hold — no signal overrides the budget."""
+        assert (
+            decide_escalation(
+                goal_verdict=verdict,
+                unmet_conditions=["x is reversible"],
+                prose_kind="prose_repeat",
+                attempt=2,
+                max_attempts=2,
+            )
+            == "hold"
+        )
+        assert (
+            decide_escalation(
+                goal_verdict=verdict,
+                unmet_conditions=[],
+                prose_kind="prose_repeat",
+                attempt=3,
+                max_attempts=2,
+            )
+            == "hold"
+        )
+
+    def test_zero_budget_never_escalates(self) -> None:
+        assert (
+            decide_escalation(
+                goal_verdict="failed",
+                unmet_conditions=["x"],
+                prose_kind="prose_repeat",
+                attempt=0,
+                max_attempts=0,
+            )
+            == "hold"
+        )
+
+    @pytest.mark.parametrize("verdict", ["success", "", "unknown"])
+    def test_clean_verdict_no_thrash_holds(self, verdict: str) -> None:
+        """A clean/unrecognized verdict with no prose thrash never escalates."""
+        assert (
+            decide_escalation(
+                goal_verdict=verdict,
+                unmet_conditions=[],
+                prose_kind="none",
+                attempt=0,
+                max_attempts=2,
+            )
+            == "hold"
+        )
+
+    def test_tool_repeat_alone_does_not_escalate(self) -> None:
+        """tool_repeat is check_continuation's job, not a reflexion trigger."""
+        assert (
+            decide_escalation(
+                goal_verdict="success",
+                unmet_conditions=[],
+                prose_kind="tool_repeat",
+                attempt=0,
+                max_attempts=2,
+            )
+            == "hold"
+        )
+
+    # ── escalate (the fired cases) ────────────────────────────────────────
+
+    @pytest.mark.parametrize("verdict", ["failed", "partial"])
+    def test_bad_verdict_under_budget_escalates(self, verdict: str) -> None:
+        """Primary §5: a failed/partial verdict escalates while budget remains."""
+        assert (
+            decide_escalation(
+                goal_verdict=verdict,
+                unmet_conditions=["the migration is reversible"],
+                prose_kind="none",
+                attempt=0,
+                max_attempts=2,
+            )
+            == "escalate"
+        )
+        assert (
+            decide_escalation(
+                goal_verdict=verdict,
+                unmet_conditions=[],
+                prose_kind="none",
+                attempt=1,
+                max_attempts=2,
+            )
+            == "escalate"
+        )
+
+    def test_prose_thrash_on_clean_verdict_escalates(self) -> None:
+        """Tertiary §5 / D3: a no-tool prose thrash escalates even when the
+        verdict is clean — catches the OpenManus is_stuck failure."""
+        assert (
+            decide_escalation(
+                goal_verdict="success",
+                unmet_conditions=[],
+                prose_kind="prose_repeat",
+                attempt=0,
+                max_attempts=2,
+            )
+            == "escalate"
+        )
+
+    def test_verdict_takes_priority_over_prose(self) -> None:
+        """Both signals firing still escalates (priority is moot — same action)."""
+        assert (
+            decide_escalation(
+                goal_verdict="failed",
+                unmet_conditions=["x"],
+                prose_kind="prose_repeat",
+                attempt=0,
+                max_attempts=2,
+            )
+            == "escalate"
+        )

@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py",
+      "passed": true,
+      "evidence": "references skill-path serve_open_coder"
+    },
+    {
+      "text": "Makes a session work dir and copies/uses coder.html there rather than editing a coder in place",
+      "passed": false,
+      "evidence": "NOT MATCHED: makes workdir + copies coder.html"
+    },
+    {
+      "text": "Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)",
+      "passed": true,
+      "evidence": "explains Enter-to-commit vs memo"
+    },
+    {
+      "text": "Runs the dataset exporter as a DRY RUN and stops before --write",
+      "passed": true,
+      "evidence": "dry run, stops before --write"
+    },
+    {
+      "text": "States the Langfuse dataset is the review surface",
+      "passed": true,
+      "evidence": "dataset = review surface"
+    }
+  ]
+}

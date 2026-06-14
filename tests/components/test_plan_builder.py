@@ -8,8 +8,10 @@ from components.plan_builder import (
     PlanArtifact,
     PlanStep,
     build_plan_artifact,
+    build_plan_artifact_llm,
     build_planning_instructions,
     compute_plan_fingerprint,
+    plan_is_stale,
     validate_plan_mece,
 )
 
@@ -281,3 +283,139 @@ def test_validate_plan_mece_rejects_overlapping_goals() -> None:
     result = validate_plan_mece(artifact)
     assert result.is_valid is False
     assert any("not MECE" in issue for issue in result.issues)
+
+
+# ── Phase 1 (T1): LLM-backed plan with deterministic floor ────────────────
+#
+# Failure-first (AP6): the floor-fallback tests land BEFORE the success test —
+# the contract is "the run ALWAYS has a valid plan", so the failure paths are
+# the headline. An LLM plan is a bonus on top of a guaranteed floor.
+
+
+def test_build_plan_artifact_llm_floors_when_generate_raises() -> None:
+    """Generator raises -> deterministic floor, run still has a valid plan."""
+
+    def boom(_task: str) -> dict:
+        raise RuntimeError("LLM transport failed")
+
+    artifact = build_plan_artifact_llm(
+        "L1", task_input="Plan the Postgres migration.", generate=boom
+    )
+    floor = build_plan_artifact("L1", task_input="Plan the Postgres migration.")
+    assert artifact == floor
+    assert validate_plan_mece(artifact).is_valid
+
+
+def test_build_plan_artifact_llm_floors_on_empty_steps() -> None:
+    """A plan with no steps is not a plan -> floor fallback."""
+    artifact = build_plan_artifact_llm(
+        "L1",
+        task_input="Refactor the auth module.",
+        generate=lambda _t: {"ordered_steps": [], "success_conditions": ["x"]},
+    )
+    assert artifact == build_plan_artifact(
+        "L1", task_input="Refactor the auth module."
+    )
+
+
+def test_build_plan_artifact_llm_floors_on_garbage_shape() -> None:
+    """Non-dict / wrong-typed response -> floor, never a raise to the caller."""
+    artifact = build_plan_artifact_llm(
+        "L1", task_input="Audit the pipeline.", generate=lambda _t: ["not", "a", "dict"]
+    )
+    assert artifact == build_plan_artifact("L1", task_input="Audit the pipeline.")
+
+
+def test_build_plan_artifact_llm_floors_when_plan_fails_mece() -> None:
+    """A structurally invalid LLM plan (overlapping goals) -> floor."""
+    artifact = build_plan_artifact_llm(
+        "L2",
+        task_input="Design the rollout.",
+        generate=lambda _t: {
+            "ordered_steps": [
+                {"title": "a", "goal": "same goal"},
+                {"title": "b", "goal": "same goal"},
+            ]
+        },
+    )
+    assert artifact == build_plan_artifact("L2", task_input="Design the rollout.")
+
+
+def test_build_plan_artifact_llm_consumes_valid_plan_structure() -> None:
+    """A well-formed LLM plan is consumed — structure asserted, never exact text."""
+    artifact = build_plan_artifact_llm(
+        "L2",
+        task_input="Compare Redis and Memcached.",
+        generate=lambda _t: {
+            "ordered_steps": [
+                {"title": "Survey", "goal": "survey both caches"},
+                {"goal": "benchmark latency"},
+                {"title": "Recommend", "goal": "recommend one with rationale"},
+            ],
+            "constraints": ["stay vendor-neutral"],
+            "success_conditions": ["a recommendation is made"],
+        },
+    )
+    assert validate_plan_mece(artifact).is_valid
+    # Contiguous step_ids re-assigned from 1 regardless of input.
+    assert [s.step_id for s in artifact.ordered_steps] == [1, 2, 3]
+    # Every step has a non-empty goal (structure, not exact text — AP3).
+    assert all(s.goal.strip() for s in artifact.ordered_steps)
+    # String-only step coerced to a goal.
+    assert artifact.ordered_steps[1].goal == "benchmark latency"
+    assert "stay vendor-neutral" in artifact.constraints
+
+
+def test_build_plan_artifact_llm_accepts_bare_string_steps() -> None:
+    """``ordered_steps`` of plain strings (a common model shape) is tolerated."""
+    artifact = build_plan_artifact_llm(
+        "L1",
+        task_input="Build the cache layer.",
+        generate=lambda _t: {"ordered_steps": ["design keys", "wire eviction"]},
+    )
+    assert validate_plan_mece(artifact).is_valid
+    assert [s.goal for s in artifact.ordered_steps] == ["design keys", "wire eviction"]
+
+
+# ── Phase 1 (T1): replan staleness gate (plan_is_stale) ───────────────────
+
+
+def _plan() -> PlanArtifact:
+    return PlanArtifact(
+        ordered_steps=[PlanStep(step_id=1, title="Step 1", goal="do it")],
+        constraints=["c"],
+        success_conditions=["s"],
+    )
+
+
+@pytest.mark.parametrize("outcome", ["error", "failed", "failure", "ERROR"])
+def test_plan_is_stale_on_failed_tool_result(outcome: str) -> None:
+    """A failed/errored tool result invalidates the plan -> replan."""
+    assert plan_is_stale(_plan(), {"outcome": outcome}) is True
+
+
+def test_plan_is_stale_on_live_tool_failure_schema() -> None:
+    """The live execute_tool schema records ok/error, not 'outcome'."""
+    assert plan_is_stale(_plan(), {"ok": False, "error": None}) is True
+    assert plan_is_stale(_plan(), {"ok": True, "error": "boom"}) is True
+
+
+def test_plan_is_not_stale_on_live_tool_success_schema() -> None:
+    assert plan_is_stale(_plan(), {"ok": True, "error": None}) is False
+
+
+def test_plan_is_stale_on_explicit_surprising_flag() -> None:
+    assert plan_is_stale(_plan(), {"outcome": "success", "surprising": True}) is True
+    assert plan_is_stale(_plan(), {"outcome": "success", "replan": True}) is True
+
+
+def test_plan_is_not_stale_on_expected_success() -> None:
+    """The default path: a successful, expected result does NOT replan."""
+    assert plan_is_stale(_plan(), {"outcome": "success"}) is False
+
+
+def test_plan_is_not_stale_with_no_tool_result_or_empty_plan() -> None:
+    assert plan_is_stale(_plan(), None) is False
+    assert plan_is_stale(_plan(), {}) is False
+    empty = PlanArtifact(ordered_steps=[], constraints=[], success_conditions=["s"])
+    assert plan_is_stale(empty, {"outcome": "error"}) is False

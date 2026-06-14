@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eval Review</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" integrity="sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --surface: #ffffff;
+      --border: #e8e6dc;
+      --text: #141413;
+      --text-muted: #b0aea5;
+      --accent: #d97757;
+      --accent-hover: #c4613f;
+      --green: #788c5d;
+      --green-bg: #eef2e8;
+      --red: #c44;
+      --red-bg: #fceaea;
+      --header-bg: #141413;
+      --header-text: #faf9f5;
+      --radius: 6px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lora', Georgia, serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ---- Header ---- */
+    .header {
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .header h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header .instructions {
+      font-size: 0.8rem;
+      opacity: 0.7;
+      margin-top: 0.25rem;
+    }
+    .header .progress {
+      font-size: 0.875rem;
+      opacity: 0.8;
+      text-align: right;
+    }
+
+    /* ---- Main content ---- */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ---- Sections ---- */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      flex-shrink: 0;
+    }
+    .section-header {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .section-body {
+      padding: 1rem;
+    }
+
+    /* ---- Config badge ---- */
+    .config-badge {
+      display: inline-block;
+      padding: 0.2rem 0.625rem;
+      border-radius: 9999px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 0.75rem;
+      vertical-align: middle;
+    }
+    .config-badge.config-primary {
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+    }
+    .config-badge.config-baseline {
+      background: rgba(255, 193, 7, 0.15);
+      color: #f57f17;
+    }
+
+    /* ---- Prompt ---- */
+    .prompt-text {
+      white-space: pre-wrap;
+      font-size: 0.9375rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Outputs ---- */
+    .output-file {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .output-file + .output-file {
+      margin-top: 1rem;
+    }
+    .output-file-header {
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .output-file-header .dl-btn {
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-decoration: none;
+      cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 500;
+      opacity: 0.8;
+    }
+    .output-file-header .dl-btn:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+    .output-file-content {
+      padding: 0.75rem;
+      overflow-x: auto;
+    }
+    .output-file-content pre {
+      font-size: 0.8125rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    .output-file-content img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .output-file-content iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .output-file-content table {
+      border-collapse: collapse;
+      font-size: 0.8125rem;
+      width: 100%;
+    }
+    .output-file-content table td,
+    .output-file-content table th {
+      border: 1px solid var(--border);
+      padding: 0.375rem 0.5rem;
+      text-align: left;
+    }
+    .output-file-content table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+    .output-file-content .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .output-file-content .download-link:hover {
+      background: var(--border);
+    }
+    .empty-state {
+      color: var(--text-muted);
+      font-style: italic;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    /* ---- Feedback ---- */
+    .prev-feedback {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.625rem 0.75rem;
+      margin-top: 0.75rem;
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .prev-feedback-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+      color: var(--text-muted);
+    }
+    .feedback-textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      line-height: 1.5;
+      resize: vertical;
+      color: var(--text);
+    }
+    .feedback-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .feedback-status {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      min-height: 1.1em;
+    }
+
+    /* ---- Grades (collapsible) ---- */
+    .grades-toggle {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      user-select: none;
+    }
+    .grades-toggle:hover {
+      color: var(--accent);
+    }
+    .grades-toggle .arrow {
+      margin-right: 0.5rem;
+      transition: transform 0.15s;
+      font-size: 0.75rem;
+    }
+    .grades-toggle .arrow.open {
+      transform: rotate(90deg);
+    }
+    .grades-content {
+      display: none;
+      margin-top: 0.75rem;
+    }
+    .grades-content.open {
+      display: block;
+    }
+    .grades-summary {
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .grade-badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .grade-pass { background: var(--green-bg); color: var(--green); }
+    .grade-fail { background: var(--red-bg); color: var(--red); }
+    .assertion-list {
+      list-style: none;
+    }
+    .assertion-item {
+      padding: 0.625rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8125rem;
+    }
+    .assertion-item:last-child { border-bottom: none; }
+    .assertion-status {
+      font-weight: 600;
+      margin-right: 0.5rem;
+    }
+    .assertion-status.pass { color: var(--green); }
+    .assertion-status.fail { color: var(--red); }
+    .assertion-evidence {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 0.25rem;
+      padding-left: 1.5rem;
+    }
+
+    /* ---- View tabs ---- */
+    .view-tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 2rem;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .view-tab {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.625rem 1.25rem;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .view-tab:hover { color: var(--text); }
+    .view-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .view-panel { display: none; }
+    .view-panel.active { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+    /* ---- Benchmark view ---- */
+    .benchmark-view {
+      padding: 1.5rem 2rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .benchmark-table {
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.8125rem;
+      width: 100%;
+      margin-bottom: 1.5rem;
+    }
+    .benchmark-table th, .benchmark-table td {
+      padding: 0.625rem 0.75rem;
+      text-align: left;
+      border: 1px solid var(--border);
+    }
+    .benchmark-table th {
+      font-family: 'Poppins', sans-serif;
+      background: var(--header-bg);
+      color: var(--header-text);
+      font-weight: 500;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .benchmark-table tr:hover { background: var(--bg); }
+    .benchmark-table tr.benchmark-row-with { background: rgba(33, 150, 243, 0.06); }
+    .benchmark-table tr.benchmark-row-without { background: rgba(255, 193, 7, 0.06); }
+    .benchmark-table tr.benchmark-row-with:hover { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-without:hover { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-table tr.benchmark-row-avg { font-weight: 600; border-top: 2px solid var(--border); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-with { background: rgba(33, 150, 243, 0.12); }
+    .benchmark-table tr.benchmark-row-avg.benchmark-row-without { background: rgba(255, 193, 7, 0.12); }
+    .benchmark-delta-positive { color: var(--green); font-weight: 600; }
+    .benchmark-delta-negative { color: var(--red); font-weight: 600; }
+    .benchmark-notes {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .benchmark-notes h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .benchmark-notes ul {
+      list-style: disc;
+      padding-left: 1.25rem;
+    }
+    .benchmark-notes li {
+      font-size: 0.8125rem;
+      line-height: 1.6;
+      margin-bottom: 0.375rem;
+    }
+    .benchmark-empty {
+      color: var(--text-muted);
+      font-style: italic;
+      text-align: center;
+      padding: 3rem;
+    }
+
+    /* ---- Navigation ---- */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+    .nav-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .nav-btn:hover:not(:disabled) {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .nav-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .done-btn {
+      font-family: 'Poppins', sans-serif;
+      padding: 0.5rem 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .done-btn:hover {
+      background: var(--bg);
+      border-color: var(--text-muted);
+    }
+    .done-btn.ready {
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 600;
+    }
+    .done-btn.ready:hover {
+      background: var(--accent-hover);
+    }
+    /* ---- Done overlay ---- */
+    .done-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+    }
+    .done-overlay.visible {
+      display: flex;
+    }
+    .done-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 2rem 3rem;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+    }
+    .done-card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .done-card p {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .done-card .btn-row {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .done-card button {
+      padding: 0.5rem 1.25rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 0.875rem;
+    }
+    .done-card button:hover {
+      background: var(--bg);
+    }
+    /* ---- Toast ---- */
+    .toast {
+      position: fixed;
+      bottom: 5rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--header-bg);
+      color: var(--header-text);
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius);
+      font-size: 0.875rem;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" style="height:100vh; display:flex; flex-direction:column;">
+    <div class="header">
+      <div>
+        <h1>Eval Review: <span id="skill-name"></span></h1>
+        <div class="instructions">Review each output and leave feedback below. Navigate with arrow keys or buttons. When done, copy feedback and paste into Claude Code.</div>
+      </div>
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- View tabs (only shown when benchmark data exists) -->
+    <div class="view-tabs" id="view-tabs" style="display:none;">
+      <button class="view-tab active" onclick="switchView('outputs')">Outputs</button>
+      <button class="view-tab" onclick="switchView('benchmark')">Benchmark</button>
+    </div>
+
+    <!-- Outputs panel (qualitative review) -->
+    <div class="view-panel active" id="panel-outputs">
+    <div class="main">
+      <!-- Prompt -->
+      <div class="section">
+        <div class="section-header">Prompt <span class="config-badge" id="config-badge" style="display:none;"></span></div>
+        <div class="section-body">
+          <div class="prompt-text" id="prompt-text"></div>
+        </div>
+      </div>
+
+      <!-- Outputs -->
+      <div class="section">
+        <div class="section-header">Output</div>
+        <div class="section-body" id="outputs-body">
+          <div class="empty-state">No output files found</div>
+        </div>
+      </div>
+
+      <!-- Previous Output (collapsible) -->
+      <div class="section" id="prev-outputs-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="togglePrevOutputs()">
+            <span class="arrow" id="prev-outputs-arrow">&#9654;</span>
+            Previous Output
+          </div>
+        </div>
+        <div class="grades-content" id="prev-outputs-content"></div>
+      </div>
+
+      <!-- Grades (collapsible) -->
+      <div class="section" id="grades-section" style="display:none;">
+        <div class="section-header">
+          <div class="grades-toggle" onclick="toggleGrades()">
+            <span class="arrow" id="grades-arrow">&#9654;</span>
+            Formal Grades
+          </div>
+        </div>
+        <div class="grades-content" id="grades-content"></div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="section">
+        <div class="section-header">Your Feedback</div>
+        <div class="section-body">
+          <textarea
+            class="feedback-textarea"
+            id="feedback"
+            placeholder="What do you think of this output? Any issues, suggestions, or things that look great?"
+          ></textarea>
+          <div class="feedback-status" id="feedback-status"></div>
+          <div class="prev-feedback" id="prev-feedback" style="display:none;">
+            <div class="prev-feedback-label">Previous feedback</div>
+            <div id="prev-feedback-text"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav" id="outputs-nav">
+      <button class="nav-btn" id="prev-btn" onclick="navigate(-1)">&#8592; Previous</button>
+      <button class="done-btn" id="done-btn" onclick="showDoneDialog()">Submit All Reviews</button>
+      <button class="nav-btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+    </div>
+    </div><!-- end panel-outputs -->
+
+    <!-- Benchmark panel (quantitative stats) -->
+    <div class="view-panel" id="panel-benchmark">
+      <div class="benchmark-view" id="benchmark-content">
+        <div class="benchmark-empty">No benchmark data available. Run a benchmark to see quantitative results here.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Done overlay -->
+  <div class="done-overlay" id="done-overlay">
+    <div class="done-card">
+      <h2>Review Complete</h2>
+      <p>Your feedback has been saved. Go back to your Claude Code session and tell Claude you're done reviewing.</p>
+      <div class="btn-row">
+        <button onclick="closeDoneDialog()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ---- Embedded data (injected by generate_review.py) ----
+    const EMBEDDED_DATA = {"skill_name": "agentsframework-open-coding", "runs": [{"id": "eval-0-code-three-traces-with_skill", "prompt": "Set me up to open-code 3 traces and show how the coded result reaches a Langfuse dataset, stopping before --write.", "eval_id": 0, "outputs": [{"name": "answer.md", "type": "text", "content": "# Open-coding three traces \u2014 your walkthrough\n\nYou wanted to hand-code three agent traces and end up with all three reviewable\ntogether in a Langfuse dataset, taken right up to (but not including) the\n`--write` push. Here's the setup I built and exactly how to drive it.\n\nSkill followed: `docs/skills/agentsframework-open-coding/SKILL.md` (the 6-step\nloop). I used the skill's **bundled** scripts by full path, not the repo's older\ntop-level `scripts/serve_open_coder.py` / `scripts/export_depth_cases_to_dataset.py`\n(those are planning-depth-hardcoded and don't take the `--dir/--dataset/--coded`\nflags this session needs).\n\n## What's already done\n\n- **Session work dir:** `cache/open_coding/code-three-traces/`\n  - `coder.html` \u2014 copied from the skill's `assets/coder.html` (generic; never hand-edited)\n  - `cases.json` \u2014 your 3 cases, copied from\n    `docs/skills/agentsframework-open-coding/assets/sample_cases.json`\n- I verified the server, the `/cases` + `/save` + `/load` round-trip, the\n  truncation guard, the timestamped backup, the Step-4 verify one-liner, and the\n  Step-5 **dry run** all work. Then I stopped the server and reset the work dir to\n  a clean start state (just `coder.html` + `cases.json`), so when you first press\n  Save you get a genuine blank slate \u2014 I did **not** fabricate any codes\n  (Cardinal rule 2: the human codes first).\n\nThe three cases you'll be coding (all `want L1/L2 \u2192 fired L0` depth-misses):\n\n| trace_id (short) | task | goal_met |\n|---|---|---|\n| `e68552dd\u2026` | Design a rate limiter for the API | true |\n| `2c0f3fceb1\u2026` | Refactor the auth module | false |\n| `9d2c84fb4a\u2026` | Compare Redis vs Memcached, (1)(2)(3) then recommend | false |\n\n## Step A \u2014 Start the coder\n\nThe repo already has a stale server squatting on the default port **3117** (not\nmine \u2014 I left it alone), so this session runs on **3118**:\n\n```bash\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py \\\n    --dir cache/open_coding/code-three-traces --port 3118\n```\n\nThen open **http://localhost:3118/coder.html** in a browser.\n\n> Always over `http://` \u2014 never open the `.html` as a `file://`. On `file://` the\n> Save button's POST to `/save` fails and silently falls back to a `~/Downloads`\n> file. The server also validates each saved row, refuses a save that shrinks the\n> file below 50% (pass `?force=1` to override), and writes a timestamped backup on\n> every save.\n\n## Step B \u2014 How to tag codes and save (the part that trips people up)\n\nFor each of the 3 cards: read the task, expand **answer + judge rationale**,\nglance at the trajectory event counts and the `goal_met` / `want\u2192fired` badge,\nthen code what the trace actually *did*.\n\n- Type a short code in the **\"add open code, press Enter\"** box and press\n  **Enter**. Each Enter turns the text into a chip. That \u2014 and only that \u2014\n  populates `open_codes`.\n- **The trap:** typing a comma-list into the **memo** box does NOT create codes.\n  The memo is free-text nuance only. If your codes live in the memo, `open_codes`\n  stays empty and the export writes blank-coded items.\n- Click the **\u00d7** on a chip to remove it. Add a memo for anything a code can't\n  capture.\n- Click **Save to disk**. You should see `saved to disk: 3 rows -> coded.jsonl`.\n  That writes `cache/open_coding/code-three-traces/coded.jsonl`. (Codes also\n  autosave to `localStorage` on every keystroke, and reopening the page restores\n  them via `/load`.)\n\nGood open codes are short, behavioral, and name *what happened* \u2014 not a fix.\nFor these three the obvious candidates are things like:\n`clarification-instead-of-action` (case 2 asked for more info instead of\nrefactoring), `subagent-result-lost` / `claim-without-tool-evidence` (case 3's\ntool errors swallowed the results), `depth-under-plan` (all three wanted L1/L2 but\nfired L0). Type your own \u2014 don't overthink consistency; you merge/rename later in\naxial coding.\n\n## Step C \u2014 Verify before exporting (Step 4)\n\nThe single most common failure is memos full of prose with `open_codes` empty.\nAfter Save, confirm every row you meant to code actually has codes:\n\n```bash\nWORK=cache/open_coding/code-three-traces\n.venv/bin/python -c \"import json,sys; \\\nrows=[json.loads(l) for l in open('$WORK/coded.jsonl') if l.strip()]; \\\nempty=[r['trace_id'] for r in rows if not r.get('open_codes')]; \\\nprint(f'{len(rows)} rows, {len(empty)} with NO codes'); print('uncoded:', empty)\"\n```\n\nYou want `3 rows, 0 with NO codes`. If any trace_id shows up in `uncoded`, go\nback to the browser and Enter-commit codes for it.\n\n## Step D \u2014 Dry run the dataset export (right up to `--write`)\n\nThis is the line you stop at. Dry run is the default (no `--write`), so it only\nprints what it *would* push:\n\n```bash\nEXPORT=docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py\n.venv/bin/python \"$EXPORT\" \\\n    --dataset code-three-traces \\\n    --coded cache/open_coding/code-three-traces/coded.jsonl \\\n    --meta-keys stratum,trigger_family,want_depth,fired_depth,goal_met\n```\n\nIt prints `N cases -> dataset 'code-three-traces' (X with NO codes)`, a warning\nbanner if any rows are uncoded, and a `[would write] '<task>' codes=[...]` line\nper case, ending with `DRY RUN \u2014 nothing written.` Eyeball that the codes column\nshows what you tagged.\n\nI ran this dry run already (against the uncoded baseline, since you haven't tagged\nyet) and it behaved exactly as documented \u2014 see `transcript.md`.\n\n## Step E \u2014 The actual push (NOT done \u2014 your call)\n\nWhen the dry run looks right, the same command with `--write` creates the dataset\n(if absent) and one item per case, idempotently (item id = `uuid5(trace_id)`, so\nre-running updates in place):\n\n```bash\n.venv/bin/python \"$EXPORT\" --write \\\n    --dataset code-three-traces \\\n    --coded cache/open_coding/code-three-traces/coded.jsonl \\\n    --meta-keys stratum,trigger_family,want_depth,fired_depth,goal_met\n```\n\nI deliberately stopped before this. Each dataset item lands as\n`input={task}`, `expected_output=final_answer`,\n`metadata={open_codes, memo, ...meta-keys}`, with a `source_trace_id` back-link.\n\n## Step F \u2014 Review and iterate\n\nAfter `--write`, open the dataset in Langfuse\n(`/project/<id>/datasets/<dataset-id>`): all three cases in one paginated table,\ntask + answer visible, codes in metadata, trace back-link for drill-down. To\nchange codes, edit in the **HTML coder** (the write surface), Save, re-run the\nexporter \u2014 the dataset is read-only review, the coder is where you edit.\n\nA dataset is the right surface (not per-trace Scores, not an annotation queue) \u2014\nthe reasoning is in `docs/skills/agentsframework-open-coding/references/langfuse-surface.md`.\n\n## Environment notes\n\n- Langfuse creds come from the repo `.env` (`LANGFUSE_PUBLIC_KEY`,\n  `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`; default EU `https://cloud.langfuse.com`\n  \u2014 a `us.` host 502s). The exporter loads `.env` itself.\n- Always `.venv/bin/python` (Python 3.13), never system `python`, or you'll hit\n  `int | None` syntax errors in the imported client.\n"}], "grading": {"expectations": [{"text": "Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py", "passed": true, "evidence": "references skill-path serve_open_coder"}, {"text": "Makes a session work dir and copies/uses coder.html there rather than editing a coder in place", "passed": true, "evidence": "makes workdir + copies coder.html"}, {"text": "Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)", "passed": true, "evidence": "explains Enter-to-commit vs memo"}, {"text": "Runs the dataset exporter as a DRY RUN and stops before --write", "passed": true, "evidence": "dry run, stops before --write"}, {"text": "States the Langfuse dataset is the review surface", "passed": true, "evidence": "dataset = review surface"}]}}, {"id": "eval-0-code-three-traces-without_skill", "prompt": "Set me up to open-code 3 traces and show how the coded result reaches a Langfuse dataset, stopping before --write.", "eval_id": 0, "outputs": [{"name": "answer.md", "type": "text", "content": "# Open-coding your three traces, then into a reviewable Langfuse dataset\n\nYou're set up. The coder is running, all three cases load, the save round-trip is\nverified, and I've taken the pipeline right up to (but not through) the Langfuse\n`--write`. Here's exactly what's live and what you do next.\n\n---\n\n## What I did for you\n\n1. Made a work directory and put the two files the coder server expects into it\n   (it reads `coder.html` + `cases.json` by those exact names):\n   - `outputs/coder.html` (copied from the skill asset)\n   - `outputs/cases.json` (your `sample_cases.json`, renamed \u2014 3 cases)\n2. Started the coder server (see \"Gotcha\" below for which script).\n3. Verified the three routes: `GET /coder.html` (200), `GET /cases` (3 cases),\n   `GET /load` (empty before any save).\n4. Did a first hand-coding pass on all three traces and saved it, to prove the\n   Save button's round-trip works. **These are my codes \u2014 overwrite them with\n   yours in the browser.** They're a starting draft, not the final analysis.\n5. Ran the Step-4 verification (`0 rows with NO codes`) and the export **dry run**.\n   Stopped there. Nothing was written to Langfuse.\n\n---\n\n## 1. The coder is already running\n\n```\nhttp://localhost:3119/coder.html\n```\n\nOpen that in your browser. You'll see three cards, one per trace. If the page is\never not running, restart it with **the skill's parameterized script** (not the\nrepo-root one \u2014 see Gotcha):\n\n```bash\ncd /Users/rajnishkhatri/Documents/AgentsFramework/agent\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py \\\n  --dir docs/skills/agentsframework-open-coding-workspace/iteration-1/eval-0-code-three-traces/without_skill/outputs \\\n  --port 3119\n```\n\nAlways over `http://` \u2014 never open the `.html` as a `file://`. On `file://` the\nSave button's POST fails and silently falls back to a browser download, and your\ncodes end up stranded in `~/Downloads`.\n\n---\n\n## 2. How to tag codes and save (the mechanics that matter)\n\nEach card shows the task, an expandable final answer + judge rationale, and the\ntrajectory event counts. Code against **what the trajectory and `goal_met` show**,\nnot what the answer's prose claims.\n\nFor each card:\n\n- **Add a code:** type a short code in the \"add open code, press Enter\" box and\n  **press Enter**. It becomes a chip. Repeat for as many codes as you want.\n- **Remove a code:** click the `\u00d7` on its chip.\n- **Memo:** type freeform nuance in the memo box (optional).\n- **Save:** click **Save to disk**. Status flips to `saved to disk: 3 rows -> coded.jsonl`.\n\nCodes also autosave to `localStorage` on every keystroke, so a reload won't lose\nwork \u2014 but **only \"Save to disk\" writes the JSONL the exporter reads.**\n\n### The one trap that ruins sessions\n\n**Codes only count if they're Enter-committed chips.** Text you type into the\n*memo* box does **not** populate `open_codes`. A comma-list sitting in a memo\nexports as zero codes. After saving, the codes-vs-memo split is the thing to\nverify (next step).\n\nGood open codes are short, behavioral, and name *what happened* (not a fix):\n`depth-under-plan`, `clarification-instead-of-action`, `tool-error-unhandled`,\n`goal-not-met`. Don't agonize over consistency \u2014 you merge/rename later in axial\ncoding.\n\n### My draft codes (already saved \u2014 replace as you see fit)\n\n| Trace | Task | Draft codes |\n|---|---|---|\n| `e68552dd` | Design a rate limiter | `depth-under-plan`, `goal-met-despite-underplan`, `single-shot-design` |\n| `2c0f3fce` | Refactor the auth module | `clarification-instead-of-action`, `no-tool-use`, `depth-under-plan`, `goal-not-met` |\n| `9d2c84fb` | Compare Redis vs Memcached (3 subtasks) | `tool-error-unhandled`, `fabricated-progress-absent`, `subtasks-zero-of-three`, `depth-under-plan`, `goal-not-met` |\n\nAll three `want` a deeper plan (L1/L2) but `fired_depth` is L0 \u2014 the depth scorer\nunder-planned each. Note `9d2c84fb` honestly *reports* the tool failure rather\nthan faking a recommendation, so it's a tool-error case, not a corrupt-success.\n\n---\n\n## 3. Verify before you export (Step 4)\n\nAfter Save, confirm every row you meant to code actually has chips:\n\n```bash\ncd /Users/rajnishkhatri/Documents/AgentsFramework/agent\n.venv/bin/python -c \"import json; \\\nrows=[json.loads(l) for l in open('docs/skills/agentsframework-open-coding-workspace/iteration-1/eval-0-code-three-traces/without_skill/outputs/coded.jsonl') if l.strip()]; \\\nempty=[r['trace_id'] for r in rows if not r.get('open_codes')]; \\\nprint(f'{len(rows)} rows, {len(empty)} with NO codes'); print('uncoded:', empty)\"\n```\n\nRight now this prints `3 rows, 0 with NO codes` / `uncoded: []`. If any trace_id\nshows up in `uncoded:` after your pass, go back to the browser and Enter-commit\nits codes. (Use `.venv/bin/python` \u2014 this repo needs Python 3.13.)\n\n---\n\n## 4. How the coded result becomes a paginated Langfuse dataset\n\nA **dataset** is the review surface \u2014 not per-trace Scores (they scatter across a\ntrace's observations) and not an annotation queue (its drawer shows `run.started`,\nwhich has no task or answer, and the Hobby plan caps queues at 1). The dataset\nputs task + answer + codes together, one item per case, paginated, with a\n`source_trace_id` link back to the full trace.\n\nThe exporter builds each item as:\n- `input` = the task (`prompt`)\n- `expected_output` = the agent's `final_answer`\n- `metadata` = `open_codes` + `memo` (always) + whatever `--meta-keys` you list\n- `source_trace_id` = the trace back-link\n\nItem id is `uuid5(trace_id)`, so re-running **updates the same items** \u2014 refine\ncodes in the coder, Save, re-export, no duplicates.\n\n### The dry run (default \u2014 what I already ran for you)\n\n```bash\ncd /Users/rajnishkhatri/Documents/AgentsFramework/agent\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py \\\n  --dataset open-coding-three-traces \\\n  --coded docs/skills/agentsframework-open-coding-workspace/iteration-1/eval-0-code-three-traces/without_skill/outputs/coded.jsonl \\\n  --meta-keys stratum,trigger_family,want_depth,fired_depth,goal_met,partial_fraction \\\n  --id-keys want_depth,fired_depth\n```\n\nIt prints `[would write] ...` per case and ends with `DRY RUN \u2014 nothing written`.\nYour `final_answer` is already on each row, so no `--answers` join file is needed.\n\n### When you're ready \u2014 the `--write` step (I did NOT run this)\n\nAdd `--write` to the exact same command and it creates the dataset\n`open-coding-three-traces` and pushes the three items:\n\n```bash\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py --write \\\n  --dataset open-coding-three-traces \\\n  --coded docs/skills/agentsframework-open-coding-workspace/iteration-1/eval-0-code-three-traces/without_skill/outputs/coded.jsonl \\\n  --meta-keys stratum,trigger_family,want_depth,fired_depth,goal_met,partial_fraction \\\n  --id-keys want_depth,fired_depth\n```\n\nThis hits your real Langfuse project (creds are in `.env`, EU host). Only run it\nafter you've eyeballed the dry run and replaced my draft codes with yours.\n\n### Then review\n\nOpen the dataset in Langfuse (`/project/<id>/datasets/<dataset-id>`). All three\ncases in one paginated table \u2014 task + answer visible, codes in metadata, trace\nback-link for drill-down. To change anything: edit in the **HTML coder** (the\nwrite surface), Save, re-run the exporter. The dataset is read-only review; the\ncoder is where you edit.\n\n---\n\n## Summary of the loop\n\n```\ncoder running  ->  tag codes (Enter = chip)  ->  Save to disk  ->  verify 0 uncoded\n   ->  export dry run (done)  ->  [you] add --write  ->  page the dataset\n```\n\nYou're at the arrow right before `--write`.\n"}, {"name": "cases.json", "type": "text", "content": "[\n  {\n    \"trace_id\": \"e68552dd78b741598321c7833e7f6843\",\n    \"stratum\": \"depth:L1:lone-marker:design\",\n    \"trigger_family\": \"lone-marker:design\",\n    \"prompt\": \"Design a rate limiter for the API.\",\n    \"final_answer\": \"Designing a rate limiter involves a token-bucket or sliding-window algorithm backed by Redis, with per-client identification, a 429 response on overflow, and a reset mechanism after the window. Example implementation included.\",\n    \"goal_met\": true,\n    \"partial_fraction\": 1,\n    \"plan_steps\": 1,\n    \"trajectory\": [{\"ev\": \"step.planned\"}, {\"ev\": \"model.selected\", \"model\": \"gpt-4o\"}, {\"ev\": \"step.executed\", \"model\": \"gpt-4o\"}],\n    \"rationale\": \"The answer thoroughly addresses designing a rate limiter, with a clear implementation example.\",\n    \"want_depth\": \"L1\",\n    \"fired_depth\": \"L0\"\n  },\n  {\n    \"trace_id\": \"2c0f3fceb182424b8d1870f1e55dd370\",\n    \"stratum\": \"depth:L1:lone-marker:refactor\",\n    \"trigger_family\": \"lone-marker:refactor\",\n    \"prompt\": \"Refactor the auth module.\",\n    \"final_answer\": \"To refactor the auth module, I'll need more specific information: the language, the current structure, the issues you've identified, and the desired outcome. With this I can provide a targeted approach.\",\n    \"goal_met\": false,\n    \"partial_fraction\": 0,\n    \"plan_steps\": 1,\n    \"trajectory\": [{\"ev\": \"model.selected\", \"model\": \"gpt-4o\"}, {\"ev\": \"step.planned\"}, {\"ev\": \"step.executed\", \"model\": \"gpt-4o\"}],\n    \"rationale\": \"The agent did not perform any refactoring and instead asked for more information, failing the task goal.\",\n    \"want_depth\": \"L1\",\n    \"fired_depth\": \"L0\"\n  },\n  {\n    \"trace_id\": \"9d2c84fb4a7943008c77d460e4eecdcf\",\n    \"stratum\": \"depth:L2:marker+enum+conj\",\n    \"trigger_family\": \"marker+enum+conj\",\n    \"prompt\": \"Compare Redis and Memcached for our cache, (1) benchmark read latency (2) measure memory overhead (3) test eviction, and then recommend one.\",\n    \"final_answer\": \"It seems there was an issue retrieving the results from the testing agent. Without the results, I can't provide a recommendation between Redis and Memcached.\",\n    \"goal_met\": false,\n    \"partial_fraction\": 0,\n    \"plan_steps\": 1,\n    \"trajectory\": [{\"ev\": \"step.planned\"}, {\"ev\": \"step.planned\"}, {\"ev\": \"step.executed\", \"model\": \"gpt-4o-mini\"}, {\"ev\": \"error.occurred\", \"tool\": \"state_todo\"}, {\"ev\": \"error.occurred\", \"tool\": \"state_file\"}, {\"ev\": \"step.executed\", \"model\": \"gpt-4o\"}, {\"ev\": \"step.executed\", \"model\": \"gpt-4o-mini\"}],\n    \"rationale\": \"The agent could not retrieve any results from the testing agent and so completed none of the three subtasks.\",\n    \"want_depth\": \"L2\",\n    \"fired_depth\": \"L0\"\n  }\n]\n"}, {"name": "coded.20260614T141843.jsonl", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,eyJ0cmFjZV9pZCI6ICJlNjg1NTJkZDc4Yjc0MTU5ODMyMWM3ODMzZTdmNjg0MyIsICJzdHJhdHVtIjogImRlcHRoOkwxOmxvbmUtbWFya2VyOmRlc2lnbiIsICJ0cmlnZ2VyX2ZhbWlseSI6ICJsb25lLW1hcmtlcjpkZXNpZ24iLCAicHJvbXB0IjogIkRlc2lnbiBhIHJhdGUgbGltaXRlciBmb3IgdGhlIEFQSS4iLCAiZmluYWxfYW5zd2VyIjogIkRlc2lnbmluZyBhIHJhdGUgbGltaXRlciBpbnZvbHZlcyBhIHRva2VuLWJ1Y2tldCBvciBzbGlkaW5nLXdpbmRvdyBhbGdvcml0aG0gYmFja2VkIGJ5IFJlZGlzLCB3aXRoIHBlci1jbGllbnQgaWRlbnRpZmljYXRpb24sIGEgNDI5IHJlc3BvbnNlIG9uIG92ZXJmbG93LCBhbmQgYSByZXNldCBtZWNoYW5pc20gYWZ0ZXIgdGhlIHdpbmRvdy4gRXhhbXBsZSBpbXBsZW1lbnRhdGlvbiBpbmNsdWRlZC4iLCAiZ29hbF9tZXQiOiB0cnVlLCAicGFydGlhbF9mcmFjdGlvbiI6IDEsICJwbGFuX3N0ZXBzIjogMSwgInRyYWplY3RvcnkiOiBbeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJtb2RlbC5zZWxlY3RlZCIsICJtb2RlbCI6ICJncHQtNG8ifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00byJ9XSwgInJhdGlvbmFsZSI6ICJUaGUgYW5zd2VyIHRob3JvdWdobHkgYWRkcmVzc2VzIGRlc2lnbmluZyBhIHJhdGUgbGltaXRlciwgd2l0aCBhIGNsZWFyIGltcGxlbWVudGF0aW9uIGV4YW1wbGUuIiwgIndhbnRfZGVwdGgiOiAiTDEiLCAiZmlyZWRfZGVwdGgiOiAiTDAiLCAib3Blbl9jb2RlcyI6IFsiZGVwdGgtdW5kZXItcGxhbiIsICJnb2FsLW1ldC1kZXNwaXRlLXVuZGVycGxhbiIsICJzaW5nbGUtc2hvdC1kZXNpZ24iXSwgIm1lbW8iOiAid2FudCBMMSBidXQgZmlyZWQgTDA7IDEgcGxhbl9zdGVwLiBBbnN3ZXIgaXMgYSBjb21wZXRlbnQgZGVzaWduICh0b2tlbi1idWNrZXQvUmVkaXMvNDI5KSBzbyBnb2FsX21ldD10cnVlIGhvbGRzIGFnYWluc3QgdGhlIHRyYWplY3RvcnkgXHUyMDE0IHVuZGVyLXBsYW5uaW5nIGRpZCBub3QgY29zdCB0aGUgb3V0Y29tZSBoZXJlLiBXYXRjaCBhcyBhIGRlcHRoLXJlY29nbml0aW9uIG1pc3MsIG5vdCBhIHF1YWxpdHkgZmFpbHVyZS4ifQp7InRyYWNlX2lkIjogIjJjMGYzZmNlYjE4MjQyNGI4ZDE4NzBmMWU1NWRkMzcwIiwgInN0cmF0dW0iOiAiZGVwdGg6TDE6bG9uZS1tYXJrZXI6cmVmYWN0b3IiLCAidHJpZ2dlcl9mYW1pbHkiOiAibG9uZS1tYXJrZXI6cmVmYWN0b3IiLCAicHJvbXB0IjogIlJlZmFjdG9yIHRoZSBhdXRoIG1vZHVsZS4iLCAiZmluYWxfYW5zd2VyIjogIlRvIHJlZmFjdG9yIHRoZSBhdXRoIG1vZHVsZSwgSSdsbCBuZWVkIG1vcmUgc3BlY2lmaWMgaW5mb3JtYXRpb246IHRoZSBsYW5ndWFnZSwgdGhlIGN1cnJlbnQgc3RydWN0dXJlLCB0aGUgaXNzdWVzIHlvdSd2ZSBpZGVudGlmaWVkLCBhbmQgdGhlIGRlc2lyZWQgb3V0Y29tZS4gV2l0aCB0aGlzIEkgY2FuIHByb3ZpZGUgYSB0YXJnZXRlZCBhcHByb2FjaC4iLCAiZ29hbF9tZXQiOiBmYWxzZSwgInBhcnRpYWxfZnJhY3Rpb24iOiAwLCAicGxhbl9zdGVwcyI6IDEsICJ0cmFqZWN0b3J5IjogW3siZXYiOiAibW9kZWwuc2VsZWN0ZWQiLCAibW9kZWwiOiAiZ3B0LTRvIn0sIHsiZXYiOiAic3RlcC5wbGFubmVkIn0sIHsiZXYiOiAic3RlcC5leGVjdXRlZCIsICJtb2RlbCI6ICJncHQtNG8ifV0sICJyYXRpb25hbGUiOiAiVGhlIGFnZW50IGRpZCBub3QgcGVyZm9ybSBhbnkgcmVmYWN0b3JpbmcgYW5kIGluc3RlYWQgYXNrZWQgZm9yIG1vcmUgaW5mb3JtYXRpb24sIGZhaWxpbmcgdGhlIHRhc2sgZ29hbC4iLCAid2FudF9kZXB0aCI6ICJMMSIsICJmaXJlZF9kZXB0aCI6ICJMMCIsICJvcGVuX2NvZGVzIjogWyJjbGFyaWZpY2F0aW9uLWluc3RlYWQtb2YtYWN0aW9uIiwgIm5vLXRvb2wtdXNlIiwgImRlcHRoLXVuZGVyLXBsYW4iLCAiZ29hbC1ub3QtbWV0Il0sICJtZW1vIjogIlJlZnVzZWQgdG8gcmVmYWN0b3IgYW5kIGFza2VkIGZvciBtb3JlIGluZm8gaW5zdGVhZC4gVHJhamVjdG9yeSBzaG93cyBvbmx5IG1vZGVsLnNlbGVjdGVkICsgb25lIHBsYW5uZWQvZXhlY3V0ZWQsIG5vIGVkaXQvdG9vbCBldmlkZW5jZS4gQ2xhc3NpYyBzdGFsbC1hcy1jbGFyaWZpY2F0aW9uOyBnb2FsX21ldD1mYWxzZSBtYXRjaGVzIHRoZSB0cmFjZS4ifQp7InRyYWNlX2lkIjogIjlkMmM4NGZiNGE3OTQzMDA4Yzc3ZDQ2MGU0ZWVjZGNmIiwgInN0cmF0dW0iOiAiZGVwdGg6TDI6bWFya2VyK2VudW0rY29uaiIsICJ0cmlnZ2VyX2ZhbWlseSI6ICJtYXJrZXIrZW51bStjb25qIiwgInByb21wdCI6ICJDb21wYXJlIFJlZGlzIGFuZCBNZW1jYWNoZWQgZm9yIG91ciBjYWNoZSwgKDEpIGJlbmNobWFyayByZWFkIGxhdGVuY3kgKDIpIG1lYXN1cmUgbWVtb3J5IG92ZXJoZWFkICgzKSB0ZXN0IGV2aWN0aW9uLCBhbmQgdGhlbiByZWNvbW1lbmQgb25lLiIsICJmaW5hbF9hbnN3ZXIiOiAiSXQgc2VlbXMgdGhlcmUgd2FzIGFuIGlzc3VlIHJldHJpZXZpbmcgdGhlIHJlc3VsdHMgZnJvbSB0aGUgdGVzdGluZyBhZ2VudC4gV2l0aG91dCB0aGUgcmVzdWx0cywgSSBjYW4ndCBwcm92aWRlIGEgcmVjb21tZW5kYXRpb24gYmV0d2VlbiBSZWRpcyBhbmQgTWVtY2FjaGVkLiIsICJnb2FsX21ldCI6IGZhbHNlLCAicGFydGlhbF9mcmFjdGlvbiI6IDAsICJwbGFuX3N0ZXBzIjogMSwgInRyYWplY3RvcnkiOiBbeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00by1taW5pIn0sIHsiZXYiOiAiZXJyb3Iub2NjdXJyZWQiLCAidG9vbCI6ICJzdGF0ZV90b2RvIn0sIHsiZXYiOiAiZXJyb3Iub2NjdXJyZWQiLCAidG9vbCI6ICJzdGF0ZV9maWxlIn0sIHsiZXYiOiAic3RlcC5leGVjdXRlZCIsICJtb2RlbCI6ICJncHQtNG8ifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00by1taW5pIn1dLCAicmF0aW9uYWxlIjogIlRoZSBhZ2VudCBjb3VsZCBub3QgcmV0cmlldmUgYW55IHJlc3VsdHMgZnJvbSB0aGUgdGVzdGluZyBhZ2VudCBhbmQgc28gY29tcGxldGVkIG5vbmUgb2YgdGhlIHRocmVlIHN1YnRhc2tzLiIsICJ3YW50X2RlcHRoIjogIkwyIiwgImZpcmVkX2RlcHRoIjogIkwwIiwgIm9wZW5fY29kZXMiOiBbInRvb2wtZXJyb3ItdW5oYW5kbGVkIiwgImZhYnJpY2F0ZWQtcHJvZ3Jlc3MtYWJzZW50IiwgInN1YnRhc2tzLXplcm8tb2YtdGhyZWUiLCAiZGVwdGgtdW5kZXItcGxhbiIsICJnb2FsLW5vdC1tZXQiXSwgIm1lbW8iOiAiTDIgdGFzayAoMyBlbnVtZXJhdGVkIHN1YnRhc2tzKSBmaXJlZCBMMC4gVHdvIGVycm9yLm9jY3VycmVkIChzdGF0ZV90b2RvLCBzdGF0ZV9maWxlKTsgYWdlbnQgaG9uZXN0bHkgcmVwb3J0cyBpdCBjb3VsZCBub3QgcmV0cmlldmUgcmVzdWx0cyByYXRoZXIgdGhhbiBmYWJyaWNhdGluZyBcdTIwMTQgc28gTk9UIGEgY29ycnVwdC1zdWNjZXNzLiBaZXJvIG9mIHRocmVlIHN1YnRhc2tzIGRvbmU7IGdvYWxfbWV0PWZhbHNlIGNvcnJlY3QuIn0K"}, {"name": "coded.jsonl", "type": "binary", "mime": "application/octet-stream", "data_uri": "data:application/octet-stream;base64,eyJ0cmFjZV9pZCI6ICJlNjg1NTJkZDc4Yjc0MTU5ODMyMWM3ODMzZTdmNjg0MyIsICJzdHJhdHVtIjogImRlcHRoOkwxOmxvbmUtbWFya2VyOmRlc2lnbiIsICJ0cmlnZ2VyX2ZhbWlseSI6ICJsb25lLW1hcmtlcjpkZXNpZ24iLCAicHJvbXB0IjogIkRlc2lnbiBhIHJhdGUgbGltaXRlciBmb3IgdGhlIEFQSS4iLCAiZmluYWxfYW5zd2VyIjogIkRlc2lnbmluZyBhIHJhdGUgbGltaXRlciBpbnZvbHZlcyBhIHRva2VuLWJ1Y2tldCBvciBzbGlkaW5nLXdpbmRvdyBhbGdvcml0aG0gYmFja2VkIGJ5IFJlZGlzLCB3aXRoIHBlci1jbGllbnQgaWRlbnRpZmljYXRpb24sIGEgNDI5IHJlc3BvbnNlIG9uIG92ZXJmbG93LCBhbmQgYSByZXNldCBtZWNoYW5pc20gYWZ0ZXIgdGhlIHdpbmRvdy4gRXhhbXBsZSBpbXBsZW1lbnRhdGlvbiBpbmNsdWRlZC4iLCAiZ29hbF9tZXQiOiB0cnVlLCAicGFydGlhbF9mcmFjdGlvbiI6IDEsICJwbGFuX3N0ZXBzIjogMSwgInRyYWplY3RvcnkiOiBbeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJtb2RlbC5zZWxlY3RlZCIsICJtb2RlbCI6ICJncHQtNG8ifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00byJ9XSwgInJhdGlvbmFsZSI6ICJUaGUgYW5zd2VyIHRob3JvdWdobHkgYWRkcmVzc2VzIGRlc2lnbmluZyBhIHJhdGUgbGltaXRlciwgd2l0aCBhIGNsZWFyIGltcGxlbWVudGF0aW9uIGV4YW1wbGUuIiwgIndhbnRfZGVwdGgiOiAiTDEiLCAiZmlyZWRfZGVwdGgiOiAiTDAiLCAib3Blbl9jb2RlcyI6IFsiZGVwdGgtdW5kZXItcGxhbiIsICJnb2FsLW1ldC1kZXNwaXRlLXVuZGVycGxhbiIsICJzaW5nbGUtc2hvdC1kZXNpZ24iXSwgIm1lbW8iOiAid2FudCBMMSBidXQgZmlyZWQgTDA7IDEgcGxhbl9zdGVwLiBBbnN3ZXIgaXMgYSBjb21wZXRlbnQgZGVzaWduICh0b2tlbi1idWNrZXQvUmVkaXMvNDI5KSBzbyBnb2FsX21ldD10cnVlIGhvbGRzIGFnYWluc3QgdGhlIHRyYWplY3RvcnkgXHUyMDE0IHVuZGVyLXBsYW5uaW5nIGRpZCBub3QgY29zdCB0aGUgb3V0Y29tZSBoZXJlLiBXYXRjaCBhcyBhIGRlcHRoLXJlY29nbml0aW9uIG1pc3MsIG5vdCBhIHF1YWxpdHkgZmFpbHVyZS4ifQp7InRyYWNlX2lkIjogIjJjMGYzZmNlYjE4MjQyNGI4ZDE4NzBmMWU1NWRkMzcwIiwgInN0cmF0dW0iOiAiZGVwdGg6TDE6bG9uZS1tYXJrZXI6cmVmYWN0b3IiLCAidHJpZ2dlcl9mYW1pbHkiOiAibG9uZS1tYXJrZXI6cmVmYWN0b3IiLCAicHJvbXB0IjogIlJlZmFjdG9yIHRoZSBhdXRoIG1vZHVsZS4iLCAiZmluYWxfYW5zd2VyIjogIlRvIHJlZmFjdG9yIHRoZSBhdXRoIG1vZHVsZSwgSSdsbCBuZWVkIG1vcmUgc3BlY2lmaWMgaW5mb3JtYXRpb246IHRoZSBsYW5ndWFnZSwgdGhlIGN1cnJlbnQgc3RydWN0dXJlLCB0aGUgaXNzdWVzIHlvdSd2ZSBpZGVudGlmaWVkLCBhbmQgdGhlIGRlc2lyZWQgb3V0Y29tZS4gV2l0aCB0aGlzIEkgY2FuIHByb3ZpZGUgYSB0YXJnZXRlZCBhcHByb2FjaC4iLCAiZ29hbF9tZXQiOiBmYWxzZSwgInBhcnRpYWxfZnJhY3Rpb24iOiAwLCAicGxhbl9zdGVwcyI6IDEsICJ0cmFqZWN0b3J5IjogW3siZXYiOiAibW9kZWwuc2VsZWN0ZWQiLCAibW9kZWwiOiAiZ3B0LTRvIn0sIHsiZXYiOiAic3RlcC5wbGFubmVkIn0sIHsiZXYiOiAic3RlcC5leGVjdXRlZCIsICJtb2RlbCI6ICJncHQtNG8ifV0sICJyYXRpb25hbGUiOiAiVGhlIGFnZW50IGRpZCBub3QgcGVyZm9ybSBhbnkgcmVmYWN0b3JpbmcgYW5kIGluc3RlYWQgYXNrZWQgZm9yIG1vcmUgaW5mb3JtYXRpb24sIGZhaWxpbmcgdGhlIHRhc2sgZ29hbC4iLCAid2FudF9kZXB0aCI6ICJMMSIsICJmaXJlZF9kZXB0aCI6ICJMMCIsICJvcGVuX2NvZGVzIjogWyJjbGFyaWZpY2F0aW9uLWluc3RlYWQtb2YtYWN0aW9uIiwgIm5vLXRvb2wtdXNlIiwgImRlcHRoLXVuZGVyLXBsYW4iLCAiZ29hbC1ub3QtbWV0Il0sICJtZW1vIjogIlJlZnVzZWQgdG8gcmVmYWN0b3IgYW5kIGFza2VkIGZvciBtb3JlIGluZm8gaW5zdGVhZC4gVHJhamVjdG9yeSBzaG93cyBvbmx5IG1vZGVsLnNlbGVjdGVkICsgb25lIHBsYW5uZWQvZXhlY3V0ZWQsIG5vIGVkaXQvdG9vbCBldmlkZW5jZS4gQ2xhc3NpYyBzdGFsbC1hcy1jbGFyaWZpY2F0aW9uOyBnb2FsX21ldD1mYWxzZSBtYXRjaGVzIHRoZSB0cmFjZS4ifQp7InRyYWNlX2lkIjogIjlkMmM4NGZiNGE3OTQzMDA4Yzc3ZDQ2MGU0ZWVjZGNmIiwgInN0cmF0dW0iOiAiZGVwdGg6TDI6bWFya2VyK2VudW0rY29uaiIsICJ0cmlnZ2VyX2ZhbWlseSI6ICJtYXJrZXIrZW51bStjb25qIiwgInByb21wdCI6ICJDb21wYXJlIFJlZGlzIGFuZCBNZW1jYWNoZWQgZm9yIG91ciBjYWNoZSwgKDEpIGJlbmNobWFyayByZWFkIGxhdGVuY3kgKDIpIG1lYXN1cmUgbWVtb3J5IG92ZXJoZWFkICgzKSB0ZXN0IGV2aWN0aW9uLCBhbmQgdGhlbiByZWNvbW1lbmQgb25lLiIsICJmaW5hbF9hbnN3ZXIiOiAiSXQgc2VlbXMgdGhlcmUgd2FzIGFuIGlzc3VlIHJldHJpZXZpbmcgdGhlIHJlc3VsdHMgZnJvbSB0aGUgdGVzdGluZyBhZ2VudC4gV2l0aG91dCB0aGUgcmVzdWx0cywgSSBjYW4ndCBwcm92aWRlIGEgcmVjb21tZW5kYXRpb24gYmV0d2VlbiBSZWRpcyBhbmQgTWVtY2FjaGVkLiIsICJnb2FsX21ldCI6IGZhbHNlLCAicGFydGlhbF9mcmFjdGlvbiI6IDAsICJwbGFuX3N0ZXBzIjogMSwgInRyYWplY3RvcnkiOiBbeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJzdGVwLnBsYW5uZWQifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00by1taW5pIn0sIHsiZXYiOiAiZXJyb3Iub2NjdXJyZWQiLCAidG9vbCI6ICJzdGF0ZV90b2RvIn0sIHsiZXYiOiAiZXJyb3Iub2NjdXJyZWQiLCAidG9vbCI6ICJzdGF0ZV9maWxlIn0sIHsiZXYiOiAic3RlcC5leGVjdXRlZCIsICJtb2RlbCI6ICJncHQtNG8ifSwgeyJldiI6ICJzdGVwLmV4ZWN1dGVkIiwgIm1vZGVsIjogImdwdC00by1taW5pIn1dLCAicmF0aW9uYWxlIjogIlRoZSBhZ2VudCBjb3VsZCBub3QgcmV0cmlldmUgYW55IHJlc3VsdHMgZnJvbSB0aGUgdGVzdGluZyBhZ2VudCBhbmQgc28gY29tcGxldGVkIG5vbmUgb2YgdGhlIHRocmVlIHN1YnRhc2tzLiIsICJ3YW50X2RlcHRoIjogIkwyIiwgImZpcmVkX2RlcHRoIjogIkwwIiwgIm9wZW5fY29kZXMiOiBbInRvb2wtZXJyb3ItdW5oYW5kbGVkIiwgImZhYnJpY2F0ZWQtcHJvZ3Jlc3MtYWJzZW50IiwgInN1YnRhc2tzLXplcm8tb2YtdGhyZWUiLCAiZGVwdGgtdW5kZXItcGxhbiIsICJnb2FsLW5vdC1tZXQiXSwgIm1lbW8iOiAiTDIgdGFzayAoMyBlbnVtZXJhdGVkIHN1YnRhc2tzKSBmaXJlZCBMMC4gVHdvIGVycm9yLm9jY3VycmVkIChzdGF0ZV90b2RvLCBzdGF0ZV9maWxlKTsgYWdlbnQgaG9uZXN0bHkgcmVwb3J0cyBpdCBjb3VsZCBub3QgcmV0cmlldmUgcmVzdWx0cyByYXRoZXIgdGhhbiBmYWJyaWNhdGluZyBcdTIwMTQgc28gTk9UIGEgY29ycnVwdC1zdWNjZXNzLiBaZXJvIG9mIHRocmVlIHN1YnRhc2tzIGRvbmU7IGdvYWxfbWV0PWZhbHNlIGNvcnJlY3QuIn0K"}, {"name": "coder.html", "type": "text", "content": "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Open coding</title>\n<style>\n:root{--color-background-primary:#fff;--color-background-secondary:#f6f5f2;--color-text-primary:#1a1a18;--color-text-secondary:#5f5e5a;--color-text-tertiary:#888780;--color-border-tertiary:rgba(0,0,0,.15);--color-border-secondary:rgba(0,0,0,.3);--color-text-success:#0f6e56;--color-text-danger:#a32d2d;--color-background-success:#e1f5ee;--color-background-danger:#fcebeb;--border-radius-md:8px;--border-radius-lg:12px;--font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace}\n@media(prefers-color-scheme:dark){:root{--color-background-primary:#1f1f1d;--color-background-secondary:#2a2a27;--color-text-primary:#ededec;--color-text-secondary:#b4b2a9;--color-text-tertiary:#888780;--color-border-tertiary:rgba(255,255,255,.15);--color-border-secondary:rgba(255,255,255,.3);--color-background-success:#085041;--color-background-danger:#501313;--color-text-success:#9fe1cb;--color-text-danger:#f09595}}\nbody{font-family:var(--font-sans);background:var(--color-background-secondary);color:var(--color-text-primary);margin:0;padding:24px;line-height:1.6}\n.wrap{max-width:820px;margin:0 auto}\n</style></head><body><div class=\"wrap\" id=\"root\">Loading cases\u2026</div>\n<script>\n// CASES are fetched from the server (/cases -> cases.json), not inlined, so this\n// file is a reusable asset across coding sessions. The localStorage key is\n// derived from the cases payload so different sessions don't collide.\nconst root=document.getElementById('root');\nlet CASES=[];let state=[];let LS_KEY='open_coding_v1';\n\nfunction lsKeyFor(cases){const ids=cases.map(c=>c.trace_id).join(',');let h=0;for(let i=0;i<ids.length;i++){h=(h*31+ids.charCodeAt(i))|0;}return 'open_coding_'+(h>>>0);}\nfunction loadState(){\n try{const saved=JSON.parse(localStorage.getItem(LS_KEY)||'null');\n  if(saved){const byId={};saved.forEach(s=>byId[s.trace_id]=s);\n   return CASES.map(c=>byId[c.trace_id]||{trace_id:c.trace_id,codes:[],memo:''});}\n }catch(e){}\n return CASES.map(c=>({trace_id:c.trace_id,codes:[],memo:''}));\n}\nfunction persist(){localStorage.setItem(LS_KEY,JSON.stringify(state));setStatus('saved locally',true);}\nfunction esc(s){return (s==null?'':String(s)).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}\nfunction depthBadge(want,fired){if(!want||!fired)return '';const miss=want!==fired;const bg=miss?'var(--color-background-danger)':'var(--color-background-success)';const fg=miss?'var(--color-text-danger)':'var(--color-text-success)';return `<span style=\"background:${bg};color:${fg};font-size:12px;padding:2px 8px;border-radius:6px\">want ${esc(want)} \u2192 fired ${esc(fired)}${miss?' \u2715':' \u2713'}</span>`;}\nfunction trajLine(t){if(!t)return '';const counts={};t.forEach(s=>counts[s.ev]=(counts[s.ev]||0)+1);const order=['step.planned','step.executed','error.occurred','model.selected','guardrail.checked'];const rest=Object.keys(counts).filter(k=>!order.includes(k));return order.concat(rest).filter(k=>counts[k]).map(k=>`${k.replace('.',' ')}: ${counts[k]}`).join('  \u00b7  ');}\nfunction render(){\n let miss=CASES.filter(c=>c.want_depth&&c.fired_depth&&c.want_depth!==c.fired_depth).length;\n const missNote=miss?` \u00b7 ${miss} depth-misses`:'';\n root.innerHTML=`<h1 style=\"font-size:22px;font-weight:500;margin:0 0 4px\">Open coding</h1>\n <p style=\"color:var(--color-text-secondary);margin:0 0 20px\">${CASES.length} cases${missNote}. Tag short codes per case (press Enter), add a memo, then Save to disk.</p>\n <div style=\"display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap\"><button onclick=\"saveDisk()\" style=\"padding:8px 14px;border:.5px solid var(--color-border-secondary);background:transparent;border-radius:8px;cursor:pointer;color:inherit;font:inherit\">Save to disk</button>\n <button onclick=\"exportJSONL()\" style=\"padding:8px 14px;border:.5px solid var(--color-border-secondary);background:transparent;border-radius:8px;cursor:pointer;color:inherit;font:inherit\">Download coded JSONL</button>\n <span id=\"status\" style=\"font-size:12px;color:var(--color-text-tertiary)\"></span></div>`\n +CASES.map((c,i)=>caseCard(c,i)).join('');\n}\nfunction caseCard(c,i){\n const s=state[i];\n const ans=esc(c.final_answer||'').slice(0,900);\n const fam=c.trigger_family||c.stratum||'';\n const sig=[c.goal_met!==undefined?`goal_met: <b style=\"color:${c.goal_met?'var(--color-text-success)':'var(--color-text-danger)'}\">${c.goal_met}</b>`:'',\n            c.partial_fraction!==undefined?`partial: ${c.partial_fraction}`:'',\n            c.plan_steps!==undefined?`plan_steps: ${c.plan_steps}`:''].filter(Boolean).join(' \u00b7 ');\n return `<div style=\"background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:12px;padding:16px 18px;margin-bottom:14px\">\n  <div style=\"display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px\">\n    <span style=\"font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono)\">${esc(fam)}</span>\n    ${depthBadge(c.want_depth,c.fired_depth)}\n  </div>\n  <p style=\"font-weight:500;margin:0 0 8px\">${esc(c.prompt)}</p>\n  ${sig?`<div style=\"font-size:13px;color:var(--color-text-secondary);margin:0 0 8px\">${sig}</div>`:''}\n  ${c.trajectory?`<div style=\"font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin:0 0 10px\">${trajLine(c.trajectory)}</div>`:''}\n  ${(c.final_answer||c.rationale)?`<details style=\"margin:0 0 10px\"><summary style=\"cursor:pointer;font-size:13px;color:var(--color-text-secondary)\">answer${c.rationale?' + judge rationale':''}</summary>\n   ${c.final_answer?`<div style=\"font-size:13px;background:var(--color-background-secondary);border-radius:8px;padding:10px;margin-top:6px;white-space:pre-wrap\">${ans}${(c.final_answer||'').length>900?'\u2026':''}</div>`:''}\n   ${c.rationale?`<div style=\"font-size:13px;color:var(--color-text-secondary);margin-top:6px\"><b>judge:</b> ${esc(c.rationale)}</div>`:''}\n  </details>`:''}\n  <div style=\"display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px\" id=\"chips-${i}\">${s.codes.map((code,ci)=>`<span style=\"background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);border-radius:14px;padding:3px 10px;font-size:12px\">${esc(code)} <a onclick=\"rmCode(${i},${ci})\" style=\"cursor:pointer;color:var(--color-text-danger)\">\u00d7</a></span>`).join('')}</div>\n  <input id=\"code-${i}\" placeholder=\"add open code, press Enter\" onkeydown=\"if(event.key==='Enter')addCode(${i})\" style=\"width:100%;box-sizing:border-box;padding:8px;border:.5px solid var(--color-border-tertiary);border-radius:8px;background:transparent;color:inherit;font:inherit;margin-bottom:6px\">\n  <textarea id=\"memo-${i}\" placeholder=\"memo (optional)\" oninput=\"state[${i}].memo=this.value;persist()\" style=\"width:100%;box-sizing:border-box;padding:8px;border:.5px solid var(--color-border-tertiary);border-radius:8px;background:transparent;color:inherit;font:inherit;min-height:38px\">${esc(s.memo)}</textarea>\n </div>`;\n}\nfunction addCode(i){const inp=document.getElementById('code-'+i);const v=inp.value.trim();if(!v)return;state[i].codes.push(v);inp.value='';persist();render();const el=document.getElementById('code-'+i);if(el)el.focus();}\nfunction rmCode(i,ci){state[i].codes.splice(ci,1);persist();render();}\nfunction setStatus(msg,ok){const el=document.getElementById('status');if(el){el.textContent=msg;el.style.color=ok?'var(--color-text-success)':'var(--color-text-danger)';}}\nfunction codedJSONL(){return CASES.map((c,i)=>JSON.stringify({...c,open_codes:state[i].codes,memo:state[i].memo})).join('\\n');}\nfunction exportJSONL(){dl(codedJSONL(),'coded.jsonl');}\nfunction saveDisk(){\n if(location.protocol!=='http:'&&location.protocol!=='https:'){\n  setStatus('not served over http (page is '+location.protocol+') \u2014 downloading instead; serve via python scripts/serve_open_coder.py for disk save',false);\n  exportJSONL();return;\n }\n fetch(location.origin+'/save',{method:'POST',headers:{'Content-Type':'application/x-ndjson'},body:codedJSONL()})\n  .then(r=>r.ok?r.text():Promise.reject(r.status))\n  .then(t=>setStatus('saved to disk: '+t,true))\n  .catch(e=>{setStatus('disk save failed ('+e+') \u2014 downloading instead; localStorage still holds your codes',false);exportJSONL();});\n}\nfunction dl(text,name){const b=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();}\nfunction hydrateFromDisk(){\n const hasLocal=state.some(s=>(s.codes&&s.codes.length)||(s.memo&&s.memo.trim()));\n if(hasLocal)return;\n fetch('/load').then(r=>r.ok?r.text():'').then(txt=>{\n  if(!txt.trim())return;\n  const byId={};\n  txt.split('\\n').filter(Boolean).forEach(line=>{try{const r=JSON.parse(line);byId[r.trace_id]={codes:r.open_codes||[],memo:r.memo||''};}catch(e){}});\n  let n=0;\n  state.forEach(s=>{const d=byId[s.trace_id];if(d){s.codes=d.codes;s.memo=d.memo;n++;}});\n  if(n){persist();render();setStatus('loaded '+n+' rows from disk',true);}\n }).catch(()=>{});\n}\nfetch('/cases').then(r=>r.ok?r.json():Promise.reject(r.status)).then(cases=>{\n CASES=cases;LS_KEY=lsKeyFor(cases);state=loadState();render();hydrateFromDisk();\n}).catch(e=>{root.innerHTML='<p style=\"color:var(--color-text-danger)\">Could not load cases.json ('+e+'). Put your cases array at the path the server reads and reload.</p>';});\n</script>\n</body></html>\n"}, {"name": "server.log", "type": "binary", "mime": "text/plain", "data_uri": "data:text/plain;base64,MTI3LjAuMC4xIC0gLSBbMTQvSnVuLzIwMjYgMDk6MTg6MjJdICJHRVQgL2NvZGVyLmh0bWwgSFRUUC8xLjEiIDIwMCAtCjEyNy4wLjAuMSAtIC0gWzE0L0p1bi8yMDI2IDA5OjE4OjIyXSAiR0VUIC9jYXNlcyBIVFRQLzEuMSIgMjAwIC0KMTI3LjAuMC4xIC0gLSBbMTQvSnVuLzIwMjYgMDk6MTg6MjJdICJHRVQgL2xvYWQgSFRUUC8xLjEiIDIwMCAtCjEyNy4wLjAuMSAtIC0gWzE0L0p1bi8yMDI2IDA5OjE4OjQzXSAiUE9TVCAvc2F2ZSBIVFRQLzEuMSIgMjAwIC0KMTI3LjAuMC4xIC0gLSBbMTQvSnVuLzIwMjYgMDk6MTg6NDNdIHNhdmVkIDMgcm93cyAtPiBjb2RlZC5qc29ubAoxMjcuMC4wLjEgLSAtIFsxNC9KdW4vMjAyNiAwOToxODo0M10gIkdFVCAvbG9hZCBIVFRQLzEuMSIgMjAwIC0KMTI3LjAuMC4xIC0gLSBbMTQvSnVuLzIwMjYgMDk6MTk6MDBdICJHRVQgL2NvZGVyLmh0bWwgSFRUUC8xLjEiIDIwMCAtCg=="}], "grading": {"expectations": [{"text": "Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py", "passed": true, "evidence": "references skill-path serve_open_coder"}, {"text": "Makes a session work dir and copies/uses coder.html there rather than editing a coder in place", "passed": false, "evidence": "NOT MATCHED: makes workdir + copies coder.html"}, {"text": "Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)", "passed": true, "evidence": "explains Enter-to-commit vs memo"}, {"text": "Runs the dataset exporter as a DRY RUN and stops before --write", "passed": true, "evidence": "dry run, stops before --write"}, {"text": "States the Langfuse dataset is the review surface", "passed": true, "evidence": "dataset = review surface"}]}}, {"id": "eval-1-empty-codes-trap-with_skill", "prompt": "Codes seem missing on export; diagnose and fix /tmp/oc_trap/coded.jsonl before pushing.", "eval_id": 1, "outputs": [{"name": "answer.md", "type": "text", "content": "# Diagnosis: empty `open_codes` (the Step-4 memo-vs-chip trap)\n\n## What went wrong\n\nYour codes are missing from the export because they were typed into the **memo**\nbox, not committed as **code chips**. In the HTML coder, a code only lands in the\n`open_codes` array if you press **Enter** to turn it into a chip. Typing a\ncomma-separated list into the memo field leaves `open_codes` empty \u2014 the exporter\nthen has nothing to copy into the Langfuse dataset, which is why \"the codes seem to\nbe missing.\"\n\nThis is the single most common open-coding session failure, called out explicitly\nin the skill's Step 4 (\"The trap\"). It is a UI-mechanics mistake, not a data-loss\nor save bug \u2014 your JSONL saved fine; it just has prose where codes should be.\n\n## Evidence (from your file `/tmp/oc_trap/coded.jsonl`)\n\n3 rows total, **2 with NO codes**:\n\n| trace_id (short) | prompt | `open_codes` | memo |\n|---|---|---|---|\n| `e68552dd\u2026` | Design a rate limiter\u2026 | `[\"depth-under-plan\"]` \u2705 | \"good synthesis, benign miss\" |\n| `2c0f3fce\u2026` | Refactor the auth module. | `[]` \u274c | \"depth-under-plan, clarification-instead-of-action, asked for info instead of doing it\" |\n| `9d2c84fb\u2026` | Compare Redis and Memcached\u2026 | `[]` \u274c | \"fabricated-delegation, incomplete-enumeration, tool errors swallowed\" |\n\nThe tell is obvious in rows 2 and 3: the memo contains what are clearly intended to\nbe **codes** (`depth-under-plan`, `clarification-instead-of-action`,\n`fabricated-delegation`, `incomplete-enumeration`, `tool-errors-swallowed`) sitting\nas a comma-list in prose, while `open_codes` is `[]`. Row 1 was done correctly \u2014 one\nchip committed, memo used only for nuance \u2014 which is the pattern the other two should\nmatch.\n\n## How to check (the skill's Step-4 verification command)\n\nRun before every export:\n\n```bash\nWORK=/tmp/oc_trap\n.venv/bin/python -c \"import json,sys; \\\nrows=[json.loads(l) for l in open('$WORK/coded.jsonl') if l.strip()]; \\\nempty=[r['trace_id'] for r in rows if not r.get('open_codes')]; \\\nprint(f'{len(rows)} rows, {len(empty)} with NO codes'); print('uncoded:', empty)\"\n```\n\nOutput on your file:\n\n```\n3 rows, 2 with NO codes\nuncoded: ['2c0f3fceb182424b8d1870f1e55dd370', '9d2c84fb4a7943008c77d460e4eecdcf']\n```\n\nThe exporter's default **dry run** prints the same `(N with NO codes)` count plus a\nwarning banner (`export_coded_to_dataset.py` lines 84\u201388), so you'd catch this even\nif you skipped the one-liner. Either way: fix it before `--write`.\n\n## How to fix (you must re-enter the codes \u2014 I did NOT do it for you)\n\nOpen coding is a human-judgment step; the skill forbids auto-generating or\nback-filling first-pass codes (Cardinal Rule 2, \"Human codes first\"), so I did not\nmove your memo text into `open_codes`. The memo strings look like the right codes,\nbut turning prose into committed codes is your call, not the tool's. To fix:\n\n1. Re-serve the coder against this work dir:\n   ```bash\n   python docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py --dir /tmp/oc_trap\n   ```\n   Open `http://localhost:3117/coder.html`. The server serves your saved JSONL at\n   `/load`, so your existing memos reappear.\n2. For the two uncoded cards (`2c0f3fce\u2026`, `9d2c84fb\u2026`), type each intended code\n   into the **code** input and press **Enter** so it becomes a chip. Move the\n   code-like tokens out of the memo; keep the memo for genuine nuance only.\n3. **Save to disk** (writes the JSONL via `POST /save`; do not open the HTML as\n   `file://` or the save silently falls back to a `~/Downloads` copy).\n4. Re-run the Step-4 verification one-liner \u2014 it should report `0 with NO codes`.\n5. Only then export: dry run first, then `--write`.\n\n## Note on the export attempt\n\nI did not run the exporter (even the default dry run): in this environment the\nscript import path triggers the Langfuse client, and you asked me not to push to\nLangfuse, so the run was blocked. I confirmed the banner behavior by reading the\nsource instead (lines 84\u201388, dry-run default at line 126). Once you've re-committed\nthe codes and verified `0 with NO codes`, the dry run is safe to run yourself, and\n`--write` pushes to the dataset.\n"}], "grading": {"expectations": [{"text": "Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)", "passed": true, "evidence": "codes-vs-memo trap, Enter/chip"}, {"text": "Identifies the specific uncoded rows / reports the NO-codes count via the verify step", "passed": true, "evidence": "reports uncoded rows/count"}, {"text": "Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them", "passed": true, "evidence": "sends user to re-commit, no autogen"}]}}, {"id": "eval-1-empty-codes-trap-without_skill", "prompt": "Codes seem missing on export; diagnose and fix /tmp/oc_trap/coded.jsonl before pushing.", "eval_id": 1, "outputs": [{"name": "answer.md", "type": "text", "content": "# Diagnosis: open codes missing on export to Langfuse\n\n## TL;DR\n\nYour codes were never committed as **chips**. In the HTML coder, an open code only\nbecomes part of `open_codes` when you type it into the small **\"add open code, press\nEnter\"** input *and press Enter*. The large **memo** box is a separate field. On 2 of\nyour 3 rows you typed the codes into the memo (or left them sitting unsubmitted in the\ninput) instead of committing them as chips, so `open_codes` saved as an empty list `[]`.\nNothing is lost \u2014 the text is sitting in your `memo` field \u2014 but if you push now, those\ntwo cases reach Langfuse with **zero codes**.\n\nDo **not** push yet. Re-chip the two rows (in the coder or directly in the JSONL), then\nre-run the exporter dry-run and confirm the \"with NO codes\" count is 0.\n\n## Evidence \u2014 what's actually in `/tmp/oc_trap/coded.jsonl`\n\n3 rows. Inspecting `open_codes` vs `memo`:\n\n| # | trace_id (prefix) | `open_codes`         | `memo`                                                                              |\n|---|-------------------|----------------------|-------------------------------------------------------------------------------------|\n| 1 | `e68552dd\u2026`       | `[\"depth-under-plan\"]` | \"good synthesis, benign miss\"                                                       |\n| 2 | `2c0f3fce\u2026`       | `[]`                 | \"depth-under-plan, clarification-instead-of-action, asked for info instead of doing it\" |\n| 3 | `9d2c84fb\u2026`       | `[]`                 | \"fabricated-delegation, incomplete-enumeration, tool errors swallowed\"              |\n\nRow 1 is correct: one code was Enter-committed into a chip. Rows 2 and 3 have **empty\n`open_codes`** while their `memo` clearly contains comma-separated codes that were meant\nto be chips (\"depth-under-plan, clarification-instead-of-action\u2026\" / \"fabricated-delegation,\nincomplete-enumeration\u2026\"). The observations were captured, but in the wrong field.\n\n## Root cause \u2014 the coder's two-field model\n\nIn `docs/skills/agentsframework-open-coding/assets/coder.html`:\n\n- The per-case **code input** is `#code-<i>`. A code is added to state ONLY via\n  `addCode(i)`, which fires on Enter:\n  `onkeydown=\"if(event.key==='Enter')addCode(${i})\"` and\n  `function addCode(i){\u2026state[i].codes.push(v);\u2026}` (lines 59, 63). If you don't press\n  Enter, the text stays in the input box and is never pushed into `codes`.\n- The **memo** is a separate `<textarea id=\"memo-<i>\">` bound directly to\n  `state[i].memo` (line 60).\n- Export serializes them independently:\n  `codedJSONL()` \u2192 `JSON.stringify({...c, open_codes: state[i].codes, memo: state[i].memo})`\n  (line 66). So `open_codes` comes *only* from committed chips; memo text never becomes a\n  code.\n\nNet: anything you typed but didn't Enter \u2014 or typed into the memo by habit \u2014 serializes as\n`open_codes: []`. That is exactly rows 2 and 3.\n\n## What the exporters do with empty codes (why this matters before pushing)\n\nBoth downstream paths happily push empty-coded rows; the dataset path even warns you:\n\n- `docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py`\n  counts `n_uncoded = sum(1 for r in rows if not r.get(\"open_codes\"))` and prints\n  `\u26a0 N rows have empty open_codes \u2014 codes only persist if Enter-committed as chips in the\n  coder, not typed into the memo. Verify before --write.` (lines 84-88). It still writes one\n  dataset item per row, with `metadata.open_codes = r.get(\"open_codes\", [])` (lines 100-121)\n  \u2014 so rows 2 and 3 would land as items with empty `open_codes` metadata.\n- `scripts/push_open_codes_to_langfuse.py` is gentler: it skips rows with neither codes nor\n  memo (`coded = [r for r in rows if r.get(\"open_codes\") or r.get(\"memo\",\"\").strip()]`,\n  line 45), but for rows 2/3 it would write a TEXT score with `value=\"(memo only)\"` (line 59)\n  \u2014 i.e. the codes still don't show up as codes, just as a memo comment.\n\nEither way, your codes do not arrive as codes. That's the trap.\n\n## How to check (before any push)\n\n1. Count empty-code rows in the file directly:\n   ```\n   .venv/bin/python -c \"import json,sys; rows=[json.loads(l) for l in open('/tmp/oc_trap/coded.jsonl') if l.strip()]; print(sum(1 for r in rows if not r.get('open_codes')),'of',len(rows),'rows have empty open_codes'); [print(r['trace_id'][:12],'memo=',r.get('memo')) for r in rows if not r.get('open_codes')]\"\n   ```\n   Expect: `2 of 3 rows have empty open_codes`, listing the two memos that contain the\n   intended codes.\n\n2. Dry-run the dataset exporter (no `--write` = writes nothing) and read the warning line:\n   ```\n   .venv/bin/python docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py \\\n       --dataset <your-session-name> --coded /tmp/oc_trap/coded.jsonl\n   ```\n   It will print `(2 with NO codes)` and the \u26a0 banner. If that count is not 0, do not add\n   `--write`.\n\n## How to fix\n\nPick one.\n\n### Option A \u2014 fix in the coder (recommended, keeps the coder as source of truth)\n1. Re-serve the coder so it can reach disk:\n   `.venv/bin/python scripts/serve_open_coder.py` (or the copy under\n   `docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py`).\n   Served over http, it hydrates from disk and persists to disk on Save.\n2. For rows 2 and 3, take each comma-separated phrase out of the memo, type it into the\n   **\"add open code, press Enter\"** box, and press **Enter** so it becomes a chip. Keep\n   only genuinely narrative text (e.g. \"asked for info instead of doing it\") in the memo if\n   you want it there, or promote it to a code too.\n3. Click **Save to disk** (or **Download coded JSONL**) and confirm each previously-empty\n   case now shows chips.\n\n### Option B \u2014 patch the JSONL directly (fast, if you're confident in the split)\nMove the memo phrases into `open_codes`. For example, rewrite the two rows to:\n```\n{\"trace_id\":\"2c0f3fceb182424b8d1870f1e55dd370\",\"prompt\":\"Refactor the auth module.\",\"open_codes\":[\"depth-under-plan\",\"clarification-instead-of-action\"],\"memo\":\"asked for info instead of doing it\"}\n{\"trace_id\":\"9d2c84fb4a7943008c77d460e4eecdcf\",\"prompt\":\"Compare Redis and Memcached (1)(2)(3) and recommend.\",\"open_codes\":[\"fabricated-delegation\",\"incomplete-enumeration\",\"tool-errors-swallowed\"],\"memo\":\"\"}\n```\n(Use hyphenated/slugged codes consistent with row 1's `depth-under-plan`.) Note: if you\nlater re-open the coder against the same cases, its localStorage may re-hydrate the old\nempty state \u2014 `hydrateFromDisk()` only loads from disk when localStorage has no codes/memo\nfor that session (lines 79-89), so prefer Option A if you'll keep using the UI.\n\n### Then re-verify\nRe-run the check in step 1/2 above. Only when \"with NO codes\" is **0** should you proceed\nto push (`--write` for the dataset, or `--write` for the trace-score script) \u2014 and per the\ntask constraint here, the push itself is left to you.\n\n## One more thing to watch (unrelated to the empty codes, but real)\nRow 3's prompt is `\"Compare Redis and Memcached (1)(2)(3) and recommend.\"` \u2014 the\ntrace_ids are full 32-char hex, so they will match Langfuse (the push script's\n`len(tid) >= 32` guard on lines 48-53/65 passes). No trace-id problem here; the only defect\nis the missing chips.\n\n## Files referenced\n- `/tmp/oc_trap/coded.jsonl` \u2014 the coded file (the evidence)\n- `/Users/rajnishkhatri/Documents/AgentsFramework/agent/docs/skills/agentsframework-open-coding/assets/coder.html` \u2014 chip vs memo logic (lines 59-66)\n- `/Users/rajnishkhatri/Documents/AgentsFramework/agent/docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py` \u2014 dataset exporter + empty-codes warning (lines 84-121)\n- `/Users/rajnishkhatri/Documents/AgentsFramework/agent/scripts/push_open_codes_to_langfuse.py` \u2014 trace-score pusher (lines 45-74)\n- `/Users/rajnishkhatri/Documents/AgentsFramework/agent/docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py` \u2014 server for disk save/hydrate\n"}], "grading": {"expectations": [{"text": "Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)", "passed": true, "evidence": "codes-vs-memo trap, Enter/chip"}, {"text": "Identifies the specific uncoded rows / reports the NO-codes count via the verify step", "passed": true, "evidence": "reports uncoded rows/count"}, {"text": "Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them", "passed": false, "evidence": "NOT MATCHED: sends user to re-commit, no autogen"}]}}, {"id": "eval-2-where-to-persist-with_skill", "prompt": "Scores, annotation queue, or something else for reviewing ~15 coded traces together?", "eval_id": 2, "outputs": [{"name": "answer.md", "type": "text", "content": "# Where to put your coded traces in Langfuse\n\n**Short answer: use a Langfuse _dataset_ \u2014 not scores, not an annotation queue.**\n\nA dataset gives you exactly what you asked for: one item per case showing the\ntask, the agent's final answer, and your codes, all on one paginated screen, with\na link back to the full trace for drill-down. It's the read/review surface. You\nkeep editing codes in the local HTML coder (the write surface) and re-run the\nexporter; items update in place. This repo already has the scripts to do it.\n\n## Why a dataset and not the other two\n\nThis was decided the hard way in this repo while coding 11 planning-depth traces\n(see `docs/skills/agentsframework-open-coding/references/langfuse-surface.md`).\n\n| Surface | What review actually looks like | Verdict |\n|---|---|---|\n| **Dataset** | One item per case: task = `input`, answer = `expected_output`, codes + memo = `metadata`, `source_trace_id` links to the trace. All together, paginated, shareable link. | **Use this.** |\n| **Scores** | A score binds to a single observation, so `open_code` scatters across `run.started` / `step.0` / `step.executed` on one trace. No single screen shows task + answer + all codes. (Bonus trap: TEXT scores read back from `string_value`, not `.value`, which is `None`.) | Scattered \u2014 fine for filtering, useless for joint review. |\n| **Annotation queue** | The drawer opens on the trace's _top_ observation (`run.started`) \u2014 which carries run/thread ids, **not** the prompt or the answer, i.e. the two things you both need to read. API-pushed scores hide behind a toggle. The Hobby plan caps you at **one** queue, so you can't even keep a queue per session. | Wrong content + capped. |\n\nScores are the right tool when you want to *filter* (\"show all traces where\n`open_code` contains X\") in the Langfuse UI. They're the wrong tool for \"let's sit\ndown and read these 15 cases together,\" which is what you described.\n\n## The division of labor that works\n\n- **HTML coder = write/edit surface.** Tag, re-tag, memo. Local, fast, no network\n  round-trip per keystroke. This is where you and your teammate change codes.\n- **Langfuse dataset = read/review surface.** Paginated, task + answer + codes\n  together, shareable, trace back-link. **Don't edit codes in Langfuse** \u2014 edit in\n  the coder, Save, re-export (idempotent, items update in place).\n\n## Walkthrough for your ~15 traces (exact paths/commands)\n\nRun everything from the repo root, and use `.venv/bin/python` \u2014 this repo is\nPython 3.13 and the system `python` will throw `int | None` syntax errors. Use\n**this skill's** bundled scripts by full path; the top-level\n`scripts/serve_open_coder.py` and `scripts/export_depth_cases_to_dataset.py` are\nthe older planning-depth-hardcoded ancestors and won't take the `--dir/--dataset`\nflags below.\n\n### 0. Make a session work dir and drop in the coder\n\n```bash\nWORK=cache/open_coding/team-review            # any path you like\nmkdir -p \"$WORK\"\ncp docs/skills/agentsframework-open-coding/assets/coder.html \"$WORK/coder.html\"\n```\n\nThe coder is generic \u2014 it fetches its cases from the server, so you never\nhand-edit the HTML. You only edit `cases.json`.\n\n### 1. Build the cases JSON (one row per trace)\n\nWrite your 15 traces to `$WORK/cases.json` as an array, one object per trace.\nMinimum per row is `trace_id` + `prompt`; include `final_answer` so the card and\nthe dataset's `expected_output` are populated. Schema + worked example:\n`docs/skills/agentsframework-open-coding/assets/cases.schema.json`; a 3-row\nstarter: `docs/skills/agentsframework-open-coding/assets/sample_cases.json`.\n\n```json\n{\n  \"trace_id\": \"7c71871fb0...\",\n  \"stratum\": \"batch-1\",\n  \"prompt\": \"the task given to the agent\",\n  \"final_answer\": \"the agent's last message\",\n  \"goal_met\": false,\n  \"partial_fraction\": 0.5,\n  \"trajectory\": [{\"ev\": \"step.planned\"}, {\"ev\": \"error.occurred\", \"tool\": \"shell\"}],\n  \"rationale\": \"judge's reasoning (optional)\"\n}\n```\n\nAny extra keys you add (family, severity, model\u2026) survive the round-trip into\ndataset item metadata, so attach now whatever you'll want to filter on later.\n`want_depth`/`fired_depth` are GoalJudge-specific \u2014 drop them unless this is a\nplanning-depth set.\n\n### 2. Serve the coder\n\n```bash\npython docs/skills/agentsframework-open-coding/scripts/serve_open_coder.py --dir \"$WORK\"\n# add --port 3118 if 3117 is busy\n```\n\nOpen **http://localhost:3117/coder.html**. Always serve over http \u2014 never open\nthe `.html` as a `file://`, or the Save button's POST to `/save` fails silently\nand your codes end up only as a browser download. The server also serves prior\ncodes back at `/load`, validates each saved line, refuses a save that shrinks the\nfile below 50% of existing rows (unless `?force=1`), and writes a timestamped\nbackup on every save.\n\n### 3. Code in the browser (you, by hand \u2014 not the LLM)\n\nPer card: read the task, expand the answer + judge rationale, glance at the\ntrajectory counts, then type a short code and **press Enter** to commit it as a\nchip. Add a memo for nuance. Good codes are short and behavioral \u2014\n`fabricated-progress`, `tool-error-unhandled`, `clarification-instead-of-action`.\nClick **Save to disk** to write `$WORK/coded.jsonl`.\n\nOpen coding is a human noticing what the trace _did_ vs what the agent _claimed_.\nDon't auto-generate first-pass codes with an LLM; that comes later in axial coding.\n\n### 4. Verify the JSONL (the one trap that bites everyone)\n\nThe #1 failure mode: prose in the memo, `open_codes` empty \u2014 because codes only\npersist if you press **Enter** to chip them; a comma-list typed into the memo box\ndoes not populate `open_codes`. Check before exporting:\n\n```bash\n.venv/bin/python -c \"import json; \\\nrows=[json.loads(l) for l in open('$WORK/coded.jsonl') if l.strip()]; \\\nempty=[r['trace_id'] for r in rows if not r.get('open_codes')]; \\\nprint(f'{len(rows)} rows, {len(empty)} with NO codes'); print('uncoded:', empty)\"\n```\n\n(The exporter's dry run prints the same count, so you'll catch it either way.)\n\n### 5. Export to a dataset \u2014 dry run first\n\n```bash\nEXPORT=docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py\n\n# dry run (default) \u2014 prints what it would write + the NO-codes count\n.venv/bin/python \"$EXPORT\" --dataset team-review --coded \"$WORK/coded.jsonl\"\n\n# actually push, once the dry run looks right\n.venv/bin/python \"$EXPORT\" --write \\\n    --dataset team-review \\\n    --coded \"$WORK/coded.jsonl\" \\\n    --meta-keys stratum,goal_met,severity\n```\n\nEach item lands as `input={task,...}`, `expected_output=final_answer`,\n`metadata={open_codes, memo, ...--meta-keys}`, plus a `source_trace_id` back-link.\nThe item id is `uuid5(trace_id)`, so **re-running updates the same items** rather\nthan duplicating. If your `final_answer` lives in a separate corpus instead of on\nthe coded rows, join it with `--answers path/to/rich.jsonl`. Needs creds in `.env`\n(`LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`; default EU host\n\u2014 a stray `us.` host 502s).\n\n### 6. Review together and iterate\n\nOpen the dataset in Langfuse (`/project/<id>/datasets/<dataset-id>`). You and your\nteammate get all ~15 cases in one paginated table, task + answer per row, codes in\nmetadata, trace link for drill-down. To change a code: edit in the **coder**,\nSave, re-run step 5 \u2014 items update in place. The dataset is read-only review; the\ncoder is where edits happen.\n\n## TL;DR\n\nDataset, not scores or an annotation queue. Code in the local HTML coder\n(`serve_open_coder.py --dir $WORK`), then push to a Langfuse dataset with\n`export_coded_to_dataset.py --write --dataset team-review`. Dry-run first, verify\n`open_codes` is non-empty, and re-export any time you refine codes \u2014 it's\nidempotent. The full mechanics live in\n`docs/skills/agentsframework-open-coding/SKILL.md`.\n"}], "grading": {"expectations": [{"text": "Recommends a Langfuse DATASET over scores and annotation queue", "passed": true, "evidence": "recommends dataset"}, {"text": "Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)", "passed": true, "evidence": "scores scatter; queue run.started; hobby cap"}, {"text": "Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow", "passed": true, "evidence": "names exporter + idempotent"}]}}, {"id": "eval-2-where-to-persist-without_skill", "prompt": "Scores, annotation queue, or something else for reviewing ~15 coded traces together?", "eval_id": 2, "outputs": [{"name": "answer.md", "type": "text", "content": "# Where to put ~15 coded traces in Langfuse for shared review\n\n## Short answer\n\nUse a **Langfuse dataset** \u2014 one item per trace \u2014 as the shared review surface.\nDo **not** use Langfuse scores or an annotation queue for the \"see task + answer +\nmy codes on one screen, review together, edit later\" workflow you describe.\n\nScores and annotation queues each fail on one of your three requirements\n(everything-in-one-place, review-together, edit-later). A dataset satisfies all\nthree, and this repo already has the tooling to push one.\n\n## Why a dataset, mapped to what you asked for\n\nYou want three things. Here's how each surface scores:\n\n| You want\u2026 | Dataset | Scores | Annotation queue |\n|---|---|---|---|\n| Task + agent answer + your codes **in one place** | Yes \u2014 one item per case: `input` = task, `expected_output` = the agent's final answer, `metadata` = your codes + memo | No \u2014 a score attaches to a single *observation*, not the trace as a whole, so codes scatter across `run.started` / `step.N` / `step.executed` and nothing shows the task, the answer, and all codes together | No \u2014 the queue drawer opens on the trace's **top** observation (`run.started`), which carries run/thread ids, **not** the prompt or the final answer \u2014 the two things you actually code against |\n| You and a teammate **review together** | Yes \u2014 paginated list, one shareable project link, each item links back to its full trace via `source_trace_id` for drill-down | Poor \u2014 you'd be clicking trace-by-trace, hunting the Scores tab on each | Capped \u2014 Langfuse's Hobby/free plan allows only **one** annotation queue, so you can't even keep a session's worth separate; and the codes you push via API land collapsed behind a detail toggle |\n| **Edit codes later** | Yes (with the right loop \u2014 see below) | Awkward \u2014 a TEXT score's text lives in `string_value`, not `.value` (which is `None` for TEXT), so reading/editing them back is a footgun | Same scatter/visibility problem |\n\nNet: **scores are built for filtering** (\"show me all traces where the judge\nscore < 0.5\"), not for *reading a case set*. **Annotation queues are built for a\nhuman grading queue against the live trace view**, not for reviewing pre-coded\nfree-text codes. A **dataset is a curated, paginated, shareable collection of\ncases** \u2014 which is exactly what a coded trace-set is.\n\n## The one catch \u2014 and how this repo already solves it\n\nThe honest caveat: **a Langfuse dataset is not an in-place editor.** You don't\nre-tag codes by typing into the Langfuse UI. So the workflow that actually works\nis a two-surface split, and the repo is already built around it:\n\n- **Write/edit surface (local):** the HTML open-coder. You tag, re-tag, and write\n  memos there. It saves a coded JSONL to disk. No network round-trip per\n  keystroke.\n- **Read/review surface (Langfuse):** the dataset. Paginated, everything-together,\n  shareable, with trace back-links for drill-down.\n\nTo **edit codes later**: change them in the coder \u2192 Save \u2192 re-run the exporter.\nThe exporter is **idempotent** (each item id is `uuid5(trace_id)`), so re-running\nupdates items in place rather than duplicating. You never edit codes inside\nLangfuse; you re-sync from the coder. Your teammate reviews in the dataset; you\nboth agree on changes; you apply them in the coder and re-push.\n\n## Concrete walkthrough in this repo\n\nThe repo already has the exporter for this exact job:\n`docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py`\n(it wraps `scripts/langfuse_dataset_client.py`, the repo's standard\n`RealLangfuseDatasetClient`, EU host by default \u2014 `cloud.langfuse.com`, **not**\n`us.cloud.langfuse.com`, which has bitten past sessions with 502s).\n\n**1. Get your codes into the coded-JSONL shape.** The HTML coder\n(`docs/skills/agentsframework-open-coding/assets/coder.html`, served by\n`scripts/serve_open_coder.py` on `:3117`) emits one JSON object per line with at\nleast:\n\n```json\n{\"trace_id\": \"<full-32+-char id>\", \"prompt\": \"<task>\", \"open_codes\": [\"code-a\", \"code-b\"], \"memo\": \"rationale\", \"final_answer\": \"<agent answer>\"}\n```\n\nTwo things to verify before pushing:\n- **Full trace ids.** Codes only match a Langfuse trace if `trace_id` is the full\n  id (\u226532 chars). Short/truncated ids silently won't match.\n- **Codes are committed as chips, not just typed.** In the coder, a code only\n  lands in `open_codes` if you Enter-commit it as a chip. Text left in the memo\n  box is *not* a code. The exporter warns about rows with empty `open_codes` \u2014 heed it.\n\nIf your final answers live in a separate corpus file, the exporter can join them\nin by `trace_id` via `--answers`.\n\n**2. Dry-run the export (writes nothing):**\n\n```bash\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py \\\n    --dataset my-coding-session \\\n    --coded path/to/coded.jsonl\n```\n\nConfirm the printed item count is ~15 and the codes look right. (If you need the\nagent answers joined: add `--answers path/to/rich.jsonl`.)\n\n**3. Push for real:**\n\n```bash\n.venv/bin/python docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py --write \\\n    --dataset my-coding-session \\\n    --coded path/to/coded.jsonl \\\n    --answers path/to/rich.jsonl \\\n    --meta-keys stratum,goal_met        # any row keys you want as filterable item metadata\n```\n\nEach item becomes: `input.task` = the prompt, `expected_output` = the agent's\nfinal answer, `metadata.open_codes` + `metadata.memo` = your codes, plus\n`source_trace_id` linking back to the full trace.\n\n**4. Review together.** Both of you open\n`https://cloud.langfuse.com` \u2192 **Datasets** \u2192 `my-coding-session`. You get the\npaginated list \u2014 task, answer, codes per item \u2014 and click `source_trace_id` on\nany item to drill into the full trace.\n\n**5. Edit codes later.** Re-open the coder, change the chips/memos, Save, re-run\nstep 3. Items update in place (same `uuid5(trace_id)` id). Done.\n\n## When the other surfaces *are* right (so you're not surprised later)\n\n- **Scores** \u2014 once your emergent codes stabilize into a fixed taxonomy and you\n  want to *filter/aggregate* traces by code in the Langfuse UI (or gate a batch\n  on them). The repo even has `scripts/push_open_codes_to_langfuse.py` that pushes\n  codes as TEXT scores for exactly that filtering use case. It's complementary,\n  not a substitute for the review dataset. Promote to a CATEGORICAL score config\n  when the taxonomy is locked.\n- **Annotation queue** \u2014 when you want a *fresh* human-grading workflow where a\n  reviewer grades against the live trace view (not pre-assigned free-text codes),\n  and you're not on the one-queue Hobby cap.\n\nFor your stated goal \u2014 co-review ~15 already-coded traces, everything on one\nscreen, editable later \u2014 the **dataset** is the right surface, and the repo's\n`export_coded_to_dataset.py` is the tool. (Per the task constraint, nothing was\npushed to Langfuse here.)\n\n## Files referenced\n\n- `docs/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py` \u2014 the dataset exporter (idempotent, joins answers)\n- `scripts/langfuse_dataset_client.py` \u2014 `RealLangfuseDatasetClient` / `build_real_langfuse_dataset_client` (EU host default)\n- `scripts/serve_open_coder.py` + `docs/skills/agentsframework-open-coding/assets/coder.html` \u2014 the local write/edit surface\n- `scripts/push_open_codes_to_langfuse.py` \u2014 codes-as-TEXT-scores pusher (the *filtering* path, not review)\n- `docs/skills/agentsframework-open-coding/references/langfuse-surface.md` \u2014 repo's prior decision record on this exact question\n"}], "grading": {"expectations": [{"text": "Recommends a Langfuse DATASET over scores and annotation queue", "passed": false, "evidence": "NOT MATCHED: recommends dataset"}, {"text": "Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)", "passed": true, "evidence": "scores scatter; queue run.started; hobby cap"}, {"text": "Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow", "passed": true, "evidence": "names exporter + idempotent"}]}}], "previous_feedback": {}, "previous_outputs": {}, "benchmark": {"metadata": {"skill_name": "agentsframework-open-coding", "skill_path": "<path/to/skill>", "executor_model": "<model-name>", "analyzer_model": "<model-name>", "timestamp": "2026-06-14T14:44:33Z", "evals_run": [0, 1, 2], "runs_per_configuration": 3}, "runs": [{"eval_id": 0, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 5, "failed": 0, "total": 5, "time_seconds": 194.7, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py", "passed": true, "evidence": "references skill-path serve_open_coder"}, {"text": "Makes a session work dir and copies/uses coder.html there rather than editing a coder in place", "passed": true, "evidence": "makes workdir + copies coder.html"}, {"text": "Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)", "passed": true, "evidence": "explains Enter-to-commit vs memo"}, {"text": "Runs the dataset exporter as a DRY RUN and stops before --write", "passed": true, "evidence": "dry run, stops before --write"}, {"text": "States the Langfuse dataset is the review surface", "passed": true, "evidence": "dataset = review surface"}], "notes": []}, {"eval_id": 1, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 3, "failed": 0, "total": 3, "time_seconds": 90.2, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)", "passed": true, "evidence": "codes-vs-memo trap, Enter/chip"}, {"text": "Identifies the specific uncoded rows / reports the NO-codes count via the verify step", "passed": true, "evidence": "reports uncoded rows/count"}, {"text": "Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them", "passed": true, "evidence": "sends user to re-commit, no autogen"}], "notes": []}, {"eval_id": 2, "configuration": "with_skill", "run_number": 1, "result": {"pass_rate": 1.0, "passed": 3, "failed": 0, "total": 3, "time_seconds": 83.7, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Recommends a Langfuse DATASET over scores and annotation queue", "passed": true, "evidence": "recommends dataset"}, {"text": "Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)", "passed": true, "evidence": "scores scatter; queue run.started; hobby cap"}, {"text": "Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow", "passed": true, "evidence": "names exporter + idempotent"}], "notes": []}, {"eval_id": 0, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.8, "passed": 4, "failed": 1, "total": 5, "time_seconds": 178.5, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Uses the skill's bundled serve_open_coder.py (full skill path), not the repo's hardcoded scripts/serve_open_coder.py", "passed": true, "evidence": "references skill-path serve_open_coder"}, {"text": "Makes a session work dir and copies/uses coder.html there rather than editing a coder in place", "passed": false, "evidence": "NOT MATCHED: makes workdir + copies coder.html"}, {"text": "Explains tagging codes with Enter-to-commit as chips (distinct from the memo box)", "passed": true, "evidence": "explains Enter-to-commit vs memo"}, {"text": "Runs the dataset exporter as a DRY RUN and stops before --write", "passed": true, "evidence": "dry run, stops before --write"}, {"text": "States the Langfuse dataset is the review surface", "passed": true, "evidence": "dataset = review surface"}], "notes": []}, {"eval_id": 1, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.6666666666666666, "passed": 2, "failed": 1, "total": 3, "time_seconds": 127.4, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)", "passed": true, "evidence": "codes-vs-memo trap, Enter/chip"}, {"text": "Identifies the specific uncoded rows / reports the NO-codes count via the verify step", "passed": true, "evidence": "reports uncoded rows/count"}, {"text": "Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them", "passed": false, "evidence": "NOT MATCHED: sends user to re-commit, no autogen"}], "notes": []}, {"eval_id": 2, "configuration": "without_skill", "run_number": 1, "result": {"pass_rate": 0.6666666666666666, "passed": 2, "failed": 1, "total": 3, "time_seconds": 110.9, "tokens": 0, "tool_calls": 0, "errors": 0}, "expectations": [{"text": "Recommends a Langfuse DATASET over scores and annotation queue", "passed": false, "evidence": "NOT MATCHED: recommends dataset"}, {"text": "Explains why scores lose (per-observation scatter) and why the queue loses (drawer shows run.started not task/answer; Hobby cap of 1)", "passed": true, "evidence": "scores scatter; queue run.started; hobby cap"}, {"text": "Names the parameterized export_coded_to_dataset.py and notes idempotent re-run + edit-in-coder workflow", "passed": true, "evidence": "names exporter + idempotent"}], "notes": []}], "run_summary": {"with_skill": {"pass_rate": {"mean": 1.0, "stddev": 0.0, "min": 1.0, "max": 1.0}, "time_seconds": {"mean": 122.8667, "stddev": 62.2943, "min": 83.7, "max": 194.7}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "without_skill": {"pass_rate": {"mean": 0.7111, "stddev": 0.077, "min": 0.6667, "max": 0.8}, "time_seconds": {"mean": 138.9333, "stddev": 35.2449, "min": 110.9, "max": 178.5}, "tokens": {"mean": 0.0, "stddev": 0.0, "min": 0, "max": 0}}, "delta": {"pass_rate": "+0.29", "time_seconds": "-16.1", "tokens": "+0"}}, "notes": []}};
+
+    // ---- State ----
+    let feedbackMap = {};  // run_id -> feedback text
+    let currentIndex = 0;
+    let visitedRuns = new Set();
+
+    // ---- Init ----
+    async function init() {
+      // Load saved feedback from server — but only if this isn't a fresh
+      // iteration (indicated by previous_feedback being present). When
+      // previous feedback exists, the feedback.json on disk is stale from
+      // the prior iteration and should not pre-fill the textareas.
+      const hasPrevious = Object.keys(EMBEDDED_DATA.previous_feedback || {}).length > 0
+        || Object.keys(EMBEDDED_DATA.previous_outputs || {}).length > 0;
+      if (!hasPrevious) {
+        try {
+          const resp = await fetch("/api/feedback");
+          const data = await resp.json();
+          if (data.reviews) {
+            for (const r of data.reviews) feedbackMap[r.run_id] = r.feedback;
+          }
+        } catch { /* first run, no feedback yet */ }
+      }
+
+      document.getElementById("skill-name").textContent = EMBEDDED_DATA.skill_name;
+      showRun(0);
+
+      // Wire up feedback auto-save
+      const textarea = document.getElementById("feedback");
+      let saveTimeout = null;
+      textarea.addEventListener("input", () => {
+        clearTimeout(saveTimeout);
+        document.getElementById("feedback-status").textContent = "";
+        saveTimeout = setTimeout(() => saveCurrentFeedback(), 800);
+      });
+    }
+
+    // ---- Navigation ----
+    function navigate(delta) {
+      const newIndex = currentIndex + delta;
+      if (newIndex >= 0 && newIndex < EMBEDDED_DATA.runs.length) {
+        saveCurrentFeedback();
+        showRun(newIndex);
+      }
+    }
+
+    function updateNavButtons() {
+      document.getElementById("prev-btn").disabled = currentIndex === 0;
+      document.getElementById("next-btn").disabled =
+        currentIndex === EMBEDDED_DATA.runs.length - 1;
+    }
+
+    // ---- Show a run ----
+    function showRun(index) {
+      currentIndex = index;
+      const run = EMBEDDED_DATA.runs[index];
+
+      // Progress
+      document.getElementById("progress").textContent =
+        `${index + 1} of ${EMBEDDED_DATA.runs.length}`;
+
+      // Prompt
+      document.getElementById("prompt-text").textContent = run.prompt;
+
+      // Config badge
+      const badge = document.getElementById("config-badge");
+      const configMatch = run.id.match(/(with_skill|without_skill|new_skill|old_skill)/);
+      if (configMatch) {
+        const config = configMatch[1];
+        const isBaseline = config === "without_skill" || config === "old_skill";
+        badge.textContent = config.replace(/_/g, " ");
+        badge.className = "config-badge " + (isBaseline ? "config-baseline" : "config-primary");
+        badge.style.display = "inline-block";
+      } else {
+        badge.style.display = "none";
+      }
+
+      // Outputs
+      renderOutputs(run);
+
+      // Previous outputs
+      renderPrevOutputs(run);
+
+      // Grades
+      renderGrades(run);
+
+      // Previous feedback
+      const prevFb = (EMBEDDED_DATA.previous_feedback || {})[run.id];
+      const prevEl = document.getElementById("prev-feedback");
+      if (prevFb) {
+        document.getElementById("prev-feedback-text").textContent = prevFb;
+        prevEl.style.display = "block";
+      } else {
+        prevEl.style.display = "none";
+      }
+
+      // Feedback
+      document.getElementById("feedback").value = feedbackMap[run.id] || "";
+      document.getElementById("feedback-status").textContent = "";
+
+      updateNavButtons();
+
+      // Track visited runs and promote done button when all visited
+      visitedRuns.add(index);
+      const doneBtn = document.getElementById("done-btn");
+      if (visitedRuns.size >= EMBEDDED_DATA.runs.length) {
+        doneBtn.classList.add("ready");
+      }
+
+      // Scroll main content to top
+      document.querySelector(".main").scrollTop = 0;
+    }
+
+    // ---- Render outputs ----
+    function renderOutputs(run) {
+      const container = document.getElementById("outputs-body");
+      container.innerHTML = "";
+
+      const outputs = run.outputs || [];
+      if (outputs.length === 0) {
+        container.innerHTML = '<div class="empty-state">No output files</div>';
+        return;
+      }
+
+      for (const file of outputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        // Always show file header with download link
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const content = document.createElement("div");
+        content.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          content.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          content.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          content.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(content, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          content.appendChild(a);
+        } else if (file.type === "error") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          pre.style.color = "var(--red)";
+          content.appendChild(pre);
+        }
+
+        fileDiv.appendChild(content);
+        container.appendChild(fileDiv);
+      }
+    }
+
+    // ---- XLSX rendering via SheetJS ----
+    function renderXlsx(container, b64Data) {
+      try {
+        const raw = Uint8Array.from(atob(b64Data), c => c.charCodeAt(0));
+        const wb = XLSX.read(raw, { type: "array" });
+
+        for (let i = 0; i < wb.SheetNames.length; i++) {
+          const sheetName = wb.SheetNames[i];
+          const ws = wb.Sheets[sheetName];
+
+          if (wb.SheetNames.length > 1) {
+            const sheetLabel = document.createElement("div");
+            sheetLabel.style.cssText =
+              "font-weight:600; font-size:0.8rem; color:#b0aea5; margin-top:0.5rem; margin-bottom:0.25rem;";
+            sheetLabel.textContent = "Sheet: " + sheetName;
+            container.appendChild(sheetLabel);
+          }
+
+          const htmlStr = XLSX.utils.sheet_to_html(ws, { editable: false });
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = htmlStr;
+          container.appendChild(wrapper);
+        }
+      } catch (err) {
+        container.textContent = "Error rendering spreadsheet: " + err.message;
+      }
+    }
+
+    // ---- Grades ----
+    function renderGrades(run) {
+      const section = document.getElementById("grades-section");
+      const content = document.getElementById("grades-content");
+
+      if (!run.grading) {
+        section.style.display = "none";
+        return;
+      }
+
+      const grading = run.grading;
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("grades-arrow").classList.remove("open");
+
+      const summary = grading.summary || {};
+      const expectations = grading.expectations || [];
+
+      let html = '<div style="padding: 1rem;">';
+
+      // Summary line
+      const passRate = summary.pass_rate != null
+        ? Math.round(summary.pass_rate * 100) + "%"
+        : "?";
+      const badgeClass = summary.pass_rate >= 0.8 ? "grade-pass" : summary.pass_rate >= 0.5 ? "" : "grade-fail";
+      html += '<div class="grades-summary">';
+      html += '<span class="grade-badge ' + badgeClass + '">' + passRate + '</span>';
+      html += '<span>' + (summary.passed || 0) + ' passed, ' + (summary.failed || 0) + ' failed of ' + (summary.total || 0) + '</span>';
+      html += '</div>';
+
+      // Assertions list
+      html += '<ul class="assertion-list">';
+      for (const exp of expectations) {
+        const statusClass = exp.passed ? "pass" : "fail";
+        const statusIcon = exp.passed ? "\u2713" : "\u2717";
+        html += '<li class="assertion-item">';
+        html += '<span class="assertion-status ' + statusClass + '">' + statusIcon + '</span>';
+        html += '<span>' + escapeHtml(exp.text) + '</span>';
+        if (exp.evidence) {
+          html += '<div class="assertion-evidence">' + escapeHtml(exp.evidence) + '</div>';
+        }
+        html += '</li>';
+      }
+      html += '</ul>';
+
+      html += '</div>';
+      content.innerHTML = html;
+    }
+
+    function toggleGrades() {
+      const content = document.getElementById("grades-content");
+      const arrow = document.getElementById("grades-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Previous outputs (collapsible) ----
+    function renderPrevOutputs(run) {
+      const section = document.getElementById("prev-outputs-section");
+      const content = document.getElementById("prev-outputs-content");
+      const prevOutputs = (EMBEDDED_DATA.previous_outputs || {})[run.id];
+
+      if (!prevOutputs || prevOutputs.length === 0) {
+        section.style.display = "none";
+        return;
+      }
+
+      section.style.display = "block";
+      // Reset to collapsed
+      content.classList.remove("open");
+      document.getElementById("prev-outputs-arrow").classList.remove("open");
+
+      // Render the files into the content area
+      content.innerHTML = "";
+      const wrapper = document.createElement("div");
+      wrapper.style.padding = "1rem";
+
+      for (const file of prevOutputs) {
+        const fileDiv = document.createElement("div");
+        fileDiv.className = "output-file";
+
+        const header = document.createElement("div");
+        header.className = "output-file-header";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = file.name;
+        header.appendChild(nameSpan);
+        const dlBtn = document.createElement("a");
+        dlBtn.className = "dl-btn";
+        dlBtn.textContent = "Download";
+        dlBtn.download = file.name;
+        dlBtn.href = getDownloadUri(file);
+        header.appendChild(dlBtn);
+        fileDiv.appendChild(header);
+
+        const fc = document.createElement("div");
+        fc.className = "output-file-content";
+
+        if (file.type === "text") {
+          const pre = document.createElement("pre");
+          pre.textContent = file.content;
+          fc.appendChild(pre);
+        } else if (file.type === "image") {
+          const img = document.createElement("img");
+          img.src = file.data_uri;
+          img.alt = file.name;
+          fc.appendChild(img);
+        } else if (file.type === "pdf") {
+          const iframe = document.createElement("iframe");
+          iframe.src = file.data_uri;
+          fc.appendChild(iframe);
+        } else if (file.type === "xlsx") {
+          renderXlsx(fc, file.data_b64);
+        } else if (file.type === "binary") {
+          const a = document.createElement("a");
+          a.className = "download-link";
+          a.href = file.data_uri;
+          a.download = file.name;
+          a.textContent = "Download " + file.name;
+          fc.appendChild(a);
+        }
+
+        fileDiv.appendChild(fc);
+        wrapper.appendChild(fileDiv);
+      }
+
+      content.appendChild(wrapper);
+    }
+
+    function togglePrevOutputs() {
+      const content = document.getElementById("prev-outputs-content");
+      const arrow = document.getElementById("prev-outputs-arrow");
+      content.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    // ---- Feedback (saved to server -> feedback.json) ----
+    function saveCurrentFeedback() {
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // Build reviews array from map
+      const reviews = [];
+      for (const [run_id, feedback] of Object.entries(feedbackMap)) {
+        if (feedback.trim()) {
+          reviews.push({ run_id, feedback, timestamp: new Date().toISOString() });
+        }
+      }
+
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reviews, status: "in_progress" }),
+      }).then(() => {
+        document.getElementById("feedback-status").textContent = "Saved";
+      }).catch(() => {
+        // Static mode or server unavailable — no-op on auto-save,
+        // feedback will be downloaded on final submit
+        document.getElementById("feedback-status").textContent = "Will download on submit";
+      });
+    }
+
+    // ---- Done ----
+    function showDoneDialog() {
+      // Save current textarea to feedbackMap (but don't POST yet)
+      const run = EMBEDDED_DATA.runs[currentIndex];
+      const text = document.getElementById("feedback").value;
+      if (text.trim() === "") {
+        delete feedbackMap[run.id];
+      } else {
+        feedbackMap[run.id] = text;
+      }
+
+      // POST once with status: complete — include ALL runs so the model
+      // can distinguish "no feedback" (looks good) from "not reviewed"
+      const reviews = [];
+      const ts = new Date().toISOString();
+      for (const r of EMBEDDED_DATA.runs) {
+        reviews.push({ run_id: r.id, feedback: feedbackMap[r.id] || "", timestamp: ts });
+      }
+      const payload = JSON.stringify({ reviews, status: "complete" }, null, 2);
+      fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      }).then(() => {
+        document.getElementById("done-overlay").classList.add("visible");
+      }).catch(() => {
+        // Server not available (static mode) — download as file
+        const blob = new Blob([payload], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "feedback.json";
+        a.click();
+        URL.revokeObjectURL(url);
+        document.getElementById("done-overlay").classList.add("visible");
+      });
+    }
+
+    function closeDoneDialog() {
+      // Reset status back to in_progress
+      saveCurrentFeedback();
+      document.getElementById("done-overlay").classList.remove("visible");
+    }
+
+    // ---- Toast ----
+    function showToast(message) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.classList.add("visible");
+      setTimeout(() => toast.classList.remove("visible"), 2000);
+    }
+
+    // ---- Keyboard nav ----
+    document.addEventListener("keydown", (e) => {
+      // Don't capture when typing in textarea
+      if (e.target.tagName === "TEXTAREA") return;
+
+      if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+        e.preventDefault();
+        navigate(-1);
+      } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+        e.preventDefault();
+        navigate(1);
+      }
+    });
+
+    // ---- Util ----
+    function getDownloadUri(file) {
+      if (file.data_uri) return file.data_uri;
+      if (file.data_b64) return "data:application/octet-stream;base64," + file.data_b64;
+      if (file.type === "text") return "data:text/plain;charset=utf-8," + encodeURIComponent(file.content);
+      return "#";
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ---- View switching ----
+    function switchView(view) {
+      document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+      document.querySelectorAll(".view-panel").forEach(p => p.classList.remove("active"));
+      document.querySelector(`[onclick="switchView('${view}')"]`).classList.add("active");
+      document.getElementById("panel-" + view).classList.add("active");
+    }
+
+    // ---- Benchmark rendering ----
+    function renderBenchmark() {
+      const data = EMBEDDED_DATA.benchmark;
+      if (!data) return;
+
+      // Show the tabs
+      document.getElementById("view-tabs").style.display = "flex";
+
+      const container = document.getElementById("benchmark-content");
+      const summary = data.run_summary || {};
+      const metadata = data.metadata || {};
+      const notes = data.notes || [];
+
+      let html = "";
+
+      // Header
+      html += "<h2 style='font-family: Poppins, sans-serif; margin-bottom: 0.5rem;'>Benchmark Results</h2>";
+      html += "<p style='color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.25rem;'>";
+      if (metadata.skill_name) html += "<strong>" + escapeHtml(metadata.skill_name) + "</strong> &mdash; ";
+      if (metadata.timestamp) html += metadata.timestamp + " &mdash; ";
+      if (metadata.evals_run) html += "Evals: " + metadata.evals_run.join(", ") + " &mdash; ";
+      html += (metadata.runs_per_configuration || "?") + " runs per configuration";
+      html += "</p>";
+
+      // Summary table
+      html += '<table class="benchmark-table">';
+
+      function fmtStat(stat, pct) {
+        if (!stat) return "—";
+        const suffix = pct ? "%" : "";
+        const m = pct ? (stat.mean * 100).toFixed(0) : stat.mean.toFixed(1);
+        const s = pct ? (stat.stddev * 100).toFixed(0) : stat.stddev.toFixed(1);
+        return m + suffix + " ± " + s + suffix;
+      }
+
+      function deltaClass(val) {
+        if (!val) return "";
+        const n = parseFloat(val);
+        if (n > 0) return "benchmark-delta-positive";
+        if (n < 0) return "benchmark-delta-negative";
+        return "";
+      }
+
+      // Discover config names dynamically (everything except "delta")
+      const configs = Object.keys(summary).filter(k => k !== "delta");
+      const configA = configs[0] || "config_a";
+      const configB = configs[1] || "config_b";
+      const labelA = configA.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const labelB = configB.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const a = summary[configA] || {};
+      const b = summary[configB] || {};
+      const delta = summary.delta || {};
+
+      html += "<thead><tr><th>Metric</th><th>" + escapeHtml(labelA) + "</th><th>" + escapeHtml(labelB) + "</th><th>Delta</th></tr></thead>";
+      html += "<tbody>";
+
+      html += "<tr><td><strong>Pass Rate</strong></td>";
+      html += "<td>" + fmtStat(a.pass_rate, true) + "</td>";
+      html += "<td>" + fmtStat(b.pass_rate, true) + "</td>";
+      html += '<td class="' + deltaClass(delta.pass_rate) + '">' + (delta.pass_rate || "—") + "</td></tr>";
+
+      // Time (only show row if data exists)
+      if (a.time_seconds || b.time_seconds) {
+        html += "<tr><td><strong>Time (s)</strong></td>";
+        html += "<td>" + fmtStat(a.time_seconds, false) + "</td>";
+        html += "<td>" + fmtStat(b.time_seconds, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.time_seconds) + '">' + (delta.time_seconds ? delta.time_seconds + "s" : "—") + "</td></tr>";
+      }
+
+      // Tokens (only show row if data exists)
+      if (a.tokens || b.tokens) {
+        html += "<tr><td><strong>Tokens</strong></td>";
+        html += "<td>" + fmtStat(a.tokens, false) + "</td>";
+        html += "<td>" + fmtStat(b.tokens, false) + "</td>";
+        html += '<td class="' + deltaClass(delta.tokens) + '">' + (delta.tokens || "—") + "</td></tr>";
+      }
+
+      html += "</tbody></table>";
+
+      // Per-eval breakdown (if runs data available)
+      const runs = data.runs || [];
+      if (runs.length > 0) {
+        const evalIds = [...new Set(runs.map(r => r.eval_id))].sort((a, b) => a - b);
+
+        html += "<h3 style='font-family: Poppins, sans-serif; margin-bottom: 0.75rem;'>Per-Eval Breakdown</h3>";
+
+        const hasTime = runs.some(r => r.result && r.result.time_seconds != null);
+        const hasErrors = runs.some(r => r.result && r.result.errors > 0);
+
+        for (const evalId of evalIds) {
+          const evalRuns = runs.filter(r => r.eval_id === evalId);
+          const evalName = evalRuns[0] && evalRuns[0].eval_name ? evalRuns[0].eval_name : "Eval " + evalId;
+
+          html += "<h4 style='font-family: Poppins, sans-serif; margin: 1rem 0 0.5rem; color: var(--text);'>" + escapeHtml(evalName) + "</h4>";
+          html += '<table class="benchmark-table">';
+          html += "<thead><tr><th>Config</th><th>Run</th><th>Pass Rate</th>";
+          if (hasTime) html += "<th>Time (s)</th>";
+          if (hasErrors) html += "<th>Crashes During Execution</th>";
+          html += "</tr></thead>";
+          html += "<tbody>";
+
+          // Group by config and render with average rows
+          const configGroups = [...new Set(evalRuns.map(r => r.configuration))];
+          for (let ci = 0; ci < configGroups.length; ci++) {
+            const config = configGroups[ci];
+            const configRuns = evalRuns.filter(r => r.configuration === config);
+            if (configRuns.length === 0) continue;
+
+            const rowClass = ci === 0 ? "benchmark-row-with" : "benchmark-row-without";
+            const configLabel = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+
+            for (const run of configRuns) {
+              const r = run.result || {};
+              const prClass = r.pass_rate >= 0.8 ? "benchmark-delta-positive" : r.pass_rate < 0.5 ? "benchmark-delta-negative" : "";
+              html += '<tr class="' + rowClass + '">';
+              html += "<td>" + configLabel + "</td>";
+              html += "<td>" + run.run_number + "</td>";
+              html += '<td class="' + prClass + '">' + ((r.pass_rate || 0) * 100).toFixed(0) + "% (" + (r.passed || 0) + "/" + (r.total || 0) + ")</td>";
+              if (hasTime) html += "<td>" + (r.time_seconds != null ? r.time_seconds.toFixed(1) : "—") + "</td>";
+              if (hasErrors) html += "<td>" + (r.errors || 0) + "</td>";
+              html += "</tr>";
+            }
+
+            // Average row
+            const rates = configRuns.map(r => (r.result || {}).pass_rate || 0);
+            const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+            const avgPrClass = avgRate >= 0.8 ? "benchmark-delta-positive" : avgRate < 0.5 ? "benchmark-delta-negative" : "";
+            html += '<tr class="benchmark-row-avg ' + rowClass + '">';
+            html += "<td>" + configLabel + "</td>";
+            html += "<td>Avg</td>";
+            html += '<td class="' + avgPrClass + '">' + (avgRate * 100).toFixed(0) + "%</td>";
+            if (hasTime) {
+              const times = configRuns.map(r => (r.result || {}).time_seconds).filter(t => t != null);
+              html += "<td>" + (times.length ? (times.reduce((a, b) => a + b, 0) / times.length).toFixed(1) : "—") + "</td>";
+            }
+            if (hasErrors) html += "<td></td>";
+            html += "</tr>";
+          }
+          html += "</tbody></table>";
+
+          // Per-assertion detail for this eval
+          const runsWithExpectations = {};
+          for (const config of configGroups) {
+            runsWithExpectations[config] = evalRuns.filter(r => r.configuration === config && r.expectations && r.expectations.length > 0);
+          }
+          const hasAnyExpectations = Object.values(runsWithExpectations).some(runs => runs.length > 0);
+          if (hasAnyExpectations) {
+            // Collect all unique assertion texts across all configs
+            const allAssertions = [];
+            const seen = new Set();
+            for (const config of configGroups) {
+              for (const run of runsWithExpectations[config]) {
+                for (const exp of (run.expectations || [])) {
+                  if (!seen.has(exp.text)) {
+                    seen.add(exp.text);
+                    allAssertions.push(exp.text);
+                  }
+                }
+              }
+            }
+
+            html += '<table class="benchmark-table" style="margin-top: 0.5rem;">';
+            html += "<thead><tr><th>Assertion</th>";
+            for (const config of configGroups) {
+              const label = config.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+              html += "<th>" + escapeHtml(label) + "</th>";
+            }
+            html += "</tr></thead><tbody>";
+
+            for (const assertionText of allAssertions) {
+              html += "<tr><td>" + escapeHtml(assertionText) + "</td>";
+
+              for (const config of configGroups) {
+                html += "<td>";
+                for (const run of runsWithExpectations[config]) {
+                  const exp = (run.expectations || []).find(e => e.text === assertionText);
+                  if (exp) {
+                    const cls = exp.passed ? "benchmark-delta-positive" : "benchmark-delta-negative";
+                    const icon = exp.passed ? "\u2713" : "\u2717";
+                    html += '<span class="' + cls + '" title="Run ' + run.run_number + ': ' + escapeHtml(exp.evidence || "") + '">' + icon + "</span> ";
+                  } else {
+                    html += "— ";
+                  }
+                }
+                html += "</td>";
+              }
+              html += "</tr>";
+            }
+            html += "</tbody></table>";
+          }
+        }
+      }
+
+      // Notes
+      if (notes.length > 0) {
+        html += '<div class="benchmark-notes">';
+        html += "<h3>Analysis Notes</h3>";
+        html += "<ul>";
+        for (const note of notes) {
+          html += "<li>" + escapeHtml(note) + "</li>";
+        }
+        html += "</ul></div>";
+      }
+
+      container.innerHTML = html;
+    }
+
+    // ---- Start ----
+    init();
+    renderBenchmark();
+  </script>
+</body>
+</html>

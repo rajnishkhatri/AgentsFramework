@@ -1,0 +1,6 @@
+{"eval_id":1,"eval_name":"empty-codes-trap","prompt":"Codes seem missing on export; diagnose and fix /tmp/oc_trap/coded.jsonl before pushing.",
+ "assertions":[
+  {"text":"Diagnoses the codes-vs-memo trap (codes only persist if Enter-committed as chips, not typed in memo)","key":"diagnose_trap"},
+  {"text":"Identifies the specific uncoded rows / reports the NO-codes count via the verify step","key":"identify_uncoded"},
+  {"text":"Tells the user to re-commit codes in the coder; does NOT auto-generate codes for them","key":"no_autogen"}
+ ]}

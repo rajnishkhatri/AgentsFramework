@@ -1,0 +1,25 @@
+{
+  "skill_name": "agentsframework-open-coding",
+  "evals": [
+    {
+      "id": 0,
+      "name": "code-three-traces-end-to-end",
+      "prompt": "I've got three agent traces I want to error-analyze by hand and then have them somewhere I can review all three together. The cases are in docs/skills/agentsframework-open-coding/assets/sample_cases.json (task, final answer, trajectory, goal_met per row). Set me up to open-code them — get the coder running, tell me exactly how to tag codes and save, then show me how the coded result gets into a Langfuse dataset I can page through. Don't write to Langfuse yet, just take me right up to the --write step.",
+      "expected_output": "Serves the coder (serve_open_coder.py pointed at the sample cases dir over http, not file://), explains tagging codes with Enter-to-commit + Save, runs the dataset export as a DRY RUN, and stops before --write. Mentions the dataset is the review surface.",
+      "files": ["docs/skills/agentsframework-open-coding/assets/sample_cases.json"]
+    },
+    {
+      "id": 1,
+      "name": "empty-codes-trap",
+      "prompt": "I finished open-coding a batch of traces in the HTML coder — typed all my observations in — and saved the JSONL. But when I go to export it to a Langfuse dataset the codes seem to be missing. The coded file is at /tmp/oc_trap/coded.jsonl. What went wrong and how do I check/fix it before I push to Langfuse?",
+      "expected_output": "Diagnoses the codes-vs-memo trap: open_codes only persist if Enter-committed as chips, not typed into the memo box. Runs the verification one-liner (or equivalent) to count rows with empty open_codes, identifies which rows are uncoded, and tells the user to re-commit them in the coder before exporting. Does NOT auto-generate codes with an LLM.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "where-to-persist",
+      "prompt": "I've got a coded set of ~15 traces and I want to put them in Langfuse so my teammate and I can review them together — see each task, the agent's answer, and the codes I assigned, all in one place, and edit codes later. Should I use Langfuse scores, an annotation queue, or something else? Walk me through the right way to do this in our repo.",
+      "expected_output": "Recommends a Langfuse DATASET (not scores, not annotation queue) and explains why for review (scores scatter per-observation; queue drawer shows run.started not task/answer + hides API scores; Hobby plan caps queues at 1). Points at the parameterized export_coded_to_dataset.py, notes idempotent re-run, and that editing happens in the HTML coder then re-export."
+    }
+  ]
+}

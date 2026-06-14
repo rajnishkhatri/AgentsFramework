@@ -14,11 +14,77 @@ import pytest
 from components.evaluator import (
     build_step_result,
     check_continuation,
+    classify_no_progress,
     classify_outcome,
     parse_llm_response,
 )
 from components.schemas import ErrorRecord
 from services.base_config import AgentConfig
+
+
+def _tool_result(name: str, query: str, output: str) -> dict:
+    return {"tool_name": name, "tool_input": {"q": query}, "tool_output": output}
+
+
+class TestClassifyNoProgress:
+    """D3 matrix: {tool_repeat, prose_repeat, none}. Failure-first — the
+    budget-exhausted prose path and the short-content guard land first."""
+
+    def test_prose_repeat_short_content_is_not_thrash(self) -> None:
+        """min_content_len guard: a trailing run of ``"Done."`` is a finish,
+        NOT a prose thrash (must classify ``none``, AP6 failure path)."""
+        kind = classify_no_progress(
+            [],
+            ["Done.", "Done.", "Done."],
+            tool_threshold=3,
+            prose_threshold=3,
+            min_content_len=10,
+        )
+        assert kind == "none"
+
+    def test_prose_repeat_below_threshold_is_none(self) -> None:
+        kind = classify_no_progress(
+            [],
+            ["Same long stuck answer here", "Same long stuck answer here"],
+            tool_threshold=3,
+            prose_threshold=3,
+        )
+        assert kind == "none"
+
+    def test_prose_repeat_distinct_messages_is_none(self) -> None:
+        kind = classify_no_progress(
+            [],
+            ["first attempt text", "second different text", "third other text"],
+            tool_threshold=3,
+            prose_threshold=3,
+        )
+        assert kind == "none"
+
+    def test_prose_repeat_fires_on_identical_trailing_run(self) -> None:
+        kind = classify_no_progress(
+            [],
+            ["I cannot determine the answer with the given tools."] * 3,
+            tool_threshold=3,
+            prose_threshold=3,
+        )
+        assert kind == "prose_repeat"
+
+    def test_tool_repeat_takes_precedence_over_prose(self) -> None:
+        """The stronger existing signal wins when both could fire."""
+        tools = [_tool_result("search", "x", "Search result for: x")] * 3
+        kind = classify_no_progress(
+            tools,
+            ["stuck"] * 3,
+            tool_threshold=3,
+            prose_threshold=3,
+        )
+        assert kind == "tool_repeat"
+
+    def test_no_signal_is_none(self) -> None:
+        assert (
+            classify_no_progress([], [], tool_threshold=3, prose_threshold=3)
+            == "none"
+        )
 
 
 class TestParseLlmResponse:

@@ -102,6 +102,44 @@ class AgentState(MessagesState):
     reasoning_summary: str
     planning_depth: Literal["L0", "L1", "L2"]
     planning_depth_reason: str
+    # The task_id the planning_depth above was selected for. route_node
+    # recomputes depth every loop iteration, and select_planning_depth
+    # collapses to L0 once this task has produced a tool result
+    # (post-tool-synthesis). Memoizing the step-0 depth per task — same
+    # discipline as task_understanding_task_id — keeps the intended depth
+    # stable for the whole task instead of flipping to L0 after the first
+    # tool call. Thread state outlives the turn; a new task_id regenerates.
+    planning_depth_task_id: str
+    # Phase 1 (T1 plan-and-execute): the chosen plan artifact (LLM-generated or
+    # the deterministic floor), serialized via PlanArtifact.model_dump. Built
+    # once per task at step 0 and memoized on plan_artifact_task_id — route_node
+    # re-runs every iteration, so without this the LLM plan would be re-requested
+    # (cost) or silently swapped for the deterministic floor on re-entry
+    # (fingerprint churn). The replan gate reuses this stored plan and rebuilds
+    # only when a tool result invalidates it (plan_is_stale). Same memoize-on-
+    # task_id discipline as task_understanding_task_id.
+    plan_artifact: dict[str, Any]
+    plan_artifact_task_id: str
+    # Phase 1 (T1): how many times the plan was rebuilt mid-task because a tool
+    # result invalidated it (plan_is_stale). operator.add like rollback_count;
+    # surfaced on STEP_PLANNED so the trace shows replan activity.
+    replan_count: Annotated[int, operator.add]
+    # Phase 2 (T2 reflexion): append-only verbal critiques — the "semantic
+    # gradient" (Reflexion, arxiv 2303.11366). reflect_node appends one entry
+    # per re-entry: {step_id, attempt, critique, unmet_conditions}. Append-only
+    # is what lets prior critiques survive a checkpoint reload and accumulate;
+    # call_llm_node folds them into the system prompt on re-entry, and
+    # len(reflections) is the attempt counter decide_reentry checks against the
+    # budget ceiling (no separate counter to drift).
+    reflections: Annotated[list[dict[str, Any]], _append_list]
+    # Phase 2: the evaluate->reflect routing carriers. evaluate_node computes the
+    # verdict/outcome inside its terminal block but the routing fn runs after, so
+    # these scalars are persisted into the delta for _should_continue_or_escalate
+    # to read (it cannot re-run the judge). Last-write-wins (plain keys): only the
+    # most recent verdict matters for the next routing decision.
+    last_task_outcome: str
+    last_unmet_conditions: list[str]
+    last_final_answer: str
 
     workflow_id: str
     registered_agent_id: str

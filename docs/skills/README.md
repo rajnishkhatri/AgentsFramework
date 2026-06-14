@@ -9,8 +9,12 @@ discoverable and reviewable in PRs.
 | Skill | Scope | Start here |
 | --- | --- | --- |
 | [`llm-eval-grounded-theory`](llm-eval-grounded-theory/SKILL.md) | **Generic, portable.** Open coding → axial coding → synthetic strata → rubric → gold set → judge calibration → continuous monitoring. GoalJudge repo artifacts as worked example. | [SKILL.md](llm-eval-grounded-theory/SKILL.md) |
+| [`agentsframework-eval-probe`](agentsframework-eval-probe/SKILL.md) | **This repo only.** Add a continuous-evaluation PROBE to any LLM-call seam: open coding → taxonomy → rubric → judge → a registered probe (L1 deterministic 100% / L2 sampled judge / L3 drift / offline CI regression / per-component enable-gate). Tiered — a light Tier-A probe ships first; the gold-set + judge track is earned on-demand. Builds on `meta/drift.py`, `meta/judge.py`, `eval_capture`, and the guardrail/GoalJudge precedents. | [SKILL.md](agentsframework-eval-probe/SKILL.md) |
 
-Implementation plan: [`docs/plans/llm_eval_pipeline_skill.plan.md`](../plans/llm_eval_pipeline_skill.plan.md).
+Implementation plans: [`docs/plans/llm_eval_pipeline_skill.plan.md`](../plans/llm_eval_pipeline_skill.plan.md) (binding layer), [`docs/plans/eval_probe_pipeline_skill.plan.md`](../plans/eval_probe_pipeline_skill.plan.md) (probe skill).
+Engineer walkthrough: [`docs/handbooks/add_an_eval_probe.md`](../handbooks/add_an_eval_probe.md).
+Trigger-prompt examples (how to phrase a request so the probe skill fires): [`agentsframework-eval-probe-TRIGGER-PROMPTS.md`](agentsframework-eval-probe-TRIGGER-PROMPTS.md).
+Benchmarked over two skill-creator iterations vs no-skill baselines (3 test seams: plan_builder trace-altitude, summarizer Tier-A, seam-prioritizer): **with-skill 95.8% vs baseline 66.4%** at iteration 2, after folding the review feedback (altitude-as-decision, telemetry-publish, Phase-0 rigor, inline-vs-offline L1 split, pytest-replay CI gate).
 
 Related research: [`goaljudge_evaluation_pipeline_open_axial_coding_rubric.md`](../research/goaljudge_evaluation_pipeline_open_axial_coding_rubric.md).
 
