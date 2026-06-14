@@ -102,6 +102,14 @@ class AgentState(MessagesState):
     reasoning_summary: str
     planning_depth: Literal["L0", "L1", "L2"]
     planning_depth_reason: str
+    # The task_id the planning_depth above was selected for. route_node
+    # recomputes depth every loop iteration, and select_planning_depth
+    # collapses to L0 once this task has produced a tool result
+    # (post-tool-synthesis). Memoizing the step-0 depth per task — same
+    # discipline as task_understanding_task_id — keeps the intended depth
+    # stable for the whole task instead of flipping to L0 after the first
+    # tool call. Thread state outlives the turn; a new task_id regenerates.
+    planning_depth_task_id: str
 
     workflow_id: str
     registered_agent_id: str

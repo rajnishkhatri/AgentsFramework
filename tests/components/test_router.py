@@ -311,3 +311,72 @@ class TestPlanningDepth:
         )
         assert depth == expected_depth
         assert reason == expected_reason
+
+
+class TestDepthCollapseRegression:
+    """Depth-collapse fix (planning-pipeline Phase 0).
+
+    Oracle: ``cache/goaljudge_eval/depth_strata_rich.jsonl`` carries the
+    *untruncated* prompts plus the intended depth (``want_depth``) per stratum.
+    (The companion ``depth_strata_corpus.jsonl`` clips ``task`` at 50 chars and
+    is unusable for re-scoring the long L2 rows — use the rich file.)
+
+    Pre-fix, the additive lexical scorer under-scored short single-intent tasks
+    ("Plan the Postgres migration.", "Refactor the auth module.") and long
+    no-other-signal tasks down to L0, collapsing the plan to one step. This is
+    the **failure-first** regression test: it asserts every rich-corpus row
+    reaches its intended depth when scored fresh (``task_tool_results_count=0``).
+    L1-discipline: pure, deterministic, no LLM (Protocol A).
+    """
+
+    @staticmethod
+    def _load_rich_corpus() -> list[tuple[str, str]]:
+        import json
+        from pathlib import Path
+
+        path = (
+            Path(__file__).resolve().parents[2]
+            / "cache"
+            / "goaljudge_eval"
+            / "depth_strata_rich.jsonl"
+        )
+        rows: dict[str, str] = {}
+        with path.open() as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                record = json.loads(line)
+                # dedup on the full prompt; keep the declared intended depth
+                rows[record["prompt"]] = record["want_depth"]
+        return sorted(rows.items())
+
+    def test_rich_corpus_reaches_intended_depth(self) -> None:
+        corpus = self._load_rich_corpus()
+        assert corpus, "rich depth-strata corpus is empty or missing"
+
+        mismatches: list[str] = []
+        for prompt, want in corpus:
+            fired, reason = select_planning_depth(
+                task_input=prompt,
+                task_tool_results_count=0,
+            )
+            if fired != want:
+                mismatches.append(
+                    f"want={want} fired={fired} ({reason}) :: {prompt[:70]!r}"
+                )
+
+        assert not mismatches, "depth collapse — rows under intended depth:\n" + "\n".join(
+            mismatches
+        )
+
+    def test_post_tool_synthesis_still_collapses_to_l0(self) -> None:
+        # Do not over-correct: a genuine post-tool-synthesis turn (this task has
+        # already produced a tool result) must still route L0, even for a prompt
+        # that scores high when fresh. Guards the per-task-scoped count contract.
+        depth, reason = select_planning_depth(
+            task_input="Plan the Postgres migration and audit the rollout.",
+            task_tool_results_count=1,
+        )
+        assert depth == "L0"
+        assert reason == "post-tool-synthesis"

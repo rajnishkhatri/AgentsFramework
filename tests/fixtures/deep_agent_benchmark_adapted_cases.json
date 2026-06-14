@@ -182,7 +182,7 @@
     ],
     "expectations": {
       "initial_depth": "L0",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "easy-4-todo",
@@ -244,7 +244,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "med-1-todo",
@@ -300,7 +300,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "med-2-todo",
@@ -362,7 +362,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "med-3-todo",
@@ -426,7 +426,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "med-4-todo",
@@ -510,7 +510,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "hard-1-todo-a",
@@ -593,7 +593,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "hard-2-todo",
@@ -671,7 +671,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "hard-3-todo-a",
@@ -746,7 +746,7 @@
     ],
     "expectations": {
       "initial_depth": "L1",
-      "final_depth": "L0",
+      "final_depth": "L1",
       "required_todos": [
         {
           "id": "hard-4-todo",

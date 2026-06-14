@@ -769,15 +769,31 @@ def build_graph(
                     ))
 
             current_task_id = state.get("task_id", "")
-            task_tool_results_count = sum(
-                1
-                for tr in (state.get("tool_results") or [])
-                if tr.get("task_id", "") == current_task_id
+            # Memoize planning depth at step 0, per task. route_node re-runs
+            # every evaluate→continue→route iteration; select_planning_depth
+            # collapses to L0 once this task has produced a tool result
+            # (post-tool-synthesis), so recomputing every pass would flip the
+            # intended depth to L0 after the first tool call and cap the plan
+            # at one step. Reuse the stored depth while the task is unchanged —
+            # same memoize-on-task_id discipline as task_understanding.
+            stored_depth = state.get("planning_depth", "")
+            depth_is_fresh = (
+                bool(stored_depth)
+                and state.get("planning_depth_task_id", "") == current_task_id
             )
-            planning_depth, planning_depth_reason = select_planning_depth(
-                task_input=state.get("task_input", ""),
-                task_tool_results_count=task_tool_results_count,
-            )
+            if depth_is_fresh:
+                planning_depth = stored_depth
+                planning_depth_reason = state.get("planning_depth_reason", "")
+            else:
+                task_tool_results_count = sum(
+                    1
+                    for tr in (state.get("tool_results") or [])
+                    if tr.get("task_id", "") == current_task_id
+                )
+                planning_depth, planning_depth_reason = select_planning_depth(
+                    task_input=state.get("task_input", ""),
+                    task_tool_results_count=task_tool_results_count,
+                )
             plan_artifact = build_plan_artifact(
                 planning_depth,
                 task_input=state.get("task_input", ""),
@@ -1085,6 +1101,7 @@ def build_graph(
                 "routing_reason": reason,
                 "planning_depth": planning_depth,
                 "planning_depth_reason": planning_depth_reason,
+                "planning_depth_task_id": current_task_id,
                 "files": {
                     plan_ref: json.dumps(plan_payload, sort_keys=True),
                 },
