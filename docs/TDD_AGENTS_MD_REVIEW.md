@@ -7,6 +7,25 @@
 
 ---
 
+## ✅ STATUS: RESOLVED — 5 of 6 recommendations shipped (verified 2026-06-14)
+
+This review is **closed**. The substantive recommendations were implemented in `AGENTS.md` (now 219 lines — the analysis projected ~189). As-built reconciliation:
+
+| Rec | Priority | Status | Where in `AGENTS.md` |
+|---|---|---|---|
+| **R1** Testing Anti-Patterns (TAP-1…TAP-4) | CRITICAL | ✅ Shipped | §Testing Anti-Patterns, lines 189–209 |
+| **R2** Test Categories by Layer (L1–L4) | HIGH | ✅ Shipped | §Test Categories by Layer, lines 127–132 |
+| **R3** pytest Marker Convention | MEDIUM | ✅ Shipped | §pytest Markers, lines 134–141 (matches `pyproject.toml` markers) |
+| **R4** Test Dependency Rule | MEDIUM | ✅ Shipped | §Testing Rules, line 125 |
+| **R6** Pattern Catalog Reference | LOW | ✅ Shipped | §Testing Rules pointer, line 143 |
+| **R5** Directory-name mapping note (`utils/`→`services/`, `agents/`→`components/`) | LOW | ⏭️ Deliberately skipped | — |
+
+**Why R5 was skipped:** It was the lowest-priority recommendation, and its own evidence (AL1/AL2) shows the alignment risk only bites an agent that reads the TDD reference doc *literally and applies its directory names*. Since `AGENTS.md` now carries a self-consistent L1–L4 → `trust/`/`services/`/`components/`/`orchestration/` mapping (R2), an agent has a correct local map and rarely needs the reference doc's naming. Not worth the line.
+
+The analysis below is retained as the rationale of record.
+
+---
+
 ## Phase 1: Decompose
 
 **Restated question:** "What critical TDD guidance from the 1,544-line TDD reference document is not surfaced in AGENTS.md, and which gaps would cause an AI agent to write incorrect, misaligned, or anti-pattern-laden tests?"

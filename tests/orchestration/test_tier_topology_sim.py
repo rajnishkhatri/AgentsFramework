@@ -11,6 +11,15 @@ only when ``plan_is_stale`` fires on the latest tool result), so the loop
 through the existing continue edge — no new graph edge. This test asserts the
 observable effect end-to-end: ``replan_count`` and the ``replanned`` STEP_PLANNED
 flag.
+
+CI policy (TDD Self-Validation Check 8): this is a Protocol-D / Layer-4
+simulation but is **intentionally CI-resident** (no ``@pytest.mark.simulation``).
+The marker exists to fence L4 tests that are slow/expensive/flaky because they
+hit live models — none of which applies here: the LLM is fully mocked
+(``ChatLiteLLM.ainvoke`` patched, AP5-safe), the run is ~3s, and it is
+deterministic with zero flake. It guards the replan-gate wiring, exactly the
+regression worth catching per-commit, so it deliberately stays in the default
+gate rather than being deferred to on-demand.
 """
 
 from __future__ import annotations
@@ -245,3 +254,113 @@ async def test_generated_plan_source_consumes_llm_plan(tmp_path):
     goals = [s["goal"] for s in artifact.get("ordered_steps", [])]
     assert "inventory the schema objects" in goals
     assert len(goals) == 3
+
+
+# ── Phase 2 (T2): reflexion re-entry, budget-bounded ──────────────────────────
+
+
+def _failed_outcome():
+    """A TaskOutcome with a 'failed' verdict and one unmet condition."""
+    from components.schemas import TaskOutcome
+
+    return TaskOutcome(
+        outcome="failed",
+        termination_clean=True,
+        criteria_met=0.0,
+        branch_coverage=0.0,
+        unmet_conditions=["the migration is applied and reversible"],
+        score=0.0,
+        termination_reason="final_answer",
+        goal_met=False,
+    )
+
+
+async def _run_reflexion(*, enabled: bool, max_attempts: int, tmp_path):
+    """Drive a run whose every answer is judged 'failed'.
+
+    With reflexion enabled, evaluate->reflect->route re-enters until the budget
+    ceiling; the critique LLM and the answer LLM share the mocked ``ainvoke``, so
+    we supply a long, repeating script (a final answer + a critique per pass).
+    """
+    from orchestration.react_loop import build_graph
+
+    # Every answer is a no-tool final answer; the judge forces 'failed' so the
+    # only thing that stops the loop is the reflexion budget.
+    script = [_resp("Attempted but incomplete.", [], i) for i in range(40)]
+
+    with (
+        patch("langchain_litellm.ChatLiteLLM") as MockChat,
+        patch(
+            "services.guardrails.InputGuardrail._call_judge",
+            new_callable=AsyncMock,
+            return_value="accept",
+        ),
+        patch(
+            "orchestration.react_loop.evaluate_task_outcome",
+            return_value=_failed_outcome(),
+        ),
+    ):
+        inst = MockChat.return_value
+        inst.bind_tools.return_value = inst
+        inst.ainvoke = AsyncMock(side_effect=script)
+
+        graph = build_graph(
+            agent_config=AgentConfig(
+                default_model="gpt-4o-mini",
+                models=[_fast_profile(), _capable_profile()],
+                reflexion_enabled=enabled,
+                max_reflexion_attempts=max_attempts,
+            ),
+            tool_registry=_registry(fail_first=False),
+            cache_dir=tmp_path / "cache",
+        )
+
+        wf = f"wf-reflexion-{enabled}-{max_attempts}"
+        return await graph.ainvoke(
+            {
+                "task_id": wf,
+                "task_input": _TASK,
+                "messages": [],
+                "workflow_id": wf,
+                "registered_agent_id": "sim-agent",
+            },
+            config={
+                "configurable": {
+                    "task_id": wf,
+                    "user_id": "sim-user",
+                    "workflow_id": wf,
+                    "registered_agent_id": "sim-agent",
+                }
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_reflexion_loop_is_bounded_by_budget(tmp_path):
+    """Thrash-bound (the D1 sim, P10): N reflexions hit the ceiling and stop.
+
+    A failed verdict every pass would loop forever without the budget. With
+    ``max_reflexion_attempts=2`` the loop terminates and ``reflections`` never
+    exceeds the ceiling.
+    """
+    result = await _run_reflexion(enabled=True, max_attempts=2, tmp_path=tmp_path)
+    reflections = result.get("reflections") or []
+    assert 1 <= len(reflections) <= 2
+    # Each critique is non-empty (the semantic gradient actually carried).
+    assert all(r.get("critique", "").strip() for r in reflections)
+
+
+@pytest.mark.asyncio
+async def test_reflexion_disabled_never_reflects(tmp_path):
+    """Control: with reflexion off, a failed verdict does NOT re-enter."""
+    result = await _run_reflexion(enabled=False, max_attempts=2, tmp_path=tmp_path)
+    assert (result.get("reflections") or []) == []
+
+
+@pytest.mark.asyncio
+async def test_reflexion_never_masks_failed_into_success(tmp_path):
+    """Corrupt-success guard (Protocol-D3, stakeholder-legible): a reflexion
+    loop never turns goal_met:false into a success — the FINAL outcome after
+    the loop exhausts the budget is still 'failed'. YES/NO: NO masking."""
+    result = await _run_reflexion(enabled=True, max_attempts=2, tmp_path=tmp_path)
+    assert result.get("last_task_outcome") == "failed"

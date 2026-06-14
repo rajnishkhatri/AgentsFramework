@@ -60,6 +60,17 @@ class AgentConfig(BaseModel):
     # Default stays deterministic so CI is L2-pure (no live LLM) and steady
     # state is unchanged; promote on evidence (GoalJudge shadow->consume idiom).
     plan_source: Literal["deterministic", "shadow", "generated"] = "deterministic"
+    # Phase 2 (T2 reflexion): enable the evaluate->reflect->route re-entry loop.
+    # When True, a GoalJudge failed/partial verdict (or a D3 prose-thrash) below
+    # the budget ceiling writes a verbal critique and re-enters the loop. Off by
+    # default — the reflect edge exists in the graph but decide_reentry returns
+    # "stop" until flipped, so CI/prod behavior is unchanged (shadow-first, same
+    # discipline as plan_source). Promote on evidence.
+    reflexion_enabled: bool = False
+    # D1: reflexion budget ceiling. decide_reentry returns "stop" once
+    # len(reflections) >= this, even on a failed verdict — bounds the loop so
+    # it can never thrash (Reflexion, arxiv 2303.11366; thrash-bound sim guard).
+    max_reflexion_attempts: int = 2
 
 
 def default_fast_profile() -> ModelProfile:

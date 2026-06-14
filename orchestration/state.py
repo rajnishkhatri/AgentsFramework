@@ -124,6 +124,22 @@ class AgentState(MessagesState):
     # result invalidated it (plan_is_stale). operator.add like rollback_count;
     # surfaced on STEP_PLANNED so the trace shows replan activity.
     replan_count: Annotated[int, operator.add]
+    # Phase 2 (T2 reflexion): append-only verbal critiques — the "semantic
+    # gradient" (Reflexion, arxiv 2303.11366). reflect_node appends one entry
+    # per re-entry: {step_id, attempt, critique, unmet_conditions}. Append-only
+    # is what lets prior critiques survive a checkpoint reload and accumulate;
+    # call_llm_node folds them into the system prompt on re-entry, and
+    # len(reflections) is the attempt counter decide_reentry checks against the
+    # budget ceiling (no separate counter to drift).
+    reflections: Annotated[list[dict[str, Any]], _append_list]
+    # Phase 2: the evaluate->reflect routing carriers. evaluate_node computes the
+    # verdict/outcome inside its terminal block but the routing fn runs after, so
+    # these scalars are persisted into the delta for _should_continue_or_escalate
+    # to read (it cannot re-run the judge). Last-write-wins (plain keys): only the
+    # most recent verdict matters for the next routing decision.
+    last_task_outcome: str
+    last_unmet_conditions: list[str]
+    last_final_answer: str
 
     workflow_id: str
     registered_agent_id: str

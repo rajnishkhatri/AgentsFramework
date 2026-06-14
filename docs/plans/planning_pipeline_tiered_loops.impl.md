@@ -302,10 +302,37 @@ T1 ≥ ReAct baseline on the depth-strata corpus, **no brittle-plan regression**
 
 ---
 
-## 5. Phase 2 — T2 Reflexion + D1 ceiling + D3 prose-thrash route
+## 5. Phase 2 — T2 Reflexion + D1 ceiling + D3 prose-thrash route ✅ DONE (2026-06-14)
 
 **Goal.** Reflexion re-entry on GoalJudge failed/partial, capped by `max_reflexion_attempts=2` (D1), plus the
 D3 prose-duplicate → reflect route. Largest phase; depends on Phase 1's planner being in place.
+
+> **As-built — three decisions diverged from the §5 sketch (user-approved):**
+> 1. **Off by default, config-gated** (`reflexion_enabled: bool = False`, alongside `max_reflexion_attempts: int = 2`).
+>    The reflect node + edge exist in the graph unconditionally (stable shape) but `_should_continue_or_escalate`
+>    returns `done` until the flag flips — zero CI/prod behavior change, same shadow-first discipline as Phase 1's
+>    `plan_source`. Promote on evidence.
+> 2. **Reflexion rides the existing `evaluate` fork, not a new pre-check.** `_should_continue_or_escalate` first
+>    calls the unchanged `_should_continue`; the reflect branch is *only* reachable when the base decision is
+>    `done`. So an L0 task / disabled run / clean success takes the byte-identical path it took pre-Phase-2.
+> 3. **Prompt fold happens in `call_llm_node`, not `route_node`** (the §5.5 sketch said route_node; reality
+>    post-Phase-1 is that the system prompt is assembled in `call_llm_node:1220`). Critiques are appended to the
+>    planning instructions there. The verdict carriers (`last_task_outcome`/`last_unmet_conditions`/
+>    `last_final_answer`) are persisted by `evaluate_node` into the delta so the post-evaluate routing fn can read
+>    the verdict without re-running the judge.
+>
+> **New files:** `components/reflexion.py` (pure `generate_reflection` + `decide_reentry`; covered by the existing
+> directory-wide framework-import scan, no new P7 assertion needed), `tests/components/test_reflexion.py`.
+> **Touched:** `services/base_config.py` (+2 knobs), `orchestration/state.py` (`reflections` append-only +3 carriers),
+> `components/evaluator.py` (`classify_no_progress` sibling to `count_trailing_repeats`), `orchestration/react_loop.py`
+> (`reflect_node`, `_should_continue_or_escalate`, evaluate fork → 3-way, `reflect → route` edge, prompt fold),
+> `tests/components/test_evaluator.py` (D3 matrix), `tests/orchestration/test_tier_topology_sim.py` (thrash-bound +
+> disabled-control + corrupt-success guard). **Gate met:** 1858 passed / 11 skipped / 0 failed (was 1834 in P1).
+
+### As-built note (superseded sketch below)
+
+The original §5.1–5.7 sketch follows as rationale of record; the as-built notes above take precedence where they
+differ (prompt fold site, config-gating, fork reuse).
 
 ### 5.1 State change — `orchestration/state.py`
 
