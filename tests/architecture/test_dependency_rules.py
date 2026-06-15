@@ -28,6 +28,7 @@ from utils.code_analysis import (
     FRAMEWORK_FORBIDDEN as AUTHORITATIVE_FRAMEWORK_FORBIDDEN,
     check_dependency_rules,
     collect_imports_in_directory,
+    parse_imports,
 )
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -137,6 +138,123 @@ class TestDependencyRules:
                 violations.append(f"{filepath} imports orchestration")
         assert violations == [], (
             "meta/ must not import from orchestration/:\n" + "\n".join(violations)
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# T3 (Phase 4) — supervisor_plan.py layer purity (Pattern 7).
+#
+# Step 3 of t3_implementation_and_validation.plan.md §2. Written BEFORE the
+# module exists: these go RED on module-absent (the correct first failure /
+# the binding-is-the-test). The decompose-or-decline component is pure
+# components/ (LP-1/LP-2, AGENTS inv. 1/3/5/6): it must import no langgraph,
+# no orchestration, no AgentState, and no SIBLING components/* module
+# (no V→V coupling). The async dispatcher edit (Step 5b) must keep
+# delegation_dispatcher.py free of langgraph/orchestration too.
+#
+# Reuses the shared AST scanner (collect_imports_in_directory / parse_imports)
+# — no new scanner, per plan Step 3.
+# ═══════════════════════════════════════════════════════════════════════
+
+
+SUPERVISOR_PLAN = AGENT_ROOT / "components" / "supervisor_plan.py"
+SUPERVISOR_PLAN_TEST = (
+    AGENT_ROOT / "tests" / "components" / "test_supervisor_plan.py"
+)
+
+
+def _imports_of(py_file: Path) -> list[dict]:
+    """Per-import records (module / names / top_package) for one file."""
+    parsed = parse_imports(py_file)
+    assert parsed["pass"], f"{py_file} failed to parse: {parsed.get('error')}"
+    return parsed["imports"]
+
+
+class TestSupervisorPlanLayerPurity:
+    """T3 component (components/supervisor_plan.py) is framework-agnostic."""
+
+    def test_module_exists(self):
+        """RED until Step 4 lands the module — this binding IS the spec."""
+        assert SUPERVISOR_PLAN.exists(), (
+            "components/supervisor_plan.py must exist (T3 Step 4)"
+        )
+
+    def test_no_langgraph_or_orchestration_import(self):
+        """LP-1: no langgraph, no orchestration, no AgentState (by package)."""
+        if not SUPERVISOR_PLAN.exists():
+            pytest.skip("components/supervisor_plan.py not yet created (RED)")
+        forbidden = {
+            "langgraph",
+            "langchain",
+            "langchain_core",
+            "langchain_community",
+            "orchestration",
+        }
+        violations = [
+            f"line {imp['line']}: imports {imp['top_package']}"
+            for imp in _imports_of(SUPERVISOR_PLAN)
+            if imp["top_package"] in forbidden
+        ]
+        assert violations == [], (
+            "supervisor_plan.py must import no framework/orchestration:\n"
+            + "\n".join(violations)
+        )
+
+    def test_no_agentstate_symbol(self):
+        """LP-1: AgentState must not be imported by name from anywhere."""
+        if not SUPERVISOR_PLAN.exists():
+            pytest.skip("components/supervisor_plan.py not yet created (RED)")
+        violations = [
+            f"line {imp['line']}: imports AgentState from {imp['module']}"
+            for imp in _imports_of(SUPERVISOR_PLAN)
+            if "AgentState" in imp.get("names", [])
+        ]
+        assert violations == [], (
+            "supervisor_plan.py must not import AgentState:\n" + "\n".join(violations)
+        )
+
+    def test_no_vertical_to_vertical_import(self):
+        """LP-2 / inv. 5: no V→V — no import of any OTHER components/* module."""
+        if not SUPERVISOR_PLAN.exists():
+            pytest.skip("components/supervisor_plan.py not yet created (RED)")
+        violations = [
+            f"line {imp['line']}: imports sibling {imp['module']}"
+            for imp in _imports_of(SUPERVISOR_PLAN)
+            if imp["top_package"] == "components"
+        ]
+        assert violations == [], (
+            "supervisor_plan.py must not import sibling components/* modules "
+            "(no vertical-to-vertical coupling):\n" + "\n".join(violations)
+        )
+
+    def test_dispatcher_stays_framework_clean(self):
+        """LP-1 preserved: the Step-5b async edit keeps the dispatcher clean."""
+        dispatcher = AGENT_ROOT / "services" / "tools" / "delegation_dispatcher.py"
+        assert dispatcher.exists(), "delegation_dispatcher.py must exist"
+        forbidden = {"langgraph", "langchain_core", "langchain_community", "orchestration"}
+        violations = [
+            f"line {imp['line']}: imports {imp['top_package']}"
+            for imp in _imports_of(dispatcher)
+            if imp["top_package"] in forbidden
+        ]
+        assert violations == [], (
+            "delegation_dispatcher.py must stay framework/orchestration-clean:\n"
+            + "\n".join(violations)
+        )
+
+    def test_component_test_does_not_import_orchestration(self):
+        """AP7: run P7 against the test tree too — the component test is pure."""
+        if not SUPERVISOR_PLAN_TEST.exists():
+            pytest.skip("tests/components/test_supervisor_plan.py not yet created (RED)")
+        forbidden = {"langgraph", "orchestration"}
+        violations = [
+            f"line {imp['line']}: imports {imp['top_package']}"
+            for imp in _imports_of(SUPERVISOR_PLAN_TEST)
+            if imp["top_package"] in forbidden
+        ]
+        assert violations == [], (
+            "test_supervisor_plan.py must not import orchestration/langgraph:\n"
+            + "\n".join(violations)
         )
 
 

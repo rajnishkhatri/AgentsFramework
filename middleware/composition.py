@@ -400,6 +400,13 @@ class AgentRuntimeSettings(BaseSettings):
     max_reflexion_attempts: int = Field(
         default=2, validation_alias="MAX_REFLEXION_ATTEMPTS"
     )
+    # Phase 4 (T3 fan-out). Default OFF — prod parity. The stress revision flips
+    # T3_FANOUT_ENABLED (and, only on stress, FANOUT_FAULT_INJECT) to exercise
+    # the parallel fork; fault-inject must NEVER be set on the prod revision.
+    t3_fanout_enabled: bool = Field(default=False, validation_alias="T3_FANOUT_ENABLED")
+    fanout_fault_inject: bool = Field(
+        default=False, validation_alias="FANOUT_FAULT_INJECT"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -425,6 +432,8 @@ class AgentRuntimeSettings(BaseSettings):
                     "goal_judge_enabled",
                     "goal_judge_downgrade_enabled",
                     "reflexion_enabled",
+                    "t3_fanout_enabled",
+                    "fanout_fault_inject",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
@@ -534,6 +543,8 @@ def build_components(
         plan_source=settings.planning_plan_source,
         reflexion_enabled=settings.reflexion_enabled,
         max_reflexion_attempts=settings.max_reflexion_attempts,
+        t3_fanout_enabled=settings.t3_fanout_enabled,
+        fanout_fault_inject=settings.fanout_fault_inject,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)

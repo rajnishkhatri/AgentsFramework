@@ -89,6 +89,11 @@ class TestTieredLoopFlags:
         assert cfg.reflexion_enabled is False
         assert cfg.plan_source == "deterministic"
         assert cfg.max_reflexion_attempts == 2
+        # T3 (Phase 4): the fan-out fork AND the fault-injection hook are OFF by
+        # default — prod parity. fanout_fault_inject leaking to prod is a named
+        # §5 risk; this is the guard that fails if a default flips.
+        assert cfg.t3_fanout_enabled is False
+        assert cfg.fanout_fault_inject is False
 
     def test_env_flips_propagate_into_agent_config(self, tmp_path, monkeypatch):
         """The stress revision's env reaches the live AgentConfig (§2.1)."""
@@ -107,6 +112,22 @@ class TestTieredLoopFlags:
         assert cfg.reflexion_enabled is True
         assert cfg.plan_source == "generated"
         assert cfg.max_reflexion_attempts == 3
+
+    def test_t3_env_flips_propagate_into_agent_config(self, tmp_path, monkeypatch):
+        """The stress revision's T3 env reaches the live AgentConfig."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {
+                "AGENT_ENV": "local",
+                "T3_FANOUT_ENABLED": "1",
+                "FANOUT_FAULT_INJECT": "1",
+            }
+        )
+        components = build_components(settings, agent_root=tmp_path)
+        cfg = components.agent_config
+        assert cfg.t3_fanout_enabled is True
+        assert cfg.fanout_fault_inject is True
 
     def test_from_mapping_parses_bool_and_int(self):
         """REFLEXION_ENABLED coerces like the other flags; the attempt count

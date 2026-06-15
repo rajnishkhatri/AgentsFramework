@@ -6,6 +6,7 @@ framework-agnostic logic in components/ and services/.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -18,6 +19,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Send  # T3 fan-out: the one new langgraph surface
 
 from components.evaluator import (
     build_step_result,
@@ -48,6 +50,7 @@ from components.router import select_model
 from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
 from components.synthesis_validator import validate_synthesis
+from components.supervisor_plan import plan_delegations
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 from services.goal_judge_runtime_config import (
@@ -78,6 +81,7 @@ from services.summarizer import (
     build_compaction_summary,
     should_compact_trajectory,
 )
+from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
 from services.tools.registry import ToolExecutionResult, ToolRegistry
 
 logger = logging.getLogger("orchestration.react_loop")
@@ -514,6 +518,49 @@ def build_graph(
             outcome=outcome,
         ):
             pass
+
+    def _emit_delegation_trace(
+        *,
+        workflow_id: str,
+        event_type: str,
+        outcome: str,
+        details: dict[str, Any],
+    ) -> None:
+        """Emit a per-branch ``delegation_*`` carrier (T3, GTP-1).
+
+        Reuses the SAME event names and the SAME trace_service.emit path that
+        task_tool's delegation carriers ride (react_loop tool-execution loop) —
+        no new event vocabulary. Falls back to the BlackBox recorder when no
+        trace_service is wired, so a carrier always lands (a delegation_* fact
+        with zero carriers is the GTP zero-carrier defect).
+        """
+        if trace_service is not None:
+            try:
+                from trust.models import TrustTraceRecord
+
+                trace_service.emit(TrustTraceRecord(
+                    event_id=str(uuid.uuid4()),
+                    timestamp=datetime.now(UTC),
+                    trace_id=workflow_id,
+                    agent_id="fanout-supervisor",
+                    source_agent_id="fanout-supervisor",
+                    layer="L4",
+                    event_type=event_type,
+                    details=dict(details),
+                    outcome=outcome,
+                ))
+                return
+            except Exception:
+                logger.exception("failed to emit fan-out delegation trace event")
+        # Fallback: still record the carrier on the BlackBox trace.
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.TOOL_CALLED,
+            timestamp=datetime.now(UTC),
+            step=int(details.get("step_count", 0) or 0),
+            details={"delegation_event": event_type, "outcome": outcome, **details},
+        ))
 
     guardrail = InputGuardrail(
         name="prompt_injection",
@@ -2098,6 +2145,317 @@ def build_graph(
         )
         return "reflect" if decision == "escalate" else "done"
 
+    # ── Phase 4 (T3): supervisor / worker / join fan-out nodes ──────────────
+    #
+    # A thin map-reduce topology over the EXISTING delegation substrate
+    # (FOUR_LAYER L159 — delegation lives in Services+Orchestration; single
+    # supervisor, NOT the deferred peer-to-peer of L1078). All three nodes are
+    # OBP-3 thin wrappers: the fan-out DECISION is in components/supervisor_plan,
+    # the worker execution is the shipped dispatcher; orchestration only wires
+    # them. The whole fork is gated by agent_config.t3_fanout_enabled (default
+    # OFF) — when off, _route_to_supervisor always returns "direct" and the graph
+    # is byte-identical to the pre-T3 spine.
+
+    _fanout_dispatcher = LocalLLMDelegationDispatcher(agent_config)
+
+    def _route_to_supervisor(state: AgentState) -> str:
+        """Cheap pre-filter on the route→{supervisor|direct} fork (OBP-4, pure).
+
+        Returns "supervisor" ONLY when the flag is on AND the task looks like a
+        fan-out candidate (planning_depth >= L1 AND the T1 plan has >= 2 steps).
+        The REAL decline decision happens in the supervisor component; this is
+        only the cheap gate that keeps every non-candidate (and all of prod,
+        flag-off) on the byte-identical "direct" → call_llm path.
+        """
+        if not agent_config.t3_fanout_enabled:
+            return "direct"
+        if state.get("planning_depth", "L0") == "L0":
+            return "direct"
+        plan_raw = state.get("plan_artifact") or {}
+        steps = plan_raw.get("ordered_steps") or []
+        return "supervisor" if len(steps) >= 2 else "direct"
+
+    async def supervisor_node(state: AgentState, config: RunnableConfig) -> dict:
+        """OBP-3: classify the existing T1 plan as fan_out|decline, no execution.
+
+        Holds NO decompose logic — it calls ``plan_delegations`` (the pure
+        component) with an injected LLM ``generate`` callable, then stashes the
+        resulting SupervisorPlan on a transient state key for ``_route_fanout``
+        to read. Emits one decision carrier (fan_out|decline + reason tag,
+        joinable by ``decision_id``). Re-runnable on reflexion re-entry.
+        """
+        task_input = state.get("task_input", "")
+        plan_artifact = state.get("plan_artifact") or {}
+        planning_depth = state.get("planning_depth", "L0") or "L0"
+
+        async def _decompose(prompt: str) -> dict:
+            plan_steps = [
+                str(s.get("goal", ""))
+                for s in (plan_artifact.get("ordered_steps") or [])
+                if isinstance(s, dict)
+            ]
+            system = prompt_service.render_prompt(
+                "supervisor_decompose", plan_steps=plan_steps
+            )
+            response = await llm_service.invoke(
+                llm_service.get_profile(agent_config.default_model),
+                [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": prompt},
+                ],
+            )
+            content = str(getattr(response, "content", response) or "")
+            try:
+                return json.loads(content)
+            except Exception:
+                return {}
+
+        # Only consult the decompose LLM when the run is allowed to (same
+        # shadow-first discipline as plan_source); otherwise the component's
+        # deterministic floor declines (no-generator).
+        generate = None
+        if agent_config.plan_source in ("generated",):
+            decomposed: dict = {}
+
+            def _sync_generate(prompt: str, _box=decomposed) -> dict:
+                return _box
+
+            decomposed.update(await _decompose(task_input))
+            generate = _sync_generate
+
+        plan = plan_delegations(
+            task_input=task_input,
+            plan_artifact=plan_artifact,
+            planning_depth=planning_depth,  # type: ignore[arg-type]
+            generate=generate,
+        )
+
+        decision_id = str(uuid.uuid4())
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=state.get("workflow_id", ""),
+            event_type=EventType.STEP_PLANNED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details={
+                "supervisor_decision": plan.decision,
+                "supervisor_reason": plan.reason,
+                "supervisor_branch_count": len(plan.branches),
+                "decision_id": decision_id,
+            },
+        ))
+
+        return {
+            "fanout_decision": {
+                "decision": plan.decision,
+                "decision_id": decision_id,
+                "branches": [b.model_dump() for b in plan.branches],
+                "reason": plan.reason,
+            }
+        }
+
+    def _route_fanout(state: AgentState):
+        """Conditional edge: fan out via Send per branch, or fall to call_llm.
+
+        Returning a ``list[Send]`` is the LangGraph parallel-superstep idiom —
+        each Send carries a SMALL plain-dict payload (mapping onto
+        DelegationDispatchRequest), NEVER AgentState (OBP-M1).
+        """
+        sup = state.get("fanout_decision") or {}
+        if sup.get("decision") != "fan_out":
+            return "call_llm"
+        workflow_id = state.get("workflow_id", "")
+        step_count = state.get("step_count", 0)
+        sends = []
+        for branch in sup.get("branches", []):
+            bid = branch.get("branch_id")
+            sends.append(Send("worker", {
+                "branch_id": bid,
+                "correlation_id": f"{workflow_id}:step:{step_count}:fanout:{bid}",
+                "workflow_id": workflow_id,
+                "step_count": step_count,
+                "objective": branch.get("objective", ""),
+                "subagent_type": branch.get("subagent_type", "general"),
+                "constraints": branch.get("constraints", []),
+                "expected_output_schema": branch.get("expected_output_schema", {}),
+                "task_id": state.get("task_id", ""),
+                "user_id": state.get("user_id", "anonymous"),
+                "decision_id": sup.get("decision_id", ""),
+            }))
+        return sends or "call_llm"
+
+    async def worker_node(state: dict, config: RunnableConfig) -> dict:
+        """OBP-3 + OBP-M1: run ONE branch, append a result/sentinel.
+
+        The Send payload arrives as ``state`` here (LangGraph passes the Send
+        payload as the node input). MANDATORY try/except + per-branch
+        ``asyncio.wait_for``: the dispatcher RE-RAISES on LLM failure, and one
+        uncaught raise cancels the ENTIRE superstep — so a failure becomes a
+        per-branch sentinel, never an erased survivor. Emits per-branch
+        delegation_requested / delegation_completed (or delegation_denied)
+        carriers with the BRANCH correlation_id (GTP-1), via the same
+        trace_service path task_tool uses (no new event names).
+        """
+        payload = dict(state)
+        branch_id = payload.get("branch_id")
+        correlation_id = payload.get("correlation_id", "")
+        workflow_id = payload.get("workflow_id", "")
+        decision_id = payload.get("decision_id", "")
+
+        _emit_delegation_trace(
+            workflow_id=workflow_id,
+            event_type="delegation_requested",
+            outcome="pass",
+            details={
+                "correlation_id": correlation_id,
+                "branch_id": branch_id,
+                "subagent_type": payload.get("subagent_type", ""),
+                "decision_id": decision_id,
+            },
+        )
+
+        objective = str(payload.get("objective", ""))
+        # Env-gated fault hook (corpus §4.3a) — OFF in prod. The magic objective
+        # tokens exercise the timeout / straggler superstep paths.
+        timeout_s = float(agent_config.fanout_branch_timeout_s)
+        if agent_config.fanout_fault_inject:
+            if "__FAULT_TIMEOUT__" in objective:
+                timeout_s = 0.001  # force the wait_for timeout path
+
+        request = {
+            "correlation_id": correlation_id,
+            "workflow_id": workflow_id,
+            "step_count": int(payload.get("step_count", 0) or 0),
+            "objective": objective or "Complete the delegated branch.",
+            "subagent_type": payload.get("subagent_type", "general") or "general",
+            "constraints": payload.get("constraints", []),
+            "expected_output_schema": payload.get("expected_output_schema", {}),
+            "task_id": payload.get("task_id", ""),
+            "user_id": payload.get("user_id", "anonymous"),
+        }
+
+        try:
+            if agent_config.fanout_fault_inject and "__FAULT_SLOW__" in objective:
+                await asyncio.sleep(timeout_s + 1.0)  # straggler past the ceiling
+            result = await asyncio.wait_for(
+                _fanout_dispatcher.dispatch_async(request), timeout=timeout_s
+            )
+            entry = {
+                "branch_id": branch_id,
+                "status": result.get("status", "completed"),
+                "output": result.get("output", ""),
+                "error": result.get("error"),
+                "correlation_id": correlation_id,
+            }
+            _emit_delegation_trace(
+                workflow_id=workflow_id,
+                event_type="delegation_completed",
+                outcome="pass" if not entry["error"] else "alert",
+                details={
+                    "correlation_id": correlation_id,
+                    "branch_id": branch_id,
+                    "status": entry["status"],
+                    "decision_id": decision_id,
+                },
+            )
+        except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001 — sentinel
+            # The survivors must not be erased; record a sentinel + an error
+            # carrier (never a silent drop — Validation pillar / GTP).
+            kind = "timeout" if isinstance(exc, asyncio.TimeoutError) else "error"
+            entry = {
+                "branch_id": branch_id,
+                "status": "failed",
+                "output": "",
+                "error": f"{kind}: {exc}" if str(exc) else kind,
+                "correlation_id": correlation_id,
+            }
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.ERROR_OCCURRED,
+                timestamp=datetime.now(UTC),
+                step=int(payload.get("step_count", 0) or 0),
+                details={
+                    "source": "fanout_worker",
+                    "branch_id": branch_id,
+                    "error": entry["error"],
+                    "decision_id": decision_id,
+                },
+            ))
+            _emit_delegation_trace(
+                workflow_id=workflow_id,
+                event_type="delegation_completed",
+                outcome="alert",
+                details={
+                    "correlation_id": correlation_id,
+                    "branch_id": branch_id,
+                    "status": "failed",
+                    "decision_id": decision_id,
+                },
+            )
+
+        return {"worker_results": [entry]}
+
+    async def join_node(state: AgentState, config: RunnableConfig) -> dict:
+        """OBP-3 + GTP-3: synthesize the merged worker_results into ONE answer.
+
+        Edges to ``evaluate`` so GoalJudge scores the JOINED answer, never a
+        fragment (the corrupt-success guard). A degraded join (some branches
+        failed) is still a non-empty answer — the judge runs, and the partial
+        is surfaced honestly by the prompt.
+        """
+        results = list(state.get("worker_results") or [])
+        results.sort(key=lambda r: r.get("branch_id", 0))
+        task_input = state.get("task_input", "")
+
+        completed = [r for r in results if r.get("status") == "completed"]
+        joined = ""
+        if completed:
+            try:
+                prompt = prompt_service.render_prompt(
+                    "fanout_join", task_input=task_input, results=results
+                )
+                response = await llm_service.invoke(
+                    llm_service.get_profile(agent_config.default_model),
+                    [{"role": "user", "content": prompt}],
+                )
+                joined = str(getattr(response, "content", response) or "").strip()
+            except Exception:
+                joined = ""
+        if not joined:
+            # Deterministic floor: concat the survivors + note the gaps, so the
+            # judge ALWAYS sees a non-empty joined answer (MAST-bounded).
+            parts = [
+                f"- {r.get('output', '')}" for r in completed if r.get("output")
+            ]
+            gaps = [
+                f"- branch {r.get('branch_id')} did not complete ({r.get('error')})"
+                for r in results
+                if r.get("status") != "completed"
+            ]
+            joined = "\n".join(parts) or "No branch produced a result."
+            if gaps:
+                joined += "\n\nIncomplete branches:\n" + "\n".join(gaps)
+
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=state.get("workflow_id", ""),
+            event_type=EventType.STEP_PLANNED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details={
+                "fanout_join": True,
+                "branches_total": len(results),
+                "branches_completed": len(completed),
+                "join_chars": len(joined),
+            },
+        ))
+
+        return {
+            "messages": [AIMessage(content=joined)],
+            "last_final_answer": joined,
+        }
+
     builder = StateGraph(AgentState)
 
     builder.add_node("guard_input", guard_input_node)
@@ -2122,6 +2480,12 @@ def build_graph(
     # fork. Always added so the graph shape is stable; the routing predicate
     # gates whether it is ever reached (off unless reflexion_enabled).
     builder.add_node("reflect", reflect_node)
+    # Phase 4 (T3): supervisor/worker/join nodes. Always added so the graph shape
+    # is stable; the _route_to_supervisor predicate (and t3_fanout_enabled) gate
+    # whether they are ever reached (off → byte-identical to the pre-T3 spine).
+    builder.add_node("supervisor", supervisor_node)
+    builder.add_node("worker", worker_node)
+    builder.add_node("join", join_node)
 
     builder.add_edge(START, "guard_input")
 
@@ -2132,7 +2496,26 @@ def build_graph(
         {"accepted": "route", "rejected": END},
     )
 
-    builder.add_edge("route", "call_llm")
+    # Phase 4 (T3): the one invasive edit — the hard route→call_llm edge becomes
+    # conditional so route can fork to the supervisor. When t3_fanout_enabled is
+    # OFF, _route_to_supervisor always returns "direct" → this is byte-identical
+    # to the old hard edge for every task (the regression canary is the Step 7
+    # "decline → identical-to-today" topology sim).
+    builder.add_conditional_edges(
+        "route",
+        _route_to_supervisor,
+        {"supervisor": "supervisor", "direct": "call_llm"},
+    )
+    # supervisor → fan out via Send per branch, or decline to call_llm.
+    builder.add_conditional_edges(
+        "supervisor",
+        _route_fanout,
+        ["worker", "call_llm"],
+    )
+    builder.add_edge("worker", "join")
+    # join → evaluate so GoalJudge scores the JOINED answer (corrupt-success
+    # guard); a failed join re-enters reflexion exactly like any terminal turn.
+    builder.add_edge("join", "evaluate")
 
     if authorization_service is not None:
         builder.add_node("verify_authorize_log", verify_authorize_log_node)

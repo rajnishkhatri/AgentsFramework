@@ -49,22 +49,49 @@ class LocalLLMDelegationDispatcher:
         self._worker_model_name = worker_model or agent_config.default_model
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
-        validated = DelegationDispatchRequest(**request)
+        """Synchronous delegation for non-graph callers (``task_tool``).
+
+        Runs the async core on a private event loop via the thread shim, since
+        ``task_tool.execute_task_tool`` is a sync, non-graph caller. The T3
+        worker node uses :meth:`dispatch_async` instead (it is already inside
+        the graph's loop — no shim needed).
+        """
+        return self._run_async(self._dispatch_core(DelegationDispatchRequest(**request)))
+
+    async def dispatch_async(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Async delegation for the T3 worker node (inside the graph loop).
+
+        Awaits the worker directly — no ``_run_async`` thread shim. The worker
+        node owns the failure sentinel: an LLM exception PROPAGATES from here
+        (it is not swallowed), and the node's mandatory ``try/except`` converts
+        it to a per-branch sentinel so one branch never cancels the superstep
+        (plan §2 Step 6 / Step 5b).
+        """
+        return await self._dispatch_core(DelegationDispatchRequest(**request))
+
+    async def _dispatch_core(
+        self, validated: DelegationDispatchRequest
+    ) -> dict[str, Any]:
+        """Shared dispatch body: invoke the worker, estimate cost, capture eval.
+
+        Returns the normalized handoff payload. Raises on any worker/LLM error
+        (the caller — sync shim or worker node — decides how to surface it).
+        """
         started_at = time.time()
-        response = self._run_async(self._invoke_worker(validated))
+        response = await self._invoke_worker(validated)
         content = str(getattr(response, "content", "") or "")
         usage = getattr(response, "usage_metadata", {}) or {}
         tokens_in = int(usage.get("input_tokens", 0) or 0)
         tokens_out = int(usage.get("output_tokens", 0) or 0)
         cost_usd = self._estimate_cost(tokens_in=tokens_in, tokens_out=tokens_out)
-        self._run_async(self._record_eval_capture(
+        await self._record_eval_capture(
             validated=validated,
             output_text=content,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_usd=cost_usd,
             latency_ms=(time.time() - started_at) * 1000,
-        ))
+        )
         return {
             "status": "completed",
             "output": content,

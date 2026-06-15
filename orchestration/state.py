@@ -132,6 +132,22 @@ class AgentState(MessagesState):
     # len(reflections) is the attempt counter decide_reentry checks against the
     # budget ceiling (no separate counter to drift).
     reflections: Annotated[list[dict[str, Any]], _append_list]
+    # Phase 4 (T3 fan-out): per-branch worker results merged across the parallel
+    # superstep — one entry per Send branch: {branch_id, status, output, error}.
+    # MUST use operator.add, NOT _append_list: concurrent branch writes in a
+    # single superstep need the additive reducer or LangGraph raises
+    # INVALID_CONCURRENT_GRAPH_UPDATE; and _append_list dedups by step_id, which
+    # would SILENTLY DROP a same-id branch result (e.g. two branches that both
+    # default to step_id 0). join_node reads the merged list and synthesizes one
+    # answer; a worker that fails appends a sentinel so survivors are never
+    # erased (the MAST-bounded guard, plan §3.5a).
+    worker_results: Annotated[list[dict[str, Any]], operator.add]
+    # Phase 4 (T3): transient supervisor decision handed from supervisor_node to
+    # the _route_fanout conditional edge ({decision, decision_id, branches,
+    # reason}). Plain last-write-wins key — it is read within the same superstep
+    # and not accumulated. Lives on state (not a closure) so the routing fn,
+    # which only receives state, can read it.
+    fanout_decision: dict[str, Any]
     # Phase 2: the evaluate->reflect routing carriers. evaluate_node computes the
     # verdict/outcome inside its terminal block but the routing fn runs after, so
     # these scalars are persisted into the delta for _should_continue_or_escalate

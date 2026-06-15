@@ -185,6 +185,108 @@ def test_reflexion_budget_is_bounded_per_cycle_not_per_trace() -> None:
     assert _reflexion_within_budget(overrun) is False
 
 
+def _delegation_requested(branch_id: int) -> dict:
+    """A per-branch delegation_requested carrier (BlackBox fallback shape)."""
+    return {
+        "event_type": "tool_called",
+        "details": {"delegation_event": "delegation_requested", "branch_id": branch_id},
+    }
+
+
+def _join(*, total: int, completed: int, chars: int = 120) -> dict:
+    return _step_planned(
+        fanout_join=True,
+        branches_total=total,
+        branches_completed=completed,
+        join_chars=chars,
+    )
+
+
+def test_fanout_false_fanout_is_the_gaia_failure_cell() -> None:
+    """THE HEADLINE (failure-first): a near-miss DECLINE row that fanned out
+    anyway scores as fp — the GAIA-failure detector. Asserted before tp."""
+    rows = [
+        {"case": "F-fp", "phase": "fanout", "want_fanout": False},
+    ]
+    events = {
+        # 2 delegation_requested carriers on a want_fanout=False row -> fp.
+        "F-fp": [_delegation_requested(1), _delegation_requested(2)],
+    }
+    conf = score_run(rows, events)["fanout_confusion"]
+    assert conf["fp"] == 1, "a fanned-out decline row must score the GAIA fp cell"
+    assert conf["tp"] == 0
+
+
+def test_fanout_partial_survival_counts_for_fault_rows() -> None:
+    """A fault row whose join produced a non-empty answer WITH a failed branch
+    counts toward partial-survival; a hung/empty join does not."""
+    rows = [
+        {"case": "Flt-survived", "phase": "fanout", "want_fanout": True,
+         "want_survives_partial": True},
+        {"case": "Flt-died", "phase": "fanout", "want_fanout": True,
+         "want_survives_partial": True},
+    ]
+    events = {
+        # fanned out (>=2 sends) + join with 1 failure + non-empty -> survived.
+        "Flt-survived": [
+            _delegation_requested(1), _delegation_requested(2), _delegation_requested(3),
+            _join(total=3, completed=2),
+        ],
+        # fanned out but the join is empty (a hang/crash) -> did NOT survive.
+        "Flt-died": [
+            _delegation_requested(1), _delegation_requested(2),
+            _join(total=2, completed=0, chars=0),
+        ],
+    }
+    summary = score_run(rows, events)
+    assert summary["partial_survival"]["eligible"] == 2
+    assert summary["partial_survival"]["survived"] == 1
+    assert summary["partial_survival_rate"] == 0.5
+
+
+def test_fanout_correct_fanout_scores_tp_and_decline_scores_tn() -> None:
+    """The acceptance rows: a correct fan-out is tp, a correct decline is tn."""
+    rows = [
+        {"case": "F-tp", "phase": "fanout", "want_fanout": True},
+        {"case": "F-tn", "phase": "fanout", "want_fanout": False},
+        {"case": "F-fn", "phase": "fanout", "want_fanout": True},  # missed (cheap)
+    ]
+    events = {
+        "F-tp": [_delegation_requested(1), _delegation_requested(2),
+                 _join(total=2, completed=2)],
+        "F-tn": [_step_planned(supervisor_decision="decline",
+                               supervisor_reason="sequential-dependent")],
+        "F-fn": [_step_planned(supervisor_decision="decline",
+                               supervisor_reason="single-step")],
+    }
+    conf = score_run(rows, events)["fanout_confusion"]
+    assert conf["tp"] == 1
+    assert conf["tn"] == 1
+    assert conf["fn"] == 1  # reported, not gated
+
+
+def test_fanout_gate_fails_on_false_fanout_but_not_on_missed() -> None:
+    """--gate fails on a GAIA fp (precision < 0.9) but a missed fan-out (recall)
+    alone does NOT fail the gate (it is the cheap error, plan §3.5a)."""
+    # One fp among one tp -> precision 0.5 < 0.9 -> gate fails.
+    fp_rows = [
+        {"case": "F-tp", "phase": "fanout", "want_fanout": True},
+        {"case": "F-fp", "phase": "fanout", "want_fanout": False},
+    ]
+    fp_events = {
+        "F-tp": [_delegation_requested(1), _delegation_requested(2)],
+        "F-fp": [_delegation_requested(1), _delegation_requested(2)],
+    }
+    fails = gate_failures(score_run(fp_rows, fp_events))
+    assert any("fanout precision" in f for f in fails)
+
+    # A pure missed-fan-out batch (recall low, precision perfect) -> NO gate fail.
+    fn_rows = [{"case": "F-fn", "phase": "fanout", "want_fanout": True}]
+    fn_events = {"F-fn": [_step_planned(supervisor_decision="decline",
+                                        supervisor_reason="single-step")]}
+    assert gate_failures(score_run(fn_rows, fn_events)) == []
+
+
 def test_clean_run_passes_the_gate() -> None:
     rows = [
         {"case": "D", "phase": "depth", "want_depth": "L2"},

@@ -231,6 +231,55 @@ def _reflexion_within_budget(events: list[dict]) -> bool:
     return True
 
 
+def _delegation_requested_count(events: list[dict]) -> int:
+    """Number of per-branch delegation_requested carriers on the trace (T3).
+
+    Tolerant of both export shapes: a trace_service event whose ``event_type``
+    is ``delegation_requested``, and the BlackBox fallback whose
+    ``details.delegation_event`` is ``delegation_requested`` (a TOOL_CALLED
+    event). >= 2 of these == the supervisor issued >= 2 Sends == it fanned out.
+    """
+    n = 0
+    for e in events:
+        et = (e.get("event_type") or "")
+        details = e.get("details") if isinstance(e.get("details"), dict) else {}
+        if et.endswith("delegation_requested"):
+            n += 1
+        elif details.get("delegation_event") == "delegation_requested":
+            n += 1
+    return n
+
+
+def _supervisor_decision(events: list[dict]) -> str | None:
+    """The supervisor's fan_out|decline decision from its STEP_PLANNED carrier."""
+    for s in _step_planned(events):
+        if "supervisor_decision" in s:
+            return str(s["supervisor_decision"])
+    return None
+
+
+def _fanout_join(events: list[dict]) -> dict | None:
+    """The join carrier (STEP_PLANNED with fanout_join=True), or None."""
+    for s in _step_planned(events):
+        if _as_bool(s.get("fanout_join")):
+            return s
+    return None
+
+
+def _fanout_partial_survived(events: list[dict]) -> bool:
+    """A fault row survived partially iff the join produced a non-empty answer
+    AND at least one branch failed (a sentinel was recorded) AND the run did not
+    hang (the join carrier exists). This is the MAST-bounded survival signal."""
+    join = _fanout_join(events)
+    if not join:
+        return False
+    total = _as_int(join.get("branches_total"), 0)
+    completed = _as_int(join.get("branches_completed"), 0)
+    join_chars = _as_int(join.get("join_chars"), 0)
+    had_failure = total > completed
+    return join_chars > 0 and had_failure
+
+
 # ── per-phase scoring ──────────────────────────────────────────────────────────
 
 
@@ -241,6 +290,11 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
     )
     # Escalation is the only phase scored as precision/recall (confusion matrix).
     esc = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
+    # Fan-out (T3) is also scored as a confusion matrix — the fp cell is the
+    # GAIA-failure detector (a near-miss ⚠ decline row that got fanned out
+    # anyway). Plus partial-survival over the fault rows.
+    fan = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
+    fan_survival = {"eligible": 0, "survived": 0}
 
     for row in rows:
         phase = row["phase"]
@@ -326,6 +380,36 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
                     f"MISSED-ESCALATE :: {case} (got={got})"
                 )
 
+        elif phase == "fanout":
+            want_fanout = _as_bool(row.get("want_fanout"))
+            # Got fan-out iff the supervisor issued >= 2 Sends (>= 2
+            # delegation_requested carriers). Fall back to the decision carrier.
+            got_fanout = _delegation_requested_count(events) >= 2
+            if not got_fanout and _supervisor_decision(events) == "fan_out":
+                got_fanout = True
+
+            if got_fanout and want_fanout:
+                fan["tp"] += 1
+                bucket["hits"] += 1
+            elif got_fanout and not want_fanout:
+                # THE GAIA-FAILURE CELL: a near-miss decline row fanned out anyway.
+                fan["fp"] += 1
+                bucket["mismatches"].append(f"FALSE-FANOUT (GAIA) :: {case}")
+            elif not got_fanout and not want_fanout:
+                fan["tn"] += 1
+                bucket["hits"] += 1
+            else:  # missed fan-out (the CHEAP error — runs sequentially)
+                fan["fn"] += 1
+                bucket["mismatches"].append(f"MISSED-FANOUT :: {case}")
+
+            # Partial-survival, scored only over the fault rows.
+            if _as_bool(row.get("want_survives_partial")):
+                fan_survival["eligible"] += 1
+                if _fanout_partial_survived(events):
+                    fan_survival["survived"] += 1
+                else:
+                    bucket["mismatches"].append(f"NO-PARTIAL-SURVIVAL :: {case}")
+
     # finalize per-phase rates
     summary: dict[str, Any] = {"phases": {}}
     for phase, b in per_phase.items():
@@ -346,6 +430,21 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
         "precision": round(tp / (tp + fp), 3) if (tp + fp) else 1.0,
         "recall": round(tp / (tp + fn), 3) if (tp + fn) else 1.0,
     }
+    # Fan-out (T3): precision is the headline (the fp cell = GAIA-failure
+    # detector). Recall is reported but NOT gated — a missed fan-out is the cheap
+    # error (it just runs sequentially). partial_survival is gated toward 1.0.
+    ftp, ffp, ffn = fan["tp"], fan["fp"], fan["fn"]
+    summary["fanout_confusion"] = {
+        **fan,
+        "precision": round(ftp / (ftp + ffp), 3) if (ftp + ffp) else 1.0,
+        "recall": round(ftp / (ftp + ffn), 3) if (ftp + ffn) else 1.0,
+    }
+    summary["partial_survival_rate"] = (
+        round(fan_survival["survived"] / fan_survival["eligible"], 3)
+        if fan_survival["eligible"]
+        else 1.0
+    )
+    summary["partial_survival"] = fan_survival
     return summary
 
 
@@ -373,6 +472,19 @@ def gate_failures(summary: dict) -> list[str]:
         fails.append(f"escalation false-positives: {conf['fp']} (thrash risk)")
     if conf["fn"] > 0:
         fails.append(f"escalation missed-escalations: {conf['fn']} (ships wrong answer)")
+    # Fan-out (T3): precision >= 0.9 (the fp cell is the GAIA-failure headline);
+    # partial-survival == 1.0. Recall is reported but NOT gated — a missed
+    # fan-out is the cheap error (plan §3.5a / Stage B5).
+    fan = summary.get("fanout_confusion")
+    if fan and (fan["tp"] + fan["fp"]) and fan["precision"] < 0.9:
+        fails.append(
+            f"fanout precision {fan['precision']} < 0.9 "
+            f"({fan['fp']} false-fan-out / GAIA failures)"
+        )
+    if summary.get("partial_survival", {}).get("eligible"):
+        rate = summary.get("partial_survival_rate", 1.0)
+        if rate < 1.0:
+            fails.append(f"fanout partial-survival rate {rate} < 1.0")
     return fails
 
 

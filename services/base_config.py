@@ -71,6 +71,23 @@ class AgentConfig(BaseModel):
     # len(reflections) >= this, even on a failed verdict — bounds the loop so
     # it can never thrash (Reflexion, arxiv 2303.11366; thrash-bound sim guard).
     max_reflexion_attempts: int = 2
+    # Phase 4 (T3 supervisor fan-out): enable the route->supervisor->worker->join
+    # parallel-fan-out fork. When False, _route_to_supervisor always returns
+    # "direct" → today's graph EXACTLY (the route->call_llm path is byte-identical).
+    # Off by default — same shadow-first discipline as plan_source/reflexion;
+    # promote only on parallel-workload evidence (plan §3.5a / §5: don't grow T3
+    # without it). The decline decision still bounds fan-out even when enabled.
+    t3_fanout_enabled: bool = False
+    # T3 fault-injection hook for the stress corpus timing-fault rows. When True,
+    # the worker node honors the magic objective tokens __FAULT_TIMEOUT__ /
+    # __FAULT_SLOW__ (corpus §4.3a) to exercise the superstep-cancellation /
+    # straggler paths. MUST stay OFF in prod — set only on the --tag stress
+    # revision (plan §5 Risks: "fault-injection hook leaks to prod").
+    fanout_fault_inject: bool = False
+    # T3 per-branch wall-clock ceiling (seconds). asyncio.wait_for bounds each
+    # worker so one slow/hung branch cannot stall the whole superstep; on timeout
+    # the worker records a sentinel and survivors still synthesize.
+    fanout_branch_timeout_s: float = 60.0
 
 
 def default_fast_profile() -> ModelProfile:
