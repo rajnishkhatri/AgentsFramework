@@ -13,6 +13,14 @@
  */
 
 import { defineConfig, devices } from "@playwright/test";
+import { applyTestProfile } from "./e2e/load-profile";
+
+// Apply the named live-testing profile (TEST_PROFILE=local|prod|stress) BEFORE
+// any process.env read below, so a profile fills unset BASE_URL / E2E_* / STRESS_*
+// without touching values already set explicitly on the command line. See
+// e2e/testing.profiles.yml. No-op for plain `pnpm test:e2e` (the default
+// profile is "local", which only sets local-safe values).
+applyTestProfile();
 
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const MOCK_MIDDLEWARE_URL = `http://localhost:${process.env.MOCK_MIDDLEWARE_PORT ?? "8765"}`;

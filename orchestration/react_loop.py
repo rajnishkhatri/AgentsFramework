@@ -28,7 +28,7 @@ from components.evaluator import (
     evaluate_task_outcome,
     parse_llm_response,
 )
-from components.reflexion import generate_reflection
+from components.reflexion import decide_reentry, generate_reflection
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
@@ -1515,6 +1515,69 @@ def build_graph(
             return "denied"
         return "authorized"
 
+    def _escalation_carrier(
+        state: AgentState, effective_outcome: str, task_outcome: Any
+    ) -> dict[str, Any]:
+        """Step 0b: derive the escalation trace carrier (counts/enums only).
+
+        Records WHY the loop did or didn't re-enter, mirroring the exact scalars
+        ``_should_continue_or_escalate`` feeds ``decide_escalation`` so the trace
+        agrees with the route. No content — the critique lives in ``reflections``.
+
+        ``escalation_reason`` enum:
+          - ``disabled``         reflexion off (the live prod default)
+          - ``budget_exhausted`` ceiling hit; decide_escalation holds (no thrash)
+          - ``verdict``          failed/partial under budget -> escalate (§5 primary)
+          - ``prose_repeat``     D3 no-tool thrash on a clean verdict -> escalate
+          - ``clean``            success / no signal -> hold (false-positive guard)
+        """
+        attempt = len(state.get("reflections") or [])
+        max_attempts = agent_config.max_reflexion_attempts
+        carrier: dict[str, Any] = {
+            "reflexion_attempt": attempt,
+            "max_reflexion_attempts": max_attempts,
+        }
+        if not agent_config.reflexion_enabled:
+            carrier["escalation_decision"] = "done"
+            carrier["escalation_reason"] = "disabled"
+            return carrier
+
+        recent_prose = [
+            str(getattr(m, "content", ""))
+            for m in (state.get("messages") or [])
+            if isinstance(m, AIMessage)
+        ]
+        prose_kind = classify_no_progress(
+            state.get("tool_results") or [],
+            recent_prose,
+            tool_threshold=agent_config.no_progress_repeat_threshold,
+            prose_threshold=agent_config.no_progress_repeat_threshold,
+        )
+        decision = decide_escalation(
+            goal_verdict=effective_outcome,
+            unmet_conditions=list(task_outcome.unmet_conditions),
+            prose_kind=prose_kind,
+            attempt=attempt,
+            max_attempts=max_attempts,
+        )
+        carrier["escalation_decision"] = "reflect" if decision == "escalate" else "done"
+        if decision == "escalate":
+            # decide_escalation escalates on verdict first, then prose_repeat.
+            verdict_triggers = (
+                decide_reentry(
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    last_verdict=effective_outcome,
+                )
+                == "reflect"
+            )
+            carrier["escalation_reason"] = "verdict" if verdict_triggers else "prose_repeat"
+        elif attempt >= max_attempts:
+            carrier["escalation_reason"] = "budget_exhausted"
+        else:
+            carrier["escalation_reason"] = "clean"
+        return carrier
+
     # ── Story 1.3: evaluate_node with real error propagation ──
 
     async def evaluate_node(state: AgentState, config: RunnableConfig) -> dict:
@@ -1833,6 +1896,14 @@ def build_graph(
                 result["last_unmet_conditions"] = list(task_outcome.unmet_conditions)
                 result["last_final_answer"] = content or ""
 
+                # Step 0b (e2e-stress plan §2.2): escalation-reason carrier.
+                # evaluate_node owns the verdict, so it records the escalation
+                # fact here for the trace; _should_continue_or_escalate re-derives
+                # the SAME decision for the route (decide_escalation is pure +
+                # idempotent — LP-2 keeps the routing fn from recording). Join
+                # keys / enums only, never the critique text (§4.7 Recording).
+                _esc = _escalation_carrier(state, effective_outcome, task_outcome)
+
                 black_box.record(TraceEvent(
                     event_id=str(uuid.uuid4()),
                     workflow_id=workflow_id,
@@ -1854,6 +1925,11 @@ def build_graph(
                         "goal_met": task_outcome.goal_met,
                         "would_downgrade": would_downgrade,
                         "downgrade_reason": downgrade_reason,
+                        # Step 0b: tiered-loops escalation carrier (Phase 2/3).
+                        "escalation_decision": _esc["escalation_decision"],
+                        "escalation_reason": _esc["escalation_reason"],
+                        "reflexion_attempt": _esc["reflexion_attempt"],
+                        "max_reflexion_attempts": _esc["max_reflexion_attempts"],
                     },
                 ))
                 await _emit_completion_once(workflow_id, updated_step_count, effective_outcome)
@@ -1947,6 +2023,24 @@ def build_graph(
             critique = generate_reflection(
                 unmet_conditions=unmet, last_answer=last_answer
             )
+
+        # Step 0b (e2e-stress plan §2.2): reflexion-step carrier. Proves the
+        # loop re-entered and the gradient carried, with counts only — the
+        # critique text stays in ``reflections``/the prompt, never the trace
+        # (§4.7 Recording). reflexion_attempt is the 0-based index BEFORE this
+        # entry is appended, so it agrees with the escalation carrier's count.
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=state.get("workflow_id", ""),
+            event_type=EventType.STEP_PLANNED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details={
+                "reflexion_attempt": attempt,
+                "reflexion_unmet_count": len(unmet),
+                "reflexion_critique_chars": len(critique or ""),
+            },
+        ))
 
         return {
             "reflections": [

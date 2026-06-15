@@ -1,0 +1,385 @@
+[
+  {
+    "case": "STRESS-DEPTH-001",
+    "prompt": "Read the first line of /workspace/notes.txt and print it.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L0:single-action -> L0",
+    "trace_id": "0484afa3f3f951c9bb9e6d1d485e1d1c",
+    "session_id": "session-stress-depth-001",
+    "want_depth": "L0"
+  },
+  {
+    "case": "STRESS-DEPTH-002",
+    "prompt": "Echo the phrase quarterly review verbatim.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L0:single-action -> L0",
+    "trace_id": "deedd82cf713578b96ad4bdf846e0b2b",
+    "session_id": "session-stress-depth-002",
+    "want_depth": "L0"
+  },
+  {
+    "case": "STRESS-DEPTH-003",
+    "prompt": "Overwrite /workspace/status.txt with the single character OK.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L0:single-action -> L0",
+    "trace_id": "dddc778f14d9558c98e2a7eea5094ad4",
+    "session_id": "session-stress-depth-003",
+    "want_depth": "L0"
+  },
+  {
+    "case": "STRESS-DEPTH-004",
+    "prompt": "Refactor the auth module.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L1:lone-marker:refactor -> L1",
+    "trace_id": "3a3b6fcda9325c249a84f52a58c2678d",
+    "session_id": "session-stress-depth-004",
+    "want_depth": "L1"
+  },
+  {
+    "case": "STRESS-DEPTH-005",
+    "prompt": "Design a rate limiter for the API.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L1:lone-marker:design -> L1",
+    "trace_id": "6e01a5247e30541ebddf7b5fd5a8273c",
+    "session_id": "session-stress-depth-005",
+    "want_depth": "L1"
+  },
+  {
+    "case": "STRESS-DEPTH-006",
+    "prompt": "Plan the Postgres migration.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L1:lone-marker:migration -> L1",
+    "trace_id": "cc2270cd4ff25e619fe8f6338908de00",
+    "session_id": "session-stress-depth-006",
+    "want_depth": "L1"
+  },
+  {
+    "case": "STRESS-DEPTH-007",
+    "prompt": "Walk me through what the login endpoint does when a session cookie is present but expired, including how the refresh path is triggered and what the client sees if refresh fails.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L1:moderate-length -> L1",
+    "trace_id": "f0616f0c8da157499e84643e49591a4c",
+    "session_id": "session-stress-depth-007",
+    "want_depth": "L1"
+  },
+  {
+    "case": "STRESS-DEPTH-008",
+    "prompt": "Compare Redis and Memcached for our cache, (1) benchmark read latency (2) measure memory overhead (3) test eviction, and then recommend one.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L2:marker+enum+conj -> L2",
+    "trace_id": "0afd11cb40b1595eb83073752de0f602",
+    "session_id": "session-stress-depth-008",
+    "want_depth": "L2"
+  },
+  {
+    "case": "STRESS-DEPTH-009",
+    "prompt": "Audit the current deployment architecture, design a migration to the new region, refactor the routing layer to support it, and produce a staged rollout roadmap with rollback criteria for each phase.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L2:multi-marker+long -> L2",
+    "trace_id": "7cec19e5dc0353e2b1c4b50c58ba3dbd",
+    "session_id": "session-stress-depth-009",
+    "want_depth": "L2"
+  },
+  {
+    "case": "STRESS-DEPTH-010",
+    "prompt": "Our checkout sometimes double-charges customers when the payment provider times out but later confirms; figure out where the idempotency boundary should live and what state we need to track so a retried request is recognized as the same purchase.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L2:adversarial:bare-complex -> L2",
+    "trace_id": "54cd695d4e0259e48fcb28b60683d5c4",
+    "session_id": "session-stress-depth-010",
+    "want_depth": "L2"
+  },
+  {
+    "case": "STRESS-DEPTH-011",
+    "prompt": "Users report the feed shows stale posts after they publish; trace how a write propagates to the read path and identify every cache or replica that could be serving the old version.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L2:adversarial:bare-complex -> L2",
+    "trace_id": "16cb19b43aa85abfbd28ba9be474bee7",
+    "session_id": "session-stress-depth-011",
+    "want_depth": "L2"
+  },
+  {
+    "case": "STRESS-DEPTH-012",
+    "prompt": "Add caching and then update the docs.",
+    "phase": "depth",
+    "rationale": "depth-strata depth:L1:control:short-multipart -> L1",
+    "trace_id": "8a7d0e8275525fd98a0efc57ccfd4fec",
+    "session_id": "session-stress-depth-012",
+    "want_depth": "L1"
+  },
+  {
+    "case": "STRESS-REPLAN-missing-config-01",
+    "prompt": "Read /workspace/nonexistent_config.yaml and apply the database migration it describes. If the file is missing, decide how to proceed and continue.",
+    "phase": "replan",
+    "rationale": "first read fails (missing file) -> surprising result rebuilds the plan",
+    "trace_id": "77c16c7bc7805b89aa6a4db5d43703ef",
+    "session_id": "session-stress-replan-missing-config-01",
+    "want_replan": true
+  },
+  {
+    "case": "STRESS-REPLAN-garbage-input-02",
+    "prompt": "Write the text 'not-json-at-all {{{' to /workspace/data.json, then parse it as JSON and summarize the records it contains.",
+    "phase": "replan",
+    "rationale": "parse step fails on garbage written in step 1 -> replan",
+    "trace_id": "3c6c0451f9625fd2873cfb4ee2686c37",
+    "session_id": "session-stress-replan-garbage-input-02",
+    "want_replan": true
+  },
+  {
+    "case": "STRESS-REPLAN-shifting-target-03",
+    "prompt": "List the files in /workspace/reports/, then open the most recent one and extract its total. If the directory is empty, create a starter report instead.",
+    "phase": "replan",
+    "rationale": "empty/absent dir flips the plan branch -> replan",
+    "trace_id": "3b4957384dfb5aca81e7fef2b8ee26e3",
+    "session_id": "session-stress-replan-shifting-target-03",
+    "want_replan": true
+  },
+  {
+    "case": "STRESS-REPLAN-dependent-chain-04",
+    "prompt": "Read /workspace/seed.txt to get a filename, then read THAT file and report its first line. Recover gracefully if either is absent.",
+    "phase": "replan",
+    "rationale": "second read depends on first's surprising content -> replan",
+    "trace_id": "48033849578a5b369831fd4363937e34",
+    "session_id": "session-stress-replan-dependent-chain-04",
+    "want_replan": true
+  },
+  {
+    "case": "STRESS-REPLAN-tool-error-05",
+    "prompt": "Run the shell command 'cat /workspace/does_not_exist_42.log' and summarize the errors in it; if it is not there, say so and stop.",
+    "phase": "replan",
+    "rationale": "shell tool error on first call -> surprising result -> replan",
+    "trace_id": "0f4840004b925fb0af2f3ddea8789535",
+    "session_id": "session-stress-replan-tool-error-05",
+    "want_replan": true
+  },
+  {
+    "case": "STRESS-REPLAN-control-stable-06",
+    "prompt": "Write the number 42 to /workspace/answer.txt, then read it back and confirm it says 42.",
+    "phase": "replan",
+    "rationale": "control: both tool calls succeed cleanly -> NO replan",
+    "trace_id": "ec54ce7646775fafae0eabbe74947f96",
+    "session_id": "session-stress-replan-control-stable-06",
+    "want_replan": false
+  },
+  {
+    "case": "STRESS-REPLAN-control-stable-07",
+    "prompt": "Create /workspace/hello.txt containing the word hello, then read it back to verify.",
+    "phase": "replan",
+    "rationale": "control: clean write+read -> NO replan",
+    "trace_id": "91e698a6b78253fb8a385eabfd445c14",
+    "session_id": "session-stress-replan-control-stable-07",
+    "want_replan": false
+  },
+  {
+    "case": "STRESS-REPLAN-control-stable-08",
+    "prompt": "Echo the phrase 'pipeline ok' verbatim.",
+    "phase": "replan",
+    "rationale": "control: zero-tool trivial task -> NO replan",
+    "trace_id": "1f7cb5414b985756b25be612c4d5f186",
+    "session_id": "session-stress-replan-control-stable-08",
+    "want_replan": false
+  },
+  {
+    "case": "STRESS-REPLAN-control-stable-09",
+    "prompt": "Write 'line one' to /workspace/a.txt and 'line two' to /workspace/b.txt, then read both back.",
+    "phase": "replan",
+    "rationale": "control: independent clean writes -> NO replan",
+    "trace_id": "9a116e395f3a5f2489a8e004fafe9dab",
+    "session_id": "session-stress-replan-control-stable-09",
+    "want_replan": false
+  },
+  {
+    "case": "STRESS-REPLAN-control-stable-10",
+    "prompt": "Write the current plan summary as 'done' to /workspace/state.txt.",
+    "phase": "replan",
+    "rationale": "control: single clean write -> NO replan",
+    "trace_id": "1104901fade857aaba2161b28cdae849",
+    "session_id": "session-stress-replan-control-stable-10",
+    "want_replan": false
+  },
+  {
+    "case": "STRESS-REFLEXION-underspecified-01",
+    "prompt": "Make the checkout flow correct. Find every place a price is computed and ensure tax is applied consistently.",
+    "phase": "reflexion",
+    "rationale": "vague 'make it correct' -> first pass partial -> re-enter, bounded",
+    "trace_id": "69dc17a5e05d5ba9a4892b5adb84fad4",
+    "session_id": "session-stress-reflexion-underspecified-01",
+    "want_reflexion": true,
+    "want_terminates_at_budget": true
+  },
+  {
+    "case": "STRESS-REFLEXION-multi-criteria-02",
+    "prompt": "Write a migration plan that is reversible, zero-downtime, and validated against the current schema. All three properties must hold.",
+    "phase": "reflexion",
+    "rationale": "3 hard success conditions -> likely unmet on pass 1 -> reflect",
+    "trace_id": "ad96eca4ed1851599daae693b78da105",
+    "session_id": "session-stress-reflexion-multi-criteria-02",
+    "want_reflexion": true,
+    "want_terminates_at_budget": true
+  },
+  {
+    "case": "STRESS-REFLEXION-incomplete-prone-03",
+    "prompt": "Audit the auth module for security issues and produce a complete list with a fix for each. Do not miss any category.",
+    "phase": "reflexion",
+    "rationale": "completeness criterion -> partial first pass -> reflect, ceiling",
+    "trace_id": "29d78d3e5b425ee98765113f6085a5c0",
+    "session_id": "session-stress-reflexion-incomplete-prone-03",
+    "want_reflexion": true,
+    "want_terminates_at_budget": true
+  },
+  {
+    "case": "STRESS-REFLEXION-contradiction-prone-04",
+    "prompt": "Optimize the query for both lowest latency and lowest memory; justify that both targets are met simultaneously.",
+    "phase": "reflexion",
+    "rationale": "tension between criteria -> unmet -> bounded reflexion",
+    "trace_id": "47b5eaa8ae895d57be9fe6cc70fc76b0",
+    "session_id": "session-stress-reflexion-contradiction-prone-04",
+    "want_reflexion": true,
+    "want_terminates_at_budget": true
+  },
+  {
+    "case": "STRESS-REFLEXION-verify-hard-05",
+    "prompt": "Refactor the rate limiter so it is correct under concurrent access and prove the invariant holds. Concurrency correctness is required.",
+    "phase": "reflexion",
+    "rationale": "hard-to-satisfy proof criterion -> reflect, must stop at budget",
+    "trace_id": "6f92de3d32d15b6ab1839d2202e98f9d",
+    "session_id": "session-stress-reflexion-verify-hard-05",
+    "want_reflexion": true,
+    "want_terminates_at_budget": true
+  },
+  {
+    "case": "STRESS-REFLEXION-control-trivial-06",
+    "prompt": "Write the word 'ok' to /workspace/ok.txt and read it back.",
+    "phase": "reflexion",
+    "rationale": "control: trivially satisfiable -> success -> NO reflexion",
+    "trace_id": "a8fd9adf0467506e95f4265fece498f1",
+    "session_id": "session-stress-reflexion-control-trivial-06",
+    "want_reflexion": false
+  },
+  {
+    "case": "STRESS-REFLEXION-control-trivial-07",
+    "prompt": "Echo the phrase 'reflexion control' verbatim.",
+    "phase": "reflexion",
+    "rationale": "control: zero-condition task -> success -> NO reflexion",
+    "trace_id": "a9662d0c41b853e18671f71a36d6022c",
+    "session_id": "session-stress-reflexion-control-trivial-07",
+    "want_reflexion": false
+  },
+  {
+    "case": "STRESS-REFLEXION-control-trivial-08",
+    "prompt": "Read the first line of /workspace/ok.txt and print it.",
+    "phase": "reflexion",
+    "rationale": "control: single read -> success -> NO reflexion",
+    "trace_id": "7fdeb519cae25ce98ea3e3c29e428f4a",
+    "session_id": "session-stress-reflexion-control-trivial-08",
+    "want_reflexion": false
+  },
+  {
+    "case": "STRESS-REFLEXION-control-trivial-09",
+    "prompt": "Write 'value=1' to /workspace/cfg.txt.",
+    "phase": "reflexion",
+    "rationale": "control: single clean write -> success -> NO reflexion",
+    "trace_id": "339ab4b6703e526da77bc129bcd8daf7",
+    "session_id": "session-stress-reflexion-control-trivial-09",
+    "want_reflexion": false
+  },
+  {
+    "case": "STRESS-REFLEXION-control-trivial-10",
+    "prompt": "Confirm that 2 plus 2 equals 4.",
+    "phase": "reflexion",
+    "rationale": "control: trivial fact -> success -> NO reflexion",
+    "trace_id": "44aba93e97a757738cd83618c7ab9620",
+    "session_id": "session-stress-reflexion-control-trivial-10",
+    "want_reflexion": false
+  },
+  {
+    "case": "STRESS-ESCALATION-wrong-prone-01",
+    "prompt": "Compute the exact number of prime numbers below 1,000,000 and state the single integer. Your answer must be exactly correct.",
+    "phase": "escalation",
+    "rationale": "hard exact-answer -> likely failed verdict -> escalate",
+    "trace_id": "b427267c5d9657d78a3c43a4d932076e",
+    "session_id": "session-stress-escalation-wrong-prone-01",
+    "want_escalation": "reflect"
+  },
+  {
+    "case": "STRESS-ESCALATION-wrong-prone-02",
+    "prompt": "Without using any tools, recall the full text of RFC 9110 section 9.3.1 verbatim. Exactness is required.",
+    "phase": "escalation",
+    "rationale": "unverifiable-from-memory -> failed verdict -> escalate",
+    "trace_id": "e93868a133b4588cbfd9b822cc808ccc",
+    "session_id": "session-stress-escalation-wrong-prone-02",
+    "want_escalation": "reflect"
+  },
+  {
+    "case": "STRESS-ESCALATION-partial-prone-03",
+    "prompt": "List every HTTP status code and its exact RFC definition. The list must be complete with no omissions.",
+    "phase": "escalation",
+    "rationale": "completeness impossible in one pass -> partial -> escalate",
+    "trace_id": "1ff94a4354345d739b5c539e3b94178e",
+    "session_id": "session-stress-escalation-partial-prone-03",
+    "want_escalation": "reflect"
+  },
+  {
+    "case": "STRESS-ESCALATION-prose-thrash-04",
+    "prompt": "Keep restating your plan to solve world hunger in detail, over and over, without taking any concrete action or using any tool.",
+    "phase": "escalation",
+    "rationale": "no-tool prose repetition -> D3 prose_repeat -> escalate",
+    "trace_id": "9a7b90ce3f7a513f85b09f7ab48e9a52",
+    "session_id": "session-stress-escalation-prose-thrash-04",
+    "want_escalation": "reflect"
+  },
+  {
+    "case": "STRESS-ESCALATION-prose-thrash-05",
+    "prompt": "Describe at length how you would approach this, then describe it again the same way, without doing anything.",
+    "phase": "escalation",
+    "rationale": "no-tool prose repetition -> D3 -> escalate",
+    "trace_id": "721994c084de58d1ace9efcbcb0d9478",
+    "session_id": "session-stress-escalation-prose-thrash-05",
+    "want_escalation": "reflect"
+  },
+  {
+    "case": "STRESS-ESCALATION-control-clean-06",
+    "prompt": "Write 'escalation control' to /workspace/esc.txt and read it back.",
+    "phase": "escalation",
+    "rationale": "control: clean success -> NO escalate (false-positive guard)",
+    "trace_id": "d1d22dd572ce55dbb949faf4c51007e3",
+    "session_id": "session-stress-escalation-control-clean-06",
+    "want_escalation": "done"
+  },
+  {
+    "case": "STRESS-ESCALATION-control-clean-07",
+    "prompt": "Echo the phrase 'no escalation needed' verbatim.",
+    "phase": "escalation",
+    "rationale": "control: trivial success -> NO escalate",
+    "trace_id": "71901b4b18f857859241e67a4d602375",
+    "session_id": "session-stress-escalation-control-clean-07",
+    "want_escalation": "done"
+  },
+  {
+    "case": "STRESS-ESCALATION-control-clean-08",
+    "prompt": "Read the first line of /workspace/esc.txt and print it.",
+    "phase": "escalation",
+    "rationale": "control: single read success -> NO escalate",
+    "trace_id": "34fc8a8f8d9e55158161009b35fb58e2",
+    "session_id": "session-stress-escalation-control-clean-08",
+    "want_escalation": "done"
+  },
+  {
+    "case": "STRESS-ESCALATION-control-clean-09",
+    "prompt": "Confirm the file /workspace/esc.txt exists by reading it.",
+    "phase": "escalation",
+    "rationale": "control: clean verify -> NO escalate",
+    "trace_id": "6f5b961ccaef5468be4ad4e790e72873",
+    "session_id": "session-stress-escalation-control-clean-09",
+    "want_escalation": "done"
+  },
+  {
+    "case": "STRESS-ESCALATION-control-clean-10",
+    "prompt": "State that the current date format is ISO-8601.",
+    "phase": "escalation",
+    "rationale": "control: trivial fact -> success -> NO escalate",
+    "trace_id": "0729b6e89e775345be4828abdb960ee0",
+    "session_id": "session-stress-escalation-control-clean-10",
+    "want_escalation": "done"
+  }
+]

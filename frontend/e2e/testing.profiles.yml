@@ -1,0 +1,54 @@
+# Live-testing run profiles — named targets for Playwright e2e/smoke/stress runs.
+#
+# WHY: stop hand-assembling `BASE_URL=... E2E_AUTHENTICATED=1 STRESS_PHASE=...`
+# strings for every live run. Pick a profile instead:
+#
+#     TEST_PROFILE=stress pnpm test:e2e:stress
+#     TEST_PROFILE=prod   pnpm test:e2e:t3
+#
+# HOW: `e2e/load-profile.ts` (read at the top of playwright.config.ts) fills any
+# env var listed here that is currently UNSET. Precedence (12-factor / CLI
+# convention — explicit > env > file > default): an env var already present on the
+# command line ALWAYS wins, so `BASE_URL=... TEST_PROFILE=stress ...` overrides
+# the profile's base_url. The loader never clobbers an existing value.
+#
+# SCOPE (deliberately narrow — see the config research, 2026-06-14): this file
+# holds ONLY non-secret, version-controlled, client-side test-orchestration
+# knobs. It does NOT configure the backend (that's AgentRuntimeSettings env +
+# Terraform), the GoalJudge live posture (that's the GCS goal_judge_config.json,
+# 30s TTL), or any secret (WorkOS creds stay in repo-root .env / Secret Manager).
+# `E2E_AUTHENTICATED=1` here is just the non-secret SWITCH that tells
+# global-setup to read those secrets from .env — the secrets are never here.
+
+default_profile: local
+
+profiles:
+  # ── local dev server, real or mocked middleware; loops dark ──
+  local:
+    base_url: "http://localhost:3000"
+    env:
+      MOCK_MIDDLEWARE: "0"
+
+  # ── live prod Cloud Run; Phase 0 active, loops 1-3 DARK by config ──
+  prod:
+    base_url: "https://agent-frontend-w65nrxwkiq-uc.a.run.app"
+    env:
+      E2E_AUTHENTICATED: "1"
+
+  # ── loops-ON tagged stress revision (deploy-gcp skill §Tiered-Loops
+  #    Stress Revision). Fill <hash> after deploying the --tag stress
+  #    frontend revision whose MIDDLEWARE_URL points at the stress backend. ──
+  stress:
+    base_url: "https://stress---agent-frontend-REPLACE_HASH-uc.a.run.app"
+    env:
+      E2E_AUTHENTICATED: "1"
+      # default to the full corpus, all phases; override per-run on the CLI
+      # (e.g. STRESS_SMOKE=1 for one-case-per-phase carrier confirmation).
+      STRESS_PHASE: ""
+      STRESS_LIMIT: ""
+    # Documents the BACKEND posture this profile EXPECTS. NOT applied by the
+    # loader (deploy/GCS concern); printed as a reminder so a stress run against
+    # a loops-OFF revision is caught early (it would all show escalation_reason=disabled).
+    requires:
+      backend_loops: "REFLEXION_ENABLED=1 PLANNING_PLAN_SOURCE=generated (tagged revision)"
+      goal_judge: "gs://agent-prod-gcp-dev-agent-facts/ops/goal_judge_config.json"
