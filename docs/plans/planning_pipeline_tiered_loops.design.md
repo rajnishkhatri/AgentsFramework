@@ -831,12 +831,25 @@ flowchart TB
 **FSP:** all T3 events are `TrustTraceRecord` `execution`-category telemetry — **never cross the SSE seam** (FSP-1).
 A "fanning out…" UI indicator, if ever wanted, is a separate frontend-ring promotion (FSP-2), out of scope.
 
-**Test shape.** **Protocol C** for `supervisor_plan.py` — the **decline paths are the headline**, written before
-the one fan-out acceptance (the dependent-plan→decline test encodes the GAIA single-agent-wins guard; full matrix
-in the component spec). **Protocol D** for the fan-out nodes — P11 failure matrix (one worker raises → join
-survives; one times out → no super-step hang; all fail → degraded answer + judge still runs), P1 property test on
-the `worker_results` reducer (N concurrent appends, none lost). **P7** gains the LP-1/LP-2 assertion on
-`supervisor_plan.py` *before any code is written* (the binding is the test).
+**Test shape (offline, deterministic).** **Protocol C** for `supervisor_plan.py` — the **decline paths are the
+headline**, written before the one fan-out acceptance (the dependent-plan→decline test encodes the GAIA
+single-agent-wins guard; full matrix in the component spec). **Protocol D** for the fan-out nodes — P11 failure
+matrix (one worker raises → join survives; one times out → no super-step hang; all fail → degraded answer + judge
+still runs), P1 property test on the `worker_results` reducer (N concurrent appends, none lost). **P7** gains the
+LP-1/LP-2 assertion on `supervisor_plan.py` *before any code is written* (the binding is the test).
+
+**Validation skills (live, on-demand — which skill enacts which protocol).** The offline tests above run in CI;
+the *live* validation of T3 is enacted by four workspace skills, each the executable procedure for a protocol this
+registry already defines. The **step-by-step execution is owned by
+[`t3_implementation_and_validation.plan.md`](t3_implementation_and_validation.plan.md) §0.5/§3** (single source);
+this row only pins skill↔protocol so the design doc's "every protocol the plan invokes" promise stays complete.
+
+| Skill | Enacts | Protocol it serves | The pin |
+|---|---|---|---|
+| [`deploy-gcp`](../../.cursor/skills/deploy-gcp/SKILL.md) "Tiered-Loops Stress Revision" | standing up a loops+T3-on backend **and** frontend (two zero-traffic tags; `T3_FANOUT_ENABLED`/`FANOUT_FAULT_INJECT` set **only** here, off in prod) | the substrate the **GTP** audit runs against; **FSP-1** (telemetry stays behind the seam) | out-of-band, mutates no managed infra; **mandatory teardown** of both tags |
+| [`playwright-agentic-e2e`](../skills/playwright-agentic-e2e/SKILL.md) | the **T3 full-stack cut** e2e run (nothing mocked, live model) | observability evidence for the **§3.5a acceptance bar**; server-side `verify_run.py` proves the fan-out actually ran | on-demand only (AP5: never per-commit); assert structure+provenance, settle-poll not `finished()` |
+| [`governance-trace-audit`](../skills/governance-trace-audit/SKILL.md) | the 4-step trace audit of the live fan-out run | **GTP** (A.5) — the normative source the whole §A.5 cites | corrupt-success first; **per-branch zero-carrier = NON-COMPLIANT**; report saved to `docs/reviews/` |
+| [`llm-eval-grounded-theory`](../skills/llm-eval-grounded-theory/SKILL.md) (Stage 1 only) | qualitative open-coding of the near-miss ⚠ declines | sharpens the §3a `detect_sequential_dependence` signal (**Protocol C** input) | trace=ground-truth not narration; human-first-pass; *scope: open-coding only, not judge-calibration* |
 
 ---
 
@@ -852,7 +865,7 @@ rule, A.3).
 | **1** | T1 planner + replan edge | deterministic-floor **fallback** test (before success); surprising-output→replan | **C** + Protocol-D1; P6/P9/P11 | T1 ≥ ReAct baseline, no brittle-plan regression |
 | **2** | T2 `reflect_node` + budget ceiling (D1, §6) | predicate ceiling `at-budget→stop` (before `→reflect`); corrupt-success **Protocol-D3** | **C** + **D**; P5/P6/P8/P10/P11 | recovers a measurable fraction of partials without thrash |
 | **3** | Hybrid escalation routing | each §5 signal fired/not-fired matrix | **C** + Protocol-D1; P6/P11 | entry-router accuracy + escalation precision (measured separately) |
-| **4** 🔮 | T3 supervisor / parallel fan-out (`supervisor_plan` + Send nodes + async dispatch) | **dependent-plan→decline** (the GAIA guard, before the one fan-out acceptance); worker-raises→join-survives | **C** + **D**; P1/P6/P11; P7 LP-gate | **seam + layer-clean + observable + MAST-bounded** (NOT throughput, plan §3.5a); §8.2 fan-out corpus, calibration |
+| **4** 🔮 | T3 supervisor / parallel fan-out (`supervisor_plan` + Send nodes + async dispatch) | **dependent-plan→decline** (the GAIA guard, before the one fan-out acceptance); worker-raises→join-survives | **C** + **D**; P1/P6/P11; P7 LP-gate | **seam + layer-clean + observable + MAST-bounded** (NOT throughput, plan §3.5a); §8.2 fan-out corpus, calibration. Full step-by-step build + 4-stage validation (incl. the §B.5 validation skills): [`t3_implementation_and_validation.plan.md`](t3_implementation_and_validation.plan.md) |
 
 **Determinism & CI policy (every phase, A.3 + AP5/AP3):** unit tests mock the LLM (`TestModel`/`FunctionModel`
 or record/replay, P5/P6) — **never live LLM in CI**. L3/L4 quality and trajectory evals run on **aggregate pass
@@ -862,8 +875,10 @@ structure/trajectory/properties, never exact LLM strings.
 **Governance gate, every phase (GTP, A.5):** run a from-step-0 trace through the
 [`governance-trace-audit`](../skills/governance-trace-audit/SKILL.md) contract; the phase's new fact must have a
 **non-empty carrier that actually exports** (Phase 0: fixed depth on `step.planned`; Phase 1: replan exports a
-new fingerprint; Phase 2: critique carrier non-empty + post-reflexion `goal_judge` present). **One contradictory
-trace blocks the phase — green CI is not sufficient (GTP-5).**
+new fingerprint; Phase 2: critique carrier non-empty + post-reflexion `goal_judge` present; **Phase 4: every
+`delegation_*` carrier exports per branch with the branch `correlation_id`, and the `goal_judge` runs on the
+joined answer — a per-branch zero-carrier is NON-COMPLIANT**). **One contradictory trace blocks the phase — green
+CI is not sufficient (GTP-5).**
 
 **Layer-boundary gate, every phase (P7, A.4):** `tests/architecture/` gains assertions that
 `components/reflexion.py` / `supervisor_plan.py` do not import `langgraph`/`orchestration`/`AgentState`, and that
