@@ -364,3 +364,88 @@ async def test_reflexion_never_masks_failed_into_success(tmp_path):
     the loop exhausts the budget is still 'failed'. YES/NO: NO masking."""
     result = await _run_reflexion(enabled=True, max_attempts=2, tmp_path=tmp_path)
     assert result.get("last_task_outcome") == "failed"
+
+
+# ── Step 0b (e2e-stress plan §2.2): trace carriers for Phases 2/3 ─────────────
+# The escalation/reflexion facts must EXPORT to the BlackBox trace, or the
+# downstream Langfuse analysis (analyze_planning_traces.py) is blind to exactly
+# the loops it scores. We replay the recorded trace and assert the join keys
+# land — counts/enums only, never critique text (§4.7 Recording).
+
+
+def _replay_events(tmp_path, workflow_id: str):
+    from services.governance.black_box import BlackBoxRecorder
+
+    recorder = BlackBoxRecorder(
+        storage_dir=tmp_path / "cache" / "black_box_recordings"
+    )
+    return recorder.replay(workflow_id)
+
+
+@pytest.mark.asyncio
+async def test_escalation_carrier_exports_on_reflexion_run(tmp_path):
+    """Recording pillar: the TASK_COMPLETED event carries the escalation
+    decision/reason and the budget counts, so the trace agrees with the route."""
+    await _run_reflexion(enabled=True, max_attempts=2, tmp_path=tmp_path)
+    events = _replay_events(tmp_path, "wf-reflexion-True-2")
+    completed = [e for e in events if e.event_type.value == "task_completed"]
+    assert completed, "no TASK_COMPLETED event recorded"
+    last = completed[-1].details
+    # Every key the analysis half reads is present.
+    assert last["escalation_decision"] in ("reflect", "done")
+    assert last["escalation_reason"] in (
+        "verdict",
+        "prose_repeat",
+        "budget_exhausted",
+        "clean",
+        "disabled",
+    )
+    assert last["max_reflexion_attempts"] == 2
+    assert isinstance(last["reflexion_attempt"], int)
+    # A failed verdict that has exhausted the budget holds at the ceiling.
+    assert last["escalation_reason"] == "budget_exhausted"
+    assert last["escalation_decision"] == "done"
+    # No critique text leaked onto the trace (Recording pillar).
+    assert "critique" not in last
+
+
+@pytest.mark.asyncio
+async def test_reflexion_step_carrier_exports_per_reentry(tmp_path):
+    """Each reflect_node re-entry records a STEP_PLANNED carrier with the
+    attempt index and critique LENGTH (not text)."""
+    await _run_reflexion(enabled=True, max_attempts=2, tmp_path=tmp_path)
+    events = _replay_events(tmp_path, "wf-reflexion-True-2")
+    reflexion_steps = [
+        e.details
+        for e in events
+        if e.event_type.value == "step_planned"
+        and "reflexion_attempt" in e.details
+        and "reflexion_critique_chars" in e.details
+    ]
+    # The loop re-entered (1..2 times under the ceiling), one carrier each.
+    assert 1 <= len(reflexion_steps) <= 2
+    for d in reflexion_steps:
+        assert isinstance(d["reflexion_attempt"], int)
+        assert d["reflexion_critique_chars"] > 0  # gradient carried
+        assert d["reflexion_unmet_count"] >= 1
+        # counts only — the critique string itself is never on the trace.
+        assert "critique" not in d
+
+
+@pytest.mark.asyncio
+async def test_disabled_run_records_escalation_reason_disabled(tmp_path):
+    """Negative control: the live prod default (reflexion off) records
+    escalation_reason='disabled' — the analysis can distinguish a held loop
+    from a never-armed one (this is the deployed-revision signal)."""
+    await _run_reflexion(enabled=False, max_attempts=2, tmp_path=tmp_path)
+    events = _replay_events(tmp_path, "wf-reflexion-False-2")
+    completed = [e for e in events if e.event_type.value == "task_completed"]
+    assert completed
+    assert completed[-1].details["escalation_reason"] == "disabled"
+    assert completed[-1].details["escalation_decision"] == "done"
+    # And no reflexion-step carriers were emitted (the loop never re-entered).
+    reflexion_steps = [
+        e for e in events
+        if e.event_type.value == "step_planned" and "reflexion_attempt" in e.details
+    ]
+    assert reflexion_steps == []

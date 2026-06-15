@@ -64,7 +64,27 @@ Step 0 closes both. **It is the prerequisite, not an optional nicety.**
 
 ---
 
-## 2. Step 0 — Trace carriers + runtime flags (backend, the blocker)
+## 2. Step 0 — Trace carriers + runtime flags (backend, the blocker) — ✅ DONE (2026-06-14)
+
+> **Built.** Step 0a + 0b landed. Gates green: `tests/middleware/test_agent_runtime_composition.py` (9 passed,
+> incl. defaults-OFF prod parity + env-flip propagation + invalid-`plan_source` rejection) and
+> `tests/orchestration/test_tier_topology_sim.py` (9 passed, incl. 3 new carrier gates: escalation carrier on
+> TASK_COMPLETED, per-reentry reflexion-step carrier, `escalation_reason=disabled` negative control). Full
+> regression: 246 passed / 10 skipped across orchestration + components + composition + architecture.
+>
+> **As-built notes / deviations from the spec above:**
+> - **0a:** the `Settings` object is `AgentRuntimeSettings` *inside* `composition.py` (not a separate module).
+>   Added `planning_plan_source` (typed `Literal["deterministic","shadow","generated"]`, not plain `str`, so an
+>   invalid `PLANNING_PLAN_SOURCE` fails loudly at startup), `reflexion_enabled`, `max_reflexion_attempts`; wired
+>   the bool/int coercion into `from_mapping`; passed all three into `AgentConfig(...)` at the former line 512.
+> - **0b:** chose option (a) — the escalation carrier is recorded from `evaluate_node` (it owns the verdict),
+>   folded into the existing `TASK_COMPLETED` event via a new pure `_escalation_carrier` helper that re-derives the
+>   SAME scalars `_should_continue_or_escalate` feeds `decide_escalation` (idempotent; routing fn stays pure, LP-2).
+>   The reflexion-step carrier is a `STEP_PLANNED` event recorded at the head of `reflect_node`'s return (reusing
+>   the existing EventType — there is no dedicated reflexion EventType, and the analysis filters on the presence of
+>   `reflexion_attempt`). `escalation_reason` enum: `disabled | budget_exhausted | verdict | prose_repeat | clean`.
+>
+> Remaining work below (§3 corpus, §4 spec, §5 analysis) is unchanged and still gated on the §8 reviewer answers.
 
 **Goal.** Make Phase 1/2/3 facts (a) reachable live and (b) visible in Langfuse, using the *same Recording-pillar
 discipline Phase 1 already used* (join keys on `step.planned`, not content — see
@@ -117,7 +137,18 @@ reflexion loop). This is the "zero-carrier / token-seam" failure class the memor
 
 ---
 
-## 3. The synthetic stress corpus
+## 3. The synthetic stress corpus — ✅ DONE (2026-06-14)
+
+> **Built.** `scripts/build_planning_stress_corpus.py` (Python source of truth) →
+> `frontend/e2e/fixtures/planning_stress_corpus.json` (42 cases: 12 depth reused verbatim from the committed
+> depth-strata fixture + 10 replan + 10 reflexion + 10 escalation). Idempotent regen, unique case ids, every row
+> carries its phase's `want_*` key. TS loader `frontend/e2e/fixtures/planning_stress_corpus.ts` (`filterCases({caseFilter,phase,limit})`
+> + `smokeCases()` one-per-phase). Each phase has clean **controls written first** (precision guards): stable
+> no-replan rows, trivial no-reflexion rows, clean no-escalate rows. Deterministic `trace_id` via
+> `uuid.uuid5(NAMESPACE_DNS, case)` — same idiom as `export_goaljudge_registry_json.py`, so the analysis can
+> pre-compute the join key. **User decision (2026-06-14): full ~10/phase now (~40), not smoke-first.**
+
+## 3.0 (original spec)
 
 A single JSON fixture, `frontend/e2e/fixtures/planning_stress_corpus.json`, with one row per case carrying the
 prompt + the **per-phase expectation** the trace-analysis half scores against. Built by extending the existing
@@ -158,7 +189,20 @@ The fixture is generated/maintained by a small `scripts/build_planning_stress_co
 
 ---
 
-## 4. The stress spec — `frontend/e2e/full-stack/planning-stress.spec.ts` (T3)
+## 4. The stress spec — `frontend/e2e/full-stack/planning-stress.spec.ts` (T3) — ✅ DONE (2026-06-14)
+
+> **Built.** Clones `goaljudge-batch.spec.ts` machinery + the `reasoning-recap-live` `captureEvidence` (force-open
+> tool cards + reasoning expander, CSP-safe CSSOM wrapping). Reuses the `gj:{case}:{trace_id}` thread bridge so the
+> middleware derives a deterministic server-side trace_id (FE-AP-7: no client trace_id). One test per case; the
+> ONLY DOM assertion is "a non-empty answer rendered" — per-phase correctness is the trace-analysis half's job.
+> **Screenshot per case reflecting its outcome — both success AND error paths captured: `{case}.png` on pass,
+> `{case}_FAILED.png` on fail** (user requirement). Appends one JSONL row per case to `cache/planning_stress/ui_batch.jsonl`
+> with `trace_id` + the row's `want_*` echoed for the analysis join. `package.json` → `test:e2e:stress` (on-demand,
+> `--global-timeout=600000`, never per-commit). Env knobs: `STRESS_PHASE`, `STRESS_CASE_FILTER`, `STRESS_LIMIT`,
+> `STRESS_SMOKE=1`. Frontend `tsc --noEmit` clean. **Not yet RUN** — needs the loops-on `--tag stress` revision
+> (§4 note below) + WorkOS creds; the run is the deploy-and-execute step still pending.
+
+## 4.0 (original spec)
 
 A near-clone of [`goaljudge-batch.spec.ts`](../../frontend/e2e/full-stack/goaljudge-batch.spec.ts) — that spec
 already solves auth (`auth.fixture`), send (`sendMessage`), settle-wait (`waitForResponse`),
@@ -189,7 +233,31 @@ verbatim; only the corpus + the captured fields change.**
 
 ---
 
-## 5. Trace analysis — `scripts/analyze_planning_traces.py`
+## 5. Trace analysis — `scripts/analyze_planning_traces.py` — ✅ DONE (2026-06-14)
+
+> **Built.** Reads `ui_batch.jsonl`, pulls each trace, scores per phase. CI gate
+> `tests/scripts/test_analyze_planning_traces.py` (6 passed — failure-first: false-escalate fp, missed-escalate fn,
+> L0-collapse miss, budget-overrun unbounded). **End-to-end dry-run validated on REAL carrier data**: ran the
+> reflexion topology-sim, read its BlackBox `trace.jsonl` (19 events), correctly counted 2 reflexion attempts +
+> `escalation_reason=budget_exhausted`, scored the reflexion phase as a bounded hit.
+>
+> **Two corrections to §5.1 (the named helper did not exist):**
+> - The plan said reuse `fetch_trace_observations` from `scripts/export_goaljudge_corpus.py` and the
+>   `diagnose_planning_depth.py` helper. **Neither exists in this repo** — there is no Langfuse READ client anywhere
+>   (the prod path is write-only via the BlackBox→Langfuse relay `middleware/sidecars/black_box_to_telemetry.py`).
+>   So the script is self-contained, with a **pluggable `--source`**: `blackbox` (default — read the canonical
+>   `trace.jsonl` recordings the relay itself tails; right for a local run, no quota) or `langfuse` (a small
+>   public-API reader using the `LANGFUSE_*` env creds; right for the live Cloud Run run since backend tmpfs
+>   recordings are ephemeral). The Langfuse read path is built but **untested against the live API** (quota).
+> - **Calibration-first** (user decision): `--gate` is opt-in; default mode RECORDS rates and always exits 0, so the
+>   first non-deterministic batch sets the bars instead of flaking a gate. The §5.2 bars live in `gate_failures()`
+>   for when bars are calibrated.
+>
+> Carrier-curation gotcha confirmed safe: the relay suppresses `STEP_PLANNED` export only when
+> `plan_changed is False`; the reflexion-step carrier omits that key → exports. Escalation carrier rides
+> `TASK_COMPLETED` (never suppressed).
+
+## 5.0 (original spec)
 
 The other half of the hybrid eval (build plan §8: entry accuracy and escalation precision **measured
 separately**). Read-only; pulls each captured `trace_id` from Langfuse and scores it.

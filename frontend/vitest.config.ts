@@ -50,6 +50,9 @@ export default defineConfig({
             "app/**/*.test.ts",
             "app/**/*.test.tsx",
             "scripts/**/*.test.ts",
+            // Test-orchestration tooling (e.g. the live-testing profile loader).
+            // Only *.test.ts — Playwright *.spec.ts files are never picked up.
+            "e2e/**/*.test.ts",
           ],
           exclude: [
             ...sharedTest.exclude,

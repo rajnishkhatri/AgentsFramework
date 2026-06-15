@@ -217,6 +217,30 @@ No mocks. Playwright talks to a running frontend that proxies to a real Python m
 - `BASE_URL` pointing at the frontend (default `http://localhost:3000`)
 - `MIDDLEWARE_URL` pointing at the real Python middleware
 
+### Live-testing profiles (instead of hand-assembling env vars)
+
+Rather than typing `BASE_URL=... E2E_AUTHENTICATED=1 STRESS_PHASE=... pnpm test:e2e:...`
+for every live run, select a **named profile** from
+[`frontend/e2e/testing.profiles.yml`](../frontend/e2e/testing.profiles.yml):
+
+```bash
+TEST_PROFILE=prod   pnpm test:e2e:t3        # live prod (Phase 0 only)
+TEST_PROFILE=stress pnpm test:e2e:stress    # loops-on tagged revision
+```
+
+[`e2e/load-profile.ts`](../frontend/e2e/load-profile.ts) (read at the top of
+`playwright.config.ts`) fills any **unset** env var from the profile —
+`BASE_URL`, `E2E_AUTHENTICATED`, `STRESS_*`. Precedence is **explicit > profile >
+default** (12-factor): an env var already on the command line always wins, so
+`BASE_URL=... TEST_PROFILE=stress ...` still overrides the profile. The file is
+**non-secret and version-controlled**: it names the non-secret switches only;
+WorkOS creds stay in repo-root `.env` (`E2E_AUTHENTICATED=1` is just the switch
+that tells global-setup to read them). An unknown `TEST_PROFILE` fails fast. The
+`stress` profile's `requires:` block documents the backend posture it expects
+(loops-on tagged revision + GoalJudge GCS config) — see the
+[deploy-gcp skill](../.cursor/skills/deploy-gcp/SKILL.md) §Tiered-Loops Stress Revision.
+Gate: [`e2e/load-profile.test.ts`](../frontend/e2e/load-profile.test.ts) (vitest, 5 cases).
+
 ### What T3 Validates Over T2
 
 - **Real LLM responses** -- non-deterministic; tests use structural assertions (e.g., "response contains at least 10 characters") not exact string matching.

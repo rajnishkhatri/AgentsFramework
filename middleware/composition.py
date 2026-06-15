@@ -390,6 +390,16 @@ class AgentRuntimeSettings(BaseSettings):
     goal_judge_downgrade_enabled: bool = Field(
         default=False, validation_alias="GOAL_JUDGE_DOWNGRADE_ENABLED"
     )
+    # Tiered-loops runtime flags (Step 0). Default OFF — prod parity with the
+    # shadow-first defaults in services/base_config.py. A dedicated stress
+    # revision flips REFLEXION_ENABLED / PLANNING_PLAN_SOURCE to gather evidence.
+    planning_plan_source: Literal["deterministic", "shadow", "generated"] = Field(
+        default="deterministic", validation_alias="PLANNING_PLAN_SOURCE"
+    )
+    reflexion_enabled: bool = Field(default=False, validation_alias="REFLEXION_ENABLED")
+    max_reflexion_attempts: int = Field(
+        default=2, validation_alias="MAX_REFLEXION_ATTEMPTS"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -414,8 +424,11 @@ class AgentRuntimeSettings(BaseSettings):
                 if field_name in (
                     "goal_judge_enabled",
                     "goal_judge_downgrade_enabled",
+                    "reflexion_enabled",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
+                elif field_name == "max_reflexion_attempts":
+                    data[field_name] = int(raw)
                 else:
                     data[field_name] = raw
             elif field_name == "agent_env" and "AGENT_ENV" in env:
@@ -516,6 +529,11 @@ def build_components(
         max_cost_usd=1.0,
         goal_judge_enabled=goal_judge_enabled,
         goal_judge_downgrade_enabled=goal_judge_downgrade,
+        # Tiered-loops flags (Step 0): reach the live path. Default OFF in prod;
+        # a dedicated stress revision flips these to exercise Phases 1-3.
+        plan_source=settings.planning_plan_source,
+        reflexion_enabled=settings.reflexion_enabled,
+        max_reflexion_attempts=settings.max_reflexion_attempts,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
