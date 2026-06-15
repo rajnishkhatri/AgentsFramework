@@ -148,13 +148,18 @@ without disturbing prod.
      --update-env-vars MIDDLEWARE_URL=https://stress---agent-backend-combined-<hash>-uc.a.run.app
    ```
 
-   Then put the tagged frontend URL into the `stress` profile in
-   `frontend/e2e/testing.profiles.yml` (replace `REPLACE_HASH`) and run with the
-   profile instead of a hand-assembled `BASE_URL`:
+   Then auto-fill the tagged frontend URL into the `stress` profile (reads the
+   real URL off the service traffic map — never hand-guess the hash):
 
    ```bash
-   TEST_PROFILE=stress pnpm test:e2e:stress           # full corpus
+   python scripts/fill_stress_profile_url.py   # writes stress base_url in testing.profiles.yml
+   ```
+
+   …and run with the profile instead of a hand-assembled `BASE_URL`:
+
+   ```bash
    TEST_PROFILE=stress STRESS_SMOKE=1 pnpm test:e2e:stress   # one case/phase first
+   TEST_PROFILE=stress pnpm test:e2e:stress                  # full corpus
    ```
 
    Clean up after both runs:

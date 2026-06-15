@@ -1,6 +1,7 @@
 [
   {
     "case": "STRESS-DEPTH-001",
+    "gj_id": "GJ-STRESS-01",
     "prompt": "Read the first line of /workspace/notes.txt and print it.",
     "phase": "depth",
     "rationale": "depth-strata depth:L0:single-action -> L0",
@@ -10,6 +11,7 @@
   },
   {
     "case": "STRESS-DEPTH-002",
+    "gj_id": "GJ-STRESS-02",
     "prompt": "Echo the phrase quarterly review verbatim.",
     "phase": "depth",
     "rationale": "depth-strata depth:L0:single-action -> L0",
@@ -19,6 +21,7 @@
   },
   {
     "case": "STRESS-DEPTH-003",
+    "gj_id": "GJ-STRESS-03",
     "prompt": "Overwrite /workspace/status.txt with the single character OK.",
     "phase": "depth",
     "rationale": "depth-strata depth:L0:single-action -> L0",
@@ -28,6 +31,7 @@
   },
   {
     "case": "STRESS-DEPTH-004",
+    "gj_id": "GJ-STRESS-04",
     "prompt": "Refactor the auth module.",
     "phase": "depth",
     "rationale": "depth-strata depth:L1:lone-marker:refactor -> L1",
@@ -37,6 +41,7 @@
   },
   {
     "case": "STRESS-DEPTH-005",
+    "gj_id": "GJ-STRESS-05",
     "prompt": "Design a rate limiter for the API.",
     "phase": "depth",
     "rationale": "depth-strata depth:L1:lone-marker:design -> L1",
@@ -46,6 +51,7 @@
   },
   {
     "case": "STRESS-DEPTH-006",
+    "gj_id": "GJ-STRESS-06",
     "prompt": "Plan the Postgres migration.",
     "phase": "depth",
     "rationale": "depth-strata depth:L1:lone-marker:migration -> L1",
@@ -55,6 +61,7 @@
   },
   {
     "case": "STRESS-DEPTH-007",
+    "gj_id": "GJ-STRESS-07",
     "prompt": "Walk me through what the login endpoint does when a session cookie is present but expired, including how the refresh path is triggered and what the client sees if refresh fails.",
     "phase": "depth",
     "rationale": "depth-strata depth:L1:moderate-length -> L1",
@@ -64,6 +71,7 @@
   },
   {
     "case": "STRESS-DEPTH-008",
+    "gj_id": "GJ-STRESS-08",
     "prompt": "Compare Redis and Memcached for our cache, (1) benchmark read latency (2) measure memory overhead (3) test eviction, and then recommend one.",
     "phase": "depth",
     "rationale": "depth-strata depth:L2:marker+enum+conj -> L2",
@@ -73,6 +81,7 @@
   },
   {
     "case": "STRESS-DEPTH-009",
+    "gj_id": "GJ-STRESS-09",
     "prompt": "Audit the current deployment architecture, design a migration to the new region, refactor the routing layer to support it, and produce a staged rollout roadmap with rollback criteria for each phase.",
     "phase": "depth",
     "rationale": "depth-strata depth:L2:multi-marker+long -> L2",
@@ -82,6 +91,7 @@
   },
   {
     "case": "STRESS-DEPTH-010",
+    "gj_id": "GJ-STRESS-10",
     "prompt": "Our checkout sometimes double-charges customers when the payment provider times out but later confirms; figure out where the idempotency boundary should live and what state we need to track so a retried request is recognized as the same purchase.",
     "phase": "depth",
     "rationale": "depth-strata depth:L2:adversarial:bare-complex -> L2",
@@ -91,6 +101,7 @@
   },
   {
     "case": "STRESS-DEPTH-011",
+    "gj_id": "GJ-STRESS-11",
     "prompt": "Users report the feed shows stale posts after they publish; trace how a write propagates to the read path and identify every cache or replica that could be serving the old version.",
     "phase": "depth",
     "rationale": "depth-strata depth:L2:adversarial:bare-complex -> L2",
@@ -100,6 +111,7 @@
   },
   {
     "case": "STRESS-DEPTH-012",
+    "gj_id": "GJ-STRESS-12",
     "prompt": "Add caching and then update the docs.",
     "phase": "depth",
     "rationale": "depth-strata depth:L1:control:short-multipart -> L1",
@@ -109,6 +121,7 @@
   },
   {
     "case": "STRESS-REPLAN-missing-config-01",
+    "gj_id": "GJ-STRESS-13",
     "prompt": "Read /workspace/nonexistent_config.yaml and apply the database migration it describes. If the file is missing, decide how to proceed and continue.",
     "phase": "replan",
     "rationale": "first read fails (missing file) -> surprising result rebuilds the plan",
@@ -118,6 +131,7 @@
   },
   {
     "case": "STRESS-REPLAN-garbage-input-02",
+    "gj_id": "GJ-STRESS-14",
     "prompt": "Write the text 'not-json-at-all {{{' to /workspace/data.json, then parse it as JSON and summarize the records it contains.",
     "phase": "replan",
     "rationale": "parse step fails on garbage written in step 1 -> replan",
@@ -127,6 +141,7 @@
   },
   {
     "case": "STRESS-REPLAN-shifting-target-03",
+    "gj_id": "GJ-STRESS-15",
     "prompt": "List the files in /workspace/reports/, then open the most recent one and extract its total. If the directory is empty, create a starter report instead.",
     "phase": "replan",
     "rationale": "empty/absent dir flips the plan branch -> replan",
@@ -136,6 +151,7 @@
   },
   {
     "case": "STRESS-REPLAN-dependent-chain-04",
+    "gj_id": "GJ-STRESS-16",
     "prompt": "Read /workspace/seed.txt to get a filename, then read THAT file and report its first line. Recover gracefully if either is absent.",
     "phase": "replan",
     "rationale": "second read depends on first's surprising content -> replan",
@@ -145,6 +161,7 @@
   },
   {
     "case": "STRESS-REPLAN-tool-error-05",
+    "gj_id": "GJ-STRESS-17",
     "prompt": "Run the shell command 'cat /workspace/does_not_exist_42.log' and summarize the errors in it; if it is not there, say so and stop.",
     "phase": "replan",
     "rationale": "shell tool error on first call -> surprising result -> replan",
@@ -154,6 +171,7 @@
   },
   {
     "case": "STRESS-REPLAN-control-stable-06",
+    "gj_id": "GJ-STRESS-18",
     "prompt": "Write the number 42 to /workspace/answer.txt, then read it back and confirm it says 42.",
     "phase": "replan",
     "rationale": "control: both tool calls succeed cleanly -> NO replan",
@@ -163,6 +181,7 @@
   },
   {
     "case": "STRESS-REPLAN-control-stable-07",
+    "gj_id": "GJ-STRESS-19",
     "prompt": "Create /workspace/hello.txt containing the word hello, then read it back to verify.",
     "phase": "replan",
     "rationale": "control: clean write+read -> NO replan",
@@ -172,6 +191,7 @@
   },
   {
     "case": "STRESS-REPLAN-control-stable-08",
+    "gj_id": "GJ-STRESS-20",
     "prompt": "Echo the phrase 'pipeline ok' verbatim.",
     "phase": "replan",
     "rationale": "control: zero-tool trivial task -> NO replan",
@@ -181,6 +201,7 @@
   },
   {
     "case": "STRESS-REPLAN-control-stable-09",
+    "gj_id": "GJ-STRESS-21",
     "prompt": "Write 'line one' to /workspace/a.txt and 'line two' to /workspace/b.txt, then read both back.",
     "phase": "replan",
     "rationale": "control: independent clean writes -> NO replan",
@@ -190,6 +211,7 @@
   },
   {
     "case": "STRESS-REPLAN-control-stable-10",
+    "gj_id": "GJ-STRESS-22",
     "prompt": "Write the current plan summary as 'done' to /workspace/state.txt.",
     "phase": "replan",
     "rationale": "control: single clean write -> NO replan",
@@ -199,6 +221,7 @@
   },
   {
     "case": "STRESS-REFLEXION-underspecified-01",
+    "gj_id": "GJ-STRESS-23",
     "prompt": "Make the checkout flow correct. Find every place a price is computed and ensure tax is applied consistently.",
     "phase": "reflexion",
     "rationale": "vague 'make it correct' -> first pass partial -> re-enter, bounded",
@@ -209,6 +232,7 @@
   },
   {
     "case": "STRESS-REFLEXION-multi-criteria-02",
+    "gj_id": "GJ-STRESS-24",
     "prompt": "Write a migration plan that is reversible, zero-downtime, and validated against the current schema. All three properties must hold.",
     "phase": "reflexion",
     "rationale": "3 hard success conditions -> likely unmet on pass 1 -> reflect",
@@ -219,6 +243,7 @@
   },
   {
     "case": "STRESS-REFLEXION-incomplete-prone-03",
+    "gj_id": "GJ-STRESS-25",
     "prompt": "Audit the auth module for security issues and produce a complete list with a fix for each. Do not miss any category.",
     "phase": "reflexion",
     "rationale": "completeness criterion -> partial first pass -> reflect, ceiling",
@@ -229,6 +254,7 @@
   },
   {
     "case": "STRESS-REFLEXION-contradiction-prone-04",
+    "gj_id": "GJ-STRESS-26",
     "prompt": "Optimize the query for both lowest latency and lowest memory; justify that both targets are met simultaneously.",
     "phase": "reflexion",
     "rationale": "tension between criteria -> unmet -> bounded reflexion",
@@ -239,6 +265,7 @@
   },
   {
     "case": "STRESS-REFLEXION-verify-hard-05",
+    "gj_id": "GJ-STRESS-27",
     "prompt": "Refactor the rate limiter so it is correct under concurrent access and prove the invariant holds. Concurrency correctness is required.",
     "phase": "reflexion",
     "rationale": "hard-to-satisfy proof criterion -> reflect, must stop at budget",
@@ -249,6 +276,7 @@
   },
   {
     "case": "STRESS-REFLEXION-control-trivial-06",
+    "gj_id": "GJ-STRESS-28",
     "prompt": "Write the word 'ok' to /workspace/ok.txt and read it back.",
     "phase": "reflexion",
     "rationale": "control: trivially satisfiable -> success -> NO reflexion",
@@ -258,6 +286,7 @@
   },
   {
     "case": "STRESS-REFLEXION-control-trivial-07",
+    "gj_id": "GJ-STRESS-29",
     "prompt": "Echo the phrase 'reflexion control' verbatim.",
     "phase": "reflexion",
     "rationale": "control: zero-condition task -> success -> NO reflexion",
@@ -267,6 +296,7 @@
   },
   {
     "case": "STRESS-REFLEXION-control-trivial-08",
+    "gj_id": "GJ-STRESS-30",
     "prompt": "Read the first line of /workspace/ok.txt and print it.",
     "phase": "reflexion",
     "rationale": "control: single read -> success -> NO reflexion",
@@ -276,6 +306,7 @@
   },
   {
     "case": "STRESS-REFLEXION-control-trivial-09",
+    "gj_id": "GJ-STRESS-31",
     "prompt": "Write 'value=1' to /workspace/cfg.txt.",
     "phase": "reflexion",
     "rationale": "control: single clean write -> success -> NO reflexion",
@@ -285,6 +316,7 @@
   },
   {
     "case": "STRESS-REFLEXION-control-trivial-10",
+    "gj_id": "GJ-STRESS-32",
     "prompt": "Confirm that 2 plus 2 equals 4.",
     "phase": "reflexion",
     "rationale": "control: trivial fact -> success -> NO reflexion",
@@ -294,6 +326,7 @@
   },
   {
     "case": "STRESS-ESCALATION-wrong-prone-01",
+    "gj_id": "GJ-STRESS-33",
     "prompt": "Compute the exact number of prime numbers below 1,000,000 and state the single integer. Your answer must be exactly correct.",
     "phase": "escalation",
     "rationale": "hard exact-answer -> likely failed verdict -> escalate",
@@ -303,6 +336,7 @@
   },
   {
     "case": "STRESS-ESCALATION-wrong-prone-02",
+    "gj_id": "GJ-STRESS-34",
     "prompt": "Without using any tools, recall the full text of RFC 9110 section 9.3.1 verbatim. Exactness is required.",
     "phase": "escalation",
     "rationale": "unverifiable-from-memory -> failed verdict -> escalate",
@@ -312,6 +346,7 @@
   },
   {
     "case": "STRESS-ESCALATION-partial-prone-03",
+    "gj_id": "GJ-STRESS-35",
     "prompt": "List every HTTP status code and its exact RFC definition. The list must be complete with no omissions.",
     "phase": "escalation",
     "rationale": "completeness impossible in one pass -> partial -> escalate",
@@ -321,6 +356,7 @@
   },
   {
     "case": "STRESS-ESCALATION-prose-thrash-04",
+    "gj_id": "GJ-STRESS-36",
     "prompt": "Keep restating your plan to solve world hunger in detail, over and over, without taking any concrete action or using any tool.",
     "phase": "escalation",
     "rationale": "no-tool prose repetition -> D3 prose_repeat -> escalate",
@@ -330,6 +366,7 @@
   },
   {
     "case": "STRESS-ESCALATION-prose-thrash-05",
+    "gj_id": "GJ-STRESS-37",
     "prompt": "Describe at length how you would approach this, then describe it again the same way, without doing anything.",
     "phase": "escalation",
     "rationale": "no-tool prose repetition -> D3 -> escalate",
@@ -339,6 +376,7 @@
   },
   {
     "case": "STRESS-ESCALATION-control-clean-06",
+    "gj_id": "GJ-STRESS-38",
     "prompt": "Write 'escalation control' to /workspace/esc.txt and read it back.",
     "phase": "escalation",
     "rationale": "control: clean success -> NO escalate (false-positive guard)",
@@ -348,6 +386,7 @@
   },
   {
     "case": "STRESS-ESCALATION-control-clean-07",
+    "gj_id": "GJ-STRESS-39",
     "prompt": "Echo the phrase 'no escalation needed' verbatim.",
     "phase": "escalation",
     "rationale": "control: trivial success -> NO escalate",
@@ -357,6 +396,7 @@
   },
   {
     "case": "STRESS-ESCALATION-control-clean-08",
+    "gj_id": "GJ-STRESS-40",
     "prompt": "Read the first line of /workspace/esc.txt and print it.",
     "phase": "escalation",
     "rationale": "control: single read success -> NO escalate",
@@ -366,6 +406,7 @@
   },
   {
     "case": "STRESS-ESCALATION-control-clean-09",
+    "gj_id": "GJ-STRESS-41",
     "prompt": "Confirm the file /workspace/esc.txt exists by reading it.",
     "phase": "escalation",
     "rationale": "control: clean verify -> NO escalate",
@@ -375,11 +416,456 @@
   },
   {
     "case": "STRESS-ESCALATION-control-clean-10",
+    "gj_id": "GJ-STRESS-42",
     "prompt": "State that the current date format is ISO-8601.",
     "phase": "escalation",
     "rationale": "control: trivial fact -> success -> NO escalate",
     "trace_id": "0729b6e89e775345be4828abdb960ee0",
     "session_id": "session-stress-escalation-control-clean-10",
     "want_escalation": "done"
+  },
+  {
+    "case": "FANOUT-independent-trip-research-01",
+    "gj_id": "GJ-STRESS-43",
+    "prompt": "Research, independently and in parallel, the typical August cost of three unrelated things: (a) a rental car in Lisbon for a week, (b) a 4-star hotel in Lisbon for a week, and (c) a round-trip economy flight between Lisbon and London. Report all three figures. None of the three depends on the others.",
+    "phase": "fanout",
+    "rationale": "3 independent cost lookups, no shared date constraint -> fan out",
+    "trace_id": "a460d62713445fb7ad13042dbd567be2",
+    "session_id": "session-fanout-independent-trip-research-01",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-restaurant-survey-02",
+    "gj_id": "GJ-STRESS-44",
+    "prompt": "Find one highly-rated restaurant for each of three unrelated cuisines \u2014 Italian, Thai, and sushi \u2014 and report each one's rating and price band. The three picks are independent of each other.",
+    "phase": "fanout",
+    "rationale": "3 independent cuisine lookups -> fan out",
+    "trace_id": "23c5edeaff085a8986b6a1f87aabb541",
+    "session_id": "session-fanout-independent-restaurant-survey-02",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-gift-shortlist-03",
+    "gj_id": "GJ-STRESS-45",
+    "prompt": "Shortlist one gift under $50 for each of three different people: a runner, a baker, and a gamer. Each shortlist is independent of the others.",
+    "phase": "fanout",
+    "rationale": "3 independent shortlists -> fan out",
+    "trace_id": "6d12ba69cff159f69c3c1d5cfe84388c",
+    "session_id": "session-fanout-independent-gift-shortlist-03",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-multidoc-summary-04",
+    "gj_id": "GJ-STRESS-46",
+    "prompt": "You are given three unrelated documents in /workspace/docs/: a.txt, b.txt, and c.txt. Summarize the key finding of each document independently. The summaries do not depend on each other.",
+    "phase": "fanout",
+    "rationale": "canonical GAIA multi-doc fan-out -> fan out",
+    "trace_id": "1acd5ef68a29526ea101a65100330acc",
+    "session_id": "session-fanout-independent-multidoc-summary-04",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-multidoc-extract-05",
+    "gj_id": "GJ-STRESS-47",
+    "prompt": "Extract the publication year from each of four separate sources in /workspace/sources/ (s1.txt, s2.txt, s3.txt, s4.txt). Report the four years. Each extraction is independent.",
+    "phase": "fanout",
+    "rationale": "4 independent extractions -> fan out",
+    "trace_id": "8d48268799ef5b509a6e98b6b0096ad2",
+    "session_id": "session-fanout-independent-multidoc-extract-05",
+    "want_fanout": true,
+    "want_branch_count": 4,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:4",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-policy-checks-06",
+    "gj_id": "GJ-STRESS-48",
+    "prompt": "Independently verify each of three separate account conditions: (a) the account is in good standing, (b) the email is verified, and (c) two-factor auth is enabled. None of the three checks depends on another; report each.",
+    "phase": "fanout",
+    "rationale": "Tau2-style independent policy checks -> fan out",
+    "trace_id": "39b4069d356a512c8f8f8a2100cac0d1",
+    "session_id": "session-fanout-independent-policy-checks-06",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-multitab-lookup-07",
+    "gj_id": "GJ-STRESS-49",
+    "prompt": "Look up the current price of three unrelated products independently: a stainless water bottle, a USB-C cable, and a desk lamp. Report all three prices. The lookups are independent.",
+    "phase": "fanout",
+    "rationale": "WebArena-style independent lookups -> fan out",
+    "trace_id": "b0a451aa75205ba9afb487a1da755e1f",
+    "session_id": "session-fanout-independent-multitab-lookup-07",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-two-branch-08",
+    "gj_id": "GJ-STRESS-50",
+    "prompt": "Report two unrelated things independently: the weekend weather forecast for Denver and the weekend weather forecast for Miami. Neither depends on the other.",
+    "phase": "fanout",
+    "rationale": "exactly 2 branches -> the >=2 cardinality floor",
+    "trace_id": "5d02e9ca1cb45e53919f3a125820d10f",
+    "session_id": "session-fanout-independent-two-branch-08",
+    "want_fanout": true,
+    "want_branch_count": 2,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:2-boundary"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-many-branch-09",
+    "gj_id": "GJ-STRESS-51",
+    "prompt": "You are given six unrelated abstracts in /workspace/abstracts/ (1.txt through 6.txt). Summarize each one independently in a single sentence. The six summaries do not depend on each other.",
+    "phase": "fanout",
+    "rationale": "6 branches -> stresses the max_concurrency ceiling",
+    "trace_id": "f1357fd8ce855535a170efe78cf985ab",
+    "session_id": "session-fanout-independent-many-branch-09",
+    "want_fanout": true,
+    "want_branch_count": 6,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:many-ceiling"
+    ]
+  },
+  {
+    "case": "FANOUT-independent-L2-decompose-10",
+    "gj_id": "GJ-STRESS-52",
+    "prompt": "Independently produce a one-paragraph briefing on each of these three unrelated regions \u2014 the Nordics, Iberia, and the Baltics \u2014 covering, for each region separately, (1) its largest city (2) its primary language (3) its currency. The three briefings do not depend on each other.",
+    "phase": "fanout",
+    "rationale": "engineered L2-and-independent; want_depth secondary/non-gating (\u00a74.1a)",
+    "trace_id": "695cf3c7a6f75397a26bf9b9d023c39f",
+    "session_id": "session-fanout-independent-l2-decompose-10",
+    "want_depth": "L2",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_join_synthesizes": true,
+    "axis": [
+      "A:independent",
+      "B:3",
+      "E:L2"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-trip-dated-01",
+    "gj_id": "GJ-STRESS-53",
+    "prompt": "Book a trip: first book the flight, then book a hotel around the flight dates, then book a rental car for the hotel stay.",
+    "phase": "fanout",
+    "rationale": "trap: hotel depends on flight dates, car on hotel; 'then'+'around' back-refs -> decline",
+    "trace_id": "9b21ac0643da55918694e44b1018792d",
+    "session_id": "session-fanout-decline-trip-dated-01",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss",
+      "B:3"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-restaurant-then-route-02",
+    "gj_id": "GJ-STRESS-54",
+    "prompt": "Pick a highly-rated restaurant with an open dinner slot, then get directions to that restaurant and make a reservation under that name.",
+    "phase": "fanout",
+    "rationale": "trap: directions+reservation depend on the pick; 'then'+'that' back-refs -> decline",
+    "trace_id": "c984d08fa121553390b69c2668a200ee",
+    "session_id": "session-fanout-decline-restaurant-then-route-02",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-benchmark-then-tune-03",
+    "gj_id": "GJ-STRESS-55",
+    "prompt": "Benchmark Redis and Memcached for our cache, then use those numbers to recommend one and tune its configuration.",
+    "phase": "fanout",
+    "rationale": "trap: gather-then-compare (sec 2.3); 'then use those numbers' back-ref -> decline",
+    "trace_id": "f9a80c5262ce518abbe0b137c891c3a7",
+    "session_id": "session-fanout-decline-benchmark-then-tune-03",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-fetch-then-transform-04",
+    "gj_id": "GJ-STRESS-56",
+    "prompt": "Fetch the dataset from /workspace/raw.csv, then clean it, then compute the summary statistic from the cleaned data.",
+    "phase": "fanout",
+    "rationale": "trap: strict ETL chain disguised as 3 tasks; 'then...then' -> decline",
+    "trace_id": "1fa2a1aa7f0e5e3893c8b21ccf921e42",
+    "session_id": "session-fanout-decline-fetch-then-transform-04",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-shared-write-05",
+    "gj_id": "GJ-STRESS-57",
+    "prompt": "Have three workers each append their section to the same report file /workspace/report.md: an intro section, a results section, and a conclusion.",
+    "phase": "fanout",
+    "rationale": "trap: independent-looking but SHARED WRITE TARGET (detector signal 2) -> decline",
+    "trace_id": "656ee16b53235122ad30988367c12dc3",
+    "session_id": "session-fanout-decline-shared-write-05",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss-shared-write"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-pick-then-act-06",
+    "gj_id": "GJ-STRESS-58",
+    "prompt": "Choose the cheapest of the three available flights, then book that flight and add a seat and a checked bag for that flight.",
+    "phase": "fanout",
+    "rationale": "trap: book/seat/bag all depend on the choice; 'then'+'that flight' anaphora -> decline",
+    "trace_id": "d787a985a45a55738a8f9be7b2453fa6",
+    "session_id": "session-fanout-decline-pick-then-act-06",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-policy-dependent-10",
+    "gj_id": "GJ-STRESS-59",
+    "prompt": "Check whether the customer is eligible, and if eligible then apply the discount, then confirm the new total.",
+    "phase": "fanout",
+    "rationale": "trap: conditional chain; 'if eligible then' gating (detector signal 1) -> decline",
+    "trace_id": "2ad8c41e89fa5f958faa81245aabccef",
+    "session_id": "session-fanout-decline-policy-dependent-10",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:near-miss-conditional"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-obvious-chain-07",
+    "gj_id": "GJ-STRESS-60",
+    "prompt": "Read /workspace/seed.txt to get a filename, then read that file, then summarize its contents.",
+    "phase": "fanout",
+    "rationale": "obvious sequential; 'then'+'that file' back-ref -> decline",
+    "trace_id": "d7acc942a659586cacaf64a9630ded8a",
+    "session_id": "session-fanout-decline-obvious-chain-07",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-obvious-pipeline-08",
+    "gj_id": "GJ-STRESS-61",
+    "prompt": "Compile the code, then run the tests, then deploy if the tests are green.",
+    "phase": "fanout",
+    "rationale": "obvious sequential pipeline; 'then'+conditional -> decline",
+    "trace_id": "10d52cde07e4500a876cb0c5507f85fc",
+    "session_id": "session-fanout-decline-obvious-pipeline-08",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-decline-single-multistep-09",
+    "gj_id": "GJ-STRESS-62",
+    "prompt": "Plan and then write a 3-paragraph essay on the causes of the 1929 crash.",
+    "phase": "fanout",
+    "rationale": "single coherent task, not parallel-decomposable; 'and then' -> decline",
+    "trace_id": "0b0c1b5de46a512b86984a99204542b2",
+    "session_id": "session-fanout-decline-single-multistep-09",
+    "want_fanout": false,
+    "axis": [
+      "A:dependent",
+      "C:obvious"
+    ]
+  },
+  {
+    "case": "FANOUT-fault-one-branch-errors-01",
+    "gj_id": "GJ-STRESS-63",
+    "prompt": "Independently summarize each of three files: /workspace/docs/a.txt, /workspace/docs/b.txt, and /workspace/__nonexistent_fault_42__.txt. The summaries are independent; report whichever succeed.",
+    "phase": "fanout",
+    "rationale": "hard error via guaranteed-missing path on 1 of 3 -> sentinel, join answers from 2/3",
+    "trace_id": "1036cd43032a5aa886b458a8b9757c4a",
+    "session_id": "session-fanout-fault-one-branch-errors-01",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_survives_partial": true,
+    "axis": [
+      "A:independent",
+      "D:one-fails"
+    ]
+  },
+  {
+    "case": "FANOUT-fault-one-branch-times-out-02",
+    "gj_id": "GJ-STRESS-64",
+    "prompt": "Independently handle three tasks: summarize /workspace/docs/a.txt, summarize /workspace/docs/b.txt, and __FAULT_TIMEOUT__ produce an exhaustive analysis. The three are independent; report whichever finish.",
+    "phase": "fanout",
+    "rationale": "__FAULT_TIMEOUT__ token -> per-branch timeout fires, no super-step hang",
+    "trace_id": "fed272910fb15ac1b4dc632c2bdb1cac",
+    "session_id": "session-fanout-fault-one-branch-times-out-02",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_survives_partial": true,
+    "axis": [
+      "A:independent",
+      "D:timeout"
+    ]
+  },
+  {
+    "case": "FANOUT-fault-all-but-one-fail-03",
+    "gj_id": "GJ-STRESS-65",
+    "prompt": "Independently summarize each of three files: /workspace/docs/a.txt, /workspace/__nonexistent_fault_43__.txt, and /workspace/__nonexistent_fault_44__.txt. Report whichever succeed.",
+    "phase": "fanout",
+    "rationale": "2 of 3 fail (missing paths) -> join degrades to single-survivor answer, non-empty",
+    "trace_id": "468d2334928c53939af8f05bfd3c21f8",
+    "session_id": "session-fanout-fault-all-but-one-fail-03",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_survives_partial": true,
+    "axis": [
+      "A:independent",
+      "D:majority-fail"
+    ]
+  },
+  {
+    "case": "FANOUT-fault-join-degraded-04",
+    "gj_id": "GJ-STRESS-66",
+    "prompt": "Independently produce three things: a one-line summary of /workspace/docs/a.txt, a one-line summary of /workspace/docs/b.txt, and for the third return exactly an empty string. Then report all three; note any gap.",
+    "phase": "fanout",
+    "rationale": "1 branch returns empty (no exception) -> join synthesizes around the gap, not a crash",
+    "trace_id": "9059529803895a91ac869a650059bd82",
+    "session_id": "session-fanout-fault-join-degraded-04",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_survives_partial": true,
+    "axis": [
+      "A:independent",
+      "D:degraded-input"
+    ]
+  },
+  {
+    "case": "FANOUT-fault-slow-branch-05",
+    "gj_id": "GJ-STRESS-67",
+    "prompt": "Independently handle three tasks: summarize /workspace/docs/a.txt, summarize /workspace/docs/b.txt, and __FAULT_SLOW__ summarize /workspace/docs/c.txt. The three are independent; report all three.",
+    "phase": "fanout",
+    "rationale": "__FAULT_SLOW__ token (under ceiling) -> barrier waits for the straggler, no premature join",
+    "trace_id": "0ac4bbf3836357e3aa55fb0de7d80e5f",
+    "session_id": "session-fanout-fault-slow-branch-05",
+    "want_fanout": true,
+    "want_branch_count": 3,
+    "want_survives_partial": true,
+    "axis": [
+      "A:independent",
+      "D:straggler"
+    ]
+  },
+  {
+    "case": "FANOUT-control-L0-trivial-01",
+    "gj_id": "GJ-STRESS-68",
+    "prompt": "Echo the phrase 'pipeline ok' verbatim.",
+    "phase": "fanout",
+    "rationale": "L0 single-action -> condition-1 floor -> decline (no fan-out)",
+    "trace_id": "a76e1f54dd2e512898c4d070af9278e8",
+    "session_id": "session-fanout-control-l0-trivial-01",
+    "want_fanout": false,
+    "axis": [
+      "E:L0",
+      "B:0-1"
+    ]
+  },
+  {
+    "case": "FANOUT-control-single-write-02",
+    "gj_id": "GJ-STRESS-69",
+    "prompt": "Write the number 42 to /workspace/answer.txt.",
+    "phase": "fanout",
+    "rationale": "single step, nothing to parallelize -> decline",
+    "trace_id": "df2f6facc6ff5b66ac6376f66e289d52",
+    "session_id": "session-fanout-control-single-write-02",
+    "want_fanout": false,
+    "axis": [
+      "B:0-1"
+    ]
+  },
+  {
+    "case": "FANOUT-control-single-read-03",
+    "gj_id": "GJ-STRESS-70",
+    "prompt": "Read the first line of /workspace/notes.txt and print it.",
+    "phase": "fanout",
+    "rationale": "single read -> decline",
+    "trace_id": "9091b392d80655a4b4f75f88cf3e89e4",
+    "session_id": "session-fanout-control-single-read-03",
+    "want_fanout": false,
+    "axis": [
+      "B:0-1"
+    ]
+  },
+  {
+    "case": "FANOUT-control-ambiguous-trivial-04",
+    "gj_id": "GJ-STRESS-71",
+    "prompt": "Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt.",
+    "phase": "fanout",
+    "rationale": "boundary: 2 trivial independent writes BELOW the '<3 don't bother' floor -> decline",
+    "trace_id": "94138cb9fc3059c98377e4c4a231a438",
+    "session_id": "session-fanout-control-ambiguous-trivial-04",
+    "want_fanout": false,
+    "axis": [
+      "A:independent",
+      "B:2-below-floor"
+    ]
   }
 ]

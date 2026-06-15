@@ -12,7 +12,15 @@ fp/fn, and a depth row that fired the wrong tier must NOT count as a hit.
 
 from __future__ import annotations
 
-from scripts.analyze_planning_traces import gate_failures, score_run
+from scripts.analyze_planning_traces import (
+    _as_bool,
+    _as_int,
+    _reflexion_attempts,
+    _reflexion_within_budget,
+    _replan_count,
+    gate_failures,
+    score_run,
+)
 
 
 def _step_planned(**details) -> dict:
@@ -82,15 +90,14 @@ def test_reflexion_reentry_and_budget_bound() -> None:
         ],
         # control: never re-entered -> hit (want_reflexion False)
         "RF-ctrl": [_task_completed(max_reflexion_attempts=2, escalation_decision="done")],
-        # thrash: exceeded the ceiling -> NOT bounded -> miss
+        # thrash: a single cycle exceeded its OWN ceiling (attempt 3 > max 2)
+        # -> NOT bounded -> miss. (Per-cycle bound: summing carriers across
+        # cycles is not thrash; one cycle over its ceiling is.)
         "RF-thrash": [
             _step_planned(reflexion_attempt=0, reflexion_critique_chars=40,
                           reflexion_unmet_count=1),
-            _step_planned(reflexion_attempt=1, reflexion_critique_chars=40,
-                          reflexion_unmet_count=1),
-            _step_planned(reflexion_attempt=2, reflexion_critique_chars=40,
-                          reflexion_unmet_count=1),
-            _task_completed(max_reflexion_attempts=2, escalation_decision="reflect"),
+            _task_completed(reflexion_attempt=3, max_reflexion_attempts=2,
+                            escalation_decision="reflect"),
         ],
     }
     s = score_run(rows, events)["phases"]["reflexion"]
@@ -134,6 +141,48 @@ def test_gate_flags_thrash_and_missed_escalation() -> None:
     fails = gate_failures(summary)
     assert any("false-positive" in f for f in fails)
     assert any("missed-escalation" in f for f in fails)
+
+
+def test_langfuse_string_serialized_flags_coerce() -> None:
+    """Langfuse serializes JSON bools/ints as STRINGS in observation output.
+    The scorer must read "True"/"0" the same as True/0 — a plain `is True`
+    silently scored every replan as not-fired (live bug, 2026-06-15)."""
+    assert _as_bool("True") is True
+    assert _as_bool("False") is False
+    assert _as_bool(True) is True
+    assert _as_int("2") == 2
+    assert _as_int(None, default=0) == 0
+
+    # replanned="True" (string) must count as a replan.
+    str_events = [
+        {"event_type": "step_planned", "details": {"replanned": "True"}},
+        {"event_type": "step_planned", "details": {"replanned": "False"}},
+    ]
+    assert _replan_count(str_events) == 1
+
+    # terminal reflexion_attempt="1" (string) must register a re-entry even when
+    # the per-step critique carrier is absent (Langfuse shape variance).
+    refl_events = [
+        {"event_type": "task_completed", "details": {"reflexion_attempt": "1"}},
+    ]
+    assert _reflexion_attempts(refl_events) == 1
+
+
+def test_reflexion_budget_is_bounded_per_cycle_not_per_trace() -> None:
+    """A checkpoint thread can hold several run cycles, each respecting the
+    ceiling. Summing attempts across cycles falsely reports 'unbounded' (live
+    bug, 2026-06-15: 4 carriers across cycles vs ceiling 2). The bound must be
+    per task.completed."""
+    # Two cycles, each hitting attempt=2 with max=2 — BOUNDED (no cycle > 2).
+    multi_cycle = [
+        _task_completed(reflexion_attempt="2", max_reflexion_attempts="2"),
+        _task_completed(reflexion_attempt="2", max_reflexion_attempts="2"),
+        _task_completed(reflexion_attempt="0", max_reflexion_attempts="2"),
+    ]
+    assert _reflexion_within_budget(multi_cycle) is True
+    # A single cycle exceeding its own ceiling — UNBOUNDED (real thrash).
+    overrun = [_task_completed(reflexion_attempt="3", max_reflexion_attempts="2")]
+    assert _reflexion_within_budget(overrun) is False
 
 
 def test_clean_run_passes_the_gate() -> None:

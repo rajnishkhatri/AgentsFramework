@@ -52,15 +52,29 @@ def _row(
     want_reflexion: bool | None = None,
     want_terminates_at_budget: bool | None = None,
     want_escalation: str | None = None,
+    # ── Phase 4 (T3 fan-out) expectations; see t3_fanout_corpus.plan.md §5 ──
+    want_fanout: bool | None = None,
+    want_branch_count: int | None = None,
+    want_join_synthesizes: bool | None = None,
+    want_survives_partial: bool | None = None,
+    axis: list[str] | None = None,
 ) -> dict:
     """One corpus row. Only the expectation keys relevant to ``phase`` are set;
     the analysis half reads them by phase, so absent keys are simply not scored.
     """
     row: dict = {
         "case": case,
+        # gj_id is the regex-conforming id the gj: thread bridge requires
+        # (^GJ-STRESS-\d+$); the descriptive `case` is for humans / the report.
+        # Assigned sequentially in build_corpus() after all rows are collected.
+        "gj_id": None,
         "prompt": prompt,
         "phase": phase,
         "rationale": rationale,
+        # trace_id is taken VERBATIM by parse_goaljudge_thread_id (it does not
+        # re-derive from the id), so the middleware adopts this exact value as the
+        # Langfuse trace_id — that is the analysis join key. Keyed off the
+        # descriptive case so it stays stable if gj_id numbering shifts.
         "trace_id": _trace_id(case),
         "session_id": f"session-{case.lower()}",
     }
@@ -74,6 +88,16 @@ def _row(
         row["want_terminates_at_budget"] = want_terminates_at_budget
     if want_escalation is not None:
         row["want_escalation"] = want_escalation
+    if want_fanout is not None:
+        row["want_fanout"] = want_fanout
+    if want_branch_count is not None:
+        row["want_branch_count"] = want_branch_count
+    if want_join_synthesizes is not None:
+        row["want_join_synthesizes"] = want_join_synthesizes
+    if want_survives_partial is not None:
+        row["want_survives_partial"] = want_survives_partial
+    if axis is not None:
+        row["axis"] = axis
     return row
 
 
@@ -404,20 +428,393 @@ def _escalation_rows() -> list[dict]:
     ]
 
 
+def _fanout_rows() -> list[dict]:
+    """Phase 4 — T3 supervisor / parallel fan-out (t3_fanout_corpus.plan.md §4).
+
+    Four families dimensioned by the §2 decision-space axes (tagged in ``axis``
+    for the coverage matrix the analyzer prints, §6):
+
+      - independent: genuinely parallel -> ``want_fanout=True`` (the happy path).
+      - decline: sequentially-dependent, incl. SEEDED near-miss traps that LOOK
+        parallel but chain -> ``want_fanout=False`` (the GAIA single-agent-wins
+        guard; the load-bearing family).
+      - fault: a branch is engineered to fail/time-out/straggle ->
+        ``want_survives_partial=True`` (the MAST bound on a live trace). Timing
+        modes carry a magic objective token (``__FAULT_TIMEOUT__`` /
+        ``__FAULT_SLOW__``) the env-gated worker fault-hook reads (§4.3a);
+        hard-error/degraded modes inject purely through the prompt.
+      - control: trivial single-step work -> ``want_fanout=False`` (precision
+        guard), incl. an at-the-floor 2-trivial-writes boundary.
+
+    Scoring is per t3_fanout_corpus.plan.md §7: fan-out PRECISION (decline +
+    control are the negatives; a near-miss fanned out is the GAIA-failure ``fp``
+    cell) + partial-survival rate for the fault rows. Calibration-first.
+    """
+    return _fanout_independent_rows() + _fanout_decline_rows() + (
+        _fanout_fault_rows() + _fanout_control_rows()
+    )
+
+
+def _fanout_independent_rows() -> list[dict]:
+    """§4.1 — genuinely parallel; want_fanout=True, branch_count>=2, join synthesizes."""
+    ind = lambda **kw: _row(  # noqa: E731 - local shorthand, keeps the table readable
+        phase="fanout",
+        want_fanout=True,
+        want_join_synthesizes=True,
+        **kw,
+    )
+    return [
+        ind(
+            case="FANOUT-independent-trip-research-01",
+            prompt=(
+                "Research, independently and in parallel, the typical August cost of three "
+                "unrelated things: (a) a rental car in Lisbon for a week, (b) a 4-star hotel "
+                "in Lisbon for a week, and (c) a round-trip economy flight between Lisbon and "
+                "London. Report all three figures. None of the three depends on the others."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="3 independent cost lookups, no shared date constraint -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-restaurant-survey-02",
+            prompt=(
+                "Find one highly-rated restaurant for each of three unrelated cuisines — "
+                "Italian, Thai, and sushi — and report each one's rating and price band. "
+                "The three picks are independent of each other."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="3 independent cuisine lookups -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-gift-shortlist-03",
+            prompt=(
+                "Shortlist one gift under $50 for each of three different people: a runner, "
+                "a baker, and a gamer. Each shortlist is independent of the others."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="3 independent shortlists -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-multidoc-summary-04",
+            prompt=(
+                "You are given three unrelated documents in /workspace/docs/: a.txt, b.txt, "
+                "and c.txt. Summarize the key finding of each document independently. The "
+                "summaries do not depend on each other."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="canonical GAIA multi-doc fan-out -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-multidoc-extract-05",
+            prompt=(
+                "Extract the publication year from each of four separate sources in "
+                "/workspace/sources/ (s1.txt, s2.txt, s3.txt, s4.txt). Report the four years. "
+                "Each extraction is independent."
+            ),
+            want_branch_count=4,
+            axis=["A:independent", "B:4", "C:obvious"],
+            rationale="4 independent extractions -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-policy-checks-06",
+            prompt=(
+                "Independently verify each of three separate account conditions: (a) the "
+                "account is in good standing, (b) the email is verified, and (c) two-factor "
+                "auth is enabled. None of the three checks depends on another; report each."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="Tau2-style independent policy checks -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-multitab-lookup-07",
+            prompt=(
+                "Look up the current price of three unrelated products independently: a "
+                "stainless water bottle, a USB-C cable, and a desk lamp. Report all three "
+                "prices. The lookups are independent."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "B:3", "C:obvious"],
+            rationale="WebArena-style independent lookups -> fan out",
+        ),
+        ind(
+            case="FANOUT-independent-two-branch-08",
+            prompt=(
+                "Report two unrelated things independently: the weekend weather forecast for "
+                "Denver and the weekend weather forecast for Miami. Neither depends on the other."
+            ),
+            want_branch_count=2,
+            axis=["A:independent", "B:2-boundary"],
+            rationale="exactly 2 branches -> the >=2 cardinality floor",
+        ),
+        ind(
+            case="FANOUT-independent-many-branch-09",
+            prompt=(
+                "You are given six unrelated abstracts in /workspace/abstracts/ (1.txt "
+                "through 6.txt). Summarize each one independently in a single sentence. The "
+                "six summaries do not depend on each other."
+            ),
+            want_branch_count=6,
+            axis=["A:independent", "B:many-ceiling"],
+            rationale="6 branches -> stresses the max_concurrency ceiling",
+        ),
+        ind(
+            case="FANOUT-independent-L2-decompose-10",
+            prompt=(
+                "Independently produce a one-paragraph briefing on each of these three "
+                "unrelated regions — the Nordics, Iberia, and the Baltics — covering, for "
+                "each region separately, (1) its largest city (2) its primary language "
+                "(3) its currency. The three briefings do not depend on each other."
+            ),
+            want_branch_count=3,
+            # want_depth is a SECONDARY, non-gating observation (§4.1a): the prompt
+            # borrows L2's structural levers (per-branch (1)(2)(3) sub-fields, >=35
+            # words) while avoiding every dependency marker. If the scorer fires L1
+            # the row still scores on want_fanout (fan-out declines only at L0).
+            want_depth="L2",
+            axis=["A:independent", "B:3", "E:L2"],
+            rationale="engineered L2-and-independent; want_depth secondary/non-gating (§4.1a)",
+        ),
+    ]
+
+
+def _fanout_decline_rows() -> list[dict]:
+    """§4.2 — sequentially dependent; want_fanout=False. The load-bearing family.
+
+    The near-miss (DISGUISE) rows LOOK parallel but chain; each is built to trip a
+    NAMED signal of the deterministic dependency detector (component spec §3a) so
+    detector and corpus are co-designed:
+      back-ref markers (then/use the result/that/around X) | conditional gating
+      (if eligible, then) | shared write target (same file).
+    The obvious rows are sequential with no disguise (the easy decline).
+    """
+    dec = lambda **kw: _row(phase="fanout", want_fanout=False, **kw)  # noqa: E731
+    return [
+        # ── near-miss traps (axis C:near-miss) — the hard discrimination ──
+        dec(
+            case="FANOUT-decline-trip-dated-01",
+            prompt=(
+                "Book a trip: first book the flight, then book a hotel around the flight "
+                "dates, then book a rental car for the hotel stay."
+            ),
+            axis=["A:dependent", "C:near-miss", "B:3"],
+            rationale="trap: hotel depends on flight dates, car on hotel; 'then'+'around' back-refs -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-restaurant-then-route-02",
+            prompt=(
+                "Pick a highly-rated restaurant with an open dinner slot, then get directions "
+                "to that restaurant and make a reservation under that name."
+            ),
+            axis=["A:dependent", "C:near-miss"],
+            rationale="trap: directions+reservation depend on the pick; 'then'+'that' back-refs -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-benchmark-then-tune-03",
+            prompt=(
+                "Benchmark Redis and Memcached for our cache, then use those numbers to "
+                "recommend one and tune its configuration."
+            ),
+            axis=["A:dependent", "C:near-miss"],
+            rationale="trap: gather-then-compare (sec 2.3); 'then use those numbers' back-ref -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-fetch-then-transform-04",
+            prompt=(
+                "Fetch the dataset from /workspace/raw.csv, then clean it, then compute the "
+                "summary statistic from the cleaned data."
+            ),
+            axis=["A:dependent", "C:near-miss"],
+            rationale="trap: strict ETL chain disguised as 3 tasks; 'then...then' -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-shared-write-05",
+            prompt=(
+                "Have three workers each append their section to the same report file "
+                "/workspace/report.md: an intro section, a results section, and a conclusion."
+            ),
+            axis=["A:dependent", "C:near-miss-shared-write"],
+            rationale="trap: independent-looking but SHARED WRITE TARGET (detector signal 2) -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-pick-then-act-06",
+            prompt=(
+                "Choose the cheapest of the three available flights, then book that flight and "
+                "add a seat and a checked bag for that flight."
+            ),
+            axis=["A:dependent", "C:near-miss"],
+            rationale="trap: book/seat/bag all depend on the choice; 'then'+'that flight' anaphora -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-policy-dependent-10",
+            prompt=(
+                "Check whether the customer is eligible, and if eligible then apply the "
+                "discount, then confirm the new total."
+            ),
+            axis=["A:dependent", "C:near-miss-conditional"],
+            rationale="trap: conditional chain; 'if eligible then' gating (detector signal 1) -> decline",
+        ),
+        # ── obvious sequential (axis C:obvious) — the easy decline ──
+        dec(
+            case="FANOUT-decline-obvious-chain-07",
+            prompt=(
+                "Read /workspace/seed.txt to get a filename, then read that file, then "
+                "summarize its contents."
+            ),
+            axis=["A:dependent", "C:obvious"],
+            rationale="obvious sequential; 'then'+'that file' back-ref -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-obvious-pipeline-08",
+            prompt="Compile the code, then run the tests, then deploy if the tests are green.",
+            axis=["A:dependent", "C:obvious"],
+            rationale="obvious sequential pipeline; 'then'+conditional -> decline",
+        ),
+        dec(
+            case="FANOUT-decline-single-multistep-09",
+            prompt="Plan and then write a 3-paragraph essay on the causes of the 1929 crash.",
+            axis=["A:dependent", "C:obvious"],
+            rationale="single coherent task, not parallel-decomposable; 'and then' -> decline",
+        ),
+    ]
+
+
+def _fanout_fault_rows() -> list[dict]:
+    """§4.3 — partial-survival; want_fanout=True, want_survives_partial=True.
+
+    Timing modes carry a magic objective token the env-gated worker fault-hook
+    reads (FANOUT_FAULT_INJECT=1, off in prod; §4.3a). Hard-error and degraded
+    modes inject purely through the prompt (a guaranteed-missing path / an
+    empty-output instruction) so they exercise the REAL error/degraded paths
+    with nothing stubbed.
+    """
+    fault = lambda **kw: _row(  # noqa: E731
+        phase="fanout",
+        want_fanout=True,
+        want_survives_partial=True,
+        **kw,
+    )
+    return [
+        fault(
+            case="FANOUT-fault-one-branch-errors-01",
+            prompt=(
+                "Independently summarize each of three files: /workspace/docs/a.txt, "
+                "/workspace/docs/b.txt, and /workspace/__nonexistent_fault_42__.txt. The "
+                "summaries are independent; report whichever succeed."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "D:one-fails"],
+            rationale="hard error via guaranteed-missing path on 1 of 3 -> sentinel, join answers from 2/3",
+        ),
+        fault(
+            case="FANOUT-fault-one-branch-times-out-02",
+            prompt=(
+                "Independently handle three tasks: summarize /workspace/docs/a.txt, "
+                "summarize /workspace/docs/b.txt, and __FAULT_TIMEOUT__ produce an "
+                "exhaustive analysis. The three are independent; report whichever finish."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "D:timeout"],
+            rationale="__FAULT_TIMEOUT__ token -> per-branch timeout fires, no super-step hang",
+        ),
+        fault(
+            case="FANOUT-fault-all-but-one-fail-03",
+            prompt=(
+                "Independently summarize each of three files: /workspace/docs/a.txt, "
+                "/workspace/__nonexistent_fault_43__.txt, and "
+                "/workspace/__nonexistent_fault_44__.txt. Report whichever succeed."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "D:majority-fail"],
+            rationale="2 of 3 fail (missing paths) -> join degrades to single-survivor answer, non-empty",
+        ),
+        fault(
+            case="FANOUT-fault-join-degraded-04",
+            prompt=(
+                "Independently produce three things: a one-line summary of "
+                "/workspace/docs/a.txt, a one-line summary of /workspace/docs/b.txt, and for "
+                "the third return exactly an empty string. Then report all three; note any gap."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "D:degraded-input"],
+            rationale="1 branch returns empty (no exception) -> join synthesizes around the gap, not a crash",
+        ),
+        fault(
+            case="FANOUT-fault-slow-branch-05",
+            prompt=(
+                "Independently handle three tasks: summarize /workspace/docs/a.txt, summarize "
+                "/workspace/docs/b.txt, and __FAULT_SLOW__ summarize /workspace/docs/c.txt. "
+                "The three are independent; report all three."
+            ),
+            want_branch_count=3,
+            axis=["A:independent", "D:straggler"],
+            rationale="__FAULT_SLOW__ token (under ceiling) -> barrier waits for the straggler, no premature join",
+        ),
+    ]
+
+
+def _fanout_control_rows() -> list[dict]:
+    """§4.4 — precision guard; want_fanout=False on trivial single-step work."""
+    ctrl = lambda **kw: _row(phase="fanout", want_fanout=False, **kw)  # noqa: E731
+    return [
+        ctrl(
+            case="FANOUT-control-L0-trivial-01",
+            prompt="Echo the phrase 'pipeline ok' verbatim.",
+            axis=["E:L0", "B:0-1"],
+            rationale="L0 single-action -> condition-1 floor -> decline (no fan-out)",
+        ),
+        ctrl(
+            case="FANOUT-control-single-write-02",
+            prompt="Write the number 42 to /workspace/answer.txt.",
+            axis=["B:0-1"],
+            rationale="single step, nothing to parallelize -> decline",
+        ),
+        ctrl(
+            case="FANOUT-control-single-read-03",
+            prompt="Read the first line of /workspace/notes.txt and print it.",
+            axis=["B:0-1"],
+            rationale="single read -> decline",
+        ),
+        ctrl(
+            case="FANOUT-control-ambiguous-trivial-04",
+            prompt=(
+                "Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt."
+            ),
+            axis=["A:independent", "B:2-below-floor"],
+            rationale="boundary: 2 trivial independent writes BELOW the '<3 don't bother' floor -> decline",
+        ),
+    ]
+
+
 def build_corpus() -> list[dict]:
     rows = (
         _depth_rows()
         + _replan_rows()
         + _reflexion_rows()
         + _escalation_rows()
+        + _fanout_rows()
     )
     # Guard: case ids must be unique (a dup would collide trace_ids and silently
     # overwrite a capture row).
     seen: set[str] = set()
+    seen_trace: set[str] = set()
     for r in rows:
         if r["case"] in seen:
             raise ValueError(f"duplicate case id: {r['case']}")
         seen.add(r["case"])
+        if r["trace_id"] in seen_trace:
+            raise ValueError(f"duplicate trace_id for case: {r['case']}")
+        seen_trace.add(r["trace_id"])
+
+    # Assign the regex-conforming gj_id (GJ-STRESS-NN) sequentially. This is the
+    # id the gj: thread bridge parses (^GJ-(?:...|STRESS-\d+|...)$); the bridge
+    # then adopts each row's trace_id verbatim as the Langfuse join key.
+    for i, r in enumerate(rows, start=1):
+        r["gj_id"] = f"GJ-STRESS-{i:02d}"
     return rows
 
 

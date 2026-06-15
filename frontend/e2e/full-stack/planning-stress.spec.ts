@@ -146,7 +146,9 @@ function installStressThreadBridge(
   page: import("@playwright/test").Page,
   caseRow: PlanningStressCase,
 ): void {
-  const threadId = `gj:${caseRow.case}:${caseRow.trace_id}`;
+  // gj_id (GJ-STRESS-NN), NOT the descriptive case — the bridge regex only
+  // accepts ^GJ-STRESS-\d+$. The bridge then adopts trace_id verbatim.
+  const threadId = `gj:${caseRow.gj_id}:${caseRow.trace_id}`;
   page.route("**/api/run/stream", async (route) => {
     const request = route.request();
     const raw = request.postData() ?? "{}";
@@ -197,7 +199,7 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
 
       installStressThreadBridge(page, caseRow);
 
-      const title = `gj:${caseRow.case}:${caseRow.trace_id}`;
+      const title = `gj:${caseRow.gj_id}:${caseRow.trace_id}`;
       const wants = wantExpectations(caseRow);
       let responseText = "";
       let toolCardCount = 0;
@@ -227,6 +229,7 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
 
         appendCapture({
           case: caseRow.case,
+          gj_id: caseRow.gj_id,
           phase: caseRow.phase,
           trace_id: caseRow.trace_id,
           session_id: caseRow.session_id,
@@ -252,6 +255,7 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
         const errorMessage = err instanceof Error ? err.message : String(err);
         appendCapture({
           case: caseRow.case,
+          gj_id: caseRow.gj_id,
           phase: caseRow.phase,
           trace_id: caseRow.trace_id,
           session_id: caseRow.session_id,
