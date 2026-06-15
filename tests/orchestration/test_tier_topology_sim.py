@@ -449,3 +449,276 @@ async def test_disabled_run_records_escalation_reason_disabled(tmp_path):
         if e.event_type.value == "step_planned" and "reflexion_attempt" in e.details
     ]
     assert reflexion_steps == []
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# Phase 4 (T3): supervisor / worker / join fan-out topology sims.
+#
+# AP6 failure-first: every failure row (decline-identical, raise, timeout,
+# all-fail, T2∘T3) is written BEFORE the single happy row. These are the tests
+# that prove the fan-out is SAFE (plan §3.5a: MAST-bounded — one branch failing
+# never erases survivors, never hangs, never corrupts the join). Mock the
+# dispatcher + LLM (P6) — no live model. @pytest.mark.simulation (on-demand).
+# ══════════════════════════════════════════════════════════════════════════
+
+# A genuinely INDEPENDENT 3-branch plan (no sequencing markers → supervisor can
+# fan out). The leading "Independently" keeps each step parallelizable.
+_FANOUT_TASK = (
+    "Independently summarize three unrelated documents: doc A, doc B, and doc C."
+)
+
+_INDEPENDENT_PLAN_JSON = json.dumps({
+    "ordered_steps": [
+        {"title": "A", "goal": "summarize document A"},
+        {"title": "B", "goal": "summarize document B"},
+        {"title": "C", "goal": "summarize document C"},
+    ],
+    "constraints": [],
+    "success_conditions": ["all three documents are summarized"],
+})
+
+# A DEPENDENT plan (sequencing markers → supervisor must decline).
+_DEPENDENT_PLAN_JSON = json.dumps({
+    "ordered_steps": [
+        {"title": "Fetch", "goal": "fetch the dataset from /workspace/raw.csv"},
+        {"title": "Clean", "goal": "then clean the fetched data"},
+        {"title": "Stat", "goal": "then compute the statistic from the cleaned data"},
+    ],
+    "constraints": [],
+    "success_conditions": ["the statistic is computed"],
+})
+
+_DECOMPOSE_JSON = json.dumps({
+    "branches": [
+        {"objective": "summarize document A", "subagent_type": "general"},
+        {"objective": "summarize document B", "subagent_type": "general"},
+        {"objective": "summarize document C", "subagent_type": "general"},
+    ]
+})
+
+
+def _make_branch_dispatch(behavior):
+    """Patch target for LocalLLMDelegationDispatcher.dispatch_async.
+
+    ``behavior`` maps an objective substring → one of: "ok" (succeed), "raise"
+    (raise RuntimeError — the superstep-cancel hazard), "slow" (sleep past any
+    timeout). Default is "ok".
+    """
+    async def _dispatch_async(self, request):  # noqa: ANN001
+        objective = str(request.get("objective", ""))
+        mode = "ok"
+        for needle, m in behavior.items():
+            if needle in objective:
+                mode = m
+                break
+        if mode == "raise":
+            raise RuntimeError(f"branch boom: {objective[:20]}")
+        if mode == "slow":
+            import asyncio as _a
+            await _a.sleep(5.0)
+        return {
+            "status": "completed",
+            "output": f"summary of: {objective[:40]}",
+            "error": None,
+            "child_correlation_id": f"{request.get('correlation_id')}:child:x",
+        }
+
+    return _dispatch_async
+
+
+async def _run_fanout(
+    *,
+    plan_json: str,
+    branch_behavior: dict | None = None,
+    tmp_path,
+    workflow_id: str,
+    reflexion_enabled: bool = False,
+    branch_timeout_s: float = 60.0,
+    extra_llm_after: int = 4,
+):
+    """Drive a fan-out run on the compiled graph (t3_fanout_enabled=True).
+
+    LLM script order: [plan generator, supervisor decompose, join synthesis,
+    then spare answers for evaluate/recap]. The dispatcher is patched per branch.
+    """
+    from orchestration.react_loop import build_graph
+
+    script = [
+        _resp(plan_json, [], 0),       # route_node plan generator (step 0)
+        _resp(_DECOMPOSE_JSON, [], 1),  # supervisor_node decompose
+    ] + [_resp(f"Joined / answered #{i}.", [], 10 + i) for i in range(extra_llm_after)]
+
+    behavior = branch_behavior or {}
+
+    with (
+        patch("langchain_litellm.ChatLiteLLM") as MockChat,
+        patch(
+            "services.guardrails.InputGuardrail._call_judge",
+            new_callable=AsyncMock,
+            return_value="accept",
+        ),
+        patch(
+            "services.tools.delegation_dispatcher.LocalLLMDelegationDispatcher.dispatch_async",
+            _make_branch_dispatch(behavior),
+        ),
+    ):
+        inst = MockChat.return_value
+        inst.bind_tools.return_value = inst
+        inst.ainvoke = AsyncMock(side_effect=script)
+
+        graph = build_graph(
+            agent_config=AgentConfig(
+                default_model="gpt-4o-mini",
+                models=[_fast_profile(), _capable_profile()],
+                plan_source="generated",
+                t3_fanout_enabled=True,
+                reflexion_enabled=reflexion_enabled,
+                max_reflexion_attempts=2,
+                fanout_branch_timeout_s=branch_timeout_s,
+            ),
+            tool_registry=_registry(fail_first=False),
+            cache_dir=tmp_path / "cache",
+        )
+        return await graph.ainvoke(
+            {
+                "task_id": workflow_id,
+                "task_input": _FANOUT_TASK,
+                "messages": [],
+                "workflow_id": workflow_id,
+                "registered_agent_id": "sim-agent",
+            },
+            config={
+                "configurable": {
+                    "task_id": workflow_id,
+                    "user_id": "sim-user",
+                    "workflow_id": workflow_id,
+                    "registered_agent_id": "sim-agent",
+                }
+            },
+        )
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_decline_is_identical_to_today(tmp_path):
+    """THE REGRESSION CANARY: a DEPENDENT plan declines → no worker_results, the
+    run completes via the normal call_llm path (byte-identical to the pre-T3
+    spine for a non-fan-out task)."""
+    result = await _run_fanout(
+        plan_json=_DEPENDENT_PLAN_JSON,
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-decline",
+    )
+    # Declined: no branches ran, so worker_results stays empty.
+    assert (result.get("worker_results") or []) == []
+    # The supervisor recorded a decline decision carrier.
+    events = _replay_events(tmp_path, "wf-fanout-decline")
+    decisions = [
+        e for e in events
+        if e.event_type.value == "step_planned"
+        and e.details.get("supervisor_decision")
+    ]
+    assert decisions and decisions[-1].details["supervisor_decision"] == "decline"
+    assert "sequential-dependent" in decisions[-1].details["supervisor_reason"]
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_one_worker_raises_join_survives(tmp_path):
+    """One branch raises → its sentinel is recorded, survivors are NOT erased,
+    and the join synthesizes around the gap (superstep-cancel hazard guarded)."""
+    result = await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        branch_behavior={"document B": "raise"},
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-raise",
+    )
+    wr = result.get("worker_results") or []
+    assert len(wr) == 3, "all three branches recorded (survivors + sentinel)"
+    by_status = sorted(r["status"] for r in wr)
+    assert by_status == ["completed", "completed", "failed"]
+    failed = [r for r in wr if r["status"] == "failed"][0]
+    assert failed["error"] and "boom" in failed["error"]
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_one_worker_times_out_no_hang(tmp_path):
+    """One branch sleeps past the per-branch ceiling → asyncio.wait_for fires, a
+    timeout sentinel is recorded, the other branches complete, no superstep hang."""
+    result = await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        branch_behavior={"document C": "slow"},
+        branch_timeout_s=0.05,
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-timeout",
+    )
+    wr = result.get("worker_results") or []
+    assert len(wr) == 3
+    timed_out = [r for r in wr if r["status"] == "failed"]
+    assert len(timed_out) == 1
+    assert "timeout" in (timed_out[0]["error"] or "")
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_all_workers_fail_judge_still_runs(tmp_path):
+    """All branches fail → the join still produces a NON-EMPTY degraded answer
+    and the run reaches a terminal outcome (GTP-3: the judge always scores a
+    non-empty joined answer — the corrupt-success guard holds)."""
+    result = await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        branch_behavior={"document A": "raise", "document B": "raise", "document C": "raise"},
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-allfail",
+    )
+    wr = result.get("worker_results") or []
+    assert len(wr) == 3 and all(r["status"] == "failed" for r in wr)
+    # The joined answer is non-empty (deterministic floor notes the gaps).
+    assert (result.get("last_final_answer") or "").strip()
+    # A terminal outcome was reached (the judge ran on the joined answer).
+    assert result.get("last_task_outcome") in ("success", "partial", "failed")
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_composes_under_reflexion_budget(tmp_path):
+    """T2∘T3: a fan-out run with reflexion enabled stays bounded — the supervisor
+    re-runs on re-entry and the combined loop is capped by max_reflexion_attempts
+    (one budget ceiling, no new knob)."""
+    with patch(
+        "orchestration.react_loop.evaluate_task_outcome",
+        return_value=_failed_outcome(),
+    ):
+        result = await _run_fanout(
+            plan_json=_INDEPENDENT_PLAN_JSON,
+            tmp_path=tmp_path,
+            workflow_id="wf-fanout-reflexion",
+            reflexion_enabled=True,
+            extra_llm_after=40,
+        )
+    # The reflexion loop is bounded by the budget even with the fan-out fork.
+    assert len(result.get("reflections") or []) <= 2
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_happy_path_all_succeed(tmp_path):
+    """The ONE acceptance (written last): all branches succeed → join → evaluate
+    → terminal. Per-branch delegation_requested carriers landed on the trace."""
+    result = await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-happy",
+    )
+    wr = result.get("worker_results") or []
+    assert len(wr) == 3 and all(r["status"] == "completed" for r in wr)
+    assert (result.get("last_final_answer") or "").strip()
+    # GTP-1: a delegation_requested carrier per branch landed (BlackBox fallback,
+    # since the sim wires no trace_service).
+    events = _replay_events(tmp_path, "wf-fanout-happy")
+    requested = [
+        e for e in events
+        if e.details.get("delegation_event") == "delegation_requested"
+    ]
+    assert len(requested) == 3

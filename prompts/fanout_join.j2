@@ -1,0 +1,17 @@
+You are synthesizing the results of several independent sub-tasks that were
+run in parallel into one coherent final answer for the user.
+
+Original request:
+{{ task_input }}
+
+Sub-task results ({{ results | length }} branches):
+{% for r in results %}
+--- Branch {{ r.branch_id }} ({{ r.status }}) ---
+{% if r.status == "completed" %}{{ r.output }}{% else %}[this branch did not complete: {{ r.error or "no result" }}]{% endif %}
+{% endfor %}
+
+Write a single, well-organized answer that integrates the completed branches.
+If one or more branches did not complete, explicitly note the gap rather than
+inventing a result for it — a partial-but-honest answer is correct here. Do not
+mention "branches" or internal mechanics in the final prose; speak directly to
+the original request.
