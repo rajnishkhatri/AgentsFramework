@@ -11,10 +11,18 @@
  */
 import corpus from "./planning_stress_corpus.json" with { type: "json" };
 
-export type StressPhase = "depth" | "replan" | "reflexion" | "escalation";
+export type StressPhase =
+  | "depth"
+  | "replan"
+  | "reflexion"
+  | "escalation"
+  | "fanout";
 
 export type PlanningStressCase = {
   case: string;
+  // Regex-conforming id (GJ-STRESS-NN) the gj: thread bridge requires; the
+  // descriptive `case` is for humans / the report.
+  gj_id: string;
   prompt: string;
   phase: StressPhase;
   rationale: string;
@@ -26,6 +34,12 @@ export type PlanningStressCase = {
   want_reflexion?: boolean;
   want_terminates_at_budget?: boolean;
   want_escalation?: "reflect" | "done";
+  // T3 fan-out (phase="fanout"); see t3_fanout_corpus.plan.md §5
+  want_fanout?: boolean;
+  want_branch_count?: number;
+  want_join_synthesizes?: boolean;
+  want_survives_partial?: boolean;
+  axis?: string[];
 };
 
 export const PLANNING_STRESS_CORPUS: PlanningStressCase[] =

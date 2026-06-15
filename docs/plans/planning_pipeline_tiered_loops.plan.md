@@ -1,14 +1,26 @@
 # Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)
 
-> **Deliverable.** Implementation **plan only** — this document changes no source. It specifies a redesign
-> of the planning pipeline from the current single flat ReAct loop into a **complexity-routed tier ladder**
-> (T0 ReAct → T1 Plan-and-Execute → T2 Reflexion) on the **existing LangGraph stack**, plus the prerequisite
-> fix to the planning-depth collapse. The supervisor / parallel-subagent tier (T3) is **scoped out** — see
-> §2.3 for the corpus evidence that deferred it.
+> **⚠️ Status (updated 2026-06-15): Phases 0–3 are BUILT, committed, and live-validated.** This was
+> authored as a plan-only doc; it is now also the design-of-record for shipped code. The as-built reconciliation
+> is in **§0 (Implementation status)** — read it first; it supersedes the future-tense framing in §3/§7 below.
+> The supervisor tier (T3) is the only tier with **no source written**, but it is no longer a blank — it was
+> **un-deferred 2026-06-15** (§3.5a) and is now **design-complete**: the component contract
+> ([`t3_supervisor_plan.component.md`](t3_supervisor_plan.component.md)), the design-doc diagrams + protocol
+> crosswalk (design §B.5), and the validation corpus ([`t3_fanout_corpus.plan.md`](t3_fanout_corpus.plan.md),
+> **built**: 29 `phase="fanout"` rows in `build_planning_stress_corpus.py`) all exist. What remains is the build
+> itself (the nodes + the analyzer `fanout` branch).
 >
-> **Date:** 2026-06-14. **Scope:** the planning + routing + loop topology in `orchestration/react_loop.py`,
-> `components/router.py`, `components/plan_builder.py`. **Out of scope:** T3 supervisor, any new framework
-> (we keep LangGraph), the governance pillars themselves (they wrap new nodes unchanged).
+> **Deliverable (original intent).** Implementation **plan** for a redesign of the planning pipeline from the
+> current single flat ReAct loop into a **complexity-routed tier ladder**
+> (T0 ReAct → T1 Plan-and-Execute → T2 Reflexion) on the **existing LangGraph stack**, plus the prerequisite
+> fix to the planning-depth collapse. The supervisor / parallel-subagent tier (T3) was originally **scoped out**
+> on the §2.3 corpus evidence, but has since been **un-deferred to de-risk the seam** (§3.5a) — design-complete,
+> not yet built.
+>
+> **Date:** 2026-06-14 (T3 un-deferred 2026-06-15). **Scope:** the planning + routing + loop topology in
+> `orchestration/react_loop.py`, `components/router.py`, `components/plan_builder.py`, **plus the T3 supervisor /
+> fan-out tier (§3.5a, design-complete)**. **Out of scope:** any new framework (we keep LangGraph), the
+> governance pillars themselves (they wrap new nodes unchanged).
 >
 > **Companions:** [`planning_pipeline_tiered_loops.design.md`](planning_pipeline_tiered_loops.design.md) pins the
 > protocols (*how*); [`planning_pipeline_tiered_loops.impl.md`](planning_pipeline_tiered_loops.impl.md) is the
@@ -33,7 +45,8 @@
 - [2. The three problems, with evidence](#2-the-three-problems-with-evidence)
 - [3. Target architecture — the tier ladder](#3-target-architecture--the-tier-ladder)
   - [3.4 Reflexion decoupling — onion-architecture separation of concerns](#34-reflexion-decoupling--onion-architecture-separation-of-concerns)
-  - [3.5 Supervisor tier (T3) — deferred, but pre-bound to the same onion criteria](#35-supervisor-tier-t3--deferred-but-pre-bound-to-the-same-onion-criteria)
+  - [3.5 Supervisor tier (T3) — pre-binding (historical; superseded by §3.5a)](#35-supervisor-tier-t3--pre-binding-historical-superseded-by-35a)
+  - [3.5a Supervisor tier (T3) — as-built design (2026-06-15: un-deferred to de-risk the seam)](#35a-supervisor-tier-t3--as-built-design-2026-06-15-un-deferred-to-de-risk-the-seam)
   - [3.6 Frontend / middleware connection seam — the new tiers must not cross it](#36-frontend--middleware-connection-seam--the-new-tiers-must-not-cross-it)
   - [3.7 Governance-triangle conformance — every new fact needs a verified carrier](#37-governance-triangle-conformance--every-new-fact-needs-a-verified-carrier)
 - [4. Routing design (hybrid cascade)](#4-routing-design-hybrid-cascade)
@@ -46,7 +59,50 @@
 
 ---
 
+## 0. Implementation status (as-built reconciliation, 2026-06-15)
+
+Phases 0–3 are committed. This section reconciles each planned artifact against the shipped source so the
+future-tense prose in §3/§7 reads as the *rationale* for code that now exists, not as pending work. Verified by
+reading source at the cited lines, not assumed.
+
+**Commits (in order):** `baf19aa` depth-collapse fix (Phase 0) → `97fd4d0` T1 plan-and-execute → `bfeaea8`
+T2 reflexion → `9ff81f4` Phase 3 `decide_escalation` predicate → `0047c8e` Step-0 trace carriers + stress
+corpus + e2e profiles.
+
+| Planned (this doc) | As-built | Status |
+|---|---|---|
+| **Phase 0** — fix `task_tool_results_count → L0` collapse + flattener | `select_planning_depth` ([`router.py:97`](../../components/router.py)) keeps the post-tool-synthesis early-return but adds 4 reason-tagged L1 floors (strong-intent-verb, long-task-floor, sequenced-multistep) + an L2 incident-narrative promotion; depth memoized per-task on `planning_depth_task_id` ([`state.py:103-112`](../../orchestration/state.py)) so it no longer flips to L0 after the first tool call | ✅ **shipped + live-validated** (depth 0.917, §8.1) |
+| **Phase 1** — `planner_node` (LLM plan, deterministic floor fallback) + `replan` back-edge | No separate node — folded into `route_node` ([`react_loop.py:815-881`](../../orchestration/react_loop.py)): `build_plan_artifact_llm` parse/validate/floor in `components/`; new `components/plan_generator.py` is the LLM boundary; `plan_source` config gates `deterministic`/`shadow`/`generated`; replan = `plan_is_stale` → **deterministic** rebuild (not LLM re-plan) + `replan_count++` | ✅ **shipped** (replan 0.900) — *deviation:* no standalone `planner_node`; replan rebuilds via the floor, not the LLM |
+| **Phase 2** — `reflect_node` re-entering on GoalJudge failed/partial; D1 ceiling | `components/reflexion.py` = pure `generate_reflection` + `decide_reentry`; `reflect_node` ([`react_loop.py:1987`](../../orchestration/react_loop.py)) is a thin wrapper appending to `reflections` ([`state.py:134`](../../orchestration/state.py)); critique folded into prompt in `call_llm_node` ([`react_loop.py:1231`](../../orchestration/react_loop.py)); `reflect → route` re-entry edge ([`react_loop.py:2168`](../../orchestration/react_loop.py)) | ✅ **shipped** (reflexion 0.800) |
+| **Phase 3** — hybrid escalation routing | `decide_escalation` ([`router.py:235`](../../components/router.py)) — pure predicate, budget-first, primary=verdict (via `decide_reentry`), tertiary=`prose_repeat`; gathered (not decided) in `_should_continue_or_escalate` ([`react_loop.py:2056`](../../orchestration/react_loop.py)) | ✅ **shipped** (escalation precision 1.000 / recall 0.800, §8.1) |
+| **D1 — reflexion budget ceiling** | Resolved to **fixed `max_reflexion_attempts` config** (the most-tunable option); `len(reflections)` is the attempt counter (no separate counter to drift) | ✅ decided + built |
+| **D2 — entry LLM-nudge scope** | **Not built** — entry stays heuristic-only (`select_planning_depth`); all routing intelligence is on the evidence-grounded escalation edge per §4 | ⏸️ deferred (open) |
+| Runtime flags | `REFLEXION_ENABLED` / `PLANNING_PLAN_SOURCE` / `MAX_REFLEXION_ATTEMPTS` → `AgentConfig.reflexion_enabled` / `.plan_source` / `.max_reflexion_attempts` | ✅ flag-gated (steady-state parity when off) |
+
+**Two deviations worth naming for the T3 design** (both deliberate, both reduce blast radius):
+1. **No `planner_node`; the plan lives in `route_node`.** The plan is built/reused/replanned inline and memoized
+   on `plan_artifact_task_id`. This is *cheaper* (no extra node, no extra edge) but means there is no single node
+   a future supervisor could swap — T3 will add its own `supervisor_node` (§3.5) rather than wrapping a planner.
+2. **Replan rebuilds with the deterministic floor, not the LLM.** `plan_is_stale` → `build_plan_artifact` (not
+   `build_plan_artifact_llm`). The comment ([`react_loop.py:845`](../../orchestration/react_loop.py)) is explicit:
+   the LLM re-plan would re-incur cost and the floor is the safe brittle-plan backstop. **Consequence:** a replan
+   currently *narrows* (re-decomposes deterministically), it does not re-reason. CE-2 (§8.1) — the garbage-input
+   miss — partly follows from this: a junk input that never surfaced as a failed tool result never trips the gate,
+   and even if it did, the deterministic rebuild would not "understand" the junk. A future enhancement (not
+   scheduled) would be an LLM re-plan on the *stale* path; it inherits the same cost/floor trade-off as Phase 1.
+
+**Validation status:** all four seams measured live against the loops-on `stress` Cloud Run revision; numbers in
+§8.1. Re-scoring the same Langfuse traces is **deterministic** (the trace-ids in `ui_batch.jsonl` are fixed) and
+reproduced bit-for-bit on 2026-06-15 — the §8.1 "jitter ±a case" caveat applies to re-*running* the batch, not
+re-*scoring* it. The governance-trace-audit gate (§3.7/§8) has **not** yet been run against a from-step-0 trace
+for these phases — it remains an open acceptance item.
+
+---
+
 ## 1. Current implementation (ground truth)
+
+> **Note (2026-06-15):** §1 describes the *pre-Phase-0* baseline — the problem state the redesign fixed. It is
+> retained as the motivating ground truth. For what runs *today*, see §0.
 
 What "L0/L1/L2" actually is today — read from source:
 
@@ -88,7 +144,10 @@ is *not* warranted for this workload: across the depth-strata + `deep_agent` fix
 ("Compare Redis and Memcached, benchmark…, recommend") — i.e. sequential synthesis, not independent fan-out.**
 Genuinely parallelizable branches are essentially absent. Adding a supervisor would buy the
 [MAST](https://arxiv.org/abs/2503.13657) failure surface (41–86.7% multi-agent failure; 79% from
-inter-agent misalignment + verification gaps) for tasks that don't need it. **T3 is deferred.**
+inter-agent misalignment + verification gaps) for tasks that don't need it. **T3 was deferred on this evidence —**
+**and this finding still holds.** It was later **un-deferred (2026-06-15, §3.5a) to de-risk the seam, *not*
+because the workload changed**: the acceptance bar is therefore seam-and-safety, never throughput (the GAIA
+single-agent-wins guard *is* this section's finding, encoded as the fan-out corpus's decline rows, §8.2).
 
 ## 3. Target architecture — the tier ladder
 
@@ -100,7 +159,7 @@ conditional edges; no new framework.
 | **T0** | ReAct (today's loop) | simple / post-tool synthesis | none |
 | **T1** | **Plan-and-Execute** + replan gate | multi-step, single-thread | LLM `planner_node`; `replan` back-edge on surprising tool output |
 | **T2** | **Reflexion** wrapper | T1 verification failed, budget left | `reflect_node` writing verbal critique to a `reflections` state key, re-enters `route` |
-| ~~T3~~ | ~~Supervisor + parallel workers~~ | **deferred** (§2.3); architecture pre-bound in §3.5 | (when un-deferred) `supervisor_node` over existing `services/tools/task_tool.py` + `delegation_dispatcher.py` |
+| **T3** 🔮 | **Supervisor + parallel fan-out** | un-deferred 2026-06-15 (§3.5a) to de-risk the seam; design-complete, **not built** | `supervisor_node` → `Send` fan-out → `worker_node` → `join_node` over existing `services/tools/task_tool.py` + `delegation_dispatcher.py` |
 
 Design anchors, each tied to existing code:
 
@@ -160,9 +219,13 @@ reflect → route` (re-enter), else `→ reasoning_recap → END` (unchanged). `
 `add_node`; the fork is one `add_conditional_edges`. No existing node, edge, or component is modified — T2 is
 purely additive, which is what keeps Phase 2 independently shippable and independently revertible.
 
-### 3.5 Supervisor tier (T3) — deferred, but pre-bound to the same onion criteria
+### 3.5 Supervisor tier (T3) — pre-binding (historical; superseded by §3.5a)
 
-T3 is **deferred** on workload grounds (§2.3) — this section does **not** un-defer it. It pre-specifies the
+> **Superseded 2026-06-15 by §3.5a (T3 un-deferred).** This section is retained as the *original pre-binding* —
+> the architecture contract a supervisor must obey — and §3.5a still relies on it. But the framing below ("does
+> not un-defer it") is historical: T3 is now an active, design-complete tier. Read §3.5a for the live decision.
+
+T3 *was* **deferred** on workload grounds (§2.3) — this section pre-specifies the
 *architecture* a supervisor would have to obey, so the deferral is a scheduling decision, not an architectural
 hole, and so a future builder cannot reach for the easy-but-illegal shape (a "supervisor" that drives the graph
 from inside a component, or a worker that imports `AgentState`). The same four onion rules from §3.4 apply,
@@ -212,6 +275,119 @@ hidden inter-agent state. Binding T3 to these rules now means the deferral can b
 cost/benefit question ("does the corpus now have parallel work?") without re-litigating architecture. The
 trigger to revisit remains the §2.3 corpus condition; the build, when it comes, is additive nodes + edges over
 services that already pass `tests/architecture/`.
+
+### 3.5a Supervisor tier (T3) — as-built design (2026-06-15: un-deferred to de-risk the seam)
+
+**Decision (2026-06-15):** build a **thin T3** for **parallel independent fan-out** *now*, despite §2.3's finding
+that the corpus has ~0 genuine parallel work. The rationale is **seam de-risking**, not a workload need — so the
+acceptance bar is set accordingly (below). This section is the concrete design; §3.5 above remains the binding
+*architecture contract* T3 must obey. Where they meet: §3.5's onion table names *where* each concern lives; this
+section names *what each node does* and *how the fan-out actually runs concurrently*.
+
+**Honest success metric (read this before building).** Two independent 2026 findings say a parallel T3 will **not**
+move quality on our workload, and we must not pretend otherwise:
+1. **The "<3 items" rule** ([LangChain forum](https://forum.langchain.com/t/best-practices-for-parallel-nodes-fanouts/1900)):
+   below ~3 branches, `Send` routing overhead exceeds the latency saved. Our corpus's parallel work tops out at
+   ~3 gather-then-compare tasks — exactly the regime where fan-out barely pays.
+2. **Single-agent beats multi-agent on GAIA-Val** (benchmark literature, June 2026): multi-agent decomposition
+   *raises* information-loss + mistake-propagation; a single agent keeps a continuous reasoning trajectory. This is
+   the §2.3 MAST surface confirmed empirically.
+
+Therefore **T3's acceptance bar is not goal-met rate or latency.** It is: **(a)** the fan-out/fan-in seam exists and
+is **layer-clean** (`tests/architecture/` proves no worker/`supervisor_plan` imports `langgraph`/`orchestration`/
+`AgentState`); **(b)** it is **observable** (the `delegation_*` carriers in the §3.7 table actually export per
+branch); **(c)** the **MAST failure modes are bounded by Protocol-D tests** (one slow/failed branch cannot hang or
+corrupt the join). A throughput win, if it ever appears, is a bonus measured later on a real parallel workload —
+never the gate. Building the mechanism ahead of the workload is the explicit, accepted trade.
+
+**Pattern decision (2026-06-15): custom `Send` nodes, NOT `create_agent` subagents-as-tools.** The official
+LangChain tutorial ([subagents-personal-assistant](https://docs.langchain.com/oss/python/langchain/multi-agent))
+builds a supervisor as `create_agent(tools=[subagent_as_tool, …])` — far less code, built-in HITL, parallel tool
+calls. We **rejected** it for two source-verified reasons:
+
+1. **It's the same primitive underneath — so the custom path costs no concurrency, only code.** Reading the
+   installed `langgraph/prebuilt/tool_node.py`: the prebuilt `ToolNode` runs multiple tool calls via
+   `await asyncio.gather(*(self._arun_one(call, …) for call in tool_calls))` (`_afunc`, ~line 259) under `ainvoke`,
+   and its `_parse_input` literally returns `[Send("tools", [tool_call]) for tool_call in tool_calls]` (~line 188).
+   **`create_agent` fan-out *is* `Send` fan-out** with the supervisor LLM making the split inside an
+   un-instrumentable ReAct loop. Our `supervisor_node` → `Send` design uses the identical execution mechanism,
+   exposed one layer down where the §3.7 pillars can wrap each branch and the decompose decision is a pure,
+   testable component. The custom path is not "heavier for the same result" — it is the *same result, instrumented*.
+2. **`create_agent` violates the framework-substitutability principle; the custom path honors it.** The four-layer
+   doc ([`FOUR_LAYER_ARCHITECTURE.md`](../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 47/78/161) mandates
+   **orchestration = "topology only, thin wrappers"** and **vertical components = "framework-agnostic domain
+   logic"** — operationally, *LangGraph must be swappable*. `create_agent` puts a sub-agent's entire reasoning
+   loop (domain behavior) *inside LangChain* → you could not swap the graph runtime without rewriting the
+   sub-agents (domain logic leaked upward — forbidden). The §3.5a shape keeps `supervisor_plan.py` (the decompose
+   decision = domain logic) a pure `components/` function with zero `langgraph` import; only the node wrappers +
+   the `Send` edge touch the framework. Swap LangGraph → rewrite the thin wrappers, the component is untouched.
+   This is the substitutability test *passing*, and it is the deciding reason. (It also re-confirms the §2.3/§3.5
+   MAST guard: a `create_agent` sub-agent's reasoning is exactly the "hidden inter-agent state" the pillars must
+   see — the convenient pattern reintroduces the failure surface the deferral was protecting against.)
+
+**Topology — `Send`-based map-reduce (the idiomatic LangGraph fan-out).**
+
+```
+route ─→ supervisor ──(conditional edge returns list[Send])──→ ⟨ worker × N, parallel ⟩ ─→ join ─→ evaluate
+              │  (calls pure components/supervisor_plan.py            │ (thin wrapper over          │ (existing
+              │   for the decomposition; returns Send list,           │  the EXISTING dispatcher,   │  node — judge
+              │   one per branch, SMALL payload = ids/objective)      │  try/except → sentinel)     │  still runs
+              └─ no decompose logic in the node                       └─ writes worker_results      │  on final)
+                                                                         (Annotated[list,add])      │
+```
+
+- **`supervisor_node`** (orchestration, new) — reads state, calls a pure **`components/supervisor_plan.py`**
+  (`plan_delegations(...) -> list[Delegation]`, decomposition as *data*), and returns `list[Send]` — one
+  `Send("worker", {…small payload…})` per branch. Holds **no** decomposition logic (§3.5 row 3/4). Fan-out is a
+  **conditional edge** returning the `Send` list, per the researched pattern
+  (`builder.add_conditional_edges("supervisor", route_fn, ["worker"])`).
+- **`worker_node`** (orchestration, new) — a thin wrapper over the **existing** `LocalLLMDelegationDispatcher`
+  (§3.5 row 1, already layer-clean). **Mandatory** `try/except` returning a sentinel result: per the research, *one
+  branch raising cancels the entire super-step* — so a worker must never propagate its exception to the graph.
+  Per-branch **timeout** is load-bearing for the same reason (the super-step barrier waits for the slowest branch;
+  [langgraph#6320](https://github.com/langchain-ai/langgraph/issues/6320) — an unrelated slow sibling blocks the
+  join). Attach a `RetryPolicy` for transient provider errors.
+- **fan-in state key** (new on `state.py`): `worker_results: Annotated[list[dict], operator.add]` — the reducer is
+  **mandatory** for parallel writes (without it, concurrent branch writes raise `INVALID_CONCURRENT_GRAPH_UPDATE`
+  and "the second write erases the first"). This is the *same* `operator.add` / `_append_list` convention already
+  used for `reflections`/`tool_results` ([`state.py:17-30`](../../orchestration/state.py)) — no new mechanism.
+- **`join_node`** (orchestration, new) — a plain node that reads the merged `worker_results` after all branches
+  complete, synthesizes one answer, and edges to the **existing `evaluate` node** so GoalJudge runs on the *final*
+  synthesized answer. This is what keeps the §3.7 corrupt-success guard honest for T3: the judge sees the merged
+  output, not a per-worker fragment.
+
+**The concurrency fork — RESOLVED (the one open technical question).** `Send` gives *graph-level* parallel
+branches, but each branch still executes its `worker_node`, which calls the dispatcher. The dispatcher today is
+**synchronous and event-loop-blocking**: `dispatch()` does `thread.start(); thread.join()`
+([`delegation_dispatcher.py:84-86`](../../services/tools/delegation_dispatcher.py)). The repo runs the graph under
+**`app.ainvoke`** ([`react_loop.py:483`](../../orchestration/react_loop.py)) and **every existing node is
+`async def`** with `await llm_service.invoke(...)` → `await llm.ainvoke(...)`
+([`llm_config.py:75`](../../services/llm_config.py)) — i.e. the whole loop is non-blocking async and LLM I/O yields
+the event loop. **Consequence:** if `worker_node` calls the *current* sync `dispatch()`, the `thread.join()` blocks
+the single event loop and the N branches **serialize** — fan-out topology with **zero** real concurrency. **The
+fix is small and contained:** add an **`async def dispatch`** to `LocalLLMDelegationDispatcher` that `await`s
+`self._invoke_worker(...)` directly (dropping the `thread`/`join` shim, which only existed to run a coroutine from
+sync code), and have `worker_node` `await` it. Then the N branches' `await`ed LLM calls overlap on the loop —
+genuine concurrency, no new threading. The sync `dispatch()` stays for the existing non-graph caller. *This keeps
+the dispatcher layer-clean: it still imports no `langgraph`/`orchestration`.* (A `max_concurrency` run-config cap
+bounds fan-out against the LLM rate limit — fan-out N vs the provider's req/min, else 429s.)
+
+**Per-pillar carriers (extends the §3.7 table for T3, all `execution`-category, none crosses the SSE seam).** The
+event *names* already exist (§3.5): `delegation_requested` / `delegation_budget_checked` /
+`delegation_handoff_written`, plus a budget/policy **deny** as `error.occurred`. T3 must emit one set **per
+branch** (carry the branch's `correlation_id` so the trace can join fan-out to fan-in), and the `supervisor_node`
+emits one decomposition carrier (how many branches, on what basis) — the same "verified carrier, not assumed"
+obligation (§3.7). The reflexion/escalation interplay is unchanged: T2 can still re-enter *after* the join if the
+judge fails the synthesized answer.
+
+**TDD shape (extends §7.5).** `components/supervisor_plan.py` is **Protocol C** (mocked-LLM decompose logic +
+the failure path: a non-decomposable task returns a single-branch plan, *tested first*). The `supervisor_node` /
+`worker_node` / `join_node` + fan-out/fan-in edges are **Protocol D** — a **failure-mode matrix** is the headline:
+*one worker raises → join still synthesizes from the survivors* (sentinel path), *one worker times out → super-step
+does not hang past the cap*, *all workers fail → graceful degraded answer, judge still runs*. The
+`worker_results` reducer gets a **Pattern-1 property test** (N concurrent appends merge, none lost) — the
+"canary test simulating N workers" the research recommends. Per §7.5's non-negotiable rule, **every one of these
+failure tests lands before the happy-path fan-out test.**
 
 ### 3.6 Frontend / middleware connection seam — the new tiers must not cross it
 
@@ -398,6 +574,12 @@ Each phase is independently shippable and independently eval-able.
 - **Phase 3 — Hybrid escalation routing.** Promote the cascade: entry heuristic+nudge, escalation on §5
   signals. Gate: entry-router accuracy (via `diagnose_planning_depth`) + escalation precision measured
   separately.
+- **Phase 4 — T3 supervisor / parallel fan-out (thin, seam-de-risking).** Add `supervisor_node` (calls pure
+  `components/supervisor_plan.py`) → `Send` fan-out → `worker_node` (wraps the dispatcher, made **async**) →
+  `join_node` → existing `evaluate`; new `worker_results` reducer key (§3.5a). **Gate is NOT throughput/goal-met**
+  (the §3.5a honest metric): the seam is layer-clean (`tests/architecture/`), per-branch `delegation_*` carriers
+  export, and the Protocol-D failure matrix passes (one slow/failed branch never hangs or corrupts the join).
+  Validated against the §8.2 synthetic fan-out corpus in calibration mode.
 
 ## 7.5 TDD methodology — how each phase is built
 
@@ -416,7 +598,7 @@ everything is more dangerous than one that rejects everything ([AGENTS.md TAP-4]
 |---|---|---|---|---|
 | `reflections` / replan keys on `state.py` (schema shape) | Orchestration state | L1-style purity for the schema | Pydantic/TypedDict validity + reducer behavior (append-only, dedup) — deterministic, <10s, zero flake | P1 property-based schema, P2 state-machine invariant |
 | `components/reflexion.py` generator + re-entry predicate | Vertical component | **Protocol C — Eval-Driven** | C1 deterministic scaffolding with `TestModel`/`FunctionModel` (mocked LLM) for the predicate + parsing; C2 trajectory eval that a failed verdict → critique → re-entry actually fires | P6 mock provider, P8 trajectory, P5 record/replay |
-| `components/supervisor_plan.py` (T3, deferred) | Vertical component | **Protocol C** | C1 decompose/merge logic with mocked LLM; never live LLM in unit tests | P6, P8 |
+| `components/supervisor_plan.py` (T3, 🔮 planned) | Vertical component | **Protocol C** | decline-first decompose decision, mocked LLM; the dependent-plan→decline (GAIA guard) test lands FIRST; never live LLM | P1, P6 |
 | LLM `planner_node` logic (in `components/plan_builder.py`) | Vertical component | **Protocol C** | C1 plan-structure validity + **deterministic floor fallback on generation failure** (the failure path is the headline test); C3 rubric eval for plan quality | P6, P9 rubric |
 | `planner_node` / `reflect_node` / `supervisor_node` wrappers + edges | Orchestration | **Protocol D — Simulation-Driven** | Protocol-D1 **failure-mode matrix** over the escalation fork (verdict × budget × no-progress → reflect / recap / END); Protocol-D3 binary-outcome scenarios ("does a failed-then-reflected run recover? YES/NO") | P11 failure-mode matrix, P10 governance-loop sim |
 | escalation routing (`components/router.py`) | Vertical component | **Protocol C** + Protocol-D1 at the edge | C1 deterministic heuristic floor (failure paths: each §5 trigger fires/doesn't); the LLM nudge mocked | P6, P11 |
@@ -463,6 +645,102 @@ that no new peer-component import appears (router ↮ goal_judge). Run Pattern 7
 - **Per-phase gate** as in §7; ship behind a flag tier (`steady-state` parity first), promote on evidence —
   mirroring the GoalJudge shadow→consume discipline.
 
+### 8.1 Live validation — first loops-on Cloud Run measurement (2026-06-15)
+
+First run of all four seams against the loops-on `stress` Cloud Run revision
+(`REFLEXION_ENABLED=1 PLANNING_PLAN_SOURCE=generated`), 42-case batch
+(`frontend/stress-batch-results.json` + `cache/planning_stress/ui_batch.jsonl`), scored read-only by
+`scripts/analyze_planning_traces.py --source langfuse` (calibration mode — records rates, no gate). Langfuse
+is the durable trace store; the Playwright "42 passed" is liveness only, **not** the planning-quality verdict.
+
+| Seam | Rate | Detail |
+| --- | --- | --- |
+| **Depth (entry-router)** | **0.917 (11/12)** | The Phase-0 verdict: pre-fix, 14/17 strata rows collapsed to L0; now **8 of 9 non-L0 cases (6×L1, 3×L2) fire their intended depth.** The collapse is cleared. |
+| Replan gate | 0.900 (9/10) | — |
+| Reflexion | 0.800 (8/10) | Both misses same shape, benign direction (see edges below) |
+| Escalation | 0.900 (9/10) | **precision 1.000 / recall 0.800 / tp4 fp0 tn5 fn1** — never false-escalated; one missed escalation (the cheaper error per MAST asymmetry). |
+
+**Verdict: Phase 0 holds on the live backend.** The depth-collapse bug that motivated the redesign is gone —
+the lone depth miss is an *under-by-one-tier*, not a flatten-to-L0. Caveats kept honest: N is small per seam
+(10–12 cases; one case ≈ 8 pts, wide CIs — robust enough to confirm the *categorical* collapse-cleared result,
+not to finely calibrate the L1/L2 boundary); calibration mode *records*, does not gate; LLM runs jitter ±a case
+on re-run.
+
+**Calibration-edge backlog (named, minor — not Phase-0 blockers):**
+- **CE-1 `STRESS-DEPTH-009` want=L2 got=L1.** L1/L2 boundary under-plans one tier (3-step plan vs 5 ideal).
+  A `select_planning_depth` calibration edge, not a collapse. Candidate for the depth-strata oracle.
+- **CE-2 `STRESS-REPLAN-garbage-input-02` want_replan=True got_replan=False.** `plan_is_stale` keys on
+  tool-failure / explicit-surprise scalars ([`plan_builder.py:278`](../../components/plan_builder.py)); a
+  *garbage input* that never surfaced as a failed tool result doesn't trip the gate. A stale-detection coverage
+  gap for the "junk input, no tool error" case.
+- **CE-3 reflexion over-trigger on trivials (`control-trivial-07`, `-10`).** Both re-entered reflexion once on
+  a task that wanted none — but `bounded=True, attempts=1`: the D1 ceiling held, no thrash. A precision-on-trivials
+  edge, not a safety issue.
+
+### 8.2 T3 fan-out validation corpus (data BUILT 2026-06-15; analyzer branch pending)
+
+> **Full corpus plan: [`t3_fanout_corpus.plan.md`](t3_fanout_corpus.plan.md)** — the row catalog, the T3 planning
+> decision-space axes, the coverage matrix, and the scoring delta live there (single source). This section is the
+> *summary*; that doc is authoritative for *which tasks* and *why each one*. **Scope updated 2026-06-15:** the
+> corpus is a **blend** of consumer tuples (trip/restaurant/gift) and benchmark-derived shapes, deliberately
+> **seeds near-miss decline traps** (tasks that look parallel but are sequentially dependent), and scales to
+> **≈30 rows, hard cap 40** — dimensioned by §2's decision-space coverage matrix, not a fixed row count.
+>
+> **Status (2026-06-15): corpus DATA is built and verified** — `build_planning_stress_corpus.py` now emits **29
+> `phase="fanout"` rows** (`FANOUT-independent` 10 / `FANOUT-decline` 10 [7 near-miss ⚠ traps + 3 obvious] /
+> `FANOUT-fault` 5 / `FANOUT-control` 4; `want_fanout` 15 True / 14 False so precision is measurable), `pytest
+> tests/scripts/` green. **It is inert data until Phase 4 nodes emit the carriers**, and the analyzer has **no
+> `fanout` branch yet** — a fanout row currently falls through `score_run`'s `if/elif` and silently reports
+> `rate=0.0` (not a crash; do not misread a pre-Phase-4 run as "fan-out failed"). Building the analyzer branch is
+> part of Phase 4 (impl §7.6).
+
+Because §2.3 says the real corpus has ~0 parallel work, T3 is validated against a **synthetic fan-out stress
+corpus** authored from **industry-standard agent benchmarks plus relatable consumer tuples**, mirroring the T1/T2
+stress-corpus shape (`build_planning_stress_corpus.py` + `analyze_planning_traces.py`). This is a *mechanism*
+validation, consistent with §3.5a's seam-not-throughput acceptance bar — it proves the fan-out/fan-in seam behaves,
+**not** that the workload needs it.
+
+**Benchmark source (June 2026 survey).** **GAIA** (466 tasks chaining web browse + file parse + multi-document
+reasoning) is the natural fit: its multi-document tasks are the closest thing to *genuinely independent* branches
+(summarize/extract from N sources, then synthesize). We **adapt** a handful of GAIA-style task *shapes* (not the
+private answer set) into prompts whose decomposition is observably parallel. Secondary shapes from Tau²-bench
+(independent policy checks) and WebArena (independent multi-tab lookups) round out the adversarial cases. **We
+deliberately include the §3.5a counter-evidence as test cases**: the GAIA-Val finding that single-agent beats
+multi-agent means a sub-set of rows must be tasks where fan-out is *wrong* (sequential-dependent disguised as
+parallel) — the supervisor must **decline to fan out** (single-branch plan), and that decline is a scored
+expectation, not a failure.
+
+**New row shape (extends `_row`):** `phase="fanout"`, with new expectation keys the (new) fan-out analyzer reads:
+
+| Key | Meaning | Scored by |
+|---|---|---|
+| `want_fanout` (bool) | should the supervisor decompose into ≥2 parallel branches at all? | did `supervisor` emit ≥2 `Send`? (the *decline-to-fan-out* cases set this `False`) |
+| `want_branch_count` (int, optional) | expected branch count for genuinely-parallel rows | branch count from per-branch `delegation_requested` carriers |
+| `want_join_synthesizes` (bool) | did the join produce one coherent answer from the branch results? | `join_node` carrier + GoalJudge ran on the merged answer |
+| `want_survives_partial` (bool) | for fault-injection rows: one branch fails → join still answers from survivors | sentinel path observed; final answer non-empty; no super-step hang |
+
+**Row families (start at the answered 8/6/3/3 = 20 split, scale to ≈30 / cap 40 to fill the
+[corpus plan](t3_fanout_corpus.plan.md) §6 coverage matrix). Decline is weighted heaviest — it is the
+load-bearing decision):**
+- **`FANOUT-independent-NN`** (8 → 10–12) — genuinely parallel GAIA-style multi-doc lookups + consumer tuples
+  (parallel research / unrelated cuisine lookups); `want_fanout=True`, `want_branch_count≥2`,
+  `want_join_synthesizes=True`. Cardinality spread (2 boundary / 3 / many ceiling) + one L2 row.
+- **`FANOUT-decline-NN`** (6 → 10–12) — sequential-dependent tasks that *look* parallelizable, **incl. seeded
+  near-miss traps** ("book a trip: flight → hotel around the flight dates → car"; "benchmark A, then use the result
+  to tune B"; shared-write-target); `want_fanout=False` — the supervisor must keep it single-branch (the GAIA
+  single-agent-wins guard, made a test). A near-miss row that gets fanned out is the headline failure.
+- **`FANOUT-fault-NN`** (3 → 5–6) — fault injection: a branch objective designed to fail/time out/straggle;
+  `want_fanout=True`, `want_survives_partial=True` — proves the sentinel + per-branch-timeout path (the §3.5a MAST
+  bound) on a *live* trace, not just a unit sim.
+- **`FANOUT-control-NN`** (3 → 4–5) — trivial single-step tasks + an at-the-floor boundary (2 trivial independent
+  writes, below the "<3 don't bother" rule); `want_fanout=False` — the precision guard, mirroring the
+  `control-trivial` reflexion rows.
+
+**Analyzer delta:** `analyze_planning_traces.py` gains a `fanout` phase reading the per-branch `delegation_*` +
+`join_node` carriers, reporting **fan-out precision** (of the rows we fanned out, how many *should* have been —
+the decline cases are the negatives) and **partial-survival rate** — the two halves that match the §3.5a
+acceptance bar. Calibration mode first (records, never gates), exactly as the T1/T2 phases.
+
 ## 9. Risks
 
 - **Brittle plan (T1).** Mandatory replan gate; without it T1 is *worse* than ReAct on noisy tool output.
@@ -475,8 +753,11 @@ that no new peer-component import appears (router ↮ goal_judge). Run Pattern 7
   never on upfront difficulty estimation (§4).
 - **Depth flattener regression.** Phase 0 is the prerequisite; every later tier inherits the L0 collapse if it
   is skipped.
-- **Scope creep to T3.** Explicitly deferred (§2.3); revisit only if the task corpus shifts toward genuinely
-  parallel work.
+- **Over-investing in T3 ahead of the workload.** T3 is un-deferred (§3.5a) to de-risk the seam, *not* because
+  the corpus needs parallel work (§2.3 still holds: ~0 genuine fan-out; GAIA shows single-agent wins). Guard: the
+  §3.5a acceptance bar is seam + layer-clean + observable + MAST-bounded — **never** a throughput/goal-met claim;
+  build the thin mechanism, do not grow T3 features (waves, nested supervisors) without new parallel-workload
+  evidence.
 - **Zero-carrier governance fact (§3.7).** A new-tier fact (replan, reflexion critique, delegation handoff) gets
   suppressed in the curated relay on the assumption another observation carries it — the token-seam failure mode,
   which CI cannot catch. Guard: the §3.7 carrier table + the per-phase governance-trace gate; verify the

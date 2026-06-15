@@ -39,6 +39,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import time
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -89,24 +90,49 @@ def _load_langfuse_events(trace_id: str) -> list[dict]:
         )
 
     import base64
+    import time
+    import urllib.error
     import urllib.request
 
     url = f"{host}/api/public/traces/{trace_id}"
     token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
     req = urllib.request.Request(url, headers={"Authorization": f"Basic {token}"})
-    with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (trusted host)
-        trace = json.loads(resp.read().decode())
+    # Langfuse rate-limits the read API; a tight 42-trace loop trips 429. Retry
+    # with exponential backoff (honoring Retry-After when present) so a batch
+    # run does not lose its tail to throttling.
+    trace = None
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
+                trace = json.loads(resp.read().decode())
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < 5:
+                retry_after = exc.headers.get("Retry-After")
+                delay = float(retry_after) if retry_after else (2.0 ** attempt)
+                time.sleep(min(delay, 30.0))
+                continue
+            raise
+    if trace is None:
+        raise RuntimeError("langfuse fetch exhausted retries")
 
-    # Langfuse observations carry the BlackBox details under metadata/input;
-    # normalize each into {"event_type", "details"} so the scorer is uniform.
+    # Langfuse observations carry the BlackBox event ``details`` in the
+    # observation ``output`` (verified live 2026-06-15: escalation_*/reflexion_*
+    # on task.completed.output; planning_depth/replanned/plan_source on
+    # step.planned.output). Observation NAMES are dotted (``task.completed``);
+    # normalize to the underscore form the scorer expects (BlackBox event_type)
+    # so the scoring layer is source-agnostic. Merge output over metadata/input
+    # in case some carriers land elsewhere.
     events: list[dict] = []
     for obs in trace.get("observations", []) or []:
-        details = obs.get("metadata") or obs.get("input") or {}
-        if not isinstance(details, dict):
-            continue
+        details: dict = {}
+        for field in ("metadata", "input", "output"):
+            v = obs.get(field)
+            if isinstance(v, dict):
+                details = {**details, **v}
         events.append(
             {
-                "event_type": obs.get("name", ""),
+                "event_type": (obs.get("name", "") or "").replace(".", "_"),
                 "details": details,
             }
         )
@@ -137,6 +163,25 @@ def _step_planned(events: list[dict]) -> list[dict]:
     ]
 
 
+def _as_bool(v: object) -> bool:
+    """Coerce a carrier flag to bool. Langfuse serializes JSON booleans as the
+    STRINGS "True"/"False" in the observation output, so a plain ``is True``
+    silently reads every replan/flag as False — coerce both shapes."""
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        return v.strip().lower() in ("true", "1", "yes")
+    return bool(v)
+
+
+def _as_int(v: object, default: int = 0) -> int:
+    """Coerce a carrier count to int (Langfuse serializes ints as strings too)."""
+    try:
+        return int(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
 def _fired_depth(events: list[dict]) -> str | None:
     steps = _step_planned(events)
     depths = [s["planning_depth"] for s in steps if "planning_depth" in s]
@@ -145,17 +190,45 @@ def _fired_depth(events: list[dict]) -> str | None:
 
 
 def _replan_count(events: list[dict]) -> int:
-    return sum(1 for s in _step_planned(events) if s.get("replanned") is True)
+    return sum(1 for s in _step_planned(events) if _as_bool(s.get("replanned")))
 
 
 def _reflexion_attempts(events: list[dict]) -> int:
-    """Number of recorded reflexion re-entries (the per-reentry STEP_PLANNED
-    carrier). Counts entries that carry the reflexion-step shape."""
-    return sum(
+    """Number of recorded reflexion re-entries. The per-reentry STEP_PLANNED
+    carrier has reflexion_critique_chars; but the AUTHORITATIVE count is the
+    terminal task.completed.reflexion_attempt (the post-loop attempt index),
+    which survives the relay even when the per-step carrier shape varies. Take
+    the max of (terminal attempt, counted step carriers)."""
+    step_carriers = sum(
         1
         for s in _step_planned(events)
         if "reflexion_attempt" in s and "reflexion_critique_chars" in s
     )
+    terminal = _terminal_completed(events) or {}
+    terminal_attempt = _as_int(terminal.get("reflexion_attempt"), 0)
+    return max(step_carriers, terminal_attempt)
+
+
+def _reflexion_within_budget(events: list[dict]) -> bool:
+    """True if no single run cycle exceeded its reflexion ceiling.
+
+    Checks each task.completed independently (a checkpoint thread can hold
+    several cycles); a cycle is bounded when its reflexion_attempt does not
+    exceed its own max_reflexion_attempts. Absent ceiling => treat as bounded.
+    """
+    completed = [
+        e["details"]
+        for e in events
+        if (e.get("event_type") or "").endswith("task_completed")
+        and isinstance(e.get("details"), dict)
+    ]
+    for c in completed:
+        ceiling = c.get("max_reflexion_attempts")
+        if ceiling is None:
+            continue
+        if _as_int(c.get("reflexion_attempt"), 0) > _as_int(ceiling, 0):
+            return False
+    return True
 
 
 # ── per-phase scoring ──────────────────────────────────────────────────────────
@@ -202,9 +275,14 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
             want = bool(row.get("want_reflexion"))
             attempts = _reflexion_attempts(events)
             reentered = attempts >= 1
-            completed = _terminal_completed(events) or {}
-            ceiling = completed.get("max_reflexion_attempts")
-            bounded = ceiling is None or attempts <= int(ceiling)
+            # Budget bound is PER CYCLE, not per trace: a checkpoint thread can
+            # accumulate several independent run cycles (each respecting the
+            # ceiling), so summing carriers across cycles would falsely report
+            # "unbounded". Bound = no single task.completed.reflexion_attempt
+            # exceeded its own max_reflexion_attempts (verified live 2026-06-15:
+            # the loop hit reflexion_attempt=2/max=2 -> escalation_reason=
+            # budget_exhausted -> stopped, correctly, every cycle).
+            bounded = _reflexion_within_budget(events)
             ok = (reentered == want) and bounded
             if ok:
                 bucket["hits"] += 1
@@ -216,10 +294,23 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
 
         elif phase == "escalation":
             want = row.get("want_escalation")  # "reflect" | "done"
-            completed = _terminal_completed(events) or {}
-            got = completed.get("escalation_decision")
             want_escalate = want == "reflect"
-            got_escalate = got == "reflect"
+            # Escalation fired if ANY task.completed in the trace decided
+            # "reflect" — a loop can escalate on a failed verdict and then
+            # RECOVER (terminal decision "done"). Scoring only the terminal
+            # event mislabels a successful recovery as a missed escalation
+            # (verified live 2026-06-15: STRESS-ESCALATION-wrong-prone-01
+            # escalated on verdict at attempt 0, fixed it, ended "done").
+            all_completed = [
+                e["details"]
+                for e in events
+                if (e.get("event_type") or "").endswith("task_completed")
+                and isinstance(e.get("details"), dict)
+            ]
+            got_escalate = any(
+                c.get("escalation_decision") == "reflect" for c in all_completed
+            )
+            got = "reflect" if got_escalate else "done"
             if got_escalate and want_escalate:
                 esc["tp"] += 1
                 bucket["hits"] += 1
@@ -293,16 +384,21 @@ def _build_events_by_row(rows: list[dict], args: argparse.Namespace) -> dict[str
     for row in rows:
         case = row["case"]
         if args.source == "blackbox":
-            # The stress spec encodes thread_id as gj:{case}:{trace_id}; the
+            # The stress spec encodes thread_id as gj:{gj_id}:{trace_id}; the
             # backend uses the checkpoint thread_id as the workflow_id. Try the
-            # full thread form first, then the bare trace_id, then the case.
+            # full thread forms first, then the bare trace_id, then the ids.
+            gj_id = row.get("gj_id", "")
             wf_candidates = [
+                f"gj:{gj_id}:{row['trace_id']}" if gj_id else "",
                 f"gj:{case}:{row['trace_id']}",
                 row["trace_id"],
+                gj_id,
                 case,
             ]
             events: list[dict] = []
             for wf in wf_candidates:
+                if not wf:
+                    continue
                 events = _load_blackbox_events(args.recordings, wf)
                 if events:
                     break
@@ -313,6 +409,9 @@ def _build_events_by_row(rows: list[dict], args: argparse.Namespace) -> dict[str
             except Exception as exc:  # one lost trace must not sink the batch
                 print(f"  warn: langfuse fetch failed for {case}: {exc}")
                 events_by_row[case] = []
+            # Space requests so a 42-trace batch does not hammer the read API
+            # into a 429 (the per-call retry/backoff handles transient spikes).
+            time.sleep(args.langfuse_delay)
     return events_by_row
 
 
@@ -327,6 +426,12 @@ def main() -> int:
         "--gate",
         action="store_true",
         help="enforce the plan §5.2 bars (exit non-zero on a violation)",
+    )
+    parser.add_argument(
+        "--langfuse-delay",
+        type=float,
+        default=0.5,
+        help="seconds between Langfuse fetches (avoid 429 on large batches)",
     )
     args = parser.parse_args()
 

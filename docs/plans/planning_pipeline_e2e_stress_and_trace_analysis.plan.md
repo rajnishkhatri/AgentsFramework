@@ -329,7 +329,12 @@ record from nodes only. **One contradictory governance trace blocks the run** (G
 - **No production default flip.** `reflexion_enabled`/`plan_source` stay OFF in prod; the stress revision is a
   tagged, throwaway Cloud Run revision. Promotion to prod is a separate evidence-gated decision (the build plan's
   shadow→consume discipline).
-- **No T3 supervisor (tier T3 of the *ladder*, not the test tier).** Deferred on corpus grounds (build plan §2.3).
+- **No fan-out stress phase here (tier T3 of the *ladder*, not the test tier).** This plan stresses only the four
+  shipped phases (depth / replan / reflexion / escalation). The ladder's T3 supervisor was **un-deferred
+  2026-06-15** (build plan §3.5a) and its validation lives in a **separate** synthetic fan-out corpus
+  ([`t3_fanout_corpus.plan.md`](t3_fanout_corpus.plan.md); `phase="fanout"`, 29 rows built) — *not* folded into
+  this four-phase stress run. Adding a `STRESS_PHASE=fanout` batch here waits on the Phase 4 nodes + the analyzer
+  `fanout` branch.
 - **No new Langfuse API surface.** Reuse `fetch_trace_observations` / the tested helpers.
 
 ---

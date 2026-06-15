@@ -19,10 +19,12 @@
 > the registry to each component the plan introduces. §C is the per-phase build sequence. If you only read one
 > section, read §A.
 >
-> **Diagrams (Mermaid, render in GitHub).** Five: the four-layer onion + artifact placement (§A.1), the OBP
+> **Diagrams (Mermaid, render in GitHub).** Seven: the four-layer onion + artifact placement (§A.1), the OBP
 > component↔orchestration sequence (§A.2), the agentic testing pyramid (§A.3), the GTP-carrier / FSP-promotion
-> fact-flow (§A.6), and the StateGraph tier-ladder topology (§B). New artifacts are starred (★) and forbidden
-> paths are dashed-red across all of them.
+> fact-flow (§A.6), the StateGraph tier-ladder topology including the T3 fan-out subgraph (§B), the T3
+> supervisor `Send`/worker/join superstep with its partial-survival path (§B.5), and the T3
+> decompose-or-decline decision flow (§B.5). Shipped new artifacts are starred (★),
+> design-complete-but-unbuilt T3 artifacts are half-filled (◐), and forbidden paths are dashed-red across all of them.
 
 ---
 
@@ -42,7 +44,7 @@
   - [B.2 `planner_node` + plan generation (T1)](#b2-planner_node--plan-generation-t1)
   - [B.3 `components/reflexion.py` + `reflect_node` (T2)](#b3-componentsreflexionpy--reflect_node-t2)
   - [B.4 Escalation routing (`components/router.py`)](#b4-escalation-routing-componentsrouterpy)
-  - [B.5 Supervisor pre-binding (`components/supervisor_plan.py`, T3 deferred)](#b5-supervisor-pre-binding-componentssupervisor_planpy-t3-deferred)
+  - [B.5 Supervisor / parallel fan-out (`components/supervisor_plan.py` + fan-out nodes, T3 — active design)](#b5-supervisor--parallel-fan-out-componentssupervisor_planpy--fan-out-nodes-t3--active-design)
 - [C. Per-phase build sequence](#c-per-phase-build-sequence)
 - [D. Open questions inherited from the plan](#d-open-questions-inherited-from-the-plan)
 
@@ -110,7 +112,7 @@ flowchart TB
 
     subgraph ORCH["L4 Behavioral · Protocol D · orchestration/"]
         OREACT["react_loop.py<br/>StateGraph topology only"]
-        OPLAN["★ planner_node · ★ reflect_node<br/>☆ supervisor_node (deferred)"]
+        OPLAN["★ reflect_node (T1 plan inline in route_node)<br/>◐ supervisor_node · worker · join (planned)"]
         OSTATE["state.py<br/>★ reflections · ★ replan_count"]
     end
 
@@ -118,7 +120,7 @@ flowchart TB
         CROUTER["router.py<br/>★ escalation predicate"]
         CPLAN["plan_builder.py<br/>★ LLM plan + det. floor"]
         CREFLEX["★ reflexion.py<br/>generate + decide_reentry"]
-        CSUP["☆ supervisor_plan.py (deferred)"]
+        CSUP["◐ supervisor_plan.py (planned, T3)"]
     end
 
     subgraph SVC["L2 Reproducible · Protocol B · services/"]
@@ -283,7 +285,7 @@ flowchart TB
     subgraph L3B["L3 Probabilistic · Protocol C · Eval-Driven"]
         L3H["components/ · MEDIUM uncertainty"]
         L3T["scheduled (nightly) — not per-commit"]
-        L3A["★ reflexion.py · ★ plan gen · ★ router predicate · ☆ supervisor_plan"]
+        L3A["★ reflexion.py · ★ plan gen · ★ router predicate · ◐ supervisor_plan (T3, planned)"]
         L3H --> L3T --> L3A
     end
 
@@ -518,8 +520,8 @@ The single lookup table: for every artifact the plan introduces, the protocols t
 | reflexion re-entry predicate | Vertical component | OBP-2 decision | **C** (C1, mocked) | P6 | — |
 | `reflect_node` | Orchestration | OBP-3 wrapper | **D** | P11, P10 | GTP-2/3 |
 | escalation routing (`router.py`) | Vertical component | OBP-2 at the edge | **C** + Protocol-D1 | P6, P11 | GTP Reasoning (`decision_id`) |
-| `supervisor_plan.py` (T3, deferred) | Vertical component | OBP-1 + OBP-M2 | **C** | P6, P8 | GTP Recording/Validation (`delegation_*`) |
-| `supervisor_node` (T3, deferred) | Orchestration | OBP-3 + OBP-M3 | **D** | P11, P10 | GTP-2 |
+| `supervisor_plan.py` (T3, ◐ planned) | Vertical component | LP-1/LP-2 + OBP-1 | **C** (decline-first) | P1, P6 | GTP-1 (`delegation_*` per branch) |
+| `supervisor_node` / `worker_node` / `join_node` (T3, ◐ planned) | Orchestration | OBP-3 + OBP-M1 | **D** | P11, P1, P10 | GTP-3 (judge on joined answer) |
 | any UI promotion (deferred) | frontend ring | — | (frontend tests) | — | **FSP-3** |
 | all of the above | All | — | — | **P7 (in `tests/architecture/`)** | LP-1..LP-4 |
 
@@ -530,12 +532,16 @@ The single lookup table: for every artifact the plan introduces, the protocols t
 Each subsection: the change, the protocol bindings from A.7, and the test shape. All source line references are
 a snapshot of today's tree (navigation aids, not contracts) and were verified at authoring time.
 
-**Diagram — the StateGraph topology: today's flat ReAct loop with the additive T1/T2 nodes and edges.** Existing
-nodes/edges are plain; new nodes are starred (★) and new edges are bold/labeled. The two new control structures
-are the **T1 replan back-edge** (surprising tool output → re-plan) and the **T2 escalation fork** on the
-formerly-terminal `done` branch. Every node is a thin OBP-3 wrapper; every fork is one OBP-4
-`add_conditional_edges`. Nothing existing is modified — both tiers are purely additive (independently
-revertible).
+**Diagram — the StateGraph topology: today's flat ReAct loop with the additive T1/T2 nodes and edges, plus the
+◐ T3 fan-out subgraph.** Existing nodes/edges are plain; shipped new nodes are starred (★); the design-complete
+but unbuilt T3 nodes are half-filled (◐). The new control structures are the **T1 replan back-edge** (surprising
+tool output → re-plan), the **T2 escalation fork** on the formerly-terminal `done` branch, and the **T3
+supervisor fork** off `route` (the *only* new entry edge T3 adds — `supervisor_node` either declines straight
+back to the T0/T1 spine or fans out via `Send`, then re-joins at the existing `evaluate`). Every node is a thin
+OBP-3 wrapper; every fork is one OBP-4 `add_conditional_edges`. Nothing existing is modified — all three tiers
+are purely additive (independently revertible). The T3 fan-out *internals* (the `Send` superstep, worker
+sentinels, the `worker_results` reducer) are drawn in the dedicated §B.5 diagram below; here only its two seams
+to the spine are shown — entry off `route`, return to `evaluate`.
 
 ```mermaid
 %%{init: {
@@ -555,6 +561,11 @@ flowchart TD
 
     EXEC -. "★ T1 replan back-edge" .-> PLAN
 
+    ROUTE -. "◐ T3: ≥2 independent branches" .-> SUP["◐ supervisor_node<br/>plan_delegations → validate_independence"]
+    SUP -. "◐ decline → single-thread (GAIA guard)" .-> LLM
+    SUP == "◐ Send fan-out (§B.5)" ==> JOIN[["◐ worker × N → join_node<br/>worker_results reducer"]]
+    JOIN -. "◐ joined answer → judge" .-> EVAL
+
     EVAL -->|continue| ROUTE
     EVAL -->|"★ T2: failed/partial<br/>+ budget left"| REFLECT["★ reflect_node<br/>critique → reflections[]"]
     EVAL -->|done or exhausted| RECAP[reasoning_recap]
@@ -563,21 +574,32 @@ flowchart TD
 
     classDef existing fill:#f6f8fa,stroke:#656d76,stroke-width:1px,color:#1f2328
     classDef new fill:#ddf4ff,stroke:#0969da,stroke-width:3px,color:#1f2328
+    classDef planned fill:#fbf0ff,stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4,color:#1f2328
     classDef terminal fill:#e8f4fd,stroke:#0969da,stroke-width:2px,color:#1f2328
     class GUARD,ROUTE,LLM,EXEC,EVAL,RECAP existing
     class PLAN,REFLECT new
+    class SUP,JOIN planned
     class START,END terminal
     linkStyle 7 stroke:#bf8700,stroke-width:3px
-    linkStyle 9 stroke:#cf222e,stroke-width:3px
+    linkStyle 8 stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4
+    linkStyle 9 stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4
+    linkStyle 10 stroke:#8250df,stroke-width:3px
+    linkStyle 11 stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4
+    linkStyle 13 stroke:#cf222e,stroke-width:3px
 ```
 
 > The mapping to the tiers: **T0** is the unchanged `route → call_llm → execute_tool → evaluate → route` spine.
 > **T1** adds `planner_node` on the entry path plus the replan back-edge from `execute_tool`. **T2** adds the
 > escalation fork at `evaluate` — today's `evaluate → reasoning_recap → END`
 > ([react_loop.py:1828-1833](../../orchestration/react_loop.py)) becomes a conditional: reflect-and-re-enter when
-> the GoalJudge verdict is failed/partial and budget remains, else the unchanged recap→END. **T3** (deferred)
-> would add a `supervisor_node` with `Send` fan-out; not drawn here (see B.5). The escalation predicate
-> (`decide_reentry`) and the §5 triggers are the *intelligence*; the edges are just topology (A.2).
+> the GoalJudge verdict is failed/partial and budget remains, else the unchanged recap→END. **T3** (◐ planned,
+> un-deferred 2026-06-15) adds a third fork off `route`: `supervisor_node` runs
+> `plan_delegations → validate_independence` and either **declines** back to the single-thread spine (the GAIA
+> guard — the safe default) or **fans out** via `Send` to `worker × N → join_node`, which returns to the existing
+> `evaluate` so the GoalJudge scores the *joined* answer (GTP-3). Only those two seams (entry off `route`, return
+> to `evaluate`) are shown here; the `Send` superstep internals — worker sentinels, the `worker_results` reducer,
+> the partial-survival path — are the dedicated §B.5 diagram. The decompose-or-decline *intelligence* (and the T2
+> `decide_reentry` predicate, and the §5 triggers) lives in the components; the edges are just topology (A.2).
 
 ### B.1 State extensions (`orchestration/state.py`)
 
@@ -669,23 +691,152 @@ a Protocol-C regression test written *first* — assert the 14/17 corpus rows re
 [`diagnose_planning_depth.py`](../../scripts/diagnose_planning_depth.py) is the fixture oracle → fix → green.
 No LLM, so L1-discipline (zero flake) applies.
 
-### B.5 Supervisor pre-binding (`components/supervisor_plan.py`, T3 deferred)
+### B.5 Supervisor / parallel fan-out (`components/supervisor_plan.py` + fan-out nodes, T3 — active design)
 
-**Change.** None now — T3 is deferred on workload grounds (plan §2.3). This subsection records the **binding**,
-so the deferral is a scheduling decision, not an architectural hole. The foundation already exists and is already
-layer-clean: `services/tools/task_tool.py` (budget/policy/approval gates + filesystem handoff) and
-`services/tools/delegation_dispatcher.py` (`LocalLLMDelegationDispatcher`) import nothing from
-`langgraph`/`orchestration`/`components` (verified). When un-deferred, T3 is a thin orchestration topology over
-them, not a new subsystem.
+> **Status (2026-06-15): un-deferred.** This subsection was formerly "Supervisor pre-binding (T3 deferred)". T3 is
+> now an **active, design-complete** tier (built: no). The decision and acceptance bar are in plan §3.5a; the
+> **component contract (signatures, decline-first logic, `depends_on` independence gate, test matrix) is owned by
+> [`t3_supervisor_plan.component.md`](t3_supervisor_plan.component.md)** and not restated here. This subsection
+> owns only the **protocol crosswalk** — which A-registry protocol governs each T3 artifact.
 
-**Protocols.** OBP-1 (`supervisor_plan.py` decides fan-out/fan-in, returns a plan of delegations as **data**) +
-OBP-M1..M4 (workers take `DelegationDispatchRequest` not `AgentState`; planner is LP-2-clean; handoff is
-filesystem/state; `delegation_*` events reused but carrier-verified per GTP-1). FSP: deferred-tier events are
-telemetry-only (FSP-1).
+**What T3 adds (topology over the existing layer-clean substrate).** `services/tools/task_tool.py` (budget/policy/
+approval gates + filesystem handoff) and `services/tools/delegation_dispatcher.py` (`LocalLLMDelegationDispatcher`)
+import nothing from `langgraph`/`orchestration`/`components` (verified). T3 is a thin orchestration topology over
+them: `supervisor_node` → `Send` fan-out → `worker_node × N` → `join_node` → existing `evaluate`. One dispatcher
+change is required for *real* concurrency (see crosswalk): the dispatcher's `dispatch()` is sync and blocks the
+event loop on `thread.join()`, so it gains an `async def dispatch` (plan §3.5a). **Pattern decision: custom `Send`
+nodes, NOT `create_agent` subagents-as-tools** — rejected because (a) `create_agent` fan-out *is* `Send` fan-out
+underneath (`ToolNode._afunc` → `asyncio.gather`, `_parse_input` → `[Send(...)]`, read from installed source) so
+the custom path costs only code, not concurrency, and (b) it would weld a sub-agent's reasoning loop inside
+LangChain, violating the LP framework-substitutability rule (full rationale: plan §3.5a).
 
-**Test shape.** **Protocol C** for `supervisor_plan.py` (mocked-LLM decompose/merge, P6/P8). **Protocol D** for
-`supervisor_node` (P11 failure matrix over fan-in completion, P10 governance-loop sim). **P7** must gain
-assertions that `supervisor_plan.py` obeys LP-1/LP-2 *before any code is written* (the binding is the test).
+**Diagram 1 — the `Send` superstep and its partial-survival path (the §B topology's `worker × N → join` box,
+exploded).** `supervisor_node` is OBP-3: it calls the component, and *only* on a validated multi-branch
+`fan_out` does it emit `list[Send]` — one `Send` per `Delegation`, each carrying a plain envelope, never
+`AgentState` (OBP-M1). LangGraph runs the workers as one concurrent **superstep**; each `worker_node` wraps its
+dispatch in a **mandatory `try/except`→sentinel** because *a single uncaught raise cancels the entire superstep*
+(verified: [`delegation_dispatcher.py:87-88`](../../services/tools/delegation_dispatcher.py) re-raises). Every
+worker — success or sentinel — appends to the `worker_results` reducer (`operator.add`, mandatory or concurrent
+writes raise `INVALID_CONCURRENT_GRAPH_UPDATE`). `join_node` synthesizes whatever survived and edges to the
+**existing** `evaluate`, so the GoalJudge scores the *joined* answer, never a fragment (GTP-3 / corrupt-success
+guard). The red path is the one P11 failure matrix asserts: a branch that raises or times out becomes a sentinel,
+the survivors still synthesize, and the judge runs on the degraded-but-honest answer — `want_survives_partial`
+(corpus §4.3a) is exactly *sentinel-observed AND non-empty-answer AND no-hang*.
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': { 'primaryTextColor': '#1f2328', 'lineColor': '#656d76', 'fontSize': '13px' },
+  'flowchart': { 'padding': 14, 'nodeSpacing': 26, 'rankSpacing': 36, 'htmlLabels': true, 'curve': 'basis' }
+}}%%
+flowchart TB
+    ROUTE["route_node (existing)"] -. "◐ fan-out edge" .-> SUP["◐ supervisor_node · OBP-3<br/>plan_delegations → validate_independence<br/>emits list[Send] ONLY on validated fan_out"]
+    SUP -. "◐ decline → single-thread spine (GAIA guard)" .-> SPINE["call_llm (existing T0/T1 path)"]
+
+    subgraph SS["◐ Send superstep — one concurrent step (Pregel)"]
+        direction TB
+        W1["◐ worker_node #1 · OBP-M1<br/>try/except → sentinel · per-branch timeout"]
+        W2["◐ worker_node #2<br/>healthy → handoff payload"]
+        W3["◐ worker_node #N<br/>raises / times out → SENTINEL"]
+    end
+
+    SUP == "◐ Send(branch_1)" ==> W1
+    SUP == "◐ Send(branch_2)" ==> W2
+    SUP == "◐ Send(branch_N)" ==> W3
+
+    W1 --> WR[["◐ worker_results reducer<br/>operator.add — mandatory; no lost writes"]]
+    W2 --> WR
+    W3 == "◐ sentinel still appends (no raise escapes)" ==> WR
+
+    WR --> JOIN["◐ join_node · OBP-3<br/>synthesize survivors → one answer"]
+    JOIN --> EVAL["evaluate (existing)<br/>GoalJudge on the JOINED answer · GTP-3"]
+    EVAL --> REST["…→ reasoning_recap / reflect (T2)"]
+
+    classDef existing fill:#f6f8fa,stroke:#656d76,stroke-width:1px,color:#1f2328
+    classDef planned fill:#fbf0ff,stroke:#8250df,stroke-width:2px,color:#1f2328
+    classDef sentinel fill:#fff1f0,stroke:#cf222e,stroke-width:2px,color:#1f2328
+    classDef reducer fill:#fff8e6,stroke:#bf8700,stroke-width:2px,color:#1f2328
+    class ROUTE,SPINE,EVAL,REST existing
+    class SUP,W1,W2,JOIN planned
+    class W3 sentinel
+    class WR reducer
+    linkStyle 0 stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4
+    linkStyle 1 stroke:#8250df,stroke-width:2px,stroke-dasharray:6 4
+    linkStyle 2 stroke:#8250df,stroke-width:3px
+    linkStyle 3 stroke:#8250df,stroke-width:3px
+    linkStyle 4 stroke:#8250df,stroke-width:3px
+    linkStyle 7 stroke:#cf222e,stroke-width:3px
+```
+
+> The single load-bearing fact this diagram pins: **the worker `try/except` is not defensive politeness — it is
+> the only thing that keeps one bad branch from cancelling the whole superstep.** Remove it and a timeout in
+> branch N erases the healthy work of branches 1..N-1. That is why §B.5's crosswalk lists the sentinel as a
+> *mandatory* obligation, not a nicety, and why the fault corpus (§4.3a, 5 rows) treats the sentinel — not the
+> dispatcher — as the unit under test.
+
+**Diagram 2 — the decompose-or-decline decision flow (decline-first, the GAIA guard as a gate).** This is the
+component's logic (`plan_delegations`, [component spec §2](t3_supervisor_plan.component.md)) drawn as the
+priority-ordered decision it is: **four reject conditions before the single accept.** Every diamond that exits to
+`DECLINE` is a *failure-first* test written before the one fan-out acceptance (Protocol C, AP6). The default
+return on every path that isn't an explicit, validated, ≥2-branch independent plan is `decline` — declining runs
+the task as a normal single-thread T1, which already works, so a missed fan-out is the cheap error and a wrong
+fan-out (the MAST surface) is the expensive one.
+
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': { 'primaryTextColor': '#1f2328', 'lineColor': '#656d76', 'fontSize': '13px' },
+  'flowchart': { 'padding': 14, 'nodeSpacing': 24, 'rankSpacing': 30, 'htmlLabels': true }
+}}%%
+flowchart TB
+    IN["plan_delegations(task, plan_artifact, depth, generate)<br/>reads the EXISTING T1 PlanArtifact — no re-decompose"]
+    IN --> C1{"1 · depth==L0<br/>OR plan &lt; 2 steps?"}
+    C1 -->|yes| D1["DECLINE · single-step<br/>'&lt;3 items, don't bother'"]
+    C1 -->|no| C2{"2 · detect_sequential_dependence?<br/>(back-ref markers OR shared write)"}
+    C2 -->|yes| D2["DECLINE · sequential-dependent<br/>the GAIA single-agent-wins case ⚠"]
+    C2 -->|no| C3{"3 · generate is None?<br/>(no decompose-LLM injected)"}
+    C3 -->|yes| D3["DECLINE · no-generator<br/>floor never INVENTS parallelism"]
+    C3 -->|no| C4{"4 · validate_independence False?<br/>(LLM emitted depends_on / dups)"}
+    C4 -->|yes| D4["DECLINE · not-independent<br/>structure check overrides model optimism"]
+    C4 -->|no| ACC["5 · FAN_OUT · independent-branches<br/>≥2 validated independent Delegations → list[Send]"]
+
+    classDef in fill:#f6f8fa,stroke:#656d76,stroke-width:1px,color:#1f2328
+    classDef gate fill:#fbf0ff,stroke:#8250df,stroke-width:2px,color:#1f2328
+    classDef decline fill:#fff1f0,stroke:#cf222e,stroke-width:2px,color:#1f2328
+    classDef accept fill:#e8f5e8,stroke:#1a7f37,stroke-width:3px,color:#1f2328
+    class IN in
+    class C1,C2,C3,C4 gate
+    class D1,D2,D3,D4 decline
+    class ACC accept
+```
+
+> Reading it against the corpus: the §4 `FANOUT-independent` rows must exit at node **5** (accept); the 10
+> `FANOUT-decline` rows must exit at node **1** (the 3 obvious-single) or node **2** (the 7 near-miss ⚠ traps —
+> the headline test of condition 2's `detect_sequential_dependence`); the `FANOUT-control` rows exit at node **1**.
+> Condition **2 is the precision-bearing gate** — its false-positive cell (a near-miss row fanned out anyway) is
+> the GAIA-failure detector the scoring treasures (corpus §scoring; memory [[t3-fanout-corpus-plan]]).
+
+**Protocol crosswalk (the single thing this subsection owns):**
+
+| T3 artifact | Layer | Governing protocols | Obligation |
+|---|---|---|---|
+| `components/supervisor_plan.py` (`plan_delegations`, `validate_independence`) | Vertical component | **LP-1/LP-2** (no `langgraph`/`orchestration`/`AgentState`/no V→V import); **OBP-1** (returns `SupervisorPlan` as **data**, decides nothing about the graph) | the decompose LLM is an injected callable (AP-5), like `build_plan_artifact_llm` |
+| `supervisor_node` | Orchestration | **OBP-3** (thin wrapper: reads state, calls the component, returns `list[Send]` — holds no decompose logic) | the fan-out *decision* is the component's; the node only adapts state↔component and emits `Send` |
+| `worker_node` | Orchestration | **OBP-3**; **OBP-M1** (receives a plain `Delegation`/`DelegationDispatchRequest`, never `AgentState`) | mandatory `try/except`→sentinel + per-branch timeout (one raise cancels the super-step) |
+| `worker_results` reducer key (`state.py`) | Orchestration state | **A.3 L1-purity**; reducer convention | `Annotated[list, operator.add]` — mandatory or concurrent writes raise `INVALID_CONCURRENT_GRAPH_UPDATE` |
+| `join_node` | Orchestration | **OBP-3**; **GTP-3** (judge runs on the *joined* answer) | edges to existing `evaluate` so GoalJudge sees the merged output, never a fragment (corrupt-success guard) |
+| per-branch `delegation_*` carriers | Recording + Validation | **GTP-1** (carrier actually exports, per branch, carries `correlation_id`); budget **deny** → `error.occurred` | "reuses an event name" ≠ "has a verified carrier" — verify per branch |
+| async `dispatch` on the dispatcher | Horizontal service | **LP-1** (still imports no `langgraph`/`orchestration`) | concurrency lives in the node's `await`, the service stays framework-agnostic |
+
+**FSP:** all T3 events are `TrustTraceRecord` `execution`-category telemetry — **never cross the SSE seam** (FSP-1).
+A "fanning out…" UI indicator, if ever wanted, is a separate frontend-ring promotion (FSP-2), out of scope.
+
+**Test shape.** **Protocol C** for `supervisor_plan.py` — the **decline paths are the headline**, written before
+the one fan-out acceptance (the dependent-plan→decline test encodes the GAIA single-agent-wins guard; full matrix
+in the component spec). **Protocol D** for the fan-out nodes — P11 failure matrix (one worker raises → join
+survives; one times out → no super-step hang; all fail → degraded answer + judge still runs), P1 property test on
+the `worker_results` reducer (N concurrent appends, none lost). **P7** gains the LP-1/LP-2 assertion on
+`supervisor_plan.py` *before any code is written* (the binding is the test).
 
 ---
 
@@ -701,6 +852,7 @@ rule, A.3).
 | **1** | T1 planner + replan edge | deterministic-floor **fallback** test (before success); surprising-output→replan | **C** + Protocol-D1; P6/P9/P11 | T1 ≥ ReAct baseline, no brittle-plan regression |
 | **2** | T2 `reflect_node` + budget ceiling (D1, §6) | predicate ceiling `at-budget→stop` (before `→reflect`); corrupt-success **Protocol-D3** | **C** + **D**; P5/P6/P8/P10/P11 | recovers a measurable fraction of partials without thrash |
 | **3** | Hybrid escalation routing | each §5 signal fired/not-fired matrix | **C** + Protocol-D1; P6/P11 | entry-router accuracy + escalation precision (measured separately) |
+| **4** 🔮 | T3 supervisor / parallel fan-out (`supervisor_plan` + Send nodes + async dispatch) | **dependent-plan→decline** (the GAIA guard, before the one fan-out acceptance); worker-raises→join-survives | **C** + **D**; P1/P6/P11; P7 LP-gate | **seam + layer-clean + observable + MAST-bounded** (NOT throughput, plan §3.5a); §8.2 fan-out corpus, calibration |
 
 **Determinism & CI policy (every phase, A.3 + AP5/AP3):** unit tests mock the LLM (`TestModel`/`FunctionModel`
 or record/replay, P5/P6) — **never live LLM in CI**. L3/L4 quality and trajectory evals run on **aggregate pass

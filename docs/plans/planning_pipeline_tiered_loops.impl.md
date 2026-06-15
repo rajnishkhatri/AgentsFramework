@@ -29,8 +29,9 @@
 - [4. Phase 1 — T1 Plan-and-Execute + replan gate](#4-phase-1--t1-plan-and-execute--replan-gate)
 - [5. Phase 2 — T2 Reflexion + D1 ceiling + D3 prose-thrash route](#5-phase-2--t2-reflexion--d1-ceiling--d3-prose-thrash-route)
 - [6. Phase 3 — Hybrid escalation routing](#6-phase-3--hybrid-escalation-routing)
-- [7. Cross-phase gates (run every phase)](#7-cross-phase-gates-run-every-phase)
-- [8. Build order & dependency graph](#8-build-order--dependency-graph)
+- [7. Phase 4 — T3 supervisor / parallel fan-out 🔮 PLANNED](#7-phase-4--t3-supervisor--parallel-fan-out--planned-not-built)
+- [8. Cross-phase gates (run every phase)](#8-cross-phase-gates-run-every-phase)
+- [9. Build order & dependency graph](#9-build-order--dependency-graph)
 
 ---
 
@@ -98,10 +99,22 @@ Every anchor the phases below edit, confirmed against the current tree:
 | `orchestration/state.py` | 2 | Add `reflections: Annotated[list[dict], _append_list]` + `replan_count: Annotated[int, operator.add]`. |
 | `orchestration/react_loop.py` | 1, 2 | Add `planner_node` + `reflect_node` (thin OBP-3 wrappers); add the T1 replan back-edge and the T2 escalation fork in the graph builder. |
 | `services/base_config.py` | 2 | Add `max_reflexion_attempts: int = 2`. |
-| `tests/architecture/test_dependency_rules.py` | 2 | P7 assertions: `reflexion.py` imports no `langgraph`/`orchestration`/`AgentState`. |
+| `tests/architecture/test_dependency_rules.py` | 2, 4 | P7 assertions: `reflexion.py` (Phase 2) + `supervisor_plan.py` (Phase 4) import no `langgraph`/`orchestration`/`AgentState`. |
 
-> **Nothing new lands in `trust/` or `services/tools/`.** T3 supervisor files are **not** created (deferred,
-> plan §2.3 / design §B.5).
+**Phase 4 (🔮 PLANNED — T3 supervisor / parallel fan-out) adds:**
+
+| File | Layer | Purpose | Status |
+|---|---|---|---|
+| `components/supervisor_plan.py` | Vertical (L3) | `plan_delegations(...)` + `validate_independence(...)` — decline-first fan-out decision (contract: [`t3_supervisor_plan.component.md`](t3_supervisor_plan.component.md)) | 🔮 not built |
+| `tests/components/test_supervisor_plan.py` | — | Protocol C, decline-paths-first (GAIA guard headline) | 🔮 not built |
+| `orchestration/react_loop.py` (touched) | Orchestration | `supervisor_node` / `worker_node` / `join_node` (OBP-3 wrappers) + `Send` fan-out edge + join→evaluate | 🔮 not built |
+| `orchestration/state.py` (touched) | Orchestration state | `worker_results: Annotated[list[dict], operator.add]` fan-in key | 🔮 not built |
+| `services/tools/delegation_dispatcher.py` (touched) | Horizontal service | add `async def dispatch` (concurrency; LP-1 preserved) | 🔮 not built |
+| `scripts/build_planning_stress_corpus.py` (touched) | Eval | 29 `phase="fanout"` corpus rows (plan §8.2) — `_fanout_rows()` + 4 family producers + 5 fan-out `_row` keys | ✅ **BUILT 2026-06-15** (data only; inert until the nodes emit carriers) |
+| `scripts/analyze_planning_traces.py` (touched) | Eval | `fanout` phase in `score_run` (precision + partial-survival) | 🔮 not built — a fanout row currently falls through `if/elif` → silent `rate=0.0` |
+
+> **Phases 0–3 land nothing in `trust/` or `services/tools/`.** Phase 4 (T3) is the **first** to touch
+> `services/tools/` — and only additively (`async def dispatch`), keeping the file LP-1 clean.
 
 ---
 
@@ -581,7 +594,132 @@ hybrid's eval payoff, plan §8).
 
 ---
 
-## 7. Cross-phase gates (run every phase)
+## 7. Phase 4 — T3 supervisor / parallel fan-out 🔮 PLANNED (not built)
+
+> **Forward-looking build sequence**, in the pre-build "sketch" style of Phases 0–3 (distinct from their ✅ DONE
+> as-built notes — **no source/nodes are implemented**; the one exception is the §7.6 validation **corpus**, which
+> is ✅ built as data). Why/acceptance: plan §3.5a. Component contract: owned by
+> [`t3_supervisor_plan.component.md`](t3_supervisor_plan.component.md) (not re-specified here). Protocol crosswalk:
+> design §B.5. **Acceptance bar is seam + layer-clean + observable + MAST-bounded — NOT throughput/goal-met**
+> (the GAIA single-agent-wins finding, plan §3.5a).
+>
+> **Read these first (this section uses their tokens, does not redefine them):**
+> - **Protocol tokens** `LP-*` / `OBP-*` / `OBP-M*` / `GTP-*` / `FSP-*` / `P1`–`P11` / `A`–`D` / `AP*` are defined
+>   in **design §A** (the normative Protocol Registry); the **T3 artifact↔protocol crosswalk** is **design §B.5**.
+>   Resolve any bare token there before building.
+> - **Layer scope (FOUR_LAYER).** T3 is a **single-supervisor map-reduce** fan-out
+>   ([FOUR_LAYER §Deep-Agent table L159](../Architectures/FOUR_LAYER_ARCHITECTURE.md): delegation lives in
+>   Services + Orchestration). It is **not** the peer-to-peer / IATP / blackboard multi-agent that FOUR_LAYER
+>   L1078 explicitly defers — no worker talks to another worker; all handoff is supervisor↔worker through state
+>   (OBP-M3). T3 therefore stays *inside* the documented four-layer scope and adds no multi-agent subsystem.
+> - **AGENTS.md ask-first gate.** §7.2 adds **three** graph nodes to `react_loop.py`; that trips the AGENTS.md
+>   "⚠️ Ask first" boundary (L28) — get explicit sign-off before the orchestration edit lands.
+
+### 7.1 Component — `components/supervisor_plan.py` (LP-1/LP-2 + OBP-1)
+
+New pure module, no `langgraph`/`orchestration`/`AgentState` import. Two functions per the contract:
+`plan_delegations(*, task_input, plan_artifact, planning_depth, generate=None) -> SupervisorPlan` and
+`validate_independence(plan) -> bool`. **Reads the existing T1 `PlanArtifact`** (does not re-decompose) and
+*classifies* it; decline-first (5 conditions, 4 rejections). The decompose LLM is an injected callable (AP-5),
+mirroring `build_plan_artifact_llm`. Deterministic floor on no-generator / parse-failure = **`decline`** (the
+safe default — T3 can only *add* parallelism, never silently fan out).
+
+### 7.2 Orchestration — `react_loop.py` (3 OBP-3 wrappers + edges)
+
+- `supervisor_node`: reads `task_input`/`plan_artifact`/`planning_depth`, calls `plan_delegations`, runs the
+  result through `validate_independence`; on `fan_out` returns `list[Send]` (one `Send("worker", {small payload})`
+  per branch); on `decline` returns a no-op delta and the graph falls through to `call_llm` (today's path).
+- `worker_node`: thin wrapper over the dispatcher; **mandatory** `try/except`→sentinel + per-branch timeout (one
+  raise cancels the super-step). Writes to `worker_results`. This sentinel is the unit the `FANOUT-fault` corpus
+  rows test on a live trace ([fault-injection mechanism](t3_fanout_corpus.plan.md) §4.3a) — and it carries an
+  env-gated fault hook (`FANOUT_FAULT_INJECT=1` + a magic objective token) for the timing-fault rows, off in prod.
+- `join_node`: reads merged `worker_results`, synthesizes one answer, **edges to the existing `evaluate`** so
+  GoalJudge runs on the joined answer (GTP-3 corrupt-success guard).
+- Edges: `route → supervisor`; `add_conditional_edges("supervisor", route_fanout, ["worker", "call_llm"])`;
+  `worker → join`; `join → evaluate`. The `evaluate → reflect` fork (T2, shipped) is **unchanged** — a failed
+  joined answer re-enters reflexion exactly like any other terminal turn, and `supervisor` re-runs on re-entry
+  (can decline the 2nd attempt). One budget ceiling (`max_reflexion_attempts`) — no new knob.
+
+### 7.3 State — `orchestration/state.py`
+
+Add `worker_results: Annotated[list[dict], operator.add]` (the fan-in reducer — **mandatory** or concurrent
+branch writes raise `INVALID_CONCURRENT_GRAPH_UPDATE`). Same `operator.add` convention as `reflections`.
+
+### 7.4 Service — `services/tools/delegation_dispatcher.py`
+
+Add `async def dispatch(self, request) -> dict` that `await`s `self._invoke_worker(...)` directly (drop the
+`thread`/`join` shim that exists only to run a coroutine from sync code). `worker_node` awaits it → the N branches'
+LLM calls overlap on the event loop (genuine concurrency, no threads). The sync `dispatch()` stays for the
+existing non-graph caller. **LP-1 preserved** — still no `langgraph`/`orchestration` import.
+
+### 7.5 Tests (failure-first)
+
+- `tests/components/test_supervisor_plan.py` (**Protocol C**): the **decline tests land first** — L0→decline,
+  single-step→decline, **dependent-plan→decline (the GAIA guard headline)**, no-generator→decline,
+  depends_on-from-LLM→decline; the *one* `independent-3-branches→fan_out` acceptance lands **last**. Property test
+  on `validate_independence` (P1). Decompose LLM mocked (P6) — never live in CI.
+- `tests/orchestration/test_tier_topology_sim.py` (extend, **Protocol D / P11**): worker-raises→join-survives;
+  worker-timeout→no-hang; all-fail→degraded answer + judge still runs; fan_out→join→fail→**reflect re-entry →
+  supervisor declines 2nd attempt** (the T2∘T3 composition test).
+- `tests/architecture/test_dependency_rules.py` (extend, **P7**): `supervisor_plan.py` imports no
+  `langgraph`/`orchestration`/`AgentState` — **written before the component** (the binding is the test).
+- `worker_results` reducer: P1 property test (N concurrent appends merge, none lost — the "canary" the research
+  recommends).
+
+### 7.6 Eval — corpus + analyzer (plan §8.2)
+
+**Corpus — ✅ BUILT 2026-06-15.** `build_planning_stress_corpus.py` carries `phase="fanout"` rows via
+`_fanout_rows()` (+ `_fanout_{independent,decline,fault,control}_rows()` producers) and the five `_row` keys
+`want_fanout` / `want_branch_count` / `want_join_synthesizes` / `want_survives_partial` / `axis`. **29 rows**:
+`FANOUT-independent` 10, `FANOUT-decline` 10 (= the single-agent-wins guard; 7 near-miss ⚠ traps + 3 obvious),
+`FANOUT-fault` 5, `FANOUT-control` 4 — `want_fanout` 15 True / 14 False so precision is computable. Verified:
+builder regenerates 71 total cases, uniqueness guards pass, `pytest tests/scripts/` green. The TS fixture type
+(`StressPhase += "fanout"` + the five keys) is updated. Catalog + axis coverage matrix:
+[`t3_fanout_corpus.plan.md`](t3_fanout_corpus.plan.md) §4/§6.
+
+**Analyzer — 🔮 REQUIRED Phase-4 deliverable (not optional).** The corpus is **unscoreable** until this lands —
+without it the §7.7 gate (d) cannot be evaluated. Concrete build items:
+
+| # | Deliverable | File | Detail |
+|---|---|---|---|
+| 1 | `fanout` phase branch in `score_run` | `scripts/analyze_planning_traces.py` (`score_run` at L237; add `elif phase == "fanout"` to the dispatch chain at L256–295, after the `escalation` branch) | reads the per-branch `delegation_*` + `join_node` carriers; mirrors the **escalation** phase's confusion-matrix shape (decline+control rows are the negatives) |
+| 2 | **fan-out precision** `tp/(tp+fp)` + **partial-survival rate** | same | the **`fp` cell is the GAIA-failure detector** (a near-miss ⚠ row fanned out anyway); partial-survival = fault rows where the join produced a non-empty answer |
+| 3 | `--calibration` (report rates) then `--gate` (assert bars) | same | proposed bars to calibrate toward: **precision ≥ 0.9, partial-survival = 1.0**; recall reported, not gated |
+| 4 | analyzer unit test | `tests/scripts/test_analyze_planning_traces.py` (extend) | a synthetic fanout run scores correctly: a fanned-out decline row counts as `fp`; a survived fault row counts toward partial-survival — **failure-first** (the `fp` assertion before the happy `tp`) |
+
+⚠️ **Until item 1 lands, a `fanout` row falls through `score_run`'s `if/elif` and reports `rate=0.0` with no
+mismatch** (silent zero, not a crash — do not read a pre-Phase-4 calibration run as "fan-out failed"). Building
+this branch is gating for §7.7(d); it is **on the Phase-4 critical path**, not a follow-up.
+
+### 7.7 Gate
+
+**Not** a throughput/goal-met number. Met when: (a) `tests/architecture/` proves the seam layer-clean; (b) the
+per-branch `delegation_*` carriers export on a from-step-0 trace (GTP-1, run the `governance-trace-audit`
+contract); (c) the Protocol-D failure matrix is green (no branch can hang or corrupt the join); (d) §8.2 corpus
+runs in calibration (§7.8) and the `FANOUT-decline` rows actually decline. One contradictory trace blocks — green
+CI is not sufficient (GTP-5).
+
+### 7.8 E2E run-path (how the fan-out corpus is actually executed on GCP)
+
+The §7.6 corpus is CI-inert data; it is validated **on-demand against a live Cloud Run backend**, never in CI
+(AP5). The corpus rides the **existing** `planning-stress` e2e spec + the `gj:`-thread/`trace_id` bridge — same
+harness as the shipped T1/T2 stress run, only a new `STRESS_PHASE`. Full rationale + the qualitative open-coding
+pass: **[`t3_fanout_corpus.plan.md`](t3_fanout_corpus.plan.md) §8 (run) / §9 (open-coding)** (single source).
+Sequence:
+
+| Step | Command / action | Why |
+|---|---|---|
+| 1 · Backend | Stand up a **loops-on + T3-on** backend via the out-of-band `gcloud run deploy --tag stress --no-traffic` revision (prod untouched) | the Step-0 flags (`REFLEXION_ENABLED`/`PLANNING_PLAN_SOURCE`/`MAX_REFLEXION_ATTEMPTS`) **and** the new T3 enable flag are **not** in `cloud-run-backend.tf` ([deploy-gcp skill](../../.cursor/skills/deploy-gcp/SKILL.md); `FANOUT_FAULT_INJECT=1` set **only** here, off in prod) |
+| 2 · Smoke | One row per family, chromium-only (4 rows) — confirm `delegation_requested` / `join_node` carriers emit on a live trace | Langfuse monthly quota has 429'd before; a 4-row smoke protects the batch |
+| 3 · Batch | `TEST_PROFILE=stress STRESS_PHASE=fanout pnpm test:e2e:stress` | the `live-testing-profiles` config fills UNSET env for the run; `STRESS_PHASE` filters to the 29 fan-out rows |
+| 4 · Analyze | `analyze_planning_traces.py --source langfuse --calibration` first (Cloud Run tmpfs recordings are ephemeral → read from Langfuse), then `--gate` once §7.6 bars are set | precision + partial-survival + coverage matrix; calibration-before-gate |
+
+**Prereqs for step 3 to score anything:** §7.2 nodes built (so carriers emit) **and** §7.6 item 1 (the analyzer
+`fanout` branch) built (so the run is scoreable). Running the batch before either yields the §7.6 silent-zero.
+
+---
+
+## 8. Cross-phase gates (run every phase)
 
 From design §C — non-negotiable, every phase:
 
@@ -604,25 +742,37 @@ From design §C — non-negotiable, every phase:
 
 ---
 
-## 8. Build order & dependency graph
+## 9. Build order & dependency graph
 
 ```mermaid
 flowchart LR
     P0["Phase 0<br/>depth fix<br/>(no tier)"] --> P1["Phase 1<br/>T1 planner + replan"]
     P1 --> P2["Phase 2<br/>T2 reflexion<br/>+ D1 ceiling + D3"]
     P2 --> P3["Phase 3<br/>escalation predicate<br/>+ measurement"]
+    P3 --> P4["Phase 4 🔮<br/>T3 fan-out<br/>(not built)"]
     P0 -. "unblocks every tier" .-> P2
     classDef p fill:#ddf4ff,stroke:#0969da,stroke-width:2px
+    classDef planned fill:#fff8c5,stroke:#9a6700,stroke-width:2px,stroke-dasharray:4 3
     class P0,P1,P2,P3 p
+    class P4 planned
 ```
 
 - **Phase 0 is the hard prerequisite** — every later tier inherits the L0 collapse if skipped (plan §9).
 - **Phase 2 depends on Phase 1** (reflexion re-enters through `route → planner`; the planner must exist).
 - **Phase 3 partly refactors Phase 2** (lifts the inline escalation logic into `decide_escalation`) and adds
-  measurement; it adds no new control flow given D2. **✅ DONE — all four phases shipped 2026-06-14.**
+  measurement; it adds no new control flow given D2. **✅ Phases 0–3 shipped 2026-06-14, live-validated 2026-06-15.**
+- **Phase 4 (T3) depends on Phase 1** (`supervisor_plan` reads the T1 `PlanArtifact`) and composes *under* Phase 2
+  (a failed joined answer re-enters the existing reflexion budget). 🔮 design-complete, **not built**.
 - Each phase ships behind a flag tier (steady-state parity first), promoted on evidence — mirroring the GoalJudge
   shadow→consume discipline (plan §8).
 
-> **What is explicitly NOT built here:** T3 supervisor (`components/supervisor_plan.py`, `supervisor_node`,
-> `Send` fan-out) — deferred on corpus grounds (plan §2.3), pre-bound in design §B.5. No `middleware/`/`frontend/`
-> changes (FSP-1). No new entry LLM call (D2).
+> **What is NOT YET built:** T3 supervisor (`components/supervisor_plan.py`, `supervisor_node`/`worker_node`/
+> `join_node`, `Send` fan-out, async `dispatch`) — **un-deferred 2026-06-15** (plan §3.5a) and now design-complete
+> (§7 above, design §B.5, contract in `t3_supervisor_plan.component.md`), but **no source written**. The
+> `analyze_planning_traces.py` `fanout` scoring branch is likewise unbuilt (silent `rate=0.0` until added, §7.6).
+> No `middleware/`/`frontend/` changes (FSP-1). No new entry LLM call (D2).
+>
+> **What IS already built for T3 (data + design, not runtime):** the validation **corpus** (29 `phase="fanout"`
+> rows in `build_planning_stress_corpus.py`, §7.6 / `t3_fanout_corpus.plan.md`), the **component contract**
+> (`t3_supervisor_plan.component.md`), and the **design diagrams + protocol crosswalk** (design §B.5). The corpus
+> is inert until the nodes emit carriers.
