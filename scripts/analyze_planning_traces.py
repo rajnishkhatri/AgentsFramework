@@ -49,6 +49,34 @@ AGENT_ROOT = SCRIPTS_DIR.parent
 
 _DEFAULT_JSONL = AGENT_ROOT / "cache" / "planning_stress" / "ui_batch.jsonl"
 _DEFAULT_RECORDINGS = AGENT_ROOT / "cache" / "black_box_recordings"
+_CORPUS = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "planning_stress_corpus.json"
+
+
+def _merge_corpus_expectations(rows: list[dict]) -> list[dict]:
+    """Backfill the ``want_*`` expectations onto each runtime row from the corpus.
+
+    The stress spec's JSONL writer emits a RUNTIME row (case / trace_id /
+    outcome / latency …) and only some phases' ``want_*`` fields. Expectations
+    are the CORPUS's property, not the trace's — so join by ``case`` and fill any
+    missing ``want_*`` keys (notably ``want_fanout`` / ``want_survives_partial``,
+    which the writer never emits). Runtime values already on the row win; this
+    only fills gaps. A row whose case is absent from the corpus is left as-is.
+    """
+    try:
+        corpus = json.loads(_CORPUS.read_text())
+    except Exception:
+        return rows  # no corpus → score with whatever the row carries
+    by_case = {c.get("case"): c for c in corpus if isinstance(c, dict)}
+    merged: list[dict] = []
+    for row in rows:
+        c = by_case.get(row.get("case"))
+        if c:
+            row = {
+                **{k: v for k, v in c.items() if k.startswith("want")},
+                **row,
+            }
+        merged.append(row)
+    return merged
 
 
 # ── trace sources ─────────────────────────────────────────────────────────────
@@ -559,6 +587,10 @@ def main() -> int:
         print(f"capture file {args.jsonl} is empty")
         return 2
 
+    # Expectations live in the corpus, not the runtime trace — backfill them so
+    # phases whose want_* the spec writer doesn't emit (e.g. fanout) score.
+    rows = _merge_corpus_expectations(rows)
+
     events_by_row = _build_events_by_row(rows, args)
     summary = score_run(rows, events_by_row)
 
@@ -566,7 +598,7 @@ def main() -> int:
     print(f"planning-stress analysis :: source={args.source} mode={mode}")
     print(f"  rows={len(rows)} jsonl={args.jsonl.name}")
     print()
-    for phase in ("depth", "replan", "reflexion", "escalation"):
+    for phase in ("depth", "replan", "reflexion", "escalation", "fanout"):
         p = summary["phases"].get(phase)
         if not p:
             continue
@@ -583,6 +615,19 @@ def main() -> int:
         f"recall {conf['recall']:.3f} (ships-wrong-answer) "
         f"tp={conf['tp']} fp={conf['fp']} tn={conf['tn']} fn={conf['fn']}"
     )
+    fan = summary.get("fanout_confusion")
+    if fan and (fan["tp"] + fan["fp"] + fan["tn"] + fan["fn"]):
+        print(
+            f"  fanout     precision {fan['precision']:.3f} (fp=GAIA-failure) "
+            f"recall {fan['recall']:.3f} (missed=cheap, not gated) "
+            f"tp={fan['tp']} fp={fan['fp']} tn={fan['tn']} fn={fan['fn']}"
+        )
+        ps = summary.get("partial_survival", {})
+        if ps.get("eligible"):
+            print(
+                f"  fanout     partial-survival {summary['partial_survival_rate']:.3f} "
+                f"({ps['survived']}/{ps['eligible']} fault rows survived)"
+            )
     print()
     print(
         "entry-router accuracy (depth) and escalation precision are the two halves "

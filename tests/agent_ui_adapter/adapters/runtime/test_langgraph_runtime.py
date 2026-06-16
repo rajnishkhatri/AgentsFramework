@@ -499,6 +499,83 @@ class TestChainEndStepMeter:
         assert [s.step_count for s in second] == [1]
 
 
+class TestChainEndJoinAnswer:
+    """T3 fan-out: the ``join`` node's synthesized answer must reach the SSE
+    stream as a real text token.
+
+    The join answer is produced OUTSIDE the ``call_llm`` node — either by an
+    LLM ``invoke`` (whose ``on_chat_model_*`` events are suppressed because
+    ``langgraph_node != "call_llm"``) or by a deterministic floor (no LLM call
+    at all). Either way no ``LLMTokenEmitted`` is emitted from the model-stream
+    path, so the only carrier left is the join node's ``on_chain_end`` output
+    (``last_final_answer``). Without this seam the browser receives 0 text
+    segments and renders the "completed without producing any output" fallback
+    -- the Stage B live defect this guards. Failure paths first (TAP-4).
+    """
+
+    @pytest.mark.asyncio
+    async def test_join_without_final_answer_emits_no_text(self) -> None:
+        """A join output lacking ``last_final_answer`` must emit no token
+        (and not crash) -- the empty-state floor, not a phantom blank token."""
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("join", {"worker_results": []})])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, LLMTokenEmitted)]
+
+    @pytest.mark.asyncio
+    async def test_join_with_empty_string_final_answer_emits_no_text(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("join", {"last_final_answer": "   "})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, LLMTokenEmitted)]
+
+    @pytest.mark.asyncio
+    async def test_join_non_dict_output_emits_no_text(self) -> None:
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[_chain_end("join", "a string")])
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, LLMTokenEmitted)]
+
+    @pytest.mark.asyncio
+    async def test_join_final_answer_emits_token_trio(self) -> None:
+        """The happy path: join's ``last_final_answer`` becomes a
+        Started -> Token(delta=answer) -> Ended trio so the UI renders one
+        real text segment (the same shape ``call_llm`` produces)."""
+        answer = "Branch 1: Paris weather is mild.\nBranch 2: 3 hotels found."
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("join", {"last_final_answer": answer})]
+            )
+        )
+        out = await _collect(rt)
+        tokens = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(tokens) == 1
+        assert tokens[0].delta == answer
+        assert tokens[0].trace_id == out[0].trace_id
+
+        started = [e for e in out if isinstance(e, LLMMessageStarted)]
+        ended = [e for e in out if isinstance(e, LLMMessageEnded)]
+        assert len(started) == 1 and len(ended) == 1
+        # All three share one message_id so the UI groups them into one segment.
+        assert started[0].message_id == tokens[0].message_id == ended[0].message_id
+
+    @pytest.mark.asyncio
+    async def test_join_does_not_increment_step_meter(self) -> None:
+        """join is not a ReAct lap; only ``evaluate`` advances the step meter."""
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("join", {"last_final_answer": "x"})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, StepProgressed)]
+
+
 # ── Failure isolation: graph error becomes RunFinished(error=...) ─────
 
 

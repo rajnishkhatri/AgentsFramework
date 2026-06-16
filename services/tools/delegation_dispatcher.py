@@ -84,19 +84,30 @@ class LocalLLMDelegationDispatcher:
         tokens_in = int(usage.get("input_tokens", 0) or 0)
         tokens_out = int(usage.get("output_tokens", 0) or 0)
         cost_usd = self._estimate_cost(tokens_in=tokens_in, tokens_out=tokens_out)
+        latency_ms = (time.time() - started_at) * 1000
         await self._record_eval_capture(
             validated=validated,
             output_text=content,
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_usd=cost_usd,
-            latency_ms=(time.time() - started_at) * 1000,
+            latency_ms=latency_ms,
         )
         return {
             "status": "completed",
             "output": content,
             "error": None,
             "child_correlation_id": f"{validated.correlation_id}:child:{uuid.uuid4().hex[:8]}",
+            # Governance Recording pillar: the worker LLM call's tokens/cost must
+            # reach the STEP_EXECUTED carrier (eval_capture is a separate sink).
+            # The worker node reads this to emit one STEP_EXECUTED per branch.
+            "usage": {
+                "model": self._worker_model_name,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "cost_usd": cost_usd,
+                "latency_ms": latency_ms,
+            },
         }
 
     def _run_async(self, coro: Any) -> Any:

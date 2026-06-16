@@ -677,6 +677,36 @@ class LangGraphRuntime:
                     )
                 )
 
+        if node_name == "join" and isinstance(output, dict):
+            # T3 fan-out: the join node synthesizes the merged worker_results
+            # into ONE answer OUTSIDE the call_llm node -- either via an LLM
+            # invoke (whose on_chat_model_* events are suppressed here because
+            # langgraph_node != "call_llm") or via a deterministic floor (no LLM
+            # call at all). Neither path emits a model-stream token, so the
+            # join's last_final_answer is the only carrier of the user-visible
+            # answer. Without this, the SSE stream delivers 0 text segments and
+            # the UI renders the "completed without producing any output"
+            # fallback (Stage B live defect). Emit the same Started/Token/Ended
+            # trio call_llm produces so the answer renders as one text segment.
+            joined = output.get("last_final_answer")
+            if isinstance(joined, str) and joined.strip():
+                join_msg_id = uuid.uuid4().hex
+                events.append(
+                    LLMMessageStarted(trace_id=trace_id, message_id=join_msg_id)
+                )
+                events.append(
+                    LLMTokenEmitted(
+                        trace_id=trace_id, message_id=join_msg_id, delta=joined
+                    )
+                )
+                events.append(
+                    LLMMessageEnded(
+                        trace_id=trace_id,
+                        message_id=join_msg_id,
+                        output_text=joined,
+                    )
+                )
+
         if node_name == "reasoning_recap" and isinstance(output, dict):
             summary = output.get("reasoning_summary")
             if isinstance(summary, str) and summary.strip():

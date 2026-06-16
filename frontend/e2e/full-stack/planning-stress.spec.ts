@@ -72,6 +72,25 @@ const OUTPUT_SCREENSHOT_DIR =
 
 const REPO_ROOT = path.resolve(process.cwd(), "..");
 
+// Rotate the artifact ONCE per batch invocation: an append-across-sessions
+// file mixes runs from different batches, so the report's "latest row per case"
+// silently spans sessions (a reproducibility/compliance hazard — the Stage-B
+// report defect). Truncating at module load gives one file == one batch. The
+// previous file is backed up (timestamped) so nothing is lost. Set
+// STRESS_JSONL_APPEND=1 to opt back into accumulation.
+function rotateArtifactOnce(): void {
+  if (process.env.STRESS_JSONL_APPEND === "1") return;
+  try {
+    if (fs.existsSync(OUTPUT_JSONL) && fs.statSync(OUTPUT_JSONL).size > 0) {
+      const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+      fs.renameSync(OUTPUT_JSONL, `${OUTPUT_JSONL}.${stamp}.bak`);
+    }
+  } catch {
+    // best-effort rotation; never block the batch on it.
+  }
+}
+rotateArtifactOnce();
+
 function appendCapture(row: Record<string, unknown>): void {
   fs.mkdirSync(path.dirname(OUTPUT_JSONL), { recursive: true });
   fs.appendFileSync(OUTPUT_JSONL, `${JSON.stringify(row)}\n`, "utf8");
@@ -136,19 +155,48 @@ async function newThreadIfAvailable(
 }
 
 /**
+ * Mint a fresh 32-hex trace_id for ONE run.
+ *
+ * The corpus carries a STATIC ``trace_id`` per case. Reusing it across reruns
+ * makes the middleware adopt the same server-side trace_id every time, so
+ * Langfuse SUPERIMPOSES every run's carriers (supervisor decisions, join
+ * carriers) under one trace — `_supervisor_decision` then reads the first of N
+ * blended runs and the DOM⨝Langfuse join is non-reproducible (the Stage-B
+ * report-integrity defect). A unique trace_id per run keeps one trace == one
+ * run, which is what the explainability/compliance pillars require. The bridge
+ * regex requires exactly 32 hex chars, so we mint that shape (not a suffix).
+ */
+function freshTraceId(): string {
+  // 32 lowercase hex chars; crypto when available, Math.random fallback.
+  const g = (globalThis as { crypto?: Crypto }).crypto;
+  if (g?.getRandomValues) {
+    const buf = new Uint8Array(16);
+    g.getRandomValues(buf);
+    return Array.from(buf, (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  let s = "";
+  while (s.length < 32) s += Math.floor(Math.random() * 16).toString(16);
+  return s.slice(0, 32);
+}
+
+/**
  * Encode the corpus join key into thread_id as ``gj:{case}:{trace_id}`` so the
  * middleware derives a deterministic server-side trace_id (the same bridge the
  * GoalJudge batch uses). This is what lets analyze_planning_traces.py pull each
- * case's trace from Langfuse by the pre-computed trace_id. FE-AP-7: never send a
+ * case's trace from Langfuse by the trace_id. FE-AP-7: never send a
  * client-generated trace_id field.
+ *
+ * ``runTraceId`` is the per-run trace_id (see ``freshTraceId``); it is what the
+ * DOM row records so the join stays 1:1 with exactly one Langfuse trace.
  */
 function installStressThreadBridge(
   page: import("@playwright/test").Page,
   caseRow: PlanningStressCase,
+  runTraceId: string,
 ): void {
   // gj_id (GJ-STRESS-NN), NOT the descriptive case — the bridge regex only
   // accepts ^GJ-STRESS-\d+$. The bridge then adopts trace_id verbatim.
-  const threadId = `gj:${caseRow.gj_id}:${caseRow.trace_id}`;
+  const threadId = `gj:${caseRow.gj_id}:${runTraceId}`;
   page.route("**/api/run/stream", async (route) => {
     const request = route.request();
     const raw = request.postData() ?? "{}";
@@ -197,9 +245,14 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
     }) => {
       test.setTimeout(180_000);
 
-      installStressThreadBridge(page, caseRow);
+      // One fresh trace_id per run → one Langfuse trace per run (no
+      // superposition). Recorded into the DOM row below so the report joins
+      // 1:1. caseRow.trace_id (the static corpus value) is NO LONGER the
+      // server-side trace_id.
+      const runTraceId = freshTraceId();
+      installStressThreadBridge(page, caseRow, runTraceId);
 
-      const title = `gj:${caseRow.gj_id}:${caseRow.trace_id}`;
+      const title = `gj:${caseRow.gj_id}:${runTraceId}`;
       const wants = wantExpectations(caseRow);
       let responseText = "";
       let toolCardCount = 0;
@@ -231,7 +284,10 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
           case: caseRow.case,
           gj_id: caseRow.gj_id,
           phase: caseRow.phase,
-          trace_id: caseRow.trace_id,
+          // The per-run server-side trace_id (what Langfuse stored for THIS
+          // run). corpus_trace_id keeps the static corpus key for auditing.
+          trace_id: runTraceId,
+          corpus_trace_id: caseRow.trace_id,
           session_id: caseRow.session_id,
           prompt: caseRow.prompt,
           thread_title: title,
@@ -257,7 +313,10 @@ test.describe("Planning-pipeline tiered-loops stress (L4: real stack)", () => {
           case: caseRow.case,
           gj_id: caseRow.gj_id,
           phase: caseRow.phase,
-          trace_id: caseRow.trace_id,
+          // The per-run server-side trace_id (what Langfuse stored for THIS
+          // run). corpus_trace_id keeps the static corpus key for auditing.
+          trace_id: runTraceId,
+          corpus_trace_id: caseRow.trace_id,
           session_id: caseRow.session_id,
           prompt: caseRow.prompt,
           thread_title: title,
