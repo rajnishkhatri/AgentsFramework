@@ -2187,8 +2187,14 @@ def build_graph(
         task_input = state.get("task_input", "")
         plan_artifact = state.get("plan_artifact") or {}
         planning_depth = state.get("planning_depth", "L0") or "L0"
+        # Governance Recording: capture the decompose LLM call's usage so a
+        # STEP_EXECUTED carrier is emitted below (the fan-out path bypasses
+        # call_llm). Stays None when the run does not consult the LLM (decline
+        # floor) — no LLM call means no token carrier, correctly.
+        _sup_usage: dict | None = None
 
         async def _decompose(prompt: str) -> dict:
+            nonlocal _sup_usage
             plan_steps = [
                 str(s.get("goal", ""))
                 for s in (plan_artifact.get("ordered_steps") or [])
@@ -2197,13 +2203,24 @@ def build_graph(
             system = prompt_service.render_prompt(
                 "supervisor_decompose", plan_steps=plan_steps
             )
+            profile = llm_service.get_profile(agent_config.default_model)
             response = await llm_service.invoke(
-                llm_service.get_profile(agent_config.default_model),
+                profile,
                 [
                     {"role": "system", "content": system},
                     {"role": "user", "content": prompt},
                 ],
             )
+            _usage = getattr(response, "usage_metadata", {}) or {}
+            _ti = int(_usage.get("input_tokens", 0) or 0)
+            _to = int(_usage.get("output_tokens", 0) or 0)
+            _sup_usage = {
+                "model": profile.name,
+                "tokens_in": _ti,
+                "tokens_out": _to,
+                "cost_usd": (_ti * profile.cost_per_1k_input / 1000)
+                + (_to * profile.cost_per_1k_output / 1000),
+            }
             content = str(getattr(response, "content", response) or "")
             try:
                 return json.loads(content)
@@ -2230,7 +2247,21 @@ def build_graph(
             generate=generate,
         )
 
-        decision_id = str(uuid.uuid4())
+        # Reasoning pillar (E7 idiom): log the fan_out|decline choice to the
+        # PhaseLogger decisions sink AND mirror it on the black_box step.planned
+        # carrier, joined by decision_id — "same data, two sinks" (mirrors the
+        # MODEL_SELECTED pattern in call_llm). PhaseLogger assigns decision_id.
+        supervisor_decision = phase_logger.log_decision(
+            state.get("workflow_id", ""),
+            Decision(
+                phase=WorkflowPhase.ROUTING,
+                description=f"supervisor: {plan.decision}",
+                alternatives=["fan_out", "decline"],
+                rationale=plan.reason,
+                confidence=1.0 if plan.decision == "decline" else 0.9,
+            ),
+        )
+        decision_id = supervisor_decision.decision_id or str(uuid.uuid4())
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
             workflow_id=state.get("workflow_id", ""),
@@ -2244,6 +2275,24 @@ def build_graph(
                 "decision_id": decision_id,
             },
         ))
+
+        # Governance Recording: STEP_EXECUTED for the decompose LLM call (only
+        # when the LLM was actually consulted; the decline floor makes no call).
+        if _sup_usage is not None:
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=state.get("workflow_id", ""),
+                event_type=EventType.STEP_EXECUTED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    **_sup_usage,
+                    "latency_ms": 0.0,
+                    "source": "fanout_supervisor",
+                    "decision_id": decision_id,
+                    "error": None,
+                },
+            ))
 
         return {
             "fanout_decision": {
@@ -2347,6 +2396,29 @@ def build_graph(
                 "error": result.get("error"),
                 "correlation_id": correlation_id,
             }
+            # Governance Recording pillar: one STEP_EXECUTED per branch carries
+            # the worker LLM call's tokens/cost. The fan-out path bypasses
+            # call_llm (the only other STEP_EXECUTED site), so without this each
+            # branch's cost is invisible in the governance trace.
+            _usage = result.get("usage") or {}
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.STEP_EXECUTED,
+                timestamp=datetime.now(UTC),
+                step=int(payload.get("step_count", 0) or 0),
+                details={
+                    "model": _usage.get("model", ""),
+                    "tokens_in": int(_usage.get("tokens_in", 0) or 0),
+                    "tokens_out": int(_usage.get("tokens_out", 0) or 0),
+                    "cost_usd": float(_usage.get("cost_usd", 0.0) or 0.0),
+                    "latency_ms": float(_usage.get("latency_ms", 0.0) or 0.0),
+                    "source": "fanout_worker",
+                    "branch_id": branch_id,
+                    "decision_id": decision_id,
+                    "error": None,
+                },
+            ))
             _emit_delegation_trace(
                 workflow_id=workflow_id,
                 event_type="delegation_completed",
@@ -2410,16 +2482,31 @@ def build_graph(
 
         completed = [r for r in results if r.get("status") == "completed"]
         joined = ""
+        # Governance Recording: capture the join LLM call's usage so a
+        # STEP_EXECUTED carrier is emitted below. None when the join falls to the
+        # deterministic floor (no LLM call) — correctly no token carrier then.
+        _join_usage: dict | None = None
         if completed:
             try:
                 prompt = prompt_service.render_prompt(
                     "fanout_join", task_input=task_input, results=results
                 )
+                profile = llm_service.get_profile(agent_config.default_model)
                 response = await llm_service.invoke(
-                    llm_service.get_profile(agent_config.default_model),
+                    profile,
                     [{"role": "user", "content": prompt}],
                 )
                 joined = str(getattr(response, "content", response) or "").strip()
+                _u = getattr(response, "usage_metadata", {}) or {}
+                _ti = int(_u.get("input_tokens", 0) or 0)
+                _to = int(_u.get("output_tokens", 0) or 0)
+                _join_usage = {
+                    "model": profile.name,
+                    "tokens_in": _ti,
+                    "tokens_out": _to,
+                    "cost_usd": (_ti * profile.cost_per_1k_input / 1000)
+                    + (_to * profile.cost_per_1k_output / 1000),
+                }
             except Exception:
                 joined = ""
         if not joined:
@@ -2450,6 +2537,23 @@ def build_graph(
                 "join_chars": len(joined),
             },
         ))
+
+        # Governance Recording: STEP_EXECUTED for the join LLM call (only when
+        # the synthesis LLM was actually called; the floor makes no call).
+        if _join_usage is not None:
+            black_box.record(TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=state.get("workflow_id", ""),
+                event_type=EventType.STEP_EXECUTED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    **_join_usage,
+                    "latency_ms": 0.0,
+                    "source": "fanout_join",
+                    "error": None,
+                },
+            ))
 
         return {
             "messages": [AIMessage(content=joined)],

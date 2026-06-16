@@ -521,6 +521,15 @@ def _make_branch_dispatch(behavior):
             "output": f"summary of: {objective[:40]}",
             "error": None,
             "child_correlation_id": f"{request.get('correlation_id')}:child:x",
+            # Mirror the real dispatcher's usage surface (Step 5b / governance
+            # Recording) so the worker STEP_EXECUTED carrier is non-zero.
+            "usage": {
+                "model": "gpt-4o-mini",
+                "tokens_in": 33,
+                "tokens_out": 11,
+                "cost_usd": 0.0001,
+                "latency_ms": 1.0,
+            },
         }
 
     return _dispatch_async
@@ -722,3 +731,81 @@ async def test_fanout_happy_path_all_succeed(tmp_path):
         if e.details.get("delegation_event") == "delegation_requested"
     ]
     assert len(requested) == 3
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_path_emits_step_executed_token_carriers(tmp_path):
+    """Governance Recording pillar (audit 6d12ba69 Finding 2): the fan-out path
+    bypasses call_llm, so each of its LLM calls (supervisor decompose, N workers,
+    join synthesis) must emit its OWN STEP_EXECUTED — else branch tokens/cost are
+    invisible in the governance trace. Asserts a STEP_EXECUTED carrier per source
+    with non-null token fields. The sim dispatch surfaces ``usage`` (mirroring the
+    real dispatcher; Step 5b) so the worker carriers are non-zero."""
+    await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-stepexec",
+    )
+
+    events = _replay_events(tmp_path, "wf-fanout-stepexec")
+    step_exec = [e for e in events if e.event_type.value == "step_executed"]
+    by_source: dict[str, list] = {}
+    for e in step_exec:
+        by_source.setdefault(e.details.get("source", "call_llm"), []).append(e.details)
+
+    # One supervisor + three workers + one join carrier, each with tokens.
+    assert len(by_source.get("fanout_supervisor", [])) == 1
+    assert len(by_source.get("fanout_worker", [])) == 3
+    assert len(by_source.get("fanout_join", [])) == 1
+    for src in ("fanout_supervisor", "fanout_worker", "fanout_join"):
+        for d in by_source[src]:
+            # the carrier exists AND carries real token fields (not None/absent)
+            assert d.get("tokens_in") is not None
+            assert d.get("tokens_out") is not None
+            assert d.get("cost_usd") is not None
+    # worker tokens came through the dispatcher usage surface (non-zero).
+    assert all(d["tokens_in"] == 33 for d in by_source["fanout_worker"])
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_supervisor_logs_phaselogger_decision(tmp_path):
+    """Governance Reasoning pillar (audit 6d12ba69 Finding C): the supervisor's
+    fan_out|decline choice must reach the PhaseLogger ``decisions.jsonl`` sink
+    AND its black_box ``step.planned`` carrier, joined by ``decision_id`` — the
+    canonical 'same data, two sinks' rationale idiom (mirrors MODEL_SELECTED).
+    Before the fix the decision lived in only one sink (step.planned)."""
+    from services.governance.phase_logger import PhaseLogger
+
+    await _run_fanout(
+        plan_json=_INDEPENDENT_PLAN_JSON,
+        tmp_path=tmp_path,
+        workflow_id="wf-fanout-decision",
+    )
+
+    # PhaseLogger sink: a decision row carrying the fan-out rationale.
+    pl = PhaseLogger(storage_dir=tmp_path / "cache" / "phase_logs")
+    decisions = pl.export_workflow_log("wf-fanout-decision")
+    sup_decisions = [
+        d for d in decisions
+        if "fan_out" in str(d.get("description", "")).lower()
+        or "decline" in str(d.get("description", "")).lower()
+    ]
+    assert sup_decisions, "supervisor logged no PhaseLogger Decision row"
+    sup = sup_decisions[-1]
+    assert sup.get("rationale"), "decision row missing rationale"
+    assert sup.get("decision_id"), "decision row missing decision_id"
+
+    # black_box sink: the step.planned carrier shares the SAME decision_id.
+    events = _replay_events(tmp_path, "wf-fanout-decision")
+    sup_planned = [
+        e for e in events
+        if e.event_type.value == "step_planned"
+        and "supervisor_decision" in e.details
+    ]
+    assert sup_planned, "no supervisor step.planned carrier"
+    assert sup_planned[-1].details.get("decision_id") == sup["decision_id"], (
+        "step.planned and decisions.jsonl carry different decision_id — "
+        "the two sinks are not joinable"
+    )

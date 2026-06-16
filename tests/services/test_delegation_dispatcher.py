@@ -94,11 +94,28 @@ def test_async_dispatch_matches_sync_shape(monkeypatch):
 
     result = asyncio.run(dispatcher.dispatch_async(_REQUEST))
 
-    assert set(result) == {"status", "output", "error", "child_correlation_id"}
+    assert set(result) == {
+        "status", "output", "error", "child_correlation_id", "usage",
+    }
     assert result["status"] == "completed"
     assert result["error"] is None
     assert result["output"] == resp.content
     assert result["child_correlation_id"].startswith("wf-1:step:2:research:child:")
+
+
+def test_dispatch_surfaces_token_usage_for_step_executed(monkeypatch):
+    """Governance Recording: the dispatcher surfaces the worker LLM call's
+    tokens/cost so the worker node can emit STEP_EXECUTED (the token carrier).
+    Without this, fan-out branch cost is invisible in the governance trace."""
+    dispatcher = _dispatcher()
+    _stub_worker(dispatcher, monkeypatch, response=_FakeResponse())
+
+    usage = asyncio.run(dispatcher.dispatch_async(_REQUEST))["usage"]
+
+    assert usage["tokens_in"] == 10
+    assert usage["tokens_out"] == 5
+    assert usage["cost_usd"] > 0
+    assert usage["model"] == "gpt-4o-mini"
 
 
 def test_async_dispatch_propagates_llm_exception(monkeypatch):
