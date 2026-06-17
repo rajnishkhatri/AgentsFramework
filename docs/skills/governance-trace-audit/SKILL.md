@@ -44,6 +44,20 @@ Two principles govern every judgment you make:
    `event_time` that lags the span `startTime` are *correct* (no-backdating
    rule D-0a). Fabricated-looking precision is the red flag, not honest lag.
 
+> **Inline shadow gate (since the carrier-gate, Phase 1).** The runtime now runs
+> an inline, deterministic **carrier gate** at phase boundaries
+> (`services/governance/carrier_gate.py`, reading the four-pillar rubric
+> transcribed into `trust/governance_carrier_spec.py`). When a phase completes
+> missing a required pillar carrier, the gate records a `guardrail.checked` carrier
+> with `source: "carrier_gate"`, `outcome: "alert"`, and `would_enforce: true` —
+> it **pre-flags the same seam defects this skill audits**, at the moment they
+> happen, instead of only post-hoc. This skill stays the source of truth for the
+> rubric (the spec is a versioned transcription of it) and the Phase-2 enforce
+> oracle; treat any `source: "carrier_gate"` / `outcome: "alert"` carrier as a
+> runtime-confirmed seam defect to corroborate, and a `would_enforce: true` one as
+> the pipeline already agreeing with your finding. The gate is **shadow/warn only**
+> — it never blocks — so the post-hoc audit remains necessary until Phase 2.
+
 ## Step 0 — Obtain and shape the trace
 
 The trace usually arrives **pasted as a JSON array** of Langfuse observations.
