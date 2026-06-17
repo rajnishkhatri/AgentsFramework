@@ -1,6 +1,12 @@
 # Governance-trace enforcement gate — implementation plan
 
-**Status:** **Phase 1 + Phase 2 BUILT — 2026-06-17.** Shadow-first, deterministic, no LLM. Phase 1 (shadow) is live + e2e-validated (CLEAN, gap rate 0.000 — see [`governance_carrier_gate_e2e_report.md`](governance_carrier_gate_e2e_report.md)). Phase 2 (enforce) is **built but ships dark** — `carrier_gate_enforce_mode` defaults `"off"` (prod parity, proven byte-identical to Phase 1); flipping it ON still needs the calibration evidence + a live gap-catch + explicit approval.
+**Status:** **Phase 1 + Phase 2 BUILT, committed (`2386660`), deployed — 2026-06-17.** Shadow-first, deterministic, no LLM. Phase 1 (shadow) is live + **post-deploy validated on prod** (CLEAN, gap rate 0.000). Phase 2 (enforce) is **deployed dark** — `carrier_gate_enforce_mode` defaults `"off"` (prod parity, proven byte-identical to Phase 1); flipping it ON still needs the calibration evidence + a live gap-catch (Posture C) + explicit approval.
+
+**Doc set (this workstream):**
+- [`governance_carrier_gate_e2e_validation.plan.md`](governance_carrier_gate_e2e_validation.plan.md) — the validation plan (driver + analyzer scorer).
+- [`governance_carrier_gate_e2e_report.md`](governance_carrier_gate_e2e_report.md) — pre-deploy e2e validation (per-case walkthrough).
+- [`governance_carrier_gate_post_deploy_walkthrough.md`](governance_carrier_gate_post_deploy_walkthrough.md) — **post-deploy** re-validation against revision `agent-backend-combined-00075-8js` (verified against live Langfuse).
+- [`governance_carrier_gate_gcp_deploy.md`](governance_carrier_gate_gcp_deploy.md) — deploy guide: Postures A (shadow, shipped) / B (prod enforce, gated) / C (fault-injection, pending).
 
 > **Phase-2 build log (2026-06-17).** Enforce shipped flag-gated default-OFF:
 > - **`AgentConfig.carrier_gate_enforce_mode: Literal["off","raise","degrade"]`** (`services/base_config.py`, default `"off"`). One explicit field collapses flag + dev/prod split.

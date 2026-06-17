@@ -420,6 +420,12 @@ class AgentRuntimeSettings(BaseSettings):
     carrier_gate_fault_inject: bool = Field(
         default=False, validation_alias="CARRIER_GATE_FAULT_INJECT"
     )
+    # Phase 1 memory wiring. Default OFF — prod parity, shadow-first (same
+    # discipline as reflexion/t3_fanout). The dev/stress revision flips
+    # MEMORY_ENABLED to recall+store per user; prod stays byte-identical until
+    # promotion. The LongTermMemoryService is constructed regardless of the flag
+    # so the graph shape is stable; the flag only gates the recall/store calls.
+    memory_enabled: bool = Field(default=False, validation_alias="MEMORY_ENABLED")
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -449,6 +455,7 @@ class AgentRuntimeSettings(BaseSettings):
                     "fanout_fault_inject",
                     "carrier_gate_enforce_enabled",
                     "carrier_gate_fault_inject",
+                    "memory_enabled",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
@@ -482,6 +489,7 @@ class AgentComponents:
     cache_dir: Path
     goal_judge_config_reader: Any
     settings: AgentRuntimeSettings
+    memory_service: Any = None
 
 
 def _model_profiles() -> tuple[Any, Any]:
@@ -573,6 +581,7 @@ def build_components(
         fanout_fault_inject=settings.fanout_fault_inject,
         carrier_gate_enforce_mode=carrier_gate_enforce_mode,
         carrier_gate_fault_inject=settings.carrier_gate_fault_inject,
+        memory_enabled=settings.memory_enabled,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
@@ -659,6 +668,23 @@ def build_components(
         defaults_downgrade=agent_config.goal_judge_downgrade_enabled,
     )
 
+    # Phase 1 memory wiring: construct the injected LongTermMemoryService once at
+    # the composition root (H7 — no node imports a backend). The graph reads only
+    # the sync MemoryBackend port via this service (wiring note: the loop never
+    # imports MemoryClient or the Mem0 SDK). The service is built regardless of
+    # memory_enabled so the graph shape is stable; the flag gates the calls.
+    #
+    # v1 uses InMemoryMemoryBackend (zero new deps, tested surface). The prod
+    # Mem0MemoryBackend adapter (delegating to the already-wired Mem0CloudClient)
+    # is an AGENTS.md ⚠️ ask-first new horizontal service — it lands in a follow-up
+    # with explicit approval. Default-OFF flag means prod parity holds meanwhile.
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    memory_service = LongTermMemoryService(InMemoryMemoryBackend())
+
     return AgentComponents(
         agent_config=agent_config,
         tool_registry=tool_registry,
@@ -666,6 +692,7 @@ def build_components(
         cache_dir=cache_dir,
         goal_judge_config_reader=goal_judge_config_reader,
         settings=settings,
+        memory_service=memory_service,
     )
 
 
@@ -691,4 +718,5 @@ def build_runtime_graph(
         trace_service=trace_service,
         interrupt_before_execute_tool=interrupt_before_execute_tool,
         goal_judge_config_reader=components.goal_judge_config_reader,
+        memory_service=components.memory_service,
     )

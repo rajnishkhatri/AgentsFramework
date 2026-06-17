@@ -32,6 +32,12 @@ from components.evaluator import (
 )
 from components.reflexion import decide_reentry, generate_reflection
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
+from components.memory_context import (
+    build_store_payload,
+    memory_subject as _memory_subject,
+    render_recall_block,
+    should_recall,
+)
 from components.plan_builder import build_planning_instructions
 from components.plan_builder import build_plan_artifact
 from components.plan_builder import build_plan_artifact_llm
@@ -81,6 +87,7 @@ from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
 from services.llm_config import LLMService
+from services.long_term_memory import LongTermMemoryService, MemoryBackendError
 from services.observability import FrameworkTelemetry
 from orchestration.checkpointer_wrapper import InstrumentedCheckpointer
 from services.prompt_service import PromptService
@@ -579,6 +586,7 @@ def build_graph(
     goal_judge_config_reader: GoalJudgeRuntimeConfigReader
     | InMemoryGoalJudgeConfigReader
     | None = None,
+    memory_service: LongTermMemoryService | None = None,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -975,6 +983,92 @@ def build_graph(
                 planning_depth, planning_depth_reason = select_planning_depth(
                     task_input=state.get("task_input", ""),
                     task_tool_results_count=task_tool_results_count,
+                )
+
+            # ── Phase 1 memory wiring: recall (universal seam) ──────────────
+            # route_node is the one node every tier passes through, so recall
+            # runs here (NOT call_llm) — the T3 fan-out path bypasses call_llm
+            # entirely and would otherwise be memory-blind. The block is an
+            # OBP-3 wrapper: it calls the OBP-2 predicate should_recall(...) and
+            # the OBP-1 formatter render_recall_block(...); all logic lives in
+            # components/memory_context.py, mirroring the select_model /
+            # select_planning_depth calls above. Recalled text is written to
+            # recalled_memories (state) and memoized on recalled_memories_task_id
+            # so a reflexion reflect→route lap reuses it without re-querying
+            # (one search per run). call_llm/supervisor READ that state.
+            recalled_block = state.get("recalled_memories", "")
+            recalled_task_id = state.get("recalled_memories_task_id", "")
+            recall_user_id = _memory_subject(
+                state.get("user_id", "") or configurable.get("user_id", "")
+            )
+            recall_memoized = (
+                bool(recalled_task_id) and recalled_task_id == current_task_id
+            )
+            if memory_service is not None and should_recall(
+                enabled=agent_config.memory_enabled,
+                user_id=recall_user_id,
+                memoized=recall_memoized,
+            ):
+                recall_query = state.get("task_input", "")
+                recall_count = 0
+                recall_error = ""
+                try:
+                    # Offload the (possibly blocking, network-bound) backend
+                    # search to a thread so the event loop stays free; the loop
+                    # depends only on the sync MemoryBackend port (wiring note).
+                    records = await asyncio.to_thread(
+                        memory_service.search,
+                        recall_user_id,
+                        recall_query,
+                        3,
+                    )
+                    recalled_block = render_recall_block(records)
+                    recall_count = len(records)
+                except MemoryBackendError as exc:
+                    # Graceful degradation: memory never fails a run. Log only
+                    # metadata (privacy invariant — never payload content) and
+                    # continue with zero recalled memories.
+                    recall_error = type(exc).__name__
+                    recalled_block = ""
+                    logger.warning(
+                        "memory.recall degraded user_id=%s error=%s",
+                        recall_user_id,
+                        recall_error,
+                    )
+                recalled_task_id = current_task_id
+                # Recording pillar: a carrier even on the degraded path (count 0
+                # / error_kind) — a swallowed failure with no carrier is the
+                # silent failure the audit's Validation check flags. Never
+                # content: only user_id / count / query_len / error_kind.
+                _recall_details: dict[str, Any] = {
+                    "user_id": recall_user_id,
+                    "count": recall_count,
+                    "query_len": len(recall_query),
+                }
+                if recall_error:
+                    _recall_details["error_kind"] = recall_error
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.MEMORY_RECALLED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details=_recall_details,
+                ))
+                # eval_capture on the memory seam (I-11, per user decision):
+                # uniform per-user memory-activity observability even though
+                # recall makes no LLM call. ai_response carries metadata only.
+                from services import eval_capture
+
+                await eval_capture.record(
+                    target="memory_recall",
+                    ai_input={"query_len": len(recall_query)},
+                    ai_response={
+                        "count": recall_count,
+                        "degraded": bool(recall_error),
+                    },
+                    config=config,
+                    step=state.get("step_count", 0),
                 )
 
             # ── Phase 1 (T1): build / reuse / replan the plan artifact ──────
@@ -1379,6 +1473,12 @@ def build_graph(
                     {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
                 ],
                 "current_workflow_phase": WorkflowPhase.ROUTING.value,
+                # Phase 1 memory: persist the recalled block + its task_id so
+                # downstream nodes (call_llm/supervisor) read it and a reflexion
+                # re-entry reuses it (last-write-wins; unchanged when recall did
+                # not run this pass, since these mirror the state values).
+                "recalled_memories": recalled_block,
+                "recalled_memories_task_id": recalled_task_id,
             }
 
     # ── Story 1.1: call_llm_node with tool binding + multi-turn messages ──
@@ -1415,6 +1515,15 @@ def build_graph(
                     "\n\nPrior attempts fell short. Apply these critiques before "
                     f"answering:\n{critiques}"
                 )
+
+        # Phase 1 memory (T1/T2 consumer): append the recalled block produced by
+        # route_node (the universal recall seam) to the same additional_instructions
+        # string the reflexion critiques ride. Empty string when memory is off /
+        # no user_id / recall degraded → the prompt stays byte-identical. This
+        # node is a READER of recalled_memories, not where recall runs.
+        recalled_memories = state.get("recalled_memories", "")
+        if recalled_memories:
+            planning_instructions += f"\n\n{recalled_memories}"
 
         system_prompt = prompt_service.render_prompt(
             "system_prompt",
@@ -2351,6 +2460,15 @@ def build_graph(
         task_input = state.get("task_input", "")
         plan_artifact = state.get("plan_artifact") or {}
         planning_depth = state.get("planning_depth", "L0") or "L0"
+        # Phase 1 memory (T3 consumer): the recalled block route_node produced is
+        # appended to the decompose prompt so a fan-out run is NOT memory-blind
+        # (the fan-out path bypasses call_llm). Empty string when memory is off /
+        # recall degraded → prompt unchanged. supervisor READS state directly
+        # (it gets AgentState); workers get the block via the Send payload (OBP-M1).
+        recalled_memories = state.get("recalled_memories", "")
+        decompose_prompt = task_input
+        if recalled_memories:
+            decompose_prompt = f"{task_input}\n\n{recalled_memories}"
         # Governance Recording: capture the decompose LLM call's usage so a
         # STEP_EXECUTED carrier is emitted below (the fan-out path bypasses
         # call_llm). Stays None when the run does not consult the LLM (decline
@@ -2401,7 +2519,7 @@ def build_graph(
             def _sync_generate(prompt: str, _box=decomposed) -> dict:
                 return _box
 
-            decomposed.update(await _decompose(task_input))
+            decomposed.update(await _decompose(decompose_prompt))
             generate = _sync_generate
 
         plan = plan_delegations(
@@ -2494,6 +2612,11 @@ def build_graph(
                 "task_id": state.get("task_id", ""),
                 "user_id": state.get("user_id", "anonymous"),
                 "decision_id": sup.get("decision_id", ""),
+                # Phase 1 memory (OBP-M1): the recalled block rides the Send
+                # payload BY VALUE — a worker never reads AgentState. Empty
+                # string when memory is off / recall degraded. route_node is the
+                # one recall seam; this just propagates its result to the branch.
+                "recalled_memories": state.get("recalled_memories", ""),
             }))
         return sends or "call_llm"
 
@@ -2736,11 +2859,79 @@ def build_graph(
     # the summary is on the stream before RUN_FINISHED (eval captures are
     # settled). Budget-exceeded runs end at call_llm and skip it.
     async def reasoning_recap_node(state: AgentState, config: RunnableConfig) -> dict:
-        return await _reasoning_recap_impl(
+        recap_delta = await _reasoning_recap_impl(
             dict(state),
             llm_service=llm_service,
             prompt_service=prompt_service,
             agent_config=agent_config,
+        )
+        # Phase 1 memory wiring: store (end of run). This terminal `done` path
+        # is shared by all three tiers — T1/T2 produce last_final_answer from
+        # call_llm, T3 from join_node — so reading last_final_answer makes the
+        # store tier-agnostic (it captures the joined fan-out answer unchanged).
+        # OBP-3 wrapper: build_store_payload (OBP-1) does the distillation; this
+        # only adapts state → service. Side-effect on the recap delta.
+        await _maybe_store_memory(state, config)
+        return recap_delta
+
+    async def _maybe_store_memory(state: AgentState, config: RunnableConfig) -> None:
+        """Store one salient memory at run-end; never fail the run.
+
+        Reads user_id/task_id/last_final_answer from state. The cross-user-leak
+        guard is structural: the only user_id used is the run's subject (the one
+        LangGraphRuntime threaded from identity.owner). Graceful-degrade on any
+        MemoryBackendError; emits a MEMORY_STORED carrier (user_id/key — never
+        content) even on the degraded path so a swallowed failure is not silent.
+        """
+        if memory_service is None or not agent_config.memory_enabled:
+            return
+        configurable = config.get("configurable", {})
+        store_user_id = _memory_subject(
+            state.get("user_id", "") or configurable.get("user_id", "")
+        )
+        if not store_user_id:
+            return
+        task_id = state.get("task_id", "") or state.get("workflow_id", "")
+        if not task_id:
+            return
+        workflow_id = state.get("workflow_id", "")
+        answer = state.get("last_final_answer", "")
+        store_error = ""
+        try:
+            payload = build_store_payload(state.get("task_input", ""), answer)
+            await asyncio.to_thread(
+                memory_service.store,
+                store_user_id,
+                task_id,
+                payload,
+            )
+        except MemoryBackendError as exc:
+            store_error = type(exc).__name__
+            logger.warning(
+                "memory.store degraded user_id=%s key=%s error=%s",
+                store_user_id,
+                task_id,
+                store_error,
+            )
+        _store_details: dict[str, Any] = {"user_id": store_user_id, "key": task_id}
+        if store_error:
+            _store_details["error_kind"] = store_error
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.MEMORY_STORED,
+            timestamp=datetime.now(UTC),
+            step=state.get("step_count", 0),
+            details=_store_details,
+        ))
+        from services import eval_capture
+
+        await eval_capture.record(
+            target="memory_store",
+            ai_input={"answer_len": len(answer)},
+            ai_response={"key": task_id, "degraded": bool(store_error)},
+            config=config,
+            step=state.get("step_count", 0),
         )
 
     builder.add_node("reasoning_recap", reasoning_recap_node)

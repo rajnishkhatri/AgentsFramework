@@ -67,6 +67,11 @@ _EXPECTED_MAPPINGS: list[tuple[EventType, str, str]] = [
     (EventType.GUARDRAIL_CHECKED, "guardrail", "guardrail.checked"),
     (EventType.PARAMETER_CHANGED, "span", "parameter.changed"),
     (EventType.ERROR_OCCURRED, "span", "error.occurred"),
+    # Phase 1 memory wiring: recall/store activity events (no usage/cost) typed
+    # ``span``; the relay must export them so the four-pillar audit reads "memory
+    # ran" from the trace. Consumer-driven contract for the new EventTypes.
+    (EventType.MEMORY_RECALLED, "span", "memory.recalled"),
+    (EventType.MEMORY_STORED, "span", "memory.stored"),
 ]
 
 

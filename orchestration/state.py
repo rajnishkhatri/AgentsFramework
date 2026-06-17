@@ -174,3 +174,22 @@ class AgentState(MessagesState):
     # Story 2.3: rollback tracking per model tier
     rollback_count: Annotated[int, operator.add]
     rollback_history: Annotated[list[dict], _append_list]
+
+    # Phase 1 memory wiring (docs/plans/memory_layer_wiring.plan.md). The subject
+    # the long-term memory is namespaced to — LangGraphRuntime threads
+    # identity.owner here at run start (it already derives eval_user_id from it).
+    # A memory store/recall never uses a user_id other than this (cross-user-leak
+    # guard). Plain last-write-wins.
+    user_id: str
+    # The recalled-memory block (already rendered to a system-prompt string by
+    # components.memory_context.render_recall_block) that call_llm/supervisor
+    # append to additional_instructions. Empty string = no memory / recall
+    # degraded / flag off → the prompt stays byte-identical. Last-write-wins.
+    recalled_memories: str
+    # The task_id recall was performed for. route_node recalls at most once per
+    # run and memoizes on this — reflexion reflect→route re-entry keeps the same
+    # task_id, so the memoize check (should_recall's `memoized` arm) reuses the
+    # stored block instead of re-querying the backend every lap. Same memoize-on-
+    # task_id discipline as planning_depth_task_id/task_understanding_task_id;
+    # a new task_id on the thread regenerates.
+    recalled_memories_task_id: str

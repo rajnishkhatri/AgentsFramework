@@ -101,6 +101,16 @@ class AgentConfig(BaseModel):
     # (dev→raise, prod→degrade); default OFF preserves shadow-first discipline —
     # promote only on Phase-1 calibration evidence + explicit approval.
     carrier_gate_enforce_mode: Literal["off", "raise", "degrade"] = "off"
+    # Phase 1 memory wiring (docs/plans/memory_layer_wiring.plan.md): wire the
+    # orphaned LongTermMemoryService into the loop. When True, route_node recalls
+    # the user's relevant memories once per run and injects them into the system
+    # prompt, and the run-end path stores a salient memory. Off by default —
+    # shadow-first, same discipline as reflexion_enabled/t3_fanout_enabled: with
+    # the flag OFF the loop is byte-identical to today (should_recall returns
+    # False, no search/store, no carriers). Promote on a dev/stress revision; the
+    # injected memory_service is still constructed at the composition root so the
+    # graph shape is stable regardless of the flag.
+    memory_enabled: bool = False
     # Carrier-gate fault-injection hook (the LIVE gap-catch proof). When True, a
     # task whose input carries the magic token ``__DROP_CARRIER:<phase>__`` has the
     # required carrier for that phase SUPPRESSED before the gate checks it —

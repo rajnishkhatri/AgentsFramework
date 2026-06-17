@@ -87,6 +87,13 @@ _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     EventType.GUARDRAIL_CHECKED: ("guardrail", "guardrail.checked"),
     EventType.PARAMETER_CHANGED: ("span", "parameter.changed"),
     EventType.ERROR_OCCURRED: ("span", "error.occurred"),
+    # Phase 1 memory wiring: recall/store are activity events, not LLM
+    # generations (no usage/cost) — typed ``span`` like parameter.changed. They
+    # enrich the Recording pillar; the relay must export them so the four-pillar
+    # audit can read "memory ran" from the trace. details carry user_id/key/count
+    # — never content (the redaction pass below keeps the curated view clean).
+    EventType.MEMORY_RECALLED: ("span", "memory.recalled"),
+    EventType.MEMORY_STORED: ("span", "memory.stored"),
 }
 
 # Pre-compile redaction patterns from the guardrail rule factories.

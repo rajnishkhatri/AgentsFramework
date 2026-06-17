@@ -47,6 +47,19 @@ class EventType(str, Enum):
     GUARDRAIL_CHECKED = "guardrail_checked"
     PARAMETER_CHANGED = "parameter_changed"
     TASK_COMPLETED = "task_completed"
+    # Phase 1 memory wiring (docs/plans/memory_layer_wiring.plan.md): the two
+    # memory-activity carriers. They ENRICH the Recording pillar — they are NOT
+    # added to default_spec() in trust/governance_carrier_spec.py as per-phase
+    # requirements. Memory is flag-gated and absent on most runs, so requiring
+    # them would false-positive the inline carrier gate on every non-memory run
+    # (the GG-4 class the resumed-Identity exemption guards against). Recall runs
+    # in route_node → PH_ROUTING (keeps model_selected); store in the completion
+    # path → PH_COMPLETION (keeps eval.goal_judge). Being non-required, these
+    # members leave ALL_PHASE_VALUES and the requirement tuples untouched, so the
+    # drift-guard (tests/trust/test_governance_carrier_spec.py) stays green with
+    # no SPEC_VERSION bump. details carry user_id/key/count — never content.
+    MEMORY_RECALLED = "memory_recalled"
+    MEMORY_STORED = "memory_stored"
 
 
 class TraceEvent(BaseModel):
