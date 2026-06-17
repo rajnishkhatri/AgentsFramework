@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ErrorRecord(BaseModel):
@@ -233,3 +233,35 @@ class TaskUnderstanding(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     source: Literal["deterministic", "generated", "user_edited"] = "deterministic"
     model: str = ""
+
+
+# The three human memory types the Phase-2 extractor classifies (research §1):
+# semantic = stable facts about the user; episodic = how a past task went
+# (observation/action/result); procedural = a rule/strategy that worked.
+MemoryType = Literal["semantic", "episodic", "procedural"]
+
+
+class TypedMemory(BaseModel):
+    """One memory item proposed by the Phase-2 background extractor.
+
+    Framework-agnostic output of ``components.memory_extractor`` (L3). The
+    *schema is the classifier* (research §3): handing the LLM these typed
+    constraints is how it decides which of the three human memory types an
+    item is, and ``extra="forbid"`` (V6) rejects an item that invents fields
+    — the first guard against a malformed/hallucinated proposal reaching the
+    store. ``content`` is the distilled fact (NOT raw turns); ``key`` is the
+    stable store key (``"profile"`` for the latest-state semantic record, a
+    ``task_id``-derived key for an episodic item); ``salience`` is the
+    extractor's own worth-storing estimate, surfaced to the carrier (never
+    content) and used by the eval gate's precision metric.
+
+    Phase 2 is ADD-only (research §3): no live UPDATE/DELETE — a periodic
+    consolidation pass is the deferred conflict-resolution path.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: MemoryType
+    content: str = Field(min_length=1)
+    key: str = Field(min_length=1)
+    salience: float = Field(ge=0.0, le=1.0)

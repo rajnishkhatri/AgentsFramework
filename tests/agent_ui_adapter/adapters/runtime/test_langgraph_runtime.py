@@ -960,3 +960,85 @@ class TestTaskUnderstandingChainEnd:
         cards = [e for e in out if isinstance(e, TaskUnderstood)]
         assert len(cards) == 2
         assert cards[1].source == "user_edited"
+
+
+# ── Phase 2: post-run autocapture seam ────────────────────────────────
+
+
+class _SnapshotState:
+    def __init__(self, values: dict, *, nxt=()) -> None:
+        self.values = values
+        self.next = nxt
+
+
+class _SpyAutocapture:
+    def __init__(self) -> None:
+        self.scheduled: list[dict] = []
+
+    def schedule(self, **kwargs) -> None:
+        self.scheduled.append(kwargs)
+
+
+class TestAutocaptureSeam:
+    """The post-run typed auto-capture is OPTIONAL and never blocks the run.
+
+    Failure paths first (TAP-4): no autocapture injected → byte-identical to
+    today; an errored run → no capture (nothing salient to remember).
+    """
+
+    @pytest.mark.asyncio
+    async def test_no_autocapture_injected_is_noop(self) -> None:
+        # Default (no autocapture) must be unchanged — no aget_state-driven
+        # scheduling, run still finishes clean.
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=[]))
+        out = await _collect(rt)
+        assert isinstance(out[-1], RunFinishedDomain)
+        assert out[-1].error is None
+
+    @pytest.mark.asyncio
+    async def test_successful_run_schedules_capture_with_window(self) -> None:
+        spy = _SpyAutocapture()
+        state = _SnapshotState(
+            {
+                "task_input": "I prefer metric units",
+                "last_final_answer": "Noted, metric it is.",
+            }
+        )
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[], state=state),
+            autocapture=spy,
+        )
+        await _collect(rt)
+        assert len(spy.scheduled) == 1
+        call = spy.scheduled[0]
+        roles = [m["role"] for m in call["messages"]]
+        assert roles == ["user", "assistant"]
+        # user_id == identity.owner (cross-user-leak guard upstream).
+        assert call["user_id"] == "team"
+
+    @pytest.mark.asyncio
+    async def test_errored_run_does_not_schedule_capture(self) -> None:
+        spy = _SpyAutocapture()
+
+        class _RaisingGraph(_FakeCompiledGraph):
+            async def astream_events(self, input, config=None, version="v2"):
+                raise RuntimeError("boom")
+                yield  # pragma: no cover
+
+        rt = LangGraphRuntime(
+            graph=_RaisingGraph(scripted=[], state=_SnapshotState({})),
+            autocapture=spy,
+        )
+        out = await _collect(rt)
+        assert out[-1].error is not None
+        assert spy.scheduled == []
+
+    @pytest.mark.asyncio
+    async def test_empty_window_does_not_schedule(self) -> None:
+        spy = _SpyAutocapture()
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(scripted=[], state=_SnapshotState({})),
+            autocapture=spy,
+        )
+        await _collect(rt)
+        assert spy.scheduled == []

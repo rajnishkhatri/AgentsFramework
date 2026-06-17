@@ -111,6 +111,16 @@ class AgentConfig(BaseModel):
     # injected memory_service is still constructed at the composition root so the
     # graph shape is stable regardless of the flag.
     memory_enabled: bool = False
+    # Phase 2 typed background auto-capture. When True (and memory_enabled), the
+    # post-run autocapture seam runs the typed extractor and WRITES BACK the
+    # proposed memories. Off by default — shadow-first: with the flag OFF the
+    # extractor still proposes and the trace carries the proposal (so the eval
+    # workstream has shadow traces), but NOTHING is stored. It flips to write-back
+    # ONLY after the grounded-theory enable-policy clears on the frozen test split
+    # (mirrors goal_judge: shadow -> dev-enable -> prod-enable; never iterate the
+    # prompt on the test split). Independent of memory_enabled's recall path so
+    # recall can ship before write-back.
+    memory_autocapture_enabled: bool = False
     # Carrier-gate fault-injection hook (the LIVE gap-catch proof). When True, a
     # task whose input carries the magic token ``__DROP_CARRIER:<phase>__`` has the
     # required carrier for that phase SUPPRESSED before the gate checks it —

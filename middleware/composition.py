@@ -426,6 +426,13 @@ class AgentRuntimeSettings(BaseSettings):
     # promotion. The LongTermMemoryService is constructed regardless of the flag
     # so the graph shape is stable; the flag only gates the recall/store calls.
     memory_enabled: bool = Field(default=False, validation_alias="MEMORY_ENABLED")
+    # Phase 2 typed background auto-capture. Default OFF — shadow-first: the
+    # extractor proposes and the trace carries the proposal, but write-back to
+    # the store is gated on this flag (which flips only after the grounded-theory
+    # enable-policy clears). Independent of MEMORY_ENABLED's recall path.
+    memory_autocapture_enabled: bool = Field(
+        default=False, validation_alias="MEMORY_AUTOCAPTURE_ENABLED"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -456,6 +463,7 @@ class AgentRuntimeSettings(BaseSettings):
                     "carrier_gate_enforce_enabled",
                     "carrier_gate_fault_inject",
                     "memory_enabled",
+                    "memory_autocapture_enabled",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
@@ -490,6 +498,7 @@ class AgentComponents:
     goal_judge_config_reader: Any
     settings: AgentRuntimeSettings
     memory_service: Any = None
+    memory_autocapture: Any = None
 
 
 def _model_profiles() -> tuple[Any, Any]:
@@ -685,6 +694,42 @@ def build_components(
 
     memory_service = LongTermMemoryService(InMemoryMemoryBackend())
 
+    # Phase 2 typed background auto-capture: construct the post-run autocapture
+    # seam at the root too. It runs OUTSIDE the graph hot path (the runtime
+    # adapter calls it after a run finishes), so it does not enter build_graph.
+    # write_back is gated on MEMORY_AUTOCAPTURE_ENABLED — default OFF means
+    # shadow (propose-only); the extractor still runs and the trace carries the
+    # proposal, but nothing is stored until the eval enable-policy clears.
+    import importlib
+
+    from services.base_config import default_fast_profile
+    from services.governance.black_box import BlackBoxRecorder
+    from services.llm_config import LLMService
+    from services.memory_autocapture import MemoryAutoCaptureService
+    from services.prompt_service import PromptService
+
+    # Load the extractor component by string reference (importlib), not a static
+    # Python import — same layering contract as the graph factory
+    # (_load_graph_factory): middleware/ must not statically import components/
+    # (F4). The autocapture service depends only on the structural extractor
+    # port, so this stays clean.
+    _MemoryExtractor = getattr(
+        importlib.import_module("components.memory_extractor"), "MemoryExtractor"
+    )
+    memory_extractor = _MemoryExtractor(
+        llm_service=LLMService(config=agent_config),
+        prompt_service=PromptService(),
+        profile=default_fast_profile(),
+    )
+    memory_autocapture = MemoryAutoCaptureService(
+        extractor=memory_extractor,
+        memory_service=memory_service,
+        write_back_enabled=settings.memory_autocapture_enabled,
+        # Same recordings dir the graph writes to (cache_dir / black_box_recordings)
+        # so proposal carriers land in the run's own workflow trace.
+        black_box=BlackBoxRecorder(cache_dir / "black_box_recordings"),
+    )
+
     return AgentComponents(
         agent_config=agent_config,
         tool_registry=tool_registry,
@@ -693,6 +738,7 @@ def build_components(
         goal_judge_config_reader=goal_judge_config_reader,
         settings=settings,
         memory_service=memory_service,
+        memory_autocapture=memory_autocapture,
     )
 
 

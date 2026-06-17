@@ -134,6 +134,48 @@ class TestLongTermMemoryAcceptance:
         results = service.search("u", "match-me", limit=5)
         assert len(results) == 5
 
+    # ── Phase 2: optional type filter (additive, backward-compatible) ──
+
+    def test_search_without_type_filter_returns_all_types(self):
+        # Regression guard: the default (no mem_type) path is unchanged.
+        service = _service()
+        service.store("u", "k1", {"text": "match"}, metadata={"type": "semantic"})
+        service.store("u", "k2", {"text": "match"}, metadata={"type": "episodic"})
+        service.store("u", "k3", {"text": "match"})  # no type metadata
+        results = service.search("u", "match")
+        assert len(results) == 3
+
+    def test_search_type_filter_keeps_only_matching_type(self):
+        service = _service()
+        service.store("u", "k1", {"text": "match"}, metadata={"type": "semantic"})
+        service.store("u", "k2", {"text": "match"}, metadata={"type": "episodic"})
+        results = service.search("u", "match", mem_type="semantic")
+        assert [r.key for r in results] == ["k1"]
+
+    def test_search_type_filter_excludes_untyped_records(self):
+        service = _service()
+        service.store("u", "k1", {"text": "match"}, metadata={"type": "semantic"})
+        service.store("u", "k2", {"text": "match"})  # no type
+        results = service.search("u", "match", mem_type="semantic")
+        assert [r.key for r in results] == ["k1"]
+
+    def test_search_type_filter_applies_limit_after_filtering(self):
+        # The limit must bound the FILTERED result, not be consumed by
+        # off-type records the caller never sees (else a type query can come
+        # back short even when enough matches exist).
+        service = _service()
+        for i in range(5):
+            service.store(
+                "u", f"ep{i}", {"text": "match"}, metadata={"type": "episodic"}
+            )
+        for i in range(5):
+            service.store(
+                "u", f"se{i}", {"text": "match"}, metadata={"type": "semantic"}
+            )
+        results = service.search("u", "match", limit=3, mem_type="semantic")
+        assert len(results) == 3
+        assert all(r.metadata.get("type") == "semantic" for r in results)
+
     def test_forget_removes_record(self):
         service = _service()
         service.store("u", "k", {"v": 1})

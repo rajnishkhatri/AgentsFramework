@@ -358,7 +358,9 @@ def build_dev_app() -> FastAPI:
                         interrupt_before_execute_tool=False,
                     )
                     app.state.runtime = LangGraphRuntime(
-                        graph, trace_emit=trace_service.emit
+                        graph,
+                        trace_emit=trace_service.emit,
+                        autocapture=components.memory_autocapture,
                     )
                     app.state.dev_identity = dev_identity
                     app.state.telemetry_exporter = dev_telemetry
@@ -378,7 +380,9 @@ def build_dev_app() -> FastAPI:
                             interrupt_before_execute_tool=False,
                         )
                         app.state.runtime = LangGraphRuntime(
-                            graph, trace_emit=trace_service.emit
+                            graph,
+                            trace_emit=trace_service.emit,
+                            autocapture=components.memory_autocapture,
                         )
                         app.state.dev_identity = dev_identity
                         app.state.telemetry_exporter = dev_telemetry
@@ -392,7 +396,9 @@ def build_dev_app() -> FastAPI:
                         interrupt_before_execute_tool=False,
                     )
                     app.state.runtime = LangGraphRuntime(
-                        graph, trace_emit=trace_service.emit
+                        graph,
+                        trace_emit=trace_service.emit,
+                        autocapture=components.memory_autocapture,
                     )
                     app.state.dev_identity = dev_identity
                     app.state.telemetry_exporter = dev_telemetry
