@@ -1,6 +1,6 @@
 # Carrier-gate E2E validation — Playwright (T3) + Langfuse export + analysis
 
-**Status:** plan — **2026-06-17**. No code yet; written while the carrier-gate Phase-1 build is committed + deploying.
+**Status:** **EXECUTED — 2026-06-17.** Driver spec + analyzer scorer built; ran live against prod; **VERDICT CLEAN** (32 carriers, 0 alerts, gap rate 0.000, full coverage). See [`governance_carrier_gate_e2e_report.md`](governance_carrier_gate_e2e_report.md). Deliverables #1–3 done; #4/#5 (the §4 relay fixes) landed pre-deploy.
 **Goal:** prove the shadow carrier gate ([`governance_trace_enforcement_gate.impl.md`](governance_trace_enforcement_gate.impl.md), Phase 1) works **end-to-end on the deployed stack** — the `source: "carrier_gate"` shadow carriers are emitted at the wired phase boundaries, survive the BlackBox→Langfuse relay intact, and an analyzer reads them into a per-phase **shadow-calibration verdict**. This verdict is the §5 exit gate: it's how we learn whether the warn signal is *true signal vs false-positive* before anyone considers Phase 2 (enforce).
 **Method:** [`docs/skills/playwright-agentic-e2e`](../skills/playwright-agentic-e2e/SKILL.md) (tier model + verify-the-run-server-side) paired with the repo's existing T3 harness; the analysis half reuses [`docs/skills/governance-trace-audit`](../skills/governance-trace-audit/SKILL.md) rubric as the oracle.
 

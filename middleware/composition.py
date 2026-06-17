@@ -407,6 +407,19 @@ class AgentRuntimeSettings(BaseSettings):
     fanout_fault_inject: bool = Field(
         default=False, validation_alias="FANOUT_FAULT_INJECT"
     )
+    # Governance carrier-gate enforcement (Phase 2). Default OFF — shadow-first
+    # prod parity. When enabled, the dev/prod split (raise vs degrade) is derived
+    # from agent_env (see _carrier_gate_enforce_mode). Promote only on Phase-1
+    # calibration evidence + explicit approval.
+    carrier_gate_enforce_enabled: bool = Field(
+        default=False, validation_alias="CARRIER_GATE_ENFORCE_ENABLED"
+    )
+    # Carrier-gate fault-injection (the live gap-catch proof). Default OFF — MUST
+    # stay OFF in prod (same posture as FANOUT_FAULT_INJECT). Only the dedicated
+    # tagged validation revision flips it; the magic token is inert without it.
+    carrier_gate_fault_inject: bool = Field(
+        default=False, validation_alias="CARRIER_GATE_FAULT_INJECT"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -434,6 +447,8 @@ class AgentRuntimeSettings(BaseSettings):
                     "reflexion_enabled",
                     "t3_fanout_enabled",
                     "fanout_fault_inject",
+                    "carrier_gate_enforce_enabled",
+                    "carrier_gate_fault_inject",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
@@ -531,6 +546,17 @@ def build_components(
     goal_judge_enabled = settings.goal_judge_enabled
     goal_judge_downgrade = settings.goal_judge_downgrade_enabled
 
+    # Carrier-gate enforcement mode (Phase 2): flag OFF → "off" (shadow only).
+    # Flag ON → dev raises (fail loud at the source), prod degrades (loud trace,
+    # run continues). The mode collapses the flag + env split into one explicit
+    # field consumed by the graph (services/base_config.carrier_gate_enforce_mode).
+    if not settings.carrier_gate_enforce_enabled:
+        carrier_gate_enforce_mode = "off"
+    elif settings.agent_env == "prod":
+        carrier_gate_enforce_mode = "degrade"
+    else:
+        carrier_gate_enforce_mode = "raise"
+
     agent_config = AgentConfig(
         default_model="gpt-4o-mini",
         models=[fast, capable],
@@ -545,6 +571,8 @@ def build_components(
         max_reflexion_attempts=settings.max_reflexion_attempts,
         t3_fanout_enabled=settings.t3_fanout_enabled,
         fanout_fault_inject=settings.fanout_fault_inject,
+        carrier_gate_enforce_mode=carrier_gate_enforce_mode,
+        carrier_gate_fault_inject=settings.carrier_gate_fault_inject,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)

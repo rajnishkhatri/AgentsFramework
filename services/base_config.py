@@ -88,6 +88,27 @@ class AgentConfig(BaseModel):
     # worker so one slow/hung branch cannot stall the whole superstep; on timeout
     # the worker records a sentinel and survivors still synthesize.
     fanout_branch_timeout_s: float = 60.0
+    # Governance carrier-gate enforcement (enforcement gate Phase 2). The inline
+    # gate ALWAYS records a shadow carrier (Phase 1); this field decides whether a
+    # missing-pillar gap also ACTS:
+    #   "off"     — shadow only; the gap is recorded, nothing blocks (prod parity,
+    #               the Phase-1 default; stays here until calibration justifies it).
+    #   "raise"   — a gap raises CarrierGateViolation (dev / CI — fail loud so a
+    #               seam defect is caught at the source).
+    #   "degrade" — a gap is annotated loudly on the trace + run, never silent, but
+    #               the run still completes (prod — degrade-not-block).
+    # composition.py sets it from CARRIER_GATE_ENFORCE_ENABLED + AGENT_ENV
+    # (dev→raise, prod→degrade); default OFF preserves shadow-first discipline —
+    # promote only on Phase-1 calibration evidence + explicit approval.
+    carrier_gate_enforce_mode: Literal["off", "raise", "degrade"] = "off"
+    # Carrier-gate fault-injection hook (the LIVE gap-catch proof). When True, a
+    # task whose input carries the magic token ``__DROP_CARRIER:<phase>__`` has the
+    # required carrier for that phase SUPPRESSED before the gate checks it —
+    # simulating the exact seam defect the gate exists to catch, so the enforce
+    # path (alert carrier + raise/degrade) can be proven end-to-end on a live run.
+    # MUST stay OFF in prod (same posture as fanout_fault_inject — a dedicated
+    # tagged revision flips it; the magic token is inert without the flag).
+    carrier_gate_fault_inject: bool = False
 
 
 def default_fast_profile() -> ModelProfile:
