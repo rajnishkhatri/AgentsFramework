@@ -37,6 +37,7 @@ It mutates nothing — read-only over the captured traces.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import time
@@ -208,6 +209,35 @@ def _as_int(v: object, default: int = 0) -> int:
         return int(v)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return default
+
+
+def _as_list(v: object) -> list[str]:
+    """Coerce a carrier list to list[str].
+
+    The BlackBox→Langfuse relay (``black_box_publisher.redact_details``) keeps
+    native types only for an allowlist of safe scalar keys; every other value —
+    including the carrier-gate ``missing_pillars`` / ``missing_carriers`` lists —
+    falls to ``redact_text(str(value))``, so a list arrives as its Python repr
+    string (e.g. ``"['identity', 'reasoning']"``). Parse both the native-list
+    shape (offline BlackBox source) and the stringified shape (Langfuse source);
+    a scalar string becomes a single-element list; anything unparseable is empty.
+    """
+    if isinstance(v, list):
+        return [str(item) for item in v]
+    if isinstance(v, str):
+        s = v.strip()
+        if not s:
+            return []
+        try:
+            parsed = ast.literal_eval(s)
+        except (ValueError, SyntaxError):
+            return [s]
+        if isinstance(parsed, (list, tuple)):
+            return [str(item) for item in parsed]
+        return [str(parsed)]
+    if v is None:
+        return []
+    return [str(v)]
 
 
 def _fired_depth(events: list[dict]) -> str | None:

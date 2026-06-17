@@ -185,6 +185,14 @@ def _level_for(event: TraceEvent) -> str:
     redacted, or has any failed rule → ``WARNING`` (a real signal worth
     surfacing); an otherwise-clean pass → ``DEBUG`` (filterable noise, but kept
     so demos can still show the provable negative). Everything else → ``DEFAULT``.
+
+    Governance carrier gate (enforcement gate Phase 1, shadow): the gate reuses
+    ``GUARDRAIL_CHECKED`` to record a missing-pillar gap, but a real gap sets
+    ``outcome: "alert"`` / ``would_enforce: true`` WITHOUT any blocked/redacted/
+    failed_rules. Without a special case it would relay at ``DEBUG`` —
+    indistinguishable from a clean pass, defeating the gate's "never a silent
+    skip" purpose. So a ``carrier_gate`` carrier whose outcome is ``alert`` (it
+    found a gap) maps to ``WARNING``; a ``carrier_gate`` pass stays ``DEBUG``.
     """
     if event.event_type == EventType.ERROR_OCCURRED:
         return "ERROR"
@@ -193,7 +201,11 @@ def _level_for(event: TraceEvent) -> str:
         blocked = bool(details.get("blocked"))
         redacted = bool(details.get("redacted"))
         failed_rules = details.get("failed_rules") or []
-        if blocked or redacted or failed_rules:
+        carrier_gate_alert = (
+            details.get("source") == "carrier_gate"
+            and (details.get("outcome") == "alert" or details.get("would_enforce"))
+        )
+        if blocked or redacted or failed_rules or carrier_gate_alert:
             return "WARNING"
         return "DEBUG"
     return "DEFAULT"

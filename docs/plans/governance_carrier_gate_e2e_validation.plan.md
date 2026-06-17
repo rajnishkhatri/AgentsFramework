@@ -43,13 +43,13 @@ The planning-stress T3 effort already built every piece of plumbing this needs. 
 2. **Analyzer extension** — in `scripts/analyze_planning_traces.py`: `_carrier_gate_events()` (filter flattened events to `event_type == guardrail_checked AND details.source == "carrier_gate"`) + a `carrier` phase in `score_run` that emits, **per phase**: emitted? (coverage), `outcome` (pass/alert), `missing_pillars`, and run-level the **gap rate** across the batch. Reuses the corpus-merge + printer machinery already there.
 3. **Verdict report** — `docs/plans/governance_carrier_gate_e2e_report.md` (generated, like `t3_stage_b_case_report.md`): per-phase coverage table + gap-rate + a CALIBRATION verdict (`SIGNAL` if gaps trace to real seam defects, `CLEAN` if ~0 gap on healthy traffic, `FALSE-POSITIVE` if gaps fire on legitimate skips → spec needs a fix before Phase 2). Includes the relay-fidelity check result.
 4. **Relay-fidelity assertion** (§4a) — proven once on a real trace, recorded in the report.
-5. **Publisher level fix** (§4b — REQUIRED, on the critical path) — `_level_for` raises a `carrier_gate` `outcome:"alert"` carrier to Langfuse `WARNING` (one condition in the existing `GUARDRAIL_CHECKED` branch) + an L2 publisher test. Land this **with the analyzer**, before trusting any live gap-rate. *(This is a small backend change discovered during planning; it belongs to the carrier-gate build, not just the validation — without it the "never a silent skip" property leaks at the relay.)*
+5. **Publisher level fix** (§4b — REQUIRED, on the critical path) — ✅ **DONE 2026-06-17.** `_level_for` raises a `carrier_gate` `outcome:"alert"` carrier to Langfuse `WARNING` + L2 publisher tests. *(Both §4 relay fixes are now landed as working changes on top of the Phase-1 commit `2f8f6b0`; the validation run's first executable step — the §4a relay pre-flight — should still confirm the live trace matches before trusting numbers.)*
 
 ---
 
 ## 4. The #1 risk: does `details` survive the relay — and at the right LEVEL?
 
-**Verified against `black_box_publisher.py` (2026-06-17) — two real defects, not hypotheticals.**
+**Verified against `black_box_publisher.py` (2026-06-17) — two real defects, not hypotheticals. ✅ BOTH FIXED 2026-06-17 (this session) — recorded below for the record; the validation run can now trust the relayed carriers.**
 
 ### 4a. Type fidelity — `redact_details` will stringify the gate's new keys
 `redact_details` keeps native types ONLY for an allowlisted `_SAFE_BOOL_KEYS` / `_SAFE_NUMERIC_KEYS`; **every other value falls to `redact_text(str(value))`**. The carrier-gate keys are not allowlisted, so confirmed:
@@ -62,11 +62,13 @@ The planning-stress T3 effort already built every piece of plumbing this needs. 
 | `spec_version` | int | **`"1"` (string)** | use existing `_as_int` ✔ |
 
 **Action — option (b), coerce in the analyzer (confirmed necessary, not just preferred):** the analyzer already coerces Langfuse-stringified bools/ints (`_as_bool`/`_as_int`); add an `_as_list` that parses the stringified list. Do NOT touch the publisher's redaction allowlist just for telemetry shape — coercing on read is the established pattern and keeps the redaction policy single-purpose.
+> **✅ DONE (2026-06-17):** `_as_list` added to `scripts/analyze_planning_traces.py` (parses both native-list and the `ast.literal_eval`-able stringified shape; empty/missing→`[]`; unparseable→single-element, never raises). Test `test_langfuse_stringified_list_coerces` in `tests/scripts/test_analyze_planning_traces.py` (13 pass).
 
 ### 4b. **Observability defect — a real gap relays at `DEBUG`, indistinguishable from a clean pass**
 `_level_for` raises a `GUARDRAIL_CHECKED` to Langfuse level `WARNING` **only when `details.blocked` / `redacted` / `failed_rules` are truthy**. The carrier-gate alert sets none of those — it signals via `outcome:"alert"` + `would_enforce:true`. So **a genuine missing-carrier gap is published at `DEBUG`, the same level as a clean pass** → it becomes filterable noise in Langfuse. This directly defeats the gate's entire purpose (the arXiv 2603.01548 "never a silent skip" property): the inline check would *find* the skip but the relay would *bury* it.
 
-**Action (publisher fix, REQUIRED before the validation run is meaningful):** extend `_level_for` so a `carrier_gate` carrier with `outcome == "alert"` (or `would_enforce` truthy) maps to `WARNING`. One added condition in the existing `GUARDRAIL_CHECKED` branch; covered by an L2 publisher test. This is a small, contained change — but it is **on the critical path**: without it, §6's gap-rate is computed over carriers that a human watching Langfuse would never have seen surfaced. Flag it to do alongside the wiring, before relying on any live calibration number.
+**Action (publisher fix, REQUIRED before the validation run is meaningful):** extend `_level_for` so a `carrier_gate` carrier with `outcome == "alert"` (or `would_enforce` truthy) maps to `WARNING`. One added condition in the existing `GUARDRAIL_CHECKED` branch; covered by an L2 publisher test. This is a small, contained change — but it is **on the critical path**: without it, §6's gap-rate is computed over carriers that a human watching Langfuse would never have seen surfaced.
+> **✅ DONE (2026-06-17):** `_level_for` in `services/governance/black_box_publisher.py` now maps `source == "carrier_gate"` + (`outcome == "alert"` or `would_enforce`) → `WARNING`; a `carrier_gate` pass stays `DEBUG` (the provable negative). Tests in `tests/services/governance/test_black_box_publisher.py` (`test_carrier_gate_alert_is_warning`, `…_via_would_enforce_alone…`, `test_carrier_gate_pass_is_debug`); 91 pass.
 
 *(Both findings mirror the trace-explainability token-seam lesson: a carrier is only worth what actually exports, at a level someone will actually look at.)*
 
