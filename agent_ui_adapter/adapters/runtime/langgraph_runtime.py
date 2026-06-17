@@ -222,6 +222,14 @@ class LangGraphRuntime:
                 "workflow_id": trace_id,
                 "task_id": task_id,
                 "registered_agent_id": identity.agent_id,
+                # Phase 1 memory wiring: thread the run's subject into AgentState
+                # so the recall (route_node) / store (run-end) seams and the T3
+                # Send payload read it from state. This is identity.owner — the
+                # same subject already on config["configurable"]["user_id"] and
+                # the cross-user-leak guard (no memory op uses any other user_id).
+                # Resume mode passes None (checkpoint holds prior channels); those
+                # seams fall back to configurable["user_id"] there.
+                "user_id": eval_user_id,
             }
         error: str | None = None
         self._streamed_run_ids = set()

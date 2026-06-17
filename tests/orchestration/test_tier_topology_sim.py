@@ -809,3 +809,103 @@ async def test_fanout_supervisor_logs_phaselogger_decision(tmp_path):
         "step.planned and decisions.jsonl carry different decision_id — "
         "the two sinks are not joinable"
     )
+
+
+@pytest.mark.simulation
+@pytest.mark.asyncio
+async def test_fanout_is_not_memory_blind(tmp_path):
+    """Phase 1 memory, T3 tier: the fan-out path bypasses call_llm, so recall
+    runs in route_node (the universal seam). Assert the recalled block reaches
+    the supervisor decompose prompt — a fan-out run must NOT be memory-blind —
+    and that recall ran exactly once for the run (route, not per worker)."""
+    from orchestration.react_loop import build_graph
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    service = LongTermMemoryService(InMemoryMemoryBackend())
+    # InMemoryMemoryBackend.search matches `query in repr(payload)`, and the
+    # query is the FULL task_input (route_node passes task_input as the query).
+    # So embed the whole task string in the seed payload, alongside a recognizable
+    # marker the assertion looks for in the prompt.
+    service.store(
+        "sim-user",
+        "seed",
+        {"text": f"user prefers terse document summaries [{_FANOUT_TASK}]"},
+    )
+
+    captured: list = []
+    script = [
+        _resp(_INDEPENDENT_PLAN_JSON, [], 0),  # route_node plan generator
+        _resp(_DECOMPOSE_JSON, [], 1),          # supervisor decompose
+    ] + [_resp(f"Joined #{i}.", [], 10 + i) for i in range(4)]
+
+    with (
+        patch("langchain_litellm.ChatLiteLLM") as MockChat,
+        patch(
+            "services.guardrails.InputGuardrail._call_judge",
+            new_callable=AsyncMock,
+            return_value="accept",
+        ),
+        patch(
+            "services.tools.delegation_dispatcher.LocalLLMDelegationDispatcher.dispatch_async",
+            _make_branch_dispatch({}),
+        ),
+    ):
+        inst = MockChat.return_value
+        inst.bind_tools.return_value = inst
+
+        async def _ainvoke(messages, *a, **k):
+            captured.append(messages)
+            return script[min(len(captured) - 1, len(script) - 1)]
+
+        inst.ainvoke = AsyncMock(side_effect=_ainvoke)
+
+        graph = build_graph(
+            agent_config=AgentConfig(
+                default_model="gpt-4o-mini",
+                models=[_fast_profile(), _capable_profile()],
+                plan_source="generated",
+                t3_fanout_enabled=True,
+                memory_enabled=True,
+            ),
+            tool_registry=_registry(fail_first=False),
+            cache_dir=tmp_path / "cache",
+            memory_service=service,
+        )
+        result = await graph.ainvoke(
+            {
+                "task_id": "wf-fanout-mem",
+                "task_input": _FANOUT_TASK,
+                "messages": [],
+                "workflow_id": "wf-fanout-mem",
+                "registered_agent_id": "sim-agent",
+                "user_id": "sim-user",
+            },
+            config={
+                "configurable": {
+                    "task_id": "wf-fanout-mem",
+                    "user_id": "sim-user",
+                    "workflow_id": "wf-fanout-mem",
+                }
+            },
+        )
+
+    # The run completed via the fan-out path.
+    assert "messages" in result
+    # The supervisor decompose call (LLM call #2) carried the recalled block in
+    # its user message — proof the fan-out run saw memory.
+    all_text = " ".join(
+        str(getattr(m, "content", m))
+        for batch in captured
+        for m in batch
+    )
+    assert "terse document summaries" in all_text, (
+        "the recalled memory never reached any fan-out prompt — memory-blind"
+    )
+    # Recall queried the backend exactly once for the whole run (route seam,
+    # memoized — not once per worker / supervisor re-entry).
+    events = _replay_events(tmp_path, "wf-fanout-mem")
+    recalled = [e for e in events if e.event_type.value == "memory_recalled"]
+    assert len(recalled) == 1, f"expected one recall carrier, got {len(recalled)}"

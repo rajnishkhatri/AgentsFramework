@@ -249,7 +249,26 @@ def generate_workflows(
                 ))
             t += timedelta(milliseconds=int(rng.uniform(500, 5000)))
 
+        # Phase 1 memory wiring: model the recall (route) + store (run-end)
+        # activity carriers so the seeded corpus spans every EventType. Metadata
+        # only (user_id/key/count) — the seed honors the privacy invariant too
+        # (no payload content ever appears in a carrier).
+        recorder.record(TraceEvent(
+            event_id=str(uuid.UUID(int=rng.getrandbits(128))),
+            workflow_id=wf_id,
+            event_type=EventType.MEMORY_RECALLED,
+            timestamp=t,
+            details={"user_id": "seed-user", "count": 1, "query_len": 24},
+        ))
+
         if not has_error:
+            recorder.record(TraceEvent(
+                event_id=str(uuid.UUID(int=rng.getrandbits(128))),
+                workflow_id=wf_id,
+                event_type=EventType.MEMORY_STORED,
+                timestamp=t,
+                details={"user_id": "seed-user", "key": wf_id},
+            ))
             recorder.record(TraceEvent(
                 event_id=str(uuid.UUID(int=rng.getrandbits(128))),
                 workflow_id=wf_id,

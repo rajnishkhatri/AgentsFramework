@@ -1,6 +1,8 @@
 # Add a Memory Layer to the Agent (wire the orphaned long-term memory into the react loop)
 
-> **Status**: Phase 1 (runtime wiring) approved 2026-06-17. Phases 2–3 (typed background auto-capture + chat-history sidebar + memory UI) added 2026-06-17 after external research; pending re-approval. Compliance binding (per-phase invariant-cited checklists, frontend F-R + STYLE_GUIDE_FRONTEND, eval_capture on all memory seams) added 2026-06-17. Branch: `feat/memory-layer-wiring`.
+> **Status**: All three phases **re-approved as scoped 2026-06-17** (P1 runtime wiring → P2 typed auto-capture, shadow-first behind the eval enable-policy → P3 chat-history + memory UI). Build-vs-buy **resolved**: adopt LangMem *patterns* on the existing seam, not the SDK (no new dependency, one memory abstraction). Compliance binding (per-phase invariant-cited checklists, frontend F-R + STYLE_GUIDE_FRONTEND, eval_capture on all memory seams), governance-triangle four-pillar binding, tier-compatibility (T1/T2/T3), and OBP/ports-and-adapters/layer-separation audit all added 2026-06-17. Branch: `feat/memory-layer-wiring`.
+>
+> **PHASE 1 IMPLEMENTED 2026-06-17 (uncommitted, on branch).** Test-first build complete and green. Spike resolved → sync `LongTermMemoryService` route (see Wiring note). Built: `components/memory_context.py` (OBP-1 `render_recall_block`/`build_store_payload` + OBP-2 `should_recall` + `memory_subject` cross-user-leak guard); recall in `route_node` (universal seam, memoized, `MEMORY_RECALLED` carrier + `eval_capture` + graceful-degrade via `await asyncio.to_thread`); `call_llm`/`supervisor` read `recalled_memories`; `_route_fanout` Send payload (OBP-M1); store in `reasoning_recap_node` (`_maybe_store_memory`, reads `last_final_answer` = tier-agnostic, `MEMORY_STORED` carrier); two non-required `EventType` members; `AgentState` fields; `AgentConfig.memory_enabled=False`; composition `MEMORY_ENABLED` flag + constructs `LongTermMemoryService(InMemoryMemoryBackend())`; `langgraph_runtime` threads `user_id=identity.owner`. **Two enum-completeness consumers updated** (required, surfaced by the full suite): `black_box_publisher` mapping (`memory.recalled`/`memory.stored` → `span`) + `dev_seed` corpus. **Real bug a failure-path test caught:** `"anonymous"` must not be a memory subject (cross-user pooling) → `memory_subject()` guard. Tests green: L1 20/20, L4 wiring 7/7, T3 sim `test_fanout_is_not_memory_blind`, all enum-consumer + drift-guard 170/170, full fast suite no-regression. **`Mem0MemoryBackend` deferred** (ask-first new horizontal service; default-OFF flag keeps prod parity meanwhile). **Still pending:** governance-trace-audit gate (Verification 4), local e2e (Verification 5), commit.
 >
 > **Research backing**: [docs/research/memory_and_chat_history_best_practices_2026.md](../research/memory_and_chat_history_best_practices_2026.md). The three-type model (semantic/episodic/procedural), background-debounced auto-capture, ADD-only+consolidation conflict handling, and the visible/editable memory-panel UX are all confirmed 2026 best practice (LangMem, Mem0, Zep, Claude/ChatGPT memory).
 >
@@ -91,7 +93,7 @@ Source of intent: [governanaceTriangle/01_explainability_fundamentals.md](../../
 ### Two compliance rules the design must encode (learned from the carrier gate)
 
 1. **Memory carriers ENRICH Recording; they are NOT a new per-phase pillar requirement.** The inline carrier gate ([trust/governance_carrier_spec.py](../../trust/governance_carrier_spec.py)) keys required carriers by `WorkflowPhase`. Recall runs in `route_node` → `PH_ROUTING`, store in the completion path → `PH_COMPLETION`. **Do NOT add `MEMORY_RECALLED`/`MEMORY_STORED` to `default_spec()` as required carriers** — memory is flag-gated and absent on most runs, so requiring them would make the gate **false-positive on every non-memory run** (the exact GG-4 class the spec's resumed-Identity exemption was built to avoid). They are optional enrichment carriers: present when memory ran, absent (correctly) when it didn't. `PH_ROUTING` keeps its single requirement (`model_selected`); `PH_COMPLETION` keeps `eval.goal_judge`.
-2. **The new `EventType` members feed the drift-guard, not the rubric.** `EventType.MEMORY_RECALLED` / `MEMORY_STORED` are added in `services/governance/black_box.py`. The carrier-spec drift-guard test (`tests/services/test_carrier_gate.py`) asserts the spec's wire strings still match real enum members — adding two **non-required** members does not change `ALL_PHASE_VALUES` or any requirement tuple, so that test stays green by construction. (If a future phase *does* want to require a memory carrier, that is a deliberate `SPEC_VERSION` bump + rubric edit in the skill first — never a silent spec change.)
+2. **The new `EventType` members feed the drift-guard, not the rubric.** `EventType.MEMORY_RECALLED` / `MEMORY_STORED` are added in `services/governance/black_box.py`. The carrier-spec drift-guard test (`tests/trust/test_governance_carrier_spec.py`) asserts the spec's wire strings still match real enum members — adding two **non-required** members does not change `ALL_PHASE_VALUES` or any requirement tuple, so that test stays green by construction. (If a future phase *does* want to require a memory carrier, that is a deliberate `SPEC_VERSION` bump + rubric edit in the skill first — never a silent spec change.)
 
 ### Verification via the audit skill (the post-implementation gate)
 
@@ -162,22 +164,53 @@ There are two parallel abstractions today. To keep the loop framework-clean and 
 
 This decision is the one genuinely open implementation choice — resolved by the early spike (Verification step 1).
 
+> **Spike RESOLVED (2026-06-17 — sync `LongTermMemoryService` route confirmed).** Read of [middleware/adapters/memory/mem0_cloud_client.py](../../middleware/adapters/memory/mem0_cloud_client.py) confirms the `mem0ai` SDK client is **synchronous** — `Mem0CloudClient` only wraps it in `asyncio.to_thread()` because it lives in the async FastAPI BFF ring. So the loop depends on **one** port (the sync `MemoryBackend` Protocol), and the prod `Mem0MemoryBackend` is a thin adapter over the already-sync `_sync_add`/`_sync_search` (the Mem0 SDK stays confined to `middleware/adapters/` per I-10 — the backend delegates to the existing client, never imports `mem0`). Awaiting the async `MemoryClient` was rejected: it would drag a *second* memory abstraction into the loop (the exact coupling the OBP/ports audit closed). **One async refinement to the sketch:** because the node is `async def` and the prod backend's `search`/`store` do blocking network I/O, the OBP-3 block calls them via `await asyncio.to_thread(memory_service.search, ...)` so the event loop stays free; the `InMemoryMemoryBackend` path is fast enough that `to_thread` is harmless. This keeps the sync port *and* event-loop safety.
+
+---
+
+## OBP / ports-and-adapters / layer separation (no coupling) — must hold
+
+The recall/store wiring must obey the same four-rule OBP split every loop tier obeys ([design.md §OBP](planning_pipeline_tiered_loops.design.md)), or it couples orchestration to memory logic. The split for memory:
+
+| OBP rule | Memory responsibility | Lands in | Must NOT |
+|----------|----------------------|----------|----------|
+| **OBP-1** (generation/logic) | format top-k records → the "Relevant context…" block; distill `task_input`+`last_final_answer` → store payload; the graceful-degrade fallback | a **pure helper** — `components/memory_context.py` (`render_recall_block(records) -> str`, `build_store_payload(task_input, answer) -> dict`), framework-clean | import `langgraph`/`orchestration`/`AgentState`; call the backend itself |
+| **OBP-2** (the decision) | "recall now?" = `enabled ∧ user_id present ∧ not-memoized-this-task` | a **pure predicate** taking scalars — `should_recall(enabled: bool, user_id: str, memoized: bool) -> bool` (same file) | read `AgentState` |
+| **OBP-3** (node wrapper) | unpack state → call predicate → call `memory_service.search` → call the OBP-1 formatter → return a state delta | the inline block in `route_node` / the store block in the run-end path | contain any formatting/selection *logic* — it only adapts state ↔ service ↔ helper, exactly like `route_node`'s existing `select_model` / `select_planning_depth` calls |
+| **OBP-4** (edge) | none — recall/store add **no new edge** (recall rides the existing `route` node, store rides the existing `done → reasoning_recap` edge) | n/a | — |
+
+**This is the fix for the only real coupling risk:** the node must not inline the search-result formatting or the degrade policy. `route_node` already demonstrates the correct shape — it calls pure `select_model(...)`/`select_planning_depth(...)` and only assembles state. Recall follows suit: `route_node` calls `should_recall(...)` then `memory_service.search(...)` then `render_recall_block(...)`, and writes the result to `recalled_memories`. No memory logic lives in orchestration.
+
+**Ports & adapters — name the one port the loop depends on.** The loop depends on **exactly one** memory abstraction: the sync **`MemoryBackend` Protocol** (the port), consumed via `LongTermMemoryService` (the injected collaborator). Everything else is an adapter behind that port:
+- `InMemoryMemoryBackend` / `SqliteMemoryBackend` — adapters (local/test).
+- `Mem0MemoryBackend` — adapter that **wraps** the existing async `Mem0CloudClient`; the async `MemoryClient` port stays a *middleware* concern (BFF ring) and is **not** a second port the loop sees. The loop never imports `MemoryClient`, never imports a backend directly, never imports the Mem0 SDK (I-10 keeps the SDK in `middleware/adapters/`). One port into the loop; the two-abstraction split stays a layer boundary, not a coupling.
+
+**OBP-M1 (T3 worker isolation) — recall rides the Send payload, not `AgentState`.** A worker receives a plain dict `Send` payload, never `AgentState` ([react_loop.py:2485–2497](../../orchestration/react_loop.py)). So "workers see recalled memory" means **adding `recalled_memories` to the `Send` payload dict** in `_route_fanout` (alongside the existing `objective`/`user_id`/`constraints`), exactly as those fields already ride. The worker reads `payload["recalled_memories"]`, never reaches into shared state. The supervisor (which *does* get `AgentState`) reads `state["recalled_memories"]` directly — OBP-3-clean.
+
+**Layer-separation summary (what imports what):**
+- `components/memory_context.py` → imports `services`/`trust` types only; **no** `langgraph`/`orchestration`/`AgentState` (I-1, I-3; enforced by `test_components_no_framework_imports` + `test_components_does_not_import_orchestration`).
+- `services/memory_backends/mem0.py` → imports the `MemoryBackend` Protocol + the Mem0 client port; **no** framework, **no** `components` (I-4, I-5).
+- `orchestration/react_loop.py` → imports the OBP-1 helper + receives the injected `LongTermMemoryService`; **no** backend import, **no** memory engine construction (H7, I-1).
+- `trust/` → untouched (memory types are not trust-kernel types; carrier `EventType` lives in `services/governance/`, not `trust/`).
+
 ---
 
 ## Files to change
 
 **New:**
+- `components/memory_context.py` — the **OBP-1 pure helpers**: `render_recall_block(records) -> str`, `build_store_payload(task_input, answer) -> dict`, and the **OBP-2 predicate** `should_recall(enabled, user_id, memoized) -> bool`. Framework-clean (no `langgraph`/`orchestration`/`AgentState`). This is where all recall/store *logic* lives — keeping `route_node` an OBP-3 wrapper.
+- `tests/components/test_memory_context.py` — pure unit tests for the helpers + predicate (L1/Protocol A; no LangGraph runtime).
 - `services/memory_backends/mem0.py` — `Mem0MemoryBackend(MemoryBackend)` delegating to `Mem0CloudClient` (prod backend; only if sync-service route chosen).
 - `tests/services/memory_backends/test_mem0_backend.py` — conformance against the `MemoryBackend` Protocol (mock SDK client).
-- `tests/orchestration/test_memory_wiring.py` — recall injects into system prompt; store fires at run-end; flag-OFF is a no-op; backend failure degrades gracefully; content never logged.
+- `tests/orchestration/test_memory_wiring.py` — recall injects into system prompt; store fires at run-end; flag-OFF is a no-op; backend failure degrades gracefully; content never logged; **T3 worker payload carries `recalled_memories` (not `AgentState`) — OBP-M1**.
 
 **Modified (representative pattern — inject a service, read a flag, call at the two seams):**
 - `services/base_config.py` — add `memory_enabled: bool = False` to `AgentConfig` (mirrors `reflexion_enabled`).
 - `middleware/composition.py` — add `MEMORY_ENABLED` to `AgentRuntimeSettings` (mirror `reflexion_enabled` parse at lines 399/438); construct the `LongTermMemoryService` in `build_components` and pass it through `build_runtime_graph` → `build_graph` (new injected param, like `goal_judge_config_reader`).
-- `orchestration/react_loop.py` — accept injected `memory_service` in `build_graph`; add the recall block in **`route_node`** (the universal seam — reaches T1/T2/T3, see Tier compatibility) writing `recalled_memories` to state; make `call_llm_node` (~1307–1326) **and** `supervisor_node` *read* `state["recalled_memories"]` into their prompts; add the store block in the shared run-end/`reasoning_recap` path (reads `last_final_answer`, tier-agnostic); add the two BlackBox carriers.
+- `orchestration/react_loop.py` — accept injected `memory_service` in `build_graph`; in **`route_node`** (the universal seam — reaches T1/T2/T3, see Tier compatibility) add an **OBP-3 block that calls `should_recall(...)` → `memory_service.search(...)` → `render_recall_block(...)`** (no inline logic — mirror the existing `select_model`/`select_planning_depth` calls) and writes `recalled_memories` to state; make `call_llm_node` (~1307–1326) **and** `supervisor_node` *read* `state["recalled_memories"]` into their prompts; in `_route_fanout` add `recalled_memories` to each **`Send` payload dict** so workers receive it by value (OBP-M1 — never `AgentState`); add the store block in the shared run-end/`reasoning_recap` path (calls `build_store_payload(...)` then `memory_service.store(...)`, reads `last_final_answer`, tier-agnostic); add the two BlackBox carriers.
 - `orchestration/state.py` — add `user_id: str`, `recalled_memories: str`, `recalled_memories_task_id: str` (plain last-write-wins keys; follow the existing memoize-by-task_id comment style).
 - `agent_ui_adapter/adapters/runtime/langgraph_runtime.py` — thread `user_id` (`identity.owner`) into the initial graph input/state.
-- `services/governance/black_box.py` — add `MEMORY_RECALLED` / `MEMORY_STORED` to the `EventType` enum (governance carrier vocabulary; the carrier spec drift-guard in `trust/governance_carrier_spec.py` may need the new wire strings — check `tests/trust/test_governance_carrier_spec.py`).
+- `services/governance/black_box.py` — add `MEMORY_RECALLED` / `MEMORY_STORED` to the `EventType` enum (governance carrier vocabulary; these are **non-required** enrichment carriers — they are NOT added to `default_spec()` in `trust/governance_carrier_spec.py`, so `ALL_PHASE_VALUES` and the requirement tuples are unchanged and the drift-guard `tests/trust/test_governance_carrier_spec.py` stays green with no `SPEC_VERSION` bump — see Governance-triangle compliance).
 - `logging.json` — add the `services.long_term_memory` logger block per the existing plan §4 (if not already present).
 - `cli.py` — optional: accept `--user-id` / read env so the CLI path can exercise memory locally.
 
@@ -212,17 +245,26 @@ The recall/store seams are orchestration nodes → **[BACKEND_PR_CHECKLISTS.md C
 **Phase 1 — Memory wiring (Checklist 4 + 2/7)**
 
 - [ ] Recall & store seams are thin wrappers (≤ ~30 lines); all work delegates to the injected `memory_service`. (I-7, AP-5)
+- [ ] **OBP-1: all recall/store logic** (format block, build payload, degrade fallback) lives in `components/memory_context.py`, NOT inlined in the node. (OBP-1)
+- [ ] **OBP-2: the "recall now?" decision** is a pure predicate `should_recall(enabled, user_id, memoized)` taking scalars — not `if` soup reading `AgentState` in the node. (OBP-2)
+- [ ] **OBP-4: no new graph node and no new edge** — recall rides the existing `route` node, store rides the existing `done → reasoning_recap` edge. (OBP-4; also clears the AGENTS.md new-node ask-first gate)
+- [ ] **OBP-M1: T3 workers receive `recalled_memories` via the `Send` payload dict**, never `AgentState`; assert the worker reads `payload["recalled_memories"]`. (OBP-M1)
+- [ ] **One port into the loop:** the loop depends only on the sync `MemoryBackend` Protocol (via injected `LongTermMemoryService`); it imports no backend, no `MemoryClient`, no Mem0 SDK. (ports & adapters, I-10)
 - [ ] **Recall runs in `route_node`** (the universal seam) — verified to reach all three tiers: T1 `call_llm`, T2 `reflect→route` re-entry, T3 `supervisor`/fan-out. NOT `call_llm`-only (that would skip every fan-out run). (Tier compatibility)
 - [ ] **Recall is memoized once per run** (`recalled_memories_task_id`); a `reflect → route` reflexion lap does NOT re-query the backend. (T2 correctness)
 - [ ] **Store reads `last_final_answer`** so it is tier-agnostic — captures the T3 `join_node` answer identically to a T1 answer. (Tier compatibility)
 - [ ] No domain logic in the node — no parsing/heuristics over content; only state assembly + service call + state return. (AP-5)
 - [ ] State reads/writes go through the `AgentState` TypedDict — `user_id`, `recalled_memories`, `recalled_memories_task_id` are declared on the class with last-write-wins (no magic-string `.get`). (Checklist 4)
 - [ ] BlackBox `MEMORY_RECALLED` / `MEMORY_STORED` emitted at the seams via `BlackBoxRecorder.record(TraceEvent(...))`; details carry `user_id`/`key`/`count` — never content. (Checklist 4, privacy invariant)
+- [ ] **Memory carriers ENRICH Recording — they are NOT added to `default_spec()` as per-phase requirements.** `PH_ROUTING` keeps `model_selected`, `PH_COMPLETION` keeps `eval.goal_judge`; requiring a memory carrier would false-positive the carrier gate on every non-memory run (GG-4 class). (Governance-triangle compliance, rule 1)
+- [ ] **Degraded recall/store still leaves a carrier** (count 0 / `error_kind`, never content) — a swallowed `MemoryBackendError` with zero carriers is a silent failure the audit's Validation pillar flags. (Governance-triangle compliance, Validation row)
+- [ ] **No memory write uses a `user_id` other than the run's subject** (`identity.owner`) — cross-user-leak guard. (Identity pillar)
 - [ ] `eval_capture.record()` called at both seams with `target`/`user_id`/`task_id`. (I-11, per user decision)
 - [ ] `LongTermMemoryService` is injected via `build_components` → `build_graph` (new param like `goal_judge_config_reader`); no node imports a backend. (H7, I-1)
 - [ ] `Mem0MemoryBackend` (if built) imports no framework package and no `components/`. (I-4, I-5) — Checklist 2.
 - [ ] Privacy test: backend raises → run completes, warning logged, no content in logs (reuse the magic-string assertion). (TAP-4 first)
-- [ ] `EventType.MEMORY_RECALLED` / `MEMORY_STORED` added; carrier-spec drift-guard wire strings updated and `tests/trust/test_governance_carrier_spec.py` passes.
+- [ ] `EventType.MEMORY_RECALLED` / `MEMORY_STORED` added in `services/governance/black_box.py`; the carrier-spec drift-guard `tests/trust/test_governance_carrier_spec.py` stays green (new members are non-required, so `ALL_PHASE_VALUES` and the requirement tuples are unchanged — no `SPEC_VERSION` bump).
+- [ ] **Governance audit gate (REQUIRED, post-deploy):** a memory-ON run audited via the `governance-trace-audit` skill returns **COMPLIANT** with `MEMORY_RECALLED`/`MEMORY_STORED` present, content absent, no `source: "carrier_gate"` memory alert; a memory-OFF run audits byte-identical to today. (Verification step 4)
 - [ ] `pytest tests/architecture/ -q` passes — no new disallowed imports; service only injected at composition root.
 - [ ] No hardcoded model names / prompts in the diff (H1/H2); no secrets; no `print(...)`. (Checklist 8)
 ```
@@ -293,6 +335,8 @@ The Phase-2 extractor is a **probabilistic classifier**: it decides *what is wor
 - [ ] `services/long_term_memory.py` `search` `type` filter is additive/backward-compatible; existing tests stay green.
 - [ ] `MEMORY_AUTOCAPTURE_ENABLED` defaults OFF; flag-OFF path is a no-op (regression guard).
 - [ ] Rejection test written first (TAP-4): malformed extractor output rejected; ≤ 3 mocks/test (TAP-2).
+- [ ] **Eval gate (llm-eval-grounded-theory):** error analysis on ≥100 shadow extraction traces precedes the prompt (AP-1); failure taxonomy + stratified gold set (`memory-extract-gold-v1`, α ≥ 0.80) exist; store-trigger-class **precision ≥ 0.90** + mis-type + CoT-gaming flip-rate measured on the **frozen test split**; enable-policy doc written.
+- [ ] **`MEMORY_AUTOCAPTURE_ENABLED` flips to write-back ONLY after the enable-policy clears** (shadow → dev-enable → prod-enable; never iterate the prompt on the test split). Until then the extractor proposes-only; nothing is stored.
 - [ ] `pytest tests/architecture/ -q` and `pytest tests/components/ -q` pass.
 ```
 
@@ -359,8 +403,10 @@ Phase 3 spans two rings. **Backend half** (thread-list endpoint, persistent `Thr
 
 ---
 
-## Open question for the user (build-vs-buy, gates Phase 2)
-**Adopt the LangMem SDK directly, or adopt its patterns on our existing seam?** LangMem (native LangGraph, three-type model, `create_memory_store_manager` with built-in debounce, `BaseStore` namespacing) would cut custom code but adds a dependency and a second memory abstraction alongside `LongTermMemoryService`. Recommended: **adopt the patterns on our existing `LongTermMemoryService`/`MemoryBackend` seam** (keeps one abstraction, honors the tested surface and the "swap backend = one file" promise), borrowing LangMem's schema-guided-extraction and debounce design. Confirm before Phase 2 build. **Note (AGENTS.md ⚠️ Ask-first):** if the SDK route is ever chosen, `pyproject.toml` gains a new dependency — that is itself an explicit ask-first gate.
+## Resolved decisions (2026-06-17)
+
+1. **Build-vs-buy (Phase 2 auto-capture) — RESOLVED: adopt the patterns on the existing seam.** Phase 2 borrows LangMem's schema-guided-extraction + per-thread debounce *design* but implements them on the existing `LongTermMemoryService` / `MemoryBackend` port. Rationale (and why it matters for the coupling audit above): keeps **one** memory abstraction into the loop, honors the tested surface + "swap backend = one file", and — decisively — does **not** introduce a second memory abstraction (the exact ports-and-adapters coupling we just closed) nor a new `pyproject.toml` dependency (so the AGENTS.md ⚠️ ask-first dependency gate does **not** fire). The LangMem SDK is **not** adopted.
+2. **Scope — RESOLVED: all three phases re-approved as scoped.** P1 (runtime recall+store, now OBP/governance/tier-hardened) ships first; P2 (typed auto-capture) ships shadow-first behind `MEMORY_AUTOCAPTURE_ENABLED`, write-back gated on the grounded-theory enable-policy; P3 (chat-history sidebar + memory panel) follows. **Implementation begins only on explicit go.**
 
 ---
 
@@ -404,8 +450,9 @@ Each phase is bound to its **layer protocol**, the **named test patterns** it mu
 | Module (this plan) | Layer | Pyramid / Protocol | Primary strategy |
 |--------------------|-------|--------------------|------------------|
 | `Mem0MemoryBackend`, `LongTermMemoryService` recall `type`-filter | `services/` | **L2 / Protocol B** (contract-driven) | Mock I/O, record/replay, ≤3 mocks, <30s |
+| `components/memory_context.py` (`render_recall_block`, `build_store_payload`, `should_recall`) | `components/` | **L1 / Protocol A** (pure TDD) | Deterministic helpers + predicate; no LLM, no runtime; zero-flake (OBP-1/OBP-2) |
 | `components/memory_extractor.py` (`extract_memories`) | `components/` | **L3 / Protocol C** (eval-driven) | Mocked-LLM determinism tests + trajectory/rubric for quality; aggregate pass rates |
-| Recall/store seams + run-end store in `react_loop.py` | `orchestration/` | **L4 / Protocol D** (simulation-driven) | Binary-outcome scenarios + failure-mode matrix |
+| Recall/store **node wrappers** + Send-payload propagation in `react_loop.py` | `orchestration/` | **L4 / Protocol D** (simulation-driven) | Binary-outcome scenarios + failure-mode matrix; OBP-M1 worker-payload assertion |
 | `EventType.MEMORY_RECALLED/STORED` + carrier-spec wire strings | `trust/`-adjacent (governance enum) | **L1 / Protocol A** (pure TDD) | Enum-completeness + carrier-spec drift assertion, zero-flake |
 
 ### Patterns to apply (from the §Test Pattern Catalog)
