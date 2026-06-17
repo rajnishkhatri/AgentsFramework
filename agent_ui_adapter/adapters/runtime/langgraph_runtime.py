@@ -86,9 +86,16 @@ class LangGraphRuntime:
         graph: _CompiledGraphLike,
         *,
         trace_emit: Callable[[TrustTraceRecord], None] | None = None,
+        autocapture: Any = None,
     ) -> None:
         self._graph = graph
         self._trace_emit = trace_emit
+        # Phase 2 typed background auto-capture (optional). When injected, the
+        # post-run seam debounce-schedules a typed extraction after the stream
+        # finishes — OUTSIDE the user-visible latency path. None (the default)
+        # is byte-identical to the pre-Phase-2 runtime, so every existing
+        # construction site and test is unaffected.
+        self._autocapture = autocapture
         self._run_tasks: dict[str, asyncio.Task] = {}
         self._streamed_run_ids: set[str] = set()
         self._step_meter_count = 0
@@ -259,6 +266,62 @@ class LangGraphRuntime:
             thread_id=thread_id,
             error=error,
         )
+
+        # Phase 2 typed background auto-capture: after the stream finishes,
+        # debounce-schedule a typed extraction over the run's window. This runs
+        # OUTSIDE the user-visible latency path (the answer already streamed) and
+        # never blocks or fails the run — the service swallows its own errors. On
+        # an errored run there is no salient answer to remember, so skip. The
+        # workflow_id == trace_id, so the proposal carriers land in the same
+        # BlackBox trace the graph wrote (recorder injected at the root).
+        if self._autocapture is not None and not error:
+            await self._schedule_autocapture(
+                thread_id=thread_id,
+                user_id=eval_user_id,
+                trace_id=trace_id,
+                task_id=task_id,
+            )
+
+    async def _schedule_autocapture(
+        self,
+        *,
+        thread_id: str,
+        user_id: str,
+        trace_id: str,
+        task_id: str,
+    ) -> None:
+        """Read the run's window from the checkpoint and enqueue extraction.
+
+        Best-effort: any failure here must never affect the (already-finished)
+        run, so it is logged and swallowed.
+        """
+        try:
+            snapshot = await self._graph.aget_state(
+                {"configurable": {"thread_id": thread_id}}
+            )
+            values = getattr(snapshot, "values", None) or {}
+            task_input = str(values.get("task_input", "")).strip()
+            answer = str(values.get("last_final_answer", "")).strip()
+            messages: list[dict[str, str]] = []
+            if task_input:
+                messages.append({"role": "user", "content": task_input})
+            if answer:
+                messages.append({"role": "assistant", "content": answer})
+            if not messages:
+                return
+            self._autocapture.schedule(
+                thread_id=thread_id,
+                user_id=user_id,
+                messages=messages,
+                workflow_id=trace_id,
+                task_id=task_id,
+            )
+        except Exception as exc:  # pragma: no cover - defensive, never raises up
+            _logger.warning(
+                "autocapture scheduling failed: %s: %s",
+                type(exc).__name__,
+                exc,
+            )
 
     async def cancel(self, run_id: str) -> None:
         task = self._run_tasks.pop(run_id, None)

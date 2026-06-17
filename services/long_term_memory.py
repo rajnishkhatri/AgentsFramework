@@ -20,6 +20,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 logger = logging.getLogger("services.long_term_memory")
 
+# Backend over-fetch budget when a ``mem_type`` filter is applied: large
+# enough that the post-filter trim to the caller's ``limit`` is not starved by
+# off-type matches, bounded so a pathological store can't return unboundedly.
+_OVERFETCH_LIMIT = 1000
+
 
 class MemoryRecord(BaseModel):
     user_id: str
@@ -101,8 +106,23 @@ class LongTermMemoryService:
         return record
 
     def search(
-        self, user_id: str, query: str, limit: int = 10
+        self,
+        user_id: str,
+        query: str,
+        limit: int = 10,
+        *,
+        mem_type: str | None = None,
     ) -> list[MemoryRecord]:
+        """Substring search scoped to ``user_id``.
+
+        ``mem_type`` (Phase 2, additive/backward-compatible) optionally keeps
+        only records whose ``metadata["type"]`` matches — the typed-recall
+        filter. It is applied AFTER the backend search and BEFORE ``limit`` so
+        a type query returns up to ``limit`` matching items even when off-type
+        records would otherwise have consumed the budget (the backend is
+        over-fetched in that case). Omitting it preserves the original
+        all-types behavior exactly.
+        """
         _require_user_id(user_id)
         if not isinstance(query, str):
             raise TypeError(f"query must be a string, got {type(query).__name__}")
@@ -110,16 +130,28 @@ class LongTermMemoryService:
             raise TypeError("limit must be an int")
         if limit < 0:
             raise ValueError("limit must be >= 0")
+        if mem_type is not None and not isinstance(mem_type, str):
+            raise TypeError(
+                f"mem_type must be a string or None, got {type(mem_type).__name__}"
+            )
+        # When filtering by type, off-type matches must not consume the limit:
+        # over-fetch from the backend, then filter, then trim to ``limit``.
+        backend_limit = _OVERFETCH_LIMIT if mem_type is not None else limit
         try:
-            results = self._backend.search(user_id, query, limit)
+            results = self._backend.search(user_id, query, backend_limit)
         except Exception as exc:
             raise MemoryBackendError(
                 f"backend failed during search(user_id={user_id!r})"
             ) from exc
+        if mem_type is not None:
+            results = [
+                r for r in results if r.metadata.get("type") == mem_type
+            ][:limit]
         logger.debug(
-            "memory.search user_id=%s limit=%s results=%d",
+            "memory.search user_id=%s limit=%s type=%s results=%d",
             user_id,
             limit,
+            mem_type,
             len(results),
         )
         return results

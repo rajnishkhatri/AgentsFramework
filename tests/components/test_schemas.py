@@ -12,7 +12,13 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from components.schemas import ErrorRecord, EvalRecord, StepResult, TaskResult
+from components.schemas import (
+    ErrorRecord,
+    EvalRecord,
+    StepResult,
+    TaskResult,
+    TypedMemory,
+)
 
 
 class TestErrorRecord:
@@ -268,3 +274,68 @@ class TestTaskResult:
         )
         restored = TaskResult.model_validate_json(tr.model_dump_json())
         assert restored == tr
+
+
+class TestTypedMemory:
+    """Phase 2 typed auto-capture output schema.
+
+    Failure paths first (TAP-4 / AP-6): the extractor is a probabilistic
+    classifier whose output crosses the component->service boundary, so the
+    validator is the first line of defence against a malformed/hallucinated
+    item ever reaching the store. ``extra="forbid"`` (V6) is the load-bearing
+    rule — it rejects an LLM that invents extra keys (e.g. smuggling a raw
+    ``content`` blob into a field we never namespaced).
+    """
+
+    _VALID = dict(
+        type="semantic",
+        content="prefers metric units",
+        key="pref-units",
+        salience=0.8,
+    )
+
+    # ---- rejection rows (written first) ----
+
+    def test_rejects_unknown_type(self):
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "type": "biographical"})
+
+    def test_rejects_extra_field(self):
+        # An LLM that invents a field must be rejected, not silently stored
+        # (V6 extra="forbid"). This is the schema-IS-the-classifier guard.
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "raw_messages": "..."})
+
+    def test_rejects_empty_content(self):
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "content": ""})
+
+    def test_rejects_empty_key(self):
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "key": ""})
+
+    def test_rejects_salience_out_of_range(self):
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "salience": 1.5})
+        with pytest.raises(ValidationError):
+            TypedMemory(**{**self._VALID, "salience": -0.1})
+
+    def test_rejects_missing_required_field(self):
+        with pytest.raises(ValidationError):
+            TypedMemory(type="semantic", content="x", key="k")  # no salience
+
+    # ---- acceptance rows ----
+
+    @pytest.mark.parametrize("mem_type", ["semantic", "episodic", "procedural"])
+    def test_accepts_each_type(self, mem_type):
+        mem = TypedMemory(**{**self._VALID, "type": mem_type})
+        assert mem.type == mem_type
+
+    def test_salience_bounds_inclusive(self):
+        assert TypedMemory(**{**self._VALID, "salience": 0.0}).salience == 0.0
+        assert TypedMemory(**{**self._VALID, "salience": 1.0}).salience == 1.0
+
+    def test_round_trips_through_json(self):
+        mem = TypedMemory(**self._VALID)
+        restored = TypedMemory.model_validate_json(mem.model_dump_json())
+        assert restored == mem
