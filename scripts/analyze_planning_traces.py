@@ -338,6 +338,142 @@ def _fanout_partial_survived(events: list[dict]) -> bool:
     return join_chars > 0 and had_failure
 
 
+# ── governance carrier-gate extraction + scoring (shadow validation) ───────────
+
+# The phases the carrier gate is wired at (orchestration/react_loop.py). COMPLETION
+# is deliberately unwired (its eval.goal_judge is in the eval-overlay sink, not the
+# black box). TOOL_EXECUTION only fires when the run drove a tool — so its absence
+# on a no-tool run is EXPECTED, not a gap.
+_WIRED_CARRIER_PHASES = ("initialization", "routing", "model_invocation", "output_validation")
+_TOOL_CARRIER_PHASE = "tool_execution"
+
+
+def _carrier_gate_events(events: list[dict]) -> list[dict]:
+    """The carrier-gate shadow carriers on a trace: guardrail_checked events whose
+    details.source == 'carrier_gate'. Returns the list of detail dicts (one per
+    checked phase boundary)."""
+    out: list[dict] = []
+    for e in events:
+        if not (e.get("event_type") or "").endswith("guardrail_checked"):
+            continue
+        details = e.get("details")
+        if isinstance(details, dict) and details.get("source") == "carrier_gate":
+            out.append(details)
+    return out
+
+
+def _carrier_gate_enforce_events(events: list[dict]) -> list[dict]:
+    """The Phase-2 ENFORCED carriers (source == 'carrier_gate_enforce'): the loud
+    record that a gap was acted on (degrade/raise). Distinct from the shadow
+    carrier so the report can tell 'gate observed' from 'gate enforced' — the live
+    fault-injection run is where these are expected to appear."""
+    out: list[dict] = []
+    for e in events:
+        if not (e.get("event_type") or "").endswith("guardrail_checked"):
+            continue
+        details = e.get("details")
+        if isinstance(details, dict) and details.get("source") == "carrier_gate_enforce":
+            out.append(details)
+    return out
+
+
+def score_carrier_gate(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
+    """Score the carrier-gate shadow signal across the batch.
+
+    Per phase: emitted-on-N-of-M-runs (coverage) + #alert (gap) + the pillars seen
+    missing. Run-level: the batch GAP RATE (fraction of emitted carriers with
+    outcome=='alert') = the §5 Phase-2 go/no-go calibration input, and a verdict.
+    No per-row want_* — on healthy traffic the expectation is "every wired phase
+    that ran emitted a pass carrier"; gaps are the exception to triage.
+    """
+    # phase -> counters
+    per_phase: dict[str, dict[str, Any]] = defaultdict(
+        lambda: {"runs_with_carrier": 0, "pass": 0, "alert": 0, "missing_pillars": []}
+    )
+    total_carriers = 0
+    total_alerts = 0
+    total_enforced = 0  # Phase-2 carrier_gate_enforce carriers (degrade/raise acted)
+    enforced_detail: list[str] = []
+    runs_scored = 0
+    runs_missing_trace: list[str] = []
+    no_carrier_runs: list[str] = []  # a run that emitted NO carrier-gate event at all
+
+    for row in rows:
+        case = row["case"]
+        events = events_by_row.get(case, [])
+        if not events:
+            runs_missing_trace.append(case)
+            continue
+        runs_scored += 1
+        gate = _carrier_gate_events(events)
+        for ed in _carrier_gate_enforce_events(events):
+            total_enforced += 1
+            enforced_detail.append(
+                f"{case}: {ed.get('phase')} → {ed.get('action')} "
+                f"({_as_list(ed.get('missing_pillars'))})"
+            )
+        if not gate:
+            no_carrier_runs.append(case)
+            continue
+        for d in gate:
+            phase = d.get("phase") or "unknown"
+            outcome = d.get("outcome") or "unknown"
+            b = per_phase[phase]
+            b["runs_with_carrier"] += 1
+            total_carriers += 1
+            if outcome == "alert":
+                b["alert"] += 1
+                total_alerts += 1
+                pillars = _as_list(d.get("missing_pillars"))
+                b["missing_pillars"].append(f"{case}: {pillars}")
+            else:
+                b["pass"] += 1
+
+    # Coverage check: did each ALWAYS-wired phase emit on (nearly) every scored run?
+    coverage_gaps: list[str] = []
+    for phase in _WIRED_CARRIER_PHASES:
+        seen = per_phase.get(phase, {}).get("runs_with_carrier", 0)
+        if runs_scored and seen < runs_scored:
+            coverage_gaps.append(f"{phase}: emitted on {seen}/{runs_scored} runs")
+    # tool_execution is conditional — report coverage only over the tool rows.
+    tool_rows = [r["case"] for r in rows if r.get("used_tool")]
+    if tool_rows:
+        tool_seen = per_phase.get(_TOOL_CARRIER_PHASE, {}).get("runs_with_carrier", 0)
+        # (best-effort: a tool prompt may not actually drive a tool every run)
+        per_phase[_TOOL_CARRIER_PHASE]["tool_rows"] = len(tool_rows)
+        per_phase[_TOOL_CARRIER_PHASE]["tool_runs_seen"] = tool_seen
+
+    gap_rate = round(total_alerts / total_carriers, 3) if total_carriers else 0.0
+
+    # Verdict (§6): CLEAN = carriers landed at every wired phase, 0 alerts.
+    # SIGNAL = alerts present (real seam defects OR false-positives to triage —
+    # the human reads missing_pillars). FALSE-POSITIVE / DEFECT discrimination is a
+    # triage step, not auto-decided. NO-EMISSION = the gate never fired (the wiring
+    # or the relay is broken — the worst outcome, blocks Phase 2).
+    if not total_carriers:
+        verdict = "NO-EMISSION"
+    elif coverage_gaps or no_carrier_runs:
+        verdict = "PARTIAL-COVERAGE"
+    elif total_alerts == 0:
+        verdict = "CLEAN"
+    else:
+        verdict = "SIGNAL"
+
+    return {
+        "runs_scored": runs_scored,
+        "runs_missing_trace": runs_missing_trace,
+        "no_carrier_runs": no_carrier_runs,
+        "total_carriers": total_carriers,
+        "total_alerts": total_alerts,
+        "total_enforced": total_enforced,
+        "enforced_detail": enforced_detail,
+        "gap_rate": gap_rate,
+        "coverage_gaps": coverage_gaps,
+        "per_phase": dict(per_phase),
+        "verdict": verdict,
+    }
+
+
 # ── per-phase scoring ──────────────────────────────────────────────────────────
 
 
@@ -603,6 +739,14 @@ def main() -> int:
         default=0.5,
         help="seconds between Langfuse fetches (avoid 429 on large batches)",
     )
+    parser.add_argument(
+        "--carrier-gate",
+        action="store_true",
+        help=(
+            "score the governance carrier-gate shadow signal (per-phase coverage + "
+            "batch gap-rate) instead of the planning phases"
+        ),
+    )
     args = parser.parse_args()
 
     if not args.jsonl.exists():
@@ -616,6 +760,52 @@ def main() -> int:
     if not rows:
         print(f"capture file {args.jsonl} is empty")
         return 2
+
+    # Carrier-gate mode: distinct shape (per-phase coverage + gap-rate, no per-row
+    # want_*). Score + print its own report, then return.
+    if args.carrier_gate:
+        events_by_row = _build_events_by_row(rows, args)
+        cg = score_carrier_gate(rows, events_by_row)
+        print(f"carrier-gate shadow validation :: source={args.source}")
+        print(f"  rows={len(rows)} jsonl={args.jsonl.name} runs_scored={cg['runs_scored']}")
+        print()
+        for phase in (*_WIRED_CARRIER_PHASES, _TOOL_CARRIER_PHASE):
+            b = cg["per_phase"].get(phase)
+            if not b:
+                if phase in _WIRED_CARRIER_PHASES:
+                    print(f"  {phase:18s} NO CARRIER (expected on every run)")
+                continue
+            print(
+                f"  {phase:18s} emitted on {b['runs_with_carrier']} run(s)  "
+                f"pass={b['pass']} alert={b['alert']}"
+            )
+            for mp in b["missing_pillars"]:
+                print(f"      ALERT - {mp}")
+        print()
+        print(f"  total carriers   {cg['total_carriers']}")
+        print(f"  total alerts     {cg['total_alerts']}")
+        print(f"  GAP RATE         {cg['gap_rate']:.3f}")
+        # Phase-2 enforcement (only non-zero when enforce mode is ON, e.g. the
+        # fault-injection validation revision).
+        if cg.get("total_enforced"):
+            print(f"  ENFORCED         {cg['total_enforced']} (Phase-2 acted: degrade/raise)")
+            for ed in cg["enforced_detail"]:
+                print(f"      * {ed}")
+        if cg["coverage_gaps"]:
+            print("  coverage gaps:")
+            for g in cg["coverage_gaps"]:
+                print(f"      - {g}")
+        if cg["no_carrier_runs"]:
+            print(f"  runs with NO carrier-gate event: {cg['no_carrier_runs']}")
+        if cg["runs_missing_trace"]:
+            print(f"  runs missing trace (Langfuse): {cg['runs_missing_trace']}")
+        print()
+        print(f"  VERDICT: {cg['verdict']}")
+        # In --gate mode, only NO-EMISSION / PARTIAL-COVERAGE fail (a SIGNAL is a
+        # human-triage signal, not an auto-fail — calibration, not enforcement).
+        if args.gate and cg["verdict"] in ("NO-EMISSION", "PARTIAL-COVERAGE"):
+            return 1
+        return 0
 
     # Expectations live in the corpus, not the runtime trace — backfill them so
     # phases whose want_* the spec writer doesn't emit (e.g. fanout) score.

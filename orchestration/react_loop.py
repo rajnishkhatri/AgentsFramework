@@ -70,7 +70,13 @@ from services.governance.guardrail_validator import (
     api_key_rules,
     pii_rules,
 )
-from services.governance.carrier_gate import record_carrier_gap, validate_phase_carriers
+from services.governance.carrier_gate import (
+    CarrierGateViolation,
+    decide_enforcement,
+    record_carrier_gap,
+    record_enforcement,
+    validate_phase_carriers,
+)
 from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
@@ -88,6 +94,45 @@ from services.tools.registry import ToolExecutionResult, ToolRegistry
 logger = logging.getLogger("orchestration.react_loop")
 
 
+def _maybe_inject_carrier_fault(
+    recorded_event_values: set[str],
+    phase: WorkflowPhase,
+    task_input: str,
+    *,
+    enabled: bool,
+) -> set[str]:
+    """Fault-injection hook (the live gap-catch proof). OFF unless ``enabled``.
+
+    When armed AND ``task_input`` carries ``__DROP_CARRIER:<phase>__`` for THIS
+    phase, drop that phase's required carrier from the recorded set — simulating
+    the seam defect (a phase that ran but failed to emit its pillar carrier) so the
+    gate produces a real gap and the enforce path can be proven end-to-end on a live
+    run. Inert without the flag (the token in a normal prompt does nothing); MUST
+    stay OFF in prod. The dropped carrier per phase mirrors the trust spec.
+    """
+    if not enabled:
+        return recorded_event_values
+    from trust.governance_carrier_spec import (
+        EVT_GUARDRAIL_CHECKED,
+        EVT_MODEL_SELECTED,
+        EVT_STEP_EXECUTED,
+        EVT_TASK_STARTED,
+    )
+
+    token = f"__DROP_CARRIER:{phase.value}__"
+    if token not in (task_input or ""):
+        return recorded_event_values
+    drop = {
+        WorkflowPhase.INITIALIZATION: EVT_TASK_STARTED,
+        WorkflowPhase.ROUTING: EVT_MODEL_SELECTED,
+        WorkflowPhase.MODEL_INVOCATION: EVT_STEP_EXECUTED,
+        WorkflowPhase.OUTPUT_VALIDATION: EVT_GUARDRAIL_CHECKED,
+    }.get(phase)
+    if drop is None:
+        return recorded_event_values
+    return recorded_event_values - {drop}
+
+
 def _shadow_check_phase_carriers(
     black_box: BlackBoxRecorder,
     workflow_id: str,
@@ -96,16 +141,31 @@ def _shadow_check_phase_carriers(
     *,
     step: int,
     tool_failed: bool = False,
+    enforce_mode: str = "off",
+    fault_inject: bool = False,
+    task_input: str = "",
 ) -> None:
-    """Phase-1 shadow carrier gate (AP-5 thin shim — all logic in the pure check).
+    """Carrier gate (AP-5 thin shim — all policy lives in the pure check/decision).
 
-    Records which required pillar carriers a just-ended phase failed to emit, as a
-    ``guardrail_checked`` shadow carrier (warn only, never blocks). Governance emits;
-    it does not call upward or mutate workflow state (AP-4). A resumed run (step > 0)
-    exempts the Identity carrier per the SKILL.md rubric.
+    Phase 1: records which required pillar carriers a just-ended phase failed to
+    emit, as a ``guardrail_checked`` shadow carrier (always, never blocks).
+
+    Phase 2 (``enforce_mode`` != "off"): also ACTS on the gap per the pure
+    ``decide_enforcement`` — governance decided *what*, orchestration does it here
+    (AP-4): ``degrade`` records a loud ``carrier_gate_enforce`` carrier and lets the
+    run continue (prod); ``raise`` records it then raises ``CarrierGateViolation``
+    (dev/CI). A clean phase or ``off`` mode acts on nothing beyond the shadow record.
+
+    ``fault_inject`` (OFF in prod): drops a required carrier when the task carries
+    the ``__DROP_CARRIER:<phase>__`` token, to prove the gate catches a real gap.
+
+    A resumed run (step > 0) exempts the Identity carrier per the SKILL.md rubric.
     """
     from trust.governance_carrier_spec import RunShape
 
+    recorded_event_values = _maybe_inject_carrier_fault(
+        recorded_event_values, phase, task_input, enabled=fault_inject
+    )
     gap = validate_phase_carriers(
         phase,
         recorded_event_values,
@@ -113,6 +173,17 @@ def _shadow_check_phase_carriers(
         run_shape=RunShape.RESUMED if step > 0 else RunShape.FROM_STEP_ZERO,
     )
     record_carrier_gap(black_box, workflow_id, gap, step=step)
+
+    if enforce_mode == "off" or gap.ok:
+        return
+    decision = decide_enforcement(gap, mode=enforce_mode)  # type: ignore[arg-type]
+    if decision.action == "none":
+        return
+    # Loud + never-silent: record the enforced carrier BEFORE raising, so a dev
+    # ``raise`` still leaves the trace evidence the prod ``degrade`` would.
+    record_enforcement(black_box, workflow_id, decision, step=step)
+    if decision.action == "raise":
+        raise CarrierGateViolation(gap)
 
 
 def _ensure_checkpoint_saver_instance(checkpointer: Any) -> None:
@@ -690,6 +761,9 @@ def build_graph(
         _shadow_check_phase_carriers(
             black_box, workflow_id, WorkflowPhase.INITIALIZATION,
             {EventType.TASK_STARTED.value}, step=step_count,
+            enforce_mode=agent_config.carrier_gate_enforce_mode,
+            fault_inject=agent_config.carrier_gate_fault_inject,
+            task_input=state.get("task_input", ""),
         )
 
         # Story 1.4: AgentFacts identity verification
@@ -1280,6 +1354,9 @@ def build_graph(
             _shadow_check_phase_carriers(
                 black_box, workflow_id, WorkflowPhase.ROUTING,
                 {EventType.MODEL_SELECTED.value}, step=step_count,
+                enforce_mode=agent_config.carrier_gate_enforce_mode,
+                fault_inject=agent_config.carrier_gate_fault_inject,
+                task_input=state.get("task_input", ""),
             )
 
             return {
@@ -1463,6 +1540,9 @@ def build_graph(
         _shadow_check_phase_carriers(
             black_box, workflow_id, WorkflowPhase.MODEL_INVOCATION,
             {EventType.STEP_EXECUTED.value}, step=step_count,
+            enforce_mode=agent_config.carrier_gate_enforce_mode,
+            fault_inject=agent_config.carrier_gate_fault_inject,
+            task_input=state.get("task_input", ""),
         )
 
         async with phase_logger.phase(workflow_id, WorkflowPhase.OUTPUT_VALIDATION, step_count):
@@ -1516,6 +1596,9 @@ def build_graph(
             _shadow_check_phase_carriers(
                 black_box, workflow_id, WorkflowPhase.OUTPUT_VALIDATION,
                 {EventType.GUARDRAIL_CHECKED.value}, step=step_count,
+                enforce_mode=agent_config.carrier_gate_enforce_mode,
+                fault_inject=agent_config.carrier_gate_fault_inject,
+                task_input=state.get("task_input", ""),
             )
             return result
 
@@ -1545,6 +1628,9 @@ def build_graph(
             _shadow_check_phase_carriers(
                 black_box, workflow_id, WorkflowPhase.TOOL_EXECUTION,
                 recorded, step=step_count, tool_failed=tool_failed,
+                enforce_mode=agent_config.carrier_gate_enforce_mode,
+                fault_inject=agent_config.carrier_gate_fault_inject,
+                task_input=state.get("task_input", ""),
             )
             return result
 

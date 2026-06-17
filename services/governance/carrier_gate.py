@@ -31,6 +31,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable
 from datetime import UTC, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -161,6 +162,107 @@ def record_carrier_gap(
                 # Shadow phase: this is what Phase 2 *would* enforce. Mirrors the
                 # planning floor's ``would_downgrade`` calibration flag.
                 "would_enforce": not gap.ok,
+                "spec_version": (default_spec()).spec_version,
+            },
+        )
+    )
+
+
+# ── Phase 2: enforcement (flag-gated; governance decides, orchestration acts) ──
+
+EnforcementMode = Literal["off", "raise", "degrade"]
+
+
+class CarrierGateViolation(Exception):
+    """A required pillar carrier was missing and the gate is in ``raise`` mode.
+
+    Raised by the *orchestration* wiring (not here) when ``decide_enforcement``
+    returns ``action == "raise"`` — i.e. dev/CI, where a seam defect should fail
+    loud at the source. Carries the gap so the failure names the phase + pillars.
+    """
+
+    def __init__(self, gap: CarrierGap) -> None:
+        self.gap = gap
+        pillars = ", ".join(p.value for p in gap.missing_pillars) or "?"
+        super().__init__(
+            f"carrier-gate violation at phase '{gap.phase}': missing pillar "
+            f"carrier(s) [{pillars}] (run_shape={gap.run_shape.value}, "
+            f"tool_failed={gap.tool_failed})"
+        )
+
+
+class EnforcementDecision(BaseModel):
+    """What the orchestration layer should DO about a gap, under the active mode.
+
+    Pure result — ``decide_enforcement`` never raises or does I/O; it returns this
+    and the *caller* acts (AP-4: governance informs, orchestration acts).
+      - ``action == "none"``   → do nothing beyond the shadow record (mode off, or
+        a clean phase).
+      - ``action == "raise"``  → caller raises CarrierGateViolation.
+      - ``action == "degrade"``→ caller records the loud degrade carrier
+        (``record_enforcement``) + annotates the run, but does NOT block.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    mode: EnforcementMode
+    action: Literal["none", "raise", "degrade"]
+    gap: CarrierGap
+
+
+def decide_enforcement(
+    gap: CarrierGap, *, mode: EnforcementMode
+) -> EnforcementDecision:
+    """Pure mapping (gap, mode) → action. No raise, no I/O — the caller acts.
+
+    A clean phase (``gap.ok``) is always ``none`` regardless of mode — only a real
+    missing-carrier gap is ever enforced. ``off`` is always ``none`` (Phase-1
+    shadow parity). The dev/prod split is encoded in the mode the caller passes
+    (composition derives it from AGENT_ENV), so this stays environment-agnostic.
+    """
+    if gap.ok or mode == "off":
+        return EnforcementDecision(mode=mode, action="none", gap=gap)
+    if mode == "raise":
+        return EnforcementDecision(mode=mode, action="raise", gap=gap)
+    # mode == "degrade"
+    return EnforcementDecision(mode=mode, action="degrade", gap=gap)
+
+
+def record_enforcement(
+    black_box: BlackBoxRecorder,
+    workflow_id: str,
+    decision: EnforcementDecision,
+    *,
+    step: int | None = None,
+) -> None:
+    """Emit the loud ENFORCED carrier for a degrade/raise decision (never silent).
+
+    This is the "never a silent skip" guarantee in enforce mode: a separate
+    ``guardrail_checked`` carrier with ``source: "carrier_gate_enforce"`` and
+    ``enforced: true`` records that the gap was *acted on* (degraded in prod, or
+    raised in dev). Distinct ``source`` from the Phase-1 shadow carrier so the
+    audit skill / analyzer can tell "the gate fired AND enforced" from "the gate
+    merely observed". A clean / off decision records nothing here.
+    """
+    if decision.action == "none":
+        return
+    gap = decision.gap
+    black_box.record(
+        TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.GUARDRAIL_CHECKED,
+            timestamp=datetime.now(UTC),
+            step=step,
+            details={
+                "source": "carrier_gate_enforce",
+                "phase": gap.phase,
+                "mode": decision.mode,
+                "action": decision.action,
+                "outcome": "alert",
+                "enforced": True,
+                "missing_pillars": [p.value for p in gap.missing_pillars],
+                "missing_carriers": [m.event_value for m in gap.missing],
                 "spec_version": (default_spec()).spec_version,
             },
         )

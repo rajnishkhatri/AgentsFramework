@@ -94,6 +94,9 @@ class TestTieredLoopFlags:
         # §5 risk; this is the guard that fails if a default flips.
         assert cfg.t3_fanout_enabled is False
         assert cfg.fanout_fault_inject is False
+        # Carrier-gate enforcement (Phase 2): OFF by default → "off" mode (shadow
+        # only). A stray flip to raise/degrade in prod is the dangerous regression.
+        assert cfg.carrier_gate_enforce_mode == "off"
 
     def test_env_flips_propagate_into_agent_config(self, tmp_path, monkeypatch):
         """The stress revision's env reaches the live AgentConfig (§2.1)."""
@@ -128,6 +131,39 @@ class TestTieredLoopFlags:
         cfg = components.agent_config
         assert cfg.t3_fanout_enabled is True
         assert cfg.fanout_fault_inject is True
+
+    def test_carrier_gate_enforce_flag_off_is_mode_off(self, tmp_path, monkeypatch):
+        """Phase 2: flag OFF → "off" mode regardless of env (prod parity)."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        for env in ("local", "prod"):
+            settings = AgentRuntimeSettings(agent_env=env, gcs_facts_bucket="b")
+            cfg = build_components(settings, agent_root=tmp_path).agent_config
+            assert cfg.carrier_gate_enforce_mode == "off"
+
+    def test_carrier_gate_enforce_dev_raises(self, tmp_path, monkeypatch):
+        """Flag ON in a local/dev env → "raise" (fail loud at the source)."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {"AGENT_ENV": "local", "CARRIER_GATE_ENFORCE_ENABLED": "1"}
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.carrier_gate_enforce_mode == "raise"
+
+    def test_carrier_gate_enforce_prod_degrades(self, tmp_path, monkeypatch):
+        """Flag ON in prod → "degrade" (loud trace, run continues — never block)."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {
+                "AGENT_ENV": "prod",
+                "GCS_FACTS_BUCKET": "b",
+                "CARRIER_GATE_ENFORCE_ENABLED": "1",
+            }
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.carrier_gate_enforce_mode == "degrade"
 
     def test_from_mapping_parses_bool_and_int(self):
         """REFLEXION_ENABLED coerces like the other flags; the attempt count

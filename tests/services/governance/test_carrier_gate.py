@@ -21,7 +21,10 @@ from services.governance.carrier_gate import (
     REAL_PHASE_VALUES,
     SPEC_PHASE_VALUES,
     CarrierGap,
+    CarrierGateViolation,
+    decide_enforcement,
     record_carrier_gap,
+    record_enforcement,
     validate_phase_carriers,
 )
 from services.governance.phase_logger import WorkflowPhase
@@ -216,3 +219,96 @@ class TestConsumerContract:
         # Phase-1 semantics: the check returns a value; it never raises.
         gap = validate_phase_carriers(WorkflowPhase.COMPLETION, set())
         assert isinstance(gap, CarrierGap)  # no exception path
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase 2 — enforcement decision matrix (rejections first) + loud-carrier contract
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _gap(missing: bool = True) -> CarrierGap:
+    """A non-clean gap (missing Identity) or a clean one, for decision tests."""
+    return validate_phase_carriers(
+        WorkflowPhase.INITIALIZATION,
+        set() if missing else {EVT_TASK_STARTED},
+    )
+
+
+class TestEnforcementDecision:
+    """``decide_enforcement`` is the pure (gap, mode) → action map. It NEVER
+    raises or does I/O — the orchestration caller acts. Rejections (a real gap
+    that must be acted on) first, then the legitimate no-ops."""
+
+    def test_gap_in_raise_mode_decides_raise(self):
+        d = decide_enforcement(_gap(missing=True), mode="raise")
+        assert d.action == "raise"
+
+    def test_gap_in_degrade_mode_decides_degrade(self):
+        d = decide_enforcement(_gap(missing=True), mode="degrade")
+        assert d.action == "degrade"
+
+    def test_gap_in_off_mode_is_noop(self):
+        # Off is shadow parity — a real gap is recorded (Phase 1) but not acted on.
+        d = decide_enforcement(_gap(missing=True), mode="off")
+        assert d.action == "none"
+
+    def test_clean_phase_is_noop_in_every_mode(self):
+        for mode in ("off", "raise", "degrade"):
+            d = decide_enforcement(_gap(missing=False), mode=mode)  # type: ignore[arg-type]
+            assert d.action == "none", f"clean phase must not enforce in {mode}"
+
+    def test_decision_never_raises(self):
+        # The decision is pure data — the raise lives in the orchestration caller.
+        for mode in ("off", "raise", "degrade"):
+            decide_enforcement(_gap(missing=True), mode=mode)  # type: ignore[arg-type]
+
+
+class TestCarrierGateViolation:
+    def test_violation_names_phase_and_pillars(self):
+        gap = _gap(missing=True)
+        err = CarrierGateViolation(gap)
+        assert err.gap is gap
+        assert "initialization" in str(err)
+        assert Pillar.IDENTITY.value in str(err)
+
+
+class TestEnforcementCarrierContract:
+    """``record_enforcement`` emits the loud ``carrier_gate_enforce`` carrier so a
+    degrade/raise is never silent. Real recorder, no mocks (AP-2)."""
+
+    def _read_trace(self, storage: Path, workflow_id: str) -> list[dict]:
+        import json
+
+        trace = storage / workflow_id / "trace.jsonl"
+        return [json.loads(line) for line in trace.read_text().splitlines() if line.strip()]
+
+    def test_degrade_records_loud_enforced_carrier(self, tmp_path):
+        bb = BlackBoxRecorder(tmp_path)
+        d = decide_enforcement(_gap(missing=True), mode="degrade")
+        record_enforcement(bb, "wf-enf", d, step=0)
+
+        ev = self._read_trace(tmp_path, "wf-enf")[0]
+        assert ev["event_type"] == EventType.GUARDRAIL_CHECKED.value
+        assert ev["details"]["source"] == "carrier_gate_enforce"
+        assert ev["details"]["mode"] == "degrade"
+        assert ev["details"]["action"] == "degrade"
+        assert ev["details"]["enforced"] is True
+        assert ev["details"]["outcome"] == "alert"
+        assert ev["details"]["missing_pillars"] == [Pillar.IDENTITY.value]
+
+    def test_raise_decision_also_records_an_enforced_carrier(self, tmp_path):
+        # A raise must still leave the trace evidence (the wiring records BEFORE it
+        # raises) so dev failures are as auditable as prod degrades.
+        bb = BlackBoxRecorder(tmp_path)
+        d = decide_enforcement(_gap(missing=True), mode="raise")
+        record_enforcement(bb, "wf-raise", d, step=0)
+        ev = self._read_trace(tmp_path, "wf-raise")[0]
+        assert ev["details"]["action"] == "raise"
+        assert ev["details"]["enforced"] is True
+
+    def test_noop_records_nothing(self, tmp_path):
+        bb = BlackBoxRecorder(tmp_path)
+        d = decide_enforcement(_gap(missing=False), mode="degrade")  # clean → none
+        record_enforcement(bb, "wf-clean", d)
+        trace = tmp_path / "wf-clean" / "trace.jsonl"
+        assert not trace.exists(), "a clean/none decision must record no enforce carrier"
