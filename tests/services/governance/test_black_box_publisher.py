@@ -146,6 +146,64 @@ class TestGuardrailLevel:
         assert to_export_kwargs(_event(EventType.ERROR_OCCURRED))["level"] == "ERROR"
 
 
+class TestCarrierGateLevel:
+    """Governance carrier gate (enforcement gate Phase 1, shadow): the gate
+    records a missing-pillar gap as a ``GUARDRAIL_CHECKED`` carrier with
+    ``source: "carrier_gate"`` + ``outcome: "alert"`` / ``would_enforce: true``,
+    but NONE of blocked/redacted/failed_rules. Without a special case it would
+    relay at ``DEBUG`` — indistinguishable from a clean pass, burying the gap as
+    filterable noise and defeating the gate's "never a silent skip" purpose. An
+    alert must surface at ``WARNING``; a clean carrier_gate pass stays ``DEBUG``."""
+
+    def test_carrier_gate_alert_is_warning(self) -> None:
+        """The core fix: a real missing-pillar gap (alert) must be WARNING even
+        though no blocked/redacted/failed_rules flag is set."""
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={
+                "source": "carrier_gate",
+                "outcome": "alert",
+                "would_enforce": True,
+                "missing_pillars": ["validation"],
+                "missing_carriers": ["guardrail_checked"],
+            },
+        )
+        assert to_export_kwargs(ev)["level"] == "WARNING"
+
+    def test_carrier_gate_alert_via_would_enforce_alone_is_warning(self) -> None:
+        """``would_enforce`` truthy is equivalent to ``outcome: alert`` — either
+        signal alone is enough to surface the gap."""
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"source": "carrier_gate", "would_enforce": True},
+        )
+        assert to_export_kwargs(ev)["level"] == "WARNING"
+
+    def test_carrier_gate_pass_is_debug(self) -> None:
+        """A clean carrier_gate check (no gap) is the provable negative — kept as
+        DEBUG noise so the audit skill sees the check ran, not promoted to WARNING."""
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={
+                "source": "carrier_gate",
+                "outcome": "pass",
+                "would_enforce": False,
+                "missing_pillars": [],
+                "missing_carriers": [],
+            },
+        )
+        assert to_export_kwargs(ev)["level"] == "DEBUG"
+
+    def test_non_carrier_gate_clean_pass_still_debug(self) -> None:
+        """The source gate must be specific: a generic guardrail clean pass
+        (no carrier_gate source) is unaffected and stays DEBUG."""
+        ev = _event(
+            EventType.GUARDRAIL_CHECKED,
+            details={"checked": True, "blocked": False, "outcome": "pass"},
+        )
+        assert to_export_kwargs(ev)["level"] == "DEBUG"
+
+
 # ─────────────────────────────────────────────────────────────────────
 # B. Attributes contract — every export has the required keys
 # ─────────────────────────────────────────────────────────────────────

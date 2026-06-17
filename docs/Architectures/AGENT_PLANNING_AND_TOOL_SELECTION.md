@@ -246,6 +246,7 @@ The fix is one signature change (`step_count` + `tool_results_count` →
 
 ## References
 
+- [planning_depth_ontology_floor_research.md](../research/planning_depth_ontology_floor_research.md) — external research and ontology-based upgrade recommendations for the L0/L1/L2 floor (deterministic)
 - [components/router.py](../../components/router.py) — `select_model`, `select_planning_depth`
 - [components/plan_builder.py](../../components/plan_builder.py) — depth → max_steps mapping, plan artifact construction
 - [components/synthesis_validator.py](../../components/synthesis_validator.py) — depth-aware final-answer gates

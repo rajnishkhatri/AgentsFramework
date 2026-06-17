@@ -15,6 +15,7 @@ from __future__ import annotations
 from scripts.analyze_planning_traces import (
     _as_bool,
     _as_int,
+    _as_list,
     _reflexion_attempts,
     _reflexion_within_budget,
     _replan_count,
@@ -166,6 +167,26 @@ def test_langfuse_string_serialized_flags_coerce() -> None:
         {"event_type": "task_completed", "details": {"reflexion_attempt": "1"}},
     ]
     assert _reflexion_attempts(refl_events) == 1
+
+
+def test_langfuse_stringified_list_coerces() -> None:
+    """The BlackBox→Langfuse relay stringifies non-allowlisted list values, so the
+    carrier-gate ``missing_pillars`` arrives as its Python repr (e.g.
+    "['identity']"). ``_as_list`` must parse both the native-list shape (offline
+    BlackBox source) and the stringified shape (Langfuse source)."""
+    # Native list (offline BlackBox source) passes through.
+    assert _as_list(["identity", "reasoning"]) == ["identity", "reasoning"]
+    # Stringified list (Langfuse relay) parses back.
+    assert _as_list("['identity', 'reasoning']") == ["identity", "reasoning"]
+    assert _as_list("['identity']") == ["identity"]
+    # Empty / missing → empty list (a clean phase has no missing pillars).
+    assert _as_list("[]") == []
+    assert _as_list("") == []
+    assert _as_list(None) == []
+    # A bare scalar or an unparseable string degrades to a single-element list,
+    # never raises.
+    assert _as_list("identity") == ["identity"]
+    assert _as_list("not-a-list-{") == ["not-a-list-{"]
 
 
 def test_reflexion_budget_is_bounded_per_cycle_not_per_trace() -> None:

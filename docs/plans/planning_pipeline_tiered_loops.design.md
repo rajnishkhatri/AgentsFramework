@@ -532,6 +532,8 @@ The single lookup table: for every artifact the plan introduces, the protocols t
 Each subsection: the change, the protocol bindings from A.7, and the test shape. All source line references are
 a snapshot of today's tree (navigation aids, not contracts) and were verified at authoring time.
 
+> **Operational companion:** [`PLANNING_PIPELINE_SYSTEM_DIAGRAM.md`](../Architectures/PLANNING_PIPELINE_SYSTEM_DIAGRAM.md) — shipped-code topology with LLM call inventory, state keys, and tier × depth matrix (reflects `route_node`-inline planning, not the separate `planner_node` shown below).
+
 **Diagram — the StateGraph topology: today's flat ReAct loop with the additive T1/T2 nodes and edges, plus the
 ◐ T3 fan-out subgraph.** Existing nodes/edges are plain; shipped new nodes are starred (★); the design-complete
 but unbuilt T3 nodes are half-filled (◐). The new control structures are the **T1 replan back-edge** (surprising

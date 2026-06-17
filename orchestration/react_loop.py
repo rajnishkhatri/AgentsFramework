@@ -70,6 +70,7 @@ from services.governance.guardrail_validator import (
     api_key_rules,
     pii_rules,
 )
+from services.governance.carrier_gate import record_carrier_gap, validate_phase_carriers
 from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
@@ -85,6 +86,33 @@ from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
 from services.tools.registry import ToolExecutionResult, ToolRegistry
 
 logger = logging.getLogger("orchestration.react_loop")
+
+
+def _shadow_check_phase_carriers(
+    black_box: BlackBoxRecorder,
+    workflow_id: str,
+    phase: WorkflowPhase,
+    recorded_event_values: set[str],
+    *,
+    step: int,
+    tool_failed: bool = False,
+) -> None:
+    """Phase-1 shadow carrier gate (AP-5 thin shim — all logic in the pure check).
+
+    Records which required pillar carriers a just-ended phase failed to emit, as a
+    ``guardrail_checked`` shadow carrier (warn only, never blocks). Governance emits;
+    it does not call upward or mutate workflow state (AP-4). A resumed run (step > 0)
+    exempts the Identity carrier per the SKILL.md rubric.
+    """
+    from trust.governance_carrier_spec import RunShape
+
+    gap = validate_phase_carriers(
+        phase,
+        recorded_event_values,
+        tool_failed=tool_failed,
+        run_shape=RunShape.RESUMED if step > 0 else RunShape.FROM_STEP_ZERO,
+    )
+    record_carrier_gap(black_box, workflow_id, gap, step=step)
 
 
 def _ensure_checkpoint_saver_instance(checkpointer: Any) -> None:
@@ -182,6 +210,11 @@ def _execute_tools_impl(
     updated_todos = state.get("todos", [])
     updated_plan_ref = state.get("plan_ref", "")
     reasoning_trace_delta: list[str] = []
+    # Ground-truth signal for the shadow carrier gate (Validation pillar): set True
+    # at every site that records an ERROR_OCCURRED. Lets the gate verify the
+    # failure⇒error-carrier coupling against what was *actually* recorded, not an
+    # inference from tool_results[].ok.
+    error_recorded = False
 
     delegation_call_count = sum(
         1 for result in state.get("tool_results", []) if result.get("tool_name") == "task"
@@ -270,6 +303,7 @@ def _execute_tools_impl(
                     "error": f"Unknown tool '{tool_name}'",
                 },
             ))
+            error_recorded = True
         except Exception as exc:
             execution_result = ToolExecutionResult(
                 output=f"Error: Tool '{tool_name}' failed: {exc}",
@@ -288,6 +322,7 @@ def _execute_tools_impl(
                     "error": str(exc),
                 },
             ))
+            error_recorded = True
 
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
@@ -311,6 +346,7 @@ def _execute_tools_impl(
                     "error": execution_result.error or "tool returned failure",
                 },
             ))
+            error_recorded = True
 
         if cacheable:
             updated_cache[cache_key] = execution_result.output
@@ -383,6 +419,9 @@ def _execute_tools_impl(
         "tool_cache": updated_cache,
         "tool_results": tool_results,
         "current_workflow_phase": WorkflowPhase.TOOL_EXECUTION.value,
+        # Shadow-gate ground truth (not persisted to AgentState; popped by the
+        # wiring before the dict becomes a state delta).
+        "_error_carrier_recorded": error_recorded,
     }
     if updated_files:
         response["files"] = updated_files
@@ -647,6 +686,11 @@ def build_graph(
                     "agent_facts_id": registered_agent_id,
                 },
             ))
+        # Phase-1 shadow carrier gate: the Identity pillar (task_started) just fired.
+        _shadow_check_phase_carriers(
+            black_box, workflow_id, WorkflowPhase.INITIALIZATION,
+            {EventType.TASK_STARTED.value}, step=step_count,
+        )
 
         # Story 1.4: AgentFacts identity verification
         agent_facts_verified = True
@@ -1231,6 +1275,13 @@ def build_graph(
                 "task_understanding": understanding,
             }
 
+            # Phase-1 shadow carrier gate: ROUTING just recorded the model choice
+            # (Reasoning pillar — MODEL_SELECTED w/ rationale + decision_id).
+            _shadow_check_phase_carriers(
+                black_box, workflow_id, WorkflowPhase.ROUTING,
+                {EventType.MODEL_SELECTED.value}, step=step_count,
+            )
+
             return {
                 "task_understanding": understanding,
                 "task_understanding_task_id": current_task_id,
@@ -1407,6 +1458,12 @@ def build_graph(
             "error" if error is not None else "ok",
             step_count,
         )
+        # Phase-1 shadow carrier gate: MODEL_INVOCATION always records a
+        # token-bearing STEP_EXECUTED (Recording pillar), even on an LLM error.
+        _shadow_check_phase_carriers(
+            black_box, workflow_id, WorkflowPhase.MODEL_INVOCATION,
+            {EventType.STEP_EXECUTED.value}, step=step_count,
+        )
 
         async with phase_logger.phase(workflow_id, WorkflowPhase.OUTPUT_VALIDATION, step_count):
             # G2: always emit an output-stage guardrail_checked event, even on a
@@ -1454,6 +1511,12 @@ def build_graph(
             if error is not None:
                 result["last_llm_error"] = str(error)
                 result["last_llm_error_code"] = getattr(error, "status_code", None)
+            # Phase-1 shadow carrier gate: the output rail always leaves a
+            # GUARDRAIL_CHECKED span (Validation pillar), even on a clean pass.
+            _shadow_check_phase_carriers(
+                black_box, workflow_id, WorkflowPhase.OUTPUT_VALIDATION,
+                {EventType.GUARDRAIL_CHECKED.value}, step=step_count,
+            )
             return result
 
     # ── Story 1.3: execute_tool_node with error capture ──
@@ -1462,13 +1525,28 @@ def build_graph(
         workflow_id = state.get("workflow_id", "")
         step_count = state.get("step_count", 0)
         async with phase_logger.phase(workflow_id, WorkflowPhase.TOOL_EXECUTION, step_count):
-            return _execute_tools_impl(
+            result = _execute_tools_impl(
                 dict(state),
                 tool_registry=tool_registry,
                 black_box=black_box,
                 agent_config=agent_config,
                 trace_service=trace_service,
             )
+            # Phase-1 shadow carrier gate: a FAILED tool must surface ERROR_OCCURRED
+            # (Validation pillar — the silent-failure guard); a clean pass is quiet.
+            # ``_error_carrier_recorded`` is the impl's ground truth (was an error
+            # carrier actually emitted), so the gate detects a regression where a
+            # failure is recorded WITHOUT its error carrier. Pop the transient key so
+            # it never becomes AgentState.
+            error_recorded = result.pop("_error_carrier_recorded", False)
+            tool_results = result.get("tool_results", []) or []
+            tool_failed = any(not r.get("ok", True) for r in tool_results)
+            recorded = {EventType.ERROR_OCCURRED.value} if error_recorded else set()
+            _shadow_check_phase_carriers(
+                black_box, workflow_id, WorkflowPhase.TOOL_EXECUTION,
+                recorded, step=step_count, tool_failed=tool_failed,
+            )
+            return result
 
     # ── verify_authorize_log_node: per-tool-call PEP (opt-in) ──
 
