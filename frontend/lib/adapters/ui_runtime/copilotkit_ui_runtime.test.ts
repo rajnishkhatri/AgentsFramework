@@ -23,9 +23,11 @@ function fakeRuntimeClient(): AgentRuntimeClient {
 const THREAD = {
   thread_id: "t1",
   user_id: "u1",
+  title: "New chat",
   messages: [],
   created_at: "2026-04-24T00:00:00Z",
   updated_at: "2026-04-24T00:00:00Z",
+  archived_at: null,
 };
 
 describe("CopilotKitUIRuntime port conformance", () => {

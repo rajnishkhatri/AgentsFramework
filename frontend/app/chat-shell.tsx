@@ -25,6 +25,13 @@ import { TaskUnderstandingCard } from "@/components/chat/TaskUnderstandingCard";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
+import {
+  useChatSidebars,
+  type ChatSidebarsState,
+} from "@/components/chat/use_chat_sidebars";
+import { ThreadSidebar } from "@/components/chat/ThreadSidebar";
+import { MemoryPanel } from "@/components/memory/MemoryPanel";
+import { RecallIndicator } from "@/components/memory/RecallIndicator";
 import { browserRuntimeClient } from "@/lib/composition_browser";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
@@ -233,6 +240,12 @@ export function ChatShell(props: {
   /** Test seam: defaults to the browser composition root's client. */
   runtime?: AgentRuntimeClient;
   /**
+   * Test seam: the thread-history + memory side panels' data source. Defaults
+   * to the real `useChatSidebars` hook (fetches the same-origin BFF routes).
+   * Injected in SSR/unit tests so the shell renders without a network.
+   */
+  sidebars?: ChatSidebarsState;
+  /**
    * F7 eval-mode capture surface: when a case id is pinned (`?eval=GJ-…`)
    * the UI freezes animation, pins the case id, and surfaces the trace
    * chip so batch and human captures are identical and admissible.
@@ -254,7 +267,29 @@ export function ChatShell(props: {
     pauseForEdit,
     saveUnderstanding,
     cancelEditAndResume,
+    resumeThread,
   } = useAgentRun(runtime);
+  // Side panels: thread history (left) + the editable memory panel (right).
+  // The hook owns all lifecycle (F-R1); the shell only renders + forwards
+  // callbacks. The injected `props.sidebars` overrides it in tests.
+  const liveSidebars = useChatSidebars();
+  const sidebars = props.sidebars ?? liveSidebars;
+  const [activeThreadId, setActiveThreadId] = React.useState<string | undefined>(
+    undefined,
+  );
+
+  // Click-to-resume: fetch the selected thread's persisted history (sidebars
+  // owns the BFF fetch, F-R1), replay it into the chat view, and bind the run
+  // hook's thread id to it so the next `send` continues that checkpoint.
+  const onSelectThread = React.useCallback(
+    (id: string): void => {
+      setActiveThreadId(id);
+      void sidebars.loadThreadTurns(id).then((replayTurns) => {
+        resumeThread(id, replayTurns);
+      });
+    },
+    [sidebars, resumeThread],
+  );
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
   // The understanding card is editable only on the latest turn while its
@@ -275,10 +310,10 @@ export function ChatShell(props: {
 
   return (
     <div
-      className="min-h-dvh grid grid-rows-[auto_1fr_auto]"
+      className="min-h-dvh grid grid-rows-[auto_1fr]"
       {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
     >
-      {/* Header */}
+      {/* Header (spans the full width above the three columns) */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border-light">
         <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
         <div className="flex items-center gap-3">
@@ -302,55 +337,95 @@ export function ChatShell(props: {
         </div>
       </header>
 
-      {/* Messages area */}
-      <main className="overflow-y-auto p-4">
-        {turns.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted text-center">
-            <div className="grid gap-2">
-              <p className="text-2xl m-0">What can I help you with?</p>
-              <p className="text-sm m-0">Send a message to start a conversation.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="max-w-3xl mx-auto grid gap-4">
-            {turns.map((turn) => (
-              <React.Fragment key={turn.id}>
-                <div className="justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]">
-                  <span className="whitespace-pre-wrap">{turn.user}</span>
-                </div>
-                <div className="justify-self-start max-w-[80%] w-full">
-                  <AssistantMessage
-                    turn={turn}
-                    evalMode={evalMode}
-                    {...(turn.id === editableTurnId
-                      ? {
-                          understandingEdit: {
-                            editError:
-                              pausedTurnId === turn.id ? editError : null,
-                            onEditStart: () => pauseForEdit(turn.id),
-                            onSave: (draft) =>
-                              void saveUnderstanding(turn.id, {
-                                restated_intent: draft.restated_intent,
-                                success_conditions: [
-                                  ...draft.success_conditions,
-                                ],
-                              }),
-                            onCancel: () => void cancelEditAndResume(turn.id),
-                          },
-                        }
-                      : {})}
-                  />
-                </div>
-              </React.Fragment>
-            ))}
-            <div ref={bottomRef} />
-          </div>
-        )}
-      </main>
+      {/*
+       * Body: thread history (left) · chat (center) · memory panel (right).
+       * The side panels collapse on small screens (hidden lg:grid) so the
+       * chat column stays usable; the center is always present.
+       */}
+      <div className="grid lg:grid-cols-[auto_1fr_auto] overflow-hidden">
+        <div className="hidden lg:grid overflow-y-auto">
+          <ThreadSidebar
+            threads={sidebars.threads}
+            {...(activeThreadId ? { activeThreadId } : {})}
+            onSelect={onSelectThread}
+            onRename={(id, title) => void sidebars.renameThread(id, title)}
+            onDelete={(id) => void sidebars.deleteThread(id)}
+          />
+        </div>
 
-      {/* Composer */}
-      <div className="max-w-3xl mx-auto w-full">
-        <Composer onSend={send} busy={busy || pausedTurnId !== null} />
+        {/* Chat column: scrollable messages + the pinned composer. */}
+        <div className="grid grid-rows-[1fr_auto] overflow-hidden">
+          <main className="overflow-y-auto p-4">
+            {turns.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted text-center">
+                <div className="grid gap-2">
+                  <p className="text-2xl m-0">What can I help you with?</p>
+                  <p className="text-sm m-0">
+                    Send a message to start a conversation.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="max-w-3xl mx-auto grid gap-4">
+                {turns.map((turn) => (
+                  <React.Fragment key={turn.id}>
+                    <div className="justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]">
+                      <span className="whitespace-pre-wrap">{turn.user}</span>
+                    </div>
+                    <div className="justify-self-start max-w-[80%] w-full grid gap-1">
+                      {/*
+                       * Transparent-recall affordance. The count is the
+                       * per-turn recalledCount folded onto the run view from the
+                       * memory_recalled domain event (backend route node →
+                       * Custom 'memory_recalled' → reducer). Count only, never
+                       * content; renders nothing at 0.
+                       */}
+                      <RecallIndicator count={turn.assistant.recalledCount} />
+                      <AssistantMessage
+                        turn={turn}
+                        evalMode={evalMode}
+                        {...(turn.id === editableTurnId
+                          ? {
+                              understandingEdit: {
+                                editError:
+                                  pausedTurnId === turn.id ? editError : null,
+                                onEditStart: () => pauseForEdit(turn.id),
+                                onSave: (draft) =>
+                                  void saveUnderstanding(turn.id, {
+                                    restated_intent: draft.restated_intent,
+                                    success_conditions: [
+                                      ...draft.success_conditions,
+                                    ],
+                                  }),
+                                onCancel: () =>
+                                  void cancelEditAndResume(turn.id),
+                              },
+                            }
+                          : {})}
+                      />
+                    </div>
+                  </React.Fragment>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+            )}
+          </main>
+
+          {/* Composer (pinned to the bottom of the chat column) */}
+          <div className="max-w-3xl mx-auto w-full p-2">
+            <Composer onSend={send} busy={busy || pausedTurnId !== null} />
+          </div>
+        </div>
+
+        <div className="hidden lg:grid overflow-y-auto">
+          <MemoryPanel
+            items={sidebars.memories}
+            enabled={sidebars.memoryEnabled}
+            onAdd={(content, type) => void sidebars.addMemory(content, type)}
+            onDelete={(key) => void sidebars.deleteMemory(key)}
+            onToggleEnabled={sidebars.setMemoryEnabled}
+          />
+        </div>
       </div>
     </div>
   );

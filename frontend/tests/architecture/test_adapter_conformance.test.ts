@@ -83,6 +83,23 @@ const PAIRS: ReadonlyArray<PortAdapterPair> = [
     adapter_class: "NeonFreeThreadStore",
   },
   {
+    // The Neon-backed ThreadRepo (live-infra Piece C). Its "port" is the
+    // narrow ThreadRepo interface that NeonFreeThreadStore depends on; it is
+    // co-located with the store (not under lib/ports/) by design — the store
+    // is the only consumer. The conformance check confirms NeonThreadRepo
+    // implements ThreadRepo and confines drizzle/neon SDK types (A4 / F-R8).
+    port_file: "lib/adapters/thread_store/neon_free_thread_store.ts",
+    port_interface: "ThreadRepo",
+    adapter_file: "lib/adapters/thread_store/neon_thread_repo.ts",
+    adapter_class: "NeonThreadRepo",
+  },
+  {
+    port_file: "lib/ports/memory_store.ts",
+    port_interface: "MemoryStore",
+    adapter_file: "lib/adapters/memory_store/http_memory_store.ts",
+    adapter_class: "HttpMemoryStore",
+  },
+  {
     port_file: "lib/ports/feature_flag_provider.ts",
     port_interface: "FeatureFlagProvider",
     adapter_file:

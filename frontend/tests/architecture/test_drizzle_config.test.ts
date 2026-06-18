@@ -85,9 +85,13 @@ describe("drizzle.config tablesFilter [IR-NEON-5 / S2.1.2]", () => {
     expect(asList(liveConfig.tablesFilter).length).toBeGreaterThan(0);
   });
 
-  it("points schema + out at lib/db/ (so future migrations stay inside the lib boundary)", () => {
-    expect(liveConfig.schema).toBe("./lib/db/schema.ts");
-    expect(liveConfig.out).toBe("./lib/db/migrations");
+  it("points schema + out under lib/adapters/thread_store/db/ (vendor SDK confined to the adapter ring, F-R2)", () => {
+    expect(liveConfig.schema).toBe(
+      "./lib/adapters/thread_store/db/schema.ts",
+    );
+    expect(liveConfig.out).toBe(
+      "./lib/adapters/thread_store/db/migrations",
+    );
   });
 });
 

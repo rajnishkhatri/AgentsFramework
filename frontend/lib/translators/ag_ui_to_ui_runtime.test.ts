@@ -267,3 +267,58 @@ describe("CUSTOM task_understanding (soft-gate card, Phase 3)", () => {
     });
   });
 });
+
+describe("CUSTOM memory_recalled (transparent recall, memory_layer Phase 3)", () => {
+  it("non-number count emits nothing — failure path first", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: "two" },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("negative / non-integer count emits nothing", () => {
+    expect(
+      agUiToUiRuntime({
+        type: "CUSTOM",
+        name: "memory_recalled",
+        value: { count: -1 },
+        ...RAW,
+      } as never),
+    ).toEqual([]);
+    expect(
+      agUiToUiRuntime({
+        type: "CUSTOM",
+        name: "memory_recalled",
+        value: { count: 1.5 },
+        ...RAW,
+      } as never),
+    ).toEqual([]);
+  });
+
+  it("valid count -> one memory_recalled event (count only, no content)", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: 3 },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 3 });
+    // The wire event carries no content field at all.
+    expect(Object.keys(out[0] ?? {})).toEqual(["type", "trace_id", "count"]);
+  });
+
+  it("count 0 still emits the event (the indicator no-ops, channel stays truthful)", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: 0 },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 0 });
+  });
+});

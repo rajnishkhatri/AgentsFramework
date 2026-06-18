@@ -35,9 +35,14 @@ from agent_ui_adapter.transport.sse import (
 )
 from agent_ui_adapter.wire.agent_protocol import (
     HealthResponse,
+    MemoryCreateRequest,
+    MemoryItem,
+    MemoryListResponse,
     RunCreateRequest,
     RunStateView,
     ThreadCreateRequest,
+    ThreadListResponse,
+    ThreadRenameRequest,
     ThreadState,
 )
 from services.authorization_service import AuthorizationService
@@ -49,6 +54,31 @@ from trust.models import AgentFacts
 logger = logging.getLogger("agent_ui_adapter.server")
 
 ADAPTER_VERSION = "0.1.0"
+
+_DEFAULT_THREAD_TITLE = "New chat"
+_TITLE_MAX_LEN = 60
+
+
+def derive_thread_title(first_message: str | None) -> str:
+    """Deterministic sidebar title from the first user message (Phase 3).
+
+    No LLM call — a truncated, whitespace-collapsed slice of the first turn,
+    preferring a word boundary and appending an ellipsis when cut. Falls back
+    to ``"New chat"`` for empty/blank/non-string input. An LLM auto-title is a
+    later upgrade behind this same ``title`` field.
+    """
+    if not isinstance(first_message, str):
+        return _DEFAULT_THREAD_TITLE
+    collapsed = " ".join(first_message.split())
+    if not collapsed:
+        return _DEFAULT_THREAD_TITLE
+    if len(collapsed) <= _TITLE_MAX_LEN:
+        return collapsed
+    # Truncate at a word boundary within the budget, then ellipsize.
+    cut = collapsed[: _TITLE_MAX_LEN - 1]
+    if " " in cut:
+        cut = cut[: cut.rfind(" ")]
+    return f"{cut.rstrip()}…"
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -94,24 +124,88 @@ class InMemoryJwtVerifier:
 
 
 class _ThreadStore:
+    """In-memory thread store (placeholder for the persistent store).
+
+    Phase 3 sidebar surface: user-scoped ``list`` (newest-first, cursor),
+    deterministic ``title`` from the first message, ``rename``, and ``archive``
+    (soft-delete — ``archived_at`` set; list/get filter it out). The persistent
+    Postgres/Drizzle store is a deferred swap behind this same shape.
+    """
+
     def __init__(self) -> None:
         self._threads: dict[str, ThreadState] = {}
+        # Insertion order for stable, newest-first pagination.
+        self._order: list[str] = []
 
     def create(self, user_id: str, metadata: dict) -> ThreadState:
         thread_id = uuid.uuid4().hex
         now = datetime.now(UTC)
+        # Deterministic title from the first message if the caller supplied one
+        # in metadata; otherwise the renamable default.
+        first_message = metadata.get("first_message") if metadata else None
+        title = derive_thread_title(first_message)
         state = ThreadState(
             thread_id=thread_id,
             user_id=user_id,
+            title=title,
             messages=[],
             created_at=now,
             updated_at=now,
+            archived_at=None,
         )
         self._threads[thread_id] = state
+        self._order.append(thread_id)
         return state
 
-    def get(self, thread_id: str) -> ThreadState | None:
-        return self._threads.get(thread_id)
+    def get(self, thread_id: str, *, owner: str | None = None) -> ThreadState | None:
+        state = self._threads.get(thread_id)
+        if state is None or state.archived_at is not None:
+            return None
+        # Ownership scoping: not-found and not-owned are indistinguishable
+        # (no existence oracle). ``owner=None`` preserves the legacy un-scoped
+        # get for the existing get-by-id endpoint contract.
+        if owner is not None and state.user_id != owner:
+            return None
+        return state
+
+    def list(
+        self, owner: str, *, cursor: str | None = None, limit: int = 20
+    ) -> tuple[list[ThreadState], str | None]:
+        """Newest-first page of the owner's non-archived threads."""
+        visible = [
+            self._threads[tid]
+            for tid in reversed(self._order)
+            if self._threads[tid].user_id == owner
+            and self._threads[tid].archived_at is None
+        ]
+        start = 0
+        if cursor:
+            ids = [t.thread_id for t in visible]
+            start = ids.index(cursor) + 1 if cursor in ids else len(visible)
+        page = visible[start : start + limit]
+        next_cursor = (
+            page[-1].thread_id if page and start + limit < len(visible) else None
+        )
+        return page, next_cursor
+
+    def rename(self, thread_id: str, owner: str, title: str) -> ThreadState | None:
+        state = self.get(thread_id, owner=owner)
+        if state is None:
+            return None
+        updated = state.model_copy(
+            update={"title": title, "updated_at": datetime.now(UTC)}
+        )
+        self._threads[thread_id] = updated
+        return updated
+
+    def archive(self, thread_id: str, owner: str) -> bool:
+        state = self.get(thread_id, owner=owner)
+        if state is None:
+            return False
+        self._threads[thread_id] = state.model_copy(
+            update={"archived_at": datetime.now(UTC)}
+        )
+        return True
 
 
 class _RunRegistry:
@@ -216,6 +310,20 @@ def build_app(
     async def healthz() -> HealthResponse:
         return HealthResponse(status="ok", adapter_version=ADAPTER_VERSION)
 
+    @app.get("/agent/threads", response_model=ThreadListResponse)
+    async def list_threads(
+        cursor: str | None = None,
+        limit: int = 20,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> ThreadListResponse:
+        # Scoped to identity.owner (caller's own only — B6 / no cross-user
+        # leak). Newest-first, cursor-paginated, archived hidden.
+        bounded = max(1, min(100, limit))
+        page, next_cursor = threads.list(
+            identity.owner, cursor=cursor, limit=bounded
+        )
+        return ThreadListResponse(threads=page, next_cursor=next_cursor)
+
     @app.post("/agent/threads", response_model=ThreadState)
     async def create_thread(
         body: ThreadCreateRequest,
@@ -232,6 +340,27 @@ def build_app(
         if state is None:
             raise HTTPException(status_code=404, detail="thread not found")
         return state
+
+    @app.patch("/agent/threads/{thread_id}", response_model=ThreadState)
+    async def rename_thread(
+        thread_id: str,
+        body: ThreadRenameRequest,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> ThreadState:
+        # 404 covers both not-found and not-owned (no existence oracle).
+        renamed = threads.rename(thread_id, identity.owner, body.title)
+        if renamed is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        return renamed
+
+    @app.delete("/agent/threads/{thread_id}")
+    async def archive_thread(
+        thread_id: str,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> dict:
+        if not threads.archive(thread_id, identity.owner):
+            raise HTTPException(status_code=404, detail="thread not found")
+        return {"archived": thread_id}
 
     @app.get("/agent/runs/{run_id}", response_model=RunStateView)
     async def get_run(
@@ -320,6 +449,68 @@ def build_app(
             media_type="text/event-stream",
             headers=PROXY_HEADERS,
         )
+
+    # ── Memory panel (Phase 3) ───────────────────────────────────────
+    #
+    # Every memory route is scoped to ``identity.owner`` — the verified
+    # bearer subject's owner — NEVER a client-supplied user_id. This IS the
+    # cross-user-leak guard: a caller can only ever read or mutate their own
+    # memory. Returns 503 (not 500) when the long-term-memory service was not
+    # wired, so the panel degrades to "unavailable" cleanly.
+
+    def _require_memory() -> LongTermMemoryService:
+        if long_term_memory is None:
+            raise HTTPException(
+                status_code=503, detail="memory service not available"
+            )
+        return long_term_memory
+
+    @app.get("/agent/memory", response_model=MemoryListResponse)
+    async def list_memory(
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> MemoryListResponse:
+        memory = _require_memory()
+        # Empty query matches all of the subject's records (substring "" hits
+        # every payload); the panel shows the full set grouped client-side.
+        records = memory.search(identity.owner, "", limit=500)
+        items = [
+            MemoryItem(
+                key=r.key,
+                type=r.metadata.get("type"),
+                content=str(r.payload.get("text", "")),
+                salience=r.metadata.get("salience"),
+            )
+            for r in records
+        ]
+        return MemoryListResponse(items=items)
+
+    @app.post("/agent/memory", response_model=MemoryItem)
+    async def create_memory(
+        body: MemoryCreateRequest,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> MemoryItem:
+        memory = _require_memory()
+        key = body.key or uuid.uuid4().hex
+        memory.store(
+            identity.owner,
+            key,
+            {"text": body.content},
+            metadata={"type": body.type, "source": "user_added"},
+        )
+        return MemoryItem(
+            key=key, type=body.type, content=body.content, salience=None
+        )
+
+    @app.delete("/agent/memory/{key}")
+    async def delete_memory(
+        key: str,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> dict:
+        memory = _require_memory()
+        removed = memory.forget(identity.owner, key)
+        if not removed:
+            raise HTTPException(status_code=404, detail="memory not found")
+        return {"deleted": key}
 
     return app
 

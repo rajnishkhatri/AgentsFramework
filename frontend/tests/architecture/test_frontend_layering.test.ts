@@ -150,6 +150,20 @@ function isStdlibOrAllowed(spec: string): boolean {
   return false;
 }
 
+/**
+ * True for a confined SDK import, including a deep subpath entrypoint
+ * (e.g. `drizzle-orm/neon-http`, `drizzle-orm/pg-core`). Without the subpath
+ * match a vendor package could leak past the `lib/adapters/**` boundary via a
+ * submodule specifier.
+ */
+function isSdkSpec(spec: string): boolean {
+  if (SDK_PACKAGES.has(spec)) return true;
+  for (const pkg of SDK_PACKAGES) {
+    if (spec.startsWith(`${pkg}/`)) return true;
+  }
+  return false;
+}
+
 function collectViolations(project: Project): ImportFinding[] {
   const findings: ImportFinding[] = [];
   for (const sf of project.getSourceFiles()) {
@@ -197,8 +211,10 @@ function collectViolations(project: Project): ImportFinding[] {
         });
       }
 
-      // 3. Third-party SDK isolation (F-R2).
-      if (SDK_PACKAGES.has(spec) && !isAdapter) {
+      // 3. Third-party SDK isolation (F-R2). Includes deep subpath imports
+      // (e.g. drizzle-orm/pg-core) so a submodule specifier cannot dodge the
+      // `lib/adapters/**` confinement.
+      if (isSdkSpec(spec) && !isAdapter) {
         findings.push({
           file: path.relative(FRONTEND_ROOT, filePath),
           importPath: spec,

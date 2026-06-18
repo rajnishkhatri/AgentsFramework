@@ -7,6 +7,8 @@ export type { AgentRuntimeClient } from "./agent_runtime_client";
 export type { AuthProvider } from "./auth_provider";
 export type { ThreadStore, ThreadListPage } from "./thread_store";
 export type { MemoryClient, MemorySearchHit } from "./memory_client";
+export type { MemoryStore } from "./memory_store";
+export { MemoryStoreError } from "./memory_store";
 export type { TelemetrySink, TelemetryEvent } from "./telemetry_sink";
 export type {
   FeatureFlagProvider,

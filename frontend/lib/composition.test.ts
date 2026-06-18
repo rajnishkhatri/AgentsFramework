@@ -29,7 +29,7 @@ const FAKE_DEPS = {
 };
 
 describe("buildAdapters [S3.6.1]", () => {
-  it("returns the 8 expected ports for profile=v3", () => {
+  it("returns the expected ports for profile=v3", () => {
     const bag = buildAdapters({ profile: "v3", ...FAKE_DEPS });
     expect(Object.keys(bag).sort()).toEqual(
       [
@@ -37,6 +37,7 @@ describe("buildAdapters [S3.6.1]", () => {
         "authProvider",
         "featureFlagProvider",
         "memoryClient",
+        "memoryStore",
         "telemetrySink",
         "threadStore",
         "toolRendererRegistry",
@@ -75,6 +76,7 @@ describe("buildAdapters [S3.6.1]", () => {
         "authProvider",
         "featureFlagProvider",
         "memoryClient",
+        "memoryStore",
         "telemetrySink",
         "threadStore",
         "toolRendererRegistry",

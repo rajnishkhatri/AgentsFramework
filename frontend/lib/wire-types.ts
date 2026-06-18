@@ -4,6 +4,41 @@
  */
 
 export interface paths {
+    "/agent/memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the caller's own memory items */
+        get: operations["listMemory"];
+        put?: never;
+        /** Add a user-authored memory */
+        post: operations["createMemory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/agent/memory/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete one of the caller's memories */
+        delete: operations["deleteMemory"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/agent/runs/stream": {
         parameters: {
             query?: never;
@@ -46,7 +81,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List threads */
+        /** List the caller's own threads (newest-first, cursor) */
         get: operations["listThreads"];
         put?: never;
         /** Create a thread */
@@ -68,10 +103,12 @@ export interface paths {
         get: operations["getThread"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Archive (soft-delete) a thread */
+        delete: operations["archiveThread"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Rename a thread */
+        patch: operations["renameThread"];
         trace?: never;
     };
     "/healthz": {
@@ -236,6 +273,98 @@ export interface components {
             delta: string;
             /** Message Id */
             message_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+            /** Trace Id */
+            trace_id: string;
+        };
+        /**
+         * MemoryCreateRequest
+         * @description Body of ``POST /agent/memory`` — a user-added (manual) memory.
+         *
+         *     ``user_id`` is intentionally absent: the subject is the verified bearer
+         *     identity, never client-supplied (cross-user-leak guard).
+         */
+        MemoryCreateRequest: {
+            /** Content */
+            content: string;
+            /**
+             * Key
+             * @default null
+             */
+            key: string | null;
+            /**
+             * Type
+             * @default semantic
+             * @enum {string}
+             */
+            type: "semantic" | "episodic" | "procedural";
+        };
+        /**
+         * MemoryItem
+         * @description One stored memory item, surfaced to its owner in the panel.
+         */
+        MemoryItem: {
+            /** Content */
+            content: string;
+            /** Key */
+            key: string;
+            /**
+             * Salience
+             * @default null
+             */
+            salience: number | null;
+            /**
+             * Type
+             * @default null
+             */
+            type: ("semantic" | "episodic" | "procedural") | null;
+        };
+        /**
+         * MemoryListResponse
+         * @description Response body of ``GET /agent/memory`` — the caller's own items.
+         */
+        MemoryListResponse: {
+            /** Items */
+            items?: components["schemas"]["MemoryItem"][];
+            $defs: {
+                /**
+                 * MemoryItem
+                 * @description One stored memory item, surfaced to its owner in the panel.
+                 */
+                MemoryItem: {
+                    /** Content */
+                    content: string;
+                    /** Key */
+                    key: string;
+                    /**
+                     * Salience
+                     * @default null
+                     */
+                    salience: number | null;
+                    /**
+                     * Type
+                     * @default null
+                     */
+                    type: ("semantic" | "episodic" | "procedural") | null;
+                };
+            };
+        };
+        /**
+         * MemoryRecalled
+         * @description memory_layer_wiring plan Phase 3: the transparent-recall indicator's
+         *     count (wire: Custom ``memory_recalled``). METADATA ONLY — carries the
+         *     number of long-term memories the route node's recall returned, NEVER the
+         *     content (the privacy invariant; the owner sees their content only in the
+         *     memory panel). The frontend renders "recalled N memories" above the
+         *     assistant turn; 0 renders nothing.
+         */
+        MemoryRecalled: {
+            /** Count */
+            count: number;
             /**
              * Timestamp
              * Format: date-time
@@ -732,10 +861,83 @@ export interface components {
             user_id: string;
         };
         /**
+         * ThreadListResponse
+         * @description Response body of ``GET /agent/threads`` — the caller's own threads,
+         *     cursor-paginated.
+         */
+        ThreadListResponse: {
+            /**
+             * Next Cursor
+             * @default null
+             */
+            next_cursor: string | null;
+            /** Threads */
+            threads?: components["schemas"]["ThreadState"][];
+            $defs: {
+                /**
+                 * ThreadState
+                 * @description Response body of ``GET /agent/threads/{thread_id}`` and items in the
+                 *     ``GET /agent/threads`` list.
+                 *
+                 *     ``title`` is the sidebar label (Phase 3) — deterministic from the first
+                 *     user message, user-renamable. ``archived_at`` is the soft-delete tombstone
+                 *     (set on archive; list/get filter it out).
+                 */
+                ThreadState: {
+                    /**
+                     * Archived At
+                     * @default null
+                     */
+                    archived_at: string | null;
+                    /**
+                     * Created At
+                     * Format: date-time
+                     */
+                    created_at: string;
+                    /** Messages */
+                    messages?: {
+                        [key: string]: unknown;
+                    }[];
+                    /** Thread Id */
+                    thread_id: string;
+                    /**
+                     * Title
+                     * @default New chat
+                     */
+                    title: string;
+                    /**
+                     * Updated At
+                     * Format: date-time
+                     */
+                    updated_at: string;
+                    /** User Id */
+                    user_id: string;
+                };
+            };
+        };
+        /**
+         * ThreadRenameRequest
+         * @description Body of ``PATCH /agent/threads/{thread_id}`` — rename only.
+         */
+        ThreadRenameRequest: {
+            /** Title */
+            title: string;
+        };
+        /**
          * ThreadState
-         * @description Response body of ``GET /agent/threads/{thread_id}``.
+         * @description Response body of ``GET /agent/threads/{thread_id}`` and items in the
+         *     ``GET /agent/threads`` list.
+         *
+         *     ``title`` is the sidebar label (Phase 3) — deterministic from the first
+         *     user message, user-renamable. ``archived_at`` is the soft-delete tombstone
+         *     (set on archive; list/get filter it out).
          */
         ThreadState: {
+            /**
+             * Archived At
+             * @default null
+             */
+            archived_at: string | null;
             /**
              * Created At
              * Format: date-time
@@ -747,6 +949,11 @@ export interface components {
             }[];
             /** Thread Id */
             thread_id: string;
+            /**
+             * Title
+             * @default New chat
+             */
+            title: string;
             /**
              * Updated At
              * Format: date-time
@@ -914,6 +1121,112 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's memory items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryListResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Memory service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryItem"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Memory service unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Memory not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     streamRun: {
         parameters: {
             query?: never;
@@ -1005,21 +1318,31 @@ export interface operations {
     };
     listThreads: {
         parameters: {
-            query?: never;
+            query?: {
+                cursor?: string;
+                limit?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
         };
         requestBody?: never;
         responses: {
-            /** @description List of threads */
+            /** @description The caller's threads */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ThreadState"][];
+                    "application/json": components["schemas"]["ThreadListResponse"];
                 };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1066,6 +1389,80 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ThreadState"];
                 };
+            };
+        };
+    };
+    archiveThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Archived */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Thread not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    renameThread: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadRenameRequest"];
+            };
+        };
+        responses: {
+            /** @description Renamed thread */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThreadState"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Thread not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

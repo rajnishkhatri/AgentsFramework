@@ -36,7 +36,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -47,12 +47,22 @@ os.environ.setdefault("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "150")
 sys.path.insert(0, str(AGENT_ROOT))
 
 from agent_ui_adapter.adapters.runtime.langgraph_runtime import LangGraphRuntime
+from agent_ui_adapter.server import _ThreadStore, derive_thread_title
 from agent_ui_adapter.translators.domain_to_ag_ui import to_ag_ui
 from agent_ui_adapter.transport.sse import (
     PROXY_HEADERS,
     SENTINEL_LINE,
     encode_error,
     encode_event,
+)
+from agent_ui_adapter.wire.agent_protocol import (
+    MemoryCreateRequest,
+    MemoryItem,
+    MemoryListResponse,
+    ThreadCreateRequest,
+    ThreadListResponse,
+    ThreadRenameRequest,
+    ThreadState,
 )
 from agent_ui_adapter.wire.domain_events import RunFinishedDomain
 from middleware import telemetry_bridge
@@ -125,6 +135,10 @@ def build_combined_app() -> FastAPI:
         goal_judge_reader,
     ) = _build_components()
     settings = AgentRuntimeSettings(agent_env="prod")
+    # Full typed bag carries the injected LongTermMemoryService (memory_service)
+    # + autocapture; the 5-tuple shim above intentionally drops them, so the
+    # /agent/memory routes below read the service from this bag instead.
+    full_components = _build_agent_components()
     components = AgentComponents(
         agent_config=agent_config,
         tool_registry=tool_registry,
@@ -133,6 +147,8 @@ def build_combined_app() -> FastAPI:
         goal_judge_config_reader=goal_judge_reader,
         settings=settings,
     )
+    memory_service = getattr(full_components, "memory_service", None)
+    threads = _ThreadStore()
     build_graph = _load_graph_factory()
 
     gcs_traces_bucket = os.environ.get("GCS_TRACES_BUCKET", "")
@@ -239,6 +255,166 @@ def build_combined_app() -> FastAPI:
                 status_code=401, detail=f"invalid token: {exc}"
             ) from None
 
+    def _resolve_identity(subject: str) -> AgentFacts:
+        """Registry lookup with first-request auto-provision (shared path).
+
+        Mirrors the /run/stream behavior so the thread/memory CRUD routes use
+        one identity contract: an unknown subject is provisioned, not rejected.
+        """
+        try:
+            return agent_facts_registry.get(subject)
+        except KeyError:
+            identity = agent_facts_registry.register(
+                AgentFacts(
+                    agent_id=subject,
+                    agent_name=subject,
+                    owner=subject,
+                    version="1.0.0",
+                    description="Auto-provisioned on first authenticated request",
+                    capabilities=[Capability(name="delegate.subagent.*")],
+                    status=IdentityStatus.ACTIVE,
+                ),
+                registered_by="app_prod:auto_provision",
+            )
+            logger.info("auto_provisioned_identity subject=%s", subject)
+            return identity
+
+    def _bearer_identity(
+        authorization: str | None = Header(default=None),
+    ) -> AgentFacts:
+        """FastAPI dependency: verify bearer → resolve identity (401 on failure).
+
+        Used by the /agent/threads + /agent/memory CRUD routes. Every CRUD
+        handler scopes to ``identity.owner`` (the verified subject's owner),
+        NEVER a client-supplied user_id — this IS the cross-user-leak guard.
+        """
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="missing bearer token")
+        token = authorization[len("Bearer "):].strip()
+        try:
+            claims = adapters.jwt_verifier.verify(token)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=401, detail=f"invalid token: {exc}"
+            ) from None
+        return _resolve_identity(claims.subject)
+
+    def _require_memory():
+        """Return the wired LongTermMemoryService or 503 if memory is off.
+
+        503 (not 500) keeps the memory panel degrading to "unavailable" cleanly
+        when MEMORY is unwired in a given deployment.
+        """
+        if memory_service is None:
+            raise HTTPException(
+                status_code=503, detail="memory service not available"
+            )
+        return memory_service
+
+    # ── Thread CRUD (Phase 3 sidebar surface) ─────────────────────────
+    # The BFF proxies these for the chat-history sidebar. Owner-scoped;
+    # archived threads are soft-deleted (hidden from list/get). In-memory
+    # store for now — the persistent ThreadStore is the BFF's concern (F-R9).
+
+    @app.get("/agent/threads", response_model=ThreadListResponse)
+    async def list_threads(
+        cursor: str | None = None,
+        limit: int = 20,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> ThreadListResponse:
+        bounded = max(1, min(100, limit))
+        page, next_cursor = threads.list(
+            identity.owner, cursor=cursor, limit=bounded
+        )
+        return ThreadListResponse(threads=page, next_cursor=next_cursor)
+
+    @app.post("/agent/threads", response_model=ThreadState)
+    async def create_thread(
+        body: ThreadCreateRequest,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> ThreadState:
+        # Scope to the verified owner — ignore body.user_id for storage key.
+        return threads.create(user_id=identity.owner, metadata=body.metadata)
+
+    @app.get("/agent/threads/{thread_id}", response_model=ThreadState)
+    async def get_thread(
+        thread_id: str,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> ThreadState:
+        state = threads.get(thread_id, owner=identity.owner)
+        if state is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        return state
+
+    @app.patch("/agent/threads/{thread_id}", response_model=ThreadState)
+    async def rename_thread(
+        thread_id: str,
+        body: ThreadRenameRequest,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> ThreadState:
+        renamed = threads.rename(thread_id, identity.owner, body.title)
+        if renamed is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        return renamed
+
+    @app.delete("/agent/threads/{thread_id}")
+    async def archive_thread(
+        thread_id: str,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> dict:
+        if not threads.archive(thread_id, identity.owner):
+            raise HTTPException(status_code=404, detail="thread not found")
+        return {"archived": thread_id}
+
+    # ── Memory CRUD (Phase 3 memory panel) ────────────────────────────
+    # Every route scopes to identity.owner — never a client-supplied user_id
+    # (cross-user-leak guard). Content is returned to its OWNER by design (the
+    # panel shows the owner their own memories); it is never logged.
+
+    @app.get("/agent/memory", response_model=MemoryListResponse)
+    async def list_memory(
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> MemoryListResponse:
+        memory = _require_memory()
+        records = memory.search(identity.owner, "", limit=500)
+        items = [
+            MemoryItem(
+                key=r.key,
+                type=r.metadata.get("type"),
+                content=str(r.payload.get("text", "")),
+                salience=r.metadata.get("salience"),
+            )
+            for r in records
+        ]
+        return MemoryListResponse(items=items)
+
+    @app.post("/agent/memory", response_model=MemoryItem)
+    async def create_memory(
+        body: MemoryCreateRequest,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> MemoryItem:
+        memory = _require_memory()
+        key = body.key or uuid.uuid4().hex
+        memory.store(
+            identity.owner,
+            key,
+            {"text": body.content},
+            metadata={"type": body.type, "source": "user_added"},
+        )
+        return MemoryItem(
+            key=key, type=body.type, content=body.content, salience=None
+        )
+
+    @app.delete("/agent/memory/{key}")
+    async def delete_memory(
+        key: str,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> dict:
+        memory = _require_memory()
+        if not memory.forget(identity.owner, key):
+            raise HTTPException(status_code=404, detail="memory not found")
+        return {"deleted": key}
+
     # task_understanding plan Phase 4: soft-gate card edit seam. The client
     # pauses the stream, POSTs the corrected artifact here, then resumes by
     # re-invoking /run/stream with the same thread_id.
@@ -274,22 +450,7 @@ def build_combined_app() -> FastAPI:
                 status_code=401, detail=f"invalid token: {exc}"
             ) from None
 
-        try:
-            identity = agent_facts_registry.get(claims.subject)
-        except KeyError:
-            identity = agent_facts_registry.register(
-                AgentFacts(
-                    agent_id=claims.subject,
-                    agent_name=claims.subject,
-                    owner=claims.subject,
-                    version="1.0.0",
-                    description="Auto-provisioned on first authenticated request",
-                    capabilities=[Capability(name="delegate.subagent.*")],
-                    status=IdentityStatus.ACTIVE,
-                ),
-                registered_by="app_prod:auto_provision",
-            )
-            logger.info("auto_provisioned_identity subject=%s", claims.subject)
+        identity = _resolve_identity(claims.subject)
 
         run_ctx = build_run_stream_context(
             body,

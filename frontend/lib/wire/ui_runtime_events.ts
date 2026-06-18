@@ -130,6 +130,22 @@ export const TaskUnderstandingEventSchema = z
   .strict();
 export type TaskUnderstandingEvent = z.infer<typeof TaskUnderstandingEventSchema>;
 
+// ── Memory recall count (Custom 'memory_recalled', memory_layer Phase 3) ─
+//
+// How many long-term memories the route node's recall returned this run.
+// METADATA ONLY — never content (the privacy invariant; the owner sees their
+// content only in the memory panel). Drives the per-turn transparent-recall
+// indicator ("recalled N memories"); 0 renders nothing.
+
+export const MemoryRecalledEventSchema = z
+  .object({
+    type: z.literal("memory_recalled"),
+    trace_id: traceId,
+    count: z.number().int().min(0),
+  })
+  .strict();
+export type MemoryRecalledEvent = z.infer<typeof MemoryRecalledEventSchema>;
+
 // ── Tool renderer request (F5 tool cards via useFrontendTool) ─────────
 
 export const ToolCallRendererRequestSchema = z
@@ -187,6 +203,7 @@ export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
   StateRenderEventSchema,
   ReasoningSummaryEventSchema,
   TaskUnderstandingEventSchema,
+  MemoryRecalledEventSchema,
   ToolRenderEventSchema,
 ]);
 export type UIRuntimeEvent = z.infer<typeof UIRuntimeEventSchema>;

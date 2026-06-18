@@ -43,6 +43,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    MemoryRecalled,
     ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
@@ -196,6 +197,7 @@ class TestEventCompleteness:
     }
 
     SKIPPED_TYPES: set[type] = {
+        MemoryRecalled,
         ReasoningSummarized,
         StateMutated,
         StepProgressed,
@@ -268,9 +270,9 @@ class TestEventCompleteness:
         assert result is None, "Unknown event type must return None, not raise"
 
     def test_event_count_matches_union(self) -> None:
-        """Guard: domain_events.DomainEvent union has exactly 12 members."""
-        assert len(self.ALL_EVENT_TYPES) == 12, (
-            f"Expected 12 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
+        """Guard: domain_events.DomainEvent union has exactly 13 members."""
+        assert len(self.ALL_EVENT_TYPES) == 13, (
+            f"Expected 13 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
             "Update telemetry_bridge.py and this test."
         )
 
@@ -849,6 +851,8 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
             confidence=0.8,
             source="generated",
         )
+    if event_type is MemoryRecalled:
+        return MemoryRecalled(trace_id=trace_id, count=2)
     raise ValueError(f"Unknown event type: {event_type}")
 
 

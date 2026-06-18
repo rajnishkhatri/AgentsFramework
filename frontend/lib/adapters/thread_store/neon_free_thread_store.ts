@@ -82,9 +82,11 @@ function rowToState(row: ThreadRow): ThreadState {
   return {
     thread_id: row.thread_id,
     user_id: row.user_id,
+    title: row.title,
     messages: row.messages,
     created_at: row.created_at,
     updated_at: row.updated_at,
+    archived_at: row.archived_at,
   };
 }
 

@@ -36,6 +36,7 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "auth_provider.ts", interfaceName: "AuthProvider" },
   { file: "thread_store.ts", interfaceName: "ThreadStore" },
   { file: "memory_client.ts", interfaceName: "MemoryClient" },
+  { file: "memory_store.ts", interfaceName: "MemoryStore" },
   { file: "telemetry_sink.ts", interfaceName: "TelemetrySink" },
   {
     file: "feature_flag_provider.ts",
@@ -75,7 +76,7 @@ function findInterface(sf: SourceFile, name: string) {
 }
 
 describe("Port conformance suite [FD6.PORT / S3.2.1]", () => {
-  it("contains exactly the 8 required ports under lib/ports/", () => {
+  it("contains exactly the required ports under lib/ports/", () => {
     expect(fs.existsSync(PORTS_DIR), `${PORTS_DIR} must exist`).toBe(true);
     const files = fs
       .readdirSync(PORTS_DIR)

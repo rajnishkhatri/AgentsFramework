@@ -130,7 +130,18 @@ class TaskUnderstood(DomainEventBase):
     source: str
 
 
-# ── Union type alias (US-2.3 acceptance, +TaskUnderstood: 12 members) ─
+class MemoryRecalled(DomainEventBase):
+    """memory_layer_wiring plan Phase 3: the transparent-recall indicator's
+    count (wire: Custom ``memory_recalled``). METADATA ONLY — carries the
+    number of long-term memories the route node's recall returned, NEVER the
+    content (the privacy invariant; the owner sees their content only in the
+    memory panel). The frontend renders "recalled N memories" above the
+    assistant turn; 0 renders nothing."""
+
+    count: int
+
+
+# ── Union type alias (US-2.3 +TaskUnderstood +MemoryRecalled: 13 members) ─
 
 
 DomainEvent = (
@@ -146,6 +157,7 @@ DomainEvent = (
     | StepProgressed
     | ReasoningSummarized
     | TaskUnderstood
+    | MemoryRecalled
 )
 
 
@@ -155,6 +167,7 @@ __all__ = [
     "LLMMessageEnded",
     "LLMMessageStarted",
     "LLMTokenEmitted",
+    "MemoryRecalled",
     "ReasoningSummarized",
     "RunFinishedDomain",
     "RunStartedDomain",

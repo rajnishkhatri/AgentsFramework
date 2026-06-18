@@ -48,6 +48,10 @@ export interface AssistantRunView {
   /** Phase 3 soft-gate card: plan-time intent + success checklist. A later
    *  event (user edit) replaces the whole artifact. */
   readonly understanding: Omit<TaskUnderstandingEvent, "type"> | null;
+  /** memory_layer Phase 3: how many long-term memories recall returned for
+   *  this turn (count only, never content — the transparent-recall indicator).
+   *  0 = no recall / flag off; the indicator renders nothing. */
+  readonly recalledCount: number;
   readonly traceId: string | null;
   readonly runId: string | null;
   readonly threadId: string | null;
@@ -63,6 +67,7 @@ export function emptyRunView(): AssistantRunView {
     todos: null,
     reasoning: null,
     understanding: null,
+    recalledCount: 0,
     traceId: null,
     runId: null,
     threadId: null,
@@ -130,6 +135,9 @@ export function reduceRunView(
       const { type: _type, ...artifact } = evt;
       return { ...view, understanding: artifact };
     }
+
+    case "memory_recalled":
+      return { ...view, recalledCount: evt.count };
 
     case "run_completed":
       return { ...view, status: "complete" };

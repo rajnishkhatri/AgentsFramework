@@ -193,3 +193,10 @@ class AgentState(MessagesState):
     # task_id discipline as planning_depth_task_id/task_understanding_task_id;
     # a new task_id on the thread regenerates.
     recalled_memories_task_id: str
+    # How many memories the recall returned this run (metadata only — NEVER
+    # content, preserving the privacy invariant). Surfaced to the UI's
+    # transparent-recall indicator via a MemoryRecalled domain event emitted
+    # from the route node's output. Memoized alongside recalled_memories on
+    # recalled_memories_task_id, so a reflexion lap reports the same count
+    # without re-querying. 0 = no recall / degraded / flag off. Last-write-wins.
+    recalled_memories_count: int

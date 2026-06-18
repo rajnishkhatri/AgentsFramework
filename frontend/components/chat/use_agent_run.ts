@@ -134,6 +134,15 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     edit: UnderstandingEditPayload,
   ) => Promise<void>;
   cancelEditAndResume: (turnId: string) => Promise<void>;
+  /**
+   * Click-to-resume a past thread: replace the displayed turns with that
+   * thread's replayed history and bind the hook's thread id to it, so the
+   * next `send` continues that LangGraph checkpoint server-side.
+   */
+  resumeThread: (
+    threadId: string,
+    replayTurns: ReadonlyArray<ChatTurn>,
+  ) => void;
 } {
   const [turns, setTurns] = React.useState<ReadonlyArray<ChatTurn>>([]);
   const [busy, setBusy] = React.useState(false);
@@ -279,6 +288,22 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     [resumeInto],
   );
 
+  const resumeThread = React.useCallback(
+    (threadId: string, replayTurns: ReadonlyArray<ChatTurn>): void => {
+      // Abandon any run in flight for the previous thread before swapping.
+      controllerRef.current?.abort();
+      controllerRef.current = null;
+      pausedRef.current = false;
+      setPausedTurnId(null);
+      setEditError(null);
+      setBusy(false);
+      // Bind to the selected checkpoint so the next `send` continues it.
+      threadIdRef.current = threadId;
+      setTurns(replayTurns);
+    },
+    [],
+  );
+
   return {
     turns,
     busy,
@@ -288,5 +313,6 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     pauseForEdit,
     saveUnderstanding,
     cancelEditAndResume,
+    resumeThread,
   };
 }

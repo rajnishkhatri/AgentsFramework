@@ -316,11 +316,15 @@ def test_domain_event_base_is_frozen_and_strict():
 
 def test_domain_event_union_covers_all_types():
     """US-2.3 acceptance (extended by eval-UI Phase 0 + F10-T2 +
-    task_understanding Phase 3): 12 members."""
-    from agent_ui_adapter.wire.domain_events import ReasoningSummarized, TaskUnderstood
+    task_understanding Phase 3 + memory_layer Phase 3): 13 members."""
+    from agent_ui_adapter.wire.domain_events import (
+        MemoryRecalled,
+        ReasoningSummarized,
+        TaskUnderstood,
+    )
 
     args = get_args(DomainEvent)
-    assert len(args) == 12
+    assert len(args) == 13
     assert set(args) == {
         LLMTokenEmitted,
         LLMMessageStarted,
@@ -334,6 +338,7 @@ def test_domain_event_union_covers_all_types():
         StepProgressed,
         ReasoningSummarized,
         TaskUnderstood,
+        MemoryRecalled,
     }
 
 
@@ -374,10 +379,33 @@ def test_task_understood_carries_artifact_fields():
     assert ev.success_conditions == ["file exists", "contents verified"]
 
 
+def test_memory_recalled_carries_count_only():
+    """memory_layer Phase 3: count is the only payload field (privacy
+    invariant — never content)."""
+    from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+    ev = MemoryRecalled(trace_id="tr1", count=3)
+    assert ev.count == 3
+    assert set(ev.model_dump()) == {"trace_id", "timestamp", "count"}
+
+
+def test_memory_recalled_rejects_extra_fields():
+    """Failure path first: strict wire shape — a 'content' field is rejected
+    (the privacy invariant is structurally enforced, not just by convention)."""
+    from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+    with pytest.raises(ValidationError):
+        MemoryRecalled.model_validate(
+            {"trace_id": "tr1", "count": 1, "content": "leaked!"}
+        )
+
+
 def test_domain_event_union_includes_task_understood():
-    """+TaskUnderstood (task_understanding plan Phase 3): 12 members."""
-    from agent_ui_adapter.wire.domain_events import TaskUnderstood
+    """+TaskUnderstood (task_understanding plan Phase 3) +MemoryRecalled
+    (memory_layer Phase 3): 13 members."""
+    from agent_ui_adapter.wire.domain_events import MemoryRecalled, TaskUnderstood
 
     args = get_args(DomainEvent)
-    assert len(args) == 12
+    assert len(args) == 13
     assert TaskUnderstood in set(args)
+    assert MemoryRecalled in set(args)

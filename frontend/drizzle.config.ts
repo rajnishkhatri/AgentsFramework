@@ -35,12 +35,13 @@
  *
  * ## Schema file
  *
- * The Drizzle schema lives at `./lib/db/schema.ts`. That file is also
- * not yet committed (the in-repo `NeonFreeThreadStore` consumes a
- * narrow `ThreadRepo` interface and is unit-tested with an in-memory
- * fake; the production schema lands with the Neon DB ACL story).
- * drizzle-kit only opens the schema file at `migrate` / `generate`
- * time, so its absence does not break config-load or `tsc --noEmit`.
+ * The Drizzle schema lives at `./lib/adapters/thread_store/db/schema.ts`,
+ * co-located with the `NeonThreadRepo` adapter that consumes it so all
+ * drizzle/neon vendor code stays inside `lib/adapters/**` (F-R2 SDK
+ * confinement). The hand-authored initial migration is at
+ * `./lib/adapters/thread_store/db/migrations/0000_init_threads.sql`.
+ * drizzle-kit only opens the schema file at `migrate` / `generate` time, so
+ * (with the CLI still absent) its presence does not affect `tsc --noEmit`.
  *
  * ## Credentials
  *
@@ -63,8 +64,8 @@ const APPLICATION_TABLES: readonly string[] = ["threads", "thread_messages"];
 
 const config: Config = {
   dialect: "postgresql",
-  schema: "./lib/db/schema.ts",
-  out: "./lib/db/migrations",
+  schema: "./lib/adapters/thread_store/db/schema.ts",
+  out: "./lib/adapters/thread_store/db/migrations",
   tablesFilter: [...APPLICATION_TABLES],
   dbCredentials: {
     url: process.env["DATABASE_URL"] ?? "",

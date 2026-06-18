@@ -433,6 +433,15 @@ class AgentRuntimeSettings(BaseSettings):
     memory_autocapture_enabled: bool = Field(
         default=False, validation_alias="MEMORY_AUTOCAPTURE_ENABLED"
     )
+    # Live-infra (Piece B): when present, the agent ring selects the durable
+    # Mem0MemoryBackend instead of the ephemeral InMemoryMemoryBackend so
+    # long-term memory survives a Cloud Run restart. Absent (dev/tests/CI) →
+    # in-memory. The key never leaves the composition root; the SAME value is
+    # already _require'd by build_adapters for the BFF async MemoryClient.
+    mem0_api_key: str = Field(default="", validation_alias="MEM0_API_KEY")
+    mem0_base_url: str = Field(
+        default="https://api.mem0.ai", validation_alias="MEM0_BASE_URL"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -683,16 +692,32 @@ def build_components(
     # imports MemoryClient or the Mem0 SDK). The service is built regardless of
     # memory_enabled so the graph shape is stable; the flag gates the calls.
     #
-    # v1 uses InMemoryMemoryBackend (zero new deps, tested surface). The prod
-    # Mem0MemoryBackend adapter (delegating to the already-wired Mem0CloudClient)
-    # is an AGENTS.md ⚠️ ask-first new horizontal service — it lands in a follow-up
-    # with explicit approval. Default-OFF flag means prod parity holds meanwhile.
+    # Backend selection (live-infra Piece B): with MEM0_API_KEY present the
+    # durable Mem0MemoryBackend is wired so memory persists across Cloud Run
+    # restarts; without it (dev / tests / CI) the ephemeral InMemoryMemoryBackend
+    # keeps zero-dep, fast, deterministic behavior. This is the "swap backend =
+    # one composition line" promise (plan §10) — nothing under orchestration/ or
+    # agent_ui_adapter/ changes. The sync Mem0MemoryBackend talks to the Mem0 SDK
+    # directly (the loop's recall/store nodes are sync); the BFF ring keeps its
+    # parallel ASYNC Mem0CloudClient. The graph reads only the sync MemoryBackend
+    # port via this service regardless of which backend is chosen.
     from services.long_term_memory import (
         InMemoryMemoryBackend,
         LongTermMemoryService,
     )
 
-    memory_service = LongTermMemoryService(InMemoryMemoryBackend())
+    if settings.mem0_api_key:
+        from services.memory_backends.mem0 import Mem0MemoryBackend
+
+        memory_backend = Mem0MemoryBackend(
+            api_key=settings.mem0_api_key,
+            base_url=settings.mem0_base_url,
+        )
+        _logger.info("memory backend: mem0 (durable)")
+    else:
+        memory_backend = InMemoryMemoryBackend()
+        _logger.info("memory backend: in-memory (ephemeral)")
+    memory_service = LongTermMemoryService(memory_backend)
 
     # Phase 2 typed background auto-capture: construct the post-run autocapture
     # seam at the root too. It runs OUTSIDE the graph hot path (the runtime
