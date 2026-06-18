@@ -145,6 +145,14 @@ resource "google_cloud_run_v2_service" "middleware" {
         value = "https://api.mem0.ai"
       }
 
+      env {
+        name  = "MEMORY_ENABLED"
+        value = "true"
+      }
+      # NOTE: MEMORY_AUTOCAPTURE_ENABLED is intentionally NOT set here — it
+      # defaults to false (shadow). Write-back is gated on the Phase-2 eval
+      # calibration clearing the Stage-6 enable-policy. Do not add it until then.
+
       # ── Secrets injected by Secret Manager ────────────────────────
       # The secret_key_ref blocks below mirror the
       # google_secret_manager_secret resources in secret-manager.tf.

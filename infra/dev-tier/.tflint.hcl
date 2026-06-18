@@ -6,7 +6,7 @@
 #     (deprecated_interpolation, unused_declarations, etc.).
 #   * The `google` plugin for GCP-specific rules (Cloud Run / Secret Manager
 #     deprecated fields, recommended labels, naming conventions).
-#   * The `cloudflare` plugin (lighter — primarily resource-name validation).
+#   (Cloudflare plugin removed 2026-06-18 — BFF is on Cloud Run, not Pages.)
 #
 # Run: `cd infra/dev-tier && tflint --init && tflint`
 ###############################################################################

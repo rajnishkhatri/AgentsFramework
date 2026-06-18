@@ -23,21 +23,10 @@ output "middleware_runtime_service_account_email" {
 }
 
 # ── Cloudflare ─────────────────────────────────────────────────────────────
-
-output "pages_subdomain" {
-  description = "*.pages.dev subdomain of the Cloudflare Pages project. Sprint 3 uses this for CORS allowlists and OAuth callback config."
-  value       = cloudflare_pages_project.frontend.subdomain
-}
-
-output "pages_project_name" {
-  description = "Pages project name. Used by the deploy CLI (`wrangler pages deploy`)."
-  value       = cloudflare_pages_project.frontend.name
-}
-
-output "cloudflare_zone_name" {
-  description = "DNS zone name (e.g. agent.example.com) the WAF + cache rulesets are attached to. Sourced from `data.cloudflare_zone.agent` so a future `terraform plan` re-confirms the zone exists at apply-time."
-  value       = data.cloudflare_zone.agent.name
-}
+#
+# Removed 2026-06-18: the V3 BFF is hosted on Cloud Run (`agent-frontend`),
+# not Cloudflare Pages. The Pages project + zone WAF stack was provisioned but
+# never cut over to. See docs note in infra/dev-tier/README.md.
 
 # ── Neon ───────────────────────────────────────────────────────────────────
 #
