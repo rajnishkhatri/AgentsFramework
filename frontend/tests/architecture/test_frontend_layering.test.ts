@@ -47,6 +47,7 @@ const SDK_PACKAGES = new Set<string>([
   "langfuse",
   "drizzle-orm",
   "@neondatabase/serverless",
+  "pg",
 ]);
 
 // Packages that the entire frontend may import freely (no architectural

@@ -31,6 +31,7 @@ import {
   ThreadStoreError,
   type ThreadRepo,
 } from "./neon_free_thread_store";
+import { classifyDsn, pgDrizzleDb } from "./pg_thread_repo";
 import { threads } from "./db/schema";
 
 interface ThreadRow {
@@ -223,18 +224,30 @@ function isoOf(value: unknown): string {
 }
 
 /**
- * Composition-root selector: durable Neon repo when `DATABASE_URL` is set,
- * else the ephemeral in-memory repo (dev / tests / CI). Pure given its env
- * argument so the choice is unit-testable without `server-only`. The Neon
- * branch constructs the SDK seam lazily — the vendor packages are only required
- * when a real connection string is present.
+ * Composition-root selector: a durable, driver-correct repo when `DATABASE_URL`
+ * is set, else the ephemeral in-memory repo (dev / tests / CI). Pure given its
+ * env argument so the choice is unit-testable without `server-only`. Both SDK
+ * seams construct lazily — the vendor packages only open a connection when a
+ * query runs, so this stays side-effect-free at selection time.
+ *
+ * The DSN decides the driver (`classifyDsn`), because one `DATABASE_URL` secret
+ * must route to the driver that can actually reach that database:
+ *   - `/cloudsql/` socket (prod Cloud SQL) → `pgDrizzleDb` (`pg` over the unix
+ *     socket). The Neon HTTP driver CANNOT dial a `/cloudsql/` socket, so this
+ *     branch is what makes binding the prod `database-url` on the BFF safe.
+ *   - `.neon.tech` host → `neonDrizzleDb` (the Neon serverless HTTP/WS driver).
+ *   - any other (generic TCP) → `pgDrizzleDb` (`pg` is the safe general driver).
+ * `NeonThreadRepo` is driver-agnostic (it wraps a `DrizzleLike`), so both seams
+ * feed the same repo class unchanged.
  */
 export function selectThreadRepo(
   env: Readonly<Record<string, string | undefined>>,
 ): ThreadRepo {
   const url = env.DATABASE_URL;
   if (url && url.trim()) {
-    return new NeonThreadRepo(neonDrizzleDb(url));
+    const db =
+      classifyDsn(url) === "neon" ? neonDrizzleDb(url) : pgDrizzleDb(url);
+    return new NeonThreadRepo(db);
   }
   return new InMemoryThreadRepo();
 }

@@ -1,8 +1,32 @@
 # Option B — Cloud SQL–compatible BFF ThreadRepo (durable sidebar on `agent-frontend`)
 
-> **Status:** PLANNED (parallel track). Created 2026-06-18 alongside Piece C option-A doc fixes.
+> **Status:** ✅ CODE COMPLETE 2026-06-18 (the code-only scope; live bind + Terraform
+> remain as the documented follow-up — §Verification 7 / §Deferred). Created 2026-06-18
+> alongside Piece C option-A doc fixes; validated against current code + decisions locked.
+>
+> **What shipped (uncommitted, TDD per `research/tdd_agentic_systems_prompt.md`):**
+> `frontend/lib/adapters/thread_store/pg_thread_repo.ts` (`pgDrizzleDb` + `classifyDsn`)
+> + `pg_thread_repo.test.ts` (22 tests: 9 classifyDsn, 9 seam incl. A5 failure-paths-first,
+> 4 selector routing) · `selectThreadRepo` now branches on `classifyDsn` (`/cloudsql/`+TCP →
+> pg, `.neon.tech` → neon, unset → in-memory) · `pg`^8 + `@types/pg` added · `pg` added to
+> `SDK_PACKAGES` + STYLE_GUIDE §2 · conformance catalogue documents the `pgDrizzleDb` factory
+> omission. **Gates:** thread_store 39/39, layering+conformance 31/31, `tsc --noEmit` clean,
+> full frontend suite **710/710**, `pg` confined to `adapters/thread_store/` (F-R2 verified).
+> Compliance: FRONTEND_PORTS_AND_ADAPTERS (F-R2 / adapter-sibling-import-only / A4-F-R8 no
+> vendor type escapes / A5 translation via the reused `NeonThreadRepo`) + TDD Protocol B
+> (mock at the `pg` boundary, real drizzle builds SQL, failure paths first). `next lint` is
+> not wired in this workspace (interactive setup prompt) — not runnable; tsc + tests stand in.
 > **Owner:** parallel work — this plan is self-contained.
-> **Companion:** [`docs/deploy/DEPLOY_PIECE_C.md`](../deploy/DEPLOY_PIECE_C.md) §BFF (which, after option A, will say the BFF stays on `InMemoryThreadRepo` until *this* lands).
+> **Companion:** [`docs/deploy/DEPLOY_PIECE_C.md`](../deploy/DEPLOY_PIECE_C.md) §BFF (which, after option A, says the BFF stays on `InMemoryThreadRepo` until *this* lands).
+>
+> **Decisions locked (2026-06-18):**
+> - **Driver:** `pg` ^8 + `@types/pg` over the `/cloudsql/` unix socket with the existing
+>   password secret + `--add-cloudsql-instances`. The IAM `@google-cloud/cloud-sql-connector`
+>   path is deferred. (`pg` is an ask-first new dep — **confirmed approved**.)
+> - **Rollout scope:** **code-only** here (pg repo + `selectThreadRepo` branch + tests +
+>   arch gate). The live `gcloud` bind and the `infra/gcp` Terraform secret-env/Cloud SQL
+>   volume are **documented as a follow-up** (§Verification 7 + §Deferred), not built —
+>   mirrors how Piece C option A handled the live step.
 
 ---
 
@@ -64,11 +88,15 @@ later hardening, not a v1 requirement.
 From [`tests/architecture/test_frontend_layering.test.ts`](../../frontend/tests/architecture/test_frontend_layering.test.ts):
 
 1. **F-R2 SDK confinement.** Vendor SDK imports may appear ONLY in `lib/adapters/**`.
-   The test maintains a `SDK_PACKAGES` allow-set (line ~39-49) that currently lists
-   `drizzle-orm`, `@neondatabase/serverless`, etc. **`pg` must be added to that set**,
-   or the new import is flagged. Deep subpaths are matched too
-   (`drizzle-orm/node-postgres` is already covered by the `drizzle-orm` entry +
-   the subpath logic at line ~154-161).
+   The test maintains a `SDK_PACKAGES` allow-set ([`test_frontend_layering.test.ts:39-49`](../../frontend/tests/architecture/test_frontend_layering.test.ts),
+   currently `drizzle-orm`, `@neondatabase/serverless`, etc.). **`pg` must be added to
+   that set** (line 49 area), or the new import is flagged. Deep subpaths are matched
+   too (`drizzle-orm/node-postgres` is already covered by the `drizzle-orm` entry + the
+   subpath logic at line ~154-161, verified).
+   - **The style guide already anticipates this.** `docs/STYLE_GUIDE_FRONTEND.md:157`
+     lists the anti-pattern as *"raw `pg` **outside** `adapters/thread_store/`"* — i.e.
+     `pg` *inside* `adapters/thread_store/` is the blessed location, exactly where this
+     plan puts it. So this is the intended home for the dep, not an exception.
 2. **C1/F1 — only the composition seam names concrete adapters.** `selectThreadRepo`
    already lives in the adapter and is called from
    [`bff/server_composition.ts:48`](../../frontend/lib/bff/server_composition.ts)
@@ -102,13 +130,17 @@ selectThreadRepo(env)
 ```
 
 **DSN discrimination** (so one secret value routes to the right driver):
-- Cloud SQL socket → the DSN contains `host=/cloudsql/` (or `/cloudsql/` anywhere,
-  matching `deploy_piece_c.sh`'s `case "$DATABASE_URL" in *"/cloudsql/"*`).
+- Cloud SQL socket → the DSN contains `/cloudsql/` anywhere. **Match `deploy_piece_c.sh`
+  exactly** (it uses `case "$DATABASE_URL" in *"/cloudsql/"*`, verified) so the script
+  and the BFF agree on what "is a Cloud SQL DSN" means — a substring test on `/cloudsql/`,
+  not a parsed `host=` field.
 - Neon → host ends in `.neon.tech` (or `neon.` substring), or `sslmode=require`
   with a TCP host. Default the *ambiguous TCP* case to `pg` (the safe general
   Postgres driver) and reserve `neon-http` for explicit `.neon.tech` hosts.
 - Keep this in a small pure `classifyDsn(url): "cloudsql" | "neon" | "tcp"` helper so
-  it is unit-testable without a live DB.
+  it is unit-testable without a live DB. **Routing:** `"neon"` → `neonDrizzleDb`;
+  `"cloudsql"` and `"tcp"` → `pgDrizzleDb` (pg is the correct driver for both a socket
+  and a generic TCP Postgres).
 
 **`pg` unix-socket config** (Google docs form): `pg` reads `host` as the socket
 *directory*; pass the connection string and let `pg` parse `host=/cloudsql/…`, OR
@@ -135,6 +167,14 @@ URL.
   insert/find/list/update round-trip the `ThreadRow` shape; list keyset pagination
   matches `neonDrizzleDb`; a driver rejection surfaces as `ThreadStoreError` (A5);
   `classifyDsn` maps `/cloudsql/` → "cloudsql", `.neon.tech` → "neon", bare TCP → "tcp".
+  - **Reuse the existing fake.** `neon_thread_repo.test.ts` already defines a
+    `makeFakeDb(seed)` behavioral fake of `DrizzleLike` (records + answers, no vendor
+    mock — verified at `neon_thread_repo.test.ts:46`). The *repo-level* behavior (the
+    `NeonThreadRepo` class over a `DrizzleLike`) is therefore ALREADY covered by that
+    suite and is unchanged. So this new test file's job is narrower: prove
+    `pgDrizzleDb(url)` correctly *adapts a `pg.Pool` to the `DrizzleLike` 4-op shape*
+    (mock the `Pool`/query at the `pg` boundary) + the `classifyDsn` table. Do not
+    re-test the pagination/soft-delete math — that lives in the repo, not the seam.
 - (optional) `frontend/lib/adapters/thread_store/select_thread_repo.test.ts` — if
   `selectThreadRepo` isn't already directly tested, add: socket DSN → pg branch,
   neon URL → neon branch, unset → in-memory. (Pure given its env arg, per the
@@ -157,20 +197,70 @@ URL.
   spirit only — it's already driver-agnostic; leaving the class name avoids churn,
   but a follow-up could rename it `DrizzleThreadRepo` (NON-goal here — see Deferred).
 - `frontend/package.json` — add `"pg": "^8.x"` (runtime dep) and
-  `"@types/pg": "^8.x"` (devDependency). **`pg` is a new dependency → this is an
-  ask-first item; confirm before adding.**
+  `"@types/pg": "^8.x"` (devDependency). **`pg` is a new dependency — approved
+  2026-06-18** (ask-first rule satisfied). Pin to a concrete `^8` minor at install
+  time and run `pnpm install` so the lockfile updates in the same change.
 - `frontend/tests/architecture/test_frontend_layering.test.ts` — add `"pg"` to the
-  `SDK_PACKAGES` set (line ~39-49) so the new vendor import is recognised as a
+  `SDK_PACKAGES` set (line 39-49, verified) so the new vendor import is recognised as a
   confined SDK, not an illegal leak. (`drizzle-orm/node-postgres` is already covered
-  by the existing `drizzle-orm` entry + subpath matching.)
-- `frontend/STYLE_GUIDE_FRONTEND.md` — add `pg` to the `THIRD_PARTY_SDK_PACKAGES`
-  list §2 (the architecture test mirrors this list; keep them in sync).
+  by the existing `drizzle-orm` entry + subpath matching at line ~154-161.)
+- `docs/STYLE_GUIDE_FRONTEND.md` — add `pg` to the third-party-SDK prose: §2 line 59
+  (the "Third-party SDKs … appear only inside `adapters/`" list) and reconcile line 157
+  (which currently calls "raw `pg` outside `adapters/thread_store/`" the anti-pattern —
+  so the *inside* case is already blessed; just make the allow-list line name `pg`
+  explicitly). The architecture test's `SDK_PACKAGES` and this prose must stay in sync
+  (the test header comment at line 38 points back to this §2 list). **Path correction:**
+  this file lives at `docs/STYLE_GUIDE_FRONTEND.md`, not `frontend/STYLE_GUIDE_FRONTEND.md`.
 
 **Reused unchanged (the seam-split dividend):** `NeonThreadRepo` class +
 `translate()` (A5), `DrizzleLike` port, `ThreadRow`, `NeonFreeThreadStore`,
 `db/schema.ts`, `drizzle.config.ts`, `0000_init_threads.sql`, all existing repo
 unit tests, and `server_composition.ts` (it calls `selectThreadRepo` — the branch
 is internal).
+
+---
+
+## Execution sequence (TDD order — each step ends green)
+
+All steps are in `frontend/`; run gates with `pnpm`. Nothing here touches the
+backend or prod. Commit boundaries suggested at the end of steps 1, 4, and 6.
+
+1. **Add the dep + arch allow-list FIRST (so later imports are legal).**
+   `pnpm add pg && pnpm add -D @types/pg`; add `"pg"` to `SDK_PACKAGES`
+   (`test_frontend_layering.test.ts:49`) and to the `docs/STYLE_GUIDE_FRONTEND.md`
+   §2 prose. Gate: `pnpm test tests/architecture/test_frontend_layering.test.ts` still
+   green (no illegal import yet, list just grew). *Commit 1: "chore(frontend): allow `pg` SDK in thread_store adapter".*
+
+2. **`classifyDsn` — pure helper, test-first.** Add the failing table test
+   (`/cloudsql/` → "cloudsql", `.neon.tech` → "neon", bare TCP → "tcp", empty → throw or
+   "tcp"), then implement. Co-locate in `pg_thread_repo.ts` (or a tiny `dsn.ts` if you
+   prefer it importable by the selector without pulling `pg`). Mirror
+   `deploy_piece_c.sh`'s `*"/cloudsql/"*` substring test. Gate: `pnpm test` for the new file.
+
+3. **`pgDrizzleDb(url): DrizzleLike` — the new SDK seam, test-first.** Write
+   `pg_thread_repo.test.ts` asserting the 4 ops adapt a mocked `pg.Pool` to the
+   `DrizzleLike` shape + a rejection → `ThreadStoreError` (A5). Implement as a near-copy
+   of `neonDrizzleDb` swapping `drizzle-orm/neon-http`+`neon()` for
+   `drizzle-orm/node-postgres`+`new Pool(...)`; module-scoped single `Pool`. Gate:
+   `pnpm test pg_thread_repo`.
+
+4. **Branch `selectThreadRepo`.** Apply the `classifyDsn`-based branch (the snippet in
+   §Files), update its docstring to the three-way choice, and add the selector test
+   (socket → pg seam, neon URL → neon seam, unset → in-memory — spy on the two seam
+   constructors; `selectThreadRepo` is already imported in `neon_thread_repo.test.ts`).
+   Gate: `pnpm test thread_store`. *Commit 2: "feat(frontend): route Cloud SQL DSN to a `pg` thread repo (option B)".*
+
+5. **Typecheck + arch + lint, whole frontend.** `pnpm tsc --noEmit` (the
+   `drizzle-orm/node-postgres` + `@types/pg` types resolve), `pnpm test
+   tests/architecture/` (the `pg` import is confined to `lib/adapters/**`), `pnpm lint`.
+
+6. **Full frontend suite — no regressions.** `pnpm test`. *Commit 3 (if anything else
+   moved): squash/cleanup.* This is the done line for the code-only scope.
+
+7. **(Out of this plan's build scope — documented for the operator.)** Local proxy
+   smoke (§Verification 6) and the live `gcloud` bind + Terraform durable form
+   (§Verification 7 + §Deferred). Do these when ready to flip the BFF; they are not
+   gated by this plan.
 
 ---
 
@@ -224,8 +314,10 @@ Add `frontend/lib/adapters/thread_store/pg_thread_repo.ts` exporting
 `drizzle-orm/node-postgres` + `pg.Pool`) and a pure `classifyDsn(url)` helper;
 branch `selectThreadRepo` (in `neon_thread_repo.ts:232`) so a `/cloudsql/` socket
 DSN routes to `pgDrizzleDb` while `.neon.tech` URLs keep `neonDrizzleDb`. Add `pg`
-+ `@types/pg` to `package.json` (ask-first dep), add `"pg"` to the `SDK_PACKAGES`
-allow-set in `test_frontend_layering.test.ts` and the STYLE_GUIDE list. The
++ `@types/pg` to `package.json` (dep approved 2026-06-18), add `"pg"` to the
+`SDK_PACKAGES` allow-set in `test_frontend_layering.test.ts:49` and the
+`docs/STYLE_GUIDE_FRONTEND.md` §2 list (the style guide already names `pg`-inside-
+`adapters/thread_store/` as the blessed location). The
 `NeonThreadRepo` class, error translation, schema, migration, and all repo tests are
 reused unchanged — the existing `DrizzleLike` seam split means only the SDK-touching
 factory is new. Gate with the four-pillar frontend checks (vitest + tsc + arch +

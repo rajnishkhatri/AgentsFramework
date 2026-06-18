@@ -56,7 +56,7 @@ A prescriptive style guide for the cross-process Frontend Ring that sits above `
 **What this guide enforces.** Three things, in priority order:
 
 1. **Dependency direction.** Every arrow points inward toward the two TypeScript shared kernels (`wire/` and `trust-view/`). No layer imports from a layer above it.
-2. **SDK isolation.** Third-party SDKs (CopilotKit, WorkOS, LangGraph SDK, Mem0, Langfuse, Drizzle, `@neondatabase/serverless`) appear only inside `frontend/lib/adapters/` or `middleware/adapters/`. They never leak into `ports/`, `wire/`, `trust-view/`, `translators/`, `transport/`, or any UI component.
+2. **SDK isolation.** Third-party SDKs (CopilotKit, WorkOS, LangGraph SDK, Mem0, Langfuse, Drizzle, `@neondatabase/serverless`, `pg`) appear only inside `frontend/lib/adapters/` or `middleware/adapters/`. They never leak into `ports/`, `wire/`, `trust-view/`, `translators/`, `transport/`, or any UI component.
 3. **Trust propagation.** `trace_id` originates in the Python runtime adapter and flows verbatim through every layer. The browser never generates one.
 
 **Relationship to other docs.**
@@ -154,7 +154,7 @@ This is the canonical list. Every rule, example, and anti-pattern in this docume
 | Generative UI | `useFrontendTool` (static) + `useComponent` rendered into `<iframe sandbox="allow-scripts">` only | `dangerouslySetInnerHTML`, unsandboxed iframe, `allow-same-origin`, `allow-top-navigation`, `allow-forms`, `eval` |
 | Auth | WorkOS AuthKit (`@workos-inc/authkit-nextjs`) wrapped behind `AuthProvider` port | NextAuth, Clerk, Auth0 SDK imports outside `adapters/auth/` |
 | Agent runtime client | LangGraph SDK (`@langchain/langgraph-sdk`) wrapped behind `AgentRuntimeClient` port | direct `fetch` to LangGraph URLs from components |
-| Thread storage | Drizzle ORM (`drizzle-orm`) over `@neondatabase/serverless` (V3) / Cloud SQL (V2), wrapped behind `ThreadStore` port | Prisma, Kysely, raw `pg` outside `adapters/thread_store/` |
+| Thread storage | Drizzle ORM (`drizzle-orm`) over `@neondatabase/serverless` (Neon) / `pg` over the Cloud SQL `/cloudsql/` socket (V2), wrapped behind `ThreadStore` port; `pg` is confined to `adapters/thread_store/` | Prisma, Kysely, raw `pg` outside `adapters/thread_store/` |
 | Memory | `mem0ai` SDK wrapped behind `MemoryClient` port (middleware-side only -- F-R9) | direct Mem0 SDK calls in BFF Route Handlers |
 | Observability | Langfuse Python SDK in middleware + browser-side `TelemetrySink` for RUM only | Sentry, Datadog browser SDK, `console.*` outside `adapters/` |
 | Feature flags | `EnvVarFlagsAdapter` reading `NEXT_PUBLIC_FF_*` (synchronous) | LaunchDarkly, Unleash, async flag fetches |

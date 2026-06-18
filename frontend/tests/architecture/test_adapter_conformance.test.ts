@@ -293,6 +293,13 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
     ).toEqual([
       // Known intentional omissions:
       "lib/adapters/auth/workos_server_sdk.ts", // server-only seam (D-V3-S3.7.1-RouteHandler)
+      // pgDrizzleDb is a DrizzleLike *factory* (option B, Cloud SQL), the same
+      // kind as the `neonDrizzleDb` factory co-located in neon_thread_repo.ts —
+      // not a class implementing a lib/ports/ interface. The ThreadRepo
+      // conformance is already covered by the NeonThreadRepo row (it wraps the
+      // DrizzleLike this factory produces). Its own DrizzleLike-adaptation +
+      // A5/F-R8 confinement is unit-tested in pg_thread_repo.test.ts.
+      "lib/adapters/thread_store/pg_thread_repo.ts",
     ]);
   });
 });
