@@ -112,6 +112,232 @@ class TestRoutes:
         assert b"[DONE]" in body
 
 
+# ── Chat-history sidebar endpoints (Phase 3) ──────────────────────────
+
+
+class TestThreadSidebarEndpoints:
+    # ── failure paths first (TAP-4) ──
+
+    def test_list_requires_bearer(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        assert client.get("/agent/threads").status_code == 401
+
+    def test_rename_requires_bearer(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        r = client.patch("/agent/threads/x", json={"title": "y"})
+        assert r.status_code == 401
+
+    def test_rename_rejects_empty_title(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        # Create one to target.
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "metadata": {}},
+            headers=_good_token(client),
+        ).json()
+        r = client.patch(
+            f"/agent/threads/{created['thread_id']}",
+            json={"title": ""},
+            headers=_good_token(client),
+        )
+        assert r.status_code == 422
+
+    def test_rename_unknown_thread_404(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        r = client.patch(
+            "/agent/threads/nope",
+            json={"title": "x"},
+            headers=_good_token(client),
+        )
+        assert r.status_code == 404
+
+    # ── acceptance ──
+
+    def test_create_sets_title_from_metadata_first_message(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={
+                "user_id": "team",
+                "metadata": {"first_message": "Plan my trip to Rome"},
+            },
+            headers=_good_token(client),
+        ).json()
+        assert created["title"] == "Plan my trip to Rome"
+
+    def test_create_defaults_title_when_no_first_message(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "metadata": {}},
+            headers=_good_token(client),
+        ).json()
+        assert created["title"] == "New chat"
+
+    def test_list_returns_only_callers_own_newest_first(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        for i in range(3):
+            client.post(
+                "/agent/threads",
+                json={"user_id": "team", "metadata": {"first_message": f"t{i}"}},
+                headers=_good_token(client),
+            )
+        listed = client.get("/agent/threads", headers=_good_token(client)).json()
+        assert len(listed["threads"]) == 3
+        # newest first
+        titles = [t["title"] for t in listed["threads"]]
+        assert titles == ["t2", "t1", "t0"]
+
+    def test_rename_updates_title(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "metadata": {}},
+            headers=_good_token(client),
+        ).json()
+        renamed = client.patch(
+            f"/agent/threads/{created['thread_id']}",
+            json={"title": "Renamed thread"},
+            headers=_good_token(client),
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["title"] == "Renamed thread"
+
+    def test_archive_hides_from_list(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "metadata": {"first_message": "doomed"}},
+            headers=_good_token(client),
+        ).json()
+        r = client.delete(
+            f"/agent/threads/{created['thread_id']}",
+            headers=_good_token(client),
+        )
+        assert r.status_code == 200
+        listed = client.get("/agent/threads", headers=_good_token(client)).json()
+        assert created["thread_id"] not in [t["thread_id"] for t in listed["threads"]]
+
+
+# ── Memory panel endpoints (Phase 3) ──────────────────────────────────
+
+
+def _make_app_with_memory(*, agent_id: str = "a1", owner: str = "team"):
+    """App wired with a real in-memory LongTermMemoryService for the panel."""
+    from agent_ui_adapter.server import build_app
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    facts = AgentFacts(
+        agent_id=agent_id,
+        agent_name="Bot",
+        owner=owner,
+        version="1.0.0",
+        capabilities=[Capability(name="agent.session.start")],
+    )
+    memory = LongTermMemoryService(InMemoryMemoryBackend())
+    app = build_app(
+        runtime=MockRuntime(events=[]),
+        jwt_verifier=InMemoryJwtVerifier(
+            token_to_claims={
+                "good": JwtClaims(
+                    subject=agent_id,
+                    expires_at=datetime.now(UTC) + timedelta(hours=1),
+                )
+            }
+        ),
+        agent_facts={facts.agent_id: facts},
+        long_term_memory=memory,
+    )
+    return app, memory
+
+
+class TestMemoryEndpoints:
+    # ── failure paths first (TAP-4) ──
+
+    def test_list_requires_bearer(self) -> None:
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).get("/agent/memory")
+        assert r.status_code == 401
+
+    def test_create_requires_bearer(self) -> None:
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).post("/agent/memory", json={"content": "x"})
+        assert r.status_code == 401
+
+    def test_list_returns_503_when_memory_not_wired(self) -> None:
+        # No long_term_memory injected → the panel is unavailable, not a 500.
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        r = client.get("/agent/memory", headers=_good_token(client))
+        assert r.status_code == 503
+
+    def test_create_rejects_empty_content(self) -> None:
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).post(
+            "/agent/memory", json={"content": ""}, headers={"Authorization": "Bearer good"}
+        )
+        assert r.status_code == 422
+
+    def test_create_rejects_client_supplied_user_id(self) -> None:
+        # Cross-user-leak guard: user_id is never client-supplied (extra=forbid).
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).post(
+            "/agent/memory",
+            json={"content": "x", "user_id": "victim"},
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 422
+
+    # ── acceptance ──
+
+    def test_create_then_list_round_trips_for_owner(self) -> None:
+        app, _ = _make_app_with_memory(owner="team")
+        client = TestClient(app)
+        h = {"Authorization": "Bearer good"}
+        created = client.post(
+            "/agent/memory",
+            json={"content": "prefers metric units", "type": "semantic"},
+            headers=h,
+        )
+        assert created.status_code == 200
+        listed = client.get("/agent/memory", headers=h)
+        assert listed.status_code == 200
+        items = listed.json()["items"]
+        assert any(i["content"] == "prefers metric units" for i in items)
+        assert all(i["type"] in ("semantic", "episodic", "procedural", None) for i in items)
+
+    def test_list_only_returns_callers_own_memory(self) -> None:
+        # Seed another user's memory directly; the caller (owner="team") must
+        # not see it.
+        app, memory = _make_app_with_memory(owner="team")
+        memory.store("someone-else", "k", {"text": "secret"}, metadata={"type": "semantic"})
+        client = TestClient(app)
+        listed = client.get("/agent/memory", headers={"Authorization": "Bearer good"})
+        contents = [i["content"] for i in listed.json()["items"]]
+        assert "secret" not in contents
+
+    def test_delete_removes_own_item(self) -> None:
+        app, _ = _make_app_with_memory(owner="team")
+        client = TestClient(app)
+        h = {"Authorization": "Bearer good"}
+        client.post(
+            "/agent/memory",
+            json={"content": "temp fact", "type": "semantic", "key": "k-del"},
+            headers=h,
+        )
+        r = client.delete("/agent/memory/k-del", headers=h)
+        assert r.status_code == 200
+        listed = client.get("/agent/memory", headers=h)
+        assert "k-del" not in [i["key"] for i in listed.json()["items"]]
+
+    def test_delete_requires_bearer(self) -> None:
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).delete("/agent/memory/k")
+        assert r.status_code == 401
+
+
 # ── Composition root: DI swappability ─────────────────────────────────
 
 

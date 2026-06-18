@@ -33,6 +33,7 @@ from agent_ui_adapter.wire.domain_events import (
     DomainEventBase,
     LLMMessageEnded,
     LLMMessageStarted,
+    MemoryRecalled,
     ReasoningSummarized,
     LLMTokenEmitted,
     RunFinishedDomain,
@@ -208,6 +209,19 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
                     "confidence": event.confidence,
                     "source": event.source,
                 },
+                raw_event=raw,
+            )
+        ]
+
+    if isinstance(event, MemoryRecalled):
+        # memory_layer_wiring Phase 3: rides Custom 'memory_recalled' (zero wire
+        # change); count only, never content (privacy invariant). The frontend
+        # translator special-cases the name into a memory_recalled UIRuntime
+        # event the reducer folds into the per-turn recall indicator.
+        return [
+            Custom(
+                name="memory_recalled",
+                value={"count": event.count},
                 raw_event=raw,
             )
         ]

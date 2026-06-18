@@ -315,3 +315,30 @@ describe("run_view_reducer — task understanding card (Phase 3)", () => {
     expect(v.understanding?.restated_intent).toBe("Create the file and verify it.");
   });
 });
+
+describe("run_view_reducer — recall count (memory_layer Phase 3)", () => {
+  const recalled = (count: number) =>
+    ({ type: "memory_recalled" as const, trace_id: TRACE, count });
+
+  it("emptyRunView starts with recalledCount 0", () => {
+    expect(emptyRunView().recalledCount).toBe(0);
+  });
+
+  it("memory_recalled folds the count onto the view without touching segments", () => {
+    const before = reduceAll([started(), delta("answer")]);
+    const after = reduceRunView(before, recalled(3));
+    expect(after.recalledCount).toBe(3);
+    expect(after.segments).toEqual(before.segments);
+  });
+
+  it("a later recall event overwrites the count (last-write-wins)", () => {
+    const v = reduceAll([started(), recalled(2), recalled(5)]);
+    expect(v.recalledCount).toBe(5);
+  });
+
+  it("the count survives the terminal freeze", () => {
+    const v = reduceAll([started(), recalled(2), completed()]);
+    expect(v.status).toBe("complete");
+    expect(v.recalledCount).toBe(2);
+  });
+});

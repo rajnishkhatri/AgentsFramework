@@ -7,11 +7,13 @@
  * and ARIA landmarks. Failure paths first (FD6).
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ChatShell } from "./chat-shell";
+import type { ChatSidebarsState } from "@/components/chat/use_chat_sidebars";
+import type { MemoryItem, ThreadState } from "@/lib/wire/agent_protocol";
 
 function dom(html: string): Document {
   return new JSDOM(`<!doctype html><html><body>${html}</body></html>`).window
@@ -21,6 +23,52 @@ function dom(html: string): Document {
 function render(email = "test@example.com"): Document {
   const html = renderToStaticMarkup(
     React.createElement(ChatShell, { userEmail: email }),
+  );
+  return dom(html);
+}
+
+function fakeThread(id: string, title: string): ThreadState {
+  return {
+    thread_id: id,
+    user_id: "u",
+    title,
+    messages: [],
+    created_at: "2026-06-17T00:00:00Z",
+    updated_at: "2026-06-17T00:00:00Z",
+    archived_at: null,
+  };
+}
+
+function fakeMemory(key: string, content: string): MemoryItem {
+  return { key, type: "semantic", content, salience: 0.5 };
+}
+
+function fakeSidebars(
+  overrides: Partial<ChatSidebarsState> = {},
+): ChatSidebarsState {
+  return {
+    threads: [],
+    memories: [],
+    memoryEnabled: false,
+    error: null,
+    reloadThreads: vi.fn(async () => undefined),
+    reloadMemories: vi.fn(async () => undefined),
+    renameThread: vi.fn(async () => undefined),
+    deleteThread: vi.fn(async () => undefined),
+    addMemory: vi.fn(async () => undefined),
+    deleteMemory: vi.fn(async () => undefined),
+    setMemoryEnabled: vi.fn(),
+    loadThreadTurns: vi.fn(async () => []),
+    ...overrides,
+  };
+}
+
+function renderWithSidebars(sidebars: ChatSidebarsState): Document {
+  const html = renderToStaticMarkup(
+    React.createElement(ChatShell, {
+      userEmail: "test@example.com",
+      sidebars,
+    }),
   );
   return dom(html);
 }
@@ -92,5 +140,49 @@ describe("ChatShell — layout structure", () => {
   it("has a <main> element for the messages area", () => {
     const main = render().querySelector("main");
     expect(main).toBeTruthy();
+  });
+});
+
+describe("ChatShell — Phase 3 side panels mounted", () => {
+  it("mounts the thread sidebar and renders a thread title (not the raw id)", () => {
+    const d = renderWithSidebars(
+      fakeSidebars({ threads: [fakeThread("t-abc", "Plan my trip")] }),
+    );
+    const sidebar = d.querySelector('[data-testid="thread-sidebar"]');
+    expect(sidebar).toBeTruthy();
+    const row = d.querySelector('[data-testid="thread-row-t-abc"]');
+    expect(row?.textContent).toContain("Plan my trip");
+    expect(row?.textContent).not.toContain("t-abc");
+  });
+
+  it("mounts the memory panel and renders a stored item", () => {
+    const d = renderWithSidebars(
+      fakeSidebars({ memories: [fakeMemory("k1", "prefers metric units")] }),
+    );
+    const panel = d.querySelector('[data-testid="memory-panel"]');
+    expect(panel).toBeTruthy();
+    expect(panel?.textContent).toContain("prefers metric units");
+  });
+
+  it("reflects the memory-enabled toggle state from the hook", () => {
+    const d = renderWithSidebars(fakeSidebars({ memoryEnabled: true }));
+    const toggle = d.querySelector(
+      '[data-testid="memory-enabled-toggle"]',
+    ) as HTMLInputElement | null;
+    expect(toggle?.hasAttribute("checked")).toBe(true);
+  });
+
+  it("shows the sidebar empty state when there are no threads", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    expect(d.querySelector('[data-testid="thread-empty"]')).toBeTruthy();
+  });
+
+  it("still renders the composer with both panels mounted", () => {
+    const d = renderWithSidebars(
+      fakeSidebars({ threads: [fakeThread("t1", "x")] }),
+    );
+    expect(
+      d.querySelector('textarea[aria-label="Compose message"]'),
+    ).toBeTruthy();
   });
 });

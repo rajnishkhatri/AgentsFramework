@@ -20,6 +20,7 @@ import {
   type PortBag,
 } from "../composition";
 import { makeWorkOSServerSDK } from "../adapters/auth/workos_server_sdk";
+import { selectThreadRepo } from "../adapters/thread_store/neon_thread_repo";
 
 let _bag: PortBag | null = null;
 let _middlewareUrl: string | null = null;
@@ -41,6 +42,12 @@ export function serverPortBag(): PortBag {
     workosSDK: makeWorkOSServerSDK(),
     env: process.env as Record<string, string | undefined>,
     baseUrl: middlewareUrl(),
+    // Live-infra (Piece C): durable Neon ThreadStore when DATABASE_URL is set,
+    // ephemeral in-memory otherwise. This is the one place a concrete thread
+    // repo is named — the composition seam (C1) is allowed to read env here.
+    threadRepo: selectThreadRepo(
+      process.env as Record<string, string | undefined>,
+    ),
   });
   return _bag;
 }

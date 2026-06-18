@@ -297,6 +297,59 @@ async def test_t1_recall_injected_and_store_fires(tmp_path):
     assert set(stored[0]["details"]).issubset({"user_id", "key", "error_kind"})
 
 
+# ── recalled_memories_count surfaced on state (for the UI indicator) ──────
+
+
+@pytest.mark.asyncio
+async def test_recall_count_surfaced_on_state(tmp_path):
+    """The route node writes recalled_memories_count (metadata only) so the
+    runtime adapter can emit a MemoryRecalled domain event. It equals the
+    number of records the search returned."""
+    spy = _SpyBackend()
+    service = LongTermMemoryService(spy)
+    service.store("u-demo", "seed-a", {"text": "prefers metric units"})
+    service.store("u-demo", "seed-b", {"text": "uses metric for cooking too"})
+    spy.put_calls.clear()
+
+    result, _cache = await _run_graph(
+        cache_dir=tmp_path,
+        agent_config=_cfg(memory_enabled=True),
+        memory_service=service,
+        task_input="metric",  # substring matches both seeds
+    )
+    assert result.get("recalled_memories_count") == 2
+
+
+@pytest.mark.asyncio
+async def test_recall_count_is_zero_when_flag_off(tmp_path):
+    """Flag OFF → recall never runs → count stays 0 (indicator renders nothing)."""
+    spy = _SpyBackend()
+    service = LongTermMemoryService(spy)
+    service.store("u-demo", "seed", {"text": "prefers metric units"})
+    spy.put_calls.clear()
+    result, _cache = await _run_graph(
+        cache_dir=tmp_path,
+        agent_config=_cfg(memory_enabled=False),
+        memory_service=service,
+        task_input="metric",
+    )
+    assert int(result.get("recalled_memories_count", 0) or 0) == 0
+
+
+@pytest.mark.asyncio
+async def test_recall_count_zero_on_degraded_backend(tmp_path):
+    """Backend raises → degraded recall → count 0 (matches the carrier)."""
+    spy = _SpyBackend(raise_on={"search"})
+    service = LongTermMemoryService(spy)
+    result, _cache = await _run_graph(
+        cache_dir=tmp_path,
+        agent_config=_cfg(memory_enabled=True),
+        memory_service=service,
+        task_input="metric",
+    )
+    assert int(result.get("recalled_memories_count", 0) or 0) == 0
+
+
 # ── T2 correctness: recall memoized once per run across a reflexion lap ────
 
 

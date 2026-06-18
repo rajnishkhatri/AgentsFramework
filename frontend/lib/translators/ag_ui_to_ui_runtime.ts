@@ -165,6 +165,25 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
         });
         return parsed.success ? [parsed.data] : [];
       }
+      if (evt.name === "memory_recalled") {
+        // memory_layer Phase 3: the transparent-recall count. Count only,
+        // never content. A malformed / negative payload emits nothing.
+        const v = evt.value as { count?: unknown };
+        if (
+          typeof v?.count !== "number" ||
+          !Number.isInteger(v.count) ||
+          v.count < 0
+        ) {
+          return [];
+        }
+        return [
+          {
+            type: "memory_recalled",
+            trace_id,
+            count: v.count,
+          },
+        ];
+      }
       if (evt.name === "step_meter") {
         const v = evt.value as { step?: unknown; step_name?: unknown };
         const step = typeof v.step === "number" ? v.step : 0;

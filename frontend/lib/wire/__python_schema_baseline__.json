@@ -980,8 +980,21 @@
     },
     "ThreadState": {
       "additionalProperties": false,
-      "description": "Response body of ``GET /agent/threads/{thread_id}``.",
+      "description": "Response body of ``GET /agent/threads/{thread_id}`` and items in the\n``GET /agent/threads`` list.\n\n``title`` is the sidebar label (Phase 3) — deterministic from the first\nuser message, user-renamable. ``archived_at`` is the soft-delete tombstone\n(set on archive; list/get filter it out).",
       "properties": {
+        "archived_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Archived At"
+        },
         "created_at": {
           "format": "date-time",
           "title": "Created At",
@@ -997,6 +1010,11 @@
         },
         "thread_id": {
           "title": "Thread Id",
+          "type": "string"
+        },
+        "title": {
+          "default": "New chat",
+          "title": "Title",
           "type": "string"
         },
         "updated_at": {

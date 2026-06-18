@@ -29,13 +29,34 @@ export const ThreadStateSchema = z
   .object({
     thread_id: z.string(),
     user_id: z.string(),
+    // Sidebar label (Phase 3): deterministic from the first message,
+    // user-renamable. archived_at is the soft-delete tombstone.
+    title: z.string().default("New chat"),
     messages: z.array(z.record(z.unknown())).default([]),
     created_at: z.string(),
     updated_at: z.string(),
+    archived_at: z.string().nullable().default(null),
   })
   .strict();
 
 export type ThreadState = z.infer<typeof ThreadStateSchema>;
+
+// ── ThreadListResponse / ThreadRenameRequest (Phase 3 sidebar) ──────────
+
+export const ThreadListResponseSchema = z
+  .object({
+    threads: z.array(ThreadStateSchema).default([]),
+    next_cursor: z.string().nullable().default(null),
+  })
+  .strict();
+export type ThreadListResponse = z.infer<typeof ThreadListResponseSchema>;
+
+export const ThreadRenameRequestSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+  })
+  .strict();
+export type ThreadRenameRequest = z.infer<typeof ThreadRenameRequestSchema>;
 
 // ── RunCreateRequest ───────────────────────────────────────────────────
 
@@ -90,3 +111,44 @@ export const TaskUnderstandingEditRequestSchema = z
 export type TaskUnderstandingEditRequest = z.infer<
   typeof TaskUnderstandingEditRequestSchema
 >;
+
+// ── Memory panel (Phase 3) ─────────────────────────────────────────────
+// Mirror of agent_ui_adapter/wire/agent_protocol.py MemoryItem /
+// MemoryListResponse / MemoryCreateRequest. snake_case on the wire (W6).
+// The panel shows the OWNER their own content by design; the privacy
+// invariant (no content in logs/carriers) is unaffected. No user_id field on
+// the create request — the subject is the verified bearer identity
+// (cross-user-leak guard).
+
+export const MemoryTypeSchema = z.enum([
+  "semantic",
+  "episodic",
+  "procedural",
+]);
+export type MemoryType = z.infer<typeof MemoryTypeSchema>;
+
+export const MemoryItemSchema = z
+  .object({
+    key: z.string(),
+    type: MemoryTypeSchema.nullable().default(null),
+    content: z.string(),
+    salience: z.number().nullable().default(null),
+  })
+  .strict();
+export type MemoryItem = z.infer<typeof MemoryItemSchema>;
+
+export const MemoryListResponseSchema = z
+  .object({
+    items: z.array(MemoryItemSchema).default([]),
+  })
+  .strict();
+export type MemoryListResponse = z.infer<typeof MemoryListResponseSchema>;
+
+export const MemoryCreateRequestSchema = z
+  .object({
+    content: z.string().min(1).max(2000),
+    type: MemoryTypeSchema.default("semantic"),
+    key: z.string().max(200).nullable().default(null),
+  })
+  .strict();
+export type MemoryCreateRequest = z.infer<typeof MemoryCreateRequestSchema>;

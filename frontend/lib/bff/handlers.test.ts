@@ -10,11 +10,18 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  makeMemoryCreateHandler,
+  makeMemoryDeleteHandler,
+  makeMemoryListHandler,
   makeRunCancelHandler,
+  makeThreadArchiveHandler,
   makeThreadCreateHandler,
   makeThreadGetHandler,
   makeThreadListHandler,
+  makeThreadRenameHandler,
 } from "./handlers";
+import type { MemoryStore } from "../ports/memory_store";
+import type { MemoryItem, MemoryType } from "../wire/agent_protocol";
 import {
   InMemoryThreadRepo,
   NeonFreeThreadStore,
@@ -234,5 +241,228 @@ describe("makeUnderstandingEditHandler (Phase 4 edit seam)", () => {
         }),
       }),
     );
+  });
+});
+
+// ── Memory panel handlers (Phase 3) ────────────────────────────────────
+
+class FakeMemoryStore implements MemoryStore {
+  items: MemoryItem[] = [];
+  removed: string[] = [];
+  async list() {
+    return this.items;
+  }
+  async add(content: string, type: MemoryType) {
+    const item: MemoryItem = { key: "k1", type, content, salience: null };
+    this.items.push(item);
+    return item;
+  }
+  async remove(key: string) {
+    this.removed.push(key);
+  }
+}
+
+describe("makeMemoryListHandler [B6]", () => {
+  it("returns 401 with no session (rejection first)", async () => {
+    const res = await makeMemoryListHandler({
+      auth: authYielding(null),
+      memoryStore: new FakeMemoryStore(),
+    })(new Request("http://x/api/memory"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns the caller's items on the happy path", async () => {
+    const store = new FakeMemoryStore();
+    store.items = [
+      { key: "k1", type: "semantic", content: "metric units", salience: 0.7 },
+    ];
+    const res = await makeMemoryListHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(new Request("http://x/api/memory"));
+    expect(res.status).toBe(200);
+    expect((await res.json()).items).toHaveLength(1);
+  });
+});
+
+describe("makeMemoryCreateHandler [B6]", () => {
+  it("returns 401 with no session (rejection first)", async () => {
+    const res = await makeMemoryCreateHandler({
+      auth: authYielding(null),
+      memoryStore: new FakeMemoryStore(),
+    })(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({ content: "x" }),
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 on malformed body", async () => {
+    const res = await makeMemoryCreateHandler({
+      auth: authYielding(ALICE),
+      memoryStore: new FakeMemoryStore(),
+    })(new Request("http://x/api/memory", { method: "POST", body: "{bad" }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 on empty content (schema gate)", async () => {
+    const res = await makeMemoryCreateHandler({
+      auth: authYielding(ALICE),
+      memoryStore: new FakeMemoryStore(),
+    })(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({ content: "" }),
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("adds a memory and echoes the created item", async () => {
+    const store = new FakeMemoryStore();
+    const res = await makeMemoryCreateHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({ content: "likes dark mode", type: "semantic" }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(store.items[0]?.content).toBe("likes dark mode");
+  });
+});
+
+describe("makeMemoryDeleteHandler [B6]", () => {
+  it("returns 401 with no session", async () => {
+    const res = await makeMemoryDeleteHandler({
+      auth: authYielding(null),
+      memoryStore: new FakeMemoryStore(),
+    })(new Request("http://x/api/memory/k", { method: "DELETE" }), {
+      params: { key: "k" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("removes the keyed item and returns 204", async () => {
+    const store = new FakeMemoryStore();
+    const res = await makeMemoryDeleteHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(new Request("http://x/api/memory/k1", { method: "DELETE" }), {
+      params: { key: "k1" },
+    });
+    expect(res.status).toBe(204);
+    expect(store.removed).toEqual(["k1"]);
+  });
+});
+
+describe("makeThreadRenameHandler [B6]", () => {
+  it("returns 401 with no session (rejection path first)", async () => {
+    const res = await makeThreadRenameHandler({
+      auth: authYielding(null),
+      threadStore: new NeonFreeThreadStore({ repo: new InMemoryThreadRepo() }),
+    })(
+      new Request("http://x/api/threads/t", {
+        method: "PATCH",
+        body: JSON.stringify({ title: "New title" }),
+      }),
+      { params: { id: "t" } },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when the title is empty (schema rejects)", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadRenameHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "" }),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when the caller is not the owner (no existence oracle)", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadRenameHandler({
+      auth: authYielding({ sub: "bob", org_id: null, roles: [], email: null }),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Hijack" }),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("renames on the happy path and returns the updated state", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadRenameHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ title: "Trip to Rome" }),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { title: string };
+    expect(body.title).toBe("Trip to Rome");
+  });
+});
+
+describe("makeThreadArchiveHandler [B6, A6 idempotent]", () => {
+  it("returns 401 with no session", async () => {
+    const res = await makeThreadArchiveHandler({
+      auth: authYielding(null),
+      threadStore: new NeonFreeThreadStore({ repo: new InMemoryThreadRepo() }),
+    })(new Request("http://x/api/threads/t", { method: "DELETE" }), {
+      params: { id: "t" },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it("archives the thread and returns 204 (hidden from subsequent list)", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadArchiveHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}`, { method: "DELETE" }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(204);
+    const page = await store.list(ALICE);
+    expect(page.threads).toHaveLength(0);
+  });
+
+  it("is idempotent for an unknown/non-owned id (still 204)", async () => {
+    const res = await makeThreadArchiveHandler({
+      auth: authYielding(ALICE),
+      threadStore: new NeonFreeThreadStore({ repo: new InMemoryThreadRepo() }),
+    })(new Request("http://x/api/threads/nope", { method: "DELETE" }), {
+      params: { id: "nope" },
+    });
+    expect(res.status).toBe(204);
   });
 });

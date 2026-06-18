@@ -106,22 +106,27 @@ def _build_paths() -> dict[str, Any]:
     return {
         "/agent/threads": {
             "get": {
-                "summary": "List threads",
+                "summary": "List the caller's own threads (newest-first, cursor)",
                 "operationId": "listThreads",
+                "parameters": [
+                    {
+                        "name": "cursor",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "string"},
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": False,
+                        "schema": {"type": "integer"},
+                    },
+                ],
                 "responses": {
-                    "200": {
-                        "description": "List of threads",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "$ref": "#/components/schemas/ThreadState"
-                                    },
-                                }
-                            }
-                        },
-                    }
+                    "200": _json_response(
+                        "ThreadListResponse", "The caller's threads"
+                    ),
+                    "401": {"description": "Unauthorized"},
                 },
             },
             "post": {
@@ -144,6 +149,41 @@ def _build_paths() -> dict[str, Any]:
                     }
                 ],
                 "responses": {"200": _json_response("ThreadState", "Thread state")},
+            },
+            "patch": {
+                "summary": "Rename a thread",
+                "operationId": "renameThread",
+                "parameters": [
+                    {
+                        "name": "thread_id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "requestBody": _request_body("ThreadRenameRequest"),
+                "responses": {
+                    "200": _json_response("ThreadState", "Renamed thread"),
+                    "401": {"description": "Unauthorized"},
+                    "404": {"description": "Thread not found"},
+                },
+            },
+            "delete": {
+                "summary": "Archive (soft-delete) a thread",
+                "operationId": "archiveThread",
+                "parameters": [
+                    {
+                        "name": "thread_id",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Archived"},
+                    "401": {"description": "Unauthorized"},
+                    "404": {"description": "Thread not found"},
+                },
             },
         },
         "/agent/runs/stream": {
@@ -188,6 +228,48 @@ def _build_paths() -> dict[str, Any]:
                 "responses": {
                     "200": _json_response("RunStateView", "Cancelled run state"),
                     "404": {"description": "Run not found"},
+                },
+            },
+        },
+        "/agent/memory": {
+            "get": {
+                "summary": "List the caller's own memory items",
+                "operationId": "listMemory",
+                "responses": {
+                    "200": _json_response(
+                        "MemoryListResponse", "The caller's memory items"
+                    ),
+                    "401": {"description": "Unauthorized"},
+                    "503": {"description": "Memory service unavailable"},
+                },
+            },
+            "post": {
+                "summary": "Add a user-authored memory",
+                "operationId": "createMemory",
+                "requestBody": _request_body("MemoryCreateRequest"),
+                "responses": {
+                    "200": _json_response("MemoryItem", "Created memory"),
+                    "401": {"description": "Unauthorized"},
+                    "503": {"description": "Memory service unavailable"},
+                },
+            },
+        },
+        "/agent/memory/{key}": {
+            "delete": {
+                "summary": "Delete one of the caller's memories",
+                "operationId": "deleteMemory",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "responses": {
+                    "200": {"description": "Deleted"},
+                    "401": {"description": "Unauthorized"},
+                    "404": {"description": "Memory not found"},
                 },
             },
         },

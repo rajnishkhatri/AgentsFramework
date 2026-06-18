@@ -962,6 +962,55 @@ class TestTaskUnderstandingChainEnd:
         assert cards[1].source == "user_edited"
 
 
+class TestMemoryRecalledChainEnd:
+    """memory_layer_wiring Phase 3: the ``route`` node's output carries
+    ``recalled_memories_count`` (metadata only); the runtime surfaces it as a
+    MemoryRecalled event once per distinct count, so the transparent-recall
+    indicator renders without re-emitting on every memoized reflexion lap."""
+
+    @pytest.mark.asyncio
+    async def test_count_surfaces_once_and_dedupes_reruns(self) -> None:
+        from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[
+                    _chain_end("route", {"recalled_memories_count": 2}),
+                    # Memoized re-entry with the same count must not re-emit.
+                    _chain_end("route", {"recalled_memories_count": 2}),
+                ]
+            )
+        )
+        out = await _collect(rt)
+        recalled = [e for e in out if isinstance(e, MemoryRecalled)]
+        assert len(recalled) == 1
+        assert recalled[0].count == 2
+
+    @pytest.mark.asyncio
+    async def test_missing_count_emits_nothing(self) -> None:
+        from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("route", {"selected_model": "m"})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, MemoryRecalled)]
+
+    @pytest.mark.asyncio
+    async def test_other_nodes_count_is_ignored(self) -> None:
+        from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("evaluate", {"recalled_memories_count": 5})]
+            )
+        )
+        out = await _collect(rt)
+        assert not [e for e in out if isinstance(e, MemoryRecalled)]
+
+
 # ── Phase 2: post-run autocapture seam ────────────────────────────────
 
 

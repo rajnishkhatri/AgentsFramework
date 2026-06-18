@@ -89,11 +89,24 @@ describe("ThreadStateSchema", () => {
     const value: ThreadState = {
       thread_id: "t1",
       user_id: "u1",
+      title: "Plan my trip",
       messages: [{ role: "user", content: "hi" }],
       created_at: "2026-04-24T00:00:00Z",
       updated_at: "2026-04-24T00:01:00Z",
+      archived_at: null,
     };
     expect(ThreadStateSchema.parse(value)).toEqual(value);
+  });
+
+  it("defaults title and archived_at when omitted", () => {
+    const parsed = ThreadStateSchema.parse({
+      thread_id: "t1",
+      user_id: "u1",
+      created_at: "2026-04-24T00:00:00Z",
+      updated_at: "2026-04-24T00:00:00Z",
+    });
+    expect(parsed.title).toBe("New chat");
+    expect(parsed.archived_at).toBeNull();
   });
 });
 

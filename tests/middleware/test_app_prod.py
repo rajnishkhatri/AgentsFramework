@@ -206,6 +206,223 @@ class TestAppProdHealthz:
         assert r.status_code == 401
 
 
+def _build_crud_client(
+    *,
+    memory_service: object | None = "default",
+    subject: str = "user_01CRUDSUBJECT",
+):
+    """Build a combined-app TestClient wired for the thread/memory CRUD surface.
+
+    Infra (JWT/GCS/Postgres/runtime) is mocked; the thread store is the real
+    in-memory ``_ThreadStore`` and ``memory_service`` is a real
+    ``LongTermMemoryService(InMemoryMemoryBackend())`` by default so the routes
+    exercise genuine owner-scoping. Pass ``memory_service=None`` to assert the
+    503 "memory unavailable" degradation path.
+
+    Returns ``(TestClient, subject)``.
+    """
+    from importlib import reload
+
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    if memory_service == "default":
+        memory_service = LongTermMemoryService(InMemoryMemoryBackend())
+
+    claims = MagicMock(subject=subject)
+    mock_jwt = MagicMock()
+    mock_jwt.verify.return_value = claims
+
+    mock_adapters = MagicMock()
+    mock_adapters.profile = "v3"
+    mock_adapters.jwt_verifier = mock_jwt
+
+    identity = AgentFacts(
+        agent_id=subject,
+        agent_name=subject,
+        owner=subject,
+        version="1.0.0",
+        description="CRUD test identity",
+        capabilities=[Capability(name="delegate.subagent.*")],
+        status=IdentityStatus.ACTIVE,
+    )
+    mock_registry = MagicMock()
+    mock_registry.get.return_value = identity
+
+    # Full typed component bag so memory_service reaches the route wiring.
+    mock_components = MagicMock()
+    mock_components.agent_facts_registry = mock_registry
+    mock_components.memory_service = memory_service
+
+    env = {
+        "GCP_EXECUTION_ENV": "cloudrun",
+        "ARCHITECTURE_PROFILE": "v3",
+        "GCS_FACTS_BUCKET": "test-facts",
+        "GCS_TRACES_BUCKET": "test-traces",
+        "AGENT_FACTS_SECRET": "test-secret",
+        "WORKOS_CLIENT_ID": "client_test",
+        "WORKOS_API_KEY": "sk_test",
+        "MEM0_API_KEY": "mem0_test",
+        "LANGFUSE_PUBLIC_KEY": "pk_test",
+        "LANGFUSE_SECRET_KEY": "sk_test",
+        "DATABASE_URL": "postgresql://test:test@localhost/test",
+    }
+
+    build_components_return = (
+        MagicMock(),  # agent_config
+        MagicMock(),  # tool_registry
+        mock_registry,
+        Path("/tmp/agent-cache"),
+        MagicMock(),  # goal_judge_config_reader
+    )
+
+    with patch.dict(os.environ, env, clear=False), \
+         patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()), \
+         patch(
+             "middleware.app_prod._load_graph_factory",
+             return_value=MagicMock(),
+         ), \
+         patch(
+             "middleware.composition.build_adapters",
+             return_value=mock_adapters,
+         ), \
+         patch(
+             "middleware.app_prod.LangGraphRuntime",
+             return_value=MagicMock(),
+         ):
+        import middleware.app_prod as mod
+
+        reload(mod)
+        with patch.object(
+            mod, "_build_components", return_value=build_components_return
+        ), patch.object(
+            mod, "_build_agent_components", return_value=mock_components
+        ):
+            app = mod.build_combined_app()
+
+    from fastapi.testclient import TestClient
+
+    return TestClient(app, raise_server_exceptions=False), subject
+
+
+_AUTH = {"Authorization": "Bearer test-token"}
+
+
+class TestAppProdThreadCrud:
+    """Piece A: the combined prod app serves the /agent/threads surface.
+
+    Failure paths first (missing bearer 401; cross-user 404) per TDD §OP-4.
+    """
+
+    def test_list_threads_rejects_missing_bearer(self) -> None:
+        client, _ = _build_crud_client()
+        r = client.get("/agent/threads")
+        assert r.status_code == 401
+
+    def test_create_then_list_roundtrip(self) -> None:
+        client, subject = _build_crud_client()
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": subject, "metadata": {"first_message": "hi there"}},
+            headers=_AUTH,
+        )
+        assert created.status_code == 200
+        tid = created.json()["thread_id"]
+        assert created.json()["title"] == "hi there"
+
+        listed = client.get("/agent/threads", headers=_AUTH)
+        assert listed.status_code == 200
+        ids = [t["thread_id"] for t in listed.json()["threads"]]
+        assert tid in ids
+
+    def test_get_rename_archive_lifecycle(self) -> None:
+        client, subject = _build_crud_client()
+        tid = client.post(
+            "/agent/threads",
+            json={"user_id": subject, "metadata": {}},
+            headers=_AUTH,
+        ).json()["thread_id"]
+
+        got = client.get(f"/agent/threads/{tid}", headers=_AUTH)
+        assert got.status_code == 200
+
+        renamed = client.patch(
+            f"/agent/threads/{tid}",
+            json={"title": "Renamed"},
+            headers=_AUTH,
+        )
+        assert renamed.status_code == 200
+        assert renamed.json()["title"] == "Renamed"
+
+        archived = client.delete(f"/agent/threads/{tid}", headers=_AUTH)
+        assert archived.status_code == 200
+        # Archived threads drop out of list and get.
+        assert client.get(f"/agent/threads/{tid}", headers=_AUTH).status_code == 404
+        listed = client.get("/agent/threads", headers=_AUTH).json()
+        assert tid not in [t["thread_id"] for t in listed["threads"]]
+
+
+class TestAppProdMemoryCrud:
+    """Piece A: the combined prod app serves the /agent/memory surface,
+    owner-scoped, with a 503 degrade when the service is unwired."""
+
+    def test_list_memory_rejects_missing_bearer(self) -> None:
+        client, _ = _build_crud_client()
+        r = client.get("/agent/memory")
+        assert r.status_code == 401
+
+    def test_memory_unavailable_returns_503(self) -> None:
+        client, _ = _build_crud_client(memory_service=None)
+        r = client.get("/agent/memory", headers=_AUTH)
+        assert r.status_code == 503
+
+    def test_create_list_delete_roundtrip(self) -> None:
+        client, _ = _build_crud_client()
+        created = client.post(
+            "/agent/memory",
+            json={"content": "prefers metric units", "type": "semantic"},
+            headers=_AUTH,
+        )
+        assert created.status_code == 200
+        key = created.json()["key"]
+
+        listed = client.get("/agent/memory", headers=_AUTH)
+        assert listed.status_code == 200
+        contents = [i["content"] for i in listed.json()["items"]]
+        assert "prefers metric units" in contents
+
+        deleted = client.delete(f"/agent/memory/{key}", headers=_AUTH)
+        assert deleted.status_code == 200
+        after = client.get("/agent/memory", headers=_AUTH).json()
+        assert key not in [i["key"] for i in after["items"]]
+
+    def test_memory_is_owner_scoped_not_client_supplied(self) -> None:
+        """The route writes under identity.owner — content for one subject is
+        invisible to a different subject (cross-user-leak guard)."""
+        shared_mem = None
+        from services.long_term_memory import (
+            InMemoryMemoryBackend,
+            LongTermMemoryService,
+        )
+
+        shared_mem = LongTermMemoryService(InMemoryMemoryBackend())
+        alice, _ = _build_crud_client(
+            memory_service=shared_mem, subject="user_ALICE"
+        )
+        bob, _ = _build_crud_client(
+            memory_service=shared_mem, subject="user_BOB"
+        )
+        alice.post(
+            "/agent/memory",
+            json={"content": "alice secret", "type": "semantic"},
+            headers=_AUTH,
+        )
+        bob_items = bob.get("/agent/memory", headers=_AUTH).json()["items"]
+        assert "alice secret" not in [i["content"] for i in bob_items]
+
+
 class TestAppProdAutoProvision:
     """Verify missing AgentFacts triggers auto-registration instead of 500."""
 

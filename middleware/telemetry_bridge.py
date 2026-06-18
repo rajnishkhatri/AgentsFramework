@@ -23,6 +23,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    MemoryRecalled,
     ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
@@ -53,7 +54,12 @@ _MAX_FIELD_BYTES = 4096
 # TaskUnderstood likewise: the artifact is already exported as the
 # eval.task_understanding observation and joined via STEP_PLANNED; the
 # domain event only feeds the soft-gate card.
+# MemoryRecalled likewise: the recall is already exported via the
+# MEMORY_RECALLED BlackBox carrier (Recording pillar) + the memory_recall
+# eval_capture observation; the domain event is a pure UI affordance (the
+# transparent-recall count), so exporting it again would only add noise.
 _SKIPPED_TYPES = (
+    MemoryRecalled,
     ReasoningSummarized,
     StateMutated,
     StepProgressed,

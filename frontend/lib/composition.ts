@@ -27,6 +27,7 @@ import {
   NeonFreeThreadStore,
   type ThreadRepo,
 } from "./adapters/thread_store/neon_free_thread_store";
+import { HttpMemoryStore } from "./adapters/memory_store/http_memory_store";
 import { EnvVarFlagsAdapter } from "./adapters/feature_flags/env_var_flags_adapter";
 import { CopilotKitRegistryAdapter } from "./adapters/tool_renderer/copilotkit_registry_adapter";
 import { CopilotKitUIRuntime } from "./adapters/ui_runtime/copilotkit_ui_runtime";
@@ -35,6 +36,7 @@ import type {
   AuthProvider,
   FeatureFlagProvider,
   MemoryClient,
+  MemoryStore,
   TelemetrySink,
   ThreadStore,
   ToolRendererRegistry,
@@ -57,6 +59,7 @@ export interface PortBag {
   readonly authProvider: AuthProvider;
   readonly threadStore: ThreadStore;
   readonly memoryClient: MemoryClient;
+  readonly memoryStore: MemoryStore;
   readonly telemetrySink: TelemetrySink;
   readonly featureFlagProvider: FeatureFlagProvider;
   readonly toolRendererRegistry: ToolRendererRegistry;
@@ -107,6 +110,14 @@ export function buildAdapters(opts: BuildAdaptersOptions): PortBag {
     repo: opts.threadRepo ?? new InMemoryThreadRepo(),
   });
 
+  // Memory panel CRUD forwards to the middleware over HTTP (F-R9: Mem0 keys
+  // stay in middleware; the BFF only relays the caller's bearer token).
+  const memoryStore = new HttpMemoryStore({
+    baseUrl,
+    fetchImpl: opts.fetchImpl,
+    getToken: () => auth.getAccessToken(),
+  });
+
   const ui = new CopilotKitUIRuntime({ runtimeClient: runtime });
 
   // V3 vs V2 currently differ only in substrate (Neon vs CloudSQL, Mem0 vs
@@ -122,6 +133,7 @@ export function buildAdapters(opts: BuildAdaptersOptions): PortBag {
     authProvider: auth,
     threadStore,
     memoryClient: new NullMemoryClient(),
+    memoryStore,
     telemetrySink: new NullTelemetrySink(),
     featureFlagProvider: flags,
     toolRendererRegistry: registry,

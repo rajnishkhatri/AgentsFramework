@@ -49,6 +49,38 @@ class TestBuildComponentsLocal:
         assert components.tool_registry.is_cacheable("shell") is False
 
 
+class TestMemoryBackendSelection:
+    """Live-infra Piece B: MEM0_API_KEY selects the durable Mem0 backend.
+
+    The backend only constructs the SDK client lazily (on first call), so this
+    asserts the SELECTION without any live Mem0 round-trip — failure path first.
+    """
+
+    def _service_backend(self, settings, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        components = build_components(settings, agent_root=tmp_path)
+        # LongTermMemoryService holds its backend privately; reach it for the
+        # selection assertion (this is a wiring contract test).
+        return components.memory_service._backend
+
+    def test_no_key_selects_in_memory_backend(self, tmp_path, monkeypatch):
+        from services.long_term_memory import InMemoryMemoryBackend
+
+        settings = AgentRuntimeSettings(agent_env="local", mem0_api_key="")
+        backend = self._service_backend(settings, tmp_path, monkeypatch)
+        assert isinstance(backend, InMemoryMemoryBackend)
+
+    def test_key_present_selects_mem0_backend(self, tmp_path, monkeypatch):
+        from services.memory_backends.mem0 import Mem0MemoryBackend
+
+        settings = AgentRuntimeSettings(
+            agent_env="local", mem0_api_key="mem0_test_key"
+        )
+        backend = self._service_backend(settings, tmp_path, monkeypatch)
+        assert isinstance(backend, Mem0MemoryBackend)
+
+
 class TestBuildComponentsProd:
     def test_prod_requires_gcs_facts_bucket(self, tmp_path):
         settings = AgentRuntimeSettings(agent_env="prod", gcs_facts_bucket="")

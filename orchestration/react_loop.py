@@ -998,6 +998,9 @@ def build_graph(
             # (one search per run). call_llm/supervisor READ that state.
             recalled_block = state.get("recalled_memories", "")
             recalled_task_id = state.get("recalled_memories_task_id", "")
+            # Carry the memoized count forward (a reflexion lap reuses it);
+            # overwritten with the fresh count when recall actually runs below.
+            recalled_count = int(state.get("recalled_memories_count", 0) or 0)
             recall_user_id = _memory_subject(
                 state.get("user_id", "") or configurable.get("user_id", "")
             )
@@ -1036,6 +1039,9 @@ def build_graph(
                         recall_error,
                     )
                 recalled_task_id = current_task_id
+                # The fresh count replaces the memoized one (0 on the degraded
+                # path, since recall_count stays 0 when the backend raised).
+                recalled_count = recall_count
                 # Recording pillar: a carrier even on the degraded path (count 0
                 # / error_kind) — a swallowed failure with no carrier is the
                 # silent failure the audit's Validation check flags. Never
@@ -1479,6 +1485,10 @@ def build_graph(
                 # not run this pass, since these mirror the state values).
                 "recalled_memories": recalled_block,
                 "recalled_memories_task_id": recalled_task_id,
+                # Metadata-only count for the UI's transparent-recall indicator
+                # (never content). The runtime adapter reads this off the route
+                # output to emit a MemoryRecalled domain event.
+                "recalled_memories_count": recalled_count,
             }
 
     # ── Story 1.1: call_llm_node with tool binding + multi-turn messages ──

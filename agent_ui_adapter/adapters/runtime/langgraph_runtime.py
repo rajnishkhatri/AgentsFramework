@@ -42,6 +42,7 @@ from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
     LLMMessageStarted,
     LLMTokenEmitted,
+    MemoryRecalled,
     ReasoningSummarized,
     RunFinishedDomain,
     RunStartedDomain,
@@ -105,6 +106,10 @@ class LangGraphRuntime:
         # the card renders once and re-renders only on a real change
         # (e.g. a Phase 4 user edit).
         self._last_task_understanding: dict | None = None
+        # memory_layer_wiring Phase 3: route re-runs every lap carrying the
+        # memoized recall count; dedupe so the transparent-recall indicator
+        # emits once per run (None = not yet emitted this run).
+        self._last_recall_count: int | None = None
 
     def _emit_trace(
         self,
@@ -243,6 +248,7 @@ class LangGraphRuntime:
         self._step_meter_count = 0
         self._live_tool_call_ids = set()
         self._last_task_understanding = None
+        self._last_recall_count = None
         try:
             async for raw in self._graph.astream_events(
                 stream_input, config=config, version="v2"
@@ -747,6 +753,17 @@ class LangGraphRuntime:
                         source=str(understanding.get("source", "deterministic")),
                     )
                 )
+
+            # memory_layer_wiring Phase 3: surface the recall count for the
+            # transparent-recall indicator. route_node writes recalled_memories_
+            # count (metadata only, never content); emit once per run, deduped on
+            # the value so a reflexion lap carrying the same memoized count does
+            # not re-emit. Count 0 still emits the first time (the indicator is a
+            # no-op at 0, but the event keeps the channel truthful for the run).
+            raw_count = output.get("recalled_memories_count")
+            if isinstance(raw_count, int) and raw_count != self._last_recall_count:
+                self._last_recall_count = raw_count
+                events.append(MemoryRecalled(trace_id=trace_id, count=raw_count))
 
         if node_name == "join" and isinstance(output, dict):
             # T3 fan-out: the join node synthesizes the merged worker_results
