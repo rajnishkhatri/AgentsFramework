@@ -123,35 +123,10 @@ variable "neon_database_name" {
   default     = "neondb"
 }
 
-# ── Cloudflare (S2.1.3) ─────────────────────────────────────────────────────
-
-variable "cloudflare_api_token" {
-  type        = string
-  description = "Cloudflare scoped API token (NOT the global API key)."
-  sensitive   = true
-}
-
-variable "cloudflare_account_id" {
-  type        = string
-  description = "Cloudflare account ID (dashboard sidebar)."
-}
-
-variable "cloudflare_zone_id" {
-  type        = string
-  description = "Cloudflare zone ID for the agent domain."
-}
-
-variable "cloudflare_pages_project_name" {
-  type        = string
-  description = "Pages project name (becomes <name>.pages.dev)."
-  default     = "agent-frontend-dev"
-}
-
-variable "cloudflare_pages_production_branch" {
-  type        = string
-  description = "Git branch deployed to production."
-  default     = "main"
-}
+# ── Cloudflare ───────────────────────────────────────────────────────────────
+# Removed 2026-06-18: the V3 BFF is hosted on Cloud Run (`agent-frontend`), not
+# Cloudflare Pages, so the cloudflare_* variables (api_token / account_id /
+# zone_id / pages_*) are gone. See README.md "Hosting" note for the rationale.
 
 # ── WorkOS public config (S2.1.4) ────────────────────────────────────────────
 

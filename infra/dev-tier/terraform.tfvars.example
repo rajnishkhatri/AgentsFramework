@@ -17,10 +17,8 @@ neon_region_id     = "aws-us-east-2"
 neon_database_name = "neondb"   # Project chose to adopt Neon's auto-created default DB; see variables.tf docstring.
 
 # ── Cloudflare ─────────────────────────────────────────────────────────────
-# My Profile → API Tokens → Create Token → custom scope.
-cloudflare_api_token  = "cloudflare_token_REPLACE_ME"
-cloudflare_account_id = "REPLACE_WITH_ACCOUNT_ID"
-cloudflare_zone_id    = "REPLACE_WITH_ZONE_ID"
+# Removed 2026-06-18: BFF runs on Cloud Run (agent-frontend), not Cloudflare
+# Pages — no cloudflare_* vars needed.
 
 # ── WorkOS public config ────────────────────────────────────────────────────
 workos_client_id = "client_REPLACE_ME"

@@ -2,7 +2,19 @@
 
 > Sprint 2 deliverable. See `[docs/plan/frontend/SPRINT_BOARD.md](../../docs/plan/frontend/SPRINT_BOARD.md)` §Epic 2.1 for the four user stories this stack implements.
 
-This stack provisions the GCP + Cloudflare + Neon substrate that the agent runs on. It is the **only** infrastructure boundary; everything app-side is wired through `composition` roots (`middleware/composition.py`, `frontend/lib/composition.ts`) that read the secrets and URLs this stack publishes.
+> **⚠ Hosting note (2026-06-18): Cloudflare removed — the BFF runs on Cloud Run, not Cloudflare Pages.**
+> The Sprint-2 plan hosted the Next.js BFF on Cloudflare Pages, but production
+> (Tier A) never cut over: the BFF is the `agent-frontend` **Cloud Run** service
+> (`infra/gcp/` + `scripts/deploy_gcp.sh`, `Dockerfile.frontend`), serving on its
+> `*.run.app` URL, pointed at `agent-backend-combined` via `MIDDLEWARE_URL`. The
+> `cloudflare-pages.tf` / `cloudflare-edge.tf` stack + the `cloudflare_*`
+> variables/outputs/provider have been **deleted**. The one live artifact that
+> was applied — the unused `agent-frontend-dev` Pages project — should be retired
+> with `tofu state rm`/dashboard delete (see "Retiring the Pages project" below).
+> Cloudflare-Pages references in the sections/cost tables below are **historical**.
+> Edge WAF/DDoS, if wanted later, is **Cloud Armor + an external HTTPS LB** on GCP.
+
+This stack provisions the GCP + Neon substrate that the agent runs on. It is the **only** infrastructure boundary; everything app-side is wired through `composition` roots (`middleware/composition.py`, `frontend/lib/composition.ts`) that read the secrets and URLs this stack publishes.
 
 ---
 
@@ -11,15 +23,15 @@ This stack provisions the GCP + Cloudflare + Neon substrate that the agent runs 
 
 | File                       | Sprint story | Provisions                                                                                                                             |
 | -------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `versions.tf`              | —            | Provider pins (google, cloudflare, neon, postgresql, random) + provider configs                                                        |
+| `versions.tf`              | —            | Provider pins (google, neon, postgresql, random) + provider configs                                                                    |
 | `variables.tf`             | —            | All inputs; secret-bearing vars are `sensitive = true`                                                                                 |
 | `backend.tf`               | —            | GCS remote state (bucket injected via `-backend-config`)                                                                               |
 | `cloud-run.tf`             | **S2.1.1**   | `agent-middleware` Cloud Run v2 service (min=0, 1 vCPU/2 GB, 3600 s timeout, startup CPU boost, /healthz probe) + dedicated runtime SA |
 | `neon.tf`                  | **S2.1.2**   | Neon Free project (import-existing) + `neondb` database (adopted default) + pgvector extension via `cyrilgdn/postgresql` provider       |
-| `cloudflare-pages.tf`      | **S2.1.3**   | Cloudflare Pages project for the BFF                                                                                                   |
-| `cloudflare-edge.tf`       | **S2.1.3**   | Zone data lookup (WAF + cache rules deferred — see file header for entitlement erratum; baseline managed ruleset active)                |
+| ~~`cloudflare-pages.tf`~~  | ~~S2.1.3~~   | **Removed 2026-06-18** — BFF on Cloud Run (`agent-frontend`), not Pages                                                                |
+| ~~`cloudflare-edge.tf`~~   | ~~S2.1.3~~   | **Removed 2026-06-18** — see Hosting note above                                                                                        |
 | `secret-manager.tf`        | **S2.1.4**   | 7 secrets (workos, openai, anthropic, langfuse public+secret, mem0, neon DB URL) + IAM accessor bindings to the runtime SA             |
-| `outputs.tf`               | —            | Cross-stack handoff: `middleware_url`, `pages_subdomain`, `cloudflare_zone_name`, `secret_ids`                                         |
+| `outputs.tf`               | —            | Cross-stack handoff: `middleware_url`, `secret_ids`                                                                                    |
 | `policies/*.rego`          | deep TDD     | Conftest/OPA policies — same invariants as the pytest suite, in Rego                                                                   |
 | `features/*.feature`       | deep TDD     | terraform-compliance BDD scenarios (run during apply phase)                                                                            |
 | `.tflint.hcl`              | deep TDD     | tflint rule config (terraform + google rulesets)                                                                                       |
@@ -71,17 +83,30 @@ These are the cloud accounts the stack needs *before* `tofu apply` will succeed.
 
 **Capture:** API key.
 
-### 3. Cloudflare
+### 3. ~~Cloudflare~~ — REMOVED (no longer required)
 
-1. Sign up at [https://dash.cloudflare.com](https://dash.cloudflare.com).
-2. Add a domain you own (or buy via Cloudflare Registrar ~$8/yr).
-3. Update nameservers at registrar.
-4. **Upgrade the zone to Pro ($25/mo)** — required for two Sprint 2 §S2.1.3 features:
-  - WAF custom-rule `log` / `count` action (Pro+ only; Free allows `block`/`challenge`/`skip` only)
-  - Cache Rules in `http_request_cache_settings` phase (Pro+ only; Free uses the legacy `cloudflare_page_rule` interface with a 3-rule quota)
-5. Create a custom API token with: Account → Pages Edit, Workers Edit; Zone → DNS Edit, Zone WAF Edit, Zone Settings Edit.
+> **2026-06-18:** Cloudflare is no longer part of this stack — no account, zone,
+> Pro upgrade, or API token is needed. The BFF runs on Cloud Run. The steps below
+> are kept struck-through for historical context only; skip them.
 
-**Capture:** account ID, zone ID, domain name, API token.
+~~1. Sign up at https://dash.cloudflare.com / add a domain / upgrade to Pro /
+create a Pages+Zone API token.~~ **(skip — not used)**
+
+#### Retiring the already-applied Pages project
+
+A `tofu apply` created one live Cloudflare resource: the `agent-frontend-dev`
+Pages project (in remote state as `cloudflare_pages_project.frontend`). Since the
+`.tf` is now deleted, remove it from state so the next plan doesn't error on the
+missing provider, and delete the project itself (it serves no traffic):
+
+```bash
+# from infra/dev-tier, after `tofu init` against the live backend:
+tofu state rm cloudflare_pages_project.frontend data.cloudflare_zone.agent
+# then delete the project in the Cloudflare dashboard (Workers & Pages →
+# agent-frontend-dev → Settings → Delete), or via API/wrangler.
+```
+
+(The WAF ruleset was never applied — nothing to remove there.)
 
 **Cost note**: Cloudflare Pro is the one substrate that breaks the V3-Dev-Tier "all free" promise. The sprint board's "Stage A → $5-30/mo" range assumes Cloudflare Pro is in. Without it, you can run on Free but lose WAF observability + cache-rule control on streaming routes.
 
@@ -185,7 +210,7 @@ Each substrate's upgrade path is composition-root-only per `FRONTEND_ARCHITECTUR
 | ----------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | Cloud Run min=0 → min=1 | Cold-start p95 > 500 ms after caching all reasonable code paths | `cloud-run.tf` `scaling.min_instance_count`                                    |
 | Neon Free → Pro         | Storage > 0.5 GB OR CU-hr exhausted                             | `neon.tf` (drop the project_settings overrides) + `terraform.tfvars` plan tier |
-| Cloudflare Free → Pro   | Image optimisation needed for F13 generative UI                 | `cloudflare-edge.tf` + zone tier in dashboard                                  |
+| Edge WAF/DDoS (if ever) | Public exposure needs L7 filtering                              | **Cloud Armor + external HTTPS LB** (GCP) — Cloudflare removed 2026-06-18      |
 | Self-hosted runtime     | >100 K LangGraph nodes/mo                                       | (out of scope here — switch profile in `frontend/lib/composition.ts`)          |
 
 

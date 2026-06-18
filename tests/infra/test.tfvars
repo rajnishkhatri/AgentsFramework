@@ -19,10 +19,7 @@ neon_api_key       = "neon_test_key_aaaaaaaaaaaaaaaaaaaa"
 neon_region_id     = "aws-us-east-2"
 neon_database_name = "agent_app"
 
-# Cloudflare — fake but well-formed.
-cloudflare_api_token  = "cf_test_token_aaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-cloudflare_account_id = "00000000000000000000000000000001"
-cloudflare_zone_id    = "00000000000000000000000000000002"
+# Cloudflare vars removed 2026-06-18 (BFF on Cloud Run, not Pages).
 
 # WorkOS public config
 workos_client_id = "client_test_fake_id"

@@ -1,5 +1,14 @@
 # Operations Runbook — V3-Dev-Tier
 
+> **⚠ Hosting note (2026-06-18): Cloudflare removed.** This runbook predates the
+> decision to host the BFF on Cloud Run (`agent-frontend`) instead of Cloudflare
+> Pages. Every "Cloudflare Pages" / "wrangler pages deploy" / "Cloudflare WAF"
+> reference below is **historical** — production serves entirely from Cloud Run
+> (`agent-frontend` + `agent-backend-combined`) on `*.run.app`, deployed via
+> `scripts/deploy_gcp.sh`. Edge WAF/DDoS, if added later, is Cloud Armor + an
+> external HTTPS LB. The `cloudflare-*.tf` stack has been deleted (see
+> `infra/dev-tier/README.md`).
+>
 > **Sprint**: 4 §S4.3.1
 >
 > **Audience**: Operators and on-call engineers managing the agent platform.
