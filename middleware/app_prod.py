@@ -127,27 +127,28 @@ def build_combined_app() -> FastAPI:
     Called by uvicorn with --factory flag:
         uvicorn middleware.app_prod:build_combined_app --factory
     """
+    # _build_components() is the 5-tuple compat shim (existing tests patch it
+    # to inject the registry/cache/reader fixtures); the graph-shaping members
+    # (agent_config, tool_registry, settings) are intentionally discarded here
+    # because the graph is built from the full bag below, not a partial rebuild.
     (
-        agent_config,
-        tool_registry,
+        _agent_config,
+        _tool_registry,
         agent_facts_registry,
         cache_dir,
         goal_judge_reader,
     ) = _build_components()
-    settings = AgentRuntimeSettings(agent_env="prod")
-    # Full typed bag carries the injected LongTermMemoryService (memory_service)
-    # + autocapture; the 5-tuple shim above intentionally drops them, so the
-    # /agent/memory routes below read the service from this bag instead.
-    full_components = _build_agent_components()
-    components = AgentComponents(
-        agent_config=agent_config,
-        tool_registry=tool_registry,
-        agent_facts_registry=agent_facts_registry,
-        cache_dir=cache_dir,
-        goal_judge_config_reader=goal_judge_reader,
-        settings=settings,
-    )
-    memory_service = getattr(full_components, "memory_service", None)
+    # The full typed bag is the SINGLE source the graph is built from. A
+    # previous version hand-rebuilt a narrow AgentComponents here (copying
+    # agent_config/tool_registry/.../settings) and passed THAT to
+    # build_runtime_graph, silently dropping memory_service + memory_autocapture
+    # (they fell back to the dataclass None default) -> the graph compiled
+    # memory-blind, so recall/store/autocapture never fired in prod even with
+    # MEMORY_ENABLED=true. Always hand build_runtime_graph the full bag; the
+    # regression guard in tests/middleware/test_app_prod_memory_wiring.py pins
+    # that the graph's components carry a non-None memory_service.
+    components = _build_agent_components()
+    memory_service = getattr(components, "memory_service", None)
     threads = _ThreadStore()
     build_graph = _load_graph_factory()
 

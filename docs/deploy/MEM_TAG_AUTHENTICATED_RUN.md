@@ -230,6 +230,7 @@ from PENDING → the real verdict, and flip Verification 4 in the plan.
 | Symptom | Cause | Fix |
 |---|---|---|
 | `401` on `/run/stream` | missing/expired/wrong-audience token | re-capture a fresh WorkOS token; confirm `exp` in the future + `iss` is workos |
-| stream returns but `fetch_memory_trace.py` exits 2 | run hit prod, not the `mem` tag; or memory off; or two different users | confirm `$TAG_URL`/`MIDDLEWARE_URL`; grep backend logs for `memory backend`; reuse one login |
+| stream returns 200 but `fetch_memory_trace.py` exits 2 (no carriers) | **most likely the stale-image trap:** the tag's image predates the `app_prod.py` memory-wiring fix → graph built memory-blind (recall/store never ran). Also possible: hit prod not the tag; two different users; or Langfuse ingest lag. | grep backend logs for `memory.recall`/`memory.store` (DEPLOY_PIECE_C §3d) — **zero lines = memory-blind graph, rebuild + redeploy the tag with a current-HEAD image**; else confirm `$TAG_URL`/one login; wait 30–60s for Langfuse |
+| `fetch_memory_trace.py` 429-storms / exits 2 mid-scan | Langfuse public API rate limit (Hobby = 1000 req/min, per-org); the fallback trace-scan bursts | not a real "no carriers" verdict — corroborate with Cloud Logging (§3d); wait ~60s and re-run name-query; don't trust exit-2 during a 429 storm |
 | recall turn doesn't recall | different `sub` between turns, or store hadn't completed | same user both turns; the store fires at run-end, so do them sequentially |
 | WorkOS login fails on the `memui` tag host | callback URL not allow-listed | add the tag URL to WorkOS AuthKit redirect URIs, or use Path B |

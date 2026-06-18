@@ -28,6 +28,19 @@ GCP_PROJECT_ID=agent-prod-gcp-dev MIDDLEWARE_IMAGE="$IMG" bash scripts/deploy_pi
 
 ## 0. Build + push the agent image — REQUIRED FIRST (don't skip)
 
+> **⚠ The existing `mem` tag (`agent-backend-combined-00083-wal`) is STALE — rebuild it.**
+> That revision's image was built before the `middleware/app_prod.py` memory-wiring
+> fix (2026-06-18). It had `MEMORY_ENABLED=true` but its graph was built from a
+> narrow `AgentComponents` that dropped `memory_service` → recall/store NEVER fired;
+> an authenticated run emitted **zero** memory carriers even though everything
+> *looked* configured (flag on, real user_id, `memory backend: mem0 (durable)`
+> logged). `MEMORY_ENABLED=true` is necessary but **not sufficient** — you MUST
+> redeploy from an image that contains the fix (built after that commit), and then
+> verify carriers actually appear (§3d). Building a fresh `$IMG` below from current
+> `HEAD` is exactly what picks the fix up. The regression guard
+> `tests/middleware/test_app_prod_memory_wiring.py` now pins that the prod graph is
+> built with a non-None `memory_service`, so this class of silent drop can't recur.
+
 > **Why the script REQUIRES `MIDDLEWARE_IMAGE`.** A `gcloud run deploy` **without**
 > `--image` re-deploys whatever image the service currently has. If you ever point
 > the script at a freshly-Terraform-created service (whose `middleware_image`
@@ -118,13 +131,33 @@ psql "host=/tmp/cloudsql/agent-prod-gcp-dev:us-central1:agent-db dbname=agent us
 #     /agent/memory both 401 without a WorkOS JWT), then restart-survives:
 #     POST /agent/memory  →  GET /agent/memory  →  redeploy tag  →  GET again (still there)
 #   Tag URL: https://mem---agent-backend-combined-<hash>-uc.a.run.app
+
+# (d) CARRIERS ACTUALLY FIRED — the check that catches a memory-blind graph.
+#     After ONE authenticated /run/stream on the tag (a "remember" turn), confirm
+#     the run emitted memory carriers. Cheapest source = Cloud Logging (not
+#     rate-limited, unlike the Langfuse public API):
+gcloud run services logs read agent-backend-combined \
+  --project=$GCP_PROJECT_ID --region=$GCP_REGION --limit=200 \
+  | grep -iE "memory\.recall|memory\.store|memory\.(recall|store) degraded"
+#   expect at least one recall/store line. ZERO lines after a from-step-0 authed
+#   run = the graph is memory-blind (the §0 stale-image trap) — rebuild + redeploy.
+#   Then fetch the trace for the audit:
+.venv/bin/python scripts/fetch_memory_trace.py --since "$(date -u -v-15M +%Y-%m-%dT%H:%M:%SZ)"
+#   exit 0 = carriers found (path printed); exit 2 = none (see the stale-image trap).
 ```
 
+> **`MEMORY_ENABLED=true` is necessary but NOT sufficient.** A green health body and
+> the `memory backend: mem0 (durable)` boot log do NOT prove recall/store ran — both
+> are true even when the graph was built memory-blind. The ONLY proof is a carrier
+> from an authenticated run (§3d). Always run §3d before declaring the deploy good.
+
 > **Audit gate (plan Verification 4):** after one authenticated from-step-0 run on
-> the tag (a "remember" turn + a "recall" turn with the same `user_id`), run the
-> `governance-trace-audit` skill on that trace. See
-> [`docs/reviews/governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md)
-> — currently PENDING because the only tag request so far was a 401.
+> the tag (a "remember" turn + a "recall" turn with the same `user_id`), confirm
+> carriers fired (§3d), then run the `governance-trace-audit` skill on that trace.
+> See [`docs/reviews/governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md).
+> History: the first authed run (2026-06-18, rev `00083-wal`) emitted **zero**
+> carriers — root-caused to the `app_prod.py` wiring drop (now fixed); audit was
+> blocked on it, not on auth. Re-run on a rebuilt tag before auditing.
 
 ## §BFF — the chat sidebar is NOT durable yet (do not bind `DATABASE_URL` on `agent-frontend`)
 
