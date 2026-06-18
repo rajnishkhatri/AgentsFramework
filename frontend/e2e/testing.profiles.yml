@@ -52,3 +52,26 @@ profiles:
     requires:
       backend_loops: "REFLEXION_ENABLED=1 PLANNING_PLAN_SOURCE=generated (tagged revision)"
       goal_judge: "gs://agent-prod-gcp-dev-agent-facts/ops/goal_judge_config.json"
+
+  # ── memory-ON tagged revision for the cross-session memory stress run
+  #    (memory_multisession_e2e_stress plan §4). The mem: thread bridge carries a
+  #    per-case user_id, so the BFF must point at the memory-on backend. base_url
+  #    is the --tag mem frontend revision (its MIDDLEWARE_URL must point at the
+  #    mem-tagged backend revision, MEMORY_ENABLED=true). ──
+  mem:
+    # The live memory-ON frontend tag is `memui` (its MIDDLEWARE_URL points at
+    # the mem-tagged backend). There is no `mem` frontend tag — `mem` is the
+    # BACKEND tag. Override per-run with BASE_URL if the tag moves.
+    base_url: "https://memui---agent-frontend-w65nrxwkiq-uc.a.run.app"
+    env:
+      E2E_AUTHENTICATED: "1"
+      # default to the full corpus, all abilities; override per-run on the CLI
+      # (e.g. MEM_SMOKE=1 for one-case-per-ability carrier confirmation).
+      MEM_ABILITY: ""
+      MEM_LIMIT: ""
+    # Documents the BACKEND posture this profile EXPECTS (NOT applied by the
+    # loader — deploy concern); printed as a reminder so a memory run against a
+    # memory-OFF revision is caught early (every recall probe would show count:0).
+    requires:
+      backend_memory: "MEMORY_ENABLED=true (--tag mem backend revision; full_components fix deployed)"
+      mem_backend: "Mem0MemoryBackend wired (MEM0_API_KEY present on the revision)"
