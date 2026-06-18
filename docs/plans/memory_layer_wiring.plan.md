@@ -38,17 +38,25 @@
 - **Track 1 (user) — Piece C deploy.** Deliverables ready + **drift-corrected 2026-06-18**: [`scripts/deploy_piece_c.sh`](../../scripts/deploy_piece_c.sh) + [`docs/deploy/DEPLOY_PIECE_C.md`](../deploy/DEPLOY_PIECE_C.md). Flow: pull `DATABASE_URL` from Secret Manager (`database-url` = **Cloud SQL**, not Neon — see §DB) → `psql` migration (auto-skips with Cloud SQL Auth Proxy guidance for a `/cloudsql/` socket) → `gcloud run deploy --image $MIDDLEWARE_IMAGE --tag mem --no-traffic` with `MEMORY_ENABLED=true` (autocapture stays shadow) → smoke `/health` (then `/healthz`) asserting `runtime:langgraph`. **NO `tofu apply`** (the prod DB secret already exists, provisioned by `infra/gcp/`; the old dev-tier Neon apply was removed). One durable config edit = add `MEMORY_ENABLED` to the backend env in `infra/gcp/` (§1). **The BFF `DATABASE_URL` binding is NOT in this deploy and is currently BLOCKED — see Remaining #3 + [`bff_cloudsql_thread_repo.plan.md`](bff_cloudsql_thread_repo.plan.md).** Prod untouched until promote. (Build the image with `docker build -f Dockerfile.backend` + `docker push`, like `deploy_gcp.sh`; `gcloud builds submit` has no `-f` flag.)
 - **Track 2 (Claude) — Phase-2 eval calibration harness.** ✅ **BUILT 2026-06-18.** Stage-6 scorer [`services/governance/memory_extractor_calibration.py`](../../services/governance/memory_extractor_calibration.py) (framework-clean, reuses `iaa.krippendorff_alpha_nominal`) computes the 5 enable gates (store-class precision ≥0.90, false-store-on-trivia ≤0.02, mis-type ≤0.10, **PII-flip ==0 hard**, κ ≥0.60; recall reported-not-gated; NaN-precision blocks). CLI [`scripts/eval/memory_extractor_calibrate.py`](../../scripts/eval/memory_extractor_calibrate.py) (`--proposals` / `--shadow` Langfuse export / `--run-extractor` gated). Synthetic dev gold + proposals under `docs/recipes/memory_extractor/samples/` exercise it now → clean run = `ENABLE-ELIGIBLE` exit 0, dirty run (PII flip + over-capture + mis-type) = `BLOCKED` exit 1. Runbook [`04_calibration_runbook.md`](../recipes/memory_extractor/04_calibration_runbook.md) ties Stage 0→6 to the shadow traces the deploy will emit. Tests: calibration scorer **11/0** (gate boundaries + hard-zero PII + NaN-blocks), architecture clean (`-k 'not swap_radius'`). **Still gated on real data:** Stages 0–5 (collect ≥100 shadow traces from the deploy → code → freeze taxonomy κ≥0.80 → label gold α≥0.80) before the Stage-6 verdict can flip `MEMORY_AUTOCAPTURE_ENABLED`.
 
-> **⚠ DEPLOY STATUS 2026-06-18 (governance-audit attempt → AUDIT PENDING, deploy is CORRECT).**
-> The real memory-ON deploy is the **`mem` tag on `agent-backend-combined`** (rev
-> `00083-wal`, created 09:58Z): real agent image, `MEMORY_ENABLED=true`, `MEM0_API_KEY`
-> + `DATABASE_URL` (secret `database-url`) wired, autocapture **shadow** (default),
-> `--tag mem --no-traffic` → **prod untouched on `00075-8js`**. Exactly the intended
-> posture. The audit could **not complete only because no authenticated run has hit
-> the tag yet** — the single `/run/stream` request to it (10:04Z) returned **401**
-> (bearer auth), so 0 traces / 0 `memory.recalled`/`memory.stored` carriers. **Not a
-> blocker, not an instrumentation fault — just unexercised.** Verdict: PENDING; needs
-> one authenticated from-step-0 run (remember-turn + recall-turn, same `user_id`) then
-> re-audit. Full report: [`docs/reviews/governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md).
+> **✅ DEPLOY STATUS 2026-06-18 (RESOLVED — audit COMPLIANT WITH FINDINGS, memory verified live).**
+> The memory-ON deploy is the **`mem` tag on `agent-backend-combined`**: real agent
+> image, `MEMORY_ENABLED=true`, autocapture **shadow**, `--tag mem --no-traffic` →
+> prod untouched. **History:** the first authenticated runs emitted ZERO carriers
+> despite flag-on + real user_id + durable Mem0 — root-caused (NOT a rate limit) to a
+> wiring drop in `middleware/app_prod.py` (`build_combined_app` rebuilt a narrow
+> `AgentComponents` that dropped `memory_service`/`memory_autocapture` → graph
+> memory-blind). **Fixed** (graph built from the full bag) + **regression guard**
+> `tests/middleware/test_app_prod_memory_wiring.py` (2 tests, fail-on-bug/pass-on-fix).
+> After rebuild + redeploy, trace `ef236f957b6c4e64a723bee71d857d5b` carries the full
+> set: `memory.recalled` count=3, `memory.stored` (run-end key) + `memory.stored`
+> (autocapture-shadow `proposed_only:True`), all content-free, same subject. **Audit =
+> COMPLIANT WITH FINDINGS** (sole finding = a run-level corrupt success the judge
+> caught). LESSON: `MEMORY_ENABLED=true` + healthy + `memory backend: mem0 (durable)`
+> log are necessary but **not sufficient** — only a carrier from an authed run proves
+> it (DEPLOY_PIECE_C §3d now enforces). Reports:
+> [`governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md)
+> + [`governance_audit_ef236f95_2026-06-18.md`](../reviews/governance_audit_ef236f95_2026-06-18.md);
+> full per-case validation: [`memory_layer_validation_walkthrough_2026-06-18.md`](../reviews/memory_layer_validation_walkthrough_2026-06-18.md).
 >
 > *Correction to an earlier draft of this callout:* the first audit chased
 > **`agent-middleware`** (an **orphaned V3-dev-tier** service on the `hello`
@@ -69,12 +77,12 @@
 > "opens whatever DATABASE_URL it's handed" note was wrong; corrected in §BFF.)
 
 **Remaining (after the two tracks land):**
-1. **Exercise the `mem` tag with one authenticated run** → completes the governance audit (#4) and starts producing the shadow-trace corpus. *Trace-fetch tooling is READY:* [`scripts/fetch_memory_trace.py`](../../scripts/fetch_memory_trace.py) (read-only, queries Langfuse by `memory.recalled`/`memory.stored` carrier name, 429-skip in fallback; 7 unit tests `tests/scripts/test_fetch_memory_trace.py`; plan [`fetch_memory_trace.plan.md`](fetch_memory_trace.plan.md)). **Still user-owned** (needs a WorkOS bearer JWT + real `user_id`; the one tag hit so far was a 401).
+1. ✅ **DONE — `mem` tag exercised with authenticated runs.** Trace `ef236f957b6c4e64a723bee71d857d5b` carries `memory.recalled` (count=3) + 2× `memory.stored`; completed the governance audit (#4) and produced the first Stage-0 shadow-corpus row (the autocapture `proposed_only:True` carrier). Trace-fetch tooling [`scripts/fetch_memory_trace.py`](../../scripts/fetch_memory_trace.py) used live (exit 0). *Required the `app_prod.py` wiring fix first — see DEPLOY STATUS callout.* **One-time follow-up:** a from-step-0 run would close the Identity pillar (this trace was resumed at step 3). Per-case evidence: [`memory_layer_validation_walkthrough_2026-06-18.md`](../reviews/memory_layer_validation_walkthrough_2026-06-18.md).
 2. **Phase-2 eval — live calibration run** — harness is built; needs the shadow-trace corpus from the `mem`-tag runs (Stages 0–5 labeling → Stage-6 verdict → flip decision). *Gated on #1.*
 3. **Piece C live verification + BFF sidebar persistence.**
    - (a) Confirm `memory backend: mem0 (durable)` in `agent-backend-combined` logs + thread-table migration landed in **Cloud SQL `agent`** (via the Cloud SQL Auth Proxy — if the earlier deploy migrated Neon, the Cloud SQL tables won't be there); promote the tag when satisfied.
    - (b) **BFF sidebar persistence is BLOCKED on a code change, not a config bind.** Binding `database-url` (Cloud SQL socket) on `agent-frontend` would crash — `NeonThreadRepo` uses the Neon HTTP driver. Unblock = **option B**: a `pg` + `drizzle-orm/node-postgres` thread repo behind `selectThreadRepo`. Full plan (research + trade-off, A/B/C decided): [`bff_cloudsql_thread_repo.plan.md`](bff_cloudsql_thread_repo.plan.md). Until it lands, the sidebar is in-memory only and that is the intended Piece C boundary.
-4. **Governance-trace-audit gate** (Verification 4) — **PENDING** on #1 (deploy is correct; awaits one authenticated trace).
+4. ✅ **DONE — Governance-trace-audit gate (Verification 4) = COMPLIANT WITH FINDINGS.** Audited trace `ef236f95`: carriers present, content absent, same subject, no carrier_gate memory alert, autocapture correctly shadow. Sole finding is a run-level corrupt success the judge caught (not a memory/instrumentation defect). Reports linked in the DEPLOY STATUS callout + the validation walkthrough.
 5. **Commit** — user handles commits; nothing committed since `935433e` (Phase 1).
 6. **(Hygiene) delete the orphaned `agent-middleware` Cloud Run service** + retire the unused `agent-frontend-dev` Cloudflare Pages project (`tofu state rm` + dashboard delete — see `infra/dev-tier/README.md`).
 
@@ -199,6 +207,8 @@ Source of intent: [governanaceTriangle/01_explainability_fundamentals.md](../../
 2. **The new `EventType` members feed the drift-guard, not the rubric.** `EventType.MEMORY_RECALLED` / `MEMORY_STORED` are added in `services/governance/black_box.py`. The carrier-spec drift-guard test (`tests/trust/test_governance_carrier_spec.py`) asserts the spec's wire strings still match real enum members — adding two **non-required** members does not change `ALL_PHASE_VALUES` or any requirement tuple, so that test stays green by construction. (If a future phase *does* want to require a memory carrier, that is a deliberate `SPEC_VERSION` bump + rubric edit in the skill first — never a silent spec change.)
 
 ### Verification via the audit skill (the post-implementation gate)
+
+> ✅ **SATISFIED 2026-06-18** — audit on trace `ef236f95` = **COMPLIANT WITH FINDINGS**; every acceptance-bar item below met (carriers present, content absent, no memory-induced FAIL, no carrier_gate alert). Per-case evidence with prompt→expected→actual→trace: [`docs/reviews/memory_layer_validation_walkthrough_2026-06-18.md`](../reviews/memory_layer_validation_walkthrough_2026-06-18.md).
 
 Per the skill's "use it as the verification step after any telemetry-touching change," the governance trace check (Verification step 4) is **mandatory, not optional**, for this work. The acceptance bar:
 - A memory-ON run's trace shows `MEMORY_RECALLED` (count, query_len) and `MEMORY_STORED` (key) carriers, **content absent** (the skill's privacy + zero-carrier checks).

@@ -243,10 +243,11 @@ NEXT (manual, your call):
   * Exercise via the tagged URL (bearer auth), then promote when satisfied:
       gcloud run services update-traffic $SERVICE --to-tags=$TAG=100 \\
         --project=$GCP_PROJECT_ID --region=$GCP_REGION
-  * BFF sidebar persistence is NOT handled by this script and is NOT yet
-    deploy-ready: the only prod ThreadRepo uses the Neon HTTP driver, which
-    can't reach the Cloud SQL socket DSN in database-url. Do NOT bind
-    DATABASE_URL on agent-frontend yet (it would crash the thread queries).
-    See DEPLOY_PIECE_C.md §BFF + docs/plans/bff_cloudsql_thread_repo.plan.md
-    (option B — a pg/Cloud-SQL ThreadRepo adapter is the prerequisite).
+  * BFF sidebar persistence is NOT handled by this script — it's a separate
+    follow-up. As of 2026-06-18 the option-B pg adapter is code complete, so
+    binding DATABASE_URL on agent-frontend is now SAFE (a /cloudsql/ DSN routes
+    to pg, not the Neon driver). Procedure (rebuild frontend image w/ pg, grant
+    the frontend SA cloudsql.client + database-url accessor, then the bind +
+    --add-cloudsql-instances) is in DEPLOY_PIECE_C.md §BFF.
+    Plan / Terraform-durable form: docs/plans/bff_cloudsql_thread_repo.plan.md.
 EOF

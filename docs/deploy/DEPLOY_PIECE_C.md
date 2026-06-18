@@ -2,7 +2,7 @@
 
 > Companion to [`scripts/deploy_piece_c.sh`](../../scripts/deploy_piece_c.sh). This doc holds the **config changes the script can't make for you** (a Terraform env-var add) and the exact run/rollback sequence. Posture chosen 2026-06-18: **`MEMORY_ENABLED=true` only** (recall+store live; auto-capture stays in shadow) on a **`--tag` no-traffic** revision (prod untouched).
 
-> **Scope note (BFF sidebar is NOT in this deploy).** Piece C ships the **backend** memory deploy + the threads-table migration. Making the chat **sidebar** persist needs a `DATABASE_URL` binding on the `agent-frontend` BFF — but that is **not deploy-ready today** (the only prod `ThreadRepo` uses the Neon HTTP driver, which can't reach the Cloud SQL socket DSN; see §BFF). The BFF stays on the in-memory thread repo until the option-B adapter lands ([`docs/plans/bff_cloudsql_thread_repo.plan.md`](../plans/bff_cloudsql_thread_repo.plan.md)).
+> **Scope note (BFF sidebar is a SEPARATE step in this guide — §BFF).** Piece C's core is the **backend** memory deploy + the threads-table migration. Making the chat **sidebar** persist is a distinct follow-up: bind `DATABASE_URL` on the `agent-frontend` BFF. As of 2026-06-18 the option-B `pg` adapter is **code complete**, so that bind is now **safe to run** (a `/cloudsql/` DSN routes to `pg`, not the Neon driver). Full procedure — prerequisites, the bind, and verification — is in **§BFF**; until you run it, the BFF stays on the in-memory thread repo and the sidebar renders empty. Plan/Terraform-durable form: [`docs/plans/bff_cloudsql_thread_repo.plan.md`](../plans/bff_cloudsql_thread_repo.plan.md).
 
 > **Service names (read first).** The **real prod agent backend is
 > `agent-backend-combined`** (the BFF's `MIDDLEWARE_URL` points at it; all
@@ -23,7 +23,8 @@ docker build --platform linux/amd64 -f Dockerfile.backend -t "$IMG" . && docker 
 GCP_PROJECT_ID=agent-prod-gcp-dev MIDDLEWARE_IMAGE="$IMG" bash scripts/deploy_piece_c.sh
 # 2. verify backend selection + exercise the tag URL (§3)
 # 3. promote when satisfied (§4); rollback is one command (§5)
-# (BFF sidebar persistence is a SEPARATE, not-yet-ready follow-up — see §BFF.)
+# 4. (optional) make the chat sidebar durable — bind DATABASE_URL on agent-frontend
+#    (now SAFE: option-B pg adapter is in). Prereqs + bind + verify in §BFF.
 ```
 
 ## 0. Build + push the agent image — REQUIRED FIRST (don't skip)
@@ -151,62 +152,105 @@ gcloud run services logs read agent-backend-combined \
 > are true even when the graph was built memory-blind. The ONLY proof is a carrier
 > from an authenticated run (§3d). Always run §3d before declaring the deploy good.
 
-> **Audit gate (plan Verification 4):** after one authenticated from-step-0 run on
-> the tag (a "remember" turn + a "recall" turn with the same `user_id`), confirm
-> carriers fired (§3d), then run the `governance-trace-audit` skill on that trace.
-> See [`docs/reviews/governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md).
-> History: the first authed run (2026-06-18, rev `00083-wal`) emitted **zero**
-> carriers — root-caused to the `app_prod.py` wiring drop (now fixed); audit was
-> blocked on it, not on auth. Re-run on a rebuilt tag before auditing.
+> **Audit gate (plan Verification 4) — ✅ PASSED 2026-06-18.** After one authenticated
+> run on the rebuilt tag, carriers fired (§3d) and the `governance-trace-audit` skill
+> returned **COMPLIANT WITH FINDINGS** on trace `ef236f95`. History: the first authed
+> run (rev `00083-wal`) emitted **zero** carriers — root-caused to the `app_prod.py`
+> wiring drop (now fixed + guarded); audit was blocked on it, not on auth. Reports:
+> [`governance_audit_memory_on_2026-06-18.md`](../reviews/governance_audit_memory_on_2026-06-18.md),
+> [`governance_audit_ef236f95_2026-06-18.md`](../reviews/governance_audit_ef236f95_2026-06-18.md);
+> full per-case validation (prompt→expected→actual→trace):
+> [`memory_layer_validation_walkthrough_2026-06-18.md`](../reviews/memory_layer_validation_walkthrough_2026-06-18.md).
 
-## §BFF — the chat sidebar is NOT durable yet (do not bind `DATABASE_URL` on `agent-frontend`)
+## §BFF — make the chat sidebar durable (option B is in; the bind is now SAFE)
 
-**⚠ This step is blocked on a code change — do NOT run a bind command here.** The chat
-sidebar persists via `selectThreadRepo()` in `frontend/lib/bff/server_composition.ts`,
-which runs in the **BFF ring** — in prod the **`agent-frontend` Cloud Run service**
-(Cloudflare Pages was removed 2026-06-18; the BFF is on Cloud Run), a **separate
-service** from `agent-backend-combined`. The backend's `DATABASE_URL` feeds the
-LangGraph checkpointer and does **not** reach the BFF; `agent-frontend` has **no**
-`DATABASE_URL` today (verified 2026-06-18), so `selectThreadRepo` falls back to
-`InMemoryThreadRepo` and the sidebar doesn't persist across BFF restarts.
+**Status (2026-06-18): the option-B `pg` adapter is CODE COMPLETE** (uncommitted). The
+prior "do NOT bind — it would crash" warning is **resolved**. The chat sidebar persists
+via `selectThreadRepo()` in `frontend/lib/bff/server_composition.ts`, which runs in the
+**BFF ring** — in prod the **`agent-frontend` Cloud Run service** (Cloudflare Pages was
+removed 2026-06-18; the BFF is on Cloud Run), a **separate service** from
+`agent-backend-combined`. The backend's `DATABASE_URL` feeds the LangGraph checkpointer
+and does **not** reach the BFF; `agent-frontend` has **no** `DATABASE_URL` today
+(verified 2026-06-18), so `selectThreadRepo` falls back to `InMemoryThreadRepo` and the
+sidebar renders empty (the component IS mounted — this is the empty-state placeholder,
+not missing code).
 
-**Why you can't just bind the secret (correction to an earlier version of this doc).**
-The only prod `ThreadRepo`, `NeonThreadRepo`, is **hard-wired to the Neon HTTP driver**
-— [`neon_thread_repo.ts:139`](../../frontend/lib/adapters/thread_store/neon_thread_repo.ts)
-calls `neon(databaseUrl)` from `@neondatabase/serverless`, which speaks Neon's
-HTTP/WebSocket protocol over a `…neon.tech` URL. It **cannot dial a Cloud SQL
-`/cloudsql/` unix socket.** `selectThreadRepo` picks `NeonThreadRepo` whenever
-`DATABASE_URL` is set, so binding `database-url` (a Cloud SQL DSN) on `agent-frontend`
-— even *with* `--add-cloudsql-instances` — would make the BFF **throw on the first
-thread query**. (The earlier "`NeonThreadRepo` opens whatever `DATABASE_URL` it's
-handed" claim was wrong; the driver is Neon-specific.)
+**What changed.** `selectThreadRepo` now picks the driver by DSN
+([`neon_thread_repo.ts` `selectThreadRepo`](../../frontend/lib/adapters/thread_store/neon_thread_repo.ts)
+→ [`classifyDsn`](../../frontend/lib/adapters/thread_store/pg_thread_repo.ts)):
+a `/cloudsql/` socket DSN (or any generic TCP Postgres) routes to the new
+`pgDrizzleDb` seam (`pg` + `drizzle-orm/node-postgres` over the unix socket); only a
+`.neon.tech` host uses the old Neon HTTP driver. So binding the prod `database-url`
+secret (a `/cloudsql/` DSN) on `agent-frontend` now reaches the right driver instead of
+throwing. Plan + research basis: [`docs/plans/bff_cloudsql_thread_repo.plan.md`](../plans/bff_cloudsql_thread_repo.plan.md).
 
-**What unblocks it: option B.** Add a Cloud SQL–compatible thread repo (`pg` +
-`drizzle-orm/node-postgres`) behind `selectThreadRepo`, so a `/cloudsql/` socket DSN
-routes to the new driver. Full plan + research basis:
-[`docs/plans/bff_cloudsql_thread_repo.plan.md`](../plans/bff_cloudsql_thread_repo.plan.md).
-**Once that lands**, the bind below becomes safe:
+### Prerequisites (do these once, in order)
 
 ```bash
-# ⚠ DO NOT RUN until the option-B pg adapter is merged (it would crash today).
-gcloud run services update agent-frontend \
-  --project=$GCP_PROJECT_ID --region=$GCP_REGION \
-  --update-secrets="DATABASE_URL=database-url:latest" \
-  --add-cloudsql-instances="agent-prod-gcp-dev:us-central1:agent-db"
-# (durable form: add the secret env + the cloudsql volume/annotation to
-#  agent-frontend in infra/gcp/, mirroring how cloud-run-backend.tf declares
-#  them for the backend service.)
+# 0. Commit the option-B code, then build + push a NEW agent-frontend image that
+#    INCLUDES the `pg` dependency. The bind is inert until this image is live —
+#    the running revision predates the pg adapter. Build via the normal frontend
+#    image path (frontend/Dockerfile.frontend; deploy_gcp.sh builds agent-frontend:<ver>).
+
+# 1. Grant the frontend runtime service account Cloud SQL Client (so it can open
+#    the /cloudsql/ socket) and read access to the database-url secret. Today the
+#    frontend SA only has the WorkOS secret accessors (infra/gcp/cloud-run-frontend.tf).
+FRONTEND_SA="$(gcloud run services describe agent-frontend \
+  --project="$GCP_PROJECT_ID" --region="$GCP_REGION" \
+  --format='value(spec.template.spec.serviceAccountName)')"
+
+gcloud projects add-iam-policy-binding "$GCP_PROJECT_ID" \
+  --member="serviceAccount:$FRONTEND_SA" --role="roles/cloudsql.client"
+
+gcloud secrets add-iam-policy-binding database-url \
+  --project="$GCP_PROJECT_ID" \
+  --member="serviceAccount:$FRONTEND_SA" --role="roles/secretmanager.secretAccessor"
 ```
 
-Until then the sidebar is in-memory only — **the backend deploy alone does not make
-threads durable**, and that is the intended Piece C boundary. (The Cloud SQL DB serves
-both rings once option B lands; the migration omits the checkpoint tables, IR-NEON-5,
-so they coexist.)
+### The bind (now safe to run)
 
-> **Local dev caveat:** the same constraint applies — pointing `frontend/.env.local`'s
-> `DATABASE_URL` at the Cloud SQL proxy socket won't work with the Neon driver either.
-> A real `…neon.tech` URL is the only thing the current driver accepts; otherwise leave
-> it unset (in-memory) until option B.
+```bash
+gcloud run services update agent-frontend \
+  --project="$GCP_PROJECT_ID" --region="$GCP_REGION" \
+  --update-secrets="DATABASE_URL=database-url:latest" \
+  --add-cloudsql-instances="agent-prod-gcp-dev:us-central1:agent-db"
+```
+
+`--add-cloudsql-instances` mounts the `/cloudsql/agent-prod-gcp-dev:us-central1:agent-db`
+socket into the container; `pg` dials it via the `host=/cloudsql/…` in the DSN. (Node
+runtime, not edge — the BFF route handlers already run on Node 20, which `pg` needs.)
+
+### Verify it took
+
+```bash
+# Create a thread in the UI, restart the BFF revision, confirm the sidebar still
+# lists it. Or hit the route directly (401 = route present but unauthed; an
+# authenticated 200 with a thread list = durable persistence working):
+curl -s -o /dev/null -w '%{http_code}\n' "$FRONTEND_URL/api/threads"
+# And confirm no thread-store error in logs:
+gcloud logging read \
+  'resource.labels.service_name=agent-frontend AND textPayload:ThreadStoreError' \
+  --project="$GCP_PROJECT_ID" --freshness=10m --limit=5
+# (zero rows = healthy; the migration already created the threads table in Piece C.)
+```
+
+> **Durable form (survives `tofu apply`).** The `gcloud` update above is imperative and a
+> later Terraform apply would wipe it. To make it durable, mirror the backend's pattern in
+> `infra/gcp/cloud-run-frontend.tf`: add a `DATABASE_URL` `value_source.secret_key_ref`
+> (secret `database-url`), the Cloud SQL volume + `run.googleapis.com/cloudsql-instances`
+> annotation, the `roles/cloudsql.client` binding on `google_service_account.frontend_runtime`,
+> and a `database-url` secret accessor for it — exactly as `cloud-run-backend.tf` declares
+> them for the backend. (Tracked in [`bff_cloudsql_thread_repo.plan.md`](../plans/bff_cloudsql_thread_repo.plan.md) §Deferred.)
+
+> **Local dev.** With the option-B adapter, `frontend/.env.local`'s `DATABASE_URL` can now
+> point at the Cloud SQL Auth Proxy socket
+> (`postgresql://…@/agent?host=/tmp/cloudsql/agent-prod-gcp-dev:us-central1:agent-db` after
+> `cloud-sql-proxy --unix-socket /tmp/cloudsql …`) and `classifyDsn` routes it to `pg`. Leave
+> it unset for the ephemeral in-memory repo.
+
+The Cloud SQL DB serves both rings; the threads migration omits the checkpoint tables
+(IR-NEON-5), so the BFF threads table and LangGraph's checkpoints coexist in the same
+instance without collision.
 
 ## 4. Promote (when satisfied)
 
