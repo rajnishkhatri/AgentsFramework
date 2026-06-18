@@ -1,0 +1,60 @@
+Attribution for the memory multi-session corpus
+================================================
+
+The synthetic multi-session memory-stress corpus
+(`frontend/e2e/fixtures/memory_multisession_corpus.json`, built by
+`scripts/build_memory_multisession_corpus.py`) derives its STRUCTURE and the
+ability classes it probes (single-session-user / -preference, multi-session,
+temporal-reasoning, knowledge-update, abstention) from:
+
+    LongMemEval: Benchmarking Chat Assistants on Long-Term Interactive Memory
+    Di Wu et al., ICLR 2025
+    https://github.com/xiaowu0162/LongMemEval
+
+Our corpus rows are INDEPENDENTLY AUTHORED paraphrases of those ability classes,
+not copies of upstream haystacks, so the committed fixture is self-contained.
+`scripts/fetch_longmemeval.py` pulls the upstream JSON (Hugging Face
+`xiaowu0162/longmemeval`) into the gitignored `cache/` for anyone who wants to
+grow the corpus from the real haystacks; that downloaded data is NOT committed.
+
+LongMemEval is distributed under the MIT License, reproduced below per its
+attribution requirement.
+
+----------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2024 Di Wu
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+----------------------------------------------------------------------
+
+LoCoMo (persona-drift SHAPE reference only)
+-------------------------------------------
+
+The `persona-drift` cases borrow the persona + evolving-preference SHAPE of:
+
+    Evaluating Very Long-Term Conversational Memory of LLM Agents
+    Maharana et al., ACL 2024 — https://github.com/snap-research/locomo
+
+LoCoMo is licensed CC BY-NC 4.0 (non-commercial). It is used here as a STRUCTURAL
+reference ONLY: no LoCoMo text, personas, or dialogue is copied or redistributed.
+The persona-drift rows are independently authored (the corpus test suite asserts
+the upstream speaker names never appear in the fixture).

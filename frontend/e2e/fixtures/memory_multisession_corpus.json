@@ -1,0 +1,1219 @@
+[
+  {
+    "case": "MEM-LEAK-units-cross-user-01",
+    "mem_id": "MEM-0901",
+    "ability": "leak-control",
+    "provenance": "synthetic",
+    "user_id": "userleak01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "probe",
+        "turns": [
+          "What measurement units do I prefer? Only answer if you actually remember me telling you."
+        ],
+        "want_recall": false,
+        "trace_id": "676e6e4ff69750388e2199cfb71e3737"
+      }
+    ],
+    "rationale": "probes the 'metric units' fact seeded under userpref01 (recall-01); a different user must recall nothing"
+  },
+  {
+    "case": "MEM-LEAK-allergy-cross-user-02",
+    "mem_id": "MEM-0902",
+    "ability": "leak-control",
+    "provenance": "synthetic",
+    "user_id": "userleak02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "probe",
+        "turns": [
+          "Do you remember any food allergies I have?"
+        ],
+        "want_recall": false,
+        "trace_id": "4468efba54c055209094d4106da8755b"
+      }
+    ],
+    "rationale": "probes the peanut-allergy fact seeded under userhealth01; cross-user recall must be empty"
+  },
+  {
+    "case": "MEM-LEAK-jobrole-cross-user-03",
+    "mem_id": "MEM-0903",
+    "ability": "leak-control",
+    "provenance": "synthetic",
+    "user_id": "userleak03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "probe",
+        "turns": [
+          "What is my job title, if I have ever mentioned it?"
+        ],
+        "want_recall": false,
+        "trace_id": "27497aa7994f597684c587ffd988224c"
+      }
+    ],
+    "rationale": "probes a role fact seeded under another user; leak guard hard-0"
+  },
+  {
+    "case": "MEM-LEAK-city-cross-user-04",
+    "mem_id": "MEM-0904",
+    "ability": "leak-control",
+    "provenance": "synthetic",
+    "user_id": "userleak04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "probe",
+        "turns": [
+          "Which city did I say I live in?"
+        ],
+        "want_recall": false,
+        "trace_id": "097b15ea87af5cb5a5619c658110a014"
+      }
+    ],
+    "rationale": "city fact belongs to another user; recall must abstain"
+  },
+  {
+    "case": "MEM-ABSTAIN-pet-name-01",
+    "mem_id": "MEM-0801",
+    "ability": "abstention",
+    "provenance": "longmemeval-derived",
+    "user_id": "userabs01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "filler",
+        "turns": [
+          "Can you explain what a hash map is?"
+        ],
+        "trace_id": "41e2ddda6de658f1911ef53822f47c22"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What's the name of my pet? Only say so if I've told you."
+        ],
+        "want_recall": false,
+        "trace_id": "92fe04b4038359f591bc907db0534473"
+      }
+    ],
+    "rationale": "never seeded a pet -> must abstain, not fabricate",
+    "lme_question_type": "single-session-user_abs"
+  },
+  {
+    "case": "MEM-ABSTAIN-birthday-02",
+    "mem_id": "MEM-0802",
+    "ability": "abstention",
+    "provenance": "longmemeval-derived",
+    "user_id": "userabs02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "filler",
+        "turns": [
+          "Summarize the plot of a generic detective novel."
+        ],
+        "trace_id": "e78701f59f385a24ac23700a9228c0f9"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "When is my birthday?"
+        ],
+        "want_recall": false,
+        "trace_id": "912bf3afd21d577c8d251f2468a53313"
+      }
+    ],
+    "rationale": "no birthday ever stated -> abstain",
+    "lme_question_type": "temporal-reasoning_abs"
+  },
+  {
+    "case": "MEM-ABSTAIN-favorite-color-03",
+    "mem_id": "MEM-0803",
+    "ability": "abstention",
+    "provenance": "longmemeval-derived",
+    "user_id": "userabs03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "probe",
+        "turns": [
+          "What's my favorite color?"
+        ],
+        "want_recall": false,
+        "trace_id": "1430b9f9aa915b9ab69b952f73e75fd8"
+      }
+    ],
+    "rationale": "cold probe, nothing seeded -> abstain",
+    "lme_question_type": "single-session-preference_abs"
+  },
+  {
+    "case": "MEM-ABSTAIN-project-deadline-04",
+    "mem_id": "MEM-0804",
+    "ability": "abstention",
+    "provenance": "longmemeval-derived",
+    "user_id": "userabs04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "filler",
+        "turns": [
+          "What's the difference between TCP and UDP?"
+        ],
+        "trace_id": "cf2445e4f1a5559a806023d16043bb1c"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What deadline did I tell you about earlier?"
+        ],
+        "want_recall": false,
+        "trace_id": "d3fdf76131655b5a98e4eb414d8755d6"
+      }
+    ],
+    "rationale": "no deadline mentioned -> abstain",
+    "lme_question_type": "single-session-assistant_abs"
+  },
+  {
+    "case": "MEM-ABSTAIN-sibling-05",
+    "mem_id": "MEM-0805",
+    "ability": "abstention",
+    "provenance": "longmemeval-derived",
+    "user_id": "userabs05",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "filler",
+        "turns": [
+          "Give me a recipe for pancakes."
+        ],
+        "trace_id": "9b210df8a60c557cabe9c8d3aa4319e4"
+      },
+      {
+        "session_idx": 1,
+        "kind": "filler",
+        "turns": [
+          "How do I reverse a linked list?"
+        ],
+        "trace_id": "9e3d39fe70c253fca459addb59e9321c"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "How many siblings did I say I have?"
+        ],
+        "want_recall": false,
+        "trace_id": "308f4094ff67520a8f2312dcb2d747c2"
+      }
+    ],
+    "rationale": "never seeded family info -> abstain",
+    "lme_question_type": "multi-session_abs"
+  },
+  {
+    "case": "MEM-RECALL-units-01",
+    "mem_id": "MEM-0001",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "userpref01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "Remember that I prefer metric units for everything."
+        ],
+        "date": "2026-05-01",
+        "trace_id": "56ecd659f6465efea6777bd687783366"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "When you summarize my running data, which units should you use?"
+        ],
+        "date": "2026-05-08",
+        "want_recall": true,
+        "expect_substring": [
+          "metric"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "9be3570afd4153de9bd9b2bbbd38957d"
+      }
+    ],
+    "rationale": "single-session-preference seeded then recalled one session later -> recall floor",
+    "lme_question_type": "single-session-preference"
+  },
+  {
+    "case": "MEM-RECALL-allergy-02",
+    "mem_id": "MEM-0002",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "userhealth01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I have a severe peanut allergy."
+        ],
+        "date": "2026-04-10",
+        "trace_id": "b44a017ae9c5573c9c3ee91244c3abf3"
+      },
+      {
+        "session_idx": 1,
+        "kind": "filler",
+        "turns": [
+          "What's a good source of plant protein?"
+        ],
+        "date": "2026-04-12",
+        "trace_id": "4a709dba6acd578389b54a7d9ef775e4"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Suggest a snack for me — keep my dietary restrictions in mind."
+        ],
+        "date": "2026-04-20",
+        "want_recall": true,
+        "expect_substring": [
+          "peanut",
+          "allerg"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "8c1daa21a84e5a07b86b2b906830581e"
+      }
+    ],
+    "rationale": "health fact seeded, filler session between, recalled across 2 sessions",
+    "lme_question_type": "single-session-user"
+  },
+  {
+    "case": "MEM-RECALL-jobrole-03",
+    "mem_id": "MEM-0003",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "userwork01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I work as a backend engineer on a payments team."
+        ],
+        "date": "2026-03-01",
+        "trace_id": "6fdf147325195f01995c5d118d12d1fc"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Given my role, what kind of code examples are most useful to me?"
+        ],
+        "date": "2026-03-15",
+        "want_recall": true,
+        "expect_substring": [
+          "backend",
+          "payment"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "80ed3ca0f2ab553f9a6c1ca72cc9e694"
+      }
+    ],
+    "rationale": "role fact recall",
+    "lme_question_type": "single-session-user"
+  },
+  {
+    "case": "MEM-RECALL-city-04",
+    "mem_id": "MEM-0004",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "usergeo01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I live in Portland."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "89c608902d88517c89adf5e641f67cb9"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What's the weather usually like where I live this time of year?"
+        ],
+        "date": "2026-02-10",
+        "want_recall": true,
+        "expect_substring": [
+          "Portland"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "fa9d8d0deb67577c99861bcb3e00187b"
+      }
+    ],
+    "rationale": "location fact recall",
+    "lme_question_type": "single-session-user"
+  },
+  {
+    "case": "MEM-RECALL-tooling-05",
+    "mem_id": "MEM-0005",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "usertool01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I always use pytest for Python tests, never unittest."
+        ],
+        "date": "2026-01-05",
+        "trace_id": "322b52923d4955eeb40de508e5f73f0e"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Write me a test for an add() function in my preferred framework."
+        ],
+        "date": "2026-01-20",
+        "want_recall": true,
+        "expect_substring": [
+          "pytest"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "063197714f3e5eeabf2746aa59983652"
+      }
+    ],
+    "rationale": "tooling preference recall",
+    "lme_question_type": "single-session-preference"
+  },
+  {
+    "case": "MEM-RECALL-language-06",
+    "mem_id": "MEM-0006",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "userlang01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "Please always reply to me in British English spelling."
+        ],
+        "date": "2026-05-02",
+        "trace_id": "ae80e117902f5448a80880dd353a04b1"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Describe the colour of a clear sky and how I'd organise a list."
+        ],
+        "date": "2026-05-09",
+        "want_recall": true,
+        "expect_substring": [
+          "colour",
+          "organise"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "8708b9ae0c7856dba577e5302192d20f"
+      }
+    ],
+    "rationale": "style preference recall (spelling)",
+    "lme_question_type": "single-session-preference"
+  },
+  {
+    "case": "MEM-RECALL-goal-07",
+    "mem_id": "MEM-0007",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "usergoal01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "My goal this quarter is to learn Rust."
+        ],
+        "date": "2026-04-01",
+        "trace_id": "d029f597354557d185f339e1e646e403"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Recommend a weekend project aligned with my current learning goal."
+        ],
+        "date": "2026-04-22",
+        "want_recall": true,
+        "expect_substring": [
+          "Rust"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "90adcde0e29954fbad98f9a5a8794597"
+      }
+    ],
+    "rationale": "goal fact recall",
+    "lme_question_type": "single-session-user"
+  },
+  {
+    "case": "MEM-RECALL-constraint-08",
+    "mem_id": "MEM-0008",
+    "ability": "recall",
+    "provenance": "longmemeval-derived",
+    "user_id": "usercon01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "Keep all answers under 100 words; I'm always short on time."
+        ],
+        "date": "2026-03-10",
+        "trace_id": "218cfc7d5617518094c171a7b4e2980b"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Explain how DNS resolution works."
+        ],
+        "date": "2026-03-18",
+        "want_recall": true,
+        "expect_substring": [
+          "DNS"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "24965d48e938530ab7a827111c92ae06"
+      }
+    ],
+    "rationale": "brevity constraint recall (length preference applied)",
+    "lme_question_type": "single-session-user"
+  },
+  {
+    "case": "MEM-MULTI-trip-01",
+    "mem_id": "MEM-0101",
+    "ability": "multi-session",
+    "provenance": "longmemeval-derived",
+    "user_id": "usermulti01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm planning a trip to Japan in the autumn."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "3d5f63049e165f729e62cb2dc4bf2d42"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "For that trip my budget is about 3000 dollars."
+        ],
+        "date": "2026-02-08",
+        "trace_id": "767a9c9a84805d93b3d212d58881435a"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Help me outline my upcoming trip given what you know about it."
+        ],
+        "date": "2026-02-20",
+        "want_recall": true,
+        "expect_substring": [
+          "Japan",
+          "3000"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "cfd21b03e72d5087a8e7eb2676b19fc4"
+      }
+    ],
+    "rationale": "destination (s0) + budget (s1) both needed in the probe",
+    "lme_question_type": "multi-session"
+  },
+  {
+    "case": "MEM-MULTI-stack-02",
+    "mem_id": "MEM-0102",
+    "ability": "multi-session",
+    "provenance": "longmemeval-derived",
+    "user_id": "usermulti02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "My app's frontend is Next.js."
+        ],
+        "date": "2026-01-10",
+        "trace_id": "0695f0b0068e5649af72545c5dea9420"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "The same app's database is Postgres."
+        ],
+        "date": "2026-01-17",
+        "trace_id": "f54cf607830a521f9b636e4ba5991c4a"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Recommend a deployment setup for my app's full stack."
+        ],
+        "date": "2026-01-25",
+        "want_recall": true,
+        "expect_substring": [
+          "Next.js",
+          "Postgres"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "32a23127ea345b0a84d792040deed40c"
+      }
+    ],
+    "rationale": "two stack facts across sessions must both surface",
+    "lme_question_type": "multi-session"
+  },
+  {
+    "case": "MEM-MULTI-family-03",
+    "mem_id": "MEM-0103",
+    "ability": "multi-session",
+    "provenance": "longmemeval-derived",
+    "user_id": "usermulti03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I have two kids."
+        ],
+        "date": "2026-03-01",
+        "trace_id": "12625886d7db52fbac31ed37b407eeba"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "They are both in elementary school."
+        ],
+        "date": "2026-03-09",
+        "trace_id": "e780a8ad893a54cdb4874b05c5ec60cf"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Suggest a weekend activity suitable for my family."
+        ],
+        "date": "2026-03-15",
+        "want_recall": true,
+        "expect_substring": [
+          "kids",
+          "elementary"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "29a0ad759b62599295266a5d0d01383a"
+      }
+    ],
+    "rationale": "count (s0) + age band (s1) combined",
+    "lme_question_type": "multi-session"
+  },
+  {
+    "case": "MEM-MULTI-diet-04",
+    "mem_id": "MEM-0104",
+    "ability": "multi-session",
+    "provenance": "longmemeval-derived",
+    "user_id": "usermulti04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm vegetarian."
+        ],
+        "date": "2026-04-01",
+        "trace_id": "eec57d15d0585b4d91f4ff0ac380752e"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I also avoid dairy."
+        ],
+        "date": "2026-04-05",
+        "trace_id": "12cef6c8be025ed18c73e8e7d88cacc6"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Plan a dinner that fits all my dietary needs."
+        ],
+        "date": "2026-04-12",
+        "want_recall": true,
+        "expect_substring": [
+          "vegetarian",
+          "dairy"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "d3bbe5733afb5c12a706e2f057f8629f"
+      }
+    ],
+    "rationale": "two diet constraints across sessions",
+    "lme_question_type": "multi-session"
+  },
+  {
+    "case": "MEM-TEMPORAL-city-move-01",
+    "mem_id": "MEM-0201",
+    "ability": "temporal",
+    "provenance": "longmemeval-derived",
+    "user_id": "usertemp01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I live in Chicago."
+        ],
+        "date": "2026-01-01",
+        "trace_id": "02bf40be34d95c978eec788055c6b87e"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I just moved — I now live in Denver."
+        ],
+        "date": "2026-04-01",
+        "trace_id": "5add599422e75bd0b4a9f254c6b15e27"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Where do I currently live?"
+        ],
+        "date": "2026-04-10",
+        "want_recall": true,
+        "expect_substring": [
+          "Denver"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "d693f63de7d05360a45923702b5ce308"
+      }
+    ],
+    "rationale": "most-recent city is Denver (s1), not Chicago (s0) -> recency",
+    "lme_question_type": "temporal-reasoning"
+  },
+  {
+    "case": "MEM-TEMPORAL-role-change-02",
+    "mem_id": "MEM-0202",
+    "ability": "temporal",
+    "provenance": "longmemeval-derived",
+    "user_id": "usertemp02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm a junior developer."
+        ],
+        "date": "2026-01-15",
+        "trace_id": "7f34b7cf3bef5e979e8e21ca0f4e01b1"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I got promoted to senior developer."
+        ],
+        "date": "2026-05-15",
+        "trace_id": "fb4684d4e3f35bb882888b5fca0e5460"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What's my current seniority level?"
+        ],
+        "date": "2026-05-20",
+        "want_recall": true,
+        "expect_substring": [
+          "senior"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "fe43ece2e6c45d45b64779dd7616dd86"
+      }
+    ],
+    "rationale": "latest role wins",
+    "lme_question_type": "temporal-reasoning"
+  },
+  {
+    "case": "MEM-TEMPORAL-tool-switch-03",
+    "mem_id": "MEM-0203",
+    "ability": "temporal",
+    "provenance": "longmemeval-derived",
+    "user_id": "usertemp03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I use npm for my JS projects."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "61f6846f82b25dceb2b0b08eae1b5c08"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I've switched to pnpm now."
+        ],
+        "date": "2026-05-01",
+        "trace_id": "f7a104c7fb1d5d7aaaee6e400537bfff"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Which package manager should you use in examples for me?"
+        ],
+        "date": "2026-05-05",
+        "want_recall": true,
+        "expect_substring": [
+          "pnpm"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "e8469f33ce9f56f39819790231a20a82"
+      }
+    ],
+    "rationale": "recency: pnpm replaces npm",
+    "lme_question_type": "temporal-reasoning"
+  },
+  {
+    "case": "MEM-UPDATE-units-01",
+    "mem_id": "MEM-0301",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I prefer imperial units."
+        ],
+        "date": "2026-01-01",
+        "trace_id": "e15db4a419f353eca3643c0bd4d9d28d"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "Actually, scratch that — I prefer metric units now."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "3ac0193cd6715d8b9d2561f98e5ac9fb"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Which unit system should you use for me?"
+        ],
+        "date": "2026-02-05",
+        "want_recall": true,
+        "expect_substring": [
+          "metric"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "8ba92c3e221d5cb1b2974916cf07e01c"
+      }
+    ],
+    "rationale": "ADD-vs-UPDATE: must return metric (Y), not imperial (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-UPDATE-name-02",
+    "mem_id": "MEM-0302",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "Call me Alex."
+        ],
+        "date": "2026-03-01",
+        "trace_id": "fb29fead748d52fb8e6bc6f5baa798cd"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I go by Sam now, please use that."
+        ],
+        "date": "2026-03-20",
+        "trace_id": "c9753df250015a02930279bf6af64325"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What name should you address me by?"
+        ],
+        "date": "2026-03-25",
+        "want_recall": true,
+        "expect_substring": [
+          "Sam"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "3476d455dbd6572786a9ba0156f8f22e"
+      }
+    ],
+    "rationale": "corrected name Sam (Y), not Alex (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-UPDATE-language-03",
+    "mem_id": "MEM-0303",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "My main language is Python."
+        ],
+        "date": "2026-01-10",
+        "trace_id": "2e999fb630fb5545b382fd0af98a449e"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I've moved to Go as my main language."
+        ],
+        "date": "2026-04-10",
+        "trace_id": "6d06f4ad4d7d5bb2bc4833740e956842"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What language should code examples be in for me?"
+        ],
+        "date": "2026-04-15",
+        "want_recall": true,
+        "expect_substring": [
+          "Go"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "263eff5a056d5a9193ba72febece8cda"
+      }
+    ],
+    "rationale": "Go (Y) supersedes Python (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-UPDATE-diet-04",
+    "mem_id": "MEM-0304",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm vegetarian."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "0bf531db930d570ebcbe3e02b59587cf"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I'm fully vegan now, not just vegetarian."
+        ],
+        "date": "2026-05-01",
+        "trace_id": "4ef44c77cb3e589aaa06869fb7a59bb3"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Plan a meal that matches my current diet."
+        ],
+        "date": "2026-05-04",
+        "want_recall": true,
+        "expect_substring": [
+          "vegan"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "70f8e82423bd594aaf0f12cd21228316"
+      }
+    ],
+    "rationale": "vegan (Y) supersedes vegetarian (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-UPDATE-timezone-05",
+    "mem_id": "MEM-0305",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd05",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm in the Eastern timezone."
+        ],
+        "date": "2026-01-05",
+        "trace_id": "6921439fe43d555ea85fba6b8112e6ef"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I relocated to the Pacific timezone."
+        ],
+        "date": "2026-03-05",
+        "trace_id": "6978392907225d2c8df2eae1994d3f49"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What's a good meeting time for me in the morning?"
+        ],
+        "date": "2026-03-10",
+        "want_recall": true,
+        "expect_substring": [
+          "Pacific"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "f27b463d6349531eb1a215f585afd3b0"
+      }
+    ],
+    "rationale": "Pacific (Y) supersedes Eastern (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-UPDATE-framework-06",
+    "mem_id": "MEM-0306",
+    "ability": "knowledge-update",
+    "provenance": "longmemeval-derived",
+    "user_id": "userupd06",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "My web framework is Flask."
+        ],
+        "date": "2026-02-10",
+        "trace_id": "7dab9ddd8361504d9921e1d95112e914"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I rewrote everything in FastAPI."
+        ],
+        "date": "2026-04-20",
+        "trace_id": "6d756e74fb0b588798c959d432833786"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Show me a route handler in my current web framework."
+        ],
+        "date": "2026-04-25",
+        "want_recall": true,
+        "expect_substring": [
+          "FastAPI"
+        ],
+        "evidence_session_idx": 1,
+        "trace_id": "53b56bb8249d56eea09ad5d50213c5de"
+      }
+    ],
+    "rationale": "FastAPI (Y) supersedes Flask (X)",
+    "lme_question_type": "knowledge-update"
+  },
+  {
+    "case": "MEM-PERSONA-fitness-01",
+    "mem_id": "MEM-0401",
+    "ability": "persona-drift",
+    "provenance": "synthetic-locomo-shape",
+    "user_id": "userpers01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm just starting to get into running, total beginner."
+        ],
+        "date": "2026-01-01",
+        "trace_id": "010708a7517c5fffbfb88178da7ec860"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I've been running a few months — I did my first 10k."
+        ],
+        "date": "2026-03-01",
+        "trace_id": "759f4c40b439586a975515394e49595a"
+      },
+      {
+        "session_idx": 2,
+        "kind": "seed",
+        "turns": [
+          "I'm training for a marathon now."
+        ],
+        "date": "2026-05-01",
+        "trace_id": "8b98efd10b4a5201adca1e809e52c159"
+      },
+      {
+        "session_idx": 3,
+        "kind": "probe",
+        "turns": [
+          "Suggest a training plan appropriate for my current level."
+        ],
+        "date": "2026-05-10",
+        "want_recall": true,
+        "expect_substring": [
+          "marathon"
+        ],
+        "evidence_session_idx": 2,
+        "trace_id": "4924b8355d565b81a42545af8a1f0cc4"
+      }
+    ],
+    "rationale": "persona evolves beginner -> 10k -> marathon; current state is marathon"
+  },
+  {
+    "case": "MEM-PERSONA-career-02",
+    "mem_id": "MEM-0402",
+    "ability": "persona-drift",
+    "provenance": "synthetic-locomo-shape",
+    "user_id": "userpers02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I'm studying computer science in college."
+        ],
+        "date": "2026-01-15",
+        "trace_id": "d1052d4568595fd1abea867584669e88"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I landed an internship at a startup."
+        ],
+        "date": "2026-03-15",
+        "trace_id": "1e3dd561142b568588e3a310917cde78"
+      },
+      {
+        "session_idx": 2,
+        "kind": "seed",
+        "turns": [
+          "I just accepted a full-time offer as a software engineer."
+        ],
+        "date": "2026-05-15",
+        "trace_id": "b2d2d148d48d574782c988be59bdf58e"
+      },
+      {
+        "session_idx": 3,
+        "kind": "probe",
+        "turns": [
+          "Give me advice suited to where I am in my career right now."
+        ],
+        "date": "2026-05-20",
+        "want_recall": true,
+        "expect_substring": [
+          "full-time",
+          "engineer"
+        ],
+        "evidence_session_idx": 2,
+        "trace_id": "de21be49979f59deb40c0713669c180d"
+      }
+    ],
+    "rationale": "student -> intern -> full-time engineer; current state is full-time"
+  },
+  {
+    "case": "MEM-PERSONA-hobby-03",
+    "mem_id": "MEM-0403",
+    "ability": "persona-drift",
+    "provenance": "synthetic-locomo-shape",
+    "user_id": "userpers03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I've been getting into film photography."
+        ],
+        "date": "2026-02-01",
+        "trace_id": "44ac3111e6705b3c9c5823dfb3da1b73"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I sold my film camera and switched to digital."
+        ],
+        "date": "2026-04-01",
+        "trace_id": "56605f26394555a688033c499ca7eec5"
+      },
+      {
+        "session_idx": 2,
+        "kind": "seed",
+        "turns": [
+          "Now I mostly shoot video, not stills."
+        ],
+        "date": "2026-05-25",
+        "trace_id": "e7fc2a71031f5fbf9e0331cfb45e58fd"
+      },
+      {
+        "session_idx": 3,
+        "kind": "probe",
+        "turns": [
+          "Recommend gear for my current photography/video interest."
+        ],
+        "date": "2026-05-30",
+        "want_recall": true,
+        "expect_substring": [
+          "video"
+        ],
+        "evidence_session_idx": 2,
+        "trace_id": "a0db5e705bc35423a0fd6d101faa500a"
+      }
+    ],
+    "rationale": "film -> digital -> video; current interest is video"
+  }
+]

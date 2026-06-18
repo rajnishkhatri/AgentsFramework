@@ -69,6 +69,82 @@ class TestParseGoaljudgeThreadId:
         assert ctx.session_id == "session-gj-f-001"
 
 
+class TestParseMemThreadId:
+    """The ``mem:`` bridge carries a PER-CASE user_id so the memory
+    multi-session corpus can prove cross-session recall AND the cross-user-leak
+    guard. The ``gj:`` bridge collapses every run to ``SATURATION_USER_ID`` (one
+    user), which would make a leak structurally impossible to observe. Form:
+    ``mem:{mem_id}:s{session_idx}:{user_id8}:{trace_id}``.
+    """
+
+    def test_rejects_gj_thread_as_mem(self) -> None:
+        # A gj: thread still parses (as gj), but its user_id field is None.
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-010").hex
+        ctx = parse_goaljudge_thread_id(f"gj:GJ-010:{trace_id}")
+        assert ctx is not None
+        assert ctx.user_id is None  # gj: never carries a per-case user_id
+
+    def test_rejects_mem_without_user_segment(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "MEM-0001").hex
+        assert parse_goaljudge_thread_id(f"mem:MEM-0001:s0:{trace_id}") is None
+
+    def test_rejects_mem_non_hex_trace(self) -> None:
+        assert parse_goaljudge_thread_id("mem:MEM-0001:s0:abcd1234:nope") is None
+
+    def test_parses_mem_thread_with_user_and_session(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "MEM-0001:s1").hex
+        ctx = parse_goaljudge_thread_id(f"mem:MEM-0001:s1:user0001:{trace_id}")
+        assert ctx is not None
+        assert ctx.case_id == "MEM-0001"
+        assert ctx.trace_id == trace_id
+        assert ctx.user_id == "user0001"
+        assert ctx.session_idx == 1
+        # session_id keeps the per-session position so seed/probe traces are
+        # distinct join keys within one case.
+        assert ctx.session_id == "session-mem-0001-s1"
+
+    def test_mem_checkpoint_thread_is_fresh_per_parse(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "MEM-0001:s0").hex
+        first = parse_goaljudge_thread_id(f"mem:MEM-0001:s0:user0001:{trace_id}")
+        second = parse_goaljudge_thread_id(f"mem:MEM-0001:s0:user0001:{trace_id}")
+        assert first is not None and second is not None
+        assert first.checkpoint_thread_id != second.checkpoint_thread_id
+
+
+class TestMemUserIdResolution:
+    """The headline precision precondition: two cases with distinct per-case
+    user_ids MUST resolve to distinct eval_user_ids, or no cross-user leak can
+    ever be detected (one user => no leak possible).
+    """
+
+    def test_mem_user_id_resolves_per_case(self) -> None:
+        t_a = uuid.uuid5(uuid.NAMESPACE_DNS, "A").hex
+        t_b = uuid.uuid5(uuid.NAMESPACE_DNS, "B").hex
+        ctx_a = parse_goaljudge_thread_id(f"mem:MEM-A:s0:useraaaa:{t_a}")
+        ctx_b = parse_goaljudge_thread_id(f"mem:MEM-B:s0:userbbbb:{t_b}")
+        assert ctx_a is not None and ctx_b is not None
+        ua = resolve_eval_user_id("workos-sub-1", ctx_a, "workos-sub-1")
+        ub = resolve_eval_user_id("workos-sub-1", ctx_b, "workos-sub-1")
+        assert ua == "useraaaa"
+        assert ub == "userbbbb"
+        assert ua != ub, "distinct per-case user_ids must NOT collapse to one user"
+
+    def test_gj_thread_still_collapses_to_saturation_user(self) -> None:
+        # Regression guard: the gj: path is unchanged.
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "GJ-010").hex
+        ctx = parse_goaljudge_thread_id(f"gj:GJ-010:{trace_id}")
+        assert ctx is not None
+        assert resolve_eval_user_id("workos-sub-1", ctx, "workos-sub-1") == (
+            SATURATION_USER_ID
+        )
+
+    def test_mem_telemetry_subject_uses_per_case_user(self) -> None:
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "MEM-A").hex
+        ctx = parse_goaljudge_thread_id(f"mem:MEM-A:s0:useraaaa:{trace_id}")
+        assert ctx is not None
+        assert resolve_telemetry_subject("workos-sub-1", ctx) == "useraaaa"
+
+
 class TestSaturationSubjectMapping:
     def test_unknown_subject_not_saturation(self) -> None:
         allow = frozenset({"user_saturation"})
@@ -168,3 +244,30 @@ class TestRunStreamContext:
         # task_id is deliberately NOT pinned to trace_id (see
         # TestSaturationOverlay.test_overlay_does_not_pin_task_id).
         assert "task_id" not in overlay
+
+    def test_mem_thread_sets_per_case_owner(self) -> None:
+        """End-to-end: a ``mem:`` thread makes identity.owner the PER-CASE user
+        (not SATURATION_USER_ID), so the recall/store seams key on it and the
+        cross-user-leak guard is testable. The login subject is the harness;
+        the per-case user_id is the synthetic memory subject.
+        """
+        from middleware.run_stream_context import build_run_stream_context
+
+        trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, "MEM-0001:s1").hex
+        identity = _facts("workos-sub-1")
+        ctx = build_run_stream_context(
+            {
+                "thread_id": f"mem:MEM-0001:s1:user0001:{trace_id}",
+                "input": {"messages": [{"role": "user", "content": "prompt"}]},
+            },
+            identity=identity,
+            subject="workos-sub-1",
+        )
+        assert ctx.saturation is not None
+        assert ctx.saturation.case_id == "MEM-0001"
+        assert ctx.saturation.user_id == "user0001"
+        assert ctx.identity.owner == "user0001"
+        assert ctx.telemetry_subject == "user0001"
+        overlay = ctx.user_input["_goaljudge_saturation"]
+        assert overlay["trace_id"] == trace_id
+        assert overlay["user_id"] == "user0001"

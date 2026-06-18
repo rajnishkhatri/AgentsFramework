@@ -27,15 +27,35 @@ _GOALJUDGE_THREAD_RE = re.compile(
     r"^gj:(?P<case_id>GJ-(?:F-\d+|STRESS-\d+|\d+[A-Z]?)):(?P<trace_id>[0-9a-f]{32})$"
 )
 
+# mem:MEM-0001:s1:user0001:<32-hex>
+#
+# The ``mem:`` bridge is the memory multi-session corpus's thread form. Unlike
+# ``gj:`` (which collapses every run to ``SATURATION_USER_ID`` — one user), it
+# carries a PER-CASE ``user_id`` and a ``session_idx``. This is the seam the
+# cross-user-leak guard depends on: distinct per-case user_ids must resolve to
+# distinct ``eval_user_id``s, or a leak is structurally impossible to observe.
+# See ``docs/plans/memory_multisession_e2e_stress.plan.md`` §9.1.
+_MEM_THREAD_RE = re.compile(
+    r"^mem:(?P<case_id>MEM-[0-9A-Za-z-]+):s(?P<session_idx>\d+):"
+    r"(?P<user_id>[0-9A-Za-z]+):(?P<trace_id>[0-9a-f]{32})$"
+)
+
 
 @dataclass(frozen=True)
 class GoalJudgeSaturationContext:
-    """Resolved join context for one registry-prompt UI injection."""
+    """Resolved join context for one registry-prompt UI injection.
+
+    ``user_id`` / ``session_idx`` are populated only for ``mem:`` threads (the
+    memory multi-session corpus); ``gj:`` threads leave them ``None`` and
+    collapse to ``SATURATION_USER_ID`` as before.
+    """
 
     case_id: str
     trace_id: str
     session_id: str
     checkpoint_thread_id: str
+    user_id: str | None = None
+    session_idx: int | None = None
 
 
 def parse_goaljudge_thread_id(thread_id: str) -> GoalJudgeSaturationContext | None:
@@ -48,7 +68,26 @@ def parse_goaljudge_thread_id(thread_id: str) -> GoalJudgeSaturationContext | No
     ends every run immediately with an empty assistant message.
     ``session_id`` stays deterministic as the telemetry/Langfuse join key.
     """
-    match = _GOALJUDGE_THREAD_RE.match(thread_id.strip())
+    cleaned = thread_id.strip()
+
+    mem_match = _MEM_THREAD_RE.match(cleaned)
+    if mem_match is not None:
+        case_id = mem_match.group("case_id")
+        trace_id = mem_match.group("trace_id")
+        session_idx = int(mem_match.group("session_idx"))
+        # session_id keeps the per-session position so seed and probe traces in
+        # the same case are distinct telemetry join keys.
+        session_id = f"session-{case_id.lower()}-s{session_idx}"
+        return GoalJudgeSaturationContext(
+            case_id=case_id,
+            trace_id=trace_id,
+            session_id=session_id,
+            checkpoint_thread_id=f"{session_id}-{uuid.uuid4().hex[:8]}",
+            user_id=mem_match.group("user_id"),
+            session_idx=session_idx,
+        )
+
+    match = _GOALJUDGE_THREAD_RE.match(cleaned)
     if match is None:
         return None
     case_id = match.group("case_id")
@@ -85,6 +124,9 @@ def resolve_telemetry_subject(
     allowlist: frozenset[str] | None = None,
 ) -> str:
     """Langfuse / telemetry ``user_id`` for this run."""
+    if saturation is not None and saturation.user_id:
+        # mem: bridge — per-case synthetic memory subject (cross-user-leak guard).
+        return saturation.user_id
     if saturation is not None or is_saturation_subject(subject, allowlist=allowlist):
         return SATURATION_USER_ID
     return subject
@@ -98,6 +140,11 @@ def resolve_eval_user_id(
     allowlist: frozenset[str] | None = None,
 ) -> str:
     """``configurable.user_id`` for eval_capture rows."""
+    if saturation is not None and saturation.user_id:
+        # mem: bridge — the per-case user_id IS the memory key the recall/store
+        # seams scope on; returning it (not the shared constant) is what makes
+        # the cross-user-leak guard observable.
+        return saturation.user_id
     if saturation is not None or is_saturation_subject(subject, allowlist=allowlist):
         return SATURATION_USER_ID
     return identity_owner
