@@ -247,5 +247,20 @@ class Mem0MemoryBackend:
         )
         return True
 
+    def list_all(self, user_id: str) -> list[MemoryRecord]:
+        """All of a user's memories (A1 optional capability).
+
+        Uses Mem0's ``get_all`` (filtered by user_id) — the reliable list path.
+        ``search`` with an empty query is unreliable for vector backends, so the
+        service prefers this method for count/consolidate.
+        """
+        try:
+            rows = self._get_all(user_id)
+        except Exception as exc:  # noqa: BLE001
+            raise MemoryBackendError(
+                f"mem0 backend failed during list_all(user_id={user_id!r})"
+            ) from exc
+        return [self._row_to_record(user_id, row) for row in rows]
+
 
 __all__ = ["Mem0MemoryBackend"]

@@ -201,6 +201,7 @@ export function makeMemoryCreateHandler(
     const created = await deps.memoryStore.add(
       parsed.data.content,
       parsed.data.type,
+      parsed.data.salience,
     );
     return json(200, created);
   };

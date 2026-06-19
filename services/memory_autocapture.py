@@ -39,6 +39,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Protocol, Sequence
 
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+from services.governance.memory_consolidation_carrier import (
+    emit_consolidation_carrier,
+)
 
 if TYPE_CHECKING:
     from services.long_term_memory import LongTermMemoryService
@@ -98,6 +101,10 @@ class MemoryAutoCaptureService:
         self._memory = memory_service
         self._write_back = write_back_enabled
         self._debounce_seconds = debounce_seconds
+        # A1 budget enforcement lives in LongTermMemoryService.store (so every
+        # writer is bounded, not just autocapture). store() returns a
+        # ConsolidationOutcome when a write overflowed; autocapture's only A1 job
+        # is to emit the MEMORY_CONSOLIDATED carrier for it (governance).
         # Default recorder used when a per-call ``black_box`` is not supplied
         # (the runtime path injects it at the composition root so carriers land
         # in the same workflow trace the graph wrote to). Tests pass it per call.
@@ -195,17 +202,24 @@ class MemoryAutoCaptureService:
             return CaptureOutcome(degraded=True)
 
         stored = 0
+        # A1: per-type consolidation outcome from the store path. The service
+        # owns budget enforcement and returns a ConsolidationOutcome when a write
+        # overflowed its type's budget; autocapture's only A1 job is to emit the
+        # carrier for the LAST such outcome per type (the net post-batch state).
+        consolidations: dict[str, Any] = {}
         for item in result.memories:
             store_error = ""
             if self._write_back:
                 try:
-                    self._memory.store(
+                    outcome = self._memory.store(
                         subject,
                         item.key,
                         {"text": item.content},
                         metadata={"type": item.type, "salience": item.salience},
                     )
                     stored += 1
+                    if outcome is not None and (outcome.evicted or outcome.deduped):
+                        consolidations[item.type] = outcome
                 except Exception as exc:
                     store_error = type(exc).__name__
                     logger.warning(
@@ -224,6 +238,16 @@ class MemoryAutoCaptureService:
                 salience=item.salience,
                 proposed_only=not self._write_back,
                 store_error=store_error,
+            )
+
+        # A1: one MEMORY_CONSOLIDATED carrier per type the store-path pruned.
+        for mem_type, outcome in sorted(consolidations.items()):
+            self._emit_consolidation_carrier(
+                recorder,
+                workflow_id=workflow_id,
+                user_id=subject,
+                mem_type=mem_type,
+                outcome=outcome,
             )
 
         await self._record_eval(
@@ -297,6 +321,27 @@ class MemoryAutoCaptureService:
                 timestamp=datetime.now(UTC),
                 details=details,
             )
+        )
+
+    def _emit_consolidation_carrier(
+        self,
+        black_box: BlackBoxRecorder,
+        *,
+        workflow_id: str,
+        user_id: str,
+        mem_type: str,
+        outcome: Any,
+    ) -> None:
+        """Emit the MEMORY_CONSOLIDATED carrier (counts only — never content).
+
+        Delegates to the shared emitter so the autocapture and CRUD paths use one
+        carrier shape (P1 #6a)."""
+        emit_consolidation_carrier(
+            black_box,
+            workflow_id=workflow_id,
+            user_id=user_id,
+            mem_type=mem_type,
+            outcome=outcome,
         )
 
     async def _record_eval(

@@ -178,5 +178,9 @@ class MemoryCreateRequest(BaseModel):
     content: str = Field(min_length=1, max_length=2000)
     type: MemoryTypeLiteral = "semantic"
     key: str | None = Field(default=None, max_length=200)
+    # Optional salience so a panel/manual add can mark importance (and the A3
+    # provenance tiers can render). Absent → the record is stored unmarked
+    # (the legacy/back-compat path). Bounded [0,1] like TypedMemory.salience.
+    salience: float | None = Field(default=None, ge=0.0, le=1.0)
 
     model_config = ConfigDict(extra="forbid")

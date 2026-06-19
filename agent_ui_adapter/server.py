@@ -19,7 +19,8 @@ import logging
 import time
 import uuid
 from datetime import UTC, datetime
-from typing import AsyncIterator, Protocol, runtime_checkable
+from pathlib import Path
+from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -57,6 +58,37 @@ ADAPTER_VERSION = "0.1.0"
 
 _DEFAULT_THREAD_TITLE = "New chat"
 _TITLE_MAX_LEN = 60
+
+
+def _emit_crud_consolidation(
+    recordings_dir: Path | None, owner: str, mem_type: str | None, outcome: Any
+) -> None:
+    """Emit a MEMORY_CONSOLIDATED carrier when a CRUD write overflowed the budget.
+
+    A1 / P1 #6a: a panel/CRUD ``create_memory`` that evicts memory must leave a
+    Validation-pillar carrier (a silent prune is the swallowed-failure the pillar
+    forbids). No-op when nothing was pruned OR no recordings dir is wired (the
+    lean test composition has no relay). Observability must never fail the request.
+    """
+    if recordings_dir is None or outcome is None:
+        return
+    if outcome.evicted == 0 and outcome.deduped == 0:
+        return
+    try:
+        from services.governance.black_box import BlackBoxRecorder
+        from services.governance.memory_consolidation_carrier import (
+            emit_consolidation_carrier,
+        )
+
+        emit_consolidation_carrier(
+            BlackBoxRecorder(recordings_dir),
+            workflow_id=f"mem-crud-{uuid.uuid4().hex}",
+            user_id=owner,
+            mem_type=mem_type or "unknown",
+            outcome=outcome,
+        )
+    except Exception:  # pragma: no cover - observability must never break CRUD
+        logger.warning("memory.consolidated carrier emit failed", exc_info=True)
 
 
 def derive_thread_title(first_message: str | None) -> str:
@@ -255,6 +287,7 @@ def build_app(
     trace_service: TraceService | None = None,
     long_term_memory: LongTermMemoryService | None = None,
     tool_registry: ToolRegistry | None = None,
+    black_box_recordings_dir: Path | None = None,
 ) -> FastAPI:
     """Wire FastAPI app from a runtime + JWT verifier + horizontal services.
 
@@ -491,14 +524,21 @@ def build_app(
     ) -> MemoryItem:
         memory = _require_memory()
         key = body.key or uuid.uuid4().hex
-        memory.store(
-            identity.owner,
-            key,
-            {"text": body.content},
-            metadata={"type": body.type, "source": "user_added"},
+        meta = {"type": body.type, "source": "user_added"}
+        # Persist salience only when provided (A3): a record with no salience
+        # renders unmarked. store() consolidates the type on budget overflow.
+        if body.salience is not None:
+            meta["salience"] = body.salience
+        outcome = memory.store(identity.owner, key, {"text": body.content}, metadata=meta)
+        # A1 / P1 #6a: a CRUD write that overflowed the budget pruned memory —
+        # leave the MEMORY_CONSOLIDATED carrier so the eviction is not silent
+        # (Validation pillar). No-op when nothing was pruned or no recordings dir
+        # is wired (the lean test composition). See app_prod._emit_crud_consolidation.
+        _emit_crud_consolidation(
+            black_box_recordings_dir, identity.owner, body.type, outcome
         )
         return MemoryItem(
-            key=key, type=body.type, content=body.content, salience=None
+            key=key, type=body.type, content=body.content, salience=body.salience
         )
 
     @app.delete("/agent/memory/{key}")

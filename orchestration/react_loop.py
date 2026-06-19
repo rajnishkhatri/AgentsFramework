@@ -34,6 +34,7 @@ from components.reflexion import decide_reentry, generate_reflection
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.memory_context import (
     build_store_payload,
+    filter_recall_records,
     memory_subject as _memory_subject,
     render_recall_block,
     should_recall,
@@ -1025,8 +1026,18 @@ def build_graph(
                         recall_query,
                         3,
                     )
-                    recalled_block = render_recall_block(records)
-                    recall_count = len(records)
+                    # A2/A3 (Hermes adoptions): the relevance floor + dedup may
+                    # drop records, and salience tiers prefix the survivors. The
+                    # carrier/indicator count must reflect what was actually
+                    # injected, not the raw top-k, so count the surviving records.
+                    min_relevance = agent_config.memory_recall_min_relevance
+                    kept = filter_recall_records(records, min_relevance=min_relevance)
+                    recalled_block = render_recall_block(
+                        records,
+                        min_relevance=min_relevance,
+                        authoritative_at=agent_config.memory_authoritative_at,
+                    )
+                    recall_count = len(kept)
                 except MemoryBackendError as exc:
                     # Graceful degradation: memory never fails a run. Log only
                     # metadata (privacy invariant — never payload content) and

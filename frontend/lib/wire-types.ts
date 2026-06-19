@@ -297,6 +297,11 @@ export interface components {
              */
             key: string | null;
             /**
+             * Salience
+             * @default null
+             */
+            salience: number | null;
+            /**
              * Type
              * @default semantic
              * @enum {string}

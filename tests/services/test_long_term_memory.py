@@ -187,7 +187,9 @@ class TestLongTermMemoryAcceptance:
         service.store("u", "k", {"v": 1}, metadata={"source": "explicit"})
         record = service.recall("u", "k")
         assert record is not None
-        assert record.metadata == {"source": "explicit"}
+        # Caller metadata round-trips; store() also stamps a stored_at (P2 #10).
+        assert record.metadata["source"] == "explicit"
+        assert "stored_at" in record.metadata
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -288,3 +290,258 @@ class TestLongTermMemoryPrivacy:
                 f"Privacy invariant violated: payload value {secret_value!r} "
                 f"appeared in log message {record.getMessage()!r}"
             )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# A1 — bounded budget + consolidation (Hermes/memory-os adoption)
+# docs/research/memory/hermes_adoptions_design.md. Failure paths first;
+# behavior-only assertions (TAP-1 — never re-derive the evict ordering).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _store(service, user_id, key, text, *, mem_type="semantic", salience=0.5):
+    service.store(
+        user_id, key, {"text": text}, metadata={"type": mem_type, "salience": salience}
+    )
+
+
+class TestCount:
+    def test_count_rejects_empty_user_id(self):
+        with pytest.raises(ValueError):
+            _service().count("")
+
+    def test_count_rejects_non_string_type(self):
+        with pytest.raises(TypeError):
+            _service().count("u", mem_type=3)  # type: ignore[arg-type]
+
+    def test_count_zero_for_empty_store(self):
+        assert _service().count("u") == 0
+
+    def test_count_is_scoped_by_user(self):
+        s = _service()
+        _store(s, "u1", "k1", "a")
+        _store(s, "u2", "k2", "b")
+        assert s.count("u1") == 1
+
+    def test_count_filters_by_type(self):
+        s = _service()
+        _store(s, "u", "k1", "a", mem_type="semantic")
+        _store(s, "u", "k2", "b", mem_type="episodic")
+        assert s.count("u", mem_type="semantic") == 1
+        assert s.count("u") == 2
+
+
+class TestConsolidate:
+    def test_consolidate_rejects_empty_type(self):
+        with pytest.raises(ValueError):
+            _service().consolidate("u", "", budget=5)
+
+    def test_under_budget_evicts_nothing(self):
+        s = _service()
+        for i in range(3):
+            _store(s, "u", f"k{i}", f"fact {i}")
+        outcome = s.consolidate("u", "semantic", budget=5)
+        assert outcome.evicted == 0
+        assert outcome.deduped == 0
+        assert s.count("u", mem_type="semantic") == 3
+
+    def test_over_budget_evicts_lowest_salience_first(self):
+        s = _service()
+        # Distinct text so dedup does not fire; salience is the eviction key.
+        _store(s, "u", "hi", "high salience fact", salience=0.9)
+        _store(s, "u", "mid", "mid salience fact", salience=0.5)
+        _store(s, "u", "lo", "low salience fact", salience=0.1)
+        outcome = s.consolidate("u", "semantic", budget=2)
+        assert outcome.evicted == 1
+        # The lowest-salience record is the one removed; the two strongest stay.
+        assert s.recall("u", "lo") is None
+        assert s.recall("u", "hi") is not None
+        assert s.recall("u", "mid") is not None
+
+    def test_exact_duplicate_text_is_deduped_keeping_highest_salience(self):
+        s = _service()
+        _store(s, "u", "weak", "prefers metric units", salience=0.2)
+        _store(s, "u", "strong", "Prefers   Metric Units", salience=0.8)  # variant
+        outcome = s.consolidate("u", "semantic", budget=10)
+        assert outcome.deduped == 1
+        # The higher-salience copy survives; the weaker duplicate is removed.
+        assert s.recall("u", "strong") is not None
+        assert s.recall("u", "weak") is None
+
+    def test_dedup_and_evict_combine(self):
+        s = _service()
+        _store(s, "u", "dupA", "same fact", salience=0.3)
+        _store(s, "u", "dupB", "same fact", salience=0.6)  # dup of dupA
+        _store(s, "u", "other", "different fact", salience=0.9)
+        _store(s, "u", "third", "third fact", salience=0.1)
+        # After dedup: {same fact(0.6), different(0.9), third(0.1)} = 3; budget 2
+        # evicts the lowest survivor (third, 0.1).
+        outcome = s.consolidate("u", "semantic", budget=2)
+        assert outcome.deduped == 1
+        assert outcome.evicted == 1
+        assert s.count("u", mem_type="semantic") == 2
+        assert s.recall("u", "third") is None
+
+    def test_consolidate_only_touches_its_type(self):
+        s = _service()
+        for i in range(4):
+            _store(s, "u", f"sem{i}", f"semantic {i}", mem_type="semantic", salience=0.1 * i)
+        _store(s, "u", "ep", "an episode", mem_type="episodic", salience=0.5)
+        s.consolidate("u", "semantic", budget=2)
+        # The episodic record is untouched by a semantic consolidation.
+        assert s.recall("u", "ep") is not None
+        assert s.count("u", mem_type="episodic") == 1
+
+
+class TestStoreBudgetEnforcement:
+    """A1: the SERVICE store path consolidates on overflow (so every writer —
+    autocapture, the CRUD route, the panel — is bounded, not just autocapture)."""
+
+    def _budgeted(self, budget):
+        from services.long_term_memory import (
+            InMemoryMemoryBackend,
+            LongTermMemoryService,
+        )
+
+        return LongTermMemoryService(InMemoryMemoryBackend(), budgets={"semantic": budget})
+
+    def test_store_returns_none_when_no_budget_configured(self):
+        # Default service (no budgets) → store never consolidates, returns None.
+        s = _service()
+        assert s.store("u", "k", {"text": "a fact"}, metadata={"type": "semantic"}) is None
+
+    def test_store_returns_none_under_budget(self):
+        s = self._budgeted(5)
+        out = s.store("u", "k1", {"text": "fact one"}, metadata={"type": "semantic", "salience": 0.5})
+        assert out is None
+        assert s.count("u", mem_type="semantic") == 1
+
+    def test_store_consolidates_on_overflow_and_returns_outcome(self):
+        s = self._budgeted(2)
+        for i in range(3):
+            out = s.store(
+                "u", f"k{i}", {"text": f"fact {i}"},
+                metadata={"type": "semantic", "salience": 0.1 * (i + 1)},
+            )
+        # The third write overflows budget 2 → consolidation runs, returns outcome.
+        assert out is not None
+        assert out.evicted == 1
+        assert s.count("u", mem_type="semantic") == 2
+        # Lowest-salience (k0, 0.1) evicted; the two strongest survive.
+        assert s.recall("u", "k0") is None
+
+    def test_store_untyped_record_is_never_consolidated(self):
+        # The v1 deterministic store writes no type → no budget applies → None.
+        s = self._budgeted(1)
+        assert s.store("u", "k", {"text": "untyped"}) is None
+        assert s.store("u", "k2", {"text": "also untyped"}) is None
+        assert s.count("u") == 2  # uncapped (no type → no budget key)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# P2 #8 — un-evictable SAFETY FLOOR (hermes_adoptions_design §10.5).
+# A record at/above the safety floor must NEVER be evicted to satisfy a
+# budget, even if higher-salience records exist. Failure-paths-first: the
+# "safety fact survives overflow" guarantee is asserted before the rates.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _floored(floor):
+    """A consolidate-only service (no store-path budget) with a safety floor, so
+    the explicit consolidate() call is the sole eviction point — the
+    outcome.evicted assertions stay meaningful."""
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    return LongTermMemoryService(InMemoryMemoryBackend(), safety_floor=floor)
+
+
+class TestSafetyFloor:
+    def test_safety_fact_is_never_evicted_even_over_budget(self):
+        """A salience-1.0 safety fact survives a budget=1 consolidation where
+        strong-but-non-safety facts would otherwise crowd it out. Safety beats
+        budget."""
+        s = _floored(floor=0.95)
+        _store(s, "u", "safety", "EpiPen in the top drawer", salience=1.0)
+        _store(s, "u", "pref1", "likes dark mode", salience=0.6)
+        _store(s, "u", "pref2", "likes metric", salience=0.7)
+        s.consolidate("u", "semantic", budget=1)
+        # The safety fact must still be there; only non-pinned facts were evicted.
+        assert s.recall("u", "safety") is not None
+
+    def test_pinned_facts_may_exceed_budget(self):
+        """If the pinned (>= floor) facts alone exceed budget, ALL of them stay —
+        the store legitimately runs over budget rather than drop a safety fact."""
+        s = _floored(floor=0.9)
+        _store(s, "u", "s1", "safety one", salience=0.95)
+        _store(s, "u", "s2", "safety two", salience=0.99)
+        _store(s, "u", "weak", "a weak preference", salience=0.2)
+        outcome = s.consolidate("u", "semantic", budget=1)
+        # Both safety facts survive (2 > budget 1); the weak one is evicted.
+        assert s.recall("u", "s1") is not None
+        assert s.recall("u", "s2") is not None
+        assert s.recall("u", "weak") is None
+        assert outcome.evicted == 1
+
+    def test_no_floor_configured_evicts_normally(self):
+        """Default (floor=None) is byte-identical to today: highest-salience
+        wins, no pinning."""
+        s = _floored(floor=None)
+        _store(s, "u", "hi", "high", salience=0.9)
+        _store(s, "u", "lo", "low", salience=0.1)
+        s.consolidate("u", "semantic", budget=1)
+        assert s.recall("u", "hi") is not None
+        assert s.recall("u", "lo") is None
+
+
+# ─────────────────────────────────────────────────────────────────────
+# P2 #10 — explicit recency tie-break. store() stamps a UTC ``stored_at``;
+# consolidate() breaks salience TIES by evicting the oldest first (instead
+# of backend insertion order, which is unreliable on Mem0).
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestRecencyTieBreak:
+    def test_store_stamps_stored_at_when_absent(self):
+        s = self._budgeted_none()
+        s.store("u", "k", {"text": "a fact"}, metadata={"type": "semantic"})
+        rec = s.recall("u", "k")
+        assert rec is not None
+        assert "stored_at" in rec.metadata and rec.metadata["stored_at"]
+
+    def test_store_preserves_caller_supplied_stored_at(self):
+        s = self._budgeted_none()
+        s.store(
+            "u", "k",
+            {"text": "a fact"},
+            metadata={"type": "semantic", "stored_at": "2020-01-01T00:00:00+00:00"},
+        )
+        rec = s.recall("u", "k")
+        assert rec is not None
+        assert rec.metadata["stored_at"] == "2020-01-01T00:00:00+00:00"
+
+    def test_equal_salience_evicts_oldest_first(self):
+        """Two equal-salience facts, distinct text; budget 1 keeps the NEWER one
+        (the older stored_at is evicted)."""
+        s = self._budgeted_none()
+        s.store(
+            "u", "old", {"text": "older fact"},
+            metadata={"type": "semantic", "salience": 0.5, "stored_at": "2020-01-01T00:00:00+00:00"},
+        )
+        s.store(
+            "u", "new", {"text": "newer fact"},
+            metadata={"type": "semantic", "salience": 0.5, "stored_at": "2026-01-01T00:00:00+00:00"},
+        )
+        s.consolidate("u", "semantic", budget=1)
+        assert s.recall("u", "new") is not None
+        assert s.recall("u", "old") is None
+
+    def _budgeted_none(self):
+        from services.long_term_memory import (
+            InMemoryMemoryBackend,
+            LongTermMemoryService,
+        )
+
+        return LongTermMemoryService(InMemoryMemoryBackend())

@@ -234,6 +234,14 @@ components:
           - type: 'null'
           default: null
           title: Key
+        salience:
+          anyOf:
+          - maximum: 1.0
+            minimum: 0.0
+            type: number
+          - type: 'null'
+          default: null
+          title: Salience
         type:
           default: semantic
           enum:

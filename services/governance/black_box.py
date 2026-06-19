@@ -60,6 +60,15 @@ class EventType(str, Enum):
     # no SPEC_VERSION bump. details carry user_id/key/count — never content.
     MEMORY_RECALLED = "memory_recalled"
     MEMORY_STORED = "memory_stored"
+    # Hermes / memory-os adoption A1 (docs/research/memory/hermes_adoptions_design.md):
+    # the bounded-budget consolidation carrier. Like the two above it is
+    # ENRICHMENT, not a per-phase requirement — consolidation is a write-side
+    # background decision that DELETES memory, so leaving an honest carrier keeps
+    # the Validation pillar truthful (a silent eviction would be a swallowed
+    # failure). Non-required → ALL_PHASE_VALUES / requirement tuples untouched →
+    # drift-guard stays green with no SPEC_VERSION bump. details carry
+    # user_id/type/kept/evicted/deduped — never content.
+    MEMORY_CONSOLIDATED = "memory_consolidated"
 
 
 class TraceEvent(BaseModel):

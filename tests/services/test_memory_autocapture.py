@@ -304,3 +304,140 @@ class TestDebounce:
         )
         await svc.drain()
         assert len(ex.calls) == 2
+
+
+# ─────────────────────────────────────────────────────────────────────
+# A1 — budget + consolidation on write-back (Hermes/memory-os adoption)
+# docs/research/memory/hermes_adoptions_design.md. Uses a REAL
+# LongTermMemoryService over an in-memory backend (behavioral fake, not a
+# mock — TAP-2) so consolidate() actually runs end-to-end.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _real_memory(budgets=None):
+    # A1 budgets live on the SERVICE (every writer is bounded), so the autocapture
+    # tests inject them here, not on the autocapture service.
+    from services.long_term_memory import (
+        InMemoryMemoryBackend,
+        LongTermMemoryService,
+    )
+
+    return LongTermMemoryService(InMemoryMemoryBackend(), budgets=budgets)
+
+
+def _items_semantic(n, *, salience_lo_first=True):
+    # n distinct semantic facts; first item lowest salience when lo_first.
+    out = []
+    for i in range(n):
+        sal = round((i + 1) / (n + 1), 3) if salience_lo_first else round(0.9 - i * 0.1, 3)
+        out.append(_item(content=f"fact number {i}", key=f"k{i}", sal=sal))
+    return out
+
+
+class TestConsolidationOnWriteBack:
+    async def test_over_budget_writeback_consolidates_and_emits_carrier(self, tmp_path):
+        # 4 semantic items, budget 2 → consolidation evicts 2, carrier fires.
+        ex = FakeExtractor(memories=_items_semantic(4))
+        mem = _real_memory(budgets={"semantic": 2})
+        rec = _recorder(tmp_path)
+        svc = MemoryAutoCaptureService(
+            extractor=ex,  # type: ignore[arg-type]
+            memory_service=mem,
+            write_back_enabled=True,
+        )
+        outcome = await svc.capture(
+            thread_id="t",
+            user_id="alice",
+            messages=_MESSAGES,
+            workflow_id="wf1",
+            task_id="task1",
+            black_box=rec,
+        )
+        assert outcome.stored == 4
+        assert mem.count("alice", mem_type="semantic") == 2  # consolidated to budget
+        assert _carrier_count(rec, "wf1", EventType.MEMORY_CONSOLIDATED) == 1
+
+    async def test_under_budget_writeback_does_not_consolidate(self, tmp_path):
+        ex = FakeExtractor(memories=_items_semantic(2))
+        mem = _real_memory(budgets={"semantic": 50})
+        rec = _recorder(tmp_path)
+        svc = MemoryAutoCaptureService(
+            extractor=ex,  # type: ignore[arg-type]
+            memory_service=mem,
+            write_back_enabled=True,
+        )
+        await svc.capture(
+            thread_id="t",
+            user_id="alice",
+            messages=_MESSAGES,
+            workflow_id="wf1",
+            task_id="task1",
+            black_box=rec,
+        )
+        assert mem.count("alice", mem_type="semantic") == 2
+        # No eviction/dedup → no consolidation carrier (no decision recorded).
+        assert _carrier_count(rec, "wf1", EventType.MEMORY_CONSOLIDATED) == 0
+
+    async def test_shadow_never_consolidates(self, tmp_path):
+        # write_back OFF stores nothing → there is nothing to consolidate, even
+        # with a tiny budget. The carrier must not appear.
+        ex = FakeExtractor(memories=_items_semantic(4))
+        mem = _real_memory(budgets={"semantic": 1})
+        rec = _recorder(tmp_path)
+        svc = MemoryAutoCaptureService(
+            extractor=ex,  # type: ignore[arg-type]
+            memory_service=mem,
+            write_back_enabled=False,
+        )
+        await svc.capture(
+            thread_id="t",
+            user_id="alice",
+            messages=_MESSAGES,
+            workflow_id="wf1",
+            task_id="task1",
+            black_box=rec,
+        )
+        assert mem.count("alice", mem_type="semantic") == 0  # shadow: nothing stored
+        assert _carrier_count(rec, "wf1", EventType.MEMORY_CONSOLIDATED) == 0
+
+    async def test_no_budget_for_type_skips_consolidation(self, tmp_path):
+        # budget 0 (or absent) for the written type = no cap → no consolidation.
+        ex = FakeExtractor(memories=_items_semantic(5))
+        mem = _real_memory(budgets={"episodic": 2})  # nothing for 'semantic'
+        rec = _recorder(tmp_path)
+        svc = MemoryAutoCaptureService(
+            extractor=ex,  # type: ignore[arg-type]
+            memory_service=mem,
+            write_back_enabled=True,
+        )
+        await svc.capture(
+            thread_id="t",
+            user_id="alice",
+            messages=_MESSAGES,
+            workflow_id="wf1",
+            task_id="task1",
+            black_box=rec,
+        )
+        assert mem.count("alice", mem_type="semantic") == 5  # uncapped
+        assert _carrier_count(rec, "wf1", EventType.MEMORY_CONSOLIDATED) == 0
+
+    async def test_consolidation_carrier_never_contains_content(self, tmp_path):
+        ex = FakeExtractor(
+            memories=[_item(content="SECRET-EVICTED-FACT", key=f"k{i}", sal=0.1 * i) for i in range(4)]
+        )
+        mem = _real_memory(budgets={"semantic": 1})
+        rec = _recorder(tmp_path)
+        svc = MemoryAutoCaptureService(
+            extractor=ex,  # type: ignore[arg-type]
+            memory_service=mem,
+            write_back_enabled=True,
+        )
+        await svc.capture(
+            thread_id="t",
+            user_id="alice",
+            messages=_MESSAGES,
+            workflow_id="wf1",
+            task_id="task1",
+            black_box=rec,
+        )
+        assert "SECRET-EVICTED-FACT" not in str(rec.export("wf1"))

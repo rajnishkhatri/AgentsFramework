@@ -433,6 +433,49 @@ class AgentRuntimeSettings(BaseSettings):
     memory_autocapture_enabled: bool = Field(
         default=False, validation_alias="MEMORY_AUTOCAPTURE_ENABLED"
     )
+    # The enable-policy GUARD (services.governance.memory_enable_policy): the
+    # flag above is the operator's INTENT, but write-back only actually turns on
+    # when a passing, frozen-test-split calibration certificate is also present.
+    # This is the path to that certificate (emitted by
+    # scripts/eval/memory_extractor_calibrate.py --emit-certificate). Unset or
+    # invalid → write-back stays SHADOW even with the flag on (fail-safe; the
+    # composition logs a loud governance warning naming why). 03_enable_policy.md.
+    memory_autocapture_cert: str = Field(
+        default="", validation_alias="MEMORY_AUTOCAPTURE_CERT"
+    )
+    # Hermes / memory-os adoption A2: relevance floor on recall injection.
+    # Default 0.0 = no floor (byte-identical to today); a scoring backend (Mem0)
+    # on a tagged revision sets it to drop weakly-related recalls. Calibrate
+    # before flipping on (docs/research/memory/hermes_adoptions_design.md).
+    memory_recall_min_relevance: float = Field(
+        default=0.0, validation_alias="MEMORY_RECALL_MIN_RELEVANCE"
+    )
+    # Hermes / memory-os adoption A3: salience threshold for the [confirmed]/
+    # [inferred] recall-block tiers. Render-only; meaningful once write-back live.
+    memory_authoritative_at: float = Field(
+        default=0.8, validation_alias="MEMORY_AUTHORITATIVE_AT"
+    )
+    # Hermes / memory-os adoption A1: per-type item budgets. On write-back, a
+    # type over its budget is consolidated (dedup + evict lowest-salience). 0 =
+    # no cap (the consolidation step is skipped). Defaults match the design doc;
+    # a stress revision sets a small budget so consolidation fires within a test
+    # batch.
+    memory_budget_semantic: int = Field(
+        default=50, validation_alias="MEMORY_BUDGET_SEMANTIC"
+    )
+    memory_budget_episodic: int = Field(
+        default=30, validation_alias="MEMORY_BUDGET_EPISODIC"
+    )
+    memory_budget_procedural: int = Field(
+        default=10, validation_alias="MEMORY_BUDGET_PROCEDURAL"
+    )
+    # P2 #8: an un-evictable safety floor. A memory whose salience is >= this is
+    # never evicted to satisfy a budget (a medical/safety fact must not be crowded
+    # out). Default 0.0 → disabled (no pinning; the original consolidation
+    # behavior). Set e.g. 0.95 once memory holds safety-critical facts.
+    memory_safety_floor: float = Field(
+        default=0.0, validation_alias="MEMORY_SAFETY_FLOOR"
+    )
     # Live-infra (Piece B): when present, the agent ring selects the durable
     # Mem0MemoryBackend instead of the ephemeral InMemoryMemoryBackend so
     # long-term memory survives a Cloud Run restart. Absent (dev/tests/CI) →
@@ -600,6 +643,11 @@ def build_components(
         carrier_gate_enforce_mode=carrier_gate_enforce_mode,
         carrier_gate_fault_inject=settings.carrier_gate_fault_inject,
         memory_enabled=settings.memory_enabled,
+        # Hermes / memory-os recall refinements (A2/A3). Default-identity values
+        # (0.0 floor / 0.8 tier) keep recall byte-identical until a tagged
+        # revision tunes them.
+        memory_recall_min_relevance=settings.memory_recall_min_relevance,
+        memory_authoritative_at=settings.memory_authoritative_at,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
@@ -717,7 +765,20 @@ def build_components(
     else:
         memory_backend = InMemoryMemoryBackend()
         _logger.info("memory backend: in-memory (ephemeral)")
-    memory_service = LongTermMemoryService(memory_backend)
+    # A1 per-type item budgets (Hermes adoption), injected at the root so EVERY
+    # writer (autocapture, the /agent/memory CRUD route, the panel) consolidates
+    # on overflow — no writer can grow the store unbounded.
+    memory_budgets = {
+        "semantic": settings.memory_budget_semantic,
+        "episodic": settings.memory_budget_episodic,
+        "procedural": settings.memory_budget_procedural,
+    }
+    # P2 #8 safety floor: 0.0 (default) → disabled (no pinning); a positive value
+    # pins facts at/above it so consolidation never evicts a safety-critical fact.
+    safety_floor = settings.memory_safety_floor or None
+    memory_service = LongTermMemoryService(
+        memory_backend, budgets=memory_budgets, safety_floor=safety_floor
+    )
 
     # Phase 2 typed background auto-capture: construct the post-run autocapture
     # seam at the root too. It runs OUTSIDE the graph hot path (the runtime
@@ -746,13 +807,34 @@ def build_components(
         prompt_service=PromptService(),
         profile=default_fast_profile(),
     )
+    # Enable-policy guard: the flag is the operator's intent, but write-back only
+    # actually turns on when a passing frozen-test-split calibration certificate
+    # is also present (machine-checked, not honour-system). Flag-on-but-no-cert
+    # fails SAFE to shadow and is logged loudly — write-back must never store
+    # ungated. Rollback is unchanged (flag off → shadow instantly).
+    from services.governance.memory_enable_policy import (
+        load_certificate,
+        resolve_write_back,
+    )
+
+    _wb = resolve_write_back(
+        flag_requested=settings.memory_autocapture_enabled,
+        certificate=load_certificate(settings.memory_autocapture_cert or None),
+    )
+    if _wb.blocked:
+        _logger.warning("memory autocapture: %s", _wb.reason)
+    else:
+        _logger.info("memory autocapture: %s", _wb.reason)
     memory_autocapture = MemoryAutoCaptureService(
         extractor=memory_extractor,
         memory_service=memory_service,
-        write_back_enabled=settings.memory_autocapture_enabled,
+        write_back_enabled=_wb.write_back_enabled,
         # Same recordings dir the graph writes to (cache_dir / black_box_recordings)
         # so proposal carriers land in the run's own workflow trace.
         black_box=BlackBoxRecorder(cache_dir / "black_box_recordings"),
+        # A1 budgets are enforced in memory_service.store (injected above), so
+        # autocapture needs no budget map — it emits the carrier from store()'s
+        # returned ConsolidationOutcome.
     )
 
     return AgentComponents(

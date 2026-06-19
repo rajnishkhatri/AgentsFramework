@@ -94,6 +94,10 @@ _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     # — never content (the redaction pass below keeps the curated view clean).
     EventType.MEMORY_RECALLED: ("span", "memory.recalled"),
     EventType.MEMORY_STORED: ("span", "memory.stored"),
+    # A1 consolidation: a write-side background activity (deletes stale memory).
+    # Span like the other memory carriers; details carry user_id/type/counts —
+    # never content. Makes the eviction visible to the Validation pillar.
+    EventType.MEMORY_CONSOLIDATED: ("span", "memory.consolidated"),
 }
 
 # Pre-compile redaction patterns from the guardrail rule factories.

@@ -39,11 +39,16 @@ export interface MemoryStore {
   list(): Promise<ReadonlyArray<MemoryItem>>;
 
   /**
-   * Add a user-authored memory.
+   * Add a user-authored memory. `salience` (A3 provenance tiers) is optional —
+   * omitted → stored unmarked.
    *
    * @throws MemoryStoreError on transport failure.
    */
-  add(content: string, type: MemoryType): Promise<MemoryItem>;
+  add(
+    content: string,
+    type: MemoryType,
+    salience?: number | null,
+  ): Promise<MemoryItem>;
 
   /**
    * Remove one of the caller's memories by key.

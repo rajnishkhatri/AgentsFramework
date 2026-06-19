@@ -149,6 +149,8 @@ export const MemoryCreateRequestSchema = z
     content: z.string().min(1).max(2000),
     type: MemoryTypeSchema.default("semantic"),
     key: z.string().max(200).nullable().default(null),
+    // Optional salience (A3 provenance tiers): omitted → stored unmarked.
+    salience: z.number().min(0).max(1).nullable().default(null),
   })
   .strict();
 export type MemoryCreateRequest = z.infer<typeof MemoryCreateRequestSchema>;

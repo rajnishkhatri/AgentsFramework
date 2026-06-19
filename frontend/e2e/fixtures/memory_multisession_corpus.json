@@ -1215,5 +1215,966 @@
       }
     ],
     "rationale": "film -> digital -> video; current interest is video"
+  },
+  {
+    "case": "MEM-RELFLOOR-oneoff-topic-01",
+    "mem_id": "MEM-1001",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "For the record, I strongly prefer dark-mode UIs everywhere."
+        ],
+        "trace_id": "b859701b99df50fbbc7d3960694fe190"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "Unrelated: my favorite breakfast is oatmeal with berries."
+        ],
+        "trace_id": "b2a03ac1aebe5ebe93aaf796c45cd088"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What are my UI/theme preferences?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "dark"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "oatmeal",
+          "berries"
+        ],
+        "trace_id": "675e753352ed5bc79465cee15af9feb7"
+      }
+    ],
+    "rationale": "strong on-topic (dark-mode) recalled; off-topic breakfast filtered by the floor"
+  },
+  {
+    "case": "MEM-RELFLOOR-borderline-trap-02",
+    "mem_id": "MEM-1002",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I work primarily in Python and care a lot about type hints."
+        ],
+        "trace_id": "0dd6e716d2d85ba7931e88ead2fbd090"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I also dabble in a bit of TypeScript on the frontend."
+        ],
+        "trace_id": "f2b316947b505b7cb2c6d95177a82645"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "What programming languages do I use?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Python",
+          "TypeScript"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "c62b37c2d86351388b588ad4a6e936fb"
+      }
+    ],
+    "rationale": "borderline trap: both facts are relevant; the floor must not over-filter the secondary"
+  },
+  {
+    "case": "MEM-RELFLOOR-noise-heavy-03",
+    "mem_id": "MEM-1003",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "Important: I'm allergic to shellfish."
+        ],
+        "trace_id": "edd10e4e40b6557181ca08758cb821f1"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I once visited Iceland on holiday."
+        ],
+        "trace_id": "58a0642ae3f159cd8af91dc32d351509"
+      },
+      {
+        "session_idx": 2,
+        "kind": "seed",
+        "turns": [
+          "I enjoy jazz music on weekends."
+        ],
+        "trace_id": "03a8d417848d5911a784e5bf752d18f4"
+      },
+      {
+        "session_idx": 3,
+        "kind": "probe",
+        "turns": [
+          "Do I have any dietary or allergy restrictions you know of?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "shellfish"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "Iceland",
+          "jazz"
+        ],
+        "trace_id": "ace6b204ecf05cc2a36302da0f66572e"
+      }
+    ],
+    "rationale": "one on-topic allergy fact amid noise; floor keeps the prompt lean"
+  },
+  {
+    "case": "MEM-RELFLOOR-tooling-04",
+    "mem_id": "MEM-1004",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "My CI runs on GitHub Actions and I deploy to Cloud Run."
+        ],
+        "trace_id": "bf8946b5ea5d52239756a5aa4afd6881"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "My cat is named Mochi."
+        ],
+        "trace_id": "ac2232c76fc8553b8162460265a23e67"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "Remind me about my CI/deploy setup."
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "GitHub Actions",
+          "Cloud Run"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "Mochi",
+          "cat"
+        ],
+        "trace_id": "671caf623de556bd93b78b244e7fcfd0"
+      }
+    ],
+    "rationale": "deploy facts recalled; the pet fact is below the floor for this query"
+  },
+  {
+    "case": "MEM-RELFLOOR-all-weak-abstain-05",
+    "mem_id": "MEM-1005",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel05",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I like hiking on weekends."
+        ],
+        "trace_id": "3bd1b8ee10a551858f3ab2f75551dbd2"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What database engine do I prefer?"
+        ],
+        "want_recall": false,
+        "expect_absent_substring": [
+          "hiking"
+        ],
+        "trace_id": "c7770bee1b8d585195f37defd59df0a6"
+      }
+    ],
+    "rationale": "no on-topic fact exists; the floor yields empty recall and the agent abstains"
+  },
+  {
+    "case": "MEM-RELFLOOR-precise-pref-06",
+    "mem_id": "MEM-1006",
+    "ability": "relevance-floor",
+    "provenance": "synthetic",
+    "user_id": "userrel06",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "seed",
+        "turns": [
+          "I prefer concise answers with code first, prose after."
+        ],
+        "trace_id": "768df9931bff547e969cd47ed9ec14ab"
+      },
+      {
+        "session_idx": 1,
+        "kind": "seed",
+        "turns": [
+          "I'm planning a trip to Spain next spring."
+        ],
+        "trace_id": "33e9850a74705d60a39530b0bf592fe3"
+      },
+      {
+        "session_idx": 2,
+        "kind": "probe",
+        "turns": [
+          "How should you format your answers for me?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "concise",
+          "code"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "Spain",
+          "trip"
+        ],
+        "trace_id": "af387d4d23705ceba655d09a54b0acc6"
+      }
+    ],
+    "rationale": "answer-format preference recalled; travel plan filtered out"
+  },
+  {
+    "case": "MEM-DEDUP-units-01",
+    "mem_id": "MEM-1101",
+    "ability": "recall-dedup",
+    "provenance": "synthetic",
+    "user_id": "userdedup01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "pref-a",
+            "text": "Prefers metric units.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "pref-b",
+            "text": "Prefers metric units.",
+            "type": "semantic",
+            "salience": 0.8
+          }
+        ],
+        "trace_id": "e2718834a42055aebc2639c98f50cbe0"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What measurement units do I prefer?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "metric"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "7738e0db99c05a47bf7d578bfd73a42e"
+      }
+    ],
+    "rationale": "same fact under two keys → one deduped bullet (recalled-count may be 2, rendered once)"
+  },
+  {
+    "case": "MEM-DEDUP-role-02",
+    "mem_id": "MEM-1102",
+    "ability": "recall-dedup",
+    "provenance": "synthetic",
+    "user_id": "userdedup02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "role-1",
+            "text": "Works as a data engineer.",
+            "type": "semantic",
+            "salience": 0.7
+          },
+          {
+            "key": "role-2",
+            "text": "works   as a DATA engineer.",
+            "type": "semantic",
+            "salience": 0.6
+          }
+        ],
+        "trace_id": "566e6bbfff21574d9d8e75ffda240745"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What is my job role?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "data engineer"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "aba8cd4782f75147a01f6c55d4aa6219"
+      }
+    ],
+    "rationale": "case/whitespace variant of the same fact → deduped to one bullet"
+  },
+  {
+    "case": "MEM-DEDUP-distinct-keep-both-trap-03",
+    "mem_id": "MEM-1103",
+    "ability": "recall-dedup",
+    "provenance": "synthetic",
+    "user_id": "userdedup03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "lang-1",
+            "text": "Speaks Spanish.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "lang-2",
+            "text": "Speaks French.",
+            "type": "semantic",
+            "salience": 0.8
+          }
+        ],
+        "trace_id": "208e352e7645522ea18c6b5dd0676df0"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Which languages do I speak?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Spanish",
+          "French"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "33d86c57bd6454d8bd33500d1a6f559d"
+      }
+    ],
+    "rationale": "distinct facts must not be collapsed; dedup is exact-text only"
+  },
+  {
+    "case": "MEM-SALIENCE-pref-01",
+    "mem_id": "MEM-1201",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "confirmed-pref",
+            "text": "Definitely prefers email over phone calls.",
+            "type": "semantic",
+            "salience": 0.95
+          },
+          {
+            "key": "weak-guess",
+            "text": "Might be in the Pacific timezone.",
+            "type": "semantic",
+            "salience": 0.3
+          }
+        ],
+        "trace_id": "45a8166be1045022bf845dac069cb3b9"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What do you remember about how to contact me and when?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "email"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "ba50d7e039e654f8b5916397552ed2c6"
+      }
+    ],
+    "rationale": "high-salience contact pref renders [confirmed]; the low-salience timezone guess renders [inferred]"
+  },
+  {
+    "case": "MEM-SALIENCE-skill-02",
+    "mem_id": "MEM-1202",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "strong-skill",
+            "text": "Is an expert in Kubernetes.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "soft-signal",
+            "text": "Possibly interested in machine learning.",
+            "type": "semantic",
+            "salience": 0.25
+          }
+        ],
+        "trace_id": "2da00fff663754e989583b9e988a8a6b"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Summarize my technical background as you understand it."
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Kubernetes"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "df94c62334695749b2190d71e62096ba"
+      }
+    ],
+    "rationale": "expert skill is authoritative [confirmed]; the speculative interest is [inferred]"
+  },
+  {
+    "case": "MEM-SALIENCE-all-high-03",
+    "mem_id": "MEM-1203",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "h1",
+            "text": "Lives in Berlin.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "h2",
+            "text": "Works in renewable energy.",
+            "type": "semantic",
+            "salience": 0.85
+          }
+        ],
+        "trace_id": "2c1fe761456d5095af302f396dd53ee4"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What do you know about where I live and work?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Berlin",
+          "renewable"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "772cd58132c45696b4641c646650aaaf"
+      }
+    ],
+    "rationale": "both high-salience → both [confirmed] (no [inferred] tier present)"
+  },
+  {
+    "case": "MEM-SALIENCE-all-low-04",
+    "mem_id": "MEM-1204",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "l1",
+            "text": "Might prefer tea over coffee.",
+            "type": "semantic",
+            "salience": 0.3
+          },
+          {
+            "key": "l2",
+            "text": "Possibly owns a dog.",
+            "type": "semantic",
+            "salience": 0.2
+          }
+        ],
+        "trace_id": "2d5e538892fd593695ba92dff0bbff7a"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What are my beverage and pet preferences, as best you can tell?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "tea"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "161d8b2f40a652af9bfe9596106f025d"
+      }
+    ],
+    "rationale": "both low-salience → both [inferred]; the model should hedge accordingly"
+  },
+  {
+    "case": "MEM-SALIENCE-boundary-05",
+    "mem_id": "MEM-1205",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal05",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "at-threshold",
+            "text": "Uses a standing desk.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "just-below",
+            "text": "Maybe a morning person.",
+            "type": "semantic",
+            "salience": 0.79
+          }
+        ],
+        "trace_id": "1cd6b7fb8ba359e48085a19e2dec51ed"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What do you remember about my work setup and schedule?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "standing desk"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "1a70c6f2b2c556d08c8aae3b66b816f6"
+      }
+    ],
+    "rationale": "0.8 is at-threshold → [confirmed]; 0.79 → [inferred] (the tier boundary is >=)"
+  },
+  {
+    "case": "MEM-SALIENCE-unmarked-legacy-06",
+    "mem_id": "MEM-1206",
+    "ability": "salience-tier",
+    "provenance": "synthetic",
+    "user_id": "usersal06",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "legacy",
+            "text": "Based in Toronto.",
+            "type": "semantic"
+          }
+        ],
+        "trace_id": "05bb30f5e04155089df580a95c516b06"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Where am I based?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Toronto"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "[confirmed]",
+          "[inferred]"
+        ],
+        "trace_id": "da9e5edb50d05a93857b6fe334e42418"
+      }
+    ],
+    "rationale": "a salience-less record renders with no tier prefix (legacy/back-compat path)"
+  },
+  {
+    "case": "MEM-BUDGET-overflow-evicts-low-01",
+    "mem_id": "MEM-1301",
+    "ability": "budget-consolidation",
+    "provenance": "synthetic",
+    "user_id": "userbudg01",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "f1",
+            "text": "Primary language is Go.",
+            "type": "semantic",
+            "salience": 0.95
+          },
+          {
+            "key": "f2",
+            "text": "Lives in Seattle.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "f3",
+            "text": "Prefers tabs over spaces.",
+            "type": "semantic",
+            "salience": 0.85
+          },
+          {
+            "key": "f4",
+            "text": "Drinks espresso.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "f5",
+            "text": "Has a standing desk.",
+            "type": "semantic",
+            "salience": 0.75
+          },
+          {
+            "key": "f6",
+            "text": "Once mentioned liking the color teal.",
+            "type": "semantic",
+            "salience": 0.1
+          }
+        ],
+        "expect_consolidation": true,
+        "trace_id": "23099a89ec7a53e3a14cffcb1e4d5931"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What are the most important things you know about me?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Go"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "teal"
+        ],
+        "trace_id": "dde856f9cf62528bacc9f5aceee80c89"
+      }
+    ],
+    "rationale": "6 facts > budget 5 → evict lowest-salience (teal); high-salience survives"
+  },
+  {
+    "case": "MEM-BUDGET-dedup-then-evict-02",
+    "mem_id": "MEM-1302",
+    "ability": "budget-consolidation",
+    "provenance": "synthetic",
+    "user_id": "userbudg02",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "d1",
+            "text": "Works in healthcare.",
+            "type": "semantic",
+            "salience": 0.6
+          },
+          {
+            "key": "d2",
+            "text": "works in HEALTHCARE.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "g1",
+            "text": "Lives in Austin.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "g2",
+            "text": "Enjoys cycling.",
+            "type": "semantic",
+            "salience": 0.7
+          },
+          {
+            "key": "g3",
+            "text": "Prefers window seats.",
+            "type": "semantic",
+            "salience": 0.5
+          },
+          {
+            "key": "g4",
+            "text": "Once tried skydiving.",
+            "type": "semantic",
+            "salience": 0.15
+          }
+        ],
+        "expect_consolidation": true,
+        "trace_id": "053025cea95b5fe1a5e9192ab948de35"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Tell me what you remember about me, most important first."
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "healthcare"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "ac08cf1c72895987a42f40b688ee00dd"
+      }
+    ],
+    "rationale": "duplicate healthcare fact deduped (keep higher salience), then evict to budget"
+  },
+  {
+    "case": "MEM-BUDGET-at-budget-no-consolidate-control-03",
+    "mem_id": "MEM-1303",
+    "ability": "budget-consolidation",
+    "provenance": "synthetic",
+    "user_id": "userbudg03",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "a1",
+            "text": "Uses Vim.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "a2",
+            "text": "Lives in Denver.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "a3",
+            "text": "Likes spicy food.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "a4",
+            "text": "Plays guitar.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "a5",
+            "text": "Runs marathons.",
+            "type": "semantic",
+            "salience": 0.8
+          }
+        ],
+        "expect_consolidation": false,
+        "trace_id": "f2863c47e6db5bb8a438e34e3c2cd583"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What do you know about me?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Vim"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "bbbe916173ad59329176f98832164138"
+      }
+    ],
+    "rationale": "CONTROL: exactly at budget → no MEMORY_CONSOLIDATED carrier (no eviction decision)"
+  },
+  {
+    "case": "MEM-BUDGET-high-salience-survives-04",
+    "mem_id": "MEM-1304",
+    "ability": "budget-consolidation",
+    "provenance": "synthetic",
+    "user_id": "userbudg04",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "k1",
+            "text": "CRITICAL: severe peanut allergy.",
+            "type": "semantic",
+            "salience": 1.0
+          },
+          {
+            "key": "k2",
+            "text": "Lives in Boston.",
+            "type": "semantic",
+            "salience": 0.7
+          },
+          {
+            "key": "k3",
+            "text": "Works remotely.",
+            "type": "semantic",
+            "salience": 0.6
+          },
+          {
+            "key": "k4",
+            "text": "Has two kids.",
+            "type": "semantic",
+            "salience": 0.55
+          },
+          {
+            "key": "k5",
+            "text": "Likes board games.",
+            "type": "semantic",
+            "salience": 0.4
+          },
+          {
+            "key": "k6",
+            "text": "Briefly mentioned a houseplant.",
+            "type": "semantic",
+            "salience": 0.05
+          }
+        ],
+        "expect_consolidation": true,
+        "trace_id": "684789fd33b855c89778146b4ba12ece"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "Is there anything critical I should make sure you remember about me?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "peanut",
+          "allerg"
+        ],
+        "evidence_session_idx": 0,
+        "expect_absent_substring": [
+          "houseplant"
+        ],
+        "trace_id": "c0083cb31f085bc4946a864daf86dec4"
+      }
+    ],
+    "rationale": "safety-critical max-salience fact survives; the trivial houseplant is evicted"
+  },
+  {
+    "case": "MEM-BUDGET-episodic-separate-budget-05",
+    "mem_id": "MEM-1305",
+    "ability": "budget-consolidation",
+    "provenance": "synthetic",
+    "user_id": "userbudg05",
+    "sessions": [
+      {
+        "session_idx": 0,
+        "kind": "crud-seed",
+        "turns": [],
+        "seed_memory": [
+          {
+            "key": "s1",
+            "text": "Semantic one.",
+            "type": "semantic",
+            "salience": 0.9
+          },
+          {
+            "key": "s2",
+            "text": "Semantic two.",
+            "type": "semantic",
+            "salience": 0.8
+          },
+          {
+            "key": "e1",
+            "text": "Debugged the auth flow last week.",
+            "type": "episodic",
+            "salience": 0.6
+          }
+        ],
+        "expect_consolidation": false,
+        "trace_id": "b8b6b9e8521d55eca2fd87b08793730c"
+      },
+      {
+        "session_idx": 1,
+        "kind": "probe",
+        "turns": [
+          "What have we worked on and what do you know about me?"
+        ],
+        "want_recall": true,
+        "expect_substring": [
+          "Semantic"
+        ],
+        "evidence_session_idx": 0,
+        "trace_id": "109878a50d2e545c8f05e2bfd751eab5"
+      }
+    ],
+    "rationale": "CONTROL: under budget on both types → no eviction; per-type isolation holds"
   }
 ]

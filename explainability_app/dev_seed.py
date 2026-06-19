@@ -269,6 +269,22 @@ def generate_workflows(
                 timestamp=t,
                 details={"user_id": "seed-user", "key": wf_id},
             ))
+            # A1 consolidation (Hermes adoption): the bounded-budget eviction
+            # carrier — counts only (user_id/type/kept/evicted/deduped), so the
+            # seeded corpus spans every EventType and honors the privacy invariant.
+            recorder.record(TraceEvent(
+                event_id=str(uuid.UUID(int=rng.getrandbits(128))),
+                workflow_id=wf_id,
+                event_type=EventType.MEMORY_CONSOLIDATED,
+                timestamp=t,
+                details={
+                    "user_id": "seed-user",
+                    "type": "semantic",
+                    "kept": 5,
+                    "evicted": 1,
+                    "deduped": 0,
+                },
+            ))
             recorder.record(TraceEvent(
                 event_id=str(uuid.UUID(int=rng.getrandbits(128))),
                 workflow_id=wf_id,

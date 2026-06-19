@@ -68,8 +68,17 @@ export class HttpMemoryStore implements MemoryStore {
     return parsed.data.items;
   }
 
-  async add(content: string, type: MemoryType): Promise<MemoryItem> {
-    const body = MemoryCreateRequestSchema.parse({ content, type, key: null });
+  async add(
+    content: string,
+    type: MemoryType,
+    salience: number | null = null,
+  ): Promise<MemoryItem> {
+    const body = MemoryCreateRequestSchema.parse({
+      content,
+      type,
+      key: null,
+      salience,
+    });
     let res: Response;
     try {
       res = await this.fetchImpl(`${this.baseUrl}/agent/memory`, {

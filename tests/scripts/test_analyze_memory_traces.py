@@ -82,6 +82,51 @@ class TestCrossUserLeakGuard:
         summary = mod.score_run(rows, events)
         assert summary["hard_zero"]["cross_user_leaks"] == 0
 
+    def test_no_leak_when_recall_fires_but_answer_abstains(self) -> None:
+        """The gate is ANSWER-grounded, not count-grounded (P0 #2a follow-up):
+        the `mem:` bridge collapses per-case users to the real owner, so a
+        control probe legitimately recalls the OWNER's own memories (count>=1)
+        and then correctly abstains. Bare recall_count must NOT trip the leak
+        gate; only a foreign user_id OR an answer that asserts a remembered fact
+        does. This is the exact false-positive the live smoke surfaced
+        (count=1, foreign=[], clean abstention)."""
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-LEAK-collapse",
+                "ability": "leak-control",
+                "user_id": "userleak01",
+                "response_text": (
+                    "I'm sorry, but I don't have any previous interactions or "
+                    "memory of your preferences."
+                ),
+                "probe_recall_expected": False,
+            }
+        ]
+        # Recall fired count=1 under the SAME (collapsed) user — no foreign id.
+        events = {"MEM-LEAK-collapse": [_recall_event("userleak01", 1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["hard_zero"]["cross_user_leaks"] == 0
+        assert not mod.gate_failures(summary)
+
+    def test_leak_when_foreign_user_id_in_carrier(self) -> None:
+        """A recall carrier naming a DIFFERENT user_id is a genuine cross-user
+        leak regardless of the answer text — the strongest leak evidence."""
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-LEAK-foreign",
+                "ability": "leak-control",
+                "user_id": "userB",
+                "response_text": "I don't think I have anything for you.",
+                "probe_recall_expected": False,
+            }
+        ]
+        events = {"MEM-LEAK-foreign": [_recall_event("userA", 1)]}  # foreign!
+        summary = mod.score_run(rows, events)
+        assert summary["hard_zero"]["cross_user_leaks"] >= 1
+        assert mod.gate_failures(summary)
+
 
 class TestKnowledgeUpdateStaleValue:
     def test_stale_value_detected(self) -> None:
@@ -155,6 +200,26 @@ class TestAbstentionFabrication:
         events = {"MEM-ABSTAIN-pet": [_recall_event("userA", 0)]}
         summary = mod.score_run(rows, events)
         assert summary["hard_zero"]["fabricated_memories"] == 0
+
+    def test_abstention_passes_when_recall_fires_but_answer_disclaims(self) -> None:
+        """Answer-grounded (P0 #2a follow-up): under user-collapse the recall
+        carrier fires count>=1 even on an abstention probe, but a clean
+        disclaimer is NOT a fabrication. Only an answer that CLAIMS a remembered
+        fact is. Mirrors the live smoke false-positive (count=1, claims=False)."""
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-ABSTAIN-collapse",
+                "ability": "abstention",
+                "user_id": "userabs01",
+                "response_text": "I don't have any information about your pet's name.",
+                "probe_recall_expected": False,
+            }
+        ]
+        events = {"MEM-ABSTAIN-collapse": [_recall_event("userabs01", 1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["hard_zero"]["fabricated_memories"] == 0
+        assert not mod.gate_failures(summary)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -285,12 +350,15 @@ class TestDeterminism:
 
 
 class TestMemSessionIdJoin:
-    """The probe→trace join key: the spec installs `mem:{mem_id}:s{idx}:{user}:
-    {trace}` as the Langfuse sessionId, and the analyzer must reconstruct it
-    byte-identically (the backend never echoes the client probe_trace_id as a
-    trace id — FE-AP-7 — so this reconstruction is the only reliable join)."""
+    """The probe→trace join key: the spec installs a *client* thread
+    `mem:{mem_id}:s{idx}:{user}:{trace}`, but the BACKEND
+    (`goaljudge_saturation_bridge.parse_goaljudge_thread_id`) rewrites the
+    Langfuse sessionId to `session-{mem_id.lower()}-s{idx}`. The analyzer must
+    join on the backend's form — querying the raw `mem:` string 404s on every
+    probe (the defect this regression-guards: P0 #2a, hermes_adoptions_design
+    §10.5)."""
 
-    def test_reconstructs_full_mem_session_id(self) -> None:
+    def test_uses_backend_rewritten_session_id(self) -> None:
         mod = _load()
         row = {
             "mem_id": "MEM-0401",
@@ -298,23 +366,250 @@ class TestMemSessionIdJoin:
             "user_id": "userpers01",
             "probe_trace_id": "70a1bbd8a21bec8a9e97a33611ef0b7c",
         }
+        # NOT the client `mem:` form, and NOT trace_id/user_id dependent.
+        assert mod._mem_session_id(row) == "session-mem-0401-s3"
+
+    def test_lowercases_mem_id_to_match_backend(self) -> None:
+        mod = _load()
+        # The backend lowercases case_id (`case_id.lower()`); the corpus emits
+        # upper-case `MEM-` ids, so a case-sensitive join would silently 404.
         assert (
-            mod._mem_session_id(row)
-            == "mem:MEM-0401:s3:userpers01:70a1bbd8a21bec8a9e97a33611ef0b7c"
+            mod._mem_session_id({"mem_id": "MEM-1001", "session_idx": 2})
+            == "session-mem-1001-s2"
         )
 
-    def test_falls_back_to_corpus_trace_id_when_no_probe_trace(self) -> None:
+    def test_independent_of_trace_and_user(self) -> None:
         mod = _load()
-        row = {
-            "mem_id": "MEM-0001",
-            "session_idx": 0,
-            "user_id": "userpref01",
-            "trace_id": "a" * 32,
-        }
-        assert mod._mem_session_id(row).endswith(":userpref01:" + "a" * 32)
+        # trace_id / user_id are NOT in the backend sessionId, so changing them
+        # must not change the join key.
+        base = {"mem_id": "MEM-0001", "session_idx": 0}
+        assert mod._mem_session_id({**base, "user_id": "u1", "probe_trace_id": "a" * 32}) == (
+            mod._mem_session_id({**base, "user_id": "u2", "trace_id": "b" * 32})
+        )
+        assert mod._mem_session_id(base) == "session-mem-0001-s0"
 
-    def test_empty_when_any_segment_missing(self) -> None:
+    def test_empty_when_required_segment_missing(self) -> None:
         mod = _load()
-        # session_idx 0 is valid (falsy-but-present); a missing user_id is not.
-        assert mod._mem_session_id({"mem_id": "MEM-1", "session_idx": 0}) == ""
-        assert mod._mem_session_id({"session_idx": 0, "user_id": "u", "probe_trace_id": "t"}) == ""
+        # session_idx 0 is valid (falsy-but-present); mem_id is required.
+        assert mod._mem_session_id({"session_idx": 0}) == ""
+        assert mod._mem_session_id({"mem_id": "MEM-1"}) == ""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HERMES / memory-os ADOPTIONS (A1/A2/A3) — new ability branches + hard-0 gate
+# Failure-paths-first: the evicted-high-salience hard-0 is asserted before the
+# happy rates.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _consolidation_event(user_id: str, mem_type: str, *, kept: int, evicted: int, deduped: int = 0) -> dict:
+    return {
+        "event_type": "memory_consolidated",
+        "details": {
+            "user_id": user_id,
+            "type": mem_type,
+            "kept": kept,
+            "evicted": evicted,
+            "deduped": deduped,
+        },
+    }
+
+
+class TestBudgetConsolidationHardZero:
+    def test_evicting_high_salience_while_keeping_low_is_hard_zero(self) -> None:
+        # The high-salience fact (peanut allergy) is ABSENT from the answer while
+        # a trivial low-salience one survived → wrong eviction order → hard-0.
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-BUDGET-safety",
+                "ability": "budget-consolidation",
+                "user_id": "userB",
+                "response_text": "Here's what I know: you like board games and houseplants.",
+                "expect_substring": ["peanut", "allerg"],
+                "expect_absent_substring": ["houseplant"],
+                "expect_consolidation": True,
+            }
+        ]
+        events = {"MEM-BUDGET-safety": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=5, evicted=1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["hard_zero"]["evicted_high_salience"] == 1
+        assert mod.gate_failures(summary), "wrong-order eviction must fail the gate"
+
+    def test_correct_eviction_passes(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-BUDGET-ok",
+                "ability": "budget-consolidation",
+                "user_id": "userB",
+                "response_text": "Most important: you have a severe peanut allergy.",
+                "expect_substring": ["peanut", "allerg"],
+                "expect_absent_substring": ["houseplant"],
+                "expect_consolidation": True,
+            }
+        ]
+        events = {"MEM-BUDGET-ok": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=5, evicted=1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["hard_zero"]["evicted_high_salience"] == 0
+        assert summary["abilities"]["budget-consolidation"]["hits"] == 1
+        assert mod.gate_failures(summary) == []
+
+    def test_expected_consolidation_missing_is_a_miss_not_hard_zero(self) -> None:
+        # The budget should have been exceeded but NO consolidation carrier fired
+        # → a miss (the high fact still present, so not the wrong-order hard-0).
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-BUDGET-noconsol",
+                "ability": "budget-consolidation",
+                "user_id": "userB",
+                "response_text": "Most important: severe peanut allergy.",
+                "expect_substring": ["peanut", "allerg"],
+                "expect_consolidation": True,
+            }
+        ]
+        events = {"MEM-BUDGET-noconsol": [_recall_event("userB", 6)]}  # no consolidation event
+        summary = mod.score_run(rows, events)
+        b = summary["abilities"]["budget-consolidation"]
+        assert b["hits"] == 0
+        assert summary["hard_zero"]["evicted_high_salience"] == 0  # high fact present
+        assert any("BUDGET miss" in m for m in b["mismatches"])
+
+    def test_at_budget_control_must_not_consolidate(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-BUDGET-control",
+                "ability": "budget-consolidation",
+                "user_id": "userB",
+                "response_text": "You use Vim and live in Denver.",
+                "expect_substring": ["Vim"],
+                "expect_consolidation": False,
+            }
+        ]
+        # No consolidation event → control passes.
+        events = {"MEM-BUDGET-control": [_recall_event("userB", 5)]}
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["budget-consolidation"]["hits"] == 1
+
+    def test_at_budget_control_fails_if_it_unexpectedly_consolidates(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-BUDGET-control",
+                "ability": "budget-consolidation",
+                "user_id": "userB",
+                "response_text": "You use Vim.",
+                "expect_substring": ["Vim"],
+                "expect_consolidation": False,
+            }
+        ]
+        events = {"MEM-BUDGET-control": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=4, evicted=1)]}
+        summary = mod.score_run(rows, events)
+        b = summary["abilities"]["budget-consolidation"]
+        assert b["hits"] == 0
+        assert any("CONTROL miss" in m for m in b["mismatches"])
+
+
+class TestRelevanceFloorScoring:
+    def test_floor_keeps_on_topic_drops_off_topic(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-RELFLOOR-1",
+                "ability": "relevance-floor",
+                "user_id": "userR",
+                "response_text": "You prefer dark-mode UIs.",
+                "expect_substring": ["dark"],
+                "expect_absent_substring": ["oatmeal"],
+                "probe_recall_expected": True,
+            }
+        ]
+        events = {"MEM-RELFLOOR-1": [_recall_event("userR", 1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["relevance-floor"]["hits"] == 1
+
+    def test_floor_leak_of_off_topic_fact_is_a_miss(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-RELFLOOR-1",
+                "ability": "relevance-floor",
+                "user_id": "userR",
+                "response_text": "You prefer dark-mode UIs and eat oatmeal.",
+                "expect_substring": ["dark"],
+                "expect_absent_substring": ["oatmeal"],
+                "probe_recall_expected": True,
+            }
+        ]
+        events = {"MEM-RELFLOOR-1": [_recall_event("userR", 1)]}
+        summary = mod.score_run(rows, events)
+        f = summary["abilities"]["relevance-floor"]
+        assert f["hits"] == 0
+        assert any("FLOOR miss" in m for m in f["mismatches"])
+
+    def test_floor_abstains_when_nothing_on_topic(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-RELFLOOR-abstain",
+                "ability": "relevance-floor",
+                "user_id": "userR",
+                "response_text": "I don't have a record of your database preference.",
+                "expect_absent_substring": ["hiking"],
+                "probe_recall_expected": False,
+            }
+        ]
+        events = {"MEM-RELFLOOR-abstain": [_recall_event("userR", 0)]}
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["relevance-floor"]["hits"] == 1
+
+
+class TestDedupAndSalienceScoring:
+    def test_dedup_recall_hit(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-DEDUP-1",
+                "ability": "recall-dedup",
+                "user_id": "userD",
+                "response_text": "You prefer metric units.",
+                "expect_substring": ["metric"],
+            }
+        ]
+        events = {"MEM-DEDUP-1": [_recall_event("userD", 2)]}  # backend returned 2 rows
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["recall-dedup"]["hits"] == 1
+
+    def test_salience_tier_recall_hit(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-SAL-1",
+                "ability": "salience-tier",
+                "user_id": "userS",
+                "response_text": "You prefer email over phone.",
+                "expect_substring": ["email"],
+            }
+        ]
+        events = {"MEM-SAL-1": [_recall_event("userS", 2)]}
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["salience-tier"]["hits"] == 1
+
+    def test_salience_unmarked_legacy_no_tier_leak(self) -> None:
+        # The legacy case asserts NO tier prefix leaked into the answer.
+        mod = _load()
+        rows = [
+            {
+                "case": "MEM-SAL-legacy",
+                "ability": "salience-tier",
+                "user_id": "userS",
+                "response_text": "You're based in Toronto.",
+                "expect_substring": ["Toronto"],
+                "expect_absent_substring": ["[confirmed]", "[inferred]"],
+            }
+        ]
+        events = {"MEM-SAL-legacy": [_recall_event("userS", 1)]}
+        summary = mod.score_run(rows, events)
+        assert summary["abilities"]["salience-tier"]["hits"] == 1

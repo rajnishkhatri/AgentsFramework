@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from components.memory_context import (
     build_store_payload,
+    filter_recall_records,
     memory_subject,
     render_recall_block,
     should_recall,
@@ -97,6 +98,113 @@ def test_render_recall_block_tolerates_missing_text_key() -> None:
     rec = MemoryRecord(user_id="u1", key="k", payload={"other": "v"}, metadata={})
     block = render_recall_block([rec])
     assert isinstance(block, str)  # renders *something*, never raises
+
+
+# ── A2 relevance floor + dedup (Hermes/memory-os; failure/degenerate first) ──
+
+
+def test_render_default_min_relevance_is_byte_identical_to_today() -> None:
+    """The defaulted call must reproduce the original single-arg output exactly.
+
+    Backward-compatibility guard (A5): scored or not, with the default floor of
+    0.0 nothing is dropped, so the block equals the pre-A2 render.
+    """
+    recs = [_rec("alpha"), _rec("beta", key="k2")]
+    assert render_recall_block(recs, min_relevance=0.0) == render_recall_block(recs)
+
+
+def test_below_floor_record_is_dropped() -> None:
+    """A scored record below the floor is filtered out of the block."""
+    recs = [
+        _rec("strong match", key="hi", metadata={"score": 0.9}),
+        _rec("weak match", key="lo", metadata={"score": 0.1}),
+    ]
+    block = render_recall_block(recs, min_relevance=0.5)
+    assert "strong match" in block
+    assert "weak match" not in block
+
+
+def test_at_floor_record_is_kept() -> None:
+    """The floor is a >= boundary: a score exactly at the floor survives."""
+    recs = [_rec("exactly at floor", metadata={"score": 0.5})]
+    block = render_recall_block(recs, min_relevance=0.5)
+    assert "exactly at floor" in block
+
+
+def test_record_without_score_is_never_dropped() -> None:
+    """The in-memory backend attaches no score → the floor must not bite.
+
+    Failure-mode guard: a positive floor with a scoreless record would wrongly
+    empty recall for every dev/test run if we treated 'no score' as 0.
+    """
+    recs = [_rec("no score here")]  # metadata = {}
+    block = render_recall_block(recs, min_relevance=0.9)
+    assert "no score here" in block
+
+
+def test_all_records_dropped_yields_empty_string() -> None:
+    """Every record below the floor → empty block (the no-op shape, like zero
+    records) so the system prompt stays byte-identical."""
+    recs = [_rec("weak", metadata={"score": 0.1})]
+    assert render_recall_block(recs, min_relevance=0.9) == ""
+
+
+def test_exact_duplicate_text_is_deduped() -> None:
+    """The same fact stored under two keys collapses to one bullet (dedup is
+    always on, independent of the floor)."""
+    recs = [
+        _rec("prefers metric units", key="k1"),
+        _rec("Prefers   Metric Units", key="k2"),  # case/whitespace variant
+    ]
+    block = render_recall_block(recs)
+    assert block.lower().count("prefers metric units") == 1
+
+
+def test_filter_recall_records_counts_survivors() -> None:
+    """The node counts survivors (carrier/indicator), not the raw top-k."""
+    recs = [
+        _rec("keep", key="k1", metadata={"score": 0.8}),
+        _rec("drop", key="k2", metadata={"score": 0.1}),
+        _rec("keep", key="k3"),  # exact dup of the first survivor's text
+    ]
+    kept = filter_recall_records(recs, min_relevance=0.5)
+    assert len(kept) == 1  # 'drop' below floor, third is a dup of the first
+
+
+def test_filter_recall_records_default_keeps_all_unique() -> None:
+    recs = [_rec("a"), _rec("b", key="k2")]
+    assert len(filter_recall_records(recs)) == 2
+
+
+# ── A3 salience tiers (Hermes/memory-os ground-truth hierarchy) ─────────────
+
+
+def test_record_without_salience_renders_unmarked() -> None:
+    """The v1 deterministic store writes no salience → no tier prefix (today's
+    exact bullet). Backward-compatibility guard."""
+    block = render_recall_block([_rec("a plain fact")])
+    assert "- a plain fact" in block
+    assert "[confirmed]" not in block
+    assert "[inferred]" not in block
+
+
+def test_high_salience_renders_confirmed() -> None:
+    rec = _rec("works in fintech", metadata={"salience": 0.95})
+    block = render_recall_block([rec], authoritative_at=0.8)
+    assert "[confirmed] works in fintech" in block
+
+
+def test_low_salience_renders_inferred() -> None:
+    rec = _rec("maybe prefers mornings", metadata={"salience": 0.4})
+    block = render_recall_block([rec], authoritative_at=0.8)
+    assert "[inferred] maybe prefers mornings" in block
+
+
+def test_salience_at_threshold_is_confirmed() -> None:
+    """The tier boundary is >= (at-threshold counts as authoritative)."""
+    rec = _rec("on the line", metadata={"salience": 0.8})
+    block = render_recall_block([rec], authoritative_at=0.8)
+    assert "[confirmed] on the line" in block
 
 
 # ── OBP-1 builder: build_store_payload ────────────────────────────────────
