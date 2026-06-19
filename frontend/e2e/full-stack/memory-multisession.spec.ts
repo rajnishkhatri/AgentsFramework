@@ -37,7 +37,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { test, expect } from "../fixtures/auth.fixture";
+import { test, expect, STORAGE_STATE_PATH } from "../fixtures/auth.fixture";
 import {
   sendMessage,
   waitForResponse,
@@ -130,6 +130,58 @@ async function newThreadIfAvailable(
   }
 }
 
+/**
+ * Whether a case drives recall through the per-case `mem:` thread bridge (the
+ * A2 conversational-seed cases, like the original recall/abstention/leak cases)
+ * or runs as the real authenticated owner (the A1/A3 crud-seed cases).
+ *
+ * Decision (docs/research/memory/hermes_adoptions_design.md §A1 enforcement):
+ * the `/agent/memory` CRUD route scopes writes to `identity.owner` and ignores
+ * any client user_id (the cross-user-leak guard), so a crud-seed lands under
+ * the real owner. Those cases therefore must NOT install the `mem:` bridge
+ * (which would repoint recall to a synthetic user that has no seeded memory),
+ * and they must clean up after themselves (shared owner namespace).
+ */
+function usesCrudSeed(caseRow: MemoryCase): boolean {
+  return caseRow.sessions.some((s) => s.kind === "crud-seed");
+}
+
+/** Seed memories directly via the same-origin BFF (cookie auth → forwards to
+ * `/agent/memory` under identity.owner). Used by A1/A3 crud-seed sessions. */
+async function seedMemoriesViaCrud(
+  page: import("@playwright/test").Page,
+  session: MemorySession,
+): Promise<void> {
+  for (const m of session.seed_memory ?? []) {
+    const res = await page.request.post("/api/memory", {
+      data: {
+        content: m.text,
+        type: m.type,
+        key: m.key,
+        salience: m.salience ?? null,
+      },
+    });
+    if (!res.ok()) {
+      throw new Error(`crud-seed failed (${res.status()}) for key=${m.key}`);
+    }
+  }
+}
+
+/** Best-effort cleanup of a case's crud-seeded memories so cases don't pollute
+ * each other in the shared owner namespace. Never throws (teardown). */
+async function cleanupSeededMemories(
+  page: import("@playwright/test").Page,
+  caseRow: MemoryCase,
+): Promise<void> {
+  for (const s of caseRow.sessions) {
+    for (const m of s.seed_memory ?? []) {
+      await page.request
+        .delete(`/api/memory/${encodeURIComponent(m.key)}`)
+        .catch(() => {});
+    }
+  }
+}
+
 /** Mint a fresh 32-hex trace_id for ONE run (no Langfuse superposition across
  * reruns — see the planning-stress spec note + [[stress-harness-traceid-superposition]]). */
 function freshTraceId(): string {
@@ -199,8 +251,20 @@ async function runSession(
   session: MemorySession,
 ): Promise<{ runTraceId: string; responseText: string; recalledCountDom: number | null }> {
   const runTraceId = freshTraceId();
+
+  // A1/A3 crud-seed session: plant memories via the CRUD route under the real
+  // owner; there is no chat turn and no bridge (recall runs as the owner too).
+  if (session.kind === "crud-seed") {
+    await seedMemoriesViaCrud(page, session);
+    return { runTraceId, responseText: "seeded", recalledCountDom: null };
+  }
+
   await page.unroute("**/api/run/stream").catch(() => {});
-  installMemThreadBridge(page, caseRow, session.session_idx, runTraceId);
+  // Conversational (A2 / original) cases drive recall through the per-case
+  // `mem:` bridge; crud-seed-based cases run as identity.owner (no bridge).
+  if (!usesCrudSeed(caseRow)) {
+    installMemThreadBridge(page, caseRow, session.session_idx, runTraceId);
+  }
 
   await page.goto("/");
   await newThreadIfAvailable(page);
@@ -230,6 +294,20 @@ test.describe("Memory cross-session stress (L4: real stack, MEMORY_ENABLED)", ()
     // Sessions within a case MUST run in order (seed before probe) — the
     // experiment is the ordering. describe.serial keeps them sequential.
     test.describe.serial(`${caseRow.case} [${caseRow.ability}]`, () => {
+      // A1/A3 crud-seed cases share the real owner namespace → clean up the
+      // seeded memories after the case so cases don't bleed into each other.
+      if (usesCrudSeed(caseRow)) {
+        test.afterAll(async ({ browser }) => {
+          const storageState = path.isAbsolute(STORAGE_STATE_PATH)
+            ? STORAGE_STATE_PATH
+            : path.join(process.cwd(), STORAGE_STATE_PATH);
+          if (!fs.existsSync(storageState)) return;
+          const ctx = await browser.newContext({ storageState });
+          const page = await ctx.newPage();
+          await cleanupSeededMemories(page, caseRow);
+          await ctx.close();
+        });
+      }
       for (const session of caseRow.sessions) {
         test(`s${session.session_idx} ${session.kind}`, async ({
           authenticatedPage: page,
@@ -266,6 +344,10 @@ test.describe("Memory cross-session stress (L4: real stack, MEMORY_ENABLED)", ()
                 recalled_count_dom: recalledCountDom,
                 want_recall: session.want_recall ?? null,
                 expect_substring: session.expect_substring ?? [],
+                // Hermes-adoption expectations (A1/A2/A3) so the analyzer can
+                // score floor/dedup/salience/budget without re-reading the corpus.
+                expect_absent_substring: session.expect_absent_substring ?? [],
+                expect_consolidation: session.expect_consolidation ?? null,
                 screenshot_path: screenshotPath,
                 outcome: "pass",
                 finished_at: new Date().toISOString(),

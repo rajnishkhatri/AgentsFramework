@@ -120,7 +120,30 @@ class AgentConfig(BaseModel):
     # (mirrors goal_judge: shadow -> dev-enable -> prod-enable; never iterate the
     # prompt on the test split). Independent of memory_enabled's recall path so
     # recall can ship before write-back.
+    #
+    # ENFORCEMENT: this flag is the operator's INTENT only. The composition root
+    # (middleware/composition.py) routes it through the enable-policy GUARD
+    # (services/governance/memory_enable_policy.py): write-back actually turns on
+    # only when a passing, frozen-test-split calibration certificate
+    # (MEMORY_AUTOCAPTURE_CERT) is also present. Flag-on-but-no-cert fails SAFE to
+    # shadow. So flipping this alone in prod does NOT start storing — the gate is
+    # machine-checked, not honour-system.
     memory_autocapture_enabled: bool = False
+    # Hermes / memory-os adoption A2 (docs/research/memory/hermes_adoptions_design.md):
+    # relevance floor on recall injection. render_recall_block drops a recalled
+    # record whose backend relevance ``score`` is below this floor (cuts prompt
+    # noise from weakly-related matches). 0.0 (default) = no floor, byte-identical
+    # to today; a backend that attaches no score (InMemory) is unaffected. Only
+    # bites against a scoring backend (Mem0) in prod. Calibrate (not guess) before
+    # flipping on — shadow-measure via the memory_recall eval_capture, same
+    # discipline as the goal-judge enable-policy.
+    memory_recall_min_relevance: float = 0.0
+    # Hermes / memory-os adoption A3: salience-tier provenance in the recall
+    # block. A recalled record at/above this salience renders ``[confirmed]``,
+    # below it ``[inferred]``; a record with no salience renders unmarked (the v1
+    # deterministic store writes none → backward-compatible). Render-only; no
+    # store change. Meaningful once typed-autocapture write-back is live.
+    memory_authoritative_at: float = 0.8
     # Carrier-gate fault-injection hook (the LIVE gap-catch proof). When True, a
     # task whose input carries the magic token ``__DROP_CARRIER:<phase>__`` has the
     # required carrier for that phase SUPPRESSED before the gate checks it —

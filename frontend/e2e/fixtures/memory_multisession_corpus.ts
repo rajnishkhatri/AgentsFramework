@@ -22,9 +22,24 @@ export type MemoryAbility =
   | "leak-control"
   | "knowledge-update"
   | "abstention"
-  | "persona-drift";
+  | "persona-drift"
+  // Hermes / memory-os adoptions (docs/research/memory/hermes_adoptions_design.md):
+  | "relevance-floor" // A2: weak off-topic facts filtered by the recall floor
+  | "recall-dedup" // A2: duplicate fact rendered once
+  | "salience-tier" // A3: [confirmed]/[inferred] provenance tiers
+  | "budget-consolidation"; // A1: over-budget store consolidates (evicts low salience)
 
-export type SessionKind = "seed" | "filler" | "probe";
+export type SessionKind = "seed" | "filler" | "probe" | "crud-seed";
+
+/** A memory planted directly via the /agent/memory CRUD route (A1/A3) — lets a
+ * case set salience/type explicitly, bypassing shadow autocapture. */
+export type SeedMemory = {
+  key: string;
+  text: string;
+  type: "semantic" | "episodic" | "procedural";
+  /** Omitted → the record renders unmarked (A3 backward-compat path). */
+  salience?: number;
+};
 
 export type MemorySession = {
   session_idx: number;
@@ -37,6 +52,13 @@ export type MemorySession = {
   want_recall?: boolean;
   expect_substring?: string[];
   evidence_session_idx?: number;
+  // Hermes-adoption expectations (all optional, additive):
+  /** A2/A3: text that must NOT appear in the probe answer (filtered/evicted). */
+  expect_absent_substring?: string[];
+  /** A1/A3: memories to plant via CRUD before the probe (kind = "crud-seed"). */
+  seed_memory?: SeedMemory[];
+  /** A1: the probe run should carry a MEMORY_CONSOLIDATED carrier (evicted>0). */
+  expect_consolidation?: boolean;
 };
 
 export type MemoryCase = {

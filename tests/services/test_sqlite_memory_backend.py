@@ -211,7 +211,10 @@ class TestBackendBehaviouralEquivalence:
         record = service.recall(user_id="u1", key="favourite_colour")
         assert record is not None
         assert record.payload == {"value": "azure"}
-        assert record.metadata == {"source": "user"}
+        # Caller metadata round-trips identically across backends; store() also
+        # stamps a stored_at for the consolidation recency tie-break (P2 #10).
+        assert record.metadata["source"] == "user"
+        assert "stored_at" in record.metadata
 
     def test_search_and_forget(self, backend: MemoryBackend) -> None:
         service = LongTermMemoryService(backend=backend)

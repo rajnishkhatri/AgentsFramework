@@ -31,14 +31,21 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+from services.governance.memory_enable_policy import (  # noqa: E402
+    CERT_SCHEMA,
+    REQUIRED_SPLIT,
+)
 from services.governance.memory_extractor_calibration import (  # noqa: E402
+    CalibrationReport,
     GoldRow,
     Proposal,
     score,
@@ -122,6 +129,38 @@ def _read_shadow_export(path: Path) -> list[Proposal]:
     return out
 
 
+def _emit_certificate(
+    report: CalibrationReport, *, gold_path: Path, out_path: Path
+) -> None:
+    """Persist the enable-policy certificate the runtime guard re-checks.
+
+    Only the verdict + per-gate pass/fail + counts + the gold file's sha256 —
+    never gold content or proposals. The runtime guard
+    (services.governance.memory_enable_policy) consumes this; the scorer stays
+    the single source of the gate math (this is a pure projection of `report`).
+    """
+    gold_sha = hashlib.sha256(gold_path.read_bytes()).hexdigest()
+    payload = {
+        "schema": CERT_SCHEMA,
+        "passed": report.passed,
+        "split": report.split,
+        "total_rows": report.total_rows,
+        "gates": [
+            {
+                "name": g.name,
+                "passed": g.passed,
+                "value": g.value,
+                "threshold": g.threshold,
+            }
+            for g in report.gates
+        ],
+        "gold_sha256": gold_sha,
+        "scored_at": datetime.now(UTC).isoformat(),
+    }
+    out_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"  wrote enable-policy certificate → {out_path}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -136,6 +175,10 @@ def main(argv: list[str] | None = None) -> int:
                      help="call the LIVE extractor on each window (needs a provider key)")
     p.add_argument("--split", default="test", choices=["dev", "test"],
                    help="which split to score (test is the frozen gate; default)")
+    p.add_argument("--emit-certificate", type=Path, default=None, metavar="PATH",
+                   help="on a PASSING frozen-test-split run, write the enable-policy "
+                        "certificate the runtime guard re-checks "
+                        "(MEMORY_AUTOCAPTURE_CERT). Refused on dev or a blocked run.")
     args = p.parse_args(argv)
 
     gold = _read_gold(args.gold)
@@ -159,6 +202,27 @@ def main(argv: list[str] | None = None) -> int:
 
     report = score(gold, proposals, split=args.split)
     print(report.render())
+
+    if args.emit_certificate is not None:
+        # A certificate ENABLES write-back in prod, so we only mint one from a
+        # passing run on the FROZEN test split — never dev (AP-4), never blocked.
+        if args.split != REQUIRED_SPLIT:
+            print(
+                f"  (refusing --emit-certificate on split={args.split!r}: only "
+                f"the frozen {REQUIRED_SPLIT!r} split clears the gate)",
+                file=sys.stderr,
+            )
+        elif not report.passed:
+            print(
+                "  (refusing --emit-certificate: run is BLOCKED — no passing "
+                "certificate emitted)",
+                file=sys.stderr,
+            )
+        else:
+            _emit_certificate(
+                report, gold_path=args.gold, out_path=args.emit_certificate
+            )
+
     return 0 if report.passed else 1
 
 

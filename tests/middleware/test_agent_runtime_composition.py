@@ -81,6 +81,77 @@ class TestMemoryBackendSelection:
         assert isinstance(backend, Mem0MemoryBackend)
 
 
+class TestAutocaptureEnablePolicyGuard:
+    """The composition root must gate write-back on the enable-policy guard.
+
+    The ``MEMORY_AUTOCAPTURE_ENABLED`` flag is the operator's intent; write-back
+    only actually turns on when a passing frozen-test-split calibration
+    certificate is also present. Flag-on-but-no-cert must fail SAFE to shadow —
+    these tests pin that the constructed service reflects the guard's decision,
+    not the raw flag.
+    """
+
+    def _autocapture(self, settings, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        return build_components(settings, agent_root=tmp_path).memory_autocapture
+
+    def test_flag_off_is_shadow(self, tmp_path, monkeypatch):
+        settings = AgentRuntimeSettings(
+            agent_env="local", memory_autocapture_enabled=False
+        )
+        svc = self._autocapture(settings, tmp_path, monkeypatch)
+        assert svc._write_back is False
+
+    def test_flag_on_but_no_certificate_stays_shadow(self, tmp_path, monkeypatch):
+        # The dangerous case: someone sets the env flag but never ran the gate.
+        # The guard must keep write-back OFF (never store ungated).
+        settings = AgentRuntimeSettings(
+            agent_env="local",
+            memory_autocapture_enabled=True,
+            memory_autocapture_cert="",
+        )
+        svc = self._autocapture(settings, tmp_path, monkeypatch)
+        assert svc._write_back is False
+
+    def test_flag_on_with_passing_test_certificate_enables(
+        self, tmp_path, monkeypatch
+    ):
+        import json
+
+        from services.governance.memory_enable_policy import CERT_SCHEMA
+
+        cert = tmp_path / "cert.json"
+        cert.write_text(
+            json.dumps(
+                {
+                    "schema": CERT_SCHEMA,
+                    "passed": True,
+                    "split": "test",
+                    "total_rows": 41,
+                    "gates": [
+                        {"name": n, "passed": True}
+                        for n in (
+                            "store_class_precision",
+                            "false_store_on_trivia",
+                            "mistype_rate",
+                            "pii_flip_rate",
+                            "kappa_judge_vs_gold",
+                        )
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        settings = AgentRuntimeSettings(
+            agent_env="local",
+            memory_autocapture_enabled=True,
+            memory_autocapture_cert=str(cert),
+        )
+        svc = self._autocapture(settings, tmp_path, monkeypatch)
+        assert svc._write_back is True
+
+
 class TestBuildComponentsProd:
     def test_prod_requires_gcs_facts_bucket(self, tmp_path):
         settings = AgentRuntimeSettings(agent_env="prod", gcs_facts_bucket="")

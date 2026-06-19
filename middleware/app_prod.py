@@ -82,6 +82,38 @@ from trust.enums import IdentityStatus
 from trust.models import AgentFacts, Capability
 
 
+def _emit_crud_consolidation(
+    cache_dir: Path, owner: str, mem_type: str | None, outcome: Any
+) -> None:
+    """Emit a MEMORY_CONSOLIDATED carrier when a CRUD write overflowed the budget.
+
+    A1 / P1 #6a (docs/research/memory/hermes_adoptions_design.md §10.5): a panel/
+    CRUD ``create_memory`` that triggers an eviction must leave a Validation-pillar
+    carrier — otherwise the prune is silent (the live smoke found 0 consolidation
+    carriers despite a forced overflow). No-op when nothing was pruned. Writes to
+    the same recordings dir the graph + relay use, so the in-process relay exports
+    it to Langfuse; a write failure here must never fail the user's CRUD request.
+    """
+    if outcome is None or (outcome.evicted == 0 and outcome.deduped == 0):
+        return
+    try:
+        from services.governance.black_box import BlackBoxRecorder
+        from services.governance.memory_consolidation_carrier import (
+            emit_consolidation_carrier,
+        )
+
+        recorder = BlackBoxRecorder(cache_dir / "black_box_recordings")
+        emit_consolidation_carrier(
+            recorder,
+            workflow_id=f"mem-crud-{uuid.uuid4().hex}",
+            user_id=owner,
+            mem_type=mem_type or "unknown",
+            outcome=outcome,
+        )
+    except Exception:  # pragma: no cover - observability must never break CRUD
+        logger.warning("memory.consolidated carrier emit failed", exc_info=True)
+
+
 def _load_graph_factory():
     """Load the graph factory from langgraph.json without static imports."""
     config_path = AGENT_ROOT / "langgraph.json"
@@ -396,14 +428,20 @@ def build_combined_app() -> FastAPI:
     ) -> MemoryItem:
         memory = _require_memory()
         key = body.key or uuid.uuid4().hex
-        memory.store(
-            identity.owner,
-            key,
-            {"text": body.content},
-            metadata={"type": body.type, "source": "user_added"},
-        )
+        meta: dict[str, Any] = {"type": body.type, "source": "user_added"}
+        # Persist salience only when provided so a record with no salience renders
+        # unmarked (A3 back-compat). store() consolidates the type on overflow.
+        if body.salience is not None:
+            meta["salience"] = body.salience
+        outcome = memory.store(identity.owner, key, {"text": body.content}, metadata=meta)
+        # A1 / P1 #6a: store() bounds the type and returns a ConsolidationOutcome
+        # when this write overflowed the budget. A CRUD/panel write must NOT prune
+        # memory silently — leave the MEMORY_CONSOLIDATED carrier (Validation
+        # pillar) so the eviction is observable. The in-process relay drains this
+        # workflow to Langfuse on its next tick. Counts only — never content.
+        _emit_crud_consolidation(cache_dir, identity.owner, body.type, outcome)
         return MemoryItem(
-            key=key, type=body.type, content=body.content, salience=None
+            key=key, type=body.type, content=body.content, salience=body.salience
         )
 
     @app.delete("/agent/memory/{key}")

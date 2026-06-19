@@ -75,3 +75,22 @@ profiles:
     requires:
       backend_memory: "MEMORY_ENABLED=true (--tag mem backend revision; full_components fix deployed)"
       mem_backend: "Mem0MemoryBackend wired (MEM0_API_KEY present on the revision)"
+
+  # ── Hermes/memory-os adoptions stress revision (A1 budget+consolidation,
+  #    A2 relevance floor, A3 salience tiers). docs/research/memory/
+  #    hermes_adoptions_design.md. Same shape as `mem` but the backend tag
+  #    `mem-hermes` additionally sets the A1/A2/A3 flags + autocapture write-back
+  #    ON + a SMALL semantic budget so consolidation fires within a test batch. ──
+  mem-hermes:
+    base_url: "https://memhermesui---agent-frontend-w65nrxwkiq-uc.a.run.app"
+    env:
+      E2E_AUTHENTICATED: "1"
+      MEM_ABILITY: ""
+      MEM_LIMIT: ""
+    requires:
+      backend_memory: "MEMORY_ENABLED=true (--tag mem-hermes backend; full_components fix)"
+      mem_backend: "Mem0MemoryBackend wired (MEM0_API_KEY present)"
+      hermes_flags: >-
+        MEMORY_AUTOCAPTURE_ENABLED=true, MEMORY_RECALL_MIN_RELEVANCE=0.3,
+        MEMORY_AUTHORITATIVE_AT=0.8, MEMORY_BUDGET_SEMANTIC=5
+        (small budget so A1 consolidation fires within a batch)

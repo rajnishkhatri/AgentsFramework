@@ -43,7 +43,15 @@ _VALID_ABILITIES = {
     "knowledge-update",
     "abstention",
     "persona-drift",
+    # Hermes / memory-os adoptions (docs/research/memory/hermes_adoptions_design.md).
+    "relevance-floor",
+    "recall-dedup",
+    "salience-tier",
+    "budget-consolidation",
 }
+# Session kinds: the original conversational kinds plus crud-seed (A1/A3 plant
+# memories directly via the /agent/memory route with explicit salience/type).
+_VALID_KINDS = {"seed", "filler", "probe", "crud-seed"}
 _VALID_PROVENANCE = {"longmemeval-derived", "synthetic-locomo-shape", "synthetic"}
 
 
@@ -142,9 +150,15 @@ class TestSessionShape:
             assert idxs == sorted(idxs)
             assert idxs == list(range(len(sessions)))
             for s in sessions:
-                assert s["kind"] in {"seed", "filler", "probe"}
-                assert isinstance(s["turns"], list) and s["turns"]
-                assert all(isinstance(t, str) and t for t in s["turns"])
+                assert s["kind"] in _VALID_KINDS
+                assert isinstance(s["turns"], list)
+                # A crud-seed session carries no conversational turns (it plants
+                # memories via seed_memory); every other kind needs real turns.
+                if s["kind"] == "crud-seed":
+                    assert s.get("seed_memory"), f"{c['case']} crud-seed needs seed_memory"
+                else:
+                    assert s["turns"]
+                    assert all(isinstance(t, str) and t for t in s["turns"])
 
     def test_probe_sessions_carry_expectations(self, corpus: list[dict]) -> None:
         for c in corpus:

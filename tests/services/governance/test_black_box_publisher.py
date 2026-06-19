@@ -72,6 +72,9 @@ _EXPECTED_MAPPINGS: list[tuple[EventType, str, str]] = [
     # ran" from the trace. Consumer-driven contract for the new EventTypes.
     (EventType.MEMORY_RECALLED, "span", "memory.recalled"),
     (EventType.MEMORY_STORED, "span", "memory.stored"),
+    # A1 consolidation (Hermes adoption): write-side eviction activity, span like
+    # the other memory carriers. Consumer-driven contract for the new EventType.
+    (EventType.MEMORY_CONSOLIDATED, "span", "memory.consolidated"),
 ]
 
 

@@ -28,7 +28,23 @@ from services.long_term_memory import MemoryRecord
 # recall.
 _TEXT_KEY = "text"
 
+# Metadata keys read off a record at render time. ``score`` is the backend's
+# relevance/similarity score for the query (Mem0 attaches one; the in-memory
+# substring backend does not) — the A2 relevance floor only applies when it is
+# present, so a backend that omits it is unaffected. ``salience`` is the
+# extractor's confidence the typed-autocapture store wrote (A3) — absent on the
+# v1 deterministic store, which renders unmarked.
+_SCORE_KEY = "score"
+_SALIENCE_KEY = "salience"
+
 _RECALL_HEADER = "Relevant context you remember about this user:"
+
+# A3 provenance tier prefixes (memory-os ground-truth hierarchy): a record at or
+# above ``authoritative_at`` salience is marked authoritative, below it
+# speculative. A record carrying no salience renders with NO prefix (the v1
+# deterministic store writes none — backward-compatible with today's bullet).
+_TIER_AUTHORITATIVE = "[confirmed]"
+_TIER_SPECULATIVE = "[inferred]"
 
 # The runtime uses "anonymous" as the sentinel subject when no real user is
 # attached to a run (config["configurable"]["user_id"] default). Memory must
@@ -64,27 +80,112 @@ def should_recall(*, enabled: bool, user_id: str, memoized: bool) -> bool:
     return bool(enabled) and bool(user_id) and not memoized
 
 
-def render_recall_block(records: list[MemoryRecord] | None) -> str:
-    """OBP-1 formatter: top-k records → an ``additional_instructions`` block.
+def _record_text(record: MemoryRecord) -> str:
+    """The renderable text for one record (the conventional ``text`` key).
 
-    Returns the empty string for no/zero records so the caller appends nothing
-    and the system prompt stays byte-identical (the no-op / degraded shape).
-    Each record contributes one bullet; a record missing the conventional text
-    key falls back to a compact ``repr`` of its payload rather than raising —
-    recall must never fail a run.
+    A record written by another producer (or a future typed store) may not use
+    ``_TEXT_KEY``; surface a compact ``repr`` of the payload rather than raising
+    — recall must never fail a run.
+    """
+    payload: dict[str, Any] = getattr(record, "payload", None) or {}
+    text = payload.get(_TEXT_KEY)
+    if not isinstance(text, str) or not text:
+        return repr(payload)
+    return text
+
+
+def _normalize(text: str) -> str:
+    """Dedup key (A2): case-insensitive, whitespace-collapsed."""
+    return " ".join(text.lower().split())
+
+
+def _below_floor(record: MemoryRecord, min_relevance: float) -> bool:
+    """A2 relevance floor: drop a record only when it carries a score BELOW the
+    floor. A record with no ``score`` metadata (the in-memory backend) is never
+    dropped — the floor only bites against a backend that scores its matches.
+    """
+    if min_relevance <= 0.0:
+        return False
+    metadata: dict[str, Any] = getattr(record, "metadata", None) or {}
+    score = metadata.get(_SCORE_KEY)
+    if not isinstance(score, (int, float)) or isinstance(score, bool):
+        return False
+    return float(score) < min_relevance
+
+
+def _tier_prefix(record: MemoryRecord, authoritative_at: float) -> str:
+    """A3 provenance prefix: ``[confirmed]``/``[inferred]`` from salience, or
+    '' when the record carries no salience (backward-compatible unmarked bullet).
+    """
+    metadata: dict[str, Any] = getattr(record, "metadata", None) or {}
+    salience = metadata.get(_SALIENCE_KEY)
+    if not isinstance(salience, (int, float)) or isinstance(salience, bool):
+        return ""
+    tier = _TIER_AUTHORITATIVE if float(salience) >= authoritative_at else _TIER_SPECULATIVE
+    return f"{tier} "
+
+
+def filter_recall_records(
+    records: list[MemoryRecord] | None,
+    *,
+    min_relevance: float = 0.0,
+) -> list[MemoryRecord]:
+    """A2: the records that survive the relevance floor + exact-text dedup.
+
+    Pure and order-preserving. The node calls this to count what was actually
+    injected (the carrier/indicator count must reflect the survivors, not the
+    raw top-k); ``render_recall_block`` renders the same survivors. Defaults
+    reproduce the original "keep everything" behavior: a record with no
+    ``score`` is never dropped and ``min_relevance=0.0`` applies no floor, so
+    only exact-duplicate text is ever removed.
     """
     if not records:
+        return []
+    kept: list[MemoryRecord] = []
+    seen: set[str] = set()
+    for record in records:
+        if _below_floor(record, min_relevance):
+            continue
+        key = _normalize(_record_text(record))
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(record)
+    return kept
+
+
+def render_recall_block(
+    records: list[MemoryRecord] | None,
+    *,
+    min_relevance: float = 0.0,
+    authoritative_at: float = 0.8,
+) -> str:
+    """OBP-1 formatter: top-k records → an ``additional_instructions`` block.
+
+    Returns the empty string for no/zero records — and for the case where every
+    record is filtered out — so the caller appends nothing and the system prompt
+    stays byte-identical (the no-op / degraded shape).
+
+    Two optional, backward-compatible refinements over the raw top-k (defaults
+    reproduce the original behavior exactly):
+
+    - **A2 relevance floor + dedup** (``min_relevance``, memory-os surgical
+      injection): drop records whose backend ``score`` is below the floor, and
+      collapse exact-duplicate text to one bullet. ``min_relevance=0.0`` (default)
+      applies no floor; a backend that attaches no score is unaffected. Dedup is
+      always on (exact-text only — cheap, no embedding on the hot path).
+    - **A3 salience tiers** (``authoritative_at``, memory-os ground-truth
+      hierarchy): prefix each bullet with ``[confirmed]``/``[inferred]`` from the
+      record's ``salience`` metadata. A record with no salience renders unmarked
+      (the v1 deterministic store writes none — exactly today's bullet).
+    """
+    kept = filter_recall_records(records, min_relevance=min_relevance)
+    if not kept:
         return ""
     lines = [_RECALL_HEADER]
-    for record in records:
-        payload: dict[str, Any] = getattr(record, "payload", None) or {}
-        text = payload.get(_TEXT_KEY)
-        if not isinstance(text, str) or not text:
-            # Defensive: a record written by another producer (or a future
-            # typed store) may not use _TEXT_KEY. Surface *something* readable
-            # without leaking structure into a crash.
-            text = repr(payload)
-        lines.append(f"- {text}")
+    for record in kept:
+        text = _record_text(record)
+        lines.append(f"- {_tier_prefix(record, authoritative_at)}{text}")
     return "\n".join(lines)
 
 
@@ -105,6 +206,7 @@ def build_store_payload(task_input: str, answer: str) -> dict[str, Any]:
 
 __all__ = [
     "should_recall",
+    "filter_recall_records",
     "render_recall_block",
     "build_store_payload",
     "memory_subject",

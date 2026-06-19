@@ -20,6 +20,7 @@ import logging
 import pytest
 
 from services.long_term_memory import (
+    LongTermMemoryService,
     MemoryBackend,
     MemoryBackendError,
     MemoryRecord,
@@ -271,3 +272,87 @@ class TestPrivacyInvariant:
             b.delete(user_id="u1", key="k1")
         joined = "\n".join(r.getMessage() for r in caplog.records)
         assert secret not in joined
+
+
+# ─────────────────────────────────────────────────────────────────────
+# A1 consolidation CONTRACT — the service's count/consolidate/store-overflow
+# path driven through the REAL Mem0 backend (not InMemory). This closes the
+# CI gap flagged by the live smoke (P1 #6, hermes_adoptions_design §10.5): the
+# ``list_all`` (→ get_all) + delete-by-key + metadata-as-JSON-string round-trip
+# are what consolidation depends on, and only the InMemory backend exercised
+# them before. Failure-paths-first: eviction-ORDER (high salience must survive)
+# is asserted before the happy counts.
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _mem0_service(sdk: _FakeMem0Sdk, *, budget: int) -> tuple:
+    backend = Mem0MemoryBackend(sdk_client=sdk)
+    svc = LongTermMemoryService(backend, budgets={"semantic": budget})
+    return svc, backend
+
+
+def _put_semantic(svc, user_id: str, key: str, text: str, salience: float):
+    """Store via the SERVICE (so store() runs the overflow path) and return its
+    ConsolidationOutcome (or None)."""
+    return svc.store(
+        user_id,
+        key,
+        {"text": text},
+        metadata={"type": "semantic", "salience": salience},
+    )
+
+
+class TestMem0ConsolidationContract:
+    def test_metadata_survives_roundtrip_so_count_filters_by_type(self) -> None:
+        """count(mem_type=...) depends on ``metadata['type']`` surviving Mem0's
+        flatten/JSON-string round-trip via list_all. If it didn't, every type
+        would count as 0 and consolidation would never fire."""
+        sdk = _FakeMem0Sdk()
+        svc, _ = _mem0_service(sdk, budget=10)
+        _put_semantic(svc, "u1", "a", "fact a", 0.5)
+        _put_semantic(svc, "u1", "b", "fact b", 0.5)
+        svc.store("u1", "e", {"text": "an episode"}, metadata={"type": "episodic"})
+        assert svc.count("u1", mem_type="semantic") == 2
+        assert svc.count("u1", mem_type="episodic") == 1
+        assert svc.count("u1") == 3
+
+    def test_overflow_evicts_lowest_salience_via_mem0_delete(self) -> None:
+        """The store that tips over budget=2 must evict the LOWEST-salience row
+        and KEEP the two highest — and the eviction must actually delete the row
+        from the Mem0 store (delete-by-resolved-id), not just report a count."""
+        sdk = _FakeMem0Sdk()
+        svc, backend = _mem0_service(sdk, budget=2)
+        _put_semantic(svc, "u1", "low", "low fact", 0.10)
+        _put_semantic(svc, "u1", "mid", "mid fact", 0.50)
+        outcome = _put_semantic(svc, "u1", "high", "high fact", 0.90)  # overflow
+
+        assert outcome is not None
+        assert outcome.evicted == 1 and outcome.deduped == 0 and outcome.kept == 2
+        # The lowest-salience fact is GONE from Mem0; the two highest remain.
+        assert backend.get("u1", "low") is None
+        assert backend.get("u1", "mid") is not None
+        assert backend.get("u1", "high") is not None
+        assert "delete" in sdk.calls  # eviction went through the real delete path
+
+    def test_exact_dedup_keeps_highest_salience_copy(self) -> None:
+        """consolidate() drops exact-duplicate text keeping the higher-salience
+        copy — through Mem0's list_all + delete. (Called directly: the store()
+        overflow trigger is budget-gated, but consolidate() is also a public
+        contract surface and is where the dedup step is specified.)"""
+        sdk = _FakeMem0Sdk()
+        svc, backend = _mem0_service(sdk, budget=10)
+        # Seed two identical-text rows (no overflow yet), then consolidate.
+        _put_semantic(svc, "u1", "dup-lo", "same exact fact", 0.20)
+        _put_semantic(svc, "u1", "dup-hi", "same exact fact", 0.80)
+        outcome = svc.consolidate("u1", "semantic", budget=10)
+
+        assert outcome.deduped == 1 and outcome.evicted == 0
+        # The higher-salience copy survives; the lower is deleted from Mem0.
+        assert backend.get("u1", "dup-hi") is not None
+        assert backend.get("u1", "dup-lo") is None
+
+    def test_under_budget_store_returns_none(self) -> None:
+        sdk = _FakeMem0Sdk()
+        svc, _ = _mem0_service(sdk, budget=5)
+        assert _put_semantic(svc, "u1", "a", "fact a", 0.5) is None
+        assert _put_semantic(svc, "u1", "b", "fact b", 0.5) is None

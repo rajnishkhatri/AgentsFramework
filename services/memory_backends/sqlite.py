@@ -125,6 +125,23 @@ class SqliteMemoryBackend:
             )
             return cursor.rowcount > 0
 
+    def list_all(self, user_id: str) -> list[MemoryRecord]:
+        """All of a user's records (A1 optional capability)."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT key, payload, metadata FROM memory WHERE user_id = ?",
+                (user_id,),
+            ).fetchall()
+        return [
+            MemoryRecord(
+                user_id=user_id,
+                key=key,
+                payload=json.loads(payload_json),
+                metadata=json.loads(metadata_json),
+            )
+            for key, payload_json, metadata_json in rows
+        ]
+
     # ── Lifecycle helpers (for tests + clean shutdown) ─────────────
 
     def close(self) -> None:

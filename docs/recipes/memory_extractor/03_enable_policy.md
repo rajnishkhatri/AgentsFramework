@@ -30,6 +30,19 @@ rule 6 ("default-off until calibrated"). It flips to write-back **only** when
 every gate in §2 passes on the **frozen** `memory-extract-gold-v1` test split.
 Never iterate the prompt against the test split (AP-4).
 
+> **Enforced in code (2026-06-19), not honour-system.** The flag alone no longer
+> turns write-back on. The composition root routes it through the enable-policy
+> **guard** ([`services/governance/memory_enable_policy.py`](../../../services/governance/memory_enable_policy.py)):
+> write-back actually enables only when `MEMORY_AUTOCAPTURE_ENABLED=true` **AND**
+> a passing, frozen-`test`-split **certificate** is present at
+> `MEMORY_AUTOCAPTURE_CERT`. The certificate is emitted by the calibration CLI
+> on a passing run (`memory_extractor_calibrate.py --emit-certificate`) and is a
+> pure projection of the same `CalibrationReport` (the scorer stays the single
+> source of the gate math). The guard re-checks the split + every gate
+> individually, so a hand-edited `passed: true` over a failed hard-zero gate is
+> rejected. **Flag-on-but-no-cert fails SAFE to shadow** and logs a loud
+> governance WARNING — write-back can never store ungated.
+
 ## 2. Enable gates (precision-first profile)
 
 All must pass on the frozen test split before write-back is enabled:
@@ -65,7 +78,10 @@ store blocks the flip regardless of the other gates.
 
 ## 5. Rollback
 
-`MEMORY_AUTOCAPTURE_ENABLED=false` instantly returns to shadow (propose-only).
+`MEMORY_AUTOCAPTURE_ENABLED=false` instantly returns to shadow (propose-only) —
+the guard short-circuits before the certificate is even consulted. Alternatively
+**unsetting/removing `MEMORY_AUTOCAPTURE_CERT`** (or replacing it with a blocked
+one) also drops back to shadow even with the flag left on (the guard fails safe).
 Because write-back is ADD-only (no live UPDATE/DELETE), a bad-store incident is
 contained to the keys written while enabled; the deferred consolidation pass +
 the Phase-3 user-facing delete are the cleanup paths.

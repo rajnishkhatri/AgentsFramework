@@ -78,17 +78,23 @@ during Stage-5 labeling if it isn't already there.
 ### Stage 6 — run the gate
 
 ```bash
-# Score the extractor's live proposals (shadow export) against the FROZEN test split:
+# Score the extractor's live proposals (shadow export) against the FROZEN test
+# split AND emit the enable-policy certificate the runtime guard re-checks:
 python scripts/eval/memory_extractor_calibrate.py \
   --gold memory-extract-gold-v1.csv \
   --shadow shadow_export.jsonl \
-  --split test
+  --split test \
+  --emit-certificate cache/memory_autocapture_enable_cert.json
 ```
 
-- **Exit 0 / `ENABLE-ELIGIBLE`** → every gate passed on the frozen test split.
-  *Then and only then* flip `MEMORY_AUTOCAPTURE_ENABLED=true` (dev first, then
-  prod after soak — the ladder in 03_enable_policy §1). Never iterate the prompt
-  against the test split (AP-4).
+- **Exit 0 / `ENABLE-ELIGIBLE`** → every gate passed on the frozen test split;
+  with `--emit-certificate` the run writes the certificate. *Then and only then*
+  flip `MEMORY_AUTOCAPTURE_ENABLED=true` **and** point `MEMORY_AUTOCAPTURE_CERT`
+  at that certificate (dev first, then prod after soak — the ladder in
+  03_enable_policy §1). The flag alone does NOT enable write-back: the
+  composition-root guard ([`memory_enable_policy.py`](../../../services/governance/memory_enable_policy.py))
+  requires both, and `--emit-certificate` is refused on dev or a blocked run.
+  Never iterate the prompt against the test split (AP-4).
 - **Exit 1 / `BLOCKED`** → at least one gate failed. The failing gate names the
   fix: precision/false-store → tighten the prompt's "most turns aren't worth
   remembering" framing; mis-type → the type definitions; PII-flip (hard) → the

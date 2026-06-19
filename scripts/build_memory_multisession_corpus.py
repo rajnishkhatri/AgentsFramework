@@ -59,6 +59,9 @@ def _session(
     want_recall: bool | None = None,
     expect_substring: list[str] | None = None,
     evidence_session_idx: int | None = None,
+    expect_absent_substring: list[str] | None = None,
+    seed_memory: list[dict] | None = None,
+    expect_consolidation: bool | None = None,
 ) -> dict:
     s: dict = {"session_idx": idx, "kind": kind, "turns": turns}
     if date is not None:
@@ -69,6 +72,20 @@ def _session(
         s["expect_substring"] = expect_substring
     if evidence_session_idx is not None:
         s["evidence_session_idx"] = evidence_session_idx
+    # Hermes-adoption (A1/A2/A3) extensions, all additive:
+    #   expect_absent_substring — A2 floor/dedup: text that must NOT appear in
+    #       the probe answer (the weakly-related fact was filtered out).
+    #   seed_memory — A3/A1: memories to plant directly via the /agent/memory
+    #       CRUD route (kind="crud-seed") with explicit salience/type/text,
+    #       bypassing autocapture (which is shadow). Each: {key,text,type,salience}.
+    #   expect_consolidation — A1: the probe run should carry a MEMORY_CONSOLIDATED
+    #       carrier with evicted>0 (the budget was exceeded and the store pruned).
+    if expect_absent_substring is not None:
+        s["expect_absent_substring"] = expect_absent_substring
+    if seed_memory is not None:
+        s["seed_memory"] = seed_memory
+    if expect_consolidation is not None:
+        s["expect_consolidation"] = expect_consolidation
     return s
 
 
@@ -821,6 +838,585 @@ def _persona_drift_cases() -> list[dict]:
     ]
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# HERMES / memory-os ADOPTIONS (A1/A2/A3) — docs/research/memory/hermes_adoptions_design.md
+# Controls-first within each family (the trap/precision row is authored before
+# the happy row). A2/A3 seed via the /agent/memory CRUD route so the relevance
+# score / salience can be set explicitly (autocapture write-back is shadow).
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _relevance_floor_cases() -> list[dict]:
+    """A2: a strong on-topic fact + weak off-topic fact(s) under one user; the
+    probe must surface the on-topic fact and NOT the weak one (the floor filters
+    it). Includes a borderline TRAP measuring the floor is not over-aggressive."""
+    return [
+        _case(
+            case="MEM-RELFLOOR-oneoff-topic-01",
+            mem_id="MEM-1001",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel01",
+            sessions=[
+                _session(0, "seed", ["For the record, I strongly prefer dark-mode UIs everywhere."]),
+                _session(1, "seed", ["Unrelated: my favorite breakfast is oatmeal with berries."]),
+                _session(
+                    2,
+                    "probe",
+                    ["What are my UI/theme preferences?"],
+                    want_recall=True,
+                    expect_substring=["dark"],
+                    expect_absent_substring=["oatmeal", "berries"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="strong on-topic (dark-mode) recalled; off-topic breakfast filtered by the floor",
+        ),
+        _case(
+            case="MEM-RELFLOOR-borderline-trap-02",
+            mem_id="MEM-1002",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel02",
+            sessions=[
+                _session(0, "seed", ["I work primarily in Python and care a lot about type hints."]),
+                _session(1, "seed", ["I also dabble in a bit of TypeScript on the frontend."]),
+                _session(
+                    2,
+                    "probe",
+                    ["What programming languages do I use?"],
+                    want_recall=True,
+                    # TRAP: BOTH are genuinely on-topic — a too-aggressive floor
+                    # would wrongly drop the secondary (TypeScript). Both must survive.
+                    expect_substring=["Python", "TypeScript"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="borderline trap: both facts are relevant; the floor must not over-filter the secondary",
+        ),
+        _case(
+            case="MEM-RELFLOOR-noise-heavy-03",
+            mem_id="MEM-1003",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel03",
+            sessions=[
+                _session(0, "seed", ["Important: I'm allergic to shellfish."]),
+                _session(1, "seed", ["I once visited Iceland on holiday."]),
+                _session(2, "seed", ["I enjoy jazz music on weekends."]),
+                _session(
+                    3,
+                    "probe",
+                    ["Do I have any dietary or allergy restrictions you know of?"],
+                    want_recall=True,
+                    expect_substring=["shellfish"],
+                    expect_absent_substring=["Iceland", "jazz"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="one on-topic allergy fact amid noise; floor keeps the prompt lean",
+        ),
+        _case(
+            case="MEM-RELFLOOR-tooling-04",
+            mem_id="MEM-1004",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel04",
+            sessions=[
+                _session(0, "seed", ["My CI runs on GitHub Actions and I deploy to Cloud Run."]),
+                _session(1, "seed", ["My cat is named Mochi."]),
+                _session(
+                    2,
+                    "probe",
+                    ["Remind me about my CI/deploy setup."],
+                    want_recall=True,
+                    expect_substring=["GitHub Actions", "Cloud Run"],
+                    expect_absent_substring=["Mochi", "cat"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="deploy facts recalled; the pet fact is below the floor for this query",
+        ),
+        _case(
+            case="MEM-RELFLOOR-all-weak-abstain-05",
+            mem_id="MEM-1005",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel05",
+            sessions=[
+                _session(0, "seed", ["I like hiking on weekends."]),
+                _session(
+                    1,
+                    "probe",
+                    ["What database engine do I prefer?"],
+                    # Nothing on-topic was ever seeded → the floor empties recall;
+                    # the agent must abstain, not inject the irrelevant hiking fact.
+                    want_recall=False,
+                    expect_absent_substring=["hiking"],
+                ),
+            ],
+            rationale="no on-topic fact exists; the floor yields empty recall and the agent abstains",
+        ),
+        _case(
+            case="MEM-RELFLOOR-precise-pref-06",
+            mem_id="MEM-1006",
+            ability="relevance-floor",
+            provenance="synthetic",
+            user_id="userrel06",
+            sessions=[
+                _session(0, "seed", ["I prefer concise answers with code first, prose after."]),
+                _session(1, "seed", ["I'm planning a trip to Spain next spring."]),
+                _session(
+                    2,
+                    "probe",
+                    ["How should you format your answers for me?"],
+                    want_recall=True,
+                    expect_substring=["concise", "code"],
+                    expect_absent_substring=["Spain", "trip"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="answer-format preference recalled; travel plan filtered out",
+        ),
+    ]
+
+
+def _recall_dedup_cases() -> list[dict]:
+    """A2 dedup: the SAME fact is seeded under two keys; the recall block must
+    show it ONCE (the rendered bullet is deduped even if the backend returns
+    two rows). Seeded via CRUD so two distinct keys carry identical text."""
+    return [
+        _case(
+            case="MEM-DEDUP-units-01",
+            mem_id="MEM-1101",
+            ability="recall-dedup",
+            provenance="synthetic",
+            user_id="userdedup01",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "pref-a", "text": "Prefers metric units.", "type": "semantic", "salience": 0.9},
+                        {"key": "pref-b", "text": "Prefers metric units.", "type": "semantic", "salience": 0.8},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What measurement units do I prefer?"],
+                    want_recall=True,
+                    expect_substring=["metric"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="same fact under two keys → one deduped bullet (recalled-count may be 2, rendered once)",
+        ),
+        _case(
+            case="MEM-DEDUP-role-02",
+            mem_id="MEM-1102",
+            ability="recall-dedup",
+            provenance="synthetic",
+            user_id="userdedup02",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "role-1", "text": "Works as a data engineer.", "type": "semantic", "salience": 0.7},
+                        {"key": "role-2", "text": "works   as a DATA engineer.", "type": "semantic", "salience": 0.6},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What is my job role?"],
+                    want_recall=True,
+                    expect_substring=["data engineer"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="case/whitespace variant of the same fact → deduped to one bullet",
+        ),
+        _case(
+            case="MEM-DEDUP-distinct-keep-both-trap-03",
+            mem_id="MEM-1103",
+            ability="recall-dedup",
+            provenance="synthetic",
+            user_id="userdedup03",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "lang-1", "text": "Speaks Spanish.", "type": "semantic", "salience": 0.8},
+                        {"key": "lang-2", "text": "Speaks French.", "type": "semantic", "salience": 0.8},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["Which languages do I speak?"],
+                    # TRAP: two DIFFERENT facts must NOT be deduped — both survive.
+                    want_recall=True,
+                    expect_substring=["Spanish", "French"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="distinct facts must not be collapsed; dedup is exact-text only",
+        ),
+    ]
+
+
+def _salience_tier_cases() -> list[dict]:
+    """A3: CRUD-seed a high-salience and a low-salience fact; the recall block
+    must mark the high one [confirmed] and the low one [inferred]. The probe
+    answer / recall carrier reflects the provenance tier."""
+    return [
+        _case(
+            case="MEM-SALIENCE-pref-01",
+            mem_id="MEM-1201",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal01",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "confirmed-pref", "text": "Definitely prefers email over phone calls.", "type": "semantic", "salience": 0.95},
+                        {"key": "weak-guess", "text": "Might be in the Pacific timezone.", "type": "semantic", "salience": 0.3},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What do you remember about how to contact me and when?"],
+                    want_recall=True,
+                    expect_substring=["email"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="high-salience contact pref renders [confirmed]; the low-salience timezone guess renders [inferred]",
+        ),
+        _case(
+            case="MEM-SALIENCE-skill-02",
+            mem_id="MEM-1202",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal02",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "strong-skill", "text": "Is an expert in Kubernetes.", "type": "semantic", "salience": 0.9},
+                        {"key": "soft-signal", "text": "Possibly interested in machine learning.", "type": "semantic", "salience": 0.25},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["Summarize my technical background as you understand it."],
+                    want_recall=True,
+                    expect_substring=["Kubernetes"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="expert skill is authoritative [confirmed]; the speculative interest is [inferred]",
+        ),
+        _case(
+            case="MEM-SALIENCE-all-high-03",
+            mem_id="MEM-1203",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal03",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "h1", "text": "Lives in Berlin.", "type": "semantic", "salience": 0.9},
+                        {"key": "h2", "text": "Works in renewable energy.", "type": "semantic", "salience": 0.85},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What do you know about where I live and work?"],
+                    want_recall=True,
+                    expect_substring=["Berlin", "renewable"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="both high-salience → both [confirmed] (no [inferred] tier present)",
+        ),
+        _case(
+            case="MEM-SALIENCE-all-low-04",
+            mem_id="MEM-1204",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal04",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "l1", "text": "Might prefer tea over coffee.", "type": "semantic", "salience": 0.3},
+                        {"key": "l2", "text": "Possibly owns a dog.", "type": "semantic", "salience": 0.2},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What are my beverage and pet preferences, as best you can tell?"],
+                    want_recall=True,
+                    expect_substring=["tea"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="both low-salience → both [inferred]; the model should hedge accordingly",
+        ),
+        _case(
+            case="MEM-SALIENCE-boundary-05",
+            mem_id="MEM-1205",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal05",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "at-threshold", "text": "Uses a standing desk.", "type": "semantic", "salience": 0.8},
+                        {"key": "just-below", "text": "Maybe a morning person.", "type": "semantic", "salience": 0.79},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What do you remember about my work setup and schedule?"],
+                    want_recall=True,
+                    expect_substring=["standing desk"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="0.8 is at-threshold → [confirmed]; 0.79 → [inferred] (the tier boundary is >=)",
+        ),
+        _case(
+            case="MEM-SALIENCE-unmarked-legacy-06",
+            mem_id="MEM-1206",
+            ability="salience-tier",
+            provenance="synthetic",
+            user_id="usersal06",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        # No salience → must render UNMARKED (backward-compat with
+                        # the v1 deterministic store). The CRUD seeder omits salience.
+                        {"key": "legacy", "text": "Based in Toronto.", "type": "semantic"},
+                    ],
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["Where am I based?"],
+                    want_recall=True,
+                    expect_substring=["Toronto"],
+                    expect_absent_substring=["[confirmed]", "[inferred]"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="a salience-less record renders with no tier prefix (legacy/back-compat path)",
+        ),
+    ]
+
+
+def _budget_consolidation_cases() -> list[dict]:
+    """A1: seed MORE than the (small, stress-revision) budget for one type, then
+    probe. The probe run should carry a MEMORY_CONSOLIDATED carrier (evicted>0)
+    and the HIGHEST-salience facts must survive recall, the lowest evicted.
+    Includes an at-budget control that must NOT consolidate."""
+    return [
+        _case(
+            case="MEM-BUDGET-overflow-evicts-low-01",
+            mem_id="MEM-1301",
+            ability="budget-consolidation",
+            provenance="synthetic",
+            user_id="userbudg01",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    # 6 distinct semantic facts; stress budget MEMORY_BUDGET_SEMANTIC=5
+                    # → consolidation evicts the single lowest-salience fact.
+                    seed_memory=[
+                        {"key": "f1", "text": "Primary language is Go.", "type": "semantic", "salience": 0.95},
+                        {"key": "f2", "text": "Lives in Seattle.", "type": "semantic", "salience": 0.9},
+                        {"key": "f3", "text": "Prefers tabs over spaces.", "type": "semantic", "salience": 0.85},
+                        {"key": "f4", "text": "Drinks espresso.", "type": "semantic", "salience": 0.8},
+                        {"key": "f5", "text": "Has a standing desk.", "type": "semantic", "salience": 0.75},
+                        {"key": "f6", "text": "Once mentioned liking the color teal.", "type": "semantic", "salience": 0.1},
+                    ],
+                    expect_consolidation=True,
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What are the most important things you know about me?"],
+                    want_recall=True,
+                    expect_substring=["Go"],
+                    # The lowest-salience fact (teal) should have been evicted.
+                    expect_absent_substring=["teal"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="6 facts > budget 5 → evict lowest-salience (teal); high-salience survives",
+        ),
+        _case(
+            case="MEM-BUDGET-dedup-then-evict-02",
+            mem_id="MEM-1302",
+            ability="budget-consolidation",
+            provenance="synthetic",
+            user_id="userbudg02",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "d1", "text": "Works in healthcare.", "type": "semantic", "salience": 0.6},
+                        {"key": "d2", "text": "works in HEALTHCARE.", "type": "semantic", "salience": 0.9},
+                        {"key": "g1", "text": "Lives in Austin.", "type": "semantic", "salience": 0.8},
+                        {"key": "g2", "text": "Enjoys cycling.", "type": "semantic", "salience": 0.7},
+                        {"key": "g3", "text": "Prefers window seats.", "type": "semantic", "salience": 0.5},
+                        {"key": "g4", "text": "Once tried skydiving.", "type": "semantic", "salience": 0.15},
+                    ],
+                    expect_consolidation=True,
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["Tell me what you remember about me, most important first."],
+                    want_recall=True,
+                    expect_substring=["healthcare"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="duplicate healthcare fact deduped (keep higher salience), then evict to budget",
+        ),
+        _case(
+            case="MEM-BUDGET-at-budget-no-consolidate-control-03",
+            mem_id="MEM-1303",
+            ability="budget-consolidation",
+            provenance="synthetic",
+            user_id="userbudg03",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    # Exactly at budget (5) → NO consolidation should fire.
+                    seed_memory=[
+                        {"key": "a1", "text": "Uses Vim.", "type": "semantic", "salience": 0.8},
+                        {"key": "a2", "text": "Lives in Denver.", "type": "semantic", "salience": 0.8},
+                        {"key": "a3", "text": "Likes spicy food.", "type": "semantic", "salience": 0.8},
+                        {"key": "a4", "text": "Plays guitar.", "type": "semantic", "salience": 0.8},
+                        {"key": "a5", "text": "Runs marathons.", "type": "semantic", "salience": 0.8},
+                    ],
+                    expect_consolidation=False,
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What do you know about me?"],
+                    want_recall=True,
+                    expect_substring=["Vim"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="CONTROL: exactly at budget → no MEMORY_CONSOLIDATED carrier (no eviction decision)",
+        ),
+        _case(
+            case="MEM-BUDGET-high-salience-survives-04",
+            mem_id="MEM-1304",
+            ability="budget-consolidation",
+            provenance="synthetic",
+            user_id="userbudg04",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    seed_memory=[
+                        {"key": "k1", "text": "CRITICAL: severe peanut allergy.", "type": "semantic", "salience": 1.0},
+                        {"key": "k2", "text": "Lives in Boston.", "type": "semantic", "salience": 0.7},
+                        {"key": "k3", "text": "Works remotely.", "type": "semantic", "salience": 0.6},
+                        {"key": "k4", "text": "Has two kids.", "type": "semantic", "salience": 0.55},
+                        {"key": "k5", "text": "Likes board games.", "type": "semantic", "salience": 0.4},
+                        {"key": "k6", "text": "Briefly mentioned a houseplant.", "type": "semantic", "salience": 0.05},
+                    ],
+                    expect_consolidation=True,
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["Is there anything critical I should make sure you remember about me?"],
+                    want_recall=True,
+                    # The top-salience safety fact MUST survive eviction.
+                    expect_substring=["peanut", "allerg"],
+                    expect_absent_substring=["houseplant"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="safety-critical max-salience fact survives; the trivial houseplant is evicted",
+        ),
+        _case(
+            case="MEM-BUDGET-episodic-separate-budget-05",
+            mem_id="MEM-1305",
+            ability="budget-consolidation",
+            provenance="synthetic",
+            user_id="userbudg05",
+            sessions=[
+                _session(
+                    0,
+                    "crud-seed",
+                    [],
+                    # Mix of types: only the over-budget type consolidates; the
+                    # other type is untouched (per-type budget isolation).
+                    seed_memory=[
+                        {"key": "s1", "text": "Semantic one.", "type": "semantic", "salience": 0.9},
+                        {"key": "s2", "text": "Semantic two.", "type": "semantic", "salience": 0.8},
+                        {"key": "e1", "text": "Debugged the auth flow last week.", "type": "episodic", "salience": 0.6},
+                    ],
+                    expect_consolidation=False,
+                ),
+                _session(
+                    1,
+                    "probe",
+                    ["What have we worked on and what do you know about me?"],
+                    want_recall=True,
+                    expect_substring=["Semantic"],
+                    evidence_session_idx=0,
+                ),
+            ],
+            rationale="CONTROL: under budget on both types → no eviction; per-type isolation holds",
+        ),
+    ]
+
+
 def build_corpus() -> list[dict]:
     """Assemble the full corpus. CONTROLS FIRST (failure-paths-first), then the
     happy phases. Deterministic — two calls return identical output (Check 7)."""
@@ -836,6 +1432,12 @@ def build_corpus() -> list[dict]:
     rows += _knowledge_update_cases()
     # Phase C — persona-drift (LoCoMo shape).
     rows += _persona_drift_cases()
+    # Hermes / memory-os adoptions (A2 relevance floor + dedup, A3 salience
+    # tiers, A1 budget consolidation). docs/research/memory/hermes_adoptions_design.md.
+    rows += _relevance_floor_cases()
+    rows += _recall_dedup_cases()
+    rows += _salience_tier_cases()
+    rows += _budget_consolidation_cases()
     return rows
 
 
