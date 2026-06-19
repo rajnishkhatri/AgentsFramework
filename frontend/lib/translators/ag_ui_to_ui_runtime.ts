@@ -166,9 +166,11 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
         return parsed.success ? [parsed.data] : [];
       }
       if (evt.name === "memory_recalled") {
-        // memory_layer Phase 3: the transparent-recall count. Count only,
-        // never content. A malformed / negative payload emits nothing.
-        const v = evt.value as { count?: unknown };
+        // memory_layer Phase 3 + B: the transparent-recall count plus the keys
+        // of the injected records (identifiers, never content). A malformed /
+        // negative count emits nothing; malformed/absent keys degrade to [] so
+        // the count-only indicator is unaffected.
+        const v = evt.value as { count?: unknown; keys?: unknown };
         if (
           typeof v?.count !== "number" ||
           !Number.isInteger(v.count) ||
@@ -176,11 +178,15 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
         ) {
           return [];
         }
+        const keys = Array.isArray(v.keys)
+          ? v.keys.filter((k): k is string => typeof k === "string")
+          : [];
         return [
           {
             type: "memory_recalled",
             trace_id,
             count: v.count,
+            keys,
           },
         ];
       }

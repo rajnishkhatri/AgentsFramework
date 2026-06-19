@@ -17,11 +17,24 @@ import { z } from "zod";
 export const ThreadCreateRequestSchema = z
   .object({
     user_id: z.string(),
+    // Optional client-minted id (== the agent/checkpointer thread_id) so the
+    // durable row keys by the same id the resume path reads. Absent → the
+    // store mints its own. A provisional title flows via
+    // `metadata.first_message`.
+    thread_id: z.string().nullable().default(null),
     metadata: z.record(z.unknown()).default({}),
   })
   .strict();
 
 export type ThreadCreateRequest = z.infer<typeof ThreadCreateRequestSchema>;
+/**
+ * Pre-parse shape: `thread_id`/`metadata` are optional (the schema defaults
+ * them). The BFF passes a fully-parsed `ThreadCreateRequest`; internal callers
+ * (tests, the client create helper) may omit the defaulted fields.
+ */
+export type ThreadCreateRequestInput = z.input<
+  typeof ThreadCreateRequestSchema
+>;
 
 // ── ThreadState ────────────────────────────────────────────────────────
 
@@ -57,6 +70,21 @@ export const ThreadRenameRequestSchema = z
   })
   .strict();
 export type ThreadRenameRequest = z.infer<typeof ThreadRenameRequestSchema>;
+
+// ── ThreadAppendRequest (durable-transcript persist seam) ───────────────
+//
+// BFF-internal contract for `POST /api/threads/[id]/messages`: one completed
+// turn persisted into the durable thread store. `turn_id` makes a retried POST
+// idempotent. Not a Python-mirrored wire model (the persist seam is the BFF's
+// own durable store, F-R9) — so it is intentionally NOT in the drift baseline.
+export const ThreadAppendRequestSchema = z
+  .object({
+    user: z.string(),
+    assistant: z.string(),
+    turn_id: z.string().min(1),
+  })
+  .strict();
+export type ThreadAppendRequest = z.infer<typeof ThreadAppendRequestSchema>;
 
 // ── RunCreateRequest ───────────────────────────────────────────────────
 
@@ -154,3 +182,16 @@ export const MemoryCreateRequestSchema = z
   })
   .strict();
 export type MemoryCreateRequest = z.infer<typeof MemoryCreateRequestSchema>;
+
+// Body of PATCH /api/memory/{key} — soft-suppress / un-suppress one of the
+// caller's own memories (chat-persistence Phase B, D5 reject). `suppressed:
+// true` stops the memory being recalled/injected while RETAINING the row for
+// audit; `false` un-suppresses (reversible). BFF-internal contract (the
+// suppress hop is BFF→middleware over the bearer token; not in the strict
+// drift baseline, like the other memory request models).
+export const MemorySuppressRequestSchema = z
+  .object({
+    suppressed: z.boolean(),
+  })
+  .strict();
+export type MemorySuppressRequest = z.infer<typeof MemorySuppressRequestSchema>;

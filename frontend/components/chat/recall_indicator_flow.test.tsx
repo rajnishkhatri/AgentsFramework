@@ -129,7 +129,7 @@ describe("recall indicator round trip", { timeout: 60_000 }, () => {
   it("count 0 shows no indicator (memory-off / no-hit run stays quiet)", async () => {
     await renderAndSend(
       runtimeEmitting(
-        baseRun([{ type: "memory_recalled", trace_id: TRACE, count: 0 }]),
+        baseRun([{ type: "memory_recalled", trace_id: TRACE, count: 0, keys: [] }]),
       ),
     );
     expect(container.querySelector("[data-testid='recall-indicator']")).toBeNull();
@@ -138,7 +138,7 @@ describe("recall indicator round trip", { timeout: 60_000 }, () => {
   it("a positive count renders the transparent-recall indicator", async () => {
     await renderAndSend(
       runtimeEmitting(
-        baseRun([{ type: "memory_recalled", trace_id: TRACE, count: 2 }]),
+        baseRun([{ type: "memory_recalled", trace_id: TRACE, count: 2, keys: [] }]),
       ),
     );
     const indicator = container.querySelector(

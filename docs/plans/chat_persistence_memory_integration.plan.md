@@ -1,8 +1,20 @@
 # Chat Persistence + Memory Integration
 
-> **Status:** PROPOSED (2026-06-19). Research-backed. Builds on the shipped UI
-> refresh ([`ui_left_panel_refresh.plan.md`](ui_left_panel_refresh.plan.md),
+> **Status:** Phase A IMPLEMENTED (2026-06-19, uncommitted); Phase B PROPOSED.
+> Research-backed. Builds on the shipped UI refresh
+> ([`ui_left_panel_refresh.plan.md`](ui_left_panel_refresh.plan.md),
 > commit `01863ec` — SidebarPanel / Recents).
+>
+> **Phase A delivered:** `ThreadStore.appendTurn` port + `NeonFreeThreadStore`
+> impl (idempotent, append-only); optional client `thread_id` + provisional
+> title (via `metadata.first_message`) through the wire (Python source-of-truth
+> + TS mirror + regenerated drift baseline / openapi.yaml / wire-types.ts);
+> `makeThreadAppendHandler` + `POST /api/threads/[id]/messages` route;
+> `useChatSidebars.createThread`/`persistTurn` (+ pure `createThreadRequest`/
+> `appendTurnRequest`); `useAgentRun(runtime, persist)` fires auto-create on
+> first send + per-turn persist on completion (fire-and-forget, never breaks the
+> live run). Verified: 777 vitest, 86 architecture, 63 drift, 393 Python adapter
+> + 109 middleware, 2 stateful persistence e2e (save→Recents→resume), tsc clean.
 > **Companion:** [`chat_persistence_memory_integration.design.md`](chat_persistence_memory_integration.design.md)
 > (data model, sequences, the hybrid trade-off table, testid contract).
 > **One-line:** Save **all** user chats durably and make Recents resume from

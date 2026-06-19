@@ -272,6 +272,25 @@ def _build_paths() -> dict[str, Any]:
                     "404": {"description": "Memory not found"},
                 },
             },
+            "patch": {
+                "summary": "Soft-suppress / un-suppress one of the caller's "
+                "memories (Phase B reject)",
+                "operationId": "suppressMemory",
+                "parameters": [
+                    {
+                        "name": "key",
+                        "in": "path",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                ],
+                "requestBody": _request_body("MemorySuppressRequest"),
+                "responses": {
+                    "204": {"description": "Suppression flag updated"},
+                    "401": {"description": "Unauthorized"},
+                    "404": {"description": "Memory not found"},
+                },
+            },
         },
         "/healthz": {
             "get": {

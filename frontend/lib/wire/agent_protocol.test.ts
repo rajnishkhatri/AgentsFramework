@@ -48,14 +48,27 @@ describe("ThreadCreateRequestSchema", () => {
   });
 
   // --- acceptance ---
-  it("accepts a minimal payload and defaults metadata to {}", () => {
+  it("accepts a minimal payload and defaults metadata to {} and thread_id to null", () => {
     const parsed = ThreadCreateRequestSchema.parse({ user_id: "u1" });
     expect(parsed.user_id).toBe("u1");
     expect(parsed.metadata).toEqual({});
+    expect(parsed.thread_id).toBeNull();
+  });
+
+  it("accepts a client-minted thread_id", () => {
+    const parsed = ThreadCreateRequestSchema.parse({
+      user_id: "u1",
+      thread_id: "client-mint-1",
+    });
+    expect(parsed.thread_id).toBe("client-mint-1");
   });
 
   it("preserves the inferred TypeScript type shape", () => {
-    const value: ThreadCreateRequest = { user_id: "u1", metadata: { tag: "x" } };
+    const value: ThreadCreateRequest = {
+      user_id: "u1",
+      thread_id: null,
+      metadata: { tag: "x" },
+    };
     expect(ThreadCreateRequestSchema.parse(value)).toEqual(value);
   });
 });

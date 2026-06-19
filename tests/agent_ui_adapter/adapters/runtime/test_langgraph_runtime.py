@@ -975,9 +975,21 @@ class TestMemoryRecalledChainEnd:
         rt = LangGraphRuntime(
             graph=_FakeCompiledGraph(
                 scripted=[
-                    _chain_end("route", {"recalled_memories_count": 2}),
+                    _chain_end(
+                        "route",
+                        {
+                            "recalled_memories_count": 2,
+                            "recalled_memories_keys": ["k1", "k2"],
+                        },
+                    ),
                     # Memoized re-entry with the same count must not re-emit.
-                    _chain_end("route", {"recalled_memories_count": 2}),
+                    _chain_end(
+                        "route",
+                        {
+                            "recalled_memories_count": 2,
+                            "recalled_memories_keys": ["k1", "k2"],
+                        },
+                    ),
                 ]
             )
         )
@@ -985,6 +997,24 @@ class TestMemoryRecalledChainEnd:
         recalled = [e for e in out if isinstance(e, MemoryRecalled)]
         assert len(recalled) == 1
         assert recalled[0].count == 2
+        # Phase B: the injected records' keys ride alongside the count.
+        assert recalled[0].keys == ["k1", "k2"]
+
+    @pytest.mark.asyncio
+    async def test_count_without_keys_emits_empty_keys(self) -> None:
+        """Phase B backward compatibility: a count-only route output (no
+        recalled_memories_keys) still emits, with keys=[]."""
+        from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+        rt = LangGraphRuntime(
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("route", {"recalled_memories_count": 1})]
+            )
+        )
+        out = await _collect(rt)
+        recalled = [e for e in out if isinstance(e, MemoryRecalled)]
+        assert len(recalled) == 1
+        assert recalled[0].keys == []
 
     @pytest.mark.asyncio
     async def test_missing_count_emits_nothing(self) -> None:

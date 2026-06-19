@@ -310,14 +310,23 @@ def test_memory_recalled_raises_when_trace_id_empty() -> None:
 
 
 def test_memory_recalled_maps_to_custom_memory_recalled() -> None:
-    """memory_layer_wiring Phase 3: the recall count rides
-    Custom{name='memory_recalled'} -- count only, never content (privacy
-    invariant); the frontend translator special-cases the name."""
+    """memory_layer_wiring Phase 3 + B: the recall count + keys ride
+    Custom{name='memory_recalled'} -- count + keys, never content (keys are
+    identifiers; privacy invariant holds); the frontend translator
+    special-cases the name."""
     from agent_ui_adapter.wire.domain_events import MemoryRecalled
 
-    out = to_ag_ui(MemoryRecalled(trace_id=TRACE_ID, count=3))
+    out = to_ag_ui(MemoryRecalled(trace_id=TRACE_ID, count=2, keys=["k1", "k2"]))
     assert len(out) == 1
     assert isinstance(out[0], Custom)
     assert out[0].name == "memory_recalled"
-    assert out[0].value == {"count": 3}
+    assert out[0].value == {"count": 2, "keys": ["k1", "k2"]}
     assert out[0].raw_event == {"trace_id": TRACE_ID}
+
+
+def test_memory_recalled_maps_empty_keys_when_count_only() -> None:
+    """Phase B backward compatibility: a count-only event maps to keys=[]."""
+    from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+    out = to_ag_ui(MemoryRecalled(trace_id=TRACE_ID, count=3))
+    assert out[0].value == {"count": 3, "keys": []}

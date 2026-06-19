@@ -193,6 +193,72 @@ class TestLongTermMemoryAcceptance:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# 3.2b Soft-suppress (chat-persistence Phase B, D5)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestSuppress:
+    def test_suppress_missing_key_returns_false(self):
+        """Failure path first: suppressing a non-existent key is a no-op
+        (False), not an error — mirrors forget()'s boolean."""
+        service = _service()
+        assert service.suppress("u", "nope") is False
+
+    def test_suppress_blank_key_raises(self):
+        """Failure path: a blank key is a programmer error (typed)."""
+        service = _service()
+        with pytest.raises(ValueError):
+            service.suppress("u", "")
+
+    def test_suppress_sets_flag_and_retains_row(self):
+        """Reject = soft-suppress: the flag is written but the ROW IS RETAINED
+        (distinct from forget's hard delete) — the owner can still see/restore."""
+        service = _service()
+        service.store("u", "k", {"text": "prefers metric"})
+        assert service.suppress("u", "k") is True
+        record = service.recall("u", "k")
+        assert record is not None, "the row must be retained (audit)"
+        assert record.metadata.get("suppressed") is True
+        # The payload is untouched (only metadata flips).
+        assert record.payload["text"] == "prefers metric"
+
+    def test_un_suppress_clears_flag(self):
+        """Reversible (D5): suppressed=False removes the flag entirely."""
+        service = _service()
+        service.store("u", "k", {"text": "x"})
+        service.suppress("u", "k", suppressed=True)
+        assert service.suppress("u", "k", suppressed=False) is True
+        record = service.recall("u", "k")
+        assert record is not None
+        assert "suppressed" not in record.metadata
+
+    def test_suppress_preserves_other_metadata(self):
+        """The flag must not clobber salience / stored_at / type."""
+        service = _service()
+        service.store(
+            "u", "k", {"text": "x"}, metadata={"salience": 0.9, "type": "semantic"}
+        )
+        service.suppress("u", "k")
+        record = service.recall("u", "k")
+        assert record is not None
+        assert record.metadata["salience"] == 0.9
+        assert record.metadata["type"] == "semantic"
+        assert "stored_at" in record.metadata
+        assert record.metadata["suppressed"] is True
+
+    def test_suppress_scoped_to_user(self):
+        """Cross-user guard: suppressing u's key never touches another user's
+        same-named key."""
+        service = _service()
+        service.store("u", "k", {"text": "mine"})
+        service.store("other", "k", {"text": "theirs"})
+        service.suppress("u", "k")
+        other = service.recall("other", "k")
+        assert other is not None
+        assert "suppressed" not in other.metadata
+
+
+# ─────────────────────────────────────────────────────────────────────
 # 3.3 Concurrency tests
 # ─────────────────────────────────────────────────────────────────────
 

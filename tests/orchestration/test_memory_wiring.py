@@ -318,6 +318,10 @@ async def test_recall_count_surfaced_on_state(tmp_path):
         task_input="metric",  # substring matches both seeds
     )
     assert result.get("recalled_memories_count") == 2
+    # Phase B: the keys of the injected survivors ride alongside the count so
+    # the per-chat eval view can list which memories were recalled. Keys are
+    # identifiers (the stored keys), never content.
+    assert set(result.get("recalled_memories_keys") or []) == {"seed-a", "seed-b"}
 
 
 @pytest.mark.asyncio
@@ -334,6 +338,8 @@ async def test_recall_count_is_zero_when_flag_off(tmp_path):
         task_input="metric",
     )
     assert int(result.get("recalled_memories_count", 0) or 0) == 0
+    # Phase B: flag off → no keys either (eval view shows nothing).
+    assert list(result.get("recalled_memories_keys") or []) == []
 
 
 @pytest.mark.asyncio
@@ -348,6 +354,8 @@ async def test_recall_count_zero_on_degraded_backend(tmp_path):
         task_input="metric",
     )
     assert int(result.get("recalled_memories_count", 0) or 0) == 0
+    # Phase B: degraded recall must NOT surface stale keys — [] matches count 0.
+    assert list(result.get("recalled_memories_keys") or []) == []
 
 
 # ── T2 correctness: recall memoized once per run across a reflexion lap ────

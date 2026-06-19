@@ -20,9 +20,17 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ThreadCreateRequest(BaseModel):
-    """Body of ``POST /agent/threads``."""
+    """Body of ``POST /agent/threads``.
+
+    ``thread_id`` is optional: when the client mints the conversation id (so the
+    durable thread row keys by the SAME id the agent/checkpointer uses for
+    resume), it supplies it here. Absent → the store mints its own id (the
+    legacy path). A provisional title still flows via ``metadata.first_message``
+    (see ``derive_thread_title``).
+    """
 
     user_id: str
+    thread_id: str | None = None
     metadata: dict = Field(default_factory=dict)
 
     model_config = ConfigDict(extra="forbid")
@@ -182,5 +190,19 @@ class MemoryCreateRequest(BaseModel):
     # provenance tiers can render). Absent → the record is stored unmarked
     # (the legacy/back-compat path). Bounded [0,1] like TypedMemory.salience.
     salience: float | None = Field(default=None, ge=0.0, le=1.0)
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MemorySuppressRequest(BaseModel):
+    """Body of ``PATCH /agent/memory/{key}`` — soft-suppress / un-suppress one
+    of the caller's own memories (chat-persistence Phase B, D5).
+
+    ``suppressed=True`` (reject) stops the memory being recalled/injected while
+    RETAINING the row for audit; ``False`` un-suppresses (reversible). The
+    subject is the verified bearer identity, never client-supplied.
+    """
+
+    suppressed: bool
 
     model_config = ConfigDict(extra="forbid")

@@ -13,7 +13,9 @@
 
 import {
   MemoryCreateRequestSchema,
+  MemorySuppressRequestSchema,
   TaskUnderstandingEditRequestSchema,
+  ThreadAppendRequestSchema,
   ThreadCreateRequestSchema,
   ThreadRenameRequestSchema,
 } from "../wire/agent_protocol";
@@ -128,6 +130,35 @@ export function makeThreadRenameHandler(
   };
 }
 
+export function makeThreadAppendHandler(
+  deps: ThreadDeps,
+): (req: Request, ctx: { params: { id: string } }) => Promise<Response> {
+  return async (req, ctx) => {
+    const claim = await deps.auth.getSession();
+    if (!claim) return unauthorized();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return badRequest("invalid_json");
+    }
+    const parsed = ThreadAppendRequestSchema.safeParse(body);
+    if (!parsed.success) return badRequest(parsed.error.issues[0]?.message ?? "");
+    try {
+      await deps.threadStore.appendTurn(claim, ctx.params.id, {
+        user: parsed.data.user,
+        assistant: parsed.data.assistant,
+        turnId: parsed.data.turn_id,
+      });
+      return new Response(null, { status: 204, headers: NO_STORE });
+    } catch {
+      // appendTurn throws on missing OR not-owned; collapse both to 404 so the
+      // response is no existence oracle (FD3.SEC), mirroring rename.
+      return notFound();
+    }
+  };
+}
+
 export function makeThreadArchiveHandler(
   deps: ThreadDeps,
 ): (req: Request, ctx: { params: { id: string } }) => Promise<Response> {
@@ -214,6 +245,32 @@ export function makeMemoryDeleteHandler(
     const claim = await deps.auth.getSession();
     if (!claim) return unauthorized();
     await deps.memoryStore.remove(ctx.params.key);
+    return new Response(null, { status: 204, headers: NO_STORE });
+  };
+}
+
+// Phase B (D5): reject = soft-suppress. PATCH /api/memory/{key} flips the
+// suppressed flag (recall excludes it server-side; the row is retained). The
+// port's suppress() is idempotent on a missing key, so a 404 from upstream
+// collapses to 204 there — this handler simply mirrors the create/delete shape
+// (auth + Zod + port call, FE-AP-3).
+export function makeMemorySuppressHandler(
+  deps: MemoryDeps,
+): (req: Request, ctx: { params: { key: string } }) => Promise<Response> {
+  return async (req, ctx) => {
+    const claim = await deps.auth.getSession();
+    if (!claim) return unauthorized();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return badRequest("invalid_json");
+    }
+    const parsed = MemorySuppressRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return badRequest(parsed.error.issues[0]?.message ?? "");
+    }
+    await deps.memoryStore.suppress(ctx.params.key, parsed.data.suppressed);
     return new Response(null, { status: 204, headers: NO_STORE });
   };
 }

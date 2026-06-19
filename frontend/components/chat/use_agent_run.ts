@@ -49,6 +49,30 @@ export interface UnderstandingEditPayload {
 }
 
 /**
+ * Durable-persistence seam (plan §A3). The hook owns the run lifecycle and
+ * thread id; it does NOT fetch — these callbacks delegate the BFF writes to
+ * `useChatSidebars` (F-R2: the fetch stays in the adapter-backed hook, F-R9:
+ * same-origin cookie auth). Both are fire-and-forget — the implementation must
+ * never throw into the run (a persistence miss must not break the live chat).
+ */
+export interface PersistHooks {
+  /** Called once, on the first send of a new chat, with the just-minted id. */
+  onFirstSend?: (threadId: string, firstMessage: string) => void;
+  /** Called after a run completes, with the final assistant text. */
+  onTurnComplete?: (
+    threadId: string,
+    turn: { user: string; assistant: string; turnId: string },
+  ) => void;
+}
+
+/** Flatten an assistant view's text segments into one plain string. */
+function assistantText(view: AssistantRunView): string {
+  return view.segments
+    .map((s) => (s.kind === "text" ? s.text : ""))
+    .join("");
+}
+
+/**
  * Drive one run to completion, dispatching every event. If the stream
  * iterable itself throws (a port-contract violation -- Runtime Contract §1
  * says failures arrive as run_error events), a synthetic terminal
@@ -120,7 +144,10 @@ export async function resumeRunStream(opts: {
   );
 }
 
-export function useAgentRun(runtime: AgentRuntimeClient): {
+export function useAgentRun(
+  runtime: AgentRuntimeClient,
+  persist?: PersistHooks,
+): {
   turns: ReadonlyArray<ChatTurn>;
   busy: boolean;
   send: (body: string) => Promise<void>;
@@ -163,6 +190,9 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
   /** Render-time mirror so callbacks read current turns without re-binding. */
   const turnsRef = React.useRef<ReadonlyArray<ChatTurn>>(turns);
   turnsRef.current = turns;
+  /** Latest persist hooks (identity may change per render; read via ref). */
+  const persistRef = React.useRef<PersistHooks | undefined>(persist);
+  persistRef.current = persist;
 
   const dispatchFor = React.useCallback(
     (turnId: string) =>
@@ -184,27 +214,51 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
 
   const send = React.useCallback(
     async (body: string): Promise<void> => {
+      // First send of a new chat: mint the id AND auto-create the durable row
+      // (D1) so the conversation is saved from turn one. `isFirstSend` is true
+      // only when the ref was null before this assignment.
+      const isFirstSend = threadIdRef.current == null;
       threadIdRef.current ??= crypto.randomUUID();
+      const threadId = threadIdRef.current;
+      if (isFirstSend) persistRef.current?.onFirstSend?.(threadId, body);
       const turnId = crypto.randomUUID();
       setTurns((prev) => [
         ...prev,
         { id: turnId, user: body, assistant: emptyRunView() },
       ]);
       setBusy(true);
-      const dispatch = dispatchFor(turnId);
+      // Track the latest reduced view for THIS turn synchronously alongside the
+      // React state, so the completed answer is available the instant the
+      // stream resolves (the render-mirror `turnsRef` lags a commit).
+      let latestView = emptyRunView();
+      const dispatch = (evt: UIRuntimeEvent): void => {
+        if (pausedRef.current && evt.type === "run_error") return;
+        latestView = reduceRunView(latestView, evt);
+        dispatchFor(turnId)(evt);
+      };
       const controller = new AbortController();
       controllerRef.current = controller;
       try {
         // Only the new user line: the middleware keys checkpoint state by
         // `thread_id`, so LangGraph appends to prior turns server-side.
         const req = uiInputToAgentRequest({
-          thread_id: threadIdRef.current,
+          thread_id: threadId,
           body,
         });
         await consumeRunStream(
           runtime.streamRun(req, { signal: controller.signal }),
           dispatch,
         );
+        // Persist the completed turn (D2) — but never a turn that errored or
+        // is paused mid-edit (a pause aborts the stream; the resume leg will
+        // persist the final answer).
+        if (latestView.status === "complete" && !pausedRef.current) {
+          persistRef.current?.onTurnComplete?.(threadId, {
+            user: body,
+            assistant: assistantText(latestView),
+            turnId,
+          });
+        }
       } catch (e) {
         // streamRun threw synchronously (e.g. missing composition wiring).
         dispatch({

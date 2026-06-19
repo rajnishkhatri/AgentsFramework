@@ -1002,6 +1002,13 @@ def build_graph(
             # Carry the memoized count forward (a reflexion lap reuses it);
             # overwritten with the fresh count when recall actually runs below.
             recalled_count = int(state.get("recalled_memories_count", 0) or 0)
+            # Phase B (recalled-memories-per-chat): the stable keys of the records
+            # actually injected this turn (identifiers, NOT payload content — the
+            # privacy invariant holds; the owner joins them against their own
+            # memory panel client-side). Memoized alongside the count.
+            recalled_keys: list[str] = list(
+                state.get("recalled_memories_keys", []) or []
+            )
             recall_user_id = _memory_subject(
                 state.get("user_id", "") or configurable.get("user_id", "")
             )
@@ -1015,6 +1022,7 @@ def build_graph(
             ):
                 recall_query = state.get("task_input", "")
                 recall_count = 0
+                recall_keys: list[str] = []
                 recall_error = ""
                 try:
                     # Offload the (possibly blocking, network-bound) backend
@@ -1038,6 +1046,10 @@ def build_graph(
                         authoritative_at=agent_config.memory_authoritative_at,
                     )
                     recall_count = len(kept)
+                    # Phase B: the keys of exactly the injected survivors, in
+                    # render order. Keys are identifiers (never content); the
+                    # eval view joins them against the owner's memory panel.
+                    recall_keys = [str(r.key) for r in kept]
                 except MemoryBackendError as exc:
                     # Graceful degradation: memory never fails a run. Log only
                     # metadata (privacy invariant — never payload content) and
@@ -1053,6 +1065,9 @@ def build_graph(
                 # The fresh count replaces the memoized one (0 on the degraded
                 # path, since recall_count stays 0 when the backend raised).
                 recalled_count = recall_count
+                # …and so do the keys ([] on the degraded path) — the eval view
+                # must never show stale keys from a prior memoized turn.
+                recalled_keys = recall_keys
                 # Recording pillar: a carrier even on the degraded path (count 0
                 # / error_kind) — a swallowed failure with no carrier is the
                 # silent failure the audit's Validation check flags. Never
@@ -1500,6 +1515,10 @@ def build_graph(
                 # (never content). The runtime adapter reads this off the route
                 # output to emit a MemoryRecalled domain event.
                 "recalled_memories_count": recalled_count,
+                # Phase B: the injected records' keys (identifiers, never
+                # content) so the per-chat eval view can list which memories
+                # were recalled and offer a per-item reject (soft-suppress).
+                "recalled_memories_keys": recalled_keys,
             }
 
     # ── Story 1.1: call_llm_node with tool binding + multi-turn messages ──

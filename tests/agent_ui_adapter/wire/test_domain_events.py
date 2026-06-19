@@ -379,19 +379,30 @@ def test_task_understood_carries_artifact_fields():
     assert ev.success_conditions == ["file exists", "contents verified"]
 
 
-def test_memory_recalled_carries_count_only():
-    """memory_layer Phase 3: count is the only payload field (privacy
-    invariant — never content)."""
+def test_memory_recalled_carries_count_and_keys():
+    """memory_layer Phase 3 + B: count plus the injected records' KEYS
+    (identifiers, never content). keys defaults to [] (backward compatible)."""
+    from agent_ui_adapter.wire.domain_events import MemoryRecalled
+
+    ev = MemoryRecalled(trace_id="tr1", count=2, keys=["k1", "k2"])
+    assert ev.count == 2
+    assert ev.keys == ["k1", "k2"]
+    assert set(ev.model_dump()) == {"trace_id", "timestamp", "count", "keys"}
+
+
+def test_memory_recalled_keys_default_empty():
+    """Phase B backward compatibility: a count-only producer is still valid;
+    keys defaults to []."""
     from agent_ui_adapter.wire.domain_events import MemoryRecalled
 
     ev = MemoryRecalled(trace_id="tr1", count=3)
-    assert ev.count == 3
-    assert set(ev.model_dump()) == {"trace_id", "timestamp", "count"}
+    assert ev.keys == []
 
 
-def test_memory_recalled_rejects_extra_fields():
+def test_memory_recalled_rejects_content_field():
     """Failure path first: strict wire shape — a 'content' field is rejected
-    (the privacy invariant is structurally enforced, not just by convention)."""
+    (the privacy invariant is structurally enforced; keys are identifiers, not
+    content, and are the ONLY new field allowed)."""
     from agent_ui_adapter.wire.domain_events import MemoryRecalled
 
     with pytest.raises(ValidationError):

@@ -28,6 +28,9 @@ import type { MemoryItem, MemoryType } from "../wire/agent_protocol";
  *   - `add(content, type)` creates a user-authored memory and returns it.
  *   - `remove(key)` deletes one of the caller's items; resolves whether or
  *     not the key existed (idempotent from the caller's view).
+ *   - `suppress(key, suppressed)` soft-suppresses (reject) or un-suppresses one
+ *     of the caller's items (Phase B, D5): a suppressed memory is no longer
+ *     recalled/injected but the row is RETAINED for audit. Reversible.
  *   - All errors map to a `MemoryStoreError` (P4).
  */
 export interface MemoryStore {
@@ -56,6 +59,17 @@ export interface MemoryStore {
    * @throws MemoryStoreError on transport failure.
    */
   remove(key: string): Promise<void>;
+
+  /**
+   * Soft-suppress (reject) or un-suppress one of the caller's memories
+   * (Phase B, D5). A suppressed memory is no longer recalled/injected but the
+   * row is retained for audit; `suppressed: false` restores it. Resolves
+   * whether or not the key existed (idempotent from the caller's view — a
+   * missing key is a no-op).
+   *
+   * @throws MemoryStoreError on transport failure.
+   */
+  suppress(key: string, suppressed: boolean): Promise<void>;
 }
 
 export class MemoryStoreError extends Error {

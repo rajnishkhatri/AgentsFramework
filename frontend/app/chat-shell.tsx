@@ -32,6 +32,7 @@ import {
 import { SidebarPanel } from "@/components/chat/SidebarPanel";
 import { useSidebarChrome } from "@/components/chat/use_sidebar_chrome";
 import { RecallIndicator } from "@/components/memory/RecallIndicator";
+import { RecalledMemories } from "@/components/memory/RecalledMemories";
 import { filterThreadsByTitle } from "@/lib/thread_grouping";
 import { browserRuntimeClient } from "@/lib/composition_browser";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
@@ -39,6 +40,28 @@ import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 import { deriveRunPhase, type RunPhase } from "@/lib/translators/run_phase";
 import { narrateTrajectory } from "@/lib/translators/run_narration";
 import { synthesizeFallbackAnswer } from "@/lib/translators/fallback_answer";
+import type { MemoryItem } from "@/lib/wire/agent_protocol";
+
+/**
+ * Phase B: resolve a turn's recalled memory KEYS against the owner's loaded
+ * memory panel into displayable items (key + type + content). Pure + order-
+ * preserving (recall order). A key with no matching panel item is dropped — the
+ * recall wire event carries keys only (never content), so a key the panel hasn't
+ * loaded simply isn't shown rather than rendering a contentless row.
+ */
+export function recalledItems(
+  keys: ReadonlyArray<string>,
+  memories: ReadonlyArray<MemoryItem>,
+): ReadonlyArray<MemoryItem> {
+  if (keys.length === 0) return [];
+  const byKey = new Map(memories.map((m) => [m.key, m]));
+  const out: MemoryItem[] = [];
+  for (const key of keys) {
+    const item = byKey.get(key);
+    if (item) out.push(item);
+  }
+  return out;
+}
 
 const PHASE_LABEL: Record<RunPhase, string> = {
   connecting: "connecting…",
@@ -259,6 +282,31 @@ export function ChatShell(props: {
     [injected],
   );
   const evalMode = Boolean(props.evalCase);
+  // Left panel: thread history. The hook owns all lifecycle (F-R1); the shell
+  // only renders + forwards callbacks. The injected `props.sidebars` overrides
+  // it in tests. (The right "What I remember" column was removed in the UI
+  // refresh — Phase 0 — though the memory half of the hook is retained.)
+  const liveSidebars = useChatSidebars();
+  const sidebars = props.sidebars ?? liveSidebars;
+  // Durable persistence seam (plan §A3): on the first send auto-create the
+  // thread row; on each completed turn persist it. Both delegate the BFF write
+  // to the sidebars hook (F-R2/F-R9) and are fire-and-forget — the live chat
+  // never blocks on a persistence miss. The BFF scopes storage to the verified
+  // owner, so the client `user_id` here is non-authoritative.
+  const persist = React.useMemo(
+    () => ({
+      onFirstSend: (threadId: string, firstMessage: string): void => {
+        void sidebars.createThread(threadId, props.userEmail, firstMessage);
+      },
+      onTurnComplete: (
+        threadId: string,
+        turn: { user: string; assistant: string; turnId: string },
+      ): void => {
+        void sidebars.persistTurn(threadId, turn);
+      },
+    }),
+    [sidebars, props.userEmail],
+  );
   const {
     turns,
     busy,
@@ -270,13 +318,7 @@ export function ChatShell(props: {
     cancelEditAndResume,
     resumeThread,
     startNewChat,
-  } = useAgentRun(runtime);
-  // Left panel: thread history. The hook owns all lifecycle (F-R1); the shell
-  // only renders + forwards callbacks. The injected `props.sidebars` overrides
-  // it in tests. (The right "What I remember" column was removed in the UI
-  // refresh — Phase 0 — though the memory half of the hook is retained.)
-  const liveSidebars = useChatSidebars();
-  const sidebars = props.sidebars ?? liveSidebars;
+  } = useAgentRun(runtime, persist);
   // Left-panel chrome (collapse / search / active tab). Cosmetic state only;
   // collapse persists to localStorage, search filters client-side.
   const chrome = useSidebarChrome();
@@ -412,6 +454,24 @@ export function ChatShell(props: {
                        * content; renders nothing at 0.
                        */}
                       <RecallIndicator count={turn.assistant.recalledCount} />
+                      {/*
+                       * Phase B (B2): per-turn recalled-memories eval/reject
+                       * disclosure. Gated to the dev/eval surface so prod chat
+                       * stays clean. The recalled KEYS (folded onto the run
+                       * view) are joined against the owner's loaded memory
+                       * panel to show content; Reject soft-suppresses globally.
+                       */}
+                      {evalMode ? (
+                        <RecalledMemories
+                          items={recalledItems(
+                            turn.assistant.recalledKeys,
+                            sidebars.memories,
+                          )}
+                          onReject={(key) =>
+                            void sidebars.suppressMemory(key, true)
+                          }
+                        />
+                      ) : null}
                       <AssistantMessage
                         turn={turn}
                         evalMode={evalMode}

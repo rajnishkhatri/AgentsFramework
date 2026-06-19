@@ -36,7 +36,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -59,6 +59,7 @@ from agent_ui_adapter.wire.agent_protocol import (
     MemoryCreateRequest,
     MemoryItem,
     MemoryListResponse,
+    MemorySuppressRequest,
     ThreadCreateRequest,
     ThreadListResponse,
     ThreadRenameRequest,
@@ -367,7 +368,13 @@ def build_combined_app() -> FastAPI:
         identity: AgentFacts = Depends(_bearer_identity),
     ) -> ThreadState:
         # Scope to the verified owner — ignore body.user_id for storage key.
-        return threads.create(user_id=identity.owner, metadata=body.metadata)
+        # Honor a client-minted thread_id so the durable row keys by the same
+        # id the agent/checkpointer uses for resume.
+        return threads.create(
+            user_id=identity.owner,
+            metadata=body.metadata,
+            thread_id=body.thread_id,
+        )
 
     @app.get("/agent/threads/{thread_id}", response_model=ThreadState)
     async def get_thread(
@@ -453,6 +460,20 @@ def build_combined_app() -> FastAPI:
         if not memory.forget(identity.owner, key):
             raise HTTPException(status_code=404, detail="memory not found")
         return {"deleted": key}
+
+    @app.patch("/agent/memory/{key}", status_code=204)
+    async def suppress_memory(
+        key: str,
+        body: MemorySuppressRequest,
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> Response:
+        # Phase B (D5): reject = soft-suppress globally. The record stops being
+        # recalled/injected but the row is RETAINED (audit); un-suppress
+        # restores. Scoped to the verified bearer identity (cross-user guard).
+        memory = _require_memory()
+        if not memory.suppress(identity.owner, key, suppressed=body.suppressed):
+            raise HTTPException(status_code=404, detail="memory not found")
+        return Response(status_code=204)
 
     # task_understanding plan Phase 4: soft-gate card edit seam. The client
     # pauses the stream, POSTs the corrected artifact here, then resumes by

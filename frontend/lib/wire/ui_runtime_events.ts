@@ -130,18 +130,23 @@ export const TaskUnderstandingEventSchema = z
   .strict();
 export type TaskUnderstandingEvent = z.infer<typeof TaskUnderstandingEventSchema>;
 
-// ── Memory recall count (Custom 'memory_recalled', memory_layer Phase 3) ─
+// ── Memory recall (Custom 'memory_recalled', memory_layer Phase 3 + B) ───
 //
-// How many long-term memories the route node's recall returned this run.
-// METADATA ONLY — never content (the privacy invariant; the owner sees their
-// content only in the memory panel). Drives the per-turn transparent-recall
-// indicator ("recalled N memories"); 0 renders nothing.
+// How many long-term memories the route node's recall returned this run, and
+// (Phase B) the stable KEYS of exactly those records. Keys are identifiers,
+// NOT payload content — the privacy invariant still holds (the owner sees
+// content only in their own memory panel; the eval view JOINS these keys
+// against that panel client-side). Drives the per-turn transparent-recall
+// indicator ("recalled N memories"; 0 renders nothing) and the Phase B
+// per-chat recalled-memories eval/reject disclosure. `keys` defaults to [] so
+// a count-only producer stays valid.
 
 export const MemoryRecalledEventSchema = z
   .object({
     type: z.literal("memory_recalled"),
     trace_id: traceId,
     count: z.number().int().min(0),
+    keys: z.array(z.string()).default([]),
   })
   .strict();
 export type MemoryRecalledEvent = z.infer<typeof MemoryRecalledEventSchema>;

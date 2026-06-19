@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -39,6 +39,7 @@ from agent_ui_adapter.wire.agent_protocol import (
     MemoryCreateRequest,
     MemoryItem,
     MemoryListResponse,
+    MemorySuppressRequest,
     RunCreateRequest,
     RunStateView,
     ThreadCreateRequest,
@@ -169,8 +170,12 @@ class _ThreadStore:
         # Insertion order for stable, newest-first pagination.
         self._order: list[str] = []
 
-    def create(self, user_id: str, metadata: dict) -> ThreadState:
-        thread_id = uuid.uuid4().hex
+    def create(
+        self, user_id: str, metadata: dict, *, thread_id: str | None = None
+    ) -> ThreadState:
+        # Honor a client-minted id (== the agent/checkpointer thread_id) so the
+        # durable row keys by the id the resume path reads; otherwise mint one.
+        thread_id = thread_id or uuid.uuid4().hex
         now = datetime.now(UTC)
         # Deterministic title from the first message if the caller supplied one
         # in metadata; otherwise the renamable default.
@@ -362,7 +367,9 @@ def build_app(
         body: ThreadCreateRequest,
         identity: AgentFacts = Depends(_verify_bearer),
     ) -> ThreadState:
-        return threads.create(user_id=body.user_id, metadata=body.metadata)
+        return threads.create(
+            user_id=body.user_id, metadata=body.metadata, thread_id=body.thread_id
+        )
 
     @app.get("/agent/threads/{thread_id}", response_model=ThreadState)
     async def get_thread(
@@ -551,6 +558,23 @@ def build_app(
         if not removed:
             raise HTTPException(status_code=404, detail="memory not found")
         return {"deleted": key}
+
+    @app.patch("/agent/memory/{key}", status_code=204)
+    async def suppress_memory(
+        key: str,
+        body: MemorySuppressRequest,
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> Response:
+        # Phase B (D5): reject = soft-suppress globally. The record stops being
+        # recalled/injected but the row is RETAINED (audit); un-suppress
+        # restores. Scoped to the verified bearer identity (cross-user guard).
+        memory = _require_memory()
+        existed = memory.suppress(
+            identity.owner, key, suppressed=body.suppressed
+        )
+        if not existed:
+            raise HTTPException(status_code=404, detail="memory not found")
+        return Response(status_code=204)
 
     return app
 

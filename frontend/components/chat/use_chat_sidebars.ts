@@ -94,6 +94,71 @@ export async function fetchThread(
 }
 
 /**
+ * Auto-create the durable thread row on the first send of a new chat (D1).
+ * The client supplies the SAME `threadId` the agent/checkpointer uses so the
+ * durable row keys by the resume id; the provisional sidebar title flows via
+ * `metadata.first_message` (the store derives it). Same-origin cookie auth,
+ * no bearer (F-R9). Returns the created `ThreadState`.
+ */
+export async function createThreadRequest(
+  fetchImpl: typeof fetch,
+  threadId: string,
+  userId: string,
+  firstMessage: string,
+): Promise<ThreadState> {
+  try {
+    const res = await fetchImpl("/api/threads", {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        user_id: userId,
+        thread_id: threadId,
+        metadata: { first_message: firstMessage },
+      }),
+    });
+    if (!res.ok) throw new ChatSidebarsError(`thread create failed (${res.status})`);
+    const parsed = ThreadStateSchema.safeParse(await res.json());
+    if (!parsed.success) {
+      throw new ChatSidebarsError("malformed thread create response");
+    }
+    return parsed.data;
+  } catch (e) {
+    throw wrap(e);
+  }
+}
+
+/**
+ * Persist one completed turn (`{user, assistant}`) into the thread's durable
+ * transcript (D2). `turnId` makes a retried POST idempotent. A 404 (pruned /
+ * not-owned / race-with-create) resolves silently — the live chat is never
+ * blocked by a persistence miss; a later turn retries create-or-append.
+ */
+export async function appendTurnRequest(
+  fetchImpl: typeof fetch,
+  threadId: string,
+  turn: { user: string; assistant: string; turnId: string },
+): Promise<void> {
+  try {
+    const res = await fetchImpl(
+      `/api/threads/${encodeURIComponent(threadId)}/messages`,
+      {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify({
+          user: turn.user,
+          assistant: turn.assistant,
+          turn_id: turn.turnId,
+        }),
+      },
+    );
+    if (res.ok || res.status === 404) return;
+    throw new ChatSidebarsError(`turn persist failed (${res.status})`);
+  } catch (e) {
+    throw wrap(e);
+  }
+}
+
+/**
  * Replay a thread's persisted history into the chat view's turn list.
  *
  * The backend persists LangGraph messages as `{role, content}` dicts
@@ -235,6 +300,26 @@ export async function deleteMemoryRequest(
   }
 }
 
+// Phase B (D5): reject = soft-suppress. PATCH the keyed memory route with the
+// flag; a 404 resolves silently (idempotent — nothing to suppress).
+export async function suppressMemoryRequest(
+  fetchImpl: typeof fetch,
+  key: string,
+  suppressed: boolean,
+): Promise<void> {
+  try {
+    const res = await fetchImpl(`/api/memory/${encodeURIComponent(key)}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ suppressed }),
+    });
+    if (res.ok || res.status === 404) return;
+    throw new ChatSidebarsError(`memory suppress failed (${res.status})`);
+  } catch (e) {
+    throw wrap(e);
+  }
+}
+
 // ── React hook ─────────────────────────────────────────────────────────
 
 export interface ChatSidebarsState {
@@ -248,6 +333,13 @@ export interface ChatSidebarsState {
   deleteThread(threadId: string): Promise<void>;
   addMemory(content: string, type: MemoryType): Promise<void>;
   deleteMemory(key: string): Promise<void>;
+  /**
+   * Phase B (D5): reject = soft-suppress a recalled memory globally. The memory
+   * stops being recalled/injected but the row is retained (auditable); on
+   * suppress, the item is dropped from the local panel list (it reappears on a
+   * reload if un-suppressed elsewhere). Reversible via `suppressed=false`.
+   */
+  suppressMemory(key: string, suppressed: boolean): Promise<void>;
   setMemoryEnabled(enabled: boolean): void;
   /**
    * Click-to-resume: fetch a thread's persisted history and translate it into
@@ -256,6 +348,24 @@ export interface ChatSidebarsState {
    * surfaced via `error` so a broken resume degrades to "nothing happened".
    */
   loadThreadTurns(threadId: string): Promise<ReadonlyArray<ChatTurn>>;
+  /**
+   * Auto-create the durable thread row on the first send (D1), then refresh
+   * Recents so the new chat appears immediately. Fire-and-forget: a create
+   * failure is captured in `error`, never thrown into the live run.
+   */
+  createThread(
+    threadId: string,
+    userId: string,
+    firstMessage: string,
+  ): Promise<void>;
+  /**
+   * Persist one completed turn into the durable transcript (D2).
+   * Fire-and-forget: a persist failure is captured in `error`, never thrown.
+   */
+  persistTurn(
+    threadId: string,
+    turn: { user: string; assistant: string; turnId: string },
+  ): Promise<void>;
 }
 
 /**
@@ -339,6 +449,19 @@ export function useChatSidebars(
     [guard],
   );
 
+  const suppressMemory = React.useCallback(
+    (key: string, suppressed: boolean): Promise<void> =>
+      guard(async () => {
+        await suppressMemoryRequest(f.current, key, suppressed);
+        // On suppress (reject) the item leaves the local panel/recall list.
+        // Un-suppress is rare from this surface; a reload restores the full set.
+        if (suppressed) {
+          setMemories((prev) => prev.filter((m) => m.key !== key));
+        }
+      }),
+    [guard],
+  );
+
   const loadThreadTurns = React.useCallback(
     async (threadId: string): Promise<ReadonlyArray<ChatTurn>> => {
       try {
@@ -350,6 +473,28 @@ export function useChatSidebars(
       }
     },
     [],
+  );
+
+  const createThread = React.useCallback(
+    (threadId: string, userId: string, firstMessage: string): Promise<void> =>
+      guard(async () => {
+        await createThreadRequest(f.current, threadId, userId, firstMessage);
+        // The created row carries the provisional title; reload so Recents
+        // shows the new chat immediately (newest-first).
+        setThreads(await fetchThreadList(f.current));
+      }),
+    [guard],
+  );
+
+  const persistTurn = React.useCallback(
+    (
+      threadId: string,
+      turn: { user: string; assistant: string; turnId: string },
+    ): Promise<void> =>
+      guard(async () => {
+        await appendTurnRequest(f.current, threadId, turn);
+      }),
+    [guard],
   );
 
   // Initial load. The empty deps array intentionally loads once on mount; the
@@ -370,7 +515,10 @@ export function useChatSidebars(
     deleteThread,
     addMemory,
     deleteMemory,
+    suppressMemory,
     setMemoryEnabled,
     loadThreadTurns,
+    createThread,
+    persistTurn,
   };
 }

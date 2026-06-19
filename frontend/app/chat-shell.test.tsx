@@ -57,8 +57,11 @@ function fakeSidebars(
     deleteThread: vi.fn(async () => undefined),
     addMemory: vi.fn(async () => undefined),
     deleteMemory: vi.fn(async () => undefined),
+    suppressMemory: vi.fn(async () => undefined),
     setMemoryEnabled: vi.fn(),
     loadThreadTurns: vi.fn(async () => []),
+    createThread: vi.fn(async () => undefined),
+    persistTurn: vi.fn(async () => undefined),
     ...overrides,
   };
 }

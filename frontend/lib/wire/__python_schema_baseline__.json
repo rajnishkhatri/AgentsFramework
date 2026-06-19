@@ -960,12 +960,24 @@
     },
     "ThreadCreateRequest": {
       "additionalProperties": false,
-      "description": "Body of ``POST /agent/threads``.",
+      "description": "Body of ``POST /agent/threads``.\n\n``thread_id`` is optional: when the client mints the conversation id (so the\ndurable thread row keys by the SAME id the agent/checkpointer uses for\nresume), it supplies it here. Absent → the store mints its own id (the\nlegacy path). A provisional title still flows via ``metadata.first_message``\n(see ``derive_thread_title``).",
       "properties": {
         "metadata": {
           "additionalProperties": true,
           "title": "Metadata",
           "type": "object"
+        },
+        "thread_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Thread Id"
         },
         "user_id": {
           "title": "User Id",

@@ -57,6 +57,16 @@ describe("HttpMemoryStore — failure paths first", () => {
     const s = store(() => Promise.resolve(new Response(null, { status: 500 })));
     await expect(s.remove("k")).rejects.toBeInstanceOf(MemoryStoreError);
   });
+
+  it("suppress swallows a 404 (idempotent — nothing to suppress)", async () => {
+    const s = store(() => Promise.resolve(new Response(null, { status: 404 })));
+    await expect(s.suppress("k", true)).resolves.toBeUndefined();
+  });
+
+  it("suppress throws on a 500", async () => {
+    const s = store(() => Promise.resolve(new Response(null, { status: 500 })));
+    await expect(s.suppress("k", true)).rejects.toBeInstanceOf(MemoryStoreError);
+  });
 });
 
 describe("HttpMemoryStore — acceptance", () => {
@@ -112,5 +122,21 @@ describe("HttpMemoryStore — acceptance", () => {
     const s = store(fetchImpl);
     await s.remove("k 1");
     expect(urls[0]).toBe("http://mw/agent/memory/k%201");
+  });
+
+  it("suppress PATCHes the keyed path with the flag and bearer token", async () => {
+    let seen: { url: string; init: RequestInit } | null = null;
+    const fetchImpl = ((url: string, init: RequestInit) => {
+      seen = { url, init };
+      return Promise.resolve(new Response(null, { status: 204 }));
+    }) as unknown as typeof fetch;
+    const s = store(fetchImpl);
+    await s.suppress("k 1", true);
+    expect(seen!.url).toBe("http://mw/agent/memory/k%201");
+    expect(seen!.init.method).toBe("PATCH");
+    expect(JSON.parse(seen!.init.body as string)).toEqual({ suppressed: true });
+    expect((seen!.init.headers as Record<string, string>).authorization).toBe(
+      "Bearer tok-123",
+    );
   });
 });

@@ -200,3 +200,9 @@ class AgentState(MessagesState):
     # recalled_memories_task_id, so a reflexion lap reports the same count
     # without re-querying. 0 = no recall / degraded / flag off. Last-write-wins.
     recalled_memories_count: int
+    # Phase B (recalled-memories-per-chat): the stable keys of the records
+    # actually injected this turn — identifiers, NEVER payload content (the
+    # privacy invariant holds; the owner joins them against their own memory
+    # panel to render the per-chat eval/reject view). Memoized alongside
+    # recalled_memories_count; [] = no recall / degraded / flag off.
+    recalled_memories_keys: list[str]

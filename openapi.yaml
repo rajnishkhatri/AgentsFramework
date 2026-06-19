@@ -336,11 +336,22 @@ components:
         number of long-term memories the route node's recall returned, NEVER the\n\
         content (the privacy invariant; the owner sees their content only in the\n\
         memory panel). The frontend renders \"recalled N memories\" above the\nassistant\
-        \ turn; 0 renders nothing."
+        \ turn; 0 renders nothing.\n\nchat_persistence Phase B adds ``keys``: the\
+        \ stable identifiers of exactly\nthe records injected this turn (in render\
+        \ order). Keys are identifiers, NOT\npayload content, so the privacy invariant\
+        \ still holds \u2014 the per-chat eval\nview joins them against the owner's\
+        \ own memory panel to render which\nmemories were recalled (and offer a per-item\
+        \ reject/soft-suppress). Defaults\nto ``[]`` for backward compatibility (a\
+        \ count-only producer stays valid)."
       properties:
         count:
           title: Count
           type: integer
+        keys:
+          items:
+            type: string
+          title: Keys
+          type: array
         timestamp:
           format: date-time
           title: Timestamp
@@ -352,6 +363,21 @@ components:
       - trace_id
       - count
       title: MemoryRecalled
+      type: object
+    MemorySuppressRequest:
+      additionalProperties: false
+      description: "Body of ``PATCH /agent/memory/{key}`` \u2014 soft-suppress / un-suppress\
+        \ one\nof the caller's own memories (chat-persistence Phase B, D5).\n\n``suppressed=True``\
+        \ (reject) stops the memory being recalled/injected while\nRETAINING the row\
+        \ for audit; ``False`` un-suppresses (reversible). The\nsubject is the verified\
+        \ bearer identity, never client-supplied."
+      properties:
+        suppressed:
+          title: Suppressed
+          type: boolean
+      required:
+      - suppressed
+      title: MemorySuppressRequest
       type: object
     MessagesSnapshot:
       additionalProperties: false
@@ -963,12 +989,22 @@ components:
       type: object
     ThreadCreateRequest:
       additionalProperties: false
-      description: Body of ``POST /agent/threads``.
+      description: "Body of ``POST /agent/threads``.\n\n``thread_id`` is optional:\
+        \ when the client mints the conversation id (so the\ndurable thread row keys\
+        \ by the SAME id the agent/checkpointer uses for\nresume), it supplies it\
+        \ here. Absent \u2192 the store mints its own id (the\nlegacy path). A provisional\
+        \ title still flows via ``metadata.first_message``\n(see ``derive_thread_title``)."
       properties:
         metadata:
           additionalProperties: true
           title: Metadata
           type: object
+        thread_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          default: null
+          title: Thread Id
         user_id:
           title: User Id
           type: string
@@ -1351,6 +1387,28 @@ paths:
         '404':
           description: Memory not found
       summary: Delete one of the caller's memories
+    patch:
+      operationId: suppressMemory
+      parameters:
+      - in: path
+        name: key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemorySuppressRequest'
+        required: true
+      responses:
+        '204':
+          description: Suppression flag updated
+        '401':
+          description: Unauthorized
+        '404':
+          description: Memory not found
+      summary: Soft-suppress / un-suppress one of the caller's memories (Phase B reject)
   /agent/runs/stream:
     post:
       operationId: streamRun

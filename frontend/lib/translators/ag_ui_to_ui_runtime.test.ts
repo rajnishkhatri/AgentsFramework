@@ -298,17 +298,50 @@ describe("CUSTOM memory_recalled (transparent recall, memory_layer Phase 3)", ()
     ).toEqual([]);
   });
 
-  it("valid count -> one memory_recalled event (count only, no content)", () => {
+  it("valid count + keys -> one memory_recalled event (keys, never content)", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: 2, keys: ["k1", "k2"] },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "memory_recalled",
+      count: 2,
+      keys: ["k1", "k2"],
+    });
+    // The wire event carries keys (identifiers) but NO content field.
+    expect(Object.keys(out[0] ?? {})).toEqual([
+      "type",
+      "trace_id",
+      "count",
+      "keys",
+    ]);
+  });
+
+  it("count with no keys field -> keys default to [] (backward compatible)", () => {
     const out = agUiToUiRuntime({
       type: "CUSTOM",
       name: "memory_recalled",
       value: { count: 3 },
       ...RAW,
     } as never);
-    expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 3 });
-    // The wire event carries no content field at all.
-    expect(Object.keys(out[0] ?? {})).toEqual(["type", "trace_id", "count"]);
+    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 3, keys: [] });
+  });
+
+  it("malformed keys (non-array / non-string entries) degrade to [] not a throw", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: 2, keys: ["ok", 42, null, "fine"] },
+      ...RAW,
+    } as never);
+    expect(out[0]).toMatchObject({
+      type: "memory_recalled",
+      count: 2,
+      keys: ["ok", "fine"],
+    });
   });
 
   it("count 0 still emits the event (the indicator no-ops, channel stays truthful)", () => {
@@ -319,6 +352,6 @@ describe("CUSTOM memory_recalled (transparent recall, memory_layer Phase 3)", ()
       ...RAW,
     } as never);
     expect(out).toHaveLength(1);
-    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 0 });
+    expect(out[0]).toMatchObject({ type: "memory_recalled", count: 0, keys: [] });
   });
 });
