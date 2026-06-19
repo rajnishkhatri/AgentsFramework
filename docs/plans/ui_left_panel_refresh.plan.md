@@ -1,6 +1,8 @@
 # UI — Left Panel Refresh & Right Panel Removal
 
-> **Status:** PROPOSED (2026-06-19). Front-end only; no backend/wire changes.
+> **Status:** IMPLEMENTED (2026-06-19). All phases 0–5 landed; 751 frontend
+> unit tests + 86 architecture tests + the new sidebar e2e suite (8 specs) +
+> a11y sweep all green; typecheck clean. Front-end only; no backend/wire changes.
 > **Companion:** [`ui_left_panel_refresh.design.md`](ui_left_panel_refresh.design.md)
 > — visual layouts (before/after, panel states), component tree, the collapse
 > animation spec, and the `data-testid` test contract.

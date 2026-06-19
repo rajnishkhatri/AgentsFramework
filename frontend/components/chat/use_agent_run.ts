@@ -143,6 +143,12 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     threadId: string,
     replayTurns: ReadonlyArray<ChatTurn>,
   ) => void;
+  /**
+   * Start a fresh conversation: abort any in-flight run, clear the transcript,
+   * and drop the thread id so the NEXT `send` mints a new `crypto.randomUUID()`
+   * (lazy creation — no BFF POST on click). UI refresh Phase 3 / plan §D3.
+   */
+  startNewChat: () => void;
 } {
   const [turns, setTurns] = React.useState<ReadonlyArray<ChatTurn>>([]);
   const [busy, setBusy] = React.useState(false);
@@ -304,6 +310,19 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     [],
   );
 
+  const startNewChat = React.useCallback((): void => {
+    // Same teardown as resumeThread, but bind to NO thread: nulling the ref
+    // makes the next `send` mint a fresh id (lazy creation).
+    controllerRef.current?.abort();
+    controllerRef.current = null;
+    pausedRef.current = false;
+    setPausedTurnId(null);
+    setEditError(null);
+    setBusy(false);
+    threadIdRef.current = null;
+    setTurns([]);
+  }, []);
+
   return {
     turns,
     busy,
@@ -314,5 +333,6 @@ export function useAgentRun(runtime: AgentRuntimeClient): {
     saveUnderstanding,
     cancelEditAndResume,
     resumeThread,
+    startNewChat,
   };
 }

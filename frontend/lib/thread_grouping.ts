@@ -52,6 +52,21 @@ const ORDER: ReadonlyArray<ThreadGroupLabel> = [
 ];
 
 /**
+ * Filter threads by a case-insensitive substring of their title (UI refresh
+ * Phase 4 — inline search over Recents). A blank/whitespace-only query is "no
+ * filter" and returns every thread unchanged; input order is preserved so the
+ * caller can re-group the survivors. Pure: no clock, no I/O.
+ */
+export function filterThreadsByTitle(
+  threads: ReadonlyArray<ThreadState>,
+  query: string,
+): ReadonlyArray<ThreadState> {
+  const q = query.trim().toLowerCase();
+  if (q === "") return threads;
+  return threads.filter((t) => (t.title ?? "").toLowerCase().includes(q));
+}
+
+/**
  * Group threads into ordered time buckets, newest-first within each. Empty
  * buckets are omitted. `now` is injected so callers/tests control the clock.
  */

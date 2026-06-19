@@ -143,7 +143,7 @@ describe("ChatShell — layout structure", () => {
   });
 });
 
-describe("ChatShell — Phase 3 side panels mounted", () => {
+describe("ChatShell — Phase 3 thread sidebar mounted", () => {
   it("mounts the thread sidebar and renders a thread title (not the raw id)", () => {
     const d = renderWithSidebars(
       fakeSidebars({ threads: [fakeThread("t-abc", "Plan my trip")] }),
@@ -155,34 +155,83 @@ describe("ChatShell — Phase 3 side panels mounted", () => {
     expect(row?.textContent).not.toContain("t-abc");
   });
 
-  it("mounts the memory panel and renders a stored item", () => {
-    const d = renderWithSidebars(
-      fakeSidebars({ memories: [fakeMemory("k1", "prefers metric units")] }),
-    );
-    const panel = d.querySelector('[data-testid="memory-panel"]');
-    expect(panel).toBeTruthy();
-    expect(panel?.textContent).toContain("prefers metric units");
-  });
-
-  it("reflects the memory-enabled toggle state from the hook", () => {
-    const d = renderWithSidebars(fakeSidebars({ memoryEnabled: true }));
-    const toggle = d.querySelector(
-      '[data-testid="memory-enabled-toggle"]',
-    ) as HTMLInputElement | null;
-    expect(toggle?.hasAttribute("checked")).toBe(true);
-  });
-
   it("shows the sidebar empty state when there are no threads", () => {
     const d = renderWithSidebars(fakeSidebars());
     expect(d.querySelector('[data-testid="thread-empty"]')).toBeTruthy();
   });
 
-  it("still renders the composer with both panels mounted", () => {
+  it("still renders the composer with the sidebar mounted", () => {
     const d = renderWithSidebars(
       fakeSidebars({ threads: [fakeThread("t1", "x")] }),
     );
     expect(
       d.querySelector('textarea[aria-label="Compose message"]'),
     ).toBeTruthy();
+  });
+});
+
+// UI refresh: the left rail is now a navigation panel (SidebarPanel) with a
+// collapse toggle, tab bar, New chat, and Search above the Recents list.
+describe("ChatShell — left navigation panel chrome", () => {
+  it("mounts the SidebarPanel wrapper", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    expect(d.querySelector('[data-testid="sidebar-panel"]')).toBeTruthy();
+  });
+
+  it("renders the New chat button (data-testid=new-thread)", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    const btn = d.querySelector('[data-testid="new-thread"]');
+    expect(btn).toBeTruthy();
+    expect(btn?.textContent).toContain("New chat");
+  });
+
+  it("renders the Chat tab and the collapse toggle", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    expect(d.querySelector('[data-testid="sidebar-tab-chat"]')).toBeTruthy();
+    expect(d.querySelector('[data-testid="sidebar-toggle"]')).toBeTruthy();
+  });
+
+  it("renders the search toggle", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    expect(
+      d.querySelector('[data-testid="sidebar-search-toggle"]'),
+    ).toBeTruthy();
+  });
+
+  it("starts expanded (toggle aria-expanded=true) on first render", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    expect(
+      d.querySelector('[data-testid="sidebar-toggle"]')?.getAttribute(
+        "aria-expanded",
+      ),
+    ).toBe("true");
+  });
+});
+
+// Phase 0 (UI refresh): the right "What I remember" column was removed from
+// the chat layout. MemoryPanel.tsx and the memory half of useChatSidebars are
+// retained (reversible, backend untouched) but must NOT render in the shell.
+describe("ChatShell — right memory panel removed from layout", () => {
+  it("does NOT mount the memory panel even when the hook has memories", () => {
+    const d = renderWithSidebars(
+      fakeSidebars({ memories: [fakeMemory("k1", "prefers metric units")] }),
+    );
+    expect(d.querySelector('[data-testid="memory-panel"]')).toBeNull();
+    expect(d.body.textContent ?? "").not.toContain("prefers metric units");
+  });
+
+  it("does NOT render the memory-enabled toggle in the shell", () => {
+    const d = renderWithSidebars(fakeSidebars({ memoryEnabled: true }));
+    expect(
+      d.querySelector('[data-testid="memory-enabled-toggle"]'),
+    ).toBeNull();
+  });
+
+  it("uses a two-column body grid (no third memory column)", () => {
+    const d = renderWithSidebars(fakeSidebars());
+    const hasTwoCol = Array.from(d.querySelectorAll("div")).some((el) =>
+      el.className.includes("lg:grid-cols-[auto_1fr]"),
+    );
+    expect(hasTwoCol).toBe(true);
   });
 });

@@ -29,9 +29,10 @@ import {
   useChatSidebars,
   type ChatSidebarsState,
 } from "@/components/chat/use_chat_sidebars";
-import { ThreadSidebar } from "@/components/chat/ThreadSidebar";
-import { MemoryPanel } from "@/components/memory/MemoryPanel";
+import { SidebarPanel } from "@/components/chat/SidebarPanel";
+import { useSidebarChrome } from "@/components/chat/use_sidebar_chrome";
 import { RecallIndicator } from "@/components/memory/RecallIndicator";
+import { filterThreadsByTitle } from "@/lib/thread_grouping";
 import { browserRuntimeClient } from "@/lib/composition_browser";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
@@ -268,15 +269,33 @@ export function ChatShell(props: {
     saveUnderstanding,
     cancelEditAndResume,
     resumeThread,
+    startNewChat,
   } = useAgentRun(runtime);
-  // Side panels: thread history (left) + the editable memory panel (right).
-  // The hook owns all lifecycle (F-R1); the shell only renders + forwards
-  // callbacks. The injected `props.sidebars` overrides it in tests.
+  // Left panel: thread history. The hook owns all lifecycle (F-R1); the shell
+  // only renders + forwards callbacks. The injected `props.sidebars` overrides
+  // it in tests. (The right "What I remember" column was removed in the UI
+  // refresh — Phase 0 — though the memory half of the hook is retained.)
   const liveSidebars = useChatSidebars();
   const sidebars = props.sidebars ?? liveSidebars;
+  // Left-panel chrome (collapse / search / active tab). Cosmetic state only;
+  // collapse persists to localStorage, search filters client-side.
+  const chrome = useSidebarChrome();
   const [activeThreadId, setActiveThreadId] = React.useState<string | undefined>(
     undefined,
   );
+
+  // Recents filtered by the live search query (pure; empty query → all).
+  const visibleThreads = React.useMemo(
+    () => filterThreadsByTitle(sidebars.threads, chrome.searchQuery),
+    [sidebars.threads, chrome.searchQuery],
+  );
+
+  // New chat: reset the run to a blank conversation and drop any active-thread
+  // highlight so no Recents row reads as current.
+  const onNewChat = React.useCallback((): void => {
+    startNewChat();
+    setActiveThreadId(undefined);
+  }, [startNewChat]);
 
   // Click-to-resume: fetch the selected thread's persisted history (sidebars
   // owns the BFF fetch, F-R1), replay it into the chat view, and bind the run
@@ -338,18 +357,30 @@ export function ChatShell(props: {
       </header>
 
       {/*
-       * Body: thread history (left) · chat (center) · memory panel (right).
-       * The side panels collapse on small screens (hidden lg:grid) so the
-       * chat column stays usable; the center is always present.
+       * Body: thread history (left) · chat (center). The right "What I
+       * remember" column was removed in the UI refresh (Phase 0); MemoryPanel
+       * is retained on disk but no longer mounted here. The left panel hides
+       * on small screens (hidden lg:grid) so the chat column stays usable; the
+       * center is always present.
        */}
-      <div className="grid lg:grid-cols-[auto_1fr_auto] overflow-hidden">
-        <div className="hidden lg:grid overflow-y-auto">
-          <ThreadSidebar
-            threads={sidebars.threads}
+      <div className="grid lg:grid-cols-[auto_1fr] overflow-hidden">
+        <div className="hidden lg:block overflow-y-auto">
+          <SidebarPanel
+            threads={visibleThreads}
             {...(activeThreadId ? { activeThreadId } : {})}
-            onSelect={onSelectThread}
-            onRename={(id, title) => void sidebars.renameThread(id, title)}
-            onDelete={(id) => void sidebars.deleteThread(id)}
+            collapsed={chrome.collapsed}
+            searchOpen={chrome.searchOpen}
+            searchQuery={chrome.searchQuery}
+            activeTab={chrome.activeTab}
+            onToggleCollapsed={chrome.toggleCollapsed}
+            onToggleSearch={chrome.toggleSearch}
+            onSearchQueryChange={chrome.setSearchQuery}
+            onCloseSearch={chrome.closeSearch}
+            onSelectTab={chrome.setActiveTab}
+            onNewChat={onNewChat}
+            onSelectThread={onSelectThread}
+            onRenameThread={(id, title) => void sidebars.renameThread(id, title)}
+            onDeleteThread={(id) => void sidebars.deleteThread(id)}
           />
         </div>
 
@@ -415,16 +446,6 @@ export function ChatShell(props: {
           <div className="max-w-3xl mx-auto w-full p-2">
             <Composer onSend={send} busy={busy || pausedTurnId !== null} />
           </div>
-        </div>
-
-        <div className="hidden lg:grid overflow-y-auto">
-          <MemoryPanel
-            items={sidebars.memories}
-            enabled={sidebars.memoryEnabled}
-            onAdd={(content, type) => void sidebars.addMemory(content, type)}
-            onDelete={(key) => void sidebars.deleteMemory(key)}
-            onToggleEnabled={sidebars.setMemoryEnabled}
-          />
         </div>
       </div>
     </div>
