@@ -7,7 +7,10 @@
  * Port rules: P1, P2, P3, P4, P6.
  */
 
-import type { ThreadCreateRequest, ThreadState } from "../wire/agent_protocol";
+import type {
+  ThreadCreateRequestInput,
+  ThreadState,
+} from "../wire/agent_protocol";
 import type { IdentityClaim } from "../trust-view/identity";
 
 /**
@@ -16,6 +19,17 @@ import type { IdentityClaim } from "../trust-view/identity";
 export type ThreadListPage = {
   readonly threads: ReadonlyArray<ThreadState>;
   readonly nextCursor: string | null;
+};
+
+/**
+ * One completed conversation turn to persist into a thread's durable
+ * transcript: the user line and the assistant reply, tagged with a stable
+ * `turnId` so a retried append dedupes (idempotency).
+ */
+export type ThreadTurn = {
+  readonly user: string;
+  readonly assistant: string;
+  readonly turnId: string;
 };
 
 /**
@@ -40,7 +54,7 @@ export interface ThreadStore {
    */
   create(
     identity: IdentityClaim,
-    req: ThreadCreateRequest,
+    req: ThreadCreateRequestInput,
   ): Promise<ThreadState>;
 
   /**
@@ -75,4 +89,19 @@ export interface ThreadStore {
    * Soft-delete a thread (sets `archived_at`).
    */
   archive(identity: IdentityClaim, threadId: string): Promise<void>;
+
+  /**
+   * Append one completed turn (`{user, assistant}`) to the thread's durable
+   * transcript. Append-only: mirrors the checkpointer's message reducer so
+   * concurrent turns never clobber the array. Idempotent — re-appending a turn
+   * whose `turnId` is already present is a no-op (a retried POST is safe).
+   *
+   * @throws ThreadStoreError if the thread does not exist or is not owned by
+   *   the caller (collapsed to 404 by the handler — no existence oracle).
+   */
+  appendTurn(
+    identity: IdentityClaim,
+    threadId: string,
+    turn: ThreadTurn,
+  ): Promise<void>;
 }

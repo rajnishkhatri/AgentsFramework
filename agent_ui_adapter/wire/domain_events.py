@@ -136,9 +136,17 @@ class MemoryRecalled(DomainEventBase):
     number of long-term memories the route node's recall returned, NEVER the
     content (the privacy invariant; the owner sees their content only in the
     memory panel). The frontend renders "recalled N memories" above the
-    assistant turn; 0 renders nothing."""
+    assistant turn; 0 renders nothing.
+
+    chat_persistence Phase B adds ``keys``: the stable identifiers of exactly
+    the records injected this turn (in render order). Keys are identifiers, NOT
+    payload content, so the privacy invariant still holds — the per-chat eval
+    view joins them against the owner's own memory panel to render which
+    memories were recalled (and offer a per-item reject/soft-suppress). Defaults
+    to ``[]`` for backward compatibility (a count-only producer stays valid)."""
 
     count: int
+    keys: list[str] = Field(default_factory=list)
 
 
 # ── Union type alias (US-2.3 +TaskUnderstood +MemoryRecalled: 13 members) ─

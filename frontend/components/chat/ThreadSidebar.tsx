@@ -32,6 +32,12 @@ export function ThreadSidebar(props: {
   threads: ReadonlyArray<ThreadState>;
   activeThreadId?: string;
   now?: number; // injectable for deterministic grouping in tests
+  /**
+   * True when `threads` is the result of an active search filter. An empty
+   * filtered list then shows the "no match" message instead of the cold
+   * "no conversations yet" empty state (UI refresh Phase 4).
+   */
+  isFiltered?: boolean;
   onSelect?: (id: string) => void;
   onRename?: (id: string, title: string) => void;
   onDelete?: (id: string) => void;
@@ -45,9 +51,18 @@ export function ThreadSidebar(props: {
       className="grid gap-3 p-3 border-r border-border-light bg-bg min-w-64"
     >
       {props.threads.length === 0 ? (
-        <p data-testid="thread-empty" className="text-xs text-muted m-0">
-          No conversations yet.
-        </p>
+        props.isFiltered ? (
+          <p
+            data-testid="thread-search-empty"
+            className="text-xs text-muted m-0"
+          >
+            No conversations match.
+          </p>
+        ) : (
+          <p data-testid="thread-empty" className="text-xs text-muted m-0">
+            No conversations yet.
+          </p>
+        )
       ) : (
         groups.map((group) => (
           <div key={group.label} data-testid={groupTestId(group.label)}>

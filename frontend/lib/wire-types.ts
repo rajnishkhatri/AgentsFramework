@@ -36,7 +36,8 @@ export interface paths {
         delete: operations["deleteMemory"];
         options?: never;
         head?: never;
-        patch?: never;
+        /** Soft-suppress / un-suppress one of the caller's memories (Phase B reject) */
+        patch: operations["suppressMemory"];
         trace?: never;
     };
     "/agent/runs/stream": {
@@ -366,10 +367,19 @@ export interface components {
          *     content (the privacy invariant; the owner sees their content only in the
          *     memory panel). The frontend renders "recalled N memories" above the
          *     assistant turn; 0 renders nothing.
+         *
+         *     chat_persistence Phase B adds ``keys``: the stable identifiers of exactly
+         *     the records injected this turn (in render order). Keys are identifiers, NOT
+         *     payload content, so the privacy invariant still holds — the per-chat eval
+         *     view joins them against the owner's own memory panel to render which
+         *     memories were recalled (and offer a per-item reject/soft-suppress). Defaults
+         *     to ``[]`` for backward compatibility (a count-only producer stays valid).
          */
         MemoryRecalled: {
             /** Count */
             count: number;
+            /** Keys */
+            keys?: string[];
             /**
              * Timestamp
              * Format: date-time
@@ -377,6 +387,19 @@ export interface components {
             timestamp?: string;
             /** Trace Id */
             trace_id: string;
+        };
+        /**
+         * MemorySuppressRequest
+         * @description Body of ``PATCH /agent/memory/{key}`` — soft-suppress / un-suppress one
+         *     of the caller's own memories (chat-persistence Phase B, D5).
+         *
+         *     ``suppressed=True`` (reject) stops the memory being recalled/injected while
+         *     RETAINING the row for audit; ``False`` un-suppresses (reversible). The
+         *     subject is the verified bearer identity, never client-supplied.
+         */
+        MemorySuppressRequest: {
+            /** Suppressed */
+            suppressed: boolean;
         };
         /** MessagesSnapshot */
         MessagesSnapshot: {
@@ -856,12 +879,23 @@ export interface components {
         /**
          * ThreadCreateRequest
          * @description Body of ``POST /agent/threads``.
+         *
+         *     ``thread_id`` is optional: when the client mints the conversation id (so the
+         *     durable thread row keys by the SAME id the agent/checkpointer uses for
+         *     resume), it supplies it here. Absent → the store mints its own id (the
+         *     legacy path). A provisional title still flows via ``metadata.first_message``
+         *     (see ``derive_thread_title``).
          */
         ThreadCreateRequest: {
             /** Metadata */
             metadata?: {
                 [key: string]: unknown;
             };
+            /**
+             * Thread Id
+             * @default null
+             */
+            thread_id: string | null;
             /** User Id */
             user_id: string;
         };
@@ -1211,6 +1245,44 @@ export interface operations {
         responses: {
             /** @description Deleted */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Memory not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    suppressMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemorySuppressRequest"];
+            };
+        };
+        responses: {
+            /** @description Suppression flag updated */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

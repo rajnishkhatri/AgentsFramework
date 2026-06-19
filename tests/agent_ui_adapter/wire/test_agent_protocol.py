@@ -36,6 +36,17 @@ class TestThreadCreateRequest:
         req = ThreadCreateRequest(user_id="u1", metadata={"k": "v"})
         assert req.metadata == {"k": "v"}
 
+    def test_thread_id_defaults_to_none(self):
+        # Absent thread_id → the store mints its own (legacy path).
+        req = ThreadCreateRequest(user_id="u1")
+        assert req.thread_id is None
+
+    def test_accepts_client_supplied_thread_id(self):
+        # The client mints the id (== the agent/checkpointer thread_id) so the
+        # durable row keys by the same id used for resume.
+        req = ThreadCreateRequest(user_id="u1", thread_id="abc-123")
+        assert req.thread_id == "abc-123"
+
     def test_rejects_missing_user_id(self):
         with pytest.raises(ValidationError):
             ThreadCreateRequest()  # type: ignore[call-arg]

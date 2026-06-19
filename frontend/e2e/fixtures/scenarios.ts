@@ -439,3 +439,39 @@ export function taskUnderstandingRun(opts: ScenarioOpts = {}): ReadonlyArray<AGU
     { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
   ];
 }
+
+/**
+ * `recalledMemoriesRun` -- a run whose backend recalled memories for the turn,
+ * emitting `CUSTOM memory_recalled` with the injected records' KEYS (Phase B).
+ * Keys are identifiers (never content); the eval view joins them against the
+ * owner's memory panel. Exercises the recalled-memories eval/reject disclosure.
+ */
+export function recalledMemoriesRun(
+  keys: ReadonlyArray<string>,
+  opts: ScenarioOpts = {},
+): ReadonlyArray<AGUIEvent> {
+  const traceId = opts.traceId ?? DEFAULT_TRACE_ID;
+  const runId = opts.runId ?? DEFAULT_RUN_ID;
+  const threadId = opts.threadId ?? DEFAULT_THREAD_ID;
+  const messageId = opts.messageId ?? DEFAULT_MESSAGE_ID;
+  const h = header(traceId);
+
+  return [
+    { type: "RUN_STARTED", run_id: runId, thread_id: threadId, ...h },
+    {
+      type: "CUSTOM",
+      name: "memory_recalled",
+      value: { count: keys.length, keys: [...keys] },
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_START", message_id: messageId, role: "assistant", ...h },
+    {
+      type: "TEXT_MESSAGE_CONTENT",
+      message_id: messageId,
+      delta: "You prefer metric units.",
+      ...h,
+    },
+    { type: "TEXT_MESSAGE_END", message_id: messageId, ...h },
+    { type: "RUN_FINISHED", run_id: runId, thread_id: threadId, ...h },
+  ];
+}

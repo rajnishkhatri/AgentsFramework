@@ -246,20 +246,26 @@ test.describe("UI visual regression @visual", () => {
   });
 
   test.describe("Thread sidebar", () => {
-    test("@visual thread sidebar with mocked threads", async ({ page }) => {
+    test("@visual left panel with mocked threads", async ({ page }) => {
       await stubBackend(page);
       await page.goto("/");
       if (!(await skipIfNoComposer(page))) return;
       await forceTheme(page, "light");
-      const sidebar = page
-        .locator(
-          "[data-testid='thread-sidebar'], nav[aria-label='Threads'], aside",
-        )
+      // Capture the whole left-panel chrome (collapse toggle, tab bar, New
+      // chat, Search, Recents) — not just the inner list — and wait for a
+      // populated row so the baseline shows the list, not the empty state.
+      const panel = page
+        .locator("[data-testid='sidebar-panel'], [data-testid='thread-sidebar']")
         .first();
-      if ((await sidebar.count()) === 0) {
-        test.skip(true, "Skipped: thread sidebar not rendered.");
+      if ((await panel.count()) === 0) {
+        test.skip(true, "Skipped: left panel not rendered.");
       }
-      await expect(sidebar).toHaveScreenshot("thread-sidebar.png");
+      await page
+        .locator("[data-testid^='thread-row-']")
+        .first()
+        .waitFor({ state: "visible" })
+        .catch(() => {});
+      await expect(panel).toHaveScreenshot("left-panel.png");
     });
   });
 

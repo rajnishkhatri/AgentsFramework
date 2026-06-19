@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { groupThreadsByTime } from "./thread_grouping";
+import { groupThreadsByTime, filterThreadsByTitle } from "./thread_grouping";
 import type { ThreadState } from "./wire/agent_protocol";
 
 // Fixed "now": 2026-06-17T12:00:00Z. todayStart depends on local tz, but the
@@ -80,5 +80,68 @@ describe("groupThreadsByTime", () => {
     };
     const groups = groupThreadsByTime([broken], NOW);
     expect(groups[0]?.label).toBe("Older");
+  });
+});
+
+// ── filterThreadsByTitle (UI refresh Phase 4 — inline search) ──────────
+
+function titled(id: string, title: string): ThreadState {
+  return {
+    thread_id: id,
+    user_id: "u",
+    title,
+    messages: [],
+    created_at: "2026-06-17T00:00:00Z",
+    updated_at: "2026-06-17T00:00:00Z",
+    archived_at: null,
+  };
+}
+
+describe("filterThreadsByTitle — edge cases first", () => {
+  const threads = [
+    titled("t1", "Plan my trip to Rome"),
+    titled("t2", "Font identification"),
+    titled("t3", "Credit card analysis"),
+  ];
+
+  it("returns ALL threads for an empty query (no filter active)", () => {
+    expect(filterThreadsByTitle(threads, "")).toHaveLength(3);
+  });
+
+  it("returns ALL threads for a whitespace-only query", () => {
+    expect(filterThreadsByTitle(threads, "   ")).toHaveLength(3);
+  });
+
+  it("returns an empty array when nothing matches", () => {
+    expect(filterThreadsByTitle(threads, "zzz")).toEqual([]);
+  });
+
+  it("matches a case-insensitive substring of the title", () => {
+    const out = filterThreadsByTitle(threads, "FONT");
+    expect(out.map((t) => t.thread_id)).toEqual(["t2"]);
+  });
+
+  it("trims surrounding whitespace from the query before matching", () => {
+    const out = filterThreadsByTitle(threads, "  card  ");
+    expect(out.map((t) => t.thread_id)).toEqual(["t3"]);
+  });
+
+  it("can match multiple threads", () => {
+    const out = filterThreadsByTitle(
+      [titled("a", "trip one"), titled("b", "trip two"), titled("c", "other")],
+      "trip",
+    );
+    expect(out.map((t) => t.thread_id)).toEqual(["a", "b"]);
+  });
+
+  it("preserves input order of the surviving threads", () => {
+    const out = filterThreadsByTitle(threads, "i"); // matches all three
+    expect(out.map((t) => t.thread_id)).toEqual(["t1", "t2", "t3"]);
+  });
+
+  it("tolerates a missing/empty title without throwing", () => {
+    const t = { ...titled("x", ""), title: "" };
+    expect(filterThreadsByTitle([t], "anything")).toEqual([]);
+    expect(filterThreadsByTitle([t], "")).toHaveLength(1);
   });
 });

@@ -36,6 +36,12 @@ _TEXT_KEY = "text"
 # v1 deterministic store, which renders unmarked.
 _SCORE_KEY = "score"
 _SALIENCE_KEY = "salience"
+# chat-persistence Phase B (D5): a record the owner soft-suppressed (rejected
+# in the per-chat eval view) carries this metadata flag. Recall drops flagged
+# records BEFORE the floor/dedup so a rejected memory is never injected again;
+# the row is retained (the panel still lists it for un-suppress). Must match
+# services.long_term_memory._SUPPRESSED_KEY (the suppress writer).
+_SUPPRESSED_KEY = "suppressed"
 
 _RECALL_HEADER = "Relevant context you remember about this user:"
 
@@ -125,25 +131,53 @@ def _tier_prefix(record: MemoryRecord, authoritative_at: float) -> str:
     return f"{tier} "
 
 
+def _is_suppressed(record: MemoryRecord) -> bool:
+    """chat-persistence Phase B: True when the owner soft-suppressed (rejected)
+    this record. The flag is a metadata boolean; a record without it (every
+    pre-Phase-B record) is never suppressed — backward compatible.
+    """
+    metadata: dict[str, Any] = getattr(record, "metadata", None) or {}
+    return metadata.get(_SUPPRESSED_KEY) is True
+
+
+def exclude_suppressed(
+    records: list[MemoryRecord] | None,
+) -> list[MemoryRecord]:
+    """chat-persistence Phase B (D5): drop records the owner soft-suppressed.
+
+    Pure and order-preserving. A rejected memory is no longer recalled/injected
+    (D5) even though its row is retained for audit. Applied at the front of the
+    recall pipeline so the indicator count, the recalled-keys list, and the
+    injected block all agree on the post-suppression survivor set.
+    """
+    if not records:
+        return []
+    return [r for r in records if not _is_suppressed(r)]
+
+
 def filter_recall_records(
     records: list[MemoryRecord] | None,
     *,
     min_relevance: float = 0.0,
 ) -> list[MemoryRecord]:
-    """A2: the records that survive the relevance floor + exact-text dedup.
+    """A2 (+ Phase B): the records that survive suppression, the relevance
+    floor, and exact-text dedup.
 
     Pure and order-preserving. The node calls this to count what was actually
     injected (the carrier/indicator count must reflect the survivors, not the
     raw top-k); ``render_recall_block`` renders the same survivors. Defaults
     reproduce the original "keep everything" behavior: a record with no
     ``score`` is never dropped and ``min_relevance=0.0`` applies no floor, so
-    only exact-duplicate text is ever removed.
+    only exact-duplicate text (and Phase-B-suppressed records) is removed.
     """
     if not records:
         return []
     kept: list[MemoryRecord] = []
     seen: set[str] = set()
     for record in records:
+        # Phase B: a rejected (soft-suppressed) record is never injected.
+        if _is_suppressed(record):
+            continue
         if _below_floor(record, min_relevance):
             continue
         key = _normalize(_record_text(record))
@@ -206,6 +240,7 @@ def build_store_payload(task_input: str, answer: str) -> dict[str, Any]:
 
 __all__ = [
     "should_recall",
+    "exclude_suppressed",
     "filter_recall_records",
     "render_recall_block",
     "build_store_payload",

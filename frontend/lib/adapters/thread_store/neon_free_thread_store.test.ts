@@ -42,6 +42,122 @@ describe("NeonFreeThreadStore failure paths", () => {
   });
 });
 
+describe("NeonFreeThreadStore.appendTurn failure paths", () => {
+  it("throws ThreadStoreError when the thread does not exist", async () => {
+    const { store } = makeStore();
+    await expect(
+      store.appendTurn(ALICE, "missing", {
+        user: "hi",
+        assistant: "hello",
+        turnId: "turn-1",
+      }),
+    ).rejects.toThrowError(/not found/i);
+  });
+
+  it("throws ThreadStoreError when the caller is not the owner (no oracle)", async () => {
+    const { store } = makeStore();
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    await expect(
+      store.appendTurn(BOB, t.thread_id, {
+        user: "hi",
+        assistant: "hello",
+        turnId: "turn-1",
+      }),
+    ).rejects.toThrowError(/not found/i);
+  });
+});
+
+describe("NeonFreeThreadStore.appendTurn happy paths", () => {
+  it("appends a user+assistant message pair into messages", async () => {
+    const { store } = makeStore();
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    await store.appendTurn(ALICE, t.thread_id, {
+      user: "plan my trip",
+      assistant: "sure, where to?",
+      turnId: "turn-1",
+    });
+    const got = await store.get(ALICE, t.thread_id);
+    expect(got?.messages).toEqual([
+      { role: "user", content: "plan my trip", turn_id: "turn-1" },
+      { role: "assistant", content: "sure, where to?", turn_id: "turn-1" },
+    ]);
+  });
+
+  it("preserves order across multiple turns", async () => {
+    const { store } = makeStore();
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    await store.appendTurn(ALICE, t.thread_id, {
+      user: "q1",
+      assistant: "a1",
+      turnId: "turn-1",
+    });
+    await store.appendTurn(ALICE, t.thread_id, {
+      user: "q2",
+      assistant: "a2",
+      turnId: "turn-2",
+    });
+    const got = await store.get(ALICE, t.thread_id);
+    expect(got?.messages.map((m) => m.content)).toEqual([
+      "q1",
+      "a1",
+      "q2",
+      "a2",
+    ]);
+  });
+
+  it("is idempotent: re-appending the same turn_id is a no-op", async () => {
+    const { store } = makeStore();
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const turn = { user: "q1", assistant: "a1", turnId: "turn-1" };
+    await store.appendTurn(ALICE, t.thread_id, turn);
+    await store.appendTurn(ALICE, t.thread_id, turn);
+    const got = await store.get(ALICE, t.thread_id);
+    expect(got?.messages).toHaveLength(2);
+  });
+});
+
+describe("NeonFreeThreadStore.create with client-supplied fields", () => {
+  it("honors a client-minted thread_id", async () => {
+    const { store } = makeStore();
+    const created = await store.create(ALICE, {
+      user_id: "alice",
+      thread_id: "client-mint-1",
+      metadata: {},
+    });
+    expect(created.thread_id).toBe("client-mint-1");
+  });
+
+  it("mints its own id when thread_id is absent", async () => {
+    const { store } = makeStore();
+    const created = await store.create(ALICE, {
+      user_id: "alice",
+      thread_id: null,
+      metadata: {},
+    });
+    expect(created.thread_id).toMatch(/^t_/);
+  });
+
+  it("derives the title from metadata.first_message", async () => {
+    const { store } = makeStore();
+    const created = await store.create(ALICE, {
+      user_id: "alice",
+      thread_id: null,
+      metadata: { first_message: "Plan my trip to Rome" },
+    });
+    expect(created.title).toBe("Plan my trip to Rome");
+  });
+
+  it("defaults the title to 'New chat' when no first_message", async () => {
+    const { store } = makeStore();
+    const created = await store.create(ALICE, {
+      user_id: "alice",
+      thread_id: null,
+      metadata: {},
+    });
+    expect(created.title).toBe("New chat");
+  });
+});
+
 describe("NeonFreeThreadStore happy paths", () => {
   it("create + get round-trip", async () => {
     const { store } = makeStore();

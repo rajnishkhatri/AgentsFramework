@@ -15,6 +15,7 @@ import {
   MemoryCreateRequestSchema,
   MemoryItemSchema,
   MemoryListResponseSchema,
+  MemorySuppressRequestSchema,
   type MemoryItem,
   type MemoryType,
 } from "../../wire/agent_protocol";
@@ -116,5 +117,27 @@ export class HttpMemoryStore implements MemoryStore {
     // 404 is idempotent-OK from the caller's view (already gone).
     if (res.ok || res.status === 404) return;
     throw new MemoryStoreError(`memory remove failed (${res.status})`);
+  }
+
+  async suppress(key: string, suppressed: boolean): Promise<void> {
+    const body = MemorySuppressRequestSchema.parse({ suppressed });
+    let res: Response;
+    try {
+      res = await this.fetchImpl(
+        `${this.baseUrl}/agent/memory/${encodeURIComponent(key)}`,
+        {
+          method: "PATCH",
+          headers: await this.authHeaders(),
+          body: JSON.stringify(body),
+        },
+      );
+    } catch (e) {
+      throw new MemoryStoreError(e instanceof Error ? e.message : String(e), {
+        cause: e,
+      });
+    }
+    // 404 is idempotent-OK from the caller's view (nothing to suppress).
+    if (res.ok || res.status === 404) return;
+    throw new MemoryStoreError(`memory suppress failed (${res.status})`);
   }
 }

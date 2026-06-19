@@ -34,10 +34,14 @@
  *   @sdk @neondatabase/serverless ^0.x
  */
 
-import type { ThreadCreateRequest, ThreadState } from "../../wire/agent_protocol";
+import type {
+  ThreadCreateRequestInput,
+  ThreadState,
+} from "../../wire/agent_protocol";
 import type {
   ThreadListPage,
   ThreadStore,
+  ThreadTurn,
 } from "../../ports/thread_store";
 import type { IdentityClaim } from "../../trust-view/identity";
 import { createAdapterLogger, type Logger } from "../_logger";
@@ -96,6 +100,26 @@ function newId(): string {
   return `t_${Date.now().toString(36)}_${_idSeq}`;
 }
 
+const DEFAULT_THREAD_TITLE = "New chat";
+const TITLE_MAX_LEN = 60;
+
+/**
+ * Deterministic sidebar title from the first user message — the TS mirror of
+ * the Python `derive_thread_title` (agent_ui_adapter/server.py). No LLM: a
+ * whitespace-collapsed, word-boundary-truncated slice; falls back to
+ * "New chat" for empty/blank/non-string input.
+ */
+export function deriveThreadTitle(firstMessage: unknown): string {
+  if (typeof firstMessage !== "string") return DEFAULT_THREAD_TITLE;
+  const collapsed = firstMessage.split(/\s+/).filter(Boolean).join(" ");
+  if (!collapsed) return DEFAULT_THREAD_TITLE;
+  if (collapsed.length <= TITLE_MAX_LEN) return collapsed;
+  let cut = collapsed.slice(0, TITLE_MAX_LEN - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  if (lastSpace !== -1) cut = cut.slice(0, lastSpace);
+  return `${cut.trimEnd()}…`;
+}
+
 export class InMemoryThreadRepo implements ThreadRepo {
   private rows = new Map<string, ThreadRow>();
   // Insertion order tracks pagination.
@@ -147,15 +171,21 @@ export class NeonFreeThreadStore implements ThreadStore {
 
   async create(
     identity: IdentityClaim,
-    req: ThreadCreateRequest,
+    req: ThreadCreateRequestInput,
   ): Promise<ThreadState> {
     const now = new Date().toISOString();
+    const metadata = req.metadata ?? {};
     const row: ThreadRow = {
-      thread_id: newId(),
+      // Honor a client-minted id (== the agent/checkpointer thread_id) so the
+      // durable row keys by the id the resume path reads; otherwise mint one.
+      thread_id: req.thread_id ?? newId(),
       user_id: identity.sub,
-      title: "New chat",
+      // Provisional title from the first user line (metadata.first_message),
+      // mirroring the Python store; user-renamable. A later autotitle upgrades
+      // behind this same field.
+      title: deriveThreadTitle(metadata.first_message),
       messages: [],
-      metadata: { ...req.metadata },
+      metadata: { ...metadata },
       created_at: now,
       updated_at: now,
       archived_at: null,
@@ -217,5 +247,41 @@ export class NeonFreeThreadStore implements ThreadStore {
       return;
     }
     await this.repo.update(threadId, { archived_at: new Date().toISOString() });
+  }
+
+  async appendTurn(
+    identity: IdentityClaim,
+    threadId: string,
+    turn: ThreadTurn,
+  ): Promise<void> {
+    // Missing OR not-owned both throw the same "not found" error — the handler
+    // collapses it to 404 so the response is no existence oracle (FD3.SEC),
+    // mirroring rename().
+    const existing = await this.repo.findOne(threadId);
+    if (!existing || existing.user_id !== identity.sub) {
+      log.info("appendTurn rejected", {
+        adapter: "neon_free_thread_store",
+        thread_id: threadId,
+        error_type: "not_found_or_not_owner",
+      });
+      throw new ThreadStoreError(`thread ${threadId} not found`);
+    }
+    // Idempotency: a retried POST carries the same turn_id. If it's already
+    // persisted, this append is a no-op (read-modify-write is not atomic, but
+    // dedupe makes a re-delivery safe).
+    if (existing.messages.some((m) => m.turn_id === turn.turnId)) {
+      log.debug("appendTurn idempotent no-op", {
+        adapter: "neon_free_thread_store",
+        thread_id: threadId,
+      });
+      return;
+    }
+    const messages = [
+      ...existing.messages,
+      { role: "user", content: turn.user, turn_id: turn.turnId },
+      { role: "assistant", content: turn.assistant, turn_id: turn.turnId },
+    ];
+    const row = await this.repo.update(threadId, { messages });
+    if (!row) throw new ThreadStoreError(`thread ${threadId} not found`);
   }
 }

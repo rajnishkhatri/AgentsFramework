@@ -763,7 +763,18 @@ class LangGraphRuntime:
             raw_count = output.get("recalled_memories_count")
             if isinstance(raw_count, int) and raw_count != self._last_recall_count:
                 self._last_recall_count = raw_count
-                events.append(MemoryRecalled(trace_id=trace_id, count=raw_count))
+                # Phase B: carry the injected records' keys alongside the count
+                # (identifiers, never content). A malformed value degrades to []
+                # so the count-only indicator is unaffected.
+                raw_keys = output.get("recalled_memories_keys")
+                keys = (
+                    [str(k) for k in raw_keys]
+                    if isinstance(raw_keys, (list, tuple))
+                    else []
+                )
+                events.append(
+                    MemoryRecalled(trace_id=trace_id, count=raw_count, keys=keys)
+                )
 
         if node_name == "join" and isinstance(output, dict):
             # T3 fan-out: the join node synthesizes the merged worker_results

@@ -52,6 +52,11 @@ export interface AssistantRunView {
    *  this turn (count only, never content — the transparent-recall indicator).
    *  0 = no recall / flag off; the indicator renders nothing. */
   readonly recalledCount: number;
+  /** Phase B: the stable KEYS of the memories recalled this turn (identifiers,
+   *  never content). The per-chat eval view joins them against the owner's
+   *  memory panel to list what was recalled and offer a per-item reject. []
+   *  = no recall / flag off. */
+  readonly recalledKeys: ReadonlyArray<string>;
   readonly traceId: string | null;
   readonly runId: string | null;
   readonly threadId: string | null;
@@ -68,6 +73,7 @@ export function emptyRunView(): AssistantRunView {
     reasoning: null,
     understanding: null,
     recalledCount: 0,
+    recalledKeys: Object.freeze([]),
     traceId: null,
     runId: null,
     threadId: null,
@@ -137,7 +143,12 @@ export function reduceRunView(
     }
 
     case "memory_recalled":
-      return { ...view, recalledCount: evt.count };
+      return {
+        ...view,
+        recalledCount: evt.count,
+        // Defensive: a count-only producer (pre-Phase-B) carries no keys.
+        recalledKeys: Object.freeze([...(evt.keys ?? [])]),
+      };
 
     case "run_completed":
       return { ...view, status: "complete" };

@@ -38,6 +38,12 @@ _SALIENCE_KEY = "salience"
 # out" among equal-salience records) is crisp instead of backend-insertion-order
 # dependent (unreliable on Mem0's vector store). store() stamps it when absent.
 _STORED_AT_KEY = "stored_at"
+# chat-persistence Phase B (D5): a soft-suppressed (rejected) record carries
+# this metadata flag. The recall path excludes flagged records from injection
+# (components.memory_context.exclude_suppressed); the row is RETAINED for audit
+# and un-suppress restores it. Distinct from forget()'s hard delete. Must match
+# components.memory_context._SUPPRESSED_KEY (recall-side reads the same flag).
+_SUPPRESSED_KEY = "suppressed"
 
 
 class MemoryRecord(BaseModel):
@@ -291,6 +297,59 @@ class LongTermMemoryService:
             "memory.forget user_id=%s key=%s removed=%s", user_id, key, removed
         )
         return removed
+
+    def suppress(
+        self, user_id: str, key: str, *, suppressed: bool = True
+    ) -> bool:
+        """Soft-suppress (or un-suppress) one record (chat-persistence Phase B).
+
+        A rejected memory is no longer recalled/injected, but the row is RETAINED
+        (auditable) — distinct from ``forget`` (hard delete). Reversible:
+        ``suppressed=False`` clears the flag. The flag rides ``metadata`` so it
+        works across every backend without a schema migration; the recall path
+        excludes flagged records (``exclude_suppressed`` in components.memory_
+        context), while the panel still lists them so the owner can un-suppress.
+
+        Returns ``True`` when the record existed (the flag was written), ``False``
+        when no such (user_id, key) record exists (idempotent from the caller's
+        view — a missing key is a no-op, not an error, mirroring ``forget``'s
+        boolean). Metadata-only log line (never content).
+        """
+        _require_user_id(user_id)
+        _require_key(key)
+        try:
+            record = self._backend.get(user_id, key)
+            if record is None:
+                logger.info(
+                    "memory.suppress user_id=%s key=%s present=False", user_id, key
+                )
+                return False
+            meta = dict(record.metadata or {})
+            if suppressed:
+                meta[_SUPPRESSED_KEY] = True
+            else:
+                meta.pop(_SUPPRESSED_KEY, None)
+            self._backend.put(
+                MemoryRecord(
+                    user_id=record.user_id,
+                    key=record.key,
+                    payload=record.payload,
+                    metadata=meta,
+                )
+            )
+        except MemoryBackendError:
+            raise
+        except Exception as exc:
+            raise MemoryBackendError(
+                f"backend failed during suppress(user_id={user_id!r}, key={key!r})"
+            ) from exc
+        logger.info(
+            "memory.suppress user_id=%s key=%s suppressed=%s",
+            user_id,
+            key,
+            suppressed,
+        )
+        return True
 
     # ── A1 bounded budget + consolidation (Hermes/memory-os adoption) ──────
     #

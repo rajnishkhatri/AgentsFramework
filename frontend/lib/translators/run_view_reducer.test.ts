@@ -316,12 +316,13 @@ describe("run_view_reducer — task understanding card (Phase 3)", () => {
   });
 });
 
-describe("run_view_reducer — recall count (memory_layer Phase 3)", () => {
-  const recalled = (count: number) =>
-    ({ type: "memory_recalled" as const, trace_id: TRACE, count });
+describe("run_view_reducer — recall count + keys (memory_layer Phase 3 + B)", () => {
+  const recalled = (count: number, keys: string[] = []) =>
+    ({ type: "memory_recalled" as const, trace_id: TRACE, count, keys });
 
-  it("emptyRunView starts with recalledCount 0", () => {
+  it("emptyRunView starts with recalledCount 0 and no recalled keys", () => {
     expect(emptyRunView().recalledCount).toBe(0);
+    expect(emptyRunView().recalledKeys).toEqual([]);
   });
 
   it("memory_recalled folds the count onto the view without touching segments", () => {
@@ -331,14 +332,33 @@ describe("run_view_reducer — recall count (memory_layer Phase 3)", () => {
     expect(after.segments).toEqual(before.segments);
   });
 
-  it("a later recall event overwrites the count (last-write-wins)", () => {
-    const v = reduceAll([started(), recalled(2), recalled(5)]);
-    expect(v.recalledCount).toBe(5);
+  it("folds the recalled KEYS onto the view (Phase B eval/reject source)", () => {
+    const v = reduceAll([started(), recalled(2, ["k1", "k2"])]);
+    expect(v.recalledKeys).toEqual(["k1", "k2"]);
   });
 
-  it("the count survives the terminal freeze", () => {
-    const v = reduceAll([started(), recalled(2), completed()]);
+  it("a later recall event overwrites count AND keys (last-write-wins)", () => {
+    const v = reduceAll([
+      started(),
+      recalled(2, ["k1", "k2"]),
+      recalled(1, ["k3"]),
+    ]);
+    expect(v.recalledCount).toBe(1);
+    expect(v.recalledKeys).toEqual(["k3"]);
+  });
+
+  it("tolerates a count-only event (no keys field) — keys default to []", () => {
+    // A pre-Phase-B producer carries no keys; the reducer must not throw.
+    const countOnly = { type: "memory_recalled" as const, trace_id: TRACE, count: 4 };
+    const v = reduceAll([started(), countOnly as never]);
+    expect(v.recalledCount).toBe(4);
+    expect(v.recalledKeys).toEqual([]);
+  });
+
+  it("the count and keys survive the terminal freeze", () => {
+    const v = reduceAll([started(), recalled(2, ["k1", "k2"]), completed()]);
     expect(v.status).toBe("complete");
     expect(v.recalledCount).toBe(2);
+    expect(v.recalledKeys).toEqual(["k1", "k2"]);
   });
 });

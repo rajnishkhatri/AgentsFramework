@@ -174,6 +174,26 @@ class TestThreadSidebarEndpoints:
         ).json()
         assert created["title"] == "New chat"
 
+    def test_create_honors_client_supplied_thread_id(self) -> None:
+        # The client mints the id (== the agent/checkpointer thread_id) so the
+        # durable row keys by the same id the resume path reads.
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "thread_id": "client-mint-1"},
+            headers=_good_token(client),
+        ).json()
+        assert created["thread_id"] == "client-mint-1"
+
+    def test_create_mints_thread_id_when_absent(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        created = client.post(
+            "/agent/threads",
+            json={"user_id": "team", "metadata": {}},
+            headers=_good_token(client),
+        ).json()
+        assert created["thread_id"]  # non-empty server-minted id
+
     def test_list_returns_only_callers_own_newest_first(self) -> None:
         client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
         for i in range(3):
@@ -336,6 +356,68 @@ class TestMemoryEndpoints:
         app, _ = _make_app_with_memory()
         r = TestClient(app).delete("/agent/memory/k")
         assert r.status_code == 401
+
+    # ── Phase B: soft-suppress (PATCH) ──
+
+    def test_suppress_requires_bearer(self) -> None:
+        app, _ = _make_app_with_memory()
+        r = TestClient(app).patch("/agent/memory/k", json={"suppressed": True})
+        assert r.status_code == 401
+
+    def test_suppress_missing_key_is_404(self) -> None:
+        app, _ = _make_app_with_memory(owner="team")
+        r = TestClient(app).patch(
+            "/agent/memory/nope",
+            json={"suppressed": True},
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 404
+
+    def test_suppress_rejects_bad_body(self) -> None:
+        app, _ = _make_app_with_memory(owner="team")
+        r = TestClient(app).patch(
+            "/agent/memory/k",
+            json={"nope": True},  # missing required 'suppressed'
+            headers={"Authorization": "Bearer good"},
+        )
+        assert r.status_code == 422
+
+    def test_suppress_flags_record_and_excludes_from_recall(self) -> None:
+        app, memory = _make_app_with_memory(owner="team")
+        client = TestClient(app)
+        h = {"Authorization": "Bearer good"}
+        client.post(
+            "/agent/memory",
+            json={"content": "prefers metric", "type": "semantic", "key": "k-sup"},
+            headers=h,
+        )
+        r = client.patch("/agent/memory/k-sup", json={"suppressed": True}, headers=h)
+        assert r.status_code == 204
+        # The row is retained (still listed for un-suppress) …
+        listed = client.get("/agent/memory", headers=h).json()["items"]
+        assert "k-sup" in [i["key"] for i in listed]
+        # … but recall (search) no longer injects it: the survivor filter drops it.
+        from components.memory_context import filter_recall_records
+
+        recs = memory.search("team", "metric", 10)
+        assert "k-sup" not in [r.key for r in filter_recall_records(recs)]
+
+    def test_un_suppress_restores_recall(self) -> None:
+        app, memory = _make_app_with_memory(owner="team")
+        client = TestClient(app)
+        h = {"Authorization": "Bearer good"}
+        client.post(
+            "/agent/memory",
+            json={"content": "prefers metric", "type": "semantic", "key": "k-sup"},
+            headers=h,
+        )
+        client.patch("/agent/memory/k-sup", json={"suppressed": True}, headers=h)
+        r = client.patch("/agent/memory/k-sup", json={"suppressed": False}, headers=h)
+        assert r.status_code == 204
+        from components.memory_context import filter_recall_records
+
+        recs = memory.search("team", "metric", 10)
+        assert "k-sup" in [r.key for r in filter_recall_records(recs)]
 
 
 # ── Composition root: DI swappability ─────────────────────────────────

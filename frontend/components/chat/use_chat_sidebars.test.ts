@@ -14,12 +14,15 @@ import { describe, expect, it, vi } from "vitest";
 import {
   fetchThreadList,
   fetchThread,
+  createThreadRequest,
+  appendTurnRequest,
   threadMessagesToTurns,
   fetchMemoryList,
   renameThreadRequest,
   archiveThreadRequest,
   addMemoryRequest,
   deleteMemoryRequest,
+  suppressMemoryRequest,
   ChatSidebarsError,
 } from "./use_chat_sidebars";
 import type { MemoryItem, ThreadState } from "@/lib/wire/agent_protocol";
@@ -112,6 +115,122 @@ describe("fetchThread — failure paths first", () => {
     expect(
       JSON.stringify(init?.headers ?? {}).toLowerCase(),
     ).not.toContain("authorization");
+  });
+});
+
+// ── createThreadRequest (auto-create on first send) ────────────────────
+
+describe("createThreadRequest — failure paths first", () => {
+  it("throws ChatSidebarsError on a non-OK status", async () => {
+    const f = (() => Promise.resolve(jsonResponse({}, 500))) as typeof fetch;
+    await expect(
+      createThreadRequest(f, "tid-1", "u1", "hello there"),
+    ).rejects.toBeInstanceOf(ChatSidebarsError);
+  });
+
+  it("throws on a malformed payload (missing thread fields)", async () => {
+    const f = (() => Promise.resolve(jsonResponse({ wat: 1 }))) as typeof fetch;
+    await expect(
+      createThreadRequest(f, "tid-1", "u1", "hello"),
+    ).rejects.toBeInstanceOf(ChatSidebarsError);
+  });
+
+  it("POSTs the minted thread_id + first_message metadata, no bearer", async () => {
+    const spy = vi.fn(() =>
+      Promise.resolve(jsonResponse(thread("tid-1", "hello there"))),
+    );
+    const out = await createThreadRequest(
+      spy as unknown as typeof fetch,
+      "tid-1",
+      "u1",
+      "hello there",
+    );
+    expect(out.thread_id).toBe("tid-1");
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/threads");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body as string) as {
+      thread_id: string;
+      user_id: string;
+      metadata: { first_message: string };
+    };
+    expect(body.thread_id).toBe("tid-1");
+    expect(body.user_id).toBe("u1");
+    expect(body.metadata.first_message).toBe("hello there");
+    expect(
+      JSON.stringify(init.headers ?? {}).toLowerCase(),
+    ).not.toContain("authorization");
+  });
+});
+
+// ── appendTurnRequest (per-turn persist) ───────────────────────────────
+
+describe("appendTurnRequest — failure paths first", () => {
+  const TURN = { user: "q", assistant: "a", turnId: "tn-1" };
+
+  it("throws ChatSidebarsError on a non-OK, non-404 status", async () => {
+    const f = (() => Promise.resolve(jsonResponse({}, 500))) as typeof fetch;
+    await expect(appendTurnRequest(f, "tid-1", TURN)).rejects.toBeInstanceOf(
+      ChatSidebarsError,
+    );
+  });
+
+  it("resolves silently on 404 (idempotent / pruned-or-not-owned)", async () => {
+    const f = (() => Promise.resolve(jsonResponse({}, 404))) as typeof fetch;
+    await expect(appendTurnRequest(f, "tid-1", TURN)).resolves.toBeUndefined();
+  });
+
+  it("POSTs the turn (snake_case turn_id) to the messages route, no bearer", async () => {
+    const spy = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+    await appendTurnRequest(spy as unknown as typeof fetch, "a/b", TURN);
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/threads/a%2Fb/messages");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body).toEqual({ user: "q", assistant: "a", turn_id: "tn-1" });
+    expect(
+      JSON.stringify(init.headers ?? {}).toLowerCase(),
+    ).not.toContain("authorization");
+  });
+});
+
+// ── suppressMemoryRequest (Phase B reject = soft-suppress) ─────────────
+
+describe("suppressMemoryRequest — failure paths first", () => {
+  it("throws ChatSidebarsError on a non-OK, non-404 status", async () => {
+    const f = (() => Promise.resolve(jsonResponse({}, 500))) as typeof fetch;
+    await expect(suppressMemoryRequest(f, "k1", true)).rejects.toBeInstanceOf(
+      ChatSidebarsError,
+    );
+  });
+
+  it("resolves silently on 404 (idempotent — nothing to suppress)", async () => {
+    const f = (() => Promise.resolve(jsonResponse({}, 404))) as typeof fetch;
+    await expect(
+      suppressMemoryRequest(f, "k1", true),
+    ).resolves.toBeUndefined();
+  });
+
+  it("PATCHes the keyed memory route with the flag", async () => {
+    const spy = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+    await suppressMemoryRequest(spy as unknown as typeof fetch, "k 1", true);
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("/api/memory/k%201");
+    expect(init.method).toBe("PATCH");
+    expect(JSON.parse(init.body as string)).toEqual({ suppressed: true });
+  });
+
+  it("forwards suppressed=false (un-suppress / reversible)", async () => {
+    const spy = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 204 })),
+    );
+    await suppressMemoryRequest(spy as unknown as typeof fetch, "k1", false);
+    const [, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ suppressed: false });
   });
 });
 

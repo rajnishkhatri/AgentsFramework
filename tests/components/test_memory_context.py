@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from components.memory_context import (
     build_store_payload,
+    exclude_suppressed,
     filter_recall_records,
     memory_subject,
     render_recall_block,
@@ -174,6 +175,60 @@ def test_filter_recall_records_counts_survivors() -> None:
 def test_filter_recall_records_default_keeps_all_unique() -> None:
     recs = [_rec("a"), _rec("b", key="k2")]
     assert len(filter_recall_records(recs)) == 2
+
+
+# ── Phase B: soft-suppressed records are never recalled (D5) ───────────────
+
+
+def test_exclude_suppressed_drops_flagged_records() -> None:
+    """A record the owner rejected (suppressed=True) is dropped; others stay,
+    order preserved."""
+    recs = [
+        _rec("keep me", key="k1"),
+        _rec("rejected", key="k2", metadata={"suppressed": True}),
+        _rec("keep me too", key="k3"),
+    ]
+    out = exclude_suppressed(recs)
+    assert [r.key for r in out] == ["k1", "k3"]
+
+
+def test_exclude_suppressed_empty_and_none() -> None:
+    """Failure path first: empty / None inputs yield []."""
+    assert exclude_suppressed([]) == []
+    assert exclude_suppressed(None) == []
+
+
+def test_exclude_suppressed_keeps_unflagged_and_falsey_flag() -> None:
+    """Only an explicit True suppresses; absent/False/None leaves the record
+    (backward compatible — every pre-Phase-B record has no flag)."""
+    recs = [
+        _rec("no flag", key="k1"),
+        _rec("false flag", key="k2", metadata={"suppressed": False}),
+        _rec("none flag", key="k3", metadata={"suppressed": None}),
+    ]
+    assert len(exclude_suppressed(recs)) == 3
+
+
+def test_filter_recall_records_excludes_suppressed() -> None:
+    """The injected-survivor set (the count + keys source) must drop suppressed
+    records too — a rejected memory is never injected even if relevant/unique."""
+    recs = [
+        _rec("prefers metric", key="k1"),
+        _rec("rejected fact", key="k2", metadata={"suppressed": True}),
+    ]
+    kept = filter_recall_records(recs)
+    assert [r.key for r in kept] == ["k1"]
+
+
+def test_render_recall_block_omits_suppressed() -> None:
+    """The injected prompt block must not contain a suppressed record's text."""
+    recs = [
+        _rec("visible fact", key="k1"),
+        _rec("secret rejected fact", key="k2", metadata={"suppressed": True}),
+    ]
+    block = render_recall_block(recs)
+    assert "visible fact" in block
+    assert "secret rejected fact" not in block
 
 
 # ── A3 salience tiers (Hermes/memory-os ground-truth hierarchy) ─────────────

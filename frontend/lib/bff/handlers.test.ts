@@ -13,7 +13,9 @@ import {
   makeMemoryCreateHandler,
   makeMemoryDeleteHandler,
   makeMemoryListHandler,
+  makeMemorySuppressHandler,
   makeRunCancelHandler,
+  makeThreadAppendHandler,
   makeThreadArchiveHandler,
   makeThreadCreateHandler,
   makeThreadGetHandler,
@@ -249,6 +251,7 @@ describe("makeUnderstandingEditHandler (Phase 4 edit seam)", () => {
 class FakeMemoryStore implements MemoryStore {
   items: MemoryItem[] = [];
   removed: string[] = [];
+  suppressed: Array<{ key: string; suppressed: boolean }> = [];
   async list() {
     return this.items;
   }
@@ -259,6 +262,9 @@ class FakeMemoryStore implements MemoryStore {
   }
   async remove(key: string) {
     this.removed.push(key);
+  }
+  async suppress(key: string, suppressed: boolean) {
+    this.suppressed.push({ key, suppressed });
   }
 }
 
@@ -357,6 +363,77 @@ describe("makeMemoryDeleteHandler [B6]", () => {
     });
     expect(res.status).toBe(204);
     expect(store.removed).toEqual(["k1"]);
+  });
+});
+
+describe("makeMemorySuppressHandler [Phase B]", () => {
+  it("returns 401 with no session (rejection first)", async () => {
+    const res = await makeMemorySuppressHandler({
+      auth: authYielding(null),
+      memoryStore: new FakeMemoryStore(),
+    })(
+      new Request("http://x/api/memory/k", {
+        method: "PATCH",
+        body: JSON.stringify({ suppressed: true }),
+      }),
+      { params: { key: "k" } },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 on invalid JSON", async () => {
+    const res = await makeMemorySuppressHandler({
+      auth: authYielding(ALICE),
+      memoryStore: new FakeMemoryStore(),
+    })(new Request("http://x/api/memory/k", { method: "PATCH", body: "{bad" }), {
+      params: { key: "k" },
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when 'suppressed' is missing/non-boolean", async () => {
+    const res = await makeMemorySuppressHandler({
+      auth: authYielding(ALICE),
+      memoryStore: new FakeMemoryStore(),
+    })(
+      new Request("http://x/api/memory/k", {
+        method: "PATCH",
+        body: JSON.stringify({ nope: 1 }),
+      }),
+      { params: { key: "k" } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("suppresses the keyed item and returns 204", async () => {
+    const store = new FakeMemoryStore();
+    const res = await makeMemorySuppressHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(
+      new Request("http://x/api/memory/k1", {
+        method: "PATCH",
+        body: JSON.stringify({ suppressed: true }),
+      }),
+      { params: { key: "k1" } },
+    );
+    expect(res.status).toBe(204);
+    expect(store.suppressed).toEqual([{ key: "k1", suppressed: true }]);
+  });
+
+  it("forwards suppressed=false (un-suppress / reversible)", async () => {
+    const store = new FakeMemoryStore();
+    await makeMemorySuppressHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(
+      new Request("http://x/api/memory/k1", {
+        method: "PATCH",
+        body: JSON.stringify({ suppressed: false }),
+      }),
+      { params: { key: "k1" } },
+    );
+    expect(store.suppressed).toEqual([{ key: "k1", suppressed: false }]);
   });
 });
 
@@ -464,5 +541,108 @@ describe("makeThreadArchiveHandler [B6, A6 idempotent]", () => {
       params: { id: "nope" },
     });
     expect(res.status).toBe(204);
+  });
+});
+
+describe("makeThreadAppendHandler [B6, durable transcript]", () => {
+  const TURN = { user: "plan my trip", assistant: "where to?", turn_id: "tn-1" };
+
+  it("returns 401 with no session (rejection path first)", async () => {
+    const res = await makeThreadAppendHandler({
+      auth: authYielding(null),
+      threadStore: new NeonFreeThreadStore({ repo: new InMemoryThreadRepo() }),
+    })(
+      new Request("http://x/api/threads/t/messages", {
+        method: "POST",
+        body: JSON.stringify(TURN),
+      }),
+      { params: { id: "t" } },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when the body is malformed", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadAppendHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}/messages`, {
+        method: "POST",
+        body: "{not-json",
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when a required field is missing (schema rejects)", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadAppendHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ user: "hi", assistant: "yo" }),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 for an unknown thread (no existence oracle)", async () => {
+    const res = await makeThreadAppendHandler({
+      auth: authYielding(ALICE),
+      threadStore: new NeonFreeThreadStore({ repo: new InMemoryThreadRepo() }),
+    })(
+      new Request("http://x/api/threads/missing/messages", {
+        method: "POST",
+        body: JSON.stringify(TURN),
+      }),
+      { params: { id: "missing" } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 when the caller is not the owner (collapses with missing)", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadAppendHandler({
+      auth: authYielding({ sub: "bob", org_id: null, roles: [], email: null }),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}/messages`, {
+        method: "POST",
+        body: JSON.stringify(TURN),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("appends the turn on the happy path and returns 204", async () => {
+    const repo = new InMemoryThreadRepo();
+    const store = new NeonFreeThreadStore({ repo });
+    const t = await store.create(ALICE, { user_id: "alice", metadata: {} });
+    const res = await makeThreadAppendHandler({
+      auth: authYielding(ALICE),
+      threadStore: store,
+    })(
+      new Request(`http://x/api/threads/${t.thread_id}/messages`, {
+        method: "POST",
+        body: JSON.stringify(TURN),
+      }),
+      { params: { id: t.thread_id } },
+    );
+    expect(res.status).toBe(204);
+    const got = await store.get(ALICE, t.thread_id);
+    expect(got?.messages).toHaveLength(2);
+    expect(res.headers.get("cache-control")).toBe("no-store");
   });
 });
