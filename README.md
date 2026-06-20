@@ -219,7 +219,7 @@ Slide decks introducing the framework, viewable directly on GitHub as PDFs (Powe
 
 | Deck | Audience | What's inside |
 |---|---|---|
-| **[Framework Tour](presentations/AgentsFramework-Pitch-v3.pdf)** *(start here)* | Developers evaluating or learning from this repo | The six pillars — four-layer architecture, guardrail ML fine-tuning, goal-judge evaluation science, free SearXNG web search, policy-gated GCP deployment, and the 40+ recipes — each with verify-it-yourself commands. ([pptx](presentations/AgentsFramework-Pitch-v3.pptx)) |
+| **[Framework Tour](presentations/AgentsFramework-Pitch-v4.pdf)** *(start here)* | Developers evaluating or learning from this repo | The six pillars — four-layer architecture, guardrail ML fine-tuning, goal-judge evaluation science, free SearXNG web search, policy-gated GCP deployment, and the 40+ recipes — plus a runtime section (the five-phase task journey, depth × tier planning, GAIA-guarded fan-out) and the latest tiered-planning and memory-layer work — each with verify-it-yourself commands. ([pptx](presentations/AgentsFramework-Pitch-v4.pptx)) · [v3](presentations/AgentsFramework-Pitch-v3.pdf) |
 | **[Audit-Me Pitch](presentations/AgentsFramework-Pitch-v2.pdf)** | Technical leaders & skeptics | The same codebase argued QSCA-style: every claim falsifiable against the repo, including the failures left visible on purpose. ([pptx](presentations/AgentsFramework-Pitch-v2.pptx)) |
 | **[Overview](presentations/AgentsFramework-Pitch.pdf)** | General / first contact | One-pass summary of architecture, quality discipline, security & governance, and the full stack. ([pptx](presentations/AgentsFramework-Pitch.pptx)) |
 
