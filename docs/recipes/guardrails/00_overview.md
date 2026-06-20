@@ -1,3 +1,10 @@
+---
+type: overview
+title: 'Recipe 0 — Why One Tired LLM Cannot Guard Five Doors'
+description: 'Why one single-LLM input guardrail over-blocks legitimate work.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 0 — Why One Tired LLM Cannot Guard Five Doors
 
 **Goal:** Understand why the current single-LLM input guardrail over-blocks legitimate work, what the five-rail dimension space is, and how the next sprints build a deterministic-first Input-rail cascade without touching the rails that already work.

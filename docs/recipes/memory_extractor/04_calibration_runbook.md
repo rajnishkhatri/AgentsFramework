@@ -1,3 +1,10 @@
+---
+type: calibration-runbook
+title: 'Memory Extractor — Calibration Runbook (Stage 0→6 operational)'
+description: 'Stage 0→6 operational runbook for calibrating the memory extractor.'
+tags: [recipe, memory_extractor]
+---
+
 # Memory Extractor — Calibration Runbook (Stage 0→6 operational)
 
 > **Status:** HARNESS BUILT 2026-06-18 — the scorer + CLI + synthetic exerciser

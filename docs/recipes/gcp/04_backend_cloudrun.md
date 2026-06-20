@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 4 — Deploy Combined Backend on Cloud Run'
+description: 'Deploy the combined Python backend as a Cloud Run service.'
+tags: [recipe, gcp]
+---
+
 # Recipe 4 — Deploy Combined Backend on Cloud Run
 
 **Goal:** Push the Recipe 3 backend image to Artifact Registry and deploy it as a single public Cloud Run v2 service with SSE-safe settings, the Cloud SQL connector, Secret Manager injection, and `/healthz` probes. After this recipe, the combined middleware + agent backend is reachable at a `*.run.app` URL.

@@ -1,3 +1,10 @@
+---
+type: process-guide
+title: 'Skill Deploy Guide — From Runbook to Autopilot'
+description: 'Drive GCP deploys via the deploy-gcp skill and its orchestrator.'
+tags: [recipe, gcp]
+---
+
 # Skill Deploy Guide — From Runbook to Autopilot
 
 **Goal:** Use the project-scoped `deploy-gcp` Cursor skill and its orchestrator, [`scripts/deploy_gcp.sh`](../../../scripts/deploy_gcp.sh), to run the Tier A deployment one phase at a time — with the same policy gates and human stops the operator would otherwise type by hand from [LIVE_DEPLOYMENT.md](LIVE_DEPLOYMENT.md).

@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 3 — Containerize Backend + Frontend'
+description: 'Build production Docker images for the combined backend and Next.js frontend.'
+tags: [recipe, gcp]
+---
+
 # Recipe 3 — Containerize Backend + Frontend
 
 **Goal:** Create production Docker images for the combined Python backend and the Next.js frontend, suitable for deployment on Cloud Run (Recipes 4 & 5). After this recipe, we have shipping crates ready to push to the Artifact Registry shelf from Recipe 1.

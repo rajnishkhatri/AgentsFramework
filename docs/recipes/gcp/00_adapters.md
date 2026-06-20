@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 0 — GCP Runtime Adapters'
+description: 'Build the five Python runtime adapters that let the framework run on GCP.'
+tags: [recipe, gcp]
+---
+
 # Recipe 0 — GCP Runtime Adapters
 
 **Goal:** Build the five Python adapter files that let this agent framework run on Google Cloud Platform — with zero cloud resources created. This is pure code work. When Recipe 0 is done, the framework knows *how* to talk to GCP; Recipes 1–5 actually provision the infrastructure it will talk to.

@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 4 — The Trained Eye, Made Deterministic'
+description: 'Add the fine-tuned DeBERTa-v3 injection classifier stage of the Input-rail cascade.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 4 — The Trained Eye, Made Deterministic
 
 **Goal:** Add the *model* stage of the Input-rail cascade — a fine-tuned DeBERTa-v3 injection classifier exported to a **quantized ONNX** artifact — and ship it as a Layer 2 service that runs **deterministic argmax inference** behind the unchanged `InputGuardrail.is_acceptable()` interface, degrading gracefully to pre-check + the narrow LLM judge when the optional extra or the artifact is absent.

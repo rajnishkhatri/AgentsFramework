@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 8 — Telemetry Redaction & BlackBox Relay Validation Walkthrough'
+description: 'Validate the session telemetry fixes (I9–I12) and BlackBox relay redaction end to end.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 8 — Telemetry Redaction & BlackBox Relay Validation Walkthrough
 
 **Goal:** Step-by-step validation that the **session telemetry fixes** (I9–I12) work end to end: Langfuse observation **`output`** and bridge **`input_text`** are redacted, the CLI **polls for `task.completed`** before asserting, **`error.occurred`** fires on failed tools, and the **`ni-4`** probe expectation matches the FP-free pre-check.

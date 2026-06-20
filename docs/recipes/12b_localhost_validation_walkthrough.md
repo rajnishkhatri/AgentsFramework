@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 12b — Localhost Validation Walkthrough (I2 / I6 / I8)'
+description: 'Manually validate the I2 / I6 / I8 fixes against a localhost run.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 12b — Localhost Validation Walkthrough (I2 / I6 / I8)
 
 **Goal:** Manually validate the three fixes from

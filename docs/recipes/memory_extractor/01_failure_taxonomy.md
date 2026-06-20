@@ -1,3 +1,10 @@
+---
+type: failure-taxonomy
+title: 'Memory Extractor — Failure Taxonomy (skeleton)'
+description: 'Category skeleton of memory-extractor failure modes.'
+tags: [recipe, memory_extractor]
+---
+
 # Memory Extractor — Failure Taxonomy (skeleton)
 
 > **Status:** SCAFFOLD — the category *skeleton* is authorable now; the

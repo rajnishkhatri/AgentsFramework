@@ -1,3 +1,10 @@
+---
+type: enable-policy
+title: 'Memory Extractor — Enable Policy (the `MEMORY_AUTOCAPTURE_ENABLED` write-back gate)'
+description: 'The MEMORY_AUTOCAPTURE_ENABLED write-back gate and its certificate policy.'
+tags: [recipe, memory_extractor]
+---
+
 # Memory Extractor — Enable Policy (the `MEMORY_AUTOCAPTURE_ENABLED` write-back gate)
 
 > **Status:** SCAFFOLD — the policy *template* and the gate thresholds are

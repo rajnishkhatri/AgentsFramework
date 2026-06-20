@@ -1,3 +1,10 @@
+---
+type: spec
+title: 'Memory Extractor — Gold Set Specification (`memory-extract-gold-v1`)'
+description: 'Specification of the memory-extract-gold-v1 gold set.'
+tags: [recipe, memory_extractor]
+---
+
 # Memory Extractor — Gold Set Specification (`memory-extract-gold-v1`)
 
 > **Status:** SCAFFOLD — the schema, stratification, and field contract are

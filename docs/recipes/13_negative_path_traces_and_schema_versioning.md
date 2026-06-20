@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 13 — The Gate That Only Ever Says Yes'
+description: 'Close trace-gap items G4/G7/G8 — negative-path traces and bundle schema versioning.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 13 — The Gate That Only Ever Says Yes
 
 **Goal:** Close G4, G7, and G8 from the trace-gap review (and prove the already-landed G9 runtime in the *dataset*). Make the compliance dataset contain the failure shapes a healthy run never produces — a broken hash chain, a rejected verification, a retryable/tool error — so the gates are *demonstrably* exercised instead of merely assumed to work. Then stamp every bundle and terminal event with a `bundle_schema_version` so the coexisting `task_completed` shapes self-identify.

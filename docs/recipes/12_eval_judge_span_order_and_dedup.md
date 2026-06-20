@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 12 — Goal-Judge Semantics, Deterministic Span Ordering, and At-Least-Once Dedup'
+description: 'Goal-Judge semantics, deterministic span ordering, and at-least-once dedup.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 12 — Goal-Judge Semantics, Deterministic Span Ordering, and At-Least-Once Dedup
 
 **Goal:** Close the three defects that survived the SearXNG trace review (`a69f0c77`): I2 (the evaluator reports `outcome=success` while `criteria_met=0.0` / `goal_met=false`), I6 (the Langfuse span tree comes out flat / nested / partial depending on the run), and I8 (duplicate `task.completed` / `step.executed` observations with the same `event_id`). After this recipe, goal satisfaction is judged by a task-adaptive LLM-as-judge instead of keyword overlap, the relay tail is always drained before step spans close (so the tree shape is stable), and a per-trace idempotency guard makes the at-least-once relay export each event exactly once.

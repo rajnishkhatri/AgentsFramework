@@ -1,3 +1,10 @@
+---
+type: specification
+title: 'Recipe 3 — Turning Every Failed Workflow Into a Lesson Plan'
+description: 'Publish each completed workflow''s compliance bundle as a Langfuse dataset item.'
+tags: [recipe, governance]
+---
+
 # Recipe 3 — Turning Every Failed Workflow Into a Lesson Plan
 
 **Goal:** Publish the compliance bundle from every completed workflow as a Langfuse dataset item. Valid chains go to `agent-compliance-audit`; failures go to `agent-incident-replay`. Attach the integrity hash chain as a Langfuse score.

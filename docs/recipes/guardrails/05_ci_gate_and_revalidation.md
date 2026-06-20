@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 5 — Proving the Door Lets the Plumber In'
+description: 'Turn the frozen eval set into a three-axis CI gate with revalidation.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 5 — Proving the Door Lets the Plumber In
 
 **Goal:** Turn the frozen eval set into a **three-axis CI gate** (malicious recall ≥ 0.95, over-defense accuracy on the NotInject split as the headline F2 metric, benign accuracy, FPR < 2%) that fails *loudly* on a weakened classifier, and re-drive the original over-block trio (S3 shell, S5 retry, S6 PII repeat-back) end to end to prove the defect is fixed.

@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 10 — Real Web Search (SearXNG sidecar) + No-Progress Detection'
+description: 'Replace the web_search stub with a SearXNG sidecar + no-progress detection.'
+tags: [recipe, gcp]
+---
+
 # Recipe 10 — Real Web Search (SearXNG sidecar) + No-Progress Detection
 
 **Goal:** Replace the canned `web_search` stub with a provider-agnostic search port (hexagonal), plug in a SearXNG adapter deployed as a scale-to-zero Cloud Run sidecar, and add no-progress detection so the agent stops re-querying a dead or non-advancing tool. After this recipe, "What's the weather in Austin?" returns *real* results — and a broken backend no longer sends the agent into an infinite retry loop.

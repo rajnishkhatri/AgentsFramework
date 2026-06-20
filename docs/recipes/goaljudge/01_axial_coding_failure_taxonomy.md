@@ -1,3 +1,10 @@
+---
+type: failure-taxonomy
+title: 'Recipe 1 — Reading the Crime Scene, Not the Confession'
+description: 'All nine steps of the GoalJudge axial-coding and failure-taxonomy method.'
+tags: [recipe, goaljudge]
+---
+
 # Recipe 1 — Reading the Crime Scene, Not the Confession
 
 **Goal:** Walk all nine steps (0–8) of the GoalJudge axial-coding & failure-taxonomy method — from verifying your evidence is clean, through clustering raw observations into named failure modes across three axes, building a per-case matrix, counting honestly, proving the categories are reliably applicable, and finally picking (and *gating*) the one failure mode worth building a judge for.

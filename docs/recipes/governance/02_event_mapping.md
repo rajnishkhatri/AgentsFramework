@@ -1,3 +1,10 @@
+---
+type: specification
+title: 'Recipe 2 — Translating Nine Languages Into One Timeline'
+description: 'Map all 9 BlackBox event types to Langfuse observations with idempotent IDs.'
+tags: [recipe, governance]
+---
+
 # Recipe 2 — Translating Nine Languages Into One Timeline
 
 **Goal:** Map all 9 BlackBox event types to Langfuse observations with idempotent IDs and redacted details. Understand how PII and API keys are stripped before leaving the process.

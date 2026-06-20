@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 6 — GCP Trace Gap Validation Walkthrough (Frontend UI)'
+description: 'Frontend-UI validation that deployed Trace Gap Closure items render in Langfuse.'
+tags: [recipe, governance]
+---
+
 # Recipe 6 — GCP Trace Gap Validation Walkthrough (Frontend UI)
 
 **Goal:** Step-by-step validation that the deployed Trace Gap Closure items (G1, G4, G5, G6, G7–G9) work in practice against the live GCP environment. We will use real-world prompts in the Frontend UI to validate G1, G5, G6, and G9, and local synthetic traces to validate G4, G7, and G8 (since they cannot be prompted honestly).

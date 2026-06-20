@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 1 — GCP Account Foundations'
+description: 'Bootstrap the infra/gcp OpenTofu stack: APIs, Artifact Registry, foundations.'
+tags: [recipe, gcp]
+---
+
 # Recipe 1 — GCP Account Foundations
 
 **Goal:** Bootstrap the `infra/gcp/` OpenTofu stack: enable the GCP APIs, create the Artifact Registry Docker repository, provision the backend runtime service account with least-privilege IAM, and seed all 8 Secret Manager secrets. No Cloud Run service, Cloud SQL database, or data bucket exists yet.

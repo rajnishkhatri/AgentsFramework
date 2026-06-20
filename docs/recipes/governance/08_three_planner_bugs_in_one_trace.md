@@ -1,3 +1,10 @@
+---
+type: overview
+title: 'Recipe 8 — Three Planner Bugs in One Trace'
+description: 'How layered identifier collisions mask each other in an agent planner.'
+tags: [recipe, governance]
+---
+
 # Recipe 8 — Three Planner Bugs in One Trace
 
 **Goal:** Learn how layered identifier collisions can mask each other in an agent planner, why the saturation-replay test bed makes this *more* likely (not less), and how trace-driven debugging peels the layers apart one by one. By the end you will be able to read a step.planned event the way a flight crash investigator reads a black-box recording.

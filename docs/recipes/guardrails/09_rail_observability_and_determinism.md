@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 9 — Proving the Guard Showed Up: Observable, Deterministic Rails'
+description: 'Close G2/G3 — make every guardrail decision provable and deterministic in traces.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 9 — Proving the Guard Showed Up: Observable, Deterministic Rails
 
 **Goal:** Close G2 and G3 from the trace-gap review. Make every guardrail decision *provable* in the trace even when it passes cleanly (G2), and make identical benign prompts produce identical verdicts (G3). All of it lands behind the unchanged `guard_input_node` / `call_llm_node` shapes.

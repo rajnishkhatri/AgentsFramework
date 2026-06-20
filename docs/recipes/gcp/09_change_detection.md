@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 9 — Change Detection + Deploy Identity'
+description: 'Branch-vs-main change detection plus a hybrid CalVer+SHA deploy identity.'
+tags: [recipe, gcp]
+---
+
 # Recipe 9 — Change Detection + Deploy Identity
 
 **Goal:** Add branch-vs-main change detection (advisory/preview only) and a hybrid CalVer+SHA deploy naming scheme to the orchestrator, so operators know *what this branch touches* before they run anything — and every image push carries a human-readable, commit-traceable, runtime-immutable identity.

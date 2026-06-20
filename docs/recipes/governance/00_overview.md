@@ -1,3 +1,10 @@
+---
+type: overview
+title: 'Recipe 0 — The Black Box Hidden in Your Cache Folder'
+description: 'The BlackBox flight recorder already in your cache folder — what it captures.'
+tags: [recipe, governance]
+---
+
 # Recipe 0 — The Black Box Hidden in Your Cache Folder
 
 **Goal:** Understand why your agent framework already has a flight recorder, what it captures, and how the next three recipes connect it to Langfuse so the recordings become visible, searchable, and audit-ready.

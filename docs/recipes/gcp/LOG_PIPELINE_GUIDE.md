@@ -1,3 +1,10 @@
+---
+type: reference
+title: 'GCP Log Pipeline Guide — End-to-End Flow Analysis'
+description: 'End-to-end analysis of the GCP log pipeline flow.'
+tags: [recipe, gcp]
+---
+
 # GCP Log Pipeline Guide — End-to-End Flow Analysis
 
 **Audience:** Operators debugging Tier A deploys on Cloud Run.  

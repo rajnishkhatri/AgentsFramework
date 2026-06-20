@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 7 — Observability + Smoke Tests + Budget'
+description: 'Add Tier A observability: health, alerts, smoke tests, and budget.'
+tags: [recipe, gcp]
+---
+
 # Recipe 7 — Observability + Smoke Tests + Budget
 
 **Goal:** Add minimal Tier A observability so operators can see health at a glance, get alerted before users notice, and catch cost creep early. Wire an end-to-end smoke script that validates `/healthz` and (optionally) authenticated SSE streaming after deploy.

@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 6 — Meta Ring (Optional)'
+description: 'Optionally schedule nightly offline evaluation via Cloud Scheduler + Cloud Run Job.'
+tags: [recipe, gcp]
+---
+
 # Recipe 6 — Meta Ring (Optional)
 
 **Goal:** Optionally schedule nightly offline evaluation via Cloud Scheduler → Cloud Run Job running `python -m meta.run_eval` against a golden-set JSONL in the trust-traces GCS bucket. **Disabled by default** at Tier A — enable only when the team wants automated judge scoring without a laptop cron.
