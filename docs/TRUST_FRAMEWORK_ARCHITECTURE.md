@@ -2,7 +2,7 @@
 
 **Analysis method:** Pyramid Principle with MECE decomposition
 **Source documents:**
-- `agent/TrustFrameworkAnd Governance.md` (Seven-Layer Agent Trust Framework)
+- `docs/plan/TRUST_FRAMEWORK_AND_GOVERNANCE.md` (Seven-Layer Agent Trust Framework)
 - `agent/docs/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
 - `agent/docs/STYLE_GUIDE_LAYERING.md` (Composable layering architecture)
 - `agent/docs/STYLE_GUIDE_PATTERNS.md` (Design patterns catalog)

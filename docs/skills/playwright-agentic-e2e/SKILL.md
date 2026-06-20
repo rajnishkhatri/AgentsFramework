@@ -1,5 +1,6 @@
 ---
 name: playwright-agentic-e2e
+type: skill
 description: >-
   End-to-end testing of streaming AI/agentic chat apps with Playwright — from
   zero-config scaffolding through authenticated, full-stack runs against

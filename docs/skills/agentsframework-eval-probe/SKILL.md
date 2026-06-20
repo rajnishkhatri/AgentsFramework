@@ -1,5 +1,6 @@
 ---
 name: agentsframework-eval-probe
+type: skill
 description: >-
   Add and operate a continuous-evaluation PROBE on any LLM-call seam in THIS repository (the
   AgentsFramework `agent` monorepo). Walks a component from open coding -> failure/improvement

@@ -1,7 +1,7 @@
 # Phase 3 Code Review Report
 
 **Review ID:** `REVIEW-PHASE3-001`
-**Plan reference:** [PLAN_v2.md](../PLAN_v2.md) §3.1-3.6
+**Plan reference:** [PLAN_v2.md](plan/PLAN_v2.md) §3.1-3.6
 **Decomposition axis:** By Phase 3 sub-section (§3.1 checkpointing, §3.2 eval pipeline, §3.3 analysis, §3.4 production hardening, §3.5 AWS adapters, §3.6 BlackBox export).
 **Generated:** 2026-04-17
 

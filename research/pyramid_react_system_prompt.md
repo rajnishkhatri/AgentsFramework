@@ -1,3 +1,10 @@
+---
+type: research-prompt
+title: Pyramid Principle ReACT Agent system prompt
+description: System prompt that makes a ReAct agent produce Pyramid-Principle structured analysis (governing thought, issue tree, evidence, validation log).
+tags: [research, prompt, agent-design]
+---
+
 # Pyramid Principle ReACT Agent -- System Prompt
 
 ## System Identity

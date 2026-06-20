@@ -1,5 +1,6 @@
 ---
 name: gcp-live-smoke
+type: skill
 description: >-
   Run the Phase 2 live GCP smoke test for the eval-UI stack — one real
   browser run against the deployed Cloud Run frontend that proves the

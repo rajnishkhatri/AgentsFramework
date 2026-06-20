@@ -1,7 +1,7 @@
 # End-to-End Code Review Report
 
 **Review ID:** `REVIEW-E2E-PLAN_v2-001`
-**Plan reference:** [`PLAN_v2.md`](../PLAN_v2.md), consolidated across all four layers.
+**Plan reference:** [`PLAN_v2.md`](plan/PLAN_v2.md), consolidated across all four layers.
 **Method:** Five-Phase ReAct protocol from [`prompts/codeReviewer/CodeReviewer_system_prompt.j2`](../prompts/codeReviewer/CodeReviewer_system_prompt.j2), scoped by the MECE Pyramid principle from [`research/pyramid_react_system_prompt.md`](../research/pyramid_react_system_prompt.md).
 **Decomposition axis:** By validation dimension (D1 → D5).
 **Rubric:** [`prompts/codeReviewer/CodeReviewer_architecture_rules.j2`](../prompts/codeReviewer/CodeReviewer_architecture_rules.j2) cross-checked against [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](FOUR_LAYER_ARCHITECTURE.md), [`docs/STYLE_GUIDE_LAYERING.md`](STYLE_GUIDE_LAYERING.md), and the "Architecture Invariants" / "Critical Anti-Patterns" sections of [`AGENTS.md`](../AGENTS.md).

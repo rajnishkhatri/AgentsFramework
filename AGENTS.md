@@ -64,6 +64,13 @@ Tests in `tests/architecture/` verify these. Never break them.
 | `meta/` | Offline meta-optimization: optimizer, analysis, judge, drift |
 | `governanaceTriangle/` | Governance explainability narratives and deep-dive docs |
 | `utils/` | Shared utilities (`code_analysis.py`, `cloud_providers/`). Prefer `services/` for new infrastructure. |
+| `docs/plan/` | Design & planning docs (`PLAN.md`, `PLAN_v2.md`, `TRUST_FRAMEWORK_AND_GOVERNANCE.md`, per-area plans). New plans land here, not at the repo root. |
+| `docs/vision/` | Intent docs: `MISSION.md`, `SOUL.md`. |
+
+> **Repository layout note.** The root holds only build/config files (`pyproject.toml`,
+> `Dockerfile*`, `langgraph.json`, `Makefile`, `requirements*`, `README.md`, this file) plus
+> the importable package dirs above. Put design/planning markdown under `docs/plan/` and
+> intent docs under `docs/vision/` — keep the root scannable.
 
 ## Design Patterns
 

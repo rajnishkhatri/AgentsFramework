@@ -1,7 +1,7 @@
 # Phase 1 Code Review Report
 
 **Review ID:** `REVIEW-PHASE1-001`
-**Plan reference:** [PLAN_v2.md](../PLAN_v2.md) §1.1-1.8
+**Plan reference:** [PLAN_v2.md](plan/PLAN_v2.md) §1.1-1.8
 **Decomposition axis:** By validation dimension (D1-D5).
 **Generated:** 2026-04-17
 

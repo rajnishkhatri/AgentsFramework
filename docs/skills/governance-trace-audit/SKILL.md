@@ -1,5 +1,6 @@
 ---
 name: governance-trace-audit
+type: skill
 description: >-
   Audit a Langfuse trace from THIS repository's agent runtime (AgentsFramework
   `agent` monorepo) against the governance-triangle intent — the four pillars:

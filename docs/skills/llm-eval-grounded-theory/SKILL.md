@@ -1,5 +1,6 @@
 ---
 name: llm-eval-grounded-theory
+type: skill
 description: Runs the qualitative-to-quantitative LLM evaluation pipeline — open coding, axial coding, synthetic strata coverage, analytic rubric design, double-labeled gold sets, LLM-as-judge calibration, and continuous monitoring integration. Use when building eval datasets, failure taxonomies, rubrics, golden sets, judge calibration, shadow mode, or production eval regression loops for agentic/LLM systems.
 disable-model-invocation: true
 paths:

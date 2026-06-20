@@ -1,3 +1,10 @@
+---
+type: research-prompt
+title: TDD Analysis Agent for Agentic Systems prompt
+description: System prompt for an agent that turns Four-Layer-Architecture modules into test plans, skeletons, and failure-path coverage strategies.
+tags: [research, prompt, agent-design]
+---
+
 # TDD Analysis Agent for Agentic Systems -- System Prompt
 
 ## System Identity
