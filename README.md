@@ -11,7 +11,7 @@
 [![LangGraph](https://img.shields.io/badge/built%20on-LangGraph-ff69b4)](#-architecture)
 [![reproducible](https://img.shields.io/badge/installs-hash--locked-success)](#reproducible-builds)
 
-[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability) · [Presentations](#-presentations)
+[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Mission & Soul](#-mission--soul) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability) · [Presentations](#-presentations)
 
 </div>
 
@@ -32,6 +32,17 @@ So when a regulator, a security reviewer, or your own incident post-mortem asks 
 
 > **Who it's for:** teams building **defensible** AI for regulated or high-assurance environments (finance, healthcare, gov, enterprise) — not weekend prototypers who want a 50-line script.
 
+### 🧭 Mission & Soul
+
+The conviction behind the code: build the **trust layer for AI agents**, so the most consequential decisions — in finance, healthcare, and government — can be handed to software without handing over accountability.
+
+Two short documents state the intent, and the repository is meant to be the proof:
+
+- **[MISSION.md](MISSION.md)** — why this exists, why now, and the principles that don't change with the model, the market, or the round.
+- **[SOUL.md](SOUL.md)** — the agent's stated identity and five values, each mapped to the mechanism that enforces it: honesty → the BlackBox audit trail; bounded authority → the signed trust kernel; clear sight → the guardrails and evidence-grounded goal-judge; focus → the test-enforced architecture; sharing → the open, auditable foundation.
+
+The promise is *trust, then verify*: the documents state the values, and the running system makes them checkable in the code.
+
 ---
 
 ## ✨ Features
@@ -42,12 +53,15 @@ So when a regulator, a security reviewer, or your own incident post-mortem asks 
 | 🔐 | **Cryptographically-signed trust kernel** | A pure, dependency-free kernel (`AgentFacts`, `Policy`, `Capability`, `AuditEntry`, `TrustTraceRecord`) where signed fields determine authorization and any change triggers re-signing. |
 | 🛡️ | **Defense-in-depth security** | Three runtime layers: an LLM-as-judge **input guardrail** (prompt-injection rejection), deterministic **tool validators** (command allowlist + path sandboxing), and an **output guardrail** (PII / API-key / system-prompt-leak scanning). |
 | 🧭 | **Dynamic model routing** | Deterministic heuristics route each task to the right model tier — fast/cheap models for guards and simple work, frontier models where it counts. Model names are never hardcoded. |
+| 🧱 | **Tiered planning runtime** | A reasoning ladder over a **deterministic plan floor** that never depends on the LLM: T1 plan-with-replan, T2 reflexion re-entry, and T3 supervisor fan-out gated by an independence (GAIA) guard. Each tier is **shadow-first, default-OFF** — the prod graph stays byte-identical until a tier earns promotion. |
+| 🗃️ | **Long-term memory layer** | Durable cross-session recall plus typed, debounced **auto-capture** behind a swappable backend (in-memory / SQLite / Mem0). Every read, write, and reject emits a `MEMORY_*` governance carrier; off by default and consolidated under per-type budgets. |
+| ⚖️ | **Goal-judge evaluation science** | A **reference-free, evidence-grounded** judge that scores the *tool trajectory*, not the agent's narration — with measured human agreement (κ up to 1.0) and a runtime enable-policy that stays in **shadow until it passes its gates**. |
 | 📜 | **Governance & audit subsystem** | Black-box recordings, phase logs, and a signed agent-facts registry (with a GCS-backed variant) capture a complete, replayable decision history. |
 | 🔎 | **Explainability dashboard** | A read-only Next.js + FastAPI surface: Trace Explorer (Timeline / Cascade / Replay), Decision Audit, Guardrail Monitor, Agent Registry, Compliance Center, and a live log viewer. |
 | 🧠 | **Offline meta-optimization** | A separate optimization layer (optimizer, drift detector, LLM-as-judge, self-contained code reviewer) tunes thresholds and prompts *offline* — humans write policy, the system tunes the numbers. |
 | 📝 | **Prompts as code** | Every prompt is an externalized Jinja2 template, rendered through a single service — auditable, A/B-testable, and editable by non-engineers. No prompt strings buried in Python. |
-| 🔭 | **Observability built-in** | Automatic LangSmith tracing, per-concern structured JSON logs (`prompts`, `guards`, `evals`, `routing`…), and framework telemetry. |
-| ☁️ | **Production infrastructure** | 20 Terraform files, 10 OPA/Rego policies, Docker / Cloud Run packaging, and an OpenAPI contract — this ships, it doesn't just demo. |
+| 🔭 | **Observability built-in** | **Langfuse** as the governance sink (an at-least-once black-box relay with a dead-letter queue), generic LangGraph/LangSmith tracing still available, per-concern structured JSON logs (`prompts`, `guards`, `evals`, `routing`…), and framework telemetry. |
+| ☁️ | **Production infrastructure** | 18 Terraform files, 9 OPA/Rego policies, Docker / Cloud Run packaging, and an OpenAPI contract — this ships, it doesn't just demo. |
 | 🔁 | **Reproducible by design** | Hash-pinned lockfile + a dedicated CI job that proves a cold, pinned install stays green. |
 
 ---
@@ -84,7 +98,7 @@ These invariants are mechanically verified in `tests/architecture/`. Break one a
 
 ## 🚀 Quick Start
 
-**Prerequisites:** Python 3.13+ · an OpenAI key (or any LiteLLM-compatible provider) · *(optional)* a LangSmith key for tracing.
+**Prerequisites:** Python 3.13+ · an OpenAI key (or any LiteLLM-compatible provider) · *(optional)* Langfuse keys (or a LangSmith key) for tracing.
 
 ```bash
 # 1. Install
@@ -154,7 +168,8 @@ This is the differentiator most agent frameworks lack entirely — and the reaso
 
 ## 🔭 Observability
 
-- **LangSmith tracing** — automatic via LangGraph (`LANGCHAIN_TRACING_V2=true`).
+- **Langfuse tracing** — the governance sink, fed by an at-least-once black-box relay (set `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST`).
+- **LangSmith tracing** — generic LangGraph path, still available via `LANGCHAIN_TRACING_V2=true`.
 - **Per-concern structured logs** — `logs/prompts.log`, `logs/guards.log`, `logs/evals.log`, `logs/routing.log`, and more, each with its own handler.
 - **Framework telemetry** — checkpoint/rollback counts and graph-level metrics.
 
