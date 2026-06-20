@@ -85,7 +85,7 @@ export function makeThreadListHandler(
     const limitStr = url.searchParams.get("limit");
     const limit = limitStr ? Math.max(1, Math.min(100, Number(limitStr))) : 20;
     const page = await deps.threadStore.list(claim, { cursor, limit });
-    return json(200, page);
+    return json(200, { threads: page.threads, next_cursor: page.nextCursor });
   };
 }
 
