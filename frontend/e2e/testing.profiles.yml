@@ -76,6 +76,21 @@ profiles:
       backend_memory: "MEMORY_ENABLED=true (--tag mem backend revision; full_components fix deployed)"
       mem_backend: "Mem0MemoryBackend wired (MEM0_API_KEY present on the revision)"
 
+  # ── Phase B tagged revision (chat_persistence_phaseb_gcp_e2e_validation plan).
+  #    MEMORY_ENABLED=1 backend under --tag phaseb; frontend MIDDLEWARE_URL points
+  #    at the phaseb backend tag. Fill base_url via fill_stress_profile_url.py. ──
+  phaseb:
+    # WorkOS redirect URIs only cover memui today — use TEST_PROFILE=mem with
+    # memui MIDDLEWARE_URL pointed at the phaseb backend for authenticated runs.
+    # Direct phaseb FE tag works only with E2E_BYPASS_AUTH locally (prod gate).
+    base_url: "https://phaseb---agent-frontend-w65nrxwkiq-uc.a.run.app"
+    env:
+      E2E_BYPASS_AUTH: "1"
+      PHASEB_LIMIT: ""
+    requires:
+      backend_memory: "MEMORY_ENABLED=1 (--tag phaseb backend revision)"
+      mem_backend: "Mem0MemoryBackend wired (MEM0_API_KEY present on the revision)"
+
   # ── Hermes/memory-os adoptions stress revision (A1 budget+consolidation,
   #    A2 relevance floor, A3 salience tiers). docs/research/memory/
   #    hermes_adoptions_design.md. Same shape as `mem` but the backend tag

@@ -54,26 +54,21 @@ def _tagged_url_from_gcloud(service: str, region: str, tag: str) -> str:
     )
 
 
-def _write_profile_url(profiles_text: str, url: str) -> tuple[str, bool]:
-    """Replace the stress profile's base_url line. Returns (new_text, changed).
-
-    Edits the single ``base_url:`` line inside the ``stress:`` block by line scan
-    (no YAML round-trip — preserves comments/formatting exactly).
-    """
+def _write_profile_url(profiles_text: str, profile: str, url: str) -> tuple[str, bool]:
+    """Replace a profile's base_url line. Returns (new_text, changed)."""
     lines = profiles_text.splitlines(keepends=True)
-    in_stress = False
-    stress_indent = None
+    in_profile = False
+    profile_indent = None
+    profile_key = f"{profile}:"
     for i, line in enumerate(lines):
         stripped = line.strip()
-        # Enter the stress block: a top-level "stress:" key under "profiles:".
-        if stripped == "stress:" and (len(line) - len(line.lstrip())) >= 2:
-            in_stress = True
-            stress_indent = len(line) - len(line.lstrip())
+        if stripped == profile_key and (len(line) - len(line.lstrip())) >= 2:
+            in_profile = True
+            profile_indent = len(line) - len(line.lstrip())
             continue
-        if in_stress:
+        if in_profile:
             indent = len(line) - len(line.lstrip())
-            # A sibling/parent key at <= the stress indent ends the block.
-            if stripped and not stripped.startswith("#") and indent <= stress_indent:
+            if stripped and not stripped.startswith("#") and indent <= profile_indent:
                 break
             if stripped.startswith("base_url:"):
                 prefix = line[: len(line) - len(line.lstrip())]
@@ -82,7 +77,9 @@ def _write_profile_url(profiles_text: str, url: str) -> tuple[str, bool]:
                     return profiles_text, False
                 lines[i] = new_line
                 return "".join(lines), True
-    raise SystemExit("could not find the stress profile's base_url line to update")
+    raise SystemExit(
+        f"could not find the {profile!r} profile's base_url line to update"
+    )
 
 
 def main() -> int:
@@ -91,6 +88,11 @@ def main() -> int:
     parser.add_argument("--region", default="us-central1")
     parser.add_argument("--tag", default="stress")
     parser.add_argument(
+        "--profile",
+        default=None,
+        help="profile key in testing.profiles.yml (defaults to --tag)",
+    )
+    parser.add_argument(
         "--url",
         default=None,
         help="set this URL directly instead of querying gcloud",
@@ -98,19 +100,23 @@ def main() -> int:
     parser.add_argument("--profiles", type=Path, default=PROFILES_PATH)
     args = parser.parse_args()
 
+    profile = args.profile or args.tag
     url = args.url or _tagged_url_from_gcloud(args.service, args.region, args.tag)
     if not url.startswith("https://") or "REPLACE_HASH" in url:
         raise SystemExit(f"refusing to write non-live URL: {url!r}")
 
     text = args.profiles.read_text(encoding="utf-8")
-    new_text, changed = _write_profile_url(text, url)
+    new_text, changed = _write_profile_url(text, profile, url)
     if not changed:
-        print(f"stress profile already points at {url} — no change")
+        print(f"{profile} profile already points at {url} — no change")
         return 0
     args.profiles.write_text(new_text, encoding="utf-8")
-    print(f"wrote stress base_url = {url}")
+    print(f"wrote {profile} base_url = {url}")
     print(f"  in {args.profiles}")
-    print("now run: TEST_PROFILE=stress STRESS_SMOKE=1 pnpm test:e2e:stress")
+    if profile == "stress":
+        print("now run: TEST_PROFILE=stress STRESS_SMOKE=1 pnpm test:e2e:stress")
+    elif profile == "phaseb":
+        print("now run: TEST_PROFILE=phaseb PHASEB_SMOKE=1 pnpm test:e2e:phaseb")
     return 0
 
 

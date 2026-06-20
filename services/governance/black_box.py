@@ -60,6 +60,11 @@ class EventType(str, Enum):
     # no SPEC_VERSION bump. details carry user_id/key/count — never content.
     MEMORY_RECALLED = "memory_recalled"
     MEMORY_STORED = "memory_stored"
+    # Phase B (chat-persistence reject): soft-suppress / un-suppress on the CRUD
+    # PATCH route. Enrichment only (not a per-phase requirement) — same contract
+    # as the other memory carriers. details carry user_id/key/suppressed — never
+    # content.
+    MEMORY_SUPPRESSED = "memory_suppressed"
     # Hermes / memory-os adoption A1 (docs/research/memory/hermes_adoptions_design.md):
     # the bounded-budget consolidation carrier. Like the two above it is
     # ENRICHMENT, not a per-phase requirement — consolidation is a write-side

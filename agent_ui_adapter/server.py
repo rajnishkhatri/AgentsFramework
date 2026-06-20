@@ -92,6 +92,38 @@ def _emit_crud_consolidation(
         logger.warning("memory.consolidated carrier emit failed", exc_info=True)
 
 
+def _emit_suppressed_carrier(
+    recordings_dir: Path | None,
+    owner: str,
+    key: str,
+    *,
+    suppressed: bool,
+) -> None:
+    """Emit a MEMORY_SUPPRESSED carrier after a soft-suppress PATCH.
+
+    Phase B (chat-persistence reject): the analyzer scores C3/C4 from the trace,
+    not the DOM. No-op when no recordings dir is wired (lean test composition).
+    Observability must never fail the request.
+    """
+    if recordings_dir is None:
+        return
+    try:
+        from services.governance.black_box import BlackBoxRecorder
+        from services.governance.memory_suppressed_carrier import (
+            emit_suppressed_carrier,
+        )
+
+        emit_suppressed_carrier(
+            BlackBoxRecorder(recordings_dir),
+            workflow_id=f"mem-suppress-{uuid.uuid4().hex}",
+            user_id=owner,
+            key=key,
+            suppressed=suppressed,
+        )
+    except Exception:  # pragma: no cover - observability must never break CRUD
+        logger.warning("memory.suppressed carrier emit failed", exc_info=True)
+
+
 def derive_thread_title(first_message: str | None) -> str:
     """Deterministic sidebar title from the first user message (Phase 3).
 
@@ -510,9 +542,7 @@ def build_app(
         identity: AgentFacts = Depends(_verify_bearer),
     ) -> MemoryListResponse:
         memory = _require_memory()
-        # Empty query matches all of the subject's records (substring "" hits
-        # every payload); the panel shows the full set grouped client-side.
-        records = memory.search(identity.owner, "", limit=500)
+        records = memory.list_all(identity.owner, limit=500)
         items = [
             MemoryItem(
                 key=r.key,
@@ -521,6 +551,7 @@ def build_app(
                 salience=r.metadata.get("salience"),
             )
             for r in records
+            if not r.metadata.get("suppressed")
         ]
         return MemoryListResponse(items=items)
 
@@ -574,6 +605,12 @@ def build_app(
         )
         if not existed:
             raise HTTPException(status_code=404, detail="memory not found")
+        _emit_suppressed_carrier(
+            black_box_recordings_dir,
+            identity.owner,
+            key,
+            suppressed=body.suppressed,
+        )
         return Response(status_code=204)
 
     return app

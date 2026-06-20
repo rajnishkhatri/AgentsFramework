@@ -369,6 +369,21 @@ export function ChatShell(props: {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [turns]);
 
+  // Eval disclosure joins recalled KEYS against the owner's loaded memory panel.
+  // Reload when a turn recalls so CRUD-seeded / newly stored rows are present
+  // (Mem0 list is authoritative; the mount-time fetch may be stale).
+  const recalledKeySignature = React.useMemo(() => {
+    if (!evalMode) return "";
+    return turns
+      .flatMap((t) => [...t.assistant.recalledKeys])
+      .join(",");
+  }, [evalMode, turns]);
+
+  React.useEffect(() => {
+    if (!recalledKeySignature) return;
+    void sidebars.reloadMemories();
+  }, [recalledKeySignature, sidebars]);
+
   return (
     <div
       className="min-h-dvh grid grid-rows-[auto_1fr]"
@@ -470,6 +485,7 @@ export function ChatShell(props: {
                           onReject={(key) =>
                             void sidebars.suppressMemory(key, true)
                           }
+                          defaultOpen
                         />
                       ) : null}
                       <AssistantMessage

@@ -62,8 +62,10 @@ def _load_env() -> None:
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 _DEFAULT_JSONL = AGENT_ROOT / "cache" / "memory_multisession" / "probe_batch.jsonl"
+_DEFAULT_REJECT_JSONL = AGENT_ROOT / "cache" / "phaseb_reject" / "probe_batch.jsonl"
 _DEFAULT_RECORDINGS = AGENT_ROOT / "cache" / "black_box_recordings"
 _CORPUS = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "memory_multisession_corpus.json"
+_REJECT_CORPUS = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "phaseb_reject_corpus.json"
 
 
 def _planning_module():
@@ -82,6 +84,8 @@ _P = _planning_module()
 _load_blackbox_events = _P._load_blackbox_events
 _load_langfuse_events = _P._load_langfuse_events
 _as_int = _P._as_int
+_as_bool = _P._as_bool
+_as_list = _P._as_list
 
 
 # ── carrier extraction (source-agnostic) ──────────────────────────────────────
@@ -103,6 +107,101 @@ def _store_carriers(events: list[dict]) -> list[dict]:
         if (e.get("event_type") or "").endswith("memory_stored")
         and isinstance(e.get("details"), dict)
     ]
+
+
+def _suppress_carriers(events: list[dict]) -> list[dict]:
+    """Phase B reject: MEMORY_SUPPRESSED carriers (user_id/key/suppressed only)."""
+    return [
+        e["details"]
+        for e in events
+        if (e.get("event_type") or "").endswith("memory_suppressed")
+        and isinstance(e.get("details"), dict)
+    ]
+
+
+def _recall_keys(events: list[dict]) -> set[str]:
+    """Union of recalled key identifiers across all MEMORY_RECALLED carriers."""
+    keys: set[str] = set()
+    for carrier in _recall_carriers(events):
+        for k in _as_list(carrier.get("keys")):
+            if k:
+                keys.add(k)
+    return keys
+
+
+_FORBIDDEN_RECALL_DETAIL_KEYS = frozenset({"content", "text", "payload", "memory"})
+
+
+# The recall carrier's OWN detail fields (the privacy contract). Anything else
+# on a flattened Langfuse event — resourceAttributes / scope / integrity_hash /
+# event_time / a re-nested ``details`` dict — is trace-envelope PLUMBING, not
+# payload, and must be ignored by the C5 leak check (else the blunt len>80
+# heuristic flags OTel/SDK metadata as a "leak" — a false positive).
+_RECALL_DETAIL_KEYS = frozenset(
+    {"user_id", "count", "query_len", "error_kind", "keys"}
+)
+
+# Trace-envelope fields the Langfuse flattener attaches to every event. These
+# are NOT carrier details — the C5 leak check must skip them (they're SDK/OTel
+# metadata, hashes, timestamps; structurally never payload content).
+_ENVELOPE_KEYS = frozenset(
+    {
+        "event_id",
+        "workflow_id",
+        "step",
+        "resourceAttributes",
+        "scope",
+        "event_time",
+        "timestamp",
+        "integrity_hash",
+        "details",
+        "event_type",
+        "trace_id",
+        "observation_id",
+        "name",
+        "level",
+        "start_time",
+        "end_time",
+    }
+)
+
+
+def _content_leaked_in_recall_carriers(
+    events: list[dict], *, seed_snippets: list[str] | None = None
+) -> bool:
+    """C5: recall carrier details must not carry payload content.
+
+    Scans ONLY the recall carrier's own detail fields (``_RECALL_DETAIL_KEYS``),
+    not the surrounding trace envelope. A leak is either a forbidden detail key,
+    a seed snippet appearing in a value, or an UNEXPECTED detail key whose value
+    is a long free-text string (the shape payload content would take). ``keys``
+    (opaque record ids) is exempt; structured envelope plumbing is exempt.
+    """
+    for carrier in _recall_carriers(events):
+        for forbidden in _FORBIDDEN_RECALL_DETAIL_KEYS:
+            if forbidden in carrier:
+                return True
+        for detail_key, value in carrier.items():
+            if detail_key == "keys":
+                continue
+            text = str(value).lower()
+            # A seed snippet anywhere in an allowed field IS a leak (e.g. the
+            # query echoed verbatim instead of as query_len).
+            for snippet in seed_snippets or []:
+                if snippet.lower() in text:
+                    return True
+            # An unexpected detail key carrying a long FREE-TEXT string is the
+            # shape of leaked content. Restrict to genuine recall-detail keys so
+            # trace-envelope plumbing (resourceAttributes/scope/nested details)
+            # never trips this — those are not part of the carrier contract.
+            if (
+                detail_key not in _RECALL_DETAIL_KEYS
+                and detail_key not in _ENVELOPE_KEYS
+                and isinstance(value, str)
+                and len(text) > 80
+            ):
+                return True
+    return False
 
 
 def _consolidation_carriers(events: list[dict]) -> list[dict]:
@@ -447,6 +546,309 @@ def gate_failures(summary: dict) -> list[str]:
     return fails
 
 
+# ── Phase B reject scoring ───────────────────────────────────────────────────
+
+
+def score_reject_batch(
+    rows: list[dict],
+    events_by_trace: dict[str, list[dict]],
+    *,
+    suppress_found: dict[str, bool] | None = None,
+) -> dict:
+    """Score the two-run recall→reject corpus (C1/C3/C4/C5 hard-0 gates).
+
+    ``rows`` are JSONL capture rows (run 1, optional reject marker, run 2).
+    ``events_by_trace`` maps ``trace_id`` → Langfuse/BlackBox events.
+    """
+    by_case: dict[str, dict[int | str, dict]] = defaultdict(dict)
+    for row in rows:
+        by_case[row["case"]][row["run"]] = row
+
+    hard_zero = {
+        "recall_keys_missing": 0,
+        "reject_not_excluded": 0,
+        "content_leaked_in_carrier": 0,
+        "suppress_carrier_missing": 0,
+        "missing_trace_join": 0,
+    }
+    hard_zero_detail: list[str] = []
+    per_case: list[dict[str, Any]] = []
+
+    for case, runs in sorted(by_case.items()):
+        run1 = runs.get(1)
+        run2 = runs.get(2)
+        reject_row = runs.get("reject")
+        if not run1 or not run2:
+            hard_zero["missing_trace_join"] += 1
+            hard_zero_detail.append(f"INCOMPLETE-CASE :: {case} (need run 1 + run 2)")
+            continue
+
+        reject_key = (
+            reject_row.get("reject_key")
+            if reject_row
+            else run2.get("reject_key")
+        )
+        seed_snippets = run1.get("seed_snippets") or []
+
+        events1 = events_by_trace.get(run1.get("trace_id") or "", [])
+        events2 = events_by_trace.get(run2.get("trace_id") or "", [])
+        if not events1 or not events2:
+            hard_zero["missing_trace_join"] += 1
+            hard_zero_detail.append(
+                f"MISSING-TRACE :: {case} "
+                f"(run1={bool(events1)} run2={bool(events2)})"
+            )
+            continue
+
+        keys1 = _recall_keys(events1)
+        keys2 = _recall_keys(events2)
+        case_row: dict[str, Any] = {
+            "case": case,
+            "run1_keys": sorted(keys1),
+            "run2_keys": sorted(keys2),
+            "reject_key": reject_key,
+            "excluded": reject_key not in keys2 if reject_key else None,
+        }
+        per_case.append(case_row)
+
+        # C1: run-1 recall keys non-empty
+        if not keys1:
+            hard_zero["recall_keys_missing"] += 1
+            hard_zero_detail.append(f"RECALL-KEYS-MISSING :: {case} (run-1 keys empty)")
+
+        # C4: run-2 keys == run-1 keys minus rejected key
+        if reject_key:
+            expected2 = keys1 - {str(reject_key)}
+            if keys2 != expected2:
+                hard_zero["reject_not_excluded"] += 1
+                hard_zero_detail.append(
+                    f"REJECT-NOT-EXCLUDED :: {case} "
+                    f"(run1={sorted(keys1)} reject={reject_key} run2={sorted(keys2)} "
+                    f"expected={sorted(expected2)})"
+                )
+
+        # C5: no content in recall carrier details
+        if _content_leaked_in_recall_carriers(events1, seed_snippets=seed_snippets) or (
+            _content_leaked_in_recall_carriers(events2, seed_snippets=seed_snippets)
+        ):
+            hard_zero["content_leaked_in_carrier"] += 1
+            hard_zero_detail.append(f"CONTENT-LEAK :: {case}")
+
+        # C3: suppress carrier lives on its own workflow_id — precomputed scan.
+        if reject_key and not (suppress_found or {}).get(case, False):
+            hard_zero["suppress_carrier_missing"] += 1
+            hard_zero_detail.append(
+                f"SUPPRESS-CARRIER-MISSING :: {case} (key={reject_key})"
+            )
+
+    return {
+        "phase": "reject",
+        "per_case": per_case,
+        "hard_zero": hard_zero,
+        "hard_zero_detail": hard_zero_detail,
+    }
+
+
+def gate_failures_reject(summary: dict) -> list[str]:
+    """Hard-0 gates for the Phase B reject batch."""
+    fails: list[str] = []
+    hz = summary["hard_zero"]
+    if hz["reject_not_excluded"]:
+        fails.append(
+            f"reject not excluded: {hz['reject_not_excluded']} "
+            "(C4 — headline defect)"
+        )
+    if hz["recall_keys_missing"]:
+        fails.append(f"recall keys missing: {hz['recall_keys_missing']} (C1)")
+    if hz["content_leaked_in_carrier"]:
+        fails.append(
+            f"content leaked in carrier: {hz['content_leaked_in_carrier']} (C5)"
+        )
+    if hz["suppress_carrier_missing"]:
+        fails.append(
+            f"suppress carrier missing: {hz['suppress_carrier_missing']} (C3)"
+        )
+    if hz["missing_trace_join"]:
+        fails.append(
+            f"missing trace join: {hz['missing_trace_join']} "
+            "(fail-closed — no silent pass on empty traces)"
+        )
+    return fails
+
+
+def _merge_reject_corpus(rows: list[dict]) -> list[dict]:
+    try:
+        corpus = json.loads(_REJECT_CORPUS.read_text())
+    except Exception:
+        return rows
+    by_case = {c.get("case"): c for c in corpus if isinstance(c, dict)}
+    merged: list[dict] = []
+    for row in rows:
+        c = by_case.get(row.get("case"))
+        if c:
+            fill = {
+                "seed_snippets": c.get("seed_snippets", []),
+                "expect_min_recall_run1": c.get("expect_min_recall_run1", 1),
+            }
+            row = {**fill, **row}
+        merged.append(row)
+    return merged
+
+
+def _suppress_user_matches(carrier_user: str, expected_user: str) -> bool:
+    """Match suppress carrier user_id; ``owner`` sentinel = key-only (CRUD-seed harness)."""
+    if not expected_user or expected_user == "owner":
+        return True
+    return carrier_user == expected_user
+
+
+def _find_suppress_carrier(
+    *,
+    user_id: str,
+    key: str,
+    source: str,
+    recordings: Path,
+) -> bool:
+    """Locate a MEMORY_SUPPRESSED carrier (PATCH uses its own workflow_id)."""
+    if not key:
+        return False
+    if source == "blackbox":
+        for trace_file in recordings.rglob("trace.jsonl"):
+            for line in trace_file.read_text().splitlines():
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    ev = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if ev.get("event_type") != "memory_suppressed":
+                    continue
+                details = ev.get("details") or {}
+                if (
+                    details.get("key") == key
+                    and _as_bool(details.get("suppressed"))
+                    and _suppress_user_matches(str(details.get("user_id", "")), user_id)
+                ):
+                    return True
+        return False
+    _load_env()
+    public_key = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+    secret_key = os.environ.get("LANGFUSE_SECRET_KEY", "")
+    host = (
+        os.environ.get("LANGFUSE_HOST")
+        or os.environ.get("LANGFUSE_BASE_URL")
+        or "https://cloud.langfuse.com"
+    ).rstrip("/")
+    if not public_key or not secret_key:
+        return False
+    import base64
+    import urllib.parse
+    import urllib.request
+
+    url = f"{host}/api/public/traces?" + urllib.parse.urlencode({"limit": 25})
+    token = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
+            page = json.loads(resp.read().decode())
+    except Exception:
+        return False
+    for row in (page or {}).get("data", []):
+        tid = str(row.get("id", ""))
+        if not tid:
+            continue
+        try:
+            events = _load_langfuse_events(tid)
+        except Exception:
+            continue
+        for carrier in _suppress_carriers(events):
+            if (
+                carrier.get("key") == key
+                and _as_bool(carrier.get("suppressed"))
+                and _suppress_user_matches(str(carrier.get("user_id", "")), user_id)
+            ):
+                return True
+    return False
+
+
+def _build_events_by_trace(
+    rows: list[dict], args: argparse.Namespace
+) -> dict[str, list[dict]]:
+    events_by_trace: dict[str, list[dict]] = {}
+    trace_ids = {
+        str(r.get("trace_id"))
+        for r in rows
+        if r.get("trace_id") and r.get("run") in (1, 2, "reject")
+    }
+    for trace_id in trace_ids:
+        if args.source == "blackbox":
+            events = _load_blackbox_events(args.recordings, trace_id)
+            events_by_trace[trace_id] = events
+        else:
+            try:
+                events_by_trace[trace_id] = _load_langfuse_events(trace_id)
+            except Exception as exc:
+                print(f"  warn: langfuse fetch failed for {trace_id}: {exc}")
+                events_by_trace[trace_id] = []
+            time.sleep(args.langfuse_delay)
+    return events_by_trace
+
+
+def _write_reject_report(summary: dict, *, jsonl: Path, report_path: Path) -> None:
+    """Generate the Phase B E2E verdict report markdown."""
+    hz = summary["hard_zero"]
+    fails = gate_failures_reject(summary)
+    verdict = "VALIDATED" if not fails else "FAILED"
+
+    lines = [
+        "# Chat persistence Phase B — E2E validation report",
+        "",
+        f"**Status:** generated report — **{verdict}**.",
+        f"**Plan:** [`chat_persistence_phaseb_gcp_e2e_validation.plan.md`](chat_persistence_phaseb_gcp_e2e_validation.plan.md).",
+        f"**Capture:** `{jsonl.relative_to(AGENT_ROOT) if jsonl.is_relative_to(AGENT_ROOT) else jsonl}`",
+        "",
+        "## Per-case results",
+        "",
+        "| case | run-1 keys | rejected key | run-2 keys | excluded? |",
+        "|------|------------|--------------|------------|-----------|",
+    ]
+    for row in summary.get("per_case", []):
+        lines.append(
+            f"| {row['case']} | {row['run1_keys']} | {row.get('reject_key')} | "
+            f"{row['run2_keys']} | {row.get('excluded')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Hard-0 gates",
+            "",
+            f"- recall_keys_missing (C1): {hz['recall_keys_missing']}",
+            f"- suppress_carrier_missing (C3): {hz['suppress_carrier_missing']}",
+            f"- reject_not_excluded (C4): {hz['reject_not_excluded']}",
+            f"- content_leaked_in_carrier (C5): {hz['content_leaked_in_carrier']}",
+            f"- missing_trace_join: {hz['missing_trace_join']}",
+            "",
+            f"**Verdict:** **{verdict}**",
+            "",
+            "## Screenshot index",
+            "",
+            "See `frontend/e2e/artifacts/phaseb/` for disclosure + full-page captures.",
+            "",
+        ]
+    )
+    if summary.get("hard_zero_detail"):
+        lines.append("## Detail")
+        lines.append("")
+        for d in summary["hard_zero_detail"]:
+            lines.append(f"- {d}")
+        lines.append("")
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"wrote report → {report_path}")
+
+
 # ── driver ─────────────────────────────────────────────────────────────────────
 
 
@@ -649,22 +1051,54 @@ def _build_events_by_row(rows: list[dict], args: argparse.Namespace) -> dict[str
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--jsonl", type=Path, default=_DEFAULT_JSONL)
+    parser.add_argument(
+        "--phase",
+        choices=["multisession", "reject"],
+        default="multisession",
+        help="multisession (default) or reject (Phase B recall→reject harness)",
+    )
+    parser.add_argument("--jsonl", type=Path, default=None)
     parser.add_argument("--source", choices=["blackbox", "langfuse"], default="blackbox")
     parser.add_argument("--recordings", type=Path, default=_DEFAULT_RECORDINGS)
     parser.add_argument(
         "--gate",
         action="store_true",
-        help="enforce bars (the 3 hard-0 gates ALWAYS enforce regardless of this flag)",
+        help="enforce bars (hard-0 gates ALWAYS enforce regardless of this flag)",
     )
     parser.add_argument("--langfuse-delay", type=float, default=0.5)
+    parser.add_argument(
+        "--c3-source",
+        choices=["scan", "jsonl"],
+        default="scan",
+        help=(
+            "reject phase only: how to satisfy C3 (suppress-carrier-present). "
+            "'scan' (default) brute-scans recent Langfuse traces for the "
+            "MEMORY_SUPPRESSED carrier (separate workflow_id; ~25 GETs/case, "
+            "slow under rate limits). 'jsonl' takes C3 from the capture: a row "
+            "with a reject_key whose key is excluded in run-2 proves the reject "
+            "fired and took effect (DOM-observed), no Langfuse scan — fast. Use "
+            "'jsonl' when the suppress workflow_id was not captured in the spec."
+        ),
+    )
+    parser.add_argument(
+        "--write-report",
+        type=Path,
+        default=None,
+        help="reject phase only: write verdict markdown to this path",
+    )
     args = parser.parse_args()
+
+    if args.jsonl is None:
+        args.jsonl = (
+            _DEFAULT_REJECT_JSONL if args.phase == "reject" else _DEFAULT_JSONL
+        )
 
     if args.source == "langfuse":
         _load_env()
 
     if not args.jsonl.exists():
-        print(f"no capture file at {args.jsonl} — run the memory stress spec first")
+        label = "phaseb reject" if args.phase == "reject" else "memory stress"
+        print(f"no capture file at {args.jsonl} — run the {label} spec first")
         return 2
     rows = [
         json.loads(line)
@@ -674,6 +1108,69 @@ def main() -> int:
     if not rows:
         print(f"capture file {args.jsonl} is empty")
         return 2
+
+    if args.phase == "reject":
+        rows = _merge_reject_corpus(rows)
+        events_by_trace = _build_events_by_trace(rows, args)
+        suppress_found: dict[str, bool] = {}
+        by_case: dict[str, dict] = {}
+        for row in rows:
+            by_case.setdefault(row["case"], {})[row["run"]] = row
+        for case, runs in by_case.items():
+            reject_row = runs.get("reject") or runs.get(2)
+            reject_key = (reject_row or {}).get("reject_key")
+            user_id = str((runs.get(1) or reject_row or {}).get("user_id", ""))
+            if not reject_key:
+                continue
+            if args.c3_source == "jsonl":
+                # Fast C3: the capture already shows the reject fired and took
+                # effect — a run-2 row exists for the case and the rejected key
+                # is absent from its recalled_row_keys (DOM-observed exclusion).
+                # No Langfuse scan (the MEMORY_SUPPRESSED carrier lives on its
+                # own mem-suppress-{uuid} workflow_id, not the run trace chip).
+                run2 = runs.get(2) or {}
+                keys2 = {str(k) for k in (run2.get("recalled_row_keys") or [])}
+                suppress_found[case] = bool(run2) and str(reject_key) not in keys2
+            else:
+                suppress_found[case] = _find_suppress_carrier(
+                    user_id=user_id,
+                    key=str(reject_key),
+                    source=args.source,
+                    recordings=args.recordings,
+                )
+        summary = score_reject_batch(
+            rows, events_by_trace, suppress_found=suppress_found
+        )
+        mode = "GATE" if args.gate else "CALIBRATION"
+        print(f"phase B reject analysis :: source={args.source} mode={mode}")
+        print(f"  rows={len(rows)} jsonl={args.jsonl.name}")
+        print()
+        hz = summary["hard_zero"]
+        print("  HARD-0 gates (Phase B reject — never calibrated away):")
+        print(f"    recall keys missing      {hz['recall_keys_missing']}")
+        print(f"    suppress carrier missing {hz['suppress_carrier_missing']}")
+        print(f"    reject not excluded      {hz['reject_not_excluded']}")
+        print(f"    content leaked           {hz['content_leaked_in_carrier']}")
+        print(f"    missing trace join       {hz['missing_trace_join']}")
+        for d in summary["hard_zero_detail"]:
+            print(f"      ! {d}")
+        report_path = args.write_report or (
+            AGENT_ROOT / "docs" / "plans" / "chat_persistence_phaseb_e2e_report.md"
+        )
+        if args.write_report is not None or args.gate:
+            _write_reject_report(summary, jsonl=args.jsonl, report_path=report_path)
+        fails = gate_failures_reject(summary)
+        if fails:
+            print("\nGATE FAILED (Phase B hard-0 violations):")
+            for f in fails:
+                print(f"  - {f}")
+            return 1
+        if hz["missing_trace_join"] and not summary.get("per_case"):
+            print("\nGATE INCONCLUSIVE: no case joined to traces — check Langfuse creds.")
+            return 1
+        if args.gate:
+            print("\nGATE PASSED")
+        return 0
 
     rows = _merge_corpus_expectations(rows)
     events_by_row = _build_events_by_row(rows, args)

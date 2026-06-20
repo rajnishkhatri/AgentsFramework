@@ -72,6 +72,7 @@ _EXPECTED_MAPPINGS: list[tuple[EventType, str, str]] = [
     # ran" from the trace. Consumer-driven contract for the new EventTypes.
     (EventType.MEMORY_RECALLED, "span", "memory.recalled"),
     (EventType.MEMORY_STORED, "span", "memory.stored"),
+    (EventType.MEMORY_SUPPRESSED, "span", "memory.suppressed"),
     # A1 consolidation (Hermes adoption): write-side eviction activity, span like
     # the other memory carriers. Consumer-driven contract for the new EventType.
     (EventType.MEMORY_CONSOLIDATED, "span", "memory.consolidated"),
@@ -615,6 +616,18 @@ class TestNumericKeysSurviveRedaction:
         """Proves the redaction is still live — only the safe keys are exempt."""
         result = redact_details({"note": "4242424242424242"})
         assert "[REDACTED]" in result["note"]
+
+
+class TestPhaseBMemoryCarrierTypes:
+    """Phase B: recall keys list + suppress bool keep native types through redact."""
+
+    def test_recall_keys_list_survives_native(self) -> None:
+        result = redact_details({"keys": ["k1", "k2"], "count": 2})
+        assert result["keys"] == ["k1", "k2"]
+
+    def test_suppressed_bool_survives_native(self) -> None:
+        result = redact_details({"suppressed": True, "key": "k1"})
+        assert result["suppressed"] is True
 
 
 # ─────────────────────────────────────────────────────────────────────

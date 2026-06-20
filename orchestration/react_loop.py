@@ -1076,6 +1076,9 @@ def build_graph(
                     "user_id": recall_user_id,
                     "count": recall_count,
                     "query_len": len(recall_query),
+                    # Phase B: stable key identifiers of injected survivors
+                    # (never payload content — the privacy invariant).
+                    "keys": list(recall_keys),
                 }
                 if recall_error:
                     _recall_details["error_kind"] = recall_error

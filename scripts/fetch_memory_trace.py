@@ -72,7 +72,14 @@ def _get(host: str, path: str, params: dict | None = None, *, retries: int = 5) 
     raise last_err  # type: ignore[misc]
 
 
-_MEMORY_NAMES = ("memory.recalled", "memory.stored", "MEMORY_RECALLED", "MEMORY_STORED")
+_MEMORY_NAMES = (
+    "memory.recalled",
+    "memory.stored",
+    "memory.suppressed",
+    "MEMORY_RECALLED",
+    "MEMORY_STORED",
+    "MEMORY_SUPPRESSED",
+)
 
 
 def _has_memory_carrier(observations: list[dict]) -> bool:
