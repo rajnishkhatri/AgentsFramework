@@ -2,7 +2,7 @@
 
 **Analysis method:** Pyramid Principle with MECE decomposition  
 **Source documents:**
-- `agent/TrustFrameworkAnd Governance.md` (Seven-Layer Agent Trust Framework)
+- `docs/plan/TRUST_FRAMEWORK_AND_GOVERNANCE.md` (Seven-Layer Agent Trust Framework)
 - `agent/governanaceTriangle/03_agentfacts_governance.md` (AgentFacts tutorial)
 - `agent/PLAN.md` (ReAct agent architecture)
 - `agent/research/pyramid_react_system_prompt.md` (analysis protocol)

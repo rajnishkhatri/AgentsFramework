@@ -1,5 +1,6 @@
 ---
 name: agentsframework-playwright
+type: skill
 description: >-
   Concrete Playwright E2E playbook for THIS repository (the AgentsFramework
   `agent` monorepo: Next.js 15 + React 19 frontend, CopilotKit/AG-UI chat,

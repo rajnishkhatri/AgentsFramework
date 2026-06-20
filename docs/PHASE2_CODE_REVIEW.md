@@ -1,7 +1,7 @@
 # Phase 2 Code Review Report
 
 **Review ID:** `REVIEW-PHASE2-001`
-**Plan reference:** [PLAN_v2.md](../PLAN_v2.md) §2.1-2.8
+**Plan reference:** [PLAN_v2.md](plan/PLAN_v2.md) §2.1-2.8
 **Decomposition axis:** By Phase 2 sub-section (§2.1 templates, §2.2 router, §2.3 evaluator, §2.5 tool cache, §2.6 output guardrail, §2.7 PhaseLogger, §2.8 GuardRailValidator).
 **Generated:** 2026-04-17
 

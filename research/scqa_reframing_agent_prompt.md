@@ -1,3 +1,10 @@
+---
+type: research-prompt
+title: SCQA Content Reframing Agent prompt
+description: Agentic-pipeline prompt that reframes raw content into audience-optimized McKinsey SCR/SCQA narrative structures without changing facts or recommendation.
+tags: [research, prompt, agent-design]
+---
+
 # SCQA Content Reframing Agent — Agentic Pipeline Prompt
 
 ## System Identity

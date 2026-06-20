@@ -91,3 +91,9 @@ presentations/~$*
 # Guardrails ONNX artifact (model.onnx + tokenizer.json + config.json; ~184MB).
 # Shipped via git-LFS / fetch-at-build; absent in default checkout => graceful degrade.
 services/governance/artifacts/
+
+# Eval-skill workspace run artifacts (regenerable; keep one canonical `outputs/` copy).
+# Timestamped duplicates of a stable-named output (e.g. coded.20260614T141843.jsonl next to
+# coded.jsonl) are pure re-runs — never commit new ones. Already-tracked run-1/ evidence stays
+# tracked (git keeps tracking existing files); this only stops NEW timestamped re-runs landing.
+docs/skills/*-workspace/**/coded.[0-9]*T[0-9]*.jsonl

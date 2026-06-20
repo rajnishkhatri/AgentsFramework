@@ -17,7 +17,7 @@
 
 The system is organized as a four-layer grid. The **trust kernel** sits at the bottom: pure types, protocols, and crypto with zero framework dependencies. **Horizontal services** provide cross-cutting infrastructure including governance services. **Vertical components** contain framework-agnostic domain logic. The **orchestration layer** (LangGraph `StateGraph`) defines topology -- which nodes run in what order. Dependencies flow downward only. Cloud provider adapters implement trust kernel ports via the hexagonal pattern.
 
-This extends the composable layering architecture from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) by adding the trust foundation as a fourth layer beneath the existing three. The four-layer rationale is documented in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
+This extends the composable layering architecture from [STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md) by adding the trust foundation as a fourth layer beneath the existing three. The four-layer rationale is documented in [FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 ```mermaid
 flowchart TB
@@ -137,7 +137,7 @@ flowchart LR
 
 ## Four-Layer Grid
 
-The original three-layer composable grid (horizontal services, vertical components, orchestration) requires a fourth foundational layer to support the trust framework. Trust models (`AgentFacts`, `Capability`, `Policy`, signature logic) are neither horizontal services nor vertical components -- they are portable trust artifacts consumed by every layer. Placing them in a dependency-free foundation follows the DDD Shared Kernel pattern and aligns with production systems like Microsoft's Agent Governance Toolkit and the Agent Identity Protocol. Full rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
+The original three-layer composable grid (horizontal services, vertical components, orchestration) requires a fourth foundational layer to support the trust framework. Trust models (`AgentFacts`, `Capability`, `Policy`, signature logic) are neither horizontal services nor vertical components -- they are portable trust artifacts consumed by every layer. Placing them in a dependency-free foundation follows the DDD Shared Kernel pattern and aligns with production systems like Microsoft's Agent Governance Toolkit and the Agent Identity Protocol. Full rationale in [FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 A component belongs in the trust kernel if it satisfies all of these criteria:
 
@@ -237,7 +237,7 @@ Nodes read these values via `config["configurable"]["user_id"]` etc. The `eval_c
 
 ## Dependency Rules
 
-The four-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md), extended for the trust kernel per [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md), and adapted for the LangGraph orchestration pattern.
+The four-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md), extended for the trust kernel per [FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md), and adapted for the LangGraph orchestration pattern.
 
 ### Allowed Dependencies
 
@@ -265,7 +265,7 @@ The four-layer architecture enforces strict dependency direction. These rules ar
 
 ### Enforcement
 
-Kernel purity and all forbidden-dependency rules are enforced by [agent/utils/code_analysis.py](utils/code_analysis.py) (AST-based dependency checker) and automated tests in [agent/tests/architecture/](tests/architecture/). Tests verify that `trust/` contains no I/O-ish imports and that no forbidden cross-layer imports exist.
+Kernel purity and all forbidden-dependency rules are enforced by [agent/utils/code_analysis.py](../../utils/code_analysis.py) (AST-based dependency checker) and automated tests in [agent/tests/architecture/](../../tests/architecture/). Tests verify that `trust/` contains no I/O-ish imports and that no forbidden cross-layer imports exist.
 
 ### Framework Import Discipline
 
@@ -305,7 +305,7 @@ The agent serves authenticated end users via a web UI with tool execution capabi
 
 ### Guardrails Service (`services/guardrails.py`)
 
-Follows the H3 pattern from [STYLE_GUIDE_PATTERNS.md](docs/STYLE_GUIDE_PATTERNS.md). Parameterized by an `accept_condition` string; the caller defines the specific check:
+Follows the H3 pattern from [STYLE_GUIDE_PATTERNS.md](../STYLE_GUIDE_PATTERNS.md). Parameterized by an `accept_condition` string; the caller defines the specific check:
 
 ```python
 class InputGuardrail:
@@ -323,7 +323,7 @@ The `guard_input_node` in the orchestration layer is a thin wrapper that calls t
 
 ## Governance & Explainability
 
-Agent explainability is a workflow-level concern: trace *what* happened, *who* acted, *what was checked*, and *why* choices were made. The governance framework organizes four complementary pillars into horizontal services, each emitting structured artifacts correlated by `workflow_id`. Together with the defense-in-depth security controls, these pillars provide both **prevention** (guardrails) and **proof** (auditable artifacts). The governance architecture is grounded in the [TrustFrameworkAnd Governance.md](TrustFrameworkAnd Governance.md) seven-layer trust framework, operationalizing Layers 3-5 (Purpose/Policy, Explainability, Observability) in code.
+Agent explainability is a workflow-level concern: trace *what* happened, *who* acted, *what was checked*, and *why* choices were made. The governance framework organizes four complementary pillars into horizontal services, each emitting structured artifacts correlated by `workflow_id`. Together with the defense-in-depth security controls, these pillars provide both **prevention** (guardrails) and **proof** (auditable artifacts). The governance architecture is grounded in the [TrustFrameworkAnd Governance.md](TRUST_FRAMEWORK_AND_GOVERNANCE.md) seven-layer trust framework, operationalizing Layers 3-5 (Purpose/Policy, Explainability, Observability) in code.
 
 ### Pillar 1: Recording -- What Happened (`services/governance/black_box.py`)
 
@@ -494,7 +494,7 @@ Post-incident analysis joins these artifacts by `workflow_id` to reconstruct the
 
 ## Trust Kernel Detail (`agent/trust/`)
 
-The trust kernel is the shared foundation consumed by all layers. It contains pure types, hexagonal ports, and deterministic cryptographic helpers. Zero framework dependencies, zero I/O. Full architectural rationale in [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md) and [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/TRUST_FRAMEWORK_ARCHITECTURE.md).
+The trust kernel is the shared foundation consumed by all layers. It contains pure types, hexagonal ports, and deterministic cryptographic helpers. Zero framework dependencies, zero I/O. Full architectural rationale in [FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md) and [TRUST_FRAMEWORK_ARCHITECTURE.md](../TRUST_FRAMEWORK_ARCHITECTURE.md).
 
 ### Module: `trust/cloud_identity.py` -- Cloud-Agnostic Value Objects
 
@@ -552,7 +552,7 @@ Consumers catch cloud-agnostic categories without importing provider-specific SD
 | `PolicyProvider` | `list_policies(identity)`, `evaluate_access(identity, action, resource)`, `get_permission_boundary(identity)` | `utils/cloud_providers/` adapters |
 | `CredentialProvider` | `issue_credentials(agent_facts, scope)`, `refresh_credentials(credentials)`, `revoke_credentials(credentials)` | `utils/cloud_providers/` adapters |
 
-Method signatures use `cloud_identity` types and `AgentFacts` for credential issuance. Implementation details documented in [TRUST_FOUNDATION_PROTOCOLS_PLAN.md](docs/plan/trust/TRUST_FOUNDATION_PROTOCOLS_PLAN.md).
+Method signatures use `cloud_identity` types and `AgentFacts` for credential issuance. Implementation details documented in [TRUST_FOUNDATION_PROTOCOLS_PLAN.md](trust/TRUST_FOUNDATION_PROTOCOLS_PLAN.md).
 
 ### Module: `trust/review_schema.py` -- Code Review Validator Output
 
@@ -568,7 +568,7 @@ Structured output models for a code review validator agent. Standalone with resp
 | `DimensionResult` | Aggregated result for one validation dimension: hypotheses_tested, confirmed, killed, findings |
 | `ReviewReport` | Top-level review output: verdict, statement, confidence, dimensions, gaps, validation_log, files_reviewed |
 
-Used by the CodeReviewer agent (Phase 4) with prompts from [CodeReviewer_system_prompt.j2](prompts/CodeReviewer_system_prompt.j2) and [CodeReviewer_architecture_rules.j2](prompts/CodeReviewer_architecture_rules.j2).
+Used by the CodeReviewer agent (Phase 4) with prompts from [CodeReviewer_system_prompt.j2](../../prompts/codeReviewer/CodeReviewer_system_prompt.j2) and [CodeReviewer_architecture_rules.j2](../../prompts/codeReviewer/CodeReviewer_architecture_rules.j2).
 
 ### Module: `trust/signature.py` -- Cryptographic Primitives
 
@@ -1218,7 +1218,7 @@ Two-level drift detection:
 
 ### 4.4 CodeReviewer agent
 
-A specialized agent that produces structured `ReviewReport` output (from `trust/review_schema.py`) using the [CodeReviewer_system_prompt.j2](prompts/CodeReviewer_system_prompt.j2) and [CodeReviewer_architecture_rules.j2](prompts/CodeReviewer_architecture_rules.j2) prompts. Validates architecture compliance (dependency rules, kernel purity, layer placement) and produces dimension-by-dimension results with certificates.
+A specialized agent that produces structured `ReviewReport` output (from `trust/review_schema.py`) using the [CodeReviewer_system_prompt.j2](../../prompts/codeReviewer/CodeReviewer_system_prompt.j2) and [CodeReviewer_architecture_rules.j2](../../prompts/codeReviewer/CodeReviewer_architecture_rules.j2) prompts. Validates architecture compliance (dependency rules, kernel purity, layer placement) and produces dimension-by-dimension results with certificates.
 
 ### 4.5 Feasibility gate: LangGraph fallback to Pydantic AI
 
@@ -1255,7 +1255,7 @@ This fallback is viable because:
 
 ## Key Design Principles
 
-1. **Composable layering**: The system is organized as a four-layer grid -- trust kernel (pure types/ports/crypto), horizontal services (infrastructure), vertical components (domain logic), orchestration (topology). Dependencies flow downward only. This extends the [STYLE_GUIDE_LAYERING.md](docs/STYLE_GUIDE_LAYERING.md) architecture with the trust foundation per [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md).
+1. **Composable layering**: The system is organized as a four-layer grid -- trust kernel (pure types/ports/crypto), horizontal services (infrastructure), vertical components (domain logic), orchestration (topology). Dependencies flow downward only. This extends the [STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md) architecture with the trust foundation per [FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 2. **Framework as a wrapper, not a dependency**: LangGraph orchestrates; domain logic (`components/router.py`, `components/evaluator.py`), infrastructure (`services/`), and the trust kernel (`trust/`) are framework-agnostic. This keeps the Phase 4 fallback viable.
 
@@ -1287,4 +1287,4 @@ This fallback is viable because:
 
 16. **Correlation over aggregation**: `workflow_id`, `task_id`, `user_id`, and `registered_agent_id` flow through `RunnableConfig` and `AgentState` so BlackBox recordings, PhaseLogger decisions, AgentFacts audit trails, and EvalRecords can be joined post-hoc for forensic analysis.
 
-17. **Architecture enforced by tests**: Dependency rules (kernel purity, forbidden imports) are enforced by [agent/utils/code_analysis.py](utils/code_analysis.py) (AST-based checker) plus tests in [agent/tests/architecture/](tests/architecture/), not by convention alone. This prevents architectural erosion as the codebase grows.
+17. **Architecture enforced by tests**: Dependency rules (kernel purity, forbidden imports) are enforced by [agent/utils/code_analysis.py](../../utils/code_analysis.py) (AST-based checker) plus tests in [agent/tests/architecture/](../../tests/architecture/), not by convention alone. This prevents architectural erosion as the codebase grows.

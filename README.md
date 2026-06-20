@@ -38,8 +38,8 @@ The conviction behind the code: build the **trust layer for AI agents**, so the 
 
 Two short documents state the intent, and the repository is meant to be the proof:
 
-- **[MISSION.md](MISSION.md)** — why this exists, why now, and the principles that don't change with the model, the market, or the round.
-- **[SOUL.md](SOUL.md)** — the agent's stated identity and five values, each mapped to the mechanism that enforces it: honesty → the BlackBox audit trail; bounded authority → the signed trust kernel; clear sight → the guardrails and evidence-grounded goal-judge; focus → the test-enforced architecture; sharing → the open, auditable foundation.
+- **[MISSION.md](docs/vision/MISSION.md)** — why this exists, why now, and the principles that don't change with the model, the market, or the round.
+- **[SOUL.md](docs/vision/SOUL.md)** — the agent's stated identity and five values, each mapped to the mechanism that enforces it: honesty → the BlackBox audit trail; bounded authority → the signed trust kernel; clear sight → the guardrails and evidence-grounded goal-judge; focus → the test-enforced architecture; sharing → the open, auditable foundation.
 
 The promise is *trust, then verify*: the documents state the values, and the running system makes them checkable in the code.
 

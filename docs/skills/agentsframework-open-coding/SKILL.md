@@ -1,5 +1,6 @@
 ---
 name: agentsframework-open-coding
+type: skill
 description: >-
   Run a hands-on open-coding session over a set of agent traces: spin up the local
   HTML coder, tag short qualitative codes + memos per case, save to JSONL, then
