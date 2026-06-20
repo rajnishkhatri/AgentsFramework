@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'GCP Tier A — Human Setup Runbook'
+description: 'One-time human setup steps for the GCP Tier A stack.'
+tags: [recipe, gcp]
+---
+
 # GCP Tier A — Human Setup Runbook
 
 > **First live deploy?** Start with **[LIVE_DEPLOYMENT.md](LIVE_DEPLOYMENT.md)** — the consolidated Day-0 / Day-1 / Day-2 operator runbook that sequences Recipes 0–8 end-to-end. Return here for account, billing, and credential steps referenced from Day-0 §0.2.

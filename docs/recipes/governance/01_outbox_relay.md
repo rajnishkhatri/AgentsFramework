@@ -1,3 +1,10 @@
+---
+type: specification
+title: 'Recipe 1 — The Dual-Write Bug That Could Have Stayed Hidden Forever'
+description: 'Build the relay that tails the BlackBox JSONL outbox and publishes to Langfuse.'
+tags: [recipe, governance]
+---
+
 # Recipe 1 — The Dual-Write Bug That Could Have Stayed Hidden Forever
 
 **Goal:** Build the relay that tails the BlackBox JSONL outbox and publishes events to Langfuse with at-least-once delivery, offset bookkeeping, and a dead-letter queue for poison events.

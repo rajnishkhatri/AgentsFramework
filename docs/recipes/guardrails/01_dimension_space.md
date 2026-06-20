@@ -1,3 +1,10 @@
+---
+type: specification
+title: 'Recipe 1 — Drawing the Map Before Building the Locks'
+description: 'Sprint 0 contracts: the 5-rail × OWASP-2025 × code/LLM matrix.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 1 — Drawing the Map Before Building the Locks
 
 **Goal:** Walk through the Sprint 0 contracts — the 5-rail × OWASP-2025 × code/LLM matrix, the enforceability split, the optional ONNX dependency decision, and the frozen sample schema + eval thresholds — so every later sprint builds against a stable map.

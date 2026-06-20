@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 11 — Outcome Correctness, Real Span Nesting, and TDD Hardening'
+description: 'Teach the evaluator real outcome-correctness, fix real span nesting, and harden with TDD.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 11 — Outcome Correctness, Real Span Nesting, and TDD Hardening
 
 **Goal:** Fix four open observations from the session-issues register: teach the evaluator that a loop-exhausted run is *not* a success (I2), make Langfuse span nesting real instead of synthetic (I6), close the TDD coverage gaps for numeric-key redaction, native generation fields, step parenting, and step-null regressions (I4/I5/I6/I7), and relocate the no-progress heuristic out of the orchestration layer where it does not belong (AP-5). After this recipe, corrupt-success is caught deterministically, the Langfuse trace tree is a real hierarchy that the SDK actually knows about, and every observation is regression-guarded by a test that cannot be fooled by a silent swallow.

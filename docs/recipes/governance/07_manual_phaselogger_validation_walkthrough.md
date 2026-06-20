@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 7 — Manual PhaseLogger (Reasoning Pillar) Langfuse Validation Walkthrough'
+description: 'Manual Langfuse validation of the Phase 3 PhaseLogger (Reasoning pillar) wiring.'
+tags: [recipe, governance]
+---
+
 # Recipe 7 — Manual PhaseLogger (Reasoning Pillar) Langfuse Validation Walkthrough
 
 **Goal:** Step-by-step manual validation of the **Phase 3 PhaseLogger wiring** (Recipe 14, the Reasoning pillar) using Langfuse. For each synthetic scenario (P1–P6) you verify the live BlackBox observations *and* the phase/reasoning track that rides inside the compliance dataset item: the `phase_events[]` boundaries, the `phase_decisions[]` rows, the cross-pillar `decision_id` join, COMPLETION-fires-once, per-step keying, schema versions, and phase-detail redaction.

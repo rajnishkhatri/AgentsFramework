@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 4 — End-to-End BlackBox → Langfuse Validation Runbook'
+description: 'End-to-end BlackBox → Langfuse pipeline validation on GCP.'
+tags: [recipe, governance]
+---
+
 # Recipe 4 — End-to-End BlackBox → Langfuse Validation Runbook
 
 **Goal:** Validate the full BlackBox → Langfuse pipeline on GCP: all 9 event types land as Langfuse observations, hash-chain scores are attached, compliance dataset items are created, and PII redaction works. Then verify rollback safety and document findings.

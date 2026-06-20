@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 7 — Guardrails Validation Walkthrough (Human Executor)'
+description: 'Human-executor validation that the Sprint 0–5 guardrails program works in practice.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 7 — Guardrails Validation Walkthrough (Human Executor)
 
 **Goal:** Step-by-step validation that the guardrails tuning program (Sprints 0–5) works in practice: mandatory **Tier 1** offline tests, a **smoke ONNX + REPL** spot-check, then **deployed** end-to-end runs of S3/S5/S6 with a **Langfuse UI checklist**. Retrieval sanitization is validated offline (pytest + REPL); deployed S2 only confirms the search path is alive.

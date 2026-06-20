@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'GCP Tier A — Live Deployment Operator Runbook'
+description: 'Operator runbook for a live GCP Tier A deployment.'
+tags: [recipe, gcp]
+---
+
 # GCP Tier A — Live Deployment Operator Runbook
 
 **Audience:** Solo operator on a laptop with `gcloud`, OpenTofu, Docker, and repo checkout.  

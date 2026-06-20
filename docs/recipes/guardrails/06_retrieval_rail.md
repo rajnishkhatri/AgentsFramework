@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 6 — Sanitizing the Mail Slot'
+description: 'Close the indirect prompt-injection gap on the Retrieval rail.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 6 — Sanitizing the Mail Slot
 
 **Goal:** Close the indirect prompt-injection gap (OWASP LLM01 indirect) on the **Retrieval rail**: sanitize `web_search` / searxng snippets *before* they re-enter the model context, so a poisoned search result cannot smuggle instructions into the agent. It reuses the Sprint 1 pre-check primitives verbatim — no new detectors, only a new disposition (strip-or-flag instead of accept/reject).

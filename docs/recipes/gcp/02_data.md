@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 2 — Data Tier (Cloud SQL + GCS Buckets)'
+description: 'Provision the Tier A data tier: Cloud SQL PostgreSQL + GCS buckets.'
+tags: [recipe, gcp]
+---
+
 # Recipe 2 — Data Tier (Cloud SQL + GCS Buckets)
 
 **Goal:** Provision the stateful layer for Tier A: a Cloud SQL PostgreSQL 15 instance for LangGraph checkpoints, two GCS buckets (agent-facts for signed identity documents, trust-traces for governance JSONL), and the IAM bindings that let the runtime service account reach them. After this recipe, the backend has somewhere to persist conversations and governance artifacts.

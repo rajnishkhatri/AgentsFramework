@@ -1,3 +1,10 @@
+---
+type: reference
+title: 'Tier B Future Recipes — Decoupled GCP Production Topology'
+description: 'When and how to graduate from Tier A dev to a Tier B production topology.'
+tags: [recipe, gcp]
+---
+
 # Tier B Future Recipes — Decoupled GCP Production Topology
 
 **Goal:** Document when and how to graduate from Tier A (~$12–15/mo dev) to Tier B small production (~$310/mo list-price). Recipes B1–B5 are **not implemented** in the initial pass — they are the planned upgrade path aligned with [`GCP_DEPLOYMENT_ARCHITECTURE.md`](../../Architectures/GCP_DEPLOYMENT_ARCHITECTURE.md) §3.1 and [`CLOUD_PROVIDER_COMPARISON.md`](../../Architectures/CLOUD_PROVIDER_COMPARISON.md) §3.2.

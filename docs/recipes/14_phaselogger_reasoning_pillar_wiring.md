@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 14 — The Recording With No Chapters'
+description: 'Wire the PhaseLogger Reasoning pillar so the black box records a timeline of reasoning phases.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 14 — The Recording With No Chapters
 
 **Goal:** Give the black box a *timeline of reasoning phases*. The flight recorder from [Recipe 0](governance/00_overview.md) already captures **what** happened — every model selected, every tool called, every error. This recipe wires in the **PhaseLogger**: a second, parallel recording that marks **when** each reasoning phase began and ended, how long it took, and stitches the two recordings together with a shared `decision_id`. The compliance bundle that [Recipe 13](13_negative_path_traces_and_schema_versioning.md) learned to version now carries a `phase_events[]` track — the Reasoning pillar of the governance triangle, finally persisted.

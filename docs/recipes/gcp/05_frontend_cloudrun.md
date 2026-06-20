@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 5 — Deploy Frontend on Cloud Run'
+description: 'Deploy the Next.js frontend as a second Cloud Run service.'
+tags: [recipe, gcp]
+---
+
 # Recipe 5 — Deploy Frontend on Cloud Run
 
 **Goal:** Push the Recipe 3 frontend image to Artifact Registry and deploy it as a second public Cloud Run v2 service. The Next.js BFF proxies authenticated requests to the combined backend via `MIDDLEWARE_URL`, exposes WorkOS sign-in at `/api/auth/*`, and sets `NEXT_PUBLIC_WORKOS_REDIRECT_URI` to match the deployed `*.run.app` callback URL.

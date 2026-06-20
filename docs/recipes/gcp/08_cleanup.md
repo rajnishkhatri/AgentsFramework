@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Recipe 8 — Cleanup + Teardown Order'
+description: 'Safe teardown order for the GCP Tier A stack (partial or full).'
+tags: [recipe, gcp]
+---
+
 # Recipe 8 — Cleanup + Teardown Order
 
 **Goal:** Document and automate safe teardown of the GCP Tier A stack. Operators can choose **partial destroy** (keep Artifact Registry + Secret Manager for fast re-deploy) or **full destroy** (remove all managed resources). Dev-only safety rails (`force_destroy`, `deletion_protection=false`, `deletion_policy=ABANDON`) are already wired in Recipes 1–2 and validated here.

@@ -1,3 +1,10 @@
+---
+type: overview
+title: 'Recipe 0 — The Detective Who Refused to Trust the Confession'
+description: 'Why you cannot simply count failed agent runs — the case for grounded judging.'
+tags: [recipe, goaljudge]
+---
+
 # Recipe 0 — The Detective Who Refused to Trust the Confession
 
 **Goal:** Understand *why* you cannot read a pile of failed agent runs and simply count "the agent failed N times," and how a **grounded-theory failure taxonomy** turns messy trace evidence into a small set of named, counted, *testable* failure modes — then picks the one mode worth building a judge for.

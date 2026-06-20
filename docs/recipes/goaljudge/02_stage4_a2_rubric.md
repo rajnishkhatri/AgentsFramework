@@ -1,3 +1,10 @@
+---
+type: rubric
+title: 'Recipe 2 — Turning the Lab Test Into a Standing Order'
+description: 'Turn the Stage 4 A2 gated decision into a standing rubric.'
+tags: [recipe, goaljudge]
+---
+
 # Recipe 2 — Turning the Lab Test Into a Standing Order
 
 **Goal:** Take the single gated decision that [Recipe 1](01_axial_coding_failure_taxonomy.md) produced — *A2 · corrupt-success is the failure mode worth a judge* — and harden its one binary check (Lesson 4) into actual GoalJudge **prompt rules** and an **offline test surface**, *without* declaring the rubric "confirmed" before the evidence allows it. This is Stage 4 v1.

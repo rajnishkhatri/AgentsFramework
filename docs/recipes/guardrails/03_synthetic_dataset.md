@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 3 — Teaching Without Cheating'
+description: 'Build and freeze the offline synthetic eval set for the classifier and CI gate.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 3 — Teaching Without Cheating
 
 **Goal:** Build the offline synthetic dataset and freeze the eval set that the classifier and CI-gate sprints depend on — a six-stage SafeGuard pipeline that imports NotInject as a *held-out* over-defense set (never trained on), augments local domain negatives, and freezes a schema-valid JSONL using the Sprint 0 contract.

@@ -1,3 +1,10 @@
+---
+type: recipe
+title: 'Recipe 15 — The Posture Nobody Could Flip'
+description: 'Give operators a true runtime toggle for the GoalJudge evaluation posture.'
+tags: [recipe, cross-cutting]
+---
+
 # Recipe 15 — The Posture Nobody Could Flip
 
 **Goal:** Give operators a true runtime toggle for the GoalJudge's evaluation posture — shadow, downgrade, or dark — without a Cloud Run revision or image rebuild. Fixes the root cause (two diverging entrypoints) by collapsing them into a single env-driven composition root, adds a TTL-cached GCS-backed config reader with bounded reads and stale-on-error degradation, wires the reader per-run into the completion node, and surfaces the active posture on `/healthz` from cache so the liveness probe never stalls. After this recipe, a single `gsutil cp` propagates to every live instance within one TTL cycle, and the divergence that made the flag silently dead in production structurally cannot recur.

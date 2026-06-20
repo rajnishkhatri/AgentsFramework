@@ -30,11 +30,19 @@ import re
 import sys
 from pathlib import Path
 
-# Bundles we have formally declared as OKF-conformant (Phase 0 scope).
+# Bundles we have formally declared as OKF-conformant.
 # Add a path here when a directory is promoted to a managed knowledge bundle.
+# Note: ``docs/recipes`` itself is NOT listed — it is a bundle-of-bundles with a
+# top-level index.md only; its content lives in the five topic sub-bundles below,
+# which avoids double-counting the nested recipe files.
 DECLARED_BUNDLES: tuple[str, ...] = (
     "docs/skills",
     "research",
+    "docs/recipes/gcp",
+    "docs/recipes/goaljudge",
+    "docs/recipes/governance",
+    "docs/recipes/guardrails",
+    "docs/recipes/memory_extractor",
 )
 
 RESERVED = {"index.md", "log.md", "README.md"}
@@ -50,6 +58,17 @@ _RUN_DIR = re.compile(r"^run-\d+$")
 _MD_LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 # Wiki link: [[name]] (optionally [[name|alias]]).
 _WIKI_LINK = re.compile(r"\[\[([^\]|]+)(?:\|[^\]]+)?\]\]")
+# Fenced code block (``` or ~~~) and inline code span (`...`). Stripped before
+# link scanning so shell/code syntax like `if [[ -n "$X" ]]` isn't mistaken for
+# a wiki-link, and code containing [text](paren) isn't mistaken for a link.
+_FENCE = re.compile(r"^[ \t]*(```|~~~).*?^[ \t]*\1[ \t]*$", re.DOTALL | re.MULTILINE)
+_INLINE_CODE = re.compile(r"`[^`\n]*`")
+
+
+def _strip_code(text: str) -> str:
+    """Remove fenced code blocks and inline code spans (link scanning only)."""
+    text = _FENCE.sub("", text)
+    return _INLINE_CODE.sub("", text)
 
 
 def _repo_root() -> Path:
@@ -150,14 +169,17 @@ def main() -> int:
                 if fm is None or not _has_nonempty_type(fm):
                     warnings.append(f"{rel}: missing non-empty `type` frontmatter")
 
+            # Strip code so shell/code syntax isn't mistaken for a link.
+            prose = _strip_code(text)
+
             # markdown link resolution (WARN on broken — not-yet-written knowledge)
-            for target in _MD_LINK.findall(text):
+            for target in _MD_LINK.findall(prose):
                 resolved = _resolve_md_link(md, target, root)
                 if resolved is not None and not resolved.exists():
                     warnings.append(f"{rel}: broken link -> {target}")
 
             # wiki-link resolution (WARN on broken)
-            for name in _WIKI_LINK.findall(text):
+            for name in _WIKI_LINK.findall(prose):
                 if not _wiki_name_resolves(name, bundle_dir):
                     warnings.append(f"{rel}: broken wiki-link -> [[{name}]]")
 

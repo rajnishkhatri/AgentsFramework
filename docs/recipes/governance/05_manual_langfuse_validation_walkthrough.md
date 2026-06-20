@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Recipe 5 — Manual Langfuse UI Validation Walkthrough'
+description: 'Manual Langfuse-UI validation of each synthetic dataset scenario (S1–S8).'
+tags: [recipe, governance]
+---
+
 # Recipe 5 — Manual Langfuse UI Validation Walkthrough
 
 **Goal:** Step-by-step manual validation of each synthetic dataset scenario (S1–S6, S8) in the Langfuse UI, verifying observations, scores, compliance datasets, and redaction behavior.

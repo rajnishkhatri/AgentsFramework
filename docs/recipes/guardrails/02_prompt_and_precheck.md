@@ -1,3 +1,10 @@
+---
+type: specification
+title: 'Recipe 2 — The Bouncer and the Trained Eye'
+description: 'A narrowed LLM judge prompt plus a deterministic pre-check for over-block relief.'
+tags: [recipe, guardrails]
+---
+
 # Recipe 2 — The Bouncer and the Trained Eye
 
 **Goal:** Ship the no-ML over-block relief — a narrowed LLM judge prompt and a deterministic pre-check — so S3 (shell), S5 (retry), and S6 (PII repeat-back) stop being wrongly rejected at the input rail. All of it lands behind the unchanged `InputGuardrail.is_acceptable()` interface.
