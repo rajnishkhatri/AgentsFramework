@@ -292,7 +292,7 @@ async def test_t1_recall_injected_and_store_fires(tmp_path):
     stored = [e for e in events if e["event_type"] == "memory_stored"]
     assert recalled and stored
     assert set(recalled[0]["details"]).issubset(
-        {"user_id", "count", "query_len", "error_kind"}
+        {"user_id", "count", "query_len", "error_kind", "keys"}
     )
     assert set(stored[0]["details"]).issubset({"user_id", "key", "error_kind"})
 

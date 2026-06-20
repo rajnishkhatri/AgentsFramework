@@ -382,6 +382,23 @@ class LongTermMemoryService:
             records = [r for r in records if r.metadata.get("type") == mem_type]
         return records
 
+    def list_all(
+        self, user_id: str, *, mem_type: str | None = None, limit: int = 500
+    ) -> list[MemoryRecord]:
+        """All of a user's records for panel/list surfaces (no query string).
+
+        Uses the backend's ``list_all`` when present (reliable for Mem0, whose
+        vector ``search`` is unreliable for an empty query), else falls back to
+        the empty-query search path inside ``_list_all``.
+        """
+        _require_user_id(user_id)
+        if not isinstance(limit, int) or isinstance(limit, bool):
+            raise TypeError("limit must be an int")
+        if limit < 0:
+            raise ValueError("limit must be >= 0")
+        records = self._list_all(user_id, mem_type)
+        return records[:limit] if limit else records
+
     def count(self, user_id: str, *, mem_type: str | None = None) -> int:
         """Number of stored records for ``user_id`` (optionally one type)."""
         _require_user_id(user_id)

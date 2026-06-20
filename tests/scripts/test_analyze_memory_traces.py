@@ -613,3 +613,170 @@ class TestDedupAndSalienceScoring:
         events = {"MEM-SAL-legacy": [_recall_event("userS", 1)]}
         summary = mod.score_run(rows, events)
         assert summary["abilities"]["salience-tier"]["hits"] == 1
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Phase B reject harness (C1/C3/C4/C5) — failure-paths-first
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def _recall_event_with_keys(user_id: str, keys: list[str]) -> dict:
+    return {
+        "event_type": "memory_recalled",
+        "details": {
+            "user_id": user_id,
+            "count": len(keys),
+            "query_len": 10,
+            "keys": keys,
+        },
+    }
+
+
+class TestRejectPhaseScoring:
+    def test_c4_fail_when_rejected_key_still_recalled(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "PHASEB-X",
+                "run": 1,
+                "trace_id": "t1",
+                "user_id": "u1",
+                "seed_snippets": ["metric"],
+            },
+            {"case": "PHASEB-X", "run": 2, "trace_id": "t2", "user_id": "u1", "reject_key": "k1"},
+        ]
+        events = {
+            "t1": [_recall_event_with_keys("u1", ["k1", "k2"])],
+            "t2": [_recall_event_with_keys("u1", ["k1", "k2"])],
+        }
+        summary = mod.score_reject_batch(
+            rows, events, suppress_found={"PHASEB-X": True}
+        )
+        assert summary["hard_zero"]["reject_not_excluded"] == 1
+        assert mod.gate_failures_reject(summary)
+
+    def test_c4_pass_when_rejected_key_excluded(self) -> None:
+        mod = _load()
+        rows = [
+            {
+                "case": "PHASEB-OK",
+                "run": 1,
+                "trace_id": "t1",
+                "user_id": "u1",
+                "seed_snippets": ["Berlin"],
+            },
+            {
+                "case": "PHASEB-OK",
+                "run": 2,
+                "trace_id": "t2",
+                "user_id": "u1",
+                "reject_key": "k1",
+            },
+        ]
+        events = {
+            "t1": [_recall_event_with_keys("u1", ["k1", "k2"])],
+            "t2": [_recall_event_with_keys("u1", ["k2"])],
+        }
+        summary = mod.score_reject_batch(
+            rows, events, suppress_found={"PHASEB-OK": True}
+        )
+        assert summary["hard_zero"]["reject_not_excluded"] == 0
+        assert mod.gate_failures_reject(summary) == []
+
+    def test_empty_join_fail_closed(self) -> None:
+        mod = _load()
+        rows = [
+            {"case": "PHASEB-MISS", "run": 1, "trace_id": "t1", "user_id": "u1"},
+            {"case": "PHASEB-MISS", "run": 2, "trace_id": "t2", "user_id": "u1", "reject_key": "k1"},
+        ]
+        summary = mod.score_reject_batch(rows, {})
+        assert summary["hard_zero"]["missing_trace_join"] >= 1
+        assert mod.gate_failures_reject(summary)
+
+    def test_c3_suppress_carrier_missing_fails_gate(self) -> None:
+        mod = _load()
+        rows = [
+            {"case": "PHASEB-NOSUP", "run": 1, "trace_id": "t1", "user_id": "u1"},
+            {
+                "case": "PHASEB-NOSUP",
+                "run": 2,
+                "trace_id": "t2",
+                "user_id": "u1",
+                "reject_key": "k1",
+            },
+        ]
+        events = {
+            "t1": [_recall_event_with_keys("u1", ["k1"])],
+            "t2": [_recall_event_with_keys("u1", [])],
+        }
+        summary = mod.score_reject_batch(rows, events, suppress_found={"PHASEB-NOSUP": False})
+        assert summary["hard_zero"]["suppress_carrier_missing"] == 1
+        assert mod.gate_failures_reject(summary)
+
+
+class TestC5ContentLeak:
+    """C5: the recall carrier must carry metadata only (user_id/count/query_len/
+    keys), never payload content. The check must distinguish a REAL leak from
+    the trace-envelope plumbing the Langfuse flattener attaches to every event
+    (resourceAttributes / scope / integrity_hash / a re-nested details dict) —
+    those are long structured strings but NOT content (the false positive that
+    flagged a clean PhaseB run; see the live 2026-06-19 validation)."""
+
+    def test_clean_carrier_does_not_leak(self) -> None:
+        mod = _load()
+        events = [_recall_event_with_keys("u1", ["k1", "k2"])]
+        assert mod._content_leaked_in_recall_carriers(events, seed_snippets=["Berlin"]) is False
+
+    def test_trace_envelope_plumbing_is_not_a_leak(self) -> None:
+        """The Langfuse flattener merges envelope fields onto the carrier dict.
+        A 143-char resourceAttributes / 120-char scope / re-nested details must
+        NOT trip the len>80 heuristic — they are SDK/OTel metadata, not payload."""
+        mod = _load()
+        carrier_details = {
+            "user_id": "user_01KQ0",
+            "count": "2",
+            "query_len": "38",
+            "keys": ["54934e3f", "7ae5c670"],
+        }
+        # As the real reader returns it: details merged up + envelope plumbing.
+        leaky_envelope = {
+            "event_type": "memory_recalled",
+            "details": dict(carrier_details),
+            **carrier_details,
+            "resourceAttributes": {
+                "telemetry.sdk.language": "python",
+                "telemetry.sdk.name": "opentelemetry",
+                "telemetry.sdk.version": "1.42.1",
+                "service.name": "agent-runtime",
+            },
+            "scope": {"name": "langfuse-sdk", "version": "4.7.1"},
+            "integrity_hash": "1df9aa4ba83bf2feccf4d11fe5edf8207b76ab66f6b9f6c359ae8141a3ec51a4",
+        }
+        assert (
+            mod._content_leaked_in_recall_carriers(
+                [leaky_envelope], seed_snippets=["Berlin", "home timezone"]
+            )
+            is False
+        )
+
+    def test_seed_snippet_in_detail_value_is_a_real_leak(self) -> None:
+        """A genuine leak — the recalled fact's text echoed into a detail field
+        (e.g. a 'query' field carrying the raw query) — MUST be caught."""
+        mod = _load()
+        leaky = {
+            "event_type": "memory_recalled",
+            "details": {
+                "user_id": "u1",
+                "count": 1,
+                "query": "where does the user live? Berlin",  # raw content leaked
+                "keys": ["k1"],
+            },
+            "user_id": "u1",
+            "count": 1,
+            "query": "where does the user live? Berlin",
+            "keys": ["k1"],
+        }
+        assert (
+            mod._content_leaked_in_recall_carriers([leaky], seed_snippets=["Berlin"])
+            is True
+        )

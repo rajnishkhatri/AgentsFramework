@@ -71,6 +71,16 @@ _SAFE_BOOL_KEYS: frozenset[str] = frozenset({
     "cached",
     "would_downgrade",
     "plan_changed",
+    # Phase B: the suppress flag must stay native bool end-to-end (not "True").
+    "suppressed",
+})
+
+# Phase B: recalled key identifiers ride the MEMORY_RECALLED carrier as a list;
+# allowlist so Langfuse keeps a parseable list (not a stringified repr).
+_SAFE_LIST_KEYS: frozenset[str] = frozenset({
+    "keys",
+    "missing_pillars",
+    "missing_carriers",
 })
 
 _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
@@ -94,6 +104,7 @@ _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     # — never content (the redaction pass below keeps the curated view clean).
     EventType.MEMORY_RECALLED: ("span", "memory.recalled"),
     EventType.MEMORY_STORED: ("span", "memory.stored"),
+    EventType.MEMORY_SUPPRESSED: ("span", "memory.suppressed"),
     # A1 consolidation: a write-side background activity (deletes stale memory).
     # Span like the other memory carriers; details carry user_id/type/counts —
     # never content. Makes the eviction visible to the Validation pillar.
@@ -144,6 +155,9 @@ def redact_details(details: dict[str, Any]) -> dict[str, Any]:
             continue
         if key in _SAFE_BOOL_KEYS and isinstance(value, bool):
             result[key] = value
+            continue
+        if key in _SAFE_LIST_KEYS and isinstance(value, (list, tuple)):
+            result[key] = [str(item) for item in value]
             continue
         if key in _SAFE_NUMERIC_KEYS:
             # Native numbers pass through untouched; a stringy numeric is only

@@ -115,6 +115,32 @@ def _emit_crud_consolidation(
         logger.warning("memory.consolidated carrier emit failed", exc_info=True)
 
 
+def _emit_suppressed_carrier(
+    cache_dir: Path, owner: str, key: str, *, suppressed: bool
+) -> None:
+    """Emit a MEMORY_SUPPRESSED carrier after a soft-suppress PATCH (Phase B).
+
+    Same contract as ``agent_ui_adapter.server._emit_suppressed_carrier`` — the
+    analyzer scores reject/exclusion from the trace. No-op is impossible here
+    (prod always has a cache dir), but observability must never fail the request.
+    """
+    try:
+        from services.governance.black_box import BlackBoxRecorder
+        from services.governance.memory_suppressed_carrier import (
+            emit_suppressed_carrier,
+        )
+
+        emit_suppressed_carrier(
+            BlackBoxRecorder(cache_dir / "black_box_recordings"),
+            workflow_id=f"mem-suppress-{uuid.uuid4().hex}",
+            user_id=owner,
+            key=key,
+            suppressed=suppressed,
+        )
+    except Exception:  # pragma: no cover - observability must never break CRUD
+        logger.warning("memory.suppressed carrier emit failed", exc_info=True)
+
+
 def _load_graph_factory():
     """Load the graph factory from langgraph.json without static imports."""
     config_path = AGENT_ROOT / "langgraph.json"
@@ -416,7 +442,7 @@ def build_combined_app() -> FastAPI:
         identity: AgentFacts = Depends(_bearer_identity),
     ) -> MemoryListResponse:
         memory = _require_memory()
-        records = memory.search(identity.owner, "", limit=500)
+        records = memory.list_all(identity.owner, limit=500)
         items = [
             MemoryItem(
                 key=r.key,
@@ -425,6 +451,7 @@ def build_combined_app() -> FastAPI:
                 salience=r.metadata.get("salience"),
             )
             for r in records
+            if not r.metadata.get("suppressed")
         ]
         return MemoryListResponse(items=items)
 
@@ -473,6 +500,9 @@ def build_combined_app() -> FastAPI:
         memory = _require_memory()
         if not memory.suppress(identity.owner, key, suppressed=body.suppressed):
             raise HTTPException(status_code=404, detail="memory not found")
+        _emit_suppressed_carrier(
+            cache_dir, identity.owner, key, suppressed=body.suppressed
+        )
         return Response(status_code=204)
 
     # task_understanding plan Phase 4: soft-gate card edit seam. The client

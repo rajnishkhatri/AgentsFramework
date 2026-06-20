@@ -1,0 +1,50 @@
+[
+  {
+    "case": "PHASEB-UNITS",
+    "mem_id": "MEM-PHB1",
+    "user_id": "owner",
+    "seed_memory": [
+      {
+        "key": "phb-units-pref",
+        "text": "I always prefer metric units for measurements and cooking.",
+        "type": "semantic"
+      }
+    ],
+    "query": "What measurement units do I prefer? Answer briefly.",
+    "seed_snippets": ["metric units", "measurements and cooking"],
+    "expect_min_recall_run1": 1,
+    "rationale": "CRUD-seeded preference under identity.owner; reject excludes it from run-2 recall."
+  },
+  {
+    "case": "PHASEB-LOCATION",
+    "mem_id": "MEM-PHB2",
+    "user_id": "owner",
+    "seed_memory": [
+      {
+        "key": "phb-location-city",
+        "text": "I live in Berlin and my home timezone is CET.",
+        "type": "semantic"
+      }
+    ],
+    "query": "Which city do I live in? One sentence.",
+    "seed_snippets": ["Berlin", "home timezone"],
+    "expect_min_recall_run1": 1,
+    "rationale": "Location memory under owner; reject must drop Berlin from the second recall."
+  },
+  {
+    "case": "PHASEB-THEME",
+    "mem_id": "MEM-PHB3",
+    "user_id": "owner",
+    "seed_memory": [
+      {
+        "key": "phb-theme-ui",
+        "text": "I prefer dark mode for all user interfaces.",
+        "type": "semantic"
+      }
+    ],
+    "query": "What is my UI theme preference?",
+    "seed_snippets": ["dark mode", "user interfaces"],
+    "expect_min_recall_run1": 1,
+    "rationale": "UI preference under owner; two-run exclusion after reject."
+  }
+]

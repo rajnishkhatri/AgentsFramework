@@ -27,11 +27,18 @@ import type { MemoryItem } from "@/lib/wire/agent_protocol";
 export function RecalledMemories(props: {
   items: ReadonlyArray<MemoryItem>;
   onReject: (key: string) => void;
+  /** Pre-open the disclosure (eval surface defaults open so the recalled list
+   *  — and its Reject affordances — are part of the capture). */
+  defaultOpen?: boolean;
 }): React.JSX.Element | null {
   if (props.items.length === 0) return null;
   const n = props.items.length;
   return (
-    <details data-testid="recalled-memories" className="text-xs text-muted">
+    <details
+      data-testid="recalled-memories"
+      className="text-xs text-muted"
+      open={props.defaultOpen ?? false}
+    >
       <summary className="cursor-pointer select-none">
         {n === 1 ? "1 memory recalled here" : `${n} memories recalled here`}
       </summary>

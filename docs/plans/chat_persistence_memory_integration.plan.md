@@ -1,9 +1,28 @@
 # Chat Persistence + Memory Integration
 
-> **Status:** Phase A IMPLEMENTED (2026-06-19, uncommitted); Phase B PROPOSED.
+> **Status:** Phase A + Phase B IMPLEMENTED (2026-06-19, uncommitted).
 > Research-backed. Builds on the shipped UI refresh
 > ([`ui_left_panel_refresh.plan.md`](ui_left_panel_refresh.plan.md),
 > commit `01863ec` — SidebarPanel / Recents).
+>
+> **Phase B delivered:** `memory_recalled` now carries the recalled records'
+> **keys** (identifiers, never content — privacy invariant holds) end to end:
+> route node writes `recalled_memories_keys` → `MemoryRecalled` (Python) +
+> translator → `langgraph_runtime` → TS schema/translator/`run_view_reducer.
+> recalledKeys`. Soft-suppress seam (D5): `LongTermMemoryService.suppress`
+> (metadata flag, row retained, reversible) + recall exclusion
+> (`exclude_suppressed`/`filter_recall_records`) + `PATCH /agent/memory/{key}`
+> on both backend apps; TS `MemoryStore.suppress` + `HttpMemoryStore` +
+> `makeMemorySuppressHandler` + `PATCH /api/memory/[key]` route. Eval view (B2):
+> `RecalledMemories` disclosure (testids `recalled-memories` /
+> `recalled-memory-{key}` / `reject-memory-{key}`) gated to `evalMode`, joining
+> recalled keys against the owner's memory panel; `recalledItems` join helper;
+> `useChatSidebars.suppressMemory` + `suppressMemoryRequest`. Verified: 804
+> vitest (+27 over Phase A's 777), 86 architecture, 63 drift, 3398 Python
+> (0 fail), 2 stateful recall/reject e2e + Phase A/eval-mode e2e green, tsc
+> clean. Artifacts regenerated (openapi.yaml/wire-types.ts carry `keys` +
+> `MemorySuppressRequest` + the PATCH op; memory request models stay out of the
+> strict drift baseline by existing convention).
 >
 > **Phase A delivered:** `ThreadStore.appendTurn` port + `NeonFreeThreadStore`
 > impl (idempotent, append-only); optional client `thread_id` + provisional
