@@ -1,6 +1,13 @@
+---
+type: plan
+title: 'LONG_TERM_MEMORY_PLAN.md — `services/long_term_memory.py` Implementation Plan'
+description: 'A horizontal store/recall service for per-user long-term memory: facts about the user that should persist across sessions and runs.'
+tags: [plan]
+---
+
 # LONG_TERM_MEMORY_PLAN.md — `services/long_term_memory.py` Implementation Plan
 
-> **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). Implements pattern H6 from [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465–537.
+> **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). Implements pattern H6 from [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465–537.
 >
 > **TDD Protocol**: B (Contract-driven) per [research/tdd_agentic_systems_prompt.md](../../../research/tdd_agentic_systems_prompt.md) §Protocol B. L2 reproducible, <30s test budget.
 >

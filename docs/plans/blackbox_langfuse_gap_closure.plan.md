@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Close BlackBox to Langfuse Governance Gaps'
+description: 'Status: In Progress'
+tags: [plan]
+---
+
 # Close BlackBox to Langfuse Governance Gaps
 
 **Status:** In Progress

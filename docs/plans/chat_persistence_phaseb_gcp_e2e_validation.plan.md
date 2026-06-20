@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat Persistence Phase B — GCP deploy + E2E validation (Playwright screenshots + Langfuse trace eval)'
+description: 'A three-artifact validation (mirrors the carrier-gate triad), plus a deploy step and a **screenshot'
+tags: [plan]
+---
+
 # Chat Persistence Phase B — GCP deploy + E2E validation (Playwright screenshots + Langfuse trace eval)
 
 > **Status:** Planning doc. Specifies the work to **deploy the Phase B build to Cloud Run and validate it

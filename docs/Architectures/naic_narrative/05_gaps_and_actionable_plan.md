@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'NAIC Gaps and Actionable Plan'
+description: 'Purpose: Name the gap between the current workspace and a carrier-grade NAIC evidence program, then convert each gap into a PR-sized action.'
+tags: [architecture]
+---
+
 # NAIC Gaps and Actionable Plan
 
 **Purpose:** Name the gap between the current workspace and a carrier-grade NAIC evidence program, then convert each gap into a PR-sized action.

@@ -1,4 +1,5 @@
 ---
+type: plan
 name: AWS Deployment Recipes
 overview: "Component-by-component recipes to deploy the AgentsFramework backend and frontend to AWS at Tier A (dev / ~5 devs), using AWS CDK in Python. Each recipe is dual-audience: a \"for this workspace\" section with exact file paths and commands, plus a generalized \"for any similar stack\" section. Recipe 0 builds the three missing AWS runtime adapters first (postgres_saver, s3_sink, kinesis_sink); Recipes 1–8 then provision and deploy."
 todos:

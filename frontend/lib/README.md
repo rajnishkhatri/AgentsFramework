@@ -1,6 +1,6 @@
 # `frontend/lib/` — wire-types and sealed-envelope rule
 
-> **See also**: [`docs/STYLE_GUIDE_FRONTEND.md`](../../docs/STYLE_GUIDE_FRONTEND.md) — the canonical, prescriptive style guide for the Frontend Ring (W/P/A/T/X/C/B/U/S/O rule families, code-review checklists, anti-patterns). The sealed-envelope rule below is restated there as Rule W4 and operationalized in §16.
+> **See also**: [`docs/style-guides/STYLE_GUIDE_FRONTEND.md`](../../docs/style-guides/STYLE_GUIDE_FRONTEND.md) — the canonical, prescriptive style guide for the Frontend Ring (W/P/A/T/X/C/B/U/S/O rule families, code-review checklists, anti-patterns). The sealed-envelope rule below is restated there as Rule W4 and operationalized in §16.
 >
 > **Owner**: `agent_ui_adapter` codegen pipeline (S8 of [`docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md`](../../docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md)).
 >

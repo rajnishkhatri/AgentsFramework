@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'GoalJudge Synthetic Saturation Corpus — Step-by-Step Walkthrough'
+description: 'Goal: Create a structured synthetic corpus sized for stratified coverage to saturation of the seeded taxonomy (~3-5 examples per failure code across 19 distinct codes, single'
+tags: [walk-through]
+---
+
 # GoalJudge Synthetic Saturation Corpus — Step-by-Step Walkthrough
 
 **Goal:** Create a structured synthetic corpus sized for stratified coverage to saturation of the seeded taxonomy (~3-5 examples per failure code across 19 distinct codes, single coder). This walkthrough details how to run the synthetic prompt matrix, verify the coverage/integrity gate, export the joined telemetry corpus, and perform Phase 2b open coding as a hand-off to Stage 3 axial coding.

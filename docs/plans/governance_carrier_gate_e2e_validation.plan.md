@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Carrier-gate E2E validation — Playwright (T3) + Langfuse export + analysis'
+description: 'Status: EXECUTED — 2026-06-17.'
+tags: [plan]
+---
+
 # Carrier-gate E2E validation — Playwright (T3) + Langfuse export + analysis
 
 **Status:** **EXECUTED — 2026-06-17.** Driver spec + analyzer scorer built; ran live against prod; **VERDICT CLEAN** (32 carriers, 0 alerts, gap rate 0.000, full coverage). See [`governance_carrier_gate_e2e_report.md`](governance_carrier_gate_e2e_report.md). Deliverables #1–3 done; #4/#5 (the §4 relay fixes) landed pre-deploy.

@@ -11,7 +11,7 @@ A reusable, env-driven wrapper around `meta.code_reviewer.CodeReviewerAgent`. Au
 | `env_settings.py` | `EnvSettings` (pydantic-settings over `.env`) + `reviewer_profile_from_env(env_var=...)` -> `ModelProfile`. |
 | `review_config.py` | `ReviewAgentConfig` schema -- the only thing a developer authors. |
 | `runner.py` | `async run_review(config)` -- builds `LLMService` + `PromptService` + `CodeReviewerAgent` and returns a `ReviewReport`. |
-| `report_renderer.py` | `render_markdown(report, ctx)` -- 10-section markdown matching `docs/PHASE4_CODE_REVIEW.md`. |
+| `report_renderer.py` | `render_markdown(report, ctx)` -- 10-section markdown matching `docs/reviews/PHASE4_CODE_REVIEW.md`. |
 | `cli.py` / `__main__.py` | `python -m meta.CodeReviewerAgentTest <config.json>` with verdict-based exit codes. |
 | `configs/phase1.json` | First consumer; PLAN_v2.md Phase 1 verification. |
 
@@ -103,7 +103,7 @@ The submission template must accept the variables `files_to_review`, `submission
 ## 6. Output format
 
 - **JSON:** `trust.review_schema.ReviewReport` -- frozen Pydantic model (verdict, statement, confidence, dimensions, gaps, validation_log, files_reviewed, metadata).
-- **Markdown:** 10 sections matching `docs/PHASE4_CODE_REVIEW.md`:
+- **Markdown:** 10 sections matching `docs/reviews/PHASE4_CODE_REVIEW.md`:
   1. Governing Thought  2. Pyramid Self-Validation  3. Files Reviewed  4. Dimension Results  5. Cross-Dimension Interactions  6. Gaps  7. Judge Filter Log  8. Verdict Decision Trace  9. Recommended Action List  10. Metadata
 
 `md_template_section_overrides` lets you push contextual labels into the renderer (`phase_label`, `plan_reference`, etc.) without code changes.

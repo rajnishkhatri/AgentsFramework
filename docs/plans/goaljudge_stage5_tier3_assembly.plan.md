@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Plan — GoalJudge Stage 5 Tier 3: Assemble `goaljudge_goldset_v1`'
+description: 'The Tier 2 unblock session produced (a) a confirmed A2 rubric, (b) two corrected agent fixes (planner per-task scoping + saturation task_id decoupling), and (c) enriched'
+tags: [plan]
+---
+
 # Plan — GoalJudge Stage 5 Tier 3: Assemble `goaljudge_goldset_v1`
 
 > **Goal:** assemble, double-label, freeze, and load the **~250-item gold-set** that Stage 6 calibration consumes — meeting **Krippendorff's α ≥ 0.8 on `goal_met`** with a hash-frozen test split **and** measurable coverage across the pipeline's dimension space so Stage 6 can isolate the axis on which a regression appears.

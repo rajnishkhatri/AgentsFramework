@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'LLM Eval Pipeline Skill — Plan (workspace-bound)'
+description: 'The deep end-to-end read of the pipeline surfaced a stack of repo-specific facts that a generic'
+tags: [plan]
+---
+
 # LLM Eval Pipeline Skill — Plan (workspace-bound)
 
 > **Status:** PLAN (re-scoped 2026-06-13). Supersedes the original "documentation-only,

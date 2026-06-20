@@ -1,3 +1,10 @@
+---
+type: roadmap
+title: 'ReAct Agent with Dynamic Model Selection'
+description: 'The system is organized as a three-layer grid following the composable layering architecture.'
+tags: [plan]
+---
+
 # ReAct Agent with Dynamic Model Selection
 
 ## Technology Stack
@@ -178,7 +185,7 @@ Nodes read these values via `config["configurable"]["user_id"]` etc. The `eval_c
 
 ## Dependency Rules
 
-The three-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md) and adapted for the LangGraph orchestration pattern.
+The three-layer architecture enforces strict dependency direction. These rules are derived from [STYLE_GUIDE_LAYERING.md](../style-guides/STYLE_GUIDE_LAYERING.md) and adapted for the LangGraph orchestration pattern.
 
 ### Allowed Dependencies
 
@@ -235,7 +242,7 @@ The agent serves authenticated end users via a web UI with tool execution capabi
 
 ### Guardrails Service (`services/guardrails.py`)
 
-Follows the H3 pattern from [STYLE_GUIDE_PATTERNS.md](../STYLE_GUIDE_PATTERNS.md). Parameterized by an `accept_condition` string; the caller defines the specific check:
+Follows the H3 pattern from [STYLE_GUIDE_PATTERNS.md](../style-guides/STYLE_GUIDE_PATTERNS.md). Parameterized by an `accept_condition` string; the caller defines the specific check:
 
 ```python
 class InputGuardrail:
@@ -1064,7 +1071,7 @@ This fallback is viable because:
 
 ## Key Design Principles
 
-1. **Composable layering**: The system is organized as a three-layer grid -- orchestration (topology), components (domain logic), services (infrastructure). Dependencies flow downward only. This follows the [STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md) architecture.
+1. **Composable layering**: The system is organized as a three-layer grid -- orchestration (topology), components (domain logic), services (infrastructure). Dependencies flow downward only. This follows the [STYLE_GUIDE_LAYERING.md](../style-guides/STYLE_GUIDE_LAYERING.md) architecture.
 
 2. **Framework as a wrapper, not a dependency**: LangGraph orchestrates; domain logic (`components/router.py`, `components/evaluator.py`) and infrastructure (`services/`) are framework-agnostic. This keeps the Phase 4 fallback viable.
 

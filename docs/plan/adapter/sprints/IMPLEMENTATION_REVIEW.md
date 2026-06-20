@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'IMPLEMENTATION_REVIEW.md — End-to-End Audit + Pyramid 8-Check'
+description: 'S1 exit: tests/architecture/test_service_isolation.py confirms no horizontal-to-horizontal imports.'
+tags: [plan]
+---
+
 # IMPLEMENTATION_REVIEW.md — End-to-End Audit + Pyramid 8-Check
 
 > **Scope**: All stories US-DP-1.1 through US-9.4 from

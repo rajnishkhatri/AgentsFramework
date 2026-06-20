@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'Fraud Detection Narrative'
+description: 'Scenario: A fictional carrier deploys a multi-agent fraud-ring detector across claims, policy, payment, and document evidence.'
+tags: [architecture]
+---
+
 # Fraud Detection Narrative
 
 **Scenario:** A fictional carrier deploys a multi-agent fraud-ring detector across claims, policy, payment, and document evidence.

@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Guardrails Tuning Refinement
 overview: "Refine the F2 workstream of the pipeline-hardening plan into a dimension-aware guardrails program: a documented 5-rail x OWASP-2025 taxonomy, a code/LLM enforcement split, a fine-tuned ONNX injection classifier (PIGuard MOF strategy), and a synthetic dataset (NotInject reference + local augment) with a three-axis CI gate that fixes the S3/S5/S6 over-blocking."
 todos:

@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Backend Solution Architecture'
+description: 'Scope: The Python backend of the AgentsFramework workspace — trust/, services/, components/, orchestration/, meta/, the StructuredReasoning/ mini-stack, and the agent_ui_adapter/'
+tags: [architecture]
+---
+
 # Backend Solution Architecture
 
 **Scope:** The Python backend of the AgentsFramework workspace — `trust/`, `services/`, `components/`, `orchestration/`, `meta/`, the `StructuredReasoning/` mini-stack, and the `agent_ui_adapter/` outer ring.
@@ -10,9 +17,9 @@
 - `docs/Architectures/AGENT_UI_ADAPTER_ARCHITECTURE.md` — outer adapter ring overview.
 - `docs/Architectures/AGENT_UI_ADAPTER_ADAPTERS_DEEP_DIVE.md` — exhaustive `adapters/` spec.
 - `docs/Architectures/DEEP_AGENT_SCQA_IMPLEMENTATION_GUIDE.md` — SCQA reframing for deep-agent capability rollout.
-- `docs/STYLE_GUIDE_LAYERING.md` — composable layering style guide (three-layer base extended by this doc).
-- `docs/STYLE_GUIDE_PATTERNS.md` — design patterns catalog (H1–H7, V1–V6).
-- `docs/TRUST_FRAMEWORK_ARCHITECTURE.md` — seven-layer trust framework.
+- `docs/style-guides/STYLE_GUIDE_LAYERING.md` — composable layering style guide (three-layer base extended by this doc).
+- `docs/style-guides/STYLE_GUIDE_PATTERNS.md` — design patterns catalog (H1–H7, V1–V6).
+- `docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md` — seven-layer trust framework.
 - `docs/Architectures/BACKEND_PR_CHECKLISTS.md` — the paste-into-PR review checklists referenced from §9.
 
 ---
@@ -37,7 +44,7 @@
 - **Situation.** A LangGraph ReAct agent needs to combine identity and authorization, dynamic model routing, prompt rendering, defense-in-depth guardrails, tool dispatch, evaluation capture, and offline meta-optimization — and then expose all of it through SSE to a browser front end.
 - **Complication.** Naively wiring those concerns produces a graph where everything imports everything else: framework SDKs leak into domain logic, prompt strings drift across modules, governance code circularly depends on orchestration, and any change to the trust schema cascades unpredictably.
 - **Question.** Where does each new concern (a new tool, a new guardrail, a new identity field, a new model tier, a new adapter to a different SSE protocol) belong, and how can that placement be **mechanically verified** in CI?
-- **Answer.** A four-layer grid with a pure trust kernel at the bottom, an outer adapter ring that touches the SDK boundary in exactly one place, and a meta-layer that reads logs (never the graph). Dependencies flow one direction only. Ten architecture tests enforce the directional rules. Patterns H1–H7 / V1–V6 (in `docs/STYLE_GUIDE_PATTERNS.md`) govern style within each layer. Trust types are signed, governance feedback flows through `TrustTraceRecord` events, and abstractions (event bus, protocols) are introduced only when the second consumer arrives.
+- **Answer.** A four-layer grid with a pure trust kernel at the bottom, an outer adapter ring that touches the SDK boundary in exactly one place, and a meta-layer that reads logs (never the graph). Dependencies flow one direction only. Ten architecture tests enforce the directional rules. Patterns H1–H7 / V1–V6 (in `docs/style-guides/STYLE_GUIDE_PATTERNS.md`) govern style within each layer. Trust types are signed, governance feedback flows through `TrustTraceRecord` events, and abstractions (event bus, protocols) are introduced only when the second consumer arrives.
 
 ---
 
@@ -610,7 +617,7 @@ The test catalog under `tests/architecture/`:
 
 ### 6.2 Patterns catalog applicability
 
-The full catalog is in `docs/STYLE_GUIDE_PATTERNS.md`. The patterns most often cited in backend reviews:
+The full catalog is in `docs/style-guides/STYLE_GUIDE_PATTERNS.md`. The patterns most often cited in backend reviews:
 
 | ID | Pattern | One-line rule |
 |---|---|---|
@@ -868,7 +875,7 @@ Use that doc as the paste-into-PR review aid. This section is intentionally shor
 | **Event-driven feedback loop** | `TrustTraceRecord` events emitted by gates and consumed by meta. Direct calls in Phase 1; in-process bus in Phase 2; distributed bus in Phase 3. |
 | **Four-layer grid** | Trust → Services → Components → Orchestration, plus the offline Meta layer. |
 | **Inner trust kernel** | The `StructuredReasoning/trust/` mirror — same purity rules as outer `trust/`, scoped to the Pyramid stack. |
-| **Pattern H/V** | Style-guide patterns from `docs/STYLE_GUIDE_PATTERNS.md`. H = horizontal (services), V = vertical (components). |
+| **Pattern H/V** | Style-guide patterns from `docs/style-guides/STYLE_GUIDE_PATTERNS.md`. H = horizontal (services), V = vertical (components). |
 | **Phase logger** | `services/governance/phase_logger.PhaseLogger` — per-workflow decision log. |
 | **PEP** | Policy Enforcement Point. The `verify_authorize_log_node` is the per-tool PEP. |
 | **Pyramid agent** | Structured-reasoning agent producing pyramid-shape analyses; lives in `StructuredReasoning/`. |
@@ -888,10 +895,10 @@ Use that doc as the paste-into-PR review aid. This section is intentionally shor
 - `docs/Architectures/FRONTEND_ARCHITECTURE.md` (and `FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md`, `FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md`, `FRONTEND_PORT_DEVIATIONS_V3.md`) — the symmetric frontend ring (out of scope for this backend doc).
 - `docs/Architectures/BACKEND_PR_CHECKLISTS.md` — paste-into-PR review checklists.
 - `docs/Architectures/DEEP_AGENT_SCQA_IMPLEMENTATION_GUIDE.md` — SCQA reframing for deep-agent sprints.
-- `docs/STYLE_GUIDE_LAYERING.md` — composable-layering base.
-- `docs/STYLE_GUIDE_PATTERNS.md` — H1–H7, V1–V6.
-- `docs/STYLE_GUIDE_FRONTEND.md` — frontend rule families (F, W, P, A, T, X, C, B, U, S, O).
-- `docs/TRUST_FRAMEWORK_ARCHITECTURE.md` — seven-layer trust framework.
+- `docs/style-guides/STYLE_GUIDE_LAYERING.md` — composable-layering base.
+- `docs/style-guides/STYLE_GUIDE_PATTERNS.md` — H1–H7, V1–V6.
+- `docs/style-guides/STYLE_GUIDE_FRONTEND.md` — frontend rule families (F, W, P, A, T, X, C, B, U, S, O).
+- `docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md` — seven-layer trust framework.
 - `docs/StructuredReasoning/PYRAMID_AGENT_SEQUENCE_DIAGRAMS.md` — full multi-scenario sequence diagrams for the Pyramid agent.
 - `research/pyramid_react_system_prompt.md` — source prompt for `AnalysisOutput` schema and the four phases.
 - `research/tdd_agentic_systems_prompt.md` — testing pyramid for agentic systems.

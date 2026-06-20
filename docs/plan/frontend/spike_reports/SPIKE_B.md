@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'SPIKE_B — Self-hosted LangGraph Developer in FastAPI'
+description: 'The two hypotheses Spike B was meant to retire are already retired by the'
+tags: [plan]
+---
+
 # SPIKE_B — Self-hosted LangGraph Developer in FastAPI
 
 

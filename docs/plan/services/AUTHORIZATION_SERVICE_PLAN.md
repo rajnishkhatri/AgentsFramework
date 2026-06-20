@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'AUTHORIZATION_SERVICE_PLAN.md — `services/authorization_service.py` Implementation Plan'
+description: 'Given an AgentFacts (the agent''s identity card), an action (the operation requested), and a context (free-form details: tool name, args, target resource), returns a PolicyDecision'
+tags: [plan]
+---
+
 # AUTHORIZATION_SERVICE_PLAN.md — `services/authorization_service.py` Implementation Plan
 
 > **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). Implements the Runtime Trust Gate from [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 599–664.

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge — GCP Compatibility Plan (make the flags *settable* for validation)'
+description: 'A just-completed validation walkthrough'
+tags: [plan]
+---
+
 # GoalJudge — GCP Compatibility Plan (make the flags *settable* for validation)
 
 > **Deliverable.** Implementation **plan only** — this document changes **no** source, test, or infra files.
@@ -15,7 +22,7 @@
 > Step 0a (flag-wiring), Step 2 (posture confirm), Steps 5–7 (export + verify).
 > **Safety authority:** [`docs/research/fix2_goaljudge_rubric_feasibility_pyramid.md`](../research/fix2_goaljudge_rubric_feasibility_pyramid.md) §2.8
 > (false-downgrade enable-policy), [`docs/plans/fix2_goaljudge_remediation_f1_f4.plan.md`](fix2_goaljudge_remediation_f1_f4.plan.md).
-> **Layering authority:** [`AGENTS.md`](../../AGENTS.md), [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md).
+> **Layering authority:** [`AGENTS.md`](../../AGENTS.md), [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md).
 >
 > **What this plan does NOT do.** It does **not** authorize a production enable of either flag. It only makes
 > them *settable* so a validator can exercise the shadow and downgrade-on postures. Production default stays

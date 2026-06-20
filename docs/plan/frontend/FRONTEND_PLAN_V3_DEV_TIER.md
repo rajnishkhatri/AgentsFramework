@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'FRONTEND_PLAN_V3_DEV_TIER.md — Cheapest viable path to V2-Frontier'
+description: 'Ship the same Claude-Artifacts-class web chat as V2-Frontier — Next.js 15 (App Router) + CopilotKit v2 (AG-UI Protocol) for generative UI from day 1, talking over Server-Sent'
+tags: [plan]
+---
+
 # FRONTEND_PLAN_V3_DEV_TIER.md — Cheapest viable path to V2-Frontier
 
 > **Status**: planning, third Pareto-optimal alternative to [FRONTEND_PLAN_V1.md](FRONTEND_PLAN_V1.md) and [FRONTEND_PLAN_V2_FRONTIER.md](FRONTEND_PLAN_V2_FRONTIER.md).

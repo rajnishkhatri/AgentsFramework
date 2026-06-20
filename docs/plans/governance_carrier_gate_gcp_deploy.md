@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Carrier-gate — GCP deploy guide & required config'
+description: 'Status: deploy guide — 2026-06-17.'
+tags: [plan]
+---
+
 # Carrier-gate — GCP deploy guide & required config
 
 **Status:** deploy guide — **2026-06-17**. Companion to the [`deploy-gcp` skill](../../.cursor/skills/deploy-gcp/SKILL.md); this is the **change-specific** layer (what the carrier-gate work needs from GCP), not a re-doc of the phased workflow.

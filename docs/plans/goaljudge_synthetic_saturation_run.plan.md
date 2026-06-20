@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Synthetic Saturation Run Plan'
+description: 'This document details the end-to-end execution plan for running the GoalJudge synthetic saturation corpus pipeline locally to calibrate and export a clean failure-taxonomy corpus.'
+tags: [plan]
+---
+
 # GoalJudge Synthetic Saturation Run Plan
 
 This document details the end-to-end execution plan for running the GoalJudge synthetic saturation corpus pipeline locally to calibrate and export a clean failure-taxonomy corpus.

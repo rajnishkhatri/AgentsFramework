@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Carrier-gate post-deploy walkthrough — case-by-case report'
+description: 'Status: validation walkthrough — 2026-06-17 (post-GCP deploy).'
+tags: [plan]
+---
+
 # Carrier-gate post-deploy walkthrough — case-by-case report
 
 **Status:** validation walkthrough — **2026-06-17** (post-GCP deploy).

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Sprint 0 — Decisions Locked + Spike Validation (Runbook)'
+description: 'This is the executable companion to Sprint 0 of the sprint board.'
+tags: [plan]
+---
+
 # Sprint 0 — Decisions Locked + Spike Validation (Runbook)
 
 > **Status**: active.

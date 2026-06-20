@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)'
+description: 'Replace the constant generic success_conditions pair with a per-task'
+tags: [plan]
+---
+
 # GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)
 
 > **Status:** IMPLEMENTED 2026-06-12 — ALL phases 0–4 complete (Phase 5

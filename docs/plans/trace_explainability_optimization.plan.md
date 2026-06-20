@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox'
+description: 'Make the Langfuse trace a curated, human-first explainability view — every fact'
+tags: [plan]
+---
+
 # Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox
 
 > **Status:** ✅ COMPLETE & PROD-VERIFIED 2026-06-12 (all phases 0–5 landed and

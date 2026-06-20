@@ -74,7 +74,7 @@ Tests in `tests/architecture/` verify these. Never break them.
 
 ## Design Patterns
 
-Reference: @docs/STYLE_GUIDE_PATTERNS.md for full catalog (H1–H7, V1–V6).
+Reference: @docs/style-guides/STYLE_GUIDE_PATTERNS.md for full catalog (H1–H7, V1–V6).
 
 | ID | Rule |
 |----|------|
@@ -89,7 +89,7 @@ Reference: @docs/STYLE_GUIDE_PATTERNS.md for full catalog (H1–H7, V1–V6).
 
 ## Frontend Conventions
 
-Frontend code (`frontend/`, `middleware/`) is governed by @docs/STYLE_GUIDE_FRONTEND.md — the canonical document for frontend code review. It mirrors the backend layering and patterns guides for the Frontend Ring (Next.js 15 + React 19 + CopilotKit v2 + AG-UI + Zod + Tailwind v4/shadcn + WorkOS + LangGraph SDK), defines numbered rule families (F, W, P, A, T, X, C, B, U, S, O), and includes paste-into-PR checklists for adapter, UI component, and wire/translator reviews.
+Frontend code (`frontend/`, `middleware/`) is governed by @docs/style-guides/STYLE_GUIDE_FRONTEND.md — the canonical document for frontend code review. It mirrors the backend layering and patterns guides for the Frontend Ring (Next.js 15 + React 19 + CopilotKit v2 + AG-UI + Zod + Tailwind v4/shadcn + WorkOS + LangGraph SDK), defines numbered rule families (F, W, P, A, T, X, C, B, U, S, O), and includes paste-into-PR checklists for adapter, UI component, and wire/translator reviews.
 
 Key invariants for frontend reviewers:
 
@@ -219,8 +219,8 @@ Writing only success-path tests for trust gates. A gate that accepts everything 
 
 For deep context on architecture and patterns, see:
 
-- @docs/STYLE_GUIDE_LAYERING.md — four-layer architecture rules and anti-patterns
-- @docs/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1-H7, V1-V6)
+- @docs/style-guides/STYLE_GUIDE_LAYERING.md — four-layer architecture rules and anti-patterns
+- @docs/style-guides/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1-H7, V1-V6)
 - @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md — trust foundation, hexagonal ports, policy engines
-- @docs/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework
+- @docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework
 - @research/tdd_agentic_systems_prompt.md — testing pyramid for agentic systems

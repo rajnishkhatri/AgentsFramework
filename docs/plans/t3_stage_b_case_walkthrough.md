@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'T3 Stage B — Case-by-case walkthrough (input → output → Langfuse reasoning)'
+description: 'Date: 2026-06-16 | Run: 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated'
+tags: [plan]
+---
+
 # T3 Stage B — Case-by-case walkthrough (input → output → Langfuse reasoning)
 
 **Date:** 2026-06-16 | **Run:** 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated  

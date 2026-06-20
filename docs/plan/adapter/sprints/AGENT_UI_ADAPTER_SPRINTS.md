@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'AGENT_UI_ADAPTER_SPRINTS.md — Sprint Backlog and User Stories'
+description: 'This document is the operational backlog.'
+tags: [plan]
+---
+
 # AGENT_UI_ADAPTER_SPRINTS.md — Sprint Backlog and User Stories
 
 > **Status**: implementation roadmap. Decomposes [AGENT_UI_ADAPTER_PLAN.md](../AGENT_UI_ADAPTER_PLAN.md) into 10 logical sprints (S0–S9) plus an M-Phase2 no-op checkpoint.
@@ -199,7 +206,7 @@ Story format:
 #### US-1.2 — `services/long_term_memory.py`
 
 - **As an** orchestration node
-- **I want** a horizontal long-term-memory service per H6 ([docs/STYLE_GUIDE_PATTERNS.md](../../../STYLE_GUIDE_PATTERNS.md) lines 465–537)
+- **I want** a horizontal long-term-memory service per H6 ([docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465–537)
 - **So that** the adapter can compose memory access without coupling to a backend SDK
 - **Dependencies**: US-DP-1.1; sub-plan `LONG_TERM_MEMORY_PLAN.md`
 - **TDD Protocol**: B

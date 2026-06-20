@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Session Fixes'
+description: 'Overview: Fix issues surfaced during GoalJudge validation (GCP walkthrough Steps 2–3 and local Posture A/B runs).'
+tags: [plan]
+---
+
 # GoalJudge Session Fixes
 
 **Overview:** Fix issues surfaced during GoalJudge validation (GCP walkthrough Steps 2–3 and local Posture A/B runs). Scope covers: (1) GCP walkthrough/Recipe 15 alignment, startup config cache-warm, and `/healthz` edge diagnosis (S1–S6); (2) local-run code fixes to formalize with tests (S7–S9); (3) judge-quality findings from Phase 2 open coding, documented only and deferred to Stage 3/4 rubric work (J1–J3); (4) export-script formalization (E1).

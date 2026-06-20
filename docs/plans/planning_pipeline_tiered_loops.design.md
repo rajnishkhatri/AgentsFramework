@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Planning Pipeline — Tiered Reasoning Loops: Detailed Design'
+description: 'The plan uses the word "protocol" for three distinct things; the design doc must keep them in separate'
+tags: [plan]
+---
+
 # Planning Pipeline — Tiered Reasoning Loops: Detailed Design
 
 > **Status.** Design document — companion to

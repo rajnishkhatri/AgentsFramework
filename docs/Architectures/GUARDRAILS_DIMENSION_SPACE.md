@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Guardrails Dimension Space'
+description: 'Status: Sprint 0 contract (frozen) | Documentation only — no runtime code, no ML in this sprint'
+tags: [architecture]
+---
+
 # Guardrails Dimension Space
 
 **Status:** Sprint 0 contract (frozen) | Documentation only — no runtime code, no ML in this sprint
@@ -14,7 +21,7 @@ This document locks the contracts every later guardrails sprint depends on:
 Aligned with:
 
 - [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](FOUR_LAYER_ARCHITECTURE.md) — layer placement + dependency rules
-- [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md) — horizontal/vertical/orchestration rules
+- [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md) — horizontal/vertical/orchestration rules
 - [`docs/plans/guardrails_tuning_refinement.plan.md`](../plans/guardrails_tuning_refinement.plan.md) — the parent plan
 - [`docs/plans/guardrails_tuning_sprint_board.md`](../plans/guardrails_tuning_sprint_board.md) — the sprint board
 - [`research/tdd_agentic_systems_prompt.md`](../../research/tdd_agentic_systems_prompt.md) — failure-first TDD methodology

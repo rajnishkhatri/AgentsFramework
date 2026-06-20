@@ -5,11 +5,11 @@
 > **Inputs analysed:**
 > - Plan & current Fix 2 design: [`docs/plans/fix_session_observations_revised.plan.md`](../plans/fix_session_observations_revised.plan.md) — section "Fix 2 — Scorer coherence (rescoped: deterministic-safe + judge-conditional)".
 > - Rubric research to adopt: [`docs/research/rubricgoldsetreseachforgoaljudge.md`](rubricgoldsetreseachforgoaljudge.md).
-> - Format template mirrored here: [`docs/PYRAMID_ANALYSIS.md`](../PYRAMID_ANALYSIS.md).
+> - Format template mirrored here: [`docs/analysis/PYRAMID_ANALYSIS.md`](../analysis/PYRAMID_ANALYSIS.md).
 > - Codebase grounding (verified file:line, June 2026): `components/goal_judge.py`, `prompts/goal_judge_system_prompt.j2`, `components/evaluator.py`, `components/schemas.py`, `orchestration/react_loop.py`, `services/base_config.py`, `tests/components/test_evaluator.py`, `tests/components/test_goal_judge.py`.
 > - External 2025–2026 best-practice sources (arXiv IDs cited inline and in the References appendix).
 >
-> **Anchored in:** [`AGENTS.md`](../../AGENTS.md) (four-layer architecture, anti-patterns TAP-3 / TAP-4, testing rules), [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md).
+> **Anchored in:** [`AGENTS.md`](../../AGENTS.md) (four-layer architecture, anti-patterns TAP-3 / TAP-4, testing rules), [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md).
 >
 > This document runs the four-phase pyramid loop (Decompose → Hypothesize → Act → Synthesize) once per pyramid and records the eight self-validation checks explicitly. It contains **two pyramids**:
 > - **Pyramid #1** — *Is adopting the rubric research into Fix 2 feasible, and at what scope?* (feasibility / decision)

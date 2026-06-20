@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Recipe 0 Story Docs
 overview: Create a story-narrated Recipe 0 documentation at `docs/recipes/gcp/00_adapters.md` using a mentor/teaching style that walks the reader through why each GCP adapter exists, what problem it solves, and how the composition root switches between local-dev and cloud at runtime.
 todos:

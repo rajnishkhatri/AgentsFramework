@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'SPIKE_A — CopilotKit + AG-UI integration'
+description: 'All three CopilotKit v2 hook patterns the V3 plan depends on (frontend tools / generative UI / live state) work end-to-end on a Next.js 16 + React 19 + Tailwind 4 stack against'
+tags: [plan]
+---
+
 # SPIKE_A — CopilotKit + AG-UI integration
 
 | Field | Value |

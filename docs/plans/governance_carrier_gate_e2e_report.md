@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Carrier-gate E2E validation — report'
+description: 'Status: validation report — 2026-06-17.'
+tags: [plan]
+---
+
 # Carrier-gate E2E validation — report
 
 **Status:** validation report — **2026-06-17**. Generated from a live T3 run against the deployed prod stack.

@@ -1,7 +1,7 @@
 """L2 Contract: InstrumentedCheckpointer tests (STORY-412).
 
 These tests close the TAP-1 (tautological-test) gap noted in
-``docs/PHASE4_CODE_REVIEW.md`` for STORY-412 by exercising the wrapper
+``docs/reviews/PHASE4_CODE_REVIEW.md`` for STORY-412 by exercising the wrapper
 both at the unit level (sync + async, passthrough) and at the
 integration level (``build_graph`` + ``MemorySaver``).
 """

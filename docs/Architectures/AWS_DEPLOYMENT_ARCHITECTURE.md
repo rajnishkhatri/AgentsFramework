@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'AWS Deployment Architecture'
+description: 'Scope: Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Amazon Web Services (AWS).'
+tags: [architecture]
+---
+
 # AWS Deployment Architecture
 
 **Scope:** Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Amazon Web Services (AWS).

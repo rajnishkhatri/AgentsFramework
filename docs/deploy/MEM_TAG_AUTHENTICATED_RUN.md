@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Walkthrough — one authenticated memory run on the `mem` tag → trace fetch → governance audit'
+description: '/run/stream verifies a real WorkOS RS256 JWT against WorkOS''s live JWKS'
+tags: [deploy]
+---
+
 # Walkthrough — one authenticated memory run on the `mem` tag → trace fetch → governance audit
 
 > Goal: get **one** authenticated run through the memory-ON backend that emits

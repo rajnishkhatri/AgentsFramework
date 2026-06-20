@@ -1,10 +1,17 @@
+---
+type: plan
+title: 'Agent-UI Adapter Layer Plan v1.1'
+description: 'Replace the v1 §5 "what is NOT a port" table with a three-column version that records ground truth as of this evaluation.'
+tags: [plan]
+---
+
 # Agent-UI Adapter Layer Plan v1.1
 
 > **Status**: planning artifact, peer to [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md). Describes how to author the implementation-facing `AGENT_UI_ADAPTER_PLAN.md` and the four supporting documentation edits.
 >
 > **Lineage**:
 > - v0 (cursor plan): brainstorm-to-plan conversion. Captured initial six-port adapter design.
-> - v1 (cursor plan): four high-impact fixes from end-to-end critique against [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md), [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md), [AGENTS.md](../../../AGENTS.md), and [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md). Collapsed to single-port adapter; added STYLE_GUIDE_PATTERNS H8 entry; tightened translator-as-ACL rule; added wire-schema-versioning with signature-roundtrip requirement.
+> - v1 (cursor plan): four high-impact fixes from end-to-end critique against [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md), [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md), [AGENTS.md](../../../AGENTS.md), and [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md). Collapsed to single-port adapter; added STYLE_GUIDE_PATTERNS H8 entry; tightened translator-as-ACL rule; added wire-schema-versioning with signature-roundtrip requirement.
 > - v1.1 (this document): four additive edits from gap research against the actual codebase and the AG-UI specification. None change locked decisions.
 
 ---
@@ -27,7 +34,7 @@ Replace the v1 §5 "what is NOT a port" table with a three-column version that r
 
 | Concern | NOT an adapter port | Consumed from (status today) |
 |---|---|---|
-| Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
+| Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
 | Identity / JWT verify | `IdentityVerifier` | [services/governance/agent_facts_registry.py](../../../services/governance/agent_facts_registry.py) (**exists**; HMAC-style `compute_signature` with `AGENT_FACTS_SECRET`) |
 | Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
 | Tool registry | `ToolRegistry` | [services/tools/registry.py](../../../services/tools/registry.py) (**exists**) |
@@ -48,7 +55,7 @@ with:
 > Phase 1 (V3 Phase 1):
 >
 > **Pre-work (blocks adapter Phase 1):**
-> - Build `services/long_term_memory.py` per H6 ([docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537)
+> - Build `services/long_term_memory.py` per H6 ([docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465-537)
 > - Build `services/trace_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern, scoped to `TrustTraceRecord` emission and routing
 > - Build `services/authorization_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664), receiving `AgentFacts` as a parameter (Critical Design Rule, lines 641-661)
 >
@@ -114,7 +121,7 @@ When this plan is executed, the following five edits land:
 2. **Edits**: [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md) — rename `middleware/` references to `agent_ui_adapter/` (Python package, underscored) and `agent-ui-adapter` (Cloud Run service, hyphenated) in sections 1, 3, 3.1, 4, 6.1, 8 Phase 1, 16; add forward-link to `AGENT_UI_ADAPTER_PLAN.md` in section 1.
 3. **Edits**: [AGENTS.md](../../../AGENTS.md) — add `agent_ui_adapter/` row to Key Directories; append architecture invariant 9 with the three-rule translator constraint and single-port note.
 4. **Edits**: [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) — add short "Outer Adapter Ring" subsection citing [utils/cloud_providers/](../../../utils/cloud_providers/) precedent and noting single-port + horizontal-services-consumption design. Do NOT modify any other part.
-5. **Edits**: [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) — append H8 Outer-Ring Wire Adapter row to Pattern Catalog Overview table (lines 35-50); add full H8 section after H7 (line 587), matching H1-H7 shape.
+5. **Edits**: [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) — append H8 Outer-Ring Wire Adapter row to Pattern Catalog Overview table (lines 35-50); add full H8 section after H7 (line 587), matching H1-H7 shape.
 
 ---
 

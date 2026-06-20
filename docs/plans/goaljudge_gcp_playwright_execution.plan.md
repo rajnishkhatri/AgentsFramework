@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge GCP Playwright — Execution Plan'
+description: 'Backend /health (https://agent-backend-combined-w65nrxwkiq-uc.a.run.app/health — note: /healthz'
+tags: [plan]
+---
+
 # GoalJudge GCP Playwright — Execution Plan
 
 > **Purpose.** Operational runbook to execute the staged GoalJudge UI batch (G1 gate) against

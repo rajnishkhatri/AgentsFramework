@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Deep Agent Sprint Board'
+description: 'Build a sprint board for the deep-agent capability roadmap in docs/plans/deep_agent_capabilities_793b5c9b.plan.md, with clear sprint scopes, user stories, and a strict Definition'
+tags: [plan]
+---
+
 # Deep Agent Sprint Board
 
 ## Objective
@@ -5,7 +12,7 @@
 Build a sprint board for the deep-agent capability roadmap in `docs/plans/deep_agent_capabilities_793b5c9b.plan.md`, with clear sprint scopes, user stories, and a strict Definition of Done aligned with:
 
 - `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`
-- `docs/STYLE_GUIDE_LAYERING.md`
+- `docs/style-guides/STYLE_GUIDE_LAYERING.md`
 - `research/tdd_agentic_systems_prompt.md`
 
 ## Sprint Breakdown
@@ -68,7 +75,7 @@ Lock delivery contracts for Sprint 1-4 so implementation can proceed without amb
 | Story                              | Goal                                                            | Scope                                                                                           | Dependencies | Acceptance and Evidence                                                                                                      |
 | ---------------------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | S0-1 Deep-Agent Epic Decomposition | Decompose P0-P4 into reviewable sprint stories                  | `docs/plans/deep_agent_capabilities_793b5c9b.plan.md`, this board                               | D0.1         | Each capability mapped to a sprint story with ID, owner, and acceptance criteria; evidence: updated board and plan doc links |
-| S0-2 Layer Boundary Contract       | Define and freeze allowed dependency flows for targeted modules | `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`, `docs/STYLE_GUIDE_LAYERING.md`                 | D0.1         | Boundary checklist added and referenced by all sprint stories; evidence: checklist section committed                         |
+| S0-2 Layer Boundary Contract       | Define and freeze allowed dependency flows for targeted modules | `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`, `docs/style-guides/STYLE_GUIDE_LAYERING.md`                 | D0.1         | Boundary checklist added and referenced by all sprint stories; evidence: checklist section committed                         |
 | S0-3 Test Strategy Contract        | Define per-layer test strategy for deep-agent changes           | `research/tdd_agentic_systems_prompt.md`, `tests/architecture/` conventions                     | D0.2         | Each story has failure-first test notes and required test layer tags; evidence: story entries include explicit L1-L4 plan    |
 | S0-4 Story Template Finalization   | Finalize reusable story card format for all sprints             | this board                                                                                      | D0.1, D0.2   | Template includes scope, blockers, TDD plan, architecture impact, and evidence links; evidence: template section updated     |
 | S0-5 Sprint 1 Readiness Gate       | Confirm Sprint 1 can start with no contract ambiguities         | Sprint 1 mapped files (`orchestration/state.py`, `services/tools/`*, `components/evaluator.py`) | S0-1 to S0-4 | Sprint 1 stories are marked ready with dependencies/risk flags and DoD traceability; evidence: readiness checklist complete  |
@@ -362,7 +369,7 @@ For each story in each sprint:
 
 - `code_reviewer` criteria are satisfied for the touched concern area (runtime/tools/docs/prompts).
 - Four-layer dependency rules remain compliant per `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`.
-- Coding/layering conventions match `docs/STYLE_GUIDE_LAYERING.md`.
+- Coding/layering conventions match `docs/style-guides/STYLE_GUIDE_LAYERING.md`.
 - TDD execution follows `research/tdd_agentic_systems_prompt.md`:
   - failure paths first
   - layer-appropriate strategy (L1 Red-Green, L2 contract, L3 eval, L4 simulation)

@@ -1,4 +1,5 @@
 ---
+type: plan
 name: GoalJudge Synthetic Saturation Corpus
 overview: Create a new walk-through (03_...) and supporting artifacts that generate a structured synthetic corpus sized for stratified coverage to saturation of the seeded taxonomy (~3-5 examples per failure code across 19 distinct codes, single coder), built to exercise every open code from the Phase 2 report plus the playbook seed codes plus J2/J3 judge-quality codes, so the pipeline can move from open coding to axial coding / failure-taxonomy (Stage 3).
 todos:

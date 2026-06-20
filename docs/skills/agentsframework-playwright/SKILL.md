@@ -28,9 +28,9 @@ codebase has already paid for.
 
 Source of truth in-repo:
 - `frontend/e2e/README.md` — the suite's own guide (tiers, quick start, layout)
-- `docs/PLAYWRIGHT_TESTING_ARCHITECTURE.md` — the architecture & rationale
-- `docs/FRONTEND_VALIDATION.md` — the SS-numbered manual checklist specs mirror
-- `docs/STYLE_GUIDE_FRONTEND.md` — the F-R rules and FE-AP anti-patterns
+- `docs/Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md` — the architecture & rationale
+- `docs/guides/FRONTEND_VALIDATION.md` — the SS-numbered manual checklist specs mirror
+- `docs/style-guides/STYLE_GUIDE_FRONTEND.md` — the F-R rules and FE-AP anti-patterns
 
 ## The three tiers (this repo's exact mapping)
 
@@ -183,7 +183,7 @@ fixes. The headlines:
 
 ## Repo conventions to honor
 
-- **Spec naming is a YES/NO outcome** mirroring `docs/FRONTEND_VALIDATION.md`
+- **Spec naming is a YES/NO outcome** mirroring `docs/guides/FRONTEND_VALIDATION.md`
   (cite the SS section in the file header).
 - **Skip gracefully** when prerequisites are missing (`test.skip(condition, …)`)
   so unauthenticated CI doesn't crash.

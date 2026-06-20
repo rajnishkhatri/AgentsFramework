@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat Persistence + Memory Integration: Design'
+description: '"What the model needs" (checkpointer state) is separated from "what the UI'
+tags: [plan]
+---
+
 # Chat Persistence + Memory Integration: Design
 
 > **Status.** Design document — companion to

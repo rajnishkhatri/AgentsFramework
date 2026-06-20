@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'FRONTEND_PLAN.md — Web Chat UI for the ReAct Agent'
+description: 'Ship a Claude-style web chat for the existing LangGraph ReAct agent — Next.js 15 (App Router) on Vercel with Tailwind + shadcn/ui, talking over Server-Sent Events to a new FastAPI'
+tags: [plan]
+---
+
 # FRONTEND_PLAN.md — Web Chat UI for the ReAct Agent
 
 > **Status**: planning. No code written yet. This document is the source of truth for v1 frontend + AWS backend exposure work. It is structured using the Pyramid Principle (`prompts/StructuredReasoning/_pyramid_brain.j2`).

@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'GoalJudge Synthetic Prompt Matrix — Manual Walkthrough'
+description: 'Goal: Hand-validate the 47-case live synthetic prompt matrix (Phase 2b saturation corpus) the same way 02 — UI + Langfuse validation validates P1–P5: run each prompt, record'
+tags: [walk-through]
+---
+
 # GoalJudge Synthetic Prompt Matrix — Manual Walkthrough
 
 > **Generated from** [`tests/fixtures/goaljudge/case_registry.py`](../../tests/fixtures/goaljudge/case_registry.py) via [`scripts/generate_goaljudge_manual_walkthrough.py`](../../scripts/generate_goaljudge_manual_walkthrough.py). Re-run the generator after editing the registry so this document stays in sync.

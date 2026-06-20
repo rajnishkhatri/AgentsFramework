@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Deep Agent Capabilities Sprint Board'
+description: 'This document is the execution board for the deep-agent capability ladder (P0-P4).'
+tags: [plan]
+---
+
 # Deep Agent Capabilities Sprint Board
 
 This document is the execution board for the deep-agent capability ladder (P0-P4). It converts the roadmap into sprints, user stories, and quality gates aligned to architecture, style, and TDD requirements.
@@ -31,7 +38,7 @@ flowchart TD
 
 - `code_reviewer` acceptance is documented for touched concern areas.
 - Four-layer dependency rules hold per `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`.
-- Coding and layering conventions match `docs/STYLE_GUIDE_LAYERING.md`.
+- Coding and layering conventions match `docs/style-guides/STYLE_GUIDE_LAYERING.md`.
 - TDD follows `research/tdd_agentic_systems_prompt.md`:
   - failure paths first for all gates and guards
   - layer-aligned strategy (L1 red-green, L2 contract, L3 eval, L4 simulation)
@@ -62,7 +69,7 @@ Lock story decomposition, architecture boundaries, and test contracts before imp
 
 #### S0-US2: Architecture and test contract baseline
 - User story: As a reviewer, I want a clear contract for layer boundaries and test types so later stories are rejected if they drift.
-- Files/modules: `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`, `docs/STYLE_GUIDE_LAYERING.md`, `research/tdd_agentic_systems_prompt.md` (reference alignment)
+- Files/modules: `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`, `docs/style-guides/STYLE_GUIDE_LAYERING.md`, `research/tdd_agentic_systems_prompt.md` (reference alignment)
 - Dependencies: S0-US1
 - Acceptance criteria:
   - Story template includes L1-L4 testing guidance.

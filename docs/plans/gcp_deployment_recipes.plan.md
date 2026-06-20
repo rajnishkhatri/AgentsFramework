@@ -1,4 +1,5 @@
 ---
+type: plan
 name: GCP Deployment Recipes
 overview: Component-by-component GCP deployment recipes for Tier A (~$12–15/mo), using a new GCP-native OpenTofu stack in `infra/gcp/`, Recipe 0 adapters first, single combined Cloud Run backend (Option A), plus future Tier B decoupled recipes and a human setup/review runbook.
 todos:

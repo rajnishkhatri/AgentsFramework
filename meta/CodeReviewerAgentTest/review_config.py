@@ -11,7 +11,7 @@ Example file (see ``configs/phase1.json``)::
       "model_env_var": "MODEL_NAME",
       "files": ["trust/__init__.py", ...],
       "output_json": "docs/PHASE1_CODE_REVIEW.json",
-      "output_md":   "docs/PHASE1_CODE_REVIEW.md"
+      "output_md":   "docs/reviews/PHASE1_CODE_REVIEW.md"
     }
 """
 

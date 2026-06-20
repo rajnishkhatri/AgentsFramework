@@ -1,7 +1,7 @@
 /**
  * CSP strict-mode security tests (SS3.1).
  *
- * Mirrors the manual checks in `docs/FRONTEND_VALIDATION.md` SS3.1 and the
+ * Mirrors the manual checks in `docs/guides/FRONTEND_VALIDATION.md` SS3.1 and the
  * automated checker in `frontend/scripts/check_csp_strict.ts`.
  *
  * Auto-reject anti-pattern: FE-AP-19 (CSP must not contain 'unsafe-inline'

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Debug Session: S2 No-Progress Detection Failure'
+description: 'Debug session 3f33d4.'
+tags: [plan]
+---
+
 # Debug Session: S2 No-Progress Detection Failure
 
 Debug session `3f33d4`. Pins down the exact runtime mechanism behind register

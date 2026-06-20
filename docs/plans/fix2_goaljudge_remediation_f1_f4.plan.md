@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Fix 2 — GoalJudge Option B: Remediation Plan (F1–F4)'
+description: 'The Fix 2 production behaviour is sound and ships dark, but four defects make the gate''s safety claims'
+tags: [plan]
+---
+
 # Fix 2 — GoalJudge Option B: Remediation Plan (F1–F4)
 
 > **Deliverable.** Implementation **plan only** — this document changes no source. It specifies the

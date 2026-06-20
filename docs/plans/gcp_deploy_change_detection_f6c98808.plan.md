@@ -1,4 +1,5 @@
 ---
+type: plan
 name: GCP deploy change detection
 overview: Add branch-vs-main change detection (advisory/preview only) and a hybrid CalVer+SHA deploy naming scheme to the deploy-gcp skill and orchestrator, then document both in the skill guide.
 todos:

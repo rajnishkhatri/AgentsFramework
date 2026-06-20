@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Memory Pipeline Remediation
 overview: Trace-driven remediation of the memory pipeline that fixes the root cause of the cricket hallucination loop (the live Phase-1 answer-store) and the empty-panel trust gap, while deferring recall-rendering, consolidation, and provenance work to the already-designed Hermes adoptions (H1/H2/H3). Replaces the prior memory_quality_improvements plan, whose B1 store-gate would have disabled memory for normal conversation.
 todos:
@@ -34,7 +35,7 @@ isProject: false
 
 # Memory Pipeline Remediation
 
-Supersedes `memory_quality_improvements_2a574e92`. Reconciled with the live code, with [docs/research/memory/hermes_adoptions_design.md](docs/research/memory/hermes_adoptions_design.md), and with the validated multi-session walkthrough [docs/MEMORY_MULTISESSION_VALIDATED_SESSION.md](docs/MEMORY_MULTISESSION_VALIDATED_SESSION.md).
+Supersedes `memory_quality_improvements_2a574e92`. Reconciled with the live code, with [docs/research/memory/hermes_adoptions_design.md](docs/research/memory/hermes_adoptions_design.md), and with the validated multi-session walkthrough [docs/analysis/MEMORY_MULTISESSION_VALIDATED_SESSION.md](../analysis/MEMORY_MULTISESSION_VALIDATED_SESSION.md).
 
 ## Independent confirmation from the validated multi-session run (2026-06-18)
 

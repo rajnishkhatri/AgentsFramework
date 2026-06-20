@@ -1,3 +1,10 @@
+---
+type: vision
+title: 'SOUL'
+description: 'This file is the agent''s identity.'
+tags: [vision]
+---
+
 # SOUL
 
 This file is the agent's identity. It is read first, every session, before any task. It defines who the agent is, what it values, how it speaks, and what it will never do.

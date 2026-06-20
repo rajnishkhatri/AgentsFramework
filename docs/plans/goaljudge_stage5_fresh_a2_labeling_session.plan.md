@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 5 — Fresh-Corpus A2 Labeling Session Plan'
+description: 'The A1 session (goaljudge_stage5_fresh_a1_labeling_session.plan.md)'
+tags: [plan]
+---
+
 # GoalJudge Stage 5 — Fresh-Corpus A2 Labeling Session Plan
 
 > **What this is.** The plan for the Annotator 2 (A2) labeling pass on the **79-row fresh-task

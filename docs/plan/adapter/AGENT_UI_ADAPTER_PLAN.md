@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'AGENT_UI_ADAPTER_PLAN.md — Implementation Spec for the Outermost Ring'
+description: 'Three concentric contracts make either side of the stack swappable as a config change: AG-UI is the wire ring, one new Python Protocol (AgentRuntime) is the application ring,'
+tags: [plan]
+---
+
 # AGENT_UI_ADAPTER_PLAN.md — Implementation Spec for the Outermost Ring
 
 > **Status**: implementation-facing specification. Companion to [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md).
@@ -188,7 +195,7 @@ Build status verified by globbing the actual repo as of v1.1 plan authoring:
 
 | Concern | NOT an adapter port | Consumed from (status today) |
 |---------|---------------------|------------------------------|
-| Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
+| Long-term memory | `MemoryStore` | `services/long_term_memory.py` (**to be built per H6 in [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465-537; does not exist today**) |
 | Identity / JWT verify | `IdentityVerifier` | [services/governance/agent_facts_registry.py](../../../services/governance/agent_facts_registry.py) (**exists**; HMAC-style `compute_signature` with `AGENT_FACTS_SECRET`) |
 | Trace emission | `TraceSink` | `services/trace_service.py` (**to be built per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) lines 471-478; does not exist today**) |
 | Tool registry | `ToolRegistry` | [services/tools/registry.py](../../../services/tools/registry.py) (**exists**) |
@@ -353,7 +360,7 @@ Aligned with [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIE
 
 **Pre-work (blocks adapter Phase 1):**
 
-- Build `services/long_term_memory.py` per H6 ([docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) lines 465-537). Tests in `tests/services/test_long_term_memory.py`.
+- Build `services/long_term_memory.py` per H6 ([docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) lines 465-537). Tests in `tests/services/test_long_term_memory.py`.
 - Build `services/trace_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Horizontal Services: Identity Service` pattern (lines 244-307), scoped to `TrustTraceRecord` emission and routing. Tests in `tests/services/test_trace_service.py`.
 - Build `services/authorization_service.py` per [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) `Runtime Trust Gate` (lines 599-664). Receives `AgentFacts` as a parameter (Critical Design Rule, lines 641-661). Tests in `tests/services/test_authorization_service.py`.
 
@@ -494,7 +501,7 @@ Failure-paths first per AGENTS.md "Always" rules:
 - [AGENT_UI_ADAPTER_PLAN_V1.1.md](AGENT_UI_ADAPTER_PLAN_V1.1.md) — design rationale and edit lineage
 - [FRONTEND_PLAN_V3_DEV_TIER.md](../frontend/FRONTEND_PLAN_V3_DEV_TIER.md) — deployment substrate
 - [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../../Architectures/FOUR_LAYER_ARCHITECTURE.md) — backend invariants
-- [docs/STYLE_GUIDE_PATTERNS.md](../../STYLE_GUIDE_PATTERNS.md) — H1-H7 pattern catalog (H8 added by this plan)
+- [docs/style-guides/STYLE_GUIDE_PATTERNS.md](../../style-guides/STYLE_GUIDE_PATTERNS.md) — H1-H7 pattern catalog (H8 added by this plan)
 - [AGENTS.md](../../../AGENTS.md) — repo-wide rules
 - [research/pyramid_react_system_prompt.md](../../../research/pyramid_react_system_prompt.md) — reasoning method
 

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Frontend Sprint Board'
+description: 'Goal: Lock decisions, validate all four critical integration hypotheses before committing to implementation.'
+tags: [plan]
+---
+
 # Frontend Sprint Board
 
 > **Status**: active sprint board.
@@ -8,7 +15,7 @@
 >
 > **Architecture source of truth**: [docs/Architectures/FRONTEND_ARCHITECTURE.md](../../Architectures/FRONTEND_ARCHITECTURE.md)
 >
-> **Style guide**: [docs/STYLE_GUIDE_FRONTEND.md](../../STYLE_GUIDE_FRONTEND.md)
+> **Style guide**: [docs/style-guides/STYLE_GUIDE_FRONTEND.md](../../style-guides/STYLE_GUIDE_FRONTEND.md)
 >
 > **Code review prompt**: [prompts/codeReviewer/frontend/](../../../prompts/codeReviewer/frontend/)
 >
@@ -298,4 +305,4 @@ If any Sprint 0 spike fails, these fallback paths activate:
 
 ---
 
-*This sprint board was produced from [FRONTEND_PLAN_V3_DEV_TIER.md](FRONTEND_PLAN_V3_DEV_TIER.md) (base plan), [FRONTEND_ARCHITECTURE.md](../../Architectures/FRONTEND_ARCHITECTURE.md) (architecture source of truth), [STYLE_GUIDE_FRONTEND.md](../../STYLE_GUIDE_FRONTEND.md) (code-review style guide), and [prompts/codeReviewer/frontend/](../../../prompts/codeReviewer/frontend/) (automated review dimensions FD1-FD7). Every acceptance criterion references specific rule IDs from these documents.*
+*This sprint board was produced from [FRONTEND_PLAN_V3_DEV_TIER.md](FRONTEND_PLAN_V3_DEV_TIER.md) (base plan), [FRONTEND_ARCHITECTURE.md](../../Architectures/FRONTEND_ARCHITECTURE.md) (architecture source of truth), [STYLE_GUIDE_FRONTEND.md](../../style-guides/STYLE_GUIDE_FRONTEND.md) (code-review style guide), and [prompts/codeReviewer/frontend/](../../../prompts/codeReviewer/frontend/) (automated review dimensions FD1-FD7). Every acceptance criterion references specific rule IDs from these documents.*

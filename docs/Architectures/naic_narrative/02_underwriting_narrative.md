@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'Underwriting Narrative'
+description: 'Scenario: A fictional carrier deploys a TermLifeUnderwritingAgent for accelerated term-life underwriting with a $3M auto-approval ceiling.'
+tags: [architecture]
+---
+
 # Underwriting Narrative
 
 **Scenario:** A fictional carrier deploys a `TermLifeUnderwritingAgent` for accelerated term-life underwriting with a $3M auto-approval ceiling.

@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Frontend — Ports and Adapters Deep Dive'
+description: 'Scope: frontend/lib/ports/, frontend/lib/adapters/, middleware/ports/, middleware/adapters/'
+tags: [architecture]
+---
+
 # Frontend — Ports and Adapters Deep Dive
 
 **Scope:** `frontend/lib/ports/`, `frontend/lib/adapters/`, `middleware/ports/`, `middleware/adapters/`

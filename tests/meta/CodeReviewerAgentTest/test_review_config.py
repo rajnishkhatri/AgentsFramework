@@ -61,7 +61,7 @@ def test_phase1_config_loads_clean():
     assert config.model_env_var == "MODEL_NAME"
     assert "trust/__init__.py" in config.files
     assert config.output_json == "docs/PHASE1_CODE_REVIEW.json"
-    assert config.output_md == "docs/PHASE1_CODE_REVIEW.md"
+    assert config.output_md == "docs/reviews/PHASE1_CODE_REVIEW.md"
     assert config.md_template_section_overrides["phase_label"] == "Phase 1"
 
 

@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Frontend Architecture — Overview'
+description: 'Scope: the complete client-to-graph vertical slice'
+tags: [architecture]
+---
+
 # Frontend Architecture — Overview
 
 **Scope:** the complete client-to-graph vertical slice
@@ -9,7 +16,7 @@
 - `docs/Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md` — exhaustive spec for the TS wire kernels, translators, and SSE transport
 - `docs/plan/frontend/FRONTEND_PLAN_V2_FRONTIER.md` — V2-Frontier substrate profile
 - `docs/plan/frontend/FRONTEND_PLAN_V3_DEV_TIER.md` — V3-Dev-Tier substrate profile (free-tier substrates, same architecture)
-- `docs/STYLE_GUIDE_FRONTEND.md` — prescriptive code-review style guide that turns the F-R1..F-R9 invariants from this document into reviewable W/P/A/T/X/C/B/U/S/O rules with paste-into-PR checklists
+- `docs/style-guides/STYLE_GUIDE_FRONTEND.md` — prescriptive code-review style guide that turns the F-R1..F-R9 invariants from this document into reviewable W/P/A/T/X/C/B/U/S/O rules with paste-into-PR checklists
 
 ---
 

@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Planning Pipeline — End-to-End System Diagram'
+description: 'Status: Operational companion to planning_pipeline_tiered_loops.design.md §B.'
+tags: [architecture]
+---
+
 # Planning Pipeline — End-to-End System Diagram
 
 **Status:** Operational companion to [`planning_pipeline_tiered_loops.design.md`](../plans/planning_pipeline_tiered_loops.design.md) §B.  

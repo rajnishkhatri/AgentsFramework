@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Option B — Cloud SQL–compatible BFF ThreadRepo (durable sidebar on `agent-frontend`)'
+description: 'The BFF sidebar needs DATABASE_URL to persist threads.'
+tags: [plan]
+---
+
 # Option B — Cloud SQL–compatible BFF ThreadRepo (durable sidebar on `agent-frontend`)
 
 > **Status:** ✅ CODE COMPLETE 2026-06-18 (the code-only scope; live bind + Terraform
@@ -93,7 +100,7 @@ From [`tests/architecture/test_frontend_layering.test.ts`](../../frontend/tests/
    that set** (line 49 area), or the new import is flagged. Deep subpaths are matched
    too (`drizzle-orm/node-postgres` is already covered by the `drizzle-orm` entry + the
    subpath logic at line ~154-161, verified).
-   - **The style guide already anticipates this.** `docs/STYLE_GUIDE_FRONTEND.md:157`
+   - **The style guide already anticipates this.** `docs/style-guides/STYLE_GUIDE_FRONTEND.md:157`
      lists the anti-pattern as *"raw `pg` **outside** `adapters/thread_store/`"* — i.e.
      `pg` *inside* `adapters/thread_store/` is the blessed location, exactly where this
      plan puts it. So this is the intended home for the dep, not an exception.
@@ -204,13 +211,13 @@ URL.
   `SDK_PACKAGES` set (line 39-49, verified) so the new vendor import is recognised as a
   confined SDK, not an illegal leak. (`drizzle-orm/node-postgres` is already covered
   by the existing `drizzle-orm` entry + subpath matching at line ~154-161.)
-- `docs/STYLE_GUIDE_FRONTEND.md` — add `pg` to the third-party-SDK prose: §2 line 59
+- `docs/style-guides/STYLE_GUIDE_FRONTEND.md` — add `pg` to the third-party-SDK prose: §2 line 59
   (the "Third-party SDKs … appear only inside `adapters/`" list) and reconcile line 157
   (which currently calls "raw `pg` outside `adapters/thread_store/`" the anti-pattern —
   so the *inside* case is already blessed; just make the allow-list line name `pg`
   explicitly). The architecture test's `SDK_PACKAGES` and this prose must stay in sync
   (the test header comment at line 38 points back to this §2 list). **Path correction:**
-  this file lives at `docs/STYLE_GUIDE_FRONTEND.md`, not `frontend/STYLE_GUIDE_FRONTEND.md`.
+  this file lives at `docs/style-guides/STYLE_GUIDE_FRONTEND.md`, not `frontend/STYLE_GUIDE_FRONTEND.md`.
 
 **Reused unchanged (the seam-split dividend):** `NeonThreadRepo` class +
 `translate()` (A5), `DrizzleLike` port, `ThreadRow`, `NeonFreeThreadStore`,
@@ -227,7 +234,7 @@ backend or prod. Commit boundaries suggested at the end of steps 1, 4, and 6.
 
 1. **Add the dep + arch allow-list FIRST (so later imports are legal).**
    `pnpm add pg && pnpm add -D @types/pg`; add `"pg"` to `SDK_PACKAGES`
-   (`test_frontend_layering.test.ts:49`) and to the `docs/STYLE_GUIDE_FRONTEND.md`
+   (`test_frontend_layering.test.ts:49`) and to the `docs/style-guides/STYLE_GUIDE_FRONTEND.md`
    §2 prose. Gate: `pnpm test tests/architecture/test_frontend_layering.test.ts` still
    green (no illegal import yet, list just grew). *Commit 1: "chore(frontend): allow `pg` SDK in thread_store adapter".*
 
@@ -316,7 +323,7 @@ branch `selectThreadRepo` (in `neon_thread_repo.ts:232`) so a `/cloudsql/` socke
 DSN routes to `pgDrizzleDb` while `.neon.tech` URLs keep `neonDrizzleDb`. Add `pg`
 + `@types/pg` to `package.json` (dep approved 2026-06-18), add `"pg"` to the
 `SDK_PACKAGES` allow-set in `test_frontend_layering.test.ts:49` and the
-`docs/STYLE_GUIDE_FRONTEND.md` §2 list (the style guide already names `pg`-inside-
+`docs/style-guides/STYLE_GUIDE_FRONTEND.md` §2 list (the style guide already names `pg`-inside-
 `adapters/thread_store/` as the blessed location). The
 `NeonThreadRepo` class, error translation, schema, migration, and all repo tests are
 reused unchanged — the existing `DrizzleLike` seam split means only the SDK-touching

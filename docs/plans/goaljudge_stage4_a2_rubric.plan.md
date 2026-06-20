@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 4 — A2 Rubric Implementation Plan'
+description: 'Stage 3 (Steps 0–8) produced: a 3-axis taxonomy, one binary check per Axis-A category, a per-case'
+tags: [plan]
+---
+
 # GoalJudge Stage 4 — A2 Rubric Implementation Plan
 
 > **Deliverable.** Implementation **plan only** — this document changes no source. It specifies Stage 4

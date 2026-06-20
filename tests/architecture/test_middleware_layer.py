@@ -2,7 +2,7 @@
 
 These tests enforce the dependency-direction contract from
 ``docs/Architectures/FRONTEND_ARCHITECTURE.md`` § "Middleware sub-ring" and
-``docs/STYLE_GUIDE_FRONTEND.md`` rules **M1**, **F1**, **F4**, and the
+``docs/style-guides/STYLE_GUIDE_FRONTEND.md`` rules **M1**, **F1**, **F4**, and the
 per-sub-package import tables.
 
 Each test maps to exactly one rule and is **self-referential** -- the test

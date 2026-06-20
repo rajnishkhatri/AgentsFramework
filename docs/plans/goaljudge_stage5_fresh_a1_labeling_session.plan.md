@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 5 — Fresh-Corpus A1 Labeling Session Plan'
+description: 'The first June 10 fresh Playwright batch ran against undeployed saturation-bridge middleware.'
+tags: [plan]
+---
+
 # GoalJudge Stage 5 — Fresh-Corpus A1 Labeling Session Plan
 
 > **What this is.** The plan followed in the 2026-06-10 session to unblock Phase 5 Annotator 1

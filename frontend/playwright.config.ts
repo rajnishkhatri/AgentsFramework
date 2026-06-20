@@ -1,7 +1,7 @@
 /**
  * Playwright config -- three-tier testing architecture.
  *
- * See `docs/PLAYWRIGHT_TESTING_ARCHITECTURE.md` for the tier model:
+ * See `docs/Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md` for the tier model:
  *
  *   T1 SSE-mocked   per-commit / PR        -- no env required
  *   T2 BFF integration nightly             -- MOCK_MIDDLEWARE=1

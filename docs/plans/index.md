@@ -1,0 +1,79 @@
+# Project plans registry — bundle index
+
+OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
+
+- [aws_deployment_recipes.plan](aws_deployment_recipes.plan.md) — 
+- [Option B — Cloud SQL–compatible BFF ThreadRepo (durable sidebar on `agent-frontend`)](bff_cloudsql_thread_repo.plan.md) — The BFF sidebar needs DATABASE_URL to persist threads.
+- [BlackBox → Langfuse End-to-End Validation on GCP](blackbox_e2e_validation.plan.md) — Status: In Progress
+- [Close BlackBox to Langfuse Governance Gaps](blackbox_langfuse_gap_closure.plan.md) — Status: In Progress
+- [Deploy BlackBox→Langfuse to Existing GCP Tier A](blackbox_langfuse_gcp_deploy.plan.md) — Status: Planned
+- [BlackBox → Langfuse Implementation Plan](blackbox_to_langfuse.plan.md) — Status: Complete | Sprints A, B, C, D, E, F, G complete
+- [Chat persistence — manual UI validation walkthrough](chat_persistence_manual_validation_walkthrough.md) — You drive the UI; I cross-check Langfuse traces + the Cloud SQL rows for each step.
+- [Chat Persistence + Memory Integration: Design](chat_persistence_memory_integration.design.md) — "What the model needs" (checkpointer state) is separated from "what the UI
+- [Chat Persistence + Memory Integration](chat_persistence_memory_integration.plan.md) — hard-coded in every adapter (neon_free_thread_store.ts:157,
+- [Chat Persistence Phase A + B — E2E Validation Walkthrough](chat_persistence_phaseab_e2e_walkthrough.md) — Two evidence planes, used throughout:
+- [Chat persistence Phase B — E2E validation report](chat_persistence_phaseb_e2e_report.md) — Status: generated report — VALIDATED.
+- [Chat Persistence Phase B — GCP deploy + E2E validation (Playwright screenshots + Langfuse trace eval)](chat_persistence_phaseb_gcp_e2e_validation.plan.md) — A three-artifact validation (mirrors the carrier-gate triad), plus a deploy step and a **screenshot
+- [cloud_cost_comparison_pyramids.plan](cloud_cost_comparison_pyramids.plan.md) — 
+- [Critical-Path Smoke Testing Plan](critical_path_smoke_testing.plan.md) — Status: COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)
+- [Dataset Adaptation Plan for Deep-Agent Benchmark](dataset_adaptation_plan.md) — This plan defines how to adapt external and internal sources into a stable, reproducible benchmark fixture for deep-agent capability evaluation.
+- [Deep Agent Capabilities Sprint Board](deep_agent_capabilities_793b5c9b.plan.md) — This document is the execution board for the deep-agent capability ladder (P0-P4).
+- [Deep Agent Sprint Board](deep_agent_sprint_board.md) — Build a sprint board for the deep-agent capability roadmap in docs/plans/deep_agent_capabilities_793b5c9b.plan.md, with clear sprint scopes, user stories, and a strict Definition
+- [deploy_gcp_langfuse.plan](deploy_gcp_langfuse.plan.md) — 
+- [Generalized Eval + Probe Pipeline Skill — Plan](eval_probe_pipeline_skill.plan.md) — The deep read found this repo is not missing eval infrastructure — it is missing a
+- [Eval UI — Honesty & Triage Improvements](eval_ui_honesty_improvements.plan.md) — The trace-explainability plan made three things first-class in telemetry:
+- [Fetch Memory Trace from Langfuse — plan](fetch_memory_trace.plan.md) — Pull the most recent trace that emitted memory carriers (memory.recalled / memory.stored)
+- [Fix 2 — GoalJudge Option B: Remediation Plan (F1–F4)](fix2_goaljudge_remediation_f1_f4.plan.md) — The Fix 2 production behaviour is sound and ships dark, but four defects make the gate's safety claims
+- [Fix S1 BlackBox Relay Observations](fix_s1_blackbox_relay.plan.md) — Status: Root cause fixed in code (verified locally + in Langfuse UI).
+- [Fix S1 BlackBox Relay — Deploy & Re-validation Plan](fix_s1_blackbox_relay_deploy.plan.md) — Status: Code fix + follow-up hardening complete (88/88 tests).
+- [Debug Session: S2 No-Progress Detection Failure](fix_s2_no_progress_detection.debug.md) — Debug session 3f33d4.
+- [fix_session_observations_revised.plan](fix_session_observations_revised.plan.md) — 
+- [gcp_deploy_change_detection_f6c98808.plan](gcp_deploy_change_detection_f6c98808.plan.md) — 
+- [gcp_deployment_recipes.plan](gcp_deployment_recipes.plan.md) — 
+- [GoalJudge Eval UI — Trajectory + Admissible-Capture Phase](goaljudge_eval_ui_trajectory_phase.plan.md) — Implemented phase-by-phase in the Appendix B interleaved order, backend emission
+- [GoalJudge — GCP Compatibility Plan (make the flags *settable* for validation)](goaljudge_gcp_compatibility.plan.md) — A just-completed validation walkthrough
+- [GoalJudge GCP Playwright Batch — Injection Plan (G1 via UI)](goaljudge_gcp_playwright_batch.plan.md) — Dependencies flow inward — Playwright never imports Python; it reads exported JSON only.
+- [GoalJudge GCP Playwright — Execution Plan](goaljudge_gcp_playwright_execution.plan.md) — Backend /health (https://agent-backend-combined-w65nrxwkiq-uc.a.run.app/health — note: /healthz
+- [GoalJudge Session Fixes](goaljudge_session_fixes.plan.md) — Overview: Fix issues surfaced during GoalJudge validation (GCP walkthrough Steps 2–3 and local Posture A/B runs).
+- [GoalJudge Stage 4 — A2 Rubric Implementation Plan](goaljudge_stage4_a2_rubric.plan.md) — Stage 3 (Steps 0–8) produced: a 3-axis taxonomy, one binary check per Axis-A category, a per-case
+- [GoalJudge Stage 5 — Fresh-Corpus A1 Labeling Session Plan](goaljudge_stage5_fresh_a1_labeling_session.plan.md) — The first June 10 fresh Playwright batch ran against undeployed saturation-bridge middleware.
+- [GoalJudge Stage 5 — Fresh-Corpus A2 Labeling Session Plan](goaljudge_stage5_fresh_a2_labeling_session.plan.md) — The A1 session (goaljudge_stage5_fresh_a1_labeling_session.plan.md)
+- [GoalJudge Stage 5 — Golden Dataset Implementation Plan](goaljudge_stage5_goldset.plan.md) — Stage 4 (A2 rubric) produced: the first named, testable rubric criterion (A2 · corrupt-success)
+- [GoalJudge Stage 5 — Phase 6-C v0.9 shipment + Phase 4 wave 2 brief](goaljudge_stage5_phase6c_v09_and_wave2.plan.md) — At the end of the Phase 5 + Phase 6-A/B session, two facts were true:
+- [Plan — GoalJudge Stage 5 Tier 3: Assemble `goaljudge_goldset_v1`](goaljudge_stage5_tier3_assembly.plan.md) — The Tier 2 unblock session produced (a) a confirmed A2 rubric, (b) two corrected agent fixes (planner per-task scoping + saturation task_id decoupling), and (c) enriched
+- [GoalJudge Stage 6 — Judge Calibration against `goaljudge_goldset_v1`](goaljudge_stage6_calibration.plan.md) — Stage 5 produced a trusted gold-set (101 rows now at v0.9; ~250 at v1).
+- [goaljudge_synthetic_saturation_corpus.plan](goaljudge_synthetic_saturation_corpus.plan.md) — 
+- [GoalJudge Synthetic Saturation Run Plan](goaljudge_synthetic_saturation_run.plan.md) — This document details the end-to-end execution plan for running the GoalJudge synthetic saturation corpus pipeline locally to calibrate and export a clean failure-taxonomy corpus.
+- [GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)](goaljudge_task_understanding_gate.plan.md) — Replace the constant generic success_conditions pair with a per-task
+- [Carrier-gate E2E validation — report](governance_carrier_gate_e2e_report.md) — Status: validation report — 2026-06-17.
+- [Carrier-gate E2E validation — Playwright (T3) + Langfuse export + analysis](governance_carrier_gate_e2e_validation.plan.md) — Status: EXECUTED — 2026-06-17.
+- [Carrier-gate — GCP deploy guide & required config](governance_carrier_gate_gcp_deploy.md) — Status: deploy guide — 2026-06-17.
+- [Carrier-gate post-deploy walkthrough — case-by-case report](governance_carrier_gate_post_deploy_walkthrough.md) — Status: validation walkthrough — 2026-06-17 (post-GCP deploy).
+- [Governance-trace enforcement gate — implementation plan](governance_trace_enforcement_gate.impl.md) — Status: Phase 1 + Phase 2 BUILT, committed (2386660), deployed — 2026-06-17.
+- [guardrails_tuning_refinement.plan](guardrails_tuning_refinement.plan.md) — 
+- [Guardrails Tuning Sprint Board](guardrails_tuning_sprint_board.md) — Execute the dimension-aware guardrails program defined in docs/plans/guardrails_tuning_refinement.plan.md as dependency-ordered sprints.
+- [langfuse_gcp_integration.plan](langfuse_gcp_integration.plan.md) — 
+- [LLM Eval Pipeline Skill — Plan (workspace-bound)](llm_eval_pipeline_skill.plan.md) — The deep end-to-end read of the pipeline surfaced a stack of repo-specific facts that a generic
+- [Add a Memory Layer to the Agent (wire the orphaned long-term memory into the react loop)](memory_layer_wiring.plan.md) — Gates re-run today, both rings, full:
+- [Memory Layer — Multi-Turn / Multi-Session E2E Stress + Governance Trace Analysis Plan](memory_multisession_e2e_stress.plan.md) — The memory layer is wired but never validated across sessions.
+- [memory_pipeline_remediation.plan](memory_pipeline_remediation.plan.md) — 
+- [Phase 3 PhaseLogger Wiring — Sprint Board](phase_3_phaselogger_sprint_board.md) — Execute the PhaseLogger wiring program defined in docs/plans/phase_3_phaselogger_wiring.plan.md as dependency-ordered sprints.
+- [phase_3_phaselogger_wiring.plan](phase_3_phaselogger_wiring.plan.md) — 
+- [Planning Pipeline — E2E Stress Test + Langfuse Trace Analysis Plan](planning_pipeline_e2e_stress_and_trace_analysis.plan.md) — Three deliverables, in dependency order:
+- [Planning Pipeline — Tiered Reasoning Loops: Detailed Design](planning_pipeline_tiered_loops.design.md) — The plan uses the word "protocol" for three distinct things; the design doc must keep them in separate
+- [Planning Pipeline — Tiered Reasoning Loops: Implementation Plan](planning_pipeline_tiered_loops.impl.md) — The plan's §6 / design's §D left three decisions open.
+- [Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)](planning_pipeline_tiered_loops.plan.md) — Phases 0–3 are committed.
+- [recipe_0_story_docs.plan](recipe_0_story_docs.plan.md) — 
+- [Real SearXNG web_search (sidecar on GCP) + no-progress detection](searxng_real_web_search.plan.md) — Two coupled changes: (A) swap the stub for a real, provider-agnostic web search backed by SearXNG, deployed as a Cloud Run sidecar; (B) add no-progress detection so the agent no
+- [Session Issues Register: Austin-Weather Trace Review](session_issues_register.plan.md) — Issues found while reviewing the trace from python scripts/_dbg_d9c823_send.py (trace_id 674cbac3…).
+- [T3 fan-out benchmark corpus — plan](t3_fanout_corpus.plan.md) — §2.3 of the tiered-loops plan established — from the real task corpus — that genuine parallel work is ~0%: the
+- [T3 Fan-out — GCP Stress Deploy Runbook (Stage B)](t3_gcp_stress_deploy.runbook.md) — The skill's recipe reuses the live prod image digest and only flips env vars.
+- [T3 Supervisor / Parallel Fan-out — Implementation & Validation Plan](t3_implementation_and_validation.plan.md) — The delegation substrate is already shipped — this was verified by reading source, and it changes the plan
+- [T3 Stage B — Case-by-case report (DOM ⨝ Langfuse)](t3_stage_b_case_report.md) — Each fan-out case joined on the deterministic trace_id: the browser result (cache/planning_stress/ui_batch.jsonl, latest run per case) next to the graph carriers pulled live from
+- [T3 Stage B — Case-by-case walkthrough (input → output → Langfuse reasoning)](t3_stage_b_case_walkthrough.md) — Date: 2026-06-16 | Run: 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated
+- [`components/supervisor_plan.py` — the decompose-or-decline component (T3)](t3_supervisor_plan.component.md) — Two functions, mirroring plan_builder's build_plan_artifact_llm + validate_plan_mece split: one *produces*
+- [Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox](trace_explainability_optimization.plan.md) — Make the Langfuse trace a curated, human-first explainability view — every fact
+- [trace_gap_closure.plan](trace_gap_closure.plan.md) — 
+- [UI — Left Panel Refresh & Right Panel Removal: Visual Design](ui_left_panel_refresh.design.md) — BEFORE — three columns, right "What I remember" panel present.
+- [UI — Left Panel Refresh & Right Panel Removal](ui_left_panel_refresh.plan.md) — grid lg:grid-cols-auto_1fr_auto → left ThreadSidebar · center chat ·
+- [Viveka Framework — Build Plan](viveka_framework_plan.md) — Hierarchical Depth Intelligence via Hindu Consciousness Layers

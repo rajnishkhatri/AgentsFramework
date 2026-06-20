@@ -43,6 +43,29 @@ DECLARED_BUNDLES: tuple[str, ...] = (
     "docs/recipes/governance",
     "docs/recipes/guardrails",
     "docs/recipes/memory_extractor",
+    # Phase 3 — rest of docs/ (Stage 3A: zero-coupling bundles)
+    "docs/vision",
+    "docs/contributing",
+    "docs/handbooks",
+    "docs/StructuredReasoning",
+    "docs/walk-through",
+    "docs/deploy",
+    # Phase 3 (Stage 3B: test-coupled bundles)
+    "docs/explainability",
+    "docs/Architectures",
+    # Phase 3 (Stage 3C: plan dirs — plans flat; plan multi-level)
+    "docs/plans",
+    "docs/plan",
+    "docs/plan/adapter",
+    "docs/plan/frontend",
+    "docs/plan/services",
+    "docs/plan/sprint",
+    "docs/plan/trust",
+    # Phase 3 (Stage 3D: relocated root files → thematic bundles)
+    "docs/style-guides",
+    "docs/guides",
+    "docs/analysis",
+    "docs/reviews",
 )
 
 RESERVED = {"index.md", "log.md", "README.md"}
@@ -113,14 +136,24 @@ def _is_external(target: str) -> bool:
     )
 
 
-def _resolve_md_link(source: Path, target: str, root: Path) -> Path | None:
-    """Resolve a markdown link target to a filesystem path, or None to skip."""
+def _link_resolves(source: Path, target: str, root: Path) -> bool | None:
+    """True/False if a markdown link target exists; None to skip (external/anchor).
+
+    A link counts as resolved if it exists EITHER relative to the source file's
+    directory (normal markdown) OR relative to the repo root. Docs frequently
+    link source files as ``services/x.py`` (repo-root-relative), which is a valid,
+    working reference even though it doesn't resolve from the doc's own folder.
+    """
     target = target.split("#", 1)[0].strip()  # drop anchor
     if not target or _is_external(target):
         return None
     if target.startswith("/"):
-        return root / target.lstrip("/")
-    return (source.parent / target).resolve()
+        return (root / target.lstrip("/")).exists()
+    candidates = (
+        (source.parent / target),
+        (root / target),
+    )
+    return any(c.exists() for c in candidates)
 
 
 def _is_evidence(md: Path, bundle_dir: Path) -> bool:
@@ -157,7 +190,17 @@ def main() -> int:
             if not (bundle_dir / reserved).is_file():
                 failures.append(f"{bundle}: missing required {reserved}")
 
+        # Nested declared bundles own their own files — don't double-lint them
+        # when walking a parent bundle (e.g. docs/plan vs docs/plan/adapter).
+        nested = tuple(
+            root / b
+            for b in DECLARED_BUNDLES
+            if b != bundle and (root / b).is_relative_to(bundle_dir)
+        )
+
         for md in sorted(bundle_dir.rglob("*.md")):
+            if any(md.is_relative_to(n) for n in nested):
+                continue  # owned by a deeper declared bundle
             if _is_evidence(md, bundle_dir):
                 continue  # generated artifact, not an authored Concept
             rel = md.relative_to(root)
@@ -174,8 +217,8 @@ def main() -> int:
 
             # markdown link resolution (WARN on broken — not-yet-written knowledge)
             for target in _MD_LINK.findall(prose):
-                resolved = _resolve_md_link(md, target, root)
-                if resolved is not None and not resolved.exists():
+                ok = _link_resolves(md, target, root)
+                if ok is False:
                     warnings.append(f"{rel}: broken link -> {target}")
 
             # wiki-link resolution (WARN on broken)

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Fix S1 BlackBox Relay — Deploy & Re-validation Plan'
+description: 'Status: Code fix + follow-up hardening complete (88/88 tests).'
+tags: [plan]
+---
+
 # Fix S1 BlackBox Relay — Deploy & Re-validation Plan
 
 **Status:** Code fix + follow-up hardening complete (88/88 tests). Cloud Run redeploy and live re-validation pending.

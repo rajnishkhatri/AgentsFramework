@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — 04fa2506 (2026-06-13)'
+description: 'Run: workflow (trace) 04fa25065c63459cbc9aa186ecbdff83 · subject user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX'
+tags: [review]
+---
+
 # Governance Trace Audit — 04fa2506 (2026-06-13)
 
 **Run:** workflow (trace) `04fa25065c63459cbc9aa186ecbdff83` · subject `user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX`

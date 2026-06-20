@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Agent planning and tool selection'
+description: 'The agent plans in two stages, both pure functions.'
+tags: [architecture]
+---
+
 # Agent planning and tool selection
 
 > How the agent decides task complexity, sets a planning depth, and assigns

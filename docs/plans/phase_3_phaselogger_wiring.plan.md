@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Phase 3 PhaseLogger Wiring
 overview: "Wire the PhaseLogger (Reasoning pillar) into the ReAct loop. Detailed implementation doc for phase3a/3b/3c of the master plan (.cursor/plans/governance_pipeline_enhancements_3c04ef92.plan.md). Scope: (1) persist phase boundaries to a NEW phases.jsonl (decisions.jsonl untouched, so DecisionRecord consumers are unaffected); (2) per-step _phase_starts keying so repeated loop phases do not collide; (3) a PhaseTracker context manager so every node's early-return path is balanced; (4) decision_id (uuid4 + injectable factory, signed off) threaded into MODEL_SELECTED for cross-pillar joins; (5) fix the Langfuse relay to publish phase records + extend redaction; (6) add a phase_events[] bundle field + phase_log_schema_version. ReAct loop only; Pyramid loop parity deferred to Phase 3b."
 todos:

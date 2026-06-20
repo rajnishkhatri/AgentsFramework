@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'SPIKE_C — Mem0 Cloud Hobby latency validation'
+description: 'Both search() and add() were 2–3× over the H5 budget across all'
+tags: [plan]
+---
+
 # SPIKE_C — Mem0 Cloud Hobby latency validation
 
 

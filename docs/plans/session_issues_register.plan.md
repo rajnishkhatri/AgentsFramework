@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Session Issues Register: Austin-Weather Trace Review'
+description: 'Issues found while reviewing the trace from python scripts/_dbg_d9c823_send.py (trace_id 674cbac3…).'
+tags: [plan]
+---
+
 # Session Issues Register: Austin-Weather Trace Review
 
 Issues found while reviewing the trace from `python scripts/_dbg_d9c823_send.py` (`trace_id 674cbac3…`). Each entry has a grounded root cause and a proposed fix. Nothing here is implemented yet.

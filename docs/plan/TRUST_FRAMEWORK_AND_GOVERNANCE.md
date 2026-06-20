@@ -1,3 +1,10 @@
+---
+type: roadmap
+title: 'TRUST_FRAMEWORK_AND_GOVERNANCE'
+description: '12.'
+tags: [plan]
+---
+
 12. Trust Framework And Governance
 Industry observers say that agents will streamline business processes, transform jobs, and usher in a new era of innovation. At least, that is the promise. But experience with past waves of technology teaches us a hard truth: even if a technology is inexpensive and immensely powerful, it will not gain traction unless it is trusted. The same holds for agents. Unless we trust them—and given their potential impact, unless we trust them deeply—adoption will stall long before the benefits are realized.
 

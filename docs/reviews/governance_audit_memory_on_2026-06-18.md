@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — memory-ON live run (Piece C deploy)'
+description: 'Date: 2026-06-18 (RESOLVED — was PENDING; first carrier-bearing run audited below)'
+tags: [review]
+---
+
 # Governance Trace Audit — memory-ON live run (Piece C deploy)
 
 **Date:** 2026-06-18 (RESOLVED — was PENDING; first carrier-bearing run audited below)
