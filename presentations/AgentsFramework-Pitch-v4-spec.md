@@ -1,7 +1,12 @@
 # AgentsFramework Pitch v4 — Slide-by-Slide Spec & Honesty Ledger
 
-**Built:** 2026-06-19, extended 2026-06-20 · **Source:** `AgentsFramework-Pitch-v3.pptx` (11 slides) → **`AgentsFramework-Pitch-v4.pptx` (16 slides)**
-**Change:** inserted two new sections after the Architecture slide — **SECTION 1.5 · THE RUNTIME** (3 slides) and **SECTION 1.6–1.7 · WHAT SHIPPED** (2 slides: planning + memory). No v3 content altered; v3 files untouched on disk.
+**Built:** 2026-06-19, extended 2026-06-20 · **Source:** `AgentsFramework-Pitch-v3.pptx` (11 slides) → **`AgentsFramework-Pitch-v4.pptx` (17 slides)**
+**Change:** inserted a **MISSION & SOUL** slide (slide 4, after the Answer) plus two sections after Architecture — **SECTION 1.5 · THE RUNTIME** (3 slides) and **SECTION 1.6–1.7 · WHAT SHIPPED** (2 slides: planning + memory). No v3 content altered; v3 files untouched on disk.
+
+### Slide 4 — "MISSION & SOUL · The trust layer for consequential AI" (added 2026-06-20)
+- **Visual:** dark premium slide (like the hook/close); mission sentence + a 5-row **values ↔ enforcement** table from `SOUL.md`, closed by the "trust, then verify" thesis and a `MISSION.md · SOUL.md` pointer.
+- **Marketing job:** grounds the whole deck in its conviction; ties each stated value to the real mechanism that enforces it.
+- **Honesty ✅/⚠️:** the value→mechanism mapping is honest — each maps to a verified subsystem (BlackBox, signed trust kernel + tool validators, guardrails + goal-judge, four-layer test-enforced architecture, open/auditable foundation). **NOT claimed:** that the soul file is "read every session" or "anchored in the agent-facts registry" — those `SOUL.md` self-claims have no code wiring (no soul loaded into prompts, no soul field in the registry), so the deck attributes enforcement to the mechanisms, not to the file itself. `SOUL.md`/`MISSION.md` now live at repo root and are linked from the README.
 
 ## Why v4 exists
 

@@ -11,7 +11,7 @@
 [![LangGraph](https://img.shields.io/badge/built%20on-LangGraph-ff69b4)](#-architecture)
 [![reproducible](https://img.shields.io/badge/installs-hash--locked-success)](#reproducible-builds)
 
-[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability) · [Presentations](#-presentations)
+[Quick Start](#-quick-start) · [Why This Exists](#-why-this-exists) · [Mission & Soul](#-mission--soul) · [Features](#-features) · [Architecture](#-architecture) · [Governance & Explainability](#-governance--explainability) · [Presentations](#-presentations)
 
 </div>
 
@@ -31,6 +31,17 @@ This framework bakes safety into the **architecture itself**:
 So when a regulator, a security reviewer, or your own incident post-mortem asks *"why did the agent do that?"* — you have a signed, replayable, human-readable answer.
 
 > **Who it's for:** teams building **defensible** AI for regulated or high-assurance environments (finance, healthcare, gov, enterprise) — not weekend prototypers who want a 50-line script.
+
+### 🧭 Mission & Soul
+
+The conviction behind the code: build the **trust layer for AI agents**, so the most consequential decisions — in finance, healthcare, and government — can be handed to software without handing over accountability.
+
+Two short documents state the intent, and the repository is meant to be the proof:
+
+- **[MISSION.md](MISSION.md)** — why this exists, why now, and the principles that don't change with the model, the market, or the round.
+- **[SOUL.md](SOUL.md)** — the agent's stated identity and five values, each mapped to the mechanism that enforces it: honesty → the BlackBox audit trail; bounded authority → the signed trust kernel; clear sight → the guardrails and evidence-grounded goal-judge; focus → the test-enforced architecture; sharing → the open, auditable foundation.
+
+The promise is *trust, then verify*: the documents state the values, and the running system makes them checkable in the code.
 
 ---
 
