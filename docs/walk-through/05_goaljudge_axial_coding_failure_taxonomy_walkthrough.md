@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'GoalJudge Axial Coding & Failure Taxonomy — Manual Walkthrough'
+description: 'Goal: Run the Stage 3 axial coding + failure taxonomy exercise — cluster the Stage-2 open'
+tags: [walk-through]
+---
+
 # GoalJudge Axial Coding & Failure Taxonomy — Manual Walkthrough
 
 > **Companion to** [Phase 3 axial coding report](../research/goaljudge_phase3_axial_coding.md). This

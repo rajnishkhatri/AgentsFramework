@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Viveka Framework — Build Plan'
+description: 'Hierarchical Depth Intelligence via Hindu Consciousness Layers'
+tags: [plan]
+---
+
 # Viveka Framework — Build Plan
 **Hierarchical Depth Intelligence via Hindu Consciousness Layers**
 

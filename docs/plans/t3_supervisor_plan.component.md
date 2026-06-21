@@ -1,3 +1,10 @@
+---
+type: plan
+title: '`components/supervisor_plan.py` — the decompose-or-decline component (T3)'
+description: 'Two functions, mirroring plan_builder''s build_plan_artifact_llm + validate_plan_mece split: one *produces*'
+tags: [plan]
+---
+
 # `components/supervisor_plan.py` — the decompose-or-decline component (T3)
 
 > **Scope.** Component-level spec for the single load-bearing vertical piece of T3 (§3.5a of

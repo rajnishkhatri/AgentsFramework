@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Eval UI — Honesty & Triage Improvements'
+description: 'The trace-explainability plan made three things first-class in telemetry:'
+tags: [plan]
+---
+
 # Eval UI — Honesty & Triage Improvements
 
 > **Status:** PROPOSED (2026-06-12). Future workstream — not yet scheduled.

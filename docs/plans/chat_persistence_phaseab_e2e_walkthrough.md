@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat Persistence Phase A + B — E2E Validation Walkthrough'
+description: 'Two evidence planes, used throughout:'
+tags: [plan]
+---
+
 # Chat Persistence Phase A + B — E2E Validation Walkthrough
 
 > **Type:** Case-by-case validation walkthrough. Pairs **Playwright screenshot evidence** (what the

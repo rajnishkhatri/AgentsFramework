@@ -1,3 +1,10 @@
+---
+type: notes
+title: 'Notes on the AgentsFramework Architecture'
+description: 'Author: Rajnish Khatri'
+tags: [architecture]
+---
+
 # Notes on the AgentsFramework Architecture
 
 **Author:** Rajnish Khatri

@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'NAIC Narrative Mapping: Overview and Thesis'
+description: 'Purpose: A narrative companion to the compact NAIC mapping matrix.'
+tags: [architecture]
+---
+
 # NAIC Narrative Mapping: Overview and Thesis
 
 **Purpose:** A narrative companion to the compact NAIC mapping matrix. It explains how the NAIC AI Systems Evaluation Tool 4.0 and the December 2023 Model Bulletin translate into runtime artifacts in this workspace.

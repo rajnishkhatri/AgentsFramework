@@ -1,10 +1,17 @@
+---
+type: checklist
+title: 'Backend PR Review Checklists'
+description: 'Scope: Reviewer aid for PRs touching the Python backend (trust/, services/, components/, orchestration/, meta/, StructuredReasoning/, agent_ui_adapter/).'
+tags: [architecture]
+---
+
 # Backend PR Review Checklists
 
 **Scope:** Reviewer aid for PRs touching the Python backend (`trust/`, `services/`, `components/`, `orchestration/`, `meta/`, `StructuredReasoning/`, `agent_ui_adapter/`).
 
 **Audience:** Architects and reviewers gating PRs against layer rules.
 
-**How to use this document.** Pick the checklist matching the kind of change in the PR. Paste it into the PR review comment, tick boxes as you verify, and link to the violating line if a box stays unchecked. Each checklist row references the invariant (I-x), pattern (Hx/Vx), or anti-pattern (AP-x/TAP-x) it guards — full definitions live in `docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md` and `docs/STYLE_GUIDE_PATTERNS.md`.
+**How to use this document.** Pick the checklist matching the kind of change in the PR. Paste it into the PR review comment, tick boxes as you verify, and link to the violating line if a box stays unchecked. Each checklist row references the invariant (I-x), pattern (Hx/Vx), or anti-pattern (AP-x/TAP-x) it guards — full definitions live in `docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md` and `docs/style-guides/STYLE_GUIDE_PATTERNS.md`.
 
 ---
 
@@ -252,7 +259,7 @@ If during review you observe one of these, do not approve — escalate to an arc
 - `docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md` — the canonical backend architecture with full invariant definitions (I-1..I-14), pattern catalog, and gap analysis (G-1..G-12).
 - `docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` — four-layer rules, signed-vs-unsigned classification, governance feedback phases.
 - `docs/Architectures/AGENT_UI_ADAPTER_ARCHITECTURE.md` and `AGENT_UI_ADAPTER_ADAPTERS_DEEP_DIVE.md` — adapter-ring rules (referenced by Checklist 7).
-- `docs/STYLE_GUIDE_LAYERING.md` — composable-layering base.
-- `docs/STYLE_GUIDE_PATTERNS.md` — H1–H7, V1–V6 patterns referenced by all checklists.
+- `docs/style-guides/STYLE_GUIDE_LAYERING.md` — composable-layering base.
+- `docs/style-guides/STYLE_GUIDE_PATTERNS.md` — H1–H7, V1–V6 patterns referenced by all checklists.
 - `AGENTS.md` — workspace boundaries ("always / ask first / never") and the anti-pattern catalog AP-1..AP-5 / TAP-1..TAP-4.
 - `tests/architecture/` — the live-fire enforcement layer; if a test fails, fix the placement, do not silence the test.

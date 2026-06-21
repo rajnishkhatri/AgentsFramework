@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'GoalJudge Stage 4 A2 IAA — Case Walkthrough Procedure'
+description: 'Goal: Review all 8 IAA anchor cases one at a time — UI screenshot, Langfuse trace, and'
+tags: [walk-through]
+---
+
 # GoalJudge Stage 4 A2 IAA — Case Walkthrough Procedure
 
 > **Companion to** [Stage 4 IAA README](../IAA/goalJudge/README.md) and

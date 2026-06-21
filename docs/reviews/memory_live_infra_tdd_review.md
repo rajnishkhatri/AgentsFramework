@@ -1,6 +1,13 @@
+---
+type: review
+title: 'TDD Review — Memory Layer Live-Infra Wiring (Pieces A/B/C)'
+description: 'Reviewed against: docs/reviews/TDD_AGENTS_MD_REVIEW.md — the shipped TDD guidance in AGENTS.md: anti-patterns TAP-1…TAP-4, the L1–L4 test-category-by-layer map, the pytest-marker'
+tags: [review]
+---
+
 # TDD Review — Memory Layer Live-Infra Wiring (Pieces A/B/C)
 
-**Reviewed against:** [docs/TDD_AGENTS_MD_REVIEW.md](../TDD_AGENTS_MD_REVIEW.md) — the shipped TDD guidance in `AGENTS.md`: anti-patterns **TAP-1…TAP-4**, the **L1–L4 test-category-by-layer** map, the pytest-marker convention, and the test-dependency rule.
+**Reviewed against:** [docs/reviews/TDD_AGENTS_MD_REVIEW.md](TDD_AGENTS_MD_REVIEW.md) — the shipped TDD guidance in `AGENTS.md`: anti-patterns **TAP-1…TAP-4**, the **L1–L4 test-category-by-layer** map, the pytest-marker convention, and the test-dependency rule.
 **Subject:** the three live-infra pieces on `feat/memory-layer-wiring` (uncommitted):
 - **A** — prod CRUD routes in [middleware/app_prod.py](../../middleware/app_prod.py)
 - **B** — [services/memory_backends/mem0.py](../../services/memory_backends/mem0.py) `Mem0MemoryBackend`

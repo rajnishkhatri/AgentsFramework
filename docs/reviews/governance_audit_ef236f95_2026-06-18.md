@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — ef236f95 (2026-06-18)'
+description: 'Run: workflow ef236f957b6c4e64a723bee71d857d5b · run a37cf5e5659a4efba01b7ebd281f0a73 · thread c5f62baf-d2b1-410c-9d61-17544739ac88'
+tags: [review]
+---
+
 # Governance Trace Audit — ef236f95 (2026-06-18)
 
 **Run:** workflow `ef236f957b6c4e64a723bee71d857d5b` · run `a37cf5e5659a4efba01b7ebd281f0a73` · thread `c5f62baf-d2b1-410c-9d61-17544739ac88`

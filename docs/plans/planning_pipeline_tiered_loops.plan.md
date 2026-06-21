@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)'
+description: 'Phases 0–3 are committed.'
+tags: [plan]
+---
+
 # Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)
 
 > **⚠️ Status (updated 2026-06-15): Phases 0–3 are BUILT, committed, and live-validated.** This was

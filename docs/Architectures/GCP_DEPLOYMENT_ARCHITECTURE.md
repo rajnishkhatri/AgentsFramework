@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'GCP Deployment Architecture'
+description: 'Scope: Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Google Cloud Platform (GCP).'
+tags: [architecture]
+---
+
 # GCP Deployment Architecture
 
 **Scope:** Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Google Cloud Platform (GCP).

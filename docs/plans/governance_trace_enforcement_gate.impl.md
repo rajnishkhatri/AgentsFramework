@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Governance-trace enforcement gate — implementation plan'
+description: 'Status: Phase 1 + Phase 2 BUILT, committed (2386660), deployed — 2026-06-17.'
+tags: [plan]
+---
+
 # Governance-trace enforcement gate — implementation plan
 
 **Status:** **Phase 1 + Phase 2 BUILT, committed (`2386660`), deployed — 2026-06-17.** Shadow-first, deterministic, no LLM. Phase 1 (shadow) is live + **post-deploy validated on prod** (CLEAN, gap rate 0.000). Phase 2 (enforce) is **deployed dark** — `carrier_gate_enforce_mode` defaults `"off"` (prod parity, proven byte-identical to Phase 1); flipping it ON still needs the calibration evidence + a live gap-catch (Posture C) + explicit approval.

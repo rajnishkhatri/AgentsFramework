@@ -1,7 +1,7 @@
 /**
  * Canned AG-UI event sequences for Playwright Tier 1 / Tier 2 tests.
  *
- * Each scenario mirrors a row in Appendix B of `docs/FRONTEND_VALIDATION.md`
+ * Each scenario mirrors a row in Appendix B of `docs/guides/FRONTEND_VALIDATION.md`
  * and produces a `ReadonlyArray<AGUIEvent>` that can be replayed into the
  * frontend through either:
  *

@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'Architectural Decisions Forced by the NAIC Mapping'
+description: 'Purpose: Capture the architectural choices that turn NAIC-style questions into runtime evidence.'
+tags: [architecture]
+---
+
 # Architectural Decisions Forced by the NAIC Mapping
 
 **Purpose:** Capture the architectural choices that turn NAIC-style questions into runtime evidence.

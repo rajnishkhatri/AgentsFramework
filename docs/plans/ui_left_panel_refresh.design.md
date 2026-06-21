@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'UI — Left Panel Refresh & Right Panel Removal: Visual Design'
+description: 'BEFORE — three columns, right "What I remember" panel present.'
+tags: [plan]
+---
+
 # UI — Left Panel Refresh & Right Panel Removal: Visual Design
 
 > **Status.** Design document — companion to
@@ -9,8 +16,8 @@
 >
 > **Date:** 2026-06-19. **Reads with:** the plan (phase/§-numbers refer to it),
 > the live shell ([`frontend/app/chat-shell.tsx`](../../frontend/app/chat-shell.tsx)),
-> [`STYLE_GUIDE_FRONTEND.md`](../STYLE_GUIDE_FRONTEND.md) (tokens/typography), and
-> [`STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md) (the F-R1 dumb-leaf rule
+> [`STYLE_GUIDE_FRONTEND.md`](../style-guides/STYLE_GUIDE_FRONTEND.md) (tokens/typography), and
+> [`STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md) (the F-R1 dumb-leaf rule
 > the new components obey).
 >
 > **Constraint echoed from the plan.** Colors come only from the `globals.css`

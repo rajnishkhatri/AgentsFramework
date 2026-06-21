@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import types as _types
 import json
 import logging
 import time
@@ -16,9 +17,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, RemoveMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
+from langgraph.graph.message import REMOVE_ALL_MESSAGES  # C1 §5.1 WRITE seam sentinel
 from langgraph.types import Send  # T3 fan-out: the one new langgraph surface
 
 from components.evaluator import (
@@ -58,6 +60,10 @@ from components.router import select_planning_depth
 from components.routing_config import RoutingConfig
 from components.synthesis_validator import validate_synthesis
 from components.supervisor_plan import plan_delegations
+from orchestration.message_view import (  # C1 §3.2 BaseMessage↔view boundary
+    mask_observation,
+    to_views,
+)
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 from services.goal_judge_runtime_config import (
@@ -84,6 +90,9 @@ from services.governance.carrier_gate import (
     record_enforcement,
     validate_phase_carriers,
 )
+from services.governance.context_compaction_carrier import (  # C1 §7 dual carrier
+    emit_compaction_carrier,
+)
 from services.governance.injection_classifier import InjectionClassifier
 from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
 from services.guardrails import InputGuardrail, output_guardrail_scan
@@ -92,14 +101,66 @@ from services.long_term_memory import LongTermMemoryService, MemoryBackendError
 from services.observability import FrameworkTelemetry
 from orchestration.checkpointer_wrapper import InstrumentedCheckpointer
 from services.prompt_service import PromptService
+from services.base_config import compaction_trigger_tokens
 from services.summarizer import (
     build_compaction_summary,
+    build_constraint_floor,
+    build_message_compaction,
+    collect_compaction_l1,  # C1 Phase 8 — L1 deterministic gates
+    derive_pinned_floor,
+    plan_fold_cutoff,
+    plan_observation_mask,
     should_compact_trajectory,
 )
 from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
 from services.tools.registry import ToolExecutionResult, ToolRegistry
 
 logger = logging.getLogger("orchestration.react_loop")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# C1 §5.4 — terminal gate exception.
+#
+# Raised by the WRITE seam in evaluate_node when the pinned-floor exceeds the
+# fold budget AND current_token_count > 0.95 × profile.context_window. The hard
+# ceiling lets the loop halt gracefully BEFORE the next LLM call would crash at
+# the API/transport layer (un-instrumented). Classified ``terminal`` (not
+# retryable — a retry re-sends the same over-budget transcript and crashes
+# identically); evaluate_node sets ``last_error_type="context_window_exhausted"``
+# so route_node escalates instead of backing off.
+# ════════════════════════════════════════════════════════════════════════════
+
+
+class ContextWindowExhaustedError(Exception):
+    """The terminal §5.4 ceiling: floor-exceeded fold under the hard window cap."""
+
+
+def _resolve_context_window(state: dict, agent_config: AgentConfig) -> int:
+    """Look up the active profile's ``context_window`` for §5.4 / §5.1 gating.
+
+    Reads ``state["selected_model"]`` and finds the matching ``ModelProfile``
+    on ``agent_config.models``. Falls back to ``128_000`` when neither the
+    name nor the profile is available — same default as ``ModelProfile``'s
+    typical fast-tier setting. Defensive: never raises.
+    """
+    name = state.get("selected_model", "") or agent_config.default_model
+    for profile in agent_config.models:
+        if profile.name == name:
+            return int(profile.context_window or 0) or 128_000
+    return 128_000
+
+
+def _approx_tokens(text: str) -> int:
+    """Rough token estimator (~4 chars per token) for the §5.3 floor check.
+
+    Precision is not required: the estimator only feeds the *bias-safe* floor
+    check (over-estimate → earlier decline, never a missed ceiling). Pulling
+    in a tokenizer here would add a hard dependency to the orchestration
+    layer that the rest of the loop does not need.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
 
 
 def _maybe_inject_carrier_fault(
@@ -1580,7 +1641,30 @@ def build_graph(
         # Story 1.1: build full multi-turn message list
         existing_messages = state.get("messages", [])
         if existing_messages:
-            lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
+            # ── C1 §5.2 READ seam — observation masking (transient) ────────
+            # When the master flag is on, mask the ``content`` of tool
+            # observations older than ``mask_after_steps`` blocks in the
+            # stack handed to the LLM. The persisted ``messages`` channel is
+            # NOT mutated by this — the mask is recomputed every call so
+            # next turn re-derives it from the live step_count clock.
+            if agent_config.context_compact_messages_enabled:
+                _views_in = to_views(existing_messages)
+                _mask_idxs = plan_observation_mask(
+                    _views_in,
+                    mask_after_steps=agent_config.context_mask_after_steps,
+                )
+                if _mask_idxs:
+                    _masked_existing = [
+                        mask_observation(m, "[observation masked]")
+                        if i in _mask_idxs
+                        else m
+                        for i, m in enumerate(existing_messages)
+                    ]
+                    lc_messages = [SystemMessage(content=system_prompt)] + _masked_existing
+                else:
+                    lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
+            else:
+                lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
         else:
             lc_messages = [
                 SystemMessage(content=system_prompt),
@@ -1743,6 +1827,43 @@ def build_graph(
             if error is not None:
                 result["last_llm_error"] = str(error)
                 result["last_llm_error_code"] = getattr(error, "status_code", None)
+            # ── C1 §5.2 READ seam — opt-in persisted tail constraint floor ─
+            # When ``context_constraint_reinject_turns > 0`` AND step_count
+            # % N == 0 AND there are pinned must-not constraints, append a
+            # fresh ``SystemMessage(build_constraint_floor(pinned))`` to the
+            # result delta — persisted append-only via ``add_messages``.
+            # Drop any prior tail-floor SystemMessage first (by id, using
+            # ``RemoveMessage``) so the floor does NOT accumulate one copy
+            # per cadence turn (§5.2 wiring detail).
+            _n = agent_config.context_constraint_reinject_turns
+            if (
+                agent_config.context_compact_messages_enabled
+                and _n > 0
+                and step_count % _n == 0
+            ):
+                _pinned_for_tail = derive_pinned_floor(
+                    (state.get("task_understanding") or {}).get(
+                        "success_conditions", []
+                    ),
+                    [],
+                )
+                _floor_text = build_constraint_floor(
+                    _pinned_for_tail, polarity_filter="must-not"
+                )
+                if _floor_text:
+                    _tail_ops: list[Any] = []
+                    for _msg in existing_messages or []:
+                        if (
+                            isinstance(_msg, SystemMessage)
+                            and getattr(_msg, "id", None) is not None
+                            and isinstance(_msg.content, str)
+                            and _msg.content.startswith(
+                                "Constraint floor (must-not):"
+                            )
+                        ):
+                            _tail_ops.append(RemoveMessage(id=_msg.id))
+                    _tail_ops.append(SystemMessage(content=_floor_text))
+                    result["messages"] = list(result["messages"]) + _tail_ops
             # Phase-1 shadow carrier gate: the output rail always leaves a
             # GUARDRAIL_CHECKED span (Validation pillar), even on a clean pass.
             _shadow_check_phase_carriers(
@@ -2057,6 +2178,232 @@ def build_graph(
                 result["files"] = {offload_ref: summary_text}
                 result["reasoning_trace"] = [summary_text]
                 result["truncation_applied"] = True
+
+            # ── C1 §5.1 WRITE seam — message-history fold + state rewrite ────
+            # Default OFF; when ON, the gate is master-flag AND token-trigger
+            # AND cooldown-elapsed. The §5.4 terminal gate can raise from
+            # inside the trigger arm when floor-exceeded + over the hard
+            # ceiling. Additive to the legacy trajectory path above. Every
+            # fold path emits the §7 dual carrier (Reasoning Decision +
+            # Recording CONTEXT_COMPACTED event, joined by decision_id) so
+            # the four-pillar audit can answer what/why/floor-intact from
+            # the trace alone.
+            if agent_config.context_compact_messages_enabled:
+                _ctx_window = _resolve_context_window(state, agent_config)
+                _trigger = compaction_trigger_tokens(
+                    _ctx_window,
+                    agent_config.context_compact_trigger_fraction,
+                )
+                _step = int(state.get("step_count", 0) or 0)
+                _last = int(state.get("last_compaction_step", 0) or 0)
+                _cooldown_elapsed = (
+                    _step - _last >= agent_config.context_compact_cooldown_steps
+                )
+                if token_count >= _trigger and _cooldown_elapsed and messages:
+                    _msg_list = list(messages)
+                    _views = to_views(_msg_list)
+                    _cutoff = plan_fold_cutoff(
+                        _views, keep_last_k=agent_config.context_keep_last_k
+                    )
+                    _pinned = derive_pinned_floor(
+                        (state.get("task_understanding") or {}).get("success_conditions", []),
+                        [],
+                    )
+                    _summary = build_message_compaction(
+                        _views,
+                        keep_last_k=agent_config.context_keep_last_k,
+                        pinned=_pinned,
+                    )
+                    # §5.3 fail-loud floor: estimate post-fold size; if the
+                    # summary + verbatim tail still exceeds the trigger budget,
+                    # the floor is exceeded — decline the fold (keep
+                    # constraints). The estimator is intentionally simple
+                    # (~4 chars per token); precision is not required for the
+                    # safety bias (over-estimating triggers an earlier decline).
+                    _preserved = _msg_list[_cutoff:] if _cutoff else _msg_list
+                    _est = _approx_tokens(_summary) + sum(
+                        _approx_tokens(getattr(m, "content", "")) for m in _preserved
+                    )
+                    _floor_excess = _est > _trigger
+                    # ── §8.2 L1 deterministic gates — computed BEFORE rewrite
+                    # commits. Any passed=False ⇒ decline the fold (fail-safe
+                    # AP-7). The five structural invariants: pinned substring
+                    # present, summary non-empty, tokens reduced, no orphaned
+                    # tool, floor not exceeded silently. Each result is a
+                    # clone-shape of ValidationResult (criterion / passed /
+                    # details / severity / matches).
+                    _l1_results = collect_compaction_l1(
+                        pinned=_pinned,
+                        summary=_summary,
+                        tokens_before=int(token_count or 0),
+                        tokens_after=int(_est),
+                        # Use the *post-fold* views (the preserved tail) for
+                        # the no-orphan check — that's what the model will
+                        # actually see after the rewrite commits.
+                        preserved_views=to_views(_preserved),
+                        floor_exceeded=_floor_excess,
+                        # The criterion's invariant is "floor_exceeded ⇒
+                        # fold declined". Passing fold_committed=False here
+                        # tells the criterion: "we have NOT committed yet,
+                        # so the gate cannot fail on this clause".
+                        fold_committed=False,
+                    )
+                    _l1_failed = any(not r.passed for r in _l1_results)
+                    # ``floor_exceeded`` on the carrier MUST surface BOTH
+                    # paths: classic §5.3 (over-budget) and §8.2 L1 decline.
+                    # The audit reads the decline through this flag — there
+                    # is no separate "L1-declined" wire (design §8.2
+                    # ``Live wiring`` paragraph).
+                    _floor_exceeded = _floor_excess or _l1_failed
+                    _context_exhausted = (
+                        _floor_exceeded
+                        and token_count > int(0.95 * _ctx_window)
+                    )
+
+                    # ── §7 dual carrier — Reasoning Decision FIRST (so its
+                    # decision_id flows into the Recording event), then the
+                    # Recording CONTEXT_COMPACTED event. Counts/knobs only in
+                    # the rationale — no dropped text, no constraint strings.
+                    _wf_id = state.get("workflow_id", "")
+                    _floor_text = build_constraint_floor(
+                        _pinned, polarity_filter="must-not"
+                    )
+                    _floor_hash = hashlib.sha256(
+                        _floor_text.encode("utf-8")
+                    ).hexdigest()
+                    _must_not_count = sum(
+                        1 for pc in _pinned if pc.polarity == "must-not"
+                    )
+                    _committed = not _floor_exceeded
+                    _compaction_decision = phase_logger.log_decision(
+                        _wf_id,
+                        Decision(
+                            phase=WorkflowPhase.EVALUATION,
+                            description="message-history compaction (fold)",
+                            alternatives=["keep_full"],
+                            rationale=(
+                                f"tokens={token_count}>=trigger={_trigger} "
+                                f"cooldown_ok step={_step}-{_last}>={agent_config.context_compact_cooldown_steps} "
+                                f"floor_exceeded={_floor_exceeded} "
+                                f"context_exhausted={_context_exhausted}"
+                            ),
+                            confidence=1.0,
+                        ),
+                    )
+                    _outcome = _types.SimpleNamespace(
+                        tokens_before=int(token_count or 0),
+                        tokens_after=int(_est if _committed else token_count or 0),
+                        turns_folded=int(_cutoff or 0),
+                        observations_cleared=sum(
+                            1
+                            for i, v in enumerate(_views)
+                            if i < (_cutoff or 0) and v.role == "tool"
+                        ),
+                        keep_last_k=int(agent_config.context_keep_last_k),
+                        pinned_kept=len(_pinned),
+                        must_not_count=_must_not_count,
+                        constraint_floor_hash=_floor_hash,
+                        floor_reinjected=False,
+                        floor_exceeded=bool(_floor_exceeded),
+                        context_exhausted=bool(_context_exhausted),
+                    )
+                    emit_compaction_carrier(
+                        black_box,
+                        workflow_id=_wf_id,
+                        step=_step,
+                        decision_id=_compaction_decision.decision_id,
+                        outcome=_outcome,
+                    )
+
+                    # §5.4 terminal gate — fold floor + hard ceiling. The
+                    # carrier above already landed (context_exhausted=True),
+                    # so the halt is auditable; the typed raise then escalates
+                    # via route_node.
+                    if _context_exhausted:
+                        # Stamp last_error_type for route_node escalation
+                        # (state.py:64; route branches at react_loop.py:1997).
+                        result["last_error_type"] = "context_window_exhausted"
+                        raise ContextWindowExhaustedError(
+                            "context window exhausted: pinned constraints no "
+                            "longer fit the model's context "
+                            f"(tokens={token_count}, window={_ctx_window})"
+                        )
+                    if _committed:
+                        # Emit the §5.1 rewrite: REMOVE_ALL_MESSAGES sentinel
+                        # → add_messages short-circuits → the compacted list
+                        # is what the checkpointer reloads (the §B1-R R4 fix).
+                        result["messages"] = [
+                            RemoveMessage(id=REMOVE_ALL_MESSAGES),
+                            SystemMessage(content=_summary),
+                            *_preserved,
+                        ]
+                        result["last_compaction_step"] = _step
+                        result["truncation_applied"] = True
+
+                        # ── C2 §8.3 — L2 shadow fidelity judge capture seam.
+                        # NEW caller-side sampling gate (Fix D — no sampler
+                        # existed in-repo before this; eval_capture.record is
+                        # a bare logger.info). The gate only fires on
+                        # COMMITTED folds — a declined fold has no rewrite to
+                        # grade, and emitting a fidelity capture on a no-op
+                        # would skew the Stage-1 corpus (§8.5). At sample
+                        # rate 0.0 (prod default) this is a single floating-
+                        # point compare and a branch — no eval_capture call.
+                        try:
+                            _sample_rate = float(
+                                agent_config.context_compaction_fidelity_sample_rate
+                            )
+                        except (TypeError, ValueError):
+                            _sample_rate = 0.0
+                        if _sample_rate > 0.0:
+                            import random as _random
+                            from services import eval_capture as _eval_capture
+
+                            if _random.random() < _sample_rate:
+                                # AGENTS.md §Always — identity routed via
+                                # config.configurable (services/eval_capture.py:37-38).
+                                # The L2 ai_input MAY carry the dropped-prefix
+                                # digest + constraint strings (design §8.3
+                                # privacy asymmetry with §7).
+                                _dropped_count = max(0, len(_msg_list) - len(_preserved))
+                                _ai_input: dict[str, Any] = {
+                                    "task_input": state.get("task_input", ""),
+                                    "dropped_prefix_digest": (
+                                        f"sha256:{_floor_hash[:16]}"
+                                        f" (dropped={_dropped_count} msgs)"
+                                    ),
+                                    "pinned_constraints": [
+                                        pc.text for pc in _pinned
+                                    ],
+                                    "summary": _summary,
+                                }
+                                _ai_response: dict[str, Any] = {
+                                    "decision_loss": False,
+                                    "constraint_loss": False,
+                                    "unsafe_fold": False,
+                                    "evidence_span": "",
+                                    "token_reduction_ratio": (
+                                        1.0 - (float(_est) / float(token_count))
+                                        if token_count
+                                        else 0.0
+                                    ),
+                                }
+                                try:
+                                    await _eval_capture.record(
+                                        target="compaction_fidelity",
+                                        ai_input=_ai_input,
+                                        ai_response=_ai_response,
+                                        config=config,
+                                        step=_step,
+                                        model=state.get("selected_model"),
+                                    )
+                                except Exception:
+                                    # The L2 sink MUST never break a fold —
+                                    # shadow telemetry only (AP-7).
+                                    logger.warning(
+                                        "compaction_fidelity capture failed (swallowed)",
+                                        exc_info=True,
+                                    )
 
             updated_step_count = state.get("step_count", 0) + 1
             updated_cost = state.get("total_cost_usd", 0.0)

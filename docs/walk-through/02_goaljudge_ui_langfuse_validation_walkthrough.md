@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'GoalJudge UI + Langfuse Validation — Step-by-Step Walkthrough'
+description: 'Goal: Validate, end to end, that the GoalJudge (I2 task-adaptive LLM-as-judge) produces honest GoalVerdicts and that the success → partial downgrade gate behaves correctly under'
+tags: [walk-through]
+---
+
 # GoalJudge UI + Langfuse Validation — Step-by-Step Walkthrough
 
 **Goal:** Validate, end to end, that the **GoalJudge** (I2 task-adaptive LLM-as-judge) produces honest `GoalVerdict`s and that the **success → partial downgrade gate** behaves correctly under both flag postures, by hand-driving curated prompts into the deployed **GCP frontend UI** and then **exporting the resulting Langfuse traces** (manually *and* programmatically) for downstream research.

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 6 — Judge Calibration against `goaljudge_goldset_v1`'
+description: 'Stage 5 produced a trusted gold-set (101 rows now at v0.9; ~250 at v1).'
+tags: [plan]
+---
+
 # GoalJudge Stage 6 — Judge Calibration against `goaljudge_goldset_v1`
 
 > **Status:** AUTHORED 2026-06-12 — development unblocked against the **v0.9 provisional manifest**

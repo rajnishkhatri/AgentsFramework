@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'BlackBox → Langfuse End-to-End Validation on GCP'
+description: 'Status: In Progress'
+tags: [plan]
+---
+
 # BlackBox → Langfuse End-to-End Validation on GCP
 
 **Status:** In Progress

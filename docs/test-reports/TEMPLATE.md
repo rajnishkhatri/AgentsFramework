@@ -98,7 +98,7 @@ Tick PASS / FAIL / SKIP for each section against the executed tier(s).
 
 ## 5. Auto-Reject Anti-Pattern Status
 
-These six anti-patterns from `docs/STYLE_GUIDE_FRONTEND.md` §22 are
+These six anti-patterns from `docs/style-guides/STYLE_GUIDE_FRONTEND.md` §22 are
 release blockers. ALL must be PASS or FAIL with explicit waiver.
 
 | ID | Description | Result | Evidence |
@@ -118,7 +118,7 @@ For each failed test, fill in:
 
 ### Failure 1 — `<spec file> > <test name>`
 
-- **Severity**: S0 / S1 / S2 / S3 (per `docs/FRONTEND_VALIDATION.md` §0.4)
+- **Severity**: S0 / S1 / S2 / S3 (per `docs/guides/FRONTEND_VALIDATION.md` §0.4)
 - **Reproduction**: command and steps
 - **Observed**:
 - **Expected**:
@@ -167,7 +167,7 @@ Tick = PASS, blank = NOT RUN, X = FAIL (file ticket).
 
 ## 9. Sign-off Gates
 
-Per `docs/FRONTEND_VALIDATION.md` §5:
+Per `docs/guides/FRONTEND_VALIDATION.md` §5:
 
 - [ ] **Gate 1** — Automation precondition (`pnpm typecheck && pnpm lint && pnpm test && pnpm test:arch && pnpm check:csp && ...`)
 - [ ] **Gate 2** — Manual feature checks (every box in §2.1 through §2.15 is YES on at least one project)

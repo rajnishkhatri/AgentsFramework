@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'T3 Stage B — Case-by-case report (DOM ⨝ Langfuse)'
+description: 'Each fan-out case joined on the deterministic trace_id: the browser result (cache/planning_stress/ui_batch.jsonl, latest run per case) next to the graph carriers pulled live from'
+tags: [plan]
+---
+
 # T3 Stage B — Case-by-case report (DOM ⨝ Langfuse)
 
 Each fan-out case joined on the deterministic `trace_id`: the **browser** result (`cache/planning_stress/ui_batch.jsonl`, latest run per case) next to the **graph** carriers pulled live from Langfuse. The join makes the Stage-B split legible — a correct server-side fan-out *decision* whose *answer* never reached the browser.

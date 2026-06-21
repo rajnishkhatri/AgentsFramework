@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Langfuse GCP Integration
 overview: Sprint-ready end-to-end implementation plan for wiring Langfuse Cloud telemetry into the production GCP backend, completing the sixth trace plane that the governance triangle vision requires for L5 observability and future L6 certification evidence.
 todos:

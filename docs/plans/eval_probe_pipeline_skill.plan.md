@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Generalized Eval + Probe Pipeline Skill — Plan'
+description: 'The deep read found this repo is not missing eval infrastructure — it is missing a'
+tags: [plan]
+---
+
 # Generalized Eval + Probe Pipeline Skill — Plan
 
 > **Status:** PLAN (authored 2026-06-13). Companion to

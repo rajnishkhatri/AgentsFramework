@@ -288,6 +288,38 @@ def generate_workflows(
             recorder.record(TraceEvent(
                 event_id=str(uuid.UUID(int=rng.getrandbits(128))),
                 workflow_id=wf_id,
+                event_type=EventType.MEMORY_SUPPRESSED,
+                timestamp=t,
+                details={
+                    "user_id": "seed-user",
+                    "key": wf_id,
+                    "suppressed": True,
+                },
+            ))
+            recorder.record(TraceEvent(
+                event_id=str(uuid.UUID(int=rng.getrandbits(128))),
+                workflow_id=wf_id,
+                event_type=EventType.CONTEXT_COMPACTED,
+                timestamp=t,
+                step=num_steps,
+                details={
+                    "decision_id": str(uuid.UUID(int=rng.getrandbits(128))),
+                    "tokens_before": 12000,
+                    "tokens_after": 4200,
+                    "turns_folded": 6,
+                    "observations_cleared": 4,
+                    "keep_last_k": 8,
+                    "pinned_kept": 2,
+                    "must_not_count": 1,
+                    "constraint_floor_hash": "a" * 64,
+                    "floor_reinjected": True,
+                    "floor_exceeded": False,
+                    "context_exhausted": False,
+                },
+            ))
+            recorder.record(TraceEvent(
+                event_id=str(uuid.UUID(int=rng.getrandbits(128))),
+                workflow_id=wf_id,
                 event_type=EventType.TASK_COMPLETED,
                 timestamp=t,
                 details={"status": "success"},

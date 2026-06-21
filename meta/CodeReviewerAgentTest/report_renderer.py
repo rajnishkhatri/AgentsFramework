@@ -1,6 +1,6 @@
 """Render a :class:`ReviewReport` as a 10-section markdown document.
 
-Layout mirrors :file:`docs/PHASE4_CODE_REVIEW.md`:
+Layout mirrors :file:`docs/reviews/PHASE4_CODE_REVIEW.md`:
 
   1. Governing Thought
   2. Pyramid Self-Validation Log (8 checks)

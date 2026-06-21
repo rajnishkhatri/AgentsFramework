@@ -1,3 +1,10 @@
+---
+type: handbook
+title: 'Contributor Handbook: Adding a New Adapter to `agent_ui_adapter/adapters/`'
+description: 'Audience: Contributors who want to add a new concrete AgentRuntime implementation or a new adapter family.'
+tags: [contributing]
+---
+
 # Contributor Handbook: Adding a New Adapter to `agent_ui_adapter/adapters/`
 
 **Audience:** Contributors who want to add a new concrete `AgentRuntime` implementation or a new adapter family.

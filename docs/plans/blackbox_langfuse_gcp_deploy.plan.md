@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Deploy BlackBox→Langfuse to Existing GCP Tier A'
+description: 'Status: Planned'
+tags: [plan]
+---
+
 # Deploy BlackBox→Langfuse to Existing GCP Tier A
 
 **Status:** Planned

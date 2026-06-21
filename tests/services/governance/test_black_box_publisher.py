@@ -76,6 +76,11 @@ _EXPECTED_MAPPINGS: list[tuple[EventType, str, str]] = [
     # A1 consolidation (Hermes adoption): write-side eviction activity, span like
     # the other memory carriers. Consumer-driven contract for the new EventType.
     (EventType.MEMORY_CONSOLIDATED, "span", "memory.consolidated"),
+    # C1 §7 context compaction: write-side fold activity (state["messages"]
+    # rewrite). Span like the memory carriers — details carry counts + hash +
+    # flags only (the _CompactionOutcome Protocol forbids dropped text and
+    # constraint strings). Consumer-driven contract for the new EventType.
+    (EventType.CONTEXT_COMPACTED, "span", "context.compacted"),
 ]
 
 

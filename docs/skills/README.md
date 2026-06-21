@@ -60,8 +60,8 @@ skill gives *the exact commands and selectors for here*. Read them together.
 ## Relationship to the existing docs
 
 These distill and operationalize the testing docs already in `docs/`:
-- [`PLAYWRIGHT_TESTING_ARCHITECTURE.md`](../PLAYWRIGHT_TESTING_ARCHITECTURE.md) — the T1/T2/T3 architecture & rationale
-- [`FRONTEND_VALIDATION.md`](../FRONTEND_VALIDATION.md) — the SS-numbered manual checklist the specs mirror
+- [`PLAYWRIGHT_TESTING_ARCHITECTURE.md`](../Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md) — the T1/T2/T3 architecture & rationale
+- [`FRONTEND_VALIDATION.md`](../guides/FRONTEND_VALIDATION.md) — the SS-numbered manual checklist the specs mirror
 - [`frontend/e2e/README.md`](../../frontend/e2e/README.md) — the suite's own quick-start and layout
 
 ## Contents

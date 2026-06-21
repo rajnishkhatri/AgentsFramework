@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge GCP Playwright Batch — Injection Plan (G1 via UI)'
+description: 'Dependencies flow inward — Playwright never imports Python; it reads exported JSON only.'
+tags: [plan]
+---
+
 # GoalJudge GCP Playwright Batch — Injection Plan (G1 via UI)
 
 > **Purpose.** Satisfy gate **G1** (registry-joined batch re-run) against the hosted

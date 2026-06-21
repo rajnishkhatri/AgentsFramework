@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Azure Deployment Architecture'
+description: 'Scope: Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Microsoft Azure.'
+tags: [architecture]
+---
+
 # Azure Deployment Architecture
 
 **Scope:** Deployment topology, infrastructure mapping, and cloud-native service alignment for the LangGraph-based AgentsFramework ReAct agent on Microsoft Azure.

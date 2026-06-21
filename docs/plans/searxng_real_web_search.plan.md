@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Real SearXNG web_search (sidecar on GCP) + no-progress detection'
+description: 'Two coupled changes: (A) swap the stub for a real, provider-agnostic web search backed by SearXNG, deployed as a Cloud Run sidecar; (B) add no-progress detection so the agent no'
+tags: [plan]
+---
+
 # Real SearXNG web_search (sidecar on GCP) + no-progress detection
 
 Two coupled changes: (A) swap the stub for a real, provider-agnostic web search backed by SearXNG, deployed as a Cloud Run sidecar; (B) add no-progress detection so the agent no longer loops on a non-advancing tool (issue I1). Both partially reinforce each other: a real backend returns `ok=False` on failure, and the no-progress guard caps repeats regardless of backend.

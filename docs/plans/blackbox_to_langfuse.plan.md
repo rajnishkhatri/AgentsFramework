@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'BlackBox → Langfuse Implementation Plan'
+description: 'Status: Complete | Sprints A, B, C, D, E, F, G complete'
+tags: [plan]
+---
+
 # BlackBox → Langfuse Implementation Plan
 
 **Status:** Complete | Sprints A, B, C, D, E, F, G complete

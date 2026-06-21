@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Planning Pipeline — E2E Stress Test + Langfuse Trace Analysis Plan'
+description: 'Three deliverables, in dependency order:'
+tags: [plan]
+---
+
 # Planning Pipeline — E2E Stress Test + Langfuse Trace Analysis Plan
 
 > **Status.** Planning doc — what to build to *stress-test* the four-phase tiered-reasoning ladder
@@ -10,7 +17,7 @@
 > shipped, uncommitted in the working tree). **Reads with:** the
 > [`playwright-agentic-e2e`](../skills/playwright-agentic-e2e/SKILL.md) skill (methodology) +
 > [`agentsframework-playwright`](../skills/agentsframework-playwright/SKILL.md) (workspace binding) +
-> [`PLAYWRIGHT_TESTING_ARCHITECTURE.md`](../PLAYWRIGHT_TESTING_ARCHITECTURE.md) (tier taxonomy) +
+> [`PLAYWRIGHT_TESTING_ARCHITECTURE.md`](../Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md) (tier taxonomy) +
 > [`governance-trace-audit`](../skills/governance-trace-audit/SKILL.md) (the 4-pillar trace contract).
 >
 > **Decisions locked (user, 2026-06-14):** primary tier = **T3 full-stack on Cloud Run**; stress all four failure

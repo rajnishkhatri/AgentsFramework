@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'SPIKE_C — Alternatives research'
+description: 'Why:'
+tags: [plan]
+---
+
 # SPIKE_C — Alternatives research
 
 | Field | Value |

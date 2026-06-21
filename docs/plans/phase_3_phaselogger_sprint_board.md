@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Phase 3 PhaseLogger Wiring — Sprint Board'
+description: 'Execute the PhaseLogger wiring program defined in docs/plans/phase_3_phaselogger_wiring.plan.md as dependency-ordered sprints.'
+tags: [plan]
+---
+
 # Phase 3 PhaseLogger Wiring — Sprint Board
 
 ## Objective
@@ -7,7 +14,7 @@ Execute the PhaseLogger wiring program defined in [`docs/plans/phase_3_phaselogg
 Aligned with:
 
 - [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](../Architectures/FOUR_LAYER_ARCHITECTURE.md)
-- [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md)
+- [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md)
 - [`research/tdd_agentic_systems_prompt.md`](../../research/tdd_agentic_systems_prompt.md)
 
 **Master plan:** this board implements `phase3a-persist-phases` (P2), `phase3b-wire-phases` (P1), and `phase3c-decision-id` (P4) from [`.cursor/plans/governance_pipeline_enhancements_3c04ef92.plan.md`](../../.cursor/plans/governance_pipeline_enhancements_3c04ef92.plan.md).

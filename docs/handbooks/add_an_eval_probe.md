@@ -1,3 +1,10 @@
+---
+type: handbook
+title: 'Handbook — Adding an Eval Probe to the Pipeline'
+description: 'Phases 0–4 are the spine of this handbook.'
+tags: [handbook]
+---
+
 # Handbook — Adding an Eval Probe to the Pipeline
 
 > **For:** AI engineers working in the AgentsFramework `agent` monorepo.

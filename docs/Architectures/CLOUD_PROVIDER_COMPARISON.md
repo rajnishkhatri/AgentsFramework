@@ -1,3 +1,10 @@
+---
+type: analysis
+title: 'Cloud Provider Comparison — AWS / GCP / Azure'
+description: 'Scope: Per-tier, list-price cost comparison and recommendation for deploying the AgentsFramework backend (per BACKEND_SOLUTION_ARCHITECTURE.md §3.3 and §5.5) on AWS, GCP, or Azure.'
+tags: [architecture]
+---
+
 # Cloud Provider Comparison — AWS / GCP / Azure
 
 **Scope:** Per-tier, list-price cost comparison and recommendation for deploying the AgentsFramework backend (per `BACKEND_SOLUTION_ARCHITECTURE.md` §3.3 and §5.5) on AWS, GCP, or Azure. Covers three workload tiers (dev / small-prod / scale-prod), per-tier line-item cost models, lock-in/portability radius, and the open questions a team needs to resolve before committing to a provider.
@@ -9,7 +16,7 @@
 - `docs/Architectures/AWS_DEPLOYMENT_ARCHITECTURE.md` — AWS infrastructure mapping, ALB SSE timeouts, four required code refactors.
 - `docs/Architectures/GCP_DEPLOYMENT_ARCHITECTURE.md` — GCP infrastructure mapping, Cloud Run + HTTPS LB extended timeouts, four required code refactors.
 - `docs/Architectures/AZURE_DEPLOYMENT_ARCHITECTURE.md` — Azure infrastructure mapping, ACA + AFD extended timeouts, four required code refactors.
-- `docs/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — the planning artifact behind this doc (three pyramids, evidence tables with pricing-page citations, eight-check validation logs per pyramid).
+- `docs/analysis/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — the planning artifact behind this doc (three pyramids, evidence tables with pricing-page citations, eight-check validation logs per pyramid).
 
 > **Cost-modeling posture (applies throughout).** All numbers are **list-price only**, expressed as monthly bands. Reserved Instances (AWS), Committed Use Discounts (GCP 1y/3y), Azure Reservations / Savings Plans, and Enterprise Agreements are **out of scope of the headline numbers** but are surfaced as the dominant Tier-C lever in §5. LLM token spend is **not** included (it is provider-independent under LiteLLM; see `services/llm_config.py`) but is called out in §6 because at Tier C it dwarfs the IaaS bill.
 
@@ -87,7 +94,7 @@ The per-tier recommendation in §2 is defensible only against a concrete workloa
 
 ## 4. Per-tier cost model
 
-Each subsection below lists the compute + data + network + observability + secrets line items for each cloud at that tier, with monthly list-price totals. The line-item formulas and pricing-page citations live in `docs/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` §A.4, §B.4, §C.4 (one evidence table per tier, with confidence column per row).
+Each subsection below lists the compute + data + network + observability + secrets line items for each cloud at that tier, with monthly list-price totals. The line-item formulas and pricing-page citations live in `docs/analysis/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` §A.4, §B.4, §C.4 (one evidence table per tier, with confidence column per row).
 
 ### 4.1 Tier A — Dev / free-tier (monthly list-price, USD)
 
@@ -203,7 +210,7 @@ flowchart TD
 
 ## 7. Open questions
 
-These map back to the `missing_data` and `known_weakness` gaps in `docs/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` §A.5, §B.5, §C.5. Each one is a load-bearing assumption in the recommendations above; resolving them refines or revises the pick.
+These map back to the `missing_data` and `known_weakness` gaps in `docs/analysis/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` §A.5, §B.5, §C.5. Each one is a load-bearing assumption in the recommendations above; resolving them refines or revises the pick.
 
 1. **Live workload measurement.** All tier-shape numbers (`~5 devs`, `~20 SSE sessions/day`, `~50k LLM calls/month`, `~1 TB traces/month`, etc.) are assumptions. The first month of production telemetry should reset the per-tier bands; if the actual workload is 2–3× any single anchor, re-run the per-tier model in §4.
 2. **NFS decision.** The Tier-A and Tier-B GCP picks are conditional on **not** provisioning Filestore (1 TiB minimum). The recommended alternatives are (a) container-local ephemeral disk for `cache/.agent_offload/` with per-step object-storage offload, or (b) small Postgres LOB columns for the planning artifacts. **This is the single most consequential design decision for the GCP cost model.**
@@ -217,7 +224,7 @@ These map back to the `missing_data` and `known_weakness` gaps in `docs/CLOUD_CO
 
 ## 8. References
 
-- `docs/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — the planning artifact this doc projects from. Contains three pyramids (one per tier), evidence tables with pricing-page citations and confidence scores, eight-check validation logs, and the framing-notes appendix that records the chosen narrative ordering.
+- `docs/analysis/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — the planning artifact this doc projects from. Contains three pyramids (one per tier), evidence tables with pricing-page citations and confidence scores, eight-check validation logs, and the framing-notes appendix that records the chosen narrative ordering.
 - `docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md` §3.3 (concentric rings), §5.5 (persistence and cache layout), invariant I-9 (SDK isolation in `agent_ui_adapter/adapters/runtime/`).
 - `docs/Architectures/AWS_DEPLOYMENT_ARCHITECTURE.md` — AWS infrastructure mapping; ALB 4000 s SSE timeout (`AWS_DEPLOYMENT_ARCHITECTURE.md:43`); §6 lists the four required code refactors.
 - `docs/Architectures/GCP_DEPLOYMENT_ARCHITECTURE.md` — GCP infrastructure mapping; Cloud Run + HTTPS LB extended timeouts (`GCP_DEPLOYMENT_ARCHITECTURE.md:126-127`); §6 lists the four required code refactors.

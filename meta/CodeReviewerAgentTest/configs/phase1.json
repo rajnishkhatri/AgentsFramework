@@ -33,7 +33,7 @@
   "user_id": "phase1-reviewer",
   "deterministic_only": false,
   "output_json": "docs/PHASE1_CODE_REVIEW.json",
-  "output_md": "docs/PHASE1_CODE_REVIEW.md",
+  "output_md": "docs/reviews/PHASE1_CODE_REVIEW.md",
   "md_template_section_overrides": {
     "phase_label": "Phase 1",
     "plan_reference": "[PLAN_v2.md](../PLAN_v2.md) \u00a71.1-1.8",

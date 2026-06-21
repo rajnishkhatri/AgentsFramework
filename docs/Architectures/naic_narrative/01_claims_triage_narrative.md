@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'Claims Triage Narrative'
+description: 'Scenario: A fictional carrier deploys a ClaimsTriageAgent for auto bodily-injury claims.'
+tags: [architecture]
+---
+
 # Claims Triage Narrative
 
 **Scenario:** A fictional carrier deploys a `ClaimsTriageAgent` for auto bodily-injury claims.

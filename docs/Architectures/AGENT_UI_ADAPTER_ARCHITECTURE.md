@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Agent UI Adapter — Architecture Overview'
+description: 'Scope: agent_ui_adapter/ package'
+tags: [architecture]
+---
+
 # Agent UI Adapter — Architecture Overview
 
 **Scope:** `agent_ui_adapter/` package

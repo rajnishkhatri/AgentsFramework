@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Explainability Dashboard MVP — Sprint Board'
+description: 'A new prompts/codeReviewer/explainability_frontend/ tree mirrors the existing prompts/codeReviewer/frontend/ reviewer with a reduced scope:'
+tags: [explainability]
+---
+
 # Explainability Dashboard MVP — Sprint Board
 
 > **Status:** Planning artifact. Companion to [EXPLAINABILITY_UI_BRAINSTORM.md](EXPLAINABILITY_UI_BRAINSTORM.md).
@@ -73,11 +80,11 @@ A new `prompts/codeReviewer/explainability_frontend/` tree mirrors the existing 
 - Auto-reject anti-patterns dropped: `FE-AP-4` (no `useComponent` iframes in this MVP), `FE-AP-6` (no sealed envelopes / HITL).
 - The runner stub `code_reviewer/explainability_frontend/__main__.py` is **deferred**, matching the documented `code_reviewer/frontend/` MISSING_TODAY status. Reviewer is invoked manually until the runner ships.
 
-Backend code review follows the existing backend reviewer at [prompts/codeReviewer/CodeReviewer_system_prompt.j2](../../prompts/codeReviewer/CodeReviewer_system_prompt.j2). The new horizontal service must satisfy `H1`–`H7` from [docs/STYLE_GUIDE_LAYERING.md](../STYLE_GUIDE_LAYERING.md) and the dependency rules from [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md).
+Backend code review follows the existing backend reviewer at [prompts/codeReviewer/CodeReviewer_system_prompt.j2](../../prompts/codeReviewer/CodeReviewer_system_prompt.j2). The new horizontal service must satisfy `H1`–`H7` from [docs/style-guides/STYLE_GUIDE_LAYERING.md](../style-guides/STYLE_GUIDE_LAYERING.md) and the dependency rules from [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md).
 
 ### Style Guide and Architecture Compliance
 
-- [docs/STYLE_GUIDE_FRONTEND.md](../STYLE_GUIDE_FRONTEND.md) — F / W / P / A / T / X / C / B / U families apply unchanged. S-family (auth) and most O-family (telemetry) are vacuous in MVP.
+- [docs/style-guides/STYLE_GUIDE_FRONTEND.md](../style-guides/STYLE_GUIDE_FRONTEND.md) — F / W / P / A / T / X / C / B / U families apply unchanged. S-family (auth) and most O-family (telemetry) are vacuous in MVP.
 - [docs/Architectures/FRONTEND_ARCHITECTURE.md](../Architectures/FRONTEND_ARCHITECTURE.md) — F-R1, F-R3, F-R4, F-R6 apply verbatim; F-R2/F-R8 apply with the smaller SDK list; F-R5/F-R7 are vacuous (no prompts; the browser only forwards backend-generated identifiers — it never generates `trace_id` or `event_id`); F-R9 is interpreted as "the dashboard backend is the only process that touches the filesystem; the browser never reads `cache/`/`logs/`".
 - [docs/Architectures/FOUR_LAYER_ARCHITECTURE.md](../Architectures/FOUR_LAYER_ARCHITECTURE.md) — `services/explainability_service.py` lives in the horizontal layer; imports from `services/governance/` are cross-service horizontal calls scoped to read-only methods (consistent with the H1-H6 rules and AGENTS.md's existing tolerance for inter-service reads).
 - The single-port rule of `agent_ui_adapter/` is unaffected (this MVP is a separate package).

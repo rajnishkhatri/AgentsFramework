@@ -1,3 +1,10 @@
+---
+type: reference
+title: 'End-to-End Tracing Guide'
+description: 'There are six independent but correlated planes of logging.'
+tags: [explainability]
+---
+
 # End-to-End Tracing Guide
 
 > How frontend inputs flow through to backend AgentFacts, traces, black-box recording, and observability — and how to capture logs for a live session.

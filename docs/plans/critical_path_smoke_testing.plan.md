@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Critical-Path Smoke Testing Plan'
+description: 'Status: COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)'
+tags: [plan]
+---
+
 # Critical-Path Smoke Testing Plan
 
 **Status:** COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)

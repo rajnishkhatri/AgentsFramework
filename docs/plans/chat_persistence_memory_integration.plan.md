@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat Persistence + Memory Integration'
+description: 'hard-coded in every adapter (neon_free_thread_store.ts:157,'
+tags: [plan]
+---
+
 # Chat Persistence + Memory Integration
 
 > **Status:** Phase A + Phase B IMPLEMENTED (2026-06-19, uncommitted).

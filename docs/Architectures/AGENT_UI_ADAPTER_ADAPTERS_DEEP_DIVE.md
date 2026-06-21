@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Agent UI Adapter — Adapters Deep Dive'
+description: 'Scope: agent_ui_adapter/adapters/ and the rules governing it'
+tags: [architecture]
+---
+
 # Agent UI Adapter — Adapters Deep Dive
 
 **Scope:** `agent_ui_adapter/adapters/` and the rules governing it

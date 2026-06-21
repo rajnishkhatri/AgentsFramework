@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 5 — Golden Dataset Implementation Plan'
+description: 'Stage 4 (A2 rubric) produced: the first named, testable rubric criterion (A2 · corrupt-success)'
+tags: [plan]
+---
+
 # GoalJudge Stage 5 — Golden Dataset Implementation Plan
 
 > **Deliverable.** Implementation **plan only** — this document changes no source beyond the one

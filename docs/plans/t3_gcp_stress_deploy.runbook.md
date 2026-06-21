@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'T3 Fan-out — GCP Stress Deploy Runbook (Stage B)'
+description: 'The skill''s recipe reuses the live prod image digest and only flips env vars.'
+tags: [plan]
+---
+
 # T3 Fan-out — GCP Stress Deploy Runbook (Stage B)
 
 > **You run this.** Step-by-step deploy + live-validation for T3 (Phase 4), the

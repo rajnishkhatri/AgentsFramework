@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'T3 fan-out benchmark corpus — plan'
+description: '§2.3 of the tiered-loops plan established — from the real task corpus — that genuine parallel work is ~0%: the'
+tags: [plan]
+---
+
 # T3 fan-out benchmark corpus — plan
 
 > **Scope.** A synthetic benchmark corpus that validates the T3 supervisor / parallel-fan-out tier on the

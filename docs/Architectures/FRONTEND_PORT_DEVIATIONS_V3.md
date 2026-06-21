@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Frontend Port Deviations — V3-Dev-Tier (Canonical)'
+description: 'Status: Accepted (as of Sprint 3, V3-Dev-Tier).'
+tags: [architecture]
+---
+
 # Frontend Port Deviations — V3-Dev-Tier (Canonical)
 
 **Status:** Accepted (as of Sprint 3, V3-Dev-Tier).

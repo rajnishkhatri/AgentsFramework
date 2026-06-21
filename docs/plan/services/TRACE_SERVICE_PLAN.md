@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'TRACE_SERVICE_PLAN.md — `services/trace_service.py` Implementation Plan'
+description: 'A horizontal emit + route service for TrustTraceRecord events.'
+tags: [plan]
+---
+
 # TRACE_SERVICE_PLAN.md — `services/trace_service.py` Implementation Plan
 
 > **Status**: design sub-plan for sprint S1 of [AGENT_UI_ADAPTER_SPRINTS.md](../adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md). One of three Phase 1 pre-work services per [AGENT_UI_ADAPTER_PLAN.md](../adapter/AGENT_UI_ADAPTER_PLAN.md) §11.

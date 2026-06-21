@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Memory Layer — End-to-End Validation Walkthrough (2026-06-18)'
+description: 'This is the session record for validating the live memory layer on the mem tag'
+tags: [review]
+---
+
 # Memory Layer — End-to-End Validation Walkthrough (2026-06-18)
 
 This is the session record for validating the live memory layer on the `mem` tag

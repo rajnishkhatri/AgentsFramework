@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Stage 5 — Phase 6-C v0.9 shipment + Phase 4 wave 2 brief'
+description: 'At the end of the Phase 5 + Phase 6-A/B session, two facts were true:'
+tags: [plan]
+---
+
 # GoalJudge Stage 5 — Phase 6-C v0.9 shipment + Phase 4 wave 2 brief
 
 > **Status:** Phase 6-C **DONE this session (2026-06-11)**; Phase 4 wave 2 **queued** as the next sourcing task.

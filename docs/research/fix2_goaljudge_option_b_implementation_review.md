@@ -4,7 +4,7 @@
 > "Fix 2 — GoalJudge Option B" implementation against its plan
 > (`/Users/rajnishkhatri/.cursor/plans/fix_2_goaljudge_option_b_7eabc895.plan.md`),
 > the feasibility pyramid (`docs/research/fix2_goaljudge_rubric_feasibility_pyramid.md`),
-> the TDD methodology (`research/tdd_agentic_systems_prompt.md`, `docs/TDD_AGENTS_MD_REVIEW.md`),
+> the TDD methodology (`research/tdd_agentic_systems_prompt.md`, `docs/reviews/TDD_AGENTS_MD_REVIEW.md`),
 > and `AGENTS.md`. This document only reports; it changes no source.
 >
 > **Date:** 2026-06-02. **Files reviewed (Fix 2 diff):** `components/schemas.py`,
@@ -82,7 +82,7 @@ The headline problems are concentrated in tests and validation honesty, not in t
 
 ---
 
-## 5. Reconciliation with `docs/TDD_AGENTS_MD_REVIEW.md`
+## 5. Reconciliation with `docs/reviews/TDD_AGENTS_MD_REVIEW.md`
 
 That review found AGENTS.md under-surfaced the TDD doc (anti-patterns, per-layer categories, markers). Its recommendations have since been folded into AGENTS.md (the workspace rules now contain TAP-1..4, "Test Categories by Layer," and the pytest-marker table). Mapping its criteria onto this implementation:
 

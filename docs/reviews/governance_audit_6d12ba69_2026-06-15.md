@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — 6d12ba69 (2026-06-15)'
+description: 'Run: workflow 6d12ba69cff159f69c3c1d5cfe84388c · session session-gj-stress-45-032332ec · user synthetic-saturation-user · from-step-0 · 13 obs · case'
+tags: [review]
+---
+
 # Governance Trace Audit — 6d12ba69 (2026-06-15)
 
 **Run:** workflow `6d12ba69cff159f69c3c1d5cfe84388c` · session `session-gj-stress-45-032332ec` · user `synthetic-saturation-user` · from-step-0 · 13 obs · case `FANOUT-independent-gift-shortlist-03` (T3 fan-out, stress revision)

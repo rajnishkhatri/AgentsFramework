@@ -324,6 +324,53 @@ def _fanout_join(events: list[dict]) -> dict | None:
     return None
 
 
+def _context_compacted_carriers(events: list[dict]) -> list[dict]:
+    """Every CONTEXT_COMPACTED carrier on the trace (one per fold).
+
+    The BlackBox event_type is ``context_compacted``; the Langfuse observation
+    name is ``context.compacted`` (publisher mapping at
+    ``black_box_publisher.py:118``). The trace-source loader normalizes dots to
+    underscores (line 162-167), so both sources land here as
+    ``event_type == "context_compacted"``.
+    """
+    out: list[dict] = []
+    for e in events:
+        if not (e.get("event_type") or "").endswith("context_compacted"):
+            continue
+        details = e.get("details")
+        if isinstance(details, dict):
+            out.append(details)
+    return out
+
+
+def _compaction_token_drop(carriers: list[dict]) -> tuple[int, int, float]:
+    """Per-trace (tokens_before_first_fold, tokens_after_last_fold, drop_ratio).
+
+    Drop ratio is ``1 - last_tokens_after / first_tokens_before`` over the
+    folds emitted on the trace. Returns (0, 0, 0.0) when nothing folded — the
+    caller partitions on this. Per c1_message_compaction.impl.md §11 the bar
+    is a STRICT DROP (drop_ratio >= 0.20) on the FOLDED SUBSET; rows that
+    didn't fold are not penalized.
+    """
+    if not carriers:
+        return (0, 0, 0.0)
+    before = _as_int(carriers[0].get("tokens_before"), 0)
+    after = _as_int(carriers[-1].get("tokens_after"), 0)
+    ratio = (1.0 - (after / before)) if before > 0 else 0.0
+    return (before, after, round(ratio, 3))
+
+
+def _compaction_unsafe_fold_count(carriers: list[dict]) -> int:
+    """Per-trace count of folds the L1 gate declined.
+
+    A CONTEXT_COMPACTED carrier with ``floor_exceeded=True`` is the §7-wire's
+    way of surfacing an L1 decline (impl.md §10: L1 failure rolls into
+    floor_exceeded). The inviolable §B2-R bar is ``unsafe_fold_count == 0``
+    on every trace — any non-zero is a hard gate failure.
+    """
+    return sum(1 for c in carriers if _as_bool(c.get("floor_exceeded")))
+
+
 def _fanout_partial_survived(events: list[dict]) -> bool:
     """A fault row survived partially iff the join produced a non-empty answer
     AND at least one branch failed (a sentinel was recorded) AND the run did not
@@ -489,6 +536,24 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
     # anyway). Plus partial-survival over the fault rows.
     fan = {"tp": 0, "fp": 0, "tn": 0, "fn": 0}
     fan_survival = {"eligible": 0, "survived": 0}
+    # C1 compaction (Phase 9) — partitioned over rows that ACTUALLY folded vs
+    # didn't (want_compaction is a tendency, not a guarantee). Per
+    # c1_message_compaction.impl.md §11:
+    #   - bar (folded subset): mean drop_ratio >= 0.20 (sanity-floor, not a
+    #     calibrated target; the first N real folded traces inform the gold-set
+    #     later, design §8.5)
+    #   - bar (every row): unsafe_fold_count == 0 (INVIOLABLE; §B2-R)
+    # We DO NOT track prompt-cache hit-rate here — that signal is
+    # provider-side (Anthropic prefix-cache metrics), pulled separately from the
+    # Langfuse cost panel during the live run, not from the carrier wire.
+    comp = {
+        "folded": 0,
+        "not_folded": 0,
+        "fold_counts": [],
+        "drop_ratios": [],  # only populated for folded traces
+        "unsafe_folds_total": 0,
+        "unsafe_fold_rows": [],
+    }
 
     for row in rows:
         phase = row["phase"]
@@ -604,6 +669,43 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
                 else:
                     bucket["mismatches"].append(f"NO-PARTIAL-SURVIVAL :: {case}")
 
+        elif phase == "compaction":
+            # Phase 9 — C1 message-history compaction.
+            #
+            # Hit = (folded ⇒ tokens dropped ≥20%) AND (always, unsafe_fold==0).
+            # A row that didn't fold ISN'T penalized on the drop bar
+            # (want_compaction is a tendency under model-window variance) but is
+            # still subject to the unsafe-fold bar (trivially: 0 folds ⇒ 0 unsafe).
+            carriers = _context_compacted_carriers(events)
+            fold_n = len(carriers)
+            unsafe = _compaction_unsafe_fold_count(carriers)
+            tokens_before, tokens_after, drop_ratio = _compaction_token_drop(carriers)
+            comp["fold_counts"].append(fold_n)
+            comp["unsafe_folds_total"] += unsafe
+            if unsafe > 0:
+                comp["unsafe_fold_rows"].append(case)
+                bucket["mismatches"].append(
+                    f"UNSAFE-FOLD :: {case} ({unsafe} fold(s) with floor_exceeded=True)"
+                )
+                # An unsafe fold is a hard fail regardless of token drop.
+                continue
+            if fold_n >= 1:
+                comp["folded"] += 1
+                comp["drop_ratios"].append(drop_ratio)
+                if drop_ratio >= 0.20:
+                    bucket["hits"] += 1
+                else:
+                    bucket["mismatches"].append(
+                        f"LOW-DROP :: {case} ratio={drop_ratio:.3f} "
+                        f"(before={tokens_before} after={tokens_after} folds={fold_n})"
+                    )
+            else:
+                # Did not fold — neither hit nor miss on the drop bar; record it.
+                comp["not_folded"] += 1
+                bucket["mismatches"].append(
+                    f"NO-FOLD :: {case} (under trigger; not penalized)"
+                )
+
     # finalize per-phase rates
     summary: dict[str, Any] = {"phases": {}}
     for phase, b in per_phase.items():
@@ -639,6 +741,22 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
         else 1.0
     )
     summary["partial_survival"] = fan_survival
+    # C1 compaction metrics (Phase 9). The folded subset is the scoring
+    # denominator for the drop bar; unsafe_fold rate is over every row.
+    mean_drop = (
+        round(sum(comp["drop_ratios"]) / len(comp["drop_ratios"]), 3)
+        if comp["drop_ratios"]
+        else 0.0
+    )
+    summary["compaction"] = {
+        "folded": comp["folded"],
+        "not_folded": comp["not_folded"],
+        "fold_counts": comp["fold_counts"],
+        "drop_ratios": comp["drop_ratios"],
+        "mean_drop_ratio": mean_drop,
+        "unsafe_folds_total": comp["unsafe_folds_total"],
+        "unsafe_fold_rows": comp["unsafe_fold_rows"],
+    }
     return summary
 
 
@@ -679,6 +797,22 @@ def gate_failures(summary: dict) -> list[str]:
         rate = summary.get("partial_survival_rate", 1.0)
         if rate < 1.0:
             fails.append(f"fanout partial-survival rate {rate} < 1.0")
+    # C1 compaction (Phase 9): unsafe_fold_count is the INVIOLABLE bar.
+    # Mean drop ratio ≥ 0.20 is the sanity-floor bar, only meaningful when
+    # at least one row actually folded (otherwise the live run was below
+    # the trigger threshold — a separate signal, not a gate failure).
+    comp = summary.get("compaction") or {}
+    if comp.get("unsafe_folds_total", 0) > 0:
+        fails.append(
+            f"compaction unsafe_folds_total={comp['unsafe_folds_total']} on "
+            f"{len(comp.get('unsafe_fold_rows') or [])} row(s) "
+            f"(any L1 floor_exceeded fold is a hard fail — §B2-R)"
+        )
+    if comp.get("folded", 0) >= 1 and comp.get("mean_drop_ratio", 0.0) < 0.20:
+        fails.append(
+            f"compaction mean_drop_ratio={comp['mean_drop_ratio']} < 0.20 "
+            f"on {comp['folded']} folded row(s) (sanity-floor bar)"
+        )
     return fails
 
 
@@ -818,7 +952,7 @@ def main() -> int:
     print(f"planning-stress analysis :: source={args.source} mode={mode}")
     print(f"  rows={len(rows)} jsonl={args.jsonl.name}")
     print()
-    for phase in ("depth", "replan", "reflexion", "escalation", "fanout"):
+    for phase in ("depth", "replan", "reflexion", "escalation", "fanout", "compaction"):
         p = summary["phases"].get(phase)
         if not p:
             continue
@@ -848,6 +982,14 @@ def main() -> int:
                 f"  fanout     partial-survival {summary['partial_survival_rate']:.3f} "
                 f"({ps['survived']}/{ps['eligible']} fault rows survived)"
             )
+    comp = summary.get("compaction") or {}
+    if comp.get("folded", 0) or comp.get("not_folded", 0) or comp.get("unsafe_folds_total", 0):
+        print(
+            f"  compaction folded {comp['folded']} of "
+            f"{comp['folded'] + comp['not_folded']} rows  "
+            f"mean drop {comp['mean_drop_ratio']:.3f} "
+            f"(bar 0.200, INVIOLABLE unsafe_folds={comp['unsafe_folds_total']})"
+        )
     print()
     print(
         "entry-router accuracy (depth) and escalation precision are the two halves "

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat persistence Phase B — E2E validation report'
+description: 'Status: generated report — VALIDATED.'
+tags: [plan]
+---
+
 # Chat persistence Phase B — E2E validation report
 
 **Status:** generated report — **VALIDATED**.

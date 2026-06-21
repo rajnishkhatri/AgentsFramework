@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'UI — Left Panel Refresh & Right Panel Removal'
+description: 'grid lg:grid-cols-auto_1fr_auto → left ThreadSidebar · center chat ·'
+tags: [plan]
+---
+
 # UI — Left Panel Refresh & Right Panel Removal
 
 > **Status:** IMPLEMENTED (2026-06-19). All phases 0–5 landed; 751 frontend

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Fix S1 BlackBox Relay Observations'
+description: 'Status: Root cause fixed in code (verified locally + in Langfuse UI).'
+tags: [plan]
+---
+
 # Fix S1 BlackBox Relay Observations
 
 **Status:** Root cause fixed in code (verified locally + in Langfuse UI). Cloud Run redeploy pending.

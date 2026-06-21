@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Chat persistence — manual UI validation walkthrough'
+description: 'You drive the UI; I cross-check Langfuse traces + the Cloud SQL rows for each step.'
+tags: [plan]
+---
+
 # Chat persistence — manual UI validation walkthrough
 
 **You drive the UI; I cross-check Langfuse traces + the Cloud SQL rows for each step.**

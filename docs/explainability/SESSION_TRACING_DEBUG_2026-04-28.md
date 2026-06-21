@@ -1,3 +1,10 @@
+---
+type: session-recap
+title: 'Session recap — End-to-end tracing and debugging (2026-04-28)'
+description: 'This note captures what we ran, what broke, how we fixed it, and which files changed.'
+tags: [explainability]
+---
+
 # Session recap — End-to-end tracing and debugging (2026-04-28)
 
 This note captures what we ran, what broke, how we fixed it, and which files changed. It complements [END_TO_END_TRACING_GUIDE.md](END_TO_END_TRACING_GUIDE.md).

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'T3 Supervisor / Parallel Fan-out — Implementation & Validation Plan'
+description: 'The delegation substrate is already shipped — this was verified by reading source, and it changes the plan'
+tags: [plan]
+---
+
 # T3 Supervisor / Parallel Fan-out — Implementation & Validation Plan
 
 > **Status.** Build-ready, step-by-step execution plan for Phase 4 (T3). This is the *do-this-then-that* doc.

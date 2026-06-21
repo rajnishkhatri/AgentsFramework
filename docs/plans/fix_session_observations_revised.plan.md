@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Fix Session Observations Revised
 overview: "Revised Stage-1 fix set after feasibility review: ship the real redaction bug fix, rescope the scorer fix to deterministic-safe coherence plus judge-conditional gating (no keyword-overlap gating), gate the suppression precheck behind FP tests, and redesign the loop-termination fix around a clean return contract that preserves two-tier escalation."
 todos:

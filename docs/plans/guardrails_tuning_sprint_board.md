@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Guardrails Tuning Sprint Board'
+description: 'Execute the dimension-aware guardrails program defined in docs/plans/guardrails_tuning_refinement.plan.md as dependency-ordered sprints.'
+tags: [plan]
+---
+
 # Guardrails Tuning Sprint Board
 
 ## Objective
@@ -7,7 +14,7 @@ Execute the dimension-aware guardrails program defined in [`docs/plans/guardrail
 Aligned with:
 
 - [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](../Architectures/FOUR_LAYER_ARCHITECTURE.md)
-- [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md)
+- [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md)
 - [`research/tdd_agentic_systems_prompt.md`](../../research/tdd_agentic_systems_prompt.md)
 
 Companion documentation: the [`docs/recipes/guardrails/`](../recipes/guardrails/00_overview.md) recipe series narrates each sprint for AI intern engineers.
@@ -277,7 +284,7 @@ For each story in each sprint:
 
 - `code_reviewer` criteria satisfied for the touched concern area (guardrails/prompts/services/tools/docs).
 - Four-layer dependency rules remain compliant per [`docs/Architectures/FOUR_LAYER_ARCHITECTURE.md`](../Architectures/FOUR_LAYER_ARCHITECTURE.md); the new `injection_classifier` service must not import `langgraph`/`langchain` (invariant #4).
-- Conventions match [`docs/STYLE_GUIDE_LAYERING.md`](../STYLE_GUIDE_LAYERING.md); prompts created as `.j2` and rendered via `PromptService.render_prompt()` (H1); model tiers referenced from `services/llm_config.py` (H2).
+- Conventions match [`docs/style-guides/STYLE_GUIDE_LAYERING.md`](../style-guides/STYLE_GUIDE_LAYERING.md); prompts created as `.j2` and rendered via `PromptService.render_prompt()` (H1); model tiers referenced from `services/llm_config.py` (H2).
 - TDD follows [`research/tdd_agentic_systems_prompt.md`](../../research/tdd_agentic_systems_prompt.md): failure paths first; layer-appropriate strategy (L1 Red-Green, L2 contract, L3 eval, L4 simulation); no live-LLM CI path for deterministic layers; the ONNX classifier runs as a REAL deterministic L2 test (not a live call).
 - NotInject is never used as training data (contamination guard); license + provenance recorded.
 - Required tests pass for impacted layer(s), including architecture boundary tests where relevant.

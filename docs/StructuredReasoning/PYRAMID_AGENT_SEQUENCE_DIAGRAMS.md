@@ -1,3 +1,10 @@
+---
+type: reference
+title: 'Pyramid Agent — End-to-End Sequence Diagrams'
+description: '1.'
+tags: [structured-reasoning]
+---
+
 # Pyramid Agent — End-to-End Sequence Diagrams
 
 > Readable sequence diagrams for the `StructuredReasoning/` Pyramid ReACT agent.

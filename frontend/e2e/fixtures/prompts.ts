@@ -1,7 +1,7 @@
 /**
  * Reusable prompt strings for Playwright tests.
  *
- * Mirrors Appendix B of `docs/FRONTEND_VALIDATION.md`. Each constant maps to a
+ * Mirrors Appendix B of `docs/guides/FRONTEND_VALIDATION.md`. Each constant maps to a
  * scenario in `scenarios.ts` so tests can pair the prompt with the canned
  * AG-UI event sequence that the backend would produce in response.
  */

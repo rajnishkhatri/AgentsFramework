@@ -112,3 +112,21 @@ OKF is for the shared, version-controlled, human-and-agent knowledge plane. It i
 A thin, read-only loader that surfaces a bundle into the agent's prompt
 (`additional_instructions`) is a **documented, deferred** option — see the plan —
 to be built shadow-first only when a concrete runtime-read use case exists.
+
+### Excluded directories (generated / evidence)
+
+These directories hold **generated, ephemeral, or evidence** artifacts — not authored
+knowledge — so they are **not** declared as OKF bundles and carry no `index.md`/`log.md`
+or frontmatter requirement. They are the doc-plane analogue of the recipes
+`*-workspace/` eval-evidence trees the linter already skips:
+
+| Directory | Why excluded |
+|---|---|
+| `docs/research/` | Qualitative-research outputs (open/axial coding, shadow rounds, stage reports). Stage artifacts, not final specs. (Distinct from the **declared** root `research/` design-prompt bundle.) |
+| `docs/reports/` | Session reports / gap analyses — timestamped, event-driven. |
+| `docs/test-reports/` | Playwright run reports — test outputs. |
+| `docs/IAA/` | Inter-annotator-agreement results — blind-annotation eval artifacts. |
+| `docs/amp/` | A single ephemeral workspace-review snapshot. |
+| `docs/drift/` | A JSON event-taxonomy schema (no markdown narrative). |
+
+To bundle one later, declare it in `DECLARED_BUNDLES` and add `index.md`/`log.md`.

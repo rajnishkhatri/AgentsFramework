@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Deep Agent Loop Upgrade - SCQA Justification Guide'
+description: 'This guide reframes the approved implementation plan using SCQA so researchers and architects can evaluate:'
+tags: [architecture]
+---
+
 # Deep Agent Loop Upgrade - SCQA Justification Guide
 
 ## Purpose

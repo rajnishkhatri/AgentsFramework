@@ -16,7 +16,8 @@ export type StressPhase =
   | "replan"
   | "reflexion"
   | "escalation"
-  | "fanout";
+  | "fanout"
+  | "compaction";
 
 export type PlanningStressCase = {
   case: string;
@@ -39,6 +40,12 @@ export type PlanningStressCase = {
   want_branch_count?: number;
   want_join_synthesizes?: boolean;
   want_survives_partial?: boolean;
+  // C1 message-history compaction (phase="compaction"); see
+  // c1_message_compaction.impl.md §11. want_compaction is a tendency, not a
+  // guarantee — the analyzer partitions on actual CONTEXT_COMPACTED count.
+  want_compaction?: boolean;
+  want_pinned_constraints?: string[];
+  want_unsafe_fold?: boolean;
   axis?: string[];
 };
 

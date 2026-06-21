@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'FRONTEND_PLAN_V1.md — Web Chat UI for the ReAct Agent (revision 2)'
+description: 'Ship a Claude-style web chat for the existing LangGraph ReAct agent — Next.js 15 (App Router) on Vercel with assistant-ui (shadcn/ui primitives) and Auth.js Cognito provider,'
+tags: [plan]
+---
+
 # FRONTEND_PLAN_V1.md — Web Chat UI for the ReAct Agent (revision 2)
 
 > **Status**: planning, revision 2.

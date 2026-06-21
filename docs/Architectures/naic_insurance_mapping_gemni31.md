@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture'
+description: 'Model: Gemini 3.1 Pro'
+tags: [architecture]
+---
+
 # NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture
 
 **Model:** Gemini 3.1 Pro  

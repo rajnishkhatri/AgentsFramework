@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — 0b54f4e1 (2026-06-13)'
+description: 'Run: workflow 0b54f4e1f7364971abade795902d75f1 · run 2a5750f9fe1a479981f8595c2483c967 · thread 9e65feb3-a099-44e2-85d5-de3fa800f4b7'
+tags: [review]
+---
+
 # Governance Trace Audit — 0b54f4e1 (2026-06-13)
 
 **Run:** workflow `0b54f4e1f7364971abade795902d75f1` · run `2a5750f9fe1a479981f8595c2483c967` · thread `9e65feb3-a099-44e2-85d5-de3fa800f4b7`

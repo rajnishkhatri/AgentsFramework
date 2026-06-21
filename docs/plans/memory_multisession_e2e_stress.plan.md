@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Memory Layer — Multi-Turn / Multi-Session E2E Stress + Governance Trace Analysis Plan'
+description: 'The memory layer is wired but never validated across sessions.'
+tags: [plan]
+---
+
 # Memory Layer — Multi-Turn / Multi-Session E2E Stress + Governance Trace Analysis Plan
 
 > **Status.** Planning doc — what to build to *validate the now-wired memory layer end-to-end* across **multiple

@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Sprint 3 Explainability UI Implementation Review'
+description: 'This review evaluates the Sprint 3 implementation against'
+tags: [explainability]
+---
+
 # Sprint 3 Explainability UI Implementation Review
 
 This review evaluates the Sprint 3 implementation against

@@ -1,3 +1,10 @@
+---
+type: architecture
+title: 'Frontend — Wire and Translators Deep Dive'
+description: 'Scope: frontend/lib/wire/, frontend/lib/trust-view/, frontend/lib/translators/, frontend/lib/transport/'
+tags: [architecture]
+---
+
 # Frontend — Wire and Translators Deep Dive
 
 **Scope:** `frontend/lib/wire/`, `frontend/lib/trust-view/`, `frontend/lib/translators/`, `frontend/lib/transport/`

@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Governance Trace Audit — 3921c61b (2026-06-12)'
+description: 'Run: workflow 3921c61bf0024f87b80c26c1b94d7675 · run d5afa7f647684d1885dc7abb896f8e23 · thread 87fbbfa3-1107-465a-b59c-3d33c01a8341'
+tags: [review]
+---
+
 # Governance Trace Audit — 3921c61b (2026-06-12)
 
 **Run:** workflow `3921c61bf0024f87b80c26c1b94d7675` · run `d5afa7f647684d1885dc7abb896f8e23` · thread `87fbbfa3-1107-465a-b59c-3d33c01a8341`

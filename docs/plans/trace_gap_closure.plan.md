@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Trace Gap Closure
 overview: "Close the code-fixable gaps (G1-G9) found in the compliance-audit trace dataset review. UPDATE 2026-06-01: the I9-I12 PR landed G1 redaction wiring + G9 shell ok=False/ERROR_OCCURRED; Recipes 10/11/12 + the SearXNG work landed G5 (loop/no-progress termination) and the G6 corrupt-success/goal_met concern (termination_reason + goal_met fields + LLM goal judge). Remaining code-fixable work: G1 operational purge+rotate (+optional adapter guard), make the guardrail rails observable (G2), make input verdicts deterministic (G3), version the bundle schema (G4), an optional export summary block (G6 residual), and add negative-path traces (G7/G8) so the gate-failure modes are actually exercised. Phase 6 then captures each landed gap as an intern-facing teaching recipe in the docs/recipes house style."
 todos:

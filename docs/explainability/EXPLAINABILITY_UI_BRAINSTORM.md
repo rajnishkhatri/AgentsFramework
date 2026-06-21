@@ -1,3 +1,10 @@
+---
+type: brainstorm
+title: 'Explainability & Compliance Dashboard — Brainstorm'
+description: '1.'
+tags: [explainability]
+---
+
 # Explainability & Compliance Dashboard — Brainstorm
 
 > **Date:** April 27, 2026

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Trust Foundation Protocols -- Plan vs Implementation Review Report'
+description: 'Review method: Pyramid Principle structured analysis (4-phase: Decompose, Hypothesize, Act, Synthesize)'
+tags: [plan]
+---
+
 # Trust Foundation Protocols -- Plan vs Implementation Review Report
 
 **Review method:** Pyramid Principle structured analysis (4-phase: Decompose, Hypothesize, Act, Synthesize)

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'SPIKE_D — Langfuse Cloud Hobby SDK + traced run'
+description: 'The user opted not to provision a Langfuse Cloud account for v1.'
+tags: [plan]
+---
+
 # SPIKE_D — Langfuse Cloud Hobby SDK + traced run
 
 

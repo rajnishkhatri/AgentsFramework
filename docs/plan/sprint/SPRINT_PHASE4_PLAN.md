@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Phase 4 Sprint Plan: Meta-Optimization and Fallback Evaluation'
+description: 'Sprint ID: SPRINT-P4'
+tags: [plan]
+---
+
 # Phase 4 Sprint Plan: Meta-Optimization and Fallback Evaluation
 
 **Sprint ID:** `SPRINT-P4`

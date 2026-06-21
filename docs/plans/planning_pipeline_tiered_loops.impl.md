@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Planning Pipeline — Tiered Reasoning Loops: Implementation Plan'
+description: 'The plan''s §6 / design''s §D left three decisions open.'
+tags: [plan]
+---
+
 # Planning Pipeline — Tiered Reasoning Loops: Implementation Plan
 
 > **Status.** Implementation document — the third companion to

@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Sprint 1 + Sprint 2 Explainability UI Recommendation Report'
+description: 'This report evaluates the Sprint 1 and Sprint 2 explainability implementation against docs/explainability/EXPLAINABILITY_UI_SPRINT_BOARD.md, repository architecture rules, and the'
+tags: [explainability]
+---
+
 # Sprint 1 + Sprint 2 Explainability UI Recommendation Report
 
 This report evaluates the Sprint 1 and Sprint 2 explainability implementation against `docs/explainability/EXPLAINABILITY_UI_SPRINT_BOARD.md`, repository architecture rules, and the structured analysis protocol in `research/pyramid_react_system_prompt.md`.

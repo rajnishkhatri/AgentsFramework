@@ -1,3 +1,10 @@
+---
+type: vision
+title: 'Mission'
+description: 'I am building the trust layer for AI agents, so that the most consequential decisions in finance, healthcare, and government can be handed to software without handing over'
+tags: [vision]
+---
+
 # Mission
 
 I am building the trust layer for AI agents, so that the most consequential decisions in finance, healthcare, and government can be handed to software without handing over accountability.

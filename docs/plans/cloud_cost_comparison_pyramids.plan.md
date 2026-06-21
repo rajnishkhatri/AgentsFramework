@@ -1,6 +1,7 @@
 ---
+type: plan
 name: Cloud Cost Comparison Pyramids
-overview: Produce a Pyramid-Analysis-style planning artifact comparing AWS / GCP / Azure for the backend in `BACKEND_SOLUTION_ARCHITECTURE.md` across three workload tiers (dev / small-prod / scale-prod), then project a single derivative decision doc `CLOUD_PROVIDER_COMPARISON.md` with per-tier recommendations and a default winner — following the four-phase loop and eight self-validation checks from `docs/PYRAMID_ANALYSIS.md`.
+overview: Produce a Pyramid-Analysis-style planning artifact comparing AWS / GCP / Azure for the backend in `BACKEND_SOLUTION_ARCHITECTURE.md` across three workload tiers (dev / small-prod / scale-prod), then project a single derivative decision doc `CLOUD_PROVIDER_COMPARISON.md` with per-tier recommendations and a default winner — following the four-phase loop and eight self-validation checks from `docs/analysis/PYRAMID_ANALYSIS.md`.
 todos:
   - id: draft_pyramid_a
     content: "Draft Pyramid A (Dev / free-tier): Problem Definition, Issue Tree (4 branches), Hypotheses with thresholds, Evidence table with pricing-page citations, Gaps, Cross-branch, Synthesis, Validation log (8 checks)"
@@ -31,13 +32,13 @@ isProject: false
 
 # Cloud Provider Comparison — Pyramid-Analysis Plan
 
-## 1. Method (anchored in `docs/PYRAMID_ANALYSIS.md`)
+## 1. Method (anchored in `docs/analysis/PYRAMID_ANALYSIS.md`)
 
 We mirror the planning file's structure exactly: **three pyramids** (one per workload tier), each running the four-phase loop (Decompose → Hypothesize → Act → Synthesize) and each closing with the **eight self-validation checks** (`completeness`, `non_overlap`, `item_placement`, `so_what`, `vertical_logic`, `remove_one`, `never_one`, `mathematical`). All three pyramids project into **one** derivative doc, framed via a per-doc SCQA appendix that lives only in the planning file.
 
 ## 2. Files
 
-- **New planning artifact (this work's primary output):** `docs/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — three pyramids + cross-pyramid table + framing-notes appendix. Mirrors `docs/PYRAMID_ANALYSIS.md` 1:1 in structure.
+- **New planning artifact (this work's primary output):** `docs/analysis/CLOUD_COMPARISON_PYRAMID_ANALYSIS.md` — three pyramids + cross-pyramid table + framing-notes appendix. Mirrors `docs/analysis/PYRAMID_ANALYSIS.md` 1:1 in structure.
 - **New derivative doc (single combined recommendation):** `docs/Architectures/CLOUD_PROVIDER_COMPARISON.md` — per-tier recommendation + default winner + per-tier cost model + lock-in/portability summary.
 - **Update:** `docs/Architectures/README.md` — add an entry for the new comparison doc next to the three per-cloud architectures.
 - **Inputs (read-only):** `docs/Architectures/AWS_DEPLOYMENT_ARCHITECTURE.md`, `docs/Architectures/GCP_DEPLOYMENT_ARCHITECTURE.md`, `docs/Architectures/AZURE_DEPLOYMENT_ARCHITECTURE.md`, `docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md` §5.5 (persistence/cache) and §3.3 (rings).

@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Fetch Memory Trace from Langfuse — plan'
+description: 'Pull the most recent trace that emitted memory carriers (memory.recalled / memory.stored)'
+tags: [plan]
+---
+
 # Fetch Memory Trace from Langfuse — plan
 
 > **Status:** IMPLEMENTED 2026-06-18 — script at [`scripts/fetch_memory_trace.py`](../../scripts/fetch_memory_trace.py).

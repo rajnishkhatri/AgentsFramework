@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'FRONTEND_PLAN_V2_FRONTIER.md — Competing alternative to FRONTEND_PLAN_V1.md'
+description: 'Ship a Claude-Artifacts-class web chat for the existing LangGraph ReAct agent — Next.js 15 (App Router) on Vercel with CopilotKit v2 (AG-UI Protocol) for generative UI from day 1,'
+tags: [plan]
+---
+
 # FRONTEND_PLAN_V2_FRONTIER.md — Competing alternative to FRONTEND_PLAN_V1.md
 
 > **Status**: planning, alternative to `FRONTEND_PLAN_V1.md` (revision 2 of the canonical plan).

@@ -4,9 +4,9 @@ Three-tier Playwright testing architecture for the V3-Dev-Tier frontend.
 
 Reference docs:
 
-- [docs/PLAYWRIGHT_TESTING_ARCHITECTURE.md](../../docs/PLAYWRIGHT_TESTING_ARCHITECTURE.md) — full architecture & rationale
-- [docs/FRONTEND_VALIDATION.md](../../docs/FRONTEND_VALIDATION.md) — manual QA checklist mapped to these specs
-- [docs/STYLE_GUIDE_FRONTEND.md](../../docs/STYLE_GUIDE_FRONTEND.md) — F-R rules and FE-AP anti-patterns enforced
+- [docs/Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md](../../docs/Architectures/PLAYWRIGHT_TESTING_ARCHITECTURE.md) — full architecture & rationale
+- [docs/guides/FRONTEND_VALIDATION.md](../../docs/guides/FRONTEND_VALIDATION.md) — manual QA checklist mapped to these specs
+- [docs/style-guides/STYLE_GUIDE_FRONTEND.md](../../docs/style-guides/STYLE_GUIDE_FRONTEND.md) — F-R rules and FE-AP anti-patterns enforced
 - [AGENTS.md](../../AGENTS.md) — repository-wide conventions
 
 ---
@@ -214,7 +214,7 @@ loads the WorkOS session saved by `global-setup.ts`.
 ## AG-UI Scenario Library
 
 [fixtures/scenarios.ts](fixtures/scenarios.ts) exports six canned event sequences,
-each mirroring one row of Appendix B in `docs/FRONTEND_VALIDATION.md`. Every
+each mirroring one row of Appendix B in `docs/guides/FRONTEND_VALIDATION.md`. Every
 event carries `raw_event.trace_id` so trace_id provenance assertions work.
 
 
@@ -291,11 +291,11 @@ is fully deterministic and safe in per-commit CI.
   - Send a message: `import { sendMessage } from "./fixtures/helpers"`
   - Mock a stream: `import { buildSSEBody, buildSSEHeaders } from "./fixtures/sse-mock"` plus a scenario from `scenarios.ts`
 3. **Frame as a binary outcome**: every `test.describe()` and `test()` name
-  should answer YES/NO (matches the `docs/FRONTEND_VALIDATION.md` checklist
+  should answer YES/NO (matches the `docs/guides/FRONTEND_VALIDATION.md` checklist
    convention).
 4. **Skip gracefully** when prerequisites are missing — use
   `test.skip(condition, "reason")` so unauthenticated CI runs do not crash.
-5. **Cite the SS section** from `docs/FRONTEND_VALIDATION.md` in the file
+5. **Cite the SS section** from `docs/guides/FRONTEND_VALIDATION.md` in the file
   header so manual QA can cross-reference.
 
 ---

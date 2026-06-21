@@ -1,4 +1,5 @@
 ---
+type: plan
 name: Deploy to GCP Dev
 overview: Build new Docker images with the Langfuse integration (Phases 1-5 code), push to Artifact Registry, update terraform.tfvars with new digests, tofu apply, and run the smoke test including the new Langfuse health check.
 todos:

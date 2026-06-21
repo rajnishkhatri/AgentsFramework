@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'Four-Layer Tracing Walkthrough'
+description: 'Companion to END_TO_END_TRACING_GUIDE.md, which covers the five trace planes and trace_id correlation.'
+tags: [explainability]
+---
+
 # Four-Layer Tracing Walkthrough
 
 > Hands-on, step-by-step guide to exercising JWT authentication, tool ACL authorization, observability logging, and tamper-proof black box recording in the ReAct agent framework.

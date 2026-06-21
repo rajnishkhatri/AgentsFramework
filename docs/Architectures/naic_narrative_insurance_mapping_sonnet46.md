@@ -1,3 +1,10 @@
+---
+type: narrative
+title: 'NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture'
+description: 'Model: Claude Sonnet 4.6'
+tags: [architecture]
+---
+
 # NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture
 
 **Model:** Claude Sonnet 4.6  

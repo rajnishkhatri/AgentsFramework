@@ -1,3 +1,10 @@
+---
+type: review
+title: 'Sprint 1 Explainability UI Implementation Review'
+description: 'This review evaluates the Sprint 1 implementation against the acceptance criteria, architecture constraints, and quality standards using the ReACT structured analysis protocol'
+tags: [explainability]
+---
+
 # Sprint 1 Explainability UI Implementation Review
 
 This review evaluates the Sprint 1 implementation against the acceptance criteria, architecture constraints, and quality standards using the ReACT structured analysis protocol (`research/pyramid_react_system_prompt.md`).

@@ -2,7 +2,7 @@
   "name": "agent-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "V3-Dev-Tier Next.js 15 frontend for the ReAct agent. Implements the four-ring architecture: wire/ (Zod kernels), trust-view/ (read-only), ports/ (vendor-neutral interfaces), adapters/ (SDK isolation), translators/ (pure functions), transport/ (SSE), composition/ (single profile switch). See docs/Architectures/FRONTEND_ARCHITECTURE.md and docs/STYLE_GUIDE_FRONTEND.md.",
+  "description": "V3-Dev-Tier Next.js 15 frontend for the ReAct agent. Implements the four-ring architecture: wire/ (Zod kernels), trust-view/ (read-only), ports/ (vendor-neutral interfaces), adapters/ (SDK isolation), translators/ (pure functions), transport/ (SSE), composition/ (single profile switch). See docs/Architectures/FRONTEND_ARCHITECTURE.md and docs/style-guides/STYLE_GUIDE_FRONTEND.md.",
   "type": "module",
   "scripts": {
     "dev": "next dev",

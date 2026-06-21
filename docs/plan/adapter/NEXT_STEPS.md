@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Agent UI Adapter — Enhancements & Next Steps'
+description: 'Priority: High — blocks production deployment.'
+tags: [plan]
+---
+
 # Agent UI Adapter — Enhancements & Next Steps
 
 > **Source**: End-to-end implementation review ([IMPLEMENTATION_REVIEW.md](sprints/IMPLEMENTATION_REVIEW.md)),

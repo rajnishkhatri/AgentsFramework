@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'Dataset Adaptation Plan for Deep-Agent Benchmark'
+description: 'This plan defines how to adapt external and internal sources into a stable, reproducible benchmark fixture for deep-agent capability evaluation.'
+tags: [plan]
+---
+
 # Dataset Adaptation Plan for Deep-Agent Benchmark
 
 This plan defines how to adapt external and internal sources into a stable, reproducible benchmark fixture for deep-agent capability evaluation.

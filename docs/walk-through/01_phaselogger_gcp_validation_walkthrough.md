@@ -1,3 +1,10 @@
+---
+type: validation-walkthrough
+title: 'PhaseLogger GCP Validation — Step-by-Step Walkthrough'
+description: 'Goal: Validate, end to end, that the PhaseLogger (Reasoning pillar) and the trace-gap closure items (G1, G4, G5, G6, G7-G9) work on the live GCP deployment.'
+tags: [walk-through]
+---
+
 # PhaseLogger GCP Validation — Step-by-Step Walkthrough
 
 **Goal:** Validate, end to end, that the **PhaseLogger (Reasoning pillar)** and the **trace-gap closure** items (G1, G4, G5, G6, G7-G9) work on the live GCP deployment. This guide combines local CLI/pytest checks with manual Frontend UI + Langfuse verification, and adds an explicit step for validating the agent's **reasoning timeline** and **decision records** captured during a workflow.

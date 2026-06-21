@@ -1,11 +1,18 @@
+---
+type: architecture
+title: 'Four-Layer Architecture with Trust Foundation'
+description: 'Analysis method: Feasibility integration of Trust Framework (L1 Identity) with Composable Layering Architecture'
+tags: [architecture]
+---
+
 # Four-Layer Architecture with Trust Foundation
 
 **Analysis method:** Feasibility integration of Trust Framework (L1 Identity) with Composable Layering Architecture
 **Source documents:**
-- `agent/docs/TRUST_FRAMEWORK_ARCHITECTURE.md` (Seven-Layer Agent Trust Framework)
-- `agent/docs/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
-- `agent/docs/STYLE_GUIDE_LAYERING.md` (Composable layering architecture -- three-layer grid)
-- `agent/docs/STYLE_GUIDE_PATTERNS.md` (Design patterns catalog)
+- `agent/docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md` (Seven-Layer Agent Trust Framework)
+- `agent/docs/Architectures/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
+- `agent/docs/style-guides/STYLE_GUIDE_LAYERING.md` (Composable layering architecture -- three-layer grid)
+- `agent/docs/style-guides/STYLE_GUIDE_PATTERNS.md` (Design patterns catalog)
 
 **External references:**
 - [Microsoft Agent Governance Toolkit](https://github.com/microsoft/agent-governance-toolkit) -- Nine-package monorepo separating identity models (AgentMesh) from policy engine (Agent OS)

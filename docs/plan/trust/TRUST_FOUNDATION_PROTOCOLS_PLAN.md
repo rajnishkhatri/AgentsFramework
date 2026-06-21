@@ -1,13 +1,20 @@
+---
+type: plan
+title: 'Trust Foundation -- Cloud-Agnostic Protocol and AWS IAM PoC'
+description: 'Analysis method: Protocol-first design with Hexagonal Architecture (Ports and Adapters)'
+tags: [plan]
+---
+
 # Trust Foundation -- Cloud-Agnostic Protocol and AWS IAM PoC
 
 **Analysis method:** Protocol-first design with Hexagonal Architecture (Ports and Adapters)
 **Source documents:**
 
 - `agent/docs/Architectures/FOUR_LAYER_ARCHITECTURE.md` (Four-layer grid with Trust Foundation)
-- `agent/docs/TRUST_FRAMEWORK_ARCHITECTURE.md` (Seven-layer trust framework)
-- `agent/docs/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
-- `agent/docs/STYLE_GUIDE_LAYERING.md` (Composable layering architecture)
-- `agent/docs/STYLE_GUIDE_PATTERNS.md` (Design patterns catalog)
+- `agent/docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md` (Seven-layer trust framework)
+- `agent/docs/Architectures/LAYER1_IDENTITY_ANALYSIS.md` (Layer 1 structured analysis)
+- `agent/docs/style-guides/STYLE_GUIDE_LAYERING.md` (Composable layering architecture)
+- `agent/docs/style-guides/STYLE_GUIDE_PATTERNS.md` (Design patterns catalog)
 
 **External references:**
 

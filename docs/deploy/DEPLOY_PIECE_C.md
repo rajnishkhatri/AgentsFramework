@@ -1,3 +1,10 @@
+---
+type: runbook
+title: 'Deploy Piece C — memory recall/store ON (no-traffic) + thread-table migration'
+description: 'Build the agent image from Dockerfile.backend, push it to Artifact Registry, and'
+tags: [deploy]
+---
+
 # Deploy Piece C — memory recall/store ON (no-traffic) + thread-table migration
 
 > Companion to [`scripts/deploy_piece_c.sh`](../../scripts/deploy_piece_c.sh). This doc holds the **config changes the script can't make for you** (a Terraform env-var add) and the exact run/rollback sequence. Posture chosen 2026-06-18: **`MEMORY_ENABLED=true` only** (recall+store live; auto-capture stays in shadow) on a **`--tag` no-traffic** revision (prod untouched).

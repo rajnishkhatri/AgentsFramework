@@ -1,3 +1,10 @@
+---
+type: plan
+title: 'GoalJudge Eval UI — Trajectory + Admissible-Capture Phase'
+description: 'Implemented phase-by-phase in the Appendix B interleaved order, backend emission'
+tags: [plan]
+---
+
 # GoalJudge Eval UI — Trajectory + Admissible-Capture Phase
 
 > **Status:** FULLY IMPLEMENTED (2026-06-11). Pre-Stage-6 UI workstream.
