@@ -518,6 +518,12 @@ class AgentRuntimeSettings(BaseSettings):
     context_compaction_fidelity_sample_rate: float = Field(
         default=0.0, validation_alias="CONTEXT_COMPACTION_FIDELITY_SAMPLE_RATE"
     )
+    # Fix 1 — harvest operator pins from human views into the §B2-R floor.
+    # Default OFF keeps both fold sites passing user_constraints=[] (byte-
+    # identical with the prior behaviour); flip ON to close the empty-floor gap.
+    context_extract_user_constraints: bool = Field(
+        default=False, validation_alias="CONTEXT_EXTRACT_USER_CONSTRAINTS"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -551,6 +557,8 @@ class AgentRuntimeSettings(BaseSettings):
                     "memory_autocapture_enabled",
                     # C1 master flag (design §9) — the gate for BOTH seams.
                     "context_compact_messages_enabled",
+                    # Fix 1 — user-pin harvest gate (default OFF).
+                    "context_extract_user_constraints",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
@@ -711,6 +719,7 @@ def build_components(
         context_compact_cooldown_steps=settings.context_compact_cooldown_steps,
         context_constraint_reinject_turns=settings.context_constraint_reinject_turns,
         context_compaction_fidelity_sample_rate=settings.context_compaction_fidelity_sample_rate,
+        context_extract_user_constraints=settings.context_extract_user_constraints,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)

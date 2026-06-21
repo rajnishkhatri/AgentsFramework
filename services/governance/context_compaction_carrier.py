@@ -62,6 +62,11 @@ class _CompactionOutcome(Protocol):
     floor_reinjected: bool
     floor_exceeded: bool  # §5.3 fail-loud (compaction declined)
     context_exhausted: bool  # §5.4 terminal halt at the hard window
+    # Fix 3 — whether the rewrite actually COMMITTED. On a declined fold the
+    # producer reports tokens_after == tokens_before (no compression); this
+    # bool lets a reader tell "declined" apart from a genuine no-op. Content-
+    # free (bool), so the structural string-forbid invariant still holds.
+    fold_committed: bool
 
 
 def emit_compaction_carrier(
@@ -101,6 +106,7 @@ def emit_compaction_carrier(
         "floor_reinjected": outcome.floor_reinjected,
         "floor_exceeded": outcome.floor_exceeded,
         "context_exhausted": outcome.context_exhausted,
+        "fold_committed": outcome.fold_committed,
     }
     black_box.record(
         TraceEvent(

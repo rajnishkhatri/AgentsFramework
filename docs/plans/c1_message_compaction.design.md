@@ -1,3 +1,10 @@
+---
+type: design
+title: 'C1 — Detailed Design: Deterministic Message-History Compaction + B2 Pinned-Facts Floor'
+description: 'Build-ready design for deterministic (no-LLM) message-history compaction (observation-clearing → oldest-summary fold → keep-last-K) + the B2 anti-truncation pinned-facts floor. Default-OFF, prod byte-identical when off.'
+tags: [design, compaction, context-engineering, c1]
+---
+
 # C1 — Detailed Design: Deterministic Message-History Compaction + B2 Pinned-Facts Floor
 
 > **What this is.** The detailed, build-ready design doc for **C1** from [`context_compression_runtime_pipeline.plan.md`](context_compression_runtime_pipeline.plan.md) §4 / §8 — the deterministic (no-LLM) message-history compaction slice (observation-clearing → oldest→summary fold → keep-last-K) plus the B2 anti-truncation floor. The companion plan doc holds the design-space map (§1–§7) and the external-research scans (§B1-R, §B2-R); **this doc is the C1 implementation spec.**

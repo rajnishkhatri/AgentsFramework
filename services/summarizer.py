@@ -345,6 +345,97 @@ def derive_pinned_floor(
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# Fix 1 — extract_user_constraints (the empty-floor root cause).
+#
+# Phase-9 manual-probe finding (rev 00097-wiz): the fold floor and tail
+# reinjection both call ``derive_pinned_floor(success_conditions, [])`` with
+# ``user_constraints`` hardcoded empty, so the operator's conversational pins
+# (typed as free-text "answering conventions") never reach the §B2-R floor.
+# This pure extractor harvests those pins from the HUMAN views and returns the
+# constraint clauses verbatim, suitable as the 2nd arg to ``derive_pinned_floor``.
+#
+# PURE: no I/O, no langchain, deterministic (L1). Behavioral contract:
+#   - human views only (an AI/tool/system view never plants a user pin);
+#   - a "Pn (label): clause" line contributes the text AFTER the label colon;
+#   - any other line is split into sentence-ish clauses and only clauses bearing
+#     a constraint marker are kept;
+#   - clauses are verbatim + case-preserved; order-preserving; stable dedup.
+# ════════════════════════════════════════════════════════════════════════════
+
+
+# Positive imperative markers that signal a (must-do) answering convention.
+# Combined with _NEGATIVE_MARKERS (must-not) below, these gate which clauses
+# count as constraints. Lowercased for detection only — the clause text itself
+# is preserved verbatim.
+_POSITIVE_MARKERS = (
+    "format ",
+    "always",
+    "must ",
+    "ensure",
+    "use exactly",
+    "round to",
+    "label them",
+    "confirm by",
+)
+
+# A labelled-pin prefix: "P1 (format):", "P2 (safety):", "R3:", etc. We strip
+# everything up to and including the FIRST colon on the line so the returned
+# clause is the convention itself, not the label.
+_PIN_LABEL_RE = re.compile(r"^\s*[A-Z]{1,3}\d{0,2}\b[^:]{0,40}:\s*")
+
+# Sentence-ish clause splitter for unlabelled lines: split on sentence
+# terminators so "Never abbreviate currency. Also tell me the weather." yields
+# two clauses and only the first (marker-bearing) one is kept.
+_CLAUSE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _is_constraint_clause(clause: str) -> bool:
+    """True when the clause carries a positive or negative constraint marker."""
+    lowered = clause.lower()
+    if any(m in lowered for m in _NEGATIVE_MARKERS):
+        return True
+    return any(m in lowered for m in _POSITIVE_MARKERS)
+
+
+def extract_user_constraints(views: Sequence[MessageView]) -> tuple[str, ...]:
+    """Harvest verbatim user-constraint clauses from the human views.
+
+    Returns a tuple of constraint strings (the convention text, label removed)
+    in first-seen order, de-duplicated. Designed to feed
+    ``derive_pinned_floor(success_conditions, list(extract_user_constraints(...)))``
+    so operator pins reach the §B2-R floor. Pure / deterministic (Fix 1).
+    """
+    out: list[str] = []
+    seen: set[str] = set()
+    for v in views:
+        if v.role != _ROLE_HUMAN or not v.content:
+            continue
+        for raw_line in v.content.splitlines():
+            line = raw_line.strip()
+            if not line:
+                continue
+            labelled = _PIN_LABEL_RE.match(line)
+            if labelled:
+                # A labelled pin line IS a constraint by construction; the
+                # convention is whatever follows the label colon.
+                clause = line[labelled.end():].strip()
+                candidates = [clause] if clause else []
+            else:
+                # Unlabelled: split into sentence-ish clauses; keep only those
+                # bearing a constraint marker (drops chit-chat in the same line).
+                candidates = [
+                    c.strip()
+                    for c in _CLAUSE_SPLIT_RE.split(line)
+                    if c.strip() and _is_constraint_clause(c)
+                ]
+            for clause in candidates:
+                if clause and clause not in seen:
+                    seen.add(clause)
+                    out.append(clause)
+    return tuple(out)
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # §4 fn 5 — build_constraint_floor (tail re-injection, must-not by default).
 # ════════════════════════════════════════════════════════════════════════════
 

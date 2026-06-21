@@ -1234,6 +1234,376 @@ class TestEvaluateNodeCompactionCarrierWiring:
             ), "compaction Decision emitted while master flag was OFF"
 
 
+class TestFix1UserConstraintFloor:
+    """Fix 1 (Phase-9 manual-probe root cause): when the harvest flag is ON, an
+    operator pin typed into a HUMAN turn reaches the §B2-R must-not floor — so
+    the carrier reports ``must_not_count >= 1`` and a NON-empty
+    ``constraint_floor_hash`` (not the SHA-256 of "").
+
+    The probe observed the opposite on rev 00097-wiz: every fold carried
+    ``must_not_count=0`` and the empty-string hash because both fold sites passed
+    ``user_constraints=[]``. These tests pin the corrected behaviour AND prove the
+    flag gates it (extraction OFF reproduces the empty-floor signature).
+    """
+
+    # SHA-256 of the empty string — the bug's fingerprint on the carrier.
+    _EMPTY_STR_HASH = (
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    )
+
+    def _tiny_profile(self, window: int = 1000) -> ModelProfile:
+        return ModelProfile(
+            name="tiny",
+            litellm_id="openai/tiny",
+            tier="fast",
+            context_window=window,
+            cost_per_1k_input=0.0,
+            cost_per_1k_output=0.0,
+        )
+
+    def _pin_msgs(self) -> list:
+        """A pre-fold transcript whose FIRST human turn plants a must-not pin.
+
+        ``task_understanding`` is left empty in the state, so the ONLY way a
+        must-not constraint can reach the floor is the human-view harvest —
+        which isolates Fix 1 from the planner's success_conditions path.
+        """
+        out: list = [
+            HumanMessage(
+                content="P2 (safety): please avoid destructive file tools."
+            )
+        ]
+        out.extend(_fake_pre_fold_msgs())
+        return out
+
+    def _on_node(self, profile, tmp_path, *, extract: bool):
+        from orchestration.react_loop import build_graph
+
+        cfg = AgentConfig(
+            context_compact_messages_enabled=True,
+            context_compact_trigger_fraction=0.6,
+            context_keep_last_k=2,
+            context_compact_cooldown_steps=5,
+            context_extract_user_constraints=extract,
+            models=[profile],
+            default_model=profile.name,
+        )
+        graph = build_graph(cfg, cache_dir=tmp_path)
+        return graph.nodes["evaluate"].bound
+
+    def _fold_state(self, profile, wf: str) -> dict:
+        return _minimal_state(
+            messages=self._pin_msgs(),
+            current_token_count=700,  # 700 > 0.6 × 1000 = 600 → trigger trips
+            step_count=10,
+            last_compaction_step=0,
+            workflow_id=wf,
+            selected_model=profile.name,
+            task_understanding={"success_conditions": []},  # planner path empty
+        )
+
+    def _carrier_details(self, tmp_path, wf: str) -> dict:
+        import json as _json
+
+        events_path = (
+            tmp_path / "black_box_recordings" / wf / "trace.jsonl"
+        )
+        assert events_path.exists(), f"black_box JSONL missing at {events_path}"
+        events = [
+            _json.loads(line)
+            for line in events_path.read_text().splitlines()
+            if line.strip()
+        ]
+        compacted = [
+            e for e in events if e["event_type"] == "context_compacted"
+        ]
+        assert len(compacted) == 1, (
+            f"expected one CONTEXT_COMPACTED event; got {len(compacted)}"
+        )
+        return compacted[0]["details"]
+
+    def test_flag_on_reaches_must_not_floor(self, tmp_path) -> None:
+        """The corrected behaviour: a harvested human pin lands as a must-not
+        constraint on the carrier, with a non-empty hash."""
+        profile = self._tiny_profile()
+        node = self._on_node(profile, tmp_path, extract=True)
+        out = _invoke(
+            node, self._fold_state(profile, "wf-fix1-on"),
+            _config_for_thread("th-fix1-on"),
+        )
+        assert "messages" in out, "fold did not run"
+        details = self._carrier_details(tmp_path, "wf-fix1-on")
+        assert details["must_not_count"] >= 1, (
+            "harvested 'avoid …' pin did not reach the must-not floor"
+        )
+        assert details["constraint_floor_hash"] != self._EMPTY_STR_HASH, (
+            "constraint_floor_hash is still the SHA-256 of the empty string — "
+            "the floor is empty despite a planted user pin"
+        )
+        assert details["pinned_kept"] >= 1
+
+    def test_flag_off_reproduces_empty_floor_signature(self, tmp_path) -> None:
+        """Failure-path / gate proof: with the harvest flag OFF the same planted
+        pin does NOT reach the floor — must_not_count=0 and the empty-string
+        hash, exactly the probe's observed signature. This proves Fix 1 is the
+        thing that closes the gap (and that OFF stays byte-identical)."""
+        profile = self._tiny_profile()
+        node = self._on_node(profile, tmp_path, extract=False)
+        out = _invoke(
+            node, self._fold_state(profile, "wf-fix1-off"),
+            _config_for_thread("th-fix1-off"),
+        )
+        assert "messages" in out, "fold did not run"
+        details = self._carrier_details(tmp_path, "wf-fix1-off")
+        assert details["must_not_count"] == 0
+        assert details["constraint_floor_hash"] == self._EMPTY_STR_HASH
+
+    def test_committed_fold_reports_fold_committed_true(self, tmp_path) -> None:
+        """Fix 3: a fold that actually commits (floor NOT exceeded) reports
+        ``fold_committed=True`` on the carrier."""
+        profile = self._tiny_profile()
+        node = self._on_node(profile, tmp_path, extract=True)
+        out = _invoke(
+            node, self._fold_state(profile, "wf-fc-on"),
+            _config_for_thread("th-fc-on"),
+        )
+        assert "messages" in out, "fold did not run"
+        details = self._carrier_details(tmp_path, "wf-fc-on")
+        assert details["floor_exceeded"] is False
+        assert details["fold_committed"] is True
+
+    def test_declined_fold_reports_fold_committed_false(self, tmp_path) -> None:
+        """Fix 3: when the floor is exceeded the fold is DECLINED — the carrier
+        reports ``fold_committed=False`` AND ``tokens_after == tokens_before``,
+        so a reader can tell "no compression because declined" apart from a
+        no-op. This is the probe's every-fold case (floor_exceeded=True)."""
+        from orchestration.react_loop import build_graph
+
+        profile = self._tiny_profile(window=1000)
+        cfg = AgentConfig(
+            context_compact_messages_enabled=True,
+            context_compact_trigger_fraction=0.6,
+            context_keep_last_k=2,
+            context_compact_cooldown_steps=5,
+            models=[profile],
+            default_model=profile.name,
+        )
+        graph = build_graph(cfg, cache_dir=tmp_path)
+        node = graph.nodes["evaluate"].bound
+        # A success_conditions floor too big to fit → floor_exceeded, fold
+        # declined (mirrors TestEvaluateNodeTerminalGate's below-ceiling case).
+        state = _minimal_state(
+            messages=_fake_pre_fold_msgs(),
+            current_token_count=700,  # over trigger, under 0.95×window ceiling
+            step_count=10,
+            last_compaction_step=0,
+            workflow_id="wf-fc-decline",
+            selected_model=profile.name,
+            task_understanding={
+                "success_conditions": ["MUST preserve constraint " + ("X" * 1000)]
+                * 50,
+                "source": "deterministic",
+                "restated_intent": "test",
+            },
+        )
+        out = _invoke(node, state, _config_for_thread("th-fc-decline"))
+        assert "messages" not in out, "declined fold must not rewrite"
+        details = self._carrier_details(tmp_path, "wf-fc-decline")
+        assert details["floor_exceeded"] is True
+        assert details["fold_committed"] is False
+        assert details["tokens_after"] == details["tokens_before"]
+
+    # ── Fix 2 — floor_reinjected truthful (was hardcoded False) ──────────────
+
+    def test_committed_fold_with_floor_reports_reinjected_true(
+        self, tmp_path
+    ) -> None:
+        """Fix 2: when the fold COMMITS and the must-not floor is non-empty,
+        the rewrite carries that floor verbatim into the model's new context —
+        so ``floor_reinjected`` is True (not the old hardcoded False).
+
+        Depends on Fix 1: the harvested human pin is what makes the must-not
+        floor non-empty here."""
+        profile = self._tiny_profile()
+        node = self._on_node(profile, tmp_path, extract=True)
+        out = _invoke(
+            node, self._fold_state(profile, "wf-ri-on"),
+            _config_for_thread("th-ri-on"),
+        )
+        assert "messages" in out, "fold did not run"
+        details = self._carrier_details(tmp_path, "wf-ri-on")
+        assert details["floor_exceeded"] is False
+        assert details["fold_committed"] is True
+        assert details["must_not_count"] >= 1
+        assert details["floor_reinjected"] is True, (
+            "committed fold with a non-empty must-not floor must report "
+            "floor_reinjected=True (Fix 2 — no longer hardcoded False)"
+        )
+
+    def test_committed_fold_empty_floor_reports_reinjected_false(
+        self, tmp_path
+    ) -> None:
+        """Fix 2 failure-path: a committed fold whose must-not floor is EMPTY
+        (extraction OFF ⇒ no harvested pins, no success_conditions) reinjects
+        nothing — ``floor_reinjected`` is False. This is the honest negative,
+        not a hardcoded literal."""
+        profile = self._tiny_profile()
+        node = self._on_node(profile, tmp_path, extract=False)
+        out = _invoke(
+            node, self._fold_state(profile, "wf-ri-off"),
+            _config_for_thread("th-ri-off"),
+        )
+        assert "messages" in out, "fold did not run"
+        details = self._carrier_details(tmp_path, "wf-ri-off")
+        assert details["fold_committed"] is True
+        assert details["must_not_count"] == 0
+        assert details["floor_reinjected"] is False
+
+    def test_declined_fold_reports_reinjected_false(self, tmp_path) -> None:
+        """Fix 2: a DECLINED fold reinjects nothing (no rewrite happened), so
+        floor_reinjected is False even if the floor itself was non-empty."""
+        from orchestration.react_loop import build_graph
+
+        profile = self._tiny_profile(window=1000)
+        cfg = AgentConfig(
+            context_compact_messages_enabled=True,
+            context_compact_trigger_fraction=0.6,
+            context_keep_last_k=2,
+            context_compact_cooldown_steps=5,
+            context_extract_user_constraints=True,
+            models=[profile],
+            default_model=profile.name,
+        )
+        graph = build_graph(cfg, cache_dir=tmp_path)
+        node = graph.nodes["evaluate"].bound
+        # Oversized success_conditions floor ⇒ declined, even though a must-not
+        # pin exists in the human turn.
+        state = self._fold_state(profile, "wf-ri-decline")
+        state["task_understanding"] = {
+            "success_conditions": ["MUST preserve constraint " + ("X" * 1000)]
+            * 50,
+            "source": "deterministic",
+            "restated_intent": "test",
+        }
+        out = _invoke(node, state, _config_for_thread("th-ri-decline"))
+        assert "messages" not in out, "declined fold must not rewrite"
+        details = self._carrier_details(tmp_path, "wf-ri-decline")
+        assert details["floor_exceeded"] is True
+        assert details["fold_committed"] is False
+        assert details["floor_reinjected"] is False
+
+
+class TestFix4L2ShadowFiresOnCommittedFold:
+    """Fix 4 (doc + regression guard): the probe saw ZERO
+    ``eval.compaction_fidelity`` carriers despite ``SAMPLE_RATE=1.0``. Root
+    cause: the L2 capture lives inside the ``if _committed:`` branch, and every
+    probe fold DECLINED (the Fix-1 empty-floor bug). The wire is correct — once
+    a fold commits AND the sample rate is non-zero, L2 fires. These tests pin
+    that: committed fold + rate 1.0 ⇒ a ``compaction_fidelity`` eval record;
+    declined fold ⇒ none.
+    """
+
+    def _tiny_profile(self, window: int = 1000) -> ModelProfile:
+        return ModelProfile(
+            name="tiny",
+            litellm_id="openai/tiny",
+            tier="fast",
+            context_window=window,
+            cost_per_1k_input=0.0,
+            cost_per_1k_output=0.0,
+        )
+
+    def _node(self, profile, tmp_path, *, sample_rate: float, oversized: bool):
+        from orchestration.react_loop import build_graph
+
+        cfg = AgentConfig(
+            context_compact_messages_enabled=True,
+            context_compact_trigger_fraction=0.6,
+            context_keep_last_k=2,
+            context_compact_cooldown_steps=5,
+            context_extract_user_constraints=True,
+            context_compaction_fidelity_sample_rate=sample_rate,
+            models=[profile],
+            default_model=profile.name,
+        )
+        graph = build_graph(cfg, cache_dir=tmp_path)
+        return graph.nodes["evaluate"].bound
+
+    def _state(self, profile, wf, *, oversized: bool) -> dict:
+        tu = {"success_conditions": []}
+        if oversized:
+            tu = {
+                "success_conditions": [
+                    "MUST preserve constraint " + ("X" * 1000)
+                ]
+                * 50,
+                "source": "deterministic",
+                "restated_intent": "test",
+            }
+        return _minimal_state(
+            messages=[
+                HumanMessage(
+                    content="P2 (safety): please avoid destructive file tools."
+                ),
+                *_fake_pre_fold_msgs(),
+            ],
+            current_token_count=700,
+            step_count=10,
+            last_compaction_step=0,
+            workflow_id=wf,
+            selected_model=profile.name,
+            task_understanding=tu,
+        )
+
+    def test_committed_fold_emits_l2_fidelity_record(
+        self, tmp_path, caplog
+    ) -> None:
+        """Committed fold + sample_rate=1.0 ⇒ exactly one eval_capture record
+        tagged ``compaction_fidelity`` (the L2 shadow). This is what the probe
+        could not produce because every fold declined."""
+        import logging
+
+        profile = self._tiny_profile()
+        node = self._node(
+            profile, tmp_path, sample_rate=1.0, oversized=False
+        )
+        with caplog.at_level(logging.INFO, logger="services.eval_capture"):
+            out = _invoke(
+                node, self._state(profile, "wf-l2-on", oversized=False),
+                _config_for_thread("th-l2-on"),
+            )
+        assert "messages" in out, "fold must commit for L2 to fire"
+        targets = [
+            getattr(r, "target", None) for r in caplog.records
+        ]
+        assert targets.count("compaction_fidelity") == 1, (
+            f"expected one compaction_fidelity L2 record; got targets={targets!r}"
+        )
+
+    def test_declined_fold_emits_no_l2_record(
+        self, tmp_path, caplog
+    ) -> None:
+        """A declined fold (the probe's every-fold case) emits NO L2 record
+        even at sample_rate=1.0 — the capture is committed-only. This pins Fix
+        4's root cause as a regression guard."""
+        import logging
+
+        profile = self._tiny_profile()
+        node = self._node(
+            profile, tmp_path, sample_rate=1.0, oversized=True
+        )
+        with caplog.at_level(logging.INFO, logger="services.eval_capture"):
+            out = _invoke(
+                node, self._state(profile, "wf-l2-decline", oversized=True),
+                _config_for_thread("th-l2-decline"),
+            )
+        assert "messages" not in out, "fold should have declined"
+        targets = [getattr(r, "target", None) for r in caplog.records]
+        assert "compaction_fidelity" not in targets, (
+            "a declined fold must not emit an L2 fidelity record"
+        )
+
+
 class TestCarrierDriftGuardUntouched:
     """The §7.0 enrichment decision: ``default_spec()`` is NOT touched, so
     the drift-guard test suite must still see the same four pillars and

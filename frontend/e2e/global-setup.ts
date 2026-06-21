@@ -228,9 +228,11 @@ async function fakeSessionSetup(absolutePath: string): Promise<void> {
     email: process.env.E2E_USER_EMAIL,
   });
 
+  console.log('[global-setup] fakeSessionSetup: Launching browser...');
   const browser = await chromium.launch();
   const ctx = await browser.newContext(E2E_BROWSER_CONTEXT);
   try {
+    console.log('[global-setup] fakeSessionSetup: Context created. Adding cookies...');
     await ctx.addCookies([
       {
         name: COOKIE_NAME,

@@ -90,6 +90,7 @@ class _FakeOutcome:
         floor_reinjected: bool = False,
         floor_exceeded: bool = False,
         context_exhausted: bool = False,
+        fold_committed: bool = True,
     ) -> None:
         self.tokens_before = tokens_before
         self.tokens_after = tokens_after
@@ -102,6 +103,7 @@ class _FakeOutcome:
         self.floor_reinjected = floor_reinjected
         self.floor_exceeded = floor_exceeded
         self.context_exhausted = context_exhausted
+        self.fold_committed = fold_committed
 
 
 def _fresh_recorder(tmp_path: Path) -> BlackBoxRecorder:
@@ -216,6 +218,49 @@ class TestEmitCompactionCarrier:
         assert details["floor_reinjected"] is True
         assert details["floor_exceeded"] is False
         assert details["context_exhausted"] is False
+
+    def test_details_carry_fold_committed_flag(self, tmp_path: Path) -> None:
+        """Fix 3 — the carrier reports whether the fold actually COMMITTED.
+
+        On a declined fold (``floor_exceeded=True``) the producer reports
+        ``tokens_after == tokens_before``, which reads as "no compression".
+        ``fold_committed`` disambiguates "no compression because declined"
+        from "no compression because no-op". Bool, so it stays content-free.
+        """
+        from services.governance.context_compaction_carrier import (
+            emit_compaction_carrier,
+        )
+
+        recorder = _fresh_recorder(tmp_path)
+        # A declined fold: floor exceeded, NOT committed.
+        emit_compaction_carrier(
+            recorder,
+            workflow_id="wf-fc",
+            step=2,
+            decision_id="dec-fc",
+            outcome=_FakeOutcome(
+                floor_exceeded=True,
+                fold_committed=False,
+                tokens_before=900,
+                tokens_after=900,  # no compression — but BECAUSE declined
+            ),
+        )
+        events = [
+            json.loads(line)
+            for line in (tmp_path / "bb" / "wf-fc" / "trace.jsonl")
+            .read_text()
+            .splitlines()
+        ]
+        details = next(
+            e for e in events if e["event_type"] == "context_compacted"
+        )["details"]
+        assert "fold_committed" in details, (
+            "carrier details missing the fold_committed flag (Fix 3)"
+        )
+        assert details["fold_committed"] is False
+        # The disambiguation is meaningful: tokens_after==tokens_before AND
+        # fold_committed is False ⇒ "no compression because declined".
+        assert details["tokens_after"] == details["tokens_before"]
 
 
 # ════════════════════════════════════════════════════════════════════════════
