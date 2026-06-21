@@ -39,7 +39,7 @@ _URL = "https://stress---agent-frontend-w65nrxwkiq-uc.a.run.app"
 
 
 def test_updates_only_the_stress_base_url() -> None:
-    new_text, changed = _write_profile_url(_SAMPLE, _URL)
+    new_text, changed = _write_profile_url(_SAMPLE, "stress", _URL)
     assert changed
     d = yaml.safe_load(new_text)
     p = d["profiles"]
@@ -52,14 +52,14 @@ def test_updates_only_the_stress_base_url() -> None:
 
 
 def test_preserves_comments() -> None:
-    new_text, _ = _write_profile_url(_SAMPLE, _URL)
+    new_text, _ = _write_profile_url(_SAMPLE, "stress", _URL)
     assert "# comment inside the stress block must survive" in new_text
 
 
 def test_idempotent_when_already_set() -> None:
-    once, changed1 = _write_profile_url(_SAMPLE, _URL)
+    once, changed1 = _write_profile_url(_SAMPLE, "stress", _URL)
     assert changed1
-    twice, changed2 = _write_profile_url(once, _URL)
+    twice, changed2 = _write_profile_url(once, "stress", _URL)
     assert changed2 is False
     assert twice == once
 
@@ -67,4 +67,4 @@ def test_idempotent_when_already_set() -> None:
 def test_raises_when_no_stress_base_url() -> None:
     no_stress = "default_profile: local\nprofiles:\n  local:\n    base_url: \"x\"\n"
     with pytest.raises(SystemExit):
-        _write_profile_url(no_stress, _URL)
+        _write_profile_url(no_stress, "stress", _URL)

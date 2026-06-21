@@ -321,3 +321,186 @@ def test_clean_run_passes_the_gate() -> None:
     }
     summary = score_run(rows, events)
     assert gate_failures(summary) == []
+
+
+# ── Phase 9 — C1 message-history compaction ────────────────────────────────────
+#
+# The C1 stress phase scores three things, with very different bar shapes:
+#   - unsafe_folds_total == 0 is INVIOLABLE (§B2-R); any floor_exceeded=True
+#     carrier is a hard fail regardless of the token-drop number.
+#   - mean drop ratio ≥ 0.20 over the FOLDED SUBSET — a row that never crossed
+#     the trigger ISN'T penalized.
+#   - prompt-cache hit-rate is provider-side; NOT scored here.
+#
+# These tests pin those three rules deterministically by feeding synthetic
+# CONTEXT_COMPACTED carriers — no Cloud Run, no Langfuse, no LLM.
+
+
+def _context_compacted(**details) -> dict:
+    """One CONTEXT_COMPACTED carrier (the §7 Recording-pillar wire)."""
+    return {"event_type": "context_compacted", "details": details}
+
+
+def test_compaction_folded_row_with_20pc_drop_is_a_hit() -> None:
+    """A row that folded once and dropped tokens 20% counts as a hit + a
+    folded-subset row. (The bar is `≥ 0.20`, so exactly 0.20 must hit.)"""
+    rows = [
+        {"case": "C-ok", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        "C-ok": [_context_compacted(
+            tokens_before=1000, tokens_after=800, floor_exceeded=False)],
+    }
+    summary = score_run(rows, events)
+    assert summary["phases"]["compaction"]["hits"] == 1
+    assert summary["compaction"]["folded"] == 1
+    assert summary["compaction"]["mean_drop_ratio"] == 0.20
+    assert summary["compaction"]["unsafe_folds_total"] == 0
+    assert gate_failures(summary) == []
+
+
+def test_compaction_unsafe_fold_is_an_inviolable_gate_failure() -> None:
+    """A floor_exceeded=True carrier counts as an unsafe fold regardless of
+    how big the token drop is. The hard gate fires even when drop ratio is
+    perfect — the §B2-R bar is non-negotiable."""
+    rows = [
+        {"case": "C-unsafe", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        # 50% drop — would be a great fold metric — but floor_exceeded=True is
+        # an L1 decline, so it counts as unsafe regardless.
+        "C-unsafe": [_context_compacted(
+            tokens_before=2000, tokens_after=1000, floor_exceeded=True)],
+    }
+    summary = score_run(rows, events)
+    assert summary["compaction"]["unsafe_folds_total"] == 1
+    assert summary["compaction"]["unsafe_fold_rows"] == ["C-unsafe"]
+    assert summary["phases"]["compaction"]["hits"] == 0
+    fails = gate_failures(summary)
+    assert any("unsafe_folds_total=1" in f for f in fails)
+
+
+def test_compaction_no_fold_row_is_not_penalized_on_drop_bar() -> None:
+    """A live run can sit below the trigger and never fold; want_compaction
+    is a tendency, not a guarantee. A no-fold row goes into the not_folded
+    bucket and does NOT pull the mean drop ratio down."""
+    rows = [
+        {"case": "C-folded", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+        {"case": "C-nofold", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        "C-folded": [_context_compacted(
+            tokens_before=1000, tokens_after=700, floor_exceeded=False)],
+        # No CONTEXT_COMPACTED carrier emitted; the trace did exist (so it is
+        # NOT a missing-trace row).
+        "C-nofold": [_step_planned(planning_depth="L1")],
+    }
+    summary = score_run(rows, events)
+    comp = summary["compaction"]
+    assert comp["folded"] == 1
+    assert comp["not_folded"] == 1
+    assert comp["drop_ratios"] == [0.30]
+    # Mean drop is over the folded subset only — the no-fold row does NOT
+    # weigh it down to 0.15.
+    assert comp["mean_drop_ratio"] == 0.30
+    assert comp["unsafe_folds_total"] == 0
+    assert gate_failures(summary) == []
+
+
+def test_compaction_low_drop_on_folded_subset_fails_the_gate() -> None:
+    """Two folded rows: one good drop, one 5% drop. The folded-subset mean is
+    12.5% — below the 20% bar — so the gate fails with a clear message."""
+    rows = [
+        {"case": "C-good", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+        {"case": "C-thin", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        "C-good": [_context_compacted(
+            tokens_before=1000, tokens_after=800, floor_exceeded=False)],
+        "C-thin": [_context_compacted(
+            tokens_before=1000, tokens_after=950, floor_exceeded=False)],
+    }
+    summary = score_run(rows, events)
+    assert summary["compaction"]["folded"] == 2
+    # (0.20 + 0.05) / 2 = 0.125 — below the bar.
+    assert summary["compaction"]["mean_drop_ratio"] == 0.125
+    fails = gate_failures(summary)
+    assert any(
+        "mean_drop_ratio=0.125" in f and "< 0.20" in f for f in fails
+    )
+
+
+def test_compaction_multi_fold_row_uses_first_before_last_after() -> None:
+    """When the trace folded several times, the drop ratio uses
+    `tokens_before` of the FIRST fold and `tokens_after` of the LAST fold —
+    that is the cumulative effect of compaction across the trace."""
+    rows = [
+        {"case": "C-multi", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        "C-multi": [
+            _context_compacted(tokens_before=2000, tokens_after=1500, floor_exceeded=False),
+            _context_compacted(tokens_before=1800, tokens_after=1200, floor_exceeded=False),
+            _context_compacted(tokens_before=1500, tokens_after=1000, floor_exceeded=False),
+        ],
+    }
+    summary = score_run(rows, events)
+    # First before = 2000, last after = 1000 -> drop = 0.5.
+    assert summary["compaction"]["drop_ratios"] == [0.5]
+    assert summary["compaction"]["folded"] == 1
+    assert summary["compaction"]["fold_counts"] == [3]
+    assert gate_failures(summary) == []
+
+
+def test_compaction_zero_folded_rows_do_not_check_drop_bar() -> None:
+    """When NO row folded, the mean-drop bar is vacuously satisfied — the
+    live run was just below the trigger. The gate stays green (the unsafe
+    bar trivially holds: 0 folds ⇒ 0 unsafe)."""
+    rows = [
+        {"case": "C-1", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+        {"case": "C-2", "phase": "compaction", "want_compaction": True,
+         "want_unsafe_fold": False},
+    ]
+    events = {
+        "C-1": [_step_planned(planning_depth="L1")],
+        "C-2": [_step_planned(planning_depth="L1")],
+    }
+    summary = score_run(rows, events)
+    assert summary["compaction"]["folded"] == 0
+    assert summary["compaction"]["mean_drop_ratio"] == 0.0
+    # `folded == 0` ⇒ drop bar skipped (per gate_failures);
+    # `unsafe_folds_total == 0` trivially holds.
+    assert gate_failures(summary) == []
+
+
+def test_compaction_corpus_has_at_least_four_pinned_rows() -> None:
+    """The corpus builder must emit ≥4 phase='compaction' rows, each with a
+    non-empty want_pinned_constraints and want_unsafe_fold=False (the bar the
+    analyzer enforces). The runbook depends on these existing."""
+    import json
+    from pathlib import Path
+
+    corpus_path = (
+        Path(__file__).resolve().parent.parent.parent
+        / "frontend" / "e2e" / "fixtures" / "planning_stress_corpus.json"
+    )
+    corpus = json.loads(corpus_path.read_text())
+    compaction_rows = [r for r in corpus if r.get("phase") == "compaction"]
+    assert len(compaction_rows) >= 4, (
+        "the C1 stress corpus must carry at least 4 phase='compaction' rows; "
+        "regenerate via `python scripts/build_planning_stress_corpus.py`"
+    )
+    for r in compaction_rows:
+        assert r.get("want_compaction") is True, r["case"]
+        assert r.get("want_unsafe_fold") is False, r["case"]
+        pins = r.get("want_pinned_constraints") or []
+        assert pins, f"{r['case']} has no want_pinned_constraints"
+        assert all(isinstance(p, str) and p.strip() for p in pins), r["case"]

@@ -551,7 +551,6 @@ def build_app(
                 salience=r.metadata.get("salience"),
             )
             for r in records
-            if not r.metadata.get("suppressed")
         ]
         return MemoryListResponse(items=items)
 
