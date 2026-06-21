@@ -14,6 +14,8 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Chat Persistence Phase A + B — E2E Validation Walkthrough](chat_persistence_phaseab_e2e_walkthrough.md) — Two evidence planes, used throughout:
 - [Chat persistence Phase B — E2E validation report](chat_persistence_phaseb_e2e_report.md) — Status: generated report — VALIDATED.
 - [Chat Persistence Phase B — GCP deploy + E2E validation (Playwright screenshots + Langfuse trace eval)](chat_persistence_phaseb_gcp_e2e_validation.plan.md) — A three-artifact validation (mirrors the carrier-gate triad), plus a deploy step and a **screenshot
+- [C1 — Message-History Compaction + B2 Pinned-Facts Floor: Implementation Plan](c1_message_compaction.impl.md) — The what-file/what-function/what-line/what-test build sheet for the C1 design; default-OFF.
+- [C1 — Phase 9 live-validation runbook](c1_message_compaction.phase9.runbook.md) — Tagged `--no-traffic` Cloud Run rev + planning-stress corpus + analyzer assert; operator-driven, prod untouched.
 - [cloud_cost_comparison_pyramids.plan](cloud_cost_comparison_pyramids.plan.md) — 
 - [Critical-Path Smoke Testing Plan](critical_path_smoke_testing.plan.md) — Status: COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)
 - [Dataset Adaptation Plan for Deep-Agent Benchmark](dataset_adaptation_plan.md) — This plan defines how to adapt external and internal sources into a stable, reproducible benchmark fixture for deep-agent capability evaluation.

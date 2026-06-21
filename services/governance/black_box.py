@@ -74,6 +74,18 @@ class EventType(str, Enum):
     # drift-guard stays green with no SPEC_VERSION bump. details carry
     # user_id/type/kept/evicted/deduped — never content.
     MEMORY_CONSOLIDATED = "memory_consolidated"
+    # C1 §7 context-compaction dual carrier (docs/plans/c1_message_compaction.design.md):
+    # the Recording-pillar event for a message-history fold (RemoveMessage rewrite
+    # of state["messages"]). Joined to the Reasoning Decision by ``decision_id``
+    # (the MODEL_SELECTED dual-sink idiom). ENRICHMENT — NOT added to
+    # default_spec()/requirements tuples in trust/governance_carrier_spec.py;
+    # compaction is conditional (most turns don't fold), and a per-phase required
+    # rule would false-alarm on every non-compaction turn. details carry counts +
+    # constraint_floor_hash + floor_exceeded/context_exhausted flags — NEVER the
+    # dropped text or constraint strings (the _CompactionOutcome Protocol in
+    # services/governance/context_compaction_carrier.py is what makes this
+    # structural, not a convention).
+    CONTEXT_COMPACTED = "context_compacted"
 
 
 class TraceEvent(BaseModel):

@@ -485,6 +485,39 @@ class AgentRuntimeSettings(BaseSettings):
     mem0_base_url: str = Field(
         default="https://api.mem0.ai", validation_alias="MEM0_BASE_URL"
     )
+    # ─── C1 message-history compaction (design §9 / impl §6) ─────────────
+    # Seven shadow-first knobs; the master flag (CONTEXT_COMPACT_MESSAGES)
+    # gates BOTH seams (call_llm_node READ, evaluate_node WRITE), so with it
+    # OFF the entire stack early-returns and the run is byte-identical to
+    # today. Numeric defaults match services/base_config.py — promote on a
+    # tagged revision, not silently in prod.
+    context_compact_messages_enabled: bool = Field(
+        default=False, validation_alias="CONTEXT_COMPACT_MESSAGES"
+    )
+    context_compact_trigger_fraction: float = Field(
+        default=0.6, validation_alias="CONTEXT_COMPACT_TRIGGER_FRACTION"
+    )
+    context_observation_clear_fraction: float = Field(
+        default=0.3, validation_alias="CONTEXT_OBSERVATION_CLEAR_FRACTION"
+    )
+    context_keep_last_k: int = Field(
+        default=10, validation_alias="CONTEXT_KEEP_LAST_K"
+    )
+    context_mask_after_steps: int = Field(
+        default=10, validation_alias="CONTEXT_MASK_AFTER_STEPS"
+    )
+    context_compact_cooldown_steps: int = Field(
+        default=5, validation_alias="CONTEXT_COMPACT_COOLDOWN_STEPS"
+    )
+    context_constraint_reinject_turns: int = Field(
+        default=0, validation_alias="CONTEXT_CONSTRAINT_REINJECT_TURNS"
+    )
+    # C2 Phase 8 (design §8.3) — caller-side sampling gate for the L2 shadow
+    # fidelity judge. 0.0 default keeps the L2 wire OFF in prod until
+    # calibration earns the cost (AP-7).
+    context_compaction_fidelity_sample_rate: float = Field(
+        default=0.0, validation_alias="CONTEXT_COMPACTION_FIDELITY_SAMPLE_RATE"
+    )
 
     @model_validator(mode="after")
     def _resolve_agent_env(self) -> AgentRuntimeSettings:
@@ -516,10 +549,28 @@ class AgentRuntimeSettings(BaseSettings):
                     "carrier_gate_fault_inject",
                     "memory_enabled",
                     "memory_autocapture_enabled",
+                    # C1 master flag (design §9) — the gate for BOTH seams.
+                    "context_compact_messages_enabled",
                 ):
                     data[field_name] = _env_flag_from_mapping(env, alias)
                 elif field_name == "max_reflexion_attempts":
                     data[field_name] = int(raw)
+                elif field_name in (
+                    # C1 numeric knobs (design §9). Ints stay ints, floats stay
+                    # floats — the type the WRITE/READ seams arithmetic on.
+                    "context_keep_last_k",
+                    "context_mask_after_steps",
+                    "context_compact_cooldown_steps",
+                    "context_constraint_reinject_turns",
+                ):
+                    data[field_name] = int(raw)
+                elif field_name in (
+                    "context_compact_trigger_fraction",
+                    "context_observation_clear_fraction",
+                    # C2 Phase 8 — the sampling gate is a fraction (0.0–1.0).
+                    "context_compaction_fidelity_sample_rate",
+                ):
+                    data[field_name] = float(raw)
                 else:
                     data[field_name] = raw
             elif field_name == "agent_env" and "AGENT_ENV" in env:
@@ -648,6 +699,18 @@ def build_components(
         # revision tunes them.
         memory_recall_min_relevance=settings.memory_recall_min_relevance,
         memory_authoritative_at=settings.memory_authoritative_at,
+        # C1 message-history compaction (design §9). Direct copy — the
+        # carrier_gate_enforce_mode derivation pattern doesn't apply here;
+        # every C1 knob is the operator's literal intent. Default-off across
+        # the board, so an empty env yields the byte-identical-when-off path.
+        context_compact_messages_enabled=settings.context_compact_messages_enabled,
+        context_compact_trigger_fraction=settings.context_compact_trigger_fraction,
+        context_observation_clear_fraction=settings.context_observation_clear_fraction,
+        context_keep_last_k=settings.context_keep_last_k,
+        context_mask_after_steps=settings.context_mask_after_steps,
+        context_compact_cooldown_steps=settings.context_compact_cooldown_steps,
+        context_constraint_reinject_turns=settings.context_constraint_reinject_turns,
+        context_compaction_fidelity_sample_rate=settings.context_compaction_fidelity_sample_rate,
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)

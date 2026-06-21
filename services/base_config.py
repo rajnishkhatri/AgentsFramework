@@ -152,6 +152,65 @@ class AgentConfig(BaseModel):
     # MUST stay OFF in prod (same posture as fanout_fault_inject — a dedicated
     # tagged revision flips it; the magic token is inert without the flag).
     carrier_gate_fault_inject: bool = False
+    # ─── C1 message-history compaction + B2 pinned-floor (design §9) ─────
+    # All seven knobs default to "off / no-op" so prod is byte-identical when
+    # the master flag is False: both seams (call_llm_node READ, evaluate_node
+    # WRITE) early-return before any mask/fold/tail logic. Promote on evidence
+    # via a tagged revision (same shadow-first discipline as plan_source,
+    # reflexion_enabled, t3_fanout_enabled, memory_enabled).
+    #
+    # Master switch — when False the §5.1 fold and §5.2 mask are both inert.
+    context_compact_messages_enabled: bool = False
+    # Token-pressure trigger fraction. The WRITE seam folds when current tokens
+    # cross ``compaction_trigger_tokens(profile.context_window, fraction)``.
+    # Pin at/below the model's empirical Safe Turn Depth (§B2-R S1/S6) — an
+    # eval task, not a guess. 0.6 is the §9 default.
+    context_compact_trigger_fraction: float = 0.6
+    # Mask fraction (§5.2): the READ seam clears tool-observation content
+    # once the working set crosses this fraction of context_window. Pure
+    # transient mask — never persisted into the checkpointer messages channel
+    # at this default. 0.3 is the §9 default.
+    context_observation_clear_fraction: float = 0.3
+    # plan_fold_cutoff(keep_last_k=...). The number of step-blocks preserved
+    # verbatim at the suffix; the prefix gets folded into the summary. 10 is
+    # the §9 default — block-aware so an Interaction Block is never split.
+    context_keep_last_k: int = 10
+    # plan_observation_mask(mask_after_steps=...). Tool observations older than
+    # the last M step-blocks have their ``content`` masked. M=10 is the §B1-R
+    # R1 ablated optimum; do not flip without ablation evidence.
+    context_mask_after_steps: int = 10
+    # Cooldown between successive folds. The WRITE seam gates on
+    # ``step_count - state.get("last_compaction_step", 0) >= cooldown_steps``
+    # so two folds cannot stack inside a re-entry burst (Reflexion lap, T3
+    # join). 5 is the §9 default.
+    context_compact_cooldown_steps: int = 5
+    # Tail-floor cadence (§5.2 / §B2-R S2/S5): when N > 0 and step_count % N == 0,
+    # the READ seam appends ``build_constraint_floor(pinned)`` after existing
+    # messages AND persists it append-only into the checkpointer messages
+    # channel. The §7.3 checkpoint-privilege caveat applies — the persisted
+    # tail puts constraint TEXT on a privileged store, so the ship default
+    # (N=0) keeps the tail OFF and the checkpoint content-free. Promote only
+    # on calibrated cache-hit-rate evidence (§B1-R R6 cost-negation tension).
+    context_constraint_reinject_turns: int = 0
+    # C2 Phase 8 (design §8.3) — caller-side sampling gate for the L2 shadow
+    # fidelity judge. ``random() < context_compaction_fidelity_sample_rate``
+    # wraps the ``await eval_capture.record(target="compaction_fidelity",
+    # ...)`` call on COMMITTED folds. 0.0 = the gate fully suppresses L2
+    # (prod-default until calibration earns the cost). NEW infra — no
+    # sampler existed in-repo before this (Fix D); ``eval_capture.record()``
+    # is a bare ``logger.info`` (``services/eval_capture.py:49``).
+    context_compaction_fidelity_sample_rate: float = 0.0
+
+
+def compaction_trigger_tokens(context_window: int, fraction: float) -> int:
+    """Token threshold above which the WRITE seam folds the message history.
+
+    Pure helper (design §9). ``window * fraction`` truncated to int, floored
+    at 1: a 0 trigger would compact on every step (``tokens >= 0`` is
+    trivially true), so this floor keeps the trigger meaningful even when
+    a degenerate ModelProfile.context_window or fraction lands on the call.
+    """
+    return max(1, int(context_window * fraction))
 
 
 def default_fast_profile() -> ModelProfile:

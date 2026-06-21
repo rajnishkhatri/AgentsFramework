@@ -69,6 +69,53 @@ class LangfuseEvalTelemetrySink:
                 exc_info=True,
             )
 
+    def publish_compaction_fidelity(
+        self,
+        *,
+        trace_id: str,
+        user_id: str,
+        task_id: str,
+        ai_input: dict[str, Any],
+        ai_response: dict[str, Any],
+        step: int,
+        model: str | None,
+    ) -> None:
+        """C1 §8.3 — eval.compaction_fidelity observation (shadow v1).
+
+        Maps an ``eval_capture.record(target="compaction_fidelity", ...)`` row
+        to a Langfuse observation. **Reported, never gated** (AP-7).
+
+        Privacy note (design §8.3): the ``ai_input`` here MAY carry the
+        dropped-prefix digest + constraint strings — this is a dev/telemetry
+        path, NOT a governance carrier. The §7 carrier remains content-free.
+        """
+        try:
+            self._exporter.export_event(
+                name=observation_name_for_target("compaction_fidelity"),
+                trace_id=trace_id,
+                attributes={
+                    "target": "compaction_fidelity",
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "step": step,
+                    "model": model or "",
+                    "subject": user_id,
+                    "task_input": ai_input.get("task_input", ""),
+                    "dropped_prefix_digest": ai_input.get(
+                        "dropped_prefix_digest", ""
+                    ),
+                    "pinned_constraints": ai_input.get("pinned_constraints", []),
+                    "summary": ai_input.get("summary", ""),
+                    "__output": serialize_ai_response(ai_response),
+                    "__bb_observation_type": "evaluator",
+                },
+            )
+        except Exception:
+            logger.warning(
+                "LangfuseEvalTelemetrySink.publish_compaction_fidelity failed (swallowed)",
+                exc_info=True,
+            )
+
     def publish_task_understanding(
         self,
         *,

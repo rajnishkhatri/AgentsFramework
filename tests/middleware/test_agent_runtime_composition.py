@@ -287,3 +287,82 @@ class TestTieredLoopFlags:
             AgentRuntimeSettings.from_mapping(
                 {"AGENT_ENV": "local", "PLANNING_PLAN_SOURCE": "bogus"}
             )
+
+
+class TestC1ContextCompactionFlags:
+    """C1 Phase 4 (design §9): the 7 context_* fields thread through the
+    composition root (env → AgentRuntimeSettings → AgentConfig).
+
+    Failure-first (Protocol A): the headline guard is the OFF default — the
+    impl plan's "byte-identical-when-off proof" depends on the master flag
+    being False after an empty env, and every numeric default being exactly
+    the §9 table value. A drift here silently activates the WRITE seam.
+    """
+
+    def test_empty_env_keeps_master_flag_off(self, tmp_path, monkeypatch):
+        """Empty env ⇒ context_compact_messages_enabled is False on AgentConfig.
+        This is the byte-identical-when-off proof (design §9)."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings(agent_env="local")
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.context_compact_messages_enabled is False
+        # The other six knobs also surface their byte-identical defaults so a
+        # rev that flips the master flag inherits the §9-tabled values.
+        assert cfg.context_compact_trigger_fraction == 0.6
+        assert cfg.context_observation_clear_fraction == 0.3
+        assert cfg.context_keep_last_k == 10
+        assert cfg.context_mask_after_steps == 10
+        assert cfg.context_compact_cooldown_steps == 5
+        assert cfg.context_constraint_reinject_turns == 0
+
+    def test_master_flag_env_alias_is_context_compact_messages(self, tmp_path, monkeypatch):
+        """The env alias CONTEXT_COMPACT_MESSAGES coerces through the bool-list
+        like REFLEXION_ENABLED / T3_FANOUT_ENABLED."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {"AGENT_ENV": "local", "CONTEXT_COMPACT_MESSAGES": "1"}
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.context_compact_messages_enabled is True
+
+    def test_numeric_aliases_thread_through_coercion_arm(self, tmp_path, monkeypatch):
+        """The six numeric knobs flip from raw strings through the coercion
+        arm (composition.py:521-522) onto AgentConfig. Mirrors the
+        MAX_REFLEXION_ATTEMPTS pattern; int and float both honored."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {
+                "AGENT_ENV": "local",
+                "CONTEXT_COMPACT_TRIGGER_FRACTION": "0.75",
+                "CONTEXT_OBSERVATION_CLEAR_FRACTION": "0.25",
+                "CONTEXT_KEEP_LAST_K": "12",
+                "CONTEXT_MASK_AFTER_STEPS": "8",
+                "CONTEXT_COMPACT_COOLDOWN_STEPS": "3",
+                "CONTEXT_CONSTRAINT_REINJECT_TURNS": "4",
+            }
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.context_compact_trigger_fraction == 0.75
+        assert cfg.context_observation_clear_fraction == 0.25
+        assert cfg.context_keep_last_k == 12
+        assert cfg.context_mask_after_steps == 8
+        assert cfg.context_compact_cooldown_steps == 3
+        assert cfg.context_constraint_reinject_turns == 4
+        # Types are stable — the coercion arm hands typed values to pydantic,
+        # not raw strings (the impl-plan's "direct copy" semantics).
+        assert isinstance(cfg.context_compact_trigger_fraction, float)
+        assert isinstance(cfg.context_keep_last_k, int)
+        assert isinstance(cfg.context_compact_cooldown_steps, int)
+
+    def test_master_flag_env_off_yields_disabled(self, tmp_path, monkeypatch):
+        """Explicit OFF must round-trip; mirrors REFLEXION_ENABLED."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {"AGENT_ENV": "local", "CONTEXT_COMPACT_MESSAGES": "false"}
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.context_compact_messages_enabled is False

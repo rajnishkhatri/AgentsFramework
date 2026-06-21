@@ -68,6 +68,15 @@ class AgentState(MessagesState):
 
     current_token_count: int
     truncation_applied: bool
+    # C1 Phase 3 (docs/plans/c1_message_compaction.design.md §6): the
+    # step_count at which the last successful message-history fold landed.
+    # PLAIN int (NOT Annotated[int, operator.add]) — the cooldown gate at the
+    # WRITE seam reads this as "stamp of the last fold", overwrite-semantics.
+    # An additive reducer would silently double the stamp across checkpoint
+    # round-trips and break the cooldown invariant. Default/absent = 0 = never
+    # folded, so a pre-C1 checkpoint resuming on this code permits the first
+    # fold without a migration (§6.1 backward-compat).
+    last_compaction_step: int
 
     last_outcome: str
     reasoning_trace: Annotated[list[str], operator.add]

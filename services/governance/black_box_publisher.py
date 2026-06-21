@@ -109,6 +109,13 @@ _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     # Span like the other memory carriers; details carry user_id/type/counts —
     # never content. Makes the eviction visible to the Validation pillar.
     EventType.MEMORY_CONSOLIDATED: ("span", "memory.consolidated"),
+    # C1 §7 context-compaction (docs/plans/c1_message_compaction.design.md): the
+    # Recording-pillar event for a message-history fold. Span like the memory
+    # carriers — a write-side activity that mutates context. Details carry
+    # counts + constraint_floor_hash + floor_exceeded/context_exhausted flags;
+    # the dropped text and constraint strings NEVER reach the curated trace
+    # (the _CompactionOutcome Protocol enforces it structurally).
+    EventType.CONTEXT_COMPACTED: ("span", "context.compacted"),
 }
 
 # Pre-compile redaction patterns from the guardrail rule factories.

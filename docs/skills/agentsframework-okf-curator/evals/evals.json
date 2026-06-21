@@ -1,0 +1,26 @@
+{
+  "skill_name": "agentsframework-okf-curator",
+  "evals": [
+    {
+      "id": 0,
+      "name": "document-feature-as-recipe",
+      "prompt": "We just shipped a standalone OKF linter at scripts/okf_lint.py plus the convention doc at docs/CONVENTIONS_OKF.md — it declares knowledge bundles and checks that each has an index.md/log.md and that every Concept carries `type` frontmatter. Document this as a recipe so the team knows how to add and lint a bundle. Then make sure the docs tree still lints clean.",
+      "expected_output": "A new recipe markdown file created under docs/recipes/<topic>/ in the house shape (type/title/description/tags frontmatter, # Recipe N — title, **Goal:**, **Status:**, steps, verification), the sub-bundle index.md updated to list it, log.md given a dated entry, and `python scripts/okf_lint.py` exiting 0. If a new sub-bundle dir was created it is registered in DECLARED_BUNDLES.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "drift-check-since-ref",
+      "prompt": "Are our docs stale relative to the code we changed in the last few commits? Give me a worklist of which docs reference code that just changed and might need updating. Don't edit anything yet — just the report.",
+      "expected_output": "A drift report (e.g. via scripts/drift_report.py) listing changed code/pipeline files since a git ref and the authored docs that mention those paths, framed as a review worklist. No files created or edited. Evidence dirs (docs/research, docs/reports, etc.) are NOT scanned.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "file-research-note",
+      "prompt": "I wrote up a short research note on memory-extractor calibration thresholds — it's a reusable design reference we'll rely on going forward, not just a record of one run. Here's the content:\n\n# Memory extractor calibration thresholds\n\nThe store-decision precision gate should sit at >=0.90 and the PII-flip rate must be a hard zero. Kappa vs gold >=0.60 is the inter-rater floor. These thresholds come from the frozen test split and gate write-back via the enable-policy certificate.\n\nFile it in the right place so it stays organized and extractable, and keep the knowledge tree lint-clean.",
+      "expected_output": "The note placed in the AUTHORED research home (root research/ bundle, since it's a reusable design reference — not docs/research/ which is excluded evidence), given fitting `type` frontmatter, the research bundle index.md/log.md regenerated to include it, and `python scripts/okf_lint.py` exiting 0.",
+      "files": []
+    }
+  ]
+}
