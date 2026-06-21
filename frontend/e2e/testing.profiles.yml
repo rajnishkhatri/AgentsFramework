@@ -39,7 +39,7 @@ profiles:
   #    Stress Revision). Fill <hash> after deploying the --tag stress
   #    frontend revision whose MIDDLEWARE_URL points at the stress backend. ──
   stress:
-    base_url: "https://stress---agent-frontend-w65nrxwkiq-uc.a.run.app"
+    base_url: "${TAG_URL_FRONTEND}"
     env:
       E2E_AUTHENTICATED: "1"
       # default to the full corpus, all phases; override per-run on the CLI

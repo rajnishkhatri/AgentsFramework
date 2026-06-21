@@ -200,6 +200,14 @@ class AgentConfig(BaseModel):
     # sampler existed in-repo before this (Fix D); ``eval_capture.record()``
     # is a bare ``logger.info`` (``services/eval_capture.py:49``).
     context_compaction_fidelity_sample_rate: float = 0.0
+    # Fix 1 (Phase-9 manual-probe root cause): when True, the fold floor and the
+    # §5.2 tail reinjection harvest the operator's conversational pins from the
+    # human views (``services.summarizer.extract_user_constraints``) and pass
+    # them as the ``user_constraints`` arg to ``derive_pinned_floor`` — so a
+    # free-text pin ("avoid destructive file tools") reaches the §B2-R must-not
+    # floor. Default OFF: with this flag False both fold sites pass ``[]`` exactly
+    # as before, keeping flag-OFF behaviour byte-identical.
+    context_extract_user_constraints: bool = False
 
 
 def compaction_trigger_tokens(context_window: int, fraction: float) -> int:

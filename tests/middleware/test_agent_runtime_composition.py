@@ -315,6 +315,22 @@ class TestC1ContextCompactionFlags:
         assert cfg.context_mask_after_steps == 10
         assert cfg.context_compact_cooldown_steps == 5
         assert cfg.context_constraint_reinject_turns == 0
+        # Fix 1 — the user-pin harvest gate is OFF by default, so both fold
+        # sites pass user_constraints=[] (byte-identical with the prior code).
+        assert cfg.context_extract_user_constraints is False
+
+    def test_extract_user_constraints_env_alias_flips_on(
+        self, tmp_path, monkeypatch
+    ):
+        """Fix 1: CONTEXT_EXTRACT_USER_CONSTRAINTS coerces through the bool-list
+        like the master flag, flipping the harvest gate ON."""
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings.from_mapping(
+            {"AGENT_ENV": "local", "CONTEXT_EXTRACT_USER_CONSTRAINTS": "1"}
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.context_extract_user_constraints is True
 
     def test_master_flag_env_alias_is_context_compact_messages(self, tmp_path, monkeypatch):
         """The env alias CONTEXT_COMPACT_MESSAGES coerces through the bool-list

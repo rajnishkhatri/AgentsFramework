@@ -108,6 +108,7 @@ from services.summarizer import (
     build_message_compaction,
     collect_compaction_l1,  # C1 Phase 8 — L1 deterministic gates
     derive_pinned_floor,
+    extract_user_constraints,  # Fix 1 — harvest operator pins into the floor
     plan_fold_cutoff,
     plan_observation_mask,
     should_compact_trajectory,
@@ -1841,11 +1842,19 @@ def build_graph(
                 and _n > 0
                 and step_count % _n == 0
             ):
+                # Fix 1: same operator-pin harvest as the fold site, so the
+                # persisted tail floor actually carries the user's must-not pins.
+                # Default OFF ⇒ user_constraints=[] (byte-identical prior).
+                _tail_user_constraints = (
+                    list(extract_user_constraints(to_views(existing_messages)))
+                    if agent_config.context_extract_user_constraints
+                    else []
+                )
                 _pinned_for_tail = derive_pinned_floor(
                     (state.get("task_understanding") or {}).get(
                         "success_conditions", []
                     ),
-                    [],
+                    _tail_user_constraints,
                 )
                 _floor_text = build_constraint_floor(
                     _pinned_for_tail, polarity_filter="must-not"
@@ -2205,9 +2214,17 @@ def build_graph(
                     _cutoff = plan_fold_cutoff(
                         _views, keep_last_k=agent_config.context_keep_last_k
                     )
+                    # Fix 1: harvest operator pins from the human views so a
+                    # free-text "avoid …" convention reaches the must-not floor.
+                    # Default OFF ⇒ user_constraints=[] (byte-identical prior).
+                    _user_constraints = (
+                        list(extract_user_constraints(_views))
+                        if agent_config.context_extract_user_constraints
+                        else []
+                    )
                     _pinned = derive_pinned_floor(
                         (state.get("task_understanding") or {}).get("success_conditions", []),
-                        [],
+                        _user_constraints,
                     )
                     _summary = build_message_compaction(
                         _views,
@@ -2303,9 +2320,16 @@ def build_graph(
                         pinned_kept=len(_pinned),
                         must_not_count=_must_not_count,
                         constraint_floor_hash=_floor_hash,
-                        floor_reinjected=False,
+                        # Fix 2 — truthful, not a hardcoded literal. A fold
+                        # "reinjects" the floor when it COMMITS (the rewrite
+                        # carries the PINNED bucket verbatim into the model's
+                        # new context) AND the must-not floor is non-empty. A
+                        # declined fold (no rewrite) or an empty floor reinjects
+                        # nothing.
+                        floor_reinjected=bool(_committed and _floor_text),
                         floor_exceeded=bool(_floor_exceeded),
                         context_exhausted=bool(_context_exhausted),
+                        fold_committed=bool(_committed),
                     )
                     emit_compaction_carrier(
                         black_box,
