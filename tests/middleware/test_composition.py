@@ -102,9 +102,9 @@ class TestV3ProfileWiring:
         """C2: ``build_adapters`` returns a bag whose attributes
         satisfy each port Protocol (vendor-neutral, no SDK types).
 
-        Phase 0.5 R1: ``memory_client`` is now ``None`` (dead seam) — the
-        sync ``LongTermMemoryService`` handles ``/agent/memory`` routes.
-        Phase 3 deletes the field outright.
+        Phase 3 (Branch A): the async ``memory_client`` field is GONE.
+        Memory routes go through the sync ``LongTermMemoryService`` +
+        graph-side ``MemoryBackend`` Protocol (no middleware port).
         """
         from middleware.composition import build_adapters
         from middleware.ports.jwt_verifier import JwtVerifier
@@ -115,8 +115,9 @@ class TestV3ProfileWiring:
 
         assert isinstance(adapters.jwt_verifier, JwtVerifier)
         assert isinstance(adapters.tool_acl, ToolAclProvider)
-        assert adapters.memory_client is None
         assert isinstance(adapters.telemetry_exporter, TelemetryExporter)
+        # Phase 3 invariant: memory_client field has been removed entirely.
+        assert not hasattr(adapters, "memory_client")
 
     def test_v3_registers_eval_telemetry_sink(self) -> None:
         from middleware.composition import build_adapters
@@ -174,8 +175,8 @@ class TestV2ProfileWiring:
     def test_v2_returns_same_port_shapes(self) -> None:
         """v2 swaps adapter implementations, NOT port contracts.
         Composition must return the same typed bag shape for both
-        profiles (rule C2). Phase 0.5 R1: ``memory_client`` is ``None``
-        in both profiles (dead seam).
+        profiles (rule C2). Phase 3 (Branch A): no ``memory_client``
+        in either profile.
         """
         from middleware.composition import build_adapters
         from middleware.ports.jwt_verifier import JwtVerifier
@@ -187,8 +188,8 @@ class TestV2ProfileWiring:
 
         assert isinstance(adapters.jwt_verifier, JwtVerifier)
         assert isinstance(adapters.tool_acl, ToolAclProvider)
-        assert adapters.memory_client is None
         assert isinstance(adapters.telemetry_exporter, TelemetryExporter)
+        assert not hasattr(adapters, "memory_client")
 
 
 # ─────────────────────────────────────────────────────────────────────

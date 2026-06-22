@@ -16,6 +16,7 @@ related:
     - "[[governance-carrier-gate-phase1]]"
   repo_concepts:
     - docs/plans/replace_mem0_pgvector.design.md
+    - docs/plans/typed_memory_searchability.design.md
     - docs/Architectures/FOUR_LAYER_ARCHITECTURE.md
     - docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md
     - docs/style-guides/STYLE_GUIDE_LAYERING.md
@@ -523,6 +524,161 @@ Settings (`AgentRuntimeSettings`):
 - Architecture test reflects the new composition rule (no horizontal-to-horizontal coupling — see §Architecture & TDD compliance).
 - mem0 code still on disk; the swap is config-driven only. Do NOT delete mem0 files yet.
 
+### Phase 4.5 — Typed-memory forward-compatible schema (BLOCKS Phase 5 S1; schema-now / behavior-later)
+
+Added 2026-06-22. Implements the **P0 (schema-only) slice** of
+[`typed_memory_searchability.design.md`](./typed_memory_searchability.design.md)
+and nothing else. This phase exists *before* Phase 5 for one reason from that
+design's governing principle: **the live Cloud SQL DDL (Phase 5 S1) is the
+expensive, effectively-irreversible thing; runtime behavior is a cheap code
+deploy.** Folding the type-aware columns into the same migration now avoids a
+*second* live `ALTER TABLE` later. The window is open precisely because Phase 5
+S1 has **not** applied the `agent_memories` DDL yet (it is gated on the
+user-driven `cloud-sql-proxy` apply).
+
+**Scope — P0 ONLY (design §5, §5.1, §8).** This phase makes the *schema*
+type-aware and adds two **observably-inert** write-side lines. It does **NOT**
+change recall composition, the `MemoryBackend` Protocol, or any
+`orchestration/`/`components/` code. The four-field `MemoryRecord` round-trip is
+byte-identical, so the **shared parametrized contract suite from Phase 2 passes
+unchanged** — that is the acceptance bar.
+
+> **The deferred half is explicitly NOT in this phase.** The behavioral levers
+> R1 (SQL type push-down / Protocol change — Ask-first), R2/R3 (typed-recall
+> orchestrator + `embed_text` writer), R4 (hybrid RRF), R5 (semantic
+> consolidation), R6 (recency/bi-temporal) all stay as follow-on plans per the
+> design's §6 roadmap. Phase 4.5 only lays the schema they will later use.
+
+#### What changes (two already-shipped Phase 2 artifacts, both in `services/memory_backends/pgvector.py`)
+
+**(1) The `DDL` constant** becomes a superset of the Phase 2 DDL — net-new are
+`mem_type` and the generated `ts` column, plus their indexes (design §5):
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;     -- require pgvector >= 0.8.2 (CVE-2026-3172)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;   -- defensive no-op on POSTGRES_15 (R2)
+
+CREATE TABLE IF NOT EXISTS agent_memories (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     TEXT NOT NULL,
+  key         TEXT NOT NULL,
+  mem_type    TEXT NOT NULL DEFAULT 'semantic',   -- NEW: write-derived shadow of metadata->>'type'
+  payload     JSONB NOT NULL DEFAULT '{}'::jsonb,
+  metadata    JSONB NOT NULL DEFAULT '{}'::jsonb,
+  embed_text  TEXT NOT NULL,
+  embedding   VECTOR({dim}),                       -- stays NULLABLE (schema-now for the deferred R2 bypass)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  ts          tsvector GENERATED ALWAYS AS         -- NEW: hybrid-lexical side (future R4), auto-maintained
+              (to_tsvector('english', COALESCE(payload->>'text', ''))) STORED,  -- NULL-safe (design H7)
+  UNIQUE (user_id, key)
+);
+
+CREATE INDEX IF NOT EXISTS agent_memories_user_idx        ON agent_memories (user_id);
+CREATE INDEX IF NOT EXISTS agent_memories_user_type_idx   ON agent_memories (user_id, mem_type);  -- NEW (Decision B)
+CREATE INDEX IF NOT EXISTS agent_memories_hnsw_idx        ON agent_memories USING hnsw (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS agent_memories_ts_idx          ON agent_memories USING gin (ts);       -- NEW (future R4)
+-- Phase 5 S1 migration MUST end with: ANALYZE agent_memories;  (design H9 — planner stats for the new low-cardinality column)
+-- Phase 5 S1 HNSW build guard retained: SET max_parallel_maintenance_workers = 0 for pgvector < patched (CVE-2026-3172).
+```
+
+**(2) Two inert write-side lines in the backend** (design §5 "scope of no behavior change"):
+
+- `put` derives `mem_type` from `record.metadata.get('type', 'semantic')` and
+  writes it into the new column (extend the `INSERT … ON CONFLICT … DO UPDATE`
+  at `pgvector.py:255` to set `mem_type`). The column is **write-derived and
+  unread at runtime** — recall still filters on `metadata['type']` via
+  `LongTermMemoryService` (the existing Python post-filter is untouched), so
+  this changes nothing observable. It only pre-populates the indexed predicate
+  R1 will later push down.
+- `_embed_text_of` (`pgvector.py:229`) gains a **non-empty `embed_text`**
+  preference ahead of the existing non-empty `text` branch, keeping the
+  `repr(payload)` last-resort fallback. Mirror the current type guard
+  (`isinstance(x, str) and x`) rather than a bare
+  `payload.get('embed_text') or payload.get('text')` chain: an empty-string or
+  non-`str` `embed_text` MUST fall through to `text` (and then `repr`), exactly
+  as the existing `text` branch already treats an empty `text`. Concretely:
+
+  ```python
+  @staticmethod
+  def _embed_text_of(record: MemoryRecord) -> str:
+      payload = record.payload or {}
+      explicit = payload.get("embed_text")
+      if isinstance(explicit, str) and explicit:
+          return explicit
+      text = payload.get("text")
+      if isinstance(text, str) and text:
+          return text
+      return repr(payload)
+  ```
+
+  **Verified inert:** no writer emits `embed_text` until R3, so the key is absent
+  today and the function always resolves to `text` — embedding input is
+  unchanged. The empty-string fall-through is the safe rule for the *future* R3
+  writer: embedding `""` would otherwise produce a degenerate, signal-free
+  vector with no error, so a present-but-empty key is treated as "no override,"
+  not as authoritative.
+
+#### Scope guards (the agent MUST NOT — design §5.1 / G1)
+
+- **MUST NOT ship the procedural embedding bypass at P0.** `search`
+  (`pgvector.py:311`) still kNN-ranks across **all** types (the type filter is a
+  Python post-step in `LongTermMemoryService`). A NULL-embedding procedural row
+  would sort last and silently drop out of recall — a behavior change that also
+  fails the shared contract tests. The `embedding` column is *nullable*
+  (schema-now) but `put` MUST still embed **every** type, including procedural.
+  The bypass is bound to R2 (a follow-on), not this phase.
+- **MUST NOT read `mem_type` at runtime.** It is a denormalized shadow; the
+  single source of truth stays `metadata['type']` (round-trips in the `metadata`
+  JSONB). No trigger/check-constraint is added (dead weight while unread — R1
+  owns any constraint if it begins to rely on the column).
+- **MUST NOT widen the `MemoryBackend` Protocol** (R1 is the Ask-first
+  follow-on). `get`/`search` keep reconstructing the four-field `MemoryRecord`;
+  `mem_type`, `ts`, `id`, `embed_text`, `created_at` stay DB-side-only and are
+  dropped on reconstruction.
+- **MUST NOT touch `orchestration/`, `components/`, or `LongTermMemoryService`**
+  (the base swap's non-goals hold — design §7).
+
+#### TDD (failure-paths-first, per AGENTS.md §Testing Rules)
+
+- The Phase 2 **shared parametrized contract suite must pass unchanged** against
+  `PgVectorMemoryBackend` — this is the load-bearing regression guard that the
+  schema additions are transparent to the `MemoryRecord` round-trip.
+- Add a small set of **schema-fold** tests against the pgvector Docker fixture
+  (`pgvector/pgvector:pg15`), rejection-first:
+  - `mem_type` defaults to `'semantic'` when `metadata['type']` is absent.
+  - `mem_type` is derived verbatim from `metadata['type']` (`episodic`,
+    `procedural`) on `put`, and on upsert it updates with the record.
+  - `get`/`search` returned records **do not** expose `mem_type`/`ts` (four-field
+    round-trip preserved — assert the reconstructed record equals the input four
+    fields).
+  - A `procedural`-typed record is **still embedded and still kNN-retrievable**
+    (guards against an accidental bypass — the G1 correctness gate).
+  - `_embed_text_of` prefers a **non-empty** `embed_text`, else non-empty
+    `text`, else repr (a 4-row table test): (1) non-empty `embed_text` wins;
+    (2) `embed_text=""` falls through to `text` (empty is **not** authoritative);
+    (3) no `embed_text` → `text`; (4) neither → `repr(payload)`. Plus: a record
+    with **no** `embed_text` embeds the same bytes as before this phase
+    (inert-day-one proof).
+  - `ts` is populated for a record with `payload.text` and is empty-not-NULL for
+    a record whose payload lacks `text` (NULL-safety, design H7).
+
+#### Gate (Phase 4.5 → Phase 5)
+
+- `pytest tests/services/memory_backends/test_pgvector_backend.py -q` GREEN —
+  the **Phase 2 shared contract suite passes unchanged** plus the new schema-fold
+  tests (rejection ≥ acceptance per TAP-4).
+- `pytest tests/architecture/ -q` GREEN — no new forbidden imports; the DDL/
+  backend edits add no upward import and no `middleware/` import.
+- `pytest tests/ -q` GREEN — no regression anywhere from the inert write-side
+  changes.
+- Manual schema check against the Docker fixture: `\d agent_memories` shows
+  `mem_type`, `ts`, `agent_memories_user_type_idx`, `agent_memories_ts_idx`; a
+  `procedural` row inserted via `put` has a non-NULL `embedding`.
+- `python scripts/okf_lint.py` GREEN.
+- Design §8 P0 readiness checklist reconciled: every box maps to a test or DDL
+  line above, and the "procedural bypass deferred to R2" box is explicitly
+  satisfied (bypass NOT shipped).
+
 ### Phase 5 — Cutover (no data migration) — **locked rollback sequence**
 
 Per the user's decision: pgvector starts empty. Memories re-accumulate from cutover.
@@ -534,7 +690,7 @@ The ordering below is **strict and reversible at every step until S6**. The prin
 | Step | Action | Reversible? | Rollback if it fails |
 |---|---|---|---|
 | **S0** | (Phase 0.5) `build_adapters` is keyless; 6 middleware tests green without mem0 env. **Without this, S6 is unsafe.** | Yes | revert Phase 0.5 commit |
-| **S1** | Apply the SQL migration (`vector` + `pgcrypto` + `agent_memories`) to the **Python backend's** Cloud SQL via `cloud-sql-proxy` (C3-confirmed DSN). | Yes (drop table) | drop table; no app impact |
+| **S1** | Apply the SQL migration (`vector` + `pgcrypto` + the **Phase 4.5 superset `agent_memories` DDL** — incl. `mem_type`, generated `ts`, the `(user_id, mem_type)` B-tree, and the GIN index) to the **Python backend's** Cloud SQL via `cloud-sql-proxy` (C3-confirmed DSN). One migration, not two (it imports the Phase 4.5 `DDL` constant). End with `ANALYZE agent_memories` (design H9); guard the HNSW build with `SET max_parallel_maintenance_workers = 0` for pgvector < patched (CVE-2026-3172). | Yes (drop table) | drop table; no app impact |
 | **S2** | Deploy a **no-traffic** Cloud Run revision: `MEMORY_BACKEND=pgvector`, **`MEM0_API_KEY` still set** (unused but present), mem0 code **still on disk**. | Yes | delete the no-traffic revision |
 | **S3** | Smoke-test the no-traffic tag: authed runs assert `MEMORY_RECALLED` count=0 on run 1, >0 by run 3; carrier-gate audit GREEN; stress E2E GREEN. | Yes | fix forward on the tag; prod untouched |
 | **S4** | **Shift traffic** to the pgvector revision. mem0 keys + code still present on the rollback revision. | **Yes — instant** | shift traffic back to the prior revision (still mem0-wired) |
@@ -698,7 +854,8 @@ Removed (Phase 3 Branch A — expected):
 
 Edited:
 - `middleware/composition.py` — branch on `MEMORY_BACKEND`; construct embedding client + pgvector backend, inject one into the other (composition legally imports *down* into `services/`)
-- `services/long_term_memory.py` — no changes (sync `MemoryBackend` + `MemoryRecord` untouched)
+- `services/memory_backends/pgvector.py` (**Phase 4.5**) — `DDL` constant becomes the typed-memory superset (`mem_type` + generated `ts` + `(user_id, mem_type)` B-tree + GIN index); `put` derives + writes `mem_type` from `metadata['type']`; `_embed_text_of` prefers a non-empty `payload['embed_text']`, else non-empty `payload['text']`, else repr (empty/non-str `embed_text` falls through — not authoritative). All additions observably inert day one (design §5). No Protocol change; `get`/`search` still return the four-field `MemoryRecord`.
+- `services/long_term_memory.py` — no changes (sync `MemoryBackend` + `MemoryRecord` untouched; the Python type filter keeps reading `metadata['type']`)
 - `orchestration/react_loop.py` — **no changes** (recall/store route through `LongTermMemoryService`; Phase 6 reads existing carriers — C6)
 - Settings: `AgentRuntimeSettings` (add `memory_backend` + embedding settings; `MEM0_*` removed only at Phase 5 S6)
 - Terraform: `MEMORY_BACKEND=pgvector` + Python-backend `DATABASE_URL` bound; `MEM0_*` removed at Phase 5 S6

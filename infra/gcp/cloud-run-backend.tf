@@ -153,9 +153,26 @@ resource "google_cloud_run_v2_service" "backend_combined" {
         value = "https://cloud.langfuse.com"
       }
 
+      # ── Memory backend (Phase 5: mem0 → pgvector cutover) ─────────
+      # Composition root selects backend via MEMORY_BACKEND. "pgvector"
+      # binds to the agent_memories table on Cloud SQL (DATABASE_URL),
+      # using the EMBEDDING_MODEL via the LiteLLMEmbeddingClient adapter.
+      # The MEM0_* env block + IAM accessor was removed in Phase 5 S4;
+      # the mem0-api-key secret stays live for the 24h-rollback window
+      # and is deleted in Phase 5 S6.
       env {
-        name  = "MEM0_BASE_URL"
-        value = "https://api.mem0.ai"
+        name  = "MEMORY_BACKEND"
+        value = "pgvector"
+      }
+
+      env {
+        name  = "EMBEDDING_MODEL"
+        value = "text-embedding-3-small"
+      }
+
+      env {
+        name  = "EMBEDDING_DIMENSION"
+        value = "1536"
       }
 
       # ── Secrets via Secret Manager ──────────────────────────────────────
@@ -205,16 +222,6 @@ resource "google_cloud_run_v2_service" "backend_combined" {
         value_source {
           secret_key_ref {
             secret  = google_secret_manager_secret.langfuse_secret_key.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name = "MEM0_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.mem0_api_key.secret_id
             version = "latest"
           }
         }
@@ -304,7 +311,9 @@ resource "google_cloud_run_v2_service" "backend_combined" {
     google_secret_manager_secret_iam_member.anthropic_api_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_public_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_secret_key_accessor,
-    google_secret_manager_secret_iam_member.mem0_api_key_accessor,
+    # mem0_api_key_accessor removed in Phase 5 S4 (mem0 → pgvector cutover).
+    # Secret + accessor IAM stay provisioned in secret-manager.tf for the
+    # 24h-rollback window; deleted in S6.
     google_secret_manager_secret_iam_member.database_url_accessor,
     google_secret_manager_secret_iam_member.agent_facts_secret_accessor,
     google_project_iam_member.backend_runtime_cloudsql_client,

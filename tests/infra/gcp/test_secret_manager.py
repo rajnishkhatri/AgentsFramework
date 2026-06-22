@@ -41,6 +41,15 @@ FRONTEND_ONLY_SECRET_IDS = {
     "workos-cookie-password",
 }
 
+# Retired secrets — still provisioned in Secret Manager for the Phase 5
+# 24h-rollback window after the mem0 → pgvector cutover, but no longer
+# wired into the backend Cloud Run service as a ``secret_key_ref`` env.
+# Deleted entirely in Phase 5 S6; this set goes empty (or is removed) then.
+# See ``docs/plans/replace_mem0_pgvector.phase5_s6.deletion_checklist.md``.
+RETIRED_SECRET_IDS = {
+    "mem0-api-key",
+}
+
 _REF_PATTERN = re.compile(
     r"\$\{[^}]+\}|(?:^|\s)(?:var|local|data|module)\.[\w.]+"
 )

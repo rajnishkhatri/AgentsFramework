@@ -67,6 +67,7 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Planning Pipeline — Tiered Reasoning Loops: Implementation Plan](planning_pipeline_tiered_loops.impl.md) — The plan's §6 / design's §D left three decisions open.
 - [Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)](planning_pipeline_tiered_loops.plan.md) — Phases 0–3 are committed.
 - [recipe_0_story_docs.plan](recipe_0_story_docs.plan.md) — 
+- [Architecture Design: Replacing mem0 with pgvector](replace_mem0_pgvector.design.md) — Detailed architecture + diagrams for the pgvector swap behind the unchanged sync MemoryBackend Protocol; §4 is the SQL-schema source of truth for the Phase 5 S1 migration.
 - [Replace mem0 with an in-repo pgvector memory backend](replace_mem0_pgvector.plan.md) — Retire mem0 for pgvector on Cloud SQL behind the unchanged sync MemoryBackend Protocol; Phase 0 spike (C1–C6) + Phase 0.5 runtime/infra compat (R1–R7) + 7 phases + an honest review (B1–B10) and 14 validated follow-ups across 3 rounds. Key fixes: EmbeddingClient → services/ (M1 bug); async client is a dead seam (delete-not-port); build_adapters hard-requires MEM0_API_KEY (deploy blocker); locked S0–S6 rollback; 9 tests + 5 infra refs in scope.
 - [Real SearXNG web_search (sidecar on GCP) + no-progress detection](searxng_real_web_search.plan.md) — Two coupled changes: (A) swap the stub for a real, provider-agnostic web search backed by SearXNG, deployed as a Cloud Run sidecar; (B) add no-progress detection so the agent no
 - [Session Issues Register: Austin-Weather Trace Review](session_issues_register.plan.md) — Issues found while reviewing the trace from python scripts/_dbg_d9c823_send.py (trace_id 674cbac3…).
@@ -78,6 +79,7 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [`components/supervisor_plan.py` — the decompose-or-decline component (T3)](t3_supervisor_plan.component.md) — Two functions, mirroring plan_builder's build_plan_artifact_llm + validate_plan_mece split: one *produces*
 - [Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox](trace_explainability_optimization.plan.md) — Make the Langfuse trace a curated, human-first explainability view — every fact
 - [trace_gap_closure.plan](trace_gap_closure.plan.md) — 
+- [Typed-Memory Searchability — Per-Type Retrieval Design](typed_memory_searchability.design.md) — Improvement over the pgvector design: forward-compatible type-aware schema (mem_type / created_at / tsvector) + a deferred per-type retrieval roadmap (semantic / episodic / procedural), grounded in 2026 research. Schema-now / behavior-later.
 - [UI — Left Panel Refresh & Right Panel Removal: Visual Design](ui_left_panel_refresh.design.md) — BEFORE — three columns, right "What I remember" panel present.
 - [UI — Left Panel Refresh & Right Panel Removal](ui_left_panel_refresh.plan.md) — grid lg:grid-cols-auto_1fr_auto → left ThreadSidebar · center chat ·
 - [Viveka Framework — Build Plan](viveka_framework_plan.md) — Hierarchical Depth Intelligence via Hindu Consciousness Layers

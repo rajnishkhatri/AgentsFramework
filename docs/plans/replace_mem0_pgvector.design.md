@@ -294,6 +294,17 @@ CREATE INDEX agent_memories_embedding_idx
   ON agent_memories USING hnsw (embedding vector_cosine_ops);
 ```
 
+> **Forward-compatible superset (recommended for the S1 migration).** This schema
+> is the faithful-swap minimum. The companion improvement design
+> [`typed_memory_searchability.design.md`](typed_memory_searchability.design.md)
+> §5 defines a **type-aware superset** of this table — adds a first-class
+> `mem_type` column, `created_at`, a generated `tsvector`, and a
+> `(user_id, mem_type)` index — that costs ~5 extra lines of DDL, keeps day-one
+> runtime behavior byte-identical, and avoids a second live Cloud SQL migration
+> when per-type retrieval lands. **Decision: fold §5's superset into the Phase 5
+> S1 migration (one migration, not two).** The runtime in §5/§6 of this document
+> is unchanged either way.
+
 ### Mapping to `MemoryRecord`
 
 | SQL Column | `MemoryRecord` Field | Notes |
@@ -551,7 +562,7 @@ gantt
 
 ### Phase 5 Locked Rollback Sequence
 
-1. **S1:** Apply SQL migration to Cloud SQL via `cloud-sql-proxy`.
+1. **S1:** Apply SQL migration to Cloud SQL via `cloud-sql-proxy`. Apply the §4 *forward-compatible superset* (the `mem_type` / `created_at` / `tsvector` columns + `(user_id, mem_type)` index from [`typed_memory_searchability.design.md`](typed_memory_searchability.design.md) §5), not the bare table — one migration covers both the swap and future per-type retrieval.
 2. **S2:** Deploy no-traffic Cloud Run revision (`MEMORY_BACKEND=pgvector`, `MEM0_API_KEY` still set).
 3. **S3:** Smoke-test the no-traffic tag.
 4. **S4:** Shift traffic to the pgvector revision. *(Instant rollback possible)*

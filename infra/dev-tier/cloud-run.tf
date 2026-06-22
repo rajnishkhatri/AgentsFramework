@@ -141,17 +141,34 @@ resource "google_cloud_run_v2_service" "middleware" {
       }
 
       env {
-        name  = "MEM0_BASE_URL"
-        value = "https://api.mem0.ai"
-      }
-
-      env {
         name  = "MEMORY_ENABLED"
         value = "true"
       }
       # NOTE: MEMORY_AUTOCAPTURE_ENABLED is intentionally NOT set here — it
       # defaults to false (shadow). Write-back is gated on the Phase-2 eval
       # calibration clearing the Stage-6 enable-policy. Do not add it until then.
+
+      # ── Memory backend (Phase 5: mem0 → pgvector cutover) ─────────
+      # Composition root selects backend via MEMORY_BACKEND. "pgvector"
+      # binds to the agent_memories table on Cloud SQL (DATABASE_URL),
+      # using the EMBEDDING_MODEL via the LiteLLMEmbeddingClient adapter.
+      # The MEM0_* env block + IAM accessor was removed in Phase 5 S4;
+      # the mem0-api-key secret stays live for the 24h-rollback window
+      # and is deleted in Phase 5 S6.
+      env {
+        name  = "MEMORY_BACKEND"
+        value = "pgvector"
+      }
+
+      env {
+        name  = "EMBEDDING_MODEL"
+        value = "text-embedding-3-small"
+      }
+
+      env {
+        name  = "EMBEDDING_DIMENSION"
+        value = "1536"
+      }
 
       # ── Secrets injected by Secret Manager ────────────────────────
       # The secret_key_ref blocks below mirror the
@@ -210,16 +227,6 @@ resource "google_cloud_run_v2_service" "middleware" {
       }
 
       env {
-        name = "MEM0_API_KEY"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.mem0_api_key.secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
@@ -247,7 +254,9 @@ resource "google_cloud_run_v2_service" "middleware" {
     google_secret_manager_secret_iam_member.anthropic_api_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_public_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_secret_key_accessor,
-    google_secret_manager_secret_iam_member.mem0_api_key_accessor,
+    # mem0_api_key_accessor removed in Phase 5 S4 (mem0 → pgvector cutover).
+    # Secret + accessor IAM stay provisioned in secret-manager.tf for the
+    # 24h-rollback window; deleted in S6.
     google_secret_manager_secret_iam_member.neon_database_url_accessor,
   ]
 }
