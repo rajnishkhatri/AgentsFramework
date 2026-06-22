@@ -1,0 +1,24 @@
+{
+  "color": {
+    "bg": {
+      "$value": "#1f1e1d",
+      "$type": "color",
+      "$description": "Page background (dark)"
+    },
+    "fg": {
+      "$value": "#f9f7f5",
+      "$type": "color",
+      "$description": "Primary foreground / text (dark)"
+    },
+    "muted": {
+      "$value": "#9ca3af",
+      "$type": "color",
+      "$description": "Muted / secondary text (dark)"
+    },
+    "accent": {
+      "$value": "#818cf8",
+      "$type": "color",
+      "$description": "Primary accent / interactive (dark)"
+    }
+  }
+}

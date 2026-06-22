@@ -1,0 +1,44 @@
+{
+  "color": {
+    "bg": {
+      "$value": "#f9f7f5",
+      "$type": "color",
+      "$description": "Page background (light)"
+    },
+    "fg": {
+      "$value": "#1f1e1d",
+      "$type": "color",
+      "$description": "Primary foreground / text (light)"
+    },
+    "muted": {
+      "$value": "#6b7280",
+      "$type": "color",
+      "$description": "Muted / secondary text (light)"
+    },
+    "accent": {
+      "$value": "#4338ca",
+      "$type": "color",
+      "$description": "Primary accent / interactive (light)"
+    },
+    "accent-light": {
+      "$value": "color-mix(in oklab, var(--color-accent) 15%, transparent)",
+      "$type": "color",
+      "$description": "Accent tint — derived at runtime via color-mix"
+    },
+    "border": {
+      "$value": "color-mix(in oklab, var(--color-fg) 12%, transparent)",
+      "$type": "color",
+      "$description": "Standard border — derived at runtime via color-mix"
+    },
+    "border-light": {
+      "$value": "color-mix(in oklab, var(--color-fg) 10%, transparent)",
+      "$type": "color",
+      "$description": "Lighter border variant — derived at runtime via color-mix"
+    },
+    "surface": {
+      "$value": "color-mix(in oklab, var(--color-bg) 96%, var(--color-fg) 4%)",
+      "$type": "color",
+      "$description": "Subtle surface / card background — derived at runtime via color-mix"
+    }
+  }
+}

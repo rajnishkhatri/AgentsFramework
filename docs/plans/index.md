@@ -60,6 +60,8 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Add a Memory Layer to the Agent (wire the orphaned long-term memory into the react loop)](memory_layer_wiring.plan.md) — Gates re-run today, both rings, full:
 - [Memory Layer — Multi-Turn / Multi-Session E2E Stress + Governance Trace Analysis Plan](memory_multisession_e2e_stress.plan.md) — The memory layer is wired but never validated across sessions.
 - [memory_pipeline_remediation.plan](memory_pipeline_remediation.plan.md) — 
+- [Native-wrap UI redesign plan](native_wrap_ui_redesign.plan.md) — Ship the Next.js/CopilotKit chat as native-feeling macOS (Tauri 2) + iOS (Capacitor 7) apps; code-first shadcn + DTCG tokens, design surface = Claude Design via /design-sync (Figma dropped).
+- [DesignSync setup runbook (Claude Design / /design-sync)](native_wrap_ui_redesign.design_sync_setup.runbook.md) — Operational companion to native_wrap §2.5: how to authorize (/design-login, Pro account), the safe list→finalize_plan→write push flow, and the P-sync readiness gate (don't sync before the primitive layer exists).
 - [Phase 3 PhaseLogger Wiring — Sprint Board](phase_3_phaselogger_sprint_board.md) — Execute the PhaseLogger wiring program defined in docs/plans/phase_3_phaselogger_wiring.plan.md as dependency-ordered sprints.
 - [phase_3_phaselogger_wiring.plan](phase_3_phaselogger_wiring.plan.md) — 
 - [Planning Pipeline — E2E Stress Test + Langfuse Trace Analysis Plan](planning_pipeline_e2e_stress_and_trace_analysis.plan.md) — Three deliverables, in dependency order:
