@@ -1,0 +1,7 @@
+{
+  "spacing": {
+    "$value": "0.25rem",
+    "$type": "dimension",
+    "$description": "Tailwind v4 spacing base — every p-*, m-*, gap-* utility is a multiple of this. Default 0.25rem (4px) keeps the current rhythm; change here to rescale all spacing globally."
+  }
+}
