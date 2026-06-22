@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Native-wrap UI redesign — visual spec</title>
+<style>
+  :root {
+    --bg: #f9f7f5; --fg: #1f1e1d; --muted: #6b7280; --accent: #4338ca;
+    --accent-light: rgba(67,56,202,.12); --border: rgba(31,30,29,.14);
+    --surface: #f1efe9; --panel: #ffffff;
+    --amber: #854F0B; --amber-line: #BA7517; --teal: #0F6E56; --teal-line: #1D9E75;
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px;
+    --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#1f1e1d; --fg:#f9f7f5; --muted:#9ca3af; --accent:#818cf8;
+      --accent-light:rgba(129,140,248,.18); --border:rgba(249,247,245,.16);
+      --surface:#2a2927; --panel:#262524; --amber:#FAC775; --teal:#9FE1CB; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans);
+    line-height: 1.6; padding: 2rem 1.25rem; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 24px; font-weight: 500; margin: 0 0 .25rem; }
+  h2 { font-size: 18px; font-weight: 500; margin: 2.5rem 0 .25rem; }
+  .sub { font-size: 13px; color: var(--muted); margin: 0 0 1rem; }
+  .frame-host { background: var(--surface); border-radius: var(--radius-lg); padding: 16px; }
+  .app { background: var(--panel); border: .5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+  .titlebar { display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:.5px solid var(--border); background: var(--surface); }
+  .dot { width:11px; height:11px; border-radius:50%; }
+  .pane3 { display:grid; grid-template-columns: 160px 1fr 150px; min-height: 250px; }
+  .pane2 { display:grid; grid-template-columns: 160px 1fr; min-height: 230px; }
+  .rail { border-right:.5px solid var(--border); padding:10px; background: var(--surface); font-size:11px; }
+  .rail .new { border:.5px solid var(--border); border-radius:var(--radius-sm); padding:5px 8px; color:var(--accent); margin:6px 0; }
+  .rail .threads { color: var(--muted); line-height:1.9; font-size:10px; margin-top:8px; }
+  .col { display:grid; grid-template-rows:1fr auto; }
+  .msgs { padding:12px; }
+  .bubble { display:inline-block; background:var(--accent-light); color:var(--accent); font-size:11px; padding:5px 10px; border-radius:12px; }
+  .ans { font-size:11px; line-height:1.7; margin-top:8px; }
+  .actions { margin-top:8px; color:var(--muted); font-size:14px; letter-spacing:8px; }
+  .composer { border-top:.5px solid var(--border); padding:10px; display:flex; gap:6px; }
+  .input { flex:1; border:.5px solid var(--border); border-radius:8px; padding:6px 8px; font-size:11px; color:var(--muted); }
+  .send { background:var(--accent); color:#fff; font-size:12px; padding:6px 12px; border-radius:8px; }
+  .rpanel { border-left:.5px solid var(--border); padding:10px; background:var(--surface); font-size:10px; color:var(--muted); }
+  .rpanel .card { border:.5px solid var(--border); border-radius:var(--radius-sm); padding:6px; margin-bottom:6px; line-height:1.6; }
+  .notes { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px; margin-top:12px; }
+  .note { padding:6px 10px; background:var(--surface); font-size:12px; }
+  .note.gap { border-left:2px solid var(--amber-line); color:var(--amber); }
+  .note.delta { border-left:2px solid var(--teal-line); color:var(--teal); }
+  .phones { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; align-items:center; }
+  .phone { width:210px; margin:0 auto; background:var(--panel); border:.5px solid var(--border); border-radius:24px; overflow:hidden; }
+  .pnotch { height:22px; display:flex; align-items:center; justify-content:center; background:var(--surface); }
+  .pnotch span { width:48px; height:6px; border-radius:4px; background:var(--border); }
+  .phdr { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:.5px solid var(--border); font-size:12px; color:var(--muted); }
+  .pbody { padding:12px; min-height:150px; }
+  .phome { height:14px; display:flex; align-items:center; justify-content:center; }
+  .phome span { width:80px; height:4px; border-radius:3px; background:var(--border); }
+  .legend { margin-top:2rem; padding-top:1rem; border-top:.5px solid var(--border); font-size:13px; color:var(--muted); }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:.5rem; }
+  td, th { border:.5px solid var(--border); padding:6px 8px; text-align:left; vertical-align:top; }
+  th { font-weight:500; background:var(--surface); }
+  code { font-family: ui-monospace, Menlo, monospace; font-size:.85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Native-wrap UI redesign — visual spec</h1>
+  <p class="sub">Companion to native_wrap_ui_redesign.plan.md · ground truth read from chat-shell.tsx / SidebarPanel.tsx / Composer.tsx / globals.css on 2026-06-22</p>
+
+  <h2>1 · Current state (today)</h2>
+  <p class="sub">grid-rows-[auto_1fr] · body lg:grid-cols-[auto_1fr] · sidebar hidden below lg (no drawer) · right panel folded into left tabs</p>
+  <div class="frame-host">
+    <div class="app">
+      <div class="titlebar"><span style="font-size:13px;font-weight:500;color:var(--fg)">ReAct Agent</span><span style="margin-left:auto;font-size:11px;color:var(--muted)">eval · user@email · sign out</span></div>
+      <div class="pane2">
+        <div class="rail">☰ &nbsp;Chats | Memory<div class="new">+ New chat</div><div style="color:var(--muted)">🔍 Search</div><div class="threads">Today<br>· thread one<br>· thread two<br>Yesterday<br>· thread three</div></div>
+        <div class="col">
+          <div class="msgs"><div style="text-align:right"><span class="bubble">user message bubble</span></div><div style="font-size:11px;color:var(--muted);margin-top:8px">✓ done</div><div class="ans">assistant answer (max-w-3xl, left-aligned)</div><div style="margin-top:8px;border:.5px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;font-size:10px;color:var(--muted)">▸ ToolCard / reasoning &lt;details&gt;</div></div>
+          <div class="composer"><div class="input">Send a message…</div><div class="send">Send</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note gap">Mobile = sidebar hidden, no drawer</div>
+      <div class="note gap">Glyph affordances ☰ 🔍 +, no icon set</div>
+      <div class="note gap">1 primitive (button.tsx)</div>
+      <div class="note gap">No safe-area / native chrome</div>
+    </div>
+  </div>
+
+  <h2>2 · Target — desktop (Tauri macOS)</h2>
+  <p class="sub">custom titlebar w/ traffic-light inset + drag region · three-pane · reasoning panel returns (collapsible)</p>
+  <div class="frame-host">
+    <div class="app">
+      <div class="titlebar"><span class="dot" style="background:#E24B4A"></span><span class="dot" style="background:#EF9F27"></span><span class="dot" style="background:#97C459"></span><span style="font-size:11px;color:var(--muted);margin-left:8px">⠿ draggable titlebar (data-tauri-drag-region)</span></div>
+      <div class="pane3">
+        <div class="rail">☰ Chats &nbsp; Memory<div class="new">+ New chat</div><div style="color:var(--muted)">🔍 Search</div><div class="threads">Today<br>· thread one<br>· thread two</div></div>
+        <div class="col">
+          <div class="msgs"><div style="text-align:right"><span class="bubble">user message</span></div><div style="font-size:10px;color:var(--accent);margin-top:8px">↻ using tools…</div><div class="ans">streamed answer with copy / regenerate on hover</div><div class="actions">⧉ ↻</div></div>
+          <div class="composer"><div class="input">Send a message…</div><div class="send">↑</div></div>
+        </div>
+        <div class="rpanel">REASONING / TOOLS<div class="card">▸ step 1 · plan<br>▸ tool: search</div><div class="card">TaskUnderstanding<br>Recalled memory</div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <div class="note delta">Custom titlebar + drag region</div>
+      <div class="note delta">Reasoning/tools panel returns (collapsible)</div>
+      <div class="note delta">Per-message copy/regenerate on hover</div>
+      <div class="note delta">Icon set replaces glyphs</div>
+    </div>
+  </div>
+
+  <h2>3 · Target — phone (Capacitor iOS)</h2>
+  <p class="sub">safe-area insets · sidebar → drawer · right panel → bottom sheet · input pinned above keyboard · 44pt targets</p>
+  <div class="frame-host">
+    <div class="phones">
+      <div class="phone">
+        <div class="pnotch"><span></span></div>
+        <div class="phdr"><span>☰</span><span style="font-weight:500;color:var(--fg)">ReAct Agent</span><span>⋯</span></div>
+        <div class="pbody"><div style="text-align:right"><span class="bubble">user msg</span></div><div class="ans">streamed answer, full-width, long-press for actions</div></div>
+        <div class="composer" style="padding:8px 10px"><div class="input" style="border-radius:16px">Message…</div><div class="send" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0">↑</div></div>
+        <div class="phome"><span></span></div>
+      </div>
+      <div style="display:grid;gap:10px">
+        <div class="note delta">Hamburger opens thread drawer (sheet)</div>
+        <div class="note delta">⋯ opens reasoning/tools bottom sheet</div>
+        <div class="note delta">env(safe-area-inset-*) top + bottom</div>
+        <div class="note delta">Round send button, 44pt tap target</div>
+        <div class="note delta">Long-press message actions (no hover)</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>4 · Component mapping (handoff contract)</h2>
+  <p class="sub">The redesign recomposes the existing tree — it does not rewrite it.</p>
+  <table>
+    <tr><th>Current component</th><th>Redesign role</th><th>Notes</th></tr>
+    <tr><td><code>SidebarPanel</code></td><td>left rail (desktop) / drawer (phone)</td><td>same props; wrap in shadcn <code>sheet</code> on phone</td></tr>
+    <tr><td><code>SidebarTabBar</code></td><td>Chats | Memory tabs</td><td>→ shadcn <code>tabs</code></td></tr>
+    <tr><td><code>Composer</code></td><td>input bar</td><td>keep autosize/IME; round button + pin above keyboard on phone</td></tr>
+    <tr><td><code>StreamingMarkdown</code></td><td>answer body</td><td>keep streaming buffer; add <code>aria-live</code></td></tr>
+    <tr><td><code>ToolCard</code> / <code>TaskUnderstandingCard</code> / <code>RecalledMemories</code></td><td>right panel (desktop) / bottom sheet (phone)</td><td>consolidate from inline <code>&lt;details&gt;</code></td></tr>
+    <tr><td>RunControls / RunStatusLine</td><td>status + stop/regenerate</td><td>wire stop → <code>/api/run/cancel</code></td></tr>
+    <tr><td><code>ui/button.tsx</code></td><td>reconcile into shadcn primitive set</td><td>plan §3</td></tr>
+  </table>
+
+  <p class="legend"><strong style="font-weight:500">Legend</strong> &nbsp; <span style="color:var(--amber)">▍ amber</span> = current-state gap &nbsp;·&nbsp; <span style="color:var(--teal)">▍ teal</span> = redesign delta. All visuals consume <code>@theme</code> tokens — no hardcoded colors. This file is light/dark aware; toggle your OS appearance to preview both.</p>
+</div>
+</body>
+</html>

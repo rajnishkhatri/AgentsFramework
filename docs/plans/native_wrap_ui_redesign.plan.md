@@ -6,10 +6,9 @@ owner: Rajnish Khatri
 todos:
   - decide-tokens-source-of-truth
   - establish-token-pipeline
-  - export-current-ui-to-figma
-  - redesign-layout-in-figma
-  - figma-to-code-handoff
   - build-primitive-layer
+  - sync-library-to-claude-design
+  - design-layouts-with-design-agent
   - redesign-chat-surface
   - responsive-variants
   - storybook-as-spec
@@ -17,10 +16,10 @@ todos:
 related:
   - repo-root-cleanup-layout
 decisions:
-  tooling: code-first IMPLEMENTATION (shadcn/ui + Tailwind v4 @theme + Storybook + v0 for variants)
-  design-surface: Figma for LAYOUT redesign — capture current UI → redesign in Figma → hand off to coding agents via Dev Mode MCP (added 2026-06-22)
+  tooling: code-first (shadcn/ui + Tailwind v4 @theme + Storybook + v0 for variants)
+  design-surface: Claude Design (claude.ai/design) via /design-sync — sync the real component library so the design agent composes layouts from our actual parts (replaces the earlier Figma plan, 2026-06-22)
   layout: one fluid responsive layout (viewport queries for structure, container queries for components)
-  token-source-of-truth: git (DTCG JSON) is authoritative; Figma Variables mirror via Tokens Studio (one-way code→Figma by default)
+  token-source-of-truth: git (DTCG JSON) is authoritative; design lives in code, synced to claude.ai/design
   wrap-target: Tauri 2 (macOS, notarized DMG + Sparkle), Capacitor 7 (iOS, TestFlight → App Store)
 ---
 
@@ -54,30 +53,31 @@ The frontend is small and already has a usable token seed — this is an *evolut
 **Implication:** the expensive part of most redesigns (unwinding a mature design system) does not
 apply. We are *establishing* a primitive layer for the first time over an existing token seed.
 
-## 1. Tooling decision (updated 2026-06-22)
+## 1. Tooling decision (updated 2026-06-22 — Figma dropped for Claude Design)
 
-Split the surfaces: **Figma is the layout-design surface; code-first is the implementation substrate.**
-Figma earns its keep specifically for a *layout* redesign (cheap exploration canvas + a token bridge
-that keeps design and code honest). It is ceremony for component-level polish — for those, stay
-code-first.
+**Design lives in code; the design surface is Claude Design (claude.ai/design) via `/design-sync`.**
+Figma is dropped — for a no-designer TS team it costs a paid Dev seat and a lossy code→Figma import.
+Instead, we build the component library in code (the same shadcn primitives we ship), **sync it to a
+Claude Design project**, and then the **design agent composes layouts out of our actual components** —
+on-brand, mapping 1:1 to shippable code, no per-seat cost.
 
 | Concern | Choice | Why |
 |---|---|---|
-| Layout design surface | **Figma** (Dev Mode + Variables) | low-stakes canvas to explore layouts without writing/reverting React; spec source for the agent handoff |
-| Component substrate | **shadcn/ui** over Tailwind v4 | what v0/Cursor/Claude all assume; you own the code |
-| Design→code handoff | **Figma Dev Mode MCP server** → Claude Code/Cursor | agent reads frame + Variables, writes shadcn + tokens |
-| Component reuse in handoff | **Code Connect** (Org/Enterprise) *or* curated shadcn list in prompt (Pro) | makes the agent reuse `Button.tsx`, not reinvent `<div>` |
-| Token contract | **DTCG JSON → Style Dictionary → Tailwind `@theme` CSS** | one source of truth, feeds web + both shells + Figma Variables |
-| Living spec | **Storybook** (already partially present — `*.stories.tsx` exist) | every chat state is a story; complements Figma frames |
+| Design surface | **Claude Design** (claude.ai/design) | prompt the design agent; it builds with OUR real components |
+| Design ↔ code bridge | **`/design-sync`** (`DesignSync` tool) | converts the built library → Claude Design format, uploads, keeps in sync |
+| Component substrate | **shadcn/ui** over Tailwind v4 | what v0/Claude/design-sync all consume; you own the code |
+| Token contract | **DTCG JSON → Style Dictionary → Tailwind `@theme` CSS** | one source of truth, feeds web + both shells; styles ride along in the sync |
+| Living spec | **Storybook** (already partially present — `*.stories.tsx` exist) | every chat state is a story; also the preferred design-sync "shape" |
 | New variants | **v0 (Vercel)** | emits React+Tailwind+shadcn that merges with cleanup |
-| Visual-canvas alt | **Penpot** if you reject Figma's seat cost | open token export, no per-seat tax (see §11 cost table) |
 
 Storybook already has a foothold: `PyramidPanel.stories.tsx`, `SandboxedCanvas.stories.tsx`,
-`ToolCard.stories.tsx`. Extend that, don't bootstrap from zero.
+`ToolCard.stories.tsx`. Extend that — design-sync's high-fidelity path prefers a Storybook "shape"
+(previews come from real stories), so growing Storybook coverage doubles as design-sync readiness.
 
-> **Division of labor:** Figma owns the *layout/composition* (where panels live, responsive
-> behavior, visual hierarchy). Code owns the *component internals + tokens*. Don't try to model every
-> shadcn prop in Figma — model the screens, hand off, let the agent fill components from §3 tokens.
+> **Why this beats Figma here:** no code→Figma import (lossy, one-way), no Dev-seat cost, no token
+> mirror to keep honest. The library you build *is* the design system the agent designs with, and
+> every layout it produces is already your real components. The cost is that design-sync imports what
+> you've **already built** — so it runs *after* the primitive layer exists (see §2.5 + P-sync).
 
 ## 2. Token pipeline — the cross-platform contract
 
@@ -112,68 +112,53 @@ Lift the current `@theme` values into `design/tokens/`:
 > **Rule:** after §2 lands, nobody edits color/type/spacing in component files or `globals.css`
 > directly — they edit DTCG JSON and rebuild. This is what keeps web + both shells from diverging.
 
-## 2.5. Figma layout-redesign phase
+## 2.5. Claude Design layout phase (via `/design-sync`)
 
-The added phase. **Tokens (§2) come first** — Figma Variables must mirror the real token set from day
-one, or the agent handoff produces arbitrary values (`leading-[22.126px]`) that poison the scale.
+Replaces the earlier Figma plan. The design surface is **Claude Design** (claude.ai/design): we sync
+our **real, built component library** into a Claude Design project with `/design-sync`, then prompt
+the **design agent**, which composes layouts out of our actual components — every design it produces
+is on-brand and maps 1:1 to shippable code.
 
-### The honest constraint: code → Figma is lossy and one-way
-Importing the live React/Tailwind UI into Figma captures **only what is visible** (a DOM/CSS walk).
-It strips React state, prop structure, component identity, variants, and hover/interaction states,
-and it resolves Tailwind utilities to **pixel values, not your `text-sm`/spacing scale**. Round-trip
-(code→Figma→code) compounds loss at every hop — **do not treat it as a production loop.** Use
-code→Figma only as a **visual starting canvas**; the value is the Figma→code handoff in §2.5c.
+### The ordering constraint (why this runs AFTER P1, not before P3)
+`/design-sync` imports what we've **already built** — it converts the repo's compiled component
+library to Claude Design's format and uploads it. Today the library is ~40 feature components + ONE
+primitive (`ui/button.tsx`); syncing now would import essentially a button. So this phase runs
+**after §3 / P1 (the shadcn primitive layer exists)** and ideally after enough Storybook coverage
+that design-sync's high-fidelity path has real stories to verify against. Tokens (§2) come first too,
+since `styles.css`/tokens ride along in the sync and define the look every design inherits.
 
-### 2.5a. Capture current UI into Figma (½–1 day)
-- Import **3–5 core screens only** (chat surface desktop, chat surface phone-width, thread sidebar,
-  right tabbed panel, an empty/streaming state) from `localhost`/staging via **html.to.design**
-  (paste-URL or browser-extension → ⌘V into canvas; ~12 free imports/mo, Auto Layout still beta).
-  - Alternative: Figma's own **`generate_figma_design`** (Claude Code → Figma, captures rendered
-    screens as editable frames, preserves multi-screen flows).
-- **Do NOT import the whole app.** Import = pixel canvas, not structure.
-- Then **rebuild the components you'll actually iterate on natively in Figma** from those frames +
-  the §2 tokens, as proper Figma components/variants. The import gives you the picture; the native
-  rebuild gives you clean, variant-aware components worth handing back to an agent.
+### What `/design-sync` does (mechanics)
+- Detects the source **shape**: a **Storybook** repo (preferred — previews come from real stories,
+  verified against the storybook render) or a **package** repo (rich previews authored from usage
+  examples, graded on an absolute rubric). We have `.storybook` foothold already → Storybook shape.
+- Builds a deterministic bundle from the repo's own `dist/` (`_ds_bundle.js` + `styles.css` +
+  per-component `.html`/`.jsx`/`.d.ts`/`.prompt.md`), **visually verifies every component preview**
+  (a first-time high-fidelity sync can take **hours** and significant tokens), and uploads to a
+  **new Claude Design project** created for it.
+- Writes `.design-sync/config.json` (pin + shape) and `.design-sync/conventions.md` (the header the
+  design agent reads — our wrapping/provider/token vocabulary). Re-syncs are incremental and mostly
+  deterministic via the `_ds_sync.json` anchor.
 
-### 2.5b. Establish Figma Variables aligned to the §2 tokens (1–2 days)
-- Stand up **Tokens Studio** in Figma; sync the existing DTCG tokens **code → Figma** so Figma
-  Variables match production from day one.
-- **Source of truth = git** (DTCG JSON). Figma Variables are a **read-only mirror**; Tokens Studio's
-  GitHub sync provider commits to a branch, merge conflicts resolve in git, not Figma. Pick one
-  authoring surface per token tier — true bidirectional editing is where teams get burned.
+### Prereqs before running it
+1. A built component library (`dist/`) — the shadcn primitive set from §3 + the redesigned chat
+   components, compiled.
+2. Storybook stories covering the §6 states (also the design-sync "shape" + verification source).
+3. Tokens (§2) wired into `styles.css` so the synced look matches production.
+4. A claude.ai login with design-system access (the tool prompts for `/design-login` if missing).
 
-### 2.5c. Redesign the layout in Figma (the actual value — days→weeks)
-- Do layout/composition exploration here: where panels live, three-pane→single-column collapse,
-  visual hierarchy, the streaming-chat states from §6. This is the cheap, low-stakes surface a
-  no-designer dev team benefits from — try layouts without writing/reverting React.
-- Bind every component to the §2.5b Variables so designs stay token-true.
-- Produce **separate desktop and phone-width frames** (the MCP can't infer responsive behavior —
-  it needs both; see §5).
+### The loop (after the sync lands)
+- Prompt the **design agent** in the Claude Design project to compose the redesigned screens
+  (desktop three-pane, phone single-column + drawer/sheet, the §6 streaming states) **from our
+  synced components**.
+- Because it builds with our real parts, its output maps to shippable code — pull it back as the
+  actual chat-surface implementation (P2), then keep Storybook stories as the living spec (§1).
+- **Re-sync** whenever the library changes (new primitive, restyled component) so the design agent
+  always designs with the current parts — incremental, cheap after the first run.
 
-### 2.5d. Hand off Figma → code via Dev Mode MCP (per screen)
-- Run the **Figma Dev Mode MCP server** (local, in the Figma **desktop app**, Dev Mode toggle, at
-  `http://127.0.0.1:3845/mcp`). Register with Claude Code:
-  `claude mcp add --transport http figma-desktop http://127.0.0.1:3845/mcp`.
-- The server exposes frames/layout, **Variables & styles**, screenshots, component metadata, and
-  Code Connect mappings (~14 tools). **Requires a paid Dev/Full seat.** A remote server exists on all
-  plans but is rate-limited.
-- **Component reuse:** if on **Org/Enterprise**, set up **Code Connect** to map Figma components →
-  the real `components/ui/*` shadcn files so the agent imports `Button.tsx` (correct props) instead
-  of generating fresh divs. On **Professional** (no Code Connect), instead feed Claude Code a
-  **curated list of existing shadcn components + the §2 token names** in the prompt, or use
-  **Builder.io Visual Copilot** for component-mapped output.
-
-### 2.5e. Implement against shadcn + tokens (the agent loop)
-- Loop: "Read this Figma frame via MCP, implement it with our shadcn primitives (§3) and `@theme`
-  tokens (§2)." Realistic yield ~75–85% on simple layouts, lower on complex/responsive.
-- **Budget cleanup** for the three things MCP can't see: responsive breakpoints (feed both frame
-  URLs), hover/interaction states (annotate in the prompt), and raster assets (export manually).
-- Land output as shadcn components + Storybook stories (§3, §1) — Figma frame and Storybook story
-  are the two halves of the spec.
-
-> **Where Figma pays off vs ceremony:** for *layout* redesign (this phase) it earns its keep. For
-> later component-level tweaks, skip Figma and stay code-first — editing JSX is faster than syncing
-> a frame. Don't model every shadcn prop in Figma.
+> **Why this beats the dropped Figma plan:** no lossy code→Figma import, no paid Dev seat, no token
+> mirror to keep honest, and the design agent designs with our *actual* components instead of Figma
+> stand-ins. The one cost is sequencing — it needs the library to exist first (P1), so it can't be
+> the *front* of the redesign the way the Figma canvas was framed.
 
 ## 3. Primitive layer (the gap)
 
@@ -242,24 +227,27 @@ Redesign the chat surface to current agentic-UI expectations:
 | Phase | Deliverable | Rough size | Gate |
 |---|---|---|---|
 | **P0** | DTCG tokens migrated from current `@theme`; Style Dictionary build; generated `globals.css` block | 2–3 d | `pnpm tokens:build` green; visual diff = no regression |
-| **PF0** | Figma setup (§2.5a/b) — capture 3–5 core screens via html.to.design; Tokens Studio mirror of §2 tokens (git→Figma) | 2–3 d | Figma Variables match DTCG build; core screens on canvas |
-| **PF1** | Layout redesign in Figma (§2.5c) — desktop + phone frames, token-bound, streaming states | days→1–2 wk | desktop + phone frames per screen; stakeholder review |
-| **PF2** | Figma→code handoff wiring (§2.5d) — Dev Mode MCP registered with Claude Code; Code Connect (Org) or curated-component prompt (Pro) | 1–2 d | agent reads a frame + Variables and emits shadcn against §2 tokens |
 | **P1** | shadcn primitive layer (§3) consuming tokens; reconcile existing `button` | 3–4 d | primitives in Storybook |
-| **P2** | Implement redesigned chat surface (§6) from Figma frames via handoff (§2.5e) | 1–1.5 wk | all chat states are stories; e2e selectors green |
+| **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds |
+| **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project |
+| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code |
+| **P2** | Implement redesigned chat surface (§6) from the design-agent output | 1–1.5 wk | all chat states are stories; e2e selectors green |
 | **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser |
 | **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) |
 | **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView |
 | **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device |
 
-**Ordering:** P0 (tokens) gates PF0 — Figma Variables must mirror real tokens before any handoff.
-PF0→PF1→PF2 run after P0; P1 can start in parallel with PF1. P2 *consumes* the Figma frames, so it
-follows PF2. P0–P4 + PF* are pure web work (no native toolchain) and ship to the existing Cloud Run
-web app along the way — the redesign is live on web before either shell exists. P5/P6 are the wrap.
+**Ordering:** P0 (tokens) → P1 (primitives) gate **PS1→PS2→PS3** — design-sync imports a *built*
+library, so the primitives must exist and be storybook-covered before the first sync. PS3 (design
+agent composes layouts) feeds P2 (implement). Re-run design-sync (incremental) whenever the library
+changes so the agent always designs with current parts. P0–P4 + PS* are pure web work (no native
+toolchain) and ship to the existing Cloud Run web app along the way — the redesign is live on web
+before either shell exists. P5/P6 are the wrap.
 
-> **If you skip Figma later:** PF0–PF2 are optional. Dropping them reverts to the original code-first
-> path (P0→P1→P2 with v0 for variants). The token pipeline (§2) and everything downstream are
-> unchanged — Figma is additive, not load-bearing.
+> **design-sync is optional/additive.** Dropping PS1–PS3 reverts to the pure code-first path
+> (P0→P1→P2 with v0 for variants). The token pipeline (§2) and everything downstream are unchanged —
+> the design agent is a layout accelerator, not load-bearing. Its one hard requirement is sequencing:
+> it needs the library to exist first (P1).
 
 ## 8. Deployment strategy
 
@@ -283,19 +271,19 @@ web app along the way — the redesign is live on web before either shell exists
   Add a lint/CI check that the generated `@theme` region matches the DTCG build.
 - **Auth in WKWebView:** WorkOS AuthKit callback must survive the Tauri/Capacitor webview redirect.
   De-risk early in P5/P6 (this is the #1 thing that breaks wrapped auth).
-- **Figma import poisons the token scale:** code→Figma resolves Tailwind utilities to raw pixels
-  (`leading-[22.126px]`). Mitigate by doing §2 (tokens) BEFORE PF0 and binding Figma components to
-  Variables — never let imported pixel values become the spec.
-- **Agent reinvents components without Code Connect:** on Professional (no Code Connect), the MCP
-  handoff generates fresh divs instead of reusing `components/ui/*`. Mitigate with a curated
-  component+token prompt or Builder.io Visual Copilot — or budget the Org plan.
-- **MCP blind spots:** the Dev Mode MCP cannot see responsive breakpoints, hover/interaction states,
-  or raster assets. Always feed both desktop+phone frames, annotate states in the prompt, export
-  assets manually. Budget per-screen cleanup (§2.5e).
-- **Round-trip temptation:** code→Figma→code is lossy at every hop. Keep it one-way per phase
-  (capture once → redesign → hand off); do not bounce screens back and forth.
-- **Figma desktop-app dependency:** the local MCP only responds while the Figma desktop app is open
-  with the server toggled on (beta). Plan handoff sessions accordingly.
+- **design-sync needs a real library first:** it imports the *built* component library. Running it
+  before P1 syncs ~one button. Gate PS2 on P1 + Storybook coverage (PS1) — don't run the first
+  (hours-long, token-heavy) sync against a primitive-less repo.
+- **First-sync cost:** a first-time high-fidelity sync visually verifies every component and can take
+  **hours + significant tokens**. Budget it; re-syncs are incremental/cheap via the `_ds_sync.json`
+  anchor. Keep the synced surface scoped (don't import the whole shadcn catalog — §3).
+- **Design-agent output still needs the §9 guardrails:** screens it composes must keep e2e selectors
+  green and not break the CopilotKit/AG-UI runtime wiring (presentation only). Treat its output like
+  any generated code — review against the same gates.
+- **Stale synced library:** if the library changes and you don't re-sync, the design agent designs
+  with outdated parts. Re-run design-sync after any primitive/restyle change (incremental).
+- **Login dependency:** `/design-sync` needs a claude.ai login with design-system access; it prompts
+  for `/design-login` if missing. Confirm access before PS2.
 
 ## 10. Open questions
 
@@ -305,34 +293,26 @@ web app along the way — the redesign is live on web before either shell exists
    per phase? Sizes the test work in P2/P3.
 3. **iOS scope** — full phone layout now, or iPad-acceptable first (your current UI nearly fits a
    tablet)? Could collapse P3's mobile work.
-4. **Penpot later?** If a designer is likely within ~6 months, stand up Penpot in P0 so token
-   authorship has a GUI from the start.
-5. **macOS distribution** — confirm DMG+Sparkle over Mac App Store for v1 (recommended), and whether
+4. **macOS distribution** — confirm DMG+Sparkle over Mac App Store for v1 (recommended), and whether
    you need an Apple Developer Program enrollment now (required for notarization + TestFlight).
-6. **Figma plan tier** — buy **Organization** (~$25/Dev seat/mo) to get **Code Connect** for clean
-   shadcn reuse, or stay on **Professional** (~$12/Dev seat/mo) and use a curated-component prompt /
-   Builder.io for mapping? Code Connect is Org/Enterprise-only.
-7. **Is this a genuine layout redesign** (Figma pays off) or component polish (stay code-first)?
-   Be honest — if it's polish, PF0–PF2 are ceremony.
-8. **Who runs the Figma desktop app + local MCP** during agent handoff sessions, and is anyone
-   comfortable enough in Figma to do the native component rebuild in §2.5a?
+5. **Storybook coverage scope (PS1)** — how many of the §6 chat states get stories before the first
+   sync? More coverage = better design-sync verification, but more PS1 work.
+6. **When to first run `/design-sync`** — right after P1 (primitives only), or after P2's redesigned
+   chat components also exist (richer library to design with)? Trades earlier design-agent access vs
+   a fuller first sync.
 
-## 11. Figma cost & licensing (2026)
+## 11. Design-sync cost & dependencies
 
-Per editor/month. A **paid Dev or Full seat is the minimum** for the local Dev Mode MCP server.
+No per-seat design-tool cost (this is why Figma was dropped). Dependencies:
 
-| Plan | Full | Dev | Collab | Code Connect | MCP notes |
-|---|---|---|---|---|---|
-| Starter (free) | — | — | — | no | remote MCP throttled (~6 tool calls/mo) |
-| **Professional** | $16 | **$12** | $3 | **no** (use prompt/Builder.io) | local MCP on Dev seat; remote ~200 calls/day |
-| Organization (annual) | $55 | **$25** | $5 | **yes** | recommended if you want Code Connect |
-| Enterprise | $90 | $35 | $5 | yes | — |
+- **claude.ai login with design-system access** — `/design-sync` prompts for `/design-login` if
+  missing. This is the only access gate.
+- **First-sync compute** — a first-time high-fidelity sync visually verifies every component;
+  budget **hours of wall-clock + significant tokens** once (PS2). Re-syncs are incremental and cheap
+  via the `_ds_sync.json` anchor.
+- **A buildable library** — design-sync ships the repo's compiled `dist/`, so the component kit must
+  build (PS1). Storybook "shape" is preferred (previews from real stories).
 
-Other phase tooling: **html.to.design** free ~12 imports/mo; **Tokens Studio** free tier covers
-git-sync for a small team; **Style Dictionary / shadcn / Storybook / v0** as in §1. The
-**Framelink/GLips Figma-Context-MCP** is a free open-source alternative that works with any account
-(no paid seat) but biases output toward generic structure rather than your codebase patterns.
-
-**Recommendation:** start on **Professional + one Dev seat** ($12/mo) + a curated-component handoff
-prompt. Only move to **Organization** for Code Connect if the prompt-based reuse proves too noisy
-after PF2. Reassess at open question #6.
+Other tooling unchanged from §1: **shadcn / Tailwind v4 / Style Dictionary / Storybook / v0** —
+all free/OSS. The dropped Figma path would have cost a **$12–35/Dev-seat/mo** seat plus a lossy
+import; design-sync replaces it at zero seat cost, with the tradeoff that it runs *after* P1.
