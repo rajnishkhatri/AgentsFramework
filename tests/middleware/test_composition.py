@@ -22,6 +22,14 @@ import pytest
 
 
 # Minimum env required for v3 wiring.
+#
+# NOTE (replace-mem0-pgvector Phase 0.5 R1): ``MEM0_API_KEY`` is RETAINED in
+# this baseline env so existing tests keep their behavior intact. Per
+# C2/Branch A, the async ``Mem0CloudClient`` is dead code (no non-test
+# consumer of ``adapters.memory_client``); R1 makes ``build_adapters``
+# boot **without** ``MEM0_API_KEY`` set — exercised in
+# ``TestR1KeylessBuildAdapters`` below. The full deletion of the field +
+# the adapter file lands in Phase 3 (Branch A).
 V3_ENV: dict[str, str] = {
     "ARCHITECTURE_PROFILE": "v3",
     "WORKOS_CLIENT_ID": "client_test_local",
@@ -35,6 +43,56 @@ V3_ENV: dict[str, str] = {
 
 
 # ─────────────────────────────────────────────────────────────────────
+# Phase 0.5 R1 — keyless build_adapters (failure-paths-first)
+#
+# Per docs/plans/replace_mem0_pgvector.plan.md Phase 0.5 R1:
+# ``build_adapters`` must boot with ``MEM0_API_KEY`` unset so the
+# Phase 5 S2 no-traffic revision can deploy. The async ``Mem0CloudClient``
+# is the only thing demanding the key, and Phase 0 C2 proved it has zero
+# non-test consumers — so the key requirement goes with the dead seam.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestR1KeylessBuildAdapters:
+    """R1: build_adapters MUST boot without MEM0_API_KEY (both profiles)."""
+
+    def test_v3_boots_with_mem0_api_key_absent(self) -> None:
+        from middleware.composition import build_adapters
+
+        env_no_mem0 = {k: v for k, v in V3_ENV.items() if k != "MEM0_API_KEY"}
+        # Acceptance: no MissingEnvError, no crash. We do NOT assert the
+        # shape of adapters.memory_client here — Phase 3 (Branch A) deletes
+        # the field entirely. R1's bar is just "boots clean".
+        adapters = build_adapters(env=env_no_mem0)
+        assert adapters.profile == "v3"
+
+    def test_v2_boots_with_mem0_api_key_absent(self) -> None:
+        from middleware.composition import build_adapters
+
+        env_no_mem0 = {
+            **{k: v for k, v in V3_ENV.items() if k != "MEM0_API_KEY"},
+            "ARCHITECTURE_PROFILE": "v2",
+        }
+        adapters = build_adapters(env=env_no_mem0)
+        assert adapters.profile == "v2"
+
+    def test_workos_client_id_still_required(self) -> None:
+        """Negative control: R1 removes ONLY the mem0 _require, not other
+        required env. WORKOS_CLIENT_ID stays a hard requirement.
+        """
+        from middleware.composition import MissingEnvError, build_adapters
+
+        env = {
+            k: v
+            for k, v in V3_ENV.items()
+            if k not in {"MEM0_API_KEY", "WORKOS_CLIENT_ID"}
+        }
+        with pytest.raises(MissingEnvError) as excinfo:
+            build_adapters(env=env)
+        assert "WORKOS_CLIENT_ID" in str(excinfo.value)
+
+
+# ─────────────────────────────────────────────────────────────────────
 # v3 profile (default dev-tier)
 # ─────────────────────────────────────────────────────────────────────
 
@@ -43,10 +101,13 @@ class TestV3ProfileWiring:
     def test_v3_returns_typed_adapter_bag(self) -> None:
         """C2: ``build_adapters`` returns a bag whose attributes
         satisfy each port Protocol (vendor-neutral, no SDK types).
+
+        Phase 3 (Branch A): the async ``memory_client`` field is GONE.
+        Memory routes go through the sync ``LongTermMemoryService`` +
+        graph-side ``MemoryBackend`` Protocol (no middleware port).
         """
         from middleware.composition import build_adapters
         from middleware.ports.jwt_verifier import JwtVerifier
-        from middleware.ports.memory_client import MemoryClient
         from middleware.ports.telemetry_exporter import TelemetryExporter
         from middleware.ports.tool_acl import ToolAclProvider
 
@@ -54,8 +115,9 @@ class TestV3ProfileWiring:
 
         assert isinstance(adapters.jwt_verifier, JwtVerifier)
         assert isinstance(adapters.tool_acl, ToolAclProvider)
-        assert isinstance(adapters.memory_client, MemoryClient)
         assert isinstance(adapters.telemetry_exporter, TelemetryExporter)
+        # Phase 3 invariant: memory_client field has been removed entirely.
+        assert not hasattr(adapters, "memory_client")
 
     def test_v3_registers_eval_telemetry_sink(self) -> None:
         from middleware.composition import build_adapters
@@ -113,11 +175,11 @@ class TestV2ProfileWiring:
     def test_v2_returns_same_port_shapes(self) -> None:
         """v2 swaps adapter implementations, NOT port contracts.
         Composition must return the same typed bag shape for both
-        profiles (rule C2).
+        profiles (rule C2). Phase 3 (Branch A): no ``memory_client``
+        in either profile.
         """
         from middleware.composition import build_adapters
         from middleware.ports.jwt_verifier import JwtVerifier
-        from middleware.ports.memory_client import MemoryClient
         from middleware.ports.telemetry_exporter import TelemetryExporter
         from middleware.ports.tool_acl import ToolAclProvider
 
@@ -126,8 +188,8 @@ class TestV2ProfileWiring:
 
         assert isinstance(adapters.jwt_verifier, JwtVerifier)
         assert isinstance(adapters.tool_acl, ToolAclProvider)
-        assert isinstance(adapters.memory_client, MemoryClient)
         assert isinstance(adapters.telemetry_exporter, TelemetryExporter)
+        assert not hasattr(adapters, "memory_client")
 
 
 # ─────────────────────────────────────────────────────────────────────

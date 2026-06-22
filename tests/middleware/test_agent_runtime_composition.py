@@ -72,13 +72,139 @@ class TestMemoryBackendSelection:
         assert isinstance(backend, InMemoryMemoryBackend)
 
     def test_key_present_selects_mem0_backend(self, tmp_path, monkeypatch):
-        from services.memory_backends.mem0 import Mem0MemoryBackend
+        """Legacy assertion (pre-Phase-4): with ``MEMORY_BACKEND`` unset (default
+        ``"inmemory"``), the historical ``mem0_api_key`` selector no longer wins —
+        Phase 4 retired it. The mem0 backend file stays on disk (Phase 5 S6
+        deletes it after the 24h soak) so the import still works, but the
+        composition root never wires it: keys live in env solely for the
+        24h-rollback window (rollback redeploys the prior revision).
+        """
+        from services.long_term_memory import InMemoryMemoryBackend
 
         settings = AgentRuntimeSettings(
             agent_env="local", mem0_api_key="mem0_test_key"
         )
         backend = self._service_backend(settings, tmp_path, monkeypatch)
-        assert isinstance(backend, Mem0MemoryBackend)
+        assert isinstance(backend, InMemoryMemoryBackend)
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 4 (replace-mem0-pgvector) — MEMORY_BACKEND selector
+#
+# The plan's Gate (Phase 4 → Phase 5) calls out the rejection test FIRST:
+# ``MEMORY_BACKEND=pgvector`` with no ``DATABASE_URL`` MUST raise at
+# composition time, NOT silently fall back to ``InMemoryMemoryBackend``
+# (composition-root scope guard). Failure-paths-first per AGENTS.md.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestPgvectorBackendSelectionRejectionPaths:
+    """Phase 4: rejection paths come FIRST (failure-paths-first per AGENTS.md).
+
+    Two ways to misconfigure the pgvector selector — both MUST fail at
+    composition time rather than silently degrade to InMemory in prod:
+
+      * ``MEMORY_BACKEND=pgvector`` set but no ``DATABASE_URL``.
+      * Unknown ``MEMORY_BACKEND`` value (typo guard).
+    """
+
+    def test_pgvector_without_database_url_raises(self, tmp_path, monkeypatch):
+        from middleware.composition import MissingEnvError
+
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings(
+            agent_env="local",
+            memory_backend="pgvector",
+            database_url="",
+        )
+        with pytest.raises(MissingEnvError) as excinfo:
+            build_components(settings, agent_root=tmp_path)
+        assert "DATABASE_URL" in str(excinfo.value)
+
+    def test_pgvector_without_embedding_provider_raises(
+        self, tmp_path, monkeypatch
+    ):
+        """OPENAI_API_KEY drives ``_build_embedding_client`` — absent, no
+        EmbeddingClient can be constructed and the backend would store rows
+        whose embeddings dimension was unverified. Must raise, not warn.
+        """
+        from middleware.composition import MissingEnvError
+
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        settings = AgentRuntimeSettings(
+            agent_env="local",
+            memory_backend="pgvector",
+            database_url="postgresql://stub@localhost/x",
+            openai_api_key="",
+        )
+        with pytest.raises(MissingEnvError) as excinfo:
+            build_components(settings, agent_root=tmp_path)
+        assert "OPENAI_API_KEY" in str(excinfo.value)
+
+    def test_unknown_memory_backend_value_raises(self, tmp_path, monkeypatch):
+        """Pydantic Literal validation rejects the typo at AgentRuntimeSettings
+        construction. Whether the error type is ValueError or pydantic's
+        ValidationError is not load-bearing — we just want to fail closed.
+        """
+        with pytest.raises(Exception) as excinfo:
+            AgentRuntimeSettings(
+                agent_env="local",
+                memory_backend="qdrant",  # type: ignore[arg-type]
+            )
+        assert "memory_backend" in str(excinfo.value).lower() or (
+            "qdrant" in str(excinfo.value)
+        )
+
+
+class TestPgvectorBackendSelectionAcceptance:
+    """Phase 4 acceptance: happy paths.
+
+    Build only goes as far as the LongTermMemoryService — the pgvector
+    backend lazily opens its pool on first call, so the construction
+    contract test does not require a live Postgres on this machine.
+    """
+
+    def _service_backend(self, settings, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        components = build_components(settings, agent_root=tmp_path)
+        return components.memory_service._backend
+
+    def test_default_unset_selects_in_memory(self, tmp_path, monkeypatch):
+        """``MEMORY_BACKEND`` defaults to ``"inmemory"`` — dev/test posture
+        survives the Phase 4 swap byte-identical.
+        """
+        from services.long_term_memory import InMemoryMemoryBackend
+
+        settings = AgentRuntimeSettings(agent_env="local")
+        backend = self._service_backend(settings, tmp_path, monkeypatch)
+        assert isinstance(backend, InMemoryMemoryBackend)
+
+    def test_inmemory_explicit_selects_in_memory(self, tmp_path, monkeypatch):
+        from services.long_term_memory import InMemoryMemoryBackend
+
+        settings = AgentRuntimeSettings(
+            agent_env="local", memory_backend="inmemory"
+        )
+        backend = self._service_backend(settings, tmp_path, monkeypatch)
+        assert isinstance(backend, InMemoryMemoryBackend)
+
+    def test_pgvector_with_db_and_key_selects_pgvector(
+        self, tmp_path, monkeypatch
+    ):
+        from services.memory_backends.pgvector import PgVectorMemoryBackend
+
+        settings = AgentRuntimeSettings(
+            agent_env="local",
+            memory_backend="pgvector",
+            database_url="postgresql://stub@localhost/x",
+            openai_api_key="sk-test-dummy",
+        )
+        backend = self._service_backend(settings, tmp_path, monkeypatch)
+        assert isinstance(backend, PgVectorMemoryBackend)
 
 
 class TestAutocaptureEnablePolicyGuard:

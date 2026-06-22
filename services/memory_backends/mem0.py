@@ -10,14 +10,14 @@ composition-root change (plan §10 swap-radius), zero changes under
 
 ## Sync, not async (the wiring-note decision)
 
-``middleware/adapters/memory/mem0_cloud_client.py`` exposes an *async*
-``MemoryClient`` for the BFF/FastAPI ring (it wraps the sync SDK in
-``asyncio.to_thread``). The react loop's recall/store happen inside *sync*
-LangGraph nodes, so an async backend would need an event-loop bridge — a hazard
-when a loop is already running. The Mem0 SDK (``mem0.MemoryClient``) is itself
-synchronous, so this backend talks to it directly. ``Mem0CloudClient`` stays the
-source of truth for the *async* port; this is the parallel *sync* path, both
-constructing the same underlying SDK client.
+The react loop's recall/store happen inside *sync* LangGraph nodes, so
+an async backend would need an event-loop bridge — a hazard when a loop is
+already running. The Mem0 SDK (``mem0.MemoryClient``) is itself synchronous,
+so this backend talks to it directly. The parallel async ``MemoryClient``
+port + ``Mem0CloudClient`` adapter were deleted in replace-mem0-pgvector
+Phase 3 (Branch A) — they had zero non-test consumers. This sync backend is
+itself retired in Phase 4 (composition switch to ``PgVectorMemoryBackend``)
+and the file deleted in Phase 5 S6 after the 24h soak.
 
 ## (user_id, key) ↔ Mem0 mapping
 
@@ -82,9 +82,8 @@ class Mem0MemoryBackend:
     def _client(self) -> Any:
         if self._sdk_client is not None:
             return self._sdk_client
-        # Lazy import confines the SDK to the method body (matches
-        # Mem0CloudClient._client); the architecture test checks top-level
-        # imports only.
+        # Lazy import confines the SDK to the method body; the architecture
+        # test checks top-level imports only.
         from mem0 import MemoryClient as _SdkClient
 
         self._sdk_client = _SdkClient(

@@ -22,10 +22,20 @@ from __future__ import annotations
 import pytest
 
 from tests.infra._hcl_helpers import find_resources, get_one, unwrap_block, unwrap_blocks
-from tests.infra.gcp.test_secret_manager import FRONTEND_ONLY_SECRET_IDS, REQUIRED_SECRET_IDS
+from tests.infra.gcp.test_secret_manager import (
+    FRONTEND_ONLY_SECRET_IDS,
+    REQUIRED_SECRET_IDS,
+    RETIRED_SECRET_IDS,
+)
 
 
-BACKEND_REQUIRED_SECRET_IDS = REQUIRED_SECRET_IDS - FRONTEND_ONLY_SECRET_IDS
+# Phase 5 cutover: ``RETIRED_SECRET_IDS`` (currently ``{"mem0-api-key"}``)
+# are still declared in Secret Manager for the 24h-rollback window but are
+# intentionally NOT wired into the backend Cloud Run service as env. They
+# leave this set permanently in Phase 5 S6.
+BACKEND_REQUIRED_SECRET_IDS = (
+    REQUIRED_SECRET_IDS - FRONTEND_ONLY_SECRET_IDS - RETIRED_SECRET_IDS
+)
 
 
 pytestmark = pytest.mark.infra_gcp

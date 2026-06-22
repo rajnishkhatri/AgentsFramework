@@ -31,15 +31,14 @@ from middleware.adapters.auth.workos_jwt_verifier import (
     WorkOSJwtVerifier,
     default_workos_issuer,
 )
-from middleware.adapters.memory.mem0_cloud_client import Mem0CloudClient
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
 from middleware.adapters.observability.langfuse_eval_telemetry_sink import (
     LangfuseEvalTelemetrySink,
 )
+from middleware.ports.embedding_client import EmbeddingClient
 from middleware.ports.jwt_verifier import JwtVerifier
-from middleware.ports.memory_client import MemoryClient
 from middleware.ports.telemetry_exporter import TelemetryExporter
 from middleware.ports.tool_acl import ToolAclProvider
 from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
@@ -116,14 +115,26 @@ _DEFAULT_BB_STORAGE = Path("cache/black_box_recordings")
 
 @dataclass(frozen=True)
 class MiddlewareAdapters:
-    """Bag of port-typed adapter instances (rule C2)."""
+    """Bag of port-typed adapter instances (rule C2).
+
+    NOTE (replace-mem0-pgvector Phase 3, Branch A): the async
+    ``memory_client`` field is GONE. The ``Mem0CloudClient`` adapter and
+    its ``MemoryClient`` Protocol port were deleted outright — Phase 0
+    C2 proved zero non-test consumers (the sync ``LongTermMemoryService``
+    handles ``/agent/memory`` routes via the graph-side
+    ``MemoryBackend`` Protocol).
+    """
 
     profile: str
     jwt_verifier: JwtVerifier
     tool_acl: ToolAclProvider
-    memory_client: MemoryClient
     telemetry_exporter: TelemetryExporter
     black_box_relay: BlackBoxToTelemetryRelay | None = None
+    # Phase 1 (replace-mem0-pgvector): the EmbeddingClient that Phase 2's
+    # PgVectorMemoryBackend will consume. Optional during transition — wired
+    # only when OPENAI_API_KEY is present; absent in dev/CI runs that don't
+    # touch the real provider (the FakeEmbeddingClient stays test-local).
+    embedding_client: EmbeddingClient | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -178,14 +189,12 @@ def build_adapters(
 def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
     workos_client_id = _require(e, "WORKOS_CLIENT_ID")
     _require(e, "WORKOS_API_KEY")  # not used directly here; sanity check
-    mem0_api_key = _require(e, "MEM0_API_KEY")
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
     workos_issuer = e.get(
         "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
     )
-    mem0_base_url = e.get("MEM0_BASE_URL", "https://api.mem0.ai")
     langfuse_host = (
         e.get("LANGFUSE_HOST")
         or e.get("LANGFUSE_BASE_URL")
@@ -219,12 +228,9 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
             role_to_tools=_DEFAULT_ROLE_TO_TOOLS,
             known_tools=_DEFAULT_KNOWN_TOOLS,
         ),
-        memory_client=Mem0CloudClient(
-            api_key=mem0_api_key,
-            base_url=mem0_base_url,
-        ),
         telemetry_exporter=telemetry,
         black_box_relay=_build_relay(e, telemetry),
+        embedding_client=_build_embedding_client(e),
     )
 
 
@@ -234,24 +240,23 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
 
 
 def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
-    """v2 wiring -- self-hosted Mem0 + self-hosted Langfuse + (same)
-    WorkOS verifier + WorkOS role ACL.
+    """v2 wiring -- self-hosted Langfuse + (same) WorkOS verifier + WorkOS
+    role ACL.
 
     Sprint 1 ships parity by reusing the v3 SDKs but pointed at
     self-hosted hosts. The dedicated self-hosted adapter classes land
     in Sprint 2 along with their conformance tests.
+
+    NOTE (Phase 0.5 R1): ``MEM0_API_KEY`` is no longer read — see _build_v3.
     """
     workos_client_id = _require(e, "WORKOS_CLIENT_ID")
     _require(e, "WORKOS_API_KEY")
-    mem0_api_key = _require(e, "MEM0_API_KEY")
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
     workos_issuer = e.get(
         "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
     )
-    # v2 defaults to self-hosted endpoints.
-    mem0_base_url = e.get("MEM0_BASE_URL", "https://mem0.internal")
     langfuse_host = e.get("LANGFUSE_HOST", "https://langfuse.internal")
     jwks_url = e.get(
         "WORKOS_JWKS_URL",
@@ -279,18 +284,50 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
             role_to_tools=_DEFAULT_ROLE_TO_TOOLS,
             known_tools=_DEFAULT_KNOWN_TOOLS,
         ),
-        memory_client=Mem0CloudClient(
-            api_key=mem0_api_key,
-            base_url=mem0_base_url,
-        ),
         telemetry_exporter=telemetry,
         black_box_relay=_build_relay(e, telemetry),
+        embedding_client=_build_embedding_client(e),
     )
 
 
 # ─────────────────────────────────────────────────────────────────────
 # helpers
 # ─────────────────────────────────────────────────────────────────────
+
+
+def _build_embedding_client(e: Mapping[str, str]) -> EmbeddingClient | None:
+    """Construct the EmbeddingClient (Phase 1, replace-mem0-pgvector).
+
+    Returns ``None`` when ``OPENAI_API_KEY`` is unset — Phase 1 ships the
+    port + adapter but does NOT yet require a live provider in any
+    runtime path. Phase 2's ``PgVectorMemoryBackend`` will receive this
+    via constructor injection. Phase 4 promotes the requirement gate
+    (``MEMORY_BACKEND=pgvector`` without an embedding client = composition
+    error) — until then the field stays Optional.
+
+    The adapter import is local so the SDK isolation invariant (the
+    architecture test's M-no-cross rule) stays clean: ``litellm`` enters
+    Python's import graph only when we actually need it.
+    """
+    api_key = e.get("OPENAI_API_KEY", "")
+    if not api_key:
+        return None
+    model = e.get("EMBEDDING_MODEL", "text-embedding-3-small")
+    dim_str = e.get("EMBEDDING_DIMENSION", "1536")
+    try:
+        dimension = int(dim_str)
+    except ValueError as exc:
+        raise MissingEnvError("EMBEDDING_DIMENSION") from exc
+
+    from middleware.adapters.embedding.litellm_embedding_client import (
+        LiteLLMEmbeddingClient,
+    )
+
+    return LiteLLMEmbeddingClient(
+        model=model,
+        dimension=dimension,
+        api_key=api_key,
+    )
 
 
 def _build_relay(
@@ -479,12 +516,42 @@ class AgentRuntimeSettings(BaseSettings):
     # Live-infra (Piece B): when present, the agent ring selects the durable
     # Mem0MemoryBackend instead of the ephemeral InMemoryMemoryBackend so
     # long-term memory survives a Cloud Run restart. Absent (dev/tests/CI) →
-    # in-memory. The key never leaves the composition root; the SAME value is
-    # already _require'd by build_adapters for the BFF async MemoryClient.
+    # in-memory. Phase 4 (replace-mem0-pgvector) replaces this selector with a
+    # MEMORY_BACKEND=pgvector branch; the field itself stays in settings until
+    # Phase 5 S6 (24h soak completes + mem0 keys revoked).
     mem0_api_key: str = Field(default="", validation_alias="MEM0_API_KEY")
     mem0_base_url: str = Field(
         default="https://api.mem0.ai", validation_alias="MEM0_BASE_URL"
     )
+    # Phase 1 (replace-mem0-pgvector). The embedding port + LiteLLM adapter
+    # ship now; the PgVectorMemoryBackend that consumes them lands in Phase 2.
+    # Defaults match text-embedding-3-small. EMBEDDING_DIMENSION must match
+    # the pgvector column type — changing it requires re-embedding every row.
+    embedding_model: str = Field(
+        default="text-embedding-3-small", validation_alias="EMBEDDING_MODEL"
+    )
+    embedding_dimension: int = Field(
+        default=1536, validation_alias="EMBEDDING_DIMENSION"
+    )
+    # Phase 4 (replace-mem0-pgvector). MEMORY_BACKEND replaces the legacy
+    # ``mem0_api_key`` selector — the composition root builds the durable
+    # PgVectorMemoryBackend only when this is set to ``"pgvector"`` AND a
+    # ``DATABASE_URL`` is present AND an ``OPENAI_API_KEY`` is available for
+    # the embedding client. Any missing piece raises ``MissingEnvError`` at
+    # composition time — never silently fall back to InMemory in prod.
+    # Default ``"inmemory"`` keeps dev/test/CI behaviour byte-identical.
+    memory_backend: Literal["inmemory", "pgvector"] = Field(
+        default="inmemory", validation_alias="MEMORY_BACKEND"
+    )
+    # Postgres connection string. Already consumed by the BFF thread store
+    # (see [[bff-threads-cloudsql-driver-gap]]); Phase 4 reuses the same DSN
+    # for the agent_memories table on the same Cloud SQL instance.
+    database_url: str = Field(default="", validation_alias="DATABASE_URL")
+    # OpenAI key. Already read directly inside ``_build_embedding_client`` via
+    # the env mapping; lifted into settings here so ``build_components`` (which
+    # only receives ``settings``) can detect its absence and fail loud when
+    # ``MEMORY_BACKEND=pgvector`` is requested without an embedding provider.
+    openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
     # ─── C1 message-history compaction (design §9 / impl §6) ─────────────
     # Seven shadow-first knobs; the master flag (CONTEXT_COMPACT_MESSAGES)
     # gates BOTH seams (call_llm_node READ, evaluate_node WRITE), so with it
@@ -808,32 +875,48 @@ def build_components(
 
     # Phase 1 memory wiring: construct the injected LongTermMemoryService once at
     # the composition root (H7 — no node imports a backend). The graph reads only
-    # the sync MemoryBackend port via this service (wiring note: the loop never
-    # imports MemoryClient or the Mem0 SDK). The service is built regardless of
-    # memory_enabled so the graph shape is stable; the flag gates the calls.
+    # the sync MemoryBackend port via this service. The service is built
+    # regardless of memory_enabled so the graph shape is stable; the flag gates
+    # the calls.
     #
-    # Backend selection (live-infra Piece B): with MEM0_API_KEY present the
-    # durable Mem0MemoryBackend is wired so memory persists across Cloud Run
-    # restarts; without it (dev / tests / CI) the ephemeral InMemoryMemoryBackend
-    # keeps zero-dep, fast, deterministic behavior. This is the "swap backend =
-    # one composition line" promise (plan §10) — nothing under orchestration/ or
-    # agent_ui_adapter/ changes. The sync Mem0MemoryBackend talks to the Mem0 SDK
-    # directly (the loop's recall/store nodes are sync); the BFF ring keeps its
-    # parallel ASYNC Mem0CloudClient. The graph reads only the sync MemoryBackend
-    # port via this service regardless of which backend is chosen.
+    # Backend selection (Phase 4, replace-mem0-pgvector):
+    #   ``MEMORY_BACKEND=pgvector``  → durable PgVectorMemoryBackend on Cloud SQL
+    #                                  (requires DATABASE_URL + OPENAI_API_KEY;
+    #                                  any missing piece raises MissingEnvError
+    #                                  — never silently degrade in prod).
+    #   ``MEMORY_BACKEND=inmemory``  → ephemeral InMemoryMemoryBackend (default;
+    #                                  dev/test/CI).
+    # The legacy ``mem0_api_key`` selector was retired here — the mem0 backend
+    # file stays on disk until Phase 5 S6 (after 24h soak) so a redeploy of the
+    # prior revision is still a valid rollback; this composition root never
+    # wires it. (The async Mem0CloudClient + MemoryClient port were deleted in
+    # Phase 3.)
     from services.long_term_memory import (
         InMemoryMemoryBackend,
         LongTermMemoryService,
     )
 
-    if settings.mem0_api_key:
-        from services.memory_backends.mem0 import Mem0MemoryBackend
-
-        memory_backend = Mem0MemoryBackend(
-            api_key=settings.mem0_api_key,
-            base_url=settings.mem0_base_url,
+    memory_backend: Any
+    if settings.memory_backend == "pgvector":
+        if not settings.database_url:
+            raise MissingEnvError("DATABASE_URL")
+        if not settings.openai_api_key:
+            raise MissingEnvError("OPENAI_API_KEY")
+        from middleware.adapters.embedding.litellm_embedding_client import (
+            LiteLLMEmbeddingClient,
         )
-        _logger.info("memory backend: mem0 (durable)")
+        from services.memory_backends.pgvector import PgVectorMemoryBackend
+
+        embedding_client = LiteLLMEmbeddingClient(
+            model=settings.embedding_model,
+            dimension=settings.embedding_dimension,
+            api_key=settings.openai_api_key,
+        )
+        memory_backend = PgVectorMemoryBackend(
+            embedding_client=embedding_client,
+            dsn=settings.database_url,
+        )
+        _logger.info("memory backend: pgvector (durable)")
     else:
         memory_backend = InMemoryMemoryBackend()
         _logger.info("memory backend: in-memory (ephemeral)")

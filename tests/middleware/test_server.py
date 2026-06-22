@@ -27,7 +27,6 @@ from fastapi.testclient import TestClient
 
 from middleware.adapters.acl.workos_role_acl import WorkOSRoleAcl
 from middleware.adapters.auth.workos_jwt_verifier import WorkOSJwtVerifier
-from middleware.adapters.memory.mem0_cloud_client import Mem0CloudClient
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
@@ -43,8 +42,12 @@ def adapters_test(
     """A MiddlewareAdapters bag wired with test-friendly substitutes:
 
       * JWT verifier uses the in-memory JWKS fixture (no network).
-      * Memory + telemetry adapters are real classes but never invoked
-        in these tests -- they're constructed with dummy creds.
+      * Telemetry adapter is a real class but never invoked
+        in these tests -- it's constructed with dummy creds.
+
+    Phase 3 (replace-mem0-pgvector, Branch A): no ``memory_client``
+    field — the async ``MemoryClient`` port + ``Mem0CloudClient`` adapter
+    have been deleted.
     """
     return MiddlewareAdapters(
         profile="v3",
@@ -62,7 +65,6 @@ def adapters_test(
             },
             known_tools=frozenset({"shell", "file_io", "web_search"}),
         ),
-        memory_client=Mem0CloudClient(api_key="dummy"),
         telemetry_exporter=LangfuseCloudExporter(
             public_key="pk-dummy",
             secret_key="sk-dummy",

@@ -51,6 +51,16 @@ REQUIRED_SECRET_IDS = {
 }
 
 
+# Retired secrets — still provisioned in Secret Manager for the Phase 5
+# 24h-rollback window after the mem0 → pgvector cutover, but no longer
+# wired into the dev-tier Cloud Run service as a ``secret_key_ref`` env.
+# Deleted in Phase 5 S6 from both this set and ``REQUIRED_SECRET_IDS``.
+# See ``docs/plans/replace_mem0_pgvector.phase5_s6.deletion_checklist.md``.
+RETIRED_SECRET_IDS = {
+    "mem0-api-key",
+}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Existence — every required secret must be declared.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -266,6 +276,12 @@ def test_cloud_run_references_every_required_secret(resources):
     if isinstance(env_blocks, dict):
         env_blocks = [env_blocks]
 
+    # Phase 5 cutover: retired secrets (currently ``{"mem0-api-key"}``) are
+    # still declared in Secret Manager for the 24h-rollback window but
+    # intentionally NOT wired into Cloud Run env. They leave the required
+    # set permanently in Phase 5 S6.
+    expected_env_secrets = REQUIRED_SECRET_IDS - RETIRED_SECRET_IDS
+
     secret_refs = set()
     for env_entry in env_blocks:
         vs = unwrap_block(env_entry.get("value_source"))
@@ -275,13 +291,13 @@ def test_cloud_run_references_every_required_secret(resources):
         if sk is None:
             continue
         ref = str(sk.get("secret", ""))
-        for sec_id in REQUIRED_SECRET_IDS:
+        for sec_id in expected_env_secrets:
             # Resource local names are derived from secret_id with -→_
             local_name = sec_id.replace("-", "_")
             if local_name in ref:
                 secret_refs.add(sec_id)
 
-    missing = REQUIRED_SECRET_IDS - secret_refs
+    missing = expected_env_secrets - secret_refs
     assert not missing, (
         "Sprint 2 §S2.1.4: Cloud Run service does not reference these "
         f"required secrets via secret_key_ref: {sorted(missing)!r}."

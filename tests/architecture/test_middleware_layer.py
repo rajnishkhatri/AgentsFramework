@@ -46,7 +46,7 @@ from pathlib import Path
 
 import pytest
 
-from utils.code_analysis import collect_imports_in_directory
+from utils.code_analysis import collect_imports_in_directory, parse_imports
 
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -81,7 +81,22 @@ def _imports_in(subdir: str) -> list[tuple[str, str]]:
 
 
 class TestM1_BackendDoesNotImportMiddleware:
-    """M1: dependency arrow is one-way."""
+    """M1: dependency arrow is one-way.
+
+    The general rule (top-level ``import middleware`` from any backend
+    layer) stays banned. A narrow exception is documented for
+    ``middleware.ports.*`` imports from ``services/``: ports are
+    framework-agnostic Protocols (no SDK, no concrete adapter), and the
+    hexagonal layering says "services may consume ports" (per
+    ``docs/plans/replace_mem0_pgvector.plan.md`` §Architecture & TDD
+    compliance — ``services/memory_backends/pgvector.py`` consumes
+    ``middleware.ports.embedding_client.EmbeddingClient``).
+
+    The intent of M1 — keeping SDK/adapter coupling out of the backend —
+    is still enforced by ``TestPortPurity`` (ports must be stdlib-only)
+    and ``TestSdkConfinement`` (SDKs may live only under
+    ``middleware/adapters/``).
+    """
 
     def test_no_backend_layer_imports_middleware(self) -> None:
         forbidden_consumers = [
@@ -93,16 +108,31 @@ class TestM1_BackendDoesNotImportMiddleware:
             "meta",
             "agent_ui_adapter",
         ]
+        # Sanctioned narrow exception (plan §Architecture & TDD compliance):
+        # backend services may import middleware.ports.* — ports are pure
+        # Protocols and the hexagonal contract says services consume them.
         violations: list[str] = []
         for layer in forbidden_consumers:
             layer_dir = AGENT_ROOT / layer
             if not layer_dir.exists():
                 continue
-            for path, pkg in collect_imports_in_directory(
-                layer_dir, relative_to=AGENT_ROOT
-            ):
-                if pkg == "middleware":
-                    violations.append(f"{path} imports middleware")
+            for py in layer_dir.rglob("*.py"):
+                if "__pycache__" in str(py):
+                    continue
+                parsed = parse_imports(py)
+                if not parsed.get("pass"):
+                    continue
+                for imp in parsed["imports"]:
+                    module = imp["module"]
+                    if not (module == "middleware" or module.startswith("middleware.")):
+                        continue
+                    # Narrow exception: services may consume middleware.ports.*
+                    if layer == "services" and module.startswith("middleware.ports"):
+                        continue
+                    rel = py.relative_to(AGENT_ROOT)
+                    violations.append(
+                        f"{rel}:{imp['line']} imports {module}"
+                    )
         assert violations == [], (
             "M1 violated: backend layer imports from middleware/:\n"
             + "\n".join(violations)
@@ -625,3 +655,100 @@ class TestTelemetryBridgeImportAllowlist:
         # Common stdlib modules that might not be in stdlib_module_names
         # on all Python versions
         return package in {"__future__", "typing", "logging"}
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 1 (replace-mem0-pgvector) — EmbeddingClient port placement
+# ─────────────────────────────────────────────────────────────────────
+#
+# Per docs/plans/replace_mem0_pgvector.plan.md §Architecture & TDD compliance:
+#   (a) EmbeddingClient Protocol defined only in middleware/ports/embedding_client.py
+#   (b) litellm (embedding usage) allowed only under middleware/adapters/embedding/
+#       (the existing services/llm_*.py litellm import is the sanctioned chat-LLM exception)
+#   (c) M-ports stdlib-only invariant still holds for the new port
+#
+# These assertions extend the existing TestPortPurity / TestSdkConfinement
+# coverage without weakening it.
+
+
+class TestEmbeddingClientPortPlacement:
+    """Phase 1: EmbeddingClient must be defined exactly once, in the
+    sanctioned port path."""
+
+    def test_protocol_defined_only_in_ports(self) -> None:
+        """AST-scan: ``class EmbeddingClient(Protocol)`` may appear only
+        in middleware/ports/embedding_client.py.
+        """
+        canonical = MIDDLEWARE_DIR / "ports" / "embedding_client.py"
+        if not canonical.exists():
+            pytest.skip("EmbeddingClient port not yet scaffolded")
+        violations: list[str] = []
+        for py in (AGENT_ROOT).rglob("*.py"):
+            if py == canonical:
+                continue
+            # Skip vendored / venv content.
+            sp = str(py)
+            if "/.venv/" in sp or "/site-packages/" in sp or "/node_modules/" in sp:
+                continue
+            try:
+                tree = ast.parse(py.read_text())
+            except (SyntaxError, UnicodeDecodeError):
+                continue
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ClassDef) and node.name == "EmbeddingClient":
+                    violations.append(str(py.relative_to(AGENT_ROOT)))
+                    break
+        assert violations == [], (
+            "EmbeddingClient Protocol must be defined only in "
+            "middleware/ports/embedding_client.py:\n" + "\n".join(violations)
+        )
+
+
+class TestEmbeddingAdapterPlacement:
+    """Phase 1: ``litellm`` (the embedding transport) is allowed in
+    middleware/ only under middleware/adapters/embedding/.
+
+    Note: services/llm_*.py imports ``litellm``/``langchain_litellm`` for
+    chat completions — that is the *services/* exception sanctioned by
+    AGENTS.md rule 4. This rule covers the *middleware/* ring only.
+    """
+
+    def test_litellm_only_in_embedding_adapter_within_middleware(self) -> None:
+        if not MIDDLEWARE_DIR.exists():
+            pytest.skip("middleware/ not yet scaffolded")
+        violations: list[str] = []
+        for path, pkg in _middleware_imports():
+            if pkg != "litellm":
+                continue
+            path_str = str(path).replace("\\", "/")
+            if "middleware/adapters/embedding/" not in path_str:
+                violations.append(f"{path} imports litellm")
+        assert violations == [], (
+            "Phase 1 SDK isolation violated: ``litellm`` may live in "
+            "middleware/ only under middleware/adapters/embedding/:\n"
+            + "\n".join(violations)
+        )
+
+    def test_embedding_port_has_no_sdk_imports(self) -> None:
+        """Re-assert M-ports purity for the new port file specifically —
+        the EmbeddingClient port MUST be stdlib + typing only.
+        """
+        port = MIDDLEWARE_DIR / "ports" / "embedding_client.py"
+        if not port.exists():
+            pytest.skip("EmbeddingClient port not yet scaffolded")
+        tree = ast.parse(port.read_text())
+        offenders: list[str] = []
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    top = alias.name.split(".")[0]
+                    if top in {"litellm", "openai", "psycopg", "sqlalchemy"}:
+                        offenders.append(top)
+            elif isinstance(node, ast.ImportFrom):
+                top = (node.module or "").split(".")[0]
+                if top in {"litellm", "openai", "psycopg", "sqlalchemy"}:
+                    offenders.append(top)
+        assert offenders == [], (
+            "EmbeddingClient port leaked an SDK import — must be stdlib + "
+            "typing only:\n" + ", ".join(offenders)
+        )
