@@ -107,9 +107,35 @@ describe("HttpMemoryStore — acceptance", () => {
     const s = store(fetchImpl);
     const item = await s.add("likes dark mode", "semantic");
     expect(item.key).toBe("k-new");
-    expect(JSON.parse(String(seen[0]?.body))).toMatchObject({
+    const sent = JSON.parse(String(seen[0]?.body));
+    expect(sent).toMatchObject({
       content: "likes dark mode",
       type: "semantic",
+    });
+    // Backwards compat: omitting `key` still posts `key: null` (backend mints UUID).
+    expect(sent.key).toBeNull();
+  });
+
+  it("add forwards a caller-supplied key on the wire body", async () => {
+    const seen: RequestInit[] = [];
+    const fetchImpl = ((_url: string, init: RequestInit) => {
+      seen.push(init);
+      return Promise.resolve(
+        jsonRes(200, {
+          key: "f1",
+          type: "semantic",
+          content: "metric units",
+          salience: null,
+        }),
+      );
+    }) as unknown as typeof fetch;
+    const s = store(fetchImpl);
+    const item = await s.add("metric units", "semantic", null, "f1");
+    expect(item.key).toBe("f1");
+    expect(JSON.parse(String(seen[0]?.body))).toMatchObject({
+      content: "metric units",
+      type: "semantic",
+      key: "f1",
     });
   });
 

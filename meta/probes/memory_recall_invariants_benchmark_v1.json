@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "seam": "memory_recall",
+  "rubric_version": "memory_recall_invariants_v1",
+  "description": "Phase 6 (replace-mem0-pgvector) Tier-A — frozen pass/fail fixture for the L1 recall invariant validator. Each row is a (user_id, requested_limit, kept) triple plus the expected per-invariant binary results. Acceptance rows (must_pass=all) exercise the clean path; rejection rows (one per invariant) freeze the failure modes the validator MUST catch. Edit only via the dataset-revision discipline — the v1 fixture is the merge gate; a v2 supersedes, never mutates.",
+  "rows": [
+    {
+      "id": "accept-01-clean-recall",
+      "must_pass_all": true,
+      "user_id": "alice",
+      "requested_limit": 3,
+      "kept": [
+        {"user_id": "alice", "key": "k1", "payload": {"text": "x"}, "metadata": {"score": 0.9}},
+        {"user_id": "alice", "key": "k2", "payload": {"text": "y"}, "metadata": {"score": 0.7}},
+        {"user_id": "alice", "key": "k3", "payload": {"text": "z"}, "metadata": {"score": 0.4}}
+      ]
+    },
+    {
+      "id": "accept-02-empty-recall",
+      "must_pass_all": true,
+      "user_id": "alice",
+      "requested_limit": 3,
+      "kept": []
+    },
+    {
+      "id": "accept-03-score-at-boundaries",
+      "must_pass_all": true,
+      "user_id": "alice",
+      "requested_limit": 5,
+      "kept": [
+        {"user_id": "alice", "key": "ka", "payload": {"text": "a"}, "metadata": {"score": 0.0}},
+        {"user_id": "alice", "key": "kb", "payload": {"text": "b"}, "metadata": {"score": 1.0}}
+      ]
+    },
+    {
+      "id": "accept-04-missing-score-metadata",
+      "must_pass_all": true,
+      "user_id": "alice",
+      "requested_limit": 2,
+      "kept": [
+        {"user_id": "alice", "key": "k1", "payload": {"text": "x"}, "metadata": {}}
+      ]
+    },
+    {
+      "id": "reject-01-limit-exceeded",
+      "must_fail": ["memory_recall.limit_respected"],
+      "user_id": "alice",
+      "requested_limit": 2,
+      "kept": [
+        {"user_id": "alice", "key": "k1", "payload": {"text": "x"}, "metadata": {"score": 0.9}},
+        {"user_id": "alice", "key": "k2", "payload": {"text": "y"}, "metadata": {"score": 0.8}},
+        {"user_id": "alice", "key": "k3", "payload": {"text": "z"}, "metadata": {"score": 0.7}}
+      ]
+    },
+    {
+      "id": "reject-02-cross-user-leak",
+      "must_fail": ["memory_recall.user_isolated"],
+      "user_id": "alice",
+      "requested_limit": 5,
+      "kept": [
+        {"user_id": "alice", "key": "ka", "payload": {"text": "a"}, "metadata": {"score": 0.9}},
+        {"user_id": "mallory", "key": "km", "payload": {"text": "leaked"}, "metadata": {"score": 0.8}}
+      ]
+    },
+    {
+      "id": "reject-03-score-above-one",
+      "must_fail": ["memory_recall.score_bounded"],
+      "user_id": "alice",
+      "requested_limit": 5,
+      "kept": [
+        {"user_id": "alice", "key": "k1", "payload": {"text": "x"}, "metadata": {"score": 1.5}}
+      ]
+    },
+    {
+      "id": "reject-04-score-below-zero",
+      "must_fail": ["memory_recall.score_bounded"],
+      "user_id": "alice",
+      "requested_limit": 5,
+      "kept": [
+        {"user_id": "alice", "key": "k1", "payload": {"text": "x"}, "metadata": {"score": -0.2}}
+      ]
+    },
+    {
+      "id": "reject-05-empty-key",
+      "must_fail": ["memory_recall.key_integrity"],
+      "user_id": "alice",
+      "requested_limit": 5,
+      "kept": [
+        {"user_id": "alice", "key": "", "payload": {"text": "x"}, "metadata": {"score": 0.8}}
+      ]
+    }
+  ]
+}

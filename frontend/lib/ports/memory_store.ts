@@ -43,7 +43,9 @@ export interface MemoryStore {
 
   /**
    * Add a user-authored memory. `salience` (A3 provenance tiers) is optional —
-   * omitted → stored unmarked.
+   * omitted → stored unmarked. `key` is optional — when provided, the backend
+   * uses it verbatim (enabling deterministic cleanup-by-key in tests/seeds);
+   * when omitted, the backend mints a UUID.
    *
    * @throws MemoryStoreError on transport failure.
    */
@@ -51,6 +53,7 @@ export interface MemoryStore {
     content: string,
     type: MemoryType,
     salience?: number | null,
+    key?: string | null,
   ): Promise<MemoryItem>;
 
   /**

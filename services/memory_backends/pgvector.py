@@ -217,21 +217,51 @@ class PgVectorMemoryBackend:
     # ── embedding helper ─────────────────────────────────────────────
 
     def _embed_sync(self, text: str) -> list[float]:
-        """Run the (async) EmbeddingClient via asyncio.run.
+        """Run the (async) EmbeddingClient from a sync context.
 
-        The Protocol is async because the BFF + future async paths use
-        it directly. The graph-side recall/store happens inside a sync
-        LangGraph node, so we bridge here. Mirror of the same decision
-        in the mem0 backend (the SDK is sync; this backend is sync).
+        Two call contexts must both work:
+          (a) Graph-side recall/store — invoked from a sync LangGraph
+              node, no running event loop. ``asyncio.run`` is fine.
+          (b) BFF /agent/memory CRUD — invoked from an ``async def``
+              FastAPI handler, INSIDE a running event loop. There
+              ``asyncio.run`` raises ``RuntimeError: asyncio.run()
+              cannot be called from a running event loop``.
+
+        The bridge detects a running loop and, if present, dispatches
+        the coroutine factory to a worker thread that owns its own
+        loop. The coroutine is constructed inside the worker (not in
+        the caller's loop) so any internal awaitables bind to the
+        worker's loop, not the caller's — eliminating the cross-loop
+        trap entirely.
         """
         import asyncio
+        import concurrent.futures
+
+        def _runner() -> list[list[float]]:
+            return asyncio.run(self._embedding_client.embed(texts=[text]))
 
         try:
-            vectors = asyncio.run(self._embedding_client.embed(texts=[text]))
-        except EmbeddingClientError as exc:
-            raise MemoryBackendError(
-                f"pgvector backend: embedding client failed ({exc})"
-            ) from exc
+            asyncio.get_running_loop()
+        except RuntimeError:
+            # No running loop — sync caller (the graph node path).
+            try:
+                vectors = _runner()
+            except EmbeddingClientError as exc:
+                raise MemoryBackendError(
+                    f"pgvector backend: embedding client failed ({exc})"
+                ) from exc
+        else:
+            # We're inside a running loop (the BFF async route path).
+            # Run the embed in a dedicated worker thread that owns its
+            # own asyncio loop; .result() blocks until done. Single-use
+            # executor so we never share loops across calls.
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                try:
+                    vectors = ex.submit(_runner).result()
+                except EmbeddingClientError as exc:
+                    raise MemoryBackendError(
+                        f"pgvector backend: embedding client failed ({exc})"
+                    ) from exc
         if not vectors:
             raise MemoryBackendError(
                 "pgvector backend: embedding client returned no vectors"

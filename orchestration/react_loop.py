@@ -1152,6 +1152,31 @@ def build_graph(
                     step=state.get("step_count", 0),
                     details=_recall_details,
                 ))
+                # Phase 6 Tier-A invariant check: the L1 deterministic
+                # validator scores the kept records against the four
+                # recall invariants (limit, user isolation, score bounds,
+                # key integrity). Results land in the eval_capture
+                # ai_response (NOT in the carrier — keeps the carrier
+                # schema stable). On the degraded path `kept` is [] and
+                # the validator passes vacuously, giving a stable
+                # schema on every recall.
+                from services.governance.memory_recall_validator import (
+                    validate_recall,
+                )
+
+                _kept_for_invariants = [] if recall_error else list(
+                    kept  # type: ignore[has-type]
+                )
+                _invariant_results = validate_recall(
+                    user_id=recall_user_id,
+                    requested_limit=3,
+                    kept=_kept_for_invariants,
+                )
+                _invariants_payload = [
+                    {"name": r.name, "passed": r.passed, "details": r.details}
+                    for r in _invariant_results
+                ]
+
                 # eval_capture on the memory seam (I-11, per user decision):
                 # uniform per-user memory-activity observability even though
                 # recall makes no LLM call. ai_response carries metadata only.
@@ -1163,6 +1188,7 @@ def build_graph(
                     ai_response={
                         "count": recall_count,
                         "degraded": bool(recall_error),
+                        "invariants": _invariants_payload,
                     },
                     config=config,
                     step=state.get("step_count", 0),

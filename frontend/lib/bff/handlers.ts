@@ -233,6 +233,7 @@ export function makeMemoryCreateHandler(
       parsed.data.content,
       parsed.data.type,
       parsed.data.salience,
+      parsed.data.key,
     );
     return json(200, created);
   };

@@ -73,11 +73,12 @@ export class HttpMemoryStore implements MemoryStore {
     content: string,
     type: MemoryType,
     salience: number | null = null,
+    key: string | null = null,
   ): Promise<MemoryItem> {
     const body = MemoryCreateRequestSchema.parse({
       content,
       type,
-      key: null,
+      key,
       salience,
     });
     let res: Response;

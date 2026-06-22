@@ -297,6 +297,116 @@ async def test_t1_recall_injected_and_store_fires(tmp_path):
     assert set(stored[0]["details"]).issubset({"user_id", "key", "error_kind"})
 
 
+# ── Phase 6 (replace-mem0-pgvector): Tier-A invariant validator on recall ──
+
+
+@pytest.mark.asyncio
+async def test_recall_invariants_land_in_eval_capture(tmp_path, monkeypatch):
+    """The L1 recall-invariant validator runs on every recall and writes
+    per-category binary results into eval_capture's ai_response.
+
+    Skill contract (Phase 4 Done-when):
+      - results recorded via eval_capture.record(...)
+      - the existing MEMORY_RECALLED carrier schema is UNTOUCHED (the four
+        existing keys + invariants live alongside, not inside, the carrier)
+      - clean recall → all four invariants pass
+    """
+    captured: list[dict] = []
+
+    async def _fake_record(*args, **kwargs):
+        # Real signature: record(target, ai_input, ai_response, config, step=0, ...)
+        # Accept positional or keyword form; we only care about the recall surface.
+        target = kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
+        ai_input = kwargs.get("ai_input") if "ai_input" in kwargs else (
+            args[1] if len(args) > 1 else {}
+        )
+        ai_response = kwargs.get("ai_response") if "ai_response" in kwargs else (
+            args[2] if len(args) > 2 else {}
+        )
+        captured.append(
+            {"target": target, "ai_input": ai_input, "ai_response": ai_response}
+        )
+
+    # Monkey-patch the module the react loop imports lazily so we never make
+    # a network call and we see exactly what's published per-recall.
+    from services import eval_capture as _ec
+
+    monkeypatch.setattr(_ec, "record", _fake_record)
+
+    spy = _SpyBackend()
+    service = LongTermMemoryService(spy)
+    service.store("u-demo", "seed", {"text": "prefers metric units"})
+    spy.put_calls.clear()
+
+    await _run_graph(
+        cache_dir=tmp_path,
+        agent_config=_cfg(memory_enabled=True),
+        memory_service=service,
+        task_input="metric",
+    )
+
+    recall_records = [r for r in captured if r["target"] == "memory_recall"]
+    assert recall_records, "every recall must emit an eval_capture record"
+
+    last = recall_records[-1]["ai_response"]
+    assert "invariants" in last, (
+        "Phase 6: the recall invariant validator results must land in "
+        "ai_response['invariants'] alongside count/degraded"
+    )
+    invariants = last["invariants"]
+    # One result per invariant, in the validator's stable order.
+    names = [i["name"] for i in invariants]
+    assert names == [
+        "memory_recall.limit_respected",
+        "memory_recall.user_isolated",
+        "memory_recall.score_bounded",
+        "memory_recall.key_integrity",
+    ]
+    # Clean recall path → every invariant passes.
+    assert all(i["passed"] for i in invariants), (
+        f"clean recall must pass every invariant; got {invariants!r}"
+    )
+    # Privacy invariant: details strings must NOT contain payload text.
+    for inv in invariants:
+        assert "metric units" not in inv["details"]
+
+
+@pytest.mark.asyncio
+async def test_recall_invariants_record_on_degraded_path(tmp_path, monkeypatch):
+    """Even when the backend raises (count=0 / degraded=True), the validator
+    still runs (over an empty kept list) and emits results — so the eval
+    surface has a stable schema regardless of degradation."""
+    captured: list[dict] = []
+
+    async def _fake_record(*args, **kwargs):
+        target = kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
+        ai_response = kwargs.get("ai_response") if "ai_response" in kwargs else (
+            args[2] if len(args) > 2 else {}
+        )
+        captured.append({"target": target, "ai_response": ai_response})
+
+    from services import eval_capture as _ec
+
+    monkeypatch.setattr(_ec, "record", _fake_record)
+
+    spy = _SpyBackend(raise_on={"search"})
+    service = LongTermMemoryService(spy)
+    await _run_graph(
+        cache_dir=tmp_path,
+        agent_config=_cfg(memory_enabled=True),
+        memory_service=service,
+    )
+
+    recall_records = [r for r in captured if r["target"] == "memory_recall"]
+    assert recall_records
+    last = recall_records[-1]["ai_response"]
+    assert last["degraded"] is True
+    assert last["count"] == 0
+    # Empty-kept validates clean (vacuously) — schema present on degraded too.
+    assert "invariants" in last
+    assert all(i["passed"] for i in last["invariants"])
+
+
 # ── recalled_memories_count surfaced on state (for the UI indicator) ──────
 
 

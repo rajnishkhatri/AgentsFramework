@@ -911,3 +911,78 @@ class TestSchemaShape:
         assert "agent_memories_ts_idx" in names         # GIN on ts
         assert "agent_memories_hnsw_idx" in names       # pre-existing
         assert "agent_memories_user_idx" in names       # pre-existing
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 5 hotfix — running-event-loop safety (failure-paths-first)
+# ─────────────────────────────────────────────────────────────────────
+#
+# The graph-side recall/store path calls the sync backend from a sync
+# context (LangGraph node). asyncio.run() works there. But the BFF
+# /agent/memory CRUD route is `async def` (FastAPI), so the same
+# backend.put() / backend.search() call runs inside a running event
+# loop — at which point asyncio.run() raises
+# ``RuntimeError: asyncio.run() cannot be called from a running event
+# loop``. This was the live 500 on POST /api/memory observed 2026-06-22
+# on agent-backend-combined (Hermes crud-seed cases in MEM_SMOKE).
+#
+# These tests assert the backend works in BOTH contexts.
+
+
+class TestRunningEventLoopSafety:
+    """Phase 5 hotfix: backend MUST work when called from a running loop.
+
+    The chat path is sync-from-outside (LangGraph node), so today's
+    ``asyncio.run`` bridge is fine. The BFF /agent/memory CRUD path is
+    async-from-outside (FastAPI). The backend MUST handle both.
+    """
+
+    def test_put_works_when_called_from_running_event_loop(
+        self, backend: object, fake_embedder: FakeEmbeddingClient
+    ) -> None:
+        """RED before fix: ``asyncio.run`` inside a running loop raises
+        ``RuntimeError: asyncio.run() cannot be called from a running event loop``.
+        After the fix, put() must succeed and the row must round-trip.
+        """
+        import asyncio
+        from services.long_term_memory import MemoryRecord
+
+        async def _put_in_loop() -> object:
+            record = MemoryRecord(
+                user_id="u-loop",
+                key="k-1",
+                payload={"text": "stored from inside a running loop"},
+                metadata={"type": "semantic"},
+            )
+            backend.put(record)  # type: ignore[attr-defined]
+            return backend.get("u-loop", "k-1")  # type: ignore[attr-defined]
+
+        got = asyncio.run(_put_in_loop())
+        assert got is not None
+        assert got.payload["text"] == "stored from inside a running loop"
+
+    def test_search_works_when_called_from_running_event_loop(
+        self, backend: object, fake_embedder: FakeEmbeddingClient
+    ) -> None:
+        """``search`` also embeds (the query), so it has the same trap.
+        Exercising the path independently catches regression in either site.
+        """
+        import asyncio
+        from services.long_term_memory import MemoryRecord
+
+        # Seed one row from a sync context (proves the sync path is unaffected).
+        backend.put(  # type: ignore[attr-defined]
+            MemoryRecord(
+                user_id="u-loop-search",
+                key="seed",
+                payload={"text": "seed from sync"},
+                metadata={"type": "semantic"},
+            )
+        )
+
+        async def _search_in_loop() -> list:
+            return backend.search("u-loop-search", "seed", limit=5)  # type: ignore[attr-defined]
+
+        records = asyncio.run(_search_in_loop())
+        assert isinstance(records, list)
+        assert any(r.key == "seed" for r in records)

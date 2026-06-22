@@ -215,3 +215,109 @@ class TestPsycopgConfinement:
             "only under memory_backends/pgvector.py:\n  "
             + "\n  ".join(violations)
         )
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 6 (replace-mem0-pgvector) — recall invariant validator isolation
+# ─────────────────────────────────────────────────────────────────────
+#
+# Per docs/plans/replace_mem0_pgvector.plan.md §Phase 6 + the
+# agentsframework-eval-probe skill's Phase 4 layer rules:
+#   • The L1 deterministic check lives in services/governance/ as a pure
+#     function — stdlib + pydantic + the MemoryRecord type it scores against.
+#   • No framework imports (langgraph/langchain/openai/litellm/psycopg/…).
+#   • No imports from orchestration/, components/, meta/, trust/, or
+#     middleware/adapters/. The composition root wires the validator into
+#     the recall seam at react_loop.py.
+#   • A judge, if Phase 7 ever earns one, would live in components/ — NOT
+#     in this file.
+
+
+class TestMemoryRecallValidatorIsolation:
+    """Phase 6 layering guarantees for
+    services/governance/memory_recall_validator.py."""
+
+    MV = "services/governance/memory_recall_validator.py"
+
+    _FORBIDDEN_TOP_LEVEL_PREFIXES = (
+        "orchestration",
+        "components",
+        "meta",
+        "trust",
+    )
+
+    _FORBIDDEN_FRAMEWORK_PREFIXES = (
+        "langgraph",
+        "langchain",
+        "openai",
+        "litellm",
+        "psycopg",
+        "psycopg_pool",
+        "sqlalchemy",
+    )
+
+    def test_does_not_import_forbidden_layers(self) -> None:
+        path = AGENT_ROOT / self.MV
+        parsed = parse_imports(path)
+        violations: list[str] = []
+        for imp in parsed["imports"]:
+            top = imp["module"].split(".")[0]
+            if top in self._FORBIDDEN_TOP_LEVEL_PREFIXES:
+                violations.append(f"line {imp['line']}: imports {imp['module']}")
+        assert violations == [], (
+            f"{self.MV} must not import "
+            "orchestration/components/meta/trust:\n  "
+            + "\n  ".join(violations)
+        )
+
+    def test_does_not_import_frameworks(self) -> None:
+        path = AGENT_ROOT / self.MV
+        parsed = parse_imports(path)
+        violations = [
+            f"line {imp['line']}: imports {imp['module']}"
+            for imp in parsed["imports"]
+            if imp["module"].split(".")[0] in self._FORBIDDEN_FRAMEWORK_PREFIXES
+        ]
+        assert violations == [], (
+            f"{self.MV} must stay framework-free — pure function over the "
+            "MemoryRecord type only:\n  " + "\n  ".join(violations)
+        )
+
+    def test_does_not_import_middleware(self) -> None:
+        path = AGENT_ROOT / self.MV
+        parsed = parse_imports(path)
+        violations = [
+            f"line {imp['line']}: imports {imp['module']}"
+            for imp in parsed["imports"]
+            if imp["module"].startswith("middleware")
+        ]
+        assert violations == [], (
+            f"{self.MV} must not import middleware/* — the composition "
+            "root wires the validator into the recall seam:\n  "
+            + "\n  ".join(violations)
+        )
+
+    def test_only_imports_long_term_memory_from_peer_services(self) -> None:
+        """The validator owns the MemoryRecord type via long_term_memory
+        (same precedent as guardrail_validator importing GuardRail). It
+        must NOT import other peer services (eval_capture, eval_telemetry,
+        any sibling governance module).
+        """
+        path = AGENT_ROOT / self.MV
+        parsed = parse_imports(path)
+        allowed = {
+            "services.long_term_memory",
+            "services.governance.memory_recall_validator",
+        }
+        violations: list[str] = []
+        for imp in parsed["imports"]:
+            module = imp["module"]
+            if not (module == "services" or module.startswith("services.")):
+                continue
+            if module in allowed:
+                continue
+            violations.append(f"line {imp['line']}: imports {module}")
+        assert violations == [], (
+            f"{self.MV} violates AP-2 by importing peer services beyond "
+            "long_term_memory:\n  " + "\n  ".join(violations)
+        )

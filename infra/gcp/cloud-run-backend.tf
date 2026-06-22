@@ -153,6 +153,14 @@ resource "google_cloud_run_v2_service" "backend_combined" {
         value = "https://cloud.langfuse.com"
       }
 
+      env {
+        name  = "MEMORY_ENABLED"
+        value = "true"
+      }
+      # NOTE: MEMORY_AUTOCAPTURE_ENABLED stays unset (shadow) until the Phase-2
+      # enable-policy certificate clears. Recall+store via pgvector requires
+      # MEMORY_ENABLED only.
+
       # ── Memory backend (Phase 5: mem0 → pgvector cutover) ─────────
       # Composition root selects backend via MEMORY_BACKEND. "pgvector"
       # binds to the agent_memories table on Cloud SQL (DATABASE_URL),
