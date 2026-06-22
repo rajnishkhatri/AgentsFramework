@@ -255,8 +255,15 @@ class FakeMemoryStore implements MemoryStore {
   async list() {
     return this.items;
   }
-  async add(content: string, type: MemoryType) {
-    const item: MemoryItem = { key: "k1", type, content, salience: null };
+  addCalls: Array<{ content: string; type: MemoryType; salience: number | null; key: string | null }> = [];
+  async add(
+    content: string,
+    type: MemoryType,
+    salience: number | null = null,
+    key: string | null = null,
+  ) {
+    this.addCalls.push({ content, type, salience, key });
+    const item: MemoryItem = { key: key ?? "k1", type, content, salience };
     this.items.push(item);
     return item;
   }
@@ -339,6 +346,26 @@ describe("makeMemoryCreateHandler [B6]", () => {
     );
     expect(res.status).toBe(200);
     expect(store.items[0]?.content).toBe("likes dark mode");
+  });
+
+  it("forwards a caller-supplied key to the port (deterministic seeds)", async () => {
+    const store = new FakeMemoryStore();
+    const res = await makeMemoryCreateHandler({
+      auth: authYielding(ALICE),
+      memoryStore: store,
+    })(
+      new Request("http://x/api/memory", {
+        method: "POST",
+        body: JSON.stringify({
+          content: "metric units",
+          type: "semantic",
+          key: "f1",
+        }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(store.addCalls[0]?.key).toBe("f1");
+    expect(store.items[0]?.key).toBe("f1");
   });
 });
 

@@ -1,10 +1,10 @@
 ---
 type: runbook
 title: Replace mem0 with pgvector — Phase 5 cutover runbook
-description: Step-by-step S1–S6 procedure for the live Cloud SQL migration, no-traffic Cloud Run revision, traffic shift, 24h soak, and mem0 retirement.
-tags: [runbook, memory, pgvector, cloud-sql, cloud-run, cutover]
+description: Cutover procedure S1–S6 for the mem0 → pgvector swap; ran 2026-06-22 via the deploy-gcp orchestrator with a single-revision 100% traffic apply (cloud-sql-proxy migration + standard tofu apply, not the no-traffic-tag path).
+tags: [runbook, memory, pgvector, cloud-sql, cloud-run, cutover, executed]
 timestamp: 2026-06-22
-status: ready
+status: executed-soak-pending
 plan_id: replace-mem0-pgvector
 related:
   plan: "[replace_mem0_pgvector.plan.md](replace_mem0_pgvector.plan.md)"
@@ -13,7 +13,22 @@ related:
 
 # Phase 5 cutover runbook
 
-> **This is the irreversible step of the mem0→pgvector swap.** Phase 4.5 EXIT gate is clear (640 passed / 0 fail). The pre-deploy pytest gate at S5 was rerun green on 2026-06-22. Below is the exact command sequence the operator runs against live Cloud SQL + Cloud Run. The agent does NOT execute any of these — they touch shared prod infra and require human authorization per the agent execution contract.
+> **Cutover executed 2026-06-22 via `./scripts/deploy_gcp.sh` (deploy-gcp skill).** `/healthz` green; live env confirms `MEMORY_BACKEND=pgvector`, `EMBEDDING_MODEL=text-embedding-3-small`, `EMBEDDING_DIMENSION=1536`; `MEM0_*` env vars removed; `mem0-api-key` secret still present for the 24h rollback window. Traffic is on the new revision at **100%** (`terraform traffic { percent = 100 }`) — the orchestrator went straight to 100% rather than the `--tag pgvector --no-traffic` two-step described below. Both paths are legitimate; the no-traffic-tag path is documented for posterity / future runbooks. Current state: **24h soak window in progress.**
+
+## Actual cutover record (what shipped 2026-06-22)
+
+| Step | Command (deploy-gcp orchestrator) | Result |
+|---|---|---|
+| Preview | `./scripts/deploy_gcp.sh preview` | Affected: images, backend |
+| Preflight | `./scripts/deploy_gcp.sh preflight` | All checks passed |
+| S1 (migration) | cloud-sql-proxy + `psql -f services/memory_backends/migrations/0000_init_agent_memories.sql` | `agent_memories` table created: 10 cols + 6 indexes (HNSW + GIN) |
+| Images | `WRITE_TFVARS=1 DEPLOY_VERSION=2026.06.0 ./scripts/deploy_gcp.sh images` | Backend `@sha256:d039fe4e…`, frontend pinned |
+| S4+S5 | `AUTO_APPROVE=1 ./scripts/deploy_gcp.sh backend` | Policy gates passed; `tofu apply` applied; traffic = 100% to new revision |
+| Smoke | `./scripts/deploy_gcp.sh smoke` | `/healthz` OK |
+
+Path divergence from the runbook below: the orchestrator does **not** use the `--tag pgvector --no-traffic` two-step. The Terraform `traffic { percent = 100 }` block (in `cloud-run-backend.tf`) means a single `tofu apply` cuts the new revision to 100% live. The runbook's tag-based path stays documented as a reference pattern for future deploys that need a manual pre-traffic smoke window.
+
+**Rollback shape with the executed path**: rollback is `gcloud run services update-traffic agent-backend-combined --region <REGION> --to-revisions <PRIOR_REVISION>=100`. The `mem0-api-key` Secret Manager resource + the prior revision (still wired to `MEM0_API_KEY`) make this instant and lossless within the 24h window. See §Rollback procedure at the bottom.
 
 ## S1 — Apply the SQL migration to Cloud SQL
 
