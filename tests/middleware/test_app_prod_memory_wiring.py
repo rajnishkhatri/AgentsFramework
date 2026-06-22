@@ -34,7 +34,6 @@ _PROD_ENV = {
     "AGENT_FACTS_SECRET": "test-secret",
     "WORKOS_CLIENT_ID": "client_test",
     "WORKOS_API_KEY": "sk_test",
-    "MEM0_API_KEY": "mem0_test",
     "LANGFUSE_PUBLIC_KEY": "pk_test",
     "LANGFUSE_SECRET_KEY": "sk_test",
     "DATABASE_URL": "postgresql://test:test@localhost/test",

@@ -53,7 +53,6 @@ class FakeExporter:
 _MINIMAL_ENV = {
     "WORKOS_CLIENT_ID": "client_test123",
     "WORKOS_API_KEY": "sk_test_key",
-    "MEM0_API_KEY": "m0-test-key",
     "LANGFUSE_PUBLIC_KEY": "pk-lf-test",
     "LANGFUSE_SECRET_KEY": "sk-lf-test",
 }

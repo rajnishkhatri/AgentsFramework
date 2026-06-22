@@ -31,7 +31,8 @@ from middleware.adapters.auth.workos_jwt_verifier import (
     WorkOSJwtVerifier,
     default_workos_issuer,
 )
-from middleware.adapters.memory.mem0_cloud_client import Mem0CloudClient
+# Mem0CloudClient import removed (Phase 0.5 R1) — no longer constructed
+# in build_adapters. The adapter file itself is deleted in Phase 3.
 from middleware.adapters.observability.langfuse_cloud_exporter import (
     LangfuseCloudExporter,
 )
@@ -116,12 +117,21 @@ _DEFAULT_BB_STORAGE = Path("cache/black_box_recordings")
 
 @dataclass(frozen=True)
 class MiddlewareAdapters:
-    """Bag of port-typed adapter instances (rule C2)."""
+    """Bag of port-typed adapter instances (rule C2).
+
+    NOTE (replace-mem0-pgvector Phase 0.5 R1): ``memory_client`` is now
+    OPTIONAL. The async ``Mem0CloudClient`` was the only constructor of
+    this field, and Phase 0 C2 proved it has zero non-test consumers (the
+    sync ``LongTermMemoryService`` handles ``/agent/memory`` routes). The
+    field stays on the dataclass for transitional compatibility; Phase 3
+    (Branch A) deletes both the field AND the ``middleware.ports.memory_client``
+    port outright. Setting ``memory_client=None`` is the supported value.
+    """
 
     profile: str
     jwt_verifier: JwtVerifier
     tool_acl: ToolAclProvider
-    memory_client: MemoryClient
+    memory_client: MemoryClient | None
     telemetry_exporter: TelemetryExporter
     black_box_relay: BlackBoxToTelemetryRelay | None = None
 
@@ -178,14 +188,16 @@ def build_adapters(
 def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
     workos_client_id = _require(e, "WORKOS_CLIENT_ID")
     _require(e, "WORKOS_API_KEY")  # not used directly here; sanity check
-    mem0_api_key = _require(e, "MEM0_API_KEY")
+    # MEM0_API_KEY: removed (replace-mem0-pgvector Phase 0.5 R1). The async
+    # Mem0CloudClient was the only consumer and Phase 0 C2 proved it has
+    # zero non-test references. ``adapters.memory_client`` is now wired to
+    # a no-op stub until Phase 3 deletes the field outright.
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
     workos_issuer = e.get(
         "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
     )
-    mem0_base_url = e.get("MEM0_BASE_URL", "https://api.mem0.ai")
     langfuse_host = (
         e.get("LANGFUSE_HOST")
         or e.get("LANGFUSE_BASE_URL")
@@ -219,10 +231,7 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
             role_to_tools=_DEFAULT_ROLE_TO_TOOLS,
             known_tools=_DEFAULT_KNOWN_TOOLS,
         ),
-        memory_client=Mem0CloudClient(
-            api_key=mem0_api_key,
-            base_url=mem0_base_url,
-        ),
+        memory_client=None,  # R1: dead seam — Phase 3 deletes field outright
         telemetry_exporter=telemetry,
         black_box_relay=_build_relay(e, telemetry),
     )
@@ -234,24 +243,23 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
 
 
 def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
-    """v2 wiring -- self-hosted Mem0 + self-hosted Langfuse + (same)
-    WorkOS verifier + WorkOS role ACL.
+    """v2 wiring -- self-hosted Langfuse + (same) WorkOS verifier + WorkOS
+    role ACL.
 
     Sprint 1 ships parity by reusing the v3 SDKs but pointed at
     self-hosted hosts. The dedicated self-hosted adapter classes land
     in Sprint 2 along with their conformance tests.
+
+    NOTE (Phase 0.5 R1): ``MEM0_API_KEY`` is no longer read — see _build_v3.
     """
     workos_client_id = _require(e, "WORKOS_CLIENT_ID")
     _require(e, "WORKOS_API_KEY")
-    mem0_api_key = _require(e, "MEM0_API_KEY")
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
     workos_issuer = e.get(
         "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
     )
-    # v2 defaults to self-hosted endpoints.
-    mem0_base_url = e.get("MEM0_BASE_URL", "https://mem0.internal")
     langfuse_host = e.get("LANGFUSE_HOST", "https://langfuse.internal")
     jwks_url = e.get(
         "WORKOS_JWKS_URL",
@@ -279,10 +287,7 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
             role_to_tools=_DEFAULT_ROLE_TO_TOOLS,
             known_tools=_DEFAULT_KNOWN_TOOLS,
         ),
-        memory_client=Mem0CloudClient(
-            api_key=mem0_api_key,
-            base_url=mem0_base_url,
-        ),
+        memory_client=None,  # R1: dead seam — Phase 3 deletes field outright
         telemetry_exporter=telemetry,
         black_box_relay=_build_relay(e, telemetry),
     )
