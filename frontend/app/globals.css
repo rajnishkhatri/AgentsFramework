@@ -24,6 +24,64 @@ body {
   box-sizing: border-box;
 }
 
+/* ── Native-feel layer (P4 §4) ───────────────────────────────────────────
+   Pure-web, pre-wrap-safe: every rule below degrades to a no-op in a normal
+   desktop browser and only "activates" inside the Tauri/Capacitor WKWebView
+   (safe-area insets resolve to 0 off-device; touch rules are inert without a
+   touch input). Native shell chrome (Tauri titlebar/drag) is P5, not here. */
+
+/* §4a safe areas: expose the notch / Dynamic Island / home-indicator insets as
+   utility-friendly custom properties. The shell reads these via
+   `pl-[env(safe-area-inset-left)]` etc. at the layout level (not in primitives,
+   per conventions.md). The :root fallbacks keep them defined off-device. */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+}
+
+/* §4a kill the "website" feel inside the wrap: no long-press callout, no
+   chrome text-selection, contained overscroll (no rubber-band past the app),
+   momentum scrolling on touch. */
+html {
+  overscroll-behavior: none;
+}
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* …but message/answer text stays selectable — users copy answers (§4a). */
+[data-testid="assistant-message"],
+.bubble-user,
+[data-selectable],
+pre,
+code {
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Scroll containers: keep momentum + contain overscroll so a scroll at the
+   chat-list edge doesn't bubble to the page (and bounce the whole webview). */
+.overflow-y-auto,
+.overflow-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* §4c hover-gating: on touch devices (no hover-capable pointer) a tapped
+   element keeps its :hover state until the next tap elsewhere ("sticky hover").
+   The nav-item / composer hover styles are already gated at the call site with
+   @media(hover:hover); this is the safety net for the rest — neutralize the
+   lingering hover-background flash on pure-touch devices. Desktop (hover:hover)
+   is completely unaffected. */
+@media (hover: none) {
+  .hover\:bg-selected:hover,
+  .hover\:bg-accent-light:hover {
+    background-color: transparent;
+  }
+}
+
 /* ── Tactile surface language (design showcase / frozen v13) ──────────────
    Recipes Tailwind utilities can't express inline (3-stop gradient over the
    accent token; layered inset/outer shadows). All token-driven, so they flip

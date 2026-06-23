@@ -429,7 +429,9 @@ export function ChatShell(props: {
       {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
     >
       {/* Header (spans the full width above the three columns) */}
-      <header className="flex items-center justify-between px-4 py-3">
+      {/* P4 §4a: pad the top + horizontal safe-area insets so the header clears
+         the notch / Dynamic Island when wrapped (no-op off-device). */}
+      <header className="flex items-center justify-between px-4 py-3 pt-[max(0.75rem,var(--safe-top))] pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))]">
         <div className="flex items-center gap-2">
           {/* P3 §5: hamburger opens the thread-rail drawer on phone. Hidden at
              lg where the inline rail is shown side-by-side. */}
@@ -627,7 +629,9 @@ export function ChatShell(props: {
           </main>
 
           {/* Composer (pinned to the bottom of the chat column) */}
-          <div className="max-w-3xl mx-auto w-full p-2">
+          {/* P4 §4a: pad the bottom safe-area inset so the composer sits above
+             the home indicator / keyboard when wrapped (no-op off-device). */}
+          <div className="max-w-3xl mx-auto w-full p-2 pb-[max(0.5rem,var(--safe-bottom))] pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))]">
             <Composer onSend={send} busy={busy || pausedTurnId !== null} />
           </div>
         </div>
