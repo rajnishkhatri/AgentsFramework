@@ -1,0 +1,29 @@
+<!-- @dsCard group="Surfaces" name="ScrollArea" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>ScrollArea — AgentsFramework UI</title><link rel="stylesheet" href="../styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">ScrollArea · Surfaces · message list, sidebar</div>
+  <div class="ds-section"><div class="ds-label">Message list (constrained height)</div>
+    <div class="scroll-area-root" style="height:200px;width:360px;border:1px solid var(--color-border);border-radius:var(--radius-lg)">
+      <div class="scroll-area-viewport" style="padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div class="card" style="padding:12px"><p class="text-sm text-fg"><strong>User:</strong> Improve memory recall across sessions.</p></div>
+        <div class="card" style="padding:12px"><p class="text-sm text-muted"><strong>Agent:</strong> I'll start by reviewing the LongTermMemoryService wiring…</p></div>
+        <div class="card" style="padding:12px"><p class="text-sm text-fg"><strong>User:</strong> Also check the pgvector embedding sync issue.</p></div>
+        <div class="card" style="padding:12px"><p class="text-sm text-muted"><strong>Agent:</strong> The embedding sync fix is in af3336a — async safely handled.</p></div>
+        <div class="card" style="padding:12px"><p class="text-sm text-fg"><strong>User:</strong> What's next for Phase 6?</p></div>
+        <div class="card" style="padding:12px"><p class="text-sm text-muted"><strong>Agent:</strong> Recall invariant probes + HttpMemoryStore key forwarding…</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="background:var(--color-bg);padding:16px;border-radius:var(--radius-lg)">
+      <div class="scroll-area-root" style="height:120px;width:360px;border:1px solid var(--color-border);border-radius:var(--radius-lg)">
+        <div class="scroll-area-viewport" style="padding:12px;display:flex;flex-direction:column;gap:8px">
+          <div class="card" style="padding:10px"><p class="text-sm text-fg">Thread item 1</p></div>
+          <div class="card" style="padding:10px"><p class="text-sm text-fg">Thread item 2</p></div>
+          <div class="card" style="padding:10px"><p class="text-sm text-fg">Thread item 3</p></div>
+          <div class="card" style="padding:10px"><p class="text-sm text-fg">Thread item 4</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

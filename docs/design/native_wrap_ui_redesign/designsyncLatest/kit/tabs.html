@@ -1,0 +1,26 @@
+<!-- @dsCard group="Navigation" name="Tabs" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Tabs — AgentsFramework UI</title><link rel="stylesheet" href="../styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">Tabs · Navigation · SidebarTabBar (Chats | Memory)</div>
+  <div class="ds-section"><div class="ds-label">Chats active</div>
+    <div class="tabs-list"><button class="tabs-trigger active">Chats</button><button class="tabs-trigger">Memory</button></div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Memory active</div>
+    <div class="tabs-list"><button class="tabs-trigger">Chats</button><button class="tabs-trigger active">Memory</button></div>
+  </div>
+  <div class="ds-section"><div class="ds-label">With tab content</div>
+    <div style="max-width:320px">
+      <div class="tabs-list" style="margin-bottom:12px"><button class="tabs-trigger active">Chats</button><button class="tabs-trigger">Memory</button></div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div class="card" style="padding:10px"><p class="text-sm text-fg">Planning run · 2 min ago</p></div>
+        <div class="card" style="padding:10px"><p class="text-sm text-fg">Memory probe · 15 min ago</p></div>
+        <div class="card" style="padding:10px"><p class="text-sm text-muted">GoalJudge eval · 1 hr ago</p></div>
+      </div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="background:var(--color-bg);padding:16px;border-radius:var(--radius-lg)">
+      <div class="tabs-list"><button class="tabs-trigger active">Chats</button><button class="tabs-trigger">Memory</button></div>
+    </div>
+  </div>
+</div></body></html>
