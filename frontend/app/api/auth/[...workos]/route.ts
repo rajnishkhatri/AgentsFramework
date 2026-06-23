@@ -16,6 +16,8 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { handleAuth, getSignInUrl, getSignUpUrl, signOut } from "@workos-inc/authkit-nextjs";
+import { isDesktopClient, parseDesktopSignIn } from "@/lib/adapters/auth/desktop_auth_state";
+import { buildDesktopAuthorizationUrl } from "@/lib/adapters/auth/workos_desktop_auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const action = segments[0];
 
   if (action === "sign-in") {
+    // Desktop (Tauri) leg: the shell supplies its PKCE code_challenge + state,
+    // and we redirect to WorkOS with the custom-scheme deep link. The web flow
+    // (no ?client=desktop) is untouched. See p5_step2_auth_deeplink.design.md.
+    if (isDesktopClient(request.nextUrl.searchParams)) {
+      const desktop = parseDesktopSignIn(request.nextUrl.searchParams);
+      if (!desktop) {
+        return NextResponse.json(
+          { error: { message: "Invalid desktop sign-in parameters" } },
+          { status: 400 },
+        );
+      }
+      const url = buildDesktopAuthorizationUrl(desktop);
+      return NextResponse.redirect(url);
+    }
     const url = await getSignInUrl();
     return NextResponse.redirect(url);
   }

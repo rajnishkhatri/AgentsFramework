@@ -12,6 +12,9 @@
   },
   "scripts": {
     "tokens:build": "node design/style-dictionary.config.mjs",
+    "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",
+    "tauri:dev": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
+    "tauri:build": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri build",
     "dev": "pnpm tokens:build && next dev",
     "build": "pnpm tokens:build && next build",
     "start": "next start",
@@ -91,6 +94,7 @@
     "@storybook/addon-a11y": "^9.1.20",
     "@storybook/addon-docs": "^9.1.20",
     "@storybook/nextjs-vite": "^9.1.20",
+    "@tauri-apps/cli": "^2.11.3",
     "@types/jsdom": "^28.0.1",
     "@types/node": "^22.7.5",
     "@types/pg": "^8.20.0",
