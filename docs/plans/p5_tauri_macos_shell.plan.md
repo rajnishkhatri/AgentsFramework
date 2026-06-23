@@ -27,8 +27,17 @@ sign/notarize/Sparkle is a final, separate step gated on Apple Developer Program
 
 - ✅ **Xcode 16.0** (full IDE) — used for macOS notarization tooling (`codesign`/`notarytool`)
   and for P6 iOS later.
-- ✅ **Rust 1.87** (`cargo`/`rustc` via Homebrew) — Tauri's build backend is ready.
-- ❌ **Tauri CLI** absent → `cargo install tauri-cli` (or npm `@tauri-apps/cli`) in Step 1.
+- ✅ **Rust 1.96** via **rustup** (installed in Step 1) — Tauri's build backend.
+  - ⚠️ **Toolchain gotcha (resolved):** Homebrew `rust` was 1.87, but Tauri 2.11's transitive
+    deps (`darling`/`plist`/`serde_with`/`time`) now require **rustc ≥ 1.88**, so the build
+    failed under brew rust. `brew upgrade rust` is **blocked** — rust depends on `python@3.13`,
+    which is intentionally **pinned** in this repo (bumping it would disturb the Python env).
+    Fix: installed Rust via **rustup** (`rustup default stable` → 1.96), which sits outside
+    brew's dependency graph and leaves brew rust + pinned python untouched. The `tauri:*` npm
+    scripts **prepend `$HOME/.cargo/bin` to PATH** so they use the rustup toolchain without
+    editing any shell profile.
+- ✅ **Tauri CLI 2.11.3** — installed as an npm dev dependency (`@tauri-apps/cli`), NOT the
+  cargo global (chosen: scopes the CLI to the pnpm workspace, runs via `pnpm tauri`).
 - ❌ **0 codesigning identities** (`security find-identity` empty) → confirms notarization is
   blocked on Apple Developer enrollment ($99/yr). Unsigned local dev is unaffected.
 
@@ -70,28 +79,67 @@ try plain in-webview if it happens to work for desktop.
 
 ## Scope / steps (build order — de-risk auth before polish)
 
-### Step 1 — Scaffold Tauri 2 alongside the frontend
-- `cargo install tauri-cli` (CLI is absent today), then `cargo tauri init` → `frontend/src-tauri/`
-  (Rust crate + `tauri.conf.json`). Keep it under `frontend/` so it shares the workspace.
-- `tauri.conf.json`: `build.devUrl = http://localhost:3000`; for release, point the window at the
-  **remote Cloud Run prod URL** (config-per-env). Window: sensible default size + `minWidth/minHeight`.
-- Add `tauri:dev` / `tauri:build` scripts to `frontend/package.json`. Rust 1.87 + Xcode 16 already
-  present (verified) — no toolchain install beyond the CLI.
-- **Gate:** `tauri:dev` opens a window showing the localhost app; hot-reload works.
+### Step 1 — Scaffold Tauri 2 alongside the frontend — ✅ DONE (2026-06-23)
+- ✅ Installed `@tauri-apps/cli` 2.11.3 as a frontend dev dep; `pnpm tauri init --ci` →
+  `frontend/src-tauri/` (Rust crate + `tauri.conf.json`). Under `frontend/`, shares the workspace.
+- ✅ `tauri.conf.json`: `devUrl`/`frontendDist` = `http://localhost:3000`; identifier
+  `com.agentsframework.app`; window 1100×760 + `minWidth 560 / minHeight 480`.
+- ✅ **Remote-URL switching wired in `src-tauri/src/lib.rs`:** debug loads the dev `devUrl`;
+  release calls `window.navigate(PROD_URL)` to the Cloud Run BFF
+  (`https://agent-frontend-590652793393.us-central1.run.app`) on setup — the load-bearing
+  "server-dependent app, never bundle static files" decision, now in code.
+- ✅ Added `tauri` / `tauri:dev` / `tauri:build` scripts to `frontend/package.json` (each
+  prepends `$HOME/.cargo/bin` to PATH → rustup 1.96, see toolchain note above).
+- ✅ Installed Rust 1.96 via rustup (brew rust 1.87 too old for Tauri 2.11 deps; brew upgrade
+  blocked by pinned python — see toolchain note).
+- ✅ **Gate PASSED:** `pnpm tauri:dev` → Next ready on :3000, app crate `Finished` in ~29s,
+  `Running target/debug/agentsframework` (native window), WKWebView loaded localhost
+  (`GET / 200`) and AuthKit middleware engaged inside the webview (`GET /api/auth/sign-in 307`
+  — the in-webview auth redirect, which Step 2 will replace with the system-browser flow).
 
-### Step 2 — WorkOS auth via the system browser (DE-RISK FIRST)
-- **Default to a system-browser flow** (per research): a sign-in action opens WorkOS hosted login
-  in the user's default browser via the Tauri opener/shell API; WorkOS redirects to a registered
-  **custom-scheme deep link** (e.g. `agentsframework://auth/callback`) that Tauri's deep-link
-  plugin captures and hands to the app; the app completes the session (PKCE; no secret in the
-  shell). This is the same shape P6 (iOS) will need — design it to be reusable.
-- Server-side: register the desktop callback (custom scheme / Universal Link) in WorkOS; confirm
-  `/api/auth/[...workos]` + the AuthKit middleware accept the deep-link return. May need a small
-  BFF tweak to emit a deep-link redirect for the desktop client.
-- Quick spike first: try plain sign-in directly in the WKWebView against the deployed URL — if the
-  whole redirect happens to complete in-window (cookie set), great, keep it simple. Otherwise the
-  system-browser flow above is the plan.
-- **Gate:** a real authenticated session in the shell + one streamed run (token-by-token) + cancel.
+### Step 2 — WorkOS auth via the system browser — ✅ BUILT 2026-06-23 (E2E gated on Step 4)
+
+**Implemented (verified to the dev limit):**
+- BFF (SDK-isolated, web flow untouched): `lib/adapters/auth/desktop_auth_state.ts` (pure
+  param/validation helpers) + `lib/adapters/auth/workos_desktop_auth.ts` (server-only:
+  `getAuthorizationUrl` with the shell's `code_challenge`; `authenticateWithCode` + `saveSession`);
+  `/api/auth/sign-in?client=desktop` branch + new `app/api/auth/desktop-callback/route.ts`.
+  **28 unit tests** + adapter-conformance arch test green; typecheck clean.
+- Shell (Rust): `src-tauri/src/auth.rs` (PKCE pair + state nonce, sign-in/callback URL building,
+  CSRF state guard — **9 unit tests** incl. the RFC 7636 test vector); `lib.rs` wiring of the
+  deep-link / opener / single-instance plugins, the `on_navigation` sign-in interceptor, and a
+  `create:false` + `from_config` manually-built window. `tauri.conf.json` deep-link scheme +
+  capabilities. `cargo test`/`clippy` clean.
+- **Runtime-verified in `tauri:dev`:** the interceptor fired on the web sign-in nav, generated a
+  real PKCE pair, and opened the system browser at
+  `/api/auth/sign-in?client=desktop&code_challenge=…&state=…` → BFF `307` → WorkOS. The verifier
+  never appeared in any URL (stays in the shell).
+- **Still gated:** the deep-link *return* (`agentsframework://…` → webview) can only be exercised
+  from a **bundled `.app` in `/Applications`** (macOS scheme registration) → Step-4 E2E gate.
+
+Original plan notes (now satisfied) below.
+
+
+- **Spike result (2026-06-23):** in-webview WorkOS sign-in **WORKS** — the user signed in with real
+  credentials against the deployed Cloud Run URL and landed authenticated (the "old UI" seen was
+  just the stale deployed revision `00066-kqs`, predating the P0–P4 redesign). So the simple
+  in-webview path is viable and is kept as the **working interim**.
+- **User decision:** build the system-browser + deep-link flow **anyway** (2026 best practice,
+  App-Store-safer, reused by P6 iOS).
+- **Full design:** `p5_step2_auth_deeplink.design.md` (status: design-for-review). Key findings it
+  captures: `getSignInUrl({ redirectUri })` supports a per-call desktop redirect; the callback uses
+  **PKCE** (`authenticateWithCode` + a PKCE cookie set in the *browser*) → the load-bearing
+  "PKCE-cookie problem" (verifier lives in the system browser, code returns to the shell) →
+  resolved via **Option 1**: a desktop sign-in (no PKCE) + a new `/api/auth/desktop-callback`,
+  gated behind `?client=desktop` so the web flow is untouched. All shell logic stays in **Rust**
+  (web build never imports `@tauri-apps/*`); handoff to the webview is by navigation.
+- **macOS constraint:** deep links register only for a **bundled `.app` in `/Applications`** — they
+  do NOT fire under `tauri:dev`, so end-to-end verification is **Step-4-gated** (bundling). Logic is
+  unit-testable now (BFF route tests + a pure Rust URL-rewrite test).
+- **User owns:** add redirect URI `agentsframework://auth/callback` to the WorkOS dashboard; confirm
+  Option 1 (no-PKCE desktop legs) is acceptable.
+- **Gate:** (unit, now) BFF desktop sign-in/callback + Rust URL rewrite tested; (E2E, Step-4-gated)
+  a real authenticated session in the bundled shell + one streamed run + cancel.
 
 ### Step 3 — macOS chrome (§4b)
 - Custom titlebar: `titleBarStyle: "Overlay"`, `hiddenTitle: true`, set `trafficLightPosition`

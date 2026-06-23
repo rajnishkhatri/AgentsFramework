@@ -292,6 +292,8 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
       `Unmapped adapter files (add to PAIRS or document the omission): ${orphans.join(", ")}`,
     ).toEqual([
       // Known intentional omissions:
+      "lib/adapters/auth/desktop_auth_state.ts", // pure helpers (no SDK/port) — P5 Step 2 desktop deep-link auth
+      "lib/adapters/auth/workos_desktop_auth.ts", // server-only seam (P5 Step 2), like workos_server_sdk.ts — not a port-adapter PAIR
       "lib/adapters/auth/workos_server_sdk.ts", // server-only seam (D-V3-S3.7.1-RouteHandler)
       // pgDrizzleDb is a DrizzleLike *factory* (option B, Cloud SQL), the same
       // kind as the `neonDrizzleDb` factory co-located in neon_thread_repo.ts —

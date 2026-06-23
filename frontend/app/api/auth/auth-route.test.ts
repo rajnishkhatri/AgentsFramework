@@ -29,6 +29,13 @@ vi.mock("@workos-inc/authkit-nextjs", () => ({
   handleAuth: () => mockCallbackHandler,
 }));
 
+// Desktop adapter is SDK-isolated + server-only; mock it so the route test
+// stays free of the WorkOS SDK and `server-only` import.
+const MOCK_DESKTOP_AUTH_URL = "https://api.workos.com/authorize?desktop=1";
+vi.mock("@/lib/adapters/auth/workos_desktop_auth", () => ({
+  buildDesktopAuthorizationUrl: vi.fn(() => MOCK_DESKTOP_AUTH_URL),
+}));
+
 // Derived from the route module so the test can never drift from the
 // handler's real signature (`signOut()` returns Promise<void>, so the
 // handler is `Promise<void | Response>`).
@@ -80,6 +87,45 @@ describe("auth route handler — sign-in dispatch", () => {
       await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) }),
     );
     expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe(MOCK_SIGN_IN_URL);
+  });
+});
+
+describe("auth route handler — desktop sign-in (P5 Step 2)", () => {
+  let GET: AuthRouteGET;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const mod = await import("./[...workos]/route");
+    GET = mod.GET;
+  });
+
+  const VALID_CHALLENGE = "abcdefghijklmnopqrstuvwxyz0123456789-_ABCDEF";
+
+  it("400s a desktop sign-in missing the PKCE challenge (never falls through)", async () => {
+    const req = new NextRequest("https://example.com/api/auth/sign-in?client=desktop&state=abcdefghij");
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("redirects a well-formed desktop sign-in to the desktop authorize URL", async () => {
+    const req = new NextRequest(
+      `https://example.com/api/auth/sign-in?client=desktop&code_challenge=${VALID_CHALLENGE}&state=abcdefghij`,
+    );
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) }),
+    );
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toBe(MOCK_DESKTOP_AUTH_URL);
+  });
+
+  it("leaves the web sign-in unchanged when client!=desktop", async () => {
+    const req = new NextRequest("https://example.com/api/auth/sign-in");
+    const res = asResponse(
+      await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) }),
+    );
     expect(res.headers.get("location")).toBe(MOCK_SIGN_IN_URL);
   });
 });
