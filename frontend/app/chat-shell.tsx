@@ -18,7 +18,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Menu } from "lucide-react";
+import { ArrowDown, Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
@@ -33,10 +33,13 @@ import {
 } from "@/components/chat/use_chat_sidebars";
 import { SidebarPanel } from "@/components/chat/SidebarPanel";
 import { useSidebarChrome } from "@/components/chat/use_sidebar_chrome";
+import { useStickToBottom } from "@/components/chat/use_stick_to_bottom";
+import { MessageActions, useLongPress } from "@/components/chat/MessageActions";
 import { RecallIndicator } from "@/components/memory/RecallIndicator";
 import { RecalledMemories } from "@/components/memory/RecalledMemories";
 import { filterThreadsByTitle } from "@/lib/thread_grouping";
 import { browserRuntimeClient } from "@/lib/composition_browser";
+import { cn } from "@/lib/utils";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 import { deriveRunPhase, type RunPhase } from "@/lib/translators/run_phase";
@@ -180,9 +183,23 @@ function TraceChip(props: { traceId: string }): React.JSX.Element {
   );
 }
 
+/** The settled answer prose for copy/regenerate: text segments joined, else
+ *  the synthesized fallback recap, else empty (nothing to act on yet). */
+function answerText(view: AssistantRunView): string {
+  const text = view.segments
+    .filter((s) => s.kind === "text")
+    .map((s) => (s.kind === "text" ? s.text : ""))
+    .join("")
+    .trim();
+  if (text.length > 0) return text;
+  return synthesizeFallbackAnswer(view) ?? "";
+}
+
 function AssistantMessage(props: {
   turn: ChatTurn;
   evalMode?: boolean;
+  /** Re-run this turn from its user prompt; omitted while any run is live. */
+  onRegenerate?: () => void;
   /** Phase 4 edit seam: present only on the editable (latest live) turn. */
   understandingEdit?: {
     editError: string | null;
@@ -199,13 +216,21 @@ function AssistantMessage(props: {
   const phase = deriveRunPhase(assistant);
   const fallbackAnswer = synthesizeFallbackAnswer(assistant);
   let firstTextSeen = false;
+
+  // Per-message actions (§6): show once there's settled prose to act on.
+  const settledAnswer = answerText(assistant);
+  const showActions = settledAnswer.length > 0;
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const longPress = useLongPress(() => setMenuOpen(true));
+
   return (
     <div
       data-state={assistant.status}
       data-run-phase={phase}
       data-tool-count={toolCount}
       data-testid="assistant-message"
-      className="grid gap-2"
+      className="group grid gap-2"
+      {...(showActions ? longPress : {})}
     >
       {assistant.understanding ? (
         // Phase 3 soft gate: the card shows the agent's restated intent +
@@ -278,6 +303,14 @@ function AssistantMessage(props: {
       />
       {props.evalMode && assistant.traceId ? (
         <TraceChip traceId={assistant.traceId} />
+      ) : null}
+      {showActions ? (
+        <MessageActions
+          text={settledAnswer}
+          menuOpen={menuOpen}
+          onMenuOpenChange={setMenuOpen}
+          {...(props.onRegenerate ? { onRegenerate: props.onRegenerate } : {})}
+        />
       ) : null}
     </div>
   );
@@ -390,7 +423,10 @@ export function ChatShell(props: {
     onNewChat();
     chrome.setDrawerOpen(false);
   }, [onNewChat, chrome]);
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  // Scroll container + stickiness: auto-scroll new turns into view only while
+  // the user is already at the bottom; otherwise reveal the scroll-to-latest
+  // button (P4 §6) and leave their scroll position alone.
+  const { ref: scrollRef, isAtBottom, scrollToBottom } = useStickToBottom();
 
   // The understanding card is editable only on the latest turn while its
   // run is live (streaming or paused for this edit) — late edits are
@@ -405,8 +441,9 @@ export function ChatShell(props: {
       : null;
 
   React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [turns]);
+    // Only follow the stream if the user hasn't scrolled up to read history.
+    if (isAtBottom) scrollToBottom("smooth");
+  }, [turns, isAtBottom, scrollToBottom]);
 
   // Eval disclosure joins recalled KEYS against the owner's loaded memory panel.
   // Reload when a turn recalls so CRUD-seeded / newly stored rows are present
@@ -551,9 +588,10 @@ export function ChatShell(props: {
           className="separator-etched-v hidden lg:block"
         />
 
-        {/* Chat column: scrollable messages + the pinned composer. */}
-        <div className="grid grid-rows-[1fr_auto] overflow-hidden">
-          <main className="overflow-y-auto p-3 sm:p-4">
+        {/* Chat column: scrollable messages + the pinned composer. The
+           `relative` wrapper anchors the floating scroll-to-latest button. */}
+        <div className="relative grid grid-rows-[1fr_auto] overflow-hidden">
+          <main ref={scrollRef} className="overflow-y-auto p-3 sm:p-4">
             {turns.length === 0 ? (
               <div className="flex items-center justify-center h-full text-muted text-center">
                 <div className="grid gap-2">
@@ -601,6 +639,9 @@ export function ChatShell(props: {
                       <AssistantMessage
                         turn={turn}
                         evalMode={evalMode}
+                        {...(busy || pausedTurnId !== null
+                          ? {}
+                          : { onRegenerate: () => void send(turn.user) })}
                         {...(turn.id === editableTurnId
                           ? {
                               understandingEdit: {
@@ -623,10 +664,30 @@ export function ChatShell(props: {
                     </div>
                   </React.Fragment>
                 ))}
-                <div ref={bottomRef} />
               </div>
             )}
           </main>
+
+          {/* Scroll-to-latest: appears when the user has scrolled up off the
+             bottom during a conversation. Floats just above the composer,
+             centered. 44pt hit area (§4c); motion-reduce safe. */}
+          {!isAtBottom && turns.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => scrollToBottom("smooth")}
+              aria-label="Scroll to latest"
+              data-testid="scroll-to-bottom"
+              className={cn(
+                "absolute bottom-24 left-1/2 -translate-x-1/2 z-10",
+                "flex size-11 items-center justify-center rounded-full",
+                "bg-surface text-fg border border-border shadow-lg",
+                "transition-colors cursor-pointer hover:bg-selected",
+                "animate-in fade-in motion-reduce:animate-none",
+              )}
+            >
+              <ArrowDown className="size-5" aria-hidden="true" />
+            </button>
+          ) : null}
 
           {/* Composer (pinned to the bottom of the chat column) */}
           {/* P4 §4a: pad the bottom safe-area inset so the composer sits above
