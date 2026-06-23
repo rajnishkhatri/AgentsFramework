@@ -235,7 +235,14 @@ to the redesign, not separate.
 - Respect `prefers-color-scheme` → drive `[data-theme]`.
 
 ### 4c. Cross-cutting
-- **Touch targets ≥ 44×44pt** (HIG) on interactive elements.
+- **Touch targets ≥ 44×44pt** (HIG) on interactive elements. **[DONE — P4]** Header
+  chrome (ThemeToggle 32→44, Sign-out link padded to min-h-11=44) and composer
+  affordances (Add 32→44, model picker →min-h-11=44, Send puck 36→44) all brought
+  to ≥44pt hit areas; icon glyphs unchanged. The hamburger was already 44. Gated
+  by `e2e/mobile-responsive.spec.ts` (now asserts `header button` + `header a` +
+  `form button`); passes under `E2E_BYPASS_AUTH=1`. eval-banner is a non-interactive
+  `<span>` (exempt). Measured: ThemeToggle 44×44, Sign-out 69×44, Add 44×44, model
+  155×44, Send 44×44.
 - **Gate hover styles behind `@media (hover: hover)`** so they don't stick on touch.
 - **System font option:** add `"SF Pro", system-ui, -apple-system` to the font stack so the wrapped
   UI can inherit the OS font (token in §2a; decide Geist-first vs system-first per platform).
@@ -273,7 +280,7 @@ Redesign the chat surface to current agentic-UI expectations:
 | **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project | ✅ done |
 | **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏳ next |
 | **P2** | Implement redesigned chat surface (§6) — pill composer, recessed sidebar, soft selection, status-orb live states (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic | ✅ done (terracotta re-theme + chat-surface migrated to primitives; PS3 design-agent pass still feeds further layout work) |
-| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | — |
+| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | ✅ done (mobile thread-rail drawer via Sheet + hamburger; `@container` queries on Composer/ToolCard/TaskUnderstandingCard; `@max`/breakpoint compact states; Composer responsive stories; verified at 375/768/1280 in-browser, 141 component tests green) |
 | **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | — |
 | **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView | — |
 | **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device | — |

@@ -76,7 +76,8 @@ export function ToolCard(props: {
       data-status={request.status}
       data-tool-call-id={request.tool_call_id}
       className={cn(
-        "surface-etched rounded-lg bg-surface px-3 py-2 my-1",
+        // @container/tool (P3 §5): the summary row adapts to the card's slot.
+        "@container/tool surface-etched rounded-lg bg-surface px-3 py-2 my-1",
         "[&[open]]:bg-surface-sunken transition-colors",
       )}
     >
@@ -84,7 +85,11 @@ export function ToolCard(props: {
         <StatusOrb status={request.status} />
         <span className="font-semibold">{request.tool_name}</span>
         {subtitle ? (
-          <span className="text-muted font-sans text-xs truncate">{subtitle}</span>
+          // Hidden in a narrow slot so the tool name + status badge stay legible;
+          // returns once the card slot is wide enough (§5 container query).
+          <span className="text-muted font-sans text-xs truncate hidden @[22rem]/tool:inline">
+            {subtitle}
+          </span>
         ) : null}
         <Badge variant={STATUS_BADGE[request.status]} className="ml-auto">
           {STATUS_LABEL[request.status]}

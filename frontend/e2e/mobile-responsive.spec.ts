@@ -69,7 +69,8 @@ test.describe("Mobile responsive (binary: Is the layout usable on mobile?)", () 
       "[data-testid='thread-sidebar'], nav[aria-label='Threads']",
     ).first();
     const hamburger = page.locator(
-      "[data-testid='sidebar-toggle'], button[aria-label*='menu' i]",
+      "[data-testid='drawer-toggle'], [data-testid='sidebar-toggle'], " +
+        "button[aria-label*='menu' i], button[aria-label*='conversations' i]",
     ).first();
 
     const sidebarVisible = (await sidebar.count()) > 0
@@ -90,6 +91,12 @@ test.describe("Mobile responsive (binary: Is the layout usable on mobile?)", () 
     await page.goto("/");
     test.skip((await composer(page).count()) === 0, "Skipped: composer not rendered.");
 
+    // §4c (native_wrap_ui_redesign.plan.md): every interactive control must
+    // present a ≥44pt hit area. Header chrome (hamburger, ThemeToggle, Sign
+    // out) AND the composer toolbar affordances (Add, model picker, Send) are
+    // all in scope — the Sign-out control is an <a>, so include header links.
     await checkTouchTargets(page, "header button");
+    await checkTouchTargets(page, "header a");
+    await checkTouchTargets(page, "form button");
   });
 });

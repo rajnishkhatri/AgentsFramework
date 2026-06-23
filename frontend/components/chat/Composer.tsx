@@ -71,8 +71,11 @@ export function Composer(props: {
       // The box: soft radius-lg chrome, hairline border that warms to the
       // accent on focus-within. surface-sunken keeps it a half-step recessed
       // from the canvas so it reads as an input well, not a card.
+      // `@container/composer` (P3 §5): the toolbar adapts to the composer's own
+      // slot width, not the viewport — so it reads right in a wide Mac window
+      // and a narrow phone/drawer slot alike.
       className={cn(
-        "grid gap-2 p-3",
+        "@container/composer grid gap-2 p-3",
         "rounded-lg border border-border bg-surface-sunken",
         "transition-colors focus-within:border-accent",
       )}
@@ -101,28 +104,34 @@ export function Composer(props: {
          model-picker are display affordances (design parity); they carry no
          run-lifecycle logic (F-R1). */}
       <div className="flex items-center gap-2">
+        {/* §4c/HIG: size-11 (44×44pt) hit area; the glyph stays size-4. */}
         <button
           type="button"
           aria-label="Add attachment"
           className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            "flex size-11 shrink-0 items-center justify-center rounded-full",
             "bg-surface text-muted transition-colors",
             "cursor-pointer hover:bg-selected hover:text-fg",
           )}
         >
           <Plus className="size-4" aria-hidden="true" />
         </button>
+        {/* §4c/HIG: min-h-11 floors the model picker to a 44pt-tall tap target;
+           text + chevron sizing unchanged. */}
         <button
           type="button"
           aria-label="Choose model"
+          title={model}
           className={cn(
-            "inline-flex items-center gap-1 rounded-sm px-2 py-1",
-            "text-sm text-muted transition-colors",
+            "inline-flex min-h-11 items-center gap-1 rounded-sm px-2 py-1",
+            "text-sm text-muted transition-colors min-w-0",
             "cursor-pointer hover:bg-selected",
           )}
         >
-          {model}
-          <ChevronDown className="size-3.5" aria-hidden="true" />
+          {/* In a narrow slot the long model label is hidden (chevron stays as
+             the affordance); it returns once the composer slot is wide enough. */}
+          <span className="truncate hidden @[20rem]/composer:inline">{model}</span>
+          <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
         </button>
         <button
           type="submit"
@@ -130,8 +139,9 @@ export function Composer(props: {
           aria-label="Send"
           // Round accent puck — the one rationed accent in the composer.
           // btn-shine gives it the terracotta bezel + background shine (frozen).
+          // §4c/HIG: size-11 (44×44pt) hit area; the arrow glyph stays size-5.
           className={cn(
-            "btn-shine ml-auto flex size-9 shrink-0 items-center justify-center rounded-full",
+            "btn-shine ml-auto flex size-11 shrink-0 items-center justify-center rounded-full",
             "text-white transition-opacity",
             "cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
           )}

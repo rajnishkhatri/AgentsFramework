@@ -55,12 +55,21 @@ export interface SidebarChromeState {
   readonly searchOpen: boolean;
   readonly searchQuery: string;
   readonly activeTab: SidebarTab;
+  /**
+   * Mobile drawer open/closed (P3 §5). Distinct from `collapsed`: that is the
+   * desktop inline-rail width toggle (persisted); this is the ephemeral <lg
+   * overlay Sheet. Always starts closed (never persisted) so a phone reload
+   * never opens over the chat.
+   */
+  readonly drawerOpen: boolean;
   toggleCollapsed(): void;
   toggleSearch(): void;
   setSearchQuery(q: string): void;
   /** Close + clear search (the Escape / search-toggle-off path). */
   closeSearch(): void;
   setActiveTab(tab: SidebarTab): void;
+  /** Open/close the mobile drawer (hamburger + overlay dismiss + auto-close). */
+  setDrawerOpen(open: boolean): void;
 }
 
 function browserStorage(): ChromeStorage | null {
@@ -74,6 +83,8 @@ export function useSidebarChrome(): SidebarChromeState {
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [searchQuery, setSearchQueryState] = React.useState("");
   const [activeTab, setActiveTab] = React.useState<SidebarTab>("chat");
+  // Ephemeral: the mobile drawer is never persisted (always closed on mount).
+  const [drawerOpen, setDrawerOpenState] = React.useState(false);
 
   React.useEffect(() => {
     setCollapsed(readCollapsed(browserStorage()));
@@ -104,15 +115,21 @@ export function useSidebarChrome(): SidebarChromeState {
     setSearchQueryState(q);
   }, []);
 
+  const setDrawerOpen = React.useCallback((open: boolean): void => {
+    setDrawerOpenState(open);
+  }, []);
+
   return {
     collapsed,
     searchOpen,
     searchQuery,
     activeTab,
+    drawerOpen,
     toggleCollapsed,
     toggleSearch,
     setSearchQuery,
     closeSearch,
     setActiveTab,
+    setDrawerOpen,
   };
 }

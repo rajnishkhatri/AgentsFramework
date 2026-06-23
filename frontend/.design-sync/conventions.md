@@ -12,6 +12,11 @@ All designs MUST adhere to these constraints — they are not preferences, they 
 
 Never hard-code hex values — always use `var(--color-*)` or `var(--radius-*)` tokens.
 
+> **Where the tactile classes live:** the surface treatments below (`.surface-etched`,
+> `.separator-etched*`, `.bubble-user`, `.btn-shine`) are token-driven CSS in
+> `frontend/app/globals.css`, not props on the primitives. They ride along in
+> `_ds_bundle/styles.css`, so compose with the class names directly.
+
 ## §2.6 Cursor warm-neutral aesthetic (the design target)
 
 Every screen MUST look like this:
@@ -49,6 +54,49 @@ Source: `frontend/components/ui/*.tsx`. Use ONLY these — do not introduce new 
 
 1. **Desktop three-pane**: `[sidebar-sunken 260px] | [main-chat flex-1] | [detail-panel 320px collapsible]`
 2. **Phone single-column**: sidebar hidden → left Sheet drawer on hamburger; detail panel → bottom Sheet; pill composer pinned to safe-area bottom.
+
+## Responsive mechanics (plan §5, as shipped in P3)
+
+The redesign is ONE fluid layout — never fork a separate mobile design. The structure
+switches at the Tailwind **`lg` breakpoint (1024px)**; component internals adapt to their
+own slot via **container queries**, not the viewport.
+
+- **Page structure → viewport breakpoints.** Below `lg`: single column, the thread rail is
+  hidden and reached through a **left Sheet drawer** opened by a header hamburger
+  (`data-testid="drawer-toggle"`, `aria-label="Open conversations"`, 44×44 hit area). The
+  drawer auto-closes on thread-select / new-chat. At `lg`+: the inline collapsible rail
+  (`w-64 ↔ w-12`) shows side-by-side with the chat, divided by an etched vertical groove.
+- **Component internals → container queries.** Components carry a named container
+  (`@container/composer`, `@container/tool`, `@container/understanding`) and adapt with
+  `@[Nrem]/name:` variants so they read right in a wide Mac window AND a narrow phone/drawer
+  slot. Examples as shipped: the composer's model-picker label hides below a 20rem slot
+  (chevron stays); the ToolCard subtitle hides below a 22rem slot; the understanding card's
+  provenance label wraps under its heading. **Design components to degrade by slot width,
+  not screen width.**
+- **Compact states.** Below `sm`: hide the header email, tighten main padding (`p-3 sm:p-4`).
+- **Touch targets ≥ 44pt** on every interactive control (HIG / plan §4c). Icon glyph stays
+  small (size-4/5); the *hit area* is the 44pt button (`size-11` / `min-h-11`).
+
+## Tactile surface language (P2 hardening — the "frozen" look)
+
+Beyond flat tokens, the shipped surface carries a soft tactile treatment. Designs should
+compose with these, not flat fills:
+
+- **Etched cards** (`.surface-etched`): recessed inset shadow + a `#fff` bottom-edge
+  highlight. Used for ToolCard and the TaskUnderstanding card. **Embossed** (`.surface-embossed`)
+  is the raised inverse.
+- **Etched grooves** (`.separator-etched` / `-etched-v` / `.separator-label`): a dark edge
+  over a `#fff 85%` highlight reads as a groove pressed into the surface — used for the
+  header underline, the rail↔chat divide, the sidebar action-group divider, and the
+  labeled "TODAY" thread-group divider. Prefer grooves over flat 1px rules for primary divides.
+- **Gradient user bubble** (`.bubble-user`): a 3-stop terracotta gradient + inset highlight,
+  right-aligned, `radius-lg`. The assistant answer is uncarded prose (intentional).
+- **Button shine** (`.btn-shine`): the primary CTA / send puck carries a terracotta bezel +
+  background shine, not a flat accent fill.
+- **Nav items**: plain default (`text-muted`), `fg/5%` overlay on hover, `--color-selected`
+  (stronger overlay) + semibold when active — hover stays LIGHTER than active so they read
+  apart. Hover gated behind `@media (hover: hover)`.
+- **Icons are lucide line SVGs, never emoji.** Custom scrollbars are thin token-colored thumbs.
 
 ## Component conventions
 
