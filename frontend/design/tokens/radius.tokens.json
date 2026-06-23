@@ -1,0 +1,20 @@
+{
+  "radius": {
+    "_note": "Frozen v18 (screenshot-matched). Buttons & icon buttons are NOT a radius token — they are fully rounded (rounded-full / 999px). See SYNC.md.",
+    "sm": {
+      "$value": "0.625rem",
+      "$type": "dimension",
+      "$description": "10px — chips, badges, menu items"
+    },
+    "md": {
+      "$value": "1rem",
+      "$type": "dimension",
+      "$description": "16px — inputs, tabs, toasts, dropdowns, tooltips"
+    },
+    "lg": {
+      "$value": "1.375rem",
+      "$type": "dimension",
+      "$description": "22px — cards, dialogs, sheets, message bubbles, composer"
+    }
+  }
+}

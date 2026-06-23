@@ -17,15 +17,16 @@
  */
 
 import * as React from "react";
+import { Ban, Check, Circle, CircleDot, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TodoListView } from "@/lib/translators/todo_list_projection";
 import type { TodoItem } from "@/lib/wire/ui_runtime_events";
 
-const STATUS_ICON: Record<TodoItem["status"], string> = {
-  pending: "○",
-  in_progress: "◐",
-  completed: "✓",
-  cancelled: "⊘",
+const STATUS_ICON: Record<TodoItem["status"], LucideIcon> = {
+  pending: Circle,
+  in_progress: CircleDot,
+  completed: Check,
+  cancelled: Ban,
 };
 
 const VISIBLE_CAP = 7;
@@ -43,7 +44,21 @@ function TodoRow(props: { todo: TodoItem }): React.JSX.Element {
         todo.status === "in_progress" && "font-medium",
       )}
     >
-      <span aria-hidden="true">{STATUS_ICON[todo.status]}</span>
+      {(() => {
+        const Icon = STATUS_ICON[todo.status];
+        return (
+          <Icon
+            aria-hidden="true"
+            className={cn(
+              "size-3.5 shrink-0 translate-y-0.5",
+              todo.status === "completed" && "text-success",
+              todo.status === "in_progress" && "text-accent",
+              (todo.status === "pending" || todo.status === "cancelled") &&
+                "text-muted",
+            )}
+          />
+        );
+      })()}
       <span>{todo.content}</span>
     </li>
   );

@@ -18,6 +18,8 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { Menu } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
 import { TaskList } from "@/components/chat/TaskList";
@@ -373,6 +375,21 @@ export function ChatShell(props: {
     },
     [sidebars, resumeThread],
   );
+
+  // P3 §5: on phone the rail lives in an overlay drawer; picking a thread or
+  // starting a new chat should dismiss it so the chat is visible immediately.
+  // (Harmless at desktop widths where the drawer is never open.)
+  const onSelectThreadMobile = React.useCallback(
+    (id: string): void => {
+      onSelectThread(id);
+      chrome.setDrawerOpen(false);
+    },
+    [onSelectThread, chrome],
+  );
+  const onNewChatMobile = React.useCallback((): void => {
+    onNewChat();
+    chrome.setDrawerOpen(false);
+  }, [onNewChat, chrome]);
   const bottomRef = React.useRef<HTMLDivElement>(null);
 
   // The understanding card is editable only on the latest turn while its
@@ -412,8 +429,27 @@ export function ChatShell(props: {
       {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
     >
       {/* Header (spans the full width above the three columns) */}
-      <header className="flex items-center justify-between px-4 py-3">
-        <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
+      {/* P4 §4a: pad the top + horizontal safe-area insets so the header clears
+         the notch / Dynamic Island when wrapped (no-op off-device). */}
+      <header className="flex items-center justify-between px-4 py-3 pt-[max(0.75rem,var(--safe-top))] pl-[max(1rem,var(--safe-left))] pr-[max(1rem,var(--safe-right))]">
+        <div className="flex items-center gap-2">
+          {/* P3 §5: hamburger opens the thread-rail drawer on phone. Hidden at
+             lg where the inline rail is shown side-by-side. */}
+          <button
+            type="button"
+            data-testid="drawer-toggle"
+            aria-label="Open conversations"
+            aria-expanded={chrome.drawerOpen}
+            aria-controls="thread-drawer"
+            onClick={() => chrome.setDrawerOpen(true)}
+            // 44×44 touch target (§4c/HIG) — the icon is size-5, the hit area
+            // is the full button.
+            className="lg:hidden -ml-2 size-11 text-fg bg-transparent border-0 cursor-pointer hover:text-accent flex items-center justify-center"
+          >
+            <Menu className="size-5" aria-hidden="true" />
+          </button>
+          <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
+        </div>
         <div className="flex items-center gap-3">
           {props.evalCase ? (
             <span
@@ -423,12 +459,17 @@ export function ChatShell(props: {
               eval · {props.evalCase}
             </span>
           ) : null}
-          <span className="text-sm text-muted">{props.userEmail}</span>
+          {/* Email crowds the phone header — hidden below sm (§5 compact). */}
+          <span className="hidden sm:inline text-sm text-muted">
+            {props.userEmail}
+          </span>
           <ThemeToggle />
+          {/* §4c/HIG: the visible text is unchanged, but the hit area is padded
+             to a 44pt-tall tap target (min-h-11 + horizontal padding). */}
           <Link
             href="/api/auth/sign-out"
             prefetch={false}
-            className="text-sm text-muted hover:text-fg no-underline"
+            className="inline-flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg no-underline"
           >
             Sign out
           </Link>
@@ -444,6 +485,41 @@ export function ChatShell(props: {
        * on small screens (hidden lg:grid) so the chat column stays usable; the
        * center is always present.
        */}
+
+      {/* P3 §5: mobile thread-rail drawer. Below lg the inline rail is hidden;
+         the hamburger opens this left overlay Sheet with the same SidebarPanel.
+         Radix handles overlay dismiss + focus trap + Escape; reduced-motion is
+         honored by the Sheet primitive. Auto-closes on select/new-chat via the
+         *Mobile handlers. */}
+      <Sheet open={chrome.drawerOpen} onOpenChange={chrome.setDrawerOpen}>
+        <SheetContent
+          side="left"
+          id="thread-drawer"
+          data-testid="thread-drawer"
+          className="w-[18rem] p-0 bg-surface-sunken lg:hidden"
+          aria-label="Conversations"
+        >
+          <SheetTitle className="sr-only">Conversations</SheetTitle>
+          <SidebarPanel
+            threads={visibleThreads}
+            {...(activeThreadId ? { activeThreadId } : {})}
+            collapsed={false}
+            searchOpen={chrome.searchOpen}
+            searchQuery={chrome.searchQuery}
+            activeTab={chrome.activeTab}
+            onToggleCollapsed={chrome.toggleCollapsed}
+            onToggleSearch={chrome.toggleSearch}
+            onSearchQueryChange={chrome.setSearchQuery}
+            onCloseSearch={chrome.closeSearch}
+            onSelectTab={chrome.setActiveTab}
+            onNewChat={onNewChatMobile}
+            onSelectThread={onSelectThreadMobile}
+            onRenameThread={(id, title) => void sidebars.renameThread(id, title)}
+            onDeleteThread={(id) => void sidebars.deleteThread(id)}
+          />
+        </SheetContent>
+      </Sheet>
+
       <div className="grid lg:grid-cols-[auto_2px_1fr] overflow-hidden">
         {/* Recessed rail (§2.6): surface-sunken keeps the thread history a
            half-step behind the chat canvas, Cursor-style. The rail↔chat divide
@@ -477,7 +553,7 @@ export function ChatShell(props: {
 
         {/* Chat column: scrollable messages + the pinned composer. */}
         <div className="grid grid-rows-[1fr_auto] overflow-hidden">
-          <main className="overflow-y-auto p-4">
+          <main className="overflow-y-auto p-3 sm:p-4">
             {turns.length === 0 ? (
               <div className="flex items-center justify-center h-full text-muted text-center">
                 <div className="grid gap-2">
@@ -553,7 +629,9 @@ export function ChatShell(props: {
           </main>
 
           {/* Composer (pinned to the bottom of the chat column) */}
-          <div className="max-w-3xl mx-auto w-full p-2">
+          {/* P4 §4a: pad the bottom safe-area inset so the composer sits above
+             the home indicator / keyboard when wrapped (no-op off-device). */}
+          <div className="max-w-3xl mx-auto w-full p-2 pb-[max(0.5rem,var(--safe-bottom))] pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))]">
             <Composer onSend={send} busy={busy || pausedTurnId !== null} />
           </div>
         </div>

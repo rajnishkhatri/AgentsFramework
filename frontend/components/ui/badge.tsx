@@ -21,6 +21,8 @@ const badgeVariants = cva(
           "border-0 text-success [background:color-mix(in_oklab,var(--color-success)_18%,transparent)]",
         danger:
           "border-0 text-danger [background:color-mix(in_oklab,var(--color-danger)_18%,transparent)]",
+        warning:
+          "border-0 text-warning [background:color-mix(in_oklab,var(--color-warning)_18%,transparent)]",
       },
     },
     defaultVariants: { variant: "default" },

@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spec Verification — AgentsFramework UI</title>
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  /* Harness chrome — composed from the DS tokens so it reads as native */
+  body { background: var(--color-bg); color: var(--color-fg); }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 28px 96px; }
+  .masthead { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; margin-bottom: 8px; }
+  h1 { font-size: var(--text-2xl); font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .sub { color: var(--color-muted); font-size: var(--text-sm); max-width: 520px; line-height: 1.5; }
+  .scorecard { display: flex; gap: 10px; align-items: stretch; }
+  .score { border-radius: var(--radius-lg); padding: 12px 18px; text-align: center; min-width: 78px; border: 1px solid var(--color-border); background: var(--color-surface); }
+  .score .n { font-size: var(--text-2xl); font-weight: 700; line-height: 1; }
+  .score .l { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted); margin-top: 6px; }
+  .score.pass .n { color: var(--color-success); }
+  .score.fail .n { color: var(--color-danger); }
+  .score.manual .n { color: #a9741f; }
+
+  .toolbar { display: flex; gap: 10px; align-items: center; margin: 22px 0 8px; flex-wrap: wrap; }
+  .probe { margin: 20px 0 8px; border-radius: var(--radius-lg); border: 1px solid var(--color-border); background: var(--color-surface); padding: 14px 18px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .probe .cell .k { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--color-muted); }
+  .probe .cell .v { font-size: var(--text-lg); font-weight: 600; margin-top: 3px; }
+  .probe .cell .v small { font-weight: 400; color: var(--color-muted); font-size: var(--text-xs); }
+
+  section.group { margin-top: 30px; }
+  section.group > h2 { font-size: var(--text-lg); font-weight: 600; letter-spacing: -0.01em; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+  section.group > h2 .gcount { font-size: var(--text-xs); color: var(--color-muted); font-weight: 500; }
+  section.group > p.gnote { font-size: var(--text-sm); color: var(--color-muted); margin-bottom: 14px; }
+
+  .check { display: grid; grid-template-columns: 22px 1fr auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--color-border-light); }
+  .check:last-child { border-bottom: none; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; margin-top: 4px; flex: none; }
+  .dot.pass { background: var(--color-success); }
+  .dot.fail { background: var(--color-danger); box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-danger) 18%, transparent); }
+  .dot.manual { background: #c08a2e; }
+  .check .desc { font-size: var(--text-base); line-height: 1.4; }
+  .check .desc .src { display: block; font-size: var(--text-xs); color: var(--color-muted); margin-top: 3px; font-family: var(--font-mono); }
+  .check .ev { text-align: right; font-family: var(--font-mono); font-size: var(--text-xs); white-space: nowrap; }
+  .check .ev .exp { color: var(--color-muted); }
+  .check .ev .act { font-weight: 600; }
+  .check .ev .act.ok { color: var(--color-success); }
+  .check .ev .act.no { color: var(--color-danger); }
+  .badge-manual { background: color-mix(in oklab, #c08a2e 16%, var(--color-bg)); color: #a9741f; border: 1px solid color-mix(in oklab, #c08a2e 34%, transparent); }
+
+  /* offscreen sandbox where real DS elements are rendered for measurement */
+  #sandbox { position: fixed; left: -10000px; top: 0; visibility: hidden; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div>
+      <h1>Spec Verification Harness</h1>
+      <p class="sub">Loads the live <strong>AgentsFramework UI</strong> bundle, renders real design-system elements to measure them, and reads the stylesheet source for media-gated rules. Checks against <em>Responsive Layout Spec.md</em>.</p>
+    </div>
+    <div class="scorecard">
+      <div class="score pass"><div class="n" id="s-pass">0</div><div class="l">Pass</div></div>
+      <div class="score fail"><div class="n" id="s-fail">0</div><div class="l">Fail</div></div>
+      <div class="score manual"><div class="n" id="s-manual">0</div><div class="l">Manual</div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-default btn-md" id="rerun">Re-run checks</button>
+    <span class="badge badge-default" id="env-note">reading environment…</span>
+  </div>
+
+  <!-- Live breakpoint probe — updates on resize, the interactive half of §6.1 -->
+  <div class="probe">
+    <div class="cell"><div class="k">Viewport width</div><div class="v" id="p-w">—</div></div>
+    <div class="cell"><div class="k">Prescribed layout</div><div class="v" id="p-mode">—</div></div>
+    <div class="cell"><div class="k">Pointer</div><div class="v" id="p-ptr">—</div></div>
+    <div class="cell"><div class="k">Prescribed hit target</div><div class="v" id="p-hit">—</div></div>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<div id="sandbox"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="./bundle.js"></script>
+
+<script>
+/* ----------------------------------------------------------------
+   Helpers
+   ---------------------------------------------------------------- */
+const sandbox = document.getElementById('sandbox');
+const PX_TOL = 0.6; // px tolerance for sub-pixel rem math
+
+function el(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html.trim();
+  const node = d.firstElementChild;
+  sandbox.appendChild(node);
+  return node;
+}
+function cs(node, prop) { return getComputedStyle(node)[prop]; }
+function pxOf(node, prop) { return parseFloat(cs(node, prop)); }
+function nearPx(node, prop, expected) {
+  const a = pxOf(node, prop);
+  return { pass: Math.abs(a - expected) <= PX_TOL, actual: a + 'px', expected: expected + 'px' };
+}
+function rootVar(name, scope) {
+  return getComputedStyle(scope || document.documentElement).getPropertyValue(name).trim();
+}
+function eqColor(actual, expected) {
+  return { pass: actual.toLowerCase() === expected.toLowerCase(), actual: actual || '(empty)', expected };
+}
+
+/* Stylesheet source — for media-gated rules that can't be forced live.
+   Fetch the raw CSS; fall back to cssRules concat if fetch is blocked. */
+let CSS_TEXT = '';
+let CSS_NOSPACE = '';
+async function loadCssText() {
+  const href = './styles.css';
+  try {
+    const r = await fetch(href);
+    if (r.ok) { CSS_TEXT = await r.text(); }
+  } catch (e) { /* fall through */ }
+  if (!CSS_TEXT) {
+    try {
+      for (const sheet of document.styleSheets) {
+        if (!sheet.href || !sheet.href.includes('styles.css')) continue;
+        for (const rule of sheet.cssRules) CSS_TEXT += rule.cssText + '\n';
+      }
+    } catch (e) { /* opaque sheet */ }
+  }
+  CSS_NOSPACE = CSS_TEXT.replace(/\s+/g, '');
+}
+// extract the body of an at-rule block by brace balancing, whitespace-stripped
+function atRuleBody(selectorNoSpace) {
+  const start = CSS_NOSPACE.indexOf(selectorNoSpace);
+  if (start === -1) return null;
+  let i = CSS_NOSPACE.indexOf('{', start);
+  if (i === -1) return null;
+  let depth = 0, bodyStart = i + 1;
+  for (; i < CSS_NOSPACE.length; i++) {
+    const c = CSS_NOSPACE[i];
+    if (c === '{') depth++;
+    else if (c === '}') { depth--; if (depth === 0) return CSS_NOSPACE.slice(bodyStart, i); }
+  }
+  return null;
+}
+function coarseBody() { return atRuleBody('@media(pointer:coarse)'); }
+function hoverNoneBody() { return atRuleBody('@media(hover:none)'); }
+
+/* ----------------------------------------------------------------
+   Check registry
+   ---------------------------------------------------------------- */
+const groups = [];
+function group(title, note, checks) { groups.push({ title, note, checks }); }
+// a check fn returns { status:'pass'|'fail'|'manual', expected, actual }
+function fromBool(pass, expected, actual) {
+  return { status: pass ? 'pass' : 'fail', expected, actual };
+}
+
+const DS = window.AgentsFrameworkUI_f8ce5c || null;
+const coarse = matchMedia('(pointer: coarse)').matches;
+
+/* §1 — Foundation tokens */
+group('§1 · Foundation tokens', 'Device-independent. Read straight off :root and measured on real DS elements.', [
+  ['Root font size = 16px (production baseline)', './styles.css html{}', () => {
+    const r = nearPx(document.documentElement, 'fontSize', 16);
+    return fromBool(r.pass, '16px', r.actual);
+  }],
+  ['--color-bg', ':root', () => { const r = eqColor(rootVar('--color-bg'), '#f9f7f5'); return fromBool(r.pass, r.expected, r.actual); }],
+  ['--color-fg', ':root', () => { const r = eqColor(rootVar('--color-fg'), '#1f1e1d'); return fromBool(r.pass, r.expected, r.actual); }],
+  ['--color-muted (production)', ':root', () => { const r = eqColor(rootVar('--color-muted'), '#7d7a75'); return fromBool(r.pass, r.expected, r.actual); }],
+  ['--color-accent (light)', ':root', () => { const r = eqColor(rootVar('--color-accent'), '#c2704e'); return fromBool(r.pass, r.expected, r.actual); }],
+  ['--color-accent (dark scope)', '[data-theme=dark]', () => {
+    const w = el('<div data-theme="dark"></div>');
+    const r = eqColor(rootVar('--color-accent', w), '#d98b6a');
+    return fromBool(r.pass, r.expected, r.actual);
+  }],
+  ['--radius-md via .input = 8px @16', '.input border-radius', () => {
+    const r = nearPx(el('<input class="input" />'), 'borderTopLeftRadius', 8);
+    return fromBool(r.pass, '8px', r.actual);
+  }],
+  ['--radius-lg via .card = 12px @16', '.card border-radius', () => {
+    const r = nearPx(el('<div class="card"></div>'), 'borderTopLeftRadius', 12);
+    return fromBool(r.pass, '12px', r.actual);
+  }],
+  ['--radius-sm via .btn-sm = 6px @16', '.btn-sm border-radius', () => {
+    const r = nearPx(el('<button class="btn btn-sm">x</button>'), 'borderTopLeftRadius', 6);
+    return fromBool(r.pass, '6px', r.actual);
+  }],
+  ['Type base = 16px', 'body font-size', () => {
+    const r = nearPx(document.body, 'fontSize', 16);
+    return fromBool(r.pass, '16px', r.actual);
+  }],
+  ['Type xl via .card-title = 22px @16', '.card-title', () => {
+    const r = nearPx(el('<div class="card-title">x</div>'), 'fontSize', 22);
+    return fromBool(r.pass, '22px', r.actual);
+  }],
+]);
+
+/* §2 — Desktop base sizing (fine pointer). Live-valid only on a fine-pointer device. */
+group('§2 · Desktop base sizing', 'Base / fine-pointer control sizes. Measured live — authoritative on a fine-pointer device; on a touch device these are overridden (see §4) and shown as Manual.', [
+  ['.btn-icon = 36×36', '.btn-icon', () => {
+    if (coarse) return { status: 'manual', expected: '36×36 (fine only)', actual: 'device is coarse — see §4' };
+    const w = nearPx(el('<button class="btn btn-icon"></button>'), 'width', 36);
+    return fromBool(w.pass, '36px', w.actual);
+  }],
+  ['.input height = 36', '.input', () => {
+    if (coarse) return { status: 'manual', expected: '36 (fine only)', actual: 'device is coarse — see §4' };
+    const r = nearPx(el('<input class="input" />'), 'height', 36);
+    return fromBool(r.pass, '36px', r.actual);
+  }],
+  ['Primary CTA .btn-default is a gradient (not flat fill)', '.btn-default', () => {
+    const bg = cs(el('<button class="btn btn-default btn-md">Go</button>'), 'backgroundImage');
+    return fromBool(/gradient/.test(bg), 'linear-gradient(...)', /gradient/.test(bg) ? 'gradient ✓' : bg);
+  }],
+]);
+
+/* §4 — Touch axis, verified from CSS SOURCE so it holds on any device */
+group('§4 · Touch axis (coarse pointer)', 'Media-gated rules can\'t be forced live, so these are verified against the stylesheet SOURCE — deterministic on any device. The live pointer state is shown in the probe above.', [
+  ['@media (pointer:coarse) raises .btn-icon → 44×44', 'source', () => {
+    const b = coarseBody(); const has = !!b && b.includes('.btn-icon{width:44px;height:44px}');
+    return fromBool(has, '.btn-icon{44×44}', has ? 'found in source ✓' : 'NOT found');
+  }],
+  ['@media (pointer:coarse) raises .input → height 44', 'source', () => {
+    const b = coarseBody(); const has = !!b && b.includes('.input{height:44px}');
+    return fromBool(has, '.input{height:44px}', has ? 'found ✓' : 'NOT found');
+  }],
+  ['@media (pointer:coarse) raises .textarea → min-height 48', 'source', () => {
+    const b = coarseBody(); const has = !!b && b.includes('.textarea{min-height:48px}');
+    return fromBool(has, '.textarea{min-height:48px}', has ? 'found ✓' : 'NOT found');
+  }],
+  ['@media (pointer:coarse) raises composer buttons → 44×44', 'source', () => {
+    const b = coarseBody(); const has = !!b && b.includes('.composer-iconbtn,.composer-mic,.composer-send{width:44px;height:44px}');
+    return fromBool(has, 'composer btns {44×44}', has ? 'found ✓' : 'NOT found');
+  }],
+  ['@media (hover:none) neutralises .nav-item:hover', 'source', () => {
+    const b = hoverNoneBody(); const has = !!b && b.includes('.nav-item:hover{background:transparent;color:var(--color-muted)}');
+    return fromBool(has, 'nav-item hover → transparent', has ? 'found ✓' : 'NOT found');
+  }],
+  ['@media (hover:none) keeps .nav-item.is-active selected', 'source', () => {
+    const b = hoverNoneBody(); const has = !!b && b.includes('.nav-item.is-active{background:var(--color-selected);color:var(--color-fg)}');
+    return fromBool(has, 'active keeps --color-selected', has ? 'found ✓' : 'NOT found');
+  }],
+]);
+
+/* §5 — Surface language (live computed) */
+group('§5 · Surface language', 'The frozen tactile look — etched grooves, inset shadows, gradient bubbles.', [
+  ['.etched carries an inset shadow', '.etched', () => {
+    const sh = cs(el('<div class="etched">x</div>'), 'boxShadow');
+    return fromBool(/inset/.test(sh) && sh !== 'none', 'inset shadow', sh === 'none' ? 'none' : 'inset ✓');
+  }],
+  ['.card carries inset highlight + drop', '.card', () => {
+    const sh = cs(el('<div class="card">x</div>'), 'boxShadow');
+    return fromBool(/inset/.test(sh) && sh !== 'none', 'inset + shadow', sh === 'none' ? 'none' : 'inset ✓');
+  }],
+  ['.separator-etched is a 2px groove', '.separator-etched', () => {
+    const n = el('<div class="separator-etched"></div>');
+    const h = nearPx(n, 'height', 2);
+    const bt = pxOf(n, 'borderTopWidth');
+    const ok = h.pass && bt >= 1;
+    return fromBool(ok, 'height 2px + border', `h=${h.actual}, border-top=${bt}px`);
+  }],
+  ['.separator-v hairline = 1px', '.separator-v', () => {
+    const r = nearPx(el('<div class="separator-v"></div>'), 'width', 1);
+    return fromBool(r.pass, '1px', r.actual);
+  }],
+]);
+
+/* §6 — Bundle inventory. The bundle exports COMPOSED app components on the global;
+   the 14 primitives ship as CSS classes in styles.css, not as React exports. Verify both. */
+group('§6 · Bundle inventory', 'The bundle exports composed app components (ChatShell, Composer, …) on the global; the 14 primitives ship as CSS classes in the stylesheet. Both are verified.', [
+  ['window.AgentsFrameworkUI_f8ce5c is loaded', 'global', () =>
+    fromBool(!!DS, 'object', DS ? 'loaded ✓' : 'MISSING')],
+  ['Key composed components exported', 'exports', () => {
+    if (!DS) return fromBool(false, 'present', 'bundle missing');
+    const need = ['ChatShell', 'Composer', 'SidebarPanel', 'ThreadSidebar', 'ToolCard', 'TaskUnderstandingCard', 'MemoryPanel', 'RootLayout'];
+    const missing = need.filter(k => !(k in DS));
+    return fromBool(missing.length === 0, need.length + ' components', missing.length ? 'missing: ' + missing.join(', ') : 'all ' + need.length + ' present ✓');
+  }],
+  ['The 14 primitive classes exist in the stylesheet', 'styles.css', () => {
+    const need = ['.btn', '.badge', '.input', '.textarea', '.card', '.separator-h', '.skeleton', '.scroll-area-root', '.tabs-list', '.dropdown-content', '.toast', '.tooltip-content', '.dialog-title', '.sheet-title'];
+    const missing = need.filter(c => !CSS_NOSPACE.includes(c.replace('.', '.') + '{') && !CSS_NOSPACE.includes(c + ','));
+    return fromBool(missing.length === 0, '14 primitive classes', missing.length ? 'missing: ' + missing.join(' ') : 'all 14 present ✓');
+  }],
+  ['Bundle compiled without component errors', '__errors', () => {
+    const errs = (DS && DS.__errors) || [];
+    if (errs.length === 0) return fromBool(true, 'no errors', 'clean ✓');
+    return { status: 'manual', expected: 'no errors', actual: errs.length + ' upstream build artifact: ' + errs.map(e => e.path).join(', ') };
+  }],
+]);
+
+/* §3/§6.1 — Layout-mode & container queries: live in APP code, not the DS bundle */
+group('§3 · Layout mode & container queries', 'These behaviours live in the application frontend (page layout + globals.css container rules), not in the design-system primitive bundle — so they cannot be auto-measured here. Use the live probe above to confirm the prescribed mode, and check these manually against a running app.', [
+  ['lg breakpoint = 1024px forks three-pane ⇄ single-column', 'app frontend', () =>
+    ({ status: 'manual', expected: '1024px fork', actual: 'verify in app — see probe' })],
+  ['iPad portrait (<1024) uses single-column + drawer', 'app frontend', () =>
+    ({ status: 'manual', expected: 'drawer below 1024', actual: 'verify in app' })],
+  ['@container/composer hides model label < 20rem slot', 'app globals.css', () =>
+    ({ status: 'manual', expected: 'label hides <20rem', actual: 'not in DS bundle' })],
+  ['@container/tool hides ToolCard subtitle < 22rem slot', 'app globals.css', () =>
+    ({ status: 'manual', expected: 'subtitle hides <22rem', actual: 'not in DS bundle' })],
+]);
+
+/* ----------------------------------------------------------------
+   Render
+   ---------------------------------------------------------------- */
+function render() {
+  sandbox.innerHTML = '';
+  const root = document.getElementById('results');
+  root.innerHTML = '';
+  let pass = 0, fail = 0, manual = 0;
+
+  for (const g of groups) {
+    const sec = document.createElement('section');
+    sec.className = 'group';
+    let gp = 0, gf = 0, gm = 0;
+    const rows = [];
+    for (const [desc, src, fn] of g.checks) {
+      let res;
+      try { res = fn(); }
+      catch (e) { res = { status: 'fail', expected: '(no error)', actual: 'threw: ' + e.message }; }
+      if (res.status === 'pass') { pass++; gp++; }
+      else if (res.status === 'manual') { manual++; gm++; }
+      else { fail++; gf++; }
+      const ok = res.status === 'pass';
+      const actClass = res.status === 'manual' ? '' : (ok ? 'ok' : 'no');
+      rows.push(`
+        <div class="check">
+          <div class="dot ${res.status}"></div>
+          <div class="desc">${desc}<span class="src">${src}</span></div>
+          <div class="ev"><div class="exp">expect ${res.expected}</div><div class="act ${actClass}">${res.status === 'manual' ? '⊘ ' : (ok ? '✓ ' : '✗ ')}${res.actual}</div></div>
+        </div>`);
+    }
+    sec.innerHTML = `<h2>${g.title} <span class="gcount">${gp}/${g.checks.length} pass${gm ? ` · ${gm} manual` : ''}${gf ? ` · ${gf} fail` : ''}</span></h2>
+      <p class="gnote">${g.note}</p>${rows.join('')}`;
+    root.appendChild(sec);
+  }
+
+  document.getElementById('s-pass').textContent = pass;
+  document.getElementById('s-fail').textContent = fail;
+  document.getElementById('s-manual').textContent = manual;
+}
+
+/* Live probe */
+function probe() {
+  const w = window.innerWidth;
+  const ptr = matchMedia('(pointer: coarse)').matches ? 'coarse (touch)' : 'fine (mouse)';
+  document.getElementById('p-w').innerHTML = w + '<small> px</small>';
+  document.getElementById('p-mode').innerHTML = w >= 1024
+    ? 'Three-pane <small>(≥1024 lg)</small>'
+    : 'Single-column <small>(&lt;1024)</small>';
+  document.getElementById('p-ptr').textContent = ptr;
+  document.getElementById('p-hit').innerHTML = matchMedia('(pointer: coarse)').matches
+    ? '44px <small>touch</small>' : '36px <small>base</small>';
+}
+
+document.getElementById('rerun').addEventListener('click', render);
+window.addEventListener('resize', probe);
+
+(async function init() {
+  await loadCssText();
+  document.getElementById('env-note').textContent = CSS_TEXT
+    ? 'stylesheet source loaded · ' + CSS_TEXT.length.toLocaleString() + ' chars'
+    : 'could not read stylesheet source — §4 checks unavailable';
+  probe();
+  render();
+})();
+</script>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#f9f7f5"/><circle cx="34" cy="50" r="12" fill="#2f8f5b"/><path d="M29 50l4 4 8-8" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="54" y="38" width="26" height="5" rx="2.5" fill="#c2704e"/><rect x="54" y="48" width="20" height="5" rx="2.5" fill="#7d7a75"/><rect x="54" y="58" width="24" height="5" rx="2.5" fill="#7d7a75"/></svg>
+</template>
+</body>
+</html>

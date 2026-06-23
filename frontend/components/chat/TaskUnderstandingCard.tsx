@@ -27,7 +27,7 @@
  */
 
 import * as React from "react";
-import { Square } from "lucide-react";
+import { Square, X } from "lucide-react";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -104,7 +104,7 @@ export function TaskUnderstandingCard(props: {
         data-editing="true"
         role="note"
         aria-label="Edit the agent's understanding of your task"
-        className="surface-etched rounded-lg bg-surface p-3 text-sm grid gap-2"
+        className="@container/understanding surface-etched rounded-lg bg-surface p-3 text-sm grid gap-2"
       >
         <p className="m-0 font-medium">Correct my understanding</p>
         <textarea
@@ -138,7 +138,7 @@ export function TaskUnderstandingCard(props: {
                 }
                 className="text-muted hover:text-fg disabled:opacity-40 cursor-pointer bg-transparent border-0"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </li>
           ))}
@@ -200,11 +200,13 @@ export function TaskUnderstandingCard(props: {
       data-condition-count={understanding.success_conditions.length}
       role="note"
       aria-label="Agent's understanding of your task"
-      className="surface-etched rounded-lg bg-surface p-3 text-sm grid gap-1"
+      className="@container/understanding surface-etched rounded-lg bg-surface p-3 text-sm grid gap-1"
     >
-      <p className="m-0 font-medium">
-        Here&apos;s my understanding
-        <span className="ml-2 text-xs font-normal text-muted">
+      <p className="m-0 font-medium flex flex-wrap items-baseline gap-x-2">
+        <span>Here&apos;s my understanding</span>
+        {/* The provenance label wraps under the heading in a narrow slot rather
+           than overflowing the row (§5 container query via flex-wrap). */}
+        <span className="text-xs font-normal text-muted">
           {SOURCE_LABEL[understanding.source] ?? understanding.source}
         </span>
         {props.editable ? (

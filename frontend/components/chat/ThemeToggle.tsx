@@ -23,12 +23,14 @@ export function ThemeToggle(): React.JSX.Element {
 
   // Pre-mount: render the same-sized ghost shell with the generic label so
   // there is no layout shift and SSR/CSR markup matches until theme resolves.
+  // §4c/HIG: the hit area is the full size-11 (44×44pt) button; the icon stays
+  // size-4 (visual weight unchanged), centered by the Button primitive.
   if (!mounted) {
     return (
       <Button
         variant="ghost"
         size="sm"
-        className="size-8 px-0"
+        className="size-11 px-0"
         aria-label="Toggle theme"
       >
         <span className="size-4" aria-hidden="true" />
@@ -42,7 +44,7 @@ export function ThemeToggle(): React.JSX.Element {
     <Button
       variant="ghost"
       size="sm"
-      className="size-8 px-0 hover:bg-selected"
+      className="size-11 px-0 hover:bg-selected"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
     >

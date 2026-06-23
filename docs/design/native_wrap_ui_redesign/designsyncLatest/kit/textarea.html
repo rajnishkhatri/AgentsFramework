@@ -1,0 +1,70 @@
+<!-- @dsCard group="Forms" name="Textarea" viewport="640x900" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Textarea — AgentsFramework UI</title><link rel="stylesheet" href="../styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">Textarea &amp; Composer · Forms · §4 input</div>
+
+  <div class="ds-section"><div class="ds-label">Pill composer — leading +, model selector, mic</div>
+    <div style="max-width:560px">
+      <div class="composer">
+        <button class="composer-iconbtn" title="Add"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="composer-input" placeholder="Send follow-up">
+        <button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="composer-mic" title="Voice"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="6" y="2" width="4" height="7" rx="2" fill="currentColor"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Pill composer — with text, send enabled</div>
+    <div style="max-width:560px">
+      <div class="composer">
+        <button class="composer-iconbtn" title="Add"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="composer-input" value="Improve memory recall across sessions">
+        <button class="composer-model chip">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="composer-send" title="Send"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V4M4 7l4-3 4 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Expanded composer — multi-line with toolbar</div>
+    <div style="max-width:560px">
+      <div class="composer-box">
+        <textarea class="composer-input" placeholder="Send follow-up">Write a plan to improve memory recall across sessions. Keep it to five concrete steps.</textarea>
+        <div class="composer-toolbar">
+          <div class="composer-tools">
+            <button class="composer-iconbtn" title="Attach"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+            <button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <div class="composer-tools">
+            <button class="composer-mic" title="Voice"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="6" y="2" width="4" height="7" rx="2" fill="currentColor"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+            <button class="composer-send" title="Send"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V4M4 7l4-3 4 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Plain textarea — bordered field</div>
+    <textarea class="textarea" style="max-width:560px" placeholder="Message AgentsFramework…"></textarea>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="background:var(--color-bg);padding:16px;border-radius:var(--radius-lg);max-width:560px;display:flex;flex-direction:column;gap:14px">
+      <div class="composer">
+        <button class="composer-iconbtn" title="Add"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+        <input class="composer-input" placeholder="Send follow-up">
+        <button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="composer-mic" title="Voice"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="6" y="2" width="4" height="7" rx="2" fill="currentColor"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+      </div>
+      <div class="composer-box">
+        <textarea class="composer-input" placeholder="Send follow-up"></textarea>
+        <div class="composer-toolbar">
+          <div class="composer-tools">
+            <button class="composer-iconbtn" title="Attach"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+            <button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+          <button class="composer-send" title="Send"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V4M4 7l4-3 4 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

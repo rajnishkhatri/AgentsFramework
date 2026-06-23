@@ -86,6 +86,10 @@ Storybook already has a foothold: `PyramidPanel.stories.tsx`, `SandboxedCanvas.s
 One token file is the single source of truth for color/spacing/type across web + Tauri + Capacitor,
 because all three render the same web CSS.
 
+> **Path note (2026-06-23):** `design/` was relocated to `frontend/design/` so all DesignSync
+> context (tokens + components + conventions) lives under one anchor folder (`frontend/`). Read
+> the paths below as `frontend/design/tokens/...`. See `docs/plans/designsync_code_sync.handbook.md`.
+
 ```
 design/tokens/*.tokens.json   (DTCG, $-prefixed, git-tracked — the authority)
         │  style-dictionary build
@@ -235,7 +239,14 @@ to the redesign, not separate.
 - Respect `prefers-color-scheme` → drive `[data-theme]`.
 
 ### 4c. Cross-cutting
-- **Touch targets ≥ 44×44pt** (HIG) on interactive elements.
+- **Touch targets ≥ 44×44pt** (HIG) on interactive elements. **[DONE — P4]** Header
+  chrome (ThemeToggle 32→44, Sign-out link padded to min-h-11=44) and composer
+  affordances (Add 32→44, model picker →min-h-11=44, Send puck 36→44) all brought
+  to ≥44pt hit areas; icon glyphs unchanged. The hamburger was already 44. Gated
+  by `e2e/mobile-responsive.spec.ts` (now asserts `header button` + `header a` +
+  `form button`); passes under `E2E_BYPASS_AUTH=1`. eval-banner is a non-interactive
+  `<span>` (exempt). Measured: ThemeToggle 44×44, Sign-out 69×44, Add 44×44, model
+  155×44, Send 44×44.
 - **Gate hover styles behind `@media (hover: hover)`** so they don't stick on touch.
 - **System font option:** add `"SF Pro", system-ui, -apple-system` to the font stack so the wrapped
   UI can inherit the OS font (token in §2a; decide Geist-first vs system-first per platform).
@@ -271,19 +282,38 @@ Redesign the chat surface to current agentic-UI expectations:
 | **P1** | shadcn primitive layer (§3) consuming tokens + §2.6 Cursor warm-neutral shape rules; reconcile existing `button` | 3–4 d | primitives in Storybook, on-aesthetic | ✅ done |
 | **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds | ✅ done |
 | **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project | ✅ done |
-| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏳ next |
+| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | 🔶 re-sync done (2026-06-23); design-agent loop pending (auth landed; incremental re-sync pushed the drifted `conventions.md` — terracotta accent fix + P3/P4 sections; component HTML + `styles.css` already current. Remaining: prompt the design agent in claude.ai/design to compose layouts, pull back) |
 | **P2** | Implement redesigned chat surface (§6) — pill composer, recessed sidebar, soft selection, status-orb live states (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic | ✅ done (terracotta re-theme + chat-surface migrated to primitives; PS3 design-agent pass still feeds further layout work) |
-| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | — |
-| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | — |
+| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | ✅ done (mobile thread-rail drawer via Sheet + hamburger; `@container` queries on Composer/ToolCard/TaskUnderstandingCard; `@max`/breakpoint compact states; Composer responsive stories; verified at 375/768/1280 in-browser, 141 component tests green) |
+| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | 🔶 partial (✅ §4a safe-area insets + overscroll-contain + momentum scroll + selectable-message-text; ✅ §4c 44pt touch targets + hover-gating + system-font-first stack — all pre-wrap-safe, verified live. ⏳ remaining: scroll-to-bottom button, long-press message actions, keyboard-pinned composer (P6-coupled); §4b macOS titlebar is P5) |
 | **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView | — |
 | **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device | — |
 
 **Ordering:** P0 (tokens) → P1 (primitives) gate **PS1→PS2→PS3** — design-sync imports a *built*
 library, so the primitives must exist and be storybook-covered before the first sync. PS3 (design
-agent composes layouts) feeds P2 (implement). Re-run design-sync (incremental) whenever the library
-changes so the agent always designs with current parts. P0–P4 + PS* are pure web work (no native
-toolchain) and ship to the existing Cloud Run web app along the way — the redesign is live on web
-before either shell exists. P5/P6 are the wrap.
+agent composes layouts) was framed to feed P2 (implement), but **P2 already shipped code-first**
+(terracotta re-theme + chat surface on primitives) — so PS3 is now an *additive* layout-refinement
+loop, not a P2 blocker, and is parked pending `/design-login` access. Re-run design-sync (incremental)
+whenever the library changes so the agent always designs with current parts. P0–P4 + PS* are pure web
+work (no native toolchain) and ship to the existing Cloud Run web app along the way — the redesign is
+live on web before either shell exists. P5/P6 are the wrap.
+
+**Current frontier (2026-06-23):** P0/P1/PS1/PS2/P2/P3 ✅ done; P4 🔶 partial (native-feel §4a/§4c
+shipped, pre-wrap); PS3 🔶 re-sync done (auth landed; drifted `conventions.md` pushed), design-agent
+layout loop pending (user-driven in claude.ai/design). The remaining *actionable-on-web* work is the
+rest of P4 (scroll-to-bottom, long-press actions, keyboard-pinned composer) — each needs a UX call.
+P5/P6 (the native wraps) gate on the §10 decisions (font-per-platform, Apple Developer enrollment,
+macOS distribution).
+
+> **Deferred — right-hand detail / reasoning panel (P-future).** Plan §5 + the design-sync spec
+> (`docs/design/native_wrap_ui_redesign/designsyncLatest/Responsive Layout Spec.md` §2.1/§4.2)
+> describe a desktop **three-pane** layout — a collapsible `w-80` right detail panel and a mobile
+> bottom-`Sheet` reasoning panel. **This is NOT built.** The shipped app is **two-pane**
+> (`grid lg:grid-cols-[auto_2px_1fr]` = rail · etched groove · chat; verified
+> `app/chat-shell.tsx:523`). It's a real feature (needs its own design pass + content decision —
+> what the panel holds: reasoning trace? memory? eval detail?), not a style tweak, so it's parked
+> as P-future rather than folded into P2/P3. The design artifacts now flag every "three-pane"/`w-80`
+> reference as design-target, not as-shipped.
 
 > **design-sync is optional/additive.** Dropping PS1–PS3 reverts to the pure code-first path
 > (P0→P1→P2 with v0 for variants). The token pipeline (§2) and everything downstream are unchanged —

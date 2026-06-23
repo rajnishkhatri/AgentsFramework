@@ -1,0 +1,29 @@
+{
+  "text": {
+    "_note": "Frozen v17: every size bumped +2px from the original scale (root = 16px). Line-heights unchanged.",
+    "xs": {
+      "size": { "$value": "0.875rem", "$type": "dimension", "$description": "14px — metadata, trace, step, labels" },
+      "lineHeight": { "$value": "1.4", "$type": "number" }
+    },
+    "sm": {
+      "size": { "$value": "1rem", "$type": "dimension", "$description": "16px — tool I/O, task list, reasoning, body-small" },
+      "lineHeight": { "$value": "1.5", "$type": "number" }
+    },
+    "base": {
+      "size": { "$value": "1.125rem", "$type": "dimension", "$description": "18px — the answer / body" },
+      "lineHeight": { "$value": "1.6", "$type": "number" }
+    },
+    "lg": {
+      "size": { "$value": "1.25rem", "$type": "dimension", "$description": "20px — heading 3" },
+      "lineHeight": { "$value": "1.5", "$type": "number" }
+    },
+    "xl": {
+      "size": { "$value": "1.5rem", "$type": "dimension", "$description": "24px — heading 2 / section headers" },
+      "lineHeight": { "$value": "1.3", "$type": "number" }
+    },
+    "2xl": {
+      "size": { "$value": "1.75rem", "$type": "dimension", "$description": "28px — display / heading 1 / empty-state hero" },
+      "lineHeight": { "$value": "1.2", "$type": "number" }
+    }
+  }
+}
