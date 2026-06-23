@@ -8,9 +8,15 @@ All designs MUST adhere to these constraints — they are not preferences, they 
 - Light tokens: `design/tokens/color.tokens.json`
 - Dark tokens: `design/tokens/color.dark.tokens.json`
 - Radius tokens: `design/tokens/radius.tokens.json`
+- Font tokens: `design/tokens/font.tokens.json` (the SF-first / Geist-fallback stacks)
+- Type-scale tokens: `design/tokens/type.tokens.json` (`text.xs…2xl` size + line-height)
+- Spacing token: `design/tokens/space.tokens.json` (Tailwind spacing base)
 - CSS bundle: `_ds_bundle/styles.css` (custom properties on `:root`, dark via `[data-theme="dark"]`)
 
-Never hard-code hex values — always use `var(--color-*)` or `var(--radius-*)` tokens.
+Never hard-code hex values, font stacks, or type sizes — always use `var(--color-*)`,
+`var(--radius-*)`, `var(--font-*)`, or the `text-*` utilities. For the semantic role names
+(Heading 1/2/3, Body, Body Small, Label…) and the font strategy, see the **Typography** section
+in `spec.md` — that table is the contract for which utility each role means.
 
 > **Where the tactile classes live:** the surface treatments below (`.surface-etched`,
 > `.separator-etched*`, `.bubble-user`, `.btn-shine`) are token-driven CSS in
@@ -28,6 +34,19 @@ Every screen MUST look like this:
 - **Soft chrome**: radius-lg for cards/dialogs/sheets/message bubbles. Radius-md for inputs/buttons. Radius-sm for chips/badges.
 - **Pill composer**: message input = rounded-lg textarea with hairline border, auto-grows with content.
 - **No ambient shadows**: shadows only on floating/overlay elements (dialogs, sheets, dropdowns, toasts).
+
+## Typography intent
+
+- **Font:** one family — the `--font-sans` stack (SF-native on Apple, Geist fallback elsewhere).
+  Mono (`--font-mono`) only for code. The stacks are **frozen (v12)** — preserve verbatim, never
+  swap or reorder.
+- **Emphasis is weight, not size jumps:** headings/titles use **semibold (600)**; secondary
+  emphasis uses **medium (500)**. **Never `bold` (700)** — it is not used anywhere in the system.
+- **Accent is for links/CTAs only**, never body text colour. Links are `text-accent underline`.
+- **One scale, all devices** — the type scale does not change per device (web/macOS/iOS share it).
+- **Use the role names, not ad-hoc sizes:** new UI must pick a semantic role (Heading 1/2/3,
+  Title, Body, Body Small, Label/Meta, Mono) from the **Typography** table in `spec.md`, which maps
+  each role to a `text-*` utility + weight. Don't invent new size/weight pairings.
 
 ## Primitive library (14 components)
 

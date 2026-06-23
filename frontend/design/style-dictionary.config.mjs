@@ -6,7 +6,7 @@ import { glob } from 'fs/promises';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
 const TOKENS_DIR = path.join(ROOT, 'tokens');
-const OUT_FILE = path.join(ROOT, '..', 'frontend', 'app', 'generated-theme.css');
+const OUT_FILE = path.join(ROOT, '..', 'app', 'generated-theme.css');
 
 // --- load all token files ---
 async function loadTokenFiles(pattern) {
