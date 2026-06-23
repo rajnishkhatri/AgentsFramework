@@ -1,9 +1,9 @@
 {
   "color": {
     "bg": {
-      "$value": "#1f1e1d",
+      "$value": "#241c15",
       "$type": "color",
-      "$description": "Page background (dark)"
+      "$description": "Page background (dark) — deep warm cocoa (finalized P2)"
     },
     "fg": {
       "$value": "#f9f7f5",
@@ -11,14 +11,24 @@
       "$description": "Primary foreground / text (dark)"
     },
     "muted": {
-      "$value": "#9ca3af",
+      "$value": "#e4e1da",
       "$type": "color",
-      "$description": "Muted / secondary text (dark)"
+      "$description": "Muted / secondary text (dark) — brightened for readability on cocoa bg"
     },
     "accent": {
-      "$value": "#818cf8",
+      "$value": "#d98b6a",
       "$type": "color",
-      "$description": "Primary accent / interactive (dark)"
+      "$description": "Primary accent / interactive (dark) — warm terracotta tint"
+    },
+    "danger": {
+      "$value": "#e57368",
+      "$type": "color",
+      "$description": "Destructive action / error (dark)"
+    },
+    "success": {
+      "$value": "#5cba86",
+      "$type": "color",
+      "$description": "Success / positive state (dark)"
     }
   }
 }
