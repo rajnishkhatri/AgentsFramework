@@ -15,11 +15,11 @@ function buttonClasses(
 ): string {
   return cn(
     "inline-flex items-center justify-center font-semibold transition-opacity",
-    "rounded-md disabled:cursor-not-allowed disabled:opacity-60 no-underline",
+    "rounded-full disabled:cursor-not-allowed disabled:opacity-60 no-underline",
     variant === "default" && "btn-shine text-white",
     variant === "outline" && "bg-transparent text-fg border border-border",
     variant === "ghost" && "bg-transparent text-fg border-0",
-    size === "sm" && "px-2.5 py-1 text-sm rounded-sm",
+    size === "sm" && "px-2.5 py-1 text-sm",
     size === "md" && "px-4 py-2 text-base",
     className,
   );

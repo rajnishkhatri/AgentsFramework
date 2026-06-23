@@ -1,18 +1,19 @@
 {
   "$schema": "https://design-tokens.github.io/community-group/format/",
-  "$description": "AgentsFramework UI — dark theme color tokens (DTCG). Explicit derived tokens: the dark surfaces/borders/overlays use richer per-mode mix percentages than light (surface 92/8 vs 96/4, sunken 85/15, accent-light 22%, selected/borders bumped). Per the P0 architecture, the source only redeclares *primitives* for dark and lets derived tokens recompute; this file re-introduces the per-mode derived values explicitly so the dark look (Cocoa base + embossed/etched separation) is preserved by the build instead of being flattened to the light percentages. Derived $values are the oklab color-mix recipes resolved to sRGB; keep the recipe in $extensions for regeneration if a primitive changes.",
+  "$description": "AgentsFramework UI — dark theme color tokens (DTCG). Explicit derived tokens use richer per-mode mix percentages than light. Derived $values are the oklab color-mix recipes resolved to sRGB; keep the recipe in $extensions for regeneration if a primitive changes.",
   "color": {
     "$type": "color",
 
     "bg":      { "$value": "#241c15", "$description": "Dark base background — Cocoa (frozen v13)." },
     "fg":      { "$value": "#f9f7f5", "$description": "Primary foreground / text." },
     "muted":   { "$value": "#e4e1da", "$description": "Secondary text — brightened for dark legibility (frozen v11)." },
-    "accent":  { "$value": "#d98b6a", "$description": "Terracotta accent, dark-tuned." },
+    "accent":  { "$value": "#e5967c", "$description": "Coral accent, dark-tuned (frozen v16) — same hue as light #d87758, lifted L / trimmed C." },
     "danger":  { "$value": "#e57368", "$description": "Error / destructive, dark-tuned." },
     "success": { "$value": "#5cba86", "$description": "Success / complete, dark-tuned." },
+    "warning": { "$value": "#e3b357", "$description": "Warning / caution, dark-tuned (frozen v20)." },
 
     "accent-light": {
-      "$value": "rgba(219, 141, 105, 0.22)",
+      "$value": "rgba(229, 150, 124, 0.22)",
       "$description": "Accent wash for badges/hover. Per-mode: 22% in dark (vs 15% light).",
       "$extensions": { "com.agentsframework.mix": "color-mix(in oklab, {color.accent} 22%, transparent)" }
     },
@@ -28,22 +29,22 @@
     },
     "surface": {
       "$value": "#322a24",
-      "$description": "Raised surface (cards, sidebar, menus). Per-mode: bg 92% / fg 8% in dark (vs 96/4 light) — preserves embossed separation on Cocoa.",
+      "$description": "Raised surface (cards, sidebar, menus). Per-mode: bg 92% / fg 8% in dark.",
       "$extensions": { "com.agentsframework.mix": "color-mix(in oklab, {color.bg} 92%, {color.fg} 8%)" }
     },
     "surface-sunken": {
       "$value": "#3f3831",
-      "$description": "Sunken/inset surface. Per-mode: bg 85% / fg 15% in dark (vs 92/8 light).",
+      "$description": "Sunken/inset surface. Per-mode: bg 85% / fg 15% in dark.",
       "$extensions": { "com.agentsframework.mix": "color-mix(in oklab, {color.bg} 85%, {color.fg} 15%)" }
     },
     "selected": {
       "$value": "rgba(245, 245, 245, 0.102)",
-      "$description": "Selected/hover overlay. Per-mode: fg 10% in dark (vs 6% light).",
+      "$description": "Selected/hover overlay. Per-mode: fg 10% in dark.",
       "$extensions": { "com.agentsframework.mix": "color-mix(in oklab, {color.fg} 10%, transparent)" }
     },
     "placeholder": {
       "$value": "#9c998f",
-      "$description": "Dark-only input placeholder — dimmed below --color-muted so empty fields still read as empty against the brightened secondary text (frozen v11 safeguard)."
+      "$description": "Dark-only input placeholder — dimmed below --color-muted (frozen v11 safeguard)."
     }
   }
 }

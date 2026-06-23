@@ -16,9 +16,9 @@
       "$description": "Muted / secondary text (light)"
     },
     "accent": {
-      "$value": "#c2704e",
+      "$value": "#d87758",
       "$type": "color",
-      "$description": "Primary accent / interactive (light) — terracotta (finalized P2)"
+      "$description": "Primary accent / interactive (light) — coral, matched to brand swatch (frozen v16)"
     },
     "accent-light": {
       "$value": "color-mix(in oklab, var(--color-accent) 15%, transparent)",
@@ -59,6 +59,11 @@
       "$value": "#2f8f5b",
       "$type": "color",
       "$description": "Success / positive state (light)"
+    },
+    "warning": {
+      "$value": "#a9741f",
+      "$type": "color",
+      "$description": "Warning / caution (light) — promoted from inline .badge-warning to a token (frozen v20)"
     }
   }
 }

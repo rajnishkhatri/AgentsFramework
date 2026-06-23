@@ -100,37 +100,31 @@ code {
   box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 26%, transparent);
 }
 
-/* Etched card — recessed inset shadow + bottom highlight (design .etched). */
+/* Surface (Option E, frozen v19) — flat fill defined by a 1.5px border + a soft
+   drop shadow. No embossed/etched insets. .surface-etched and .surface-embossed
+   now share the same treatment (kept as two class names so existing call sites
+   compose unchanged). */
 .surface-etched {
-  border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
-  box-shadow:
-    inset 0 2px 4px color-mix(in oklab, #000 9%, transparent),
-    inset 0 1px 0 color-mix(in oklab, #000 4%, transparent),
-    0 1px 0 color-mix(in oklab, #fff 60%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--color-fg) 18%, transparent);
+  box-shadow: 0 4px 12px -4px color-mix(in oklab, #000 20%, transparent);
 }
 
-/* Embossed card — raised inset highlight + soft drop (design .embossed). */
 .surface-embossed {
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 70%, transparent),
-    0 1px 2px color-mix(in oklab, #000 12%, transparent);
+  border: 1.5px solid color-mix(in oklab, var(--color-fg) 18%, transparent);
+  box-shadow: 0 4px 12px -4px color-mix(in oklab, #000 20%, transparent);
 }
 
-/* Etched grooves (design .separator-etched / -etched-v / -label). A dark top
-   (or left) edge over a #fff highlight bottom (or right) edge reads as a groove
-   pressed into the surface — the highlight catches light on cocoa in dark mode
-   too. Used to separate sidebar groups + the rail↔chat divide. */
+/* Dividers (Option E, frozen v19) — solid hairlines, no #fff groove highlight.
+   Used to separate sidebar groups + the rail↔chat divide. */
 .separator-etched {
-  height: 2px;
+  height: 0;
   width: 100%;
-  border-top: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
-  border-bottom: 1px solid color-mix(in oklab, #fff 85%, transparent);
+  border-top: 1.5px solid color-mix(in oklab, var(--color-fg) 18%, transparent);
 }
 .separator-etched-v {
-  width: 2px;
+  width: 0;
   align-self: stretch;
-  border-left: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
-  border-right: 1px solid color-mix(in oklab, #fff 85%, transparent);
+  border-left: 1.5px solid color-mix(in oklab, var(--color-fg) 18%, transparent);
 }
 /* "TODAY" labeled divider — centered caps label with a hairline rule on each
    side (design .separator-label). */
@@ -140,7 +134,7 @@ code {
   gap: 12px;
   width: 100%;
   color: var(--color-muted);
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;

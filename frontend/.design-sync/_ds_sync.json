@@ -8,7 +8,9 @@
   "token_source": [
     "design/tokens/color.tokens.json",
     "design/tokens/color.dark.tokens.json",
-    "design/tokens/radius.tokens.json"
+    "design/tokens/radius.tokens.json",
+    "design/tokens/type.tokens.json",
+    "design/tokens/font.tokens.json"
   ],
   "components": [
     {"name":"Button",       "group":"Actions",    "path":"ui_kits/agentsframework/button.html",        "source":"components/ui/button.tsx"},
