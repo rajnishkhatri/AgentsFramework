@@ -2,7 +2,7 @@
   "version": 1,
   "project_id": "f8ce5c07-a053-4017-a4c0-b0602a2fc3e8",
   "project_name": "AgentsFramework UI",
-  "sync_date": "2026-06-22",
+  "sync_date": "2026-06-23",
   "shape": "html-previews",
   "token_source": [
     "design/tokens/color.tokens.json",
