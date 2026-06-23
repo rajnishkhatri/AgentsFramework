@@ -1,6 +1,6 @@
 ---
 title: Native-wrap UI redesign (Tauri 2 macOS + Capacitor 7 iOS)
-status: draft
+status: in-progress
 created: 2026-06-22
 owner: Rajnish Khatri
 todos:
@@ -265,18 +265,18 @@ Redesign the chat surface to current agentic-UI expectations:
 
 ## 7. Phased execution
 
-| Phase | Deliverable | Rough size | Gate |
-|---|---|---|---|
-| **P0** | DTCG tokens migrated from current `@theme`; Style Dictionary build; generated `globals.css` block | 2–3 d | `pnpm tokens:build` green; visual diff = no regression |
-| **P1** | shadcn primitive layer (§3) consuming tokens + §2.6 Cursor warm-neutral shape rules; reconcile existing `button` | 3–4 d | primitives in Storybook, on-aesthetic |
-| **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds |
-| **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project |
-| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code |
-| **P2** | Implement redesigned chat surface (§6) from the design-agent output — pill composer, recessed sidebar, soft selection (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic |
-| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser |
-| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) |
-| **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView |
-| **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device |
+| Phase | Deliverable | Rough size | Gate | Status |
+|---|---|---|---|---|
+| **P0** | DTCG tokens migrated from current `@theme`; Style Dictionary build; generated `globals.css` block | 2–3 d | `pnpm tokens:build` green; visual diff = no regression | ✅ done |
+| **P1** | shadcn primitive layer (§3) consuming tokens + §2.6 Cursor warm-neutral shape rules; reconcile existing `button` | 3–4 d | primitives in Storybook, on-aesthetic | ✅ done |
+| **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds | ✅ done |
+| **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project | ✅ done |
+| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏳ next |
+| **P2** | Implement redesigned chat surface (§6) — pill composer, recessed sidebar, soft selection, status-orb live states (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic | ✅ done (terracotta re-theme + chat-surface migrated to primitives; PS3 design-agent pass still feeds further layout work) |
+| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | — |
+| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | — |
+| **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView | — |
+| **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device | — |
 
 **Ordering:** P0 (tokens) → P1 (primitives) gate **PS1→PS2→PS3** — design-sync imports a *built*
 library, so the primitives must exist and be storybook-covered before the first sync. PS3 (design

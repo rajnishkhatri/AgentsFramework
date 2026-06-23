@@ -1,5 +1,10 @@
 /**
- * Mobile-first responsive composer (S3.8.5, F4).
+ * Mobile-first responsive composer (S3.8.5, F4) — Cursor warm-neutral pill (§2.6).
+ *
+ * Shape (P2 redesign): a single soft `radius-lg` pill with a hairline border
+ * that lifts to the accent on focus-within; the autosizing Textarea primitive
+ * sits flush inside it and the send button is a round accent puck with an
+ * up-arrow glyph. One rationed accent, no chrome — the look in the screenshot.
  *
  * Keyboard shortcuts: Enter submits. ⌘↩ / Ctrl↩ / Shift↩ insert a newline.
  *
@@ -8,13 +13,10 @@
  * Without the guard, the Enter key that confirms a kana/hangul/pinyin
  * candidate selection would also fire Enter and double-fire onSend.
  *
- * Autosize (FD2.U_AUTOSIZE): the textarea uses CSS `field-sizing: content`
- * (Tailwind v4 arbitrary property) to grow with content up to a documented
- * max of 6 lines, then scrolls. `min-h-[2.5rem]` and `max-h-[12rem]`
- * (~6 × 2rem line-height) bracket the autosize range. `resize-y` is kept
- * as a secondary manual-drag override so the user can still nudge the
- * height when desired; CSS field-sizing is the primary growth signal so
- * mobile keyboards never see a fixed-height textarea (F4).
+ * Autosize (FD2.U_AUTOSIZE): the Textarea primitive uses CSS
+ * `field-sizing: content` (Tailwind v4 arbitrary property) to grow with
+ * content up to a documented max of ~6 lines, then scrolls. `min-h-[2.5rem]`
+ * and `max-h-[12rem]` (~6 × 2rem line-height) bracket the autosize range.
  */
 
 // B1: 'use client' required — useState for body text, useRef for textarea,
@@ -22,6 +24,8 @@
 "use client";
 
 import * as React from "react";
+import { ArrowUp } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export function Composer(props: {
@@ -53,22 +57,31 @@ export function Composer(props: {
     }
   }
 
+  const disabled = props.busy || body.trim().length === 0;
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
-      className="flex gap-2 p-3 border-t border-border-light bg-bg"
+      // The pill: soft radius-lg chrome, hairline border that warms to the
+      // accent on focus-within. surface-sunken keeps it a half-step recessed
+      // from the canvas so it reads as an input well, not a card.
+      className={cn(
+        "flex items-end gap-2 p-2 pl-4",
+        "rounded-lg border border-border bg-surface-sunken",
+        "transition-colors focus-within:border-accent",
+      )}
     >
       {/*
-        Autosize contract (FD2.U_AUTOSIZE): `field-sizing: content` is the
-        primary growth driver. The min-h floor keeps a single visible
-        line; the max-h ceiling caps growth at ~6 lines (matches the rule
-        default in `architecture_rules.j2`) before the textarea begins to
-        scroll. `resize-y` is the manual-override fallback.
+        Autosize contract (FD2.U_AUTOSIZE): the Textarea primitive owns
+        `field-sizing: content`. Inside the pill it drops its own border /
+        background / padding so it reads as one continuous well; the pill
+        provides the chrome. The min-h floor keeps a single visible line;
+        the max-h ceiling caps growth at ~6 lines before it scrolls.
       */}
-      <textarea
+      <Textarea
         ref={taRef}
         rows={1}
         value={body}
@@ -77,23 +90,22 @@ export function Composer(props: {
         onKeyDown={onKeyDown}
         aria-label="Compose message"
         className={cn(
-          "flex-1 bg-transparent text-fg border border-border",
-          "rounded-md px-3 py-2 text-[0.95rem] font-[inherit]",
-          "[field-sizing:content] min-h-[2.5rem] max-h-[12rem]",
-          "resize-y",
+          "flex-1 border-0 bg-transparent px-0 py-2",
+          "focus:border-0 focus:outline-none",
         )}
       />
       <button
         type="submit"
-        disabled={props.busy || body.trim().length === 0}
+        disabled={disabled}
         aria-label="Send"
+        // Round accent puck — the one rationed accent in the composer.
         className={cn(
-          "bg-accent text-white border-0 rounded-md px-4",
-          "font-semibold cursor-pointer",
-          "disabled:cursor-not-allowed disabled:opacity-60",
+          "flex size-9 shrink-0 items-center justify-center rounded-full",
+          "bg-accent text-white transition-opacity",
+          "cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
         )}
       >
-        Send
+        <ArrowUp className="size-5" aria-hidden="true" />
       </button>
     </form>
   );

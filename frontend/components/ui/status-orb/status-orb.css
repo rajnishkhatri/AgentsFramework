@@ -1,0 +1,45 @@
+/* ============================================================
+   AgentsFramework UI — Pulsing Status Orb  (v14)
+   A small "alive" indicator with a radar-pulse halo.
+   Standalone: token references fall back to literal values,
+   so this works with or without the AgentsFramework token set.
+   ============================================================ */
+
+.status-orb{
+  position:relative;
+  display:inline-block;
+  width:11px;
+  height:11px;
+  flex:none;
+}
+.status-orb::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:var(--color-accent, #c2704e);
+}
+.status-orb::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:var(--color-accent, #c2704e);
+  animation:orb-pulse 1.6s ease-out infinite;
+}
+
+/* state variants */
+.status-orb.is-success::before,
+.status-orb.is-success::after{ background:var(--color-success, #2f8f5b); }
+.status-orb.is-danger::before,
+.status-orb.is-danger::after{ background:var(--color-danger, #c0392b); }
+
+@keyframes orb-pulse{
+  0%  { transform:scale(1);   opacity:.55; }
+  100%{ transform:scale(2.6); opacity:0;   }
+}
+
+/* respect reduced-motion: show the dot, drop the pulse */
+@media (prefers-reduced-motion: reduce){
+  .status-orb::after{ animation:none; }
+}

@@ -91,10 +91,17 @@ function RunStatusLine(props: {
     return (
       <p
         data-testid="terminal-marker"
-        className="text-xs text-muted m-0"
+        className="text-xs text-muted m-0 flex items-center gap-1.5"
         aria-label="Run complete"
       >
-        ✓ done
+        {/* Eval captures freeze animation (decision D-A): show ✓ instead of
+           the pulsing orb so frozen captures stay deterministic. */}
+        {props.evalMode ? (
+          <span aria-hidden="true">✓</span>
+        ) : (
+          <span className="status-orb is-success" aria-hidden="true" />
+        )}
+        done
       </p>
     );
   }
@@ -115,7 +122,13 @@ function RunStatusLine(props: {
       aria-live="polite"
       className="text-xs text-muted m-0 grid gap-0.5"
     >
-      <p className={props.evalMode ? "m-0" : "m-0 animate-pulse"}>{label}</p>
+      {/* Streaming "alive" indicator: the pulsing status-orb carries the
+         motion (reduced-motion safe via status-orb.css). In eval mode the
+         orb's pulse is irrelevant — captures freeze on the static label. */}
+      <p className="m-0 flex items-center gap-1.5">
+        {props.evalMode ? null : <span className="status-orb" aria-hidden="true" />}
+        {label}
+      </p>
       {narration ? (
         // Reasoning layer: sans italic muted (Appendix A) -- visually
         // distinct from the answer so thinking is never read as prose.
@@ -421,7 +434,9 @@ export function ChatShell(props: {
        * center is always present.
        */}
       <div className="grid lg:grid-cols-[auto_1fr] overflow-hidden">
-        <div className="hidden lg:block overflow-y-auto">
+        {/* Recessed rail (§2.6): surface-sunken + hairline keeps the thread
+           history a half-step behind the chat canvas, Cursor-style. */}
+        <div className="hidden lg:block overflow-y-auto bg-surface-sunken border-r border-border-light">
           <SidebarPanel
             threads={visibleThreads}
             {...(activeThreadId ? { activeThreadId } : {})}

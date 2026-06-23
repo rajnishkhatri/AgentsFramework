@@ -1,8 +1,10 @@
 /**
- * Theme toggle (S3.8.8, F9).
+ * Theme toggle (S3.8.8, F9) — Cursor warm-neutral (§2.6).
  *
- * Uses `next-themes` for theme management per Style Guide §2 prescription.
- * CSS variables in `app/globals.css` are flipped via `[data-theme="dark"]`.
+ * Ghost icon button (Button primitive) showing a sun in dark mode / moon in
+ * light mode — quiet header chrome, no rationed accent spent here. Uses
+ * `next-themes` for theme management per Style Guide §2 prescription. CSS
+ * variables in `app/globals.css` are flipped via `[data-theme="dark"]`.
  */
 
 // B1: 'use client' required — useTheme hook from next-themes, onClick handler.
@@ -10,7 +12,8 @@
 
 import * as React from "react";
 import { useTheme } from "next-themes";
-import { cn } from "@/lib/utils";
+import { Moon, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function ThemeToggle(): React.JSX.Element {
   const { resolvedTheme, setTheme } = useTheme();
@@ -18,32 +21,36 @@ export function ThemeToggle(): React.JSX.Element {
 
   React.useEffect(() => setMounted(true), []);
 
+  // Pre-mount: render the same-sized ghost shell with the generic label so
+  // there is no layout shift and SSR/CSR markup matches until theme resolves.
   if (!mounted) {
     return (
-      <button
-        className={cn(
-          "bg-transparent text-fg border border-border",
-          "rounded-sm px-2.5 py-1 cursor-pointer",
-        )}
+      <Button
+        variant="ghost"
+        size="sm"
+        className="size-8 px-0"
         aria-label="Toggle theme"
       >
-        &nbsp;
-      </button>
+        <span className="size-4" aria-hidden="true" />
+      </Button>
     );
   }
 
   const isDark = resolvedTheme === "dark";
 
   return (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
+      className="size-8 px-0 hover:bg-selected"
       onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={`Switch to ${isDark ? "light" : "dark"} theme`}
-      className={cn(
-        "bg-transparent text-fg border border-border",
-        "rounded-sm px-2.5 py-1 cursor-pointer",
-      )}
     >
-      {isDark ? "Light" : "Dark"}
-    </button>
+      {isDark ? (
+        <Sun className="size-4" aria-hidden="true" />
+      ) : (
+        <Moon className="size-4" aria-hidden="true" />
+      )}
+    </Button>
   );
 }
