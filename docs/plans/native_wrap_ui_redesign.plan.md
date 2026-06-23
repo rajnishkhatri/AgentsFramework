@@ -295,10 +295,21 @@ work (no native toolchain) and ship to the existing Cloud Run web app along the 
 live on web before either shell exists. P5/P6 are the wrap.
 
 **Current frontier (2026-06-23):** P0/P1/PS1/PS2/P2/P3 ✅ done; P4 🔶 partial (native-feel §4a/§4c
-shipped, pre-wrap); PS3 ⏸️ blocked on `/design-login`. The remaining *actionable-on-web* work is the
+shipped, pre-wrap); PS3 🔶 re-sync done (auth landed; drifted `conventions.md` pushed), design-agent
+layout loop pending (user-driven in claude.ai/design). The remaining *actionable-on-web* work is the
 rest of P4 (scroll-to-bottom, long-press actions, keyboard-pinned composer) — each needs a UX call.
 P5/P6 (the native wraps) gate on the §10 decisions (font-per-platform, Apple Developer enrollment,
 macOS distribution).
+
+> **Deferred — right-hand detail / reasoning panel (P-future).** Plan §5 + the design-sync spec
+> (`docs/design/native_wrap_ui_redesign/designsyncLatest/Responsive Layout Spec.md` §2.1/§4.2)
+> describe a desktop **three-pane** layout — a collapsible `w-80` right detail panel and a mobile
+> bottom-`Sheet` reasoning panel. **This is NOT built.** The shipped app is **two-pane**
+> (`grid lg:grid-cols-[auto_2px_1fr]` = rail · etched groove · chat; verified
+> `app/chat-shell.tsx:523`). It's a real feature (needs its own design pass + content decision —
+> what the panel holds: reasoning trace? memory? eval detail?), not a style tweak, so it's parked
+> as P-future rather than folded into P2/P3. The design artifacts now flag every "three-pane"/`w-80`
+> reference as design-target, not as-shipped.
 
 > **design-sync is optional/additive.** Dropping PS1–PS3 reverts to the pure code-first path
 > (P0→P1→P2 with v0 for variants). The token pipeline (§2) and everything downstream are unchanged —
