@@ -61,6 +61,20 @@ describe("TaskList — rendering", () => {
     expect(row?.className).toContain("line-through");
   });
 
+  it("renders lucide SVG status icons, never raw glyphs", () => {
+    const d = render(view("pending", "in_progress", "completed", "cancelled"));
+    // every row carries an inline lucide <svg>, not a text glyph
+    for (const id of ["t1", "t2", "t3", "t4"]) {
+      const row = d.querySelector(`[data-testid="todo-${id}"]`);
+      expect(row?.querySelector("svg"), `row ${id} missing svg icon`).toBeTruthy();
+    }
+    // the old Unicode glyphs must not survive the lucide migration
+    const body = d.body.textContent ?? "";
+    for (const glyph of ["○", "◐", "✓", "⊘"]) {
+      expect(body, `leftover glyph ${glyph}`).not.toContain(glyph);
+    }
+  });
+
   it("collapses items past the visible cap behind an expander", () => {
     const d = render(
       view(

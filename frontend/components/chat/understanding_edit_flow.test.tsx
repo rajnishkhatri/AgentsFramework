@@ -212,6 +212,12 @@ describe("understanding edit round trip — failure path first", { timeout: 60_0
     click(byTestId("understanding-edit")!);
     await until(() => byTestId("understanding-intent-input") !== null, "form");
 
+    // The per-condition remove control is a lucide <X> SVG, not a raw ✕ glyph
+    // (conventions.md: "Icons are lucide line SVGs, never emoji").
+    const removeBtn = byTestId("understanding-remove-condition-0");
+    expect(removeBtn?.querySelector("svg")).toBeTruthy();
+    expect(removeBtn?.textContent ?? "").not.toContain("✕");
+
     setValue(
       byTestId("understanding-intent-input") as HTMLTextAreaElement,
       "Only verify the file.",

@@ -27,7 +27,7 @@
  */
 
 import * as React from "react";
-import { Square } from "lucide-react";
+import { Square, X } from "lucide-react";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -138,7 +138,7 @@ export function TaskUnderstandingCard(props: {
                 }
                 className="text-muted hover:text-fg disabled:opacity-40 cursor-pointer bg-transparent border-0"
               >
-                ✕
+                <X className="size-3.5" />
               </button>
             </li>
           ))}
