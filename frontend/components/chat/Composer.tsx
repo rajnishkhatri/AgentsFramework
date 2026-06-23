@@ -89,14 +89,17 @@ export function Composer(props: {
       */}
       <Textarea
         ref={taRef}
-        rows={1}
+        rows={2}
         value={body}
         placeholder={props.placeholder ?? "Send a message… (⌘↩ for newline)"}
         onChange={(e) => setBody(e.target.value)}
         onKeyDown={onKeyDown}
         aria-label="Compose message"
+        // Floor at two visible lines (2 × 18px/1.6lh ≈ 3.6rem) so the second
+        // line of entered text is never clipped at rest; `field-sizing: content`
+        // still grows it from there up to the primitive's ~6-line max.
         className={cn(
-          "border-0 bg-transparent px-1 py-0",
+          "border-0 bg-transparent px-1 py-0 min-h-[3.6rem]",
           "focus:border-0 focus:outline-none",
         )}
       />
