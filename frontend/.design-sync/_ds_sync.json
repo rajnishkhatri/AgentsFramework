@@ -4,25 +4,26 @@
   "project_name": "AgentsFramework UI",
   "sync_date": "2026-06-23",
   "shape": "html-previews",
+  "_paths_relative_to": "frontend/ (the DesignSync anchor folder)",
   "token_source": [
     "design/tokens/color.tokens.json",
     "design/tokens/color.dark.tokens.json",
     "design/tokens/radius.tokens.json"
   ],
   "components": [
-    {"name":"Button",       "group":"Actions",    "path":"ui_kits/agentsframework/button.html",        "source":"frontend/components/ui/button.tsx"},
-    {"name":"Badge",        "group":"Actions",    "path":"ui_kits/agentsframework/badge.html",         "source":"frontend/components/ui/badge.tsx"},
-    {"name":"Input",        "group":"Forms",      "path":"ui_kits/agentsframework/input.html",         "source":"frontend/components/ui/input.tsx"},
-    {"name":"Textarea",     "group":"Forms",      "path":"ui_kits/agentsframework/textarea.html",      "source":"frontend/components/ui/textarea.tsx"},
-    {"name":"Card",         "group":"Surfaces",   "path":"ui_kits/agentsframework/card.html",          "source":"frontend/components/ui/card.tsx"},
-    {"name":"Separator",    "group":"Surfaces",   "path":"ui_kits/agentsframework/separator.html",     "source":"frontend/components/ui/separator.tsx"},
-    {"name":"Skeleton",     "group":"Surfaces",   "path":"ui_kits/agentsframework/skeleton.html",      "source":"frontend/components/ui/skeleton.tsx"},
-    {"name":"ScrollArea",   "group":"Surfaces",   "path":"ui_kits/agentsframework/scroll-area.html",   "source":"frontend/components/ui/scroll-area.tsx"},
-    {"name":"Tabs",         "group":"Navigation", "path":"ui_kits/agentsframework/tabs.html",          "source":"frontend/components/ui/tabs.tsx"},
-    {"name":"Dialog",       "group":"Overlays",   "path":"ui_kits/agentsframework/dialog.html",        "source":"frontend/components/ui/dialog.tsx"},
-    {"name":"Sheet",        "group":"Overlays",   "path":"ui_kits/agentsframework/sheet.html",         "source":"frontend/components/ui/sheet.tsx"},
-    {"name":"DropdownMenu", "group":"Overlays",   "path":"ui_kits/agentsframework/dropdown-menu.html", "source":"frontend/components/ui/dropdown-menu.tsx"},
-    {"name":"Tooltip",      "group":"Overlays",   "path":"ui_kits/agentsframework/tooltip.html",       "source":"frontend/components/ui/tooltip.tsx"},
-    {"name":"Toast",        "group":"Feedback",   "path":"ui_kits/agentsframework/toast.html",         "source":"frontend/components/ui/toast.tsx"}
+    {"name":"Button",       "group":"Actions",    "path":"ui_kits/agentsframework/button.html",        "source":"components/ui/button.tsx"},
+    {"name":"Badge",        "group":"Actions",    "path":"ui_kits/agentsframework/badge.html",         "source":"components/ui/badge.tsx"},
+    {"name":"Input",        "group":"Forms",      "path":"ui_kits/agentsframework/input.html",         "source":"components/ui/input.tsx"},
+    {"name":"Textarea",     "group":"Forms",      "path":"ui_kits/agentsframework/textarea.html",      "source":"components/ui/textarea.tsx"},
+    {"name":"Card",         "group":"Surfaces",   "path":"ui_kits/agentsframework/card.html",          "source":"components/ui/card.tsx"},
+    {"name":"Separator",    "group":"Surfaces",   "path":"ui_kits/agentsframework/separator.html",     "source":"components/ui/separator.tsx"},
+    {"name":"Skeleton",     "group":"Surfaces",   "path":"ui_kits/agentsframework/skeleton.html",      "source":"components/ui/skeleton.tsx"},
+    {"name":"ScrollArea",   "group":"Surfaces",   "path":"ui_kits/agentsframework/scroll-area.html",   "source":"components/ui/scroll-area.tsx"},
+    {"name":"Tabs",         "group":"Navigation", "path":"ui_kits/agentsframework/tabs.html",          "source":"components/ui/tabs.tsx"},
+    {"name":"Dialog",       "group":"Overlays",   "path":"ui_kits/agentsframework/dialog.html",        "source":"components/ui/dialog.tsx"},
+    {"name":"Sheet",        "group":"Overlays",   "path":"ui_kits/agentsframework/sheet.html",         "source":"components/ui/sheet.tsx"},
+    {"name":"DropdownMenu", "group":"Overlays",   "path":"ui_kits/agentsframework/dropdown-menu.html", "source":"components/ui/dropdown-menu.tsx"},
+    {"name":"Tooltip",      "group":"Overlays",   "path":"ui_kits/agentsframework/tooltip.html",       "source":"components/ui/tooltip.tsx"},
+    {"name":"Toast",        "group":"Feedback",   "path":"ui_kits/agentsframework/toast.html",         "source":"components/ui/toast.tsx"}
   ]
 }

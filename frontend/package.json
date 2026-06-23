@@ -11,7 +11,7 @@
     }
   },
   "scripts": {
-    "tokens:build": "node ../design/style-dictionary.config.mjs",
+    "tokens:build": "node design/style-dictionary.config.mjs",
     "dev": "pnpm tokens:build && next dev",
     "build": "pnpm tokens:build && next build",
     "start": "next start",

@@ -86,6 +86,10 @@ Storybook already has a foothold: `PyramidPanel.stories.tsx`, `SandboxedCanvas.s
 One token file is the single source of truth for color/spacing/type across web + Tauri + Capacitor,
 because all three render the same web CSS.
 
+> **Path note (2026-06-23):** `design/` was relocated to `frontend/design/` so all DesignSync
+> context (tokens + components + conventions) lives under one anchor folder (`frontend/`). Read
+> the paths below as `frontend/design/tokens/...`. See `docs/plans/designsync_code_sync.handbook.md`.
+
 ```
 design/tokens/*.tokens.json   (DTCG, $-prefixed, git-tracked — the authority)
         │  style-dictionary build
