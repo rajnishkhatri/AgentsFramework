@@ -278,7 +278,7 @@ Redesign the chat surface to current agentic-UI expectations:
 | **P1** | shadcn primitive layer (§3) consuming tokens + §2.6 Cursor warm-neutral shape rules; reconcile existing `button` | 3–4 d | primitives in Storybook, on-aesthetic | ✅ done |
 | **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds | ✅ done |
 | **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project | ✅ done |
-| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏳ next |
+| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏸️ blocked/deferred (offline prep done — `dist/` rebuilt, `conventions.md` refreshed; re-sync needs `/design-login`, which is unavailable in the CLI session — must run from claude.ai/design. Optional/additive per §7: P2 already shipped without it) |
 | **P2** | Implement redesigned chat surface (§6) — pill composer, recessed sidebar, soft selection, status-orb live states (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic | ✅ done (terracotta re-theme + chat-surface migrated to primitives; PS3 design-agent pass still feeds further layout work) |
 | **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | ✅ done (mobile thread-rail drawer via Sheet + hamburger; `@container` queries on Composer/ToolCard/TaskUnderstandingCard; `@max`/breakpoint compact states; Composer responsive stories; verified at 375/768/1280 in-browser, 141 component tests green) |
 | **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | 🔶 partial (✅ §4a safe-area insets + overscroll-contain + momentum scroll + selectable-message-text; ✅ §4c 44pt touch targets + hover-gating + system-font-first stack — all pre-wrap-safe, verified live. ⏳ remaining: scroll-to-bottom button, long-press message actions, keyboard-pinned composer (P6-coupled); §4b macOS titlebar is P5) |
@@ -287,10 +287,18 @@ Redesign the chat surface to current agentic-UI expectations:
 
 **Ordering:** P0 (tokens) → P1 (primitives) gate **PS1→PS2→PS3** — design-sync imports a *built*
 library, so the primitives must exist and be storybook-covered before the first sync. PS3 (design
-agent composes layouts) feeds P2 (implement). Re-run design-sync (incremental) whenever the library
-changes so the agent always designs with current parts. P0–P4 + PS* are pure web work (no native
-toolchain) and ship to the existing Cloud Run web app along the way — the redesign is live on web
-before either shell exists. P5/P6 are the wrap.
+agent composes layouts) was framed to feed P2 (implement), but **P2 already shipped code-first**
+(terracotta re-theme + chat surface on primitives) — so PS3 is now an *additive* layout-refinement
+loop, not a P2 blocker, and is parked pending `/design-login` access. Re-run design-sync (incremental)
+whenever the library changes so the agent always designs with current parts. P0–P4 + PS* are pure web
+work (no native toolchain) and ship to the existing Cloud Run web app along the way — the redesign is
+live on web before either shell exists. P5/P6 are the wrap.
+
+**Current frontier (2026-06-23):** P0/P1/PS1/PS2/P2/P3 ✅ done; P4 🔶 partial (native-feel §4a/§4c
+shipped, pre-wrap); PS3 ⏸️ blocked on `/design-login`. The remaining *actionable-on-web* work is the
+rest of P4 (scroll-to-bottom, long-press actions, keyboard-pinned composer) — each needs a UX call.
+P5/P6 (the native wraps) gate on the §10 decisions (font-per-platform, Apple Developer enrollment,
+macOS distribution).
 
 > **design-sync is optional/additive.** Dropping PS1–PS3 reverts to the pure code-first path
 > (P0→P1→P2 with v0 for variants). The token pipeline (§2) and everything downstream are unchanged —
