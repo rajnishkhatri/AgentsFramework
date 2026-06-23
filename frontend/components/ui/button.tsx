@@ -16,7 +16,7 @@ function buttonClasses(
   return cn(
     "inline-flex items-center justify-center font-semibold transition-opacity",
     "rounded-md disabled:cursor-not-allowed disabled:opacity-60 no-underline",
-    variant === "default" && "bg-accent text-white border-0",
+    variant === "default" && "btn-shine text-white",
     variant === "outline" && "bg-transparent text-fg border border-border",
     variant === "ghost" && "bg-transparent text-fg border-0",
     size === "sm" && "px-2.5 py-1 text-sm rounded-sm",

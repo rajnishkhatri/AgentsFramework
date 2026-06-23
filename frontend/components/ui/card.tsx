@@ -5,19 +5,30 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-lg border border-border bg-surface text-fg",
-      className,
-    )}
-    {...props}
-  />
-));
+export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /**
+   * Tactile surface treatment (design showcase / frozen v13). `flat` is the
+   * plain hairline surface; `etched` recesses the card (inset shadow + bottom
+   * highlight); `embossed` raises it (top highlight + soft drop). The shadow
+   * recipes live in globals.css (`.surface-etched` / `.surface-embossed`).
+   */
+  variant?: "flat" | "etched" | "embossed";
+}
+
+export const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, variant = "flat", ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-lg border border-border bg-surface text-fg",
+        variant === "etched" && "surface-etched",
+        variant === "embossed" && "surface-embossed",
+        className,
+      )}
+      {...props}
+    />
+  ),
+);
 Card.displayName = "Card";
 
 export const CardHeader = React.forwardRef<

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Live vs Design — side by side</title>
+<style>
+  body{margin:0;font-family:-apple-system,system-ui,sans-serif;background:#e7e3dd;color:#1f1e1d}
+  .bar{display:flex;height:30px;background:#f4f1ec;border-bottom:1px solid rgba(0,0,0,.15)}
+  .bar div{flex:1;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#6b6157}
+  .bar div:first-child{border-right:1px solid rgba(0,0,0,.15)}
+  .panes{display:flex;height:calc(100vh - 30px)}
+  .pane{flex:1;overflow:auto;border-right:1px solid rgba(0,0,0,.15)}
+  iframe{border:0;display:block;background:#f9f7f5}
+  #live{width:100%;height:100%}
+  /* design: show the iPad (sidebar+chat) frame, scaled to fit the pane width */
+  #designwrap{transform-origin:top left}
+  #design{width:1500px;height:1400px}
+</style>
+</head>
+<body>
+  <div class="bar"><div>● LIVE APP — React P2 (/mockchat)</div><div>● DESIGN — iPad Chat showcase</div></div>
+  <div class="panes">
+    <div class="pane"><iframe id="live" src="http://localhost:3000/mockchat"></iframe></div>
+    <div class="pane"><div id="designwrap"><iframe id="design" src="http://localhost:8899/screens/iPad%20Chat.html"></iframe></div></div>
+  </div>
+  <script>
+    // scale the design iframe so the iPad frame fits the pane width
+    function fit(){
+      const pane = document.querySelectorAll('.pane')[1];
+      const w = pane.clientWidth;
+      const scale = Math.min(1, w/1260);
+      document.getElementById('designwrap').style.transform = 'scale('+scale+')';
+    }
+    window.addEventListener('resize', fit); setTimeout(fit, 300);
+  </script>
+</body>
+</html>

@@ -15,6 +15,12 @@ const badgeVariants = cva(
         default: "bg-surface text-muted border border-border",
         accent: "bg-accent-light text-accent border-0",
         outline: "bg-transparent text-fg border border-border",
+        // Status tints (frozen): success green / danger red, as a soft
+        // token-mix fill so the chip reads colored but not loud.
+        success:
+          "border-0 text-success [background:color-mix(in_oklab,var(--color-success)_18%,transparent)]",
+        danger:
+          "border-0 text-danger [background:color-mix(in_oklab,var(--color-danger)_18%,transparent)]",
       },
     },
     defaultVariants: { variant: "default" },

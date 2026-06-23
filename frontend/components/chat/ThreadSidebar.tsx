@@ -20,6 +20,7 @@
  */
 
 import * as React from "react";
+import { Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ThreadState } from "@/lib/wire/agent_protocol";
 import { groupThreadsByTime } from "@/lib/thread_grouping";
@@ -48,7 +49,7 @@ export function ThreadSidebar(props: {
     <nav
       data-testid="thread-sidebar"
       aria-label="Chat history"
-      className="grid gap-3 p-3 border-r border-border-light bg-bg min-w-64"
+      className="grid gap-3 p-3 bg-bg min-w-64"
     >
       {props.threads.length === 0 ? (
         props.isFiltered ? (
@@ -66,9 +67,9 @@ export function ThreadSidebar(props: {
       ) : (
         groups.map((group) => (
           <div key={group.label} data-testid={groupTestId(group.label)}>
-            <h3 className="text-xs uppercase tracking-wide text-muted m-0 mb-1">
-              {group.label}
-            </h3>
+            {/* Labeled etched divider (design .separator-label): the group
+               name centered between two hairline rules. */}
+            <h3 className="separator-label m-0 mb-1">{group.label}</h3>
             <ul className="grid gap-0.5 list-none p-0 m-0">
               {group.threads.map((t) => {
                 const active = props.activeThreadId === t.thread_id;
@@ -88,8 +89,14 @@ export function ThreadSidebar(props: {
                         }
                       }}
                       className={cn(
-                        "flex-1 block px-3 py-2 rounded-sm text-fg no-underline truncate text-sm",
-                        active ? "bg-accent-light" : "bg-transparent",
+                        // nav-item (frozen): plain by default, subtle fg/5%
+                        // overlay on hover, stronger --color-selected when
+                        // active — hover stays lighter than active so the two
+                        // states read apart. Hover suppressed on touch.
+                        "flex-1 block px-3 py-2 rounded-md no-underline truncate text-sm transition-colors",
+                        active
+                          ? "bg-selected text-fg font-semibold"
+                          : "bg-transparent text-muted font-medium [@media(hover:hover)]:hover:bg-[color-mix(in_oklab,var(--color-fg)_5%,transparent)] [@media(hover:hover)]:hover:text-fg",
                       )}
                       title={t.title}
                     >
@@ -109,9 +116,9 @@ export function ThreadSidebar(props: {
                             props.onRename?.(t.thread_id, next.trim());
                           }
                         }}
-                        className="text-muted hover:text-fg text-xs opacity-0 group-hover:opacity-100"
+                        className="text-muted hover:text-fg opacity-0 group-hover:opacity-100 flex items-center"
                       >
-                        ✎
+                        <Pencil className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
                     {props.onDelete ? (
@@ -120,9 +127,9 @@ export function ThreadSidebar(props: {
                         data-testid={`thread-delete-${t.thread_id}`}
                         aria-label={`Delete: ${t.title}`}
                         onClick={() => props.onDelete?.(t.thread_id)}
-                        className="text-muted hover:text-red-500 text-xs opacity-0 group-hover:opacity-100"
+                        className="text-muted hover:text-danger opacity-0 group-hover:opacity-100 flex items-center"
                       >
-                        ✕
+                        <X className="size-3.5" aria-hidden="true" />
                       </button>
                     ) : null}
                   </li>

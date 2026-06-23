@@ -1,10 +1,10 @@
 /**
- * Mobile-first responsive composer (S3.8.5, F4) — Cursor warm-neutral pill (§2.6).
+ * Mobile-first responsive composer (S3.8.5, F4) — Cursor warm-neutral (§2.6).
  *
- * Shape (P2 redesign): a single soft `radius-lg` pill with a hairline border
- * that lifts to the accent on focus-within; the autosizing Textarea primitive
- * sits flush inside it and the send button is a round accent puck with an
- * up-arrow glyph. One rationed accent, no chrome — the look in the screenshot.
+ * Shape (P2 + design-showcase polish): a soft `radius-lg` box — the autosizing
+ * Textarea on top, a toolbar row beneath it (left: add + model picker; right:
+ * the round accent send puck). Hairline border warms to the accent on
+ * focus-within. One rationed accent (the send puck + the gradient it carries).
  *
  * Keyboard shortcuts: Enter submits. ⌘↩ / Ctrl↩ / Shift↩ insert a newline.
  *
@@ -24,7 +24,7 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, ChevronDown, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,8 @@ export function Composer(props: {
   onSend: (body: string) => void | Promise<void>;
   busy?: boolean;
   placeholder?: string;
+  /** Display-only model label shown in the picker chip (design parity). */
+  modelLabel?: string;
 }): React.JSX.Element {
   const [body, setBody] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
@@ -58,6 +60,7 @@ export function Composer(props: {
   }
 
   const disabled = props.busy || body.trim().length === 0;
+  const model = props.modelLabel ?? "Composer 2.5 Fast";
 
   return (
     <form
@@ -65,19 +68,19 @@ export function Composer(props: {
         e.preventDefault();
         submit();
       }}
-      // The pill: soft radius-lg chrome, hairline border that warms to the
+      // The box: soft radius-lg chrome, hairline border that warms to the
       // accent on focus-within. surface-sunken keeps it a half-step recessed
       // from the canvas so it reads as an input well, not a card.
       className={cn(
-        "flex items-end gap-2 p-2 pl-4",
+        "grid gap-2 p-3",
         "rounded-lg border border-border bg-surface-sunken",
         "transition-colors focus-within:border-accent",
       )}
     >
       {/*
         Autosize contract (FD2.U_AUTOSIZE): the Textarea primitive owns
-        `field-sizing: content`. Inside the pill it drops its own border /
-        background / padding so it reads as one continuous well; the pill
+        `field-sizing: content`. Inside the box it drops its own border /
+        background / padding so it reads as one continuous well; the box
         provides the chrome. The min-h floor keeps a single visible line;
         the max-h ceiling caps growth at ~6 lines before it scrolls.
       */}
@@ -90,23 +93,52 @@ export function Composer(props: {
         onKeyDown={onKeyDown}
         aria-label="Compose message"
         className={cn(
-          "flex-1 border-0 bg-transparent px-0 py-2",
+          "border-0 bg-transparent px-1 py-0",
           "focus:border-0 focus:outline-none",
         )}
       />
-      <button
-        type="submit"
-        disabled={disabled}
-        aria-label="Send"
-        // Round accent puck — the one rationed accent in the composer.
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-full",
-          "bg-accent text-white transition-opacity",
-          "cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
-        )}
-      >
-        <ArrowUp className="size-5" aria-hidden="true" />
-      </button>
+      {/* Toolbar row: add + model picker (left) · send (right). The add and
+         model-picker are display affordances (design parity); they carry no
+         run-lifecycle logic (F-R1). */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Add attachment"
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            "bg-surface text-muted transition-colors",
+            "cursor-pointer hover:bg-selected hover:text-fg",
+          )}
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Choose model"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-sm px-2 py-1",
+            "text-sm text-muted transition-colors",
+            "cursor-pointer hover:bg-selected",
+          )}
+        >
+          {model}
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="submit"
+          disabled={disabled}
+          aria-label="Send"
+          // Round accent puck — the one rationed accent in the composer.
+          // btn-shine gives it the terracotta bezel + background shine (frozen).
+          className={cn(
+            "btn-shine ml-auto flex size-9 shrink-0 items-center justify-center rounded-full",
+            "text-white transition-opacity",
+            "cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
+          )}
+        >
+          <ArrowUp className="size-5" aria-hidden="true" />
+        </button>
+      </div>
     </form>
   );
 }

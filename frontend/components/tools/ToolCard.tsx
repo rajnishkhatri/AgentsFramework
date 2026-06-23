@@ -20,21 +20,23 @@ import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import type { ToolCallRendererRequest } from "@/lib/wire/ui_runtime_events";
 
+// Display labels are Title-cased (frozen "Complete", not lowercase). The
+// lowercase enum still drives `data-status` for e2e selectors.
 const STATUS_LABEL: Record<ToolCallRendererRequest["status"], string> = {
-  running: "running",
-  completed: "completed",
-  errored: "errored",
+  running: "Running",
+  completed: "Complete",
+  errored: "Errored",
 };
 
 // Map tool status → Badge tone + status-orb state class. running = the live
-// accent orb, completed = success, errored = danger.
+// accent orb, completed = success green (frozen), errored = danger red.
 const STATUS_BADGE: Record<
   ToolCallRendererRequest["status"],
-  "default" | "accent" | "outline"
+  "accent" | "success" | "danger"
 > = {
   running: "accent",
-  completed: "outline",
-  errored: "default",
+  completed: "success",
+  errored: "danger",
 };
 
 function StatusOrb(props: {
@@ -58,6 +60,15 @@ export function ToolCard(props: {
 }): React.JSX.Element {
   const { request } = props;
   const isString = typeof request.output === "string";
+  // Design parity (.tool-sub): a one-line subtitle when the output is a short
+  // single-line string (e.g. "3 matches · 98ms"). Long / structured outputs
+  // stay in the expandable <pre> only.
+  const subtitle =
+    isString &&
+    !(request.output as string).includes("\n") &&
+    (request.output as string).length <= 60
+      ? (request.output as string)
+      : null;
   return (
     <details
       open={props.defaultOpen ?? request.status === "running"}
@@ -65,13 +76,16 @@ export function ToolCard(props: {
       data-status={request.status}
       data-tool-call-id={request.tool_call_id}
       className={cn(
-        "rounded-lg border border-border bg-surface px-3 py-2 my-1",
+        "surface-etched rounded-lg bg-surface px-3 py-2 my-1",
         "[&[open]]:bg-surface-sunken transition-colors",
       )}
     >
       <summary className="cursor-pointer flex gap-2 items-center font-mono text-sm list-none">
         <StatusOrb status={request.status} />
         <span className="font-semibold">{request.tool_name}</span>
+        {subtitle ? (
+          <span className="text-muted font-sans text-xs truncate">{subtitle}</span>
+        ) : null}
         <Badge variant={STATUS_BADGE[request.status]} className="ml-auto">
           {STATUS_LABEL[request.status]}
         </Badge>

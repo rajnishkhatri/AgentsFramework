@@ -23,3 +23,121 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* ── Tactile surface language (design showcase / frozen v13) ──────────────
+   Recipes Tailwind utilities can't express inline (3-stop gradient over the
+   accent token; layered inset/outer shadows). All token-driven, so they flip
+   with the theme. Applied by chat-surface components via these class names. */
+
+/* Terracotta user bubble — gradient + inset highlight (design .bubble-user). */
+.bubble-user {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent) 92%, #fff) 0%,
+    var(--color-accent) 55%,
+    color-mix(in oklab, var(--color-accent) 90%, #000) 100%
+  );
+  color: #fff;
+  border: 1px solid color-mix(in oklab, var(--color-accent) 78%, #000);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 26%, transparent);
+}
+
+/* Etched card — recessed inset shadow + bottom highlight (design .etched). */
+.surface-etched {
+  border: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+  box-shadow:
+    inset 0 2px 4px color-mix(in oklab, #000 9%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #000 4%, transparent),
+    0 1px 0 color-mix(in oklab, #fff 60%, transparent);
+}
+
+/* Embossed card — raised inset highlight + soft drop (design .embossed). */
+.surface-embossed {
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 70%, transparent),
+    0 1px 2px color-mix(in oklab, #000 12%, transparent);
+}
+
+/* Etched grooves (design .separator-etched / -etched-v / -label). A dark top
+   (or left) edge over a #fff highlight bottom (or right) edge reads as a groove
+   pressed into the surface — the highlight catches light on cocoa in dark mode
+   too. Used to separate sidebar groups + the rail↔chat divide. */
+.separator-etched {
+  height: 2px;
+  width: 100%;
+  border-top: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, #fff 85%, transparent);
+}
+.separator-etched-v {
+  width: 2px;
+  align-self: stretch;
+  border-left: 1px solid color-mix(in oklab, var(--color-fg) 16%, transparent);
+  border-right: 1px solid color-mix(in oklab, #fff 85%, transparent);
+}
+/* "TODAY" labeled divider — centered caps label with a hairline rule on each
+   side (design .separator-label). */
+.separator-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  color: var(--color-muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.separator-label::before,
+.separator-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* Accent button bezel + background shine (design .btn-default) — terracotta
+   3-stop gradient + a top inset highlight so the button reads raised/tactile.
+   Applied by the Button primitive's default variant. */
+.btn-shine {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent) 88%, #fff) 0%,
+    var(--color-accent) 48%,
+    color-mix(in oklab, var(--color-accent) 90%, #000) 100%
+  );
+  border: 1px solid color-mix(in oklab, var(--color-accent) 78%, #000);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 35%, transparent);
+}
+
+/* Dark-mode placeholder safeguard (frozen v11): dim placeholders below
+   --color-muted (which is brightened for dark legibility) so empty fields
+   still read as empty against the brighter secondary text. */
+[data-theme="dark"] textarea::placeholder,
+[data-theme="dark"] input::placeholder {
+  color: var(--color-placeholder);
+}
+
+/* Custom scrollbar (frozen v5) — thin, token-colored thumb on a transparent
+   track, applied to every scroll container (chat column, sidebar, scroll
+   areas) so scrollbars read as part of the warm-neutral chrome. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-fg) 24%, transparent) transparent;
+}
+::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-fg) 24%, transparent);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--color-fg) 40%, transparent);
+  background-clip: padding-box;
+}

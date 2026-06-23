@@ -16,6 +16,7 @@
  */
 
 import * as React from "react";
+import { Sparkles } from "lucide-react";
 
 export function RecallIndicator(props: {
   count: number;
@@ -28,9 +29,11 @@ export function RecallIndicator(props: {
   return (
     <div
       data-testid="recall-indicator"
-      className="flex items-center gap-1 text-xs text-muted"
+      className="flex items-center gap-1.5 text-xs text-accent font-medium"
     >
-      <span aria-hidden>🧠</span>
+      {/* House style: line SVG icon, no emoji (frozen). The recall affordance
+         reads in the accent to match the frozen .recall treatment. */}
+      <Sparkles className="size-3.5" aria-hidden="true" />
       <span>{label}</span>
     </div>
   );
