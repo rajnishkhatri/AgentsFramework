@@ -11,14 +11,14 @@
       "$description": "Primary foreground / text (light)"
     },
     "muted": {
-      "$value": "#6b7280",
+      "$value": "#7d7a75",
       "$type": "color",
       "$description": "Muted / secondary text (light)"
     },
     "accent": {
-      "$value": "#4338ca",
+      "$value": "#c2704e",
       "$type": "color",
-      "$description": "Primary accent / interactive (light)"
+      "$description": "Primary accent / interactive (light) — terracotta (finalized P2)"
     },
     "accent-light": {
       "$value": "color-mix(in oklab, var(--color-accent) 15%, transparent)",
@@ -28,17 +28,37 @@
     "border": {
       "$value": "color-mix(in oklab, var(--color-fg) 12%, transparent)",
       "$type": "color",
-      "$description": "Standard border — derived at runtime via color-mix"
+      "$description": "Standard border"
     },
     "border-light": {
       "$value": "color-mix(in oklab, var(--color-fg) 10%, transparent)",
       "$type": "color",
-      "$description": "Lighter border variant — derived at runtime via color-mix"
+      "$description": "Lighter border variant"
     },
     "surface": {
       "$value": "color-mix(in oklab, var(--color-bg) 96%, var(--color-fg) 4%)",
       "$type": "color",
-      "$description": "Subtle surface / card background — derived at runtime via color-mix"
+      "$description": "Subtle surface / card background"
+    },
+    "surface-sunken": {
+      "$value": "color-mix(in oklab, var(--color-bg) 92%, var(--color-fg) 8%)",
+      "$type": "color",
+      "$description": "Recessed surface (sidebar / rail)"
+    },
+    "selected": {
+      "$value": "color-mix(in oklab, var(--color-fg) 6%, transparent)",
+      "$type": "color",
+      "$description": "Selected / active row fill"
+    },
+    "danger": {
+      "$value": "#c0392b",
+      "$type": "color",
+      "$description": "Destructive action / error (light)"
+    },
+    "success": {
+      "$value": "#2f8f5b",
+      "$type": "color",
+      "$description": "Success / positive state (light)"
     }
   }
 }

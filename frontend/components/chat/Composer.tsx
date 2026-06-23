@@ -1,5 +1,10 @@
 /**
- * Mobile-first responsive composer (S3.8.5, F4).
+ * Mobile-first responsive composer (S3.8.5, F4) — Cursor warm-neutral (§2.6).
+ *
+ * Shape (P2 + design-showcase polish): a soft `radius-lg` box — the autosizing
+ * Textarea on top, a toolbar row beneath it (left: add + model picker; right:
+ * the round accent send puck). Hairline border warms to the accent on
+ * focus-within. One rationed accent (the send puck + the gradient it carries).
  *
  * Keyboard shortcuts: Enter submits. ⌘↩ / Ctrl↩ / Shift↩ insert a newline.
  *
@@ -8,13 +13,10 @@
  * Without the guard, the Enter key that confirms a kana/hangul/pinyin
  * candidate selection would also fire Enter and double-fire onSend.
  *
- * Autosize (FD2.U_AUTOSIZE): the textarea uses CSS `field-sizing: content`
- * (Tailwind v4 arbitrary property) to grow with content up to a documented
- * max of 6 lines, then scrolls. `min-h-[2.5rem]` and `max-h-[12rem]`
- * (~6 × 2rem line-height) bracket the autosize range. `resize-y` is kept
- * as a secondary manual-drag override so the user can still nudge the
- * height when desired; CSS field-sizing is the primary growth signal so
- * mobile keyboards never see a fixed-height textarea (F4).
+ * Autosize (FD2.U_AUTOSIZE): the Textarea primitive uses CSS
+ * `field-sizing: content` (Tailwind v4 arbitrary property) to grow with
+ * content up to a documented max of ~6 lines, then scrolls. `min-h-[2.5rem]`
+ * and `max-h-[12rem]` (~6 × 2rem line-height) bracket the autosize range.
  */
 
 // B1: 'use client' required — useState for body text, useRef for textarea,
@@ -22,12 +24,16 @@
 "use client";
 
 import * as React from "react";
+import { ArrowUp, ChevronDown, Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 export function Composer(props: {
   onSend: (body: string) => void | Promise<void>;
   busy?: boolean;
   placeholder?: string;
+  /** Display-only model label shown in the picker chip (design parity). */
+  modelLabel?: string;
 }): React.JSX.Element {
   const [body, setBody] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
@@ -53,22 +59,32 @@ export function Composer(props: {
     }
   }
 
+  const disabled = props.busy || body.trim().length === 0;
+  const model = props.modelLabel ?? "Composer 2.5 Fast";
+
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
-      className="flex gap-2 p-3 border-t border-border-light bg-bg"
+      // The box: soft radius-lg chrome, hairline border that warms to the
+      // accent on focus-within. surface-sunken keeps it a half-step recessed
+      // from the canvas so it reads as an input well, not a card.
+      className={cn(
+        "grid gap-2 p-3",
+        "rounded-lg border border-border bg-surface-sunken",
+        "transition-colors focus-within:border-accent",
+      )}
     >
       {/*
-        Autosize contract (FD2.U_AUTOSIZE): `field-sizing: content` is the
-        primary growth driver. The min-h floor keeps a single visible
-        line; the max-h ceiling caps growth at ~6 lines (matches the rule
-        default in `architecture_rules.j2`) before the textarea begins to
-        scroll. `resize-y` is the manual-override fallback.
+        Autosize contract (FD2.U_AUTOSIZE): the Textarea primitive owns
+        `field-sizing: content`. Inside the box it drops its own border /
+        background / padding so it reads as one continuous well; the box
+        provides the chrome. The min-h floor keeps a single visible line;
+        the max-h ceiling caps growth at ~6 lines before it scrolls.
       */}
-      <textarea
+      <Textarea
         ref={taRef}
         rows={1}
         value={body}
@@ -77,24 +93,52 @@ export function Composer(props: {
         onKeyDown={onKeyDown}
         aria-label="Compose message"
         className={cn(
-          "flex-1 bg-transparent text-fg border border-border",
-          "rounded-md px-3 py-2 text-[0.95rem] font-[inherit]",
-          "[field-sizing:content] min-h-[2.5rem] max-h-[12rem]",
-          "resize-y",
+          "border-0 bg-transparent px-1 py-0",
+          "focus:border-0 focus:outline-none",
         )}
       />
-      <button
-        type="submit"
-        disabled={props.busy || body.trim().length === 0}
-        aria-label="Send"
-        className={cn(
-          "bg-accent text-white border-0 rounded-md px-4",
-          "font-semibold cursor-pointer",
-          "disabled:cursor-not-allowed disabled:opacity-60",
-        )}
-      >
-        Send
-      </button>
+      {/* Toolbar row: add + model picker (left) · send (right). The add and
+         model-picker are display affordances (design parity); they carry no
+         run-lifecycle logic (F-R1). */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Add attachment"
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-full",
+            "bg-surface text-muted transition-colors",
+            "cursor-pointer hover:bg-selected hover:text-fg",
+          )}
+        >
+          <Plus className="size-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Choose model"
+          className={cn(
+            "inline-flex items-center gap-1 rounded-sm px-2 py-1",
+            "text-sm text-muted transition-colors",
+            "cursor-pointer hover:bg-selected",
+          )}
+        >
+          {model}
+          <ChevronDown className="size-3.5" aria-hidden="true" />
+        </button>
+        <button
+          type="submit"
+          disabled={disabled}
+          aria-label="Send"
+          // Round accent puck — the one rationed accent in the composer.
+          // btn-shine gives it the terracotta bezel + background shine (frozen).
+          className={cn(
+            "btn-shine ml-auto flex size-9 shrink-0 items-center justify-center rounded-full",
+            "text-white transition-opacity",
+            "cursor-pointer disabled:cursor-not-allowed disabled:opacity-40",
+          )}
+        >
+          <ArrowUp className="size-5" aria-hidden="true" />
+        </button>
+      </div>
     </form>
   );
 }

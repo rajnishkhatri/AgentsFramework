@@ -1,0 +1,44 @@
+<!-- @dsCard group="Surfaces" name="Card" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Card — AgentsFramework UI</title><link rel="stylesheet" href="../../_ds_bundle/styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">Card · Surfaces · message card, panel, eval result</div>
+  <div class="ds-section"><div class="ds-label">Basic card — raised / embossed (default)</div>
+    <div class="card" style="max-width:360px">
+      <div class="card-header"><div class="card-title">Memory Recall</div><p class="text-sm text-muted">Session context retrieved · 3 matches · 98ms</p></div>
+      <div class="card-content"><p class="text-sm text-fg">pgvector · 3 memories matched</p></div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Etched frame — engraved / sunken modifier (.card.etched)</div>
+    <div class="card etched" style="max-width:360px">
+      <div class="card-header"><div class="card-title">Branch pushed</div><p class="text-sm text-muted">docs/native-wrap-ui-redesign-plan · 3 commits ahead</p></div>
+      <div class="card-content"><p class="text-sm text-fg">Native-wrap UI redesign plan (Tauri + Capacitor)</p></div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Card with badge + skeleton</div>
+    <div class="card" style="max-width:360px">
+      <div class="card-header">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="card-title">Planning run</div>
+          <span class="badge badge-accent">● Running</span>
+        </div>
+        <p class="text-sm text-muted">T2 reflexion · depth L1</p>
+      </div>
+      <div class="card-content">
+        <div class="skeleton" style="height:14px;width:80%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:14px;width:60%"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="background:var(--color-bg);padding:16px;border-radius:var(--radius-lg);display:flex;flex-direction:column;gap:14px">
+      <div class="card etched" style="max-width:360px">
+        <div class="card-header"><div class="card-title">Branch pushed</div><p class="text-sm text-muted">3 commits ahead of main</p></div>
+        <div class="card-content"><p class="text-sm text-fg">Etched frame on a dark surface</p></div>
+      </div>
+      <div class="card" style="max-width:360px">
+        <div class="card-header"><div class="card-title">Memory Recall</div><p class="text-sm text-muted">3 memories matched</p></div>
+        <div class="card-content"><p class="text-sm text-fg">pgvector · 98ms</p></div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

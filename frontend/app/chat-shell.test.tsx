@@ -232,8 +232,10 @@ describe("ChatShell — right memory panel removed from layout", () => {
 
   it("uses a two-column body grid (no third memory column)", () => {
     const d = renderWithSidebars(fakeSidebars());
+    // Two CONTENT columns (rail + chat) with a 2px etched groove between them;
+    // the removed memory panel would have been a third content column.
     const hasTwoCol = Array.from(d.querySelectorAll("div")).some((el) =>
-      el.className.includes("lg:grid-cols-[auto_1fr]"),
+      el.className.includes("lg:grid-cols-[auto_2px_1fr]"),
     );
     expect(hasTwoCol).toBe(true);
   });

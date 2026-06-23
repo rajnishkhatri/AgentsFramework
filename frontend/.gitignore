@@ -33,3 +33,6 @@ smoke-screenshots/
 smoke-results.json
 recap-live-results.json
 recap-live-stderr.log
+
+# Storybook build output (PS1)
+storybook-static/

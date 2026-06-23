@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "incremental": false,
+    "composite": false,
+    "jsx": "react-jsx",
+    "outDir": "dist/types",
+    "rootDir": "."
+  },
+  "include": ["components/ui/**/*.ts", "components/ui/**/*.tsx", "lib/utils.ts"],
+  "exclude": ["**/*.stories.tsx", "node_modules", ".next", "dist"]
+}

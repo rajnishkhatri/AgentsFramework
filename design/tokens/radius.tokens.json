@@ -9,6 +9,11 @@
       "$value": "0.5rem",
       "$type": "dimension",
       "$description": "Medium radius — cards, panels, dialogs"
+    },
+    "lg": {
+      "$value": "0.75rem",
+      "$type": "dimension",
+      "$description": "Large radius — pill composer, message cards, the soft Cursor-style chrome"
     }
   }
 }

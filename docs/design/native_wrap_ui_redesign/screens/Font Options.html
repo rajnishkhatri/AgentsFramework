@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Font Options — AgentsFramework UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/@fontsource-variable/mona-sans@5/index.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f9f7f5; --fg:#1f1e1d; --muted:#7d7a75;
+    --accent:#c2704e; --success:#2f8f5b; --danger:#c0392b;
+    --border:color-mix(in oklab, var(--fg) 12%, transparent);
+    --surface:color-mix(in oklab, var(--bg) 96%, var(--fg) 4%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-width:max-content; min-height:100vh; padding:40px;
+  }
+  .head{margin-bottom:8px}
+  .head h1{font-size:22px; font-weight:600; letter-spacing:-0.01em}
+  .head p{font-size:14px; color:var(--muted); margin-top:6px; max-width:640px; line-height:1.5}
+  .legend{font-size:12px; color:var(--muted); margin:14px 0 24px; display:flex; gap:16px; flex-wrap:wrap}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%}
+  .row{display:flex; gap:20px; align-items:stretch}
+  .col{flex:none; width:320px; background:#fff; border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column}
+  .col-head{padding:16px 18px; border-bottom:1px solid var(--border); display:flex; flex-direction:column; gap:4px}
+  .col-name{font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px}
+  .ships{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 8px; border-radius:999px}
+  .ships.all{background:color-mix(in oklab,var(--success) 14%,#fff); color:var(--success)}
+  .ships.apple{background:color-mix(in oklab,var(--accent) 14%,#fff); color:var(--accent)}
+  .ships.self{background:var(--surface); color:var(--muted)}
+  .col-note{font-size:12px; color:var(--muted); line-height:1.45}
+  .specimen{padding:18px; display:flex; flex-direction:column; gap:16px; flex:1}
+  .big{font-size:52px; line-height:1; letter-spacing:-0.02em; font-weight:600}
+  .toast-title{font-size:16px; font-weight:600}
+  .toast-desc{font-size:14px; color:var(--muted); margin-top:2px}
+  .para{font-size:14px; line-height:1.55; text-wrap:pretty}
+  .alpha{font-size:13px; color:var(--muted); line-height:1.6; letter-spacing:.01em; border-top:1px dashed var(--border); padding-top:12px}
+  .weights{display:flex; flex-direction:column; gap:2px}
+  .weights div{font-size:15px}
+  .w4{font-weight:400}.w5{font-weight:500}.w6{font-weight:600}.w7{font-weight:700}
+
+  .f-sf   .specimen,.f-sf   .col-name{font-family:-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',Roboto,sans-serif}
+  .f-mona .specimen,.f-mona .col-name{font-family:'Mona Sans Variable','Mona Sans',sans-serif}
+  .f-schi .specimen,.f-schi .col-name{font-family:'Schibsted Grotesk',sans-serif}
+  .f-hank .specimen,.f-hank .col-name{font-family:'Hanken Grotesk',sans-serif}
+  .f-geist .specimen,.f-geist .col-name{font-family:'Geist',sans-serif}
+</style>
+</head>
+<body>
+  <div class="head">
+    <h1>Typography — close options to the screenshot</h1>
+    <p>Same sample text set in each candidate. The screenshot font is a warm humanist grotesque (Anthropic's licensed Styrene family); these are the closest options that can actually ship.</p>
+  </div>
+  <div class="legend">
+    <span><span class="dot" style="background:var(--accent)"></span>Apple-only (system, no file)</span>
+    <span><span class="dot" style="background:var(--success)"></span>Free webfont, all platforms</span>
+    <span><span class="dot" style="background:var(--muted)"></span>Self-hosted</span>
+  </div>
+
+  <div class="row">
+    <!-- SF -->
+    <div class="col f-sf">
+      <div class="col-head">
+        <div class="col-name">San Francisco <span class="ships apple">Apple only</span></div>
+        <div class="col-note">Renders native SF Pro on Mac/iOS via the system stack. Falls back to Segoe UI / Roboto elsewhere — can't be served as a webfont.</div>
+      </div>
+      <div class="specimen">
+        <div class="big">Aa Gg</div>
+        <div><div class="toast-title">Run complete</div><div class="toast-desc">Planning stress · 22/22 passed · 0 regressions</div></div>
+        <div class="para">The quick agent planned six tasks, ran the suite, and stored three facts from this session.</div>
+        <div class="weights"><div class="w4">Regular 400</div><div class="w5">Medium 500</div><div class="w6">Semibold 600</div><div class="w7">Bold 700</div></div>
+        <div class="alpha">ABCDEFGHIJKLM nopqrstuvwxyz 0123456789 · &amp; @ # %</div>
+      </div>
+    </div>
+
+    <!-- Mona Sans -->
+    <div class="col f-mona">
+      <div class="col-head">
+        <div class="col-name">Mona Sans <span class="ships all">Free</span></div>
+        <div class="col-note">GitHub's humanist grotesque. The closest single font that looks identical for every user, Apple or not.</div>
+      </div>
+      <div class="specimen">
+        <div class="big">Aa Gg</div>
+        <div><div class="toast-title">Run complete</div><div class="toast-desc">Planning stress · 22/22 passed · 0 regressions</div></div>
+        <div class="para">The quick agent planned six tasks, ran the suite, and stored three facts from this session.</div>
+        <div class="weights"><div class="w4">Regular 400</div><div class="w5">Medium 500</div><div class="w6">Semibold 600</div><div class="w7">Bold 700</div></div>
+        <div class="alpha">ABCDEFGHIJKLM nopqrstuvwxyz 0123456789 · &amp; @ # %</div>
+      </div>
+    </div>
+
+    <!-- Schibsted -->
+    <div class="col f-schi">
+      <div class="col-head">
+        <div class="col-name">Schibsted Grotesk <span class="ships all">Free</span></div>
+        <div class="col-note">Humanist and friendly with a touch more character in the terminals. Google Fonts.</div>
+      </div>
+      <div class="specimen">
+        <div class="big">Aa Gg</div>
+        <div><div class="toast-title">Run complete</div><div class="toast-desc">Planning stress · 22/22 passed · 0 regressions</div></div>
+        <div class="para">The quick agent planned six tasks, ran the suite, and stored three facts from this session.</div>
+        <div class="weights"><div class="w4">Regular 400</div><div class="w5">Medium 500</div><div class="w6">Semibold 600</div><div class="w7">Bold 700</div></div>
+        <div class="alpha">ABCDEFGHIJKLM nopqrstuvwxyz 0123456789 · &amp; @ # %</div>
+      </div>
+    </div>
+
+    <!-- Hanken -->
+    <div class="col f-hank">
+      <div class="col-head">
+        <div class="col-name">Hanken Grotesk <span class="ships all">Free</span></div>
+        <div class="col-note">Warm and slightly rounder. Currently applied in the kit. Google Fonts.</div>
+      </div>
+      <div class="specimen">
+        <div class="big">Aa Gg</div>
+        <div><div class="toast-title">Run complete</div><div class="toast-desc">Planning stress · 22/22 passed · 0 regressions</div></div>
+        <div class="para">The quick agent planned six tasks, ran the suite, and stored three facts from this session.</div>
+        <div class="weights"><div class="w4">Regular 400</div><div class="w5">Medium 500</div><div class="w6">Semibold 600</div><div class="w7">Bold 700</div></div>
+        <div class="alpha">ABCDEFGHIJKLM nopqrstuvwxyz 0123456789 · &amp; @ # %</div>
+      </div>
+    </div>
+
+    <!-- Geist -->
+    <div class="col f-geist">
+      <div class="col-head">
+        <div class="col-name">Geist <span class="ships self">In repo</span></div>
+        <div class="col-note">More neutral / geometric. Already self-hosted in the project (Vercel's font).</div>
+      </div>
+      <div class="specimen">
+        <div class="big">Aa Gg</div>
+        <div><div class="toast-title">Run complete</div><div class="toast-desc">Planning stress · 22/22 passed · 0 regressions</div></div>
+        <div class="para">The quick agent planned six tasks, ran the suite, and stored three facts from this session.</div>
+        <div class="weights"><div class="w4">Regular 400</div><div class="w5">Medium 500</div><div class="w6">Semibold 600</div><div class="w7">Bold 700</div></div>
+        <div class="alpha">ABCDEFGHIJKLM nopqrstuvwxyz 0123456789 · &amp; @ # %</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

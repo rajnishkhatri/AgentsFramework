@@ -1,11 +1,12 @@
 ---
 title: Native-wrap UI redesign (Tauri 2 macOS + Capacitor 7 iOS)
-status: draft
+status: in-progress
 created: 2026-06-22
 owner: Rajnish Khatri
 todos:
   - decide-tokens-source-of-truth
   - establish-token-pipeline
+  - target-cursor-warm-neutral-aesthetic
   - build-primitive-layer
   - sync-library-to-claude-design
   - design-layouts-with-design-agent
@@ -18,6 +19,7 @@ related:
 decisions:
   tooling: code-first (shadcn/ui + Tailwind v4 @theme + Storybook + v0 for variants)
   design-surface: Claude Design (claude.ai/design) via /design-sync — sync the real component library so the design agent composes layouts from our actual parts (replaces the earlier Figma plan, 2026-06-22)
+  aesthetic: Cursor warm-neutral — warm off-white canvas, near-black text, ONE reserved accent, hairline borders, soft (radius-lg) chrome, sunken sidebar + soft selected row, pill composer (2026-06-22; this is the P1/P2 visual target)
   layout: one fluid responsive layout (viewport queries for structure, container queries for components)
   token-source-of-truth: git (DTCG JSON) is authoritative; design lives in code, synced to claude.ai/design
   wrap-target: Tauri 2 (macOS, notarized DMG + Sparkle), Capacitor 7 (iOS, TestFlight → App Store)
@@ -149,7 +151,8 @@ since `styles.css`/tokens ride along in the sync and define the look every desig
 ### The loop (after the sync lands)
 - Prompt the **design agent** in the Claude Design project to compose the redesigned screens
   (desktop three-pane, phone single-column + drawer/sheet, the §6 streaming states) **from our
-  synced components**.
+  synced components**, toward the **§2.6 Cursor warm-neutral aesthetic** (its `conventions.md` header
+  should state the look so every composition stays on-brand).
 - Because it builds with our real parts, its output maps to shippable code — pull it back as the
   actual chat-surface implementation (P2), then keep Storybook stories as the living spec (§1).
 - **Re-sync** whenever the library changes (new primitive, restyled component) so the design agent
@@ -160,6 +163,43 @@ since `styles.css`/tokens ride along in the sync and define the look every desig
 > stand-ins. The one cost is sequencing — it needs the library to exist first (P1), so it can't be
 > the *front* of the redesign the way the Figma canvas was framed.
 
+## 2.6. Design direction — Cursor warm-neutral aesthetic (the P1/P2 visual target)
+
+The redesign targets the **Cursor (Composer) desktop look**: a warm, soft, low-chrome aesthetic that
+reads as a native Mac app rather than a website. This is the visual brief the P1 primitives and P2
+chat surface implement, and the look the design agent (§2.5) should compose toward.
+
+**The look in one line:** warm off-white canvas · near-black text · ONE reserved accent · hairline
+borders · soft (`radius-lg`) corners · a recessed sidebar with a soft selected-row fill · a
+pill-shaped composer.
+
+### Already landed (token layer, P0 follow-up — 2026-06-22)
+Four token deltas shipped through the §2 pipeline; build green, only `--color-muted` changed value:
+- `--radius-lg: 0.75rem` — the soft pill composer + rounded message cards.
+- `--color-surface-sunken` (recessed sidebar/rail, one step darker than `--color-surface`).
+- `--color-selected` (translucent `fg/6%` active-row fill).
+- `muted` warmed `#6b7280 → #7d7a75` (light) / `#9ca3af → #a3a09a` (dark) — neutrals in the warm
+  family, not cool blue-gray.
+
+### Component-shape rules (P1/P2 — how primitives consume the tokens)
+These are *shape* decisions, not tokens — they belong in the shadcn primitive + chat-surface work:
+- **Composer = pill.** `input`/`textarea` styled at `radius-lg`, inline leading `+` affordance,
+  circular send/mic button on the trailing edge (solid `fg` circle, see the §6 streaming states).
+- **Sidebar = recessed.** Left rail on `--color-surface-sunken`; the active thread row uses
+  `--color-selected` (soft fill, not a hard highlight); hover one notch lighter.
+- **Accent is rationed.** Indigo (`--color-accent`) on exactly ONE primary action per surface
+  (e.g. the equivalent of Cursor's "Update"/primary button) — everything else is neutral.
+- **Borders are hairlines.** 1px at `--color-border` / `--color-border-light`; prefer surface
+  contrast over heavy strokes for separation.
+- **Inline code chips.** `--color-surface` fill + mono + `radius-sm` (already the StreamingMarkdown
+  shape — keep it).
+- **Cards/panels at `radius-md`/`radius-lg`** with hairline borders, on `--color-surface`.
+
+> **Where this binds:** P1 primitives (`button`, `input`/`textarea`, `card`, `tabs`) bake in the
+> radius + accent-rationing rules; P2 composes the pill composer + recessed sidebar + soft selection.
+> The aesthetic rides entirely on §2 tokens — no hardcoded colors — so the wraps (Tauri/Capacitor)
+> inherit it for free.
+
 ## 3. Primitive layer (the gap)
 
 Today there is exactly one primitive (`ui/button.tsx`). Establish the shadcn primitive set the
@@ -169,7 +209,8 @@ the whole shadcn catalog.
 Priority primitives: `button` (reconcile existing), `input`/`textarea` (Composer), `dialog`/`sheet`
 (mobile drawers/panels), `dropdown-menu` (message actions), `tooltip` (desktop-only, hover-gated),
 `scroll-area`, `tabs` (SidebarTabBar), `card`, `badge`, `separator`, `skeleton` (streaming states),
-`toast` (errors/cancel). All consume tokens from §2 — no hardcoded colors.
+`toast` (errors/cancel). All consume tokens from §2 — no hardcoded colors — and bake in the §2.6
+Cursor warm-neutral shape rules (`radius-lg` chrome, rationed accent, hairline borders).
 
 ## 4. Native-feel layer (web → Tauri + Capacitor)
 
@@ -224,18 +265,18 @@ Redesign the chat surface to current agentic-UI expectations:
 
 ## 7. Phased execution
 
-| Phase | Deliverable | Rough size | Gate |
-|---|---|---|---|
-| **P0** | DTCG tokens migrated from current `@theme`; Style Dictionary build; generated `globals.css` block | 2–3 d | `pnpm tokens:build` green; visual diff = no regression |
-| **P1** | shadcn primitive layer (§3) consuming tokens; reconcile existing `button` | 3–4 d | primitives in Storybook |
-| **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds |
-| **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project |
-| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code |
-| **P2** | Implement redesigned chat surface (§6) from the design-agent output | 1–1.5 wk | all chat states are stories; e2e selectors green |
-| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser |
-| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) |
-| **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView |
-| **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device |
+| Phase | Deliverable | Rough size | Gate | Status |
+|---|---|---|---|---|
+| **P0** | DTCG tokens migrated from current `@theme`; Style Dictionary build; generated `globals.css` block | 2–3 d | `pnpm tokens:build` green; visual diff = no regression | ✅ done |
+| **P1** | shadcn primitive layer (§3) consuming tokens + §2.6 Cursor warm-neutral shape rules; reconcile existing `button` | 3–4 d | primitives in Storybook, on-aesthetic | ✅ done |
+| **PS1** | design-sync readiness — Storybook stories for primitives + §6 chat states; `dist/` build of the library | 2–4 d | `.storybook` covers the synced surface; library builds | ✅ done |
+| **PS2** | `/design-sync` first run (§2.5) — create Claude Design project, sync the library, author `conventions.md` | hours–1 d (sync may run hours) | components verified + visible in the Claude Design project | ✅ done |
+| **PS3** | Design layouts with the design agent (§2.5 loop) — compose desktop/phone screens + §6 states from synced components | days | screens designed; pulled back as implementable code | ⏳ next |
+| **P2** | Implement redesigned chat surface (§6) — pill composer, recessed sidebar, soft selection, status-orb live states (§2.6) | 1–1.5 wk | all chat states are stories; e2e selectors green; matches the §2.6 aesthetic | ✅ done (terracotta re-theme + chat-surface migrated to primitives; PS3 design-agent pass still feeds further layout work) |
+| **P3** | Responsive variants (§5) — drawer/sheet collapse, container queries | 4–5 d | desktop + phone widths verified in Storybook + browser | — |
+| **P4** | Native-feel layer (§4) — safe-area, hover-gating, 44pt, system font option | 3–4 d | renders correctly in plain browser (pre-wrap) | — |
+| **P5** | Tauri 2 macOS shell — custom titlebar, drag regions, notarized DMG + Sparkle appcast | 1 wk | DMG installs; WorkOS auth callback works in WKWebView | — |
+| **P6** | Capacitor 7 iOS shell — safe-area plugin, keyboard, TestFlight build | 1 wk | TestFlight build; SSE stream + auth work on device | — |
 
 **Ordering:** P0 (tokens) → P1 (primitives) gate **PS1→PS2→PS3** — design-sync imports a *built*
 library, so the primitives must exist and be storybook-covered before the first sync. PS3 (design

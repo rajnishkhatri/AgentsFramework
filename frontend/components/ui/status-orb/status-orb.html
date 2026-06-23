@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Status Orb — usage</title>
+<link rel="stylesheet" href="status-orb.css">
+<style>
+  body{margin:0;font-family:-apple-system,system-ui,'Geist',sans-serif;background:#f9f7f5;color:#1f1e1d;padding:40px;display:flex;flex-direction:column;gap:24px}
+  h1{font-size:20px;font-weight:600;margin:0}
+  .row{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:9px;font-size:15px}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:color-mix(in oklab,#c2704e 15%,transparent);color:#c2704e;border-radius:6px;padding:3px 9px;font-size:13px;font-weight:500}
+  code{font-family:ui-monospace,monospace;font-size:13px;background:#0001;padding:2px 6px;border-radius:5px}
+  .dark{background:#241c15;color:#f9f7f5;padding:24px;border-radius:14px}
+</style>
+</head>
+<body>
+  <h1>Pulsing status orb</h1>
+
+  <div class="row">
+    <span class="chip"><span class="status-orb"></span>Running</span>
+    <span class="chip"><span class="status-orb is-success"></span>Live</span>
+    <span class="chip"><span class="status-orb is-danger"></span>Error</span>
+    <span class="badge"><span class="status-orb" style="width:8px;height:8px"></span>Streaming</span>
+  </div>
+
+  <div class="dark">
+    <div class="row">
+      <span class="chip"><span class="status-orb"></span>Running</span>
+      <span class="chip"><span class="status-orb is-success"></span>Live</span>
+    </div>
+  </div>
+
+  <p style="font-size:14px;color:#7d7a75;margin:0;max-width:560px;line-height:1.55">
+    Markup: <code>&lt;span class="status-orb"&gt;&lt;/span&gt; Running</code>.
+    Add <code>is-success</code> or <code>is-danger</code> for green/red. Size via
+    <code>width</code>/<code>height</code>. Colors read the AgentsFramework tokens
+    (<code>--color-accent</code> etc.) and fall back to literals if those aren't present.
+  </p>
+</body>
+</html>

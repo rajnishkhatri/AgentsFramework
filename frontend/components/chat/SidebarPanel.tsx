@@ -12,12 +12,13 @@
  * aria-hidden when collapsed. The transition is disabled under
  * `prefers-reduced-motion` (design doc §5).
  *
- * No icon dependency — inline glyphs (☰ + 🔍) per the repo convention.
+ * Icons are lucide line SVGs (Menu / Search / Plus) — house style, no emoji.
  */
 
 "use client";
 
 import * as React from "react";
+import { Menu, Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ThreadState } from "@/lib/wire/agent_protocol";
 import { ThreadSidebar } from "./ThreadSidebar";
@@ -52,7 +53,7 @@ export function SidebarPanel(props: {
     <div
       data-testid="sidebar-panel"
       className={cn(
-        "h-full overflow-hidden border-r border-border-light bg-bg",
+        "h-full overflow-hidden bg-bg",
         "transition-[width] duration-200 ease-out motion-reduce:transition-none",
         props.collapsed ? "w-12" : "w-64",
       )}
@@ -66,9 +67,9 @@ export function SidebarPanel(props: {
           aria-expanded={!props.collapsed}
           aria-controls="sidebar-body"
           onClick={props.onToggleCollapsed}
-          className="text-fg bg-transparent border-0 cursor-pointer text-lg leading-none px-1 hover:text-accent"
+          className="text-fg bg-transparent border-0 cursor-pointer leading-none px-1 hover:text-accent flex items-center"
         >
-          ☰
+          <Menu className="size-5" aria-hidden="true" />
         </button>
         {!props.collapsed ? (
           <SidebarTabBar
@@ -98,9 +99,7 @@ export function SidebarPanel(props: {
             onClick={props.onNewChat}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-sm text-sm text-fg bg-surface border border-border cursor-pointer hover:border-accent"
           >
-            <span aria-hidden className="text-accent">
-              +
-            </span>
+            <Plus className="size-4 text-accent" aria-hidden="true" />
             New chat
           </button>
         </div>
@@ -115,7 +114,7 @@ export function SidebarPanel(props: {
             onClick={props.onToggleSearch}
             className="flex items-center gap-2 px-3 py-1.5 rounded-sm text-sm text-muted bg-transparent border-0 cursor-pointer hover:text-fg"
           >
-            <span aria-hidden>🔍</span>
+            <Search className="size-4" aria-hidden="true" />
             Search
           </button>
           {props.searchOpen ? (
@@ -134,6 +133,10 @@ export function SidebarPanel(props: {
             />
           ) : null}
         </div>
+
+        {/* Etched groove closing the action group, before the thread list
+           (design .separator-etched). */}
+        <div className="separator-etched mx-2" aria-hidden="true" />
 
         {/* Row 4: the existing thread list (Recents). */}
         <ThreadSidebar

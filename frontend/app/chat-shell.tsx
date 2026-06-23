@@ -89,13 +89,29 @@ function RunStatusLine(props: {
   const { view, phase } = props;
   if (view.status === "complete") {
     return (
-      <p
+      <div
         data-testid="terminal-marker"
-        className="text-xs text-muted m-0"
+        className="text-xs text-muted m-0 flex items-center gap-2"
         aria-label="Run complete"
       >
-        ✓ done
-      </p>
+        {/* Model badge (design meta-row parity): the model that produced the
+           answer, shown beside the done marker. */}
+        {view.modelBadge ? (
+          <span className="inline-flex items-center rounded-sm border border-border bg-surface px-2 py-0.5">
+            {view.modelBadge}
+          </span>
+        ) : null}
+        <span className="flex items-center gap-1.5">
+          {/* Eval captures freeze animation (decision D-A): show ✓ instead of
+             the pulsing orb so frozen captures stay deterministic. */}
+          {props.evalMode ? (
+            <span aria-hidden="true">✓</span>
+          ) : (
+            <span className="status-orb is-success" aria-hidden="true" />
+          )}
+          done
+        </span>
+      </div>
     );
   }
   if (view.status !== "streaming") return null;
@@ -115,7 +131,13 @@ function RunStatusLine(props: {
       aria-live="polite"
       className="text-xs text-muted m-0 grid gap-0.5"
     >
-      <p className={props.evalMode ? "m-0" : "m-0 animate-pulse"}>{label}</p>
+      {/* Streaming "alive" indicator: the pulsing status-orb carries the
+         motion (reduced-motion safe via status-orb.css). In eval mode the
+         orb's pulse is irrelevant — captures freeze on the static label. */}
+      <p className="m-0 flex items-center gap-1.5">
+        {props.evalMode ? null : <span className="status-orb" aria-hidden="true" />}
+        {label}
+      </p>
       {narration ? (
         // Reasoning layer: sans italic muted (Appendix A) -- visually
         // distinct from the answer so thinking is never read as prose.
@@ -386,11 +408,11 @@ export function ChatShell(props: {
 
   return (
     <div
-      className="min-h-dvh grid grid-rows-[auto_1fr]"
+      className="min-h-dvh grid grid-rows-[auto_auto_1fr]"
       {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
     >
       {/* Header (spans the full width above the three columns) */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border-light">
+      <header className="flex items-center justify-between px-4 py-3">
         <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
         <div className="flex items-center gap-3">
           {props.evalCase ? (
@@ -412,6 +434,8 @@ export function ChatShell(props: {
           </Link>
         </div>
       </header>
+      {/* Etched groove under the header (design .separator-etched), flush. */}
+      <div className="separator-etched" aria-hidden="true" />
 
       {/*
        * Body: thread history (left) · chat (center). The right "What I
@@ -420,8 +444,11 @@ export function ChatShell(props: {
        * on small screens (hidden lg:grid) so the chat column stays usable; the
        * center is always present.
        */}
-      <div className="grid lg:grid-cols-[auto_1fr] overflow-hidden">
-        <div className="hidden lg:block overflow-y-auto">
+      <div className="grid lg:grid-cols-[auto_2px_1fr] overflow-hidden">
+        {/* Recessed rail (§2.6): surface-sunken keeps the thread history a
+           half-step behind the chat canvas, Cursor-style. The rail↔chat divide
+           is the etched groove below (separator-etched-v), not a flat border. */}
+        <div className="hidden lg:block overflow-y-auto bg-surface-sunken">
           <SidebarPanel
             threads={visibleThreads}
             {...(activeThreadId ? { activeThreadId } : {})}
@@ -441,6 +468,13 @@ export function ChatShell(props: {
           />
         </div>
 
+        {/* Etched groove between the rail and the chat (design
+           .separator-etched-v). Hidden below lg where the rail itself hides. */}
+        <div
+          aria-hidden="true"
+          className="separator-etched-v hidden lg:block"
+        />
+
         {/* Chat column: scrollable messages + the pinned composer. */}
         <div className="grid grid-rows-[1fr_auto] overflow-hidden">
           <main className="overflow-y-auto p-4">
@@ -457,7 +491,7 @@ export function ChatShell(props: {
               <div className="max-w-3xl mx-auto grid gap-4">
                 {turns.map((turn) => (
                   <React.Fragment key={turn.id}>
-                    <div className="justify-self-end bg-accent text-white rounded-lg px-4 py-2 max-w-[80%]">
+                    <div className="bubble-user justify-self-end rounded-lg px-4 py-2 max-w-[80%]">
                       <span className="whitespace-pre-wrap">{turn.user}</span>
                     </div>
                     <div className="justify-self-start max-w-[80%] w-full grid gap-1">

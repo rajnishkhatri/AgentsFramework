@@ -1,0 +1,37 @@
+<!-- @dsCard group="Overlays" name="Dialog" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Dialog — AgentsFramework UI</title><link rel="stylesheet" href="../../_ds_bundle/styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">Dialog · Overlays · modal confirm, settings panel</div>
+  <div class="ds-section"><div class="ds-label">Open state</div>
+    <div style="position:relative;height:280px;border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden">
+      <div style="padding:24px;opacity:.4">
+        <div class="skeleton" style="height:16px;width:60%;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:16px;width:80%"></div>
+      </div>
+      <div style="position:absolute;inset:0;background:rgba(31,30,29,.4)"></div>
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:380px;background:var(--color-surface);border:1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);border-radius:var(--radius-lg);padding:24px;box-shadow:inset 0 1px 0 color-mix(in oklab, #fff 70%, transparent), 0 18px 38px -12px color-mix(in oklab, #000 38%, transparent)">
+        <button style="position:absolute;right:12px;top:12px;background:none;border:none;cursor:pointer;color:var(--color-muted)">✕</button>
+        <div class="dialog-title" style="margin-bottom:8px">Delete conversation?</div>
+        <p class="dialog-desc" style="margin-bottom:20px">This will permanently remove the thread. This action cannot be undone.</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm">Cancel</button>
+          <button class="btn btn-default btn-sm">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="position:relative;height:280px;border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;background:var(--color-bg)">
+      <div style="position:absolute;inset:0;background:rgba(249,247,245,.08)"></div>
+      <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:calc(100% - 48px);max-width:380px;background:var(--color-surface);border:1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);border-radius:var(--radius-lg);padding:24px;box-shadow:inset 0 1px 0 color-mix(in oklab, #fff 70%, transparent), 0 18px 38px -12px color-mix(in oklab, #000 50%, transparent)">
+        <button style="position:absolute;right:12px;top:12px;background:none;border:none;cursor:pointer;color:var(--color-muted)">✕</button>
+        <div class="dialog-title" style="margin-bottom:8px">Delete conversation?</div>
+        <p class="dialog-desc" style="margin-bottom:20px">This action cannot be undone.</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-outline btn-sm">Cancel</button>
+          <button class="btn btn-default btn-sm">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></body></html>

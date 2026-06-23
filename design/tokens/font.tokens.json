@@ -1,9 +1,9 @@
 {
   "font": {
     "sans": {
-      "$value": "var(--font-geist-sans), \"Inter\", ui-sans-serif, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "$value": "-apple-system, BlinkMacSystemFont, var(--font-geist-sans), system-ui, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
       "$type": "fontFamily",
-      "$description": "var(--font-geist-sans) is a runtime CSS var set on <html> by Next.js app/layout.tsx via the geist package — must be preserved verbatim"
+      "$description": "Frozen decision (v12): SF native first, Geist fallback. -apple-system/BlinkMacSystemFont resolve to San Francisco on Apple platforms (the native look); var(--font-geist-sans) is the cross-platform fallback set on <html> by Next.js app/layout.tsx via the geist package — must be preserved verbatim."
     },
     "mono": {
       "$value": "var(--font-geist-mono), \"JetBrains Mono\", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace",

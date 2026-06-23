@@ -36,7 +36,7 @@ export function SidebarTabBar(props: {
             className={cn(
               "px-2.5 py-1 rounded-sm text-sm cursor-pointer bg-transparent border-0",
               selected
-                ? "text-fg font-medium bg-accent-light"
+                ? "text-fg font-medium bg-selected"
                 : "text-muted hover:text-fg",
             )}
           >

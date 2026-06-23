@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dark Background Options — AgentsFramework UI</title>
+<link rel="stylesheet" href="../_ds_bundle/styles.css">
+<style>
+  body{margin:0;background:#0e0d0c;font-family:var(--font-sans);color:#f9f7f5}
+  .canvas{min-width:max-content;min-height:100vh;box-sizing:border-box;padding:44px 40px;display:flex;flex-direction:column;gap:6px}
+  h1{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:0}
+  .sub{font-size:15px;color:#a3a09a;margin:0 0 24px;max-width:680px;line-height:1.55}
+  .row{display:flex;gap:22px;align-items:flex-start}
+  .opt{flex:none;width:320px;display:flex;flex-direction:column;gap:12px}
+  .opt-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .opt-name{font-size:14px;font-weight:700;letter-spacing:.03em}
+  .opt-hex{font-family:ui-monospace,monospace;font-size:12px;color:#8d8a84}
+  .opt-tag{font-size:11px;font-weight:700;color:#5cba86}
+
+  .screen{border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:13px;min-height:340px;border:1px solid rgba(255,255,255,.07)}
+  .bubble{align-self:flex-end;max-width:84%;background:linear-gradient(180deg,color-mix(in oklab,var(--color-accent) 92%,#fff),var(--color-accent) 55%,color-mix(in oklab,var(--color-accent) 90%,#000));color:#fff;border:1px solid color-mix(in oklab,var(--color-accent) 78%,#000);box-shadow:inset 0 1px 0 color-mix(in oklab,#fff 26%,transparent);border-radius:16px;padding:11px 15px;font-size:15.5px;line-height:1.45}
+  .title{font-size:19px;font-weight:600;color:var(--color-fg);margin:0;display:flex;align-items:center;gap:6px;letter-spacing:-.01em}
+  .desc{font-size:15px;color:var(--color-muted);margin:0;line-height:1.5}
+  .check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .check li{display:flex;gap:8px;font-size:15px;color:var(--color-fg);line-height:1.4}
+  .check svg{flex:none;margin-top:3px;color:var(--color-success)}
+  .toolrow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--color-border);padding-top:12px}
+  .toolrow .nm{font-family:ui-monospace,monospace;font-size:14.5px;color:var(--color-fg)}
+  .toolrow .sb{font-size:13.5px;color:var(--color-muted)}
+  .composer{margin-top:auto}
+</style>
+</head>
+<body>
+<div class="canvas">
+  <h1>Dark-mode background — options</h1>
+  <p class="sub">Same content, four dark backgrounds. Watch two things: does the green improve <em>legibility</em> (it mostly won't — contrast already does that), and does it stay harmonious with the <strong style="color:#d98b6a">terracotta</strong> accent and embossed cards?</p>
+
+  <div class="row">
+
+    <!-- A current -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">A · Warm neutral</span><span class="opt-hex">#1f1e1d</span><span class="opt-tag">current</span></div>
+      <div class="screen" data-theme="dark" style="background:#1f1e1d;--color-bg:#1f1e1d">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- B subtle green -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">B · Green tinge</span><span class="opt-hex">#191d1a</span></div>
+      <div class="screen" data-theme="dark" style="background:#191d1a;--color-bg:#191d1a">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- C forest -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">C · Forest</span><span class="opt-hex">#152017</span><span class="opt-tag">boldest</span></div>
+      <div class="screen" data-theme="dark" style="background:#152017;--color-bg:#152017">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- D gradient -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">D · Green gradient</span><span class="opt-hex">#1b2620→#121a14</span></div>
+      <div class="screen" data-theme="dark" style="background:linear-gradient(170deg,#1c281f,#121a15 80%);--color-bg:#172019">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="height:36px"></div>
+  <div class="opt-head" style="margin-bottom:14px"><span class="opt-name" style="font-size:16px">Brown tinge — warm family, pairs with terracotta</span></div>
+  <div class="row">
+
+    <!-- A current ref -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">A · Warm neutral</span><span class="opt-hex">#1f1e1d</span><span class="opt-tag">current</span></div>
+      <div class="screen" data-theme="dark" style="background:#1f1e1d;--color-bg:#1f1e1d">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- BR1 warm brown -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">E · Warm brown</span><span class="opt-hex">#211b17</span></div>
+      <div class="screen" data-theme="dark" style="background:#211b17;--color-bg:#211b17">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- BR2 cocoa -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">F · Cocoa</span><span class="opt-hex">#241c15</span><span class="opt-tag">recommended</span></div>
+      <div class="screen" data-theme="dark" style="background:#241c15;--color-bg:#241c15">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+    <!-- BR3 espresso -->
+    <div class="opt">
+      <div class="opt-head"><span class="opt-name">G · Espresso</span><span class="opt-hex">#271a11</span><span class="opt-tag">boldest</span></div>
+      <div class="screen" data-theme="dark" style="background:#271a11;--color-bg:#271a11">
+        <div class="bubble">Improve memory recall across sessions.</div>
+        <div class="card" style="padding:14px">
+          <p class="title"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3.2l2 1.3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Understanding the task</p>
+          <p class="desc" style="margin:8px 0 12px">Design a durable cross-session recall improvement, measured against the eval suite.</p>
+          <ul class="check"><li><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 8.5l3.2 3L13 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Recall@5 improves on the held-out set</li></ul>
+          <div class="toolrow" style="margin-top:12px"><div style="flex:1"><div class="nm">search_memory</div><div class="sb">3 matches · 98ms</div></div><span class="badge badge-success">Complete</span></div>
+        </div>
+        <div class="composer"><input class="composer-input" placeholder="Send follow-up" style="font-size:15px"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="sub" style="margin-top:26px;color:#8d8a84"><strong style="color:#f9f7f5">Brown vs green:</strong> brown shares the terracotta's warmth, so it deepens the existing mood rather than introducing tension — <strong style="color:#f9f7f5">F · Cocoa</strong> reads as a richer, cozier version of the current theme and is the most natural fit. Legibility is unchanged across all of these (light text on a dark warm base). Espresso (G) is the most characterful but starts to feel brand-distinct.</p>
+</div>
+</body>
+</html>

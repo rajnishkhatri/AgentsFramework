@@ -27,6 +27,7 @@
  */
 
 import * as React from "react";
+import { Square } from "lucide-react";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -103,7 +104,7 @@ export function TaskUnderstandingCard(props: {
         data-editing="true"
         role="note"
         aria-label="Edit the agent's understanding of your task"
-        className="rounded-md border border-border bg-muted/30 p-3 text-sm grid gap-2"
+        className="surface-etched rounded-lg bg-surface p-3 text-sm grid gap-2"
       >
         <p className="m-0 font-medium">Correct my understanding</p>
         <textarea
@@ -118,7 +119,7 @@ export function TaskUnderstandingCard(props: {
         <ul className="m-0 list-none p-0 grid gap-1">
           {conditions.map((condition, i) => (
             <li key={`draft-${i}`} className="flex gap-2 items-center text-xs">
-              <span aria-hidden="true">☐</span>
+              <Square className="size-3.5 shrink-0 text-muted" aria-hidden="true" />
               <input
                 data-testid={`understanding-condition-input-${i}`}
                 aria-label={`Success condition ${i + 1}`}
@@ -199,7 +200,7 @@ export function TaskUnderstandingCard(props: {
       data-condition-count={understanding.success_conditions.length}
       role="note"
       aria-label="Agent's understanding of your task"
-      className="rounded-md border border-border bg-muted/30 p-3 text-sm grid gap-1"
+      className="surface-etched rounded-lg bg-surface p-3 text-sm grid gap-1"
     >
       <p className="m-0 font-medium">
         Here&apos;s my understanding
@@ -224,9 +225,9 @@ export function TaskUnderstandingCard(props: {
           <li
             key={`cond-${i}`}
             data-testid={`understanding-condition-${i}`}
-            className="flex gap-2 items-baseline text-xs"
+            className="flex gap-2 items-start text-xs"
           >
-            <span aria-hidden="true">☐</span>
+            <Square className="size-3.5 shrink-0 mt-0.5 text-muted" aria-hidden="true" />
             <span>{condition}</span>
           </li>
         ))}
