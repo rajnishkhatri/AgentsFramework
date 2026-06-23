@@ -1,0 +1,59 @@
+<!-- @dsCard group="Surfaces" name="Separator" viewport="560x760" -->
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Separator — AgentsFramework UI</title><link rel="stylesheet" href="../../_ds_bundle/styles.css"></head>
+<body><div class="ds-preview">
+  <div class="ds-label">Separator · Surfaces · dividers §2.6</div>
+
+  <div class="ds-section"><div class="ds-label">Default — etched groove</div>
+    <div style="max-width:360px"><div class="separator-h"></div></div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Etched on a surface panel</div>
+    <div style="max-width:360px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:14px">
+      <p class="text-sm text-fg">Branch pushed</p>
+      <div class="separator-etched"></div>
+      <p class="text-sm text-muted">3 commits ahead of main</p>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Raised — ridge (inverse of etched)</div>
+    <div style="max-width:360px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:14px">
+      <p class="text-sm text-fg">Section above</p>
+      <div class="separator-raised"></div>
+      <p class="text-sm text-muted">Section below</p>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Dashed</div>
+    <div style="max-width:360px"><div class="separator-dashed"></div></div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Gradient — feathered edges</div>
+    <div style="max-width:360px"><div class="separator-gradient"></div></div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Labeled divider</div>
+    <div style="max-width:360px"><div class="separator-label">Today</div></div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Vertical — hairline &amp; etched</div>
+    <div style="display:flex;align-items:center;gap:14px;height:36px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:0 16px;width:max-content">
+      <span class="text-sm text-fg">Chats</span>
+      <div class="separator-v" style="height:20px"></div>
+      <span class="text-sm text-muted">Memory</span>
+      <div class="separator-etched-v" style="height:20px"></div>
+      <span class="text-sm text-muted">Files</span>
+    </div>
+  </div>
+
+  <div class="ds-section"><div class="ds-label">Dark mode</div>
+    <div data-theme="dark" style="background:var(--color-bg);padding:16px;border-radius:var(--radius-lg);max-width:360px;display:flex;flex-direction:column;gap:14px">
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:16px;display:flex;flex-direction:column;gap:14px">
+        <p class="text-sm text-fg">Etched groove</p>
+        <div class="separator-etched"></div>
+        <p class="text-sm text-muted">Reads as a carved line on dark surfaces</p>
+      </div>
+      <div class="separator-label">Yesterday</div>
+      <div class="separator-gradient"></div>
+    </div>
+  </div>
+</div></body></html>

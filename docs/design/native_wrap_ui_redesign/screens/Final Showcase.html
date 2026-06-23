@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgentsFramework UI — Final Showcase</title>
+<link rel="stylesheet" href="_ds_bundle/styles.css">
+<style>
+  body{background:var(--color-bg);color:var(--color-fg);font-family:var(--font-sans);-webkit-font-smoothing:antialiased}
+  .page{max-width:1180px;margin:0 auto;padding:48px 40px 80px}
+  .masthead{margin-bottom:8px}
+  .masthead h1{font-size:30px;font-weight:600;letter-spacing:-0.02em}
+  .masthead p{font-size:15px;color:var(--color-muted);margin-top:8px;max-width:680px;line-height:1.55}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px;margin-top:32px;align-items:start}
+  .panel{background:var(--color-surface);border:1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);border-radius:14px;box-shadow:inset 0 1px 0 color-mix(in oklab,#fff 70%,transparent),0 1px 2px color-mix(in oklab,#000 12%,transparent);padding:18px;display:flex;flex-direction:column;gap:14px}
+  .panel.span2{grid-column:span 2}
+  @media(max-width:760px){.panel.span2{grid-column:span 1}}
+  .ph{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--color-muted)}
+  .demo{display:flex;flex-direction:column;gap:12px;background:var(--color-bg);border-radius:10px;padding:18px}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .sectiontitle{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-muted);margin:44px 0 4px}
+  .dd{min-width:13rem}
+  .ico{width:36px;height:36px;flex:none}
+  .dark-wrap{background:#1f1e1d;border-radius:18px;padding:28px;margin-top:20px}
+  .dark-wrap .panel{background:color-mix(in oklab,#1f1e1d 88%,#f9f7f5 12%)}
+  .dark-wrap .demo{background:#1f1e1d}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="masthead">
+    <h1>AgentsFramework UI</h1>
+    <p>Warm-neutral agent interface system. Terracotta accent with a tactile, etched/embossed surface language, San&nbsp;Francisco→Geist type, and full status colors. Every style below is frozen.</p>
+    <div class="meta">
+      <span class="badge badge-accent">Terracotta accent</span>
+      <span class="badge badge-success">Status colors</span>
+      <span class="badge badge-default">SF → Geist</span>
+      <span class="badge badge-outline">Etched + embossed</span>
+    </div>
+  </div>
+
+  <div class="sectiontitle">Light</div>
+  <div class="grid">
+
+    <div class="panel">
+      <div class="ph">Buttons</div>
+      <div class="demo">
+        <div class="row"><button class="btn btn-default btn-md">Send</button><button class="btn btn-outline btn-md">Outline</button><button class="btn btn-ghost btn-md">Ghost</button></div>
+        <div class="row" style="align-items:center"><button class="btn btn-default btn-sm">Small</button><button class="btn btn-default btn-lg">Large</button><button class="btn btn-outline btn-icon" title="Add"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Badges &amp; status</div>
+      <div class="demo">
+        <div class="row"><span class="badge badge-accent">● Running</span><span class="badge badge-default">Queued</span><span class="badge badge-success">Complete</span><span class="badge badge-warning">Retrying</span><span class="badge badge-danger">P0</span></div>
+        <div class="row"><span class="badge badge-outline">Outline</span><span class="badge badge-accent">Memory</span><span class="badge badge-success">98ms</span></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Inputs</div>
+      <div class="demo">
+        <div class="input-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11l3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><input class="input input-pill" placeholder="Search threads…"></div>
+        <input class="input" type="text" value="memory recall" style="border-color:color-mix(in oklab, var(--color-accent) 55%, var(--color-border));box-shadow:0 0 0 3px var(--color-accent-light)">
+      </div>
+    </div>
+
+    <div class="panel span2">
+      <div class="ph">Composer</div>
+      <div class="demo">
+        <div class="composer">
+          <button class="composer-iconbtn" title="Add"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+          <input class="composer-input" placeholder="Send follow-up">
+          <button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button class="composer-mic" title="Voice"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="6" y="2" width="4" height="7" rx="2" fill="currentColor"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="composer-box">
+          <textarea class="composer-input" placeholder="Send follow-up">Write a plan to improve memory recall across sessions.</textarea>
+          <div class="composer-toolbar">
+            <div class="composer-tools"><button class="composer-iconbtn"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button><button class="composer-model">Composer 2.5 <strong>Fast</strong><svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+            <button class="composer-send" title="Send"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 13V4M4 7l4-3 4 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Cards — embossed &amp; etched</div>
+      <div class="demo" style="gap:10px">
+        <div class="card"><div class="card-header"><div class="card-title">Memory Recall</div><p class="text-sm text-muted">3 matches · 98ms</p></div></div>
+        <div class="card etched"><div class="card-header"><div class="card-title">Branch pushed</div><p class="text-sm text-muted">3 commits ahead of main</p></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Tabs</div>
+      <div class="demo">
+        <div class="tabs-list"><button class="tabs-trigger active">Chats</button><button class="tabs-trigger">Memory</button><button class="tabs-trigger">Files</button></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Separators</div>
+      <div class="demo" style="background:var(--color-surface)">
+        <span class="text-sm text-fg">Section above</span>
+        <div class="separator-h"></div>
+        <span class="text-sm text-muted">Section below</span>
+        <div class="separator-label">Today</div>
+        <div class="separator-dashed"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Dropdown menu</div>
+      <div class="demo">
+        <div class="dropdown-content dd">
+          <button class="dropdown-item">New thread</button>
+          <button class="dropdown-item">Duplicate</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Toasts</div>
+      <div class="demo">
+        <div class="toast toast-success"><div class="toast-title">Run complete</div><div class="toast-desc">22/22 passed · 0 regressions</div><div class="toast-actions"><button class="toast-action">View</button><button class="toast-cancel">Dismiss</button></div></div>
+        <div class="toast toast-error"><div class="toast-title">Error</div><div class="toast-desc">Backend connection lost</div><div class="toast-actions"><button class="toast-action">Retry</button><button class="toast-cancel">Cancel</button></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Tooltip &amp; skeleton</div>
+      <div class="demo" style="gap:16px">
+        <div class="tooltip-content" style="width:max-content">Copy message</div>
+        <div style="display:flex;flex-direction:column;gap:8px"><div class="skeleton" style="height:12px;width:90%"></div><div class="skeleton" style="height:12px;width:65%"></div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph">Scroll area</div>
+      <div class="demo" style="padding:0">
+        <div class="scroll-area-root" style="height:130px">
+          <div class="scroll-area-viewport" style="padding:12px;display:flex;flex-direction:column;gap:8px">
+            <div class="card" style="padding:10px"><p class="text-sm text-fg">Planning run · 2 min ago</p></div>
+            <div class="card" style="padding:10px"><p class="text-sm text-fg">Memory probe</p></div>
+            <div class="card" style="padding:10px"><p class="text-sm text-muted">GoalJudge eval</p></div>
+            <div class="card" style="padding:10px"><p class="text-sm text-fg">Embedding sync</p></div>
+            <div class="card" style="padding:10px"><p class="text-sm text-muted">Recall invariant</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sectiontitle">Dark</div>
+  <div class="dark-wrap" data-theme="dark">
+    <div class="grid" style="margin-top:0">
+      <div class="panel">
+        <div class="ph">Buttons &amp; badges</div>
+        <div class="demo">
+          <div class="row"><button class="btn btn-default btn-md">Send</button><button class="btn btn-outline btn-md">Outline</button><button class="btn btn-ghost btn-md">Ghost</button></div>
+          <div class="row"><span class="badge badge-accent">● Running</span><span class="badge badge-success">Complete</span><span class="badge badge-warning">Retrying</span><span class="badge badge-danger">P0</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph">Composer &amp; tabs</div>
+        <div class="demo">
+          <div class="composer">
+            <button class="composer-iconbtn"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+            <input class="composer-input" placeholder="Send follow-up">
+            <button class="composer-mic"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="6" y="2" width="4" height="7" rx="2" fill="currentColor"/><path d="M4 8a4 4 0 0 0 8 0M8 12v2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></button>
+          </div>
+          <div class="tabs-list"><button class="tabs-trigger active">Chats</button><button class="tabs-trigger">Memory</button></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph">Cards &amp; toast</div>
+        <div class="demo">
+          <div class="card etched"><div class="card-header"><div class="card-title">Branch pushed</div><p class="text-sm text-muted">Etched on dark surface</p></div></div>
+          <div class="toast toast-success" style="max-width:none"><div class="toast-title">Run complete</div><div class="toast-actions"><button class="toast-action">View</button><button class="toast-cancel">Dismiss</button></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
