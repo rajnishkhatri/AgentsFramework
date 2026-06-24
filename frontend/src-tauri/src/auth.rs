@@ -84,6 +84,29 @@ pub fn is_web_sign_in_nav(url: &str) -> bool {
     }
 }
 
+/// True when the webview is about to load the WorkOS hosted-login (authorize)
+/// page IN-WINDOW. This is the reliable intercept point: a Next `<Link>` click to
+/// `/api/auth/sign-in` is handled as a client-side RSC navigation that
+/// `on_navigation` never sees, but the resulting cross-origin redirect to
+/// `api.workos.com/.../authorize` IS a real top-level navigation. We cancel it
+/// and reopen our desktop sign-in (PKCE + custom-scheme redirect) in the system
+/// browser. The browser leg's own authorize load happens OUTSIDE the webview, so
+/// it is never seen here — no loop.
+pub fn is_workos_authorize_nav(url: &str) -> bool {
+    match Url::parse(url) {
+        Ok(u) => {
+            u.host_str() == Some("api.workos.com")
+                && u.path().ends_with("/authorize")
+                // Our own browser leg carries the custom-scheme redirect_uri; if
+                // that ever shows up in-webview, don't re-intercept it.
+                && !u.query_pairs().any(|(k, v)| {
+                    k == "redirect_uri" && v.starts_with(&format!("{SCHEME}://"))
+                })
+        }
+        Err(_) => false,
+    }
+}
+
 /// Rewrite the deep-link return into the HTTPS desktop-callback navigation,
 /// injecting the stashed `verifier`. Returns `None` if the deep link lacks the
 /// expected `code`/`state`, or if `state` doesn't match the in-flight session
@@ -185,6 +208,23 @@ mod tests {
             "https://app.example.com/api/auth/sign-in?client=desktop&code_challenge=c&state=s"
         ));
         assert!(!is_web_sign_in_nav("https://app.example.com/chat"));
+    }
+
+    #[test]
+    fn detects_workos_authorize_nav_but_not_our_browser_leg() {
+        // The in-webview redirect to WorkOS (web flow) — intercept this.
+        assert!(is_workos_authorize_nav(
+            "https://api.workos.com/user_management/authorize?client_id=x&redirect_uri=https%3A%2F%2Fapp.example.com%2Fapi%2Fauth%2Fcallback"
+        ));
+        // Our own browser leg carries the custom-scheme redirect — must NOT be
+        // re-intercepted (it loads outside the webview anyway, but guard it).
+        assert!(!is_workos_authorize_nav(
+            "https://api.workos.com/user_management/authorize?redirect_uri=agentsframework%3A%2F%2Fauth%2Fcallback&code_challenge=c"
+        ));
+        // Unrelated hosts/paths pass through.
+        assert!(!is_workos_authorize_nav("https://app.example.com/chat"));
+        assert!(!is_workos_authorize_nav("https://api.workos.com/user_management/token"));
+        assert!(!is_workos_authorize_nav("not a url"));
     }
 
     #[test]

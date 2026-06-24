@@ -35,14 +35,35 @@ function generateNonce(): string {
 
 const isDev = process.env.NODE_ENV !== "production";
 
-function buildStrictCSP(nonce: string): string {
+/**
+ * Marker token in the Tauri shell's custom User-Agent (see
+ * `src-tauri/src/lib.rs` SHELL_USER_AGENT). When present we relax `connect-src`
+ * to allow the macOS Tauri IPC custom-protocol origin, so `invoke()` reaches the
+ * shell. Without this the strict CSP blocks the IPC fetch and desktop sign-in is
+ * dead. Browser requests never carry this token, so the web CSP is unchanged.
+ */
+const SHELL_UA_MARKER = "AgentsFrameworkShell";
+
+/**
+ * Tauri IPC + asset origins the macOS WKWebview uses for `invoke()` and
+ * `convertFileSrc`. Added to `connect-src` ONLY for the shell. `ipc:` covers the
+ * IPC custom protocol; the `*.localhost` https/http forms cover wry's asset +
+ * fallback hosts across platforms.
+ */
+const SHELL_IPC_SOURCES =
+  "ipc: http://ipc.localhost https://ipc.localhost http://tauri.localhost https://tauri.localhost tauri:";
+
+function buildStrictCSP(nonce: string, isShell: boolean): string {
+  const connectSrc = isShell
+    ? `connect-src 'self' https://*.workos.com ${SHELL_IPC_SOURCES}`
+    : `connect-src 'self' https://*.workos.com`;
   return [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'nonce-${nonce}'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
-    `connect-src 'self' https://*.workos.com`,
+    connectSrc,
     `frame-src 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
@@ -51,14 +72,15 @@ function buildStrictCSP(nonce: string): string {
   ].join("; ");
 }
 
-function buildDevCSP(nonce: string): string {
+function buildDevCSP(nonce: string, isShell: boolean): string {
+  const shellSrc = isShell ? ` ${SHELL_IPC_SOURCES}` : "";
   return [
     `default-src 'self'`,
     `script-src 'self' 'unsafe-eval' 'nonce-${nonce}'`,
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: blob:`,
     `font-src 'self'`,
-    `connect-src 'self' https://*.workos.com ws://localhost:*`,
+    `connect-src 'self' https://*.workos.com ws://localhost:*${shellSrc}`,
     `frame-src 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
@@ -67,13 +89,14 @@ function buildDevCSP(nonce: string): string {
   ].join("; ");
 }
 
-function buildCSP(nonce: string): string {
-  return isDev ? buildDevCSP(nonce) : buildStrictCSP(nonce);
+function buildCSP(nonce: string, isShell: boolean): string {
+  return isDev ? buildDevCSP(nonce, isShell) : buildStrictCSP(nonce, isShell);
 }
 
 export async function middleware(req: NextRequest) {
   const nonce = generateNonce();
-  const csp = buildCSP(nonce);
+  const isShell = (req.headers.get("user-agent") ?? "").includes(SHELL_UA_MARKER);
+  const csp = buildCSP(nonce, isShell);
 
   req.headers.set("x-nonce", nonce);
 
