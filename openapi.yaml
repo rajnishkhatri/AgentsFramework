@@ -408,6 +408,65 @@ components:
       - messages
       title: MessagesSnapshot
       type: object
+    ModelInfo:
+      additionalProperties: false
+      description: "One selectable model on the wire \u2014 name + tier ONLY.\n\n\
+        Pricing (cost_per_1k_*), ``litellm_id``, and context windows are runtime\n\
+        catalog internals and are deliberately NOT exposed to the client (the model\n\
+        name is non-secret; the cost table is not a client concern). The dropdown\n\
+        needs only the name to pin and the tier to group/label."
+      properties:
+        name:
+          title: Name
+          type: string
+        tier:
+          title: Tier
+          type: string
+      required:
+      - name
+      - tier
+      title: ModelInfo
+      type: object
+    ModelsResponse:
+      $defs:
+        ModelInfo:
+          additionalProperties: false
+          description: "One selectable model on the wire \u2014 name + tier ONLY.\n\
+            \nPricing (cost_per_1k_*), ``litellm_id``, and context windows are runtime\n\
+            catalog internals and are deliberately NOT exposed to the client (the\
+            \ model\nname is non-secret; the cost table is not a client concern).\
+            \ The dropdown\nneeds only the name to pin and the tier to group/label."
+          properties:
+            name:
+              title: Name
+              type: string
+            tier:
+              title: Tier
+              type: string
+          required:
+          - name
+          - tier
+          title: ModelInfo
+          type: object
+      additionalProperties: false
+      description: "Response body of ``GET /models`` \u2014 the model picker's catalog.\n\
+        \n``default`` is the steady-state fast model name; ``models`` is the registry\n\
+        order (the router's first-match-per-tier contract). \"Auto\" is a UI sentinel,\n\
+        not a model \u2014 the client prepends it; the backend never lists it."
+      properties:
+        default:
+          title: Default
+          type: string
+        models:
+          items:
+            $ref: '#/components/schemas/ModelInfo'
+          title: Models
+          type: array
+      required:
+      - default
+      - models
+      title: ModelsResponse
+      type: object
     Raw:
       additionalProperties: false
       properties:
@@ -1576,3 +1635,16 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
           description: Healthy
       summary: Liveness probe
+  /models:
+    get:
+      operationId: listModels
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelsResponse'
+          description: The active registry's model catalog
+        '401':
+          description: Unauthorized
+      summary: List selectable models for the picker (name+tier only)

@@ -486,3 +486,64 @@ class TestCompositionRoot:
         )
         assert r2.status_code == 200
         assert run_id in runtime.cancelled_runs
+
+
+class TestModelsEndpoint:
+    """GET /models — the model picker's catalog (auth-scoped, name+tier only)."""
+
+    # ── Rejection first: must require a bearer (auth-scoped like /api/*) ──
+    def test_requires_bearer(self) -> None:
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        assert client.get("/models").status_code == 401
+
+    # ── Never leak pricing / litellm internals to the client ─────────────
+    def test_omits_pricing_and_litellm_id(self, monkeypatch) -> None:
+        monkeypatch.delenv("MODEL_PROFILE_SET", raising=False)
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        body = client.get("/models", headers=_good_token(client)).json()
+        for m in body["models"]:
+            assert set(m.keys()) == {"name", "tier"}
+            assert "cost_per_1k_input" not in m
+            assert "litellm_id" not in m
+
+    # ── Default (openai) set shape ───────────────────────────────────────
+    def test_default_set_lists_openai_catalog(self, monkeypatch) -> None:
+        monkeypatch.delenv("MODEL_PROFILE_SET", raising=False)
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        body = client.get("/models", headers=_good_token(client)).json()
+        assert body["default"] == "gpt-4o-mini"
+        names = [m["name"] for m in body["models"]]
+        assert names[0] == "gpt-4o-mini"  # first fast (registry order)
+        assert "Auto" not in names  # Auto is a UI sentinel, never listed
+
+    # ── Anthropic set tracks MODEL_PROFILE_SET ───────────────────────────
+    def test_anthropic_set_lists_three_tier_stack(self, monkeypatch) -> None:
+        monkeypatch.setenv("MODEL_PROFILE_SET", "anthropic")
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        body = client.get("/models", headers=_good_token(client)).json()
+        assert body["default"] == "claude-haiku-4-5"
+        names = [m["name"] for m in body["models"]]
+        assert "claude-opus-4-8" in names
+        # first-match per tier is the safety contract
+        first_fast = next(m for m in body["models"] if m["tier"] == "fast")
+        assert first_fast["name"] == "claude-haiku-4-5"
+
+    # ── DeepSeek set tracks MODEL_PROFILE_SET (Flash fast+capable / Pro) ──
+    def test_deepseek_set_lists_flash_and_pro(self, monkeypatch) -> None:
+        monkeypatch.setenv("MODEL_PROFILE_SET", "deepseek")
+        client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
+        body = client.get("/models", headers=_good_token(client)).json()
+        assert body["default"] == "deepseek-v4-flash"
+        names = [m["name"] for m in body["models"]]
+        # Both Flash names (fast + capable) AND Pro are listed; no pricing leak.
+        assert "deepseek-v4-flash" in names
+        assert "deepseek-v4-flash-capable" in names
+        assert "deepseek-v4-pro" in names
+        for m in body["models"]:
+            assert set(m.keys()) == {"name", "tier"}
+        first_fast = next(m for m in body["models"] if m["tier"] == "fast")
+        assert first_fast["name"] == "deepseek-v4-flash"
+        first_reasoning = next(
+            m for m in body["models"] if m["tier"] == "reasoning"
+        )
+        assert first_reasoning["name"] == "deepseek-v4-pro"

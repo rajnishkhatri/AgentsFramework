@@ -222,7 +222,23 @@ def compaction_trigger_tokens(context_window: int, fraction: float) -> int:
 
 
 def default_fast_profile() -> ModelProfile:
-    """Canonical fast-model profile used as fallback across the system."""
+    """Canonical fast-model profile used as fallback across the system.
+
+    Delegates to the H2-canonical registry (services/llm_config.py) so there is
+    one source of truth for the catalog — returns the first fast-tier profile of
+    the *default* set (the order-is-a-safety-contract first-match). The import is
+    function-local: llm_config imports base_config, so a module-level import here
+    would be circular.
+    """
+    from services.llm_config import build_model_registry
+
+    models, _ = build_model_registry()
+    for profile in models:
+        if profile.tier == "fast":
+            return profile.model_copy(deep=True)
+    # Unreachable for a well-formed registry (the default set always has a fast
+    # tier); a defensive literal so a misconfigured table can't crash the
+    # fallback path.
     return ModelProfile(
         name="gpt-4o-mini",
         litellm_id="openai/gpt-4o-mini",

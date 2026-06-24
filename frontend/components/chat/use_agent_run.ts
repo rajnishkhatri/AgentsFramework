@@ -150,7 +150,11 @@ export function useAgentRun(
 ): {
   turns: ReadonlyArray<ChatTurn>;
   busy: boolean;
-  send: (body: string) => Promise<void>;
+  /**
+   * Send a user turn. `selectedModel` is the model-picker choice ("Auto" or a
+   * /models registry name); omitted/"Auto" => let the backend Auto router pick.
+   */
+  send: (body: string, selectedModel?: string) => Promise<void>;
   /** Turn currently paused for a card edit, or null. */
   pausedTurnId: string | null;
   /** Last edit-POST failure (the card renders it); cleared on retry/cancel. */
@@ -213,7 +217,7 @@ export function useAgentRun(
   );
 
   const send = React.useCallback(
-    async (body: string): Promise<void> => {
+    async (body: string, selectedModel?: string): Promise<void> => {
       // First send of a new chat: mint the id AND auto-create the durable row
       // (D1) so the conversation is saved from turn one. `isFirstSend` is true
       // only when the ref was null before this assignment.
@@ -244,6 +248,7 @@ export function useAgentRun(
         const req = uiInputToAgentRequest({
           thread_id: threadId,
           body,
+          ...(selectedModel !== undefined ? { selectedModel } : {}),
         });
         await consumeRunStream(
           runtime.streamRun(req, { signal: controller.signal }),

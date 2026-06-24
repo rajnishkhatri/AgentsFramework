@@ -14,6 +14,157 @@ from services.base_config import AgentConfig, ModelProfile
 logger = logging.getLogger("services.llm_config")
 
 
+# ── Central model registry (H2: the single source of truth for model names) ──
+#
+# Data-driven profile table keyed by ``MODEL_PROFILE_SET``. Adding or swapping a
+# model later (e.g. claude-sonnet-4-6 -> 4-7, or a new gpt-5.5) is editing one
+# row here — no router/call-site change (the router selects by *tier*, never by
+# a hardcoded name; see components/router.py). The composition root, the CLIs,
+# and the synthetic-batch script all consume this via ``build_model_registry``.
+#
+# ORDER IS A SAFETY CONTRACT: the router resolves a tier by first-match
+# (``_pick_profile_by_tier``), so within each set the first ``fast`` / first
+# ``capable`` / first ``reasoning`` profile is the one Auto routing picks. The
+# ``"anthropic"`` set is ordered so first-match resolves fast->Haiku,
+# capable->Sonnet, reasoning->Opus; the OpenAI models that follow are pin-only
+# (a user can pin them by name, but Auto never reaches them). Regression tests
+# in tests/services/test_llm_config.py pin this invariant.
+
+_OPENAI_PROFILES: list[ModelProfile] = [
+    ModelProfile(
+        name="gpt-4o-mini",
+        litellm_id="openai/gpt-4o-mini",
+        tier="fast",
+        context_window=128000,
+        cost_per_1k_input=0.00015,
+        cost_per_1k_output=0.0006,
+    ),
+    ModelProfile(
+        name="gpt-4o",
+        litellm_id="openai/gpt-4o",
+        tier="capable",
+        context_window=128000,
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.015,
+    ),
+]
+
+# The 3-tier all-Anthropic Auto stack (decided 2026-06-24): fast=Haiku 4.5,
+# capable=Sonnet 4.6, reasoning=Opus 4.8. The gpt-* models stay registered but
+# pin-only (listed after the Anthropic tiers so first-match never reaches them).
+_ANTHROPIC_PROFILES: list[ModelProfile] = [
+    ModelProfile(
+        name="claude-haiku-4-5",
+        litellm_id="anthropic/claude-haiku-4-5",
+        tier="fast",
+        context_window=200000,
+        cost_per_1k_input=0.001,
+        cost_per_1k_output=0.005,
+    ),
+    ModelProfile(
+        name="claude-sonnet-4-6",
+        litellm_id="anthropic/claude-sonnet-4-6",
+        tier="capable",
+        context_window=1000000,
+        cost_per_1k_input=0.003,
+        cost_per_1k_output=0.015,
+    ),
+    ModelProfile(
+        name="claude-opus-4-8",
+        litellm_id="anthropic/claude-opus-4-8",
+        tier="reasoning",
+        context_window=1000000,
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.025,
+    ),
+    ModelProfile(
+        name="gpt-5-mini",
+        litellm_id="openai/gpt-5-mini",
+        tier="fast",
+        context_window=400000,
+        cost_per_1k_input=0.00025,
+        cost_per_1k_output=0.002,
+    ),
+    ModelProfile(
+        name="gpt-5",
+        litellm_id="openai/gpt-5",
+        tier="capable",
+        context_window=400000,
+        cost_per_1k_input=0.00125,
+        cost_per_1k_output=0.010,
+    ),
+    *_OPENAI_PROFILES,
+]
+
+# The DeepSeek V4 Auto stack (decided 2026-06-24): fast=Flash, capable=Flash
+# (same litellm_id, DISTINCT name so _profiles keys don't collide and pin lookup
+# stays unique), reasoning=Pro. Flash fills both fast and capable because the
+# benchmark gap to Pro is tiny (SWE-Bench 79.0 vs 80.6) and DeepSeek's automatic
+# caching makes the repeated ReAct prefix ~free at either tier — so paying Pro's
+# 3.1x cache-MISS input premium on every planning/eval turn buys almost nothing.
+# Pro is reachable by Auto ONLY via Branch 3 failure-escalation (reasoning tier),
+# honoring "Pro = reasoning/complex". The gpt-* models stay registered but
+# pin-only (listed after the DeepSeek tiers so first-match never reaches them).
+# Legacy deepseek-chat/deepseek-reasoner aliases deprecate 2026-07-24 — the
+# deepseek-v4-* IDs below are the current ones.
+_DEEPSEEK_PROFILES: list[ModelProfile] = [
+    ModelProfile(
+        name="deepseek-v4-flash",
+        litellm_id="deepseek/deepseek-v4-flash",
+        tier="fast",
+        context_window=1000000,
+        cost_per_1k_input=0.00014,
+        cost_per_1k_output=0.00028,
+    ),
+    ModelProfile(
+        # Same litellm_id as deepseek-v4-flash — a DISTINCT name so LLMService
+        # ._profiles (keyed by name) and the pin lookup don't collide. Flash
+        # fills the capable tier too; see the rationale block above.
+        name="deepseek-v4-flash-capable",
+        litellm_id="deepseek/deepseek-v4-flash",
+        tier="capable",
+        context_window=1000000,
+        cost_per_1k_input=0.00014,
+        cost_per_1k_output=0.00028,
+    ),
+    ModelProfile(
+        name="deepseek-v4-pro",
+        litellm_id="deepseek/deepseek-v4-pro",
+        tier="reasoning",
+        context_window=1000000,
+        cost_per_1k_input=0.000435,
+        cost_per_1k_output=0.00087,
+    ),
+    *_OPENAI_PROFILES,
+]
+
+# Each entry: (ordered profile list, default_model name). The default is the
+# fast-tier steady-state model — it must appear in the list.
+_MODEL_PROFILE_SETS: dict[str, tuple[list[ModelProfile], str]] = {
+    "openai": (_OPENAI_PROFILES, "gpt-4o-mini"),
+    "anthropic": (_ANTHROPIC_PROFILES, "claude-haiku-4-5"),
+    "deepseek": (_DEEPSEEK_PROFILES, "deepseek-v4-flash"),
+}
+
+DEFAULT_MODEL_PROFILE_SET = "openai"
+
+
+def build_model_registry(
+    profile_set: str = DEFAULT_MODEL_PROFILE_SET,
+) -> tuple[list[ModelProfile], str]:
+    """Return ``(models, default_model)`` for a named profile set.
+
+    The single H2-canonical entry point for the model catalog. An unknown set
+    name falls back to the default set (fail-safe: never crash composition on a
+    typo'd env var — the byte-identical OpenAI stack is the safe default).
+    Returns fresh ``ModelProfile`` copies so callers can't mutate the table.
+    """
+    models, default_model = _MODEL_PROFILE_SETS.get(
+        profile_set, _MODEL_PROFILE_SETS[DEFAULT_MODEL_PROFILE_SET]
+    )
+    return [m.model_copy(deep=True) for m in models], default_model
+
+
 class LLMService:
     def __init__(self, config: AgentConfig) -> None:
         self._config = config

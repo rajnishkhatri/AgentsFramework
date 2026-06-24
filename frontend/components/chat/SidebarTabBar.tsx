@@ -9,7 +9,8 @@ import { cn } from "@/lib/utils";
 import type { SidebarTab } from "./use_sidebar_chrome";
 
 const TABS: ReadonlyArray<{ id: SidebarTab; label: string }> = [
-  { id: "chat", label: "Chat" },
+  { id: "chat", label: "Chats" },
+  { id: "memory", label: "Memory" },
 ];
 
 export function SidebarTabBar(props: {

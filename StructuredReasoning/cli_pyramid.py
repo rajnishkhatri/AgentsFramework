@@ -67,27 +67,18 @@ def _build_default_tool_registry() -> Any:
 
 
 def _build_agent_config() -> Any:
-    from services.base_config import AgentConfig, ModelProfile
+    import os
 
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
+    from services.base_config import AgentConfig
+    from services.llm_config import build_model_registry
+
+    # One source of truth for the catalog (H2 registry); honors MODEL_PROFILE_SET.
+    models, default_model = build_model_registry(
+        os.environ.get("MODEL_PROFILE_SET", "openai")
     )
     return AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
+        default_model=default_model,
+        models=models,
         max_steps=20,
         max_cost_usd=5.0,
     )

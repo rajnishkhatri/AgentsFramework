@@ -276,6 +276,45 @@ export function makeMemorySuppressHandler(
   };
 }
 
+// ── Models catalog (model picker) ─────────────────────────────────────
+
+interface ModelsListDeps {
+  readonly auth: AuthProvider;
+  /** `forwardToMiddleware`-shaped GET proxy (F-R9: bearer in, no creds). */
+  readonly forward: (
+    path: string,
+    init: { method: string; headers: Record<string, string> },
+  ) => Promise<Response>;
+}
+
+/**
+ * GET /api/models — proxy the backend's auth-scoped model catalog.
+ *
+ * Thin BFF (B6): authenticate via the AuthProvider port, then forward the
+ * WorkOS access token to the backend `GET /models` as a bearer. The backend
+ * sources the catalog from the H2 registry for the active MODEL_PROFILE_SET and
+ * exposes name+tier only (no pricing) — the BFF passes that body through
+ * unchanged. On any upstream failure the client falls back to Auto-only, so the
+ * picker never blocks composing.
+ */
+export function makeModelsListHandler(
+  deps: ModelsListDeps,
+): (req: Request) => Promise<Response> {
+  return async () => {
+    const claim = await deps.auth.getSession();
+    if (!claim) return unauthorized();
+    const token = await deps.auth.getAccessToken();
+    const upstream = await deps.forward("/models", {
+      method: "GET",
+      headers: { authorization: `Bearer ${token}` },
+    });
+    return new Response(await upstream.text(), {
+      status: upstream.status,
+      headers: { "content-type": "application/json", ...NO_STORE },
+    });
+  };
+}
+
 // ── Understanding edit (task_understanding plan Phase 4) ──────────────
 
 interface UnderstandingEditDeps {

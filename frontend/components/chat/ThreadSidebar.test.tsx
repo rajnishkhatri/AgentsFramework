@@ -93,6 +93,56 @@ describe("ThreadSidebar — empty/structure first", () => {
   });
 });
 
+describe("ThreadSidebar — Phase A preview subtitle (plan §2d)", () => {
+  function threadWithFirstMessage(
+    id: string,
+    title: string,
+    firstMessage: string,
+  ): ThreadState {
+    const iso = new Date(NOW - 1000).toISOString();
+    return {
+      thread_id: id,
+      user_id: "u",
+      title,
+      messages: [{ role: "user", content: firstMessage }],
+      created_at: iso,
+      updated_at: iso,
+      archived_at: null,
+    };
+  }
+
+  it("renders the first-message snippet as a muted subtitle line", () => {
+    render({
+      threads: [
+        threadWithFirstMessage(
+          "t1",
+          "Trip plan",
+          "Plan a 5-day trip to Kyoto in spring",
+        ),
+      ],
+      now: NOW,
+    });
+    const sub = q("thread-subtitle-t1");
+    expect(sub).not.toBeNull();
+    expect(sub?.textContent).toContain("Plan a 5-day trip to Kyoto");
+  });
+
+  it("renders title-only (no subtitle line) when there is no first message", () => {
+    // thread() builds a row with messages: [] (the BFF list default).
+    render({ threads: [thread("t2", "Empty thread", 1000)], now: NOW });
+    expect(q("thread-row-t2")).not.toBeNull();
+    expect(q("thread-subtitle-t2")).toBeNull();
+  });
+
+  it("suppresses a subtitle that just echoes the title (no doubled row)", () => {
+    render({
+      threads: [threadWithFirstMessage("t3", "Same text", "Same text")],
+      now: NOW,
+    });
+    expect(q("thread-subtitle-t3")).toBeNull();
+  });
+});
+
 describe("ThreadSidebar — callbacks", () => {
   it("calls onSelect with the thread id on click", () => {
     const onSelect = vi.fn();

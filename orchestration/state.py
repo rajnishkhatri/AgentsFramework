@@ -51,6 +51,12 @@ class AgentState(MessagesState):
     task_id: str
     task_input: str
 
+    # The user's per-run model pin (UI dropdown), seeded from the run input dict.
+    # Distinct from ``selected_model`` (which the route node OVERWRITES each step
+    # with the chosen profile name): the router reads ``pinned_model`` but never
+    # writes it, so a pin set on the first step persists unchanged across every
+    # step of the run (and, on resume, rides the checkpoint). Empty => "Auto".
+    pinned_model: str
     selected_model: str
     routing_reason: str
     model_history: Annotated[list[dict], _append_list]

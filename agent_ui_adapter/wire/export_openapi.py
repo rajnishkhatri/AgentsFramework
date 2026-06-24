@@ -299,6 +299,18 @@ def _build_paths() -> dict[str, Any]:
                 "responses": {"200": _json_response("HealthResponse", "Healthy")},
             },
         },
+        "/models": {
+            "get": {
+                "summary": "List selectable models for the picker (name+tier only)",
+                "operationId": "listModels",
+                "responses": {
+                    "200": _json_response(
+                        "ModelsResponse", "The active registry's model catalog"
+                    ),
+                    "401": {"description": "Unauthorized"},
+                },
+            },
+        },
     }
 
 

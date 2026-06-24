@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { uiInputToAgentRequest } from "./ui_input_to_agent_request";
+import { AUTO_MODEL, uiInputToAgentRequest } from "./ui_input_to_agent_request";
 
 describe("uiInputToAgentRequest [T1 pure / T3 zero-or-many]", () => {
   it("rejects empty thread_id", () => {
@@ -49,5 +49,45 @@ describe("uiInputToAgentRequest [T1 pure / T3 zero-or-many]", () => {
     const a = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
     const b = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
     expect(a).toEqual(b);
+  });
+
+  // ── Model pin (Task #3) ──────────────────────────────────────────────
+  it("omits pinned_model when no model is selected (Auto is the default)", () => {
+    const req = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
+    expect(req.input).not.toHaveProperty("pinned_model");
+  });
+
+  it("omits pinned_model when the choice is the Auto sentinel", () => {
+    const req = uiInputToAgentRequest({
+      thread_id: "t1",
+      body: "hi",
+      selectedModel: AUTO_MODEL,
+    });
+    expect(req.input).not.toHaveProperty("pinned_model");
+  });
+
+  it("rides a concrete pin inside input.pinned_model (not a top-level field)", () => {
+    const req = uiInputToAgentRequest({
+      thread_id: "t1",
+      body: "hi",
+      selectedModel: "claude-sonnet-4-6",
+    });
+    expect(req.input).toMatchObject({
+      messages: [{ role: "user", content: "hi" }],
+      pinned_model: "claude-sonnet-4-6",
+    });
+    // strict top-level: the pin must NOT leak to the root request object
+    expect(req).not.toHaveProperty("pinned_model");
+    expect(req).not.toHaveProperty("selected_model");
+  });
+
+  it("Auto choice is byte-identical to the no-pin path", () => {
+    const auto = uiInputToAgentRequest({
+      thread_id: "t1",
+      body: "hi",
+      selectedModel: AUTO_MODEL,
+    });
+    const none = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
+    expect(auto).toEqual(none);
   });
 });

@@ -13,7 +13,7 @@ import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { SidebarTabBar } from "./SidebarTabBar";
 
-function render(active: "chat" = "chat"): Document {
+function render(active: "chat" | "memory" = "chat"): Document {
   const html = renderToStaticMarkup(
     React.createElement(SidebarTabBar, { activeTab: active }),
   );
@@ -27,22 +27,32 @@ describe("SidebarTabBar", () => {
     expect(d.querySelector('[role="tablist"]')).toBeTruthy();
   });
 
-  it("renders the Chat tab with role=tab and its testid", () => {
+  it("renders the Chats tab with role=tab and its testid", () => {
     const d = render();
     const tab = d.querySelector('[data-testid="sidebar-tab-chat"]');
     expect(tab).toBeTruthy();
     expect(tab?.getAttribute("role")).toBe("tab");
-    expect(tab?.textContent).toContain("Chat");
+    expect(tab?.textContent).toContain("Chats");
+  });
+
+  it("renders the Memory tab (plan §2c)", () => {
+    const d = render();
+    const tab = d.querySelector('[data-testid="sidebar-tab-memory"]');
+    expect(tab).toBeTruthy();
+    expect(tab?.getAttribute("role")).toBe("tab");
+    expect(tab?.textContent).toContain("Memory");
   });
 
   it("marks the active tab with aria-selected=true", () => {
-    const d = render("chat");
-    const tab = d.querySelector('[data-testid="sidebar-tab-chat"]');
-    expect(tab?.getAttribute("aria-selected")).toBe("true");
+    const d = render("memory");
+    const chat = d.querySelector('[data-testid="sidebar-tab-chat"]');
+    const memory = d.querySelector('[data-testid="sidebar-tab-memory"]');
+    expect(memory?.getAttribute("aria-selected")).toBe("true");
+    expect(chat?.getAttribute("aria-selected")).toBe("false");
   });
 
-  it("renders exactly one tab for now (Chat only)", () => {
+  it("renders the two tabs (Chats + Memory)", () => {
     const d = render();
-    expect(d.querySelectorAll('[role="tab"]').length).toBe(1);
+    expect(d.querySelectorAll('[role="tab"]').length).toBe(2);
   });
 });

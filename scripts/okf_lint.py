@@ -66,6 +66,7 @@ DECLARED_BUNDLES: tuple[str, ...] = (
     "docs/guides",
     "docs/analysis",
     "docs/reviews",
+    "docs/adr",
 )
 
 RESERVED = {"index.md", "log.md", "README.md"}

@@ -14,6 +14,7 @@ import {
   makeMemoryDeleteHandler,
   makeMemoryListHandler,
   makeMemorySuppressHandler,
+  makeModelsListHandler,
   makeRunCancelHandler,
   makeThreadAppendHandler,
   makeThreadArchiveHandler,
@@ -671,5 +672,47 @@ describe("makeThreadAppendHandler [B6, durable transcript]", () => {
     const got = await store.get(ALICE, t.thread_id);
     expect(got?.messages).toHaveLength(2);
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+});
+
+describe("makeModelsListHandler [B6 model picker]", () => {
+  it("returns 401 without a session and does NOT forward (rejection first)", async () => {
+    const forward = vi.fn();
+    const handler = makeModelsListHandler({ auth: authYielding(null), forward });
+    const res = await handler(new Request("http://x/api/models"));
+    expect(res.status).toBe(401);
+    expect(forward).not.toHaveBeenCalled();
+  });
+
+  it("forwards the bearer to the backend /models and passes the body through", async () => {
+    const forward = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            default: "gpt-4o-mini",
+            models: [{ name: "gpt-4o-mini", tier: "fast" }],
+          }),
+          { status: 200 },
+        ),
+    );
+    const handler = makeModelsListHandler({ auth: authYielding(ALICE), forward });
+    const res = await handler(new Request("http://x/api/models"));
+    expect(res.status).toBe(200);
+    expect(forward).toHaveBeenCalledWith("/models", {
+      method: "GET",
+      headers: { authorization: "Bearer tok" },
+    });
+    const body = await res.json();
+    expect(body.default).toBe("gpt-4o-mini");
+    expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("propagates an upstream error status (client then falls back to Auto)", async () => {
+    const forward = vi.fn(
+      async () => new Response("upstream down", { status: 503 }),
+    );
+    const handler = makeModelsListHandler({ auth: authYielding(ALICE), forward });
+    const res = await handler(new Request("http://x/api/models"));
+    expect(res.status).toBe(503);
   });
 });

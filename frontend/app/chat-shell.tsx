@@ -18,7 +18,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowDown, Menu } from "lucide-react";
+import { ArrowDown, Menu, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
@@ -27,6 +27,8 @@ import { TaskUnderstandingCard } from "@/components/chat/TaskUnderstandingCard";
 import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { ToolCard } from "@/components/tools/ToolCard";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
+import { useAvailableModels } from "@/components/chat/use_available_models";
+import { AUTO_MODEL } from "@/lib/translators/ui_input_to_agent_request";
 import {
   useChatSidebars,
   type ChatSidebarsState,
@@ -383,6 +385,12 @@ export function ChatShell(props: {
     undefined,
   );
 
+  // Model picker (Task #4): the catalog loads from the BFF (Auto-only fallback);
+  // the selection lifts here so `send` can pass it. Default "Auto" => the
+  // backend Auto router decides (no pin).
+  const availableModels = useAvailableModels();
+  const [selectedModel, setSelectedModel] = React.useState<string>(AUTO_MODEL);
+
   // Recents filtered by the live search query (pure; empty query → all).
   const visibleThreads = React.useMemo(
     () => filterThreadsByTitle(sidebars.threads, chrome.searchQuery),
@@ -493,6 +501,23 @@ export function ChatShell(props: {
           >
             <Menu className="size-5" aria-hidden="true" />
           </button>
+          {/* Desktop panel-toggle (plan §2b): the canonical show/hide for the
+             inline rail — always reachable even when the rail is fully hidden.
+             Hidden <lg where the hamburger→Sheet drawer is the affordance. */}
+          <button
+            type="button"
+            data-testid="rail-toggle"
+            aria-label={chrome.collapsed ? "Show sidebar" : "Hide sidebar"}
+            aria-expanded={!chrome.collapsed}
+            onClick={chrome.toggleCollapsed}
+            className="hidden lg:flex -ml-1 size-9 text-muted bg-transparent border-0 cursor-pointer hover:text-fg items-center justify-center"
+          >
+            {chrome.collapsed ? (
+              <PanelLeft className="size-5" aria-hidden="true" />
+            ) : (
+              <PanelLeftClose className="size-5" aria-hidden="true" />
+            )}
+          </button>
           <h1 className="text-lg font-semibold m-0">ReAct Agent</h1>
         </div>
         <div className="flex items-center gap-3">
@@ -541,7 +566,7 @@ export function ChatShell(props: {
           side="left"
           id="thread-drawer"
           data-testid="thread-drawer"
-          className="w-[18rem] p-0 bg-surface-sunken lg:hidden"
+          className="w-72 p-0 bg-surface-sunken lg:hidden"
           aria-label="Conversations"
         >
           <SheetTitle className="sr-only">Conversations</SheetTitle>
@@ -561,40 +586,70 @@ export function ChatShell(props: {
             onSelectThread={onSelectThreadMobile}
             onRenameThread={(id, title) => void sidebars.renameThread(id, title)}
             onDeleteThread={(id) => void sidebars.deleteThread(id)}
+            memories={sidebars.memories}
+            memoryEnabled={sidebars.memoryEnabled}
+            onAddMemory={(content, type) =>
+              void sidebars.addMemory(content, type)
+            }
+            onDeleteMemory={(key) => void sidebars.deleteMemory(key)}
+            onToggleMemoryEnabled={sidebars.setMemoryEnabled}
           />
         </SheetContent>
       </Sheet>
 
-      <div className="grid lg:grid-cols-[auto_2px_1fr] overflow-hidden">
+      <div
+        className={cn(
+          "grid overflow-hidden",
+          // Full-hide (plan §2b): when collapsed, the rail + groove columns are
+          // not rendered at all and the chat takes the full width — no w-12
+          // stub. Otherwise the rail (auto) · groove (2px) · chat (1fr) grid.
+          chrome.collapsed ? "" : "lg:grid-cols-[auto_2px_1fr]",
+        )}
+      >
         {/* Recessed rail (§2.6): surface-sunken keeps the thread history a
            half-step behind the chat canvas, Cursor-style. The rail↔chat divide
-           is the etched groove below (separator-etched-v), not a flat border. */}
-        <div className="hidden lg:block overflow-y-auto bg-surface-sunken">
-          <SidebarPanel
-            threads={visibleThreads}
-            {...(activeThreadId ? { activeThreadId } : {})}
-            collapsed={chrome.collapsed}
-            searchOpen={chrome.searchOpen}
-            searchQuery={chrome.searchQuery}
-            activeTab={chrome.activeTab}
-            onToggleCollapsed={chrome.toggleCollapsed}
-            onToggleSearch={chrome.toggleSearch}
-            onSearchQueryChange={chrome.setSearchQuery}
-            onCloseSearch={chrome.closeSearch}
-            onSelectTab={chrome.setActiveTab}
-            onNewChat={onNewChat}
-            onSelectThread={onSelectThread}
-            onRenameThread={(id, title) => void sidebars.renameThread(id, title)}
-            onDeleteThread={(id) => void sidebars.deleteThread(id)}
-          />
-        </div>
+           is the etched groove below (separator-etched-v), not a flat border.
+           Fully unmounted when collapsed (the header rail-toggle restores it). */}
+        {chrome.collapsed ? null : (
+          <>
+            <div className="hidden lg:block overflow-y-auto bg-surface-sunken">
+              <SidebarPanel
+                threads={visibleThreads}
+                {...(activeThreadId ? { activeThreadId } : {})}
+                collapsed={chrome.collapsed}
+                searchOpen={chrome.searchOpen}
+                searchQuery={chrome.searchQuery}
+                activeTab={chrome.activeTab}
+                onToggleCollapsed={chrome.toggleCollapsed}
+                onToggleSearch={chrome.toggleSearch}
+                onSearchQueryChange={chrome.setSearchQuery}
+                onCloseSearch={chrome.closeSearch}
+                onSelectTab={chrome.setActiveTab}
+                onNewChat={onNewChat}
+                onSelectThread={onSelectThread}
+                onRenameThread={(id, title) =>
+                  void sidebars.renameThread(id, title)
+                }
+                onDeleteThread={(id) => void sidebars.deleteThread(id)}
+                memories={sidebars.memories}
+                memoryEnabled={sidebars.memoryEnabled}
+                onAddMemory={(content, type) =>
+                  void sidebars.addMemory(content, type)
+                }
+                onDeleteMemory={(key) => void sidebars.deleteMemory(key)}
+                onToggleMemoryEnabled={sidebars.setMemoryEnabled}
+              />
+            </div>
 
-        {/* Etched groove between the rail and the chat (design
-           .separator-etched-v). Hidden below lg where the rail itself hides. */}
-        <div
-          aria-hidden="true"
-          className="separator-etched-v hidden lg:block"
-        />
+            {/* Etched groove between the rail and the chat (design
+               .separator-etched-v). Hidden below lg where the rail itself
+               hides. */}
+            <div
+              aria-hidden="true"
+              className="separator-etched-v hidden lg:block"
+            />
+          </>
+        )}
 
         {/* Chat column: scrollable messages + the pinned composer. The
            `relative` wrapper anchors the floating scroll-to-latest button. */}
@@ -704,7 +759,13 @@ export function ChatShell(props: {
              this is a no-op in the browser). The native shell writes the keyboard
              offset via `setupIosNativeFeel`. */}
           <div className="max-w-3xl mx-auto w-full p-2 pb-[calc(max(0.5rem,var(--safe-bottom))+var(--keyboard-offset))] pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))] transition-[padding] duration-200">
-            <Composer onSend={send} busy={busy || pausedTurnId !== null} />
+            <Composer
+              onSend={send}
+              busy={busy || pausedTurnId !== null}
+              models={availableModels.models}
+              selectedModel={selectedModel}
+              onSelectModel={setSelectedModel}
+            />
           </div>
         </div>
       </div>

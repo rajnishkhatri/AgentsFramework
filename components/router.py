@@ -2,16 +2,26 @@
 
 NO langgraph or langchain imports allowed.
 
-Phase 2: ``select_model`` implements a 5-branch MECE decision tree. Branches
-are totally ordered — first match wins — so every state tuple maps to exactly
-one branch.
+Phase 2: ``select_model`` implements a MECE decision tree. Branches are totally
+ordered — first match wins — so every state tuple maps to exactly one branch.
 
 Branch order (highest priority first):
-  1. Budget pressure       -> fast tier,   reason "budget-downgrade"
-  2. Retryable error       -> same model,  reason "retry-after-backoff"
-  3. Escalation threshold  -> capable tier, reason "escalate-after-N-failures"
-  4. First step (planning) -> capable tier, reason "capable-for-planning"
-  5. Default steady state  -> fast tier,    reason "steady-state-fast"
+  1. Budget pressure       -> fast tier,    reason "budget-downgrade"
+  1.5 User pin             -> named model,  reason "user-pinned:<name>"
+                              (after budget so a pin can't blow the cost cap;
+                              a pin naming an unregistered model falls through to
+                              Auto with reason "pin-miss:<name>->auto" — never a
+                              silent Auto-looking decision; Reasoning-pillar
+                              honesty, see docs/skills/governance-trace-audit)
+  2. Retryable error       -> same model,   reason "retry-after-backoff"
+  3. Escalation threshold  -> reasoning tier, reason "escalate-after-N-failures"
+                              (falls back to capable when no reasoning profile;
+                              high-complexity consecutive-failure path)
+  4. First step (planning) -> capable tier,  reason "capable-for-planning"
+  5. Default steady state  -> fast tier,     reason "steady-state-fast"
+
+Tiers map to the registry (services/llm_config.py) by *tier*, never by name (H2):
+under the "anthropic" set fast=Haiku 4.5, capable=Sonnet 4.6, reasoning=Opus 4.8.
 """
 
 from __future__ import annotations
@@ -25,6 +35,7 @@ from services.base_config import AgentConfig, ModelProfile, default_fast_profile
 
 _FAST_TIER = "fast"
 _CAPABLE_TIER = "capable"
+_REASONING_TIER = "reasoning"
 
 # Strong single-intent verbs: a *leading* one signals planning work on its own,
 # even when the prompt is short and carries no other complexity signal. Without
@@ -54,6 +65,18 @@ _STRONG_INTENT_VERBS = (
 def _pick_profile_by_tier(models: list[ModelProfile], tier: str) -> ModelProfile | None:
     for profile in models:
         if profile.tier == tier:
+            return profile
+    return None
+
+
+def _pick_profile_by_name(
+    models: list[ModelProfile], name: str
+) -> ModelProfile | None:
+    """Find a registered profile by exact ``name`` (the user-pin lookup)."""
+    if not name:
+        return None
+    for profile in models:
+        if profile.name == name:
             return profile
     return None
 
@@ -291,10 +314,18 @@ def select_model(
     model_history: list[dict],
     agent_config: AgentConfig,
     routing_config: RoutingConfig,
+    pinned_model: str = "",
 ) -> tuple[ModelProfile, str]:
     """Select a model for the current step. Returns (profile, reason).
 
-    See module docstring for branch ordering.
+    ``pinned_model`` is the user's per-run model choice (state["selected_model"],
+    seeded from the UI). Empty string ("Auto") => normal tier routing, so the
+    no-pin path is byte-identical to before. See module docstring for ordering.
+
+    The returned ``reason`` is the Reasoning-pillar carrier: it flows into the
+    ``model.selected`` rationale (orchestration/react_loop.py). A pin therefore
+    reads ``user-pinned:<name>`` (not an Auto reason) so an auditor can tell a
+    pinned run from an Auto run from the trace alone.
     """
     default_name = routing_config.default_model
     max_cost = max(agent_config.max_cost_usd, 1e-9)
@@ -306,32 +337,67 @@ def select_model(
         chosen = fast or _fallback_profile(agent_config, default_name)
         return chosen, "budget-downgrade"
 
+    # ── Branch 1.5: user pin ─────────────────────────────────────────
+    # Placed AFTER budget (a pin must not blow the cost cap), before the tier
+    # branches (a pin overrides Auto routing). A pin naming an unregistered
+    # model does NOT silently fall back to an Auto-looking decision — it records
+    # the miss explicitly (pin-miss:<name>->auto) so the trace stays honest
+    # (zero/wrong carriers are the worst governance finding).
+    if pinned_model:
+        pinned = _pick_profile_by_name(agent_config.models, pinned_model)
+        if pinned is not None:
+            return pinned, f"user-pinned:{pinned_model}"
+        # fall through to Auto, but make the miss auditable in the reason below
+        _pin_miss_reason = f"pin-miss:{pinned_model}->auto"
+    else:
+        _pin_miss_reason = ""
+
     # ── Branch 2: retryable error -> retry same model ───────────────
     if last_error_type == "retryable":
         chosen = _select_same_model(model_history, agent_config, default_name)
-        return chosen, "retry-after-backoff"
+        return chosen, _with_pin_miss("retry-after-backoff", _pin_miss_reason)
 
-    # ── Branch 3: escalation after N failures ────────────────────────
+    # ── Branch 3: escalation after N failures -> reasoning tier ──────
+    # Count BOTH capable and reasoning prior picks against the escalation
+    # budget: once the escalated tier is "reasoning" (Opus under the anthropic
+    # set), counting only capable would let escalations run unbounded.
     escalations_used = sum(
         1
         for entry in model_history
-        if isinstance(entry, dict) and entry.get("tier") == _CAPABLE_TIER
+        if isinstance(entry, dict)
+        and entry.get("tier") in (_CAPABLE_TIER, _REASONING_TIER)
     )
     if (
         consecutive_errors >= routing_config.escalate_after_failures
         and escalations_used < routing_config.max_escalations
     ):
-        capable = _pick_profile_by_tier(agent_config.models, _CAPABLE_TIER)
-        if capable is not None:
-            return capable, f"escalate-after-{consecutive_errors}-failures"
+        # High-complexity consecutive-failure path -> strongest tier (Opus),
+        # falling back to capable (Sonnet) when no reasoning profile exists
+        # (e.g. the "openai" set, which has no reasoning tier).
+        escalated = _pick_profile_by_tier(
+            agent_config.models, _REASONING_TIER
+        ) or _pick_profile_by_tier(agent_config.models, _CAPABLE_TIER)
+        if escalated is not None:
+            return escalated, _with_pin_miss(
+                f"escalate-after-{consecutive_errors}-failures", _pin_miss_reason
+            )
 
     # ── Branch 4: first step — prefer capable tier for planning ──────
     if step_count == 0:
         capable = _pick_profile_by_tier(agent_config.models, _CAPABLE_TIER)
         if capable is not None:
-            return capable, "capable-for-planning"
+            return capable, _with_pin_miss("capable-for-planning", _pin_miss_reason)
 
     # ── Branch 5: default steady state — fast tier ───────────────────
     fast = _pick_profile_by_tier(agent_config.models, _FAST_TIER)
     chosen = fast or _fallback_profile(agent_config, default_name)
-    return chosen, "steady-state-fast"
+    return chosen, _with_pin_miss("steady-state-fast", _pin_miss_reason)
+
+
+def _with_pin_miss(reason: str, pin_miss: str) -> str:
+    """Prefix an Auto reason with the pin-miss note when a pin didn't resolve.
+
+    Keeps the chosen branch's reason intact while making the dropped pin visible
+    in the trace (e.g. "pin-miss:foo->auto | steady-state-fast").
+    """
+    return f"{pin_miss} | {reason}" if pin_miss else reason

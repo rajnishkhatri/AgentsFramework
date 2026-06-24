@@ -105,6 +105,35 @@ class HealthResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class ModelInfo(BaseModel):
+    """One selectable model on the wire — name + tier ONLY.
+
+    Pricing (cost_per_1k_*), ``litellm_id``, and context windows are runtime
+    catalog internals and are deliberately NOT exposed to the client (the model
+    name is non-secret; the cost table is not a client concern). The dropdown
+    needs only the name to pin and the tier to group/label.
+    """
+
+    name: str
+    tier: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ModelsResponse(BaseModel):
+    """Response body of ``GET /models`` — the model picker's catalog.
+
+    ``default`` is the steady-state fast model name; ``models`` is the registry
+    order (the router's first-match-per-tier contract). "Auto" is a UI sentinel,
+    not a model — the client prepends it; the backend never lists it.
+    """
+
+    default: str
+    models: list[ModelInfo]
+
+    model_config = ConfigDict(extra="forbid")
+
+
 __all__ = [
     "HealthResponse",
     "RunCreateRequest",

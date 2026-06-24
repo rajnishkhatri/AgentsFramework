@@ -129,6 +129,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List selectable models for the picker (name+tier only) */
+        get: operations["listModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -425,6 +442,52 @@ export interface components {
              * @constant
              */
             type: "MESSAGES_SNAPSHOT";
+        };
+        /**
+         * ModelInfo
+         * @description One selectable model on the wire — name + tier ONLY.
+         *
+         *     Pricing (cost_per_1k_*), ``litellm_id``, and context windows are runtime
+         *     catalog internals and are deliberately NOT exposed to the client (the model
+         *     name is non-secret; the cost table is not a client concern). The dropdown
+         *     needs only the name to pin and the tier to group/label.
+         */
+        ModelInfo: {
+            /** Name */
+            name: string;
+            /** Tier */
+            tier: string;
+        };
+        /**
+         * ModelsResponse
+         * @description Response body of ``GET /models`` — the model picker's catalog.
+         *
+         *     ``default`` is the steady-state fast model name; ``models`` is the registry
+         *     order (the router's first-match-per-tier contract). "Auto" is a UI sentinel,
+         *     not a model — the client prepends it; the backend never lists it.
+         */
+        ModelsResponse: {
+            /** Default */
+            default: string;
+            /** Models */
+            models: components["schemas"]["ModelInfo"][];
+            $defs: {
+                /**
+                 * ModelInfo
+                 * @description One selectable model on the wire — name + tier ONLY.
+                 *
+                 *     Pricing (cost_per_1k_*), ``litellm_id``, and context windows are runtime
+                 *     catalog internals and are deliberately NOT exposed to the client (the model
+                 *     name is non-secret; the cost table is not a client concern). The dropdown
+                 *     needs only the name to pin and the tier to group/label.
+                 */
+                ModelInfo: {
+                    /** Name */
+                    name: string;
+                    /** Tier */
+                    tier: string;
+                };
+            };
         };
         /** Raw */
         Raw: {
@@ -1560,6 +1623,33 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HealthResponse"];
                 };
+            };
+        };
+    };
+    listModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The active registry's model catalog */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ModelsResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

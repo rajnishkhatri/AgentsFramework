@@ -84,7 +84,11 @@ describe("SidebarPanel — chrome affordances present", () => {
   });
 });
 
-describe("SidebarPanel — collapse state (a11y)", () => {
+describe("SidebarPanel — toggle + full-hide model (plan §2b)", () => {
+  // The redesign replaced the w-12 stub with a full-hide: the SHELL unmounts the
+  // rail when collapsed (so the chat takes full width), and the panel itself is
+  // a fixed wider width (w-72) with no width animation. The in-panel brand-row
+  // toggle still reports aria-expanded so the header rail-toggle stays in sync.
   it("toggle reports aria-expanded=true when expanded", () => {
     const d = render({ collapsed: false });
     expect(
@@ -94,36 +98,43 @@ describe("SidebarPanel — collapse state (a11y)", () => {
     ).toBe("true");
   });
 
-  it("toggle reports aria-expanded=false when collapsed", () => {
-    const d = render({ collapsed: true });
+  it("the panel is the fixed wider width (w-72), no w-12 stub", () => {
+    const panel = render().querySelector('[data-testid="sidebar-panel"]');
+    expect(panel?.className).toContain("w-72");
+    expect(panel?.className).not.toContain("w-12");
+  });
+
+  it("renders the brand row (dot + Threads wordmark)", () => {
+    const d = render();
+    expect(d.querySelector('[data-testid="sidebar-brand-dot"]')).toBeTruthy();
+    expect(
+      d.querySelector('[data-testid="sidebar-panel"]')?.textContent,
+    ).toContain("Threads");
+  });
+
+  it("the toggle uses the panel-close affordance label", () => {
+    const d = render();
     expect(
       d.querySelector('[data-testid="sidebar-toggle"]')?.getAttribute(
-        "aria-expanded",
+        "aria-label",
       ),
-    ).toBe("false");
+    ).toBe("Hide sidebar");
+  });
+});
+
+describe("SidebarPanel — Memory tab (plan §2c)", () => {
+  it("mounts MemoryPanel (not the thread list) when activeTab=memory", () => {
+    const d = render({ activeTab: "memory", memories: [], memoryEnabled: false });
+    expect(d.querySelector('[data-testid="memory-panel"]')).toBeTruthy();
+    // Chat-only affordances are not shown on the Memory tab.
+    expect(d.querySelector('[data-testid="thread-sidebar"]')).toBeNull();
+    expect(d.querySelector('[data-testid="new-thread"]')).toBeNull();
   });
 
-  it("hides the collapsible body from a11y tree when collapsed", () => {
-    const d = render({ collapsed: true });
-    const body = d.querySelector('[data-testid="sidebar-body"]');
-    expect(body?.getAttribute("aria-hidden")).toBe("true");
-  });
-
-  it("narrows the panel width when collapsed (w-12 vs w-64)", () => {
-    const expanded = render({ collapsed: false }).querySelector(
-      '[data-testid="sidebar-panel"]',
-    );
-    const collapsed = render({ collapsed: true }).querySelector(
-      '[data-testid="sidebar-panel"]',
-    );
-    expect(expanded?.className).toContain("w-64");
-    expect(collapsed?.className).toContain("w-12");
-  });
-
-  it("keeps the width transition for animation but respects reduced motion", () => {
-    const panel = render().querySelector('[data-testid="sidebar-panel"]');
-    expect(panel?.className).toContain("transition-[width]");
-    expect(panel?.className).toContain("motion-reduce:transition-none");
+  it("shows the thread list (not MemoryPanel) on the Chats tab", () => {
+    const d = render({ activeTab: "chat" });
+    expect(d.querySelector('[data-testid="thread-sidebar"]')).toBeTruthy();
+    expect(d.querySelector('[data-testid="memory-panel"]')).toBeNull();
   });
 });
 
