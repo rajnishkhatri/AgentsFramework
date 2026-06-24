@@ -46,5 +46,8 @@ export async function GET(request: NextRequest) {
 
   // Authenticated: send the webview to the app root (same-origin relative — never
   // an open redirect).
-  return NextResponse.redirect(new URL(DESKTOP_POST_AUTH_PATH, request.nextUrl.origin));
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? request.nextUrl.host;
+  const proto = request.headers.get("x-forwarded-proto") ?? "https";
+  const origin = `${proto}://${host}`;
+  return NextResponse.redirect(new URL(DESKTOP_POST_AUTH_PATH, origin));
 }

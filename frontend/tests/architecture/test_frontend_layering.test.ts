@@ -48,6 +48,15 @@ const SDK_PACKAGES = new Set<string>([
   "drizzle-orm",
   "@neondatabase/serverless",
   "pg",
+  // Capacitor native-shell SDK (P6 iOS): confined to lib/adapters/** like any
+  // vendor SDK. The `@capacitor/` and `@capacitor-community/` prefixes are
+  // matched by the subpath rule in isSdkSpec, so every plugin is covered.
+  "@capacitor/core",
+  "@capacitor/app",
+  "@capacitor/browser",
+  "@capacitor/keyboard",
+  "@capacitor/status-bar",
+  "@capacitor-community/safe-area",
 ]);
 
 // Packages that the entire frontend may import freely (no architectural
@@ -115,6 +124,10 @@ function ringOf(filePath: string): string | null {
   // adapter. Separate from composition.ts so server-only SDK adapters
   // (WorkOS) never enter the client bundle.
   if (top === "composition_browser.ts") return "composition";
+  // iOS shell composition root (P6 Step 2): the native-shell slice that wires
+  // the Capacitor bridge + auth controller. Separate from composition.ts so the
+  // Capacitor SDK never enters the web/server bundles.
+  if (top === "composition_ios.ts") return "composition";
   // BFF server composition is the server-side counterpart of the React
   // composition seam -- it is allowed to name concrete adapters and read
   // env. The chat / API surface code in `lib/bff/handlers.ts` and the

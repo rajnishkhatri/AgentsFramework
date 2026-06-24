@@ -23,7 +23,7 @@ use tauri::{Manager, WebviewWindowBuilder};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Deployed Cloud Run BFF the release build points at.
-const PROD_URL: &str = "https://agent-frontend-590652793393.us-central1.run.app";
+const PROD_URL: &str = "https://desktop---agent-frontend-w65nrxwkiq-uc.a.run.app";
 
 /// Custom webview User-Agent. A realistic macOS Safari UA (so WorkOS hosted
 /// login + Next treat the webview as a normal browser) with our marker token
@@ -49,12 +49,6 @@ const SIGN_IN_CLICK_SCRIPT: &str = r#"
   if (window.__afSignInBound) return;
   window.__afSignInBound = true;
 
-  function invoke(cmd) {
-    var t = window.__TAURI_INTERNALS__;
-    if (t && typeof t.invoke === 'function') return t.invoke(cmd);
-    return Promise.reject(new Error('Tauri IPC unavailable'));
-  }
-
   // Capture phase so we run before Next's client router handles the click.
   document.addEventListener('click', function (e) {
     var el = e.target && e.target.closest
@@ -65,9 +59,16 @@ const SIGN_IN_CLICK_SCRIPT: &str = r#"
     if ((el.getAttribute('href') || '').indexOf('client=desktop') !== -1) return;
     e.preventDefault();
     e.stopImmediatePropagation();
-    invoke('desktop_sign_in').catch(function (err) {
-      console.error('desktop sign-in failed:', err);
-    });
+    // Force a TOP-LEVEL document navigation to the sign-in URL. This surfaces in
+    // the Rust `on_navigation` handler (`is_web_sign_in_nav`), which opens the
+    // system browser via `begin_desktop_sign_in` and cancels the in-webview nav.
+    // We deliberately AVOID the Tauri IPC (`invoke`) path here: the shell loads a
+    // REMOTE https origin, where the `ipc://localhost` fetch transport is blocked
+    // by WKWebView as insecure mixed content. The hard navigation needs no IPC,
+    // no ACL, and no relaxed CSP — it reuses the proven nav-intercept path.
+    var href = el.href || el.getAttribute('href');
+    try { window.location.assign(href); }
+    catch (err) { console.error('desktop sign-in nav failed:', err); }
   }, true);
 })();
 "#;
@@ -116,7 +117,8 @@ fn begin_desktop_sign_in(app: &tauri::AppHandle) -> Result<String, String> {
         .map_err(|e| format!("failed to build sign-in url: {e}"))?;
     {
         let state = app.state::<AuthState>();
-        *state.0.lock().unwrap() = Some(session);
+        let mut guard = state.0.lock().unwrap();
+        *guard = Some(session);
     }
     use tauri_plugin_opener::OpenerExt;
     app.opener()
@@ -165,7 +167,9 @@ fn handle_deep_link(app: &tauri::AppHandle, urls: &[url::Url]) {
                 let state = app.state::<AuthState>();
                 *state.0.lock().unwrap() = None;
             }
-            None => log::warn!("deep link auth callback failed validation (state mismatch?)"),
+            None => {
+                log::warn!("deep link auth callback failed validation (state mismatch?)")
+            }
         }
     }
 }
@@ -283,6 +287,14 @@ pub fn run() {
             #[cfg(any(target_os = "linux", all(debug_assertions, target_os = "macos")))]
             {
                 let _ = app.deep_link().register(auth::SCHEME);
+            }
+
+            // Auto-open the Web Inspector to debug the deployed strict-CSP page
+            // inside the bundle. `open_devtools` is available because the `tauri`
+            // crate's `devtools` feature is enabled (Cargo.toml). TEMPORARY:
+            // remove before a real release.
+            if let Some(window) = app.get_webview_window("main") {
+                window.open_devtools();
             }
 
             Ok(())
