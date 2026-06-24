@@ -289,14 +289,6 @@ pub fn run() {
                 let _ = app.deep_link().register(auth::SCHEME);
             }
 
-            // Auto-open the Web Inspector to debug the deployed strict-CSP page
-            // inside the bundle. `open_devtools` is available because the `tauri`
-            // crate's `devtools` feature is enabled (Cargo.toml). TEMPORARY:
-            // remove before a real release.
-            if let Some(window) = app.get_webview_window("main") {
-                window.open_devtools();
-            }
-
             Ok(())
         })
         .run(tauri::generate_context!())
