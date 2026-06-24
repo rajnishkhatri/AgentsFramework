@@ -40,6 +40,8 @@ from agent_ui_adapter.wire.agent_protocol import (
     MemoryItem,
     MemoryListResponse,
     MemorySuppressRequest,
+    ModelInfo,
+    ModelsResponse,
     RunCreateRequest,
     RunStateView,
     ThreadCreateRequest,
@@ -379,6 +381,29 @@ def build_app(
     @app.get("/healthz", response_model=HealthResponse)
     async def healthz() -> HealthResponse:
         return HealthResponse(status="ok", adapter_version=ADAPTER_VERSION)
+
+    @app.get("/models", response_model=ModelsResponse)
+    async def list_models(
+        identity: AgentFacts = Depends(_verify_bearer),
+    ) -> ModelsResponse:
+        """The model picker's catalog — auth-scoped like the other routes.
+
+        Reads the H2-canonical registry (services/llm_config.py) for the active
+        MODEL_PROFILE_SET — the same source the runtime wired, so the dropdown
+        can never list a model Auto can't route. Exposes name+tier ONLY; the
+        cost table / litellm ids stay server-side (ModelInfo enforces this).
+        """
+        import os
+
+        from services.llm_config import build_model_registry
+
+        models, default_model = build_model_registry(
+            os.environ.get("MODEL_PROFILE_SET", "openai")
+        )
+        return ModelsResponse(
+            default=default_model,
+            models=[ModelInfo(name=m.name, tier=m.tier) for m in models],
+        )
 
     @app.get("/agent/threads", response_model=ThreadListResponse)
     async def list_threads(

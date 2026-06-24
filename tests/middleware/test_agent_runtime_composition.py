@@ -49,6 +49,112 @@ class TestBuildComponentsLocal:
         assert components.tool_registry.is_cacheable("shell") is False
 
 
+class TestModelProfileSetWiring:
+    """MODEL_PROFILE_SET selects which H2 registry the composition root wires.
+
+    Rejection / fail-loud paths first (TAP-4): the dangerous case is the
+    Anthropic Auto stack wired without its key (every Auto turn would silently
+    401), and the second is a flagged-on Auto stack that is NOT byte-identical
+    when the flag is off.
+    """
+
+    def _local(self, tmp_path, monkeypatch, **kw):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / "logs").mkdir(parents=True, exist_ok=True)
+        return AgentRuntimeSettings(agent_env="local", **kw)
+
+    # ── Fail-loud: anthropic set without the key ──────────────────────────
+    def test_anthropic_set_without_key_fails_loud(self, tmp_path, monkeypatch):
+        from middleware.composition import MissingEnvError
+
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        settings = self._local(
+            tmp_path, monkeypatch, model_profile_set="anthropic", anthropic_api_key=""
+        )
+        with pytest.raises(MissingEnvError):
+            build_components(settings, agent_root=tmp_path)
+
+    def test_openai_set_does_not_require_anthropic_key(self, tmp_path, monkeypatch):
+        """The default set has no anthropic/* model, so the key guard must not
+        fire — a stray guard would break every existing OpenAI deploy."""
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        settings = self._local(tmp_path, monkeypatch, anthropic_api_key="")
+        components = build_components(settings, agent_root=tmp_path)  # no raise
+        assert components.agent_config.models  # populated
+
+    # ── Flag OFF is byte-identical to today (OpenAI stack) ────────────────
+    def test_default_set_is_openai_byte_identical(self, tmp_path, monkeypatch):
+        settings = self._local(tmp_path, monkeypatch)  # default model_profile_set
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.default_model == "gpt-4o-mini"
+        fast = next(m for m in cfg.models if m.tier == "fast")
+        capable = next(m for m in cfg.models if m.tier == "capable")
+        assert fast.name == "gpt-4o-mini"
+        assert capable.name == "gpt-4o"
+        assert fast.name.startswith("gpt-")
+
+    # ── Flag ON is the 3-tier all-Anthropic stack ─────────────────────────
+    def test_anthropic_set_three_tier_order(self, tmp_path, monkeypatch):
+        settings = self._local(
+            tmp_path,
+            monkeypatch,
+            model_profile_set="anthropic",
+            anthropic_api_key="sk-ant-test",
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.default_model == "claude-haiku-4-5"
+        first = {"fast": None, "capable": None, "reasoning": None}
+        for m in cfg.models:
+            if m.tier in first and first[m.tier] is None:
+                first[m.tier] = m.name
+        assert first["fast"] == "claude-haiku-4-5"
+        assert first["capable"] == "claude-sonnet-4-6"
+        assert first["reasoning"] == "claude-opus-4-8"
+        # no gpt-* wins a first-match under the anthropic set
+        for tier in ("fast", "capable", "reasoning"):
+            assert not first[tier].startswith("gpt-")
+
+    # ── Fail-loud: deepseek set without the key (generalized guard) ────────
+    def test_deepseek_set_without_key_fails_loud(self, tmp_path, monkeypatch):
+        from middleware.composition import MissingEnvError
+
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        settings = self._local(
+            tmp_path, monkeypatch, model_profile_set="deepseek", deepseek_api_key=""
+        )
+        with pytest.raises(MissingEnvError):
+            build_components(settings, agent_root=tmp_path)
+
+    def test_openai_set_does_not_require_deepseek_key(self, tmp_path, monkeypatch):
+        """The generalized provider→key guard must still let the keyless openai
+        default set boot — a stray deepseek guard would break every existing
+        deploy just like a stray anthropic one would."""
+        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        settings = self._local(tmp_path, monkeypatch, deepseek_api_key="")
+        components = build_components(settings, agent_root=tmp_path)  # no raise
+        assert components.agent_config.models
+
+    # ── Flag ON is the DeepSeek V4 stack (Flash fast+capable / Pro reasoning) ──
+    def test_deepseek_set_three_tier_order(self, tmp_path, monkeypatch):
+        settings = self._local(
+            tmp_path,
+            monkeypatch,
+            model_profile_set="deepseek",
+            deepseek_api_key="sk-deepseek-test",
+        )
+        cfg = build_components(settings, agent_root=tmp_path).agent_config
+        assert cfg.default_model == "deepseek-v4-flash"
+        first = {"fast": None, "capable": None, "reasoning": None}
+        for m in cfg.models:
+            if m.tier in first and first[m.tier] is None:
+                first[m.tier] = m.name
+        assert first["fast"] == "deepseek-v4-flash"
+        assert first["capable"] == "deepseek-v4-flash-capable"
+        assert first["reasoning"] == "deepseek-v4-pro"
+        for tier in ("fast", "capable", "reasoning"):
+            assert not first[tier].startswith("gpt-")
+
+
 class TestMemoryBackendSelection:
     """Live-infra Piece B: MEM0_API_KEY selects the durable Mem0 backend.
 

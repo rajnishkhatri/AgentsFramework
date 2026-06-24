@@ -29,6 +29,27 @@ function groupTestId(label: string): string {
   return `thread-group-${label.toLowerCase().replace(/\s+/g, "-")}`;
 }
 
+/**
+ * Phase A thread preview subtitle: the first user message's text, trimmed to a
+ * single muted line under the title (the screenshot's `.thread .p`). Purely
+ * presentational — no wire change. Returns "" when the list payload carries no
+ * usable first-message snippet (the BFF list response defaults `messages` to
+ * `[]`), in which case the row renders title-only (plan §2d Phase A fallback).
+ * A subtitle that merely echoes the title (the common single-message case where
+ * the title IS the first-message slice) is suppressed so the row isn't doubled.
+ */
+function threadSubtitle(t: ThreadState): string {
+  const first = t.messages?.[0];
+  if (!first) return "";
+  const raw = first["content"] ?? first["text"];
+  if (typeof raw !== "string") return "";
+  const snippet = raw.trim().replace(/\s+/g, " ");
+  if (!snippet) return "";
+  // Suppress a subtitle that is just the title again (no new information).
+  if (snippet === t.title || snippet.startsWith(t.title)) return "";
+  return snippet;
+}
+
 export function ThreadSidebar(props: {
   threads: ReadonlyArray<ThreadState>;
   activeThreadId?: string;
@@ -73,6 +94,7 @@ export function ThreadSidebar(props: {
             <ul className="grid gap-0.5 list-none p-0 m-0">
               {group.threads.map((t) => {
                 const active = props.activeThreadId === t.thread_id;
+                const subtitle = threadSubtitle(t);
                 return (
                   <li
                     key={t.thread_id}
@@ -93,14 +115,25 @@ export function ThreadSidebar(props: {
                         // overlay on hover, stronger --color-selected when
                         // active — hover stays lighter than active so the two
                         // states read apart. Hover suppressed on touch.
-                        "flex-1 block px-3 py-2 rounded-md no-underline truncate text-sm transition-colors",
+                        "flex-1 block px-3 py-2 rounded-md no-underline text-sm transition-colors min-w-0",
                         active
                           ? "bg-selected text-fg font-semibold"
                           : "bg-transparent text-muted font-medium [@media(hover:hover)]:hover:bg-[color-mix(in_oklab,var(--color-fg)_5%,transparent)] [@media(hover:hover)]:hover:text-fg",
                       )}
                       title={t.title}
                     >
-                      {t.title}
+                      <span className="block truncate">{t.title}</span>
+                      {subtitle ? (
+                        // Phase A preview subtitle (design .thread .p): a second
+                        // muted, truncated line. Omitted entirely when absent so
+                        // there is no empty line.
+                        <span
+                          data-testid={`thread-subtitle-${t.thread_id}`}
+                          className="block truncate text-xs text-muted font-normal mt-0.5"
+                        >
+                          {subtitle}
+                        </span>
+                      ) : null}
                     </a>
                     {props.onRename ? (
                       <button

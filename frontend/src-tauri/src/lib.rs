@@ -23,7 +23,7 @@ use tauri::{Manager, WebviewWindowBuilder};
 use tauri_plugin_deep_link::DeepLinkExt;
 
 /// Deployed Cloud Run BFF the release build points at.
-const PROD_URL: &str = "https://desktop---agent-frontend-w65nrxwkiq-uc.a.run.app";
+const PROD_URL: &str = "https://agent-frontend-w65nrxwkiq-uc.a.run.app";
 
 /// Custom webview User-Agent. A realistic macOS Safari UA (so WorkOS hosted
 /// login + Next treat the webview as a normal browser) with our marker token

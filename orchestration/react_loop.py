@@ -759,6 +759,16 @@ def build_graph(
         (m for m in agent_config.models if m.tier == "fast"),
         default_fast_profile(),
     )
+    # GoalJudge + TaskUnderstanding run a real eval-quality LLM call (most turns
+    # under shadow/generated), so they use the CAPABLE tier (Sonnet 4.6 under the
+    # anthropic set) — a quality jump over fast without the reasoning-tier (Opus)
+    # per-turn premium reserved for failure-escalation. Falls back to the fast
+    # judge_profile when no capable tier exists (e.g. a single-profile config),
+    # so this is byte-identical where capable is absent. Tier-only (H2).
+    eval_profile = next(
+        (m for m in agent_config.models if m.tier == "capable"),
+        judge_profile,
+    )
     judge_redactor = GuardRailValidator([
         rule.model_copy(update={"fail_action": FailAction.REDACT})
         for rule in (pii_rules() + api_key_rules())
@@ -766,7 +776,7 @@ def build_graph(
     goal_judge = GoalJudge(
         llm_service=llm_service,
         prompt_service=prompt_service,
-        judge_profile=judge_profile,
+        judge_profile=eval_profile,
         redactor=judge_redactor,
     )
     gj_reader = goal_judge_config_reader or GoalJudgeRuntimeConfigReader.from_env(
@@ -775,13 +785,13 @@ def build_graph(
     )
 
     # task_understanding plan §4.5: plan-time intent restatement + checklist,
-    # same fast-tier profile as the judge (H2). Cheap to construct; no LLM
-    # call until generate(), and only when the success_conditions_source flag
-    # is "shadow" or "generated".
+    # same CAPABLE eval_profile as the judge (H2) — eval-quality work. Cheap to
+    # construct; no LLM call until generate(), and only when the
+    # success_conditions_source flag is "shadow" or "generated".
     tu_generator = TaskUnderstandingGenerator(
         llm_service=llm_service,
         prompt_service=prompt_service,
-        profile=judge_profile,
+        profile=eval_profile,
     )
 
     # Phase 1 (T1 plan-and-execute): fast-tier LLM plan decomposition. Same
@@ -1001,6 +1011,10 @@ def build_graph(
                 model_history=state.get("model_history", []),
                 agent_config=agent_config,
                 routing_config=routing_config,
+                # User pin (UI dropdown) — read from its own channel so the
+                # route node's selected_model write-back can't be misread as a
+                # pin on later steps. Empty => Auto routing (byte-identical).
+                pinned_model=state.get("pinned_model", ""),
             )
 
             if reason == "budget-downgrade" or reason.startswith("escalate-after"):

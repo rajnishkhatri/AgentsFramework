@@ -36,7 +36,7 @@ def main() -> None:
 
     from components.routing_config import RoutingConfig
     from orchestration.react_loop import build_graph
-    from services.base_config import AgentConfig, ModelProfile
+    from services.base_config import AgentConfig
     from services.governance.agent_facts_registry import AgentFactsRegistry
     from services.tools.file_io import FileIOInput, execute_file_io
     from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
@@ -50,26 +50,19 @@ def main() -> None:
     from trust.enums import IdentityStatus
     from trust.models import AgentFacts, Capability
 
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
+    # One source of truth for the catalog (H2 registry); honors MODEL_PROFILE_SET
+    # from the env so an A/B set-arm run can swap the whole Auto stack.
+    import os
+
+    from services.llm_config import build_model_registry
+
+    models, default_model = build_model_registry(
+        os.environ.get("MODEL_PROFILE_SET", "openai")
     )
 
     agent_config = AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
+        default_model=default_model,
+        models=models,
         max_steps=20,
         max_cost_usd=1.0,
     )

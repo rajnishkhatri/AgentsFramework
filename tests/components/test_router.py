@@ -213,6 +213,150 @@ class TestReturnShape:
         assert isinstance(reason, str) and reason
 
 
+def _reasoning_profile():
+    return ModelProfile(
+        name="claude-opus-4-8",
+        litellm_id="anthropic/claude-opus-4-8",
+        tier="reasoning",
+        context_window=1000000,
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.025,
+    )
+
+
+def _three_tier_config() -> AgentConfig:
+    """Anthropic-shaped registry: fast/capable/reasoning all present."""
+    return AgentConfig(
+        default_model="gpt-4o-mini",
+        max_cost_usd=1.0,
+        models=[_fast_profile(), _capable_profile(), _reasoning_profile()],
+    )
+
+
+class TestUserPinBranch:
+    """Branch 1.5 — the per-run user pin. Honesty over silent fallback."""
+
+    def test_pin_resolves_to_named_model(self):
+        cfg = _agent_config()
+        # would be steady-state-fast without a pin; pin forces gpt-4o (capable)
+        profile, reason = select_model(
+            5, 0, "", 0.1, ["fast"] * 5, cfg, _routing_config(), pinned_model="gpt-4o"
+        )
+        assert profile.name == "gpt-4o"
+        assert reason == "user-pinned:gpt-4o"
+
+    def test_empty_pin_is_byte_identical_auto(self):
+        cfg = _agent_config()
+        a = select_model(0, 0, "", 0.0, [], cfg, _routing_config())
+        b = select_model(0, 0, "", 0.0, [], cfg, _routing_config(), pinned_model="")
+        assert a[0].name == b[0].name
+        assert a[1] == b[1] == "capable-for-planning"
+
+    def test_budget_downgrade_still_wins_over_pin(self):
+        """A pin must not blow the cost cap — budget (Branch 1) is higher."""
+        cfg = _agent_config()
+        profile, reason = select_model(
+            5, 0, "", 0.95, ["fast"] * 5, cfg, _routing_config(), pinned_model="gpt-4o"
+        )
+        assert reason == "budget-downgrade"
+        assert profile.tier == "fast"
+
+    def test_pin_miss_falls_to_auto_but_records_the_miss(self):
+        """An unregistered pin name must NOT masquerade as an Auto decision."""
+        cfg = _agent_config()
+        profile, reason = select_model(
+            0, 0, "", 0.0, [], cfg, _routing_config(), pinned_model="ghost-model"
+        )
+        # fell through to Branch 4 (first step), but the miss is auditable
+        assert "pin-miss:ghost-model->auto" in reason
+        assert "capable-for-planning" in reason
+        assert profile.tier == "capable"
+
+
+class TestReasoningTierEscalation:
+    """Branch 3 escalates to the reasoning tier (Opus), falling back to capable."""
+
+    def test_escalation_reaches_reasoning_when_present(self):
+        cfg = _three_tier_config()
+        profile, reason = select_model(
+            5, 2, "model_error", 0.1, ["fast"] * 5, cfg, _routing_config()
+        )
+        assert profile.tier == "reasoning"
+        assert reason.startswith("escalate-after")
+
+    def test_escalation_falls_back_to_capable_without_reasoning(self):
+        """The openai 2-tier set has no reasoning tier — escalate to capable."""
+        cfg = _agent_config()  # fast + capable only
+        profile, reason = select_model(
+            5, 2, "model_error", 0.1, ["fast"] * 5, cfg, _routing_config()
+        )
+        assert profile.tier == "capable"
+        assert reason.startswith("escalate-after")
+
+    def test_escalation_count_includes_reasoning_history(self):
+        """Once escalated to reasoning, prior reasoning picks count against the
+        escalation budget (else escalations run unbounded)."""
+        cfg = _three_tier_config()
+        rcfg = _routing_config()  # max_escalations=3
+        # model_history entries are dicts carrying a "tier" key
+        history = [{"step": i, "tier": "reasoning"} for i in range(3)]
+        # 3 reasoning picks already used -> budget exhausted -> fall through
+        profile, reason = select_model(
+            5, 5, "model_error", 0.1, history, cfg, rcfg
+        )
+        assert reason == "steady-state-fast"
+        assert profile.tier == "fast"
+
+
+class TestDeepSeekSetRoutesThroughTiers:
+    """Drive the REAL deepseek registry through select_model: the router is
+    name-agnostic, so this proves the tier->name mapping end-to-end (Flash fills
+    fast+capable, Pro is the reasoning escalation target, pin resolves)."""
+
+    def _deepseek_config(self) -> AgentConfig:
+        from services.llm_config import build_model_registry
+
+        models, default_model = build_model_registry("deepseek")
+        return AgentConfig(
+            default_model=default_model, max_cost_usd=1.0, models=models
+        )
+
+    def test_first_step_planning_picks_flash_capable(self):
+        cfg = self._deepseek_config()
+        profile, reason = select_model(
+            0, 0, "", 0.0, [], cfg, _routing_config()
+        )
+        assert reason == "capable-for-planning"
+        assert profile.tier == "capable"
+        assert profile.name == "deepseek-v4-flash-capable"
+
+    def test_failure_escalation_picks_pro_reasoning(self):
+        cfg = self._deepseek_config()
+        profile, reason = select_model(
+            5, 2, "model_error", 0.1, ["fast"] * 5, cfg, _routing_config()
+        )
+        assert profile.tier == "reasoning"
+        assert profile.name == "deepseek-v4-pro"
+        assert reason.startswith("escalate-after")
+
+    def test_steady_state_picks_flash_fast(self):
+        cfg = self._deepseek_config()
+        profile, reason = select_model(
+            5, 0, "", 0.1, ["fast"] * 5, cfg, _routing_config()
+        )
+        assert reason == "steady-state-fast"
+        assert profile.name == "deepseek-v4-flash"
+
+    def test_pin_resolves_to_deepseek_pro(self):
+        cfg = self._deepseek_config()
+        profile, reason = select_model(
+            5, 0, "", 0.1, ["fast"] * 5, cfg, _routing_config(),
+            pinned_model="deepseek-v4-pro",
+        )
+        assert profile.name == "deepseek-v4-pro"
+        assert reason == "user-pinned:deepseek-v4-pro"
+
+
 class TestPlanningDepth:
     @pytest.mark.parametrize(
         "task_input,task_tool_results_count,expected_depth,expected_reason",

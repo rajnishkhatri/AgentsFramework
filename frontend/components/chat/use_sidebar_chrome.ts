@@ -47,8 +47,9 @@ export function writeCollapsed(
   }
 }
 
-/** The nav tabs. Chat only for now; future tabs are an additive data change. */
-export type SidebarTab = "chat";
+/** The nav tabs. "chat" lists threads; "memory" mounts MemoryPanel. Adding a
+ *  future tab is an additive change to this union + the TABS table. */
+export type SidebarTab = "chat" | "memory";
 
 export interface SidebarChromeState {
   readonly collapsed: boolean;

@@ -552,6 +552,28 @@ class AgentRuntimeSettings(BaseSettings):
     # only receives ``settings``) can detect its absence and fail loud when
     # ``MEMORY_BACKEND=pgvector`` is requested without an embedding provider.
     openai_api_key: str = Field(default="", validation_alias="OPENAI_API_KEY")
+    # Anthropic chat key. litellm reads provider keys from the process env, so the
+    # runtime needs ANTHROPIC_API_KEY in the environment before the first
+    # ``ChatLiteLLM(model="anthropic/...")`` call under the "anthropic" profile
+    # set. Lifted here (mirroring openai_api_key) so build_components can detect
+    # its absence and fail loud rather than letting every Anthropic Auto run 401.
+    # Chat-only — the pgvector embedding path still requires OPENAI_API_KEY.
+    anthropic_api_key: str = Field(default="", validation_alias="ANTHROPIC_API_KEY")
+    # DeepSeek chat key. Same dispatch-by-prefix as anthropic: litellm reads
+    # DEEPSEEK_API_KEY from the process env before the first
+    # ``ChatLiteLLM(model="deepseek/...")`` call under the "deepseek" profile set.
+    # Lifted here so the generalized provider-key guard below can fail loud.
+    deepseek_api_key: str = Field(default="", validation_alias="DEEPSEEK_API_KEY")
+    # Which model registry the composition root wires (services/llm_config.py
+    # build_model_registry). "openai" → the byte-identical-to-today OpenAI stack
+    # (gpt-4o-mini fast / gpt-4o capable). "anthropic" → the 3-tier all-Anthropic
+    # Auto stack (Haiku 4.5 fast / Sonnet 4.6 capable / Opus 4.8 reasoning).
+    # "deepseek" → the DeepSeek V4 stack (Flash fast+capable / Pro reasoning).
+    # Default "openai" so prod Auto is unchanged until a tagged revision promotes
+    # the flag after the regression suites pass + the provider key is confirmed.
+    model_profile_set: str = Field(
+        default="openai", validation_alias="MODEL_PROFILE_SET"
+    )
     # ─── C1 message-history compaction (design §9 / impl §6) ─────────────
     # Seven shadow-first knobs; the master flag (CONTEXT_COMPACT_MESSAGES)
     # gates BOTH seams (call_llm_node READ, evaluate_node WRITE), so with it
@@ -679,26 +701,17 @@ class AgentComponents:
     memory_autocapture: Any = None
 
 
-def _model_profiles() -> tuple[Any, Any]:
-    from services.base_config import ModelProfile
+def _model_profiles(profile_set: str = "openai") -> tuple[list[Any], str]:
+    """Return ``(models, default_model)`` for the wired profile set.
 
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
-    )
-    return fast, capable
+    Thin wiring over the H2-canonical registry in services/llm_config.py — the
+    composition root only *selects* a set (from MODEL_PROFILE_SET), it does not
+    own the catalog. See build_model_registry for the order-is-a-safety-contract
+    invariant the router's first-match-per-tier depends on.
+    """
+    from services.llm_config import build_model_registry
+
+    return build_model_registry(profile_set)
 
 
 def _resolve_search_provider(settings: AgentRuntimeSettings) -> Any:
@@ -736,7 +749,23 @@ def build_components(
     from trust.models import AgentFacts, Capability
 
     setup_logging()
-    fast, capable = _model_profiles()
+    models, default_model = _model_profiles(settings.model_profile_set)
+
+    # Fail loud if a profile set is wired without the provider key its models
+    # need: litellm reads provider keys from the process env at the first
+    # ChatLiteLLM call, so an unset key would otherwise 401 on EVERY turn that
+    # reaches that provider (a silent runtime failure, not a composition error).
+    # Generalized provider→(litellm_id prefix, settings key, env var) map: guard
+    # fires only for a provider that actually appears in the selected set's
+    # models — so the keyless "openai" default set boots untouched, and adding a
+    # new provider (deepseek) is one row here, not a new branch.
+    _PROVIDER_KEY_GUARDS: tuple[tuple[str, str, str], ...] = (
+        ("anthropic/", settings.anthropic_api_key, "ANTHROPIC_API_KEY"),
+        ("deepseek/", settings.deepseek_api_key, "DEEPSEEK_API_KEY"),
+    )
+    for prefix, key_value, env_var in _PROVIDER_KEY_GUARDS:
+        if any(m.litellm_id.startswith(prefix) for m in models) and not key_value:
+            raise MissingEnvError(env_var)
 
     goal_judge_enabled = settings.goal_judge_enabled
     goal_judge_downgrade = settings.goal_judge_downgrade_enabled
@@ -753,8 +782,8 @@ def build_components(
         carrier_gate_enforce_mode = "raise"
 
     agent_config = AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
+        default_model=default_model,
+        models=models,
         max_steps=20,
         max_cost_usd=1.0,
         goal_judge_enabled=goal_judge_enabled,

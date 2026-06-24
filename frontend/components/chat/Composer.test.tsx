@@ -48,8 +48,11 @@ afterEach(() => {
  * before the test inspects the DOM.
  */
 function render(props: {
-  onSend: (body: string) => void | Promise<void>;
+  onSend: (body: string, selectedModel?: string) => void | Promise<void>;
   busy?: boolean;
+  models?: ReadonlyArray<{ name: string; tier: string }>;
+  selectedModel?: string;
+  onSelectModel?: (model: string) => void;
 }): HTMLTextAreaElement {
   act(() => {
     root.render(React.createElement(Composer, props));
@@ -115,7 +118,8 @@ describe("Composer keyboard contract [FD2.U_KBD / U_IME]", () => {
     act(() => setControlledValue(ta, "  hello  "));
     act(() => dispatchEnter(ta));
     expect(onSend).toHaveBeenCalledTimes(1);
-    expect(onSend).toHaveBeenCalledWith("hello");
+    // Default selection is the Auto sentinel (no pin) — passed as the 2nd arg.
+    expect(onSend).toHaveBeenCalledWith("hello", "Auto");
   });
 
   it("does NOT submit when the textarea is whitespace-only on Enter", () => {
@@ -176,5 +180,38 @@ describe("Composer label contract [FD2.U_LBL]", () => {
   it("textarea exposes an aria-label so jsx-a11y/label-has-associated-control passes", () => {
     const ta = render({ onSend: () => {} });
     expect(ta.getAttribute("aria-label")).toBe("Compose message");
+  });
+});
+
+describe("Composer model picker [Task #4]", () => {
+  it("defaults the chip to Auto (no selection passed)", () => {
+    render({ onSend: () => {} });
+    const trigger = container.querySelector('[aria-label="Choose model"]');
+    expect(trigger).not.toBeNull();
+    expect(trigger?.getAttribute("title")).toBe("Model: Auto");
+  });
+
+  it("shows the pinned model name on the chip when one is selected", () => {
+    render({ onSend: () => {}, selectedModel: "claude-sonnet-4-6" });
+    const trigger = container.querySelector('[aria-label="Choose model"]');
+    expect(trigger?.getAttribute("title")).toBe("Model: claude-sonnet-4-6");
+    expect(trigger?.textContent).toContain("claude-sonnet-4-6");
+  });
+
+  it("forwards the selected model as the 2nd arg of onSend on submit", () => {
+    const onSend = vi.fn();
+    const ta = render({ onSend, selectedModel: "gpt-4o" });
+    act(() => setControlledValue(ta, "hi"));
+    act(() => dispatchEnter(ta));
+    expect(onSend).toHaveBeenCalledWith("hi", "gpt-4o");
+  });
+
+  it("renders without a models list (fail-safe: Auto-only, never blocks)", () => {
+    // No `models` prop — the picker must still render its trigger.
+    const trigger = (() => {
+      render({ onSend: () => {} });
+      return container.querySelector('[aria-label="Choose model"]');
+    })();
+    expect(trigger).not.toBeNull();
   });
 });

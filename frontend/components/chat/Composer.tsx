@@ -24,24 +24,46 @@
 "use client";
 
 import * as React from "react";
-import { ArrowUp, ChevronDown, Plus } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
+import { AUTO_MODEL } from "@/lib/translators/ui_input_to_agent_request";
+import type { components } from "@/lib/wire-types";
 import { cn } from "@/lib/utils";
 
+type ModelInfo = components["schemas"]["ModelInfo"];
+
 export function Composer(props: {
-  onSend: (body: string) => void | Promise<void>;
+  /** `selectedModel` is the picker choice ("Auto" or a registry model name). */
+  onSend: (body: string, selectedModel?: string) => void | Promise<void>;
   busy?: boolean;
   placeholder?: string;
-  /** Display-only model label shown in the picker chip (design parity). */
-  modelLabel?: string;
+  /**
+   * Model-picker catalog (from useAvailableModels). When empty, the picker
+   * offers Auto only — the fail-safe path, so composing is never blocked.
+   */
+  models?: ReadonlyArray<ModelInfo>;
+  /** Controlled selection ("Auto" or a model name). Defaults to "Auto". */
+  selectedModel?: string;
+  /** Lifts the selection to the owner (ChatShell), so `send` can pass it. */
+  onSelectModel?: (model: string) => void;
 }): React.JSX.Element {
   const [body, setBody] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
 
+  const models = props.models ?? [];
+  const selectedModel = props.selectedModel ?? AUTO_MODEL;
+
   function submit(): void {
     const trimmed = body.trim();
     if (!trimmed || props.busy) return;
-    void props.onSend(trimmed);
+    void props.onSend(trimmed, selectedModel);
     setBody("");
   }
 
@@ -60,7 +82,8 @@ export function Composer(props: {
   }
 
   const disabled = props.busy || body.trim().length === 0;
-  const model = props.modelLabel ?? "Composer 2.5 Fast";
+  // The chip shows the active choice: a pinned model name, or "Auto".
+  const chipLabel = selectedModel === AUTO_MODEL ? "Auto" : selectedModel;
 
   return (
     <form
@@ -119,23 +142,52 @@ export function Composer(props: {
         >
           <Plus className="size-4" aria-hidden="true" />
         </button>
-        {/* §4c/HIG: min-h-11 floors the model picker to a 44pt-tall tap target;
-           text + chevron sizing unchanged. */}
-        <button
-          type="button"
-          aria-label="Choose model"
-          title={model}
-          className={cn(
-            "inline-flex min-h-11 items-center gap-1 rounded-sm px-2 py-1",
-            "text-sm text-muted transition-colors min-w-0",
-            "cursor-pointer hover:bg-selected",
-          )}
-        >
-          {/* In a narrow slot the long model label is hidden (chevron stays as
-             the affordance); it returns once the composer slot is wide enough. */}
-          <span className="truncate hidden @[20rem]/composer:inline">{model}</span>
-          <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
-        </button>
+        {/* Model picker (Task #4): real dropdown — Auto (default) + the fetched
+           registry models. Selecting one pins it for the run; the choice rides
+           input.pinned_model and is honored by the backend router's pin branch.
+           §4c/HIG: min-h-11 floors a 44pt-tall tap target. */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Choose model"
+              title={`Model: ${chipLabel}`}
+              className={cn(
+                "inline-flex min-h-11 items-center gap-1 rounded-sm px-2 py-1",
+                "text-sm text-muted transition-colors min-w-0",
+                "cursor-pointer hover:bg-selected",
+                "data-[state=open]:bg-selected data-[state=open]:text-fg",
+              )}
+            >
+              {/* In a narrow slot the label is hidden (chevron stays as the
+                 affordance); it returns once the composer slot is wide enough. */}
+              <span className="truncate hidden @[20rem]/composer:inline">
+                {chipLabel}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-[12rem]">
+            <ModelMenuItem
+              label="Auto"
+              hint="Let the agent route per step"
+              checked={selectedModel === AUTO_MODEL}
+              onSelect={() => props.onSelectModel?.(AUTO_MODEL)}
+            />
+            {models.length > 0 ? (
+              <DropdownMenuSeparator />
+            ) : null}
+            {models.map((m) => (
+              <ModelMenuItem
+                key={m.name}
+                label={m.name}
+                hint={m.tier}
+                checked={selectedModel === m.name}
+                onSelect={() => props.onSelectModel?.(m.name)}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <button
           type="submit"
           disabled={disabled}
@@ -153,5 +205,34 @@ export function Composer(props: {
         </button>
       </div>
     </form>
+  );
+}
+
+/** One model row in the picker: name + tier hint, with a check on the active one. */
+function ModelMenuItem(props: {
+  label: string;
+  hint: string;
+  checked: boolean;
+  onSelect: () => void;
+}): React.JSX.Element {
+  return (
+    <DropdownMenuItem
+      onSelect={props.onSelect}
+      className="justify-between gap-3"
+      aria-checked={props.checked}
+      role="menuitemradio"
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <Check
+          className={cn(
+            "size-3.5 shrink-0",
+            props.checked ? "opacity-100" : "opacity-0",
+          )}
+          aria-hidden="true"
+        />
+        <span className="truncate">{props.label}</span>
+      </span>
+      <span className="shrink-0 text-xs text-muted">{props.hint}</span>
+    </DropdownMenuItem>
   );
 }

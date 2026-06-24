@@ -39,7 +39,7 @@ setup_logging()
 # Import core dependencies
 from components.routing_config import RoutingConfig
 from orchestration.react_loop import build_graph
-from services.base_config import AgentConfig, ModelProfile
+from services.base_config import AgentConfig
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.tools.file_io import FileIOInput, execute_file_io
 from services.tools.delegation_dispatcher import LocalLLMDelegationDispatcher
@@ -101,26 +101,18 @@ def truncate_eval_log() -> None:
 
 def build_agent_and_tools() -> tuple[AgentConfig, RoutingConfig, ToolRegistry, AgentFactsRegistry]:
     """Assemble agent config, routing config, tools, and identity registry."""
-    fast = ModelProfile(
-        name="gpt-4o-mini",
-        litellm_id="openai/gpt-4o-mini",
-        tier="fast",
-        context_window=128000,
-        cost_per_1k_input=0.00015,
-        cost_per_1k_output=0.0006,
-    )
-    capable = ModelProfile(
-        name="gpt-4o",
-        litellm_id="openai/gpt-4o",
-        tier="capable",
-        context_window=128000,
-        cost_per_1k_input=0.005,
-        cost_per_1k_output=0.015,
+    # One source of truth for the catalog (H2 registry). Honors MODEL_PROFILE_SET
+    # from the env so the model-A/B harness's set-arm (Part II) can swap the whole
+    # Auto stack by setting os.environ["MODEL_PROFILE_SET"] before this call.
+    from services.llm_config import build_model_registry
+
+    models, default_model = build_model_registry(
+        os.environ.get("MODEL_PROFILE_SET", "openai")
     )
 
     agent_config = AgentConfig(
-        default_model="gpt-4o-mini",
-        models=[fast, capable],
+        default_model=default_model,
+        models=models,
         max_steps=20,
         max_cost_usd=1.0,
         goal_judge_enabled=True,
@@ -181,8 +173,17 @@ async def run_case(
     agent_facts_registry: AgentFactsRegistry,
     *,
     workspace: Path,
+    cache_dir: Path | None = None,
+    graph_input_extra: dict | None = None,
 ) -> dict:
-    """Execute a single synthetic case through the compiled LangGraph agent graph."""
+    """Execute a single synthetic case through the compiled LangGraph agent graph.
+
+    ``cache_dir`` overrides where the graph writes black-box recordings /
+    checkpoints (the model-A/B harness passes a per-arm dir so the two arms never
+    cross-contaminate). ``graph_input_extra`` merges extra keys into the initial
+    graph-state dict — the A/B harness seeds ``selected_model`` here, the same way
+    the UI pins a model, so the router's ``pinned_model`` branch honors it.
+    """
     # Compute deterministic 32-hex trace ID based on case ID
     trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, case.id).hex
     workflow_id = trace_id
@@ -190,7 +191,9 @@ async def run_case(
     session_id = f"session-{case.id.lower()}"
     user_id = "synthetic-saturation-user"
     agent_id = "cli-agent"
-    cache_dir = AGENT_ROOT / "cache"
+    cache_dir = cache_dir or (AGENT_ROOT / "cache")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    extra = graph_input_extra or {}
     task_input = _normalize_prompt_for_batch(case.prompt, workspace)
 
     console.print(Panel(
@@ -222,6 +225,7 @@ async def run_case(
                     "messages": [],
                     "workflow_id": workflow_id,
                     "registered_agent_id": agent_id,
+                    **extra,
                 },
                 config={
                     "configurable": {
@@ -250,6 +254,7 @@ async def run_case(
                 "messages": [],
                 "workflow_id": workflow_id,
                 "registered_agent_id": agent_id,
+                **extra,
             },
             config={
                 "configurable": {
