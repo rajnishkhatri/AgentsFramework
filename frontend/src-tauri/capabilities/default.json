@@ -5,9 +5,13 @@
   "windows": [
     "main"
   ],
+  "webviews": [
+    "main"
+  ],
   "permissions": [
     "core:default",
     "deep-link:default",
-    "opener:default"
+    "opener:default",
+    "allow-desktop-sign-in"
   ]
 }

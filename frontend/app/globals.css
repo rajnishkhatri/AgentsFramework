@@ -39,6 +39,11 @@ body {
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  /* P6 §4a keyboard lift: the iOS shell (`setupIosNativeFeel`) overwrites this
+     with the on-screen keyboard height so the composer rides above it. Defaults
+     to 0 off-device, so the composer padding `calc(... + var(--keyboard-offset))`
+     is a no-op in the browser. */
+  --keyboard-offset: 0px;
 }
 
 /* P5 §4b macOS chrome: the Tauri shell uses an Overlay titlebar (traffic lights

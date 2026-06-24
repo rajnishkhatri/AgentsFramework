@@ -19,10 +19,23 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { headers } from "next/headers";
 import { ThemeProvider } from "@/app/theme-provider";
+import { IosShellBootstrap } from "@/app/ios-shell-bootstrap";
 
 export const metadata = {
   title: "Agent",
   description: "Claude-class chat with the ReAct agent",
+};
+
+/**
+ * P6 §4a: `viewportFit: "cover"` lets the page draw under the notch / Dynamic
+ * Island / home indicator so `env(safe-area-inset-*)` (the globals.css `--safe-*`
+ * vars + the composer keyboard lift) resolve to real insets inside the Capacitor
+ * WebView. Off-device the insets are 0, so this is inert in the browser.
+ */
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
 };
 
 export default async function RootLayout({
@@ -47,6 +60,7 @@ export default async function RootLayout({
           defaultTheme="system"
           enableSystem
         >
+          <IosShellBootstrap />
           {children}
         </ThemeProvider>
       </body>

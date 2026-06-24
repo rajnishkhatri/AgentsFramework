@@ -40,6 +40,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         );
       }
       const url = buildDesktopAuthorizationUrl(desktop);
+      // Same redirect shape as the working web sign-in leg below (default 307).
       return NextResponse.redirect(url);
     }
     const url = await getSignInUrl();

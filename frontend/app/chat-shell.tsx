@@ -698,9 +698,12 @@ export function ChatShell(props: {
           ) : null}
 
           {/* Composer (pinned to the bottom of the chat column) */}
-          {/* P4 §4a: pad the bottom safe-area inset so the composer sits above
-             the home indicator / keyboard when wrapped (no-op off-device). */}
-          <div className="max-w-3xl mx-auto w-full p-2 pb-[max(0.5rem,var(--safe-bottom))] pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))]">
+          {/* P4 §4a / P6 §4a: pad the bottom safe-area inset so the composer sits
+             above the home indicator, and add `--keyboard-offset` so it rides up
+             with the on-screen keyboard (both vars default to 0 off-device, so
+             this is a no-op in the browser). The native shell writes the keyboard
+             offset via `setupIosNativeFeel`. */}
+          <div className="max-w-3xl mx-auto w-full p-2 pb-[calc(max(0.5rem,var(--safe-bottom))+var(--keyboard-offset))] pl-[max(0.5rem,var(--safe-left))] pr-[max(0.5rem,var(--safe-right))] transition-[padding] duration-200">
             <Composer onSend={send} busy={busy || pausedTurnId !== null} />
           </div>
         </div>

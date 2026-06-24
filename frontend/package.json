@@ -15,6 +15,9 @@
     "tauri": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri",
     "tauri:dev": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri dev",
     "tauri:build": "PATH=\"$HOME/.cargo/bin:$PATH\" tauri build",
+    "cap:sync": "PATH=\"/opt/homebrew/bin:$PATH\" cap sync ios",
+    "cap:open": "cap open ios",
+    "cap:run": "PATH=\"/opt/homebrew/bin:$PATH\" cap run ios",
     "dev": "pnpm tokens:build && next dev",
     "build": "pnpm tokens:build && next build",
     "start": "next start",
@@ -53,6 +56,13 @@
     "check:bundle-budget": "tsx scripts/check_bundle_budget.ts"
   },
   "dependencies": {
+    "@capacitor-community/safe-area": "^7.0.0",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.6.7",
+    "@capacitor/ios": "^7.6.7",
+    "@capacitor/keyboard": "^7.0.6",
+    "@capacitor/status-bar": "^7.0.6",
     "@copilotkit/react-core": "^1.56.3",
     "@copilotkit/react-ui": "^1.56.3",
     "@copilotkit/runtime": "^1.56.3",
@@ -90,6 +100,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.2",
+    "@capacitor/cli": "^7.6.7",
     "@playwright/test": "^1.59.1",
     "@storybook/addon-a11y": "^9.1.20",
     "@storybook/addon-docs": "^9.1.20",

@@ -41,10 +41,16 @@ describe("middleware security headers — production CSP (failure-path guards)",
     middlewareFn = mod.middleware;
   });
 
-  async function call(url = "https://example.com/"): Promise<Response> {
-    const req = new NextRequest(url);
+  async function call(
+    url = "https://example.com/",
+    headers?: Record<string, string>,
+  ): Promise<Response> {
+    const req = new NextRequest(url, headers ? { headers } : undefined);
     return middlewareFn(req);
   }
+
+  const SHELL_UA =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15 AgentsFrameworkShell";
 
   it("invokes handleAuthkitHeaders so AuthKit request headers reach route handlers", async () => {
     await call("https://example.com/api/run/stream");
@@ -91,6 +97,26 @@ describe("middleware security headers — production CSP (failure-path guards)",
   it("CSP connect-src does NOT include ws://localhost in production", async () => {
     const csp = (await call()).headers.get("content-security-policy") ?? "";
     expect(csp).not.toContain("ws://localhost");
+  });
+
+  it("default (browser) request does NOT get Tauri IPC sources in connect-src", async () => {
+    const csp = (await call()).headers.get("content-security-policy") ?? "";
+    expect(csp).not.toContain("ipc:");
+    expect(csp).not.toContain("ipc.localhost");
+  });
+
+  it("Tauri shell UA relaxes connect-src to allow the IPC origin (desktop sign-in)", async () => {
+    const csp =
+      (await call("https://example.com/", { "user-agent": SHELL_UA })).headers.get(
+        "content-security-policy",
+      ) ?? "";
+    // Still strict otherwise:
+    expect(csp).toContain("'strict-dynamic'");
+    expect(csp).not.toContain("unsafe-inline");
+    // …but the IPC origin is now allowed for connect-src only.
+    expect(csp).toMatch(/connect-src[^;]*ipc:/);
+    expect(csp).toMatch(/connect-src[^;]*ipc\.localhost/);
+    expect(csp).toMatch(/connect-src[^;]*https:\/\/\*\.workos\.com/);
   });
 
   it("CSP includes object-src 'none' and base-uri 'self'", async () => {

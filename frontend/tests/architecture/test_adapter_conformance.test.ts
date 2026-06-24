@@ -291,10 +291,14 @@ describe("Adapter conformance suite [FD6.PORT adapter side / A3 / A4]", () => {
       orphans,
       `Unmapped adapter files (add to PAIRS or document the omission): ${orphans.join(", ")}`,
     ).toEqual([
-      // Known intentional omissions:
+      // Known intentional omissions (order matches readdirSync = alphabetical):
+      "lib/adapters/auth/capacitor_ios_auth.ts", // Capacitor SDK seam (P6 Step 2) — controller wires @capacitor/* into the pure helper; not a lib/ports/ PAIR
       "lib/adapters/auth/desktop_auth_state.ts", // pure helpers (no SDK/port) — P5 Step 2 desktop deep-link auth
+      "lib/adapters/auth/ios_deep_link_auth.ts", // pure helpers (no SDK/port) — P6 Step 2 iOS deep-link auth (TS analogue of src-tauri/src/auth.rs)
       "lib/adapters/auth/workos_desktop_auth.ts", // server-only seam (P5 Step 2), like workos_server_sdk.ts — not a port-adapter PAIR
       "lib/adapters/auth/workos_server_sdk.ts", // server-only seam (D-V3-S3.7.1-RouteHandler)
+      "lib/adapters/native/capacitor_native_feel.ts", // Capacitor SDK seam (P6 Step 3) — wires @capacitor/{status-bar,keyboard}+safe-area into the pure helper; not a lib/ports/ PAIR
+      "lib/adapters/native/ios_native_feel.ts", // pure helpers (no SDK/port) — P6 Step 3 status-bar/keyboard decision logic
       // pgDrizzleDb is a DrizzleLike *factory* (option B, Cloud SQL), the same
       // kind as the `neonDrizzleDb` factory co-located in neon_thread_repo.ts —
       // not a class implementing a lib/ports/ interface. The ThreadRepo

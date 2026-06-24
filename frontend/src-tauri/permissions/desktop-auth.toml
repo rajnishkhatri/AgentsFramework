@@ -1,0 +1,12 @@
+"$schema" = "schemas/schema.json"
+
+# App-local permission granting the webview the right to invoke the
+# `desktop_sign_in` IPC command. Tauri 2 does NOT auto-generate `allow-*`
+# permissions for app-defined commands (only for plugins), so the command is
+# denied by the ACL unless a capability references this grant explicitly.
+# See capabilities/default.json -> "desktop-auth:allow-desktop-sign-in".
+
+[[permission]]
+identifier = "allow-desktop-sign-in"
+description = "Allows the webview to start the desktop (system-browser) sign-in flow."
+commands.allow = ["desktop_sign_in"]

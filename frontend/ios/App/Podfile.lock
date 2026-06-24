@@ -1,0 +1,52 @@
+PODS:
+  - Capacitor (7.6.7):
+    - CapacitorCordova
+  - CapacitorApp (7.1.2):
+    - Capacitor
+  - CapacitorBrowser (7.0.5):
+    - Capacitor
+  - CapacitorCommunitySafeArea (7.0.0):
+    - Capacitor
+  - CapacitorCordova (7.6.7)
+  - CapacitorKeyboard (7.0.6):
+    - Capacitor
+  - CapacitorStatusBar (7.0.6):
+    - Capacitor
+
+DEPENDENCIES:
+  - "Capacitor (from `../../node_modules/.pnpm/@capacitor+ios@7.6.7_@capacitor+core@7.6.7/node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../node_modules/.pnpm/@capacitor+app@7.1.2_@capacitor+core@7.6.7/node_modules/@capacitor/app`)"
+  - "CapacitorBrowser (from `../../node_modules/.pnpm/@capacitor+browser@7.0.5_@capacitor+core@7.6.7/node_modules/@capacitor/browser`)"
+  - "CapacitorCommunitySafeArea (from `../../node_modules/.pnpm/@capacitor-community+safe-area@7.0.0_@capacitor+core@7.6.7/node_modules/@capacitor-community/safe-area`)"
+  - "CapacitorCordova (from `../../node_modules/.pnpm/@capacitor+ios@7.6.7_@capacitor+core@7.6.7/node_modules/@capacitor/ios`)"
+  - "CapacitorKeyboard (from `../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.7/node_modules/@capacitor/keyboard`)"
+  - "CapacitorStatusBar (from `../../node_modules/.pnpm/@capacitor+status-bar@7.0.6_@capacitor+core@7.6.7/node_modules/@capacitor/status-bar`)"
+
+EXTERNAL SOURCES:
+  Capacitor:
+    :path: "../../node_modules/.pnpm/@capacitor+ios@7.6.7_@capacitor+core@7.6.7/node_modules/@capacitor/ios"
+  CapacitorApp:
+    :path: "../../node_modules/.pnpm/@capacitor+app@7.1.2_@capacitor+core@7.6.7/node_modules/@capacitor/app"
+  CapacitorBrowser:
+    :path: "../../node_modules/.pnpm/@capacitor+browser@7.0.5_@capacitor+core@7.6.7/node_modules/@capacitor/browser"
+  CapacitorCommunitySafeArea:
+    :path: "../../node_modules/.pnpm/@capacitor-community+safe-area@7.0.0_@capacitor+core@7.6.7/node_modules/@capacitor-community/safe-area"
+  CapacitorCordova:
+    :path: "../../node_modules/.pnpm/@capacitor+ios@7.6.7_@capacitor+core@7.6.7/node_modules/@capacitor/ios"
+  CapacitorKeyboard:
+    :path: "../../node_modules/.pnpm/@capacitor+keyboard@7.0.6_@capacitor+core@7.6.7/node_modules/@capacitor/keyboard"
+  CapacitorStatusBar:
+    :path: "../../node_modules/.pnpm/@capacitor+status-bar@7.0.6_@capacitor+core@7.6.7/node_modules/@capacitor/status-bar"
+
+SPEC CHECKSUMS:
+  Capacitor: 8ef25ba872436d2c5ac2a4791f7255529bdcd93b
+  CapacitorApp: f01a913211780e0718dae9750442c3e23f96e106
+  CapacitorBrowser: 6d09f59655e89aede71654ef08b98de55cf032b6
+  CapacitorCommunitySafeArea: 211e919d3f0ff6020a3b2acb3b772fa30fb685ef
+  CapacitorCordova: 139e2ed3d91c54b5aeae7941135c9f9aefc6da1d
+  CapacitorKeyboard: a2e0869edd229490ce36aed2549c0d6b95e27ee8
+  CapacitorStatusBar: 416e9e53fd6397e668d4a181cd2131617d949bd6
+
+PODFILE CHECKSUM: 960c4a5290223746e9683ad31a14d3b7c50b8bc2
+
+COCOAPODS: 1.16.2

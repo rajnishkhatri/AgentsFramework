@@ -1,7 +1,6 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { glob } from 'fs/promises';
+import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = __dirname;
@@ -9,12 +8,14 @@ const TOKENS_DIR = path.join(ROOT, 'tokens');
 const OUT_FILE = path.join(ROOT, '..', 'app', 'generated-theme.css');
 
 // --- load all token files ---
-async function loadTokenFiles(pattern) {
-  const files = [];
-  for await (const f of glob(path.join(TOKENS_DIR, '*.tokens.json'))) {
-    files.push(f);
-  }
-  return files;
+// `readdirSync` (not fs/promises `glob`) so the compiler runs on Node 18/20/22
+// alike — the production Docker image is node:20-alpine, where `glob` is not yet
+// exported from `fs/promises` (Node 22+ only).
+function loadTokenFiles() {
+  return readdirSync(TOKENS_DIR)
+    .filter((name) => name.endsWith('.tokens.json'))
+    .sort()
+    .map((name) => path.join(TOKENS_DIR, name));
 }
 
 function readTokens(file) {
@@ -67,7 +68,7 @@ function toCSSVar(pathParts) {
 }
 
 async function build() {
-  const tokenFiles = await loadTokenFiles();
+  const tokenFiles = loadTokenFiles();
 
   // Separate light and dark files
   const lightFiles = tokenFiles.filter(f => !f.includes('.dark.'));
