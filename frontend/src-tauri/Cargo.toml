@@ -21,10 +21,7 @@ tauri-build = { version = "2.6.3", features = [] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-# `devtools` enables the WKWebView Web Inspector even in release bundles, so we
-# can debug the deployed (strict-CSP) page in the bundled app. Revisit before a
-# real public release (gate behind a debug profile if devtools shouldn't ship).
-tauri = { version = "2.11.3", features = ["devtools"] }
+tauri = { version = "2.11.3", features = [] }
 tauri-plugin-log = "2"
 # P5 Step 2 — system-browser + custom-scheme deep-link auth
 tauri-plugin-deep-link = "2.4.9"
