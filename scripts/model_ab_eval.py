@@ -35,6 +35,7 @@ import argparse
 import hashlib
 import json
 import sys
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -476,15 +477,42 @@ def write_reports(out_dir: Path, payload: dict) -> tuple[Path, Path]:
 # ── live drive (real LLM — opt-in, never in CI) ────────────────────────────────
 
 
+def _judge_model(arm_set: str | None) -> set[str]:
+    """The GoalJudge evaluator's model name(s) — shared INFRASTRUCTURE that runs
+    on every arm regardless of the pin (react_loop picks the capable-tier profile
+    as ``eval_profile``; run_goaljudge_synthetic_batch enables GoalJudge). It is
+    NOT the model-under-test, so it must be allowed in every arm's expected set or
+    it reads as false contamination. Derived from the registry (not hardcoded): a
+    pinned arm leaves MODEL_PROFILE_SET unset → the default set's capable pick; a
+    set arm uses that set's capable pick."""
+    from services.llm_config import build_model_registry
+
+    # A pinned arm builds from the "all" meta-set (see _drive_arm) so the pin can
+    # resolve; the judge is that set's capable pick. A set arm uses its own set.
+    set_name = arm_set or "all"
+    try:
+        models, _ = build_model_registry(set_name)
+    except Exception:
+        return set()
+    # react_loop picks the FIRST capable profile as eval_profile (next(... tier
+    # =="capable")) — that one model is the judge, not every capable in the set.
+    first_capable = next(
+        (m.name for m in models if getattr(m, "tier", None) == "capable"), None
+    )
+    return {first_capable} if first_capable else set()
+
+
 def _arm_models(arm_model: str, arm_set: str | None) -> set[str]:
     """The expected-model roster for an arm: a one-name set for a pinned arm, or
-    the full name roster of a profile set for a set arm."""
+    the full name roster of a profile set for a set arm — PLUS the GoalJudge
+    evaluator model (shared infra, see _judge_model)."""
+    judge = _judge_model(arm_set)
     if arm_set:
         from services.llm_config import build_model_registry
 
         models, _ = build_model_registry(arm_set)
-        return {m.name for m in models}
-    return {arm_model}
+        return {m.name for m in models} | judge
+    return {arm_model} | judge
 
 
 def _score_arm(
@@ -499,7 +527,14 @@ def _score_arm(
     for row in rows:
         case = row["case"]
         gj_id = row.get("gj_id", "")
+        # The drive (run_goaljudge_synthetic_batch.run_case) keys the BlackBox
+        # recording dir by ``workflow_id = uuid5(NAMESPACE_DNS, case.id).hex`` —
+        # NOT the corpus row's stored ``trace_id`` (that was the UI run's id).
+        # So the deterministic uuid5(case) is the PRIMARY join key here; the
+        # other forms are kept for corpora driven through different paths.
+        drive_wf = uuid.uuid5(uuid.NAMESPACE_DNS, case).hex
         wf_candidates = [
+            drive_wf,
             f"gj:{gj_id}:{row['trace_id']}" if gj_id else "",
             f"gj:{case}:{row['trace_id']}",
             row["trace_id"],
@@ -553,7 +588,16 @@ async def _drive_arm(
     arm_cache = out_dir / "cache"
     arm_cache.mkdir(parents=True, exist_ok=True)
     if arm_set:
+        # Set arm: Auto routes across the named stack.
         os.environ["MODEL_PROFILE_SET"] = arm_set
+    else:
+        # Pinned arm: the router can only resolve a pin to a profile that EXISTS
+        # in the active registry (_pick_profile_by_name). The default "openai"
+        # set has only gpt-4o/gpt-4o-mini, so pinning e.g. claude-haiku-4-5 would
+        # MISS and silently fall back to the default model — invalidating the
+        # arm. Build from the "all" meta-set so every pinnable model is present;
+        # the pin then resolves and the arm truly runs the model-under-test.
+        os.environ["MODEL_PROFILE_SET"] = "all"
 
     workspace = AGENT_ROOT / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
@@ -563,16 +607,28 @@ async def _drive_arm(
         build_agent_and_tools()
     )
 
-    # A set arm lets Auto route (no extra input); a pinned arm seeds
-    # selected_model exactly the way the UI pins a model.
-    extra = None if arm_set else {"selected_model": arm_model}
+    # A set arm lets Auto route (no extra input); a pinned arm seeds the pin
+    # exactly the way the UI does. The pin rides ``pinned_model`` (NOT
+    # ``selected_model``): the router reads ``state["pinned_model"]`` from its own
+    # channel (react_loop.py select_model call), because the route node writes
+    # back ``selected_model``=routed-name each step, so reusing that key as the
+    # pin input would misread step-1's routed model as a pin on later steps. The
+    # UI rides ``input.pinned_model`` (ui_input_to_agent_request.ts) — match it.
+    extra = None if arm_set else {"pinned_model": arm_model}
     for row in rows:
+        # target_axes / expected_feasibility are GoalJudge *scoring* metadata;
+        # the A/B drive only needs id/prompt/target_code/stratum/domain (run_case
+        # reads those). Supply schema-required defaults so construction succeeds —
+        # the harness scores behavior via score_run on the recordings, not via the
+        # GoalJudge rubric, so these values don't affect the A/B verdict.
         case = GoalJudgeCase(
             id=row["case"],
             prompt=row["prompt"],
             target_code=row.get("gj_id", ""),
+            target_axes={},
             stratum=row.get("phase", ""),
             domain=row.get("phase", ""),
+            expected_feasibility="achievable",
         )
         await run_case(
             case,
@@ -586,9 +642,15 @@ async def _drive_arm(
         )
 
     # Point the arm's "recordings" dir (what _score_arm reads) at the real
-    # black_box_recordings the graph just wrote under arm_cache.
+    # black_box_recordings the graph just wrote under arm_cache. Use an ABSOLUTE
+    # target: a symlink target is resolved relative to the LINK's directory, not
+    # the CWD, so a project-relative target doubles the path (…/baseline/cache/
+    # model_ab_offline/…/baseline/cache/…) and resolves to nothing. resolve()
+    # makes the join correct from any CWD and for --score-only re-reads.
     recordings = out_dir / "recordings"
-    real = arm_cache / "black_box_recordings"
+    real = (arm_cache / "black_box_recordings").resolve()
+    if recordings.is_symlink() and not recordings.exists():
+        recordings.unlink()  # stale/broken link from a prior run
     if not recordings.exists() and real.exists():
         recordings.symlink_to(real, target_is_directory=True)
 
@@ -667,11 +729,22 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
 
+    def _recordings_dir(arm_dir: Path) -> Path:
+        """Resolve an arm's recordings dir. Prefer the ``recordings`` symlink the
+        drive creates; fall back to the real ``cache/black_box_recordings`` when
+        the symlink is absent or broken (e.g. ``--score-only`` re-reads, which
+        skip ``_drive_arm`` and so never create the link)."""
+        link = arm_dir / "recordings"
+        if link.exists():
+            return link
+        real = arm_dir / "cache" / "black_box_recordings"
+        return real if real.exists() else link
+
     base_summary, base_events, base_cost = _score_arm(
-        rows, baseline_dir / "recordings"
+        rows, _recordings_dir(baseline_dir)
     )
     cand_summary, cand_events, cand_cost = _score_arm(
-        rows, candidate_dir / "recordings"
+        rows, _recordings_dir(candidate_dir)
     )
 
     base_integrity = check_arm_integrity(
