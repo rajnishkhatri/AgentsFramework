@@ -165,6 +165,42 @@ def build_model_registry(
     return [m.model_copy(deep=True) for m in models], default_model
 
 
+def response_text(response: Any) -> str:
+    """Normalize an LLM response's content to a plain answer string.
+
+    Provider responses do NOT agree on the shape of ``.content``:
+      * OpenAI / Anthropic (non-thinking) → a plain ``str``.
+      * DeepSeek V4 (and other reasoning models over LiteLLM) → a **list of
+        content blocks**, e.g. ``['', {'type':'thinking',...}, {'type':'text',
+        'text':'4'}]`` — the answer lives in the ``text`` blocks and the
+        ``thinking`` blocks are model scratchpad that must NOT reach the user.
+
+    A naive ``str(response.content)`` stringifies the whole list (thinking and
+    all) into the answer — the user sees ``"['', {'type':'thinking',...}]"``
+    instead of ``"4"``. This helper collapses any shape to the answer text by
+    reusing LangChain's own block-text extraction (``AIMessage.text``), which
+    joins ``text`` blocks and drops ``thinking``/tool blocks. A plain string
+    passes through unchanged; ``None``/missing content → ``""``.
+
+    Centralized here (the H2 LLM boundary — the only services/ file allowed to
+    import langchain) so every call site in the react loop normalizes
+    identically and the provider-shape difference is handled in ONE place.
+    """
+    content = getattr(response, "content", response)
+    if isinstance(content, str):
+        return content
+    if content is None:
+        return ""
+    # List-of-blocks (or any non-str): wrap in an AIMessage and reuse the
+    # canonical ``.text`` extractor (joins text blocks, drops thinking blocks).
+    try:
+        from langchain_core.messages import AIMessage
+
+        return AIMessage(content=content).text
+    except Exception:  # pragma: no cover — defensive; never let normalization throw
+        return str(content)
+
+
 class LLMService:
     def __init__(self, config: AgentConfig) -> None:
         self._config = config

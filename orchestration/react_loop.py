@@ -66,6 +66,7 @@ from orchestration.message_view import (  # C1 §3.2 BaseMessage↔view boundary
 )
 from orchestration.state import AgentState
 from services.base_config import AgentConfig, ModelProfile, default_fast_profile
+from services.llm_config import response_text
 from services.goal_judge_runtime_config import (
     GoalJudgeRuntimeConfigReader,
     InMemoryGoalJudgeConfigReader,
@@ -596,9 +597,9 @@ async def _reasoning_recap_impl(
     try:
         final_answer = ""
         for msg in reversed(state.get("messages") or []):
-            content = getattr(msg, "content", "")
+            content = response_text(msg)
             if content and not getattr(msg, "tool_calls", []):
-                final_answer = str(content)
+                final_answer = content
                 break
         tool_steps = [
             {
@@ -625,7 +626,7 @@ async def _reasoning_recap_impl(
             [{"role": "user", "content": prompt}],
             config={"tags": ["reasoning_recap"]},
         )
-        text = str(getattr(response, "content", "") or "").strip()
+        text = response_text(response).strip()
         if not text:
             return {}
         return {"reasoning_summary": text}
@@ -1794,7 +1795,7 @@ def build_graph(
         await eval_capture.record(
             target="call_llm",
             ai_input={"task_input": state.get("task_input", "")[:200]},
-            ai_response=str(getattr(response, "content", ""))[:500],
+            ai_response=response_text(response)[:500],
             config=config,
             step=step_count,
             model=profile.name,
@@ -1804,7 +1805,11 @@ def build_graph(
             latency_ms=latency_ms,
         )
 
-        content = getattr(response, "content", "")
+        # Normalize provider content shape: DeepSeek (and other reasoning models)
+        # return ``.content`` as a LIST of blocks (thinking + text); a naive
+        # str() would leak the thinking scratchpad into the answer. response_text
+        # collapses any shape to the answer string (services/llm_config.py).
+        content = response_text(response)
         tool_calls = getattr(response, "tool_calls", [])
         phase_logger.end_phase(
             workflow_id,
@@ -2120,7 +2125,10 @@ def build_graph(
         async with phase_logger.phase(workflow_id, WorkflowPhase.EVALUATION, step_count):
             messages = state.get("messages", [])
             last_msg = messages[-1] if messages else None
-            content = getattr(last_msg, "content", "") if last_msg else ""
+            # Defensive normalization: call_llm already stores a normalized string,
+            # but a message from a checkpoint/other path could carry list-shaped
+            # content — response_text collapses it (services/llm_config.py).
+            content = response_text(last_msg) if last_msg else ""
 
             # Story 1.3: reconstruct error from state if present
             llm_error_str = state.get("last_llm_error")
@@ -2774,7 +2782,7 @@ def build_graph(
             response = await llm_service.invoke(
                 judge_profile, [{"role": "user", "content": prompt}]
             )
-            return str(getattr(response, "content", response))
+            return response_text(response)
 
         # generate_reflection is sync (pure); run the injected async critique
         # eagerly and hand it the result via a closure, mirroring Phase 1's
@@ -2957,7 +2965,7 @@ def build_graph(
                 "cost_usd": (_ti * profile.cost_per_1k_input / 1000)
                 + (_to * profile.cost_per_1k_output / 1000),
             }
-            content = str(getattr(response, "content", response) or "")
+            content = response_text(response)
             try:
                 return json.loads(content)
             except Exception:
@@ -3237,7 +3245,7 @@ def build_graph(
                     profile,
                     [{"role": "user", "content": prompt}],
                 )
-                joined = str(getattr(response, "content", response) or "").strip()
+                joined = response_text(response).strip()
                 _u = getattr(response, "usage_metadata", {}) or {}
                 _ti = int(_u.get("input_tokens", 0) or 0)
                 _to = int(_u.get("output_tokens", 0) or 0)

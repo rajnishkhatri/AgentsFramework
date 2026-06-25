@@ -13,6 +13,7 @@ from services.llm_config import (
     DEFAULT_MODEL_PROFILE_SET,
     LLMService,
     build_model_registry,
+    response_text,
 )
 
 
@@ -76,6 +77,56 @@ class TestLLMService:
         svc = LLMService(config=cfg)
         llm = svc.get_llm(_fast_profile())
         assert getattr(llm, "streaming", False) is True
+
+
+class _Resp:
+    """Minimal stand-in for an LLM response carrying a ``.content`` attribute."""
+
+    def __init__(self, content):
+        self.content = content
+
+
+class TestResponseText:
+    """Provider-content normalization (the DeepSeek list-of-blocks fix).
+
+    Failure path FIRST (TAP-4): the dangerous case is a DeepSeek-shaped LIST of
+    blocks being stringified into the user's answer (thinking scratchpad and
+    all). ``response_text`` must collapse it to the answer text.
+    """
+
+    def test_deepseek_list_of_blocks_returns_answer_text_only(self):
+        # The exact shape DeepSeek V4 Flash returned in the pre-deploy smoke:
+        # a leading '' + thinking blocks + the answer in text blocks.
+        content = [
+            "",
+            {"type": "thinking", "thinking": "We need to answer"},
+            {"type": "text", "text": "The answer is "},
+            {"type": "text", "text": "4"},
+        ]
+        out = response_text(_Resp(content))
+        assert out == "The answer is 4"
+        assert "thinking" not in out  # scratchpad must NOT reach the user
+
+    def test_plain_string_passes_through(self):
+        assert response_text(_Resp("just a plain answer")) == "just a plain answer"
+
+    def test_none_content_is_empty_string(self):
+        assert response_text(_Resp(None)) == ""
+
+    def test_empty_list_is_empty_string(self):
+        assert response_text(_Resp([])) == ""
+
+    def test_thinking_only_list_yields_empty_not_stringified(self):
+        # A response that is ALL thinking (no text block) must NOT stringify the
+        # dict list into the answer — it yields "" (the caller treats empty as
+        # "no answer", which is correct).
+        content = [{"type": "thinking", "thinking": "hmm"}]
+        out = response_text(_Resp(content))
+        assert "{" not in out and "thinking" not in out
+
+    def test_bare_string_argument_also_works(self):
+        # Defensive: passed a bare string instead of a response object.
+        assert response_text("hello") == "hello"
 
 
 def _first_tier(models, tier):
