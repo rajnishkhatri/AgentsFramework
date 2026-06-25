@@ -22,9 +22,17 @@ from dataclasses import dataclass
 
 SATURATION_USER_ID = "synthetic-saturation-user"
 
-# gj:GJ-010:<32-hex> | gj:GJ-003B:<32-hex> | gj:GJ-F-001:<32-hex> | gj:GJ-STRESS-001:<32-hex>
+# gj:GJ-010:<32-hex> | gj:GJ-003B:<32-hex> | gj:GJ-F-001:<32-hex>
+# gj:GJ-STRESS-001:<32-hex> | gj:GJ-ABGENL-01:<32-hex> (model-A/B families)
+#
+# The trailing ``[A-Z]+-\d+`` arm accepts the model-A/B corpus ids
+# (GJ-ABGENL/ABMULT/ABMEMO-NN, build_model_ab_corpus.py) the same way the
+# STRESS arm was added — a new synthetic family, same deterministic trace_id
+# adoption. Keep STRESS as its own arm for readability though ``[A-Z]+-\d+``
+# would also match it.
 _GOALJUDGE_THREAD_RE = re.compile(
-    r"^gj:(?P<case_id>GJ-(?:F-\d+|STRESS-\d+|\d+[A-Z]?)):(?P<trace_id>[0-9a-f]{32})$"
+    r"^gj:(?P<case_id>GJ-(?:F-\d+|STRESS-\d+|[A-Z]+-\d+|\d+[A-Z]?)):"
+    r"(?P<trace_id>[0-9a-f]{32})$"
 )
 
 # mem:MEM-0001:s1:user0001:<32-hex>

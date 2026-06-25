@@ -68,6 +68,17 @@ class TestParseGoaljudgeThreadId:
         assert ctx.trace_id == trace_id
         assert ctx.session_id == "session-gj-f-001"
 
+    def test_parses_model_ab_family_ids(self) -> None:
+        """The model-A/B corpus families (GJ-ABGENL/ABMULT/ABMEMO-NN) must adopt
+        a deterministic trace_id like every other gj: family, or the analyzer
+        can't join the run to its Langfuse trace."""
+        for gj_id in ("GJ-ABGENL-01", "GJ-ABMULT-06", "GJ-ABMEMO-03"):
+            trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, gj_id).hex
+            ctx = parse_goaljudge_thread_id(f"gj:{gj_id}:{trace_id}")
+            assert ctx is not None, f"{gj_id} did not parse"
+            assert ctx.case_id == gj_id
+            assert ctx.trace_id == trace_id
+
 
 class TestParseMemThreadId:
     """The ``mem:`` bridge carries a PER-CASE user_id so the memory
