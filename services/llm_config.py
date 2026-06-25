@@ -138,12 +138,36 @@ _DEEPSEEK_PROFILES: list[ModelProfile] = [
     *_OPENAI_PROFILES,
 ]
 
+def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
+    """First-wins dedupe by ``name`` (LLMService._profiles keys by name, so a
+    duplicate name would silently collapse; we keep the first to make the order
+    deterministic and the /models list free of dupes)."""
+    seen: set[str] = set()
+    out: list[ModelProfile] = []
+    for p in profiles:
+        if p.name not in seen:
+            seen.add(p.name)
+            out.append(p)
+    return out
+
+
+# The "all" UNION set: every distinct model across the three stacks, PIN-ONLY.
+# Used ONLY by the model-A/B sweep so the /models endpoint offers every model
+# for the UI dropdown to pin (docs/plans/model_ab_extensive_e2e.plan.md task
+# 0.2a). NOT a prod Auto stack — order is openai-first so a stray Auto run on
+# this set stays cheap/predictable (first fast == gpt-4o-mini), but the intent
+# is that callers PIN a concrete model, never route Auto here.
+_ALL_PROFILES: list[ModelProfile] = _dedupe_by_name(
+    [*_OPENAI_PROFILES, *_ANTHROPIC_PROFILES, *_DEEPSEEK_PROFILES]
+)
+
 # Each entry: (ordered profile list, default_model name). The default is the
 # fast-tier steady-state model — it must appear in the list.
 _MODEL_PROFILE_SETS: dict[str, tuple[list[ModelProfile], str]] = {
     "openai": (_OPENAI_PROFILES, "gpt-4o-mini"),
     "anthropic": (_ANTHROPIC_PROFILES, "claude-haiku-4-5"),
     "deepseek": (_DEEPSEEK_PROFILES, "deepseek-v4-flash"),
+    "all": (_ALL_PROFILES, "gpt-4o-mini"),
 }
 
 DEFAULT_MODEL_PROFILE_SET = "openai"

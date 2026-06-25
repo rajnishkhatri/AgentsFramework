@@ -130,6 +130,37 @@ resource "google_secret_manager_secret_iam_member" "anthropic_api_key_accessor" 
   member    = local.backend_runtime_member
 }
 
+# ── 3b. deepseek-api-key ──────────────────────────────────────────────────────
+# Same dispatch-by-prefix as anthropic: LiteLLM reads DEEPSEEK_API_KEY from the
+# container env for the deepseek/* profile set. Mirrors the anthropic resources.
+resource "google_secret_manager_secret" "deepseek_api_key" {
+  project   = var.gcp_project_id
+  secret_id = "deepseek-api-key"
+  replication {
+    auto {}
+  }
+  labels = {
+    tier      = "a"
+    recipe    = "1-foundations"
+    component = "backend"
+    provider  = "deepseek"
+  }
+  depends_on = [google_project_service.required]
+}
+
+resource "google_secret_manager_secret_version" "deepseek_api_key" {
+  secret          = google_secret_manager_secret.deepseek_api_key.id
+  secret_data     = var.deepseek_api_key
+  deletion_policy = "ABANDON"
+}
+
+resource "google_secret_manager_secret_iam_member" "deepseek_api_key_accessor" {
+  project   = var.gcp_project_id
+  secret_id = google_secret_manager_secret.deepseek_api_key.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = local.backend_runtime_member
+}
+
 # ── 4. langfuse-public-key ───────────────────────────────────────────────────
 # Stored in Secret Manager for parity with the secret-key sibling so rotation
 # is a single `gcloud secrets versions add` with no Cloud Run env-var change.

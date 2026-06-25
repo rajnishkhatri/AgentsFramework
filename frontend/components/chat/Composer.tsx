@@ -150,6 +150,7 @@ export function Composer(props: {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              data-testid="model-picker-trigger"
               aria-label="Choose model"
               title={`Model: ${chipLabel}`}
               className={cn(
@@ -171,6 +172,7 @@ export function Composer(props: {
             <ModelMenuItem
               label="Auto"
               hint="Let the agent route per step"
+              testid="model-option-Auto"
               checked={selectedModel === AUTO_MODEL}
               onSelect={() => props.onSelectModel?.(AUTO_MODEL)}
             />
@@ -182,6 +184,7 @@ export function Composer(props: {
                 key={m.name}
                 label={m.name}
                 hint={m.tier}
+                testid={`model-option-${m.name}`}
                 checked={selectedModel === m.name}
                 onSelect={() => props.onSelectModel?.(m.name)}
               />
@@ -214,6 +217,7 @@ function ModelMenuItem(props: {
   hint: string;
   checked: boolean;
   onSelect: () => void;
+  testid?: string;
 }): React.JSX.Element {
   return (
     <DropdownMenuItem
@@ -221,6 +225,7 @@ function ModelMenuItem(props: {
       className="justify-between gap-3"
       aria-checked={props.checked}
       role="menuitemradio"
+      {...(props.testid ? { "data-testid": props.testid } : {})}
     >
       <span className="flex min-w-0 items-center gap-2">
         <Check

@@ -233,3 +233,33 @@ class TestModelRegistry:
         by_name = {m.name: m for m in models}
         assert by_name["deepseek-v4-flash"].litellm_id.startswith("deepseek/")
         assert by_name["deepseek-v4-pro"].litellm_id.startswith("deepseek/")
+
+    # ── The "all" union meta-set (A/B UI-pin sweep — every model on /models) ──
+    def test_all_set_lists_every_distinct_model_no_dupes(self):
+        """The /models endpoint under MODEL_PROFILE_SET=all must offer every
+        distinct model so the dropdown can pin each — and carry NO duplicate
+        names (LLMService keys by name)."""
+        models, default_model = build_model_registry("all")
+        names = [m.name for m in models]
+        assert len(names) == len(set(names)), f"duplicate names in 'all': {names}"
+        # every concrete model from all three stacks is present
+        for expected in (
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-haiku-4-5",
+            "claude-sonnet-4-6",
+            "claude-opus-4-8",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-capable",
+            "deepseek-v4-pro",
+        ):
+            assert expected in names, f"'all' set missing {expected}"
+        assert default_model == "gpt-4o-mini"  # cheap, predictable
+
+    def test_all_set_pins_resolve_across_providers(self):
+        """Each provider's model is pin-resolvable via LLMService under 'all'."""
+        models, default_model = build_model_registry("all")
+        svc = LLMService(config=AgentConfig(default_model=default_model, models=models))
+        assert svc.get_profile("claude-opus-4-8").litellm_id.startswith("anthropic/")
+        assert svc.get_profile("deepseek-v4-pro").litellm_id.startswith("deepseek/")
+        assert svc.get_profile("gpt-4o").litellm_id.startswith("openai/")

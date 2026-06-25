@@ -40,14 +40,15 @@ output "backend_runtime_service_account_email" {
 output "secret_ids" {
   description = "Map of logical-name → Secret Manager secret_id. Used by Recipe 4 Tofu to wire Cloud Run value_source.secret_key_ref blocks."
   value = {
-    workos_api_key      = google_secret_manager_secret.workos_api_key.secret_id
-    openai_api_key      = google_secret_manager_secret.openai_api_key.secret_id
-    anthropic_api_key   = google_secret_manager_secret.anthropic_api_key.secret_id
-    langfuse_public_key = google_secret_manager_secret.langfuse_public_key.secret_id
-    langfuse_secret_key = google_secret_manager_secret.langfuse_secret_key.secret_id
-    mem0_api_key        = google_secret_manager_secret.mem0_api_key.secret_id
-    database_url        = google_secret_manager_secret.database_url.secret_id
-    agent_facts_secret  = google_secret_manager_secret.agent_facts_secret.secret_id
+    workos_api_key         = google_secret_manager_secret.workos_api_key.secret_id
+    openai_api_key         = google_secret_manager_secret.openai_api_key.secret_id
+    anthropic_api_key      = google_secret_manager_secret.anthropic_api_key.secret_id
+    deepseek_api_key       = google_secret_manager_secret.deepseek_api_key.secret_id
+    langfuse_public_key    = google_secret_manager_secret.langfuse_public_key.secret_id
+    langfuse_secret_key    = google_secret_manager_secret.langfuse_secret_key.secret_id
+    mem0_api_key           = google_secret_manager_secret.mem0_api_key.secret_id
+    database_url           = google_secret_manager_secret.database_url.secret_id
+    agent_facts_secret     = google_secret_manager_secret.agent_facts_secret.secret_id
     workos_cookie_password = google_secret_manager_secret.workos_cookie_password.secret_id
   }
 }

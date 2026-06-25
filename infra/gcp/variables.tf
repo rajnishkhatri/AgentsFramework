@@ -86,6 +86,18 @@ variable "anthropic_api_key" {
   sensitive   = true
 }
 
+variable "deepseek_api_key" {
+  type        = string
+  description = "DeepSeek API key for LiteLLM (the deepseek/* profile set)."
+  sensitive   = true
+}
+
+variable "model_profile_set" {
+  type        = string
+  description = "Which model registry the backend wires (services/llm_config.py build_model_registry): openai (default, prod-safe byte-identical Auto) | anthropic | deepseek | all (pin-only union for the A/B sweep)."
+  default     = "openai"
+}
+
 variable "langfuse_public_key" {
   type        = string
   description = "Langfuse Cloud public key (pk-lf-…). Stored in Secret Manager for parity with the secret-key sibling so rotation doesn't require an env-var change on Cloud Run."

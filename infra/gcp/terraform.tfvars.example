@@ -25,6 +25,7 @@ workos_client_id = "client_01XXXXXXXXXXXXXXXXXXXXXXXXXX"
 workos_api_key      = "REPLACE_WITH_WORKOS_API_KEY"
 openai_api_key      = "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 anthropic_api_key   = "sk-ant-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+deepseek_api_key    = "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 langfuse_public_key = "pk-lf-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 langfuse_secret_key = "sk-lf-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 mem0_api_key        = "m0-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
@@ -61,6 +62,11 @@ database_url = "placeholder-set-in-recipe-2"
 #   backend_image = "<artifact_registry_url>/agent-backend:v1"
 
 # backend_image = "us-central1-docker.pkg.dev/your-gcp-project-id/agent-backend/agent-backend:v1"
+
+# Which Auto model stack the backend wires (services/llm_config.py). Leave at the
+# default "openai" for prod (byte-identical Auto). "all" exposes every model on
+# /models for the A/B UI-pin sweep — use that ONLY on a zero-traffic A/B tag.
+# model_profile_set = "openai"
 
 # ── Cloud Run frontend (Recipe 5) ─────────────────────────────────────────────
 #
