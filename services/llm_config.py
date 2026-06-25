@@ -76,7 +76,21 @@ _ANTHROPIC_PROFILES: list[ModelProfile] = [
         context_window=1000000,
         cost_per_1k_input=0.005,
         cost_per_1k_output=0.025,
+        # Opus 4.8 deprecated the ``temperature`` request param: sending one 400s
+        # (invalid_request_error) before any token is generated, which the
+        # runtime renders as the empty-output placeholder ($0 / 0 tokens). Omit
+        # it for this model. Verified live 2026-06-25.
+        supports_temperature=False,
+        # Reasoning tier: give thinking tokens headroom so the answer is never
+        # starved (see deepseek-v4-flash empty-output at 4096).
+        max_output_tokens=8192,
     ),
+    # The gpt-5 reasoning family rejects ``temperature=0`` (litellm raises
+    # UnsupportedParamsError: "only temperature=1 is supported") — same empty-
+    # output failure class as Opus 4.8. Omit the param for these too. Verified
+    # live 2026-06-25. (gpt-5's reasoning can also consume the whole completion
+    # budget on a tiny max_tokens, but at the get_llm default of 4096 it leaves
+    # ample room for the answer — not a concern on the production path.)
     ModelProfile(
         name="gpt-5-mini",
         litellm_id="openai/gpt-5-mini",
@@ -84,6 +98,10 @@ _ANTHROPIC_PROFILES: list[ModelProfile] = [
         context_window=400000,
         cost_per_1k_input=0.00025,
         cost_per_1k_output=0.002,
+        supports_temperature=False,
+        # Reasoning family: thinking tokens count against the budget; raise it
+        # so a verbose reasoning trace can't starve the answer.
+        max_output_tokens=8192,
     ),
     ModelProfile(
         name="gpt-5",
@@ -92,6 +110,8 @@ _ANTHROPIC_PROFILES: list[ModelProfile] = [
         context_window=400000,
         cost_per_1k_input=0.00125,
         cost_per_1k_output=0.010,
+        supports_temperature=False,
+        max_output_tokens=8192,
     ),
     *_OPENAI_PROFILES,
 ]
@@ -115,6 +135,10 @@ _DEEPSEEK_PROFILES: list[ModelProfile] = [
         context_window=1000000,
         cost_per_1k_input=0.00014,
         cost_per_1k_output=0.00028,
+        # DeepSeek V4 emits ``thinking`` tokens that count against the budget; at
+        # 4096 a verbose trace can consume the whole budget and return an empty
+        # answer (observed live 2026-06-25). 8192 leaves room for the answer.
+        max_output_tokens=8192,
     ),
     ModelProfile(
         # Same litellm_id as deepseek-v4-flash — a DISTINCT name so LLMService
@@ -126,6 +150,7 @@ _DEEPSEEK_PROFILES: list[ModelProfile] = [
         context_window=1000000,
         cost_per_1k_input=0.00014,
         cost_per_1k_output=0.00028,
+        max_output_tokens=8192,
     ),
     ModelProfile(
         name="deepseek-v4-pro",
@@ -134,6 +159,7 @@ _DEEPSEEK_PROFILES: list[ModelProfile] = [
         context_window=1000000,
         cost_per_1k_input=0.000435,
         cost_per_1k_output=0.00087,
+        max_output_tokens=8192,
     ),
     *_OPENAI_PROFILES,
 ]
@@ -251,12 +277,24 @@ class LLMService:
         # carrier in the trace is the relayed STEP_EXECUTED span (publisher maps
         # its tokens to native ``usage``); see the curated-view note in
         # middleware/sidecars/black_box_to_telemetry.py.
-        return ChatLiteLLM(
-            model=profile.litellm_id,
-            temperature=0,
-            max_tokens=4096,
-            streaming=True,
-        )
+        # ``temperature=0`` is the deterministic default the agent relies on, but
+        # some models (claude-opus-4-8) deprecated the parameter and 400 when one
+        # is sent — surfacing as an empty answer downstream. Omit it for those
+        # (``supports_temperature=False``) so they fall back to the provider
+        # default; every other model keeps temperature=0.
+        # ``max_tokens`` is the completion budget. Reasoning models spend
+        # ``thinking`` tokens against it before the visible answer; a budget too
+        # small can be wholly consumed by reasoning, yielding an empty answer
+        # (deepseek-v4-flash / gpt-5 at 4096). Per-profile ``max_output_tokens``
+        # lets the reasoning tier carry more headroom (default 4096).
+        kwargs: dict[str, Any] = {
+            "model": profile.litellm_id,
+            "max_tokens": profile.max_output_tokens,
+            "streaming": True,
+        }
+        if profile.supports_temperature:
+            kwargs["temperature"] = 0
+        return ChatLiteLLM(**kwargs)
 
     async def invoke(
         self,

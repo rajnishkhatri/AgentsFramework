@@ -67,6 +67,91 @@ class TestLLMService:
         llm = svc.get_llm(_fast_profile())
         assert llm is not None
 
+    def test_get_llm_sends_temperature_zero_by_default(self):
+        """The deterministic default: a normal model gets ``temperature=0``."""
+        cfg = AgentConfig(models=[_fast_profile()])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(_fast_profile())
+        assert llm.temperature == 0
+
+    def test_get_llm_omits_temperature_when_unsupported(self):
+        """Regression (Opus-4.8 empty-output defect, 2026-06-25): a model with
+        ``supports_temperature=False`` must NOT receive a ``temperature`` request
+        param. claude-opus-4-8 deprecated it and 400s when one is sent, which the
+        runtime swallowed into the empty-output placeholder ($0 / 0 tokens). With
+        the param omitted, ChatLiteLLM leaves ``temperature`` at its ``None``
+        default so litellm sends no temperature field at all."""
+        no_temp = ModelProfile(
+            name="claude-opus-4-8",
+            litellm_id="anthropic/claude-opus-4-8",
+            tier="reasoning",
+            context_window=1_000_000,
+            cost_per_1k_input=0.005,
+            cost_per_1k_output=0.025,
+            supports_temperature=False,
+        )
+        cfg = AgentConfig(models=[no_temp])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(no_temp)
+        assert llm.temperature is None
+
+    def test_registry_opus_profile_marks_temperature_unsupported(self):
+        """The shipped anthropic/all registries must carry the Opus capability
+        flag — otherwise the live A/B Opus arm regresses to empty output."""
+        for set_name in ("anthropic", "all"):
+            models, _ = build_model_registry(set_name)
+            opus = next(m for m in models if m.name == "claude-opus-4-8")
+            assert opus.supports_temperature is False
+            # Sibling Anthropic tiers keep temperature (deterministic default).
+            sonnet = next(m for m in models if m.name == "claude-sonnet-4-6")
+            assert sonnet.supports_temperature is True
+
+    def test_registry_gpt5_family_marks_temperature_unsupported(self):
+        """gpt-5 / gpt-5-mini reject temperature=0 (litellm UnsupportedParams) —
+        same empty-output failure class as Opus. Both must carry the flag so a
+        pin to either doesn't regress; gpt-4o keeps the deterministic default."""
+        for set_name in ("anthropic", "all"):
+            models, _ = build_model_registry(set_name)
+            for name in ("gpt-5", "gpt-5-mini"):
+                prof = next(m for m in models if m.name == name)
+                assert prof.supports_temperature is False, name
+            gpt4o = next(m for m in models if m.name == "gpt-4o")
+            assert gpt4o.supports_temperature is True
+
+    def test_get_llm_uses_profile_max_output_tokens(self):
+        """The completion budget comes from the profile (default 4096), and a
+        reasoning profile carrying a larger ``max_output_tokens`` is honored —
+        the fix for reasoning-budget exhaustion (empty answer when thinking
+        tokens consume the whole budget)."""
+        default_prof = _fast_profile()
+        cfg = AgentConfig(models=[default_prof])
+        svc = LLMService(config=cfg)
+        assert svc.get_llm(default_prof).max_tokens == 4096
+
+        big = ModelProfile(
+            name="reasoner",
+            litellm_id="anthropic/claude-opus-4-8",
+            tier="reasoning",
+            context_window=1_000_000,
+            cost_per_1k_input=0.005,
+            cost_per_1k_output=0.025,
+            supports_temperature=False,
+            max_output_tokens=8192,
+        )
+        cfg2 = AgentConfig(models=[big])
+        assert LLMService(config=cfg2).get_llm(big).max_tokens == 8192
+
+    def test_registry_reasoning_models_carry_larger_budget(self):
+        """Reasoning/verbose-reasoning models must ship the raised budget so a
+        live pin doesn't regress to empty output."""
+        models, _ = build_model_registry("all")
+        by = {m.name: m for m in models}
+        for name in ("claude-opus-4-8", "gpt-5", "gpt-5-mini", "deepseek-v4-flash"):
+            assert by[name].max_output_tokens == 8192, name
+        # Non-reasoning models keep the 4096 default.
+        for name in ("gpt-4o", "gpt-4o-mini", "claude-haiku-4-5", "claude-sonnet-4-6"):
+            assert by[name].max_output_tokens == 4096, name
+
     def test_get_llm_streams(self):
         """The model streams (drives the runtime token deltas). Token *usage*
         does not ride the streamed end event — it is carried on the canonical

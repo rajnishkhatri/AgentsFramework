@@ -21,6 +21,19 @@ class ModelProfile(BaseModel):
     cost_per_1k_input: float
     cost_per_1k_output: float
     median_latency_ms: float = 1000
+    # Some models reject an explicit ``temperature`` request parameter:
+    # claude-opus-4-8 and OpenAI's reasoning models return a 400
+    # (``temperature is deprecated for this model``) when one is sent, which the
+    # runtime swallows into an empty answer. Models that accept it keep the
+    # deterministic ``temperature=0`` the agent relies on; models that don't set
+    # this False so the LLM factory omits the parameter entirely.
+    supports_temperature: bool = True
+    # Completion-token budget sent to the provider. Reasoning models emit
+    # ``thinking`` tokens that count against this budget BEFORE the visible
+    # answer; too small a budget can be entirely consumed by reasoning, leaving
+    # zero tokens for the answer (an empty response — see deepseek-v4-flash /
+    # gpt-5). Reasoning-tier profiles raise this so the answer always has room.
+    max_output_tokens: int = 4096
 
 
 class AgentConfig(BaseModel):
