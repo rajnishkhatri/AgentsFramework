@@ -31,7 +31,7 @@ import logging
 import re
 from typing import TYPE_CHECKING, Callable
 
-from components.schemas import TaskUnderstanding
+from components.schemas import GENERIC_TAIL_CONDITION, TaskUnderstanding
 
 if TYPE_CHECKING:
     from services.base_config import ModelProfile
@@ -47,14 +47,14 @@ __all__ = [
     "validate_conditions",
 ]
 
-# Always appended after the generated/derived conditions. Matches the judge
-# prompt's "supplemental constraints" framing and guarantees the artifact can
-# never carry an empty checklist.
-GENERIC_TAIL_CONDITION = (
-    "The final answer is internally consistent and directly responds to the request."
-)
+# ``GENERIC_TAIL_CONDITION`` is re-exported from components.schemas (single
+# source of truth). It is an ANSWER-grading check applied at judge-time — it is
+# NO LONGER appended to the plan-time artifact built here (that conflated a
+# completion check with the task-specific checklist; see schemas.py).
 
-_MIN_CONDITIONS = 2
+# Min 1 (was 2): the generic tail used to pad short lists to 2; now that the
+# tail moved to judge-time, a single well-grounded task criterion is valid.
+_MIN_CONDITIONS = 1
 _MAX_CONDITIONS = 7
 _MAX_CONDITION_LEN = 200
 
@@ -233,8 +233,9 @@ class TaskUnderstandingGenerator:
         return [str(c).strip() for c in conditions if str(c).strip()], data
 
     def _build(self, conditions: list[str], data: dict) -> TaskUnderstanding:
-        if GENERIC_TAIL_CONDITION not in conditions:
-            conditions = [*conditions, GENERIC_TAIL_CONDITION]
+        # No generic tail here: the consistency check is answer-grading and
+        # runs at judge-time (goal_judge/evaluator). The plan-time artifact
+        # carries only the task-specific synthesized conditions.
         confidence = data.get("confidence", 0.0)
         try:
             confidence = float(confidence)

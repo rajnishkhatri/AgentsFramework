@@ -19,7 +19,10 @@ import {
   type ArchitectureProfile,
   type PortBag,
 } from "../composition";
-import { makeWorkOSServerSDK } from "../adapters/auth/workos_server_sdk";
+import {
+  makeWorkOSServerSDK,
+  makeBypassServerSDK,
+} from "../adapters/auth/workos_server_sdk";
 import { selectThreadRepo } from "../adapters/thread_store/neon_thread_repo";
 
 let _bag: PortBag | null = null;
@@ -36,10 +39,14 @@ function middlewareUrl(): string {
 export function serverPortBag(): PortBag {
   if (_bag) return _bag;
   const profile = (process.env.ARCHITECTURE_PROFILE as ArchitectureProfile) ?? "v3";
+  // Dev/test escape hatch: when E2E_BYPASS_AUTH=1 the BFF data routes use a stub
+  // identity (mirrors app/page.tsx's page-level bypass) so /api/models etc. don't
+  // 401 locally. Never set in prod.
+  const bypassAuth = process.env.E2E_BYPASS_AUTH === "1";
   _bag = buildAdapters({
     profile,
     fetchImpl: globalThis.fetch.bind(globalThis),
-    workosSDK: makeWorkOSServerSDK(),
+    workosSDK: bypassAuth ? makeBypassServerSDK() : makeWorkOSServerSDK(),
     env: process.env as Record<string, string | undefined>,
     baseUrl: middlewareUrl(),
     // Live-infra (Piece C): durable Neon ThreadStore when DATABASE_URL is set,

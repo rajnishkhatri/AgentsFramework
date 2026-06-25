@@ -507,6 +507,24 @@ class TestEvaluateTaskOutcome:
     evaluation: clean termination + substance → outcome classification.
     """
 
+    def test_deterministic_evaluator_does_not_append_generic_tail(self):
+        """The generic consistency criterion is applied ONLY by the LLM
+        GoalJudge (which can assess it). This deterministic keyword-overlap
+        path must NOT append it — the abstract tail shares no keywords with
+        real answers and would spuriously depress criteria_met/goal_met. A
+        correct answer to a single task condition stays fully met."""
+        from components.evaluator import evaluate_task_outcome
+        from components.schemas import GENERIC_TAIL_CONDITION
+
+        result = evaluate_task_outcome(
+            final_answer="The capital of France is Paris, a major European city.",
+            success_conditions=["Identify the capital city of France"],
+            plan_steps=[],
+            termination_reason="success",
+        )
+        assert GENERIC_TAIL_CONDITION not in result.unmet_conditions
+        assert result.goal_met is True
+
     def test_clean_termination_with_substantive_answer_is_success(self):
         from components.evaluator import evaluate_task_outcome
 

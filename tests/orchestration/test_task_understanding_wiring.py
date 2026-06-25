@@ -25,23 +25,22 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from components.schemas import GoalVerdict, TaskUnderstanding
-from components.task_understanding import (
-    GENERIC_TAIL_CONDITION,
-    TaskUnderstandingValidationError,
-)
+from components.task_understanding import TaskUnderstandingValidationError
 from services import eval_telemetry
 from services.base_config import AgentConfig, ModelProfile
 from services.goal_judge_runtime_config import InMemoryGoalJudgeConfigReader
 
 _TASK = "Compare options. Evaluate risks. Propose migration."
 
+# The generator no longer appends the generic consistency tail at plan-time
+# (it moved to judge-time). This fixture mirrors what generate() now returns:
+# task-specific conditions only.
 _GENERATED = TaskUnderstanding(
     restated_intent="Compare the options, evaluate their risks, and propose a migration.",
     success_conditions=[
         "The answer compares the available options.",
         "The answer evaluates risks of each option.",
         "The answer proposes a migration path.",
-        GENERIC_TAIL_CONDITION,
     ],
     confidence=0.9,
     source="generated",
@@ -477,7 +476,6 @@ class TestCrossTurnRegeneration:
             success_conditions=[
                 "The answer summarizes the risk register.",
                 "The answer names the top risk explicitly.",
-                GENERIC_TAIL_CONDITION,
             ],
             confidence=0.9,
             source="generated",

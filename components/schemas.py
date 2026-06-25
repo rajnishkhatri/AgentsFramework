@@ -217,6 +217,18 @@ class GoalVerdict(BaseModel):
         return [c.criterion for c in self.per_criterion if not c.met]
 
 
+# Answer-grading backstop criterion. This checks the FINAL ANSWER ("is it
+# internally consistent and responsive"), so it is applied at JUDGE-TIME
+# (components.goal_judge / components.evaluator) — NOT baked into the plan-time
+# TaskUnderstanding/plan_builder checklist, which is built before any answer
+# exists. plan_builder still uses it as the empty-list backstop so a degenerate
+# (no-branch) task can never yield an empty checklist. Single source of truth:
+# task_understanding, plan_builder, goal_judge, evaluator all import THIS.
+GENERIC_TAIL_CONDITION = (
+    "The final answer is internally consistent and directly responds to the request."
+)
+
+
 class TaskUnderstanding(BaseModel):
     """Restated task intent + task-specific success checklist (plan-time D1).
 

@@ -447,6 +447,72 @@ def build_dev_app() -> FastAPI:
             "goal_judge": goal_judge_reader.health_posture(),
         }
 
+    # ── GET /models (model picker catalog) ─────────────────────────
+    # Mirrors agent_ui_adapter.server.build_app's /models so the dev BFF
+    # (default MIDDLEWARE_URL=:8000) can populate the picker. Reads the same
+    # H2-canonical registry for the active MODEL_PROFILE_SET; exposes name+tier
+    # ONLY (no pricing / litellm ids reach the client). Without this the picker
+    # falls back to Auto-only against the dev backend.
+
+    @app.get("/models")
+    async def list_models(
+        request: Request,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        from services.llm_config import build_model_registry
+
+        models, default_model = build_model_registry(
+            os.environ.get("MODEL_PROFILE_SET", "openai")
+        )
+        return {
+            "default": default_model,
+            "models": [{"name": m.name, "tier": m.tier} for m in models],
+        }
+
+    # ── /agent/memory (Memory tab) ─────────────────────────────────
+    # The BFF's HttpMemoryStore calls GET/POST/DELETE /agent/memory and expects
+    # {"items": [...]}. The dev runner has no durable memory backend, so this is
+    # an ephemeral in-process store (cleared on restart) — enough for the Memory
+    # tab + run path not to 500. Items match the wire MemoryItem shape
+    # (key/type/content/salience). Without this, /api/memory returns 500.
+    memory_store: dict[str, dict] = {}
+
+    @app.get("/agent/memory")
+    async def list_memory(
+        request: Request,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        return {"items": list(memory_store.values())}
+
+    @app.post("/agent/memory")
+    async def add_memory(
+        request: Request,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        body = await request.json()
+        key = str(body.get("key") or f"mem-{uuid.uuid4().hex[:12]}")
+        item = {
+            "key": key,
+            "type": body.get("type"),
+            "content": str(body.get("content", "")),
+            "salience": body.get("salience"),
+        }
+        memory_store[key] = item
+        return item
+
+    @app.delete("/agent/memory/{key}")
+    async def delete_memory(
+        request: Request,
+        key: str,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        memory_store.pop(key, None)
+        return {"deleted": key}
+
     # ── POST /run/understanding/{thread_id} (Phase 4 edit seam) ─────
 
     def _verify_edit_bearer(authorization: str | None) -> str:
