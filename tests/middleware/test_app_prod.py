@@ -202,6 +202,19 @@ class TestAppProdHealthz:
         r = prod_client.post("/run/stream", json={"input": {}})
         assert r.status_code == 401
 
+    def test_models_route_present_and_auth_scoped(self, prod_client) -> None:
+        """Prod-surface drift guard: /models MUST exist on build_combined_app
+        (not just agent_ui_adapter/server.py). The combined app hand-builds its
+        route surface, so a route added only to the adapter is absent in prod —
+        this returned 404 live until /models was mirrored into app_prod.py. A
+        401 (auth required) proves the route is wired; a 404 would mean it was
+        dropped again."""
+        r = prod_client.get("/models")
+        assert r.status_code == 401, (
+            f"/models returned {r.status_code} — expected 401 (route present, "
+            "auth-scoped). A 404 means the prod combined app dropped it."
+        )
+
 
 def _build_crud_client(
     *,
