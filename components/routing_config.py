@@ -13,15 +13,31 @@ from pydantic import BaseModel, Field
 
 
 def _default_model_name() -> str:
-    """The default set's default model — one source of truth (H2 registry).
+    """The ACTIVE set's default model — one source of truth (H2 registry).
+
+    Reads ``MODEL_PROFILE_SET`` (the same env var every ``build_model_registry``
+    call site honors) so a bare ``RoutingConfig()`` tracks whatever profile set
+    ``AgentConfig`` was built from. Without this, the factory would resolve the
+    *openai* default (``build_model_registry()``'s own no-arg default) regardless
+    of the active set — i.e. ``routing_config.default_model`` and
+    ``agent_config.models`` would come from two UNSYNCHRONIZED registry reads and
+    could disagree (F1/F10: under ``anthropic``/``deepseek``, the field would
+    still be ``gpt-4o-mini``, a model not in those sets). Callers that already
+    have ``default_model`` in hand should still pass it explicitly
+    (``RoutingConfig(default_model=...)``) — that's the primary path and makes the
+    data flow legible; this factory is the safety net for bare ``RoutingConfig()``.
 
     Lazy import (only at instantiation, not module load) keeps routing_config
     free of the llm_config / langchain import graph at the top level, preserving
     the "NO langgraph or langchain imports" invariant for static layering checks.
     """
+    import os
+
     from services.llm_config import build_model_registry
 
-    _, default_model = build_model_registry()
+    _, default_model = build_model_registry(
+        os.environ.get("MODEL_PROFILE_SET", "openai")
+    )
     return default_model
 
 

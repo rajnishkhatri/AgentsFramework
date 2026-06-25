@@ -202,17 +202,19 @@ function installThreadBridge(
 
 // ── model pin via the real dropdown ──────────────────────────────────────────
 
-/** Open the Composer model picker and select `model` (the testids added to
- *  Composer.tsx). Auto is the default; selecting it is still explicit so a prior
- *  cell's pin never bleeds across. */
-async function pinModel(
+/** Navigate to the chat shell with `model` pre-pinned via the `?model=<name>`
+ *  URL seed (page.tsx → ChatShell `initialModel`). This replaces the flaky
+ *  dropdown-click pin: the dropdown option click crashed/timed-out under long
+ *  serial runs (browser-context death), and the picker UI is being validated
+ *  separately. Auto = no param (the backend Auto router decides). The seeded
+ *  value flows through `send` exactly as a dropdown choice would, so the pin is
+ *  identical from the backend's perspective. */
+async function gotoWithModel(
   page: import("@playwright/test").Page,
   model: string,
 ): Promise<void> {
-  await page.locator("[data-testid='model-picker-trigger']").first().click();
-  const opt = page.locator(`[data-testid='model-option-${model}']`).first();
-  await opt.waitFor({ state: "visible", timeout: 5_000 });
-  await opt.click();
+  const url = model === "Auto" ? "/" : `/?model=${encodeURIComponent(model)}`;
+  await page.goto(url);
 }
 
 async function newThreadIfAvailable(
@@ -314,10 +316,11 @@ test.describe("Model A/B sweep (L4: real stack, UI-pinned)", () => {
           const startedAt = Date.now();
 
           try {
-            await page.goto("/");
+            // Pin the model via the URL seed BEFORE the first render, so
+            // input.pinned_model is set without a dropdown click (flaky on long
+            // runs). Auto = no param.
+            await gotoWithModel(page, model);
             await newThreadIfAvailable(page);
-            // Pin the model BEFORE the first send so input.pinned_model is set.
-            await pinModel(page, model);
 
             for (let i = 0; i < turns.length; i++) {
               const turnStart = Date.now();

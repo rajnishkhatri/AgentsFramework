@@ -1636,10 +1636,38 @@ def build_graph(
         step_count = state.get("step_count", 0)
         model_name = state.get("selected_model", agent_config.default_model)
 
+        # F8 (execute-vs-record honesty): the route node writes selected_model,
+        # and the downstream synthesize node reads it back from the channel for
+        # its classify_outcome + build_step_result(model_used=...) carriers. If
+        # the resolved profile's name differs from what state claims — the only
+        # way being a KeyError fallback to models[0] when selected_model names a
+        # profile NOT in LLMService — those carriers would report a model the
+        # agent did NOT run. So when the fallback fires we emit an explicit
+        # fallback carrier and remember the resolved name so call_llm_node's
+        # return truths-up the selected_model channel (below), letting downstream
+        # nodes record the model that RAN. The happy path (name resolves) is
+        # byte-identical: model_name == profile.name and no channel write.
+        model_resolution_fallback = ""
         try:
             profile = llm_service.get_profile(model_name)
         except KeyError:
             profile = agent_config.models[0] if agent_config.models else default_fast_profile()
+            if profile.name != model_name:
+                model_resolution_fallback = profile.name
+                black_box.record(TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.PARAMETER_CHANGED,
+                    timestamp=datetime.now(UTC),
+                    step=step_count,
+                    details={
+                        "parameter": "model_resolution_fallback",
+                        "requested_model": model_name,
+                        "resolved_model": profile.name,
+                        "reason": "selected_model not in LLMService profiles; "
+                        "fell back to models[0]",
+                    },
+                ))
 
         # Phase 2 (T2): fold accumulated reflexion critiques into the planning
         # instructions on re-entry — the semantic gradient that steers the retry.
@@ -1870,6 +1898,12 @@ def build_graph(
             }
             if inject_wrapup:
                 result["no_progress_directive_sent"] = True
+            # F8: truth-up the selected_model channel when get_profile fell back,
+            # so the synthesize node's model_used carrier reports the model that
+            # actually ran (not the unresolved name the route node wrote). No-op
+            # on the happy path (model_resolution_fallback == "").
+            if model_resolution_fallback:
+                result["selected_model"] = model_resolution_fallback
             if error is not None:
                 result["last_llm_error"] = str(error)
                 result["last_llm_error_code"] = getattr(error, "status_code", None)

@@ -118,7 +118,10 @@ def build_agent_and_tools() -> tuple[AgentConfig, RoutingConfig, ToolRegistry, A
         goal_judge_enabled=True,
         goal_judge_downgrade_enabled=False,
     )
-    routing_config = RoutingConfig()
+    # Pass default_model explicitly so routing_config.default_model can never
+    # disagree with agent_config.models (F1/F10 — both come from the SAME
+    # build_model_registry call, not two independent reads).
+    routing_config = RoutingConfig(default_model=default_model)
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({

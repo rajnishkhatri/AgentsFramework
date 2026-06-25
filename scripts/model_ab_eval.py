@@ -412,8 +412,62 @@ def render_markdown(payload: dict) -> str:
             lines.append(f"  - {m}")
     lines.append("")
 
+    # Answer-quality block (ANSWER-corpus mode) — this is the verdict driver
+    # here; the planning per-phase table below is the secondary control lens.
+    if payload.get("answer"):
+        ans = payload["answer"]
+        lines.append("## Answer quality (verdict driver — L1 deterministic only)")
+        lines.append("")
+        lines.append(f"_grader: {ans.get('grader', 'L1-deterministic')}_")
+        lines.append("")
+        if ans.get("provider_contaminated"):
+            lines.append("> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
+                         "provider/transport error (litellm InternalServerError / "
+                         "rate-limit / Cannot connect). Accuracy below is NOT a valid "
+                         "model signal — re-run. Verdict forced CONTAMINATED.")
+            lines.append("")
+        lines.append("| arm | accuracy | correct/n | errored | outcomes |")
+        lines.append("|---|---|---|---|---|")
+        for arm in ("baseline", "candidate"):
+            a = ans[arm]
+            lines.append(
+                f"| {arm} | {a['accuracy']:.3f} | {a['correct']}/{a['n']} | "
+                f"{a.get('errored', 0)} | {a['outcomes']} |"
+            )
+        lines.append("")
+        lines.append(f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**")
+        lines.append("")
+        # L2/L3 — ungraded for verdict; GoalJudge shown as informational only.
+        l2 = ans.get("l2l3_ungraded")
+        if l2 and l2.get("cases"):
+            lines.append("### L2/L3 — UNGRADED (pending gold set)")
+            lines.append("")
+            lines.append(f"_{l2['note']}_")
+            lines.append("")
+            gj = l2.get("goaljudge_crosscheck", {})
+            if gj.get("baseline") and gj.get("candidate"):
+                lines.append("GoalJudge cross-check (informational, NOT a verdict input):")
+                lines.append("")
+                lines.append("| arm | GoalJudge acc (L2/L3) |")
+                lines.append("|---|---|")
+                lines.append(f"| baseline | {gj['baseline']['accuracy']:.3f} "
+                             f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |")
+                lines.append(f"| candidate | {gj['candidate']['accuracy']:.3f} "
+                             f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |")
+                lines.append("")
+        lines.append("### Per-case answers (candidate, L1)")
+        lines.append("")
+        lines.append("| case | outcome | expected | got |")
+        lines.append("|---|---|---|---|")
+        for c in ans["candidate"]["per_case"]:
+            got = (c["answer"] or "").replace("\n", " ")[:60]
+            lines.append(
+                f"| {c['case']} | {c['outcome']} | `{c['expected']}` | {got} |"
+            )
+        lines.append("")
+
     # Per-phase parity table.
-    lines.append("## Per-phase parity")
+    lines.append("## Per-phase parity (planning control lens — secondary)")
     lines.append("")
     lines.append("| phase | baseline | candidate | Δ | floor | pass |")
     lines.append("|---|---|---|---|---|---|")
@@ -576,10 +630,19 @@ async def _drive_arm(
     import os
 
     from scripts.run_goaljudge_synthetic_batch import (
+        AGENT_ROOT as _BATCH_ROOT,
         build_agent_and_tools,
         run_case,
+        truncate_eval_log,
     )
     from tests.fixtures.goaljudge.case_registry import GoalJudgeCase
+
+    # Isolate the eval-capture log to THIS arm: truncate the global logs/evals.log
+    # before the arm drives, snapshot it into the arm's out_dir afterward. The
+    # answer scorer (scripts/model_ab_answer_score.py) reads the per-arm snapshot
+    # to grade each case's final answer — without isolation both arms' answers
+    # would interleave in the one global log and couldn't be attributed.
+    truncate_eval_log()
 
     # Per-arm cache_dir isolates BOTH the black-box recordings
     # (cache_dir/black_box_recordings) and the checkpoint db — the two arms never
@@ -654,6 +717,14 @@ async def _drive_arm(
     if not recordings.exists() and real.exists():
         recordings.symlink_to(real, target_is_directory=True)
 
+    # Snapshot the arm's eval-capture log (holds each call_llm ai_response = the
+    # final answer text, which the black-box recordings do NOT carry) into the
+    # arm dir for the answer scorer. Copy, don't move — leaves the global log for
+    # any other reader.
+    eval_src = _BATCH_ROOT / "logs" / "evals.log"
+    if eval_src.exists():
+        (out_dir / "evals.log").write_text(eval_src.read_text())
+
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
@@ -688,6 +759,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--run-id", default=None, help="explicit run id (else timestamp)")
     p.add_argument("--limit", type=int, default=0, help="cap rows (smoke runs)")
+    p.add_argument(
+        "--answer-score",
+        action="store_true",
+        help=(
+            "ANSWER-corpus mode: grade each arm's final answer vs the deterministic "
+            "EXPECTED table (scripts/model_ab_answer_score) and make answer accuracy "
+            "the verdict (not the planning score_run, which is a control-behavior "
+            "lens — design doc §6). Reads each arm's evals.log snapshot."
+        ),
+    )
     return p
 
 
@@ -705,6 +786,21 @@ def main(argv: list[str] | None = None) -> int:
         print("both a baseline and candidate arm are required "
               "(--baseline/--candidate or --baseline-set/--candidate-set)")
         return 2
+
+    # F2: a SET arm runs Auto routing, but the "all" set is PIN-ONLY — its first
+    # reasoning profile is opus-4-8, so an Auto run on "all" escalates into Opus
+    # on any failure, skewing the arm's cost/behavior away from the set under
+    # test. Reject it explicitly (pinned arms reach "all" internally via
+    # MODEL_PROFILE_SET so the pin resolves — that path is unaffected; this guard
+    # is only on the Auto-routing --*-set selectors). Fail loud, not silently.
+    for flag, value in (("--baseline-set", args.baseline_set),
+                        ("--candidate-set", args.candidate_set)):
+        if value == "all":
+            print(f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
+                  f"escalate into opus-4-8). Use a routable set "
+                  f"(openai/anthropic/deepseek) for a set arm, or pin a single "
+                  f"model with --baseline/--candidate.")
+            return 2
 
     run_id = args.run_id or time.strftime("%Y%m%dT%H%M%S")
     run_dir = args.out / run_id
@@ -765,6 +861,84 @@ def main(argv: list[str] | None = None) -> int:
     )
     verdict = decide_verdict(diff, base_integrity, cand_integrity)
 
+    # ── ANSWER-corpus mode: grade actual answers, make accuracy the verdict ──
+    answer_block = None
+    if args.answer_score:
+        from scripts.model_ab_answer_score import (
+            EXPECTED_BY_CASE,
+            score_answers,
+            score_answers_goaljudge,
+        )
+
+        # VERDICT is L1-DETERMINISTIC ONLY (decision 2026-06-25): the hardened
+        # deterministic scorer is the only trustworthy automated grader. L2/L3 use
+        # prose answers — their grading is DEFERRED to the blind-adjudication /
+        # gold-set process (docs/plans/model_ab_l2l3_blind_adjudication.plan.md);
+        # GoalJudge on L2/L3 is off-label + over-strict, so it is shown as an
+        # informational cross-check ONLY, never as a verdict input.
+        case_ids = [r["case"] for r in rows]
+        l1_cases = [c for c in case_ids if c in EXPECTED_BY_CASE]
+        l2l3_cases = [c for c in case_ids if c not in EXPECTED_BY_CASE]
+
+        base_ans = score_answers(baseline_dir / "evals.log", cases=l1_cases)
+        cand_ans = score_answers(candidate_dir / "evals.log", cases=l1_cases)
+
+        # PROVIDER-ERROR GUARD (dominant): a run with transport/provider failures
+        # (litellm InternalServerError, rate-limit, Cannot connect) is NOT a model
+        # signal — its accuracy is meaningless. Flag CONTAMINATED, never score 0.0.
+        provider_contaminated = base_ans.contaminated or cand_ans.contaminated
+
+        answer_regression = cand_ans.accuracy < (base_ans.accuracy - args.tolerance)
+        if not (base_integrity.ok and cand_integrity.ok) or provider_contaminated:
+            verdict = CONTAMINATED
+        elif answer_regression:
+            verdict = HOLD
+        else:
+            verdict = PROMOTE
+
+        # L2/L3 GoalJudge cross-check — INFORMATIONAL ONLY (ungraded for verdict).
+        base_gj = score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases) \
+            if l2l3_cases else None
+        cand_gj = score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases) \
+            if l2l3_cases else None
+
+        def _arm_block(ans):
+            return {
+                "accuracy": ans.accuracy,
+                "correct": ans.correct,
+                "n": ans.n,
+                "errored": ans.errored,
+                "contaminated": ans.contaminated,
+                "outcomes": ans.outcomes(),
+                "per_case": [
+                    {"case": s.case, "outcome": s.outcome, "expected": s.expected,
+                     "answer": s.answer}
+                    for s in ans.scores
+                ],
+            }
+
+        answer_block = {
+            "grader": "L1-deterministic (verdict); L2/L3 ungraded (pending gold set)",
+            "provider_contaminated": provider_contaminated,
+            "baseline": _arm_block(base_ans),
+            "candidate": _arm_block(cand_ans),
+            "accuracy_delta": round(cand_ans.accuracy - base_ans.accuracy, 4),
+            "l2l3_ungraded": {
+                "cases": l2l3_cases,
+                "note": "prose answers; verdict-excluded. GoalJudge shown as "
+                        "informational cross-check only — see "
+                        "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
+                "goaljudge_crosscheck": {
+                    "baseline": ({"accuracy": base_gj.accuracy,
+                                  "correct": base_gj.correct, "n": base_gj.n}
+                                 if base_gj else None),
+                    "candidate": ({"accuracy": cand_gj.accuracy,
+                                   "correct": cand_gj.correct, "n": cand_gj.n}
+                                  if cand_gj else None),
+                },
+            },
+        }
+
     payload = build_report_payload(
         run_id=run_id,
         corpus_path=args.corpus,
@@ -778,10 +952,18 @@ def main(argv: list[str] | None = None) -> int:
         candidate_integrity=cand_integrity,
         n_tasks=n_tasks,
     )
+    if answer_block is not None:
+        payload["answer"] = answer_block
     md_path, json_path = write_reports(run_dir, payload)
 
     print(f"VERDICT: {verdict}")
     print(f"  baseline={baseline_arm} candidate={candidate_arm}")
+    if answer_block is not None:
+        print(
+            f"  answer accuracy: baseline={answer_block['baseline']['accuracy']:.3f} "
+            f"candidate={answer_block['candidate']['accuracy']:.3f} "
+            f"(Δ {answer_block['accuracy_delta']:+})"
+        )
     print(f"  report: {md_path}")
     print(f"  json:   {json_path}")
     for reg in diff["regressions"]:

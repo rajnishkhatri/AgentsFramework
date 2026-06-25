@@ -735,6 +735,73 @@ class TestErrorOccurredEmission:
         assert errors[0]["details"]["source"] == "llm_call"
 
 
+class TestModelResolutionHonesty:
+    """F8 (execute-vs-record honesty): call_llm resolves the profile by name and,
+    when it must fall back to models[0] (the requested name isn't a registered
+    profile), it emits a model_resolution_fallback carrier AND truths-up the
+    selected_model channel so the synthesize node records the model that RAN.
+
+    On the happy path (the route node always writes a registered name) NO
+    fallback carrier may appear — this is the byte-identical guard."""
+
+    @pytest.mark.asyncio
+    async def test_no_fallback_carrier_on_a_normal_resolvable_run(self, tmp_path):
+        mock_response = MagicMock()
+        mock_response.content = "FINAL ANSWER: Paris"
+        mock_response.tool_calls = []
+        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+        mock_response.response_metadata = {}
+
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile(), _capable_profile()],
+        )
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(return_value=mock_response)
+
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=agent_config,
+                cache_dir=tmp_path / "cache",
+            )
+            await graph.ainvoke(
+                {
+                    "task_id": "t-f8",
+                    "task_input": "What is the capital of France?",
+                    "messages": [],
+                    "workflow_id": "wf-f8-001",
+                },
+                config={"configurable": {"task_id": "t-f8", "user_id": "u1"}},
+            )
+
+        events = _read_bb_events(
+            tmp_path / "cache" / "black_box_recordings", "wf-f8-001"
+        )
+        param_changes = _events_of_type(events, EventType.PARAMETER_CHANGED.value)
+        fallbacks = [
+            e for e in param_changes
+            if e["details"].get("parameter") == "model_resolution_fallback"
+        ]
+        assert fallbacks == [], (
+            "a resolvable run must NOT emit a model_resolution_fallback carrier "
+            "(happy path is byte-identical)"
+        )
+        # And the STEP_EXECUTED carrier names a registered model (the one that ran).
+        steps = _events_of_type(events, EventType.STEP_EXECUTED.value)
+        assert steps, "expected a STEP_EXECUTED carrier"
+        ran_models = {s["details"].get("model") for s in steps}
+        assert ran_models <= {"gpt-4o-mini", "gpt-4o"}, ran_models
+
+
 class TestTaskCompletedEmission:
     """Binary outcome: Does the graph emit TASK_COMPLETED at every terminal path? YES."""
 

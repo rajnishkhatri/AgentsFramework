@@ -331,3 +331,70 @@ class TestGateExit:
             "--out", str(tmp_path / "ab"), "--run-id", "run2",
         ])
         assert rc == 1
+
+
+class TestRejectAllSetArm:
+    """F2: the 'all' set is pin-only — a SET arm runs Auto, which would escalate
+    into opus-4-8 on 'all'. ``--baseline-set all`` / ``--candidate-set all`` must
+    be rejected with a non-zero exit BEFORE any drive/score work."""
+
+    def _corpus(self, tmp_path):
+        corpus = tmp_path / "corpus.jsonl"
+        corpus.write_text(
+            json.dumps(
+                {"case": "wf0", "gj_id": "", "phase": "depth",
+                 "trace_id": "wf0", "want_depth": "L0", "prompt": "x"}
+            )
+            + "\n"
+        )
+        return corpus
+
+    def test_candidate_set_all_is_rejected(self, tmp_path):
+        from scripts.model_ab_eval import main
+
+        rc = main([
+            "--score-only",
+            "--corpus", str(self._corpus(tmp_path)),
+            "--baseline-set", "openai", "--candidate-set", "all",
+            "--out", str(tmp_path / "ab"), "--run-id", "r",
+        ])
+        assert rc == 2
+
+    def test_baseline_set_all_is_rejected(self, tmp_path):
+        from scripts.model_ab_eval import main
+
+        rc = main([
+            "--score-only",
+            "--corpus", str(self._corpus(tmp_path)),
+            "--baseline-set", "all", "--candidate-set", "deepseek",
+            "--out", str(tmp_path / "ab"), "--run-id", "r",
+        ])
+        assert rc == 2
+
+    def test_routable_set_arm_is_not_rejected_by_the_guard(self, tmp_path, capsys):
+        # A routable set passes the F2 guard (it may fail later for other reasons,
+        # but the all-set rejection MESSAGE must not appear).
+        from scripts.model_ab_eval import main
+
+        main([
+            "--score-only",
+            "--corpus", str(self._corpus(tmp_path)),
+            "--baseline-set", "openai", "--candidate-set", "anthropic",
+            "--out", str(tmp_path / "ab"), "--run-id", "r2",
+        ])
+        out = capsys.readouterr().out
+        assert "is rejected" not in out, "routable set arm must not hit the F2 guard"
+
+    def test_pinned_arm_naming_an_all_only_model_is_not_rejected(self, tmp_path, capsys):
+        # A PINNED arm (not --*-set) reaches the 'all' set internally via
+        # MODEL_PROFILE_SET so the pin resolves — the F2 guard must NOT fire.
+        from scripts.model_ab_eval import main
+
+        main([
+            "--score-only",
+            "--corpus", str(self._corpus(tmp_path)),
+            "--baseline", "gpt-4o", "--candidate", "claude-opus-4-8",
+            "--out", str(tmp_path / "ab"), "--run-id", "r3",
+        ])
+        out = capsys.readouterr().out
+        assert "is rejected" not in out, "a pinned arm must not hit the F2 guard"
