@@ -9,6 +9,12 @@ from typing import Callable, Literal
 
 from pydantic import BaseModel, Field
 
+from components.schemas import GENERIC_TAIL_CONDITION
+
+# Back-compat alias: the canonical constant now lives in components.schemas
+# (single source of truth). External diagnostics still import this name.
+_GENERIC_TAIL_CONDITION = GENERIC_TAIL_CONDITION
+
 PlanningDepth = Literal["L0", "L1", "L2"]
 
 
@@ -234,8 +240,11 @@ def _parse_plan(raw: dict, planning_depth: PlanningDepth) -> PlanArtifact:
         for s in (raw.get("success_conditions") or [])
         if str(s).strip()
     ]
-    if _GENERIC_TAIL_CONDITION not in success_conditions:
-        success_conditions.append(_GENERIC_TAIL_CONDITION)
+    # Backstop only when the LLM returned no usable conditions — keeps the
+    # MECE non-empty invariant without baking an answer-grading check into the
+    # plan-time checklist (the tail grades the answer at judge-time).
+    if not success_conditions:
+        success_conditions.append(GENERIC_TAIL_CONDITION)
 
     return PlanArtifact(
         ordered_steps=steps,
@@ -309,12 +318,10 @@ def plan_is_stale(plan: PlanArtifact, last_tool_result: dict | None) -> bool:
     return False
 
 
-# Generic tail condition appended to every floor output. Matches the judge
-# prompt's "supplemental constraints" framing and guarantees
-# ``validate_plan_mece``'s non-empty-conditions check can never fail.
-_GENERIC_TAIL_CONDITION = (
-    "The final answer is internally consistent and directly responds to the request."
-)
+# Backstop criterion. The generic consistency check moved to judge-time
+# (see components.schemas.GENERIC_TAIL_CONDITION) — the floor uses it ONLY when
+# no task-specific branch could be extracted, so ``validate_plan_mece``'s
+# non-empty-conditions check can never fail on a degenerate task.
 
 # Deliberately above the L2 depth cap: the depth cap bounds execution
 # granularity, not the success definition the judge scores against.
@@ -346,7 +353,12 @@ def derive_success_conditions(branches: list[str]) -> list[str]:
         conditions.append(condition)
         if len(conditions) >= _MAX_BRANCH_CONDITIONS:
             break
-    conditions.append(_GENERIC_TAIL_CONDITION)
+    # Backstop ONLY when no task branch was extractable (e.g. a blank task):
+    # validate_plan_mece requires ≥1 condition. A task with branches gets only
+    # its task-specific conditions — no generic consistency line (that grades
+    # the answer at judge-time, not the plan).
+    if not conditions:
+        conditions.append(GENERIC_TAIL_CONDITION)
     return conditions
 
 

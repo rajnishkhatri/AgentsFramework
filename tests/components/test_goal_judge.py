@@ -377,6 +377,45 @@ class TestPromptRendering:
         rendered = llm.calls[0][1][0]["content"]
         assert "no tool calls" in rendered.lower()
 
+    @pytest.mark.asyncio
+    async def test_generic_consistency_tail_appended_at_judge_time(self):
+        """The generic consistency criterion is an ANSWER-grading check that
+        moved OUT of the plan-time artifact INTO the judge. Even when the
+        caller passes task-specific conditions WITHOUT it, the judge must score
+        the answer against it — so it appears in the rendered rubric prompt."""
+        from components.schemas import GENERIC_TAIL_CONDITION
+
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}'
+        )
+        await judge.evaluate(
+            task_input="Weather in Austin?",
+            final_answer="Sunny, 75F.",
+            success_conditions=["Reports a temperature"],  # no tail
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert "Reports a temperature" in rendered
+        assert GENERIC_TAIL_CONDITION in rendered
+
+    @pytest.mark.asyncio
+    async def test_generic_tail_not_double_appended(self):
+        """Idempotent: if the caller already included the tail, the judge does
+        not duplicate it."""
+        from components.schemas import GENERIC_TAIL_CONDITION
+
+        judge, llm = _judge(
+            '{"goal_met": true, "criteria_met": 1.0, "per_criterion": [], '
+            '"rationale": "ok"}'
+        )
+        await judge.evaluate(
+            task_input="t",
+            final_answer="a",
+            success_conditions=["Reports a temperature", GENERIC_TAIL_CONDITION],
+        )
+        rendered = llm.calls[0][1][0]["content"]
+        assert rendered.count(GENERIC_TAIL_CONDITION) == 1
+
     def test_model_name_exposed_for_eval_capture(self):
         judge, _ = _judge("{}")
         assert judge.model_name == "gpt-4o-mini"

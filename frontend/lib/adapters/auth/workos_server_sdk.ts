@@ -58,3 +58,36 @@ export function makeWorkOSServerSDK(): WorkOSSDK {
     },
   };
 }
+
+/**
+ * Dev/test-only WorkOS SDK stub. Returns a fixed local identity and the literal
+ * "dev" bearer the dev backend's permissive `_require_bearer` accepts. Gated by
+ * the caller on `E2E_BYPASS_AUTH=1` so the BFF data routes (`/api/models`,
+ * `/api/threads`, `/api/memory`) work under the same bypass that `app/page.tsx`
+ * already honors for the page itself. NEVER reachable in prod — the composition
+ * seam only selects this when the flag is set.
+ */
+export function makeBypassServerSDK(): WorkOSSDK {
+  return {
+    async getSession() {
+      return {
+        sub: "dev-user",
+        organizationId: null,
+        roles: [],
+        email: "dev@localhost",
+      };
+    },
+    async getAccessToken() {
+      return "dev";
+    },
+    async getAccessTokenExpiry() {
+      return Date.now() + 3_600_000;
+    },
+    async refreshAccessToken() {
+      return "dev";
+    },
+    async signOut() {
+      /* no-op in bypass mode */
+    },
+  };
+}

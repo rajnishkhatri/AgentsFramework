@@ -31,7 +31,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from components.schemas import GoalVerdict
+from components.schemas import GENERIC_TAIL_CONDITION, GoalVerdict
 
 if TYPE_CHECKING:
     from services.base_config import ModelProfile
@@ -95,12 +95,18 @@ class GoalJudge:
         Raises on an unparseable response so the caller can fall back to the
         deterministic heuristic (the judge is best-effort, never load-bearing).
         """
+        # Append the generic consistency criterion at JUDGE-TIME (it grades the
+        # final answer, so it belongs here — not in the plan-time checklist).
+        # Idempotent: callers that already include it are not double-scored.
+        scored_conditions = list(success_conditions)
+        if GENERIC_TAIL_CONDITION not in scored_conditions:
+            scored_conditions.append(GENERIC_TAIL_CONDITION)
         evidence_digest = _summarize_evidence(evidence, redactor=self._redactor)
         rendered = self._prompt_service.render_prompt(
             self.PROMPT_NAME,
             task_input=task_input,
             final_answer=final_answer,
-            success_conditions=success_conditions,
+            success_conditions=scored_conditions,
             evidence=evidence_digest,
         )
         response = await self._llm_service.invoke(

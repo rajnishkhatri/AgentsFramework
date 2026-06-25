@@ -174,11 +174,20 @@ class TestTaskUnderstandingSchema:
 
 
 class TestValidationGates:
-    def test_count_gate_rejects_zero_one_and_eight(self):
-        for conditions in ([], ["only one mentioning task"],
-                           [f"task condition {i}" for i in range(8)]):
+    def test_count_gate_rejects_zero_and_eight(self):
+        # min lowered 2->1 (the generic tail moved to judge-time, so the
+        # plan-time list no longer needs padding to reach 2). Zero and 8 still
+        # fail the count gate; a single grounded condition is now valid.
+        for conditions in ([], [f"task condition {i}" for i in range(8)]):
             issues = validate_conditions(conditions, task_input="task condition text")
             assert any("count" in issue for issue in issues)
+
+    def test_count_gate_accepts_single_condition(self):
+        # One well-grounded condition is valid now (was rejected when min==2).
+        issues = validate_conditions(
+            ["The task condition is satisfied"], task_input="task condition text"
+        )
+        assert not any("count" in issue for issue in issues)
 
     def test_length_gate_rejects_201_char_item(self):
         long_item = "task " + "x" * 200
@@ -219,9 +228,9 @@ class TestValidationGates:
             source="user_edited",
         )
         assert issues == []
-        # …but count/length bounds still apply.
+        # …but count/length bounds still apply (0 and >7 still fail; min is 1).
         issues = validate_conditions(
-            ["one"], task_input="Fetch the weather", source="user_edited"
+            [], task_input="Fetch the weather", source="user_edited"
         )
         assert any("count" in issue for issue in issues)
 
@@ -271,7 +280,7 @@ class TestTaskUnderstandingGenerator:
         assert artifact.source == "generated"
 
     @pytest.mark.asyncio
-    async def test_happy_path_artifact_provenance_and_tail(self):
+    async def test_happy_path_artifact_provenance_no_plan_time_tail(self):
         generator, llm = _generator(_payload())
         artifact = await generator.generate(task_input=_TASK)
         assert isinstance(artifact, TaskUnderstanding)
@@ -279,10 +288,12 @@ class TestTaskUnderstandingGenerator:
         assert artifact.model == "gpt-4o-mini"
         assert artifact.confidence == 0.85
         assert artifact.restated_intent
-        # Generic consistency tail always appended, last.
-        assert artifact.success_conditions[-1] == GENERIC_TAIL_CONDITION
-        # The 3 generated conditions + tail.
-        assert len(artifact.success_conditions) == 4
+        # The generic consistency tail is an ANSWER-grading check; it moved to
+        # judge-time (goal_judge/evaluator). The plan-time artifact must NOT
+        # carry it — the criteria are exactly the synthesized task conditions.
+        assert GENERIC_TAIL_CONDITION not in artifact.success_conditions
+        # The 3 generated conditions, no tail.
+        assert len(artifact.success_conditions) == 3
         assert len(llm.calls) == 1
 
     @pytest.mark.asyncio

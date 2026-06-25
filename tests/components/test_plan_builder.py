@@ -212,8 +212,10 @@ def test_floor_multiclause_task_yields_per_branch_conditions() -> None:
     assert "/workspace/f3.txt" in joined
     assert "list" in joined.lower()
     assert "weather" in joined.lower()
-    # One condition per branch + the generic tail.
-    assert len(conditions) == 4
+    # One condition per branch, NO generic tail (the consistency check moved
+    # to judge-time). A 3-branch task yields exactly 3 task-specific conditions.
+    assert len(conditions) == 3
+    assert not any("internally consistent" in c for c in conditions)
 
 
 def test_floor_uses_all_branches_not_depth_truncated_slice() -> None:
@@ -229,11 +231,31 @@ def test_floor_uses_all_branches_not_depth_truncated_slice() -> None:
     assert "propose migration" in joined
 
 
-def test_floor_generic_tail_always_last() -> None:
+def test_floor_never_emits_generic_consistency_line() -> None:
+    # The generic consistency line is an ANSWER-grading check moved to
+    # judge-time. The plan-time floor must NEVER emit it — not even for a blank
+    # task (which still yields a non-empty checklist via a task-neutral
+    # placeholder branch, so validate_plan_mece's non-empty rule holds).
     for task in ["", "Single ask.", "Do A. Do B."]:
         artifact = build_plan_artifact("L1", task_input=task)
-        tail = artifact.success_conditions[-1]
-        assert "internally consistent" in tail
+        assert artifact.success_conditions  # non-empty (MECE invariant)
+        assert not any(
+            "internally consistent" in c for c in artifact.success_conditions
+        )
+
+
+def test_derive_success_conditions_backstop_only_when_branches_empty() -> None:
+    # Direct unit on the floor function: empty branch list → the generic
+    # backstop is the sole condition (so the list is never empty); a non-empty
+    # branch list → only task branches, no backstop.
+    from components.plan_builder import derive_success_conditions
+    from components.schemas import GENERIC_TAIL_CONDITION
+
+    assert derive_success_conditions([]) == [GENERIC_TAIL_CONDITION]
+    assert derive_success_conditions([" ", ""]) == [GENERIC_TAIL_CONDITION]
+    branched = derive_success_conditions(["Do A", "Do B"])
+    assert GENERIC_TAIL_CONDITION not in branched
+    assert branched == ["Do A", "Do B"]
 
 
 def test_floor_generic_pair_never_returns() -> None:
@@ -244,16 +266,21 @@ def test_floor_generic_pair_never_returns() -> None:
             assert generic not in artifact.success_conditions
 
 
-def test_floor_branch_count_capped_at_six_plus_tail() -> None:
+def test_floor_branch_count_capped_at_six() -> None:
+    # 8 branches → capped at _MAX_BRANCH_CONDITIONS (6), and with the generic
+    # tail moved to judge-time there is no +1, so exactly 6 task conditions.
     task = ". ".join(f"Do subtask number {w}" for w in
                      ["one", "two", "three", "four", "five", "six", "seven", "eight"]) + "."
     artifact = build_plan_artifact("L2", task_input=task)
-    assert len(artifact.success_conditions) <= 7
+    assert len(artifact.success_conditions) == 6
+    assert not any("internally consistent" in c for c in artifact.success_conditions)
 
 
-def test_floor_property_bounds_dedupe_tail() -> None:
+def test_floor_property_bounds_dedupe() -> None:
     """Property-based (Pattern 1): arbitrary non-empty task strings give
-    1 ≤ n ≤ 7 unique conditions with the generic tail present."""
+    1 ≤ n ≤ 7 unique conditions that always pass MECE validation. The generic
+    consistency tail moved to judge-time, so it is no longer asserted here —
+    only the non-empty + dedupe + bounds invariants must hold."""
     from hypothesis import given, settings
     from hypothesis import strategies as st
 
@@ -265,7 +292,6 @@ def test_floor_property_bounds_dedupe_tail() -> None:
         assert 1 <= len(conditions) <= 7
         normalized = [c.strip().lower() for c in conditions]
         assert len(normalized) == len(set(normalized))
-        assert "internally consistent" in conditions[-1]
         assert validate_plan_mece(artifact).is_valid
 
     check()

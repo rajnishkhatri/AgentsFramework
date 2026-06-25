@@ -295,6 +295,11 @@ def evaluate_task_outcome(
     """
     from components.schemas import TaskOutcome
 
+    # NB: the generic consistency criterion (GENERIC_TAIL_CONDITION) is applied
+    # ONLY by the LLM GoalJudge — NOT here. This deterministic path scores by
+    # keyword overlap, and the abstract tail shares no keywords with real
+    # answers, so appending it would spuriously depress criteria_met/goal_met.
+
     is_clean = termination_reason in ("success", "final_answer", "")
     termination_score = 1.0 if is_clean else 0.0
 
