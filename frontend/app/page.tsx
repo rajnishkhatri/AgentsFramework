@@ -24,14 +24,20 @@ const E2E_BYPASS_AUTH =
   process.env.E2E_BYPASS_AUTH === "1";
 
 export default async function HomePage(props: {
-  searchParams: Promise<{ eval?: string }>;
+  searchParams: Promise<{ eval?: string; model?: string }>;
 }): Promise<React.JSX.Element> {
   // F7 eval-mode capture surface: `?eval=GJ-…` pins the case id and
   // freezes the UI for deterministic, admissible captures.
-  const { eval: evalCase } = await props.searchParams;
+  // A/B seam: `?model=<name>` seeds the model-picker selection so a driver
+  // can pin a model without the flaky dropdown click.
+  const { eval: evalCase, model: initialModel } = await props.searchParams;
   if (E2E_BYPASS_AUTH) {
     return (
-      <ChatShell userEmail="e2e@example.com" evalCase={evalCase ?? null} />
+      <ChatShell
+        userEmail="e2e@example.com"
+        evalCase={evalCase ?? null}
+        initialModel={initialModel ?? null}
+      />
     );
   }
 
@@ -42,6 +48,7 @@ export default async function HomePage(props: {
       <ChatShell
         userEmail={user.email ?? user.firstName ?? "Agent"}
         evalCase={evalCase ?? null}
+        initialModel={initialModel ?? null}
       />
     );
   }

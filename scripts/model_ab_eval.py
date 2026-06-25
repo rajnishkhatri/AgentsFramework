@@ -35,6 +35,7 @@ import argparse
 import hashlib
 import json
 import sys
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -411,8 +412,62 @@ def render_markdown(payload: dict) -> str:
             lines.append(f"  - {m}")
     lines.append("")
 
+    # Answer-quality block (ANSWER-corpus mode) — this is the verdict driver
+    # here; the planning per-phase table below is the secondary control lens.
+    if payload.get("answer"):
+        ans = payload["answer"]
+        lines.append("## Answer quality (verdict driver — L1 deterministic only)")
+        lines.append("")
+        lines.append(f"_grader: {ans.get('grader', 'L1-deterministic')}_")
+        lines.append("")
+        if ans.get("provider_contaminated"):
+            lines.append("> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
+                         "provider/transport error (litellm InternalServerError / "
+                         "rate-limit / Cannot connect). Accuracy below is NOT a valid "
+                         "model signal — re-run. Verdict forced CONTAMINATED.")
+            lines.append("")
+        lines.append("| arm | accuracy | correct/n | errored | outcomes |")
+        lines.append("|---|---|---|---|---|")
+        for arm in ("baseline", "candidate"):
+            a = ans[arm]
+            lines.append(
+                f"| {arm} | {a['accuracy']:.3f} | {a['correct']}/{a['n']} | "
+                f"{a.get('errored', 0)} | {a['outcomes']} |"
+            )
+        lines.append("")
+        lines.append(f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**")
+        lines.append("")
+        # L2/L3 — ungraded for verdict; GoalJudge shown as informational only.
+        l2 = ans.get("l2l3_ungraded")
+        if l2 and l2.get("cases"):
+            lines.append("### L2/L3 — UNGRADED (pending gold set)")
+            lines.append("")
+            lines.append(f"_{l2['note']}_")
+            lines.append("")
+            gj = l2.get("goaljudge_crosscheck", {})
+            if gj.get("baseline") and gj.get("candidate"):
+                lines.append("GoalJudge cross-check (informational, NOT a verdict input):")
+                lines.append("")
+                lines.append("| arm | GoalJudge acc (L2/L3) |")
+                lines.append("|---|---|")
+                lines.append(f"| baseline | {gj['baseline']['accuracy']:.3f} "
+                             f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |")
+                lines.append(f"| candidate | {gj['candidate']['accuracy']:.3f} "
+                             f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |")
+                lines.append("")
+        lines.append("### Per-case answers (candidate, L1)")
+        lines.append("")
+        lines.append("| case | outcome | expected | got |")
+        lines.append("|---|---|---|---|")
+        for c in ans["candidate"]["per_case"]:
+            got = (c["answer"] or "").replace("\n", " ")[:60]
+            lines.append(
+                f"| {c['case']} | {c['outcome']} | `{c['expected']}` | {got} |"
+            )
+        lines.append("")
+
     # Per-phase parity table.
-    lines.append("## Per-phase parity")
+    lines.append("## Per-phase parity (planning control lens — secondary)")
     lines.append("")
     lines.append("| phase | baseline | candidate | Δ | floor | pass |")
     lines.append("|---|---|---|---|---|---|")
@@ -476,15 +531,42 @@ def write_reports(out_dir: Path, payload: dict) -> tuple[Path, Path]:
 # ── live drive (real LLM — opt-in, never in CI) ────────────────────────────────
 
 
+def _judge_model(arm_set: str | None) -> set[str]:
+    """The GoalJudge evaluator's model name(s) — shared INFRASTRUCTURE that runs
+    on every arm regardless of the pin (react_loop picks the capable-tier profile
+    as ``eval_profile``; run_goaljudge_synthetic_batch enables GoalJudge). It is
+    NOT the model-under-test, so it must be allowed in every arm's expected set or
+    it reads as false contamination. Derived from the registry (not hardcoded): a
+    pinned arm leaves MODEL_PROFILE_SET unset → the default set's capable pick; a
+    set arm uses that set's capable pick."""
+    from services.llm_config import build_model_registry
+
+    # A pinned arm builds from the "all" meta-set (see _drive_arm) so the pin can
+    # resolve; the judge is that set's capable pick. A set arm uses its own set.
+    set_name = arm_set or "all"
+    try:
+        models, _ = build_model_registry(set_name)
+    except Exception:
+        return set()
+    # react_loop picks the FIRST capable profile as eval_profile (next(... tier
+    # =="capable")) — that one model is the judge, not every capable in the set.
+    first_capable = next(
+        (m.name for m in models if getattr(m, "tier", None) == "capable"), None
+    )
+    return {first_capable} if first_capable else set()
+
+
 def _arm_models(arm_model: str, arm_set: str | None) -> set[str]:
     """The expected-model roster for an arm: a one-name set for a pinned arm, or
-    the full name roster of a profile set for a set arm."""
+    the full name roster of a profile set for a set arm — PLUS the GoalJudge
+    evaluator model (shared infra, see _judge_model)."""
+    judge = _judge_model(arm_set)
     if arm_set:
         from services.llm_config import build_model_registry
 
         models, _ = build_model_registry(arm_set)
-        return {m.name for m in models}
-    return {arm_model}
+        return {m.name for m in models} | judge
+    return {arm_model} | judge
 
 
 def _score_arm(
@@ -499,7 +581,14 @@ def _score_arm(
     for row in rows:
         case = row["case"]
         gj_id = row.get("gj_id", "")
+        # The drive (run_goaljudge_synthetic_batch.run_case) keys the BlackBox
+        # recording dir by ``workflow_id = uuid5(NAMESPACE_DNS, case.id).hex`` —
+        # NOT the corpus row's stored ``trace_id`` (that was the UI run's id).
+        # So the deterministic uuid5(case) is the PRIMARY join key here; the
+        # other forms are kept for corpora driven through different paths.
+        drive_wf = uuid.uuid5(uuid.NAMESPACE_DNS, case).hex
         wf_candidates = [
+            drive_wf,
             f"gj:{gj_id}:{row['trace_id']}" if gj_id else "",
             f"gj:{case}:{row['trace_id']}",
             row["trace_id"],
@@ -541,10 +630,19 @@ async def _drive_arm(
     import os
 
     from scripts.run_goaljudge_synthetic_batch import (
+        AGENT_ROOT as _BATCH_ROOT,
         build_agent_and_tools,
         run_case,
+        truncate_eval_log,
     )
     from tests.fixtures.goaljudge.case_registry import GoalJudgeCase
+
+    # Isolate the eval-capture log to THIS arm: truncate the global logs/evals.log
+    # before the arm drives, snapshot it into the arm's out_dir afterward. The
+    # answer scorer (scripts/model_ab_answer_score.py) reads the per-arm snapshot
+    # to grade each case's final answer — without isolation both arms' answers
+    # would interleave in the one global log and couldn't be attributed.
+    truncate_eval_log()
 
     # Per-arm cache_dir isolates BOTH the black-box recordings
     # (cache_dir/black_box_recordings) and the checkpoint db — the two arms never
@@ -553,7 +651,16 @@ async def _drive_arm(
     arm_cache = out_dir / "cache"
     arm_cache.mkdir(parents=True, exist_ok=True)
     if arm_set:
+        # Set arm: Auto routes across the named stack.
         os.environ["MODEL_PROFILE_SET"] = arm_set
+    else:
+        # Pinned arm: the router can only resolve a pin to a profile that EXISTS
+        # in the active registry (_pick_profile_by_name). The default "openai"
+        # set has only gpt-4o/gpt-4o-mini, so pinning e.g. claude-haiku-4-5 would
+        # MISS and silently fall back to the default model — invalidating the
+        # arm. Build from the "all" meta-set so every pinnable model is present;
+        # the pin then resolves and the arm truly runs the model-under-test.
+        os.environ["MODEL_PROFILE_SET"] = "all"
 
     workspace = AGENT_ROOT / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
@@ -563,16 +670,28 @@ async def _drive_arm(
         build_agent_and_tools()
     )
 
-    # A set arm lets Auto route (no extra input); a pinned arm seeds
-    # selected_model exactly the way the UI pins a model.
-    extra = None if arm_set else {"selected_model": arm_model}
+    # A set arm lets Auto route (no extra input); a pinned arm seeds the pin
+    # exactly the way the UI does. The pin rides ``pinned_model`` (NOT
+    # ``selected_model``): the router reads ``state["pinned_model"]`` from its own
+    # channel (react_loop.py select_model call), because the route node writes
+    # back ``selected_model``=routed-name each step, so reusing that key as the
+    # pin input would misread step-1's routed model as a pin on later steps. The
+    # UI rides ``input.pinned_model`` (ui_input_to_agent_request.ts) — match it.
+    extra = None if arm_set else {"pinned_model": arm_model}
     for row in rows:
+        # target_axes / expected_feasibility are GoalJudge *scoring* metadata;
+        # the A/B drive only needs id/prompt/target_code/stratum/domain (run_case
+        # reads those). Supply schema-required defaults so construction succeeds —
+        # the harness scores behavior via score_run on the recordings, not via the
+        # GoalJudge rubric, so these values don't affect the A/B verdict.
         case = GoalJudgeCase(
             id=row["case"],
             prompt=row["prompt"],
             target_code=row.get("gj_id", ""),
+            target_axes={},
             stratum=row.get("phase", ""),
             domain=row.get("phase", ""),
+            expected_feasibility="achievable",
         )
         await run_case(
             case,
@@ -586,11 +705,25 @@ async def _drive_arm(
         )
 
     # Point the arm's "recordings" dir (what _score_arm reads) at the real
-    # black_box_recordings the graph just wrote under arm_cache.
+    # black_box_recordings the graph just wrote under arm_cache. Use an ABSOLUTE
+    # target: a symlink target is resolved relative to the LINK's directory, not
+    # the CWD, so a project-relative target doubles the path (…/baseline/cache/
+    # model_ab_offline/…/baseline/cache/…) and resolves to nothing. resolve()
+    # makes the join correct from any CWD and for --score-only re-reads.
     recordings = out_dir / "recordings"
-    real = arm_cache / "black_box_recordings"
+    real = (arm_cache / "black_box_recordings").resolve()
+    if recordings.is_symlink() and not recordings.exists():
+        recordings.unlink()  # stale/broken link from a prior run
     if not recordings.exists() and real.exists():
         recordings.symlink_to(real, target_is_directory=True)
+
+    # Snapshot the arm's eval-capture log (holds each call_llm ai_response = the
+    # final answer text, which the black-box recordings do NOT carry) into the
+    # arm dir for the answer scorer. Copy, don't move — leaves the global log for
+    # any other reader.
+    eval_src = _BATCH_ROOT / "logs" / "evals.log"
+    if eval_src.exists():
+        (out_dir / "evals.log").write_text(eval_src.read_text())
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
@@ -626,6 +759,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--run-id", default=None, help="explicit run id (else timestamp)")
     p.add_argument("--limit", type=int, default=0, help="cap rows (smoke runs)")
+    p.add_argument(
+        "--answer-score",
+        action="store_true",
+        help=(
+            "ANSWER-corpus mode: grade each arm's final answer vs the deterministic "
+            "EXPECTED table (scripts/model_ab_answer_score) and make answer accuracy "
+            "the verdict (not the planning score_run, which is a control-behavior "
+            "lens — design doc §6). Reads each arm's evals.log snapshot."
+        ),
+    )
     return p
 
 
@@ -643,6 +786,21 @@ def main(argv: list[str] | None = None) -> int:
         print("both a baseline and candidate arm are required "
               "(--baseline/--candidate or --baseline-set/--candidate-set)")
         return 2
+
+    # F2: a SET arm runs Auto routing, but the "all" set is PIN-ONLY — its first
+    # reasoning profile is opus-4-8, so an Auto run on "all" escalates into Opus
+    # on any failure, skewing the arm's cost/behavior away from the set under
+    # test. Reject it explicitly (pinned arms reach "all" internally via
+    # MODEL_PROFILE_SET so the pin resolves — that path is unaffected; this guard
+    # is only on the Auto-routing --*-set selectors). Fail loud, not silently.
+    for flag, value in (("--baseline-set", args.baseline_set),
+                        ("--candidate-set", args.candidate_set)):
+        if value == "all":
+            print(f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
+                  f"escalate into opus-4-8). Use a routable set "
+                  f"(openai/anthropic/deepseek) for a set arm, or pin a single "
+                  f"model with --baseline/--candidate.")
+            return 2
 
     run_id = args.run_id or time.strftime("%Y%m%dT%H%M%S")
     run_dir = args.out / run_id
@@ -667,11 +825,22 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
 
+    def _recordings_dir(arm_dir: Path) -> Path:
+        """Resolve an arm's recordings dir. Prefer the ``recordings`` symlink the
+        drive creates; fall back to the real ``cache/black_box_recordings`` when
+        the symlink is absent or broken (e.g. ``--score-only`` re-reads, which
+        skip ``_drive_arm`` and so never create the link)."""
+        link = arm_dir / "recordings"
+        if link.exists():
+            return link
+        real = arm_dir / "cache" / "black_box_recordings"
+        return real if real.exists() else link
+
     base_summary, base_events, base_cost = _score_arm(
-        rows, baseline_dir / "recordings"
+        rows, _recordings_dir(baseline_dir)
     )
     cand_summary, cand_events, cand_cost = _score_arm(
-        rows, candidate_dir / "recordings"
+        rows, _recordings_dir(candidate_dir)
     )
 
     base_integrity = check_arm_integrity(
@@ -692,6 +861,84 @@ def main(argv: list[str] | None = None) -> int:
     )
     verdict = decide_verdict(diff, base_integrity, cand_integrity)
 
+    # ── ANSWER-corpus mode: grade actual answers, make accuracy the verdict ──
+    answer_block = None
+    if args.answer_score:
+        from scripts.model_ab_answer_score import (
+            EXPECTED_BY_CASE,
+            score_answers,
+            score_answers_goaljudge,
+        )
+
+        # VERDICT is L1-DETERMINISTIC ONLY (decision 2026-06-25): the hardened
+        # deterministic scorer is the only trustworthy automated grader. L2/L3 use
+        # prose answers — their grading is DEFERRED to the blind-adjudication /
+        # gold-set process (docs/plans/model_ab_l2l3_blind_adjudication.plan.md);
+        # GoalJudge on L2/L3 is off-label + over-strict, so it is shown as an
+        # informational cross-check ONLY, never as a verdict input.
+        case_ids = [r["case"] for r in rows]
+        l1_cases = [c for c in case_ids if c in EXPECTED_BY_CASE]
+        l2l3_cases = [c for c in case_ids if c not in EXPECTED_BY_CASE]
+
+        base_ans = score_answers(baseline_dir / "evals.log", cases=l1_cases)
+        cand_ans = score_answers(candidate_dir / "evals.log", cases=l1_cases)
+
+        # PROVIDER-ERROR GUARD (dominant): a run with transport/provider failures
+        # (litellm InternalServerError, rate-limit, Cannot connect) is NOT a model
+        # signal — its accuracy is meaningless. Flag CONTAMINATED, never score 0.0.
+        provider_contaminated = base_ans.contaminated or cand_ans.contaminated
+
+        answer_regression = cand_ans.accuracy < (base_ans.accuracy - args.tolerance)
+        if not (base_integrity.ok and cand_integrity.ok) or provider_contaminated:
+            verdict = CONTAMINATED
+        elif answer_regression:
+            verdict = HOLD
+        else:
+            verdict = PROMOTE
+
+        # L2/L3 GoalJudge cross-check — INFORMATIONAL ONLY (ungraded for verdict).
+        base_gj = score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases) \
+            if l2l3_cases else None
+        cand_gj = score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases) \
+            if l2l3_cases else None
+
+        def _arm_block(ans):
+            return {
+                "accuracy": ans.accuracy,
+                "correct": ans.correct,
+                "n": ans.n,
+                "errored": ans.errored,
+                "contaminated": ans.contaminated,
+                "outcomes": ans.outcomes(),
+                "per_case": [
+                    {"case": s.case, "outcome": s.outcome, "expected": s.expected,
+                     "answer": s.answer}
+                    for s in ans.scores
+                ],
+            }
+
+        answer_block = {
+            "grader": "L1-deterministic (verdict); L2/L3 ungraded (pending gold set)",
+            "provider_contaminated": provider_contaminated,
+            "baseline": _arm_block(base_ans),
+            "candidate": _arm_block(cand_ans),
+            "accuracy_delta": round(cand_ans.accuracy - base_ans.accuracy, 4),
+            "l2l3_ungraded": {
+                "cases": l2l3_cases,
+                "note": "prose answers; verdict-excluded. GoalJudge shown as "
+                        "informational cross-check only — see "
+                        "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
+                "goaljudge_crosscheck": {
+                    "baseline": ({"accuracy": base_gj.accuracy,
+                                  "correct": base_gj.correct, "n": base_gj.n}
+                                 if base_gj else None),
+                    "candidate": ({"accuracy": cand_gj.accuracy,
+                                   "correct": cand_gj.correct, "n": cand_gj.n}
+                                  if cand_gj else None),
+                },
+            },
+        }
+
     payload = build_report_payload(
         run_id=run_id,
         corpus_path=args.corpus,
@@ -705,10 +952,18 @@ def main(argv: list[str] | None = None) -> int:
         candidate_integrity=cand_integrity,
         n_tasks=n_tasks,
     )
+    if answer_block is not None:
+        payload["answer"] = answer_block
     md_path, json_path = write_reports(run_dir, payload)
 
     print(f"VERDICT: {verdict}")
     print(f"  baseline={baseline_arm} candidate={candidate_arm}")
+    if answer_block is not None:
+        print(
+            f"  answer accuracy: baseline={answer_block['baseline']['accuracy']:.3f} "
+            f"candidate={answer_block['candidate']['accuracy']:.3f} "
+            f"(Δ {answer_block['accuracy_delta']:+})"
+        )
     print(f"  report: {md_path}")
     print(f"  json:   {json_path}")
     for reg in diff["regressions"]:

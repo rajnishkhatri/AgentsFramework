@@ -111,6 +111,40 @@ describe("ChatShell — header rendering", () => {
   });
 });
 
+describe("ChatShell — initialModel seed (A/B `?model=` pin)", () => {
+  it("defaults the model chip to Auto when no initialModel is given", () => {
+    const d = render();
+    // The composer model-picker trigger shows the current selection.
+    const trigger = d.querySelector("[data-testid='model-picker-trigger']");
+    expect(trigger?.textContent).toContain("Auto");
+  });
+
+  it("seeds the model chip from initialModel (URL `?model=` pin)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ChatShell, {
+        userEmail: "test@example.com",
+        initialModel: "claude-opus-4-8",
+      }),
+    );
+    const d = dom(html);
+    const trigger = d.querySelector("[data-testid='model-picker-trigger']");
+    expect(trigger?.textContent).toContain("claude-opus-4-8");
+    expect(trigger?.textContent).not.toContain("Auto");
+  });
+
+  it("falls back to Auto when initialModel is null", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(ChatShell, {
+        userEmail: "test@example.com",
+        initialModel: null,
+      }),
+    );
+    const d = dom(html);
+    const trigger = d.querySelector("[data-testid='model-picker-trigger']");
+    expect(trigger?.textContent).toContain("Auto");
+  });
+});
+
 describe("ChatShell — composer presence", () => {
   it("renders the composer form", () => {
     const d = render();

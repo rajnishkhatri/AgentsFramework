@@ -216,6 +216,24 @@ resource "google_cloud_run_v2_service" "backend_combined" {
       }
 
       env {
+        name = "DEEPSEEK_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.deepseek_api_key.secret_id
+            version = "latest"
+          }
+        }
+      }
+
+      # Which Auto stack the registry wires. Default "openai" => prod Auto is
+      # byte-identical; flips to anthropic/deepseek/all are a gated decision (or
+      # an out-of-band zero-traffic A/B tag), never a silent prod change.
+      env {
+        name  = "MODEL_PROFILE_SET"
+        value = var.model_profile_set
+      }
+
+      env {
         name = "LANGFUSE_PUBLIC_KEY"
         value_source {
           secret_key_ref {
@@ -317,6 +335,7 @@ resource "google_cloud_run_v2_service" "backend_combined" {
     google_secret_manager_secret_iam_member.workos_api_key_accessor,
     google_secret_manager_secret_iam_member.openai_api_key_accessor,
     google_secret_manager_secret_iam_member.anthropic_api_key_accessor,
+    google_secret_manager_secret_iam_member.deepseek_api_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_public_key_accessor,
     google_secret_manager_secret_iam_member.langfuse_secret_key_accessor,
     # mem0_api_key_accessor removed in Phase 5 S4 (mem0 → pgvector cutover).

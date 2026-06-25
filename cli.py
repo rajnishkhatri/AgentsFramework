@@ -66,7 +66,9 @@ def main() -> None:
         max_steps=20,
         max_cost_usd=1.0,
     )
-    routing_config = RoutingConfig()
+    # Pass default_model explicitly so routing_config.default_model tracks the
+    # SAME registry read as agent_config.models (F1/F10).
+    routing_config = RoutingConfig(default_model=default_model)
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
     tool_registry = ToolRegistry({

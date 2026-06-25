@@ -60,6 +60,8 @@ from agent_ui_adapter.wire.agent_protocol import (
     MemoryItem,
     MemoryListResponse,
     MemorySuppressRequest,
+    ModelInfo,
+    ModelsResponse,
     ThreadCreateRequest,
     ThreadListResponse,
     ThreadRenameRequest,
@@ -375,6 +377,33 @@ def build_combined_app() -> FastAPI:
     # The BFF proxies these for the chat-history sidebar. Owner-scoped;
     # archived threads are soft-deleted (hidden from list/get). In-memory
     # store for now — the persistent ThreadStore is the BFF's concern (F-R9).
+
+    @app.get("/models", response_model=ModelsResponse)
+    async def list_models(
+        identity: AgentFacts = Depends(_bearer_identity),
+    ) -> ModelsResponse:
+        """The model picker's catalog — auth-scoped like the other routes.
+
+        Mirrors ``agent_ui_adapter.server`` ``/models``: reads the H2-canonical
+        registry (services/llm_config.py) for the active MODEL_PROFILE_SET — the
+        same source the runtime wired, so the dropdown can never list a model
+        Auto can't route. name+tier ONLY; the cost table / litellm ids stay
+        server-side (ModelInfo forbids extras).
+
+        NOTE (prod-surface drift guard): app_prod.py hand-builds its route
+        surface, so a route added only to agent_ui_adapter/server.py is absent in
+        prod (the same drop pattern as the memory-wiring incident). This route
+        MUST stay mirrored here.
+        """
+        from services.llm_config import build_model_registry
+
+        models, default_model = build_model_registry(
+            os.environ.get("MODEL_PROFILE_SET", "openai")
+        )
+        return ModelsResponse(
+            default=default_model,
+            models=[ModelInfo(name=m.name, tier=m.tier) for m in models],
+        )
 
     @app.get("/agent/threads", response_model=ThreadListResponse)
     async def list_threads(

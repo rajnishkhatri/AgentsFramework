@@ -325,6 +325,7 @@ phase_secrets() {
     workos-api-key
     openai-api-key
     anthropic-api-key
+    deepseek-api-key
     langfuse-public-key
     langfuse-secret-key
     mem0-api-key

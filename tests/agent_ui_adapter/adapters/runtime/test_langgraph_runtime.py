@@ -110,6 +110,40 @@ class TestLangGraphRuntimeStream:
         assert token_events[1].delta == "lo"
 
     @pytest.mark.asyncio
+    async def test_deepseek_list_block_chunk_streams_text_only_not_thinking(
+        self,
+    ) -> None:
+        """DeepSeek (and reasoning models) stream ``content`` as a LIST of blocks
+        (thinking + text). The UI token stream must surface ONLY the ``text``
+        blocks — the thinking scratchpad must never reach the user. Guards the
+        _extract_content list-of-blocks path against a regression."""
+        scripted = [
+            {
+                "event": "on_chat_model_stream",
+                # The exact shape DeepSeek V4 returned in the pre-deploy smoke.
+                "data": {
+                    "chunk": _FakeChunk(
+                        content=[
+                            "",
+                            {"type": "thinking", "thinking": "let me reason"},
+                            {"type": "text", "text": "4"},
+                        ]
+                    )
+                },
+                "name": "ChatModel",
+                "run_id": "lc-ds",
+            },
+        ]
+        rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
+        out = [
+            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
+        ]
+        token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
+        assert len(token_events) == 1
+        assert token_events[0].delta == "4"  # text block only
+        assert "thinking" not in token_events[0].delta
+
+    @pytest.mark.asyncio
     async def test_filters_guard_input_when_langgraph_node_tagged(self) -> None:
         """Production graphs tag internal LLM nodes; only call_llm may surface."""
         scripted = [

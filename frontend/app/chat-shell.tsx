@@ -334,6 +334,13 @@ export function ChatShell(props: {
    * chip so batch and human captures are identical and admissible.
    */
   evalCase?: string | null;
+  /**
+   * A/B test seam: seeds the model-picker selection (`?model=<name>`) so a
+   * driver can pin a model without clicking the dropdown (the dropdown click
+   * is flaky under long serial runs). Defaults to Auto when absent. The value
+   * flows through `send` exactly as a dropdown choice would.
+   */
+  initialModel?: string | null;
 }): React.JSX.Element {
   const injected = props.runtime;
   const runtime = React.useMemo(
@@ -389,7 +396,9 @@ export function ChatShell(props: {
   // the selection lifts here so `send` can pass it. Default "Auto" => the
   // backend Auto router decides (no pin).
   const availableModels = useAvailableModels();
-  const [selectedModel, setSelectedModel] = React.useState<string>(AUTO_MODEL);
+  const [selectedModel, setSelectedModel] = React.useState<string>(
+    props.initialModel || AUTO_MODEL,
+  );
 
   // Recents filtered by the live search query (pure; empty query → all).
   const visibleThreads = React.useMemo(

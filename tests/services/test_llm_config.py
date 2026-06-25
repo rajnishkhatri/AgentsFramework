@@ -13,6 +13,7 @@ from services.llm_config import (
     DEFAULT_MODEL_PROFILE_SET,
     LLMService,
     build_model_registry,
+    response_text,
 )
 
 
@@ -66,6 +67,91 @@ class TestLLMService:
         llm = svc.get_llm(_fast_profile())
         assert llm is not None
 
+    def test_get_llm_sends_temperature_zero_by_default(self):
+        """The deterministic default: a normal model gets ``temperature=0``."""
+        cfg = AgentConfig(models=[_fast_profile()])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(_fast_profile())
+        assert llm.temperature == 0
+
+    def test_get_llm_omits_temperature_when_unsupported(self):
+        """Regression (Opus-4.8 empty-output defect, 2026-06-25): a model with
+        ``supports_temperature=False`` must NOT receive a ``temperature`` request
+        param. claude-opus-4-8 deprecated it and 400s when one is sent, which the
+        runtime swallowed into the empty-output placeholder ($0 / 0 tokens). With
+        the param omitted, ChatLiteLLM leaves ``temperature`` at its ``None``
+        default so litellm sends no temperature field at all."""
+        no_temp = ModelProfile(
+            name="claude-opus-4-8",
+            litellm_id="anthropic/claude-opus-4-8",
+            tier="reasoning",
+            context_window=1_000_000,
+            cost_per_1k_input=0.005,
+            cost_per_1k_output=0.025,
+            supports_temperature=False,
+        )
+        cfg = AgentConfig(models=[no_temp])
+        svc = LLMService(config=cfg)
+        llm = svc.get_llm(no_temp)
+        assert llm.temperature is None
+
+    def test_registry_opus_profile_marks_temperature_unsupported(self):
+        """The shipped anthropic/all registries must carry the Opus capability
+        flag — otherwise the live A/B Opus arm regresses to empty output."""
+        for set_name in ("anthropic", "all"):
+            models, _ = build_model_registry(set_name)
+            opus = next(m for m in models if m.name == "claude-opus-4-8")
+            assert opus.supports_temperature is False
+            # Sibling Anthropic tiers keep temperature (deterministic default).
+            sonnet = next(m for m in models if m.name == "claude-sonnet-4-6")
+            assert sonnet.supports_temperature is True
+
+    def test_registry_gpt5_family_marks_temperature_unsupported(self):
+        """gpt-5 / gpt-5-mini reject temperature=0 (litellm UnsupportedParams) —
+        same empty-output failure class as Opus. Both must carry the flag so a
+        pin to either doesn't regress; gpt-4o keeps the deterministic default."""
+        for set_name in ("anthropic", "all"):
+            models, _ = build_model_registry(set_name)
+            for name in ("gpt-5", "gpt-5-mini"):
+                prof = next(m for m in models if m.name == name)
+                assert prof.supports_temperature is False, name
+            gpt4o = next(m for m in models if m.name == "gpt-4o")
+            assert gpt4o.supports_temperature is True
+
+    def test_get_llm_uses_profile_max_output_tokens(self):
+        """The completion budget comes from the profile (default 4096), and a
+        reasoning profile carrying a larger ``max_output_tokens`` is honored —
+        the fix for reasoning-budget exhaustion (empty answer when thinking
+        tokens consume the whole budget)."""
+        default_prof = _fast_profile()
+        cfg = AgentConfig(models=[default_prof])
+        svc = LLMService(config=cfg)
+        assert svc.get_llm(default_prof).max_tokens == 4096
+
+        big = ModelProfile(
+            name="reasoner",
+            litellm_id="anthropic/claude-opus-4-8",
+            tier="reasoning",
+            context_window=1_000_000,
+            cost_per_1k_input=0.005,
+            cost_per_1k_output=0.025,
+            supports_temperature=False,
+            max_output_tokens=8192,
+        )
+        cfg2 = AgentConfig(models=[big])
+        assert LLMService(config=cfg2).get_llm(big).max_tokens == 8192
+
+    def test_registry_reasoning_models_carry_larger_budget(self):
+        """Reasoning/verbose-reasoning models must ship the raised budget so a
+        live pin doesn't regress to empty output."""
+        models, _ = build_model_registry("all")
+        by = {m.name: m for m in models}
+        for name in ("claude-opus-4-8", "gpt-5", "gpt-5-mini", "deepseek-v4-flash"):
+            assert by[name].max_output_tokens == 8192, name
+        # Non-reasoning models keep the 4096 default.
+        for name in ("gpt-4o", "gpt-4o-mini", "claude-haiku-4-5", "claude-sonnet-4-6"):
+            assert by[name].max_output_tokens == 4096, name
+
     def test_get_llm_streams(self):
         """The model streams (drives the runtime token deltas). Token *usage*
         does not ride the streamed end event — it is carried on the canonical
@@ -76,6 +162,56 @@ class TestLLMService:
         svc = LLMService(config=cfg)
         llm = svc.get_llm(_fast_profile())
         assert getattr(llm, "streaming", False) is True
+
+
+class _Resp:
+    """Minimal stand-in for an LLM response carrying a ``.content`` attribute."""
+
+    def __init__(self, content):
+        self.content = content
+
+
+class TestResponseText:
+    """Provider-content normalization (the DeepSeek list-of-blocks fix).
+
+    Failure path FIRST (TAP-4): the dangerous case is a DeepSeek-shaped LIST of
+    blocks being stringified into the user's answer (thinking scratchpad and
+    all). ``response_text`` must collapse it to the answer text.
+    """
+
+    def test_deepseek_list_of_blocks_returns_answer_text_only(self):
+        # The exact shape DeepSeek V4 Flash returned in the pre-deploy smoke:
+        # a leading '' + thinking blocks + the answer in text blocks.
+        content = [
+            "",
+            {"type": "thinking", "thinking": "We need to answer"},
+            {"type": "text", "text": "The answer is "},
+            {"type": "text", "text": "4"},
+        ]
+        out = response_text(_Resp(content))
+        assert out == "The answer is 4"
+        assert "thinking" not in out  # scratchpad must NOT reach the user
+
+    def test_plain_string_passes_through(self):
+        assert response_text(_Resp("just a plain answer")) == "just a plain answer"
+
+    def test_none_content_is_empty_string(self):
+        assert response_text(_Resp(None)) == ""
+
+    def test_empty_list_is_empty_string(self):
+        assert response_text(_Resp([])) == ""
+
+    def test_thinking_only_list_yields_empty_not_stringified(self):
+        # A response that is ALL thinking (no text block) must NOT stringify the
+        # dict list into the answer — it yields "" (the caller treats empty as
+        # "no answer", which is correct).
+        content = [{"type": "thinking", "thinking": "hmm"}]
+        out = response_text(_Resp(content))
+        assert "{" not in out and "thinking" not in out
+
+    def test_bare_string_argument_also_works(self):
+        # Defensive: passed a bare string instead of a response object.
+        assert response_text("hello") == "hello"
 
 
 def _first_tier(models, tier):
@@ -182,3 +318,33 @@ class TestModelRegistry:
         by_name = {m.name: m for m in models}
         assert by_name["deepseek-v4-flash"].litellm_id.startswith("deepseek/")
         assert by_name["deepseek-v4-pro"].litellm_id.startswith("deepseek/")
+
+    # ── The "all" union meta-set (A/B UI-pin sweep — every model on /models) ──
+    def test_all_set_lists_every_distinct_model_no_dupes(self):
+        """The /models endpoint under MODEL_PROFILE_SET=all must offer every
+        distinct model so the dropdown can pin each — and carry NO duplicate
+        names (LLMService keys by name)."""
+        models, default_model = build_model_registry("all")
+        names = [m.name for m in models]
+        assert len(names) == len(set(names)), f"duplicate names in 'all': {names}"
+        # every concrete model from all three stacks is present
+        for expected in (
+            "gpt-4o-mini",
+            "gpt-4o",
+            "claude-haiku-4-5",
+            "claude-sonnet-4-6",
+            "claude-opus-4-8",
+            "deepseek-v4-flash",
+            "deepseek-v4-flash-capable",
+            "deepseek-v4-pro",
+        ):
+            assert expected in names, f"'all' set missing {expected}"
+        assert default_model == "gpt-4o-mini"  # cheap, predictable
+
+    def test_all_set_pins_resolve_across_providers(self):
+        """Each provider's model is pin-resolvable via LLMService under 'all'."""
+        models, default_model = build_model_registry("all")
+        svc = LLMService(config=AgentConfig(default_model=default_model, models=models))
+        assert svc.get_profile("claude-opus-4-8").litellm_id.startswith("anthropic/")
+        assert svc.get_profile("deepseek-v4-pro").litellm_id.startswith("deepseek/")
+        assert svc.get_profile("gpt-4o").litellm_id.startswith("openai/")
