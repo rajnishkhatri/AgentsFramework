@@ -515,6 +515,27 @@ class TestIdempotentExport:
         attrs = exporter.events[0]["attributes"]
         assert attrs["__bb_level"] == "ERROR"
 
+    def test_error_class_detail_survives_to_export(
+        self, storage: Path, exporter: FakeExporter
+    ) -> None:
+        """Governance: the Validation-pillar error.occurred carrier must export its
+        ``error_class`` discriminator. The relay copies ``details`` wholesale through
+        ``redact_details`` into ``__output``; an unknown short string key is not
+        suppressed, so the tool-failure-mode label reaches the trace store."""
+        ev = _make_event(
+            EventType.ERROR_OCCURRED,
+            workflow_id="wf-errclass",
+            details={"source": "tool_execution", "tool": "shell", "error_class": "validation"},
+        )
+        _record_events(storage, "wf-errclass", [ev])
+        (storage / "wf-errclass" / ".langfuse_offset").write_text("0")
+
+        relay = _build_relay(storage, exporter)
+        relay.run_once()
+
+        output = exporter.events[0]["attributes"]["__output"]
+        assert output["error_class"] == "validation"
+
     def test_non_error_event_level_is_default(
         self, storage: Path, exporter: FakeExporter
     ) -> None:

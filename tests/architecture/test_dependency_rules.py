@@ -127,6 +127,46 @@ class TestDependencyRules:
             "services/ must not import from components/:\n" + "\n".join(violations)
         )
 
+    def test_llm_providers_is_langchain_free(self):
+        """The direct-call extension (services/llm_providers/) is the
+        LangChain-FREE client layer — the boundary shim that touches langchain
+        lives in services/llm_config.py, NOT here. A regression that pulls
+        langchain into the provider client breaks the "pure client" contract."""
+        providers_dir = AGENT_ROOT / "services" / "llm_providers"
+        if not providers_dir.exists():
+            pytest.skip("services/llm_providers/ not yet created")
+        forbidden = {
+            "langchain",
+            "langchain_core",
+            "langchain_community",
+            "langchain_litellm",
+            "langgraph",
+            "litellm",
+        }
+        violations = []
+        for filepath, pkg in _collect_imported_packages(providers_dir):
+            if pkg in forbidden:
+                violations.append(f"{filepath} imports {pkg}")
+        assert violations == [], (
+            "services/llm_providers/ must stay LangChain/LiteLLM-free "
+            "(direct REST client only):\n" + "\n".join(violations)
+        )
+
+    def test_llm_providers_does_not_import_upper_layers(self):
+        """services/llm_providers/ (Horizontal) imports only downward —
+        trust/ + stdlib + httpx, never components/orchestration/agents/governance."""
+        providers_dir = AGENT_ROOT / "services" / "llm_providers"
+        if not providers_dir.exists():
+            pytest.skip("services/llm_providers/ not yet created")
+        violations = []
+        for filepath, pkg in _collect_imported_packages(providers_dir):
+            if pkg in {"components", "orchestration", "agents", "governance", "middleware"}:
+                violations.append(f"{filepath} imports {pkg}")
+        assert violations == [], (
+            "services/llm_providers/ must not import from upper layers:\n"
+            + "\n".join(violations)
+        )
+
     def test_meta_does_not_import_orchestration(self):
         """meta/ must not import from orchestration/ (meta is horizontal, not above orchestration)."""
         meta_dir = AGENT_ROOT / "meta"

@@ -213,6 +213,18 @@ class TestResponseText:
         # Defensive: passed a bare string instead of a response object.
         assert response_text("hello") == "hello"
 
+    def test_list_content_returns_exact_str_not_text_accessor(self):
+        # GLM-5.2/Z.ai REJECTS a non-str assistant content echoed back into the
+        # multi-turn tool history ("messages[..].content[0].type: cannot be
+        # empty"). LangChain's ``AIMessage(...).text`` is a ``TextAccessor``, not
+        # a ``str`` — leaning providers (OpenAI/Anthropic/DeepSeek) tolerate it,
+        # Z.ai does not. ``response_text`` MUST return an exact ``str`` so the
+        # value re-sent in history is a plain string for every provider.
+        out = response_text(_Resp([{"type": "text", "text": "answer"}]))
+        assert type(out) is str, f"expected exact str, got {type(out).__name__}"
+        out_thinking = response_text(_Resp([{"type": "thinking", "thinking": "x"}]))
+        assert type(out_thinking) is str
+
 
 def _first_tier(models, tier):
     """First profile of a tier — the one the router's first-match would pick."""
@@ -318,6 +330,74 @@ class TestModelRegistry:
         by_name = {m.name: m for m in models}
         assert by_name["deepseek-v4-flash"].litellm_id.startswith("deepseek/")
         assert by_name["deepseek-v4-pro"].litellm_id.startswith("deepseek/")
+
+    # ── The GLM-5 stack (research #1 tool-caller tier; pin-only, zai provider) ──
+    # Pinned to glm-5.1, NOT glm-5.2: ``zai/glm-5.2`` is absent from litellm's zai
+    # model map, so the multi-turn tool loop sends a message array Z.ai rejects
+    # ("messages parameter is illegal"). glm-5.1 IS mapped (tool_use + reasoning)
+    # and completes the round-trip. See _GLM_PROFILES comment in llm_config.py.
+    def test_glm_set_resolves_glm51_as_default(self):
+        models, default_model = build_model_registry("glm")
+        assert default_model == "glm-5.1"
+        by_name = {m.name: m for m in models}
+        assert "glm-5.1" in by_name
+        # zai provider dispatch by litellm_id prefix (no call-site change). Must be
+        # a litellm-mapped zai model id, not glm-5.2 (the unmapped id that fails).
+        assert by_name["glm-5.1"].litellm_id == "zai/glm-5.1"
+        # GLM default thinking mode inflates output — carries a larger budget so a
+        # verbose trace can't consume the whole budget and return an empty answer.
+        assert by_name["glm-5.1"].max_output_tokens >= 8192
+
+    def test_all_set_includes_glm51(self):
+        models, _ = build_model_registry("all")
+        assert "glm-5.1" in {m.name for m in models}
+
+    # ── GLM-5.2 via the direct-call extension (LiteLLM can't serve it) ──────
+    def test_glm52_routed_through_direct_provider(self):
+        """glm-5.2 is registered with provider="direct" — the routing trigger
+        that sends it to the direct REST client instead of LiteLLM. Its
+        litellm_id is the RAW provider id (no zai/ prefix; LiteLLM is bypassed)."""
+        for set_name in ("glm", "all"):
+            models, _ = build_model_registry(set_name)
+            by_name = {m.name: m for m in models}
+            assert "glm-5.2" in by_name, set_name
+            assert by_name["glm-5.2"].provider == "direct"
+            assert by_name["glm-5.2"].litellm_id == "glm-5.2"
+            # Same thinking-budget headroom as glm-5.1 (avoid empty-output).
+            assert by_name["glm-5.2"].max_output_tokens >= 8192
+
+    def test_glm51_stays_litellm_fallback(self):
+        """glm-5.1 (the LiteLLM-mapped stand-in) is retained as the default and
+        keeps provider="litellm" — both GLM rows are pin-selectable."""
+        models, default_model = build_model_registry("glm")
+        by_name = {m.name: m for m in models}
+        assert default_model == "glm-5.1"
+        assert by_name["glm-5.1"].provider == "litellm"
+        assert by_name["glm-5.1"].litellm_id == "zai/glm-5.1"
+
+    def test_all_other_models_default_to_litellm_provider(self):
+        """The new field is additive: every non-direct profile stays "litellm",
+        so flag-off / existing behavior is byte-identical."""
+        for set_name in ("openai", "anthropic", "deepseek", "all"):
+            models, _ = build_model_registry(set_name)
+            for m in models:
+                if m.name == "glm-5.2":
+                    continue
+                assert m.provider == "litellm", f"{set_name}:{m.name}"
+
+    def test_get_llm_returns_direct_chat_model_for_glm52(self, monkeypatch):
+        """get_llm branches on provider: a direct profile yields the boundary
+        shim (_DirectChatModel), a litellm profile yields ChatLiteLLM."""
+        from services.llm_config import _DirectChatModel
+
+        monkeypatch.setenv("GLM_API_KEY", "test-key")
+        models, _ = build_model_registry("glm")
+        by_name = {m.name: m for m in models}
+        svc = LLMService(config=AgentConfig(default_model="glm-5.1", models=models))
+        assert isinstance(svc.get_llm(by_name["glm-5.2"]), _DirectChatModel)
+        # glm-5.1 still goes through ChatLiteLLM (litellm path unchanged).
+        litellm_model = svc.get_llm(by_name["glm-5.1"])
+        assert type(litellm_model).__name__ == "ChatLiteLLM"
 
     # ── The "all" union meta-set (A/B UI-pin sweep — every model on /models) ──
     def test_all_set_lists_every_distinct_model_no_dupes(self):

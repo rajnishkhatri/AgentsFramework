@@ -479,7 +479,13 @@ export function ChatShell(props: {
 
   return (
     <div
-      className="min-h-dvh grid grid-rows-[auto_auto_1fr]"
+      // h-dvh (not min-h-dvh): the shell must be exactly viewport-tall so the
+      // `1fr` body row is BOUNDED and the chat <main>'s `overflow-y-auto`
+      // becomes the real scroll region. With min-h-dvh the page grows past the
+      // viewport as turns accumulate, the inner overflow never activates, and
+      // auto-scroll-to-bottom has nothing to scroll — the whole window scrolls
+      // instead, so new turns fall below the fold.
+      className="h-dvh grid grid-rows-[auto_auto_1fr]"
       {...(props.evalCase ? { "data-eval-case": props.evalCase } : {})}
     >
       {/* Header (spans the full width above the three columns) */}

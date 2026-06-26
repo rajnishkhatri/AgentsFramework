@@ -7,11 +7,20 @@ This is the only file in services/ allowed to import from langchain.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from services.base_config import AgentConfig, ModelProfile
 
 logger = logging.getLogger("services.llm_config")
+
+
+# litellm's ``zai`` provider (serving the GLM-5 family) reads its key from ``ZAI_API_KEY``,
+# but this repo's key is provided as ``GLM_API_KEY``. Bridge env→env once at import
+# (only when ZAI_API_KEY is unset) so a GLM pin resolves without a per-call api_key.
+# No secret is hardcoded; this just aliases one env var to another.
+if not os.environ.get("ZAI_API_KEY") and os.environ.get("GLM_API_KEY"):
+    os.environ["ZAI_API_KEY"] = os.environ["GLM_API_KEY"]
 
 
 # ── Central model registry (H2: the single source of truth for model names) ──
@@ -164,6 +173,59 @@ _DEEPSEEK_PROFILES: list[ModelProfile] = [
     *_OPENAI_PROFILES,
 ]
 
+# GLM-5 family (Zhipu/Z.ai, MIT) — the research's #1 tool-caller tier (τ²-bench
+# Telecom ~99%). Served direct via litellm's native ``zai`` provider, which reads
+# the key from ``ZAI_API_KEY`` (the GLM_API_KEY→ZAI_API_KEY env alias below bridges
+# the user's key name). Pin-only (never an Auto stack); reasoning tier. The default
+# thinking mode bills + consumes the completion budget like DeepSeek/gpt-5, so it
+# carries an 8192 budget to avoid empty-output-at-4096; the thinking-block content
+# shape is handled by ``response_text`` (same path as DeepSeek).
+#
+# Two GLM rows, both pin-only / reasoning tier:
+#
+#   glm-5.2 (provider="direct") — the research's GLM-5 reliability pick. litellm
+#     does NOT map ``zai/glm-5.2`` (latest mapped is glm-5.1): it falls through to
+#     a bare OpenAI passthrough with no model config, and the multi-turn ReAct
+#     tool loop sends a message array (assistant with empty content + tool_calls,
+#     then a tool message) that Z.ai's validator rejects with "messages parameter
+#     is illegal" — failing every multi-turn case. So glm-5.2 is routed through
+#     the direct-call extension (services/llm_providers/glm_direct.py), which
+#     POSTs Z.ai's OpenAI-compatible endpoint directly and sends that exact array
+#     verbatim. ``litellm_id`` here is the RAW provider model id (no ``zai/``
+#     prefix — litellm is bypassed).
+#
+#   glm-5.1 (provider="litellm") — retained as the litellm-mapped fallback /
+#     stand-in (supports_function_calling + supports_reasoning; completes the
+#     multi-turn round-trip cleanly). Default of the "glm" set so a flag-free pin
+#     stays on the known-good path; glm-5.2 is opt-in by pinning it explicitly.
+#
+# Both carry an 8192 budget: GLM's default thinking mode bills + consumes the
+# completion budget like DeepSeek/gpt-5, so 4096 risks empty-output. The
+# thinking-block content shape is collapsed by ``response_text`` (litellm path)
+# / the direct client's ``_content_text`` (direct path).
+_GLM_PROFILES: list[ModelProfile] = [
+    ModelProfile(
+        name="glm-5.2",
+        litellm_id="glm-5.2",
+        tier="reasoning",
+        context_window=200000,
+        cost_per_1k_input=0.0012,
+        cost_per_1k_output=0.0041,
+        max_output_tokens=8192,
+        provider="direct",
+    ),
+    ModelProfile(
+        name="glm-5.1",
+        litellm_id="zai/glm-5.1",
+        tier="reasoning",
+        context_window=200000,
+        cost_per_1k_input=0.0012,
+        cost_per_1k_output=0.0041,
+        max_output_tokens=8192,
+    ),
+    *_OPENAI_PROFILES,
+]
+
 def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
     """First-wins dedupe by ``name`` (LLMService._profiles keys by name, so a
     duplicate name would silently collapse; we keep the first to make the order
@@ -184,7 +246,7 @@ def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
 # this set stays cheap/predictable (first fast == gpt-4o-mini), but the intent
 # is that callers PIN a concrete model, never route Auto here.
 _ALL_PROFILES: list[ModelProfile] = _dedupe_by_name(
-    [*_OPENAI_PROFILES, *_ANTHROPIC_PROFILES, *_DEEPSEEK_PROFILES]
+    [*_OPENAI_PROFILES, *_ANTHROPIC_PROFILES, *_DEEPSEEK_PROFILES, *_GLM_PROFILES]
 )
 
 # Each entry: (ordered profile list, default_model name). The default is the
@@ -193,6 +255,7 @@ _MODEL_PROFILE_SETS: dict[str, tuple[list[ModelProfile], str]] = {
     "openai": (_OPENAI_PROFILES, "gpt-4o-mini"),
     "anthropic": (_ANTHROPIC_PROFILES, "claude-haiku-4-5"),
     "deepseek": (_DEEPSEEK_PROFILES, "deepseek-v4-flash"),
+    "glm": (_GLM_PROFILES, "glm-5.1"),
     "all": (_ALL_PROFILES, "gpt-4o-mini"),
 }
 
@@ -246,9 +309,190 @@ def response_text(response: Any) -> str:
     try:
         from langchain_core.messages import AIMessage
 
-        return AIMessage(content=content).text
+        # ``.text`` is a ``TextAccessor``, not a ``str``. Most providers tolerate
+        # it, but Z.ai (GLM-5.2) REJECTS a non-str assistant content echoed back
+        # into multi-turn tool history ("content[0].type: cannot be empty"), so
+        # coerce to an exact ``str`` here — the single normalization boundary.
+        return str(AIMessage(content=content).text)
     except Exception:  # pragma: no cover — defensive; never let normalization throw
         return str(content)
+
+
+class _DirectChatModel:
+    """Boundary shim: adapts a LangChain-free ``LLMProvider`` to the chat-model
+    surface the call sites use (``bind_tools`` + ``ainvoke`` → an ``AIMessage``).
+
+    The react loop is built on LangChain message objects (the LangGraph
+    ``messages`` channel and checkpointer persist ``AIMessage``/``ToolMessage``/
+    ``SystemMessage``), so a direct-call client cannot avoid LangChain at the
+    call sites. This shim confines the conversion to ONE place — the H2
+    boundary — so the direct provider stays pure and orchestration is unchanged:
+      * ``ainvoke`` serializes LangChain messages → OpenAI-shaped dicts (the
+        exact multi-turn array including assistant ``tool_calls`` + ``tool``
+        results), calls ``provider.acompletion``, and maps the returned
+        ``LLMCompletion`` back onto an ``AIMessage`` with ``usage_metadata`` /
+        ``response_metadata`` populated, mirroring ChatLiteLLM's return.
+      * ``bind_tools`` stores the schemas and returns the model (mirrors
+        ``ChatLiteLLM.bind_tools`` — chainable).
+    """
+
+    def __init__(
+        self,
+        provider: Any,
+        profile: ModelProfile,
+        tool_schemas: list[dict[str, Any]] | None = None,
+    ) -> None:
+        self._provider = provider
+        self._profile = profile
+        self._tool_schemas = tool_schemas
+
+    def bind_tools(self, tool_schemas: list[dict[str, Any]]) -> _DirectChatModel:
+        return _DirectChatModel(
+            provider=self._provider,
+            profile=self._profile,
+            tool_schemas=tool_schemas,
+        )
+
+    async def ainvoke(self, messages: list[Any], **kwargs: Any) -> Any:
+        from langchain_core.messages import AIMessage
+
+        provider_messages = _ensure_user_first(
+            [_lc_message_to_dict(m) for m in messages]
+        )
+        tools = _normalize_tool_schemas(self._tool_schemas)
+        # temperature=0 is the deterministic default unless the model rejects it.
+        temperature = 0 if self._profile.supports_temperature else None
+        completion = await self._provider.acompletion(
+            model=self._profile.litellm_id,
+            messages=provider_messages,
+            tools=tools,
+            temperature=temperature,
+            max_tokens=self._profile.max_output_tokens,
+        )
+        # LangChain's UsageMetadata is strict: it requires ``total_tokens``
+        # alongside input/output. The provider reports only prompt/completion, so
+        # derive the total here (the loop reads input_tokens/output_tokens for
+        # cost; total_tokens just satisfies the AIMessage schema).
+        usage_metadata = None
+        if completion.usage:
+            tin = completion.usage.get("input_tokens", 0)
+            tout = completion.usage.get("output_tokens", 0)
+            usage_metadata = {
+                "input_tokens": tin,
+                "output_tokens": tout,
+                "total_tokens": tin + tout,
+            }
+        return AIMessage(
+            content=completion.content,
+            tool_calls=completion.tool_calls,
+            usage_metadata=usage_metadata,
+            response_metadata=completion.raw or {},
+        )
+
+
+def _ensure_user_first(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Guarantee the first non-system message is ``user``.
+
+    Z.ai/GLM rejects a conversation whose first non-system turn is ``assistant``
+    ("messages parameter is illegal"). On the react-loop synthesis call the
+    history is ``system → assistant(tool_calls) → tool…`` (the original human
+    task input isn't in the continuation window), so this injects a minimal
+    ``user`` turn before the leading assistant turn. A well-formed history (a
+    ``user`` already precedes the first ``assistant``) is returned unchanged.
+    """
+    first_non_system = next(
+        (i for i, m in enumerate(messages) if m.get("role") != "system"), None
+    )
+    if first_non_system is None:
+        return messages
+    if messages[first_non_system].get("role") == "user":
+        return messages
+    # First non-system turn is assistant/tool → inject a user turn before it.
+    # The original task input isn't in this continuation window, but the tool
+    # results that follow carry the evidence; this directive tells the model to
+    # use them and answer (vs a bare "Continue." which made GLM report it had no
+    # task context). Generic enough to be task-agnostic at this boundary.
+    placeholder = {
+        "role": "user",
+        "content": (
+            "Use the tool results above to complete the task and give the final "
+            "answer."
+        ),
+    }
+    return messages[:first_non_system] + [placeholder] + messages[first_non_system:]
+
+
+def _normalize_tool_schemas(
+    schemas: list[dict[str, Any]] | None,
+) -> list[dict[str, Any]] | None:
+    """Wrap flat tool schemas in the OpenAI ``{"type":"function","function":...}``
+    envelope the provider expects.
+
+    The tool registry (services/tools/registry.py:get_schemas) emits the flat
+    LangChain shape ``{"name","description","parameters"}`` — ChatLiteLLM
+    normalizes it before sending, but the direct client talks raw OpenAI-style,
+    and Z.ai 400s without the envelope ("tools[0].type:type cannot be empty").
+    Idempotent: a schema already carrying ``type``/``function`` passes through.
+    """
+    if not schemas:
+        return None
+    out: list[dict[str, Any]] = []
+    for schema in schemas:
+        if "function" in schema or schema.get("type") == "function":
+            out.append(schema)
+            continue
+        out.append(
+            {
+                "type": "function",
+                "function": {
+                    "name": schema.get("name", ""),
+                    "description": schema.get("description", ""),
+                    "parameters": schema.get("parameters", {}),
+                },
+            }
+        )
+    return out
+
+
+def _lc_message_to_dict(message: Any) -> dict[str, Any]:
+    """Serialize a LangChain message to the OpenAI chat-completion dict shape.
+
+    Inverse of ``LLMService.invoke``'s dict→LC mapping. Handles the multi-turn
+    tool case LiteLLM mangled: an ``AIMessage`` carrying ``tool_calls`` becomes
+    an ``assistant`` turn with OpenAI-shaped ``tool_calls`` (function name +
+    JSON-string arguments), and a ``ToolMessage`` becomes a ``tool`` turn with
+    its ``tool_call_id``.
+    """
+    import json
+
+    from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
+
+    if isinstance(message, SystemMessage):
+        return {"role": "system", "content": response_text(message)}
+    if isinstance(message, ToolMessage):
+        return {
+            "role": "tool",
+            "tool_call_id": getattr(message, "tool_call_id", ""),
+            "content": response_text(message),
+        }
+    if isinstance(message, AIMessage):
+        out: dict[str, Any] = {"role": "assistant", "content": response_text(message)}
+        tool_calls = getattr(message, "tool_calls", None) or []
+        if tool_calls:
+            out["tool_calls"] = [
+                {
+                    "id": tc.get("id", ""),
+                    "type": "function",
+                    "function": {
+                        "name": tc.get("name", ""),
+                        "arguments": json.dumps(tc.get("args", {})),
+                    },
+                }
+                for tc in tool_calls
+            ]
+        return out
+    # Default: anything else (HumanMessage and bare strings) is a user turn.
+    return {"role": "user", "content": response_text(message)}
 
 
 class LLMService:
@@ -265,7 +509,23 @@ class LLMService:
         return self.get_profile(self._config.default_model)
 
     def get_llm(self, profile: ModelProfile) -> Any:
-        """Returns a ChatLiteLLM instance for the given profile."""
+        """Returns the chat model for a profile.
+
+        Branches on ``profile.provider`` (the routing trigger):
+          * ``"direct"``  — a model LiteLLM cannot serve (e.g. glm-5.2). Build the
+            direct REST client and wrap it in ``_DirectChatModel`` so the call
+            sites (.bind_tools / .ainvoke, reading .content/.tool_calls/usage)
+            are unchanged. This is the only place LangChain meets the direct
+            client; the client itself is LangChain-free.
+          * ``"litellm"`` — the default: LiteLLM's ChatLiteLLM wrapper (below).
+        """
+        if profile.provider == "direct":
+            from services.llm_providers import get_direct_provider
+
+            return _DirectChatModel(
+                provider=get_direct_provider(profile), profile=profile
+            )
+
         from langchain_litellm import ChatLiteLLM
 
         # NOTE: ``streaming=True`` here means token usage does NOT reach the
