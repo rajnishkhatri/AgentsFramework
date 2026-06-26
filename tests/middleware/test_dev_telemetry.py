@@ -248,12 +248,19 @@ def _build_dev_telemetry_client(
     mock_trace_service = MagicMock()
     cache_dir = Path("/tmp/agent-dev-test-cache")
 
-    build_components_return = (
-        MagicMock(),  # agent_config
-        MagicMock(),  # tool_registry
-        mock_registry,
-        cache_dir,
-        MagicMock(),  # goal_judge_config_reader
+    # build_dev_app now consumes the FULL AgentComponents (so the memory recall
+    # service + Phase-2 autocapture reach LangGraphRuntime). Mirror that shape.
+    from middleware.composition import AgentComponents
+
+    build_components_return = AgentComponents(
+        agent_config=MagicMock(),
+        tool_registry=MagicMock(),
+        agent_facts_registry=mock_registry,
+        cache_dir=cache_dir,
+        goal_judge_config_reader=MagicMock(),
+        settings=MagicMock(),
+        memory_service=MagicMock(),
+        memory_autocapture=MagicMock(),
     )
 
     env = {
@@ -274,7 +281,7 @@ def _build_dev_telemetry_client(
              return_value=MagicMock(),
          ), \
          patch(
-             "middleware.__main__._build_base_components",
+             "middleware.__main__._build_agent_components",
              return_value=build_components_return,
          ), \
          patch(
@@ -296,7 +303,7 @@ def _build_dev_telemetry_client(
         # Bypass the async lifespan by building the app and injecting state
         with patch.object(
             mod,
-            "_build_base_components",
+            "_build_agent_components",
             return_value=build_components_return,
         ), patch(
             "middleware.__main__._build_dev_telemetry_exporter",

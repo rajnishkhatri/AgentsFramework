@@ -291,25 +291,17 @@ def _build_agent_components() -> AgentComponents:
 
 def build_dev_app() -> FastAPI:
     """Build the local dev FastAPI app with permissive auth."""
-    (
-        agent_config,
-        tool_registry,
-        agent_facts_registry,
-        cache_dir,
-        goal_judge_reader,
-    ) = _build_base_components()
-    if _GCP_EXECUTION_ENV:
-        settings = AgentRuntimeSettings(agent_env="prod")
-    else:
-        settings = AgentRuntimeSettings(agent_env="local")
-    components = AgentComponents(
-        agent_config=agent_config,
-        tool_registry=tool_registry,
-        agent_facts_registry=agent_facts_registry,
-        cache_dir=cache_dir,
-        goal_judge_config_reader=goal_judge_reader,
-        settings=settings,
-    )
+    # Use the FULL composition-root components (not the slimmed 5-tuple): the
+    # memory recall service AND the Phase-2 autocapture service are built by
+    # build_components() and must be carried through to LangGraphRuntime, or the
+    # dev runner silently drops autocapture (autocapture=None) regardless of the
+    # MEMORY_AUTOCAPTURE_ENABLED flag.
+    components = _build_agent_components()
+    agent_config = components.agent_config
+    tool_registry = components.tool_registry
+    agent_facts_registry = components.agent_facts_registry
+    cache_dir = components.cache_dir
+    goal_judge_reader = components.goal_judge_config_reader
     build_graph = _load_graph_factory()
     dev_identity = agent_facts_registry.get(DEV_AGENT_ID)
     dev_telemetry = _build_dev_telemetry_exporter()
@@ -643,6 +635,21 @@ def build_dev_app() -> FastAPI:
         return {"cancelled": run_id}
 
     # ── threads ────────────────────────────────────────────────────
+    # Dev-only in-process thread store mirroring the prod Cloud SQL store's
+    # CONTRACT so click-to-resume actually works locally:
+    #   * honor the client-supplied thread_id (it MUST equal the checkpoint /
+    #     resume id, or loadThreadTurns can never match the row it created),
+    #   * derive `title` from metadata.first_message (sidebar label),
+    #   * persist turns via POST /threads/{id}/messages as {role, content}
+    #     pairs (the shape replayThread parses), and
+    #   * support PATCH (rename) + DELETE (archive) the sidebar calls.
+    # Ephemeral (cleared on restart) — enough for the chat history rail + resume.
+
+    def _thread_title(metadata: dict, fallback: str = "New chat") -> str:
+        first = str((metadata or {}).get("first_message", "")).strip()
+        if not first:
+            return fallback
+        return first[:60]
 
     @app.post("/threads")
     async def create_thread(
@@ -651,14 +658,22 @@ def build_dev_app() -> FastAPI:
     ):
         _require_bearer(request, authorization)
         body = await request.json()
-        thread_id = f"t-{uuid.uuid4().hex[:12]}"
+        # Use the client-supplied id when present (it is the resume/checkpoint
+        # id); only mint one when absent. A repeat create for the same id is
+        # idempotent (return the existing row) so a retry never wipes history.
+        thread_id = str(body.get("thread_id") or f"t-{uuid.uuid4().hex[:12]}")
+        existing = threads_store.get(thread_id)
+        if existing is not None:
+            return existing
         now = datetime.now(UTC).isoformat()
         thread = {
             "thread_id": thread_id,
             "user_id": body.get("user_id", DEV_USER_ID),
+            "title": _thread_title(body.get("metadata", {})),
             "messages": [],
             "created_at": now,
             "updated_at": now,
+            "archived_at": None,
         }
         threads_store[thread_id] = thread
         return thread
@@ -669,10 +684,10 @@ def build_dev_app() -> FastAPI:
         authorization: str | None = Header(default=None),
     ):
         _require_bearer(request, authorization)
-        return {
-            "threads": list(threads_store.values()),
-            "nextCursor": None,
-        }
+        # Hide soft-deleted (archived) threads from the sidebar, newest first.
+        live = [t for t in threads_store.values() if t.get("archived_at") is None]
+        live.sort(key=lambda t: t.get("updated_at", ""), reverse=True)
+        return {"threads": live, "nextCursor": None}
 
     @app.get("/threads/{thread_id}")
     async def get_thread(
@@ -685,6 +700,80 @@ def build_dev_app() -> FastAPI:
         if thread is None:
             raise HTTPException(status_code=404, detail="thread not found")
         return thread
+
+    @app.post("/threads/{thread_id}/messages")
+    async def append_turn(
+        request: Request,
+        thread_id: str,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        body = await request.json()
+        # Create-on-append: the durable row may not exist yet if create raced or
+        # was skipped — mirror the prod store's create-or-append so a turn is
+        # never lost (the BFF treats 404 as a silent miss otherwise).
+        thread = threads_store.get(thread_id)
+        if thread is None:
+            now = datetime.now(UTC).isoformat()
+            thread = {
+                "thread_id": thread_id,
+                "user_id": DEV_USER_ID,
+                "title": _thread_title({}, fallback=str(body.get("user", ""))[:60] or "New chat"),
+                "messages": [],
+                "created_at": now,
+                "updated_at": now,
+                "archived_at": None,
+            }
+            threads_store[thread_id] = thread
+        # Idempotent on turn_id: a retried POST must not double-append.
+        turn_id = str(body.get("turn_id", ""))
+        if turn_id and any(
+            m.get("turn_id") == turn_id for m in thread["messages"]
+        ):
+            return thread
+        user_text = str(body.get("user", ""))
+        assistant_text = str(body.get("assistant", ""))
+        if user_text:
+            thread["messages"].append(
+                {"role": "user", "content": user_text, "turn_id": turn_id}
+            )
+        if assistant_text:
+            thread["messages"].append(
+                {"role": "assistant", "content": assistant_text, "turn_id": turn_id}
+            )
+        thread["updated_at"] = datetime.now(UTC).isoformat()
+        return thread
+
+    @app.patch("/threads/{thread_id}")
+    async def rename_thread(
+        request: Request,
+        thread_id: str,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        thread = threads_store.get(thread_id)
+        if thread is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        body = await request.json()
+        title = str(body.get("title", "")).strip()
+        if title:
+            thread["title"] = title[:60]
+            thread["updated_at"] = datetime.now(UTC).isoformat()
+        return thread
+
+    @app.delete("/threads/{thread_id}")
+    async def delete_thread(
+        request: Request,
+        thread_id: str,
+        authorization: str | None = Header(default=None),
+    ):
+        _require_bearer(request, authorization)
+        thread = threads_store.get(thread_id)
+        if thread is None:
+            raise HTTPException(status_code=404, detail="thread not found")
+        # Soft-delete (tombstone) to match the prod archived_at semantics.
+        thread["archived_at"] = datetime.now(UTC).isoformat()
+        return {"thread_id": thread_id, "archived": True}
 
     return app
 

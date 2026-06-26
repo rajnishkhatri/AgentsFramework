@@ -317,6 +317,41 @@ def _apply_tool_output_thresholds(
     return compact, compact, True, offload_ref
 
 
+def _classify_tool_exception(exc: BaseException) -> str:
+    """Map a caught tool-execution exception to a telemetry ``error_class``.
+
+    Splits the formerly-conflated generic ``except Exception`` bucket so trace
+    analysis can tell apart the failure modes that share that catch site:
+
+      - ``validation`` — the LLM emitted args the tool's schema rejected
+        (Pydantic ``ValidationError``); a malformed-call failure, not a crash.
+      - ``timeout`` — the tool ran but exceeded its time budget
+        (``subprocess.TimeoutExpired`` / ``asyncio.TimeoutError`` / builtin
+        ``TimeoutError``).
+      - ``runtime`` — any other crash inside the executor.
+
+    Identity is matched structurally (by type/cause/name) so the classifier does
+    not force eager imports of pydantic/subprocess at module load.
+    """
+    chain: list[BaseException] = []
+    cursor: BaseException | None = exc
+    seen: set[int] = set()
+    while cursor is not None and id(cursor) not in seen:
+        seen.add(id(cursor))
+        chain.append(cursor)
+        cursor = cursor.__cause__ or cursor.__context__
+
+    for err in chain:
+        if isinstance(err, TimeoutError):
+            return "timeout"
+        names = {type(err).__name__} | {b.__name__ for b in type(err).__mro__}
+        if "TimeoutExpired" in names:
+            return "timeout"
+        if "ValidationError" in names:
+            return "validation"
+    return "runtime"
+
+
 def _execute_tools_impl(
     state: dict[str, Any],
     *,
@@ -425,6 +460,11 @@ def _execute_tools_impl(
             })
             continue
 
+        # Per-call guard: the raise branches below record their own ERROR_OCCURRED
+        # and set ok=False, so the trailing ``not ok`` block must not record a
+        # SECOND, conflicting (tool_reported) carrier for the same failure. Exactly
+        # one error carrier per failure is the governance audit's cardinal rule.
+        error_already_recorded = False
         try:
             execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
         except KeyError:
@@ -443,9 +483,13 @@ def _execute_tools_impl(
                     "source": "tool_execution",
                     "tool": tool_name,
                     "error": f"Unknown tool '{tool_name}'",
+                    # error_class discriminates the failure mode for trace analysis:
+                    # a hallucinated/absent tool name vs a real execution failure.
+                    "error_class": "unknown_tool",
                 },
             ))
             error_recorded = True
+            error_already_recorded = True
         except Exception as exc:
             execution_result = ToolExecutionResult(
                 output=f"Error: Tool '{tool_name}' failed: {exc}",
@@ -462,9 +506,13 @@ def _execute_tools_impl(
                     "source": "tool_execution",
                     "tool": tool_name,
                     "error": str(exc),
+                    # Split the formerly-conflated generic bucket: malformed LLM args
+                    # (Pydantic ValidationError) vs a timeout vs any other crash.
+                    "error_class": _classify_tool_exception(exc),
                 },
             ))
             error_recorded = True
+            error_already_recorded = True
 
         black_box.record(TraceEvent(
             event_id=str(uuid.uuid4()),
@@ -475,7 +523,7 @@ def _execute_tools_impl(
             details={"tool": tool_name, "args": tool_args, "cached": False, "tool_call_id": tool_id},
         ))
 
-        if not execution_result.ok:
+        if not execution_result.ok and not error_already_recorded:
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
@@ -486,6 +534,9 @@ def _execute_tools_impl(
                     "source": "tool_execution",
                     "tool": tool_name,
                     "error": execution_result.error or "tool returned failure",
+                    # The executor reported failure via its envelope (no raise):
+                    # the tool ran but its own logic rejected the request.
+                    "error_class": "tool_reported",
                 },
             ))
             error_recorded = True

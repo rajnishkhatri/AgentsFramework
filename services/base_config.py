@@ -21,6 +21,16 @@ class ModelProfile(BaseModel):
     cost_per_1k_input: float
     cost_per_1k_output: float
     median_latency_ms: float = 1000
+    # Routing trigger for the LLM factory (services/llm_config.py:get_llm).
+    #   "litellm" — served through LiteLLM's ChatLiteLLM wrapper (the default;
+    #               every existing profile keeps this, byte-identical behavior).
+    #   "direct"  — LiteLLM cannot serve this model (e.g. zai/glm-5.2 is unmapped
+    #               and the multi-turn tool loop fails Z.ai's validator), so the
+    #               factory routes it through a direct-call provider client in
+    #               services/llm_providers/ that hits the provider REST API. For
+    #               a "direct" profile, ``litellm_id`` carries the RAW provider
+    #               model id (no ``zai/`` prefix — LiteLLM is bypassed).
+    provider: Literal["litellm", "direct"] = "litellm"
     # Some models reject an explicit ``temperature`` request parameter:
     # claude-opus-4-8 and OpenAI's reasoning models return a 400
     # (``temperature is deprecated for this model``) when one is sent, which the
