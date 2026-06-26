@@ -31,6 +31,7 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
+from components.answer_verifiers import verify_answer
 from components.schemas import GENERIC_TAIL_CONDITION, GoalVerdict
 
 if TYPE_CHECKING:
@@ -95,6 +96,27 @@ class GoalJudge:
         Raises on an unparseable response so the caller can fall back to the
         deterministic heuristic (the judge is best-effort, never load-bearing).
         """
+        # Correctness cascade (priority-cascade pattern): for tasks with a
+        # checkable answer, a deterministic verifier owns the goal_met verdict —
+        # the LLM rubric grades process-presence and was observed to score a
+        # REVERSED topological sort 1.0 while failing a correct one for not
+        # echoing it. ``verify_answer`` returns a bool only when it can validate
+        # the result against the task's own constraints; otherwise ``None`` and
+        # we fall through to the LLM judge (never averaging the two — the
+        # deterministic verdict is authoritative when it fires).
+        verified = verify_answer(task_input, final_answer, evidence)
+        if verified is not None:
+            return GoalVerdict(
+                goal_met=verified,
+                criteria_met=1.0 if verified else 0.0,
+                rationale=(
+                    "Deterministic verifier: the produced result "
+                    + ("satisfies" if verified else "violates")
+                    + " the task's stated constraints."
+                ),
+                verifier_source="deterministic",
+            )
+
         # Append the generic consistency criterion at JUDGE-TIME (it grades the
         # final answer, so it belongs here — not in the plan-time checklist).
         # Idempotent: callers that already include it are not double-scored.

@@ -185,6 +185,13 @@ class GoalVerdict(BaseModel):
     graceful_failure: bool = False
     partial_fraction: float = 0.0
     failure_mode: str | None = None
+    verifier_source: str | None = None
+    """Provenance of ``goal_met`` when a deterministic verifier owned the verdict
+    (e.g. ``"deterministic"`` for a topological-sort correctness check). ``None``
+    means the LLM rubric produced the verdict. TELEMETRY-ONLY, like
+    ``criteria_met_derived`` — calibration stratifies on it; it MUST NOT be wired
+    into gating. Defaults to ``None`` so a verdict that omits the key is
+    unchanged (v1 / LLM-path back-compat)."""
 
     @field_validator("failure_mode", mode="before")
     @classmethod
