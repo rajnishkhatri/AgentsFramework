@@ -16,6 +16,42 @@ tags: [plan, guardrails, shell, hitl, human-in-the-loop, approval, severity, ag-
 
 ---
 
+# IMPLEMENTATION STATUS (2026-06-27)
+
+**Status: `implemented` — shadow-first, all flags OFF, 6 TDD layers green, uncommitted.**
+Reviewed against `docs/reviews/TDD_AGENTS_MD_REVIEW.md` (TAP-1…TAP-4, R2–R4 all pass).
+
+| Layer | Artifact | State |
+|---|---|---|
+| L2 classifier | `services/governance/shell_severity.py` (`classify_severity` → `SeverityVerdict`) | ✅ built, 42 tests |
+| L2 arch conformance | `tests/architecture/test_shell_severity_layer.py` | ✅ 4 tests |
+| L4 gate (pure) | `orchestration/shell_approval_gate.py` (`decide_shell_approval`) | ✅ built, 13 tests |
+| L4 seam wiring | `orchestration/react_loop.py::_gate_shell_command` (+ shell branch in `_execute_tools_impl`) | ✅ built, 4 wiring tests |
+| Config flags | `services/base_config.py` (`shell_approval_enabled/_enforce/_severity_threshold/_timeout_seconds`) | ✅ built |
+| Adapter ring | `ApprovalRequested` (14th DomainEvent) + `to_ag_ui` Custom `approval_requested`; `openapi.yaml` + `wire-types.ts` regen | ✅ built |
+| Telemetry | `ApprovalRequested` → `telemetry_bridge._SKIPPED_TYPES` (decision already on the carrier) | ✅ built |
+| Frontend card | `frontend/components/tools/ShellApprovalCard.tsx` + `ApprovalRequestedEventSchema` + translator branch | ✅ built (presentational, 5 card + 3 translator tests) |
+
+**Verification run:** 4062 backend pass; frontend card+translator green. The only frontend reds
+(`scripts/check_axe_a11y.test.ts`, `e2e/load-profile.test.ts`) are pre-existing/environmental and
+NOT in this diff.
+
+## Remaining work (NOT done — the live frontier)
+
+1. **CopilotKit `useHumanInTheLoop` registration** — bind the card's `onResolve(approve|edit|reject)`
+   to `Command(resume=...)` at the registration layer (mirror the `lib/adapters/tool_renderer/`
+   split; the card itself is deliberately CopilotKit-free). This is the last wire between the
+   rendered card and the paused interrupt.
+2. **Composition-root resume path** — confirm `_gate_shell_command`'s lazy `interrupt()` surfaces an
+   `ApprovalRequested` AG-UI event end-to-end and that `Command(resume=decision)` re-enters the same
+   thread (the `langgraph_runtime._resume` path the plan flagged as ~80% wired). Interrupt requires a
+   checkpointer-backed compiled graph — not exercised by the current unit/sim tests.
+3. **Live-LLM probes** (reuse Part-1 harness): P-SHELL-low / -ask / -edit / -deny / -timeout, then
+   analyze `GUARDRAIL_CHECKED` carriers via the Part-1 analyzer + `governance-trace-audit` skill.
+4. **Commit** — branch is `fix/tool-calling-error-taxonomy-repair`; nothing committed yet.
+
+---
+
 # PART A — Brainstorm + Trade-off
 
 ## Context / the need
