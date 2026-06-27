@@ -592,7 +592,7 @@ class TestEvaluateTaskOutcome:
             tool_results=[{"tool_output": "total population of the three cities is 42"}],
         )
         assert result.outcome == "failed"  # empty answer is never a success
-        assert result.goal_met is not True, (
+        assert result.goal_met is False, (
             "an empty final answer must not report goal_met=True (corrupt success)"
         )
 
