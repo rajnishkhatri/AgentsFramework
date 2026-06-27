@@ -64,6 +64,13 @@ class AgentConfig(BaseModel):
     delegation_max_calls_per_task: int = 4
     no_progress_repeat_threshold: int = 3
     no_progress_hard_limit: int = 5
+    # F2 repair seam: when a tool call fails with error_class="validation"
+    # (malformed args the validator rejected — e.g. a path outside the workspace
+    # boundary, a command not in the allowlist), append a model-facing corrective
+    # hint to the ToolMessage so the next turn can self-repair instead of looping
+    # on syntactic variants and giving up. Pure enrichment of an already-failing
+    # tool's result message; no control-flow change, so on by default.
+    tool_repair_hint_enabled: bool = True
     # I2: enable the task-adaptive LLM-as-judge to overlay goal_met/criteria_met
     # onto TaskOutcome. Off by default so CI stays L2-pure (no live LLM); the
     # deterministic keyword heuristic is the fallback when disabled.

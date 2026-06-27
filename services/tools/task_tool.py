@@ -99,6 +99,10 @@ def _with_reason_error(code: ReasonCode, msg: str, trace_event: dict[str, Any]) 
         output=f"Error: {payload}",
         ok=False,
         error=code,
+        # Delegation/handoff gate denials are policy/ACL decisions, not a tool
+        # that ran-and-failed nor malformed args — surface a distinct class so
+        # they don't collapse into the generic tool_reported bucket (F1).
+        error_class="gating",
         metadata={"trace_records": [trace_event]},
     )
 
@@ -119,7 +123,9 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
     try:
         validated = TaskToolInput(**args)
     except Exception as exc:
-        return ToolExecutionResult(output=f"Error: {exc}", ok=False, error=str(exc))
+        return ToolExecutionResult(
+            output=f"Error: {exc}", ok=False, error=str(exc), error_class="validation"
+        )
 
     state = validated.state or {}
     workflow_id = str(state.get("workflow_id", "wf"))

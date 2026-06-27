@@ -16,8 +16,21 @@ from services.tools.file_tools import StateFileToolInput, execute_state_file_too
 from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
 from services.tools.registry import ToolExecutionResult
 from services.tools.shell import ShellToolInput, ShellToolOutput, execute_shell
-from services.tools.task_tool import TaskToolInput
-from services.tools.web_search import WebSearchInput, execute_web_search
+from services.tools.task_tool import TaskToolInput, execute_task_tool
+from services.tools.think_tool import execute_think_tool
+from services.tools.todo_tools import execute_state_todo_tool
+from services.tools.web_search import (
+    WebSearchInput,
+    build_web_search_executor,
+    execute_web_search,
+)
+from services.tools.search.stub import StubProvider
+
+
+def execute_web_search_typed(args):
+    """Typed web_search executor (the stub ``execute_web_search`` returns a bare
+    string for backward compat; F1b needs the ``ToolExecutionResult`` envelope)."""
+    return build_web_search_executor(StubProvider())(args)
 
 
 class TestShellToolInput:
@@ -120,8 +133,14 @@ class TestExecuteShell:
 
     def test_blocked_command_returns_error(self):
         result = execute_shell({"command": "rm -rf /", "timeout": 5})
-        assert isinstance(result, str)
-        assert "error" in result.lower() or "blocked" in result.lower() or "Blocked" in result
+        # F1 un-mask: a blocked/disallowed command is an arg-validation failure
+        # and now surfaces a typed result carrying error_class="validation"
+        # rather than a bare "Error:" string (which would collapse to
+        # tool_reported at the recording site).
+        assert isinstance(result, ToolExecutionResult)
+        assert result.ok is False
+        assert result.error_class == "validation"
+        assert "error" in result.output.lower() or "blocked" in result.output.lower()
 
 
 class TestFileIOInput:
@@ -175,6 +194,40 @@ class TestExecuteFileIO:
             "content": "written content",
         })
         assert (ws / "output.txt").read_text() == "written content"
+
+    def test_boundary_violation_surfaces_validation_class(self, tmp_path, monkeypatch):
+        """F1 un-mask: a malformed-args failure (path outside the workspace
+        boundary) must surface as a typed ``validation`` result, not a generic
+        ``"Error:"`` string that the registry coerces to ``tool_reported``. The
+        arg-shape signal must survive the tool boundary."""
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        monkeypatch.setenv("WORKSPACE_DIR", str(ws))
+        result = execute_file_io({
+            "path": "/workspace/nope.txt",  # literal /workspace, outside the real boundary
+            "operation": "read",
+        })
+        assert isinstance(result, ToolExecutionResult)
+        assert result.ok is False
+        assert result.error_class == "validation"
+
+    def test_runtime_read_error_stays_tool_reported(self, tmp_path, monkeypatch):
+        """A genuine runtime failure (file does not exist) is NOT malformed args —
+        it must stay unclassified (-> tool_reported), so the fix does not
+        over-reclassify ordinary tool-logic failures as validation."""
+        ws = tmp_path / "workspace"
+        ws.mkdir()
+        monkeypatch.setenv("WORKSPACE_DIR", str(ws))
+        result = execute_file_io({
+            "path": str(ws / "missing.txt"),  # inside boundary, but absent
+            "operation": "read",
+        })
+        # A plain "Error:" string (coerced by the registry to ok=False,
+        # error_class=None -> tool_reported). Not a validation result.
+        if isinstance(result, ToolExecutionResult):
+            assert result.error_class != "validation"
+        else:
+            assert isinstance(result, str) and result.startswith("Error:")
 
 
 class TestWebSearch:
@@ -295,3 +348,58 @@ class TestToolRegistry:
         props = schemas[0]["parameters"]["properties"]
         assert "_state" not in props
         assert "_delegate_dispatch" not in props
+
+
+class TestF1bValidationUnmaskingAcrossTools:
+    """F1 un-mask, cross-tool: a malformed-args failure in ANY self-handling
+    tool must surface ``error_class="validation"`` on the returned envelope,
+    not collapse to a bare ``"Error:"`` string (-> tool_reported). The corpus
+    (§6.3) confirmed the masking fired on shell, state_file, think, todo, task,
+    and web_search — this pins the contract for each.
+
+    Failure-paths-first (TAP-4): every row is a rejection branch.
+    """
+
+    @pytest.mark.parametrize(
+        "executor,bad_args",
+        [
+            # shell: command not in the allowlist
+            (execute_shell, {"command": "rm -rf /", "timeout": 5}),
+            # state_file: invalid operation literal
+            (execute_state_file_tool, {"operation": "delete", "file_path": "x"}),
+            # think: thought violates min_length
+            (execute_think_tool, {"thought": ""}),
+            # todo: invalid operation literal
+            (execute_state_todo_tool, {"operation": "nuke"}),
+            # task: missing required subagent_type / operation
+            (execute_task_tool, {"operation": "bogus_op"}),
+            # web_search: missing required query
+            (execute_web_search_typed, {}),
+        ],
+    )
+    def test_malformed_args_surface_validation_class(self, executor, bad_args):
+        result = executor(bad_args)
+        assert isinstance(result, ToolExecutionResult), (
+            f"{executor.__name__} masked the error as a non-typed result"
+        )
+        assert result.ok is False
+        assert result.error_class == "validation", (
+            f"{executor.__name__}: expected error_class='validation', "
+            f"got {result.error_class!r}"
+        )
+
+    def test_state_file_required_arg_is_validation(self):
+        # A missing required arg (well-constructed schema, but file_path absent
+        # for a read) is also malformed-args, not a tool-logic failure.
+        result = execute_state_file_tool({"operation": "read"})
+        assert isinstance(result, ToolExecutionResult)
+        assert result.error_class == "validation"
+
+    def test_state_file_not_found_stays_tool_reported(self):
+        # A well-formed read of an absent virtual file is a genuine tool-reported
+        # failure, NOT validation — the fix must not over-reclassify.
+        result = execute_state_file_tool(
+            {"operation": "read", "file_path": "ghost.txt", "_state": {"files": {}}}
+        )
+        assert isinstance(result, ToolExecutionResult)
+        assert result.error_class != "validation"

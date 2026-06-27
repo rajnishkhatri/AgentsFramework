@@ -8,6 +8,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from services.tools.registry import ToolExecutionResult
+
 
 class FileIOInput(BaseModel):
     path: str
@@ -30,12 +32,25 @@ class FileIOOutput(BaseModel):
     success: bool
 
 
-def execute_file_io(args: dict[str, Any]) -> str:
-    """Execute a validated file I/O operation."""
+def execute_file_io(args: dict[str, Any]) -> str | ToolExecutionResult:
+    """Execute a validated file I/O operation.
+
+    On a malformed-args / boundary-violation failure the executor surfaces a
+    *typed* ``ToolExecutionResult`` carrying ``error_class="validation"`` rather
+    than masking it as a generic ``"Error:"`` string (F1 un-mask): the registry
+    coerces a bare ``"Error:"`` string to ``error_class=None`` -> ``tool_reported``,
+    which would destroy the arg-shape signal at the tool boundary. Genuine runtime
+    failures (e.g. reading an absent file) stay plain strings -> ``tool_reported``.
+    """
     try:
         validated = FileIOInput(**args)
     except Exception as e:
-        return f"Error: {e}"
+        return ToolExecutionResult(
+            output=f"Error: {e}",
+            ok=False,
+            error=str(e),
+            error_class="validation",
+        )
 
     try:
         p = Path(validated.path)

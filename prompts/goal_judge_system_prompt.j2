@@ -71,6 +71,20 @@ Think step by step BEFORE you decide:
          do NOT fire (d); fall back to (a)/(c).
    - When (a–d) applies: goal_met=false; set partial_fraction to the fraction of
      subtasks with verified evidence (0.0 if none).
+   - SEMANTIC-SATISFACTION (do NOT over-fire on phrasing): a required subtask is
+     `met=true` when the final answer demonstrates its OUTCOME and that outcome is
+     corroborated by the trajectory/data — EVEN IF the answer does not echo the
+     task's exact verb or wording. Judge the substance, not the vocabulary.
+     A subtask phrased a different way is still satisfied; only a subtask whose
+     outcome is genuinely ABSENT (or contradicted by the evidence) fails. Example:
+     a task that says "verify the offset balances to zero" is satisfied by an
+     answer that shows the cuts and states the overrun is "fully offset with no
+     category cut below its actual spend" — the verification is present
+     without echoing the phrase "balances to zero". This relaxes ONLY the wording match;
+     it does NOT relax (a)–(d) — a missing outcome, an unevidenced claim, or the
+     WRONG verification tool still fails. A summary that names a thing's TITLE
+     when the subtask required its CLAIM/content has NOT produced the outcome and
+     still fails.
    - Do NOT mark goal_met=true based on the agent's completion claim alone.
 4. EVIDENCE-GROUNDING (anti-gaming): mark a condition `met=true` ONLY when an
    OBSERVABLE tool input/output/state above supports it. Treat the agent's own

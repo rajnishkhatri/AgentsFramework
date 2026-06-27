@@ -94,6 +94,7 @@ def build_web_search_executor(
                 output=f"Error: Invalid input: {e}",
                 ok=False,
                 error=f"validation_error: {e}",
+                error_class="validation",
             )
 
         try:
@@ -110,10 +111,13 @@ def build_web_search_executor(
                 error=f"empty_results: {exc}",
             )
         except WebSearchError as exc:
+            # Backend outage / provider fault is environmental, not the model's
+            # malformed call nor a crash in our code.
             return ToolExecutionResult(
                 output=f"Error: {exc}",
                 ok=False,
                 error=f"provider_error: {exc}",
+                error_class="provider_error",
             )
         except Exception as exc:
             logger.exception("Unexpected error in web_search provider")
@@ -121,6 +125,7 @@ def build_web_search_executor(
                 output=f"Error: unexpected failure: {exc}",
                 ok=False,
                 error=f"unexpected: {exc}",
+                error_class="runtime",
             )
 
         sanitized_flag = False

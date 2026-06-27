@@ -341,6 +341,15 @@ def evaluate_task_outcome(
         # ``outcome``: keyword overlap is too fragile to gate the process
         # verdict (TAP-3 determinism theater). ``None`` when no conditions.
         goal_met = criteria_met >= 0.5
+        # F6 / A9 corrupt-success guard: criteria_met is scored over answer +
+        # trajectory text, so tool outputs alone can satisfy the keyword overlap
+        # while the user-facing answer is EMPTY. A goal cannot be "met" if nothing
+        # was delivered — force goal_met False (and zero the criteria) when the
+        # final answer is empty, so the trace never reports a corrupt success.
+        if not answer_text:
+            goal_met = False
+            criteria_met = 0.0
+            unmet = list(success_conditions)
 
     composite_score = (
         0.20 * termination_score

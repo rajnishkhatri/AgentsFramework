@@ -51,7 +51,16 @@ def execute_shell(args: dict[str, Any]) -> ToolExecutionResult | str:
     try:
         validated = ShellToolInput(**args)
     except Exception as e:
-        return f"Error: {e}"
+        # F1 un-mask: allowlist / metacharacter / blocked-arg rejections are
+        # arg-validation failures (the model sent a command the validator
+        # rejected), not a tool that ran-and-failed. Surface error_class so the
+        # carrier reads `validation`, not the generic `tool_reported`.
+        return ToolExecutionResult(
+            output=f"Error: {e}",
+            ok=False,
+            error=str(e),
+            error_class="validation",
+        )
 
     try:
         argv = shlex.split(validated.command)
@@ -79,10 +88,13 @@ def execute_shell(args: dict[str, Any]) -> ToolExecutionResult | str:
         payload = ShellToolOutput(
             stdout="", stderr="Command timed out", exit_code=-1
         ).model_dump_json()
+        # The tool ran but exceeded its time budget — a distinct class from a
+        # malformed command (validation) or a non-zero exit (tool_reported).
         return ToolExecutionResult(
             output=payload,
             ok=False,
             error="Command timed out",
+            error_class="timeout",
         )
     except Exception as e:
         payload = ShellToolOutput(stdout="", stderr=str(e), exit_code=-1).model_dump_json()

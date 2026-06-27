@@ -26,6 +26,7 @@ class ToolExecutionResult:
     output: str
     ok: bool = True
     error: str | None = None
+    error_class: str | None = None
     state_delta: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
 
@@ -36,6 +37,10 @@ class ToolRegistry:
 
     def has(self, tool_name: str) -> bool:
         return tool_name in self._tools
+
+    def tool_names(self) -> list[str]:
+        """The registered tool names (for unknown-tool nudges / introspection)."""
+        return list(self._tools.keys())
 
     def execute(self, tool_name: str, tool_args: dict[str, Any]) -> str:
         """Backward-compatible execution path returning text output only."""

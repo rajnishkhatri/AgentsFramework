@@ -27,7 +27,10 @@ def execute_state_file_tool(args: dict[str, Any]) -> ToolExecutionResult:
     try:
         validated = StateFileToolInput(**args)
     except Exception as exc:
-        return ToolExecutionResult(output=f"Error: {exc}", ok=False, error=str(exc))
+        # F1 un-mask: a schema-construction failure is malformed args.
+        return ToolExecutionResult(
+            output=f"Error: {exc}", ok=False, error=str(exc), error_class="validation"
+        )
 
     files = validated.state.get("files", {}) or {}
     if not isinstance(files, dict):
@@ -40,7 +43,9 @@ def execute_state_file_tool(args: dict[str, Any]) -> ToolExecutionResult:
     if validated.operation == "read":
         if not validated.file_path:
             err = "file_path is required for read operation"
-            return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err)
+            return ToolExecutionResult(
+                output=f"Error: {err}", ok=False, error=err, error_class="validation"
+            )
         if validated.file_path not in files:
             err = f"File '{validated.file_path}' not found"
             return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err)
@@ -49,7 +54,9 @@ def execute_state_file_tool(args: dict[str, Any]) -> ToolExecutionResult:
     if validated.operation == "write":
         if not validated.file_path:
             err = "file_path is required for write operation"
-            return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err)
+            return ToolExecutionResult(
+                output=f"Error: {err}", ok=False, error=err, error_class="validation"
+            )
         return ToolExecutionResult(
             output=f"Updated virtual file {validated.file_path}",
             ok=True,

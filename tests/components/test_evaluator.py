@@ -575,6 +575,27 @@ class TestEvaluateTaskOutcome:
         assert result.outcome == "failed"
         assert result.termination_clean is False
 
+    def test_empty_answer_cannot_meet_goal_even_with_satisfying_trajectory(self):
+        """F6 / A9 corrupt-success: ``goal_met`` is scored over combined answer +
+        trajectory text, so a run that produced an EMPTY user-facing answer but
+        whose tool outputs happen to contain the condition keywords would score
+        ``goal_met=True`` — a goal 'met' with nothing delivered to the user.
+        An empty final answer must never report goal_met=True."""
+        from components.evaluator import evaluate_task_outcome
+
+        result = evaluate_task_outcome(
+            final_answer="",  # nothing delivered to the user
+            success_conditions=["Report the total population of the three cities"],
+            plan_steps=[],
+            termination_reason="success",
+            # trajectory text alone satisfies the keyword overlap
+            tool_results=[{"tool_output": "total population of the three cities is 42"}],
+        )
+        assert result.outcome == "failed"  # empty answer is never a success
+        assert result.goal_met is not True, (
+            "an empty final answer must not report goal_met=True (corrupt success)"
+        )
+
     def test_budget_exceeded_with_answer_is_partial(self):
         from components.evaluator import evaluate_task_outcome
 
