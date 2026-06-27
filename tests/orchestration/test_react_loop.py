@@ -735,6 +735,140 @@ class TestErrorOccurredEmission:
         assert errors[0]["details"]["source"] == "llm_call"
 
 
+class TestF7UserMessagePersistence:
+    """F7: the original user task message must be present on EVERY multi-turn LLM
+    call, and an LLM-invocation error must NOT be persisted as an assistant turn.
+
+    Both are structural runtime defects (latent on lenient providers, fatal on
+    Z.ai/GLM's strict validator). These are simulation-driven (L4): a mocked LLM
+    captures the message list it receives on each turn — no live provider.
+    """
+
+    @staticmethod
+    def _capturing_llm(responses):
+        """A mock ChatLiteLLM whose ainvoke records each received message list and
+        returns the next scripted response (last response repeats)."""
+        captured: list[list] = []
+        seq = list(responses)
+
+        async def _ainvoke(messages, *a, **k):
+            captured.append(list(messages))
+            return seq[min(len(captured) - 1, len(seq) - 1)]
+
+        return _ainvoke, captured
+
+    @pytest.mark.asyncio
+    async def test_user_message_present_on_second_turn(self, tmp_path):
+        from langchain_core.messages import HumanMessage
+
+        # Turn 1: a tool call (forces a 2nd LLM turn). Turn 2: final answer.
+        turn1 = MagicMock()
+        turn1.content = ""
+        turn1.tool_calls = [
+            {"name": "think", "args": {"thought": "considering"}, "id": "c1", "type": "tool_call"}
+        ]
+        turn1.usage_metadata = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+        turn1.response_metadata = {"model_name": "gpt-4o-mini"}
+
+        turn2 = MagicMock()
+        turn2.content = "FINAL ANSWER: done."
+        turn2.tool_calls = []
+        turn2.usage_metadata = {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
+        turn2.response_metadata = {"model_name": "gpt-4o-mini"}
+
+        ainvoke, captured = self._capturing_llm([turn1, turn2])
+        agent_config = AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(side_effect=ainvoke)
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(agent_config=agent_config, cache_dir=tmp_path / "cache")
+            await graph.ainvoke(
+                {
+                    "task_id": "t-f7",
+                    "task_input": "REMEMBER_ME: what is 2+2?",
+                    "messages": [],
+                    "workflow_id": "wf-f7-001",
+                },
+                config={"configurable": {"task_id": "t-f7", "user_id": "u1"}},
+            )
+
+        assert len(captured) >= 2, "expected at least two LLM turns"
+        second_turn_msgs = captured[1]
+        human_texts = [
+            m.content for m in second_turn_msgs if isinstance(m, HumanMessage)
+        ]
+        assert any("REMEMBER_ME" in str(t) for t in human_texts), (
+            "the original user task message must be present on turn 2 "
+            f"(got message types: {[type(m).__name__ for m in second_turn_msgs]})"
+        )
+
+    @pytest.mark.asyncio
+    async def test_llm_error_not_persisted_as_assistant_turn(self, tmp_path):
+        """A MID-CONVERSATION LLM-invocation error must record ERROR_OCCURRED but
+        must NOT pile an assistant message carrying the error text into the
+        persisted history (the consecutive-assistant cascade that turns one
+        rejection into a terminal loop). Seeded with prior turns so this exercises
+        the turn-≥2 path where the cascade actually bites."""
+        from langchain_core.messages import AIMessage as LCAIMessage, ToolMessage
+
+        agent_config = AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
+
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            MockLLM.return_value.ainvoke = AsyncMock(
+                side_effect=Exception("messages parameter is illegal")
+            )
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(agent_config=agent_config, cache_dir=tmp_path / "cache")
+            # Prior history present -> this is a mid-conversation (turn >=2) call.
+            prior = [
+                LCAIMessage(content="", tool_calls=[
+                    {"name": "think", "args": {"thought": "x"}, "id": "p1", "type": "tool_call"}
+                ]),
+                ToolMessage(content="ok", tool_call_id="p1"),
+            ]
+            result = await graph.ainvoke(
+                {
+                    "task_id": "t-f7b",
+                    "task_input": "Hello",
+                    "messages": prior,
+                    "workflow_id": "wf-f7-002",
+                },
+                config={"configurable": {"task_id": "t-f7b", "user_id": "u1"}},
+            )
+
+        # The error carrier still fires.
+        events = _read_bb_events(tmp_path / "cache" / "black_box_recordings", "wf-f7-002")
+        errors = _events_of_type(events, EventType.ERROR_OCCURRED.value)
+        assert any(e["details"].get("source") == "llm_call" for e in errors)
+
+        # No persisted assistant message carries the raw invocation-error text.
+        persisted = result.get("messages", [])
+        ai_error_turns = [
+            m for m in persisted
+            if isinstance(m, LCAIMessage) and "messages parameter is illegal" in str(m.content)
+        ]
+        assert not ai_error_turns, (
+            "LLM-invocation error text must not be persisted as an assistant turn"
+        )
+
+
 class TestModelResolutionHonesty:
     """F8 (execute-vs-record honesty): call_llm resolves the profile by name and,
     when it must fall back to models[0] (the requested name isn't a registered

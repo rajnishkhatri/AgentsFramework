@@ -235,6 +235,24 @@ deficits) is **~88 rows**; realistic with reasonable cell-overlap is **~150 rows
   R-6 grader-bug residue (12 of 22 disagreements); that bug is fixed, so wave 2 α should
   land well above 0.8.
 * Adjudicate any wave-2 disagreements with `apply_adjudication`.
+* **Rater-rubric ruling to make (carried from the L2/L3 seed, 2026-06-26):**
+  `GEN-L3-multi-hop-synthesis-14` / item `df252d51` — both wave-1 raters graded the
+  haiku answer `correct`, but the answer states the most-cited paper's **title**
+  ("Foundations of locality"), not its **key claim** ("Temporal locality dominates
+  real workloads", which the task asked to summarise and which sits in `paper-3.txt`).
+  GoalJudge correctly failed it; the lenient gold label is the disagreement, not the
+  judge. Wave 2 should re-rule whether the rubric requires the claim/content (not just
+  the title) for "summarise THAT paper's key claim" tasks, and re-label accordingly.
+  Do NOT relax the judge to match the lenient label. See memory
+  `goaljudge-residual-fp-root-cause`.
+* **Second lenient-label item (same seed, same memory):** `GEN-L3-iterative-refine-15` /
+  item `70ff3369` — raters graded the deepseek-pro budget-offset answer `correct`, but
+  its verification prose is genuinely muddled ("total planned 880→850, matching actual
+  840 plus 10 remaining slack" reads as self-contradictory next to "balances to zero",
+  even though the underlying cut is arithmetically valid). A live re-judge (claude-haiku-
+  4-5 ×5) failed it 5/5 on the incoherent verification, NOT on phrasing — so it is a
+  lenient gold label, not a judge bug. Wave 2 should re-rule whether confusing-but-
+  arithmetically-correct verification prose counts as "verify the offset balances to zero".
 
 #### 5.4 Phase 6 v1 freeze
 

@@ -352,6 +352,41 @@ def _classify_tool_exception(exc: BaseException) -> str:
     return "runtime"
 
 
+def _repair_hint(tool_name: str, error: str | None) -> str:
+    """A model-facing corrective suffix for a ``validation``-class tool failure (F2).
+
+    Un-masking the validation signal (F1) is necessary but not sufficient: the
+    model still needs an *actionable* cue to self-repair rather than loop on
+    syntactic variants and give up. This appends a short directive naming the
+    failure as a malformed-args problem and asking for a corrected retry. It is
+    deterministic operational text (like the node's other inline error strings),
+    not an LLM prompt rendered via PromptService.
+    """
+    detail = f" ({error})" if error else ""
+    return (
+        f"\n\n[tool-call rejected: invalid arguments to '{tool_name}'{detail}. "
+        f"This is a validation error, not a tool failure — your call shape was "
+        f"wrong. Fix the arguments (e.g. a path must be inside the workspace "
+        f"boundary; a shell command must use an allowed program with no shell "
+        f"metacharacters) and retry with corrected arguments.]"
+    )
+
+
+def _unknown_tool_nudge(tool_name: str, available: list[str]) -> str:
+    """A model-facing directive for a hallucinated tool name (F3/F4).
+
+    Lists the AVAILABLE tools so the model picks a real one next turn instead of
+    looping on the same invented name (the DeepSeek ``read``×5 loop). Deterministic
+    operational text appended to the unknown-tool ToolMessage.
+    """
+    names = ", ".join(sorted(available)) if available else "(none)"
+    return (
+        f"\n\n['{tool_name}' is not a registered tool. Do NOT call it again. "
+        f"The available tools are: {names}. Choose one of these by its exact "
+        f"name, or stop and answer directly if none applies.]"
+    )
+
+
 def _execute_tools_impl(
     state: dict[str, Any],
     *,
@@ -468,10 +503,15 @@ def _execute_tools_impl(
         try:
             execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
         except KeyError:
+            # The registry's KeyError carries the available-tools list; preserve
+            # it so the model can self-correct (F3/F4) instead of looping on the
+            # same hallucinated name. The recording site uses a stable error
+            # string; the model-facing nudge is built below from the live tools.
             execution_result = ToolExecutionResult(
                 output=f"Error: Unknown tool '{tool_name}'",
                 ok=False,
                 error=f"Unknown tool '{tool_name}'",
+                error_class="unknown_tool",
             )
             black_box.record(TraceEvent(
                 event_id=str(uuid.uuid4()),
@@ -534,9 +574,13 @@ def _execute_tools_impl(
                     "source": "tool_execution",
                     "tool": tool_name,
                     "error": execution_result.error or "tool returned failure",
-                    # The executor reported failure via its envelope (no raise):
-                    # the tool ran but its own logic rejected the request.
-                    "error_class": "tool_reported",
+                    # The executor reported failure via its envelope (no raise).
+                    # If the tool *declared* a specific class on the envelope (F1:
+                    # a self-handling tool that caught its own malformed-args error
+                    # and surfaced ``validation`` instead of masking it as a generic
+                    # "Error:" string), honor it; otherwise fall back to the generic
+                    # "the tool ran but its own logic rejected the request" class.
+                    "error_class": execution_result.error_class or "tool_reported",
                 },
             ))
             error_recorded = True
@@ -587,6 +631,22 @@ def _execute_tools_impl(
             files=updated_files,
             agent_config=agent_config,
         )
+
+        # F2 repair seam: a validation-class failure (malformed args the
+        # validator rejected) gets a corrective hint appended so the next turn
+        # can self-repair instead of looping on syntactic variants and giving up.
+        # Recorded telemetry is unchanged (recorded_output above) — only the
+        # model-facing message is enriched.
+        if getattr(agent_config, "tool_repair_hint_enabled", False) and not execution_result.ok:
+            if execution_result.error_class == "validation":
+                message_output = (
+                    f"{message_output}{_repair_hint(tool_name, execution_result.error)}"
+                )
+            elif execution_result.error_class == "unknown_tool":
+                message_output = (
+                    f"{message_output}"
+                    f"{_unknown_tool_nudge(tool_name, tool_registry.tool_names())}"
+                )
 
         results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
         tool_results.append({
@@ -1792,6 +1852,19 @@ def build_graph(
                 HumanMessage(content=state.get("task_input", "")),
             ]
 
+        # F7 (user-message anchor): historically the original HumanMessage(task_input)
+        # was built only on turn 1 and never persisted, so every multi-turn request
+        # after turn 1 was system + assistant/tool… with NO user message — silently
+        # tolerated by OpenAI/Anthropic/DeepSeek, rejected by Z.ai/GLM. Guarantee the
+        # current run's task message is present in the list handed to the LLM by
+        # inserting it right after the SystemMessage when no HumanMessage is present.
+        # This is send-time only (does NOT mutate the persisted ``messages`` channel),
+        # so it can't accumulate across checkpointed turns.
+        _task_input = state.get("task_input", "")
+        if _task_input and not any(isinstance(m, HumanMessage) for m in lc_messages):
+            _insert_at = 1 if lc_messages and isinstance(lc_messages[0], SystemMessage) else 0
+            lc_messages.insert(_insert_at, HumanMessage(content=_task_input))
+
         # ── No-progress graceful wrap-up: inject directive + strip tools ──
         repeats = _count_trailing_repeats(state.get("tool_results") or [])
         inject_wrapup = (
@@ -1938,9 +2011,22 @@ def build_graph(
 
             ai_msg = AIMessage(content=content, tool_calls=tool_calls)
 
+            # F7 (no error-as-assistant cascade): when an LLM-invocation error
+            # occurs MID-CONVERSATION (existing_messages already present), do NOT
+            # persist the synthetic "Error: …" text as a new assistant turn.
+            # Carrying the raw provider-rejection string into a multi-turn history
+            # piles consecutive-assistant turns (permanently malformed) and turns
+            # one transient rejection into a terminal cascade (the 73-call GLM
+            # thrash). The error is already recorded as an ERROR_OCCURRED carrier
+            # and surfaced via last_llm_error below; the retry re-runs from clean
+            # history. A turn-1 error (no prior history) still persists so single
+            # -turn answer-extraction/routing is unchanged (byte-identical to prior).
+            _suppress_error_turn = error is not None and bool(existing_messages)
+            persisted_messages: list[Any] = [] if _suppress_error_turn else [ai_msg]
+
             # Story 1.3: store error for propagation to evaluator
             result: dict[str, Any] = {
-                "messages": [ai_msg],
+                "messages": persisted_messages,
                 "total_cost_usd": cost,
                 "total_input_tokens": tokens_in,
                 "total_output_tokens": tokens_out,

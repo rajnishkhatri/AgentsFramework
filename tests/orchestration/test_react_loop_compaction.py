@@ -108,17 +108,17 @@ class TestStateRewriteRoundTrip:
     the *compacted* list is what the checkpointer reloads."""
 
     def test_langgraph_version_guard(self) -> None:
-        """Pin langgraph at the version the design verified
-        (``0.6.11``, design §2). A future bump must re-run this whole suite
-        — the ``REMOVE_ALL_MESSAGES`` short-circuit is what makes the §5.1
-        rewrite work; if the reducer behavior shifts, every C1 invariant
-        below is suspect."""
+        """Pin langgraph at a design-verified minor line (design §2). A future
+        bump must re-run this whole suite — the ``REMOVE_ALL_MESSAGES``
+        short-circuit is what makes the §5.1 rewrite work; if the reducer
+        behavior shifts, every C1 invariant below is suspect."""
         installed = _ilm.version("langgraph")
-        # Only the minor-line is contract-relevant; the design verified the
-        # ``0.6.x`` series. A jump to ``0.7.x`` MUST re-run this gate by hand.
-        assert installed.startswith("0.6."), (
+        # Verified series: ``0.6.x`` (originally ``0.6.11``) and ``1.x``
+        # (re-verified at ``1.2.6`` — the three behavioral tests below all
+        # pass). A jump to ``2.x`` MUST re-run this gate by hand.
+        assert installed.startswith(("0.6.", "1.")), (
             f"langgraph version {installed} crosses the design-verified line "
-            "(0.6.x). Re-verify REMOVE_ALL_MESSAGES short-circuit, then bump."
+            "(0.6.x / 1.x). Re-verify REMOVE_ALL_MESSAGES short-circuit, then bump."
         )
 
     def test_sentinel_replaces_entire_channel(self) -> None:

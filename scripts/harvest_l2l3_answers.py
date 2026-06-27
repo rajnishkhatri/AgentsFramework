@@ -10,6 +10,17 @@ model_ab_answer_score.py iterates ONLY ``EXPECTED_BY_CASE`` (the 10 L1 cases). T
 last-call_llm / uuid5(case) keying is identical, so we reuse that join logic here but
 parametrize it on an arbitrary case list (the 9 L2/L3 cases).
 
+HARVEST-TRUNCATION HAZARD (2026-06-26): the ``call_llm`` ``ai_response`` we read
+here is PRE-CLIPPED to 500 chars by the react-loop eval-capture
+(``orchestration/react_loop.py``: ``response_text(response)[:500]``). These answers
+are faithful for human adjudication of short answers, but they are NOT a faithful
+re-judge input — the LIVE GoalJudge saw ``eval_telemetry.clip_eval_text`` (8192-char)
+final answers. To inspect what the judge actually graded (e.g. when a rationale says
+a subtask is "missing"), read the per-arm ``evals.log`` ``goal_judge`` record's
+``ai_input.final_answer``, not this file. See memory
+``goaljudge-residual-fp-root-cause`` (the 2 residual fp split into one judge bug and
+one lenient-label case only once the 8192-char view was used).
+
 Arm sources (config below, edit as runs land):
   - cheap arms already on disk in cache/model_ab/a3b_full_* (candidate arm = the
     pinned model under test; baseline arm in those runs is gpt-4o-mini).

@@ -29,7 +29,9 @@ def execute_think_tool(args: dict[str, Any]) -> ToolExecutionResult:
     try:
         validated = ThinkToolInput(**args)
     except Exception as exc:
-        return ToolExecutionResult(output=f"Error: {exc}", ok=False, error=str(exc))
+        return ToolExecutionResult(
+            output=f"Error: {exc}", ok=False, error=str(exc), error_class="validation"
+        )
 
     trace_entry = {
         "category": validated.category,
