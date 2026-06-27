@@ -330,3 +330,50 @@ def test_memory_recalled_maps_empty_keys_when_count_only() -> None:
 
     out = to_ag_ui(MemoryRecalled(trace_id=TRACE_ID, count=3))
     assert out[0].value == {"count": 3, "keys": []}
+
+
+def test_approval_requested_raises_when_trace_id_empty() -> None:
+    """Failure path first: ApprovalRequested without a trace_id is rejected."""
+    from agent_ui_adapter.wire.domain_events import ApprovalRequested
+
+    event = ApprovalRequested(
+        trace_id="",
+        approval_id="ap1",
+        tool="shell",
+        command="mkdir build",
+        severity="medium",
+        band="ask",
+        timeout_seconds=120,
+    )
+    with pytest.raises(ValueError, match="trace_id"):
+        to_ag_ui(event)
+
+
+def test_approval_requested_maps_to_custom_approval_requested() -> None:
+    """shell_severity_approval_hitl plan: the approve/edit/reject card rides
+    Custom{name='approval_requested'} -- zero wire change, the frontend
+    translator special-cases the name into a useHumanInTheLoop card (the
+    task_understanding / reasoning_summary idiom)."""
+    from agent_ui_adapter.wire.domain_events import ApprovalRequested
+
+    out = to_ag_ui(ApprovalRequested(
+        trace_id=TRACE_ID,
+        approval_id="ap-42",
+        tool="shell",
+        command="rm foo.txt",
+        severity="high",
+        band="ask",
+        timeout_seconds=90,
+    ))
+    assert len(out) == 1
+    assert isinstance(out[0], Custom)
+    assert out[0].name == "approval_requested"
+    assert out[0].value == {
+        "approval_id": "ap-42",
+        "tool": "shell",
+        "command": "rm foo.txt",
+        "severity": "high",
+        "band": "ask",
+        "timeout_seconds": 90,
+    }
+    assert out[0].raw_event == {"trace_id": TRACE_ID}

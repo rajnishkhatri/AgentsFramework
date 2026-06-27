@@ -151,6 +151,29 @@ export const MemoryRecalledEventSchema = z
   .strict();
 export type MemoryRecalledEvent = z.infer<typeof MemoryRecalledEventSchema>;
 
+// ── Shell approval card (Custom 'approval_requested', HITL plan) ──────
+//
+// A severity-gated shell command is awaiting human approval. Drives the
+// CopilotKit useHumanInTheLoop Approve / Edit / Reject card. METADATA ONLY —
+// `command` is the capped preview the L2 classifier tiered; `approval_id`
+// correlates the card's resolution back to the paused interrupt (the resume
+// rides Command(resume=...) on the same thread). The `band` is always "ask"
+// (auto runs without a card; deny is hard-blocked and never reaches the UI).
+
+export const ApprovalRequestedEventSchema = z
+  .object({
+    type: z.literal("approval_requested"),
+    trace_id: traceId,
+    approval_id: z.string().min(1),
+    tool: z.string().min(1),
+    command: z.string().min(1),
+    severity: z.enum(["low", "medium", "high", "critical"]),
+    band: z.string().min(1),
+    timeout_seconds: z.number().int().min(1),
+  })
+  .strict();
+export type ApprovalRequestedEvent = z.infer<typeof ApprovalRequestedEventSchema>;
+
 // ── Tool renderer request (F5 tool cards via useFrontendTool) ─────────
 
 export const ToolCallRendererRequestSchema = z
@@ -209,6 +232,7 @@ export const UIRuntimeEventSchema = z.discriminatedUnion("type", [
   ReasoningSummaryEventSchema,
   TaskUnderstandingEventSchema,
   MemoryRecalledEventSchema,
+  ApprovalRequestedEventSchema,
   ToolRenderEventSchema,
 ]);
 export type UIRuntimeEvent = z.infer<typeof UIRuntimeEventSchema>;

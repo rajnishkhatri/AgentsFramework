@@ -316,15 +316,17 @@ def test_domain_event_base_is_frozen_and_strict():
 
 def test_domain_event_union_covers_all_types():
     """US-2.3 acceptance (extended by eval-UI Phase 0 + F10-T2 +
-    task_understanding Phase 3 + memory_layer Phase 3): 13 members."""
+    task_understanding Phase 3 + memory_layer Phase 3 +
+    shell_severity_approval_hitl): 14 members."""
     from agent_ui_adapter.wire.domain_events import (
+        ApprovalRequested,
         MemoryRecalled,
         ReasoningSummarized,
         TaskUnderstood,
     )
 
     args = get_args(DomainEvent)
-    assert len(args) == 13
+    assert len(args) == 14
     assert set(args) == {
         LLMTokenEmitted,
         LLMMessageStarted,
@@ -339,6 +341,7 @@ def test_domain_event_union_covers_all_types():
         ReasoningSummarized,
         TaskUnderstood,
         MemoryRecalled,
+        ApprovalRequested,
     }
 
 
@@ -413,10 +416,47 @@ def test_memory_recalled_rejects_content_field():
 
 def test_domain_event_union_includes_task_understood():
     """+TaskUnderstood (task_understanding plan Phase 3) +MemoryRecalled
-    (memory_layer Phase 3): 13 members."""
-    from agent_ui_adapter.wire.domain_events import MemoryRecalled, TaskUnderstood
+    (memory_layer Phase 3) +ApprovalRequested (shell_severity_approval_hitl
+    plan): 14 members."""
+    from agent_ui_adapter.wire.domain_events import (
+        ApprovalRequested,
+        MemoryRecalled,
+        TaskUnderstood,
+    )
 
     args = get_args(DomainEvent)
-    assert len(args) == 13
+    assert len(args) == 14
     assert TaskUnderstood in set(args)
     assert MemoryRecalled in set(args)
+    assert ApprovalRequested in set(args)
+
+
+def test_approval_requested_requires_trace_id():
+    """Failure path first: ApprovalRequested without trace_id is rejected."""
+    from agent_ui_adapter.wire.domain_events import ApprovalRequested
+
+    with pytest.raises(ValidationError):
+        ApprovalRequested(
+            approval_id="ap1",
+            tool="shell",
+            command="mkdir x",
+            severity="medium",
+            band="ask",
+            timeout_seconds=120,
+        )  # type: ignore[call-arg]
+
+
+def test_approval_requested_valid():
+    from agent_ui_adapter.wire.domain_events import ApprovalRequested
+
+    ev = ApprovalRequested(
+        trace_id="tr1",
+        approval_id="ap1",
+        tool="shell",
+        command="rm foo",
+        severity="high",
+        band="ask",
+        timeout_seconds=90,
+    )
+    assert ev.approval_id == "ap1"
+    assert ev.command == "rm foo"

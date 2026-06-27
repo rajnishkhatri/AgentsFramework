@@ -16,7 +16,10 @@
 
 import type { AGUIEvent } from "../wire/ag_ui_events";
 import type { UIRuntimeEvent } from "../wire/ui_runtime_events";
-import { TaskUnderstandingEventSchema } from "../wire/ui_runtime_events";
+import {
+  ApprovalRequestedEventSchema,
+  TaskUnderstandingEventSchema,
+} from "../wire/ui_runtime_events";
 
 function traceOf(evt: AGUIEvent): string {
   const t = evt.raw_event?.trace_id;
@@ -189,6 +192,20 @@ export function agUiToUiRuntime(evt: AGUIEvent): ReadonlyArray<UIRuntimeEvent> {
             keys,
           },
         ];
+      }
+      if (evt.name === "approval_requested") {
+        // shell_severity_approval_hitl plan: a severity-gated shell command is
+        // awaiting human approval. Validate with the wire schema so a malformed
+        // artifact never raises a card (fail-closed: no card => no auto-run, the
+        // backend gate already blocked the subprocess behind the interrupt).
+        const parsed = ApprovalRequestedEventSchema.safeParse({
+          type: "approval_requested",
+          trace_id,
+          ...(typeof evt.value === "object" && evt.value !== null
+            ? evt.value
+            : {}),
+        });
+        return parsed.success ? [parsed.data] : [];
       }
       if (evt.name === "step_meter") {
         const v = evt.value as { step?: unknown; step_name?: unknown };

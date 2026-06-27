@@ -268,6 +268,62 @@ describe("CUSTOM task_understanding (soft-gate card, Phase 3)", () => {
   });
 });
 
+describe("CUSTOM approval_requested (shell HITL card)", () => {
+  it("malformed value (missing fields) emits nothing — failure path first", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "approval_requested",
+      value: { command: "rm foo" },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("bad severity enum emits nothing (fail-closed: no card)", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "approval_requested",
+      value: {
+        approval_id: "ap1",
+        tool: "shell",
+        command: "rm foo",
+        severity: "spicy",
+        band: "ask",
+        timeout_seconds: 120,
+      },
+      ...RAW,
+    } as never);
+    expect(out).toEqual([]);
+  });
+
+  it("valid value -> one approval_requested event carrying the artifact", () => {
+    const out = agUiToUiRuntime({
+      type: "CUSTOM",
+      name: "approval_requested",
+      value: {
+        approval_id: "ap-42",
+        tool: "shell",
+        command: "rm foo.txt",
+        severity: "high",
+        band: "ask",
+        timeout_seconds: 90,
+      },
+      ...RAW,
+    } as never);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toMatchObject({
+      type: "approval_requested",
+      trace_id: TRACE,
+      approval_id: "ap-42",
+      tool: "shell",
+      command: "rm foo.txt",
+      severity: "high",
+      band: "ask",
+      timeout_seconds: 90,
+    });
+  });
+});
+
 describe("CUSTOM memory_recalled (transparent recall, memory_layer Phase 3)", () => {
   it("non-number count emits nothing — failure path first", () => {
     const out = agUiToUiRuntime({

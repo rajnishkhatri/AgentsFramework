@@ -13,6 +13,7 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -387,6 +388,106 @@ def _unknown_tool_nudge(tool_name: str, available: list[str]) -> str:
     )
 
 
+def _gate_shell_command(
+    *,
+    command: str,
+    run: Callable[[str], ToolExecutionResult],
+    agent_config: AgentConfig,
+    black_box: BlackBoxRecorder,
+    workflow_id: str,
+    step: int,
+) -> ToolExecutionResult:
+    """Severity-gate a shell command (plan: shell_severity_approval_hitl).
+
+    Classifies the command (L2), runs the three-band PEP (L4), records exactly
+    one ``GUARDRAIL_CHECKED`` carrier, and returns either the executed result
+    (auto / approve / edit / shadow) or a fail-closed ``gating`` envelope
+    (deny / reject / timeout). ``run`` is the side-effecting executor — invoked
+    only on an EXECUTE outcome, strictly after the interrupt resolves.
+
+    The langgraph ``interrupt()`` is imported lazily and injected as the gate's
+    ``interrupt_fn`` so the gate's decision logic stays framework-agnostic and
+    unit-tested without a live graph; on the ``ask`` band it raises the AG-UI
+    approval card and resumes with the human :class:`ApprovalDecision`.
+    """
+    from orchestration.shell_approval_gate import (
+        ApprovalDecision,
+        GateOutcome,
+        ShellApprovalConfig,
+        decide_shell_approval,
+    )
+    from services.governance.shell_severity import classify_severity
+
+    verdict = classify_severity(command)
+
+    def _interrupt_fn(payload: dict[str, Any]) -> ApprovalDecision:
+        # Dynamic, conditional interrupt (Part A Opt 3) — only the ask band
+        # reaches here. The resume value is the human's decision dict, which the
+        # AG-UI approval card produces via Command(resume=...).
+        from langgraph.types import interrupt  # noqa: PLC0415 - lazy graph surface
+
+        raw = interrupt(payload)
+        if isinstance(raw, ApprovalDecision):
+            return raw
+        if isinstance(raw, dict):
+            return ApprovalDecision(
+                decision=raw.get("decision", "reject"),
+                edited_command=raw.get("edited_command"),
+            )
+        # Unrecognised resume shape → fail closed.
+        return ApprovalDecision(decision="reject")
+
+    # The execute callable adapts the gate's str->Any contract to the registry's
+    # ToolExecutionResult. The (possibly edited) command is what actually runs.
+    last_result: dict[str, ToolExecutionResult] = {}
+
+    def _execute(cmd: str) -> ToolExecutionResult:
+        res = run(cmd)
+        last_result["res"] = res
+        return res
+
+    cfg = ShellApprovalConfig(
+        enabled=bool(agent_config.shell_approval_enabled),
+        enforce=bool(agent_config.shell_approval_enforce),
+        threshold=str(agent_config.shell_approval_severity_threshold),  # type: ignore[arg-type]
+        timeout_seconds=int(agent_config.shell_approval_timeout_seconds),
+    )
+
+    gate = decide_shell_approval(
+        command=command,
+        band=verdict.band,
+        severity=verdict.severity.value,
+        config=cfg,
+        interrupt_fn=_interrupt_fn,
+        execute=_execute,
+    )
+
+    # One GUARDRAIL_CHECKED carrier per decision (one fact, one carrier).
+    for carrier in gate.carriers:
+        black_box.record(TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.GUARDRAIL_CHECKED,
+            timestamp=datetime.now(UTC),
+            step=step,
+            details={**carrier, "reason": verdict.reason, "stage": verdict.stage},
+        ))
+
+    if gate.outcome is GateOutcome.EXECUTED:
+        return last_result["res"]
+
+    # Fail-closed deny / reject / timeout: gated, not run. The carrier above is
+    # the single record of the decision; the envelope reads error_class="gating"
+    # (the "gated, not failed" class — task_tool.py precedent).
+    decision = gate.carriers[0]["decision"] if gate.carriers else "deny"
+    return ToolExecutionResult(
+        output=f"Error: shell command blocked by approval gate ({decision})",
+        ok=False,
+        error=f"shell approval {decision}",
+        error_class="gating",
+    )
+
+
 def _execute_tools_impl(
     state: dict[str, Any],
     *,
@@ -501,7 +602,26 @@ def _execute_tools_impl(
         # one error carrier per failure is the governance audit's cardinal rule.
         error_already_recorded = False
         try:
-            execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
+            if tool_name == "shell" and agent_config.shell_approval_enabled:
+                # Severity-graded approval PEP: classify → three-band gate →
+                # (auto/approve/edit) run or (deny/reject/timeout) fail-closed.
+                # The gate records its own GUARDRAIL_CHECKED carrier; ``run``
+                # re-uses execute_with_result with the (possibly edited) command.
+                def _run_shell(cmd: str) -> ToolExecutionResult:
+                    return tool_registry.execute_with_result(
+                        "shell", {**tool_args_with_state, "command": cmd}
+                    )
+
+                execution_result = _gate_shell_command(
+                    command=str(tool_args.get("command", "")),
+                    run=_run_shell,
+                    agent_config=agent_config,
+                    black_box=black_box,
+                    workflow_id=workflow_id,
+                    step=state.get("step_count", 0),
+                )
+            else:
+                execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
         except KeyError:
             # The registry's KeyError carries the available-tools list; preserve
             # it so the model can self-correct (F3/F4) instead of looping on the

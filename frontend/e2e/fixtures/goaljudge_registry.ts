@@ -8,6 +8,7 @@
  */
 import registry from "./goaljudge_registry.json" with { type: "json" };
 import freshTasks from "./goaljudge_fresh_tasks.json" with { type: "json" };
+import freshTasksWave2 from "./goaljudge_fresh_tasks_wave2.json" with { type: "json" };
 import depthStrata from "./goaljudge_depth_strata.json" with { type: "json" };
 
 export type GoalJudgeRegistryCase = {
@@ -103,6 +104,18 @@ export function freshRegistryCases(): GoalJudgeRegistryCase[] {
 }
 
 /**
+ * Wave-2 fresh-authored corpus (GJ-F-W2-*): closes the 11 under-floor cells from
+ * the v0.9 manifest so the gold set can freeze v1. Selected with
+ * `GOALJUDGE_BATCH_MODE=wave2`.
+ * Regenerate: `.venv/bin/python -m scripts.export_goaljudge_fresh_tasks_wave2_json`.
+ */
+export function wave2RegistryCases(): GoalJudgeRegistryCase[] {
+  return (freshTasksWave2 as GoalJudgeRegistryCase[]).sort((a, b) =>
+    a.id.localeCompare(b.id, undefined, { numeric: true }),
+  );
+}
+
+/**
  * Planning-depth strata (GJ-DEPTH-*): prompts engineered to span L0/L1/L2 to
  * stress the D1 planning-depth dimension the registry doesn't cover. The
  * intended depth + trigger family lives in `stratum` (`depth:Lx:family`).
@@ -121,6 +134,9 @@ function batchModeCases(): GoalJudgeRegistryCase[] {
   }
   if (mode === "fresh") {
     return freshRegistryCases();
+  }
+  if (mode === "wave2") {
+    return wave2RegistryCases();
   }
   if (mode === "depth") {
     return depthStrataCases();

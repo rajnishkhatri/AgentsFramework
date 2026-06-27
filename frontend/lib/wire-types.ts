@@ -151,6 +151,38 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * ApprovalRequested
+         * @description shell_severity_approval_hitl plan: a severity-gated shell command is
+         *     awaiting human approval (wire: Custom ``approval_requested``). The frontend
+         *     translator special-cases the name into a CopilotKit ``useHumanInTheLoop``
+         *     Approve / Edit / Reject card (the task_understanding / reasoning_summary
+         *     idiom). ``approval_id`` correlates the card's resolution back to the paused
+         *     interrupt; ``command`` is the capped command preview, never an arbitrary
+         *     payload. METADATA ONLY — the human acts on this and the resume rides
+         *     ``Command(resume=...)`` on the same thread.
+         */
+        ApprovalRequested: {
+            /** Approval Id */
+            approval_id: string;
+            /** Band */
+            band: string;
+            /** Command */
+            command: string;
+            /** Severity */
+            severity: string;
+            /** Timeout Seconds */
+            timeout_seconds: number;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+            /** Tool */
+            tool: string;
+            /** Trace Id */
+            trace_id: string;
+        };
+        /**
          * BaseEvent
          * @description Common header for every AG-UI event.
          */

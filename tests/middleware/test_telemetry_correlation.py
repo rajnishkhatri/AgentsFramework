@@ -37,6 +37,7 @@ from typing import Any, get_args
 import pytest
 
 from agent_ui_adapter.wire.domain_events import (
+    ApprovalRequested,
     TaskUnderstood,
     DomainEvent,
     DomainEventBase,
@@ -197,6 +198,7 @@ class TestEventCompleteness:
     }
 
     SKIPPED_TYPES: set[type] = {
+        ApprovalRequested,
         MemoryRecalled,
         ReasoningSummarized,
         StateMutated,
@@ -270,9 +272,9 @@ class TestEventCompleteness:
         assert result is None, "Unknown event type must return None, not raise"
 
     def test_event_count_matches_union(self) -> None:
-        """Guard: domain_events.DomainEvent union has exactly 13 members."""
-        assert len(self.ALL_EVENT_TYPES) == 13, (
-            f"Expected 13 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
+        """Guard: domain_events.DomainEvent union has exactly 14 members."""
+        assert len(self.ALL_EVENT_TYPES) == 14, (
+            f"Expected 14 DomainEvent types, got {len(self.ALL_EVENT_TYPES)}. "
             "Update telemetry_bridge.py and this test."
         )
 
@@ -853,6 +855,16 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
         )
     if event_type is MemoryRecalled:
         return MemoryRecalled(trace_id=trace_id, count=2)
+    if event_type is ApprovalRequested:
+        return ApprovalRequested(
+            trace_id=trace_id,
+            approval_id="ap1",
+            tool="shell",
+            command="mkdir build",
+            severity="medium",
+            band="ask",
+            timeout_seconds=120,
+        )
     raise ValueError(f"Unknown event type: {event_type}")
 
 
