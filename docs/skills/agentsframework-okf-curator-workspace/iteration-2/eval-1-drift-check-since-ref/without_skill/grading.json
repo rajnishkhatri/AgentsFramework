@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "drift report produced",
+      "passed": true,
+      "evidence": "len=12524"
+    },
+    {
+      "text": "report-only (no docs created/edited)",
+      "passed": true,
+      "evidence": "extra-md=[]"
+    },
+    {
+      "text": "labels match type (path vs symbol)",
+      "passed": true,
+      "evidence": "labelled=True"
+    },
+    {
+      "text": "explains the drift window choice",
+      "passed": true,
+      "evidence": "window-explained=True"
+    }
+  ]
+}

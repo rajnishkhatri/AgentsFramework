@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "drift-check-since-ref",
+  "prompt": "Are our docs stale relative to the code we changed in the last few commits? Give me a worklist of which docs reference code that just changed and might need updating. Don't edit anything yet \u2014 just the report.",
+  "assertions": [
+    "drift report produced",
+    "no docs created/edited (report-only)",
+    "report names changed code + mentioning docs"
+  ]
+}

@@ -1,0 +1,82 @@
+[
+  {
+    "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime — can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+    "should_trigger": true
+  },
+  {
+    "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+    "should_trigger": true
+  },
+  {
+    "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+    "should_trigger": true
+  },
+  {
+    "query": "I've got a reusable design note on the goal-judge calibration thresholds — where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+    "should_trigger": true
+  },
+  {
+    "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+    "should_trigger": true
+  },
+  {
+    "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links — can you get it lint-clean",
+    "should_trigger": true
+  },
+  {
+    "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+    "should_trigger": true
+  },
+  {
+    "query": "capture what we just built this afternoon — the carrier-gate shadow audit — as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+    "should_trigger": true
+  },
+  {
+    "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md — do it without breaking anything",
+    "should_trigger": true
+  },
+  {
+    "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md — bring that folder up to the OKF convention",
+    "should_trigger": true
+  },
+  {
+    "query": "build an eval probe for the summarizer component — open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+    "should_trigger": true
+  },
+  {
+    "query": "here's a langfuse trace dump as json — audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+    "should_trigger": true
+  },
+  {
+    "query": "the long-term memory service is storing duplicate records for the same user — fix the consolidation logic in services/long_term_memory.py",
+    "should_trigger": true
+  },
+  {
+    "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+    "should_trigger": true
+  },
+  {
+    "query": "the README at the repo root is stale — update it with the current test counts and the new langfuse integration",
+    "should_trigger": true
+  },
+  {
+    "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+    "should_trigger": false
+  },
+  {
+    "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+    "should_trigger": false
+  },
+  {
+    "query": "our mem0 backend recall is returning low-relevance memories into the system prompt — tune the relevance floor and the dedup in components/memory_context.py",
+    "should_trigger": true
+  },
+  {
+    "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+    "should_trigger": false
+  },
+  {
+    "query": "the OKF spec from google cloud — can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+    "should_trigger": false
+  }
+]

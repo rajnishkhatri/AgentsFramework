@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "note filed in authored home, not excluded evidence",
+      "passed": true,
+      "evidence": "authored-home=True, avoids-excluded-evidence=True"
+    },
+    {
+      "text": "note has type frontmatter",
+      "passed": true,
+      "evidence": "note type-fm=True"
+    },
+    {
+      "text": "research bundle index+log updated",
+      "passed": true,
+      "evidence": "index=True log=True"
+    },
+    {
+      "text": "okf_lint exits 0",
+      "passed": true,
+      "evidence": "lint exit0=True"
+    }
+  ]
+}

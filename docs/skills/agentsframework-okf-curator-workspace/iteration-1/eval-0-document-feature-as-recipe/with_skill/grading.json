@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "recipe file created with type frontmatter",
+      "passed": true,
+      "evidence": "recipe=01_add_and_lint_a_knowledge_bundle.md, type-fm=True"
+    },
+    {
+      "text": "recipe follows house shape (Goal+Status)",
+      "passed": true,
+      "evidence": "Goal+Status present=True"
+    },
+    {
+      "text": "sub-bundle index.md updated to list it",
+      "passed": true,
+      "evidence": "index files=['okf_index.md']"
+    },
+    {
+      "text": "log.md has a dated entry",
+      "passed": true,
+      "evidence": "log files=['okf_log.md'] dated=True"
+    },
+    {
+      "text": "okf_lint exits 0",
+      "passed": true,
+      "evidence": "lint exit0=True"
+    }
+  ]
+}

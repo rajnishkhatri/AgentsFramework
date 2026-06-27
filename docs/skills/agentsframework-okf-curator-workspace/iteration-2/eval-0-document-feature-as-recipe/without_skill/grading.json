@@ -1,0 +1,29 @@
+{
+  "expectations": [
+    {
+      "text": "recipe has type frontmatter",
+      "passed": true,
+      "evidence": "type=recipe"
+    },
+    {
+      "text": "recipe lands inside a topic sub-bundle (not a flat orphan)",
+      "passed": false,
+      "evidence": "topic-bundle=False, flat-orphan=True"
+    },
+    {
+      "text": "new topic registered in DECLARED_BUNDLES",
+      "passed": true,
+      "evidence": "registered=True"
+    },
+    {
+      "text": "linked from the parent recipes index",
+      "passed": true,
+      "evidence": "parent-index-linked=True"
+    },
+    {
+      "text": "okf_lint exits 0",
+      "passed": true,
+      "evidence": "lint0=True"
+    }
+  ]
+}

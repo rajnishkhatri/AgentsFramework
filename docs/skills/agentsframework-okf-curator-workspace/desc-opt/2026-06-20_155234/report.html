@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>agentsframework-okf-curator — Skill Description Optimization</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Lora', Georgia, serif;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #faf9f5;
+            color: #141413;
+        }
+        h1 { font-family: 'Poppins', sans-serif; color: #141413; }
+        .explainer {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #e8e6dc;
+            color: #b0aea5;
+            font-size: 0.875rem;
+            line-height: 1.6;
+        }
+        .summary {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border: 1px solid #e8e6dc;
+        }
+        .summary p { margin: 5px 0; }
+        .best { color: #788c5d; font-weight: bold; }
+        .table-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+        table {
+            border-collapse: collapse;
+            background: white;
+            border: 1px solid #e8e6dc;
+            border-radius: 6px;
+            font-size: 12px;
+            min-width: 100%;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+            border: 1px solid #e8e6dc;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+        th {
+            font-family: 'Poppins', sans-serif;
+            background: #141413;
+            color: #faf9f5;
+            font-weight: 500;
+        }
+        th.test-col {
+            background: #6a9bcc;
+        }
+        th.query-col { min-width: 200px; }
+        td.description {
+            font-family: monospace;
+            font-size: 11px;
+            word-wrap: break-word;
+            max-width: 400px;
+        }
+        td.result {
+            text-align: center;
+            font-size: 16px;
+            min-width: 40px;
+        }
+        td.test-result {
+            background: #f0f6fc;
+        }
+        .pass { color: #788c5d; }
+        .fail { color: #c44; }
+        .rate {
+            font-size: 9px;
+            color: #b0aea5;
+            display: block;
+        }
+        tr:hover { background: #faf9f5; }
+        .score {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 11px;
+        }
+        .score-good { background: #eef2e8; color: #788c5d; }
+        .score-ok { background: #fef3c7; color: #d97706; }
+        .score-bad { background: #fceaea; color: #c44; }
+        .train-label { color: #b0aea5; font-size: 10px; }
+        .test-label { color: #6a9bcc; font-size: 10px; font-weight: bold; }
+        .best-row { background: #f5f8f2; }
+        th.positive-col { border-bottom: 3px solid #788c5d; }
+        th.negative-col { border-bottom: 3px solid #c44; }
+        th.test-col.positive-col { border-bottom: 3px solid #788c5d; }
+        th.test-col.negative-col { border-bottom: 3px solid #c44; }
+        .legend { font-family: 'Poppins', sans-serif; display: flex; gap: 20px; margin-bottom: 10px; font-size: 13px; align-items: center; }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-swatch { width: 16px; height: 16px; border-radius: 3px; display: inline-block; }
+        .swatch-positive { background: #141413; border-bottom: 3px solid #788c5d; }
+        .swatch-negative { background: #141413; border-bottom: 3px solid #c44; }
+        .swatch-test { background: #6a9bcc; }
+        .swatch-train { background: #141413; }
+    </style>
+</head>
+<body>
+    <h1>agentsframework-okf-curator — Skill Description Optimization</h1>
+    <div class="explainer">
+        <strong>Optimizing your skill's description.</strong> This page updates automatically as Claude tests different versions of your skill's description. Each row is an iteration — a new description attempt. The columns show test queries: green checkmarks mean the skill triggered correctly (or correctly didn't trigger), red crosses mean it got it wrong. The "Train" score shows performance on queries used to improve the description; the "Test" score shows performance on held-out queries the optimizer hasn't seen. When it's done, Claude will apply the best-performing description to your skill.
+    </div>
+
+    <div class="summary">
+        <p><strong>Original:</strong> Keep THIS repository&#x27;s knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo&#x27;s written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (&quot;we just wired up X, write it up&quot;, &quot;add a runbook for the new deploy step&quot;, &quot;capture the carrier-gate shadow audit&quot;, &quot;document the memory soft-suppress feature&quot;); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) — the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (&quot;is our doc knowledge stale vs the code?&quot;, &quot;update the README with the new test counts&quot;, &quot;make sure the architecture docs reflect the new planner behavior&quot;); or get the docs tree typed, catalogued, and passing the OKF lint gate (&quot;bring docs/explainability up to the convention&quot;, &quot;make the recipes tree lint-clean&quot;, &quot;move STYLE_GUIDE into a subfolder without breaking the @-mentions&quot;). It writes features up as recipes in the house shape, files research in the right bundle, runs a code↔docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it — reusing the bundled generator scripts and the repo&#x27;s `okf_lint.py` gate. Trigger broadly and even when the user never says &quot;OKF&quot;, &quot;recipe&quot;, &quot;docs&quot;, or &quot;frontmatter&quot; — if the intent is to make the repo&#x27;s written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.</p>
+        <p class="best"><strong>Best:</strong> Keep THIS repository&#x27;s knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo&#x27;s written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (&quot;we just wired up X, write it up&quot;, &quot;add a runbook for the new deploy step&quot;, &quot;capture the carrier-gate shadow audit&quot;, &quot;document the memory soft-suppress feature&quot;); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) — the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (&quot;is our doc knowledge stale vs the code?&quot;, &quot;update the README with the new test counts&quot;, &quot;make sure the architecture docs reflect the new planner behavior&quot;); or get the docs tree typed, catalogued, and passing the OKF lint gate (&quot;bring docs/explainability up to the convention&quot;, &quot;make the recipes tree lint-clean&quot;, &quot;move STYLE_GUIDE into a subfolder without breaking the @-mentions&quot;). It writes features up as recipes in the house shape, files research in the right bundle, runs a code↔docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it — reusing the bundled generator scripts and the repo&#x27;s `okf_lint.py` gate. Trigger broadly and even when the user never says &quot;OKF&quot;, &quot;recipe&quot;, &quot;docs&quot;, or &quot;frontmatter&quot; — if the intent is to make the repo&#x27;s written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.</p>
+        <p><strong>Best Score:</strong> 1/7 (test)</p>
+        <p><strong>Iterations:</strong> 5 | <strong>Train:</strong> 13 | <strong>Test:</strong> 7</p>
+    </div>
+
+    <div class="legend">
+        <span style="font-weight:600">Query columns:</span>
+        <span class="legend-item"><span class="legend-swatch swatch-positive"></span> Should trigger</span>
+        <span class="legend-item"><span class="legend-swatch swatch-negative"></span> Should NOT trigger</span>
+        <span class="legend-item"><span class="legend-swatch swatch-train"></span> Train</span>
+        <span class="legend-item"><span class="legend-swatch swatch-test"></span> Test</span>
+    </div>
+
+    <div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Iter</th>
+                <th>Train</th>
+                <th>Test</th>
+                <th class="query-col">Description</th>
+                <th class="positive-col">the long-term memory service is storing duplicate records for the same user — fix the consolidation logic in services/long_term_memory.py</th>
+                <th class="positive-col">I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it&#x27;s referenced all over including @-mentions in AGENTS.md — do it without breaking anything</th>
+                <th class="positive-col">is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review</th>
+                <th class="positive-col">we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don&#x27;t mention any of it yet. document it.</th>
+                <th class="positive-col">write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR</th>
+                <th class="positive-col">our mem0 backend recall is returning low-relevance memories into the system prompt — tune the relevance floor and the dedup in components/memory_context.py</th>
+                <th class="positive-col">add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh</th>
+                <th class="positive-col">here&#x27;s a langfuse trace dump as json — audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy</th>
+                <th class="positive-col">I&#x27;ve got a reusable design note on the goal-judge calibration thresholds — where does it go so it stays organized and an agent can find it later, research/ or docs/research/?</th>
+                <th class="positive-col">ok we finally got the SearXNG web-search sidecar working in the agent runtime — can you write up how it&#x27;s wired as a recipe so the next person doesn&#x27;t have to reverse-engineer it from the terraform</th>
+                <th class="negative-col">run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works</th>
+                <th class="negative-col">add a new API endpoint to the middleware for fetching a thread&#x27;s message history and write the integration tests</th>
+                <th class="negative-col">summarize this 40-page PDF spec into a one-pager for my manager</th>
+                <th class="test-col positive-col">capture what we just built this afternoon — the carrier-gate shadow audit — as a proper recipe in the governance bundle with the goal/status/steps shape the others use</th>
+                <th class="test-col positive-col">the frontmatter on half the docs in docs/explainability/ is missing the type field, and there&#x27;s no index.md — bring that folder up to the OKF convention</th>
+                <th class="test-col positive-col">the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links — can you get it lint-clean</th>
+                <th class="test-col positive-col">we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior</th>
+                <th class="test-col positive-col">the README at the repo root is stale — update it with the current test counts and the new langfuse integration</th>
+                <th class="test-col positive-col">build an eval probe for the summarizer component — open coding, a rubric, an LLM judge, the whole continuous-monitoring setup</th>
+                <th class="test-col negative-col">the OKF spec from google cloud — can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="best-row">
+                <td>1</td>
+                <td><span class="score score-bad">9/39</span></td>
+                <td><span class="score score-bad">3/21</span></td>
+                <td class="description">Keep THIS repository&#x27;s knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo&#x27;s written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (&quot;we just wired up X, write it up&quot;, &quot;add a runbook for the new deploy step&quot;, &quot;capture the carrier-gate shadow audit&quot;, &quot;document the memory soft-suppress feature&quot;); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) — the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (&quot;is our doc knowledge stale vs the code?&quot;, &quot;update the README with the new test counts&quot;, &quot;make sure the architecture docs reflect the new planner behavior&quot;); or get the docs tree typed, catalogued, and passing the OKF lint gate (&quot;bring docs/explainability up to the convention&quot;, &quot;make the recipes tree lint-clean&quot;, &quot;move STYLE_GUIDE into a subfolder without breaking the @-mentions&quot;). It writes features up as recipes in the house shape, files research in the right bundle, runs a code↔docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it — reusing the bundled generator scripts and the repo&#x27;s `okf_lint.py` gate. Trigger broadly and even when the user never says &quot;OKF&quot;, &quot;recipe&quot;, &quot;docs&quot;, or &quot;frontmatter&quot; — if the intent is to make the repo&#x27;s written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.</td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result pass">✓<span class="rate">0/3</span></td>
+            </tr>
+            <tr class="">
+                <td>2</td>
+                <td><span class="score score-bad">9/39</span></td>
+                <td><span class="score score-bad">3/21</span></td>
+                <td class="description">Use this skill when the user wants to document or record work that just happened in the AgentsFramework agent monorepo. Trigger for: writing up a shipped feature, bug fix, or pipeline change as a recipe or runbook; documenting new infrastructure (deploy steps, sidecars, integrations); recording eval/trace-audit/memory work as durable notes; organizing or filing research; checking whether docs are stale vs recent code changes; updating architecture docs or READMEs to reflect current code; moving or reorganizing docs safely; or making the knowledge tree lint-clean. Trigger even when the user never says &quot;docs&quot;, &quot;OKF&quot;, or &quot;recipe&quot; — if something changed and now needs to be captured, or existing knowledge needs freshening, use this skill. Do NOT trigger for implementing product code, running tests, tuning runtime systems, or answering general questions.</td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result pass">✓<span class="rate">0/3</span></td>
+            </tr>
+            <tr class="">
+                <td>3</td>
+                <td><span class="score score-bad">9/39</span></td>
+                <td><span class="score score-bad">3/21</span></td>
+                <td class="description">Use this skill whenever the user asks you to write up, document, capture, or record something that already happened in the codebase — especially features that shipped, bugs that got fixed, deploy/infrastructure changes, or eval/trace/memory work. Also use it to: file or organize research notes; check if docs are stale compared to recent code; update architecture docs or READMEs to match current reality; safely move or reorganize documentation files; or fix doc structure/linting issues. Trigger even when the user never mentions &quot;docs&quot;, &quot;documentation&quot;, or &quot;recipe&quot; — the signal is that work occurred and now needs to be captured in writing, or that existing written knowledge needs refreshing or reorganizing. Do NOT trigger for: fixing bugs in application code, tuning runtime systems, building new product features, running tests, or answering questions.</td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result pass">✓<span class="rate">0/3</span></td>
+            </tr>
+            <tr class="">
+                <td>4</td>
+                <td><span class="score score-bad">9/39</span></td>
+                <td><span class="score score-bad">3/21</span></td>
+                <td class="description">Use this skill to capture completed work in writing. Trigger when the user says they shipped/merged/fixed/wired something and wants it written up, added as a runbook, or documented (&quot;we just merged X, write it up&quot;, &quot;add a runbook for the deploy step&quot;, &quot;document the feature&quot;). Also trigger for: organizing or filing research notes; checking whether docs reflect recent code changes (&quot;are docs stale vs what we shipped?&quot;, &quot;does the README match current reality?&quot;); updating architecture docs to match the codebase; safely relocating documentation files; or making the docs tree structurally sound. The key signal: something changed (code shipped, infra deployed, decision made) and now needs recording, OR existing knowledge needs verification/refresh/reorganization. Trigger even when &quot;docs&quot; is never mentioned—look for past-tense verbs about completed work. Do NOT trigger for implementing features, fixing application bugs, tuning runtime behavior, running tests, or answering questions.</td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result pass">✓<span class="rate">0/3</span></td>
+            </tr>
+            <tr class="">
+                <td>5</td>
+                <td><span class="score score-bad">9/39</span></td>
+                <td><span class="score score-bad">3/21</span></td>
+                <td class="description">Use this skill for work on repository documentation files (docs/, research/). Trigger when the user wants to: write up or document completed work (&quot;we merged X, write it up&quot;, &quot;add a runbook for the deploy step&quot;, &quot;document the feature we shipped&quot;); create recipes, runbooks, or architecture docs; organize or file research notes; move or reorganize documentation files (&quot;move STYLE_GUIDE into a subfolder&quot;, &quot;relocate this doc safely&quot;); check if docs are stale vs code (&quot;are docs out of date?&quot;, &quot;does README match current reality?&quot;); update existing docs to reflect code changes; or fix doc structure/linting. Trigger for ANY intent to create, modify, organize, relocate, or refresh files in docs/ or research/ directories. Trigger even without words like &quot;document&quot;, &quot;recipe&quot;, or &quot;write up&quot;—the signal is working with knowledge files, not application code. Do NOT trigger for: implementing features, fixing application bugs, tuning runtime systems, running tests, building datasets, analyzing traces, or answering questions.</td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result fail">✗<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result pass">✓<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result fail">✗<span class="rate">0/3</span></td>
+                <td class="result test-result pass">✓<span class="rate">0/3</span></td>
+            </tr>
+        </tbody>
+    </table>
+    </div>
+
+</body>
+</html>

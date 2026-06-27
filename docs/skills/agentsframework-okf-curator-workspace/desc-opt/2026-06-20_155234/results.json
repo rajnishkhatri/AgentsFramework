@@ -1,0 +1,1430 @@
+{
+  "exit_reason": "max_iterations (5)",
+  "original_description": "Keep THIS repository's knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo's written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (\"we just wired up X, write it up\", \"add a runbook for the new deploy step\", \"capture the carrier-gate shadow audit\", \"document the memory soft-suppress feature\"); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) \u2014 the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (\"is our doc knowledge stale vs the code?\", \"update the README with the new test counts\", \"make sure the architecture docs reflect the new planner behavior\"); or get the docs tree typed, catalogued, and passing the OKF lint gate (\"bring docs/explainability up to the convention\", \"make the recipes tree lint-clean\", \"move STYLE_GUIDE into a subfolder without breaking the @-mentions\"). It writes features up as recipes in the house shape, files research in the right bundle, runs a code\u2194docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it \u2014 reusing the bundled generator scripts and the repo's `okf_lint.py` gate. Trigger broadly and even when the user never says \"OKF\", \"recipe\", \"docs\", or \"frontmatter\" \u2014 if the intent is to make the repo's written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.",
+  "best_description": "Keep THIS repository's knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo's written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (\"we just wired up X, write it up\", \"add a runbook for the new deploy step\", \"capture the carrier-gate shadow audit\", \"document the memory soft-suppress feature\"); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) \u2014 the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (\"is our doc knowledge stale vs the code?\", \"update the README with the new test counts\", \"make sure the architecture docs reflect the new planner behavior\"); or get the docs tree typed, catalogued, and passing the OKF lint gate (\"bring docs/explainability up to the convention\", \"make the recipes tree lint-clean\", \"move STYLE_GUIDE into a subfolder without breaking the @-mentions\"). It writes features up as recipes in the house shape, files research in the right bundle, runs a code\u2194docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it \u2014 reusing the bundled generator scripts and the repo's `okf_lint.py` gate. Trigger broadly and even when the user never says \"OKF\", \"recipe\", \"docs\", or \"frontmatter\" \u2014 if the intent is to make the repo's written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.",
+  "best_score": "1/7",
+  "best_train_score": "3/13",
+  "best_test_score": "1/7",
+  "final_description": "Use this skill for work on repository documentation files (docs/, research/). Trigger when the user wants to: write up or document completed work (\"we merged X, write it up\", \"add a runbook for the deploy step\", \"document the feature we shipped\"); create recipes, runbooks, or architecture docs; organize or file research notes; move or reorganize documentation files (\"move STYLE_GUIDE into a subfolder\", \"relocate this doc safely\"); check if docs are stale vs code (\"are docs out of date?\", \"does README match current reality?\"); update existing docs to reflect code changes; or fix doc structure/linting. Trigger for ANY intent to create, modify, organize, relocate, or refresh files in docs/ or research/ directories. Trigger even without words like \"document\", \"recipe\", or \"write up\"\u2014the signal is working with knowledge files, not application code. Do NOT trigger for: implementing features, fixing application bugs, tuning runtime systems, running tests, building datasets, analyzing traces, or answering questions.",
+  "iterations_run": 5,
+  "holdout": 0.4,
+  "train_size": 13,
+  "test_size": 7,
+  "history": [
+    {
+      "iteration": 1,
+      "description": "Keep THIS repository's knowledge plane (the AgentsFramework `agent` monorepo: `docs/` + root `research/`, organized as OKF bundles, governed by `docs/CONVENTIONS_OKF.md` and linted by `scripts/okf_lint.py`) in sync with the actual code and pipeline. This is the skill for ANY work that documents, records, organizes, or freshens the repo's written knowledge after something changes. Use it whenever the user wants to: document or capture a shipped feature/fix/pipeline change as a recipe (\"we just wired up X, write it up\", \"add a runbook for the new deploy step\", \"capture the carrier-gate shadow audit\", \"document the memory soft-suppress feature\"); write up or record EVAL / TRACE-AUDIT / MEMORY work as durable docs (a probe rubric, a trace-audit finding, a memory-tuning decision) \u2014 the WRITING/recording of it lives here even when the underlying work is evaluation, telemetry, or runtime memory; file or organize research and design notes so they stay findable; refresh ANY stale doc against the code, including architecture docs, the planning docs, or the root README (\"is our doc knowledge stale vs the code?\", \"update the README with the new test counts\", \"make sure the architecture docs reflect the new planner behavior\"); or get the docs tree typed, catalogued, and passing the OKF lint gate (\"bring docs/explainability up to the convention\", \"make the recipes tree lint-clean\", \"move STYLE_GUIDE into a subfolder without breaking the @-mentions\"). It writes features up as recipes in the house shape, files research in the right bundle, runs a code\u2194docs drift check, safely relocates docs with full reference rewriting, and keeps everything lint-green so humans and agents can both extract it \u2014 reusing the bundled generator scripts and the repo's `okf_lint.py` gate. Trigger broadly and even when the user never says \"OKF\", \"recipe\", \"docs\", or \"frontmatter\" \u2014 if the intent is to make the repo's written knowledge correct, current, and findable, this is the skill. It does NOT itself run tests, build/ship product code, or answer general questions; it curates the knowledge that records that work.",
+      "train_passed": 3,
+      "train_failed": 10,
+      "train_total": 13,
+      "train_results": [
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 1,
+      "test_failed": 6,
+      "test_total": 7,
+      "test_results": [
+        {
+          "query": "capture what we just built this afternoon \u2014 the carrier-gate shadow audit \u2014 as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md \u2014 bring that folder up to the OKF convention",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links \u2014 can you get it lint-clean",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the README at the repo root is stale \u2014 update it with the current test counts and the new langfuse integration",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "build an eval probe for the summarizer component \u2014 open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the OKF spec from google cloud \u2014 can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 3,
+      "failed": 10,
+      "total": 13,
+      "results": [
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "description": "Use this skill when the user wants to document or record work that just happened in the AgentsFramework agent monorepo. Trigger for: writing up a shipped feature, bug fix, or pipeline change as a recipe or runbook; documenting new infrastructure (deploy steps, sidecars, integrations); recording eval/trace-audit/memory work as durable notes; organizing or filing research; checking whether docs are stale vs recent code changes; updating architecture docs or READMEs to reflect current code; moving or reorganizing docs safely; or making the knowledge tree lint-clean. Trigger even when the user never says \"docs\", \"OKF\", or \"recipe\" \u2014 if something changed and now needs to be captured, or existing knowledge needs freshening, use this skill. Do NOT trigger for implementing product code, running tests, tuning runtime systems, or answering general questions.",
+      "train_passed": 3,
+      "train_failed": 10,
+      "train_total": 13,
+      "train_results": [
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 1,
+      "test_failed": 6,
+      "test_total": 7,
+      "test_results": [
+        {
+          "query": "capture what we just built this afternoon \u2014 the carrier-gate shadow audit \u2014 as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md \u2014 bring that folder up to the OKF convention",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links \u2014 can you get it lint-clean",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the README at the repo root is stale \u2014 update it with the current test counts and the new langfuse integration",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "build an eval probe for the summarizer component \u2014 open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the OKF spec from google cloud \u2014 can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 3,
+      "failed": 10,
+      "total": 13,
+      "results": [
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "description": "Use this skill whenever the user asks you to write up, document, capture, or record something that already happened in the codebase \u2014 especially features that shipped, bugs that got fixed, deploy/infrastructure changes, or eval/trace/memory work. Also use it to: file or organize research notes; check if docs are stale compared to recent code; update architecture docs or READMEs to match current reality; safely move or reorganize documentation files; or fix doc structure/linting issues. Trigger even when the user never mentions \"docs\", \"documentation\", or \"recipe\" \u2014 the signal is that work occurred and now needs to be captured in writing, or that existing written knowledge needs refreshing or reorganizing. Do NOT trigger for: fixing bugs in application code, tuning runtime systems, building new product features, running tests, or answering questions.",
+      "train_passed": 3,
+      "train_failed": 10,
+      "train_total": 13,
+      "train_results": [
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 1,
+      "test_failed": 6,
+      "test_total": 7,
+      "test_results": [
+        {
+          "query": "capture what we just built this afternoon \u2014 the carrier-gate shadow audit \u2014 as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md \u2014 bring that folder up to the OKF convention",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links \u2014 can you get it lint-clean",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the README at the repo root is stale \u2014 update it with the current test counts and the new langfuse integration",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "build an eval probe for the summarizer component \u2014 open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the OKF spec from google cloud \u2014 can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 3,
+      "failed": 10,
+      "total": 13,
+      "results": [
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 4,
+      "description": "Use this skill to capture completed work in writing. Trigger when the user says they shipped/merged/fixed/wired something and wants it written up, added as a runbook, or documented (\"we just merged X, write it up\", \"add a runbook for the deploy step\", \"document the feature\"). Also trigger for: organizing or filing research notes; checking whether docs reflect recent code changes (\"are docs stale vs what we shipped?\", \"does the README match current reality?\"); updating architecture docs to match the codebase; safely relocating documentation files; or making the docs tree structurally sound. The key signal: something changed (code shipped, infra deployed, decision made) and now needs recording, OR existing knowledge needs verification/refresh/reorganization. Trigger even when \"docs\" is never mentioned\u2014look for past-tense verbs about completed work. Do NOT trigger for implementing features, fixing application bugs, tuning runtime behavior, running tests, or answering questions.",
+      "train_passed": 3,
+      "train_failed": 10,
+      "train_total": 13,
+      "train_results": [
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 1,
+      "test_failed": 6,
+      "test_total": 7,
+      "test_results": [
+        {
+          "query": "capture what we just built this afternoon \u2014 the carrier-gate shadow audit \u2014 as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md \u2014 bring that folder up to the OKF convention",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links \u2014 can you get it lint-clean",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the README at the repo root is stale \u2014 update it with the current test counts and the new langfuse integration",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "build an eval probe for the summarizer component \u2014 open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the OKF spec from google cloud \u2014 can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 3,
+      "failed": 10,
+      "total": 13,
+      "results": [
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    },
+    {
+      "iteration": 5,
+      "description": "Use this skill for work on repository documentation files (docs/, research/). Trigger when the user wants to: write up or document completed work (\"we merged X, write it up\", \"add a runbook for the deploy step\", \"document the feature we shipped\"); create recipes, runbooks, or architecture docs; organize or file research notes; move or reorganize documentation files (\"move STYLE_GUIDE into a subfolder\", \"relocate this doc safely\"); check if docs are stale vs code (\"are docs out of date?\", \"does README match current reality?\"); update existing docs to reflect code changes; or fix doc structure/linting. Trigger for ANY intent to create, modify, organize, relocate, or refresh files in docs/ or research/ directories. Trigger even without words like \"document\", \"recipe\", or \"write up\"\u2014the signal is working with knowledge files, not application code. Do NOT trigger for: implementing features, fixing application bugs, tuning runtime systems, running tests, building datasets, analyzing traces, or answering questions.",
+      "train_passed": 3,
+      "train_failed": 10,
+      "train_total": 13,
+      "train_results": [
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "test_passed": 1,
+      "test_failed": 6,
+      "test_total": 7,
+      "test_results": [
+        {
+          "query": "capture what we just built this afternoon \u2014 the carrier-gate shadow audit \u2014 as a proper recipe in the governance bundle with the goal/status/steps shape the others use",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the frontmatter on half the docs in docs/explainability/ is missing the type field, and there's no index.md \u2014 bring that folder up to the OKF convention",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the docs/recipes tree is throwing okf_lint warnings about missing index files and a couple broken links \u2014 can you get it lint-clean",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we changed how the planner selects depth and added a new escalation edge. make sure the architecture docs and the planning recipe reflect the new behavior",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the README at the repo root is stale \u2014 update it with the current test counts and the new langfuse integration",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "build an eval probe for the summarizer component \u2014 open coding, a rubric, an LLM judge, the whole continuous-monitoring setup",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "the OKF spec from google cloud \u2014 can you explain what a Concept and a Bundle are and how the format compares to a normal RAG setup",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ],
+      "passed": 3,
+      "failed": 10,
+      "total": 13,
+      "results": [
+        {
+          "query": "the long-term memory service is storing duplicate records for the same user \u2014 fix the consolidation logic in services/long_term_memory.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "is our docs folder out of date vs the code we shipped this sprint? I want a list of which recipes/architecture docs are probably stale before the next review",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "we just merged the memory soft-suppress feature (the PATCH /agent/memory/{key} route + the MEMORY_SUPPRESSED carrier). the docs don't mention any of it yet. document it.",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I want to move STYLE_GUIDE_PATTERNS.md into a style-guides subfolder but it's referenced all over including @-mentions in AGENTS.md \u2014 do it without breaking anything",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "our mem0 backend recall is returning low-relevance memories into the system prompt \u2014 tune the relevance floor and the dedup in components/memory_context.py",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "write me a new gold set for the goaljudge with double-labeled examples and run the judge calibration to get TPR/TNR",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "add a runbook for the new cloud run blue/green deploy step we added to scripts/deploy_gcp.sh",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "here's a langfuse trace dump as json \u2014 audit it against the four governance pillars and tell me if recording/identity/validation/reasoning are all healthy",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "ok we finally got the SearXNG web-search sidecar working in the agent runtime \u2014 can you write up how it's wired as a recipe so the next person doesn't have to reverse-engineer it from the terraform",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "I've got a reusable design note on the goal-judge calibration thresholds \u2014 where does it go so it stays organized and an agent can find it later, research/ or docs/research/?",
+          "should_trigger": true,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": false
+        },
+        {
+          "query": "run the t3 playwright e2e tier against the cloud run deployment and tell me if the streaming chat still works",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "add a new API endpoint to the middleware for fetching a thread's message history and write the integration tests",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        },
+        {
+          "query": "summarize this 40-page PDF spec into a one-pager for my manager",
+          "should_trigger": false,
+          "trigger_rate": 0.0,
+          "triggers": 0,
+          "runs": 3,
+          "pass": true
+        }
+      ]
+    }
+  ]
+}

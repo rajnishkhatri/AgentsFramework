@@ -1,0 +1,19 @@
+{
+  "expectations": [
+    {
+      "text": "drift report produced",
+      "passed": true,
+      "evidence": "report len=12524"
+    },
+    {
+      "text": "no docs created/edited (report-only)",
+      "passed": true,
+      "evidence": "non-report md created=[]"
+    },
+    {
+      "text": "report names changed code + mentioning docs",
+      "passed": true,
+      "evidence": "mentions changed code + docs"
+    }
+  ]
+}

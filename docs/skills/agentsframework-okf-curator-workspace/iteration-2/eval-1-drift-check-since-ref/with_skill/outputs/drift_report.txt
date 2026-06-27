@@ -1,0 +1,200 @@
+==============================================================================
+OKF DRIFT CHECK — "Are our docs stale relative to the code we changed in the
+last few commits?"  (Routine 3, agentsframework-okf-curator skill)
+REPORT ONLY — no docs were edited.
+Repo: /tmp/okf-eval2-1-with   Branch: chore/okf-recipes-bundles   Date: 2026-06-20
+Tool: docs/skills/agentsframework-okf-curator/scripts/drift_report.py (python3)
+==============================================================================
+
+------------------------------------------------------------------------------
+1. WINDOW CHOICE (read this first — it is the whole game in a drift check)
+------------------------------------------------------------------------------
+The skill is explicit: "Pick the window deliberately. HEAD~3 is only right if the
+last 3 commits are the feature. If recent commits are docs-only ... widen --since."
+
+What the last few commits actually are (git log --oneline, first-parent):
+  cf79094 chore(docs): complete OKF bundle migration ...        <- HEAD
+  3f33db5 chore(docs): declare OKF recipe sub-bundles ...
+  38e6fa2 chore(docs): adopt OKF knowledge bundles ...           <- HEAD~3
+  a7d8ce4 Merge PR #73 (dependabot js-yaml)
+  a524756 Merge PR #74 (dependabot actions/checkout)
+  b27f8b7 Merge PR #80 feat/memory-layer-wiring
+  7c46dd4 Merge PR #79 feat/memory-layer-wiring
+  57501b9 Merge PR #78 feat/memory-layer-wiring
+  9356b48 Merge PR #77 feat/memory-layer-wiring                  <- HEAD~9
+
+The three newest commits (the HEAD~3 window) are the OKF docs-migration. They are
+NOT purely docs — the migration also dropped in some real code (scripts/okf_lint.py,
+meta/CodeReviewerAgentTest/*, frontend/lib/README.md, a couple of test tweaks) — so
+drift_report.py's docs-only guard does NOT fire on HEAD~3. But that incidental code
+is plumbing for the migration itself, not "the code we changed" in the feature sense.
+
+The SUBSTANTIVE recent work named in the commit subjects — the MEMORY LAYER and CHAT
+PERSISTENCE (fix(chat) align thread list API, feat(memory) Phase B reject carriers,
+feat(chat) durable thread persistence + recalled-memories UI) — landed in the
+feat/memory-layer-wiring merges (#77–#80) that the docs-migration commits sit on top
+of. Because those are MERGE commits, the merge-base for HEAD~3...HEAD and HEAD~6...HEAD
+already contains that feature code, so a narrow window CANNOT see it.
+
+Code/pipeline file count by window (triple-dot / merge-base, exactly what the script
+uses), measured:
+  HEAD~3...HEAD   merge-base a7d8ce4   ->  8 code files  (docs-migration plumbing only)
+  HEAD~6...HEAD   merge-base 7c46dd4   ->  8 code files  (same — merges add nothing new)
+  HEAD~9...HEAD   merge-base d127baa   -> 65 code files  (REACHES the memory+chat feature)
+
+==> WINDOW CHOSEN: --since HEAD~9 (with --symbols).
+    HEAD~9's merge-base is PR #76 (the prior memory-layer merge), so HEAD~9...HEAD is
+    the first window that actually contains services/long_term_memory.py,
+    components/memory_context.py, the frontend memory_store/thread_store ports+adapters,
+    RecalledMemories.tsx, the sidebar hooks, orchestration/react_loop.py and
+    middleware/app_prod.py edits — i.e. the code "we changed in the last few commits."
+    HEAD~3 was run too, only to DEMONSTRATE the false-all-clear it produces (Section 4).
+
+------------------------------------------------------------------------------
+2. PRIMARY RUN — full feature window
+   python3 drift_report.py --since HEAD~9 --symbols
+------------------------------------------------------------------------------
+- 65 changed code/pipeline files in window.
+- New public symbols added in window (8): ChromeStorage, MemorySuppressRequest,
+  PersistHooks, SidebarChromeState, SidebarTab, ThreadAppendRequest,
+  ThreadCreateRequestInput, ThreadTurn.
+- 139 docs correlated with changed code.
+
+That 139 is dominated by THREE very-widely-referenced core files that nearly every
+architecture/deployment doc names in passing (low precision, expected):
+   orchestration/react_loop.py ...... matched by 65 docs
+   middleware/app_prod.py ........... matched by 28 docs
+   services/governance/black_box.py . matched by 26 docs
+These are real [path] hits but they are the react loop / governance black-box, not the
+new feature surface; treat them as "background" unless the doc is specifically about
+those modules. The actionable signal is the memory/chat-specific paths, which I
+isolated with a scoped pass (Section 3).
+
+MATCH-TYPE CAVEAT for this window: every one of the 8 new public symbols is a FRONTEND
+BFF/UI type (ChromeStorage, SidebarTab, ThreadTurn, ThreadAppendRequest, ...). No
+backend Architecture doc would ever name those, so [symbol-absent] fires on essentially
+every doc that also has a [path] hit. In THIS window [symbol-absent] is therefore
+LOW-PRECISION noise — weight the [path] matches, and read [symbol-absent] only as
+"this doc covers the changed area and predates these new types." (The flag earns its
+keep when a new public BACKEND symbol lands in an already-documented module; that is
+not the shape of this particular diff.)
+
+------------------------------------------------------------------------------
+3. WORKLIST — high-signal subset (memory layer + chat persistence)
+   python3 drift_report.py --since HEAD~9 --symbols \
+     --paths services/long_term_memory.py components/memory_context.py \
+             services/governance/memory_suppressed_carrier.py \
+             frontend/lib/ports frontend/lib/adapters \
+             frontend/components/memory frontend/components/chat
+   -> 25 changed files, 17 correlated docs. THIS is the worklist to act on.
+   Ordered by strength (number/specificity of [path] hits = most likely stale first).
+------------------------------------------------------------------------------
+
+TIER A — directly about THIS feature; multi-path hits; read first
+............................................................................
+[1] docs/plans/memory_layer_wiring.plan.md
+      [path] components/memory_context.py
+      [path] frontend/components/chat/ThreadSidebar.tsx
+      [path] frontend/components/chat/recall_indicator_flow.test.tsx
+      [path] frontend/components/chat/resume_thread_flow.test.tsx
+      [path] frontend/components/chat/use_chat_sidebars.ts
+      [path] frontend/lib/adapters/thread_store/neon_free_thread_store.ts
+      [path] services/long_term_memory.py
+      [symbol-absent] ChromeStorage, PersistHooks, SidebarChromeState, SidebarTab
+      WHY: this is the feature's own implementation plan and it references 7 of the
+      files that just changed. Highest staleness risk — its Status/checklist and any
+      "to do" steps are the most likely to now be out of date vs shipped code.
+
+[2] docs/plans/ui_left_panel_refresh.plan.md
+      [path] frontend/components/chat/SidebarPanel.tsx (+ .test)
+      [path] frontend/components/chat/SidebarTabBar.tsx (+ .test)
+      [path] frontend/components/chat/ThreadSidebar.tsx
+      [path] frontend/components/chat/use_agent_run.ts
+      [path] frontend/components/chat/use_chat_sidebars.ts
+      [path] frontend/components/chat/use_sidebar_chrome.ts (+ .test)
+      [symbol-absent] ChromeStorage, PersistHooks, SidebarChromeState, ThreadTurn
+      WHY: 9 path hits, all on the sidebar/chrome components that were rewritten in
+      this window (the new ChromeStorage/SidebarChromeState/SidebarTab types live here).
+      If this plan describes the OLD left-panel shape it is now stale.
+
+[3] docs/plans/memory_pipeline_remediation.plan.md
+      [path] components/memory_context.py
+      [path] services/long_term_memory.py
+      WHY: remediation plan for the exact memory pipeline that changed.
+
+[4] docs/plans/chat_persistence_memory_integration.plan.md
+      [path] frontend/lib/ports/thread_store.ts
+      WHY: the integration plan for chat persistence — the thread_store port it names
+      was changed (thread list API contract realignment).
+
+[5] docs/plan/services/LONG_TERM_MEMORY_PLAN.md
+      [path] services/long_term_memory.py
+      WHY: the service-level plan for long_term_memory.py, which changed.
+
+TIER B — architecture / ports-and-adapters reference docs; verify the named seams
+............................................................................
+[6] docs/Architectures/FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md
+      [path] frontend/lib/adapters/thread_store/neon_free_thread_store.ts
+      [path] frontend/lib/ports/thread_store.ts
+[7] docs/Architectures/FRONTEND_PORT_DEVIATIONS_V3.md
+      [path] frontend/lib/adapters/thread_store/neon_free_thread_store.test.ts
+      [path] frontend/lib/ports/thread_store.ts
+[8] docs/Architectures/FRONTEND_ARCHITECTURE.md
+      [path] frontend/lib/ports/thread_store.ts
+[9] docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md
+      [path] services/long_term_memory.py
+[10] docs/guides/FRONTEND_VALIDATION.md
+      [path] frontend/components/chat/ThreadSidebar.tsx
+      WHY (6-10): reference docs that name the thread_store/memory seams which changed
+      (new ports/adapters, new thread API contract). Confirm the documented port
+      signatures and adapter behaviour still match.
+
+TIER C — adapter sprint/plan + project-convention docs; mention long_term_memory.py
+          generically; low staleness risk but listed for completeness
+............................................................................
+[11] docs/plan/adapter/AGENT_UI_ADAPTER_PLAN.md          [path] services/long_term_memory.py
+[12] docs/plan/adapter/AGENT_UI_ADAPTER_PLAN_V1.1.md     [path] services/long_term_memory.py
+[13] docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md   [path] services/long_term_memory.py
+[14] docs/plan/adapter/sprints/IMPLEMENTATION_REVIEW.md      [path] services/long_term_memory.py
+[15] docs/style-guides/STYLE_GUIDE_PATTERNS.md           [path] services/long_term_memory.py
+[16] docs/CONVENTIONS_OKF.md                              [path] services/long_term_memory.py
+[17] docs/skills/agentsframework-okf-curator/references/conventions.md  [path] services/long_term_memory.py
+      WHY (11-17): these reference services/long_term_memory.py as an example/illustration
+      rather than documenting its behaviour. Likely fine; skim to confirm the example
+      path/usage still resolves.
+
+NOTE on a gap the report implies (candidate for Routine 1, not in this worklist):
+  services/governance/memory_suppressed_carrier.py is a NEW module in this window but
+  NO authored doc references it by path. Per the skill, "either the change needs a NEW
+  recipe, or it's purely internal" — flag for a human decision on whether the Phase B
+  soft-suppress carrier deserves a recipe. (Reporting only; not writing anything.)
+
+------------------------------------------------------------------------------
+4. CONTRAST RUN — why the naive window is a FALSE ALL-CLEAR
+   python3 drift_report.py --since HEAD~3
+------------------------------------------------------------------------------
+HEAD~3 reports only 8 changed files (okf_lint.py, meta/CodeReviewerAgentTest/*,
+frontend/lib/README.md) and 10 doc hits — and crucially shows ZERO memory/chat/thread
+docs, because the memory-layer feature code is below the merge-base of that window.
+Anyone running the literal "last 3 commits" window would wrongly conclude the
+feature docs are fine. Documented here so the window choice in Section 1 is auditable.
+(Its docs-only guard did not fire because the migration commits carry incidental code;
+the guard catches a PURE docs window, not this mixed one — hence the manual topology
+analysis above was required.)
+
+------------------------------------------------------------------------------
+5. BOTTOM LINE
+------------------------------------------------------------------------------
+- Worklist = the 17 docs in Section 3, READ in Tier A -> B -> C order.
+- Most likely stale: docs/plans/memory_layer_wiring.plan.md and
+  docs/plans/ui_left_panel_refresh.plan.md (each multi-path, feature-owned).
+- Match-type labels are applied throughout: [path] = doc references a changed file
+  path (the load-bearing signal here); [symbol-absent] = doc covers the changed area
+  but predates a brand-new public symbol (low-precision in THIS window because all the
+  new symbols are frontend types — see Section 2 caveat).
+- This is a worklist, NOT a verdict: correlation of mentions, not proof of staleness.
+- Possible NEW-recipe gap: services/governance/memory_suppressed_carrier.py (undocumented).
+- NO DOCS WERE EDITED. Next step for a human/curator: read the Tier-A docs, fix stale
+  prose/Status lines (or write a recipe via Routine 1), then run
+  `python scripts/okf_lint.py` to exit 0 (Routine 4).
+==============================================================================

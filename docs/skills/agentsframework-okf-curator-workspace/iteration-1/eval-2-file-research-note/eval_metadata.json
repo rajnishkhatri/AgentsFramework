@@ -1,0 +1,11 @@
+{
+  "eval_id": 2,
+  "eval_name": "file-research-note",
+  "prompt": "I wrote up a short research note on memory-extractor calibration thresholds \u2014 reusable design reference. File it in the right place and keep the knowledge tree lint-clean.",
+  "assertions": [
+    "note filed in authored home, not excluded evidence",
+    "note has type frontmatter",
+    "research bundle index+log updated",
+    "okf_lint exits 0"
+  ]
+}

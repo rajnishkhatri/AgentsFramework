@@ -1,0 +1,142 @@
+# OKF Drift Check — docs stale vs recently-changed code
+
+Routine: agentsframework-okf-curator → **Routine 3 (Drift check, code ↔ docs)**
+Tool:    docs/skills/agentsframework-okf-curator/scripts/drift_report.py
+Repo:    /tmp/okf-eval-1-with (worktree)   Branch: feat/memory-layer-wiring
+Generated: 2026-06-20
+Mode: REPORT ONLY — no docs created or edited.
+
+================================================================================
+WINDOW CHOICE (important)
+================================================================================
+The three most recent commits are all `chore(docs)` OKF-migration churn — they
+move/retype docs but change almost no source. The skill default `--since HEAD~3`
+therefore surfaces only the doc-migration's incidental tooling edits. To honour
+the user's actual ask ("code we changed in the last few commits"), I also ran a
+wider window (`--since HEAD~7`) that reaches back through the doc commits into the
+last real source work (`fix(chat)` + the memory-layer-wiring merge #80).
+
+Recent history:
+  cf79094 chore(docs): complete OKF bundle migration ...        <- HEAD
+  3f33db5 chore(docs): declare OKF recipe sub-bundles ...
+  38e6fa2 chore(docs): adopt OKF knowledge bundles, relocate ...
+  a7d8ce4 Merge #73 (dependabot js-yaml)
+  a524756 Merge #74 (dependabot actions/checkout)
+  b27f8b7 Merge #80 feat/memory-layer-wiring
+  03320f5 docs(mission): add MISSION.md + SOUL.md ...
+  102842c docs(readme): ...
+  7c46dd4 Merge #79 feat/memory-layer-wiring
+  e80068f fix(chat): align thread list API contract ...        <- last real src change
+
+================================================================================
+CHANGED CODE/PIPELINE FILES (since HEAD~7, CODE_PREFIXES filter)
+================================================================================
+  frontend/lib/bff/handlers.ts                      (1-line API-contract fix, e80068f)
+  scripts/okf_lint.py                               (lint gate; doc-migration edits)
+  meta/CodeReviewerAgentTest/review_config.py       (1-2 line tweaks)
+  meta/CodeReviewerAgentTest/report_renderer.py     (1-2 line tweaks)
+  meta/CodeReviewerAgentTest/configs/phase{1,2,3}.json
+  meta/CodeReviewerAgentTest/DEVELOPER_GUIDE.md     (a doc, not code)
+  frontend/lib/README.md                            (a doc, not code — see NOISE)
+
+The raw script reported 31 doc hits. Most are a known false-positive class. Below
+is the JUDGED worklist (the script output is a worklist, not a verdict).
+
+================================================================================
+WORKLIST — REVIEW THESE (genuine references to changed code)
+================================================================================
+
+[ HIGH SIGNAL — cite the one real source change: frontend/lib/bff/handlers.ts ]
+
+  1. docs/plans/memory_layer_wiring.plan.md
+        ↳ cites frontend/lib/bff/handlers.ts
+        WHY: handlers.ts is the BFF thread-list handler; this is the plan that
+             owns that wiring. The contract fix in e80068f ("align thread list
+             API contract") most plausibly lands against statements here.
+        ACTION: read the sections naming handlers.ts / thread-list contract;
+             confirm the described response shape matches the post-fix code.
+
+  2. docs/plans/chat_persistence_memory_integration.design.md
+        ↳ cites frontend/lib/bff/handlers.ts
+        ACTION: same — verify the BFF thread-list contract description is current.
+
+  3. docs/plans/chat_persistence_memory_integration.plan.md
+        ↳ cites frontend/lib/bff/handlers.ts
+        ACTION: same — verify any handler/endpoint contract claims still hold.
+
+  NOTE: the underlying diff is only 1 line, so drift risk is LOW even here — a
+  quick skim of the contract description in each is enough.
+
+[ MEDIUM — cite changed tooling, but the changes are migration/cosmetic ]
+
+  4. docs/CONVENTIONS_OKF.md
+        ↳ cites scripts/okf_lint.py (the canonical OKF lint gate — genuine)
+        WHY: okf_lint.py changed during the doc migration (e.g. DECLARED_BUNDLES).
+        ACTION: confirm the conventions doc's description of what the linter
+             checks / which bundles are declared still matches okf_lint.py.
+
+  5. docs/analysis/PYRAMID_ANALYSIS.md
+        ↳ cites meta/CodeReviewerAgentTest/DEVELOPER_GUIDE.md
+        ACTION: low priority — the meta change is a 1-2 line tweak; skim only.
+
+  6. docs/guides/USER_MANUAL.md
+        ↳ cites meta/CodeReviewerAgentTest/DEVELOPER_GUIDE.md
+        ACTION: low priority — same as above.
+
+  (No doc references the changed meta/CodeReviewerAgentTest Python or phase*.json
+   files at all — they have zero doc coverage. The 1-2 line tweaks don't appear
+   to introduce net-new behaviour worth a new recipe; if a later, larger change
+   to that harness lands, consider Routine 1.)
+
+================================================================================
+NOISE — SUPPRESSED (do NOT action)  [27 docs]
+================================================================================
+All 27 of these matched ONLY on `frontend/lib/README.md`, and only via the
+script's basename clause (`Path(c).name in text`) catching the bare token
+"README.md" — which appears in nearly every planning doc. This is the exact
+"noisy hits on common filenames (README.md)" case the skill flags as expected.
+None of these reference frontend/lib/README.md as a path; none are drift.
+
+  docs/Architectures/FRONTEND_PORT_DEVIATIONS_V3.md
+  docs/analysis/AGENTS_MD_BEST_PRACTICES_RESEARCH.md
+  docs/explainability/EXPLAINABILITY_UI_SPRINT_BOARD.md
+  docs/guides/DEVELOPER_GUIDE.md
+  docs/plan/PLAN.md
+  docs/plan/PLAN_v2.md
+  docs/plan/README.md
+  docs/plan/adapter/sprints/AGENT_UI_ADAPTER_SPRINTS.md
+  docs/plan/adapter/sprints/IMPLEMENTATION_REVIEW.md
+  docs/plan/frontend/FRONTEND_PLAN.md
+  docs/plan/frontend/FRONTEND_PLAN_V1.md
+  docs/plan/frontend/FRONTEND_PLAN_V2_FRONTIER.md
+  docs/plan/frontend/spike_reports/SPIKE_A.md
+  docs/plans/cloud_cost_comparison_pyramids.plan.md
+  docs/plans/goaljudge_eval_ui_trajectory_phase.plan.md
+  docs/plans/goaljudge_stage5_fresh_a1_labeling_session.plan.md
+  docs/plans/goaljudge_stage5_fresh_a2_labeling_session.plan.md
+  docs/plans/goaljudge_stage5_goldset.plan.md
+  docs/plans/goaljudge_stage5_phase6c_v09_and_wave2.plan.md
+  docs/plans/goaljudge_stage5_tier3_assembly.plan.md
+  docs/plans/llm_eval_pipeline_skill.plan.md
+  docs/skills/README.md
+  docs/skills/agentsframework-playwright/SKILL.md
+  docs/style-guides/STYLE_GUIDE_FRONTEND.md
+  docs/walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md
+  (+ docs/CONVENTIONS_OKF.md and docs/plans/memory_layer_wiring.plan.md ALSO
+     matched README.md noise, but are kept above for their genuine okf_lint.py /
+     handlers.ts hits respectively.)
+
+================================================================================
+BOTTOM LINE
+================================================================================
+- Real code churn in the last few commits is THIN: one 1-line BFF contract fix
+  (frontend/lib/bff/handlers.ts) plus migration-era edits to okf_lint.py and the
+  meta CodeReviewer harness. The recent commits are overwhelmingly doc migration.
+- 6 docs are worth a read (3 high-signal, 3 medium); top of the list are the
+  three chat-persistence / memory-wiring plans that name handlers.ts.
+- 27 hits are README.md substring noise — suppressed, no action.
+- Drift severity overall: LOW. No net-new behaviour without a doc → no new recipe
+  appears required. Re-run after the next real feature merge.
+
+Next step (when you DO edit): for each genuine hit, fix stale prose / **Status:**
+lines or write a recipe (Routine 1), then run `python scripts/okf_lint.py` (exit 0).
