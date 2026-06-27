@@ -15,6 +15,9 @@
  *   GJ_CASE_FILTER=GJ-010     — single case
  *   GOALJUDGE_BATCH_MODE=pilot — 43-case Stage 5 pilot (default: walkthrough, 22 cases)
  *   GOALJUDGE_BATCH_MODE=fresh  — 79-case Phase 5 fresh-authored corpus (GJ-F-*)
+ *   GOALJUDGE_BATCH_MODE=wave2  — 122-case wave-2 corpus (GJ-F-W2-*); closes the
+ *                                 v0.9 floor gaps (export with
+ *                                 scripts.export_goaljudge_fresh_tasks_wave2_json)
  *   GOALJUDGE_BATCH_LIMIT=5   — cap batch size
  *   GOALJUDGE_BATCH_JSONL     — override JSONL output path
  *   GOALJUDGE_BATCH_SCREENSHOT_DIR — override screenshot output dir

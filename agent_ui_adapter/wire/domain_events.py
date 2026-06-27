@@ -149,7 +149,26 @@ class MemoryRecalled(DomainEventBase):
     keys: list[str] = Field(default_factory=list)
 
 
-# ── Union type alias (US-2.3 +TaskUnderstood +MemoryRecalled: 13 members) ─
+class ApprovalRequested(DomainEventBase):
+    """shell_severity_approval_hitl plan: a severity-gated shell command is
+    awaiting human approval (wire: Custom ``approval_requested``). The frontend
+    translator special-cases the name into a CopilotKit ``useHumanInTheLoop``
+    Approve / Edit / Reject card (the task_understanding / reasoning_summary
+    idiom). ``approval_id`` correlates the card's resolution back to the paused
+    interrupt; ``command`` is the capped command preview, never an arbitrary
+    payload. METADATA ONLY — the human acts on this and the resume rides
+    ``Command(resume=...)`` on the same thread."""
+
+    approval_id: str
+    tool: str
+    command: str
+    severity: str
+    band: str
+    timeout_seconds: int
+
+
+# ── Union type alias (US-2.3 +TaskUnderstood +MemoryRecalled
+#    +ApprovalRequested: 14 members) ─
 
 
 DomainEvent = (
@@ -166,10 +185,12 @@ DomainEvent = (
     | ReasoningSummarized
     | TaskUnderstood
     | MemoryRecalled
+    | ApprovalRequested
 )
 
 
 __all__ = [
+    "ApprovalRequested",
     "DomainEvent",
     "DomainEventBase",
     "LLMMessageEnded",

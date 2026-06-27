@@ -19,6 +19,7 @@ import time
 from typing import Any
 
 from agent_ui_adapter.wire.domain_events import (
+    ApprovalRequested,
     DomainEvent,
     LLMMessageEnded,
     LLMMessageStarted,
@@ -58,7 +59,12 @@ _MAX_FIELD_BYTES = 4096
 # MEMORY_RECALLED BlackBox carrier (Recording pillar) + the memory_recall
 # eval_capture observation; the domain event is a pure UI affordance (the
 # transparent-recall count), so exporting it again would only add noise.
+# ApprovalRequested likewise: the gate decision is already exported via the
+# GUARDRAIL_CHECKED BlackBox carrier (Validation pillar — one carrier per
+# decision); the domain event is a pure UI affordance (the approve/edit/reject
+# card), so exporting it again would only add noise.
 _SKIPPED_TYPES = (
+    ApprovalRequested,
     MemoryRecalled,
     ReasoningSummarized,
     StateMutated,

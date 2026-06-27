@@ -238,6 +238,29 @@ class AgentConfig(BaseModel):
     # floor. Default OFF: with this flag False both fold sites pass ``[]`` exactly
     # as before, keeping flag-OFF behaviour byte-identical.
     context_extract_user_constraints: bool = False
+    # ─── Severity-graded shell-command approval / HITL (plan:
+    # docs/plans/shell_severity_approval_hitl.plan.md) ───────────────────
+    # Master switch. When False the shell tool path is byte-identical to today
+    # (hard allowlist, no severity classification, no interrupt). Shadow-first:
+    # the same discipline as reflexion_enabled / t3_fanout_enabled / memory_enabled.
+    shell_approval_enabled: bool = False
+    # The lowest severity band that requires human approval (the "ask" floor).
+    # A command classified below it auto-runs (widening today's allowlist);
+    # at/above it pauses for the approval card; CRITICAL is always un-promptable
+    # (hard-deny) regardless of this knob. Default "high" = only the riskiest
+    # band asks during early rollout.
+    shell_approval_severity_threshold: Literal[
+        "low", "medium", "high", "critical"
+    ] = "high"
+    # Fail-closed approval timeout. No human decision within this many seconds →
+    # DENY (OWASP "a timeout = denial, no exception path"). Bounds the interrupt.
+    shell_approval_timeout_seconds: int = 120
+    # Phase B enforce gate. When False (Phase A / shadow) the gate CLASSIFIES and
+    # emits the GUARDRAIL_CHECKED carrier + widens the auto band, but does NOT
+    # fire the interrupt — observe real severities first. Flip on a tagged
+    # revision to make the "ask" band actually pause for the card (enforce-dark,
+    # the carrier-gate enforce precedent). Inert unless shell_approval_enabled.
+    shell_approval_enforce: bool = False
 
 
 def compaction_trigger_tokens(context_window: int, fraction: float) -> int:

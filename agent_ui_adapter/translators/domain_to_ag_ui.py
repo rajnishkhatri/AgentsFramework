@@ -30,6 +30,7 @@ from agent_ui_adapter.wire.ag_ui_events import (
     ToolResult,
 )
 from agent_ui_adapter.wire.domain_events import (
+    ApprovalRequested,
     DomainEventBase,
     LLMMessageEnded,
     LLMMessageStarted,
@@ -223,6 +224,26 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
             Custom(
                 name="memory_recalled",
                 value={"count": event.count, "keys": list(event.keys)},
+                raw_event=raw,
+            )
+        ]
+
+    if isinstance(event, ApprovalRequested):
+        # shell_severity_approval_hitl plan: rides Custom 'approval_requested'
+        # (zero wire change); the frontend translator special-cases the name
+        # into a useHumanInTheLoop Approve/Edit/Reject card. METADATA ONLY —
+        # the command is the capped preview the gate classified.
+        return [
+            Custom(
+                name="approval_requested",
+                value={
+                    "approval_id": event.approval_id,
+                    "tool": event.tool,
+                    "command": event.command,
+                    "severity": event.severity,
+                    "band": event.band,
+                    "timeout_seconds": event.timeout_seconds,
+                },
                 raw_event=raw,
             )
         ]

@@ -1,5 +1,51 @@
 components:
   schemas:
+    ApprovalRequested:
+      additionalProperties: false
+      description: "shell_severity_approval_hitl plan: a severity-gated shell command\
+        \ is\nawaiting human approval (wire: Custom ``approval_requested``). The frontend\n\
+        translator special-cases the name into a CopilotKit ``useHumanInTheLoop``\n\
+        Approve / Edit / Reject card (the task_understanding / reasoning_summary\n\
+        idiom). ``approval_id`` correlates the card's resolution back to the paused\n\
+        interrupt; ``command`` is the capped command preview, never an arbitrary\n\
+        payload. METADATA ONLY \u2014 the human acts on this and the resume rides\n\
+        ``Command(resume=...)`` on the same thread."
+      properties:
+        approval_id:
+          title: Approval Id
+          type: string
+        band:
+          title: Band
+          type: string
+        command:
+          title: Command
+          type: string
+        severity:
+          title: Severity
+          type: string
+        timeout_seconds:
+          title: Timeout Seconds
+          type: integer
+        timestamp:
+          format: date-time
+          title: Timestamp
+          type: string
+        tool:
+          title: Tool
+          type: string
+        trace_id:
+          title: Trace Id
+          type: string
+      required:
+      - trace_id
+      - approval_id
+      - tool
+      - command
+      - severity
+      - band
+      - timeout_seconds
+      title: ApprovalRequested
+      type: object
     BaseEvent:
       $defs:
         EventType:
