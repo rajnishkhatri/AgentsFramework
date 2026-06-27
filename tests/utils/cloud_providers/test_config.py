@@ -52,20 +52,23 @@ class TestDefaults:
 class TestValidation:
     def test_provider_accepts_aws(self):
         settings = TrustProviderSettings(
-            provider="aws", _env_file=None,  # type: ignore[call-arg]
+            provider="aws",
+            _env_file=None,  # type: ignore[call-arg]
         )
         assert settings.provider == "aws"
 
     def test_provider_accepts_local(self):
         settings = TrustProviderSettings(
-            provider="local", _env_file=None,  # type: ignore[call-arg]
+            provider="local",
+            _env_file=None,  # type: ignore[call-arg]
         )
         assert settings.provider == "local"
 
     def test_provider_literal_rejects_invalid(self):
         with pytest.raises(ValidationError):
             TrustProviderSettings(
-                provider="azure", _env_file=None,  # type: ignore[call-arg]
+                provider="azure",
+                _env_file=None,  # type: ignore[call-arg]
             )
 
 

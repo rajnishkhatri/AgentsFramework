@@ -1,7 +1,7 @@
 # Tutorial 2: BlackBox Recording for Debugging
 
-**Duration:** ~25 minutes  
-**Level:** Intermediate  
+**Duration:** ~25 minutes
+**Level:** Intermediate
 **Prerequisites:** [Tutorial 1: Explainability Fundamentals](01_explainability_fundamentals.md)
 
 ---
@@ -759,7 +759,7 @@ sequenceDiagram
     participant Tools as Analysis Tools
 
     Note over Prod,Tools: PHASE 1: SECURE & EXPORT
-    
+
     Prod->>BB: Workflow fails
     BB->>BB: Persist all recordings to disk
     Analyst->>BB: export_black_box(task_id, filepath)
@@ -767,16 +767,16 @@ sequenceDiagram
     Note right of Export: Contains:<br/>• Task plan<br/>• Collaborators<br/>• Parameters<br/>• Execution trace<br/>• All events
 
     Note over Prod,Tools: PHASE 2: REPLAY & RECONSTRUCT
-    
+
     Analyst->>BB: replay(task_id)
     BB->>Analyst: Iterator[RecordedEvent]
     loop For each event in chronological order
         Analyst->>Tools: Build timeline
         Tools->>Tools: Identify anomalies
     end
-    
+
     Note over Prod,Tools: PHASE 3: ANALYZE & FIX
-    
+
     Analyst->>Tools: Trace error chain
     Tools->>Analyst: Root cause identified
     Analyst->>Analyst: Document findings
@@ -853,7 +853,7 @@ for event in recorder.replay("process-invoice"):
         "type": event.event_type,
         "data": event.data
     })
-    
+
 # Sort and display
 for evt in sorted(event_timeline, key=lambda x: x["time"]):
     timestamp = evt["time"].strftime("%H:%M:%S.%f")[:-3]
@@ -905,7 +905,7 @@ if error_time:
     for evt in trace.events:
         if evt.event_type.value == "parameter_change" and evt.timestamp < error_time:
             suspicious_changes.append(evt)
-    
+
     for change in suspicious_changes:
         meta = change.metadata
         print(f"⚙️  {meta.get('parameter')}: {meta.get('old_value')} → {meta.get('new_value')}")
@@ -962,12 +962,12 @@ This section walks through a real-world debugging scenario using actual BlackBox
 
 ### The Incident Report
 
-**Incident ID:** INC-2024-1127-001  
-**Severity:** P2 (High)  
-**Reported By:** Finance Operations Team  
+**Incident ID:** INC-2024-1127-001
+**Severity:** P2 (High)
+**Reported By:** Finance Operations Team
 **Time Detected:** 2024-11-27 14:05 UTC
 
-> "Invoice processing has stopped working. Invoices are getting stuck at validation 
+> "Invoice processing has stopped working. Invoices are getting stuck at validation
 > and never reaching approval. We have 47 invoices queued and the backlog is growing.
 > This started about an hour ago after we requested compliance changes."
 
@@ -1074,7 +1074,7 @@ Scanning the timeline, several anomalies stand out:
 # From the ERROR event
 {
     "error_message": "Confidence threshold too high (0.95) - no valid results",
-    "error_type": "ValidationError", 
+    "error_type": "ValidationError",
     "is_recoverable": False  # System couldn't self-correct
 }
 ```
@@ -1310,9 +1310,9 @@ recorder = BlackBoxRecorder(
 
 def process_document_workflow(document_id: str):
     """Example workflow with strategic checkpoint placement."""
-    
+
     task_id = f"process-{document_id}"
-    
+
     # ✓ CHECKPOINT: Before expensive OCR operation
     recorder.add_trace_event(task_id, TraceEvent(
         event_id="chk-pre-ocr",
@@ -1325,10 +1325,10 @@ def process_document_workflow(document_id: str):
             "state": {"document_id": document_id, "status": "pending_ocr"}
         }
     ))
-    
+
     # Perform expensive OCR
     ocr_result = perform_ocr(document_id)  # Costs $0.02, takes 3s
-    
+
     # ✓ CHECKPOINT: After expensive operation completed successfully
     recorder.add_trace_event(task_id, TraceEvent(
         event_id="chk-post-ocr",
@@ -1345,10 +1345,10 @@ def process_document_workflow(document_id: str):
             }
         }
     ))
-    
+
     # ✗ NO CHECKPOINT: Simple local validation (fast, deterministic)
     validation_result = validate_ocr_output(ocr_result)
-    
+
     # ✓ CHECKPOINT: Before external API call (might fail, rate limit)
     recorder.add_trace_event(task_id, TraceEvent(
         event_id="chk-pre-enrichment",
@@ -1365,10 +1365,10 @@ def process_document_workflow(document_id: str):
             }
         }
     ))
-    
+
     # External API call
     enriched_data = enrich_via_external_api(ocr_result)
-    
+
     # ✓ CHECKPOINT: Workflow phase boundary (extraction → classification)
     recorder.add_trace_event(task_id, TraceEvent(
         event_id="chk-phase-boundary",
@@ -1572,62 +1572,62 @@ def cleanup_old_recordings(
 ) -> dict:
     """
     Clean up old black box recordings based on retention policy.
-    
+
     Args:
         storage_path: Root path for recordings
         retention_days: Days to keep in hot storage
         archive_path: Optional path for archiving (instead of deleting)
         dry_run: If True, only report what would be deleted
-    
+
     Returns:
         Summary of cleanup actions
     """
     recordings_path = storage_path / "black_box_recordings"
     cutoff_date = datetime.now(UTC) - timedelta(days=retention_days)
-    
+
     summary = {
         "workflows_checked": 0,
         "workflows_to_archive": [],
         "workflows_to_delete": [],
         "bytes_to_free": 0
     }
-    
+
     if not recordings_path.exists():
         return summary
-    
+
     for workflow_dir in recordings_path.iterdir():
         if not workflow_dir.is_dir():
             continue
-        
+
         summary["workflows_checked"] += 1
-        
+
         # Find most recent trace file to determine age
         trace_files = list(workflow_dir.glob("*_trace.json"))
         if not trace_files:
             continue
-        
+
         most_recent = max(trace_files, key=lambda f: f.stat().st_mtime)
         file_date = datetime.fromtimestamp(most_recent.stat().st_mtime, tz=UTC)
-        
+
         if file_date < cutoff_date:
             # Calculate size
             workflow_size = sum(f.stat().st_size for f in workflow_dir.rglob("*"))
             summary["bytes_to_free"] += workflow_size
-            
+
             # Check if workflow failed (keep failed workflows longer)
             is_failed = _check_if_failed(workflow_dir)
-            
+
             if archive_path and is_failed:
                 summary["workflows_to_archive"].append(workflow_dir.name)
             else:
                 summary["workflows_to_delete"].append(workflow_dir.name)
-            
+
             if not dry_run:
                 if archive_path and is_failed:
                     _archive_workflow(workflow_dir, archive_path)
                 else:
                     _delete_workflow(workflow_dir)
-    
+
     return summary
 
 
@@ -1663,7 +1663,7 @@ if __name__ == "__main__":
         archive_path=Path("archive/"),
         dry_run=True  # Set to False to actually clean up
     )
-    
+
     print("Storage Cleanup Summary")
     print("=" * 50)
     print(f"Workflows checked: {summary['workflows_checked']}")
@@ -1692,11 +1692,11 @@ def export_compressed(recorder, task_id: str, filepath: Path) -> None:
         "task_id": task_id,
         # ... collect all data ...
     }
-    
+
     # Write compressed
     with gzip.open(filepath.with_suffix('.json.gz'), 'wt', encoding='utf-8') as f:
         json.dump(export_data, f)
-    
+
     # ~70% smaller than uncompressed
 ```
 
@@ -1793,14 +1793,14 @@ from backend.explainability.black_box import (
     BlackBoxRecorder, TraceEvent, EventType
 )
 from backend.explainability.guardrails import (
-    GuardRail, GuardRailValidator, Constraint, 
+    GuardRail, GuardRailValidator, Constraint,
     BuiltInValidators, FailAction, Severity
 )
 
 
 class ValidatedWorkflowExecutor:
     """Executes workflow steps with integrated validation and recording."""
-    
+
     def __init__(self, workflow_id: str, storage_path: Path):
         self.recorder = BlackBoxRecorder(
             workflow_id=workflow_id,
@@ -1808,7 +1808,7 @@ class ValidatedWorkflowExecutor:
         )
         self.validator = GuardRailValidator()
         self.task_id = f"task-{workflow_id}"
-    
+
     def execute_step_with_validation(
         self,
         step_id: str,
@@ -1818,17 +1818,17 @@ class ValidatedWorkflowExecutor:
         guardrail: GuardRail
     ) -> dict:
         """Execute a step with validation and full recording.
-        
+
         Args:
             step_id: Unique step identifier
             agent_id: Agent performing the step
             step_fn: Function to execute
             input_data: Input data for the step
             guardrail: GuardRail to validate output
-            
+
         Returns:
             Step output if validation passes
-            
+
         Raises:
             ValidationError: If validation fails and action is REJECT
         """
@@ -1840,16 +1840,16 @@ class ValidatedWorkflowExecutor:
             step_id=step_id,
             metadata={"input_keys": list(input_data.keys())}
         ))
-        
+
         start_time = datetime.now(UTC)
-        
+
         try:
             # Execute the step
             output = step_fn(input_data)
-            
+
             # Validate the output
             validation_result = self.validator.validate(output, guardrail)
-            
+
             # Record the validation as a DECISION event
             self.recorder.add_trace_event(self.task_id, TraceEvent(
                 event_id=f"evt-{step_id}-validation",
@@ -1864,7 +1864,7 @@ class ValidatedWorkflowExecutor:
                     "total_warnings": validation_result.total_warnings,
                     "validation_time_ms": validation_result.validation_time_ms,
                     "action_taken": (
-                        validation_result.action_taken.value 
+                        validation_result.action_taken.value
                         if validation_result.action_taken else None
                     ),
                     "constraint_results": [
@@ -1878,11 +1878,11 @@ class ValidatedWorkflowExecutor:
                     ]
                 }
             ))
-            
+
             # Handle validation result
             if not validation_result.is_valid:
                 action = validation_result.action_taken or guardrail.on_fail_default
-                
+
                 if action == FailAction.REJECT:
                     # Record error and raise
                     self._record_validation_error(
@@ -1891,7 +1891,7 @@ class ValidatedWorkflowExecutor:
                     raise ValidationError(
                         f"Validation failed: {validation_result.total_errors} errors"
                     )
-                
+
                 elif action == FailAction.LOG:
                     # Record warning but continue
                     self.recorder.add_trace_event(self.task_id, TraceEvent(
@@ -1906,7 +1906,7 @@ class ValidatedWorkflowExecutor:
                             "validation_errors": validation_result.total_errors
                         }
                     ))
-                
+
                 elif action == FailAction.ESCALATE:
                     # Record escalation
                     self.recorder.add_trace_event(self.task_id, TraceEvent(
@@ -1920,7 +1920,7 @@ class ValidatedWorkflowExecutor:
                             "validation_errors": validation_result.total_errors
                         }
                     ))
-            
+
             # Record successful completion
             duration_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
             self.recorder.add_trace_event(self.task_id, TraceEvent(
@@ -1936,9 +1936,9 @@ class ValidatedWorkflowExecutor:
                     "validation_passed": validation_result.is_valid
                 }
             ))
-            
+
             return output
-            
+
         except Exception as e:
             # Record failure
             duration_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
@@ -1955,23 +1955,23 @@ class ValidatedWorkflowExecutor:
                 }
             ))
             raise
-    
+
     def _record_validation_error(
-        self, 
-        step_id: str, 
-        agent_id: str, 
+        self,
+        step_id: str,
+        agent_id: str,
         validation_result,
         start_time: datetime
     ):
         """Record detailed validation error."""
         duration_ms = int((datetime.now(UTC) - start_time).total_seconds() * 1000)
-        
+
         # Collect failed constraints
         failed_constraints = [
-            entry for entry in validation_result.entries 
+            entry for entry in validation_result.entries
             if not entry.passed
         ]
-        
+
         self.recorder.add_trace_event(self.task_id, TraceEvent(
             event_id=f"evt-{step_id}-validation-error",
             event_type=EventType.ERROR,
@@ -2146,4 +2146,3 @@ The notebook uses the same invoice processing scenario from the case study, so y
 ---
 
 *Tutorial created as part of Lesson 17: Agent Explainability Framework*
-

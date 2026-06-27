@@ -46,9 +46,10 @@ from trust.governance_carrier_spec import (
 )
 
 # ── Drift guard: the spec (in trust/) transcribes these wire strings because it may
-# not import these enums. If governance renames a value, equality breaks here and the
-# service test catches it. Authoritative source = the enums; spec must mirror.
-from trust.governance_carrier_spec import (  # noqa: E402  (grouped with the asserts)
+# not import these enums. Importing them here fails fast at module load if the spec
+# renames a value; the equality assertion in test_carrier_gate.py is the test-time
+# backstop. Authoritative source = the enums; spec must mirror.
+from trust.governance_carrier_spec import (  # noqa: F401  (intentional unused: import-side-effect drift guard)
     EVT_ERROR_OCCURRED,
     EVT_GUARDRAIL_CHECKED,
     EVT_MODEL_SELECTED,

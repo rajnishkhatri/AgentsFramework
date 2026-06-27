@@ -1,4 +1,5 @@
 """Tests for Langfuse-primary Annotator 1 fresh-sheet grader."""
+
 from __future__ import annotations
 
 import csv
@@ -21,7 +22,9 @@ from scripts.build_goaljudge_stage5_annotator1_fresh_sheet import (
 def _tool_called_span(tool: str) -> dict:
     return {
         "name": "tool.called",
-        "input": {"details": {"tool": tool, "args": "{'path': '/workspace/host.config'}"}},
+        "input": {
+            "details": {"tool": tool, "args": "{'path': '/workspace/host.config'}"}
+        },
     }
 
 

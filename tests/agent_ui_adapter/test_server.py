@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
 
 from agent_ui_adapter.adapters.runtime.mock_runtime import MockRuntime
@@ -70,9 +69,7 @@ class TestRoutes:
 
     def test_get_unknown_run_returns_404(self) -> None:
         client = TestClient(_make_app_with_runtime(MockRuntime(events=[])))
-        r = client.get(
-            "/agent/runs/does-not-exist", headers=_good_token(client)
-        )
+        r = client.get("/agent/runs/does-not-exist", headers=_good_token(client))
         assert r.status_code == 404
 
     def test_post_threads_creates_thread(self) -> None:
@@ -296,7 +293,9 @@ class TestMemoryEndpoints:
     def test_create_rejects_empty_content(self) -> None:
         app, _ = _make_app_with_memory()
         r = TestClient(app).post(
-            "/agent/memory", json={"content": ""}, headers={"Authorization": "Bearer good"}
+            "/agent/memory",
+            json={"content": ""},
+            headers={"Authorization": "Bearer good"},
         )
         assert r.status_code == 422
 
@@ -326,13 +325,17 @@ class TestMemoryEndpoints:
         assert listed.status_code == 200
         items = listed.json()["items"]
         assert any(i["content"] == "prefers metric units" for i in items)
-        assert all(i["type"] in ("semantic", "episodic", "procedural", None) for i in items)
+        assert all(
+            i["type"] in ("semantic", "episodic", "procedural", None) for i in items
+        )
 
     def test_list_only_returns_callers_own_memory(self) -> None:
         # Seed another user's memory directly; the caller (owner="team") must
         # not see it.
         app, memory = _make_app_with_memory(owner="team")
-        memory.store("someone-else", "k", {"text": "secret"}, metadata={"type": "semantic"})
+        memory.store(
+            "someone-else", "k", {"text": "secret"}, metadata={"type": "semantic"}
+        )
         client = TestClient(app)
         listed = client.get("/agent/memory", headers={"Authorization": "Bearer good"})
         contents = [i["content"] for i in listed.json()["items"]]
@@ -481,9 +484,7 @@ class TestCompositionRoot:
         ) as r:
             body = b"".join(r.iter_bytes())
         run_id = "r1"
-        r2 = client.delete(
-            f"/agent/runs/{run_id}", headers=_good_token(client)
-        )
+        r2 = client.delete(f"/agent/runs/{run_id}", headers=_good_token(client))
         assert r2.status_code == 200
         assert run_id in runtime.cancelled_runs
 
@@ -543,7 +544,5 @@ class TestModelsEndpoint:
             assert set(m.keys()) == {"name", "tier"}
         first_fast = next(m for m in body["models"] if m["tier"] == "fast")
         assert first_fast["name"] == "deepseek-v4-flash"
-        first_reasoning = next(
-            m for m in body["models"] if m["tier"] == "reasoning"
-        )
+        first_reasoning = next(m for m in body["models"] if m["tier"] == "reasoning")
         assert first_reasoning["name"] == "deepseek-v4-pro"

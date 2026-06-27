@@ -29,8 +29,7 @@ class TestDeriveThreadTitle:
 
     def test_collapses_internal_whitespace_and_newlines(self):
         assert (
-            derive_thread_title("Plan my\n  trip   to\tRome")
-            == "Plan my trip to Rome"
+            derive_thread_title("Plan my\n  trip   to\tRome") == "Plan my trip to Rome"
         )
 
     def test_long_message_truncated_with_ellipsis(self):

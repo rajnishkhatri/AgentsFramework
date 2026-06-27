@@ -80,13 +80,15 @@ def build_blind_set(
                 skipped.append((arm, case))
                 continue
             item_id = uuid.uuid5(uuid.NAMESPACE_DNS, f"{case}|{arm}|{text}").hex
-            items.append({
-                "item_id": item_id,
-                "case": case,
-                "prompt": prompts.get(case, ""),
-                "rubric": rubrics.get(case, {}),
-                "model_answer": text,
-            })
+            items.append(
+                {
+                    "item_id": item_id,
+                    "case": case,
+                    "prompt": prompts.get(case, ""),
+                    "rubric": rubrics.get(case, {}),
+                    "model_answer": text,
+                }
+            )
             sealed[item_id] = {"case": case, "arm": arm}
 
     random.Random(seed).shuffle(items)
@@ -108,8 +110,19 @@ def write_outputs(
 # never copies arm info into items, but we assert against accidental leakage from
 # an answer that names its own model (some models self-identify).
 ARM_LEAK_TOKENS = (
-    "claude", "haiku", "opus", "sonnet", "gpt-4", "gpt-5", "gpt4", "gpt5",
-    "deepseek", "openai", "anthropic", "baseline", "candidate",
+    "claude",
+    "haiku",
+    "opus",
+    "sonnet",
+    "gpt-4",
+    "gpt-5",
+    "gpt4",
+    "gpt5",
+    "deepseek",
+    "openai",
+    "anthropic",
+    "baseline",
+    "candidate",
 )
 
 
@@ -120,10 +133,14 @@ def leak_scan(items: list[dict]) -> list[tuple[str, str]]:
     appear in the structural fields we control."""
     hits: list[tuple[str, str]] = []
     for it in items:
-        blob = " ".join([
-            it["item_id"], it["case"], it.get("prompt", ""),
-            json.dumps(it.get("rubric", {})),
-        ]).lower()
+        blob = " ".join(
+            [
+                it["item_id"],
+                it["case"],
+                it.get("prompt", ""),
+                json.dumps(it.get("rubric", {})),
+            ]
+        ).lower()
         for tok in ARM_LEAK_TOKENS:
             if tok in blob:
                 hits.append((it["item_id"], tok))

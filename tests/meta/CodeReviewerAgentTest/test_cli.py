@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from meta.CodeReviewerAgentTest.cli import run_cli
 from meta.CodeReviewerAgentTest.env_settings import EnvSettings
@@ -117,9 +116,7 @@ def test_llm_path_with_mocked_llm_writes_report(tmp_path, monkeypatch):
     fake_llm.invoke = AsyncMock(return_value=MagicMock(content=json.dumps(minimal)))
 
     cfg = _write_config(tmp_path, deterministic_only=False)
-    with patch(
-        "meta.CodeReviewerAgentTest.runner.LLMService", return_value=fake_llm
-    ):
+    with patch("meta.CodeReviewerAgentTest.runner.LLMService", return_value=fake_llm):
         rc = run_cli([str(cfg)])
 
     assert rc == 0

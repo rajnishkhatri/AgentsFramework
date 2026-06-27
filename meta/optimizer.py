@@ -285,9 +285,7 @@ def diff_configs(
     diffs: list[ConfigDiff] = []
     for field in cur:
         if cur[field] != new.get(field):
-            diffs.append(
-                ConfigDiff(field=field, before=cur[field], after=new[field])
-            )
+            diffs.append(ConfigDiff(field=field, before=cur[field], after=new[field]))
     return diffs
 
 
@@ -325,9 +323,7 @@ def _ast_rewrite_routing_config(source: str, proposed: RoutingConfig) -> str:
 
     missing = set(target_values) - seen
     if missing:
-        raise ValueError(
-            f"Could not locate field defaults for: {sorted(missing)}"
-        )
+        raise ValueError(f"Could not locate field defaults for: {sorted(missing)}")
 
     return ast.unparse(tree) + "\n"
 
@@ -463,28 +459,35 @@ def run_optimizer_cli(
 
     parser = argparse.ArgumentParser(description="Meta-optimizer CLI (STORY-404)")
     parser.add_argument(
-        "--eval-data", type=str,
+        "--eval-data",
+        type=str,
         help="Path to JSONL log of EvalRecord entries for OptimizerInput",
     )
     parser.add_argument(
-        "--golden-set", type=str,
+        "--golden-set",
+        type=str,
         help="Path to JSONL golden set for benchmarking",
     )
     parser.add_argument(
-        "--config-file", type=str,
+        "--config-file",
+        type=str,
         default=str(DEFAULT_ROUTING_CONFIG_PATH),
         help="Path to routing_config.py to be (potentially) updated",
     )
     parser.add_argument(
-        "--phase-log-dir", type=str,
+        "--phase-log-dir",
+        type=str,
         help="Directory for governance Decision audit log",
     )
     parser.add_argument(
-        "--workflow-id", type=str, default="optimizer-run",
+        "--workflow-id",
+        type=str,
+        default="optimizer-run",
         help="Workflow id for PhaseLogger correlation",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Print the proposed diff without writing the file",
     )
     parsed = parser.parse_args(args)
@@ -571,7 +574,6 @@ def _benchmark_and_select(
 ) -> RoutingConfig:
     """Run the production benchmark loop and return the chosen RoutingConfig."""
     import asyncio
-    import json
 
     from meta.analysis import build_optimizer_input, load_eval_records
     from meta.run_eval import load_golden_set
@@ -592,7 +594,8 @@ def _benchmark_and_select(
     results = asyncio.run(runner.run(candidates, golden_set=golden))
     baseline = BenchmarkResult(
         config=current.model_dump(),
-        mean_score=sum(optimizer_input.golden_set_scores) / len(optimizer_input.golden_set_scores)
+        mean_score=sum(optimizer_input.golden_set_scores)
+        / len(optimizer_input.golden_set_scores)
         if optimizer_input.golden_set_scores
         else 0.0,
         cost_usd=0.0,

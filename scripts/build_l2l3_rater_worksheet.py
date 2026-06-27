@@ -33,23 +33,33 @@ OUT = ANSWER_DIR / "l2l3_rater_worksheet_detailed.md"
 # The fixture files each case reads (relative to workspace/).
 FIXTURE_FILES: dict[str, list[str]] = {
     "GEN-L2-multi-file-reconcile-07": [
-        "invoices/inv-1.txt", "invoices/inv-2.txt", "invoices/inv-3.txt",
-        "invoices/inv-4.txt", "invoices/inv-5.txt",
+        "invoices/inv-1.txt",
+        "invoices/inv-2.txt",
+        "invoices/inv-3.txt",
+        "invoices/inv-4.txt",
+        "invoices/inv-5.txt",
     ],
     "GEN-L2-cross-ref-lookup-08": ["orders.csv", "customers.csv"],
     "GEN-L2-pipeline-transform-09": ["events.log"],
     "GEN-L2-multi-source-synthesis-10": [
-        "reports/q1.txt", "reports/q2.txt", "reports/q3.txt",
+        "reports/q1.txt",
+        "reports/q2.txt",
+        "reports/q3.txt",
     ],
     "GEN-L2-verify-and-fix-11": ["config.json"],
     "GEN-L2-dependency-resolve-12": ["deps.txt"],
     "GEN-L3-constraint-solve-13": [
-        "schedule/p1.txt", "schedule/p2.txt", "schedule/p3.txt",
-        "schedule/p4.txt", "schedule/p5.txt",
+        "schedule/p1.txt",
+        "schedule/p2.txt",
+        "schedule/p3.txt",
+        "schedule/p4.txt",
+        "schedule/p5.txt",
     ],
     "GEN-L3-multi-hop-synthesis-14": [
-        "papers/paper-1.txt", "papers/paper-2.txt",
-        "papers/paper-3.txt", "papers/paper-4.txt",
+        "papers/paper-1.txt",
+        "papers/paper-2.txt",
+        "papers/paper-3.txt",
+        "papers/paper-4.txt",
     ],
     "GEN-L3-iterative-refine-15": ["budget.csv"],
 }
@@ -95,7 +105,7 @@ WORKED_REASONING: dict[str, str] = {
         "(=750) instead of growth, gave up, or off-task."
     ),
     "GEN-L2-verify-and-fix-11": (
-        "config.json = {\"host\": \"db.internal\", \"port\": 70000}. host present; "
+        'config.json = {"host": "db.internal", "port": 70000}. host present; '
         "port 70000 is OUT of range 1..65535 → INVALID. The prompt says: for any "
         "bad field use host='localhost', port=8080, write the corrected file to "
         "`/workspace/out/config.fixed.json`, and report the change.\n"
@@ -187,9 +197,11 @@ def build() -> str:
     items = [json.loads(l) for l in BLIND.read_text().splitlines() if l.strip()]
     prompts = {
         json.loads(l)["case"]: json.loads(l)["prompt"]
-        for l in BATCH.read_text().splitlines() if l.strip()
+        for l in BATCH.read_text().splitlines()
+        if l.strip()
     }
     from collections import defaultdict
+
     by_case: dict[str, list[dict]] = defaultdict(list)
     for it in items:
         by_case[it["case"]].append(it)
@@ -211,10 +223,7 @@ def build() -> str:
                     "> Do NOT open `l2l3_arm_key.sealed.json` until all verdicts are "
                     "recorded — that is the blinding guarantee."
                 ),
-                (
-                    f"**Total items to grade: {len(items)}** across "
-                    f"{case_count} cases."
-                ),
+                (f"**Total items to grade: {len(items)}** across {case_count} cases."),
             ]
         )
     ]
@@ -230,12 +239,9 @@ def build() -> str:
         fixture_blocks: list[str] = []
         for rel in FIXTURE_FILES.get(case, []):
             body = _read_fixture(rel).rstrip("\n")
-            fixture_blocks.append(
-                f"**`workspace/{rel}`**\n\n{_fence(body)}"
-            )
+            fixture_blocks.append(f"**`workspace/{rel}`**\n\n{_fence(body)}")
         case_parts.append(
-            "### Fixture inputs (what the model read)\n\n"
-            + "\n\n".join(fixture_blocks)
+            "### Fixture inputs (what the model read)\n\n" + "\n\n".join(fixture_blocks)
         )
 
         case_parts.append(
@@ -245,12 +251,8 @@ def build() -> str:
 
         rubric_lines = [f"- {fact}" for fact in gt.facts]
         if gt.notes:
-            rubric_lines.append(
-                "\n*Acceptable variation:* " + "; ".join(gt.notes)
-            )
-        case_parts.append(
-            "### Rubric (must-have facts)\n\n" + "\n".join(rubric_lines)
-        )
+            rubric_lines.append("\n*Acceptable variation:* " + "; ".join(gt.notes))
+        case_parts.append("### Rubric (must-have facts)\n\n" + "\n".join(rubric_lines))
 
         answer_blocks: list[str] = []
         for it in by_case[case]:

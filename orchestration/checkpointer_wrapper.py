@@ -2,6 +2,7 @@ from typing import Any
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from services.observability import FrameworkTelemetry
 
+
 class InstrumentedCheckpointer(BaseCheckpointSaver):
     """Wrap a LangGraph checkpointer so it updates :class:`FrameworkTelemetry`.
 

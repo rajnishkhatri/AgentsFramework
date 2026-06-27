@@ -26,7 +26,7 @@ tags: [architecture]
 - **Situation:** The local architecture relies on local SQLite checkpointers, JSONL file sinks, and local `.env` files to maintain agent state, trace governance, and API keys. The Next.js UI relies on Server-Sent Events (SSE) to stream real-time agent thoughts.
 - **Complication:** Containerized deployments in AWS (e.g., ECS/Fargate) have ephemeral file systems. Standard API gateways (like AWS API Gateway) have hard 29-second timeouts, breaking long-running SSE streams. The offline Meta Ring must process massive amounts of trace data asynchronously without impacting the real-time agent loops.
 - **Question:** How do we map the four-layer ReAct grid and its rings to AWS managed services to ensure high availability, security, and persistence without violating the architectural invariants?
-- **Answer:** Deploy compute on **AWS Amplify** (Frontend) and **Amazon ECS with Fargate behind ALBs** (BFF and Backend). Swap SQLite for **Amazon RDS (PostgreSQL)**, local file logs for **Amazon S3 via Kinesis Data Firehose**, and local `.env` configurations for **AWS Secrets Manager**. 
+- **Answer:** Deploy compute on **AWS Amplify** (Frontend) and **Amazon ECS with Fargate behind ALBs** (BFF and Backend). Swap SQLite for **Amazon RDS (PostgreSQL)**, local file logs for **Amazon S3 via Kinesis Data Firehose**, and local `.env` configurations for **AWS Secrets Manager**.
 
 ---
 
@@ -54,7 +54,7 @@ To support the streaming nature of LangGraph agents (SSE), we utilize Applicatio
 1. **Browser Ring (Frontend)**
    - **Service:** AWS Amplify Hosting.
    - **Role:** Hosts the Next.js 15 App Router application. Supports native edge caching, SSR, and streaming responses out of the box.
-   
+
 2. **Middleware Ring (BFF / FastAPI)**
    - **Service:** Amazon ECS (Fargate) + Public-Facing Application Load Balancer (ALB).
    - **Role:** Handles authentication (WorkOS), rate-limiting, and SDK telemetry (Langfuse, Mem0). Bridges the Amplify frontend to the internal agent infrastructure.
@@ -87,7 +87,7 @@ flowchart TD
         BFF[ECS Fargate: BFF<br/>FastAPI + WorkOS]
         Internal_ALB[Internal ALB<br/>Idle Timeout: 3600s]
         Backend[ECS Fargate: Backend<br/>agent_ui_adapter/server.py]
-        
+
         Meta[AWS Batch / ECS: Meta Ring<br/>run_eval.py]
     end
 

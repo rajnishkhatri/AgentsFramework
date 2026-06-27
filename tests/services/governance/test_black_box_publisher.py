@@ -126,28 +126,48 @@ class TestGuardrailLevel:
     def test_clean_pass_is_debug(self) -> None:
         ev = _event(
             EventType.GUARDRAIL_CHECKED,
-            details={"checked": True, "blocked": False, "redacted": False, "failed_rules": []},
+            details={
+                "checked": True,
+                "blocked": False,
+                "redacted": False,
+                "failed_rules": [],
+            },
         )
         assert to_export_kwargs(ev)["level"] == "DEBUG"
 
     def test_blocked_is_warning(self) -> None:
         ev = _event(
             EventType.GUARDRAIL_CHECKED,
-            details={"checked": True, "blocked": True, "redacted": False, "failed_rules": ["r1"]},
+            details={
+                "checked": True,
+                "blocked": True,
+                "redacted": False,
+                "failed_rules": ["r1"],
+            },
         )
         assert to_export_kwargs(ev)["level"] == "WARNING"
 
     def test_redacted_is_warning(self) -> None:
         ev = _event(
             EventType.GUARDRAIL_CHECKED,
-            details={"checked": True, "blocked": False, "redacted": True, "failed_rules": []},
+            details={
+                "checked": True,
+                "blocked": False,
+                "redacted": True,
+                "failed_rules": [],
+            },
         )
         assert to_export_kwargs(ev)["level"] == "WARNING"
 
     def test_failed_rules_nonempty_is_warning(self) -> None:
         ev = _event(
             EventType.GUARDRAIL_CHECKED,
-            details={"checked": True, "blocked": False, "redacted": False, "failed_rules": ["x"]},
+            details={
+                "checked": True,
+                "blocked": False,
+                "redacted": False,
+                "failed_rules": ["x"],
+            },
         )
         assert to_export_kwargs(ev)["level"] == "WARNING"
 
@@ -361,7 +381,9 @@ class TestRedactPII:
             ],
         }
         redacted = redact_compliance_bundle(bundle)
-        assert "sk-proj-abcdefghijklmnopqrstuvwx" not in str(redacted["events"][0]["details"])
+        assert "sk-proj-abcdefghijklmnopqrstuvwx" not in str(
+            redacted["events"][0]["details"]
+        )
 
     def test_redact_compliance_bundle_scrubs_phase_event_details(self) -> None:
         bundle = {

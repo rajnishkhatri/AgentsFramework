@@ -54,9 +54,7 @@ class TestAdapterImportBoundaries:
     def test_adapter_does_not_import_meta(self) -> None:
         """T1: agent_ui_adapter/ MUST NOT import from meta/. (Plan rule R1, R2)"""
         violations = [
-            f"{path} imports {pkg}"
-            for path, pkg in _adapter_imports()
-            if pkg == "meta"
+            f"{path} imports {pkg}" for path, pkg in _adapter_imports() if pkg == "meta"
         ]
         assert violations == [], (
             "agent_ui_adapter/ must not import from meta/:\n" + "\n".join(violations)
@@ -76,13 +74,21 @@ class TestAdapterImportBoundaries:
 
     def test_inner_layers_do_not_import_adapter(self) -> None:
         """T3: trust/services/components/orchestration/meta MUST NOT import adapter. (Rule R3)"""
-        forbidden_consumers = ["trust", "services", "components", "orchestration", "meta"]
+        forbidden_consumers = [
+            "trust",
+            "services",
+            "components",
+            "orchestration",
+            "meta",
+        ]
         violations: list[str] = []
         for layer in forbidden_consumers:
             layer_dir = AGENT_ROOT / layer
             if not layer_dir.exists():
                 continue
-            for path, pkg in collect_imports_in_directory(layer_dir, relative_to=AGENT_ROOT):
+            for path, pkg in collect_imports_in_directory(
+                layer_dir, relative_to=AGENT_ROOT
+            ):
                 if pkg == "agent_ui_adapter":
                     violations.append(f"{path} imports agent_ui_adapter")
         assert violations == [], (
@@ -113,9 +119,7 @@ class TestWirePurity:
         if not wire_imports:
             pytest.skip("awaits S2 wire/ contents")
         violations = [
-            f"{path} imports {pkg}"
-            for path, pkg in wire_imports
-            if pkg in forbidden
+            f"{path} imports {pkg}" for path, pkg in wire_imports if pkg in forbidden
         ]
         assert violations == [], (
             "agent_ui_adapter/wire/ must be pure (Pydantic + stdlib only):\n"
@@ -129,10 +133,15 @@ class TestTranslatorPurity:
     def test_translators_do_not_import_services(self) -> None:
         """T5: translators MUST NOT import from services/ (rule R7)."""
         translator_imports = _imports_in("translators")
-        translator_files = [
-            p for p in (ADAPTER_DIR / "translators").rglob("*.py")
-            if p.exists() and p.stat().st_size > 200  # skip empty placeholders
-        ] if (ADAPTER_DIR / "translators").exists() else []
+        translator_files = (
+            [
+                p
+                for p in (ADAPTER_DIR / "translators").rglob("*.py")
+                if p.exists() and p.stat().st_size > 200  # skip empty placeholders
+            ]
+            if (ADAPTER_DIR / "translators").exists()
+            else []
+        )
         if not translator_files:
             pytest.skip("awaits S4 translators/ contents")
         violations = [
@@ -210,9 +219,7 @@ class TestHITLAndTraceConventions:
 
         # (a) Registry can carry the virtual tool under the canonical name
         # with both required fields advertised on the JSON schema.
-        registry = ToolRegistry(
-            {REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()}
-        )
+        registry = ToolRegistry({REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()})
         assert registry.has(REQUEST_APPROVAL_TOOL_NAME)
         schema = registry.get_schemas()[0]
         assert schema["name"] == "request_approval"
@@ -290,12 +297,8 @@ class TestHITLAndTraceConventions:
         )
 
         sample_events = [
-            RunStartedDomain(
-                trace_id="T8-trace", run_id="r1", thread_id="t1"
-            ),
-            LLMTokenEmitted(
-                trace_id="T8-trace", message_id="m1", delta="hello"
-            ),
+            RunStartedDomain(trace_id="T8-trace", run_id="r1", thread_id="t1"),
+            LLMTokenEmitted(trace_id="T8-trace", message_id="m1", delta="hello"),
             ToolCallStarted(
                 trace_id="T8-trace",
                 tool_call_id="tc-T8",
@@ -396,9 +399,7 @@ class TestCompositionAndPortShape:
         # JwtClaims/JwtVerifier/InMemoryJwtVerifier and the in-memory
         # ThreadStore/RunRegistry placeholders. Cap below at 6 to leave
         # tolerance, but flag explosive growth.
-        local_classes = [
-            n for n in tree.body if isinstance(n, ast.ClassDef)
-        ]
+        local_classes = [n for n in tree.body if isinstance(n, ast.ClassDef)]
         assert len(local_classes) <= 6, (
             "R8: server.py is growing domain abstractions; "
             f"found {len(local_classes)} local classes -- consider extracting"
@@ -421,15 +422,18 @@ class TestCompositionAndPortShape:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     base_names = {
-                        b.id if isinstance(b, ast.Name)
+                        b.id
+                        if isinstance(b, ast.Name)
                         else (b.attr if isinstance(b, ast.Attribute) else "")
                         for b in node.bases
                     }
                     if "Protocol" in base_names:
-                        protocol_defs.append(f"{py.relative_to(AGENT_ROOT)}:{node.name}")
+                        protocol_defs.append(
+                            f"{py.relative_to(AGENT_ROOT)}:{node.name}"
+                        )
         if not protocol_defs:
             pytest.skip("awaits S3 AgentRuntime port (US-3.1)")
         assert len(protocol_defs) == 1, (
-            f"R9 violation: ports/ must define exactly one Protocol; found:\n"
+            "R9 violation: ports/ must define exactly one Protocol; found:\n"
             + "\n".join(protocol_defs)
         )

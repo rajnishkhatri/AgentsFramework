@@ -1,0 +1,28 @@
+{
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "trust",
+    "services",
+    "components",
+    "orchestration",
+    "meta"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/node_modules",
+    ".venv",
+    "tests",
+    "frontend",
+    "frontend-explainability",
+    "middleware",
+    "cache",
+    "logs",
+    "spikes",
+    "research"
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none"
+}

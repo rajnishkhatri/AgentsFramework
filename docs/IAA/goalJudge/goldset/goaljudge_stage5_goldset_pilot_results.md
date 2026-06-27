@@ -1,11 +1,11 @@
 # GoalJudge Stage 5 — Pilot Gold-Set IAA Results (α gate)
 
-> **Status:** Double-labeling complete · **α PASS (0.8846)**  
-> **Sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv)  
-> **Annotator 1 report:** [`goaljudge_stage5_goldset_annotator1_results.md`](goaljudge_stage5_goldset_annotator1_results.md)  
-> **Annotator 2 report:** [`goaljudge_stage5_goldset_annotator2_results.md`](goaljudge_stage5_goldset_annotator2_results.md)  
-> **Protocol:** [`README.md`](README.md)  
-> **α script:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py)  
+> **Status:** Double-labeling complete · **α PASS (0.8846)**
+> **Sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv)
+> **Annotator 1 report:** [`goaljudge_stage5_goldset_annotator1_results.md`](goaljudge_stage5_goldset_annotator1_results.md)
+> **Annotator 2 report:** [`goaljudge_stage5_goldset_annotator2_results.md`](goaljudge_stage5_goldset_annotator2_results.md)
+> **Protocol:** [`README.md`](README.md)
+> **α script:** [`scripts/compute_goaljudge_stage5_alpha.py`](../../../../scripts/compute_goaljudge_stage5_alpha.py)
 > **Rubric version:** `stage4_provisional` (PROVISIONAL A2 — re-label trigger if G5 fails)
 
 ---

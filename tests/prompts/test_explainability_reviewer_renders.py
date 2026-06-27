@@ -125,5 +125,13 @@ def test_sprint_story_acceptance_map_present() -> None:
     )
     content = rules_file.read_text()
     assert "Sprint Story Acceptance Map" in content
-    for story_id in ["S0.1.1", "S0.2.1", "S0.2.2", "S0.2.3", "S0.3.1", "S0.3.2", "S0.3.3"]:
+    for story_id in [
+        "S0.1.1",
+        "S0.2.1",
+        "S0.2.2",
+        "S0.2.3",
+        "S0.3.1",
+        "S0.3.2",
+        "S0.3.3",
+    ]:
         assert story_id in content, f"Story {story_id} missing from acceptance map"

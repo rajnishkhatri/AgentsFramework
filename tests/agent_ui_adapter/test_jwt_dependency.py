@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
 from fastapi.testclient import TestClient
 
 from agent_ui_adapter.adapters.runtime.mock_runtime import MockRuntime

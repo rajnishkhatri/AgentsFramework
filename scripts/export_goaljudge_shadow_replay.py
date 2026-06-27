@@ -17,6 +17,7 @@ Then::
     GOALJUDGE_LANGFUSE_EXPORT=$PWD/cache/goaljudge_eval/shadow_replay.json \\
       pytest tests/components/test_goal_judge_shadow_offline.py -q
 """
+
 from __future__ import annotations
 
 import argparse

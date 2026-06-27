@@ -21,9 +21,11 @@ def _echo(args: dict) -> str:
 
 
 def _build_registry() -> ToolRegistry:
-    return ToolRegistry({
-        "echo": ToolDefinition(executor=_echo, schema=_EchoInput, cacheable=True),
-    })
+    return ToolRegistry(
+        {
+            "echo": ToolDefinition(executor=_echo, schema=_EchoInput, cacheable=True),
+        }
+    )
 
 
 class TestLocalSandboxExecutor:
@@ -47,9 +49,13 @@ class TestLocalSandboxExecutor:
         def _failing(args: dict) -> str:
             raise RuntimeError("Tool broke")
 
-        registry = ToolRegistry({
-            "fail": ToolDefinition(executor=_failing, schema=_EchoInput, cacheable=False),
-        })
+        registry = ToolRegistry(
+            {
+                "fail": ToolDefinition(
+                    executor=_failing, schema=_EchoInput, cacheable=False
+                ),
+            }
+        )
         sandbox = LocalSandboxExecutor(registry)
 
         with pytest.raises(RuntimeError, match="Tool broke"):

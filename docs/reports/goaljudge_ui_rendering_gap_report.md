@@ -1,8 +1,8 @@
 # GoalJudge UI Rendering Gap — Investigation Report
 
-**Prepared:** 2026-06-09  
-**Scope:** Non-deterministic failure of the Cloud Run chat UI to render final assistant answers during GoalJudge registry batch runs (GJ-001–GJ-022)  
-**Status:** Product defect — confirmed across multiple runs; not a test-harness artifact  
+**Prepared:** 2026-06-09
+**Scope:** Non-deterministic failure of the Cloud Run chat UI to render final assistant answers during GoalJudge registry batch runs (GJ-001–GJ-022)
+**Status:** Product defect — confirmed across multiple runs; not a test-harness artifact
 **Companion docs:** [Session synthesis](./goaljudge_session_observations_synthesis.md) · [Playwright batch report (Run 1)](./goaljudge_gcp_playwright_batch_session_report.md) · [GCP execution log (2026-06-09)](../research/goaljudge_stage4_gcp_batch_execution_log.md)
 
 ---
@@ -126,7 +126,7 @@ This is emitted as `LLMTokenEmitted` → `TEXT_MESSAGE_CONTENT` on `on_chat_mode
             );
 ```
 
-Successful runs therefore look like:  
+Successful runs therefore look like:
 `Using tools: X…Using tools: Y…<final answer prose>`
 
 Gap runs stop after one or more status segments with **no final prose delta ever arriving**.

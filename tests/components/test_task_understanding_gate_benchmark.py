@@ -61,13 +61,9 @@ def _grounding_indexes(issues: list[str]) -> set[int]:
 
 
 class TestMustReject:
-    @pytest.mark.parametrize(
-        "entry", _BENCH["must_reject"], ids=lambda e: e["id"]
-    )
+    @pytest.mark.parametrize("entry", _BENCH["must_reject"], ids=lambda e: e["id"])
     def test_invented_requirement_rejected_at_labeled_index(self, entry):
-        issues = validate_conditions(
-            entry["conditions"], task_input=entry["task"]
-        )
+        issues = validate_conditions(entry["conditions"], task_input=entry["task"])
         assert _grounding_indexes(issues) == set(entry["ungrounded_indexes"])
 
     def test_off_vocabulary_fabrication_rejected(self):
@@ -116,13 +112,9 @@ class TestAdversarialTopicalityBound:
 
 
 class TestMustAccept:
-    @pytest.mark.parametrize(
-        "entry", _BENCH["must_accept"], ids=lambda e: e["id"]
-    )
+    @pytest.mark.parametrize("entry", _BENCH["must_accept"], ids=lambda e: e["id"])
     def test_real_artifact_passes_all_gates(self, entry):
-        issues = validate_conditions(
-            entry["conditions"], task_input=entry["task"]
-        )
+        issues = validate_conditions(entry["conditions"], task_input=entry["task"])
         assert issues == [], (
             f"{entry['id']} (v0_rejected={entry['v0_rejected']}): {issues}"
         )
@@ -137,14 +129,18 @@ class TestContentTokens:
     def test_sentence_final_punctuation_stripped(self):
         """The headline defect: every round-2 failed task ends in its single
         most important noun, and ``data.`` ≠ ``data`` rejected verbatim quotes."""
-        tokens = _content_tokens("Refuse this request because it would delete production data.")
+        tokens = _content_tokens(
+            "Refuse this request because it would delete production data."
+        )
         assert "data" in tokens
         assert "data." not in tokens
 
     def test_interior_path_punctuation_preserved(self):
         """Edge-strip only: ``workspace/status.txt`` must survive intact —
         the '.' in the token class exists precisely to keep paths whole."""
-        tokens = _content_tokens("Overwrite /workspace/status.txt with the single character OK.")
+        tokens = _content_tokens(
+            "Overwrite /workspace/status.txt with the single character OK."
+        )
         assert "workspace/status.txt" in tokens
         assert "ok" in tokens
 

@@ -59,8 +59,6 @@ if str(REPO_ROOT) not in sys.path:
 
 from components.router import select_planning_depth
 from services.governance.goaljudge_goldset_dataset import (
-    CELL_TOOL_CLUSTERS,
-    STRATA_SHARES,
     CoverageReport,
     classify_tool_cluster,
     compute_cell_coverage,
@@ -77,11 +75,11 @@ FIELDS: list[str] = [
     "item_id",
     "split",
     "provenance",
-    "stratum",       # D8
-    "domain",        # D8
+    "stratum",  # D8
+    "domain",  # D8
     # Pipeline-dimension labels (Phase 3 additions)
     "planning_depth",  # D1
-    "tool_cluster",    # D5
+    "tool_cluster",  # D5
     # Task content (carried from pilot)
     "task",
     "claim",
@@ -459,7 +457,9 @@ def _apply_default_metadata(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if "stratum" not in out_row or "domain" not in out_row:
             registry = CASE_BY_ID.get(case_id)
             if registry is not None:
-                out_row.setdefault("stratum", getattr(registry, "stratum", "representative"))
+                out_row.setdefault(
+                    "stratum", getattr(registry, "stratum", "representative")
+                )
                 out_row.setdefault("domain", getattr(registry, "domain", "composite"))
             else:
                 out_row.setdefault("stratum", "representative")
@@ -510,7 +510,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--csv",
-        default=str(REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"),
+        default=str(
+            REPO_ROOT
+            / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+        ),
         help="CSV output path (skipped in --dry-run).",
     )
     parser.add_argument(

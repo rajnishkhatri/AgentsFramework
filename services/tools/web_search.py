@@ -143,7 +143,9 @@ def build_web_search_executor(
         output = WebSearchOutput(
             query=validated.query,
             results=results,
-            provider=getattr(provider, "_provider_name", type(provider).__name__.lower()),
+            provider=getattr(
+                provider, "_provider_name", type(provider).__name__.lower()
+            ),
             sanitized=sanitized_flag,
         )
         return ToolExecutionResult(

@@ -275,7 +275,7 @@ For generic Langfuse navigation (sidebar, trace URL pattern), use [governance Re
 
 ## Part 4 — Langfuse UI Checklists (Guardrail-Specific)
 
-Open `https://cloud.langfuse.com` (or `LANGFUSE_HOST`) → **Traces** → paste  
+Open `https://cloud.langfuse.com` (or `LANGFUSE_HOST`) → **Traces** → paste
 `https://cloud.langfuse.com/trace/<trace_id>`.
 
 For each scenario, find observation **`guardrail.checked`** (type **guardrail**). In metadata/input, confirm the prompt-injection gate recorded **`accepted: true`** (or equivalent pass signal). The workflow must **not** end immediately with `task.completed` / `outcome: rejected` at the input gate — S3/S5/S6 should reach later observations (tools, errors, or completion).

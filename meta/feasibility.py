@@ -7,7 +7,6 @@ structured FeasibilityReport. Zero imports from orchestration/.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -41,9 +40,7 @@ class FeasibilityGate:
         total_tasks: int,
     ) -> FeasibilityReport:
         if total_tasks <= 0:
-            raise ValueError(
-                f"total_tasks must be positive, got {total_tasks}"
-            )
+            raise ValueError(f"total_tasks must be positive, got {total_tasks}")
 
         checkpoint_rate = telemetry.checkpoint_invocations / total_tasks
         rollback_minutes = telemetry.rollback_time_saved_ms / 60_000.0
@@ -54,8 +51,10 @@ class FeasibilityGate:
 
         criteria = {
             "checkpoint_usage_rate": checkpoint_rate > CHECKPOINT_USAGE_RATE_THRESHOLD,
-            "rollback_time_saved": rollback_per_100 > ROLLBACK_TIME_SAVED_THRESHOLD_MINUTES,
-            "auto_trace_insights": telemetry.auto_trace_insights > AUTO_TRACE_INSIGHTS_THRESHOLD,
+            "rollback_time_saved": rollback_per_100
+            > ROLLBACK_TIME_SAVED_THRESHOLD_MINUTES,
+            "auto_trace_insights": telemetry.auto_trace_insights
+            > AUTO_TRACE_INSIGHTS_THRESHOLD,
         }
 
         keep = all(criteria.values())

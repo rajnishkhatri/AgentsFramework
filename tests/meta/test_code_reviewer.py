@@ -100,57 +100,76 @@ class TestDeterministicReview:
 
 class TestCodeReviewerCLI:
     def test_deterministic_only_clean_approve(self):
-        exit_code = run_code_reviewer_cli([
-            "--files", str(AGENT_ROOT / "trust" / "enums.py"),
-            "--deterministic-only",
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(AGENT_ROOT / "trust" / "enums.py"),
+                "--deterministic-only",
+            ]
+        )
         assert exit_code == 0
 
     def test_deterministic_only_violation_reject(self, tmp_path):
         bad_file = tmp_path / "trust" / "bad.py"
         bad_file.parent.mkdir(parents=True)
         bad_file.write_text("from orchestration.react_loop import build_graph\n")
-        exit_code = run_code_reviewer_cli([
-            "--files", str(bad_file),
-            "--deterministic-only",
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(bad_file),
+                "--deterministic-only",
+            ]
+        )
         assert exit_code == 2  # reject
 
     def test_output_file(self, tmp_path):
         output = tmp_path / "report.json"
-        exit_code = run_code_reviewer_cli([
-            "--files", str(AGENT_ROOT / "trust" / "enums.py"),
-            "--deterministic-only",
-            "--output", str(output),
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(AGENT_ROOT / "trust" / "enums.py"),
+                "--deterministic-only",
+                "--output",
+                str(output),
+            ]
+        )
         assert exit_code == 0
         assert output.exists()
         report = json.loads(output.read_text())
         assert report["verdict"] == "approve"
 
     def test_nonexistent_file_error(self, tmp_path):
-        exit_code = run_code_reviewer_cli([
-            "--files", str(tmp_path / "nonexistent.py"),
-            "--deterministic-only",
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(tmp_path / "nonexistent.py"),
+                "--deterministic-only",
+            ]
+        )
         assert exit_code == 0  # no files reviewed, so approve (no violations)
 
     def test_llm_without_api_key_returns_3(self, monkeypatch):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
         monkeypatch.delenv("OPENAI_API_KEY", raising=False)
         monkeypatch.delenv("LITELLM_API_KEY", raising=False)
-        exit_code = run_code_reviewer_cli([
-            "--files", str(AGENT_ROOT / "trust" / "enums.py"),
-            "--llm",
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(AGENT_ROOT / "trust" / "enums.py"),
+                "--llm",
+            ]
+        )
         assert exit_code == 3
 
     def test_llm_and_deterministic_mutually_exclusive(self):
-        exit_code = run_code_reviewer_cli([
-            "--files", str(AGENT_ROOT / "trust" / "enums.py"),
-            "--llm",
-            "--deterministic-only",
-        ])
+        exit_code = run_code_reviewer_cli(
+            [
+                "--files",
+                str(AGENT_ROOT / "trust" / "enums.py"),
+                "--llm",
+                "--deterministic-only",
+            ]
+        )
         assert exit_code == 3
 
     def test_cli_does_not_mutate_cwd(self, tmp_path):
@@ -164,10 +183,13 @@ class TestCodeReviewerCLI:
         original = os.getcwd()
         try:
             os.chdir(tmp_path)
-            exit_code = run_code_reviewer_cli([
-                "--files", str(AGENT_ROOT / "trust" / "enums.py"),
-                "--deterministic-only",
-            ])
+            exit_code = run_code_reviewer_cli(
+                [
+                    "--files",
+                    str(AGENT_ROOT / "trust" / "enums.py"),
+                    "--deterministic-only",
+                ]
+            )
             assert exit_code == 0
             assert os.getcwd() == str(tmp_path)
         finally:
@@ -193,16 +215,12 @@ class TestCodeReviewerCLI:
             "files_reviewed": [],
         }
         fake_llm = MagicMock()
-        fake_llm.invoke = AsyncMock(
-            return_value=MagicMock(content=json.dumps(minimal))
-        )
+        fake_llm.invoke = AsyncMock(return_value=MagicMock(content=json.dumps(minimal)))
 
         original = os.getcwd()
         try:
             os.chdir(tmp_path)
-            with patch(
-                "services.llm_config.LLMService", return_value=fake_llm
-            ):
+            with patch("services.llm_config.LLMService", return_value=fake_llm):
                 report = await _async_llm_review(
                     files=[str(AGENT_ROOT / "trust" / "enums.py")],
                     diff=None,
@@ -374,9 +392,7 @@ class TestCodeReviewerL3:
             task_id="l3-replay",
             user_id="l3-user",
         )
-        report = await agent.review(
-            [str(AGENT_ROOT / "trust" / "enums.py")]
-        )
+        report = await agent.review([str(AGENT_ROOT / "trust" / "enums.py")])
         assert report.verdict in (
             Verdict.APPROVE,
             Verdict.REQUEST_CHANGES,
@@ -389,31 +405,33 @@ class TestCodeReviewerL3:
 class TestCodeReviewerNormalizationAndReconciliation:
     def test_parse_review_response_normalizes_enum_case_and_missing_fields(self):
         agent = CodeReviewerAgent()
-        raw = json.dumps({
-            "verdict": "APPROVE",
-            "statement": "ok",
-            "confidence": 0.9,
-            "dimensions": [
-                {
-                    "dimension": "D1",
-                    "name": "Architectural Compliance",
-                    "status": "PARTIAL",
-                    "findings": [
-                        {
-                            "rule_id": "DEP.h_no_h",
-                            "severity": "WARNING",
-                            "file": "services/tools/registry.py",
-                            "line": 10,
-                            "description": "Possible coupling",
-                            "fix_suggestion": "Refactor dependency",
-                        }
-                    ],
-                }
-            ],
-            "gaps": [],
-            "validation_log": [],
-            "files_reviewed": [],
-        })
+        raw = json.dumps(
+            {
+                "verdict": "APPROVE",
+                "statement": "ok",
+                "confidence": 0.9,
+                "dimensions": [
+                    {
+                        "dimension": "D1",
+                        "name": "Architectural Compliance",
+                        "status": "PARTIAL",
+                        "findings": [
+                            {
+                                "rule_id": "DEP.h_no_h",
+                                "severity": "WARNING",
+                                "file": "services/tools/registry.py",
+                                "line": 10,
+                                "description": "Possible coupling",
+                                "fix_suggestion": "Refactor dependency",
+                            }
+                        ],
+                    }
+                ],
+                "gaps": [],
+                "validation_log": [],
+                "files_reviewed": [],
+            }
+        )
 
         report = agent._parse_review_response(raw)
         assert report.verdict == Verdict.APPROVE
@@ -426,7 +444,9 @@ class TestCodeReviewerNormalizationAndReconciliation:
 
     def test_merge_reports_downgrades_uncorroborated_d1_critical(self):
         agent = CodeReviewerAgent()
-        deterministic = run_deterministic_review([str(AGENT_ROOT / "trust" / "enums.py")])
+        deterministic = run_deterministic_review(
+            [str(AGENT_ROOT / "trust" / "enums.py")]
+        )
         llm = ReviewReport(
             verdict=Verdict.REJECT,
             statement="llm reject",
@@ -472,27 +492,29 @@ class TestCodeReviewerNormalizationAndReconciliation:
 
     def test_parse_review_response_second_stage_alias_and_dimension_inference(self):
         agent = CodeReviewerAgent()
-        raw = json.dumps({
-            "verdict": "REQUEST CHANGES",
-            "dimensions": [
-                {
-                    "dimension": "D1 Architectural Compliance",
-                    "findings": [
-                        {
-                            "rule": "DEP.h_no_vertical",
-                            "file": "components/router.py",
-                            "message": "Vertical import detected in horizontal layer.",
-                            "severity": "ERROR",
-                            "suggestion": "Refactor import direction.",
-                        }
-                    ],
-                },
-                {
-                    "dimension": "S4.DOCS.1",
-                    "findings": [],
-                },
-            ],
-        })
+        raw = json.dumps(
+            {
+                "verdict": "REQUEST CHANGES",
+                "dimensions": [
+                    {
+                        "dimension": "D1 Architectural Compliance",
+                        "findings": [
+                            {
+                                "rule": "DEP.h_no_vertical",
+                                "file": "components/router.py",
+                                "message": "Vertical import detected in horizontal layer.",
+                                "severity": "ERROR",
+                                "suggestion": "Refactor import direction.",
+                            }
+                        ],
+                    },
+                    {
+                        "dimension": "S4.DOCS.1",
+                        "findings": [],
+                    },
+                ],
+            }
+        )
 
         report = agent._parse_review_response(raw)
         assert report.verdict == Verdict.REQUEST_CHANGES

@@ -2,7 +2,7 @@ link: https://www.linkedin.com/pulse/memorybank-building-agents-human-like-memor
 article: MemoryBank - Building Agents with Human-Like Memory
 
  rajnish khatri
-rajnish khatri 
+rajnish khatri
 
 Principal Consultant at Infosys | LLM Evaluation & Multi-Agent Systems Expert
 
@@ -22,11 +22,11 @@ memory_strength = 1.0  # Fresh memory
 # Day 7: If not accessed
 memory_strength = 0.36  # Fading but recoverable
 
-# Day 30: Still not accessed  
+# Day 30: Still not accessed
 memory_strength = 0.03  # Nearly forgotten
 
 # But if accessed on Day 7:
-memory_strength = 1.8  # Strengthened by retrieval! 
+memory_strength = 1.8  # Strengthened by retrieval!
 This isn't arbitrary - it follows the Ebbinghaus Forgetting Curve, a model of human memory discovered in 1885 and still used today.
 
 Building a Simple MemoryBank System
@@ -45,10 +45,10 @@ class SimpleMemoryBank:
         self.conversations = []  # Recent chat (hot)
         self.summaries = {}      # Compressed history (warm)
         self.user_portrait = {}  # Permanent traits (cold)
-        
+
     def add_conversation_turn(self, user_msg: str, assistant_msg: str):
         """Add a conversation turn to recent memory"""
-        
+
         turn = {
             'user': user_msg,
             'assistant': assistant_msg,
@@ -56,20 +56,20 @@ class SimpleMemoryBank:
             'strength': 1.0,
             'access_count': 0
         }
-        
+
         self.conversations.append(turn)
-        
+
         # Keep only last 50 turns in hot memory
         if len(self.conversations) > 50:
             old_turns = self.conversations[:10]
             self.conversations = self.conversations[10:]
-            
+
             # Compress old turns into a summary
             self._create_summary(old_turns)
-    
+
     def _create_summary(self, turns: List[Dict]):
         """Compress multiple turns into a summary"""
-        
+
         # Extract key points (simplified - use LLM in production)
         topics = []
         for turn in turns:
@@ -77,7 +77,7 @@ class SimpleMemoryBank:
             words = turn['user'].lower().split()
             if len(words) > 0:
                 topics.append(words[0])  # Simplified extraction
-        
+
         summary_id = f"summary_{len(self.summaries)}"
         self.summaries[summary_id] = {
             'content': f"Discussed: {', '.join(set(topics))}",
@@ -86,89 +86,89 @@ class SimpleMemoryBank:
             'strength': 1.0,
             'last_accessed': datetime.now().isoformat()
         }
-    
+
     def search_memory(self, query: str, include_faded: bool = False) -> List[Dict]:
         """Search across all memory tiers"""
-        
+
         results = []
         current_time = datetime.now()
-        
+
         # Search recent conversations
         for turn in self.conversations:
             if query.lower() in turn['user'].lower() or \
                query.lower() in turn['assistant'].lower():
-                
+
                 # Update access tracking
                 turn['access_count'] += 1
                 turn['strength'] = self._update_strength(turn['strength'])
-                
+
                 results.append({
                     'type': 'conversation',
                     'content': turn,
                     'relevance': 1.0
                 })
-        
+
         # Search summaries (with decay check)
         for summary_id, summary in self.summaries.items():
             retention = self._calculate_retention(
                 summary['strength'],
                 summary['last_accessed']
             )
-            
+
             if retention > 0.1 or include_faded:
                 if query.lower() in summary['content'].lower():
                     # Update access
                     summary['last_accessed'] = current_time.isoformat()
                     summary['strength'] = self._update_strength(summary['strength'])
-                    
+
                     results.append({
                         'type': 'summary',
                         'content': summary['content'],
                         'relevance': retention
                     })
-        
+
         # Search user portrait (never decays)
         portrait_matches = []
         for key, value in self.user_portrait.items():
             if query.lower() in str(value).lower():
                 portrait_matches.append(f"{key}: {value}")
-        
+
         if portrait_matches:
             results.append({
                 'type': 'portrait',
                 'content': portrait_matches,
                 'relevance': 1.0
             })
-        
+
         return sorted(results, key=lambda x: x['relevance'], reverse=True)
-    
+
     def _calculate_retention(self, strength: float, last_accessed: str) -> float:
         """Calculate memory retention using forgetting curve"""
-        
+
         last_time = datetime.fromisoformat(last_accessed)
         time_delta = datetime.now() - last_time
         days_passed = time_delta.total_seconds() / 86400
-        
+
         # Ebbinghaus forgetting curve
         retention = math.exp(-days_passed / strength)
         return retention
-    
+
     def _update_strength(self, current_strength: float, quality: float = 0.8) -> float:
         """Strengthen memory after successful retrieval"""
         return current_strength * (1 + quality)
-    
+
     def update_user_portrait(self, key: str, value: str):
         """Update permanent user traits"""
         self.user_portrait[key] = value
-    
+
     def get_memory_stats(self) -> Dict:
         """Get memory usage statistics"""
-        
+
         active_summaries = sum(
             1 for s in self.summaries.values()
             if self._calculate_retention(s['strength'], s['last_accessed']) > 0.1
         )
-        
+
         return {
             'conversation_turns': len(self.conversations),
             'total_summaries': len(self.summaries),
@@ -181,7 +181,7 @@ memory = SimpleMemoryBank()
 
 # Simulate a conversation
 memory.add_conversation_turn(
-    "I'm planning a trip to Japan", 
+    "I'm planning a trip to Japan",
     "That's exciting! When are you planning to go?"
 )
 memory.add_conversation_turn(
@@ -196,7 +196,7 @@ memory.update_user_portrait("upcoming_plans", "Japan trip in spring")
 # Search memories
 results = memory.search_memory("Japan")
 for result in results:
-    print(f"{result['type']}: {result['relevance']:.2f}") 
+    print(f"{result['type']}: {result['relevance']:.2f}")
 The Three-Tier Architecture Explained
 
 Think of these tiers like your own memory:
@@ -211,42 +211,42 @@ Here's how the forgetting curve works in practice:
 
 def demonstrate_memory_decay():
     """Show how memories fade and strengthen"""
-    
+
     memory = SimpleMemoryBank()
-    
+
     # Add a memory
     memory.summaries["test"] = {
         'content': "User mentioned they have a dog named Max",
         'strength': 1.0,
         'last_accessed': datetime.now().isoformat()
     }
-    
+
     # Simulate time passing
     for days in [1, 7, 14, 30]:
         # Fake the last_accessed time
         past_time = datetime.now() - timedelta(days=days)
         memory.summaries["test"]['last_accessed'] = past_time.isoformat()
-        
+
         retention = memory._calculate_retention(
             memory.summaries["test"]['strength'],
             memory.summaries["test"]['last_accessed']
         )
-        
+
         print(f"Day {days}: {retention:.1%} retention")
-        
+
         if days == 7:  # Access on day 7
             print("  → Memory accessed! Strengthening...")
             memory.summaries["test"]['strength'] = memory._update_strength(1.0)
             memory.summaries["test"]['last_accessed'] = datetime.now().isoformat()
 
-demonstrate_memory_decay() 
+demonstrate_memory_decay()
 Output:
 
 Day 1: 36.8% retention
 Day 7: 0.1% retention
   → Memory accessed! Strengthening...
 Day 14: 53.5% retention
-Day 30: 12.2% retention 
+Day 30: 12.2% retention
 Cost Savings Analysis
 
 Let's compare costs for a customer support agent handling 100 conversations/day:
@@ -289,4 +289,3 @@ Simple FAQ bots (no personalization needed)
 Research tools (need permanent knowledge graph)
 
 In the next article, we'll explore Search-o1 - how agents can search for information while thinking, just like humans do when solving complex problems.
-

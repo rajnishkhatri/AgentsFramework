@@ -9,7 +9,6 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-import pytest
 
 SERVICE_FILE = (
     Path(__file__).resolve().parents[2] / "services" / "explainability_service.py"
@@ -45,7 +44,10 @@ def test_explainability_service_has_no_forbidden_imports() -> None:
     violations = [
         imp
         for imp in imports
-        if any(imp == prefix or imp.startswith(prefix + ".") for prefix in FORBIDDEN_PREFIXES)
+        if any(
+            imp == prefix or imp.startswith(prefix + ".")
+            for prefix in FORBIDDEN_PREFIXES
+        )
     ]
     assert violations == [], (
         f"services/explainability_service.py has forbidden imports: {violations}"

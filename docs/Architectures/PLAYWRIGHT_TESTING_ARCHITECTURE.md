@@ -497,7 +497,7 @@ test("zero serious a11y violations on chat page", async ({ page }) => {
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag22aa"])
     .analyze();
-  expect(results.violations.filter(v => 
+  expect(results.violations.filter(v =>
     v.impact === "serious" || v.impact === "critical"
   )).toHaveLength(0);
 });

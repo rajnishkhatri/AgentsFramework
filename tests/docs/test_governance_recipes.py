@@ -80,9 +80,7 @@ class TestRecipeStructure:
     @pytest.mark.parametrize("filename", RECIPE_FILES[1:])
     def test_has_checkpoint_questions(self, filename: str) -> None:
         text = _read_recipe(filename)
-        assert "Checkpoint question" in text, (
-            f"{filename} missing checkpoint questions"
-        )
+        assert "Checkpoint question" in text, f"{filename} missing checkpoint questions"
 
     @pytest.mark.parametrize("filename", RECIPE_FILES[1:])
     def test_has_mermaid_diagram(self, filename: str) -> None:
@@ -94,9 +92,7 @@ class TestRecipeStructure:
         text = _read_recipe(filename)
         idx = RECIPE_FILES.index(filename)
         next_file = RECIPE_FILES[idx + 1]
-        assert next_file in text, (
-            f"{filename} does not link to next recipe {next_file}"
-        )
+        assert next_file in text, f"{filename} does not link to next recipe {next_file}"
 
 
 # ── Test: file references resolve ────────────────────────────────────
@@ -120,9 +116,8 @@ class TestFileReferencesResolve:
             if not target.exists():
                 unresolved.append(link)
 
-        assert not unresolved, (
-            f"{filename} has unresolvable links:\n"
-            + "\n".join(f"  - {l}" for l in unresolved)
+        assert not unresolved, f"{filename} has unresolvable links:\n" + "\n".join(
+            f"  - {l}" for l in unresolved
         )
 
 
@@ -173,7 +168,9 @@ class TestArchitectureClaims:
 
     def test_publisher_has_no_sdk_imports(self) -> None:
         """The publisher is claimed to have zero SDK imports -- verify."""
-        publisher_path = AGENT_ROOT / "services" / "governance" / "black_box_publisher.py"
+        publisher_path = (
+            AGENT_ROOT / "services" / "governance" / "black_box_publisher.py"
+        )
         assert publisher_path.exists()
         tree = ast.parse(publisher_path.read_text())
         for node in ast.walk(tree):
@@ -184,7 +181,9 @@ class TestArchitectureClaims:
 
     def test_relay_has_no_sdk_imports(self) -> None:
         """The relay is claimed to use ports, never SDK directly -- verify."""
-        relay_path = AGENT_ROOT / "middleware" / "sidecars" / "black_box_to_telemetry.py"
+        relay_path = (
+            AGENT_ROOT / "middleware" / "sidecars" / "black_box_to_telemetry.py"
+        )
         assert relay_path.exists()
         tree = ast.parse(relay_path.read_text())
         for node in ast.walk(tree):

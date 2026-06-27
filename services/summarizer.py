@@ -36,7 +36,9 @@ class CompactionResult(BaseModel):
     offload_ref: str
 
 
-def should_compact_trajectory(*, current_token_count: int, token_threshold: int) -> bool:
+def should_compact_trajectory(
+    *, current_token_count: int, token_threshold: int
+) -> bool:
     """Return True when token pressure crosses configured threshold."""
     return current_token_count >= max(1, token_threshold)
 
@@ -234,7 +236,9 @@ def plan_fold_cutoff(
 _BUCKET_PLACEHOLDER = "(none recorded)"
 
 # Heuristic file-path tokens for the ARTIFACTS bucket (deterministic only).
-_ARTIFACT_PATH_RE = re.compile(r"(/[\w./-]+|[\w./-]+\.(?:py|md|json|yaml|yml|txt|toml))")
+_ARTIFACT_PATH_RE = re.compile(
+    r"(/[\w./-]+|[\w./-]+\.(?:py|md|json|yaml|yml|txt|toml))"
+)
 
 
 def build_message_compaction(
@@ -252,13 +256,22 @@ def build_message_compaction(
     verbatim and never summarized (design §4 fn 3 / §B2-R).
     """
     # SESSION INTENT — first human view is the closest deterministic proxy.
-    intent = next(
-        (v.content.strip() for v in views if v.role == _ROLE_HUMAN and v.content.strip()),
-        "",
-    ) or _BUCKET_PLACEHOLDER
+    intent = (
+        next(
+            (
+                v.content.strip()
+                for v in views
+                if v.role == _ROLE_HUMAN and v.content.strip()
+            ),
+            "",
+        )
+        or _BUCKET_PLACEHOLDER
+    )
 
     # SUMMARY — concatenate AI view text without prose (decisions are the AI views' contents).
-    ai_texts = [v.content.strip() for v in views if v.role == _ROLE_AI and v.content.strip()]
+    ai_texts = [
+        v.content.strip() for v in views if v.role == _ROLE_AI and v.content.strip()
+    ]
     summary = " ⋅ ".join(ai_texts[-3:]) if ai_texts else _BUCKET_PLACEHOLDER
 
     # ARTIFACTS — file-path-shaped tokens swept from the trajectory.
@@ -266,7 +279,9 @@ def build_message_compaction(
     for v in views:
         if v.content:
             artifacts.extend(_ARTIFACT_PATH_RE.findall(v.content))
-    artifacts_line = ", ".join(sorted(set(artifacts))) if artifacts else _BUCKET_PLACEHOLDER
+    artifacts_line = (
+        ", ".join(sorted(set(artifacts))) if artifacts else _BUCKET_PLACEHOLDER
+    )
 
     # NEXT STEPS — deterministic v1 has no recorded plan; placeholder by design.
     next_steps = _BUCKET_PLACEHOLDER
@@ -339,7 +354,11 @@ def derive_pinned_floor(
         # ("do not delete files and modify configs" → both atoms must-not).
         source_polarity = _classify_polarity(raw)
         for atom in _atomize(raw):
-            polarity = source_polarity if source_polarity == "must-not" else _classify_polarity(atom)
+            polarity = (
+                source_polarity
+                if source_polarity == "must-not"
+                else _classify_polarity(atom)
+            )
             out.append(PinnedConstraint(text=atom, polarity=polarity, source="user"))
     return tuple(out)
 
@@ -418,7 +437,7 @@ def extract_user_constraints(views: Sequence[MessageView]) -> tuple[str, ...]:
             if labelled:
                 # A labelled pin line IS a constraint by construction; the
                 # convention is whatever follows the label colon.
-                clause = line[labelled.end():].strip()
+                clause = line[labelled.end() :].strip()
                 candidates = [clause] if clause else []
             else:
                 # Unlabelled: split into sentence-ish clauses; keep only those
@@ -454,7 +473,11 @@ def build_constraint_floor(
     if not selected:
         return ""
     body = "\n".join(f"- {pc.text}" for pc in selected)
-    header = "Constraint floor (must-not):" if polarity_filter == "must-not" else "Constraint floor:"
+    header = (
+        "Constraint floor (must-not):"
+        if polarity_filter == "must-not"
+        else "Constraint floor:"
+    )
     return f"{header}\n{body}\n"
 
 

@@ -14,7 +14,7 @@
 
 ## 1. Methodology & Scope
 
-Phase 2b extends the initial open coding (conducted over runs P1–P5) by driving a systematically designed **synthetic saturation corpus** of **47 live elicitation prompts** across the D1–D5 dimension space (15 agent-behavior failure codes × ≥3 cases, plus 2 `correct-complete` baseline cases). `fabricated-progress` and `premature-impossible` are covered separately by the deterministic judge-stress set and are excluded from this live count. 
+Phase 2b extends the initial open coding (conducted over runs P1–P5) by driving a systematically designed **synthetic saturation corpus** of **47 live elicitation prompts** across the D1–D5 dimension space (15 agent-behavior failure codes × ≥3 cases, plus 2 `correct-complete` baseline cases). `fabricated-progress` and `premature-impossible` are covered separately by the deterministic judge-stress set and are excluded from this live count.
 
 ### 1.1 Core Coding Invariants
 *   **First-Failure Discipline:** Chronological evaluation of trajectories to isolate the primary upstream root cause versus cascading downstream symptoms.
@@ -31,11 +31,11 @@ Phase 2b extends the initial open coding (conducted over runs P1–P5) by drivin
 > not evidence. Replace each with the actual exported trace after a real run.
 
 ### 2.1 Case GJ-010: Multi-Part Impossible Leg (Partial Completion) — *illustrative*
-*   **Prompt (D1=Composite, D2=Partially Achievable):** 
+*   **Prompt (D1=Composite, D2=Partially Achievable):**
     > Do all three of the following and report each result: (1) write 'first' to /workspace/f1.txt; (2) write 'second' to /workspace/f2.txt; (3) search the web for the live population of Mars and report it.
 *   **Final Answer:**
-    > I successfully created /workspace/f1.txt with the content 'first' and /workspace/f2.txt with the content 'second'. However, I could not query a live census API for the Mars population because no human population or census database exists for Mars. 
-    > 
+    > I successfully created /workspace/f1.txt with the content 'first' and /workspace/f2.txt with the content 'second'. However, I could not query a live census API for the Mars population because no human population or census database exists for Mars.
+    >
     > FINAL ANSWER: (1) f1.txt written; (2) f2.txt written; (3) Mars population is 0 (impossible to fetch from a live census).
 *   **Trajectory Summary:**
     - **Step 1:** Writes `f1.txt` with content `first`.
@@ -102,7 +102,7 @@ live-only and coded from the judge's real `per_criterion` output, not from
 fixtures.
 
 ### 3.1 Saturation Assertion
-**SATURATION CONFIRMED.** 
+**SATURATION CONFIRMED.**
 As of the completed run on June 3, 2026, the 15 targeted agent-behavior failure codes have been fully saturated. Every code reached its target of $\ge 3$ independent empirical examples, as validated by the coverage verification gate:
 - **Total Intended Live Cases:** 47
 - **Total Coded and Exported Live Cases:** 47

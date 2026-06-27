@@ -7,7 +7,7 @@ tags: [plan]
 
 # T3 Stage B — Case-by-case walkthrough (input → output → Langfuse reasoning)
 
-**Date:** 2026-06-16 | **Run:** 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated  
+**Date:** 2026-06-16 | **Run:** 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated
 **Evidence triplet:** corpus prompt (task input) + DOM artifact (task output) + Langfuse carriers (supervisor reasoning)
 
 Every case below presents: **task input** (corpus prompt) → **task output** (what the browser received) → **why**, read from the Langfuse `supervisor_decision` carrier + its recorded rationale + the `fanout_join` carrier. The reasoning rationale strings are **verbatim from the trace** — this is the Explainability pillar in action: each verdict is answerable from a carrier, not inferred.
@@ -120,7 +120,7 @@ These cases are marked in the corpus as genuinely parallelizable. The supervisor
 
 **Output:** 644-char answer with all three prices. *"Here are the current prices for the three products: Stainless Water Bottle: Prices start from approximately $15.96 at Walmart…"*
 
-**Analysis:** **Corpus marks `want_fanout=True`** — the tasks are genuinely independent. The **LLM proposed branches** in decompose. But the deterministic structure validator found the proposed branches had **duplicate/overlapping objectives** (three "look up a price" sub-tasks with too-similar decompositions). The validator **vetoed the LLM's optimism.** 
+**Analysis:** **Corpus marks `want_fanout=True`** — the tasks are genuinely independent. The **LLM proposed branches** in decompose. But the deterministic structure validator found the proposed branches had **duplicate/overlapping objectives** (three "look up a price" sub-tasks with too-similar decompositions). The validator **vetoed the LLM's optimism.**
 
 This is a **recall miss but a sound conservative decision:**
 - Reasoning: the structure-override veto is the GAIA guard catching over-eager parallelization.
@@ -170,7 +170,7 @@ Recall misses, but the **recalled reasoning is sound and documented** — we can
 
 **Output:** 349-char answer (partial: Denver weather, incomplete Miami portion).
 
-**Analysis:** A 2-branch task — right at the supervisor's `< 2 branches` decline floor. It **never invoked the supervisor** (correctly, by design: below the parallelization threshold). No carrier to read, but the absence is semantically correct — trivial 2-branch tasks don't need fan-out. 
+**Analysis:** A 2-branch task — right at the supervisor's `< 2 branches` decline floor. It **never invoked the supervisor** (correctly, by design: below the parallelization threshold). No carrier to read, but the absence is semantically correct — trivial 2-branch tasks don't need fan-out.
 
 Output is partial (Denver covered, Miami incomplete), but that's a content gap, not a reasoning failure. **Explainability note:** like the other `None` cases, there's no recorded *why* — but for the control family and threshold-boundary cases, that absence is acceptable.
 
@@ -180,52 +180,52 @@ Output is partial (Denver covered, Miami incomplete), but that's a content gap, 
 
 This is the family T3 exists to protect. Every case has **sequential dependencies** — either explicit chains or hidden couplings. The supervisor's job: decline them all (never fan out a dependent task). Result: **zero false fan-outs, fp=0**, the headline reasoning success.
 
-Every decline carries the same rationale:  
+Every decline carries the same rationale:
 **`"sequential-dependent: T1 plan steps reference prior outputs or share a write target (the GAIA single-agent-wins case)"`**
 
 This rationale covers three sub-classes:
 
 ### Type A: Data pipelines (output of step N feeds step N+1)
 
-**benchmark-then-tune-03** — *"Benchmark Redis and Memcached for our cache, then use those numbers to recommend one and tune its configuration."*  
+**benchmark-then-tune-03** — *"Benchmark Redis and Memcached for our cache, then use those numbers to recommend one and tune its configuration."*
 → Decline. Tune depends on benchmark results.
 
-**fetch-then-transform-04** — *"Fetch the dataset from /workspace/raw.csv, then clean it, then compute the summary statistic from the cleaned data."*  
+**fetch-then-transform-04** — *"Fetch the dataset from /workspace/raw.csv, then clean it, then compute the summary statistic from the cleaned data."*
 → Decline. Clean depends on fetch; compute depends on clean.
 
-**obvious-chain-07** — *"Read /workspace/seed.txt to get a filename, then read that file, then summarize its contents."*  
+**obvious-chain-07** — *"Read /workspace/seed.txt to get a filename, then read that file, then summarize its contents."*
 → Decline. Classic three-link chain.
 
-**single-multistep-09** — *"Plan and then write a 3-paragraph essay on the causes of the 1929 crash."*  
+**single-multistep-09** — *"Plan and then write a 3-paragraph essay on the causes of the 1929 crash."*
 → Decline. Write depends on plan.
 
 ### Type B: Decision-gated pipelines (step N's output determines whether step N+1 runs)
 
-**obvious-pipeline-08** — *"Compile the code, then run the tests, then deploy if the tests are green."*  
+**obvious-pipeline-08** — *"Compile the code, then run the tests, then deploy if the tests are green."*
 → Decline. Deploy is gated on test results.
 
-**pick-then-act-06** — *"Choose the cheapest of the three available flights, then book that flight and add a seat and a checked bag for that flight."*  
+**pick-then-act-06** — *"Choose the cheapest of the three available flights, then book that flight and add a seat and a checked bag for that flight."*
 → Decline. Booking actions depend on the pick decision.
 
-**policy-dependent-10** — *"Check whether the customer is eligible, and if eligible then apply the discount, then confirm the new total."*  
+**policy-dependent-10** — *"Check whether the customer is eligible, and if eligible then apply the discount, then confirm the new total."*
 → Decline. Apply and confirm are gated on eligibility check.
 
-**restaurant-then-route-02** — *"Pick a highly-rated restaurant with an open dinner slot, then get directions to that restaurant and make a reservation under that name."*  
+**restaurant-then-route-02** — *"Pick a highly-rated restaurant with an open dinner slot, then get directions to that restaurant and make a reservation under that name."*
 → Decline. Directions and reservation target the picked restaurant.
 
-**trip-dated-01** — *"Book a trip: first book the flight, then book a hotel around the flight dates, then book a rental car for the hotel stay."*  
+**trip-dated-01** — *"Book a trip: first book the flight, then book a hotel around the flight dates, then book a rental car for the hotel stay."*
 → Decline. Hotel dates depend on flight; car dates depend on hotel.
 
 ### Type C: Shared write target (branches would corrupt each other)
 
-**shared-write-05** — *"Have three workers each append their section to the same report file /workspace/report.md: an intro section, a results section, and a conclusion."*  
+**shared-write-05** — *"Have three workers each append their section to the same report file /workspace/report.md: an intro section, a results section, and a conclusion."*
 → Decline. Three parallel writers to the same file = race condition + corruption. The seeded "near-miss" trap that *looks* parallelizable but isn't.
 
 ---
 
 ## Verdict on decline family
 
-**All 10 correctly declined.** The rationale is uniform and sound: each task has hidden or explicit sequential dependencies that make parallel execution unsound. 
+**All 10 correctly declined.** The rationale is uniform and sound: each task has hidden or explicit sequential dependencies that make parallel execution unsound.
 
 **The two highest-value catches are the seeded traps:**
 - `shared-write-05`: looks like "three independent appends" but has a shared write target.
@@ -273,7 +273,7 @@ The join carrier shows: `branches_completed / branches_total`. If `completed < t
 
 **Output:** 696-char answer. *"I attempted to summarize the requested files, but I encountered some issues: The content of the file /workspace/docs/a.txt is not accessible…"*
 
-**Analysis:** The third file doesn't exist. The **branch worker gracefully handled the missing file inside a successful branch execution** — no fault propagated to the join level. The join saw 3/3 success; the degradation (only 2 of 3 summaries) happened *inside* the branch logic, invisible to the join. 
+**Analysis:** The third file doesn't exist. The **branch worker gracefully handled the missing file inside a successful branch execution** — no fault propagated to the join level. The join saw 3/3 success; the degradation (only 2 of 3 summaries) happened *inside* the branch logic, invisible to the join.
 
 **The reasoning is sound** (correct fan-out decision); **the fault measurement is unmeasured** (no branch-level fault, so no partial-survival to measure).
 
@@ -303,7 +303,7 @@ The join carrier shows: `branches_completed / branches_total`. If `completed < t
 
 **Output:** 544-char answer. *"Here are the results of your request: Summary of /workspace/docs/a.txt: The content of the file is not accessible…"*
 
-**Analysis:** The input intentionally specifies "return empty string" for the third branch. This is a **degrade-the-join-input case**: no branch fails (all 3/3 complete), but one returns empty, so the join has degraded input. The worker executed successfully; the join synthesized an answer noting the gap. 
+**Analysis:** The input intentionally specifies "return empty string" for the third branch. This is a **degrade-the-join-input case**: no branch fails (all 3/3 complete), but one returns empty, so the join has degraded input. The worker executed successfully; the join synthesized an answer noting the gap.
 
 **Join saw 3/3** (no branch failure), so `partial-survival` doesn't fire — but the case *itself* proves the join can degrade gracefully given sparse input. The reasoning structure is right; the measurement (`partial-survival = (completed < total)`) simply doesn't capture this degradation mode. This gap is documented as #15 (need a separate degrade mechanism).
 
@@ -357,16 +357,16 @@ The join carrier shows: `branches_completed / branches_total`. If `completed < t
 
 All four are single-action tasks that never invoked the supervisor (routed below the fan-out tier). Correct behavior: you don't spin up map-reduce overhead for trivial operations.
 
-**L0-trivial-01** — *"Echo the phrase 'pipeline ok' verbatim."*  
+**L0-trivial-01** — *"Echo the phrase 'pipeline ok' verbatim."*
 → `decision=None`, output 115c. Single trivial operation.
 
-**single-write-02** — *"Write the number 42 to /workspace/answer.txt."*  
+**single-write-02** — *"Write the number 42 to /workspace/answer.txt."*
 → `decision=None`, output 69c. Single write.
 
-**ambiguous-trivial-04** — *"Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt."*  
+**ambiguous-trivial-04** — *"Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt."*
 → `decision=None`, output 110c. Two independent trivial writes (below the supervisor threshold).
 
-**single-read-03** — *"Read the first line of /workspace/notes.txt and print it."*  
+**single-read-03** — *"Read the first line of /workspace/notes.txt and print it."*
 → `decision=None`, output 310c. Single read.
 
 **All four:** No supervisor carrier (routed below fan-out tier) → no fan-out attempted → correct. Output is direct LLM response to the single task.

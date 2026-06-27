@@ -50,7 +50,9 @@ def execute_state_todo_tool(args: dict[str, Any]) -> ToolExecutionResult:
     if validated.operation == "set":
         if validated.todos is None:
             err = "todos is required for set operation"
-            return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err, error_class="validation")
+            return ToolExecutionResult(
+                output=f"Error: {err}", ok=False, error=err, error_class="validation"
+            )
         next_todos = [todo.model_dump(mode="json") for todo in validated.todos]
         return ToolExecutionResult(
             output=f"Set {len(next_todos)} todos",
@@ -60,7 +62,9 @@ def execute_state_todo_tool(args: dict[str, Any]) -> ToolExecutionResult:
     if validated.operation == "append":
         if validated.todo is None:
             err = "todo is required for append operation"
-            return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err, error_class="validation")
+            return ToolExecutionResult(
+                output=f"Error: {err}", ok=False, error=err, error_class="validation"
+            )
         next_todos = current_todos + [validated.todo.model_dump(mode="json")]
         return ToolExecutionResult(
             output=f"Appended todo {validated.todo.id}",
@@ -92,7 +96,9 @@ def execute_state_todo_tool(args: dict[str, Any]) -> ToolExecutionResult:
     if validated.operation == "set_plan_ref":
         if not validated.plan_ref:
             err = "plan_ref is required for set_plan_ref operation"
-            return ToolExecutionResult(output=f"Error: {err}", ok=False, error=err, error_class="validation")
+            return ToolExecutionResult(
+                output=f"Error: {err}", ok=False, error=err, error_class="validation"
+            )
         return ToolExecutionResult(
             output=f"Set plan reference to {validated.plan_ref}",
             state_delta={"plan_ref": validated.plan_ref},

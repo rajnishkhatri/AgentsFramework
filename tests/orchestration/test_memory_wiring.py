@@ -163,7 +163,9 @@ async def _run_graph(
 
 
 def _cfg(**overrides) -> AgentConfig:
-    base = dict(default_model="gpt-4o-mini", models=[_fast_profile(), _capable_profile()])
+    base = dict(
+        default_model="gpt-4o-mini", models=[_fast_profile(), _capable_profile()]
+    )
     base.update(overrides)
     return AgentConfig(**base)
 
@@ -274,10 +276,7 @@ async def test_t1_recall_injected_and_store_fires(tmp_path):
     # Recall ran and the recalled block reached the system prompt.
     assert len(spy.search_calls) >= 1
     system_texts = [
-        m.content
-        for batch in sent
-        for m in batch
-        if getattr(m, "type", "") == "system"
+        m.content for batch in sent for m in batch if getattr(m, "type", "") == "system"
     ]
     assert any("metric units" in t for t in system_texts), (
         "recalled memory must be injected into the system prompt"
@@ -316,12 +315,18 @@ async def test_recall_invariants_land_in_eval_capture(tmp_path, monkeypatch):
     async def _fake_record(*args, **kwargs):
         # Real signature: record(target, ai_input, ai_response, config, step=0, ...)
         # Accept positional or keyword form; we only care about the recall surface.
-        target = kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
-        ai_input = kwargs.get("ai_input") if "ai_input" in kwargs else (
-            args[1] if len(args) > 1 else {}
+        target = (
+            kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
         )
-        ai_response = kwargs.get("ai_response") if "ai_response" in kwargs else (
-            args[2] if len(args) > 2 else {}
+        ai_input = (
+            kwargs.get("ai_input")
+            if "ai_input" in kwargs
+            else (args[1] if len(args) > 1 else {})
+        )
+        ai_response = (
+            kwargs.get("ai_response")
+            if "ai_response" in kwargs
+            else (args[2] if len(args) > 2 else {})
         )
         captured.append(
             {"target": target, "ai_input": ai_input, "ai_response": ai_response}
@@ -379,9 +384,13 @@ async def test_recall_invariants_record_on_degraded_path(tmp_path, monkeypatch):
     captured: list[dict] = []
 
     async def _fake_record(*args, **kwargs):
-        target = kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
-        ai_response = kwargs.get("ai_response") if "ai_response" in kwargs else (
-            args[2] if len(args) > 2 else {}
+        target = (
+            kwargs.get("target") if "target" in kwargs else (args[0] if args else None)
+        )
+        ai_response = (
+            kwargs.get("ai_response")
+            if "ai_response" in kwargs
+            else (args[2] if len(args) > 2 else {})
         )
         captured.append({"target": target, "ai_response": ai_response})
 

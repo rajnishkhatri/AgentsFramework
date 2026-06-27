@@ -14,6 +14,7 @@ placeholder/empty URL (so a missing tag fails loudly instead of stamping garbage
     python scripts/fill_stress_profile_url.py --service agent-frontend --region us-central1
     python scripts/fill_stress_profile_url.py --url https://stress---...run.app  # skip gcloud
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,8 +31,15 @@ def _tagged_url_from_gcloud(service: str, region: str, tag: str) -> str:
     """Return the URL of the traffic entry carrying ``tag`` (raises if absent)."""
     out = subprocess.run(
         [
-            "gcloud", "run", "services", "describe", service,
-            "--region", region, "--format", "json(status.traffic)",
+            "gcloud",
+            "run",
+            "services",
+            "describe",
+            service,
+            "--region",
+            region,
+            "--format",
+            "json(status.traffic)",
         ],
         check=True,
         capture_output=True,

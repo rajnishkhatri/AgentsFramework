@@ -123,9 +123,7 @@ class WorkOSJwtVerifier:
     ) -> None:
         # Exactly one of the three JWKS sources MUST be supplied.
         sources_given = sum(
-            1
-            for s in (jwks_url, jwks_client, jwks_fetcher)
-            if s is not None
+            1 for s in (jwks_url, jwks_client, jwks_fetcher) if s is not None
         )
         if sources_given != 1:
             raise ValueError(
@@ -193,7 +191,10 @@ class WorkOSJwtVerifier:
         actual_token_use = payload.get("token_use")
         # WorkOS AuthKit access tokens omit token_use (see WorkOS session-tokens
         # docs). Treat absent claim as access; reject only when present and wrong.
-        if actual_token_use is not None and actual_token_use != self._expected_token_use:
+        if (
+            actual_token_use is not None
+            and actual_token_use != self._expected_token_use
+        ):
             self._log_rejection(token, "invalid_token_use")
             raise InvalidTokenUseError(
                 f"token_use mismatch (got {actual_token_use!r}, "
@@ -253,9 +254,7 @@ class WorkOSJwtVerifier:
             issuer=str(payload["iss"]),
             client_id=str(payload["client_id"]),
             token_use=str(payload.get("token_use") or self._expected_token_use),
-            organization_id=(
-                str(payload["org_id"]) if payload.get("org_id") else None
-            ),
+            organization_id=(str(payload["org_id"]) if payload.get("org_id") else None),
             roles=roles,
             permissions=permissions,
         )

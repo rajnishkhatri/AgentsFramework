@@ -1,7 +1,7 @@
 # Tutorial 1: Explainability Fundamentals
 
-**Duration:** ~20 minutes  
-**Level:** Beginner  
+**Duration:** ~20 minutes
+**Level:** Beginner
 **Prerequisites:** Basic understanding of AI agents and multi-agent systems
 
 ---
@@ -413,7 +413,7 @@ Each pillar answers different questions for different stakeholders. The radiolog
 
 This integration ensures:
 - **Complete audit trail** (Recording)
-- **Clear accountability** (Identity)  
+- **Clear accountability** (Identity)
 - **Safety guarantees** (Validation)
 - **Transparent reasoning** (Reasoning)
 
@@ -426,33 +426,33 @@ Use this decision flowchart to select the appropriate component(s) for your use 
 ```mermaid
 flowchart TD
     START([What do you need to explain?]) --> Q1{Need to debug<br/>a workflow failure?}
-    
+
     Q1 -->|Yes| BB[Use BlackBoxRecorder]
     Q1 -->|No| Q2{Need to verify<br/>agent identity<br/>or permissions?}
-    
+
     Q2 -->|Yes| AF[Use AgentFacts Registry]
     Q2 -->|No| Q3{Need to validate<br/>outputs or<br/>detect PII?}
-    
+
     Q3 -->|Yes| GR[Use GuardRails]
     Q3 -->|No| Q4{Need to track<br/>multi-phase<br/>reasoning?}
-    
+
     Q4 -->|Yes| PL[Use PhaseLogger]
     Q4 -->|No| Q5{Need compliance<br/>audit trail?}
-    
+
     Q5 -->|Yes| COMBO[Combine: BlackBox + AgentFacts]
     Q5 -->|No| Q6{Building a<br/>research workflow?}
-    
+
     Q6 -->|Yes| RESEARCH[Combine: PhaseLogger + BlackBox]
     Q6 -->|No| ALL[Consider all components<br/>for comprehensive coverage]
-    
+
     BB --> DETAILS1[/"• Records execution traces<br/>• Captures collaborators<br/>• Tracks parameter changes<br/>• Enables replay"/]
-    
+
     AF --> DETAILS2[/"• Verifies agent identity<br/>• Manages capabilities<br/>• Enforces policies<br/>• Detects tampering"/]
-    
+
     GR --> DETAILS3[/"• 7 built-in validators<br/>• PII detection<br/>• Custom validators<br/>• Validation traces"/]
-    
+
     PL --> DETAILS4[/"• Phase lifecycle<br/>• Decision logging<br/>• Artifact tracking<br/>• Mermaid diagrams"/]
-    
+
     style BB fill:#4CAF50,color:#fff
     style AF fill:#2196F3,color:#fff
     style GR fill:#FF9800,color:#fff
@@ -502,7 +502,7 @@ These scenarios demonstrate how the explainability framework addresses real indu
 
 **Context:** A hospital deploys an AI agent to assist radiologists with preliminary scan analysis. The system must comply with HIPAA regulations and provide complete audit trails for patient safety reviews.
 
-**Challenge:** 
+**Challenge:**
 - Patient PHI must never be logged or exposed
 - Every diagnosis suggestion must be traceable
 - Agents must be version-controlled for FDA compliance
@@ -737,7 +737,7 @@ pii_guardrail = GuardRail(
 # Custom redaction logic
 def process_customer_message(message: str) -> str:
     result = validator.validate({"output": message}, pii_guardrail)
-    
+
     if not result.is_valid:
         # Redact detected PII
         redacted = message
@@ -891,4 +891,3 @@ Framing explainability around these four questions has given me a clearer way to
 ---
 
 *Tutorial created as part of Lesson 17: Agent Explainability Framework*
-

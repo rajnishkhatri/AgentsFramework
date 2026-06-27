@@ -65,9 +65,7 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
             or ``StateMutated`` carries neither ``snapshot`` nor ``delta``.
     """
     if not isinstance(event, DomainEventBase):
-        raise TypeError(
-            f"to_ag_ui() expects a DomainEvent; got {type(event).__name__}"
-        )
+        raise TypeError(f"to_ag_ui() expects a DomainEvent; got {type(event).__name__}")
 
     trace_id = event.trace_id
     if not trace_id:
@@ -170,9 +168,7 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
             return [StateSnapshot(snapshot=event.snapshot, raw_event=raw)]
         if event.delta is not None:
             return [StateDelta(delta=event.delta, raw_event=raw)]
-        raise ValueError(
-            "StateMutated must carry either 'snapshot' or 'delta'"
-        )
+        raise ValueError("StateMutated must carry either 'snapshot' or 'delta'")
 
     if isinstance(event, StepProgressed):
         # Rides the Custom 'step_meter' channel: the frontend translator
@@ -249,8 +245,7 @@ def to_ag_ui(event: DomainEventBase) -> list[AGUIEvent]:
         ]
 
     raise TypeError(
-        f"to_ag_ui() has no mapping for DomainEvent subclass "
-        f"{type(event).__name__}"
+        f"to_ag_ui() has no mapping for DomainEvent subclass {type(event).__name__}"
     )
 
 

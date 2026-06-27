@@ -29,6 +29,7 @@ Usage:
     --corpus cache/goaljudge_eval/corpus_gcp_fresh_stage5_rerun_2026-06-10.jsonl \\
     --output docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -241,8 +242,8 @@ def build_a2_sheet(
 
     print(f"wrote {len(rows_out)} rows → {output_path}")
     print(
-        f"all r2_* cells blank; identity columns preserved; "
-        f"claim+evidence derived from corpus (not A1 sheet)"
+        "all r2_* cells blank; identity columns preserved; "
+        "claim+evidence derived from corpus (not A1 sheet)"
     )
     return len(rows_out)
 

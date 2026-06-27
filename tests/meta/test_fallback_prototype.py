@@ -12,7 +12,6 @@ prototype against a real LLM for offline benchmarking.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -101,13 +100,22 @@ class TestFallbackStateSerialization:
         from components.evaluator import build_step_result
 
         sr = build_step_result(
-            step_id=0, action="answer", model_used="gpt-4o-mini",
-            routing_reason="capable-for-planning", input_tokens=10,
-            output_tokens=5, cost_usd=0.001, latency_ms=100.0,
-            outcome="success", error_record=None, reasoning="ok",
+            step_id=0,
+            action="answer",
+            model_used="gpt-4o-mini",
+            routing_reason="capable-for-planning",
+            input_tokens=10,
+            output_tokens=5,
+            cost_usd=0.001,
+            latency_ms=100.0,
+            outcome="success",
+            error_record=None,
+            reasoning="ok",
         )
         state = FallbackState(
-            task_id="t-1", task_input="x", step_results=[sr],
+            task_id="t-1",
+            task_input="x",
+            step_results=[sr],
         )
         roundtrip = FallbackState.model_validate_json(state.model_dump_json())
         assert roundtrip.step_results == state.step_results
@@ -123,10 +131,14 @@ class TestCheckpointRestore:
         self, agent_config, routing_config, tmp_path
     ):
         loop = FallbackReactLoop(
-            agent_config, routing_config, checkpoint_dir=tmp_path,
+            agent_config,
+            routing_config,
+            checkpoint_dir=tmp_path,
         )
         state = FallbackState(
-            task_id="t-1", task_input="x", step_count=2,
+            task_id="t-1",
+            task_input="x",
+            step_count=2,
             selected_model="gpt-4o",
         )
         payload = loop.checkpoint(state)
@@ -148,13 +160,12 @@ class TestCheckpointRestore:
         # No directory was passed; no files exist.
         assert list(tmp_path.glob("*.json")) == []
 
-    def test_restore_after_simulated_tool_failure(
-        self, agent_config, routing_config
-    ):
+    def test_restore_after_simulated_tool_failure(self, agent_config, routing_config):
         """Hand-rolled scenario: snapshot, mutate, then restore."""
         loop = FallbackReactLoop(agent_config, routing_config)
         clean = FallbackState(
-            task_id="t-3", task_input="x",
+            task_id="t-3",
+            task_input="x",
             messages=[FallbackMessage(role="user", content="x")],
             step_count=0,
         )
@@ -162,9 +173,7 @@ class TestCheckpointRestore:
 
         # Simulate tool execution polluting the messages list and counters.
         polluted = clean.model_copy(deep=True)
-        polluted.messages.append(
-            FallbackMessage(role="assistant", content="garbage")
-        )
+        polluted.messages.append(FallbackMessage(role="assistant", content="garbage"))
         polluted.consecutive_errors = 99
         assert polluted != clean
 
@@ -177,17 +186,19 @@ class TestCheckpointRestore:
 
 class TestExtractFinalAnswer:
     def test_extracts_after_marker(self):
-        assert _extract_final_answer(
-            "Reasoning...\nFINAL ANSWER: 42", "FINAL ANSWER:"
-        ) == "42"
+        assert (
+            _extract_final_answer("Reasoning...\nFINAL ANSWER: 42", "FINAL ANSWER:")
+            == "42"
+        )
 
     def test_returns_none_when_marker_absent(self):
         assert _extract_final_answer("just thinking", "FINAL ANSWER:") is None
 
     def test_strips_whitespace(self):
-        assert _extract_final_answer(
-            "FINAL ANSWER:    hello  ", "FINAL ANSWER:"
-        ) == "hello"
+        assert (
+            _extract_final_answer("FINAL ANSWER:    hello  ", "FINAL ANSWER:")
+            == "hello"
+        )
 
 
 class TestNormalizeLiteLLMResponse:
@@ -212,16 +223,24 @@ class TestNormalizeLiteLLMResponse:
         assert out["tool_calls"] == []
 
     def test_tool_call_arguments_parsed_as_json(self):
-        raw = {"choices": [{"message": {
-            "content": "",
-            "tool_calls": [{
-                "id": "tc-1",
-                "function": {
-                    "name": "search",
-                    "arguments": json.dumps({"query": "stars"}),
-                },
-            }],
-        }}]}
+        raw = {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "tool_calls": [
+                            {
+                                "id": "tc-1",
+                                "function": {
+                                    "name": "search",
+                                    "arguments": json.dumps({"query": "stars"}),
+                                },
+                            }
+                        ],
+                    }
+                }
+            ]
+        }
         out = _normalize_litellm_response(raw)
         assert out["tool_calls"][0] == {
             "name": "search",
@@ -254,7 +273,9 @@ class TestDefaultSystemPromptTemplate:
         self, agent_config, routing_config
     ):
         loop = FallbackReactLoop(
-            agent_config, routing_config, system_prompt="custom prompt",
+            agent_config,
+            routing_config,
+            system_prompt="custom prompt",
         )
         assert loop._system_prompt == "custom prompt"
 
@@ -264,16 +285,22 @@ class TestDefaultSystemPromptTemplate:
 
 class TestFallbackReactLoopE2E:
     @pytest.mark.asyncio
-    async def test_terminates_with_final_answer(
-        self, agent_config, routing_config
-    ):
+    async def test_terminates_with_final_answer(self, agent_config, routing_config):
         def fake_completion(*, model, messages):
-            return {"choices": [{"message": {
-                "content": "FINAL ANSWER: 42",
-            }}]}
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "FINAL ANSWER: 42",
+                        }
+                    }
+                ]
+            }
 
         loop = FallbackReactLoop(
-            agent_config, routing_config, completion_fn=fake_completion,
+            agent_config,
+            routing_config,
+            completion_fn=fake_completion,
         )
         result = await loop.run("What is 6 * 7?", task_id="t-final")
 
@@ -288,19 +315,33 @@ class TestFallbackReactLoopE2E:
     ):
         # First call returns a tool call; second call returns a final answer.
         responses = [
-            {"choices": [{"message": {
-                "content": "Calling tool...",
-                "tool_calls": [{
-                    "id": "tc-1",
-                    "function": {
-                        "name": "search",
-                        "arguments": json.dumps({"q": "x"}),
-                    },
-                }],
-            }}]},
-            {"choices": [{"message": {
-                "content": "FINAL ANSWER: recovered",
-            }}]},
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "Calling tool...",
+                            "tool_calls": [
+                                {
+                                    "id": "tc-1",
+                                    "function": {
+                                        "name": "search",
+                                        "arguments": json.dumps({"q": "x"}),
+                                    },
+                                }
+                            ],
+                        }
+                    }
+                ]
+            },
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "FINAL ANSWER: recovered",
+                        }
+                    }
+                ]
+            },
         ]
         call_idx = {"i": 0}
 
@@ -313,7 +354,8 @@ class TestFallbackReactLoopE2E:
             raise RuntimeError("simulated tool crash")
 
         loop = FallbackReactLoop(
-            agent_config, routing_config,
+            agent_config,
+            routing_config,
             completion_fn=fake_completion,
             tool_executor=crashing_tool,
         )
@@ -327,24 +369,32 @@ class TestFallbackReactLoopE2E:
         assert result.steps[0].error_type == "tool_error"
 
     @pytest.mark.asyncio
-    async def test_loop_exits_on_max_steps(
-        self, agent_config, routing_config
-    ):
+    async def test_loop_exits_on_max_steps(self, agent_config, routing_config):
         """Even an infinite tool-call loop terminates at agent_config.max_steps."""
+
         def looping_completion(*, model, messages):
-            return {"choices": [{"message": {
-                "content": "again",
-                "tool_calls": [{
-                    "id": "tc",
-                    "function": {"name": "noop", "arguments": "{}"},
-                }],
-            }}]}
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": "again",
+                            "tool_calls": [
+                                {
+                                    "id": "tc",
+                                    "function": {"name": "noop", "arguments": "{}"},
+                                }
+                            ],
+                        }
+                    }
+                ]
+            }
 
         def noop(name, args):
             return "ok"
 
         loop = FallbackReactLoop(
-            agent_config, routing_config,
+            agent_config,
+            routing_config,
             completion_fn=looping_completion,
             tool_executor=noop,
         )
@@ -380,6 +430,4 @@ class TestFallbackReactLoopLive:
         ]
         for q in questions:
             result = await loop.run(q)
-            assert result.final_answer is not None, (
-                f"Prototype failed to answer: {q!r}"
-            )
+            assert result.final_answer is not None, f"Prototype failed to answer: {q!r}"

@@ -5,10 +5,7 @@ Contract-driven TDD. Tests EvalRecord construction and logging.
 
 from __future__ import annotations
 
-import json
 import logging
-from datetime import UTC, datetime
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -41,4 +38,7 @@ class TestEvalCapture:
                 config=config,
                 step=0,
             )
-        assert any("user-42" in str(r.__dict__) or "user-42" in r.getMessage() for r in caplog.records)
+        assert any(
+            "user-42" in str(r.__dict__) or "user-42" in r.getMessage()
+            for r in caplog.records
+        )

@@ -23,7 +23,6 @@ interrupt/resume is a scripted ``interrupt_fn`` (Pattern 6 mock provider).
 
 from __future__ import annotations
 
-import pytest
 
 from orchestration.shell_approval_gate import (
     ApprovalDecision,

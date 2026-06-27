@@ -376,4 +376,3 @@ Every story in every sprint must satisfy these gates before it is closed:
 - **Log tail file rotation.** Reading `logs/*.log` with file watchers can miss rotations. Use poll + tail-from-position in v1; document the limitation in `explainability_app/transport/sse.py` docstring.
 - **Cross-correlation gap.** [docs/explainability/END_TO_END_TRACING_GUIDE.md](END_TO_END_TRACING_GUIDE.md) notes incomplete `trace_id`/`workflow_id`/`task_id`/`user_id` joining. The Compliance bundle and Workflow Deep Dive surface "correlation health" badges instead of fabricating correlation (S3.1.2, S3.2.2).
 - **Reviewer drift.** Two parallel reviewers (`prompts/codeReviewer/frontend/` and `.../explainability_frontend/`) risk drift on shared rule families. Mitigation: a periodic diff job (manual until automated) compares the architecture_rules.j2 files for the F/W/P/A/T/X/C/B/U sections that should remain in sync.
-

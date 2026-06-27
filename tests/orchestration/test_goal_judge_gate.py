@@ -43,9 +43,7 @@ def _completion_details(tmp_path, workflow_id: str) -> dict:
     trace_file = (
         tmp_path / "cache" / "black_box_recordings" / workflow_id / "trace.jsonl"
     )
-    events = [
-        json.loads(ln) for ln in trace_file.read_text().splitlines() if ln
-    ]
+    events = [json.loads(ln) for ln in trace_file.read_text().splitlines() if ln]
     completed = [e for e in events if e.get("event_type") == "task_completed"]
     assert len(completed) == 1, "Expected exactly one TASK_COMPLETED event"
     return completed[0]["details"]
@@ -243,7 +241,9 @@ class TestRuntimeConfigReaderInjection:
     async def test_malformed_runtime_config_stays_dark(self, tmp_path):
         """Malformed on-disk config with URI set → fail-dark (judge skipped)."""
         bad_file = tmp_path / "bad_goal_judge.json"
-        bad_file.write_text('{"goal_judge_enabled": true, "typo_key": 1}', encoding="utf-8")
+        bad_file.write_text(
+            '{"goal_judge_enabled": true, "typo_key": 1}', encoding="utf-8"
+        )
         from services.goal_judge_runtime_config import GoalJudgeRuntimeConfigReader
 
         reader = GoalJudgeRuntimeConfigReader(

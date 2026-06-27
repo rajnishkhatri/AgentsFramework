@@ -91,21 +91,24 @@ def _build_app_capturing_graph_components():
 
     reload(mod)
 
-    with patch.dict(os.environ, _PROD_ENV, clear=False), \
-         patch.object(mod, "GcsTraceSink", return_value=MagicMock()), \
-         patch.object(mod, "_load_graph_factory", return_value=MagicMock()), \
-         patch.object(mod, "build_runtime_graph", side_effect=_spy_build_runtime_graph), \
-         patch.object(mod, "LangGraphRuntime", return_value=MagicMock()), \
-         patch.object(
-             mod, "build_adapters",
-             return_value=MagicMock(profile="v3", black_box_relay=None),
-         ), \
-         patch(
-             "agent_ui_adapter.adapters.runtime.postgres_saver.PostgresCheckpointer.from_env",
-             return_value=pg_cm,
-         ), \
-         patch.object(mod, "_build_components", return_value=five_tuple), \
-         patch.object(mod, "_build_agent_components", return_value=full_bag):
+    with (
+        patch.dict(os.environ, _PROD_ENV, clear=False),
+        patch.object(mod, "GcsTraceSink", return_value=MagicMock()),
+        patch.object(mod, "_load_graph_factory", return_value=MagicMock()),
+        patch.object(mod, "build_runtime_graph", side_effect=_spy_build_runtime_graph),
+        patch.object(mod, "LangGraphRuntime", return_value=MagicMock()),
+        patch.object(
+            mod,
+            "build_adapters",
+            return_value=MagicMock(profile="v3", black_box_relay=None),
+        ),
+        patch(
+            "agent_ui_adapter.adapters.runtime.postgres_saver.PostgresCheckpointer.from_env",
+            return_value=pg_cm,
+        ),
+        patch.object(mod, "_build_components", return_value=five_tuple),
+        patch.object(mod, "_build_agent_components", return_value=full_bag),
+    ):
         app = mod.build_combined_app()
         # Enter the lifespan so build_runtime_graph runs.
         from fastapi.testclient import TestClient

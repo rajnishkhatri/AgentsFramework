@@ -9,11 +9,9 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from langchain_core.messages import AIMessage
 
 from services.base_config import AgentConfig, ModelProfile
 from services.governance.agent_facts_registry import AgentFactsRegistry
-from trust.enums import IdentityStatus
 from trust.models import AgentFacts
 
 
@@ -75,7 +73,9 @@ class TestGuardRejectionBranching:
             )
 
         assert result.get("last_outcome") == "rejected"
-        assert result.get("step_count", 0) == 0, "No steps should execute after rejection"
+        assert result.get("step_count", 0) == 0, (
+            "No steps should execute after rejection"
+        )
 
     @pytest.mark.asyncio
     async def test_accepted_input_proceeds_to_route(self, tmp_path):

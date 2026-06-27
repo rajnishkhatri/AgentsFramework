@@ -7,9 +7,9 @@ tags: [architecture]
 
 # NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture
 
-**Model:** Claude Sonnet 4.6  
-**Regulatory basis:** NAIC AI Systems Evaluation Tool 4.0 (July 2025) + NAIC Model Bulletin on AI Systems (December 2023)  
-**Implementation substrate:** Four-Layer Architecture + Seven-Layer Trust Framework ([naic_seven_layer_mapping_guide.md](naic_seven_layer_mapping_guide.md))  
+**Model:** Claude Sonnet 4.6
+**Regulatory basis:** NAIC AI Systems Evaluation Tool 4.0 (July 2025) + NAIC Model Bulletin on AI Systems (December 2023)
+**Implementation substrate:** Four-Layer Architecture + Seven-Layer Trust Framework ([naic_seven_layer_mapping_guide.md](naic_seven_layer_mapping_guide.md))
 **Companion:** For interview talking points and the compact exhibit matrix, read the guide above first. For PR-sized work items, jump to §6.
 
 ---

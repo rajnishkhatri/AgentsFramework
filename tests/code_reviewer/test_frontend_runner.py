@@ -18,7 +18,6 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -59,17 +58,29 @@ class TestArgvParsing:
         assert a.task_id == "review"  # derived from --out basename
 
     def test_repeated_files_and_comma_split(self):
-        a = parse_args([
-            "--files", "a.ts,b.ts",
-            "--files", "c.ts",
-            "--out", "x.json",
-        ])
+        a = parse_args(
+            [
+                "--files",
+                "a.ts,b.ts",
+                "--files",
+                "c.ts",
+                "--out",
+                "x.json",
+            ]
+        )
         assert a.files == ("a.ts", "b.ts", "c.ts")
 
     @pytest.mark.parametrize(
         "scope",
-        ["full", "adapter_pr", "ui_component_pr", "wire_translator_pr",
-         "security_audit", "sprint_audit", "infra_audit"],
+        [
+            "full",
+            "adapter_pr",
+            "ui_component_pr",
+            "wire_translator_pr",
+            "security_audit",
+            "sprint_audit",
+            "infra_audit",
+        ],
     )
     def test_each_named_scope_accepted(self, scope):
         a = parse_args(["--scope", scope, "--out", "review.json"])
@@ -161,7 +172,10 @@ class TestVerdictAndExitCodes:
     def test_three_warnings_request_changes(self):
         findings = [_f("warning"), _f("warning"), _f("warning")]
         assert derive_verdict(findings) == "request_changes"
-        assert exit_code_for("request_changes", findings, "critical") == EXIT_REQUEST_CHANGES
+        assert (
+            exit_code_for("request_changes", findings, "critical")
+            == EXIT_REQUEST_CHANGES
+        )
 
     def test_one_critical_rejects(self):
         findings = [_f("critical", "FD3.CSP1")]
@@ -189,7 +203,9 @@ class TestVerdictAndExitCodes:
 
 
 class TestDryRunMode:
-    def test_dry_run_writes_rendered_prompt_and_returns_0(self, tmp_path: Path, monkeypatch):
+    def test_dry_run_writes_rendered_prompt_and_returns_0(
+        self, tmp_path: Path, monkeypatch
+    ):
         out = tmp_path / "review.json"
 
         async def _noop(**kwargs):  # noqa: ARG001
@@ -200,13 +216,19 @@ class TestDryRunMode:
             _noop,
         )
 
-        rc = runner.run([
-            "--dry-run",
-            "--scope", "ui_component_pr",
-            "--files", "frontend/components/chat/Composer.tsx",
-            "--out", str(out),
-            "--submission-context", "Test PR.",
-        ])
+        rc = runner.run(
+            [
+                "--dry-run",
+                "--scope",
+                "ui_component_pr",
+                "--files",
+                "frontend/components/chat/Composer.tsx",
+                "--out",
+                str(out),
+                "--submission-context",
+                "Test PR.",
+            ]
+        )
         assert rc == EXIT_OK
         assert out.exists()
         payload = json.loads(out.read_text())
@@ -223,11 +245,15 @@ class TestDryRunMode:
             "code_reviewer.frontend.runner._record_eval",
             _noop,
         )
-        rc = runner.run([
-            "--dry-run",
-            "--out", "-",
-            "--files", "frontend/middleware.ts",
-        ])
+        rc = runner.run(
+            [
+                "--dry-run",
+                "--out",
+                "-",
+                "--files",
+                "frontend/middleware.ts",
+            ]
+        )
         assert rc == EXIT_OK
         captured = capsys.readouterr()
         payload = json.loads(captured.out)
@@ -250,12 +276,17 @@ class TestRulesOnlyMode:
         monkeypatch.setattr("code_reviewer.frontend.runner.run_ts_script", _fake_tool)
         monkeypatch.setattr("code_reviewer.frontend.runner._record_eval", _noop)
 
-        rc = runner.run([
-            "--rules-only",
-            "--files", "frontend/middleware.ts",
-            "--files", "frontend/components/generative/SandboxedCanvas.tsx",
-            "--out", str(out),
-        ])
+        rc = runner.run(
+            [
+                "--rules-only",
+                "--files",
+                "frontend/middleware.ts",
+                "--files",
+                "frontend/components/generative/SandboxedCanvas.tsx",
+                "--out",
+                str(out),
+            ]
+        )
         assert rc == EXIT_OK
         report = json.loads(out.read_text())
         assert report["verdict"] == "approve"
@@ -270,8 +301,11 @@ class TestRulesOnlyMode:
                     "pass": False,
                     "exit_code": 1,
                     "violations": [
-                        {"rule": "CSP1", "directive": "script-src",
-                         "description": "script-src contains 'unsafe-inline'."},
+                        {
+                            "rule": "CSP1",
+                            "directive": "script-src",
+                            "description": "script-src contains 'unsafe-inline'.",
+                        },
                     ],
                     "iframes": [],
                 }
@@ -283,11 +317,15 @@ class TestRulesOnlyMode:
         monkeypatch.setattr("code_reviewer.frontend.runner.run_ts_script", _fake_tool)
         monkeypatch.setattr("code_reviewer.frontend.runner._record_eval", _noop)
 
-        rc = runner.run([
-            "--rules-only",
-            "--files", "frontend/middleware.ts",
-            "--out", str(out),
-        ])
+        rc = runner.run(
+            [
+                "--rules-only",
+                "--files",
+                "frontend/middleware.ts",
+                "--out",
+                str(out),
+            ]
+        )
         assert rc == EXIT_REJECT
         report = json.loads(out.read_text())
         assert report["verdict"] == "reject"
@@ -309,11 +347,15 @@ class TestRulesOnlyMode:
         monkeypatch.setattr("code_reviewer.frontend.runner.run_ts_script", _fake_tool)
         monkeypatch.setattr("code_reviewer.frontend.runner._record_eval", _noop)
 
-        rc = runner.run([
-            "--rules-only",
-            "--files", "frontend/middleware.ts",
-            "--out", str(out),
-        ])
+        rc = runner.run(
+            [
+                "--rules-only",
+                "--files",
+                "frontend/middleware.ts",
+                "--out",
+                str(out),
+            ]
+        )
         assert rc == EXIT_OK
         report = json.loads(out.read_text())
         # check_axe / check_bundle aren't dispatched against middleware.ts in

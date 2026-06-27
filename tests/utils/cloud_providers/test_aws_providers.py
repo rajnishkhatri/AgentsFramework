@@ -35,7 +35,8 @@ from utils.cloud_providers.config import TrustProviderSettings
 
 def _settings() -> TrustProviderSettings:
     return TrustProviderSettings(
-        provider="aws", _env_file=None,  # type: ignore[call-arg]
+        provider="aws",
+        _env_file=None,  # type: ignore[call-arg]
     )
 
 
@@ -112,7 +113,9 @@ class TestAWSIdentityProvider:
             "Account": "123456789012",
             "Arn": "arn:aws:sts::123456789012:assumed-role/AgentRole/session",
         }
-        mock_boto3.client.side_effect = lambda svc, **kw: mock_sts if svc == "sts" else MagicMock()
+        mock_boto3.client.side_effect = lambda svc, **kw: (
+            mock_sts if svc == "sts" else MagicMock()
+        )
         provider = AWSIdentityProvider(_settings())
         ctx = provider.get_caller_identity()
         assert isinstance(ctx, IdentityContext)
@@ -124,7 +127,9 @@ class TestAWSIdentityProvider:
     def test_get_caller_identity_raises_on_sts_error(self, mock_boto3):
         mock_sts = MagicMock()
         mock_sts.get_caller_identity.side_effect = _client_error()
-        mock_boto3.client.side_effect = lambda svc, **kw: mock_sts if svc == "sts" else MagicMock()
+        mock_boto3.client.side_effect = lambda svc, **kw: (
+            mock_sts if svc == "sts" else MagicMock()
+        )
         provider = AWSIdentityProvider(_settings())
         with pytest.raises(AuthenticationError) as exc_info:
             provider.get_caller_identity()
@@ -172,7 +177,9 @@ class TestAWSIdentityProvider:
     def test_resolve_identity_raises_on_assume_role_error(self, mock_boto3):
         mock_sts = MagicMock()
         mock_sts.assume_role.side_effect = _client_error("AccessDenied", "denied")
-        mock_boto3.client.side_effect = lambda svc, **kw: mock_sts if svc == "sts" else MagicMock()
+        mock_boto3.client.side_effect = lambda svc, **kw: (
+            mock_sts if svc == "sts" else MagicMock()
+        )
         provider = AWSIdentityProvider(_settings())
         with pytest.raises(AuthenticationError) as exc_info:
             provider.resolve_identity("arn:aws:iam::123:role/Missing")
@@ -193,9 +200,13 @@ class TestAWSIdentityProvider:
     def test_verify_identity_returns_true_when_valid(self, mock_boto3):
         mock_sts = MagicMock()
         mock_sts.get_caller_identity.return_value = {
-            "UserId": "X", "Account": "X", "Arn": "arn:aws:iam::X:user/X",
+            "UserId": "X",
+            "Account": "X",
+            "Arn": "arn:aws:iam::X:user/X",
         }
-        mock_boto3.client.side_effect = lambda svc, **kw: mock_sts if svc == "sts" else MagicMock()
+        mock_boto3.client.side_effect = lambda svc, **kw: (
+            mock_sts if svc == "sts" else MagicMock()
+        )
         provider = AWSIdentityProvider(_settings())
         identity = _make_identity()
         result = provider.verify_identity(identity)
@@ -205,7 +216,9 @@ class TestAWSIdentityProvider:
     def test_verify_identity_returns_false_on_sts_error(self, mock_boto3):
         mock_sts = MagicMock()
         mock_sts.get_caller_identity.side_effect = _client_error()
-        mock_boto3.client.side_effect = lambda svc, **kw: mock_sts if svc == "sts" else MagicMock()
+        mock_boto3.client.side_effect = lambda svc, **kw: (
+            mock_sts if svc == "sts" else MagicMock()
+        )
         provider = AWSIdentityProvider(_settings())
         identity = _make_identity()
         result = provider.verify_identity(identity)
@@ -226,14 +239,23 @@ class TestAWSPolicyProvider:
         mock_iam = MagicMock()
         attached_paginator = MagicMock()
         attached_paginator.paginate.return_value = [
-            {"AttachedPolicies": [{"PolicyArn": "arn:aws:iam::123:policy/ReadOnly", "PolicyName": "ReadOnly"}]},
+            {
+                "AttachedPolicies": [
+                    {
+                        "PolicyArn": "arn:aws:iam::123:policy/ReadOnly",
+                        "PolicyName": "ReadOnly",
+                    }
+                ]
+            },
         ]
         inline_paginator = MagicMock()
         inline_paginator.paginate.return_value = [
             {"PolicyNames": ["InlineWrite"]},
         ]
         mock_iam.get_paginator.side_effect = lambda name: (
-            attached_paginator if name == "list_attached_role_policies" else inline_paginator
+            attached_paginator
+            if name == "list_attached_role_policies"
+            else inline_paginator
         )
         mock_boto3.client.return_value = mock_iam
         provider = AWSPolicyProvider(_settings())
@@ -267,7 +289,9 @@ class TestAWSPolicyProvider:
         mock_boto3.client.return_value = mock_iam
         provider = AWSPolicyProvider(_settings())
         identity = _make_identity()
-        decision = provider.evaluate_access(identity, "s3:GetObject", "arn:aws:s3:::bucket/*")
+        decision = provider.evaluate_access(
+            identity, "s3:GetObject", "arn:aws:s3:::bucket/*"
+        )
         assert isinstance(decision, AccessDecision)
         assert decision.allowed is True
 
@@ -282,7 +306,9 @@ class TestAWSPolicyProvider:
         mock_boto3.client.return_value = mock_iam
         provider = AWSPolicyProvider(_settings())
         identity = _make_identity()
-        decision = provider.evaluate_access(identity, "s3:DeleteBucket", "arn:aws:s3:::bucket")
+        decision = provider.evaluate_access(
+            identity, "s3:DeleteBucket", "arn:aws:s3:::bucket"
+        )
         assert decision.allowed is False
 
     @patch("utils.cloud_providers.aws_policy.boto3")
@@ -371,8 +397,10 @@ class TestAWSCredentialProvider:
         mock_sts = MagicMock()
         mock_sts.assume_role.return_value = {
             "Credentials": {
-                "AccessKeyId": "X", "SecretAccessKey": "X",
-                "SessionToken": "X", "Expiration": datetime.now(UTC),
+                "AccessKeyId": "X",
+                "SecretAccessKey": "X",
+                "SessionToken": "X",
+                "Expiration": datetime.now(UTC),
             },
         }
         mock_boto3.client.return_value = mock_sts
@@ -387,8 +415,10 @@ class TestAWSCredentialProvider:
         mock_sts = MagicMock()
         mock_sts.assume_role.return_value = {
             "Credentials": {
-                "AccessKeyId": "X", "SecretAccessKey": "X",
-                "SessionToken": "X", "Expiration": datetime.now(UTC),
+                "AccessKeyId": "X",
+                "SecretAccessKey": "X",
+                "SessionToken": "X",
+                "Expiration": datetime.now(UTC),
             },
         }
         mock_boto3.client.return_value = mock_sts
@@ -404,8 +434,10 @@ class TestAWSCredentialProvider:
         mock_sts = MagicMock()
         mock_sts.assume_role.return_value = {
             "Credentials": {
-                "AccessKeyId": "X", "SecretAccessKey": "X",
-                "SessionToken": "X", "Expiration": datetime.now(UTC),
+                "AccessKeyId": "X",
+                "SecretAccessKey": "X",
+                "SessionToken": "X",
+                "Expiration": datetime.now(UTC),
             },
         }
         mock_boto3.client.return_value = mock_sts
@@ -544,9 +576,7 @@ class TestAWSPlanConformance:
 
         mock_boto3.client.side_effect = client_factory
         provider = AWSIdentityProvider(_settings())
-        ctx = provider.resolve_identity(
-            "arn:aws:iam::123456789012:role/AgentRole"
-        )
+        ctx = provider.resolve_identity("arn:aws:iam::123456789012:role/AgentRole")
         mock_sts.assume_role.assert_called_once()
         assert ctx.display_name == "AgentRole"
 
@@ -556,7 +586,9 @@ class TestAWSPlanConformance:
         mock_provider_sts = MagicMock()
         mock_subject_sts = MagicMock()
         mock_subject_sts.get_caller_identity.return_value = {
-            "UserId": "X", "Account": "X", "Arn": "arn:aws:iam::X:user/X",
+            "UserId": "X",
+            "Account": "X",
+            "Arn": "arn:aws:iam::X:user/X",
         }
 
         def client_factory(svc, **kw):
@@ -601,9 +633,7 @@ class TestAWSPlanConformance:
 
     def test_h3_5_session_policy_is_valid_iam_json(self):
         """H3.5: _build_session_policy produces valid IAM policy JSON."""
-        policy_str = AWSCredentialProvider._build_session_policy(
-            ["s3:GetObject"]
-        )
+        policy_str = AWSCredentialProvider._build_session_policy(["s3:GetObject"])
         policy = json.loads(policy_str)
         assert policy["Version"] == "2012-10-17"
         assert len(policy["Statement"]) == 1
@@ -664,7 +694,9 @@ class TestAWSPlanConformance:
         boundary = provider.get_permission_boundary(identity)
         assert boundary is not None
         assert boundary.max_permissions == [
-            "s3:GetObject", "s3:PutObject", "dynamodb:GetItem",
+            "s3:GetObject",
+            "s3:PutObject",
+            "dynamodb:GetItem",
         ]
 
     @patch("utils.cloud_providers.aws_credentials.boto3")
@@ -672,17 +704,17 @@ class TestAWSPlanConformance:
         """H5.5: revoke_credentials raises NotImplementedError (Phase 1)."""
         provider = AWSCredentialProvider(_settings())
         creds = TemporaryCredentials(
-            provider="aws", access_token="X",
-            expiry=datetime.now(UTC), agent_id="a1",
+            provider="aws",
+            access_token="X",
+            expiry=datetime.now(UTC),
+            agent_id="a1",
         )
         with pytest.raises(NotImplementedError, match="Phase 1"):
             provider.revoke_credentials(creds)
 
     def test_h5_6_sts_assumed_role_arn_parses(self):
         """H5.6: _parse_arn handles STS assumed-role ARN format."""
-        parsed = _parse_arn(
-            "arn:aws:sts::123456789012:assumed-role/AgentRole/session"
-        )
+        parsed = _parse_arn("arn:aws:sts::123456789012:assumed-role/AgentRole/session")
         assert parsed["service"] == "sts"
         assert parsed["account_id"] == "123456789012"
 
@@ -699,7 +731,8 @@ class TestAgentFactsToIAMMapping:
         mock_sts = MagicMock()
         mock_sts.assume_role.return_value = {
             "Credentials": {
-                "AccessKeyId": "X", "SecretAccessKey": "X",
+                "AccessKeyId": "X",
+                "SecretAccessKey": "X",
                 "SessionToken": "X",
                 "Expiration": datetime.now(UTC) + timedelta(minutes=15),
             },
@@ -721,7 +754,8 @@ class TestAgentFactsToIAMMapping:
         mock_sts = MagicMock()
         mock_sts.assume_role.return_value = {
             "Credentials": {
-                "AccessKeyId": "X", "SecretAccessKey": "X",
+                "AccessKeyId": "X",
+                "SecretAccessKey": "X",
                 "SessionToken": "X",
                 "Expiration": datetime.now(UTC) + timedelta(minutes=30),
             },

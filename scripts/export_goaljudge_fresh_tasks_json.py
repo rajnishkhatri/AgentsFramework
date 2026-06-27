@@ -6,6 +6,7 @@ Output: frontend/e2e/fixtures/goaljudge_fresh_tasks.json
 Regenerate after fresh_test_tasks.py edits:
     python scripts/export_goaljudge_fresh_tasks_json.py
 """
+
 from __future__ import annotations
 
 import json

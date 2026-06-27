@@ -390,4 +390,3 @@ The abstraction-introduction principle applies: do not create `adapters/voice/` 
 - **Understanding the `agent_ui_adapter` ring this frontend ring drives** — read `docs/Architectures/AGENT_UI_ADAPTER_ARCHITECTURE.md`.
 - **Adding a new concrete adapter** — follow the same pattern as `docs/contributing/AGENT_UI_ADAPTER_ADAPTERS_HANDBOOK.md` (a frontend-equivalent handbook will be authored during the implementation sprint).
 - **V2/V3 substrate plans** — `docs/plan/frontend/FRONTEND_PLAN_V2_FRONTIER.md` and `docs/plan/frontend/FRONTEND_PLAN_V3_DEV_TIER.md`.
-

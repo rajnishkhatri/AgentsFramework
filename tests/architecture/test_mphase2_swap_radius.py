@@ -81,11 +81,11 @@ class TestMPhase2SwapRadius:
             pytest.skip("could not compute merge-base (shallow clone?)")
 
         service_changes = [
-            p for p in changed
-            if p.startswith("services/") and _is_source_file(p)
+            p for p in changed if p.startswith("services/") and _is_source_file(p)
         ]
         adapter_changes = [
-            p for p in changed
+            p
+            for p in changed
             if p.startswith("agent_ui_adapter/") and _is_source_file(p)
         ]
 

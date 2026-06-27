@@ -358,4 +358,3 @@ This agent's output feeds downstream to:
 > Content is domain-dependent. Ordering is audience-dependent. Same facts. Different sequence. Different outcome.
 >
 > If the output uses the same ordering for every audience, the agent has failed. The ordering must be *derived* from audience diagnosis, not *defaulted* from template.
-

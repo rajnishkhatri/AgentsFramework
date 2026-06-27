@@ -115,8 +115,7 @@ class CalibrationReport:
         ]
         lines += [f"    {g.as_line()}" for g in self.gates]
         lines.append(
-            f"  Recall (reported, not gated): {self.recall:.4g} "
-            f"(n={self.recall_n})"
+            f"  Recall (reported, not gated): {self.recall:.4g} (n={self.recall_n})"
         )
         for note in self.notes:
             lines.append(f"  note: {note}")
@@ -190,9 +189,7 @@ def score(
 
     precision = tp / (tp + fp) if (tp + fp) else float("nan")
     recall = tp / (tp + fn) if (tp + fn) else float("nan")
-    false_store_trivia = (
-        trivia_false_store / trivia_total if trivia_total else 0.0
-    )
+    false_store_trivia = trivia_false_store / trivia_total if trivia_total else 0.0
     mistype_rate = mistype / typed_total if typed_total else 0.0
     # iaa expects PER-ITEM rater labels (one inner list per item = [gold,judge]),
     # not per-rater columns — zip the two columns into per-item pairs.
@@ -210,24 +207,44 @@ def score(
 
     gates = [
         GateResult(
-            "store_class_precision", precision, PRECISION_MIN, ">=",
-            _ge(precision, PRECISION_MIN), tp + fp,
+            "store_class_precision",
+            precision,
+            PRECISION_MIN,
+            ">=",
+            _ge(precision, PRECISION_MIN),
+            tp + fp,
         ),
         GateResult(
-            "false_store_on_trivia", false_store_trivia, FALSE_STORE_TRIVIA_MAX,
-            "<=", false_store_trivia <= FALSE_STORE_TRIVIA_MAX, trivia_total,
+            "false_store_on_trivia",
+            false_store_trivia,
+            FALSE_STORE_TRIVIA_MAX,
+            "<=",
+            false_store_trivia <= FALSE_STORE_TRIVIA_MAX,
+            trivia_total,
         ),
         GateResult(
-            "mistype_rate", mistype_rate, MISTYPE_MAX, "<=",
-            mistype_rate <= MISTYPE_MAX, typed_total,
+            "mistype_rate",
+            mistype_rate,
+            MISTYPE_MAX,
+            "<=",
+            mistype_rate <= MISTYPE_MAX,
+            typed_total,
         ),
         GateResult(
-            "pii_flip_rate", float(pii_flips), float(PII_FLIP_MAX), "==",
-            pii_flips == PII_FLIP_MAX, pii_total,
+            "pii_flip_rate",
+            float(pii_flips),
+            float(PII_FLIP_MAX),
+            "==",
+            pii_flips == PII_FLIP_MAX,
+            pii_total,
         ),
         GateResult(
-            "kappa_judge_vs_gold", kappa, KAPPA_MIN, ">=",
-            _ge(kappa, KAPPA_MIN), len(rows),
+            "kappa_judge_vs_gold",
+            kappa,
+            KAPPA_MIN,
+            ">=",
+            _ge(kappa, KAPPA_MIN),
+            len(rows),
         ),
     ]
     return CalibrationReport(

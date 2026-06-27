@@ -11,6 +11,7 @@ short-task noise (the "drive now, segment" decision, 2026-06-13).
 
 Binomial power is quoted at the chosen n (process rule #3).
 """
+
 import base64
 import csv
 import json
@@ -84,7 +85,9 @@ AUTH = base64.b64encode(
 def get(url):
     for _ in range(5):
         try:
-            req = urllib.request.Request(url, headers={"Authorization": f"Basic {AUTH}"})
+            req = urllib.request.Request(
+                url, headers={"Authorization": f"Basic {AUTH}"}
+            )
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
@@ -95,8 +98,10 @@ def get(url):
     raise RuntimeError("exhausted retries")
 
 
-with open("docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_combined_sheet.csv",
-          encoding="utf-8") as fh:
+with open(
+    "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_combined_sheet.csv",
+    encoding="utf-8",
+) as fh:
     GOLD = [r["task"].strip() for r in csv.DictReader(fh) if r.get("task", "").strip()]
 
 runs = [json.loads(l) for l in open("/tmp/shadow_2a_r3_runs.jsonl")]
@@ -104,8 +109,13 @@ results = []
 for r in runs:
     trace = r["trace_id"]
     task = GOLD[r["case_idx"]]
-    rec = {"i": r["case_idx"], "trace": (trace or "")[:8], "task": task,
-           "run_status": r["status"], "span": False}
+    rec = {
+        "i": r["case_idx"],
+        "trace": (trace or "")[:8],
+        "task": task,
+        "run_status": r["status"],
+        "span": False,
+    }
     if trace:
         url = f"{HOST}/api/public/observations?traceId={trace}&name=eval.task_understanding&limit=50"
         obs = get(url).get("data", [])
@@ -130,7 +140,8 @@ for r in runs:
                 coverage=_covers(conds, task) if source == "generated" else None,
                 fallback_bucket=(
                     _classify_fallback(out.get("fallback_reason") or "", task)
-                    if source != "generated" else None
+                    if source != "generated"
+                    else None
                 ),
             )
     results.append(rec)
@@ -157,32 +168,51 @@ raw_pass = len(gen)
 # a known, separately-tracked reason, not an R3 regression)
 adj_pass = len(gen) + len(known_defect)
 
-mb = [r for r in gen if len([b for b in _extract_branches(r["task"]) if _is_real_branch(b)]) >= 2]
+mb = [
+    r
+    for r in gen
+    if len([b for b in _extract_branches(r["task"]) if _is_real_branch(b)]) >= 2
+]
 cov_pass = sum(1 for r in mb if r["coverage"])
 recovered = [r for r in gen if (r.get("attempts") or 1) > 1]
 shadow_ok = sum(1 for r in results if r.get("consumed") is False)
 
 
 def p_pass(N, p, need):
-    return sum(math.comb(N, k) * p**k * (1 - p)**(N - k) for k in range(need, N + 1))
+    return sum(math.comb(N, k) * p**k * (1 - p) ** (N - k) for k in range(need, N + 1))
 
 
 print("=" * 66)
 print(f"spans published         : {sum(1 for r in results if r['span'])}/{n}")
-print(f"RAW GATE-PASS           : {raw_pass}/{n} = {raw_pass/n:.1%}   (gate >=96/101)")
-print(f"R3-ATTRIBUTABLE PASS    : {adj_pass}/{n} = {adj_pass/n:.1%}   "
-      f"(crediting {len(known_defect)} known short-task-grounding fallbacks)")
+print(
+    f"RAW GATE-PASS           : {raw_pass}/{n} = {raw_pass / n:.1%}   (gate >=96/101)"
+)
+print(
+    f"R3-ATTRIBUTABLE PASS    : {adj_pass}/{n} = {adj_pass / n:.1%}   "
+    f"(crediting {len(known_defect)} known short-task-grounding fallbacks)"
+)
 print(f"  recovered via retry   : {len(recovered)} (attempts>1)")
-print(f"COVERAGE (multi-branch) : {cov_pass}/{len(mb)} = {cov_pass/len(mb) if mb else 0:.1%}  (>=80%)")
+print(
+    f"COVERAGE (multi-branch) : {cov_pass}/{len(mb)} = {cov_pass / len(mb) if mb else 0:.1%}  (>=80%)"
+)
 print(f"shadow invariant        : {shadow_ok}/{n} consumed=false")
 print("-" * 66)
 print("FALLBACK SEGMENTATION:")
 for b, rs in sorted(buckets.items(), key=lambda kv: -len(kv[1])):
-    tag = "  (KNOWN DEFECT — audit 4b8c3f68)" if b == "short_task_grounding" else \
-          ("  (R3 CONCERN — inspect)" if b in ("validation_other", "parse_error", "grounding_other") else "")
+    tag = (
+        "  (KNOWN DEFECT — audit 4b8c3f68)"
+        if b == "short_task_grounding"
+        else (
+            "  (R3 CONCERN — inspect)"
+            if b in ("validation_other", "parse_error", "grounding_other")
+            else ""
+        )
+    )
     print(f"  {b:24s}: {len(rs)}{tag}")
 if no_span:
-    print(f"  {'NO_SPAN (run failed)':24s}: {len(no_span)}  (drive transport/timeout — re-run these)")
+    print(
+        f"  {'NO_SPAN (run failed)':24s}: {len(no_span)}  (drive transport/timeout — re-run these)"
+    )
 print("-" * 66)
 print("BINOMIAL POWER at n=101, need>=96 (process rule #3):")
 for p in (0.95, 0.96, 0.97, 0.98, 0.99):
@@ -190,16 +220,24 @@ for p in (0.95, 0.96, 0.97, 0.98, 0.99):
 print("=" * 66)
 
 if r3_fail:
-    print("\nR3-ATTRIBUTABLE FALLBACKS (inspect each — NOT the known short-task defect):")
+    print(
+        "\nR3-ATTRIBUTABLE FALLBACKS (inspect each — NOT the known short-task defect):"
+    )
     for r in r3_fail:
-        print(f"  [{r['i']:03d}] bucket={r.get('fallback_bucket')} attempts={r.get('attempts')}")
-        print(f"        reason: {r.get('fallback_reason','')[:140]}")
+        print(
+            f"  [{r['i']:03d}] bucket={r.get('fallback_bucket')} attempts={r.get('attempts')}"
+        )
+        print(f"        reason: {r.get('fallback_reason', '')[:140]}")
         print(f"        task:   {r['task'][:90]}")
 if known_defect:
-    print(f"\nKNOWN SHORT-TASK-GROUNDING FALLBACKS ({len(known_defect)} — fixed by the generic-condition exemption):")
+    print(
+        f"\nKNOWN SHORT-TASK-GROUNDING FALLBACKS ({len(known_defect)} — fixed by the generic-condition exemption):"
+    )
     for r in known_defect:
         print(f"  [{r['i']:03d}] task: {r['task'][:80]}")
 if no_span:
-    print(f"\nNO-SPAN RUNS ({len(no_span)} — drive-side failure, re-run before trusting the gate):")
+    print(
+        f"\nNO-SPAN RUNS ({len(no_span)} — drive-side failure, re-run before trusting the gate):"
+    )
     for r in no_span:
         print(f"  [{r['i']:03d}] run_status={r['run_status']} task: {r['task'][:70]}")

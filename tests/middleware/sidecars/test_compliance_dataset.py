@@ -56,11 +56,13 @@ class FakeExporter:
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
     ) -> None:
-        self.events.append({
-            "name": name,
-            "trace_id": trace_id,
-            "attributes": dict(attributes) if attributes else {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "trace_id": trace_id,
+                "attributes": dict(attributes) if attributes else {},
+            }
+        )
 
     def release_trace(self, trace_id: str) -> None:
         pass
@@ -87,12 +89,14 @@ class FakeCompliancePublisher:
     ) -> None:
         if self._fail_on_publish:
             raise RuntimeError("Simulated Langfuse dataset publish failure")
-        self.dataset_items.append({
-            "dataset_name": dataset_name,
-            "input_data": input_data,
-            "item_id": item_id,
-            "metadata": metadata,
-        })
+        self.dataset_items.append(
+            {
+                "dataset_name": dataset_name,
+                "input_data": input_data,
+                "item_id": item_id,
+                "metadata": metadata,
+            }
+        )
 
     def score_trace(
         self,
@@ -104,12 +108,14 @@ class FakeCompliancePublisher:
     ) -> None:
         if self._fail_on_publish:
             raise RuntimeError("Simulated Langfuse score failure")
-        self.scores.append({
-            "trace_id": trace_id,
-            "name": name,
-            "value": value,
-            "comment": comment,
-        })
+        self.scores.append(
+            {
+                "trace_id": trace_id,
+                "name": name,
+                "value": value,
+                "comment": comment,
+            }
+        )
 
 
 def _make_event(
@@ -138,19 +144,31 @@ def _record_workflow(
 ) -> Path:
     """Record a complete workflow: TASK_STARTED, STEP_EXECUTED, TASK_COMPLETED."""
     recorder = BlackBoxRecorder(storage_dir=storage_dir)
-    recorder.record(_make_event(
-        EventType.TASK_STARTED, workflow_id=workflow_id, step=0,
-        details={"task": "test task"},
-    ))
-    recorder.record(_make_event(
-        EventType.STEP_EXECUTED, workflow_id=workflow_id, step=1,
-        details={"action": "test action"},
-    ))
+    recorder.record(
+        _make_event(
+            EventType.TASK_STARTED,
+            workflow_id=workflow_id,
+            step=0,
+            details={"task": "test task"},
+        )
+    )
+    recorder.record(
+        _make_event(
+            EventType.STEP_EXECUTED,
+            workflow_id=workflow_id,
+            step=1,
+            details={"action": "test action"},
+        )
+    )
     if include_task_completed:
-        recorder.record(_make_event(
-            EventType.TASK_COMPLETED, workflow_id=workflow_id, step=2,
-            details={"outcome": outcome},
-        ))
+        recorder.record(
+            _make_event(
+                EventType.TASK_COMPLETED,
+                workflow_id=workflow_id,
+                step=2,
+                details={"outcome": outcome},
+            )
+        )
     return storage_dir / workflow_id / "trace.jsonl"
 
 
@@ -206,7 +224,10 @@ class TestBrokenChainPublishesToIncidentDataset:
     """When hash chain is broken, the bundle goes to agent-incident-replay."""
 
     def test_broken_chain_publishes_to_incident_dataset(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         trace_file = _record_workflow(storage, "wf-broken")
         _corrupt_hash_chain(trace_file)
@@ -216,7 +237,8 @@ class TestBrokenChainPublishesToIncidentDataset:
         relay.run_once()
 
         incident_items = [
-            item for item in compliance_publisher.dataset_items
+            item
+            for item in compliance_publisher.dataset_items
             if item["dataset_name"] == "agent-incident-replay"
         ]
         assert len(incident_items) == 1
@@ -224,7 +246,10 @@ class TestBrokenChainPublishesToIncidentDataset:
         assert incident_items[0]["input_data"]["workflow_id"] == "wf-broken"
 
     def test_broken_chain_score_is_zero(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         trace_file = _record_workflow(storage, "wf-score-broken")
         _corrupt_hash_chain(trace_file)
@@ -233,13 +258,18 @@ class TestBrokenChainPublishesToIncidentDataset:
         relay = _build_relay(storage, exporter, compliance_publisher)
         relay.run_once()
 
-        scores = [s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-broken"]
+        scores = [
+            s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-broken"
+        ]
         assert len(scores) == 1
         assert scores[0]["name"] == "hash_chain_valid"
         assert scores[0]["value"] == 0.0
 
     def test_broken_chain_item_has_workflow_id_as_item_id(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         trace_file = _record_workflow(storage, "wf-itemid")
         _corrupt_hash_chain(trace_file)
@@ -275,7 +305,10 @@ class TestValidChainPublishesToAuditDataset:
     """When hash chain is valid, the bundle goes to agent-compliance-audit."""
 
     def test_valid_chain_publishes_to_audit_dataset(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow(storage, "wf-valid")
         (storage / "wf-valid" / ".langfuse_offset").write_text("0")
@@ -284,7 +317,8 @@ class TestValidChainPublishesToAuditDataset:
         relay.run_once()
 
         audit_items = [
-            item for item in compliance_publisher.dataset_items
+            item
+            for item in compliance_publisher.dataset_items
             if item["dataset_name"] == "agent-compliance-audit"
         ]
         assert len(audit_items) == 1
@@ -292,7 +326,10 @@ class TestValidChainPublishesToAuditDataset:
         assert audit_items[0]["input_data"]["workflow_id"] == "wf-valid"
 
     def test_valid_chain_score_is_one(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow(storage, "wf-score-valid")
         (storage / "wf-score-valid" / ".langfuse_offset").write_text("0")
@@ -300,13 +337,18 @@ class TestValidChainPublishesToAuditDataset:
         relay = _build_relay(storage, exporter, compliance_publisher)
         relay.run_once()
 
-        scores = [s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-valid"]
+        scores = [
+            s for s in compliance_publisher.scores if s["trace_id"] == "wf-score-valid"
+        ]
         assert len(scores) == 1
         assert scores[0]["name"] == "hash_chain_valid"
         assert scores[0]["value"] == 1.0
 
     def test_audit_item_contains_event_count(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow(storage, "wf-count")
         (storage / "wf-count" / ".langfuse_offset").write_text("0")
@@ -318,7 +360,10 @@ class TestValidChainPublishesToAuditDataset:
         assert items[0]["input_data"]["event_count"] == 3
 
     def test_audit_item_contains_bundle_type(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow(storage, "wf-bundle")
         (storage / "wf-bundle" / ".langfuse_offset").write_text("0")
@@ -330,7 +375,10 @@ class TestValidChainPublishesToAuditDataset:
         assert items[0]["input_data"]["bundle_type"] == "compliance_audit"
 
     def test_failed_outcome_goes_to_both_datasets(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """A failed outcome with valid chain still goes to audit, PLUS incident-replay."""
         _record_workflow(storage, "wf-failed-outcome", outcome="failure")
@@ -339,7 +387,9 @@ class TestValidChainPublishesToAuditDataset:
         relay = _build_relay(storage, exporter, compliance_publisher)
         relay.run_once()
 
-        dataset_names = [item["dataset_name"] for item in compliance_publisher.dataset_items]
+        dataset_names = [
+            item["dataset_name"] for item in compliance_publisher.dataset_items
+        ]
         assert "agent-compliance-audit" in dataset_names
         assert "agent-incident-replay" in dataset_names
 
@@ -353,7 +403,10 @@ class TestScoreAttachment:
     """Attach hash_chain_valid as a Langfuse score on the trace."""
 
     def test_score_has_comment_on_failure(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         trace_file = _record_workflow(storage, "wf-comment")
         _corrupt_hash_chain(trace_file)
@@ -365,10 +418,16 @@ class TestScoreAttachment:
         scores = compliance_publisher.scores
         assert len(scores) >= 1
         assert scores[0]["comment"] is not None
-        assert "broken" in scores[0]["comment"].lower() or "invalid" in scores[0]["comment"].lower()
+        assert (
+            "broken" in scores[0]["comment"].lower()
+            or "invalid" in scores[0]["comment"].lower()
+        )
 
     def test_score_trace_id_matches_workflow_id(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow(storage, "wf-trace-match")
         (storage / "wf-trace-match" / ".langfuse_offset").write_text("0")
@@ -394,7 +453,10 @@ class TestTriggerCondition:
     """Compliance publish only triggers on TASK_COMPLETED event."""
 
     def test_no_publish_without_task_completed(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """A workflow without TASK_COMPLETED should not trigger compliance publish."""
         _record_workflow(storage, "wf-incomplete", include_task_completed=False)
@@ -407,7 +469,10 @@ class TestTriggerCondition:
         assert len(compliance_publisher.scores) == 0
 
     def test_publish_triggered_by_task_completed_event(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """Relay publishes compliance bundle when it processes TASK_COMPLETED."""
         _record_workflow(storage, "wf-trigger")
@@ -419,7 +484,10 @@ class TestTriggerCondition:
         assert len(compliance_publisher.dataset_items) >= 1
 
     def test_no_duplicate_publish_on_second_run(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """Once processed, the same TASK_COMPLETED should not re-trigger."""
         _record_workflow(storage, "wf-no-dup")
@@ -430,7 +498,8 @@ class TestTriggerCondition:
         relay.run_once()
 
         audit_items = [
-            item for item in compliance_publisher.dataset_items
+            item
+            for item in compliance_publisher.dataset_items
             if item["input_data"]["workflow_id"] == "wf-no-dup"
         ]
         assert len(audit_items) == 1
@@ -545,14 +614,16 @@ def _materialize_scenario(storage: Path, scenario: Scenario) -> tuple[str, str |
     recorder = BlackBoxRecorder(storage_dir=storage)
     base_ts = datetime(2026, 5, 28, 12, 0, 0, tzinfo=UTC)
     for i, ev in enumerate(scenario.synthetic_events):
-        recorder.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=wf_id,
-            event_type=EventType(ev.event_type),
-            timestamp=base_ts,
-            step=ev.step,
-            details=dict(ev.details),
-        ))
+        recorder.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=wf_id,
+                event_type=EventType(ev.event_type),
+                timestamp=base_ts,
+                step=ev.step,
+                details=dict(ev.details),
+            )
+        )
 
     broken_event_id: str | None = None
     if scenario.corrupt_event_index is not None:
@@ -572,7 +643,8 @@ def _materialize_scenario(storage: Path, scenario: Scenario) -> tuple[str, str |
 def _published_item(publisher: FakeCompliancePublisher, wf_id: str) -> dict[str, Any]:
     """Return the (first) dataset item the relay published for *wf_id*."""
     items = [
-        item for item in publisher.dataset_items
+        item
+        for item in publisher.dataset_items
         if item["input_data"].get("workflow_id") == wf_id
     ]
     assert items, f"No dataset item published for {wf_id}"
@@ -584,7 +656,10 @@ class TestG8BrokenChainTrace:
     populated ``broken_at_event_id`` — the auditor's jump-to-tamper signal."""
 
     def test_broken_chain_routes_to_incident_with_break_location(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         scenario = NEGATIVE_SCENARIOS[ScenarioID.S9]
         wf_id, broken_event_id = _materialize_scenario(storage, scenario)
@@ -602,7 +677,10 @@ class TestG8BrokenChainTrace:
         assert bundle["broken_at_event_id"] == broken_event_id
 
     def test_broken_chain_score_is_zero(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         scenario = NEGATIVE_SCENARIOS[ScenarioID.S9]
         wf_id, _ = _materialize_scenario(storage, scenario)
@@ -613,11 +691,16 @@ class TestG8BrokenChainTrace:
         # Phase 1 may add terminal outcome scores alongside hash_chain_valid;
         # assert on the chain-validity score specifically.
         chain_scores = [
-            s for s in compliance_publisher.scores
+            s
+            for s in compliance_publisher.scores
             if s["trace_id"] == wf_id and s["name"] == "hash_chain_valid"
         ]
         assert len(chain_scores) == 1
-        assert chain_scores[0]["value"] == scenario.compliance.hash_chain_valid_score == 0.0
+        assert (
+            chain_scores[0]["value"]
+            == scenario.compliance.hash_chain_valid_score
+            == 0.0
+        )
 
 
 class TestG7FailedAgentFactsTrace:
@@ -626,7 +709,10 @@ class TestG7FailedAgentFactsTrace:
     block surfaces ``outcome=rejected`` so the gate's firing is provable."""
 
     def test_rejected_outcome_surfaced_in_summary(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         scenario = NEGATIVE_SCENARIOS[ScenarioID.S7]
         wf_id, _ = _materialize_scenario(storage, scenario)
@@ -639,13 +725,19 @@ class TestG7FailedAgentFactsTrace:
         assert routing.passed, routing.description
 
         failures = [
-            r for r in assert_rejected_outcome(item["input_data"], scenario.expected_reason)
+            r
+            for r in assert_rejected_outcome(
+                item["input_data"], scenario.expected_reason
+            )
             if not r.passed
         ]
         assert not failures, "\n".join(f.description for f in failures)
 
     def test_rejected_trace_chain_is_intact(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         # The task was rejected, not the recording — integrity must stay 1.0.
         scenario = NEGATIVE_SCENARIOS[ScenarioID.S7]
@@ -681,7 +773,8 @@ class TestG9ErrorTraces:
         item = _published_item(compliance_publisher, wf_id)
         bundle = item["input_data"]
         failures = [
-            r for r in assert_error_trace_present(bundle, scenario.expected_error_types)
+            r
+            for r in assert_error_trace_present(bundle, scenario.expected_error_types)
             if not r.passed
         ]
         assert not failures, "\n".join(f.description for f in failures)
@@ -702,7 +795,8 @@ class TestG9ErrorTraces:
         relay.run_once()
 
         error_events = [
-            e for e in exporter.events
+            e
+            for e in exporter.events
             if e["name"] == "error.occurred" and e["trace_id"] == wf_id
         ]
         assert error_events, "ERROR_OCCURRED not exported to telemetry"
@@ -713,7 +807,10 @@ class TestRelayPhaseEvents:
     """Sprint 4 (b3-relay): compliance publish includes phase_events[]; redaction applies."""
 
     def test_relay_publishes_phase_events_when_phase_logs_present(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         wf_id = "wf-phase-relay"
         _record_workflow(storage, wf_id)
@@ -736,7 +833,10 @@ class TestRelayPhaseEvents:
         assert any(e["phase"] == WorkflowPhase.ROUTING.value for e in ended)
 
     def test_published_phase_event_details_are_redacted(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         wf_id = "wf-phase-pii"
         _record_workflow(storage, wf_id)
@@ -758,7 +858,8 @@ class TestRelayPhaseEvents:
         routing_ends = [
             e
             for e in bundle["phase_events"]
-            if e.get("event") == "phase_end" and e.get("phase") == WorkflowPhase.ROUTING.value
+            if e.get("event") == "phase_end"
+            and e.get("phase") == WorkflowPhase.ROUTING.value
         ]
         assert routing_ends
         note = routing_ends[0]["details"]["note"]
@@ -788,7 +889,8 @@ class TestNegativeScenarioEventCoverage:
 
         bundle = _published_item(compliance_publisher, wf_id)["input_data"]
         failures = [
-            r for r in assert_bundle_event_types(bundle, scenario.expected_observations)
+            r
+            for r in assert_bundle_event_types(bundle, scenario.expected_observations)
             if not r.passed
         ]
         assert not failures, "\n".join(f.description for f in failures)
@@ -812,18 +914,30 @@ def _record_workflow_with_outcome(
     started_details: dict[str, Any] = {"task": "test task"}
     if agent_id is not None:
         started_details["agent_id"] = agent_id
-    recorder.record(_make_event(
-        EventType.TASK_STARTED, workflow_id=workflow_id, step=0,
-        details=started_details,
-    ))
-    recorder.record(_make_event(
-        EventType.STEP_EXECUTED, workflow_id=workflow_id, step=1,
-        details={"action": "test action"},
-    ))
-    recorder.record(_make_event(
-        EventType.TASK_COMPLETED, workflow_id=workflow_id, step=2,
-        details=completed_details,
-    ))
+    recorder.record(
+        _make_event(
+            EventType.TASK_STARTED,
+            workflow_id=workflow_id,
+            step=0,
+            details=started_details,
+        )
+    )
+    recorder.record(
+        _make_event(
+            EventType.STEP_EXECUTED,
+            workflow_id=workflow_id,
+            step=1,
+            details={"action": "test action"},
+        )
+    )
+    recorder.record(
+        _make_event(
+            EventType.TASK_COMPLETED,
+            workflow_id=workflow_id,
+            step=2,
+            details=completed_details,
+        )
+    )
     return storage_dir / workflow_id / "trace.jsonl"
 
 
@@ -833,10 +947,14 @@ class TestOutcomeScores:
     without opening the trace (review finding E9)."""
 
     def test_outcome_scores_published(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow_with_outcome(
-            storage, "wf-scores",
+            storage,
+            "wf-scores",
             completed_details={
                 "outcome": "success",
                 "goal_met": False,
@@ -857,11 +975,19 @@ class TestOutcomeScores:
             assert by_name[name]["trace_id"] == "wf-scores"
 
     def test_goal_met_true_scores_one(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow_with_outcome(
-            storage, "wf-goalmet",
-            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            storage,
+            "wf-goalmet",
+            completed_details={
+                "outcome": "success",
+                "goal_met": True,
+                "criteria_met": 1.0,
+            },
         )
         (storage / "wf-goalmet" / ".langfuse_offset").write_text("0")
         relay = _build_relay(storage, exporter, compliance_publisher)
@@ -872,12 +998,16 @@ class TestOutcomeScores:
     # ── failure paths first ──────────────────────────────────────────
 
     def test_missing_outcome_fields_emit_no_score_and_no_raise(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """A terminal event missing goal_met/criteria_met (e.g. a rejected or
         budget-exceeded shape) must NOT fabricate a score and must NOT raise."""
         _record_workflow_with_outcome(
-            storage, "wf-partial",
+            storage,
+            "wf-partial",
             completed_details={"outcome": "failure"},  # no goal_met / criteria_met
         )
         (storage / "wf-partial" / ".langfuse_offset").write_text("0")
@@ -892,12 +1022,20 @@ class TestOutcomeScores:
         assert "hash_chain_valid" in score_names
 
     def test_none_outcome_field_emits_no_score(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """goal_met=None (judge never ran) → no goal_met score, no raise."""
         _record_workflow_with_outcome(
-            storage, "wf-nonegoal",
-            completed_details={"outcome": "success", "goal_met": None, "criteria_met": 0.5},
+            storage,
+            "wf-nonegoal",
+            completed_details={
+                "outcome": "success",
+                "goal_met": None,
+                "criteria_met": 0.5,
+            },
         )
         (storage / "wf-nonegoal" / ".langfuse_offset").write_text("0")
         relay = _build_relay(storage, exporter, compliance_publisher)
@@ -912,8 +1050,13 @@ class TestOutcomeScores:
         """If score_trace raises, the compliance bundle still publishes (O1)."""
         publisher = FakeCompliancePublisher(fail_on_publish=True)
         _record_workflow_with_outcome(
-            storage, "wf-scorefail",
-            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            storage,
+            "wf-scorefail",
+            completed_details={
+                "outcome": "success",
+                "goal_met": True,
+                "criteria_met": 1.0,
+            },
         )
         (storage / "wf-scorefail" / ".langfuse_offset").write_text("0")
         relay = _build_relay(storage, exporter, publisher)
@@ -931,7 +1074,11 @@ class _FakeFacts:
         self._agent_id = agent_id
 
     def model_dump(self, mode: str = "python") -> dict[str, Any]:
-        return {"agent_id": self._agent_id, "agent_name": "test-agent", "version": "1.0.0"}
+        return {
+            "agent_id": self._agent_id,
+            "agent_name": "test-agent",
+            "version": "1.0.0",
+        }
 
 
 class _FakeAuditEntry:
@@ -961,18 +1108,29 @@ class TestIdentityInBundle:
     was dead in practice)."""
 
     def test_identity_cards_present_when_registry_supplied(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         _record_workflow_with_outcome(
-            storage, "wf-identity",
-            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            storage,
+            "wf-identity",
+            completed_details={
+                "outcome": "success",
+                "goal_met": True,
+                "criteria_met": 1.0,
+            },
             agent_id="agent-007",
         )
         (storage / "wf-identity" / ".langfuse_offset").write_text("0")
 
         registry = _FakeAgentFactsRegistry(known={"agent-007"})
         relay = _build_relay(
-            storage, exporter, compliance_publisher, agent_facts_registry=registry,
+            storage,
+            exporter,
+            compliance_publisher,
+            agent_facts_registry=registry,
         )
         relay.run_once()
 
@@ -983,13 +1141,21 @@ class TestIdentityInBundle:
         assert bundle["identity_cards"]["agent-007"]["agent_id"] == "agent-007"
 
     def test_no_registry_means_no_identity_cards(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """Failure path: without a registry the bundle simply omits identity_cards
         (no crash, no empty-shell key)."""
         _record_workflow_with_outcome(
-            storage, "wf-noreg",
-            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            storage,
+            "wf-noreg",
+            completed_details={
+                "outcome": "success",
+                "goal_met": True,
+                "criteria_met": 1.0,
+            },
             agent_id="agent-007",
         )
         (storage / "wf-noreg" / ".langfuse_offset").write_text("0")
@@ -999,18 +1165,28 @@ class TestIdentityInBundle:
         assert "identity_cards" not in bundle
 
     def test_setter_injects_registry_post_construction(
-        self, storage: Path, exporter: FakeExporter, compliance_publisher: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_publisher: FakeCompliancePublisher,
     ) -> None:
         """The composition root joins relay (from adapters) and registry (from
         components) after construction, so a setter must work like the ctor arg
         (mirrors eval_telemetry.set_sink — avoids AP-2 adapter/registry coupling)."""
         _record_workflow_with_outcome(
-            storage, "wf-setter",
-            completed_details={"outcome": "success", "goal_met": True, "criteria_met": 1.0},
+            storage,
+            "wf-setter",
+            completed_details={
+                "outcome": "success",
+                "goal_met": True,
+                "criteria_met": 1.0,
+            },
             agent_id="agent-007",
         )
         (storage / "wf-setter" / ".langfuse_offset").write_text("0")
-        relay = _build_relay(storage, exporter, compliance_publisher)  # no ctor registry
+        relay = _build_relay(
+            storage, exporter, compliance_publisher
+        )  # no ctor registry
         relay.set_agent_facts_registry(_FakeAgentFactsRegistry(known={"agent-007"}))
         relay.run_once()
         bundle = _published_item(compliance_publisher, "wf-setter")["input_data"]

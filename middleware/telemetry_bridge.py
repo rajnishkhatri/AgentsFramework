@@ -123,7 +123,9 @@ def _derive_step_from_tool_call_id(tool_call_id: str | None) -> int | None:
     return int(prefix)
 
 
-def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dict[str, Any]] | None:
+def _build_attributes(
+    event: DomainEvent, subject: str | None
+) -> tuple[str, dict[str, Any]] | None:
     """Return (langfuse_name, attributes) or None if the event should be skipped."""
     if isinstance(event, _SKIPPED_TYPES):
         return None
@@ -140,7 +142,10 @@ def _build_attributes(event: DomainEvent, subject: str | None) -> tuple[str, dic
         attrs["run_id"] = event.run_id
         attrs["thread_id"] = event.thread_id
         attrs["error"] = event.error
-        attrs["__output"] = {"status": "error" if event.error else "success", "error": event.error}
+        attrs["__output"] = {
+            "status": "error" if event.error else "success",
+            "error": event.error,
+        }
 
     elif isinstance(event, ToolResultReceived):
         # Phase 3: merge the buffered ToolCallStarted into ONE tool.{name} obs.
@@ -238,7 +243,9 @@ def emit_domain_event(
             key = (domain_event.trace_id, domain_event.message_id)
             start_attrs: dict[str, Any] = {}
             if domain_event.input_text:
-                start_attrs["input_text"] = _redact_and_truncate(domain_event.input_text)
+                start_attrs["input_text"] = _redact_and_truncate(
+                    domain_event.input_text
+                )
             _llm_start_buffers[key] = (start_attrs, time.monotonic())
             return
 
@@ -258,7 +265,9 @@ def emit_domain_event(
             return
 
         name, attrs = result
-        exporter.export_event(name=name, trace_id=domain_event.trace_id, attributes=attrs)
+        exporter.export_event(
+            name=name, trace_id=domain_event.trace_id, attributes=attrs
+        )
 
         if isinstance(domain_event, RunFinishedDomain):
             # Clear bridge-owned buffers on every run-finish (independent of the

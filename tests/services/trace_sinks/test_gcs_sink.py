@@ -102,7 +102,9 @@ class TestGcsTraceSinkHappyPath:
         assert blob_key.startswith("custom/path/")
 
     def test_lazy_client_initialization(self) -> None:
-        with patch("services.trace_sinks.gcs_sink.GcsTraceSink._get_client") as mock_get:
+        with patch(
+            "services.trace_sinks.gcs_sink.GcsTraceSink._get_client"
+        ) as mock_get:
             mock_client = MagicMock()
             mock_get.return_value = mock_client
             mock_client.bucket.return_value.blob.return_value = MagicMock()

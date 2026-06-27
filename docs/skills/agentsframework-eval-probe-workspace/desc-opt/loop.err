@@ -6,14 +6,14 @@ Description: Add and operate a continuous-evaluation PROBE on any LLM-call seam 
 ============================================================
 Train: 18/36 correct, precision=100% recall=0% accuracy=50% (85.4s)
   [FAIL] rate=0/3 expected=True: the output_validation phase fails way more often than i'd ex
-  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and 
+  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and
   [FAIL] rate=0/3 expected=True: need to build a rubric + judge for the plan_builder output q
   [FAIL] rate=0/3 expected=True: i want to wire up drift detection for the guardrail validato
   [FAIL] rate=0/3 expected=True: we keep finding the summarizer drops half the action items w
   [FAIL] rate=0/3 expected=True: ok next seam i want to instrument for evaluation is the rout
   [PASS] rate=0/3 expected=False: here's a langfuse trace JSON dump from this morning's deploy
   [PASS] rate=0/3 expected=False: refactor services/eval_capture.py — the record() function ha
-  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to 
+  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to
   [PASS] rate=0/3 expected=False: explain how llm-as-a-judge calibration works in general — wh
   [PASS] rate=0/3 expected=False: can you review the latest production traces from the goaljud
   [PASS] rate=0/3 expected=False: add a unit test for validate_plan_mece in components/plan_bu
@@ -22,9 +22,9 @@ Test : 12/24 correct, precision=100% recall=0% accuracy=50% (0.0s)
   [FAIL] rate=0/3 expected=True: which component in the agent pipeline should we put an evalu
   [FAIL] rate=0/3 expected=True: add continuous monitoring to the model-invocation seam. i do
   [PASS] rate=0/3 expected=False: the goaljudge gold set is still at v0.9 provisional (101 row
-  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last 
+  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last
   [PASS] rate=0/3 expected=False: i'm writing a blog post / internal guide on how to do LLM ev
-  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on 
+  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on
   [PASS] rate=0/3 expected=False: our p99 latency on the /chat endpoint jumped from 800ms to 2
 
 Improving description...
@@ -37,13 +37,13 @@ Description: Use this to add continuous evaluation and regression testing to any
 Train: 18/36 correct, precision=100% recall=0% accuracy=50% (56.4s)
   [FAIL] rate=0/3 expected=True: need to build a rubric + judge for the plan_builder output q
   [FAIL] rate=0/3 expected=True: i want to wire up drift detection for the guardrail validato
-  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and 
+  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and
   [FAIL] rate=0/3 expected=True: the output_validation phase fails way more often than i'd ex
   [FAIL] rate=0/3 expected=True: we keep finding the summarizer drops half the action items w
   [FAIL] rate=0/3 expected=True: ok next seam i want to instrument for evaluation is the rout
   [PASS] rate=0/3 expected=False: here's a langfuse trace JSON dump from this morning's deploy
   [PASS] rate=0/3 expected=False: refactor services/eval_capture.py — the record() function ha
-  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to 
+  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to
   [PASS] rate=0/3 expected=False: can you review the latest production traces from the goaljud
   [PASS] rate=0/3 expected=False: add a unit test for validate_plan_mece in components/plan_bu
   [PASS] rate=0/3 expected=False: explain how llm-as-a-judge calibration works in general — wh
@@ -52,8 +52,8 @@ Test : 12/24 correct, precision=100% recall=0% accuracy=50% (0.0s)
   [FAIL] rate=0/3 expected=True: which component in the agent pipeline should we put an evalu
   [FAIL] rate=0/3 expected=True: add continuous monitoring to the model-invocation seam. i do
   [PASS] rate=0/3 expected=False: the goaljudge gold set is still at v0.9 provisional (101 row
-  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last 
-  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on 
+  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last
+  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on
   [PASS] rate=0/3 expected=False: i'm writing a blog post / internal guide on how to do LLM ev
   [PASS] rate=0/3 expected=False: our p99 latency on the /chat endpoint jumped from 800ms to 2
 
@@ -65,7 +65,7 @@ Iteration 3/5
 Description: Use this skill when you need to prevent LLM component regressions in the AgentsFramework repo. Triggers for: "build a rubric for [component]", "add drift detection", "instrument [component] for evaluation", "freeze this bug so it can't regress", "catch [component] failures in CI", "set up monitoring/alerts for quality slide", "make sure [issue] never happens again", or any mention of specific components (summarizer, plan_builder, router, output_validation, guardrail_validator) paired with quality/failure concerns. Also triggers when describing repeated production failures even without the word "eval" — e.g. "the summarizer keeps dropping action items" or "validation fails more than expected". Walks you from failure analysis → deterministic checks + CI benchmarks → optional LLM judge + drift monitoring. The goal: close the loop from "we fixed this" to "CI fails if it breaks again".
 ============================================================
 Train: 18/36 correct, precision=100% recall=0% accuracy=50% (62.7s)
-  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and 
+  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and
   [FAIL] rate=0/3 expected=True: need to build a rubric + judge for the plan_builder output q
   [FAIL] rate=0/3 expected=True: the output_validation phase fails way more often than i'd ex
   [FAIL] rate=0/3 expected=True: i want to wire up drift detection for the guardrail validato
@@ -73,7 +73,7 @@ Train: 18/36 correct, precision=100% recall=0% accuracy=50% (62.7s)
   [FAIL] rate=0/3 expected=True: ok next seam i want to instrument for evaluation is the rout
   [PASS] rate=0/3 expected=False: here's a langfuse trace JSON dump from this morning's deploy
   [PASS] rate=0/3 expected=False: refactor services/eval_capture.py — the record() function ha
-  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to 
+  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to
   [PASS] rate=0/3 expected=False: can you review the latest production traces from the goaljud
   [PASS] rate=0/3 expected=False: add a unit test for validate_plan_mece in components/plan_bu
   [PASS] rate=0/3 expected=False: explain how llm-as-a-judge calibration works in general — wh
@@ -81,9 +81,9 @@ Test : 12/24 correct, precision=100% recall=0% accuracy=50% (0.0s)
   [FAIL] rate=0/3 expected=True: close the loop between production failures and our regressio
   [FAIL] rate=0/3 expected=True: which component in the agent pipeline should we put an evalu
   [FAIL] rate=0/3 expected=True: add continuous monitoring to the model-invocation seam. i do
-  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last 
+  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last
   [PASS] rate=0/3 expected=False: the goaljudge gold set is still at v0.9 provisional (101 row
-  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on 
+  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on
   [PASS] rate=0/3 expected=False: i'm writing a blog post / internal guide on how to do LLM ev
   [PASS] rate=0/3 expected=False: our p99 latency on the /chat endpoint jumped from 800ms to 2
 
@@ -97,23 +97,23 @@ Description: Use this skill to freeze production failures into regression tests 
 Train: 18/36 correct, precision=100% recall=0% accuracy=50% (61.1s)
   [FAIL] rate=0/3 expected=True: the output_validation phase fails way more often than i'd ex
   [FAIL] rate=0/3 expected=True: need to build a rubric + judge for the plan_builder output q
-  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and 
+  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and
   [FAIL] rate=0/3 expected=True: i want to wire up drift detection for the guardrail validato
   [FAIL] rate=0/3 expected=True: we keep finding the summarizer drops half the action items w
   [FAIL] rate=0/3 expected=True: ok next seam i want to instrument for evaluation is the rout
   [PASS] rate=0/3 expected=False: here's a langfuse trace JSON dump from this morning's deploy
   [PASS] rate=0/3 expected=False: refactor services/eval_capture.py — the record() function ha
-  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to 
+  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to
   [PASS] rate=0/3 expected=False: can you review the latest production traces from the goaljud
   [PASS] rate=0/3 expected=False: add a unit test for validate_plan_mece in components/plan_bu
   [PASS] rate=0/3 expected=False: explain how llm-as-a-judge calibration works in general — wh
 Test : 12/24 correct, precision=100% recall=0% accuracy=50% (0.0s)
   [FAIL] rate=0/3 expected=True: close the loop between production failures and our regressio
   [FAIL] rate=0/3 expected=True: which component in the agent pipeline should we put an evalu
-  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last 
+  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last
   [FAIL] rate=0/3 expected=True: add continuous monitoring to the model-invocation seam. i do
   [PASS] rate=0/3 expected=False: the goaljudge gold set is still at v0.9 provisional (101 row
-  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on 
+  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on
   [PASS] rate=0/3 expected=False: i'm writing a blog post / internal guide on how to do LLM ev
   [PASS] rate=0/3 expected=False: our p99 latency on the /chat endpoint jumped from 800ms to 2
 
@@ -125,7 +125,7 @@ Iteration 5/5
 Description: Use this skill when you want to prevent LLM component bugs from regressing. Triggers for requests to: monitor a component's quality over time (summarizer, plan_builder, router, output_validation, guardrail_validator, etc.), create regression tests from production failures, add evaluation or instrumentation to catch issues before production, build scoring rubrics or judges, set up drift detection or quality alerts, or ensure a fixed bug stays fixed. Also triggers when describing ongoing component issues without using eval terminology—phrases like "the summarizer keeps dropping items", "validation fails too often", "I want fixtures for must-accept/must-reject cases", or "instrument X so we catch this in CI". Walks you from analyzing failures to shipping deterministic checks and CI gates, optionally adding LLM judges and continuous monitoring.
 ============================================================
 Train: 18/36 correct, precision=100% recall=0% accuracy=50% (61.9s)
-  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and 
+  [FAIL] rate=0/3 expected=True: we shipped a fix for the goal-judge false-downgrade bug and
   [FAIL] rate=0/3 expected=True: i want to wire up drift detection for the guardrail validato
   [FAIL] rate=0/3 expected=True: the output_validation phase fails way more often than i'd ex
   [FAIL] rate=0/3 expected=True: need to build a rubric + judge for the plan_builder output q
@@ -133,17 +133,17 @@ Train: 18/36 correct, precision=100% recall=0% accuracy=50% (61.9s)
   [FAIL] rate=0/3 expected=True: ok next seam i want to instrument for evaluation is the rout
   [PASS] rate=0/3 expected=False: here's a langfuse trace JSON dump from this morning's deploy
   [PASS] rate=0/3 expected=False: refactor services/eval_capture.py — the record() function ha
-  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to 
+  [PASS] rate=0/3 expected=False: we're finally ready to flip goal_judge_downgrade_enabled to
   [PASS] rate=0/3 expected=False: can you review the latest production traces from the goaljud
   [PASS] rate=0/3 expected=False: add a unit test for validate_plan_mece in components/plan_bu
   [PASS] rate=0/3 expected=False: explain how llm-as-a-judge calibration works in general — wh
 Test : 12/24 correct, precision=100% recall=0% accuracy=50% (0.0s)
   [FAIL] rate=0/3 expected=True: close the loop between production failures and our regressio
   [FAIL] rate=0/3 expected=True: which component in the agent pipeline should we put an evalu
-  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last 
+  [FAIL] rate=0/3 expected=True: i added eval_capture.record to the tool-execution node last
   [FAIL] rate=0/3 expected=True: add continuous monitoring to the model-invocation seam. i do
   [PASS] rate=0/3 expected=False: the goaljudge gold set is still at v0.9 provisional (101 row
-  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on 
+  [PASS] rate=0/3 expected=False: test_summarizer.py is flaky — it fails maybe 1 in 5 runs on
   [PASS] rate=0/3 expected=False: i'm writing a blog post / internal guide on how to do LLM ev
   [PASS] rate=0/3 expected=False: our p99 latency on the /chat endpoint jumped from 800ms to 2
 

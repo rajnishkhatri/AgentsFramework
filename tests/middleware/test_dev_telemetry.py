@@ -22,7 +22,6 @@ import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from agent_ui_adapter.wire.domain_events import (
     LLMMessageEnded,
@@ -124,7 +123,10 @@ class TestBuildDevTelemetryExporter:
 
     def test_returns_noop_when_langfuse_disabled(self) -> None:
         """LANGFUSE_ENABLED=false → noop exporter."""
-        from middleware.__main__ import _NoopTelemetryExporter, _build_dev_telemetry_exporter
+        from middleware.__main__ import (
+            _NoopTelemetryExporter,
+            _build_dev_telemetry_exporter,
+        )
 
         with patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}, clear=False):
             exporter = _build_dev_telemetry_exporter()
@@ -132,7 +134,10 @@ class TestBuildDevTelemetryExporter:
 
     def test_returns_noop_when_public_key_missing(self) -> None:
         """No LANGFUSE_PUBLIC_KEY → noop exporter."""
-        from middleware.__main__ import _NoopTelemetryExporter, _build_dev_telemetry_exporter
+        from middleware.__main__ import (
+            _NoopTelemetryExporter,
+            _build_dev_telemetry_exporter,
+        )
 
         env = {"LANGFUSE_ENABLED": "true", "LANGFUSE_SECRET_KEY": "sk_test"}
         with patch.dict(os.environ, env, clear=False):
@@ -142,7 +147,10 @@ class TestBuildDevTelemetryExporter:
 
     def test_returns_noop_when_secret_key_missing(self) -> None:
         """No LANGFUSE_SECRET_KEY → noop exporter."""
-        from middleware.__main__ import _NoopTelemetryExporter, _build_dev_telemetry_exporter
+        from middleware.__main__ import (
+            _NoopTelemetryExporter,
+            _build_dev_telemetry_exporter,
+        )
 
         env = {"LANGFUSE_ENABLED": "true", "LANGFUSE_PUBLIC_KEY": "pk_test"}
         with patch.dict(os.environ, env, clear=False):
@@ -152,7 +160,10 @@ class TestBuildDevTelemetryExporter:
 
     def test_returns_noop_when_langfuse_enabled_unset_and_keys_missing(self) -> None:
         """Default LANGFUSE_ENABLED (unset = true) but no keys → noop."""
-        from middleware.__main__ import _NoopTelemetryExporter, _build_dev_telemetry_exporter
+        from middleware.__main__ import (
+            _NoopTelemetryExporter,
+            _build_dev_telemetry_exporter,
+        )
 
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("LANGFUSE_ENABLED", None)
@@ -182,16 +193,22 @@ class TestBuildDevTelemetryExporter:
 
     def test_returns_noop_on_exporter_construction_failure(self) -> None:
         """If LangfuseCloudExporter.__init__ raises, fall back to noop."""
-        from middleware.__main__ import _NoopTelemetryExporter, _build_dev_telemetry_exporter
+        from middleware.__main__ import (
+            _NoopTelemetryExporter,
+            _build_dev_telemetry_exporter,
+        )
 
         env = {
             "LANGFUSE_ENABLED": "true",
             "LANGFUSE_PUBLIC_KEY": "pk_test",
             "LANGFUSE_SECRET_KEY": "sk_test",
         }
-        with patch.dict(os.environ, env, clear=False), patch(
-            "middleware.__main__.LangfuseCloudExporter",
-            side_effect=RuntimeError("boom"),
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "middleware.__main__.LangfuseCloudExporter",
+                side_effect=RuntimeError("boom"),
+            ),
         ):
             exporter = _build_dev_telemetry_exporter()
         assert isinstance(exporter, _NoopTelemetryExporter)
@@ -270,44 +287,49 @@ def _build_dev_telemetry_client(
     }
 
     # Remove GCP env to force the local dev path
-    with patch.dict(os.environ, env, clear=False), \
-         patch("middleware.__main__._GCP_EXECUTION_ENV", None), \
-         patch(
-             "middleware.__main__._build_dev_telemetry_exporter",
-             return_value=stub_exporter,
-         ), \
-         patch(
-             "middleware.__main__._load_graph_factory",
-             return_value=MagicMock(),
-         ), \
-         patch(
-             "middleware.__main__._build_agent_components",
-             return_value=build_components_return,
-         ), \
-         patch(
-             "middleware.__main__.LangGraphRuntime",
-             return_value=mock_runtime,
-         ), \
-         patch(
-             "middleware.__main__.TraceService",
-             return_value=mock_trace_service,
-         ), \
-         patch(
-             "middleware.__main__.JsonlFileTraceSink",
-             return_value=MagicMock(),
-         ):
+    with (
+        patch.dict(os.environ, env, clear=False),
+        patch("middleware.__main__._GCP_EXECUTION_ENV", None),
+        patch(
+            "middleware.__main__._build_dev_telemetry_exporter",
+            return_value=stub_exporter,
+        ),
+        patch(
+            "middleware.__main__._load_graph_factory",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "middleware.__main__._build_agent_components",
+            return_value=build_components_return,
+        ),
+        patch(
+            "middleware.__main__.LangGraphRuntime",
+            return_value=mock_runtime,
+        ),
+        patch(
+            "middleware.__main__.TraceService",
+            return_value=mock_trace_service,
+        ),
+        patch(
+            "middleware.__main__.JsonlFileTraceSink",
+            return_value=MagicMock(),
+        ),
+    ):
         import middleware.__main__ as mod
 
         reload(mod)
 
         # Bypass the async lifespan by building the app and injecting state
-        with patch.object(
-            mod,
-            "_build_agent_components",
-            return_value=build_components_return,
-        ), patch(
-            "middleware.__main__._build_dev_telemetry_exporter",
-            return_value=stub_exporter,
+        with (
+            patch.object(
+                mod,
+                "_build_agent_components",
+                return_value=build_components_return,
+            ),
+            patch(
+                "middleware.__main__._build_dev_telemetry_exporter",
+                return_value=stub_exporter,
+            ),
         ):
             app = mod.build_dev_app()
             app.state.runtime = mock_runtime
@@ -403,9 +425,7 @@ class TestDevTelemetryWiring:
                 tool_name="shell",
                 args_json='{"cmd":"ls"}',
             ),
-            ToolResultReceived(
-                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
-            ),
+            ToolResultReceived(trace_id="t-1", tool_call_id="tc-1", result="file.txt"),
             RunFinishedDomain(
                 trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
             ),
@@ -446,9 +466,7 @@ class TestDevTelemetryWiring:
                 tool_name="shell",
                 args_json='{"cmd":"ls"}',
             ),
-            ToolResultReceived(
-                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
-            ),
+            ToolResultReceived(trace_id="t-1", tool_call_id="tc-1", result="file.txt"),
             RunFinishedDomain(
                 trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
             ),

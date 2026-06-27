@@ -11,7 +11,7 @@ exercised in isolation.
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator
+from typing import Any
 
 import pytest
 
@@ -56,9 +56,7 @@ class _FakeCompiledGraph:
 
 
 def _facts() -> AgentFacts:
-    return AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
-    )
+    return AgentFacts(agent_id="a1", agent_name="Bot", owner="team", version="1.0.0")
 
 
 # ── Conformance ───────────────────────────────────────────────────────
@@ -135,9 +133,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
         assert len(token_events) == 1
         assert token_events[0].delta == "4"  # text block only
@@ -183,9 +179,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
         assert len(token_events) == 1
         assert token_events[0].delta == "Hello"
@@ -206,9 +200,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
         assert len(token_events) == 1
         assert token_events[0].delta == "legacy"
@@ -221,7 +213,10 @@ class TestLangGraphRuntimeStream:
                 "data": {
                     "input": {
                         "messages": [
-                            {"role": "user", "content": "What is the capital of France?"}
+                            {
+                                "role": "user",
+                                "content": "What is the capital of France?",
+                            }
                         ]
                     }
                 },
@@ -231,9 +226,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         starts = [e for e in out if isinstance(e, LLMMessageStarted)]
         assert len(starts) == 1
         assert starts[0].input_text == "user: What is the capital of France?"
@@ -260,9 +253,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         token_events = [e for e in out if isinstance(e, LLMTokenEmitted)]
         assert token_events == []
         # The message lifecycle still closes cleanly.
@@ -314,9 +305,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         ended = [e for e in out if isinstance(e, LLMMessageEnded)]
         assert len(ended) == 1
         assert ended[0].tokens_in == 50
@@ -338,9 +327,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         ended = [e for e in out if isinstance(e, LLMMessageEnded)]
         assert len(ended) == 1
         assert ended[0].tokens_in is None
@@ -363,9 +350,7 @@ class TestLangGraphRuntimeStream:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         starts = [e for e in out if isinstance(e, ToolCallStarted)]
         results = [e for e in out if isinstance(e, ToolResultReceived)]
         assert len(starts) == 1
@@ -409,7 +394,9 @@ class TestChainEndStateMutation:
     async def test_output_without_state_keys_emits_no_state_mutated(self) -> None:
         rt = LangGraphRuntime(
             graph=_FakeCompiledGraph(
-                scripted=[_chain_end("execute_tool", {"messages": [], "tool_cache": {}})]
+                scripted=[
+                    _chain_end("execute_tool", {"messages": [], "tool_cache": {}})
+                ]
             )
         )
         out = await _collect(rt)
@@ -431,7 +418,9 @@ class TestChainEndStateMutation:
         emitting it would duplicate the last node delta at stream end."""
         todos = [{"id": "t1", "content": "x", "status": "completed"}]
         rt = LangGraphRuntime(
-            graph=_FakeCompiledGraph(scripted=[_chain_end("LangGraph", {"todos": todos})])
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("LangGraph", {"todos": todos})]
+            )
         )
         out = await _collect(rt)
         assert not [e for e in out if isinstance(e, StateMutated)]
@@ -443,7 +432,9 @@ class TestChainEndStateMutation:
             {"id": "t2", "content": "write file", "status": "pending"},
         ]
         rt = LangGraphRuntime(
-            graph=_FakeCompiledGraph(scripted=[_chain_end("execute_tool", {"todos": todos})])
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("execute_tool", {"todos": todos})]
+            )
         )
         out = await _collect(rt)
         mutations = [e for e in out if isinstance(e, StateMutated)]
@@ -552,7 +543,9 @@ class TestChainEndJoinAnswer:
         """A join output lacking ``last_final_answer`` must emit no token
         (and not crash) -- the empty-state floor, not a phantom blank token."""
         rt = LangGraphRuntime(
-            graph=_FakeCompiledGraph(scripted=[_chain_end("join", {"worker_results": []})])
+            graph=_FakeCompiledGraph(
+                scripted=[_chain_end("join", {"worker_results": []})]
+            )
         )
         out = await _collect(rt)
         assert not [e for e in out if isinstance(e, LLMTokenEmitted)]
@@ -615,7 +608,12 @@ class TestChainEndJoinAnswer:
 
 class _ExplodingGraph:
     async def astream_events(self, input, config=None, version="v2"):
-        yield {"event": "on_chat_model_stream", "data": {"chunk": _FakeChunk("x")}, "name": "m", "run_id": "r"}
+        yield {
+            "event": "on_chat_model_stream",
+            "data": {"chunk": _FakeChunk("x")},
+            "name": "m",
+            "run_id": "r",
+        }
         raise RuntimeError("boom")
 
     async def aget_state(self, config):
@@ -676,9 +674,7 @@ class TestTraceIdPropagation:
             },
         ]
         rt = LangGraphRuntime(graph=_FakeCompiledGraph(scripted=scripted))
-        out = [
-            ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())
-        ]
+        out = [ev async for ev in rt.run(thread_id="t1", input={}, identity=_facts())]
         assert all(isinstance(e, DomainEventBase) for e in out)
         trace_ids = {e.trace_id for e in out}
         assert len(trace_ids) == 1, "All events in one run must share a trace_id"
@@ -936,7 +932,9 @@ class TestTaskUnderstandingChainEnd:
                     _chain_end("route", {"selected_model": "m"}),
                     _chain_end("route", {"task_understanding": {}}),
                     _chain_end("route", {"task_understanding": "not a dict"}),
-                    _chain_end("route", {"task_understanding": {"source": "generated"}}),
+                    _chain_end(
+                        "route", {"task_understanding": {"source": "generated"}}
+                    ),
                 ]
             )
         )
@@ -949,7 +947,9 @@ class TestTaskUnderstandingChainEnd:
 
         rt = LangGraphRuntime(
             graph=_FakeCompiledGraph(
-                scripted=[_chain_end("evaluate", {"task_understanding": self._ARTIFACT})]
+                scripted=[
+                    _chain_end("evaluate", {"task_understanding": self._ARTIFACT})
+                ]
             )
         )
         out = await _collect(rt)
@@ -980,8 +980,11 @@ class TestTaskUnderstandingChainEnd:
         """A user edit (Phase 4) changes the payload — the card must update."""
         from agent_ui_adapter.wire.domain_events import TaskUnderstood
 
-        edited = {**self._ARTIFACT, "source": "user_edited",
-                  "success_conditions": ["file exists"]}
+        edited = {
+            **self._ARTIFACT,
+            "source": "user_edited",
+            "success_conditions": ["file exists"],
+        }
         rt = LangGraphRuntime(
             graph=_FakeCompiledGraph(
                 scripted=[

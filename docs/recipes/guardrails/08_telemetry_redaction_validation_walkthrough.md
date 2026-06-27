@@ -223,7 +223,7 @@ If `[2/4]` warns that `task.completed` was not seen, wait 20s and re-run `[3/4]`
 
 ## Part 4 — Langfuse UI: Redaction & Error Deep-Dive
 
-Open `https://cloud.langfuse.com` (or `LANGFUSE_HOST`) → **Traces** →  
+Open `https://cloud.langfuse.com` (or `LANGFUSE_HOST`) → **Traces** →
 `https://cloud.langfuse.com/trace/<trace_id>`.
 
 Use **Ctrl+F / Cmd+F** on the **whole trace page** (not only one panel). Search for the **canonical test strings** from S6:

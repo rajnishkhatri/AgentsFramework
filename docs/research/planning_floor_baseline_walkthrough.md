@@ -171,4 +171,3 @@ Cross-references the deterministic depth verdict above with the **Tier 1** offli
 | `oracle-11` | L2→L2 | ✅ | 5 | 4,4,4 | 0 | no |
 
 **Reading.** The 3 multi-marker prose traps (`depth-l2-trap-1/2/3`) fire L1 (cap 3) yet stably return a 4-item checklist (spread 0) → the floor budgets fewer steps than the task's own success criteria, corroborating the divergence deep-dive above. `depth-l2-trap-4` stably returns 3 (a corpus-label question, not a floor miss). Rows marked ⚠FLIP straddle the cap across samples (the 3-sample variance guard surfaced them) — honestly inconclusive, not signal. This raises the ROI of an Option A `distinct_marker_count >= 3 -> L2` rule but, per the §2a caveat, is *corroborating* not *causal* — a live A/B (Tier 2) remains the only test of "deeper → better answer."
-

@@ -25,6 +25,7 @@ Usage:
       --v09 cache/goaljudge_eval/goldset_v0_9_manifest.json \\
       --v1  cache/goaljudge_eval/goldset_v1_manifest.json
 """
+
 from __future__ import annotations
 
 import argparse
@@ -53,10 +54,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Verify v0.9 → v1 gold-set cutover integrity."
     )
-    parser.add_argument("--v09", type=Path, required=True,
-                        help="Path to the v0.9 (provisional) manifest.")
-    parser.add_argument("--v1", type=Path, required=True,
-                        help="Path to the v1 (production) manifest.")
+    parser.add_argument(
+        "--v09",
+        type=Path,
+        required=True,
+        help="Path to the v0.9 (provisional) manifest.",
+    )
+    parser.add_argument(
+        "--v1", type=Path, required=True, help="Path to the v1 (production) manifest."
+    )
     args = parser.parse_args()
 
     v09 = _load_manifest(args.v09)

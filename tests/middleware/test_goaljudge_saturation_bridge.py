@@ -166,9 +166,9 @@ class TestSaturationSubjectMapping:
         assert resolve_telemetry_subject("user_saturation", None, allowlist=allow) == (
             SATURATION_USER_ID
         )
-        assert resolve_eval_user_id("user_saturation", None, "user_saturation", allowlist=allow) == (
-            SATURATION_USER_ID
-        )
+        assert resolve_eval_user_id(
+            "user_saturation", None, "user_saturation", allowlist=allow
+        ) == (SATURATION_USER_ID)
 
 
 class TestSaturationOverlay:
@@ -221,7 +221,10 @@ class TestRunStreamContext:
 
         identity = _facts("workos-sub-1")
         ctx = build_run_stream_context(
-            {"thread_id": thread_id, "input": {"messages": [{"role": "user", "content": "hi"}]}},
+            {
+                "thread_id": thread_id,
+                "input": {"messages": [{"role": "user", "content": "hi"}]},
+            },
             identity=identity,
             subject="workos-sub-1",
         )

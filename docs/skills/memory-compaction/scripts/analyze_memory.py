@@ -19,6 +19,7 @@ Usage:
 MEMORY_DIR defaults to the directory resolved from the current Claude Code project
 (see resolve_memory_dir). Pass it explicitly when you already know the path.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,8 +38,8 @@ HOOK_SPLIT = " — "  # em dash, the convention separator between title and hook
 # Phrases an entry uses to mark itself done — strong signal it's a prune candidate.
 RESOLVED_MARKERS = ("RESOLVED", "SUPERSEDED", "superseded", "DEPRECATED")
 
-HOOK_SOFT_LIMIT = 120   # target ceiling for a hook (characters)
-HOOK_HARD_LIMIT = 150   # never exceed
+HOOK_SOFT_LIMIT = 120  # target ceiling for a hook (characters)
+HOOK_HARD_LIMIT = 150  # never exceed
 
 
 def resolve_memory_dir(explicit: str | None = None) -> str:
@@ -67,15 +68,18 @@ def extract_hook(line: str) -> str:
     fall back to the first separator after the `[Title]` bracket.
     """
     m = LINK_RE.search(line)
-    rest = line[m.end():] if m else line
+    rest = line[m.end() :] if m else line
     idx = rest.find(HOOK_SPLIT)
-    return rest[idx + len(HOOK_SPLIT):].strip() if idx != -1 else ""
+    return rest[idx + len(HOOK_SPLIT) :].strip() if idx != -1 else ""
 
 
 def analyze(memory_dir: str) -> dict:
     memory_md = os.path.join(memory_dir, "MEMORY.md")
     if not os.path.isfile(memory_md):
-        return {"error": f"MEMORY.md not found at {memory_md}", "memory_dir": memory_dir}
+        return {
+            "error": f"MEMORY.md not found at {memory_md}",
+            "memory_dir": memory_dir,
+        }
 
     with open(memory_md, encoding="utf-8") as fh:
         raw = fh.read()
@@ -98,13 +102,14 @@ def analyze(memory_dir: str) -> dict:
     for ln in items:
         linked.extend(LINK_RE.findall(ln))
     linked_set = set(linked)
-    dangling = sorted(f for f in linked_set if not os.path.isfile(os.path.join(memory_dir, f)))
+    dangling = sorted(
+        f for f in linked_set if not os.path.isfile(os.path.join(memory_dir, f))
+    )
     duplicate_links = sorted(f for f in linked_set if linked.count(f) > 1)
 
     # Topic files on disk that the index never points to (orphans = unreachable detail).
     topic_files = [
-        f for f in os.listdir(memory_dir)
-        if f.endswith(".md") and f != "MEMORY.md"
+        f for f in os.listdir(memory_dir) if f.endswith(".md") and f != "MEMORY.md"
     ]
     orphans = sorted(f for f in topic_files if f not in linked_set)
 

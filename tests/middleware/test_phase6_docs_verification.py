@@ -128,7 +128,11 @@ class TestEndToEndTracingGuideLangfuse:
         in LangGraphRuntime).
         """
         content = _read_doc(self.DOC_PATH)
-        assert "known gap" not in content.lower() or "resolved" in content.lower() or "fixed" in content.lower(), (
+        assert (
+            "known gap" not in content.lower()
+            or "resolved" in content.lower()
+            or "fixed" in content.lower()
+        ), (
             "END_TO_END_TRACING_GUIDE.md must retire or mark as resolved "
             "the stale Known Gap about trace_id threading"
         )
@@ -192,9 +196,7 @@ class TestGcpDeployArchLangfuseNote:
 
     def test_mentions_langfuse_or_telemetry_export(self) -> None:
         content = _read_doc(self.DOC_PATH)
-        assert (
-            "langfuse" in content.lower() or "telemetry" in content.lower()
-        ), (
+        assert "langfuse" in content.lower() or "telemetry" in content.lower(), (
             "GCP_DEPLOYMENT_ARCHITECTURE.md must mention Langfuse or "
             "telemetry export for the middleware ring"
         )
@@ -252,6 +254,7 @@ class TestSmokeScriptLangfuseCheck:
 
     def test_langfuse_init_warning_pattern(self) -> None:
         content = _read_doc(self.SCRIPT_PATH)
-        assert "langfuse client init failed" in content.lower() or "langfuse_init" in content.lower(), (
-            "smoke_gcp.sh must grep for 'langfuse client init failed' pattern"
-        )
+        assert (
+            "langfuse client init failed" in content.lower()
+            or "langfuse_init" in content.lower()
+        ), "smoke_gcp.sh must grep for 'langfuse client init failed' pattern"

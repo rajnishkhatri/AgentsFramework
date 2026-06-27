@@ -5,7 +5,7 @@ NO langgraph or langchain imports allowed.
 
 from __future__ import annotations
 
-from services.tools.search.port import SearchResult, WebSearchProvider
+from services.tools.search.port import SearchResult
 
 
 class StubProvider:

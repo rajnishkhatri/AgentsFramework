@@ -59,6 +59,7 @@ dev = [
     "freezegun>=1.0,<2",
     "ruff>=0.4,<1",
     "pip-tools>=7.0,<8",
+    "pre-commit>=4.0,<5",
 ]
 infra = [
     "python-hcl2>=7.0,<8",
@@ -105,3 +106,37 @@ norecursedirs = [
 pythonpath = ["."]
 addopts = "-m 'not slow and not simulation and not live_llm and not infra' --strict-markers"
 asyncio_mode = "auto"
+
+[tool.ruff]
+# Track A sensor config. Never touch generated / vendored trees.
+target-version = "py313"
+extend-exclude = [
+    ".venv",
+    "node_modules",
+    "cache",
+    "logs",
+    "infra",
+]
+
+[tool.ruff.lint]
+# Default rule set (pyflakes `F` + a curated pycodestyle `E`/`W`). The core
+# four-layer tree (trust/services/components/orchestration/meta) is held to the
+# full set; non-shipping trees get scoped relief below so the gate stays green
+# without rewriting intentional patterns.
+[tool.ruff.lint.per-file-ignores]
+# Entrypoints legitimately set up the environment (chdir / logging / sys.path)
+# before importing app modules — E402 (import-not-at-top) is intentional there.
+"cli.py" = ["E402"]
+"**/__main__.py" = ["E402"]
+"middleware/__main__.py" = ["E402", "F841"]
+"middleware/app_prod.py" = ["E402"]
+# Non-shipping analysis/throwaway code: allow short names (E741 `l`),
+# scratch unused vars (F841), and setup-then-import ordering (E402).
+"scripts/**" = ["E402", "E741", "F841"]
+"docs/**" = ["E402", "E741", "F841"]
+"spikes/**" = ["E402", "E741", "F841"]
+"research/**" = ["E402", "E741", "F841"]
+".cursor/**" = ["E402", "E741", "F841"]
+# Tests: fixtures/imports are often re-exported or set up lazily; scratch
+# locals (F841) and short names (E741) in test bodies are not worth gating.
+"tests/**" = ["E402", "F811", "F841", "E741"]

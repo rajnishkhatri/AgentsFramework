@@ -19,6 +19,7 @@ Usage:
     docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv \\
     --diff cache/goaljudge_eval/stage5_full_alpha_disagreements.csv
 """
+
 from __future__ import annotations
 
 import argparse

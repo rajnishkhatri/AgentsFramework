@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 
@@ -111,7 +111,11 @@ class TestAgentFactsRegistry:
 
 class TestBlackBoxRecorder:
     def test_record_event(self, tmp_path):
-        from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+        from services.governance.black_box import (
+            BlackBoxRecorder,
+            EventType,
+            TraceEvent,
+        )
 
         recorder = BlackBoxRecorder(storage_dir=tmp_path)
         event = TraceEvent(
@@ -128,7 +132,11 @@ class TestBlackBoxRecorder:
     def test_integrity_hash_chain(self, tmp_path):
         import json
 
-        from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
+        from services.governance.black_box import (
+            BlackBoxRecorder,
+            EventType,
+            TraceEvent,
+        )
 
         recorder = BlackBoxRecorder(storage_dir=tmp_path)
         for i in range(3):
@@ -165,7 +173,11 @@ class TestBlackBoxRecorder:
 
 class TestPhaseLogger:
     def test_log_decision(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         logger = PhaseLogger(storage_dir=tmp_path)
         decision = Decision(
@@ -181,7 +193,11 @@ class TestPhaseLogger:
         assert log_file.exists()
 
     def test_multiple_decisions(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         logger = PhaseLogger(storage_dir=tmp_path)
         for phase in [WorkflowPhase.ROUTING, WorkflowPhase.EVALUATION]:
@@ -215,12 +231,20 @@ class TestPhaseLoggerFailurePaths:
         from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 
         pl = PhaseLogger(storage_dir=tmp_path)
-        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
+        with caplog.at_level(
+            logging.WARNING, logger="services.governance.phase_logger"
+        ):
             pl.end_phase("wf-unbalanced", WorkflowPhase.ROUTING, "done", step_count=0)
 
         phases_file = self._phases_path(tmp_path, "wf-unbalanced")
-        assert phases_file.exists(), "end_phase must persist a phase_end row even without start"
-        rows = [json.loads(line) for line in phases_file.read_text().strip().split("\n") if line]
+        assert phases_file.exists(), (
+            "end_phase must persist a phase_end row even without start"
+        )
+        rows = [
+            json.loads(line)
+            for line in phases_file.read_text().strip().split("\n")
+            if line
+        ]
         assert any(r.get("event") == "phase_end" for r in rows)
         assert any("without matching start" in r.getMessage() for r in caplog.records)
 
@@ -258,28 +282,42 @@ class TestPhaseLoggerFailurePaths:
             return real_open(file, mode, *args, **kwargs)
 
         monkeypatch.setattr("builtins.open", failing_open)
-        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
+        with caplog.at_level(
+            logging.WARNING, logger="services.governance.phase_logger"
+        ):
             pl.start_phase("wf-io", WorkflowPhase.INPUT_VALIDATION, step_count=0)
 
-        assert any("phases.jsonl" in r.getMessage() or "phase" in r.getMessage().lower() for r in caplog.records)
+        assert any(
+            "phases.jsonl" in r.getMessage() or "phase" in r.getMessage().lower()
+            for r in caplog.records
+        )
 
     def test_completion_without_start_warns_no_crash(self, tmp_path, caplog):
         from services.governance.phase_logger import PhaseLogger, WorkflowPhase
 
         pl = PhaseLogger(storage_dir=tmp_path)
-        with caplog.at_level(logging.WARNING, logger="services.governance.phase_logger"):
-            pl.end_phase("wf-completion", WorkflowPhase.COMPLETION, "done", step_count=0)
+        with caplog.at_level(
+            logging.WARNING, logger="services.governance.phase_logger"
+        ):
+            pl.end_phase(
+                "wf-completion", WorkflowPhase.COMPLETION, "done", step_count=0
+            )
 
         phases_file = self._phases_path(tmp_path, "wf-completion")
         assert phases_file.exists()
         exported = pl.export_phase_events("wf-completion")
         assert any(
-            ev.get("event") == "phase_end" and ev.get("phase") == "completion" for ev in exported
+            ev.get("event") == "phase_end" and ev.get("phase") == "completion"
+            for ev in exported
         )
         assert any("without matching start" in r.getMessage() for r in caplog.records)
 
     def test_mixed_export_ordering_keeps_decisions_separate(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         pl = PhaseLogger(storage_dir=tmp_path)
         pl.start_phase("wf-mixed", WorkflowPhase.INITIALIZATION, step_count=0)
@@ -300,7 +338,9 @@ class TestPhaseLoggerFailurePaths:
 
         assert len(decisions) == 1
         assert decisions[0].get("description") == "route"
-        assert not any(d.get("event") in ("phase_start", "phase_end") for d in decisions)
+        assert not any(
+            d.get("event") in ("phase_start", "phase_end") for d in decisions
+        )
         assert len(phase_events) >= 2
         assert not any(e.get("description") == "route" for e in phase_events)
 
@@ -319,7 +359,9 @@ class TestPhaseLoggerFailurePaths:
         with freeze_time(t1):
             pl.end_phase("wf-dur", WorkflowPhase.MODEL_INVOCATION, "ok", step_count=2)
 
-        ends = [e for e in pl.export_phase_events("wf-dur") if e.get("event") == "phase_end"]
+        ends = [
+            e for e in pl.export_phase_events("wf-dur") if e.get("event") == "phase_end"
+        ]
         assert len(ends) == 1
         assert ends[0]["duration_ms"] >= 500
 
@@ -374,7 +416,16 @@ class TestPhaseLoggerImplementation:
         # Start key must be popped so a subsequent phase at same key can start fresh.
         pl.start_phase("wf-err", WorkflowPhase.MODEL_INVOCATION, step_count=1)
         pl.end_phase("wf-err", WorkflowPhase.MODEL_INVOCATION, "ok", step_count=1)
-        assert len([e for e in pl.export_phase_events("wf-err") if e["event"] == "phase_end"]) == 2
+        assert (
+            len(
+                [
+                    e
+                    for e in pl.export_phase_events("wf-err")
+                    if e["event"] == "phase_end"
+                ]
+            )
+            == 2
+        )
 
     def test_phase_tracker_success_outcome(self, tmp_path):
         import asyncio
@@ -398,7 +449,11 @@ class TestPhaseLoggerImplementation:
         assert ends[0]["outcome"] == "routed"
 
     def test_injected_decision_id_factory_yields_deterministic_ids(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         counter = {"n": 0}
 
@@ -435,7 +490,11 @@ class TestDecisionIdJoin:
     """S2 (Sprint 2): decision_id on Decision model + MODEL_SELECTED cross-pillar join."""
 
     def test_ensure_decision_id_is_idempotent(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "stable-id")
         base = Decision(
@@ -451,7 +510,11 @@ class TestDecisionIdJoin:
         assert second.decision_id == "stable-id"
 
     def test_log_decision_assigns_id_on_model_and_jsonl(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "join-id")
         decision = pl.log_decision(
@@ -472,11 +535,21 @@ class TestDecisionIdJoin:
         """Route-node pattern: same id in decisions.jsonl and BlackBox MODEL_SELECTED."""
         from datetime import UTC, datetime
 
-        from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.black_box import (
+            BlackBoxRecorder,
+            EventType,
+            TraceEvent,
+        )
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         wf_id = "wf-cross-pillar"
-        pl = PhaseLogger(storage_dir=tmp_path, decision_id_factory=lambda: "route-decision-42")
+        pl = PhaseLogger(
+            storage_dir=tmp_path, decision_id_factory=lambda: "route-decision-42"
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "black_box")
 
         decision = pl.log_decision(
@@ -512,7 +585,9 @@ class TestDecisionIdJoin:
         ]
         assert len(model_selected) == 1
         assert decision_row["decision_id"] == "route-decision-42"
-        assert model_selected[0]["details"]["decision_id"] == decision_row["decision_id"]
+        assert (
+            model_selected[0]["details"]["decision_id"] == decision_row["decision_id"]
+        )
 
 
 try:
@@ -534,7 +609,11 @@ class TestDecisionIdUniqueness:
     def test_decision_ids_unique_in_workflow(self, n: int):
         import tempfile
 
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         with tempfile.TemporaryDirectory() as storage_dir:
             pl = PhaseLogger(storage_dir=storage_dir)
@@ -573,7 +652,11 @@ class TestDecisionRationale:
         from components.router import select_model
         from components.routing_config import RoutingConfig
         from services.base_config import AgentConfig, ModelProfile
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         cfg = AgentConfig(
             default_model="gpt-4o-mini",
@@ -628,7 +711,11 @@ class TestDecisionRationale:
         assert 0.0 <= routing[0]["confidence"] <= 1.0
 
     def test_evaluation_decision_contains_structured_alternatives(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         decision = Decision(
             phase=WorkflowPhase.EVALUATION,
@@ -652,7 +739,11 @@ class TestBinaryOutcomeDecisionLog:
     """Binary outcome: every routing decision in decisions.jsonl contains alternatives?"""
 
     def test_routing_decisions_always_non_empty_alternatives(self, tmp_path):
-        from services.governance.phase_logger import Decision, PhaseLogger, WorkflowPhase
+        from services.governance.phase_logger import (
+            Decision,
+            PhaseLogger,
+            WorkflowPhase,
+        )
 
         plog = PhaseLogger(storage_dir=tmp_path)
         for i in range(3):

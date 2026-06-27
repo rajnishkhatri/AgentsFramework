@@ -5,7 +5,6 @@ Tests counter increments, serialization, and JSONL persistence.
 
 from __future__ import annotations
 
-import pytest
 
 from services.observability import FrameworkTelemetry, load_telemetry, save_telemetry
 
@@ -62,8 +61,12 @@ class TestSaveTelemetry:
         assert '"checkpoint_invocations":3' in content
 
     def test_save_appends(self, tmp_path):
-        save_telemetry(FrameworkTelemetry(checkpoint_invocations=1), output_dir=tmp_path)
-        save_telemetry(FrameworkTelemetry(checkpoint_invocations=2), output_dir=tmp_path)
+        save_telemetry(
+            FrameworkTelemetry(checkpoint_invocations=1), output_dir=tmp_path
+        )
+        save_telemetry(
+            FrameworkTelemetry(checkpoint_invocations=2), output_dir=tmp_path
+        )
         filepath = tmp_path / "framework_telemetry.jsonl"
         lines = filepath.read_text().strip().split("\n")
         assert len(lines) == 2
@@ -82,8 +85,12 @@ class TestSaveTelemetry:
 
 class TestLoadTelemetry:
     def test_load_returns_latest(self, tmp_path):
-        save_telemetry(FrameworkTelemetry(checkpoint_invocations=1), output_dir=tmp_path)
-        save_telemetry(FrameworkTelemetry(checkpoint_invocations=5), output_dir=tmp_path)
+        save_telemetry(
+            FrameworkTelemetry(checkpoint_invocations=1), output_dir=tmp_path
+        )
+        save_telemetry(
+            FrameworkTelemetry(checkpoint_invocations=5), output_dir=tmp_path
+        )
         loaded = load_telemetry(input_dir=tmp_path)
         assert loaded.checkpoint_invocations == 5
 

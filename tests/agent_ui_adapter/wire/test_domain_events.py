@@ -52,7 +52,9 @@ class TestLLMTokenEmitted:
         original = LLMTokenEmitted(
             trace_id="tr1", timestamp=_now(), message_id="m1", delta="x"
         )
-        assert LLMTokenEmitted.model_validate_json(original.model_dump_json()) == original
+        assert (
+            LLMTokenEmitted.model_validate_json(original.model_dump_json()) == original
+        )
 
 
 # ── LLMMessageStarted ─────────────────────────────────────────────────
@@ -69,7 +71,10 @@ class TestLLMMessageStarted:
 
     def test_round_trip(self):
         original = LLMMessageStarted(trace_id="tr1", timestamp=_now(), message_id="m1")
-        assert LLMMessageStarted.model_validate_json(original.model_dump_json()) == original
+        assert (
+            LLMMessageStarted.model_validate_json(original.model_dump_json())
+            == original
+        )
 
 
 # ── LLMMessageEnded ───────────────────────────────────────────────────
@@ -86,7 +91,9 @@ class TestLLMMessageEnded:
 
     def test_round_trip(self):
         original = LLMMessageEnded(trace_id="tr1", timestamp=_now(), message_id="m1")
-        assert LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
+        assert (
+            LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
+        )
 
     # ── Phase 3: optional usage/cost/model fields (additive, W rule) ──
 
@@ -127,10 +134,15 @@ class TestLLMMessageEnded:
 
     def test_usage_round_trip(self):
         original = LLMMessageEnded(
-            trace_id="tr1", message_id="m1", tokens_in=10, tokens_out=5,
+            trace_id="tr1",
+            message_id="m1",
+            tokens_in=10,
+            tokens_out=5,
             model="gpt-4o",
         )
-        assert LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
+        assert (
+            LLMMessageEnded.model_validate_json(original.model_dump_json()) == original
+        )
 
 
 # ── ToolCallStarted ───────────────────────────────────────────────────
@@ -160,7 +172,9 @@ class TestToolCallStarted:
             tool_name="search",
             args_json='{"q":"x"}',
         )
-        assert ToolCallStarted.model_validate_json(original.model_dump_json()) == original
+        assert (
+            ToolCallStarted.model_validate_json(original.model_dump_json()) == original
+        )
 
 
 # ── ToolCallEnded ─────────────────────────────────────────────────────
@@ -197,7 +211,8 @@ class TestToolResultReceived:
             trace_id="tr1", timestamp=_now(), tool_call_id="tc1", result="ok"
         )
         assert (
-            ToolResultReceived.model_validate_json(original.model_dump_json()) == original
+            ToolResultReceived.model_validate_json(original.model_dump_json())
+            == original
         )
 
 
@@ -217,7 +232,9 @@ class TestRunStartedDomain:
         original = RunStartedDomain(
             trace_id="tr1", timestamp=_now(), run_id="r1", thread_id="t1"
         )
-        assert RunStartedDomain.model_validate_json(original.model_dump_json()) == original
+        assert (
+            RunStartedDomain.model_validate_json(original.model_dump_json()) == original
+        )
 
 
 # ── RunFinishedDomain ─────────────────────────────────────────────────
@@ -246,7 +263,10 @@ class TestRunFinishedDomain:
             thread_id="t1",
             error="boom",
         )
-        assert RunFinishedDomain.model_validate_json(original.model_dump_json()) == original
+        assert (
+            RunFinishedDomain.model_validate_json(original.model_dump_json())
+            == original
+        )
 
 
 # ── StateMutated ──────────────────────────────────────────────────────
@@ -301,7 +321,9 @@ class TestStepProgressed:
             step_count=2,
             step_name="tool_execution",
         )
-        assert StepProgressed.model_validate_json(original.model_dump_json()) == original
+        assert (
+            StepProgressed.model_validate_json(original.model_dump_json()) == original
+        )
 
 
 # ── Cross-cutting: union completeness ─────────────────────────────────

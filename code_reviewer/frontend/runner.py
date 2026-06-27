@@ -357,13 +357,15 @@ def collect_file_payloads(paths: list[str]) -> list[dict[str, Any]]:
         except UnicodeDecodeError:
             content = "<binary>"
             language = "text"
-        out.append({
-            "path": p,
-            "content": content[:20_000],  # truncate huge files; warn via gaps
-            "language": language,
-            "layer": _classify_layer(p),
-            "lines_changed": "Full file",
-        })
+        out.append(
+            {
+                "path": p,
+                "content": content[:20_000],  # truncate huge files; warn via gaps
+                "language": language,
+                "layer": _classify_layer(p),
+                "lines_changed": "Full file",
+            }
+        )
     return out
 
 
@@ -423,113 +425,129 @@ def severity_for_rule(rule: str) -> str:
     return "warning"
 
 
-def _findings_from_check_csp_strict(file: str, raw: dict[str, Any]) -> list[ToolFinding]:
+def _findings_from_check_csp_strict(
+    file: str, raw: dict[str, Any]
+) -> list[ToolFinding]:
     out: list[ToolFinding] = []
     for v in raw.get("violations", []):
         rule = v.get("rule", "CSP")
-        out.append(ToolFinding(
-            rule_id=f"FD3.{rule}" if rule in {"CSP1", "CSP2"} else f"FD3.{rule}",
-            dimension="FD3",
-            severity=severity_for_rule(rule),
-            file=file,
-            line=None,
-            description=v.get("description", ""),
-            fix_suggestion=(
-                "Remove the offending CSP token; rely on the per-request nonce + "
-                "'strict-dynamic' chain documented in architecture_rules.j2."
-            ),
-            tool="check_csp_strict",
-            raw=v,
-        ))
+        out.append(
+            ToolFinding(
+                rule_id=f"FD3.{rule}" if rule in {"CSP1", "CSP2"} else f"FD3.{rule}",
+                dimension="FD3",
+                severity=severity_for_rule(rule),
+                file=file,
+                line=None,
+                description=v.get("description", ""),
+                fix_suggestion=(
+                    "Remove the offending CSP token; rely on the per-request nonce + "
+                    "'strict-dynamic' chain documented in architecture_rules.j2."
+                ),
+                tool="check_csp_strict",
+                raw=v,
+            )
+        )
     return out
 
 
-def _findings_from_check_iframe_sandbox(file: str, raw: dict[str, Any]) -> list[ToolFinding]:
+def _findings_from_check_iframe_sandbox(
+    file: str, raw: dict[str, Any]
+) -> list[ToolFinding]:
     out: list[ToolFinding] = []
     for iframe in raw.get("iframes", []):
         for msg in iframe.get("violations", []):
             rule = msg.split(":", 1)[0].strip()
-            out.append(ToolFinding(
-                rule_id=f"FD3.{rule}",
-                dimension="FD3",
-                severity="critical",
-                file=file,
-                line=iframe.get("line"),
-                description=msg,
-                fix_suggestion=(
-                    "Restrict the iframe sandbox to `allow-scripts` only; remove "
-                    "any allow-same-origin / allow-forms / allow-top-navigation tokens."
-                ),
-                tool="check_iframe_sandbox",
-                raw=iframe,
-            ))
+            out.append(
+                ToolFinding(
+                    rule_id=f"FD3.{rule}",
+                    dimension="FD3",
+                    severity="critical",
+                    file=file,
+                    line=iframe.get("line"),
+                    description=msg,
+                    fix_suggestion=(
+                        "Restrict the iframe sandbox to `allow-scripts` only; remove "
+                        "any allow-same-origin / allow-forms / allow-top-navigation tokens."
+                    ),
+                    tool="check_iframe_sandbox",
+                    raw=iframe,
+                )
+            )
     return out
 
 
-def _findings_from_check_composer_keyboard(file: str, raw: dict[str, Any]) -> list[ToolFinding]:
+def _findings_from_check_composer_keyboard(
+    file: str, raw: dict[str, Any]
+) -> list[ToolFinding]:
     out: list[ToolFinding] = []
     for v in raw.get("violations", []):
         rule = v.get("rule", "U_KBD")
-        out.append(ToolFinding(
-            rule_id=f"FD2.{rule}",
-            dimension="FD2",
-            severity="warning",
-            file=file,
-            line=v.get("line"),
-            description=v.get("description", ""),
-            fix_suggestion=(
-                "Update the composer to satisfy the U-family contract in "
-                "architecture_rules.j2 (S3.8.5)."
-            ),
-            tool="check_composer_keyboard",
-            raw=v,
-        ))
+        out.append(
+            ToolFinding(
+                rule_id=f"FD2.{rule}",
+                dimension="FD2",
+                severity="warning",
+                file=file,
+                line=v.get("line"),
+                description=v.get("description", ""),
+                fix_suggestion=(
+                    "Update the composer to satisfy the U-family contract in "
+                    "architecture_rules.j2 (S3.8.5)."
+                ),
+                tool="check_composer_keyboard",
+                raw=v,
+            )
+        )
     return out
 
 
 def _findings_from_check_secrets(file: str, raw: dict[str, Any]) -> list[ToolFinding]:
     out: list[ToolFinding] = []
     for v in raw.get("violations", []):
-        out.append(ToolFinding(
-            rule_id="FD3.SEC1",
-            dimension="FD3",
-            severity="critical",
-            file=file,
-            line=v.get("line"),
-            description=(
-                f"NEXT_PUBLIC variable {v.get('var')} matches the secret pattern "
-                f"{v.get('matched_pattern')} (FE-AP-18 AUTO-REJECT)."
-            ),
-            fix_suggestion=(
-                "Move the value out of NEXT_PUBLIC_ and route the credential "
-                "through middleware/ instead (F-R9)."
-            ),
-            tool="check_secrets_in_public_env",
-            raw=v,
-        ))
+        out.append(
+            ToolFinding(
+                rule_id="FD3.SEC1",
+                dimension="FD3",
+                severity="critical",
+                file=file,
+                line=v.get("line"),
+                description=(
+                    f"NEXT_PUBLIC variable {v.get('var')} matches the secret pattern "
+                    f"{v.get('matched_pattern')} (FE-AP-18 AUTO-REJECT)."
+                ),
+                fix_suggestion=(
+                    "Move the value out of NEXT_PUBLIC_ and route the credential "
+                    "through middleware/ instead (F-R9)."
+                ),
+                tool="check_secrets_in_public_env",
+                raw=v,
+            )
+        )
     return out
 
 
 def _findings_from_check_jwt(file: str, raw: dict[str, Any]) -> list[ToolFinding]:
     out: list[ToolFinding] = []
     for v in raw.get("violations", []):
-        out.append(ToolFinding(
-            rule_id="FD3.SEC2",
-            dimension="FD3",
-            severity="critical",
-            file=file,
-            line=v.get("line"),
-            description=(
-                f"{v.get('api')} writes auth-shaped value `{v.get('key_or_value')}` "
-                "to browser storage."
-            ),
-            fix_suggestion=(
-                "Store the JWT in an HttpOnly + Secure + SameSite=Strict cookie set "
-                "by middleware; never localStorage/sessionStorage."
-            ),
-            tool="check_jwt_storage",
-            raw=v,
-        ))
+        out.append(
+            ToolFinding(
+                rule_id="FD3.SEC2",
+                dimension="FD3",
+                severity="critical",
+                file=file,
+                line=v.get("line"),
+                description=(
+                    f"{v.get('api')} writes auth-shaped value `{v.get('key_or_value')}` "
+                    "to browser storage."
+                ),
+                fix_suggestion=(
+                    "Store the JWT in an HttpOnly + Secure + SameSite=Strict cookie set "
+                    "by middleware; never localStorage/sessionStorage."
+                ),
+                tool="check_jwt_storage",
+                raw=v,
+            )
+        )
     return out
 
 
@@ -553,7 +571,9 @@ def run_rules_only(files: list[str]) -> tuple[list[ToolFinding], list[str], list
     for f in files:
         tools = applicable_tools(f)
         if not tools:
-            validation_log.append(f"No deterministic tool applies to {f} (rules-only mode)")
+            validation_log.append(
+                f"No deterministic tool applies to {f} (rules-only mode)"
+            )
             continue
         for name, args in tools:
             raw = run_ts_script(name, *args)
@@ -618,34 +638,36 @@ def report_to_dict(
     for dim, items in sorted(by_dim.items()):
         any_critical = any(i.severity == "critical" for i in items)
         status = "fail" if any_critical else ("partial" if items else "pass")
-        dimensions.append({
-            "dimension": dim,
-            "name": _dim_label(dim),
-            "status": status,
-            "hypotheses_tested": len(items),
-            "hypotheses_confirmed": len(items),
-            "hypotheses_killed": 0,
-            "findings": [
-                {
-                    "rule_id": i.rule_id,
-                    "dimension": i.dimension,
-                    "severity": i.severity,
-                    "file": i.file,
-                    "line": i.line,
-                    "description": i.description,
-                    "fix_suggestion": i.fix_suggestion,
-                    "confidence": 1.0,
-                    "certificate": {
-                        "premises": [
-                            f"[P1] {i.tool} ({i.file}{':' + str(i.line) if i.line else ''})"
-                        ],
-                        "traces": [],
-                        "conclusion": f"{i.rule_id} FAIL -- {i.description}",
-                    },
-                }
-                for i in items
-            ],
-        })
+        dimensions.append(
+            {
+                "dimension": dim,
+                "name": _dim_label(dim),
+                "status": status,
+                "hypotheses_tested": len(items),
+                "hypotheses_confirmed": len(items),
+                "hypotheses_killed": 0,
+                "findings": [
+                    {
+                        "rule_id": i.rule_id,
+                        "dimension": i.dimension,
+                        "severity": i.severity,
+                        "file": i.file,
+                        "line": i.line,
+                        "description": i.description,
+                        "fix_suggestion": i.fix_suggestion,
+                        "confidence": 1.0,
+                        "certificate": {
+                            "premises": [
+                                f"[P1] {i.tool} ({i.file}{':' + str(i.line) if i.line else ''})"
+                            ],
+                            "traces": [],
+                            "conclusion": f"{i.rule_id} FAIL -- {i.description}",
+                        },
+                    }
+                    for i in items
+                ],
+            }
+        )
 
     return {
         "verdict": verdict,
@@ -678,14 +700,20 @@ def _dim_label(dim: str) -> str:
 
 def exit_code_for(verdict: str, findings: list[ToolFinding], fail_on: str) -> int:
     """Apply --fail-on demotion to the LLM's verdict and return the exit code."""
-    base = {"approve": EXIT_OK, "request_changes": EXIT_REQUEST_CHANGES, "reject": EXIT_REJECT}.get(
-        verdict, EXIT_RUNNER_ERROR
-    )
+    base = {
+        "approve": EXIT_OK,
+        "request_changes": EXIT_REQUEST_CHANGES,
+        "reject": EXIT_REJECT,
+    }.get(verdict, EXIT_RUNNER_ERROR)
     threshold = SEVERITY_RANK[fail_on]
     has_above = any(SEVERITY_RANK[f.severity] >= threshold for f in findings)
     if base == EXIT_OK and has_above:
         # Demote: any finding ≥ threshold trips a non-zero exit.
-        return EXIT_REQUEST_CHANGES if not any(f.severity == "critical" for f in findings) else EXIT_REJECT
+        return (
+            EXIT_REQUEST_CHANGES
+            if not any(f.severity == "critical" for f in findings)
+            else EXIT_REJECT
+        )
     return base
 
 
@@ -756,7 +784,9 @@ def run(argv: list[str]) -> int:
         "model_tier": args.model,
         "model_env_var": MODEL_TIER_TO_ENV.get(args.model, ""),
         "fail_on": args.fail_on,
-        "mode": "dry_run" if args.dry_run else ("rules_only" if args.rules_only else "default_rules_only"),
+        "mode": "dry_run"
+        if args.dry_run
+        else ("rules_only" if args.rules_only else "default_rules_only"),
         "tool_function_specs_count": len(tool_function_specs()),
     }
 
@@ -777,7 +807,8 @@ def run(argv: list[str]) -> int:
             "created_at": datetime.now(UTC).isoformat(),
             "metadata": {
                 **metadata,
-                "rendered_prompt_chars": len(rendered["system"]) + len(rendered["user"]),
+                "rendered_prompt_chars": len(rendered["system"])
+                + len(rendered["user"]),
             },
             "rendered_prompt": rendered,
         }
@@ -785,7 +816,10 @@ def run(argv: list[str]) -> int:
         asyncio.run(
             _record_eval(
                 target="code_reviewer.frontend",
-                ai_input={"system_chars": len(rendered["system"]), "user_chars": len(rendered["user"])},
+                ai_input={
+                    "system_chars": len(rendered["system"]),
+                    "user_chars": len(rendered["user"]),
+                },
                 ai_response={"mode": "dry_run"},
                 user_id=args.user_id,
                 task_id=args.task_id or "dry-run",
@@ -827,7 +861,11 @@ def run(argv: list[str]) -> int:
         _record_eval(
             target="code_reviewer.frontend",
             ai_input={"files": files, "scope": args.scope, "mode": metadata["mode"]},
-            ai_response={"verdict": verdict, "findings": len(findings), "gaps": len(gaps)},
+            ai_response={
+                "verdict": verdict,
+                "findings": len(findings),
+                "gaps": len(gaps),
+            },
             user_id=args.user_id,
             task_id=args.task_id or "rules-only",
             model=args.model,

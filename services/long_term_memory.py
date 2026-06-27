@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -76,8 +76,11 @@ class ConsolidationOutcome:
 class MemoryBackend(Protocol):
     def put(self, record: MemoryRecord) -> None: ...
     def get(self, user_id: str, key: str) -> MemoryRecord | None: ...
-    def search(self, user_id: str, query: str, limit: int = 10) -> list[MemoryRecord]: ...
+    def search(
+        self, user_id: str, query: str, limit: int = 10
+    ) -> list[MemoryRecord]: ...
     def delete(self, user_id: str, key: str) -> bool: ...
+
     # Optional capability (A1 budget/consolidation): list ALL of a user's
     # records (unbounded by a relevance query), needed to count and evict by
     # salience. Backends that can list cheaply implement it (InMemory, Mem0
@@ -272,9 +275,7 @@ class LongTermMemoryService:
                 f"backend failed during search(user_id={user_id!r})"
             ) from exc
         if mem_type is not None:
-            results = [
-                r for r in results if r.metadata.get("type") == mem_type
-            ][:limit]
+            results = [r for r in results if r.metadata.get("type") == mem_type][:limit]
         logger.debug(
             "memory.search user_id=%s limit=%s type=%s results=%d",
             user_id,
@@ -293,14 +294,10 @@ class LongTermMemoryService:
             raise MemoryBackendError(
                 f"backend failed during forget(user_id={user_id!r}, key={key!r})"
             ) from exc
-        logger.info(
-            "memory.forget user_id=%s key=%s removed=%s", user_id, key, removed
-        )
+        logger.info("memory.forget user_id=%s key=%s removed=%s", user_id, key, removed)
         return removed
 
-    def suppress(
-        self, user_id: str, key: str, *, suppressed: bool = True
-    ) -> bool:
+    def suppress(self, user_id: str, key: str, *, suppressed: bool = True) -> bool:
         """Soft-suppress (or un-suppress) one record (chat-persistence Phase B).
 
         A rejected memory is no longer recalled/injected, but the row is RETAINED
@@ -371,7 +368,7 @@ class LongTermMemoryService:
         list_all = getattr(self._backend, "list_all", None)
         try:
             if callable(list_all):
-                records = list(list_all(user_id))
+                records = list(cast("list[MemoryRecord]", list_all(user_id)))
             else:
                 records = self._backend.search(user_id, "", _OVERFETCH_LIMIT)
         except Exception as exc:
@@ -407,9 +404,7 @@ class LongTermMemoryService:
                 f"mem_type must be a string or None, got {type(mem_type).__name__}"
             )
         n = len(self._list_all(user_id, mem_type))
-        logger.debug(
-            "memory.count user_id=%s type=%s n=%d", user_id, mem_type, n
-        )
+        logger.debug("memory.count user_id=%s type=%s n=%d", user_id, mem_type, n)
         return n
 
     def consolidate(
@@ -471,7 +466,9 @@ class LongTermMemoryService:
             room = 0  # pinned alone exceed budget → evict ALL non-pinned
         if len(evictable) > room:
             evictable_sorted = sorted(
-                evictable, key=lambda r: (_salience_of(r), _stored_at_of(r)), reverse=True
+                evictable,
+                key=lambda r: (_salience_of(r), _stored_at_of(r)),
+                reverse=True,
             )
             for loser in evictable_sorted[room:]:
                 to_delete.append(loser.key)
@@ -512,9 +509,7 @@ class InMemoryMemoryBackend:
     def get(self, user_id: str, key: str) -> MemoryRecord | None:
         return self._store.get((user_id, key))
 
-    def search(
-        self, user_id: str, query: str, limit: int = 10
-    ) -> list[MemoryRecord]:
+    def search(self, user_id: str, query: str, limit: int = 10) -> list[MemoryRecord]:
         results: list[MemoryRecord] = []
         for (uid, _key), record in self._store.items():
             if uid != user_id:

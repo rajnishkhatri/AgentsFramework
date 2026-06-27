@@ -131,9 +131,7 @@ def make_token(
             "iss": issuer if issuer is not None else expected_issuer,
             "client_id": client_id if client_id is not None else expected_client_id,
             "iat": int(now.timestamp()),
-            "exp": int(
-                (expires_at or (now + timedelta(minutes=15))).timestamp()
-            ),
+            "exp": int((expires_at or (now + timedelta(minutes=15))).timestamp()),
         }
         if token_use is not None:
             payload["token_use"] = token_use

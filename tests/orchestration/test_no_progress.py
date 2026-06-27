@@ -33,6 +33,7 @@ def _fast_profile():
 
 class _WebSearchArgs(BaseModel):
     """Search the web for information."""
+
     query: str = ""
 
 
@@ -57,24 +58,56 @@ class TestCountTrailingRepeats:
 
     def test_identical_tool_name_and_input_counted(self):
         results = [
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
         ]
         assert _count_trailing_repeats(results) == 3
 
     def test_identical_output_different_input_counted(self):
         results = [
-            {"tool_name": "web_search", "tool_input": {"query": "weather austin"}, "tool_output": "error: timeout"},
-            {"tool_name": "web_search", "tool_input": {"query": "austin weather"}, "tool_output": "error: timeout"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather in austin"}, "tool_output": "error: timeout"},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather austin"},
+                "tool_output": "error: timeout",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "austin weather"},
+                "tool_output": "error: timeout",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather in austin"},
+                "tool_output": "error: timeout",
+            },
         ]
         assert _count_trailing_repeats(results) == 3
 
     def test_different_calls_returns_one(self):
         results = [
-            {"tool_name": "shell", "tool_input": {"command": "ls"}, "tool_output": "file.txt"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
+            {
+                "tool_name": "shell",
+                "tool_input": {"command": "ls"},
+                "tool_output": "file.txt",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
         ]
         assert _count_trailing_repeats(results) == 1
 
@@ -83,24 +116,56 @@ class TestCountTrailingRepeats:
 
     def test_single_result_returns_zero(self):
         results = [
-            {"tool_name": "web_search", "tool_input": {"query": "test"}, "tool_output": "ok"},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "test"},
+                "tool_output": "ok",
+            },
         ]
         assert _count_trailing_repeats(results) == 0
 
     def test_break_in_sequence_counts_trailing_only(self):
         results = [
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "shell", "tool_input": {"command": "date"}, "tool_output": "Mon"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "shell",
+                "tool_input": {"command": "date"},
+                "tool_output": "Mon",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
         ]
         assert _count_trailing_repeats(results) == 2
 
     def test_different_tool_name_breaks_sequence(self):
         results = [
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "web_search", "tool_input": {"query": "weather"}, "tool_output": "sunny"},
-            {"tool_name": "file_io", "tool_input": {"path": "/x"}, "tool_output": "content"},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "weather"},
+                "tool_output": "sunny",
+            },
+            {
+                "tool_name": "file_io",
+                "tool_input": {"path": "/x"},
+                "tool_output": "content",
+            },
         ]
         assert _count_trailing_repeats(results) == 1
 
@@ -108,7 +173,11 @@ class TestCountTrailingRepeats:
         """Empty tool_output should not trigger output-based matching."""
         results = [
             {"tool_name": "shell", "tool_input": {"command": "ls"}, "tool_output": ""},
-            {"tool_name": "web_search", "tool_input": {"query": "test"}, "tool_output": ""},
+            {
+                "tool_name": "web_search",
+                "tool_input": {"query": "test"},
+                "tool_output": "",
+            },
         ]
         assert _count_trailing_repeats(results) == 1
 
@@ -130,8 +199,14 @@ class TestNoProgressGracefulWrapUp:
         def _make_tool_call_response():
             resp = MagicMock()
             resp.content = ""
-            resp.tool_calls = [{"name": "web_search", "id": "tc1", "args": {"query": "weather"}}]
-            resp.usage_metadata = {"input_tokens": 50, "output_tokens": 20, "total_tokens": 70}
+            resp.tool_calls = [
+                {"name": "web_search", "id": "tc1", "args": {"query": "weather"}}
+            ]
+            resp.usage_metadata = {
+                "input_tokens": 50,
+                "output_tokens": 20,
+                "total_tokens": 70,
+            }
             resp.response_metadata = {"model_name": "gpt-4o-mini"}
             return resp
 
@@ -139,7 +214,11 @@ class TestNoProgressGracefulWrapUp:
             resp = MagicMock()
             resp.content = "Based on the information gathered, the weather is sunny."
             resp.tool_calls = []
-            resp.usage_metadata = {"input_tokens": 80, "output_tokens": 30, "total_tokens": 110}
+            resp.usage_metadata = {
+                "input_tokens": 80,
+                "output_tokens": 30,
+                "total_tokens": 110,
+            }
             resp.response_metadata = {"model_name": "gpt-4o-mini"}
             return resp
 
@@ -151,12 +230,14 @@ class TestNoProgressGracefulWrapUp:
                 return _make_tool_call_response()
             return _make_final_response()
 
-        tool_registry = ToolRegistry({
-            "web_search": ToolDefinition(
-                executor=_stub_web_search_executor,
-                schema=_WebSearchArgs,
-            ),
-        })
+        tool_registry = ToolRegistry(
+            {
+                "web_search": ToolDefinition(
+                    executor=_stub_web_search_executor,
+                    schema=_WebSearchArgs,
+                ),
+            }
+        )
 
         agent_config = AgentConfig(
             default_model="gpt-4o-mini",
@@ -218,7 +299,9 @@ class TestNoProgressGracefulWrapUp:
         assert last_ai[-1].content  # final answer is not empty
         assert not last_ai[-1].tool_calls  # no tool calls in final answer
 
-        bb_events = _read_bb_events(tmp_path / "cache" / "black_box_recordings", "wf-noprog-001")
+        bb_events = _read_bb_events(
+            tmp_path / "cache" / "black_box_recordings", "wf-noprog-001"
+        )
         no_progress_events = _events_of_type(bb_events, EventType.STEP_PLANNED.value)
         assert any(e["details"].get("no_progress") for e in no_progress_events)
 
@@ -230,17 +313,25 @@ class TestNoProgressGracefulWrapUp:
         async def _mock_ainvoke_always_tool_call(*args, **kwargs):
             resp = MagicMock()
             resp.content = ""
-            resp.tool_calls = [{"name": "web_search", "id": "tc1", "args": {"query": "weather"}}]
-            resp.usage_metadata = {"input_tokens": 50, "output_tokens": 20, "total_tokens": 70}
+            resp.tool_calls = [
+                {"name": "web_search", "id": "tc1", "args": {"query": "weather"}}
+            ]
+            resp.usage_metadata = {
+                "input_tokens": 50,
+                "output_tokens": 20,
+                "total_tokens": 70,
+            }
             resp.response_metadata = {"model_name": "gpt-4o-mini"}
             return resp
 
-        tool_registry = ToolRegistry({
-            "web_search": ToolDefinition(
-                executor=_stub_web_search_executor,
-                schema=_WebSearchArgs,
-            ),
-        })
+        tool_registry = ToolRegistry(
+            {
+                "web_search": ToolDefinition(
+                    executor=_stub_web_search_executor,
+                    schema=_WebSearchArgs,
+                ),
+            }
+        )
 
         agent_config = AgentConfig(
             default_model="gpt-4o-mini",
@@ -259,7 +350,9 @@ class TestNoProgressGracefulWrapUp:
             ),
         ):
             mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(side_effect=_mock_ainvoke_always_tool_call)
+            mock_llm_instance.ainvoke = AsyncMock(
+                side_effect=_mock_ainvoke_always_tool_call
+            )
 
             from orchestration.react_loop import build_graph
 
@@ -307,7 +400,9 @@ class TestModelSelectedStepRegression:
             resp.content = "The capital of France is Paris."
             resp.tool_calls = []
             resp.usage_metadata = {
-                "input_tokens": 10, "output_tokens": 5, "total_tokens": 15,
+                "input_tokens": 10,
+                "output_tokens": 5,
+                "total_tokens": 15,
             }
             resp.response_metadata = {"model_name": "gpt-4o-mini"}
             return resp

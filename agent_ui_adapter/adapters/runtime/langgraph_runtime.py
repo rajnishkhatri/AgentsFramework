@@ -154,15 +154,12 @@ class LangGraphRuntime:
             snapshot = await self._graph.aget_state(
                 {"configurable": {"thread_id": thread_id}}
             )
-            values = (
-                getattr(snapshot, "values", None) if snapshot is not None else None
-            )
+            values = getattr(snapshot, "values", None) if snapshot is not None else None
             if not values:
                 raise KeyError(f"no checkpoint for thread {thread_id!r}")
             if not getattr(snapshot, "next", ()):
                 raise RuntimeError(
-                    f"run already completed for thread {thread_id!r}; "
-                    "nothing to resume"
+                    f"run already completed for thread {thread_id!r}; nothing to resume"
                 )
             workflow_id = str(values.get("workflow_id") or "")
             if not workflow_id:
@@ -199,9 +196,7 @@ class LangGraphRuntime:
             details={"run_id": run_id, "thread_id": thread_id},
         )
 
-        yield RunStartedDomain(
-            trace_id=trace_id, run_id=run_id, thread_id=thread_id
-        )
+        yield RunStartedDomain(trace_id=trace_id, run_id=run_id, thread_id=thread_id)
 
         config = _lg_ensure_config(
             None,
@@ -398,8 +393,7 @@ class LangGraphRuntime:
         workflow_id = str(values.get("workflow_id", ""))
         if trace_id != workflow_id:
             raise ValueError(
-                f"trace_id mismatch: edit carries {trace_id!r}, "
-                f"run is {workflow_id!r}"
+                f"trace_id mismatch: edit carries {trace_id!r}, run is {workflow_id!r}"
             )
         if not getattr(snapshot, "next", ()):
             raise RuntimeError(
@@ -454,11 +448,17 @@ class LangGraphRuntime:
             if usage is None and isinstance(output, dict):
                 llm_output = output.get("llm_output") or {}
                 usage = llm_output.get("usage") or llm_output.get("token_usage")
-                resp = llm_output.get("model_name") and {"model_name": llm_output["model_name"]} or resp
+                resp = (
+                    llm_output.get("model_name")
+                    and {"model_name": llm_output["model_name"]}
+                    or resp
+                )
             tokens_in = tokens_out = None
             if isinstance(usage, dict):
                 tokens_in = usage.get("input_tokens") or usage.get("prompt_tokens")
-                tokens_out = usage.get("output_tokens") or usage.get("completion_tokens")
+                tokens_out = usage.get("output_tokens") or usage.get(
+                    "completion_tokens"
+                )
             model = resp.get("model_name") if isinstance(resp, dict) else None
             return tokens_in, tokens_out, model
         except Exception:
@@ -505,7 +505,9 @@ class LangGraphRuntime:
                 else:
                     content = str(content)
             else:
-                role = str(getattr(msg, "type", None) or getattr(msg, "role", "unknown"))
+                role = str(
+                    getattr(msg, "type", None) or getattr(msg, "role", "unknown")
+                )
                 content = LangGraphRuntime._extract_content(msg)
             if content:
                 parts.append(f"{role}: {content}")
@@ -559,9 +561,11 @@ class LangGraphRuntime:
             content = self._extract_llm_chunk_text(chunk) if chunk else ""
             if content:
                 self._streamed_run_ids.add(event_run_id)
-                return [LLMTokenEmitted(
-                    trace_id=trace_id, message_id=event_run_id, delta=content
-                )]
+                return [
+                    LLMTokenEmitted(
+                        trace_id=trace_id, message_id=event_run_id, delta=content
+                    )
+                ]
             return []
 
         if ev_name == "on_llm_stream":
@@ -569,9 +573,11 @@ class LangGraphRuntime:
             content = self._extract_llm_chunk_text(chunk) if chunk else ""
             if content:
                 self._streamed_run_ids.add(event_run_id)
-                return [LLMTokenEmitted(
-                    trace_id=trace_id, message_id=event_run_id, delta=content
-                )]
+                return [
+                    LLMTokenEmitted(
+                        trace_id=trace_id, message_id=event_run_id, delta=content
+                    )
+                ]
             return []
 
         if ev_name == "on_chat_model_start":
@@ -595,9 +601,11 @@ class LangGraphRuntime:
             # Tool activity reaches the UI via ToolCallStarted events.
             if not already_streamed:
                 if content:
-                    events.append(LLMTokenEmitted(
-                        trace_id=trace_id, message_id=event_run_id, delta=content
-                    ))
+                    events.append(
+                        LLMTokenEmitted(
+                            trace_id=trace_id, message_id=event_run_id, delta=content
+                        )
+                    )
             tokens_in, tokens_out, model = self._extract_usage(output)
             events.append(
                 LLMMessageEnded(
@@ -629,9 +637,11 @@ class LangGraphRuntime:
                 elif output is not None:
                     text = str(output)
                 if text:
-                    events.append(LLMTokenEmitted(
-                        trace_id=trace_id, message_id=event_run_id, delta=text
-                    ))
+                    events.append(
+                        LLMTokenEmitted(
+                            trace_id=trace_id, message_id=event_run_id, delta=text
+                        )
+                    )
             tokens_in, tokens_out, model = self._extract_usage(data.get("output"))
             events.append(
                 LLMMessageEnded(
@@ -647,36 +657,32 @@ class LangGraphRuntime:
             return events
 
         if ev_name == "on_tool_start":
-            tool_call_id = (
-                data.get("tool_call_id")
-                or raw.get("id")
-                or event_run_id
-            )
+            tool_call_id = data.get("tool_call_id") or raw.get("id") or event_run_id
             args_raw = data.get("input", {})
             try:
                 args_json = json.dumps(args_raw, default=str, sort_keys=True)
             except (TypeError, ValueError):
                 args_json = str(args_raw)
             self._live_tool_call_ids.add(str(tool_call_id))
-            return [ToolCallStarted(
-                trace_id=trace_id,
-                tool_call_id=tool_call_id,
-                tool_name=raw.get("name", ""),
-                args_json=args_json,
-            )]
+            return [
+                ToolCallStarted(
+                    trace_id=trace_id,
+                    tool_call_id=tool_call_id,
+                    tool_name=raw.get("name", ""),
+                    args_json=args_json,
+                )
+            ]
 
         if ev_name == "on_tool_end":
-            tool_call_id = (
-                data.get("tool_call_id")
-                or raw.get("id")
-                or event_run_id
-            )
+            tool_call_id = data.get("tool_call_id") or raw.get("id") or event_run_id
             output = data.get("output", "")
-            return [ToolResultReceived(
-                trace_id=trace_id,
-                tool_call_id=tool_call_id,
-                result=str(output),
-            )]
+            return [
+                ToolResultReceived(
+                    trace_id=trace_id,
+                    tool_call_id=tool_call_id,
+                    result=str(output),
+                )
+            ]
 
         if ev_name == "on_chain_end":
             return self._translate_chain_end(raw, data, trace_id)
@@ -714,11 +720,13 @@ class LangGraphRuntime:
                 ops.append({"op": "replace", "path": "/plan_ref", "value": plan_ref})
             selected_model = output.get("selected_model")
             if isinstance(selected_model, str) and selected_model:
-                ops.append({
-                    "op": "replace",
-                    "path": "/selected_model",
-                    "value": selected_model,
-                })
+                ops.append(
+                    {
+                        "op": "replace",
+                        "path": "/selected_model",
+                        "value": selected_model,
+                    }
+                )
             if ops:
                 events.append(StateMutated(trace_id=trace_id, delta=ops))
 
@@ -845,7 +853,10 @@ class LangGraphRuntime:
                 continue
             record_id = str(rec.get("record_id") or "") or uuid.uuid4().hex
             bare_id = record_id.split(":", 1)[-1]
-            if record_id in self._live_tool_call_ids or bare_id in self._live_tool_call_ids:
+            if (
+                record_id in self._live_tool_call_ids
+                or bare_id in self._live_tool_call_ids
+            ):
                 continue
             try:
                 args_json = json.dumps(
@@ -867,7 +878,8 @@ class LangGraphRuntime:
                 # errored tool cards on (ToolExecutionResult).
                 error = str(rec.get("error", "") or "tool returned failure")
                 result_text = (
-                    f"Error: {error}" if not result_text
+                    f"Error: {error}"
+                    if not result_text
                     else f"{result_text}\nError: {error}"
                 )
             events.append(

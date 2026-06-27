@@ -7,7 +7,7 @@ tags: [architecture]
 
 # Layer 1: Identity and Authentication -- Structured Analysis
 
-**Analysis method:** Pyramid Principle with MECE decomposition  
+**Analysis method:** Pyramid Principle with MECE decomposition
 **Source documents:**
 - `docs/plan/TRUST_FRAMEWORK_AND_GOVERNANCE.md` (Seven-Layer Agent Trust Framework)
 - `agent/governanaceTriangle/03_agentfacts_governance.md` (AgentFacts tutorial)

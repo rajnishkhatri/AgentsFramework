@@ -13,7 +13,7 @@ import pytest
 
 from scripts.build_l2l3_answer_keys import build_keys
 from scripts.build_l2l3_blind_set import build_blind_set, leak_scan
-from scripts.build_l2l3_corpus import filter_l2l3, write_jsonl
+from scripts.build_l2l3_corpus import filter_l2l3
 from scripts.harvest_l2l3_answers import final_answers_for_cases, harvest
 from scripts.seed_model_ab_l2l3_workspace import (
     GROUND_TRUTH_BY_CASE,
@@ -37,9 +37,17 @@ class TestSeed:
     def test_seeds_every_referenced_dir_and_file(self, tmp_path):
         ws = seed_l2l3_workspace(tmp_path)
         for rel in (
-            "invoices/inv-1.txt", "invoices/inv-5.txt", "orders.csv",
-            "customers.csv", "events.log", "reports/q1.txt", "config.json",
-            "deps.txt", "schedule/p1.txt", "papers/paper-3.txt", "budget.csv",
+            "invoices/inv-1.txt",
+            "invoices/inv-5.txt",
+            "orders.csv",
+            "customers.csv",
+            "events.log",
+            "reports/q1.txt",
+            "config.json",
+            "deps.txt",
+            "schedule/p1.txt",
+            "papers/paper-3.txt",
+            "budget.csv",
         ):
             assert (ws / rel).exists(), f"missing fixture {rel}"
 
@@ -70,6 +78,7 @@ class TestSeed:
             for line in (ws / "customers.csv").read_text().splitlines()[1:]
         )
         from collections import Counter
+
         counts = Counter(
             cust[line.split(",")[1]]
             for line in (ws / "orders.csv").read_text().splitlines()[1:]
@@ -98,8 +107,14 @@ class TestCorpusFilter:
 
     def test_preserves_all_fields(self, tmp_path):
         src = tmp_path / "ui.jsonl"
-        row = {"case": "GEN-L2-y", "difficulty": "L2", "prompt": "p",
-               "phase": "answer", "trace_id": "abc", "want_answer": "w"}
+        row = {
+            "case": "GEN-L2-y",
+            "difficulty": "L2",
+            "prompt": "p",
+            "phase": "answer",
+            "trace_id": "abc",
+            "want_answer": "w",
+        }
         src.write_text(json.dumps(row) + "\n")
         out = filter_l2l3(src)
         assert out == [row]
@@ -107,6 +122,7 @@ class TestCorpusFilter:
     def test_real_corpus_has_nine(self):
         # The actual converted corpus (if present) yields exactly 9 L2/L3 rows.
         from scripts.build_l2l3_corpus import DEFAULT_SOURCE
+
         if not DEFAULT_SOURCE.exists():
             pytest.skip("ui_batch.jsonl not built in this env")
         assert len(filter_l2l3(DEFAULT_SOURCE)) == 9
@@ -123,14 +139,26 @@ class TestAnswerKeys:
 class TestHarvest:
     def test_final_answers_last_call_wins(self, tmp_path):
         import uuid
+
         case = "GEN-L2-cross-ref-lookup-08"
         tid = uuid.uuid5(uuid.NAMESPACE_DNS, case).hex
         log = tmp_path / "evals.log"
-        log.write_text("\n".join([
-            json.dumps({"target": "call_llm", "task_id": tid, "ai_response": "first"}),
-            json.dumps({"target": "call_llm", "task_id": tid, "ai_response": "FINAL"}),
-            json.dumps({"target": "goal_judge", "task_id": tid, "ai_response": {}}),
-        ]) + "\n")
+        log.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {"target": "call_llm", "task_id": tid, "ai_response": "first"}
+                    ),
+                    json.dumps(
+                        {"target": "call_llm", "task_id": tid, "ai_response": "FINAL"}
+                    ),
+                    json.dumps(
+                        {"target": "goal_judge", "task_id": tid, "ai_response": {}}
+                    ),
+                ]
+            )
+            + "\n"
+        )
         out = final_answers_for_cases(log, [case])
         assert out[case] == "FINAL"
 
@@ -145,19 +173,37 @@ class TestHarvest:
 class TestBlindSet:
     def _fixture(self, tmp_path):
         raw = tmp_path / "raw.json"
-        raw.write_text(json.dumps({
-            "claude-haiku-4-5": {"GEN-L2-cross-ref-lookup-08": "north: 4, south: 2, west: 1"},
-            "gpt-4o-mini": {"GEN-L2-cross-ref-lookup-08": "I could not find the file"},
-            "deepseek-v4-pro": {"GEN-L2-cross-ref-lookup-08": ""},  # empty -> skipped
-        }))
+        raw.write_text(
+            json.dumps(
+                {
+                    "claude-haiku-4-5": {
+                        "GEN-L2-cross-ref-lookup-08": "north: 4, south: 2, west: 1"
+                    },
+                    "gpt-4o-mini": {
+                        "GEN-L2-cross-ref-lookup-08": "I could not find the file"
+                    },
+                    "deepseek-v4-pro": {
+                        "GEN-L2-cross-ref-lookup-08": ""
+                    },  # empty -> skipped
+                }
+            )
+        )
         batch = tmp_path / "batch.jsonl"
-        batch.write_text(json.dumps(
-            {"case": "GEN-L2-cross-ref-lookup-08", "prompt": "count orders per region"}
-        ) + "\n")
+        batch.write_text(
+            json.dumps(
+                {
+                    "case": "GEN-L2-cross-ref-lookup-08",
+                    "prompt": "count orders per region",
+                }
+            )
+            + "\n"
+        )
         keys = tmp_path / "keys.json"
-        keys.write_text(json.dumps(
-            {"GEN-L2-cross-ref-lookup-08": {"must_have_facts": ["north: 4"]}}
-        ))
+        keys.write_text(
+            json.dumps(
+                {"GEN-L2-cross-ref-lookup-08": {"must_have_facts": ["north: 4"]}}
+            )
+        )
         return raw, batch, keys
 
     def test_empty_answer_skipped(self, tmp_path):
@@ -191,9 +237,12 @@ class TestBlindSet:
     def test_leak_scan_flags_arm_token_in_prompt(self, tmp_path):
         raw, batch, keys = self._fixture(tmp_path)
         # poison the prompt with an arm token
-        batch.write_text(json.dumps(
-            {"case": "GEN-L2-cross-ref-lookup-08", "prompt": "ask claude to count"}
-        ) + "\n")
+        batch.write_text(
+            json.dumps(
+                {"case": "GEN-L2-cross-ref-lookup-08", "prompt": "ask claude to count"}
+            )
+            + "\n"
+        )
         items, _sealed, _ = build_blind_set(raw, batch, keys)
         assert leak_scan(items), "should flag 'claude' leaking into the prompt"
 
@@ -201,10 +250,12 @@ class TestBlindSet:
 class TestAlphaWiring:
     def test_perfect_agreement_alpha_one(self):
         from services.governance.iaa import krippendorff_alpha_nominal
+
         # two raters, identical labels across items -> alpha 1.0
         items = [["correct", "correct"], ["wrong", "wrong"], ["partial", "partial"]]
         assert krippendorff_alpha_nominal(items) == pytest.approx(1.0)
 
     def test_band_for_high_alpha(self):
         from services.governance.iaa import landis_koch_band
+
         assert landis_koch_band(0.85) == "almost perfect"

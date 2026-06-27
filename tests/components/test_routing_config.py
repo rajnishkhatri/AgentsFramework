@@ -5,8 +5,6 @@ Pure TDD (Red-Green-Refactor). Tests defaults, validation, roundtrip.
 
 from __future__ import annotations
 
-import pytest
-from pydantic import ValidationError
 
 from components.routing_config import RoutingConfig
 

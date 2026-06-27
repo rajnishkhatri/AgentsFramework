@@ -6,21 +6,19 @@ path escapes, missing tools tested before success paths.
 
 from __future__ import annotations
 
-import os
 
 import pytest
 from pydantic import ValidationError
 
-from services.tools.file_io import FileIOInput, FileIOOutput, execute_file_io
+from services.tools.file_io import FileIOInput, execute_file_io
 from services.tools.file_tools import StateFileToolInput, execute_state_file_tool
 from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
 from services.tools.registry import ToolExecutionResult
-from services.tools.shell import ShellToolInput, ShellToolOutput, execute_shell
+from services.tools.shell import ShellToolInput, execute_shell
 from services.tools.task_tool import TaskToolInput, execute_task_tool
 from services.tools.think_tool import execute_think_tool
 from services.tools.todo_tools import execute_state_todo_tool
 from services.tools.web_search import (
-    WebSearchInput,
     build_web_search_executor,
     execute_web_search,
 )
@@ -60,7 +58,6 @@ class TestShellToolInput:
         """Blocked patterns are caught even when the base command is allowed."""
         with pytest.raises(ValidationError, match="metacharacter|Blocked pattern"):
             ShellToolInput(command="python -c 'import os; os.system(\"rm -rf /\")'")
-
 
     def test_rejects_pipe_metacharacter(self):
         with pytest.raises(ValidationError, match="metacharacter"):
@@ -188,11 +185,13 @@ class TestExecuteFileIO:
         ws = tmp_path / "workspace"
         ws.mkdir()
         monkeypatch.setenv("WORKSPACE_DIR", str(ws))
-        result = execute_file_io({
-            "path": str(ws / "output.txt"),
-            "operation": "write",
-            "content": "written content",
-        })
+        result = execute_file_io(
+            {
+                "path": str(ws / "output.txt"),
+                "operation": "write",
+                "content": "written content",
+            }
+        )
         assert (ws / "output.txt").read_text() == "written content"
 
     def test_boundary_violation_surfaces_validation_class(self, tmp_path, monkeypatch):
@@ -203,10 +202,12 @@ class TestExecuteFileIO:
         ws = tmp_path / "workspace"
         ws.mkdir()
         monkeypatch.setenv("WORKSPACE_DIR", str(ws))
-        result = execute_file_io({
-            "path": "/workspace/nope.txt",  # literal /workspace, outside the real boundary
-            "operation": "read",
-        })
+        result = execute_file_io(
+            {
+                "path": "/workspace/nope.txt",  # literal /workspace, outside the real boundary
+                "operation": "read",
+            }
+        )
         assert isinstance(result, ToolExecutionResult)
         assert result.ok is False
         assert result.error_class == "validation"
@@ -218,10 +219,12 @@ class TestExecuteFileIO:
         ws = tmp_path / "workspace"
         ws.mkdir()
         monkeypatch.setenv("WORKSPACE_DIR", str(ws))
-        result = execute_file_io({
-            "path": str(ws / "missing.txt"),  # inside boundary, but absent
-            "operation": "read",
-        })
+        result = execute_file_io(
+            {
+                "path": str(ws / "missing.txt"),  # inside boundary, but absent
+                "operation": "read",
+            }
+        )
         # A plain "Error:" string (coerced by the registry to ok=False,
         # error_class=None -> tool_reported). Not a validation result.
         if isinstance(result, ToolExecutionResult):
@@ -242,24 +245,28 @@ class TestToolRegistry:
         def fake_executor(args):
             return f"executed with {args}"
 
-        registry = ToolRegistry({
-            "fake": ToolDefinition(
-                executor=fake_executor,
-                schema=ShellToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "fake": ToolDefinition(
+                    executor=fake_executor,
+                    schema=ShellToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         result = registry.execute("fake", {"x": 1})
         assert "executed with" in result
 
     def test_execute_with_result_wraps_string_executor(self):
-        registry = ToolRegistry({
-            "fake": ToolDefinition(
-                executor=lambda args: "ok",
-                schema=ShellToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "fake": ToolDefinition(
+                    executor=lambda args: "ok",
+                    schema=ShellToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         result = registry.execute_with_result("fake", {})
         assert result.output == "ok"
         assert result.ok is True
@@ -273,13 +280,15 @@ class TestToolRegistry:
                 state_delta={"files": {"notes.txt": "hello"}},
             )
 
-        registry = ToolRegistry({
-            "fake": ToolDefinition(
-                executor=_structured,
-                schema=ShellToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "fake": ToolDefinition(
+                    executor=_structured,
+                    schema=ShellToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         result = registry.execute_with_result("fake", {})
         assert result.output == "wrote file"
         assert result.state_delta == {"files": {"notes.txt": "hello"}}
@@ -290,60 +299,72 @@ class TestToolRegistry:
             registry.execute("nonexistent", {})
 
     def test_is_cacheable(self):
-        registry = ToolRegistry({
-            "cached": ToolDefinition(
-                executor=lambda a: "",
-                schema=ShellToolInput,
-                cacheable=True,
-            ),
-            "uncached": ToolDefinition(
-                executor=lambda a: "",
-                schema=ShellToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "cached": ToolDefinition(
+                    executor=lambda a: "",
+                    schema=ShellToolInput,
+                    cacheable=True,
+                ),
+                "uncached": ToolDefinition(
+                    executor=lambda a: "",
+                    schema=ShellToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         assert registry.is_cacheable("cached") is True
         assert registry.is_cacheable("uncached") is False
 
     def test_has_known_tool(self):
-        registry = ToolRegistry({
-            "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
-        })
+        registry = ToolRegistry(
+            {
+                "shell": ToolDefinition(
+                    executor=execute_shell, schema=ShellToolInput, cacheable=False
+                ),
+            }
+        )
         assert registry.has("shell") is True
         assert registry.has("nonexistent") is False
 
     def test_get_schemas(self):
-        registry = ToolRegistry({
-            "shell": ToolDefinition(
-                executor=execute_shell,
-                schema=ShellToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "shell": ToolDefinition(
+                    executor=execute_shell,
+                    schema=ShellToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         schemas = registry.get_schemas()
         assert len(schemas) == 1
         assert schemas[0]["name"] == "shell"
 
     def test_get_schemas_hides_internal_state_fields(self):
-        registry = ToolRegistry({
-            "state_file": ToolDefinition(
-                executor=execute_state_file_tool,
-                schema=StateFileToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "state_file": ToolDefinition(
+                    executor=execute_state_file_tool,
+                    schema=StateFileToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         schemas = registry.get_schemas()
         props = schemas[0]["parameters"]["properties"]
         assert "_state" not in props
 
     def test_get_schemas_hides_task_internal_fields(self):
-        registry = ToolRegistry({
-            "task": ToolDefinition(
-                executor=lambda _args: "ok",
-                schema=TaskToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "task": ToolDefinition(
+                    executor=lambda _args: "ok",
+                    schema=TaskToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         schemas = registry.get_schemas()
         props = schemas[0]["parameters"]["properties"]
         assert "_state" not in props

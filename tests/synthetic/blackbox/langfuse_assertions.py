@@ -79,9 +79,7 @@ def _get_langfuse_client():
     )
 
     if not public_key or not secret_key:
-        raise RuntimeError(
-            "LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set"
-        )
+        raise RuntimeError("LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY must be set")
 
     return Langfuse(public_key=public_key, secret_key=secret_key, host=host)
 
@@ -102,7 +100,9 @@ def poll_trace(
         try:
             trace = client.api.trace.get(trace_id)
             if trace and trace.id:
-                return trace.__dict__ if hasattr(trace, "__dict__") else {"id": trace.id}
+                return (
+                    trace.__dict__ if hasattr(trace, "__dict__") else {"id": trace.id}
+                )
         except Exception:
             pass
         if attempt < max_attempts - 1:
@@ -229,16 +229,16 @@ def assert_observations_present(
             )
             level_match = True
             if exp.level != "DEFAULT":
-                level_match = any(
-                    _get_obs_level(obs) == exp.level for obs in matching
-                )
+                level_match = any(_get_obs_level(obs) == exp.level for obs in matching)
 
             if type_match and level_match:
-                results.append(AssertionResult(
-                    passed=True,
-                    description=f"Observation '{exp.name}' (type={exp.observation_type}, "
-                    f"level={exp.level}) present",
-                ))
+                results.append(
+                    AssertionResult(
+                        passed=True,
+                        description=f"Observation '{exp.name}' (type={exp.observation_type}, "
+                        f"level={exp.level}) present",
+                    )
+                )
             else:
                 details_parts = []
                 if not type_match:
@@ -251,17 +251,21 @@ def assert_observations_present(
                     details_parts.append(
                         f"expected level={exp.level}, got {actual_levels}"
                     )
-                results.append(AssertionResult(
-                    passed=False,
-                    description=f"Observation '{exp.name}' type/level mismatch",
-                    details="; ".join(details_parts),
-                ))
+                results.append(
+                    AssertionResult(
+                        passed=False,
+                        description=f"Observation '{exp.name}' type/level mismatch",
+                        details="; ".join(details_parts),
+                    )
+                )
         else:
-            results.append(AssertionResult(
-                passed=False,
-                description=f"Observation '{exp.name}' MISSING from trace",
-                details=f"Found observations: {sorted(obs_names)}",
-            ))
+            results.append(
+                AssertionResult(
+                    passed=False,
+                    description=f"Observation '{exp.name}' MISSING from trace",
+                    details=f"Found observations: {sorted(obs_names)}",
+                )
+            )
 
     return results
 
@@ -294,16 +298,20 @@ def assert_no_redacted_content(
 
     for forbidden in forbidden_strings:
         if forbidden in all_metadata_str:
-            results.append(AssertionResult(
-                passed=False,
-                description=f"REDACTION FAILURE: '{forbidden[:30]}...' found in trace",
-                details="Raw PII/API key leaked to Langfuse (input/output/metadata)",
-            ))
+            results.append(
+                AssertionResult(
+                    passed=False,
+                    description=f"REDACTION FAILURE: '{forbidden[:30]}...' found in trace",
+                    details="Raw PII/API key leaked to Langfuse (input/output/metadata)",
+                )
+            )
         else:
-            results.append(AssertionResult(
-                passed=True,
-                description=f"Redacted: '{forbidden[:30]}...' NOT in trace bodies",
-            ))
+            results.append(
+                AssertionResult(
+                    passed=True,
+                    description=f"Redacted: '{forbidden[:30]}...' NOT in trace bodies",
+                )
+            )
 
     return results
 
@@ -314,10 +322,7 @@ def assert_compliance_score(
 ) -> AssertionResult:
     """Assert hash_chain_valid score matches expectation."""
     scores = fetch_trace_scores(trace_id)
-    chain_scores = [
-        s for s in scores
-        if _get_score_name(s) == "hash_chain_valid"
-    ]
+    chain_scores = [s for s in scores if _get_score_name(s) == "hash_chain_valid"]
 
     if not chain_scores:
         return AssertionResult(
@@ -347,9 +352,9 @@ def assert_dataset_item_exists(
     """Assert that a dataset item exists for this trace in the expected dataset."""
     items = fetch_dataset_items(expected.dataset_name)
     matching = [
-        item for item in items
-        if _get_item_id(item) == trace_id
-        or _item_has_workflow_id(item, trace_id)
+        item
+        for item in items
+        if _get_item_id(item) == trace_id or _item_has_workflow_id(item, trace_id)
     ]
 
     if matching:
@@ -411,7 +416,14 @@ def verify_scenario(
 AUDIT_DATASET = "agent-compliance-audit"
 INCIDENT_DATASET = "agent-incident-replay"
 
-AUDIT_SCENARIOS = {ScenarioID.S1, ScenarioID.S2, ScenarioID.S3, ScenarioID.S4, ScenarioID.S6, ScenarioID.S8}
+AUDIT_SCENARIOS = {
+    ScenarioID.S1,
+    ScenarioID.S2,
+    ScenarioID.S3,
+    ScenarioID.S4,
+    ScenarioID.S6,
+    ScenarioID.S8,
+}
 INCIDENT_SCENARIOS = {ScenarioID.S5}
 
 
@@ -429,13 +441,9 @@ class ComplianceDatasetReport:
     @property
     def summary(self) -> str:
         total = len(self.audit_results) + len(self.incident_results)
-        passed = sum(
-            1 for r in self.audit_results + self.incident_results if r.passed
-        )
+        passed = sum(1 for r in self.audit_results + self.incident_results if r.passed)
         status = "PASS" if self.all_passed else "FAIL"
-        return (
-            f"[{status}] Phase 5 Compliance Datasets: {passed}/{total} checks passed"
-        )
+        return f"[{status}] Phase 5 Compliance Datasets: {passed}/{total} checks passed"
 
 
 def verify_compliance_datasets(
@@ -450,7 +458,7 @@ def verify_compliance_datasets(
     Returns:
         ComplianceDatasetReport with per-item pass/fail results.
     """
-    from tests.synthetic.blackbox.dataset import ALL_SCENARIOS, ScenarioID
+    from tests.synthetic.blackbox.dataset import ALL_SCENARIOS
 
     report = ComplianceDatasetReport()
 
@@ -462,27 +470,31 @@ def verify_compliance_datasets(
         trace_ids_for_scenario = _resolve_trace_ids(trace_map, sid_str)
 
         if not trace_ids_for_scenario:
-            report.audit_results.append(AssertionResult(
-                passed=False,
-                description=f"{sid_str}: No trace_id available (scenario not run?)",
-            ))
+            report.audit_results.append(
+                AssertionResult(
+                    passed=False,
+                    description=f"{sid_str}: No trace_id available (scenario not run?)",
+                )
+            )
             continue
 
         scenario = ALL_SCENARIOS[scenario_id]
 
         for tid in trace_ids_for_scenario:
-            found = any(
-                _item_matches(item, tid) for item in audit_items
-            )
-            report.audit_results.append(AssertionResult(
-                passed=found,
-                description=(
-                    f"{sid_str}: Dataset item in '{AUDIT_DATASET}' for trace {tid}"
+            found = any(_item_matches(item, tid) for item in audit_items)
+            report.audit_results.append(
+                AssertionResult(
+                    passed=found,
+                    description=(
+                        f"{sid_str}: Dataset item in '{AUDIT_DATASET}' for trace {tid}"
+                        if found
+                        else f"{sid_str}: Dataset item MISSING in '{AUDIT_DATASET}' for trace {tid}"
+                    ),
+                    details=""
                     if found
-                    else f"{sid_str}: Dataset item MISSING in '{AUDIT_DATASET}' for trace {tid}"
-                ),
-                details="" if found else f"{len(audit_items)} total items in dataset",
-            ))
+                    else f"{len(audit_items)} total items in dataset",
+                )
+            )
 
             scores = fetch_trace_scores(tid)
             chain_scores = [
@@ -491,44 +503,52 @@ def verify_compliance_datasets(
             if chain_scores:
                 val = _get_score_value(chain_scores[0])
                 expected = scenario.compliance.hash_chain_valid_score
-                report.audit_results.append(AssertionResult(
-                    passed=val == expected,
-                    description=(
-                        f"{sid_str}: hash_chain_valid={val} "
-                        f"(expected {expected}) for trace {tid}"
-                    ),
-                ))
+                report.audit_results.append(
+                    AssertionResult(
+                        passed=val == expected,
+                        description=(
+                            f"{sid_str}: hash_chain_valid={val} "
+                            f"(expected {expected}) for trace {tid}"
+                        ),
+                    )
+                )
             else:
-                report.audit_results.append(AssertionResult(
-                    passed=False,
-                    description=f"{sid_str}: hash_chain_valid score MISSING for trace {tid}",
-                    details=f"Found scores: {[_get_score_name(s) for s in scores]}",
-                ))
+                report.audit_results.append(
+                    AssertionResult(
+                        passed=False,
+                        description=f"{sid_str}: hash_chain_valid score MISSING for trace {tid}",
+                        details=f"Found scores: {[_get_score_name(s) for s in scores]}",
+                    )
+                )
 
     for scenario_id in INCIDENT_SCENARIOS:
         sid_str = scenario_id.value
         trace_ids_for_scenario = _resolve_trace_ids(trace_map, sid_str)
 
         if not trace_ids_for_scenario:
-            report.incident_results.append(AssertionResult(
-                passed=False,
-                description=f"{sid_str}: No trace_id available (scenario not run?)",
-            ))
+            report.incident_results.append(
+                AssertionResult(
+                    passed=False,
+                    description=f"{sid_str}: No trace_id available (scenario not run?)",
+                )
+            )
             continue
 
         for tid in trace_ids_for_scenario:
-            found = any(
-                _item_matches(item, tid) for item in incident_items
-            )
-            report.incident_results.append(AssertionResult(
-                passed=found,
-                description=(
-                    f"{sid_str}: Dataset item in '{INCIDENT_DATASET}' for trace {tid}"
+            found = any(_item_matches(item, tid) for item in incident_items)
+            report.incident_results.append(
+                AssertionResult(
+                    passed=found,
+                    description=(
+                        f"{sid_str}: Dataset item in '{INCIDENT_DATASET}' for trace {tid}"
+                        if found
+                        else f"{sid_str}: Dataset item MISSING in '{INCIDENT_DATASET}' for trace {tid}"
+                    ),
+                    details=""
                     if found
-                    else f"{sid_str}: Dataset item MISSING in '{INCIDENT_DATASET}' for trace {tid}"
-                ),
-                details="" if found else f"{len(incident_items)} total items in dataset",
-            ))
+                    else f"{len(incident_items)} total items in dataset",
+                )
+            )
 
     return report
 
@@ -581,20 +601,24 @@ def assert_broken_chain_bundle(bundle: dict[str, Any]) -> list[AssertionResult]:
     results: list[AssertionResult] = []
 
     chain_valid = bundle.get("hash_chain_valid")
-    results.append(AssertionResult(
-        passed=chain_valid is False,
-        description=f"hash_chain_valid is False (got {chain_valid!r})",
-    ))
+    results.append(
+        AssertionResult(
+            passed=chain_valid is False,
+            description=f"hash_chain_valid is False (got {chain_valid!r})",
+        )
+    )
 
     broken_at = bundle.get("broken_at_event_id")
-    results.append(AssertionResult(
-        passed=bool(broken_at),
-        description=(
-            f"broken_at_event_id populated ({broken_at!r})"
-            if broken_at
-            else "broken_at_event_id MISSING on a broken chain"
-        ),
-    ))
+    results.append(
+        AssertionResult(
+            passed=bool(broken_at),
+            description=(
+                f"broken_at_event_id populated ({broken_at!r})"
+                if broken_at
+                else "broken_at_event_id MISSING on a broken chain"
+            ),
+        )
+    )
     return results
 
 
@@ -608,17 +632,21 @@ def assert_rejected_outcome(
     summary = bundle.get("summary") or {}
 
     outcome = summary.get("outcome")
-    results.append(AssertionResult(
-        passed=outcome == "rejected",
-        description=f"summary.outcome == 'rejected' (got {outcome!r})",
-    ))
+    results.append(
+        AssertionResult(
+            passed=outcome == "rejected",
+            description=f"summary.outcome == 'rejected' (got {outcome!r})",
+        )
+    )
 
     if expected_reason is not None:
         reason = summary.get("reason")
-        results.append(AssertionResult(
-            passed=reason == expected_reason,
-            description=f"summary.reason == {expected_reason!r} (got {reason!r})",
-        ))
+        results.append(
+            AssertionResult(
+                passed=reason == expected_reason,
+                description=f"summary.reason == {expected_reason!r} (got {reason!r})",
+            )
+        )
     return results
 
 
@@ -631,28 +659,33 @@ def assert_error_trace_present(
     results: list[AssertionResult] = []
 
     error_events = [
-        ev for ev in _bundle_events(bundle)
-        if ev.get("event_type") == "error_occurred"
+        ev for ev in _bundle_events(bundle) if ev.get("event_type") == "error_occurred"
     ]
-    results.append(AssertionResult(
-        passed=len(error_events) >= 1,
-        description=f"error.occurred present ({len(error_events)} event(s))",
-    ))
+    results.append(
+        AssertionResult(
+            passed=len(error_events) >= 1,
+            description=f"error.occurred present ({len(error_events)} event(s))",
+        )
+    )
 
     error_type = _last_terminal_details(bundle).get("error_type")
-    results.append(AssertionResult(
-        passed=error_type is not None,
-        description=f"terminal error_type non-null (got {error_type!r})",
-    ))
+    results.append(
+        AssertionResult(
+            passed=error_type is not None,
+            description=f"terminal error_type non-null (got {error_type!r})",
+        )
+    )
 
     if expected_error_types:
-        results.append(AssertionResult(
-            passed=error_type in expected_error_types,
-            description=(
-                f"terminal error_type in {list(expected_error_types)} "
-                f"(got {error_type!r})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=error_type in expected_error_types,
+                description=(
+                    f"terminal error_type in {list(expected_error_types)} "
+                    f"(got {error_type!r})"
+                ),
+            )
+        )
     return results
 
 
@@ -670,14 +703,16 @@ def assert_bundle_event_types(
     present = {ev.get("event_type") for ev in _bundle_events(bundle)}
     for exp in expected:
         event_type = exp.name.replace(".", "_")
-        results.append(AssertionResult(
-            passed=event_type in present,
-            description=(
-                f"event_type '{event_type}' present"
-                if event_type in present
-                else f"event_type '{event_type}' MISSING (have {sorted(present)})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=event_type in present,
+                description=(
+                    f"event_type '{event_type}' present"
+                    if event_type in present
+                    else f"event_type '{event_type}' MISSING (have {sorted(present)})"
+                ),
+            )
+        )
     return results
 
 
@@ -724,12 +759,18 @@ def fetch_compliance_bundle(
 
 def _bundle_phase_events(bundle: dict[str, Any]) -> list[dict[str, Any]]:
     events = bundle.get("phase_events")
-    return [e for e in events if isinstance(e, dict)] if isinstance(events, list) else []
+    return (
+        [e for e in events if isinstance(e, dict)] if isinstance(events, list) else []
+    )
 
 
 def _bundle_phase_decisions(bundle: dict[str, Any]) -> list[dict[str, Any]]:
     decisions = bundle.get("phase_decisions")
-    return [d for d in decisions if isinstance(d, dict)] if isinstance(decisions, list) else []
+    return (
+        [d for d in decisions if isinstance(d, dict)]
+        if isinstance(decisions, list)
+        else []
+    )
 
 
 def _phase_ends(bundle: dict[str, Any]) -> list[dict[str, Any]]:
@@ -741,15 +782,19 @@ def assert_phase_schema_versions(bundle: dict[str, Any]) -> list[AssertionResult
     is still ``'2'`` (phase versioning never forces a bundle bump)."""
     results: list[AssertionResult] = []
     plv = bundle.get("phase_log_schema_version")
-    results.append(AssertionResult(
-        passed=plv == "1",
-        description=f"phase_log_schema_version == '1' (got {plv!r})",
-    ))
+    results.append(
+        AssertionResult(
+            passed=plv == "1",
+            description=f"phase_log_schema_version == '1' (got {plv!r})",
+        )
+    )
     bsv = bundle.get("bundle_schema_version")
-    results.append(AssertionResult(
-        passed=bsv == "2",
-        description=f"bundle_schema_version == '2' (got {bsv!r})",
-    ))
+    results.append(
+        AssertionResult(
+            passed=bsv == "2",
+            description=f"bundle_schema_version == '2' (got {bsv!r})",
+        )
+    )
     return results
 
 
@@ -763,27 +808,33 @@ def assert_phase_ends_present(
     ended = {e.get("phase") for e in ends}
     for phase in expected_phases:
         present = phase in ended
-        results.append(AssertionResult(
-            passed=present,
-            description=(
-                f"phase_end for '{phase}' present"
-                if present
-                else f"phase_end for '{phase}' MISSING (have {sorted(ended)})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=present,
+                description=(
+                    f"phase_end for '{phase}' present"
+                    if present
+                    else f"phase_end for '{phase}' MISSING (have {sorted(ended)})"
+                ),
+            )
+        )
     # Durations are non-negative where present.
     bad_durations = [
-        e for e in ends
-        if "duration_ms" in e and (not isinstance(e["duration_ms"], int) or e["duration_ms"] < 0)
+        e
+        for e in ends
+        if "duration_ms" in e
+        and (not isinstance(e["duration_ms"], int) or e["duration_ms"] < 0)
     ]
-    results.append(AssertionResult(
-        passed=not bad_durations,
-        description=(
-            "all phase_end duration_ms >= 0"
-            if not bad_durations
-            else f"{len(bad_durations)} phase_end row(s) with invalid duration_ms"
-        ),
-    ))
+    results.append(
+        AssertionResult(
+            passed=not bad_durations,
+            description=(
+                "all phase_end duration_ms >= 0"
+                if not bad_durations
+                else f"{len(bad_durations)} phase_end row(s) with invalid duration_ms"
+            ),
+        )
+    )
     return results
 
 
@@ -796,14 +847,16 @@ def assert_no_phase_ends(
     ended = {e.get("phase") for e in _phase_ends(bundle)}
     for phase in forbidden_phases:
         absent = phase not in ended
-        results.append(AssertionResult(
-            passed=absent,
-            description=(
-                f"no '{phase}' phase_end (as expected)"
-                if absent
-                else f"UNEXPECTED '{phase}' phase_end present"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=absent,
+                description=(
+                    f"no '{phase}' phase_end (as expected)"
+                    if absent
+                    else f"UNEXPECTED '{phase}' phase_end present"
+                ),
+            )
+        )
     return results
 
 
@@ -818,14 +871,16 @@ def assert_phase_outcomes(
         found = any(
             e.get("phase") == phase and e.get("outcome") == outcome for e in ends
         )
-        results.append(AssertionResult(
-            passed=found,
-            description=(
-                f"phase '{phase}' ended with outcome '{outcome}'"
-                if found
-                else f"phase '{phase}' never ended with outcome '{outcome}'"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=found,
+                description=(
+                    f"phase '{phase}' ended with outcome '{outcome}'"
+                    if found
+                    else f"phase '{phase}' never ended with outcome '{outcome}'"
+                ),
+            )
+        )
     return results
 
 
@@ -840,22 +895,26 @@ def assert_completion_fires_once(
     completion_ends = [e for e in _phase_ends(bundle) if e.get("phase") == "completion"]
 
     if expected_count is not None:
-        results.append(AssertionResult(
-            passed=len(completion_ends) == expected_count,
-            description=(
-                f"COMPLETION phase_end count == {expected_count} "
-                f"(got {len(completion_ends)})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=len(completion_ends) == expected_count,
+                description=(
+                    f"COMPLETION phase_end count == {expected_count} "
+                    f"(got {len(completion_ends)})"
+                ),
+            )
+        )
 
     if expected_outcome is not None:
         outcomes = {e.get("outcome") for e in completion_ends}
-        results.append(AssertionResult(
-            passed=outcomes == {expected_outcome},
-            description=(
-                f"COMPLETION outcome == '{expected_outcome}' (got {sorted(outcomes)})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=outcomes == {expected_outcome},
+                description=(
+                    f"COMPLETION outcome == '{expected_outcome}' (got {sorted(outcomes)})"
+                ),
+            )
+        )
     return results
 
 
@@ -867,27 +926,31 @@ def assert_routing_step_counts(
     ``phase_end`` (step 0 and step 1 are independent, not one overwritten span)."""
     results: list[AssertionResult] = []
     routing_steps = {
-        e.get("step_count")
-        for e in _phase_ends(bundle)
-        if e.get("phase") == "routing"
+        e.get("step_count") for e in _phase_ends(bundle) if e.get("phase") == "routing"
     }
     for sc in expected_step_counts:
         present = sc in routing_steps
-        results.append(AssertionResult(
-            passed=present,
-            description=(
-                f"routing phase_end at step_count={sc} present"
-                if present
-                else f"routing phase_end at step_count={sc} MISSING "
-                f"(have {sorted(s for s in routing_steps if s is not None)})"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=present,
+                description=(
+                    f"routing phase_end at step_count={sc} present"
+                    if present
+                    else f"routing phase_end at step_count={sc} MISSING "
+                    f"(have {sorted(s for s in routing_steps if s is not None)})"
+                ),
+            )
+        )
     return results
 
 
 def assert_unique_decision_ids(bundle: dict[str, Any]) -> AssertionResult:
     """No duplicate ``decision_id`` across ``phase_decisions[]`` in a workflow."""
-    ids = [d.get("decision_id") for d in _bundle_phase_decisions(bundle) if d.get("decision_id")]
+    ids = [
+        d.get("decision_id")
+        for d in _bundle_phase_decisions(bundle)
+        if d.get("decision_id")
+    ]
     unique = len(ids) == len(set(ids))
     return AssertionResult(
         passed=unique,
@@ -913,12 +976,9 @@ def assert_decision_id_join(bundle: dict[str, Any]) -> AssertionResult:
     decision_id = routing[0]["decision_id"]
 
     model_selected = [
-        ev for ev in _bundle_events(bundle)
-        if ev.get("event_type") == "model_selected"
+        ev for ev in _bundle_events(bundle) if ev.get("event_type") == "model_selected"
     ]
-    event_ids = {
-        (ev.get("details") or {}).get("decision_id") for ev in model_selected
-    }
+    event_ids = {(ev.get("details") or {}).get("decision_id") for ev in model_selected}
     matched = decision_id in event_ids
     return AssertionResult(
         passed=matched,
@@ -948,14 +1008,16 @@ def assert_no_phase_pii(
     results: list[AssertionResult] = []
     for forbidden in forbidden_strings:
         leaked = forbidden in serialized
-        results.append(AssertionResult(
-            passed=not leaked,
-            description=(
-                f"phase track redacted: '{forbidden[:30]}...' NOT present"
-                if not leaked
-                else f"REDACTION FAILURE: '{forbidden[:30]}...' in phase track"
-            ),
-        ))
+        results.append(
+            AssertionResult(
+                passed=not leaked,
+                description=(
+                    f"phase track redacted: '{forbidden[:30]}...' NOT present"
+                    if not leaked
+                    else f"REDACTION FAILURE: '{forbidden[:30]}...' in phase track"
+                ),
+            )
+        )
     return results
 
 
@@ -973,14 +1035,21 @@ def verify_phase_expectation(
         results.extend(assert_no_phase_ends(bundle, phase.forbidden_phase_ends))
     if phase.expected_phase_outcomes:
         results.extend(assert_phase_outcomes(bundle, phase.expected_phase_outcomes))
-    if phase.expected_completion_count is not None or phase.expected_completion_outcome is not None:
-        results.extend(assert_completion_fires_once(
-            bundle,
-            expected_count=phase.expected_completion_count,
-            expected_outcome=phase.expected_completion_outcome,
-        ))
+    if (
+        phase.expected_completion_count is not None
+        or phase.expected_completion_outcome is not None
+    ):
+        results.extend(
+            assert_completion_fires_once(
+                bundle,
+                expected_count=phase.expected_completion_count,
+                expected_outcome=phase.expected_completion_outcome,
+            )
+        )
     if phase.expected_routing_step_counts:
-        results.extend(assert_routing_step_counts(bundle, phase.expected_routing_step_counts))
+        results.extend(
+            assert_routing_step_counts(bundle, phase.expected_routing_step_counts)
+        )
     if phase.require_unique_decision_ids:
         results.append(assert_unique_decision_ids(bundle))
     if phase.check_decision_id_join:
@@ -1025,14 +1094,20 @@ def verify_phase_scenario(
         if bundle is None:
             bundle = fetch_compliance_bundle(
                 trace_id,
-                dataset_names=(scenario.compliance.dataset_name, AUDIT_DATASET, INCIDENT_DATASET),
+                dataset_names=(
+                    scenario.compliance.dataset_name,
+                    AUDIT_DATASET,
+                    INCIDENT_DATASET,
+                ),
             )
         if bundle is None:
-            verification.assertions.append(AssertionResult(
-                passed=False,
-                description="compliance bundle (dataset item input) NOT found",
-                details="phase-track assertions skipped — is the relay/publisher running?",
-            ))
+            verification.assertions.append(
+                AssertionResult(
+                    passed=False,
+                    description="compliance bundle (dataset item input) NOT found",
+                    details="phase-track assertions skipped — is the relay/publisher running?",
+                )
+            )
         else:
             verification.assertions.extend(
                 verify_phase_expectation(bundle, scenario.phase)
@@ -1053,10 +1128,10 @@ def print_ui_checklist(scenario: Scenario, trace_id: str) -> str:
     """
     lines = [
         f"## UI Checklist — {scenario.id.value}: {scenario.description[:60]}",
-        f"",
+        "",
         f"**Trace ID:** `{trace_id}`",
         f"**Langfuse URL:** $LANGFUSE_HOST/trace/{trace_id}",
-        f"",
+        "",
         "### Observations to verify in Langfuse UI:",
         "",
     ]
@@ -1082,11 +1157,13 @@ def print_ui_checklist(scenario: Scenario, trace_id: str) -> str:
             lines.append(f"- [ ] `{secret[:40]}...` is NOT visible")
 
     if scenario.phase is not None:
-        lines.extend(_phase_checklist_lines(scenario.phase, scenario.compliance.dataset_name))
+        lines.extend(
+            _phase_checklist_lines(scenario.phase, scenario.compliance.dataset_name)
+        )
 
     if scenario.notes:
         lines.append("")
-        lines.append(f"### Notes:")
+        lines.append("### Notes:")
         lines.append(f"  {scenario.notes}")
 
     checklist = "\n".join(lines)
@@ -1120,7 +1197,9 @@ def _phase_checklist_lines(phase: PhaseExpectation, dataset_name: str) -> list[s
             f"- [ ] `completion` `phase_end` `outcome` == `{phase.expected_completion_outcome}`"
         )
     for sc in phase.expected_routing_step_counts:
-        lines.append(f"- [ ] independent `routing` `phase_end` at `step_count` == `{sc}`")
+        lines.append(
+            f"- [ ] independent `routing` `phase_end` at `step_count` == `{sc}`"
+        )
     if phase.require_unique_decision_ids:
         lines.append("- [ ] every `phase_decisions[]` row has a distinct `decision_id`")
     if phase.check_decision_id_join:
@@ -1128,7 +1207,9 @@ def _phase_checklist_lines(phase: PhaseExpectation, dataset_name: str) -> list[s
             "- [ ] routing `decision_id` matches `model.selected` `details.decision_id`"
         )
     for secret in phase.phase_redaction_forbidden:
-        lines.append(f"- [ ] `{secret[:40]}...` is NOT in `phase_events[]`/`phase_decisions[]`")
+        lines.append(
+            f"- [ ] `{secret[:40]}...` is NOT in `phase_events[]`/`phase_decisions[]`"
+        )
     return lines
 
 

@@ -82,31 +82,42 @@ class TestClassifyNoProgress:
 
     def test_no_signal_is_none(self) -> None:
         assert (
-            classify_no_progress([], [], tool_threshold=3, prose_threshold=3)
-            == "none"
+            classify_no_progress([], [], tool_threshold=3, prose_threshold=3) == "none"
         )
 
 
 class TestParseLlmResponse:
     def test_detects_tool_call(self):
-        msg = type("Msg", (), {
-            "tool_calls": [{"name": "shell", "args": {"command": "ls"}}],
-            "content": "",
-        })()
+        msg = type(
+            "Msg",
+            (),
+            {
+                "tool_calls": [{"name": "shell", "args": {"command": "ls"}}],
+                "content": "",
+            },
+        )()
         assert parse_llm_response(msg) == "tool_call"
 
     def test_detects_final_answer(self):
-        msg = type("Msg", (), {
-            "tool_calls": [],
-            "content": "FINAL ANSWER: The answer is 42",
-        })()
+        msg = type(
+            "Msg",
+            (),
+            {
+                "tool_calls": [],
+                "content": "FINAL ANSWER: The answer is 42",
+            },
+        )()
         assert parse_llm_response(msg) == "final_answer"
 
     def test_detects_text_as_final_answer(self):
-        msg = type("Msg", (), {
-            "tool_calls": [],
-            "content": "The capital of France is Paris.",
-        })()
+        msg = type(
+            "Msg",
+            (),
+            {
+                "tool_calls": [],
+                "content": "The capital of France is Paris.",
+            },
+        )()
         assert parse_llm_response(msg) == "final_answer"
 
 
@@ -140,9 +151,7 @@ class TestClassifyOutcome:
         assert rec.step == 3
 
     def test_terminal_when_no_status_code(self):
-        outcome, rec = classify_outcome(
-            "", RuntimeError("boom"), model="x"
-        )
+        outcome, rec = classify_outcome("", RuntimeError("boom"), model="x")
         assert outcome == "failure"
         assert rec is not None
         assert rec.error_type == "terminal"
@@ -169,7 +178,9 @@ class TestClassifyOutcome:
         assert rec.step == 1
 
     def test_tool_error_for_file_io_path_validation(self):
-        err = Exception("Error: Path /etc/passwd is outside workspace boundary (/workspace)")
+        err = Exception(
+            "Error: Path /etc/passwd is outside workspace boundary (/workspace)"
+        )
         outcome, rec = classify_outcome("", err, model="m")
         assert rec is not None
         assert rec.error_type == "tool_error"
@@ -181,9 +192,7 @@ class TestClassifyOutcome:
 
     def test_timestamp_is_populated(self):
         before = time.time()
-        outcome, rec = classify_outcome(
-            "", _FakeHTTPError(429), model="m"
-        )
+        outcome, rec = classify_outcome("", _FakeHTTPError(429), model="m")
         after = time.time()
         assert rec is not None
         assert before <= rec.timestamp <= after
@@ -356,8 +365,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=5,
@@ -372,8 +383,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=6,
@@ -391,8 +404,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=3,
@@ -407,8 +422,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type=None,
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=4,
@@ -426,8 +443,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=3,
@@ -442,8 +461,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=4,
@@ -460,8 +481,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=2,
@@ -475,8 +498,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type="retryable",
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=0,
@@ -491,8 +516,10 @@ class TestCheckContinuationNoProgress:
             last_outcome="failure",
             last_error_type=None,
             agent_config=AgentConfig(
-                max_steps=20, max_cost_usd=1.0,
-                no_progress_repeat_threshold=3, no_progress_hard_limit=5,
+                max_steps=20,
+                max_cost_usd=1.0,
+                no_progress_repeat_threshold=3,
+                no_progress_hard_limit=5,
             ),
             has_pending_tool_result=True,
             repeated_tool_calls=5,
@@ -589,7 +616,9 @@ class TestEvaluateTaskOutcome:
             plan_steps=[],
             termination_reason="success",
             # trajectory text alone satisfies the keyword overlap
-            tool_results=[{"tool_output": "total population of the three cities is 42"}],
+            tool_results=[
+                {"tool_output": "total population of the three cities is 42"}
+            ],
         )
         assert result.outcome == "failed"  # empty answer is never a success
         assert result.goal_met is False, (

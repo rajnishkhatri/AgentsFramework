@@ -1,7 +1,7 @@
 # Tutorial 4: GuardRails for Validation and PII Detection
 
-**Duration:** ~25 minutes  
-**Level:** Intermediate  
+**Duration:** ~25 minutes
+**Level:** Intermediate
 **Prerequisites:** [Tutorial 1: Explainability Fundamentals](01_explainability_fundamentals.md)
 
 ---
@@ -39,7 +39,7 @@ In imperative validation, you write procedural code that explicitly checks each 
 def validate_invoice_output(output: dict) -> tuple[bool, list[str]]:
     """Traditional imperative validation."""
     errors = []
-    
+
     # Check required fields
     if "vendor_name" not in output:
         errors.append("Missing required field: vendor_name")
@@ -47,7 +47,7 @@ def validate_invoice_output(output: dict) -> tuple[bool, list[str]]:
         errors.append("Missing required field: invoice_number")
     if "total_amount" not in output:
         errors.append("Missing required field: total_amount")
-    
+
     # Check confidence range
     confidence = output.get("confidence")
     if confidence is not None:
@@ -55,25 +55,25 @@ def validate_invoice_output(output: dict) -> tuple[bool, list[str]]:
             errors.append(f"Confidence {confidence} below minimum 0.8")
         if confidence > 1.0:
             errors.append(f"Confidence {confidence} above maximum 1.0")
-    
+
     # Check for PII patterns
     output_str = str(output)
     import re
     ssn_pattern = r"\b\d{3}-\d{2}-\d{4}\b"
     if re.search(ssn_pattern, output_str):
         errors.append("Potential SSN detected in output")
-    
+
     cc_pattern = r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b"
     if re.search(cc_pattern, output_str):
         errors.append("Potential credit card detected in output")
-    
+
     # Check output length
     output_text = output.get("output", "")
     if len(output_text) < 10:
         errors.append("Output too short (minimum 10 characters)")
     if len(output_text) > 5000:
         errors.append("Output too long (maximum 5000 characters)")
-    
+
     return len(errors) == 0, errors
 
 # Usage
@@ -187,26 +187,26 @@ Consider how requirements change over time:
 def validate_invoice_v4(output, doc_type, region, customer_tier):
     errors = []
     warnings = []
-    
+
     # Original checks (Week 1-4)
     required = ["vendor_name"]
     if doc_type != "receipt":
         required.extend(["invoice_number", "total_amount"])
-    
+
     for field in required:
         if field not in output:
             errors.append(f"Missing: {field}")
-    
+
     # PII checks (Week 8)
     if region in ["EU", "CA"]:  # GDPR, CCPA
         if has_pii(output):
             errors.append("PII detected")
-    
+
     # Confidence checks (Week 12) - different per customer
     min_conf = 0.9 if customer_tier == "enterprise" else 0.8
     if output.get("confidence", 0) < min_conf:
         errors.append(f"Low confidence")
-    
+
     # ... 200 more lines of conditional logic
     return errors, warnings
 ```
@@ -491,8 +491,8 @@ Validates that all specified fields are present in the input data.
 ```python
 # Invoice extraction required fields
 invoice_fields = BuiltInValidators.required_fields([
-    "vendor_name", 
-    "invoice_number", 
+    "vendor_name",
+    "invoice_number",
     "total_amount"
 ])
 
@@ -662,7 +662,7 @@ from backend.explainability.guardrails import Constraint, Severity, FailAction
 
 class DomainValidators:
     """Custom validators for domain-specific use cases."""
-    
+
     @staticmethod
     def medical_code_format() -> Constraint:
         """Create constraint to validate ICD-10 medical codes."""
@@ -674,7 +674,7 @@ class DomainValidators:
             severity=Severity.ERROR,
             on_fail=FailAction.REJECT,
         )
-    
+
     @staticmethod
     def check_medical_code(
         data: dict, field: str = "output"
@@ -682,10 +682,10 @@ class DomainValidators:
         """Check value matches ICD-10 format (e.g., A00.0, B99.9, Z99)."""
         import re
         value = str(data.get(field, ""))
-        
+
         # ICD-10 pattern: letter + 2 digits + optional (dot + 1-2 digits)
         pattern = r"^[A-Z]\d{2}(\.\d{1,2})?$"
-        
+
         if re.match(pattern, value, re.IGNORECASE):
             return True, f"Valid ICD-10 code: {value}"
         return False, f"Invalid ICD-10 format: {value} (expected: A00.0 or B99)"
@@ -699,18 +699,18 @@ To use custom validators with `GuardRailValidator`, you need to add the check me
 # Option 1: Extend BuiltInValidators
 class ExtendedValidators(BuiltInValidators):
     """Extended validators with domain-specific checks."""
-    
+
     @staticmethod
     def check_medical_code(data: dict, field: str = "output") -> tuple[bool, str]:
         """Check ICD-10 medical code format."""
         import re
         value = str(data.get(field, ""))
         pattern = r"^[A-Z]\d{2}(\.\d{1,2})?$"
-        
+
         if re.match(pattern, value, re.IGNORECASE):
             return True, f"Valid ICD-10 code: {value}"
         return False, f"Invalid ICD-10 format: {value}"
-    
+
     @staticmethod
     def medical_code_format() -> Constraint:
         """Factory for medical code constraint."""
@@ -728,13 +728,13 @@ class ExtendedValidators(BuiltInValidators):
 ```python
 class FinancialValidators:
     """Validators for financial transaction processing."""
-    
+
     @staticmethod
     def currency_format(allowed_currencies: list[str] = None) -> Constraint:
         """Validate currency code format (ISO 4217)."""
         if allowed_currencies is None:
             allowed_currencies = ["USD", "EUR", "GBP", "JPY", "CAD"]
-        
+
         return Constraint(
             name="currency_format",
             description=f"Currency must be one of: {allowed_currencies}",
@@ -742,18 +742,18 @@ class FinancialValidators:
             params={"allowed": allowed_currencies},
             severity=Severity.ERROR,
         )
-    
+
     @staticmethod
     def check_currency(
         data: dict, allowed: list[str], field: str = "currency"
     ) -> tuple[bool, str]:
         """Check currency code is valid ISO 4217."""
         value = str(data.get(field, "")).upper()
-        
+
         if value in allowed:
             return True, f"Valid currency: {value}"
         return False, f"Invalid currency '{value}', expected one of: {allowed}"
-    
+
     @staticmethod
     def transaction_amount_range(
         min_amount: float = 0.01,
@@ -767,11 +767,11 @@ class FinancialValidators:
             params={"min_amount": min_amount, "max_amount": max_amount},
             severity=Severity.ERROR,
         )
-    
+
     @staticmethod
     def check_transaction_amount(
-        data: dict, 
-        min_amount: float, 
+        data: dict,
+        min_amount: float,
         max_amount: float,
         field: str = "amount"
     ) -> tuple[bool, str]:
@@ -780,12 +780,12 @@ class FinancialValidators:
             amount = float(data.get(field, 0))
         except (TypeError, ValueError):
             return False, f"Invalid amount format: {data.get(field)}"
-        
+
         if amount < min_amount:
             return False, f"Amount ${amount:.2f} below minimum ${min_amount:.2f}"
         if amount > max_amount:
             return False, f"Amount ${amount:.2f} exceeds maximum ${max_amount:.2f}"
-        
+
         return True, f"Valid amount: ${amount:.2f}"
 ```
 
@@ -931,27 +931,27 @@ guardrail = GuardRail(
 
 ```python
 def process_with_guardrails(
-    output: dict, 
+    output: dict,
     guardrail: GuardRail,
     validator: GuardRailValidator
 ) -> dict:
     """Process agent output with guardrail validation and action handling."""
-    
+
     result = validator.validate(output, guardrail)
-    
+
     if result.is_valid:
         return {"status": "accepted", "output": output}
-    
+
     # Handle based on action taken
     action = result.action_taken
-    
+
     if action == FailAction.REJECT:
         return {
             "status": "rejected",
             "reason": "Validation failed",
             "errors": [e.message for e in result.entries if not e.passed]
         }
-    
+
     elif action == FailAction.ESCALATE:
         return {
             "status": "pending_review",
@@ -959,21 +959,21 @@ def process_with_guardrails(
             "review_reason": "Low confidence or ambiguous output",
             "warnings": [e.message for e in result.entries if not e.passed]
         }
-    
+
     elif action == FailAction.LOG:
         # Log warnings but accept output
         logger.warning(f"Validation warnings: {result.total_warnings}")
         return {"status": "accepted_with_warnings", "output": output}
-    
+
     elif action == FailAction.RETRY:
         # Retry logic would go here
         return {"status": "retry_requested", "attempt": 1}
-    
+
     elif action == FailAction.FIX:
         # Apply fixes (e.g., redaction) - implementation specific
         fixed_output = apply_fixes(output, result.entries)
         return {"status": "fixed", "output": fixed_output}
-    
+
     return {"status": "unknown", "output": output}
 ```
 
@@ -1124,11 +1124,11 @@ Use traces to debug validation failures:
 ```python
 def debug_validation_failure(result: ValidationResult) -> None:
     """Print detailed debugging information for a failed validation."""
-    
+
     if result.is_valid:
         print("✓ Validation passed - no debugging needed")
         return
-    
+
     print("=" * 60)
     print(f"VALIDATION FAILURE DEBUG: {result.guardrail_name}")
     print("=" * 60)
@@ -1136,7 +1136,7 @@ def debug_validation_failure(result: ValidationResult) -> None:
     print(f"Total Warnings: {result.total_warnings}")
     print(f"Action Taken: {result.action_taken}")
     print(f"Input Hash: {result.input_hash[:32]}...")
-    
+
     print("\n--- Failed Constraints ---")
     for entry in result.entries:
         if not entry.passed:
@@ -1145,7 +1145,7 @@ def debug_validation_failure(result: ValidationResult) -> None:
             print(f"  Timestamp: {entry.timestamp}")
             if entry.input_excerpt:
                 print(f"  Input Sample: {entry.input_excerpt[:100]}...")
-    
+
     print("\n--- Passed Constraints ---")
     for entry in result.entries:
         if entry.passed:
@@ -1179,7 +1179,7 @@ This case study demonstrates implementing comprehensive PII detection and redact
 
 ```python
 from backend.explainability.guardrails import (
-    GuardRail, GuardRailValidator, BuiltInValidators, 
+    GuardRail, GuardRailValidator, BuiltInValidators,
     Constraint, Severity, FailAction, PromptGuardRail
 )
 from pathlib import Path
@@ -1234,7 +1234,7 @@ detection_results = {
 # Test each example
 for example in pii_examples:
     result = validator.validate({"output": example["text"]}, chatbot_pii_guardrail)
-    
+
     # Check each PII type in this example
     for pii_type in example["pii_types"]:
         if pii_type in detection_results:
@@ -1268,11 +1268,11 @@ from typing import Optional
 
 class ChatbotResponseValidator:
     """Validates chatbot responses before sending to customers."""
-    
+
     def __init__(self, storage_path: Path):
         self.validator = GuardRailValidator()
         self.storage_path = storage_path
-        
+
         # Main guardrail for chatbot responses
         self.response_guardrail = GuardRail(
             name="chatbot_response_validator",
@@ -1284,20 +1284,20 @@ class ChatbotResponseValidator:
             ],
             on_fail_default=FailAction.REJECT,
         )
-    
+
     def validate_response(
-        self, 
-        response: str, 
+        self,
+        response: str,
         customer_id: str,
         conversation_id: str
     ) -> dict:
         """Validate a chatbot response before delivery."""
-        
+
         result = self.validator.validate(
-            {"output": response}, 
+            {"output": response},
             self.response_guardrail
         )
-        
+
         # Build response object
         validation_response = {
             "timestamp": datetime.now(UTC).isoformat(),
@@ -1306,7 +1306,7 @@ class ChatbotResponseValidator:
             "is_safe": result.is_valid,
             "validation_time_ms": result.validation_time_ms,
         }
-        
+
         if result.is_valid:
             validation_response["response"] = response
             validation_response["status"] = "delivered"
@@ -1317,9 +1317,9 @@ class ChatbotResponseValidator:
                 e.message for e in result.entries if not e.passed
             ]
             validation_response["response"] = self._get_safe_fallback()
-        
+
         return validation_response
-    
+
     def _get_safe_fallback(self) -> str:
         """Return a safe fallback response when PII is detected."""
         return (
@@ -1327,21 +1327,21 @@ class ChatbotResponseValidator:
             "For security reasons, please contact our support team directly "
             "at support@techsupport.com or call 1-800-TECH-SUP."
         )
-    
+
     def get_daily_report(self) -> dict:
         """Generate daily PII detection report."""
         trace = self.validator.get_validation_trace()
-        
+
         total = len(trace)
         blocked = sum(1 for e in trace if not e.passed)
-        
+
         # Group blocks by constraint
         block_reasons = {}
         for entry in trace:
             if not entry.passed:
                 reason = entry.constraint_name
                 block_reasons[reason] = block_reasons.get(reason, 0) + 1
-        
+
         return {
             "report_date": datetime.now(UTC).date().isoformat(),
             "total_validations": total,
@@ -1369,7 +1369,7 @@ for response in test_responses:
         customer_id="CUST-001",
         conversation_id="CONV-123"
     )
-    
+
     status_icon = "✓" if result["is_safe"] else "✗"
     print(f"{status_icon} [{result['status'].upper()}]")
     print(f"  Original: {response[:60]}...")
@@ -1389,69 +1389,69 @@ from typing import Callable
 
 class PIIRedactor:
     """Redacts PII from text while preserving structure."""
-    
+
     # PII patterns and their redaction strategies
     PATTERNS: list[tuple[str, str, Callable[[str], str]]] = [
         # (name, pattern, redaction_function)
         ("ssn", r"\b\d{3}-\d{2}-\d{4}\b", lambda m: "[SSN REDACTED]"),
-        ("credit_card", r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b", 
+        ("credit_card", r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b",
          lambda m: f"[CARD REDACTED ...{m.group()[-4:]}]"),
         ("email", r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
          lambda m: "[EMAIL REDACTED]"),
         ("phone", r"\b\+?1?[-.\s]?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b",
          lambda m: "[PHONE REDACTED]"),
     ]
-    
+
     def redact(self, text: str) -> tuple[str, list[dict]]:
         """Redact all PII from text, returning redacted text and redaction log."""
         redactions = []
         redacted_text = text
-        
+
         for pii_name, pattern, redact_fn in self.PATTERNS:
             matches = list(re.finditer(pattern, redacted_text))
             for match in reversed(matches):  # Reverse to preserve positions
                 original = match.group()
                 replacement = redact_fn(match)
-                
+
                 redactions.append({
                     "type": pii_name,
                     "original_position": match.start(),
                     "original_length": len(original),
                     "replacement": replacement,
                 })
-                
+
                 redacted_text = (
-                    redacted_text[:match.start()] + 
-                    replacement + 
+                    redacted_text[:match.start()] +
+                    replacement +
                     redacted_text[match.end():]
                 )
-        
+
         return redacted_text, redactions
-    
+
     def validate_and_redact(
-        self, 
-        text: str, 
+        self,
+        text: str,
         validator: GuardRailValidator,
         guardrail: GuardRail
     ) -> dict:
         """Validate text and redact if PII detected."""
-        
+
         # First, validate original
         result = validator.validate({"output": text}, guardrail)
-        
+
         if result.is_valid:
             return {
                 "status": "clean",
                 "text": text,
                 "redactions": [],
             }
-        
+
         # PII detected - redact
         redacted_text, redactions = self.redact(text)
-        
+
         # Validate redacted version
         redacted_result = validator.validate({"output": redacted_text}, guardrail)
-        
+
         return {
             "status": "redacted" if redacted_result.is_valid else "failed",
             "original_text": text,
@@ -1472,8 +1472,8 @@ SSN for verification: 123-45-6789
 """
 
 result = redactor.validate_and_redact(
-    test_text, 
-    validator, 
+    test_text,
+    validator,
     chatbot_pii_guardrail
 )
 
@@ -1634,4 +1634,3 @@ In this tutorial, you learned:
 ---
 
 *Tutorial created as part of Lesson 17: Agent Explainability Framework*
-

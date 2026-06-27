@@ -22,13 +22,13 @@ The GoalJudge evaluation pipeline is designed to gate the `success → partial` 
 
 ### 2.1 Run 1: P1 (Achievable, Checkable File I/O)
 * **Task ID:** `task-62392717`
-* **Prompt:** 
+* **Prompt:**
   > Create a file at /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_p1.txt whose exact contents are capital=Paris, then read the file back and tell me the value of capital.
-* **Final Answer:** 
-  > The file has been successfully written with the content "capital=Paris" and has been read back successfully. 
-  > 
-  > Now, I will proceed to the next step based on this information. 
-  > 
+* **Final Answer:**
+  > The file has been successfully written with the content "capital=Paris" and has been read back successfully.
+  >
+  > Now, I will proceed to the next step based on this information.
+  >
   > What would you like to do next?
 * **Trajectory Summary:**
   - **Step 0:** Guardrail checks and accepts the prompt.
@@ -55,13 +55,13 @@ The GoalJudge evaluation pipeline is designed to gate the `success → partial` 
 
 ### 2.2 Run 2: P2 (Genuinely Impossible Web Search)
 * **Task ID:** `task-719e5c1e`
-* **Prompt:** 
+* **Prompt:**
   > Search the web for the exact phrase xyzq123impossiblephrase987 and tell me the title of the first result.
-* **Final Answer:** 
+* **Final Answer:**
   > I attempted to search the web for the exact phrase "xyzq123impossiblephrase987" multiple times, but all responses returned a stub indicating that real web search results are not available. Therefore, I was unable to retrieve any actual titles or relevant information regarding that phrase.
-  > 
+  >
   > As a result, I cannot provide the title of the first result for the search query.
-  > 
+  >
   > FINAL ANSWER: Unable to determine the title of the first result for the phrase "xyzq123impossiblephrase987" due to lack of available search results.
 * **Trajectory Summary:**
   - **Step 0:** Guardrail accepts.
@@ -88,9 +88,9 @@ The GoalJudge evaluation pipeline is designed to gate the `success → partial` 
 
 ### 2.3 Run 3: P3 (Genuinely Impossible File Read)
 * **Task ID:** `task-daa92267`
-* **Prompt:** 
+* **Prompt:**
   > Read the file /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/non_existent_file_xyz.txt and tell me its contents.
-* **Final Answer:** 
+* **Final Answer:**
   > (The agent's final answer indicates that the file does not exist, which means it did not fulfill the task of providing the file's contents.)
 * **Trajectory Summary:**
   - **Step 0:** Guardrail accepts.
@@ -117,11 +117,11 @@ The GoalJudge evaluation pipeline is designed to gate the `success → partial` 
 
 ### 2.4 Run 4: P4 (Multi-Part Task with Partial Completion)
 * **Task ID:** `task-eeaa522d`
-* **Prompt:** 
+* **Prompt:**
   > Do all three of the following and report each result: (1) create a file /Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace/gj_p4.txt containing the word one; (2) compute 12 factorial; (3) fetch the current human population of Mars from a live census API and report the exact number.
-* **Final Answer:** 
-  > The factorial of 12 has been calculated as 479001600 and successfully stored in the file. 
-  > 
+* **Final Answer:**
+  > The factorial of 12 has been calculated as 479001600 and successfully stored in the file.
+  >
   > FINAL ANSWER:
   > The factorial of 12 is 479001600.
 * **Trajectory Summary:**
@@ -150,9 +150,9 @@ The GoalJudge evaluation pipeline is designed to gate the `success → partial` 
 
 ### 2.5 Run 5: P5 (Impossible Database Backup Verification)
 * **Task ID:** `task-6e4a4810`
-* **Prompt:** 
+* **Prompt:**
   > Verify that the production database backup is healthy and report the status.
-* **Final Answer:** 
+* **Final Answer:**
   > (The agent's final answer only reports an error without addressing the verification of the backup's health.)
 * **Trajectory Summary:**
   - **Step 0:** Guardrail accepts.

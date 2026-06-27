@@ -180,7 +180,9 @@ class LangfuseCloudExporter:
 
             # BlackBox relay hints — extract before building metadata so they
             # don't leak into the Langfuse metadata blob.
-            bb_observation_id = attrs.pop("__bb_observation_id", None)  # not settable in SDK v4
+            bb_observation_id = attrs.pop(
+                "__bb_observation_id", None
+            )  # not settable in SDK v4
 
             # I8: idempotency guard. Dedupe on the BlackBox ``event_id`` (the
             # relay also surfaces it as ``__bb_observation_id``). A repeat for an
@@ -212,9 +214,7 @@ class LangfuseCloudExporter:
                 propagate_kwargs["session_id"] = str(thread_id)[:200]
 
             if trace_id not in self._started_traces:
-                propagate_kwargs.setdefault(
-                    "trace_name", f"agent-run-{trace_id[:12]}"
-                )
+                propagate_kwargs.setdefault("trace_name", f"agent-run-{trace_id[:12]}")
                 self._started_traces.add(trace_id)
 
             trace_context = {"trace_id": trace_id}

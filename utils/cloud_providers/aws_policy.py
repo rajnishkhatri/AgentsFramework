@@ -43,7 +43,10 @@ class AWSPolicyProvider:
         return bindings
 
     def evaluate_access(
-        self, identity: IdentityContext, action: str, resource: str,
+        self,
+        identity: IdentityContext,
+        action: str,
+        resource: str,
     ) -> AccessDecision:
         role_name = self._role_name(identity)
         source_arn = self._role_arn(identity, role_name)
@@ -79,7 +82,8 @@ class AWSPolicyProvider:
         )
 
     def get_permission_boundary(
-        self, identity: IdentityContext,
+        self,
+        identity: IdentityContext,
     ) -> PermissionBoundary | None:
         role_name = self._role_name(identity)
         try:
@@ -109,7 +113,8 @@ class AWSPolicyProvider:
             policy_resp = self._iam.get_policy(PolicyArn=policy_arn)
             version_id = policy_resp["Policy"]["DefaultVersionId"]
             version_resp = self._iam.get_policy_version(
-                PolicyArn=policy_arn, VersionId=version_id,
+                PolicyArn=policy_arn,
+                VersionId=version_id,
             )
             doc = version_resp["PolicyVersion"]["Document"]
             if isinstance(doc, str):
@@ -130,13 +135,15 @@ class AWSPolicyProvider:
         bindings: list[PolicyBinding] = []
         for page in paginator.paginate(RoleName=role_name):
             for p in page.get("AttachedPolicies", []):
-                bindings.append(PolicyBinding(
-                    policy_id=p.get("PolicyArn", ""),
-                    policy_name=p.get("PolicyName", ""),
-                    policy_type="managed",
-                    provider=_PROVIDER,
-                    attached_to=role_name,
-                ))
+                bindings.append(
+                    PolicyBinding(
+                        policy_id=p.get("PolicyArn", ""),
+                        policy_name=p.get("PolicyName", ""),
+                        policy_type="managed",
+                        provider=_PROVIDER,
+                        attached_to=role_name,
+                    )
+                )
         return bindings
 
     def _list_inline(self, role_name: str) -> list[PolicyBinding]:
@@ -144,13 +151,15 @@ class AWSPolicyProvider:
         bindings: list[PolicyBinding] = []
         for page in paginator.paginate(RoleName=role_name):
             for name in page.get("PolicyNames", []):
-                bindings.append(PolicyBinding(
-                    policy_id=f"inline:{role_name}/{name}",
-                    policy_name=name,
-                    policy_type="inline",
-                    provider=_PROVIDER,
-                    attached_to=role_name,
-                ))
+                bindings.append(
+                    PolicyBinding(
+                        policy_id=f"inline:{role_name}/{name}",
+                        policy_name=name,
+                        policy_type="inline",
+                        provider=_PROVIDER,
+                        attached_to=role_name,
+                    )
+                )
         return bindings
 
     @staticmethod

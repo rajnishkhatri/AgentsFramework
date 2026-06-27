@@ -102,8 +102,12 @@ class TestKrippendorffAlphaNominalKnownValues:
         """Six items, 50/50 true/false, both raters perfectly agree.
         Do = 0/6 = 0 ⇒ α = 1 − 0/De = 1.0 regardless of De>0."""
         items = [
-            ["true", "true"], ["true", "true"], ["true", "true"],
-            ["false", "false"], ["false", "false"], ["false", "false"],
+            ["true", "true"],
+            ["true", "true"],
+            ["true", "true"],
+            ["false", "false"],
+            ["false", "false"],
+            ["false", "false"],
         ]
         assert krippendorff_alpha_nominal(items) == pytest.approx(1.0)
 
@@ -118,8 +122,12 @@ class TestKrippendorffAlphaNominalKnownValues:
         chance' (negative α) symmetrically. A bug that floors at 0 would
         slip past every positive-α test."""
         items = [
-            ["true", "false"], ["true", "false"], ["true", "false"],
-            ["false", "true"], ["false", "true"], ["false", "true"],
+            ["true", "false"],
+            ["true", "false"],
+            ["true", "false"],
+            ["false", "true"],
+            ["false", "true"],
+            ["false", "true"],
         ]
         expected = -5.0 / 6.0
         assert krippendorff_alpha_nominal(items) == pytest.approx(expected, abs=1e-6)
@@ -133,8 +141,10 @@ class TestKrippendorffAlphaNominalKnownValues:
         De = 1 − [5·4 + 3·2]/(8·7) = 1 − 26/56 = 30/56 = 15/28 ≈ 0.53571.
         α = 1 − 0.25/(15/28) = 1 − 7/15 = 8/15 ≈ 0.53333."""
         items = [
-            ["true", "true"], ["false", "false"],
-            ["true", "true"], ["false", "true"],
+            ["true", "true"],
+            ["false", "false"],
+            ["true", "true"],
+            ["false", "true"],
         ]
         expected = 8.0 / 15.0
         assert krippendorff_alpha_nominal(items) == pytest.approx(expected, abs=1e-6)
@@ -144,8 +154,11 @@ class TestKrippendorffAlphaNominalKnownValues:
         a 3-class label set must still return 1.0 (sanity-check that the
         function isn't accidentally binary-only)."""
         items = [
-            ["pass", "pass"], ["fail", "fail"], ["alert", "alert"],
-            ["pass", "pass"], ["fail", "fail"],
+            ["pass", "pass"],
+            ["fail", "fail"],
+            ["alert", "alert"],
+            ["pass", "pass"],
+            ["fail", "fail"],
         ]
         assert krippendorff_alpha_nominal(items) == pytest.approx(1.0)
 
@@ -156,9 +169,9 @@ class TestKrippendorffAlphaNominalKnownValues:
         hold if the partial rows leaked into the disagreement count)."""
         items = [
             ["true", "true"],  # counted
-            ["true", ""],      # skipped — only one rater
+            ["true", ""],  # skipped — only one rater
             ["false", "false"],  # counted
-            ["", "false"],     # skipped
+            ["", "false"],  # skipped
             ["true", "true"],  # counted
         ]
         assert krippendorff_alpha_nominal(items) == pytest.approx(1.0)
@@ -172,8 +185,11 @@ class TestKrippendorffAlphaPermutationInvariance:
 
     def test_swapping_rater_order_preserves_alpha(self) -> None:
         items_original = [
-            ["true", "false"], ["false", "true"], ["true", "true"],
-            ["false", "false"], ["true", "false"],
+            ["true", "false"],
+            ["false", "true"],
+            ["true", "true"],
+            ["false", "false"],
+            ["true", "false"],
         ]
         items_swapped = [[b, a] for a, b in items_original]
         a_original = krippendorff_alpha_nominal(items_original)
@@ -227,12 +243,23 @@ class TestNormalizeBoolLabel:
     @pytest.mark.parametrize(
         "raw,expected",
         [
-            ("true", "true"), ("True", "true"), ("TRUE", "true"),
-            ("t", "true"), ("Y", "true"), ("y", "true"), ("yes", "true"),
+            ("true", "true"),
+            ("True", "true"),
+            ("TRUE", "true"),
+            ("t", "true"),
+            ("Y", "true"),
+            ("y", "true"),
+            ("yes", "true"),
             ("1", "true"),
-            ("false", "false"), ("False", "false"), ("FALSE", "false"),
-            ("f", "false"), ("N", "false"), ("no", "false"), ("0", "false"),
-            ("", ""), ("   ", ""),
+            ("false", "false"),
+            ("False", "false"),
+            ("FALSE", "false"),
+            ("f", "false"),
+            ("N", "false"),
+            ("no", "false"),
+            ("0", "false"),
+            ("", ""),
+            ("   ", ""),
             ("maybe", "maybe"),  # passthrough — α treats as a 3rd class
             ("partially", "partially"),
         ],
@@ -281,9 +308,13 @@ class TestComputeDisagreementDiff:
         canonical 'true'/'false', not the raw 'Y'/'N')."""
         rows = [
             {"item_id": "GJ-001", "r1_goal_met": "true", "r2_goal_met": "true"},
-            {"item_id": "GJ-002", "r1_goal_met": "Y", "r2_goal_met": "N"},      # disagree
+            {"item_id": "GJ-002", "r1_goal_met": "Y", "r2_goal_met": "N"},  # disagree
             {"item_id": "GJ-003", "r1_goal_met": "false", "r2_goal_met": "false"},
-            {"item_id": "GJ-004", "r1_goal_met": "false", "r2_goal_met": "1"},  # disagree
+            {
+                "item_id": "GJ-004",
+                "r1_goal_met": "false",
+                "r2_goal_met": "1",
+            },  # disagree
         ]
         diff = compute_disagreement_diff(rows)
         assert diff == [
@@ -331,8 +362,13 @@ class TestApplyAdjudication:
         A decision keyed by an item the raters agreed on indicates the
         adjudicator is working off a stale diff. MUST raise."""
         rows = [
-            {"item_id": "GJ-001", "r1_goal_met": "true", "r2_goal_met": "true",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
+            {
+                "item_id": "GJ-001",
+                "r1_goal_met": "true",
+                "r2_goal_met": "true",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
         ]
         decisions = {"GJ-001": {"goal_met": "true", "failure_mode": ""}}
         with pytest.raises(ValueError, match=r"(?i)not a disagreement|already agree"):
@@ -344,8 +380,13 @@ class TestApplyAdjudication:
         leaving the gold column blank would let a half-adjudicated set
         flow into Phase 6."""
         rows = [
-            {"item_id": "GJ-002", "r1_goal_met": "true", "r2_goal_met": "false",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
+            {
+                "item_id": "GJ-002",
+                "r1_goal_met": "true",
+                "r2_goal_met": "false",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
         ]
         with pytest.raises(ValueError, match=r"(?i)unresolved|missing decision"):
             apply_adjudication(rows, {})
@@ -355,8 +396,13 @@ class TestApplyAdjudication:
         or 'maybe' must be caught up-front, not after the sheet is
         written and Phase 6 trips on its own schema validation."""
         rows = [
-            {"item_id": "GJ-002", "r1_goal_met": "true", "r2_goal_met": "false",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
+            {
+                "item_id": "GJ-002",
+                "r1_goal_met": "true",
+                "r2_goal_met": "false",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
         ]
         decisions = {"GJ-002": {"goal_met": "maybe", "failure_mode": ""}}
         with pytest.raises(ValueError, match=r"(?i)goal_met.*'maybe'|invalid"):
@@ -369,14 +415,34 @@ class TestApplyAdjudication:
         (the gold column is implicit-from-agreement, not re-stamped here;
         Phase 6 assembly handles the canonicalization)."""
         rows = [
-            {"item_id": "GJ-001", "r1_goal_met": "true", "r2_goal_met": "true",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
-            {"item_id": "GJ-002", "r1_goal_met": "true", "r2_goal_met": "false",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
-            {"item_id": "GJ-003", "r1_goal_met": "false", "r2_goal_met": "false",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
-            {"item_id": "GJ-004", "r1_goal_met": "false", "r2_goal_met": "true",
-             "adjudicated_goal_met": "", "adjudicated_failure_mode": ""},
+            {
+                "item_id": "GJ-001",
+                "r1_goal_met": "true",
+                "r2_goal_met": "true",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
+            {
+                "item_id": "GJ-002",
+                "r1_goal_met": "true",
+                "r2_goal_met": "false",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
+            {
+                "item_id": "GJ-003",
+                "r1_goal_met": "false",
+                "r2_goal_met": "false",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
+            {
+                "item_id": "GJ-004",
+                "r1_goal_met": "false",
+                "r2_goal_met": "true",
+                "adjudicated_goal_met": "",
+                "adjudicated_failure_mode": "",
+            },
         ]
         decisions = {
             "GJ-002": {"goal_met": "false", "failure_mode": "fluent-evasion"},

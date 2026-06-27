@@ -24,7 +24,6 @@ Anti-patterns avoided:
 
 from __future__ import annotations
 
-import pytest
 
 from components.answer_verifiers import verify_answer
 
@@ -72,7 +71,9 @@ class TestTopoAbstain:
     """A parse miss must DEFER to the LLM (None), never emit a false fail."""
 
     def test_unparseable_answer_abstains(self):
-        verdict = verify_answer(TOPO_TASK, "I read the file and sorted it.", DEPS_EVIDENCE)
+        verdict = verify_answer(
+            TOPO_TASK, "I read the file and sorted it.", DEPS_EVIDENCE
+        )
         assert verdict is None
 
     def test_missing_evidence_abstains(self):
@@ -138,5 +139,7 @@ class TestTopoAcceptance:
     def test_edges_read_from_task_text_when_no_evidence(self):
         # If the answer restates the edges, the verifier can still validate
         # without the tool trajectory.
-        answer = "Dependencies: A -> B, A -> C, B -> D, C -> D. Install order: D, B, C, A"
+        answer = (
+            "Dependencies: A -> B, A -> C, B -> D, C -> D. Install order: D, B, C, A"
+        )
         assert verify_answer(TOPO_TASK, answer, evidence=None) is True

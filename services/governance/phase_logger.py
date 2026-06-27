@@ -63,7 +63,9 @@ class PhaseLogger:
         self._storage_dir = Path(storage_dir)
         self._phase_starts: dict[str, datetime] = {}
         self.decision_id_factory: Callable[[], str] = (
-            decision_id_factory if decision_id_factory is not None else lambda: str(uuid.uuid4())
+            decision_id_factory
+            if decision_id_factory is not None
+            else lambda: str(uuid.uuid4())
         )
 
     @staticmethod

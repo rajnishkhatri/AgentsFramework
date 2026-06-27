@@ -49,9 +49,13 @@ def _read_jsonl(path: Path) -> list[dict]:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--write", action="store_true", help="actually push (default: dry run)")
+    ap.add_argument(
+        "--write", action="store_true", help="actually push (default: dry run)"
+    )
     ap.add_argument("--dataset", required=True, help="Langfuse dataset name")
-    ap.add_argument("--coded", required=True, type=Path, help="coded JSONL from the coder")
+    ap.add_argument(
+        "--coded", required=True, type=Path, help="coded JSONL from the coder"
+    )
     ap.add_argument(
         "--answers",
         type=Path,
@@ -73,19 +77,28 @@ def main() -> None:
     meta_keys = [k.strip() for k in args.meta_keys.split(",") if k.strip()]
     id_keys = [k.strip() for k in args.id_keys.split(",") if k.strip()]
 
-    rows = sorted(_read_jsonl(args.coded), key=lambda r: r.get("stratum", "") + r.get("prompt", ""))
+    rows = sorted(
+        _read_jsonl(args.coded),
+        key=lambda r: r.get("stratum", "") + r.get("prompt", ""),
+    )
 
     # final_answer may live in a separate rich corpus — join by trace_id.
     if args.answers:
-        answers = {r["trace_id"]: r.get("final_answer") for r in _read_jsonl(args.answers)}
+        answers = {
+            r["trace_id"]: r.get("final_answer") for r in _read_jsonl(args.answers)
+        }
         for r in rows:
             r.setdefault("final_answer", answers.get(r["trace_id"]))
 
     n_uncoded = sum(1 for r in rows if not r.get("open_codes"))
-    print(f"{len(rows)} cases -> dataset {args.dataset!r}  ({n_uncoded} with NO codes)\n")
+    print(
+        f"{len(rows)} cases -> dataset {args.dataset!r}  ({n_uncoded} with NO codes)\n"
+    )
     if n_uncoded:
-        print(f"  ⚠ {n_uncoded} rows have empty open_codes — codes only persist if Enter-committed "
-              f"as chips in the coder, not typed into the memo. Verify before --write.\n")
+        print(
+            f"  ⚠ {n_uncoded} rows have empty open_codes — codes only persist if Enter-committed "
+            f"as chips in the coder, not typed into the memo. Verify before --write.\n"
+        )
 
     client = build_real_langfuse_dataset_client() if args.write else None
     if args.write:

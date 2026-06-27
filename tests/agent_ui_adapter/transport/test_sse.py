@@ -160,6 +160,8 @@ def test_encode_error_data_is_single_line_json() -> None:
         (None, b"e"),  # "event: ..."
     ],
 )
-def test_encode_event_starts_correctly(event_id: str | None, expected_first_byte: bytes) -> None:
+def test_encode_event_starts_correctly(
+    event_id: str | None, expected_first_byte: bytes
+) -> None:
     out = encode_event(_run_started(), event_id=event_id)
     assert out[:1] == expected_first_byte

@@ -29,6 +29,7 @@ Reuses, unchanged (imported, not subprocessed):
 Unit tests live in ``tests/scripts/test_model_ab_eval.py`` (no live LLM). The
 ``--smoke`` real-LLM path is opt-in and never runs in CI.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,11 +73,7 @@ CONTAMINATED = "CONTAMINATED"
 
 def load_corpus(path: Path) -> list[dict]:
     """Read a frozen ``ui_batch.jsonl`` corpus into row dicts."""
-    rows = [
-        json.loads(line)
-        for line in path.read_text().strip().split("\n")
-        if line
-    ]
+    rows = [json.loads(line) for line in path.read_text().strip().split("\n") if line]
     return _merge_corpus_expectations(rows)
 
 
@@ -97,7 +94,7 @@ def _models_used(events: list[dict]) -> list[str]:
     all-empty run as a contamination, never a silent pass."""
     seen: list[str] = []
     for e in events:
-        et = (e.get("event_type") or "")
+        et = e.get("event_type") or ""
         if not et.endswith("step_executed"):
             continue
         details = e.get("details")
@@ -270,11 +267,7 @@ def diff_summaries(
     # Cost — surfaced, never auto-HOLD unless --max-cost-ratio opted in.
     cost_per_task_baseline = round(cost_baseline / n_tasks, 6) if n_tasks else 0.0
     cost_per_task_candidate = round(cost_candidate / n_tasks, 6) if n_tasks else 0.0
-    cost_ratio = (
-        round(cost_candidate / cost_baseline, 3)
-        if cost_baseline > 0
-        else None
-    )
+    cost_ratio = round(cost_candidate / cost_baseline, 3) if cost_baseline > 0 else None
     cost_violation = (
         max_cost_ratio is not None
         and cost_ratio is not None
@@ -421,10 +414,12 @@ def render_markdown(payload: dict) -> str:
         lines.append(f"_grader: {ans.get('grader', 'L1-deterministic')}_")
         lines.append("")
         if ans.get("provider_contaminated"):
-            lines.append("> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
-                         "provider/transport error (litellm InternalServerError / "
-                         "rate-limit / Cannot connect). Accuracy below is NOT a valid "
-                         "model signal — re-run. Verdict forced CONTAMINATED.")
+            lines.append(
+                "> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
+                "provider/transport error (litellm InternalServerError / "
+                "rate-limit / Cannot connect). Accuracy below is NOT a valid "
+                "model signal — re-run. Verdict forced CONTAMINATED."
+            )
             lines.append("")
         lines.append("| arm | accuracy | correct/n | errored | outcomes |")
         lines.append("|---|---|---|---|---|")
@@ -435,7 +430,9 @@ def render_markdown(payload: dict) -> str:
                 f"{a.get('errored', 0)} | {a['outcomes']} |"
             )
         lines.append("")
-        lines.append(f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**")
+        lines.append(
+            f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**"
+        )
         lines.append("")
         # L2/L3 — ungraded for verdict; GoalJudge shown as informational only.
         l2 = ans.get("l2l3_ungraded")
@@ -446,14 +443,20 @@ def render_markdown(payload: dict) -> str:
             lines.append("")
             gj = l2.get("goaljudge_crosscheck", {})
             if gj.get("baseline") and gj.get("candidate"):
-                lines.append("GoalJudge cross-check (informational, NOT a verdict input):")
+                lines.append(
+                    "GoalJudge cross-check (informational, NOT a verdict input):"
+                )
                 lines.append("")
                 lines.append("| arm | GoalJudge acc (L2/L3) |")
                 lines.append("|---|---|")
-                lines.append(f"| baseline | {gj['baseline']['accuracy']:.3f} "
-                             f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |")
-                lines.append(f"| candidate | {gj['candidate']['accuracy']:.3f} "
-                             f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |")
+                lines.append(
+                    f"| baseline | {gj['baseline']['accuracy']:.3f} "
+                    f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |"
+                )
+                lines.append(
+                    f"| candidate | {gj['candidate']['accuracy']:.3f} "
+                    f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |"
+                )
                 lines.append("")
         lines.append("### Per-case answers (candidate, L1)")
         lines.append("")
@@ -493,8 +496,7 @@ def render_markdown(payload: dict) -> str:
     lines.append("| metric | baseline | candidate |")
     lines.append("|---|---|---|")
     lines.append(
-        f"| total USD | {cost['baseline_total_usd']} | "
-        f"{cost['candidate_total_usd']} |"
+        f"| total USD | {cost['baseline_total_usd']} | {cost['candidate_total_usd']} |"
     )
     lines.append(
         f"| per-task USD | {cost['baseline_per_task_usd']} | "
@@ -783,8 +785,10 @@ def main(argv: list[str] | None = None) -> int:
     baseline_arm = args.baseline_set or args.baseline
     candidate_arm = args.candidate_set or args.candidate
     if not baseline_arm or not candidate_arm:
-        print("both a baseline and candidate arm are required "
-              "(--baseline/--candidate or --baseline-set/--candidate-set)")
+        print(
+            "both a baseline and candidate arm are required "
+            "(--baseline/--candidate or --baseline-set/--candidate-set)"
+        )
         return 2
 
     # F2: a SET arm runs Auto routing, but the "all" set is PIN-ONLY — its first
@@ -793,13 +797,17 @@ def main(argv: list[str] | None = None) -> int:
     # test. Reject it explicitly (pinned arms reach "all" internally via
     # MODEL_PROFILE_SET so the pin resolves — that path is unaffected; this guard
     # is only on the Auto-routing --*-set selectors). Fail loud, not silently.
-    for flag, value in (("--baseline-set", args.baseline_set),
-                        ("--candidate-set", args.candidate_set)):
+    for flag, value in (
+        ("--baseline-set", args.baseline_set),
+        ("--candidate-set", args.candidate_set),
+    ):
         if value == "all":
-            print(f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
-                  f"escalate into opus-4-8). Use a routable set "
-                  f"(openai/anthropic/deepseek) for a set arm, or pin a single "
-                  f"model with --baseline/--candidate.")
+            print(
+                f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
+                f"escalate into opus-4-8). Use a routable set "
+                f"(openai/anthropic/deepseek) for a set arm, or pin a single "
+                f"model with --baseline/--candidate."
+            )
             return 2
 
     run_id = args.run_id or time.strftime("%Y%m%dT%H%M%S")
@@ -820,9 +828,7 @@ def main(argv: list[str] | None = None) -> int:
             (args.candidate, args.candidate_set, candidate_dir),
         ):
             asyncio.run(
-                _drive_arm(
-                    rows, arm_model=arm_model, arm_set=arm_set, out_dir=out_dir
-                )
+                _drive_arm(rows, arm_model=arm_model, arm_set=arm_set, out_dir=out_dir)
             )
 
     def _recordings_dir(arm_dir: Path) -> Path:
@@ -897,10 +903,16 @@ def main(argv: list[str] | None = None) -> int:
             verdict = PROMOTE
 
         # L2/L3 GoalJudge cross-check — INFORMATIONAL ONLY (ungraded for verdict).
-        base_gj = score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases) \
-            if l2l3_cases else None
-        cand_gj = score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases) \
-            if l2l3_cases else None
+        base_gj = (
+            score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases)
+            if l2l3_cases
+            else None
+        )
+        cand_gj = (
+            score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases)
+            if l2l3_cases
+            else None
+        )
 
         def _arm_block(ans):
             return {
@@ -911,8 +923,12 @@ def main(argv: list[str] | None = None) -> int:
                 "contaminated": ans.contaminated,
                 "outcomes": ans.outcomes(),
                 "per_case": [
-                    {"case": s.case, "outcome": s.outcome, "expected": s.expected,
-                     "answer": s.answer}
+                    {
+                        "case": s.case,
+                        "outcome": s.outcome,
+                        "expected": s.expected,
+                        "answer": s.answer,
+                    }
                     for s in ans.scores
                 ],
             }
@@ -926,15 +942,27 @@ def main(argv: list[str] | None = None) -> int:
             "l2l3_ungraded": {
                 "cases": l2l3_cases,
                 "note": "prose answers; verdict-excluded. GoalJudge shown as "
-                        "informational cross-check only — see "
-                        "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
+                "informational cross-check only — see "
+                "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
                 "goaljudge_crosscheck": {
-                    "baseline": ({"accuracy": base_gj.accuracy,
-                                  "correct": base_gj.correct, "n": base_gj.n}
-                                 if base_gj else None),
-                    "candidate": ({"accuracy": cand_gj.accuracy,
-                                   "correct": cand_gj.correct, "n": cand_gj.n}
-                                  if cand_gj else None),
+                    "baseline": (
+                        {
+                            "accuracy": base_gj.accuracy,
+                            "correct": base_gj.correct,
+                            "n": base_gj.n,
+                        }
+                        if base_gj
+                        else None
+                    ),
+                    "candidate": (
+                        {
+                            "accuracy": cand_gj.accuracy,
+                            "correct": cand_gj.correct,
+                            "n": cand_gj.n,
+                        }
+                        if cand_gj
+                        else None
+                    ),
                 },
             },
         }

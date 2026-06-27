@@ -27,7 +27,9 @@ class ShellToolInput(BaseModel):
         if not argv:
             raise ValueError("Empty command")
         if argv[0] not in ALLOWED_COMMANDS:
-            raise ValueError(f"Command '{argv[0]}' not in allowlist: {sorted(ALLOWED_COMMANDS)}")
+            raise ValueError(
+                f"Command '{argv[0]}' not in allowlist: {sorted(ALLOWED_COMMANDS)}"
+            )
         for token in argv:
             if any(ch in token for ch in SHELL_METACHARACTERS):
                 raise ValueError(f"Shell metacharacter detected in token '{token}'")
@@ -36,7 +38,9 @@ class ShellToolInput(BaseModel):
                 raise ValueError(f"Blocked argument '{token}' detected")
         for pattern in BLOCKED_PATTERNS:
             if pattern in v:
-                raise ValueError(f"Blocked pattern '{pattern.strip()}' detected in command")
+                raise ValueError(
+                    f"Blocked pattern '{pattern.strip()}' detected in command"
+                )
         return v
 
 
@@ -97,5 +101,7 @@ def execute_shell(args: dict[str, Any]) -> ToolExecutionResult | str:
             error_class="timeout",
         )
     except Exception as e:
-        payload = ShellToolOutput(stdout="", stderr=str(e), exit_code=-1).model_dump_json()
+        payload = ShellToolOutput(
+            stdout="", stderr=str(e), exit_code=-1
+        ).model_dump_json()
         return ToolExecutionResult(output=payload, ok=False, error=str(e))

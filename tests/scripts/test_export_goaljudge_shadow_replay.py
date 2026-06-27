@@ -41,10 +41,14 @@ class TestExportShadowReplay:
         assert count == 1
         assert missing  # other anchors absent
         loaded = load_replayed_verdicts(out)
-        assert trace_id in {tid for tid, rid in TRACE_ID_TO_REGISTRY_ID.items() if rid in loaded}
+        assert trace_id in {
+            tid for tid, rid in TRACE_ID_TO_REGISTRY_ID.items() if rid in loaded
+        }
         assert loaded[TRACE_ID_TO_REGISTRY_ID[trace_id]]["goal_met"] is False
 
-    def test_missing_all_anchors_returns_full_missing_list(self, tmp_path: Path) -> None:
+    def test_missing_all_anchors_returns_full_missing_list(
+        self, tmp_path: Path
+    ) -> None:
         evals = tmp_path / "empty.log"
         evals.write_text("", encoding="utf-8")
         out = tmp_path / "replay.json"

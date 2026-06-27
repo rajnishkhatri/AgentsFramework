@@ -12,6 +12,7 @@ Phase 5 / A2 plan §6 — the builder must produce an `annotator2_sheet.csv` tha
   `domain`, `task` so the row contract still joins back to the full sheet at
   the α merge step.
 """
+
 from __future__ import annotations
 
 import csv
@@ -288,9 +289,7 @@ class TestA2RowContract:
         corpus_path = tmp / "corpus.jsonl"
         out_path = tmp / "a2.csv"
 
-        _write_full_sheet(
-            full_sheet_path, [_sample_full_sheet_row(iid) for iid in ids]
-        )
+        _write_full_sheet(full_sheet_path, [_sample_full_sheet_row(iid) for iid in ids])
         batch_rows = []
         corpus_rows = []
         for iid in ids:
@@ -340,11 +339,7 @@ class TestA2RowContract:
 
         _write_full_sheet(
             full_sheet_path,
-            [
-                _sample_full_sheet_row(
-                    item_id, evidence_summary="A1 SAYS_THIS_IS_GOOD"
-                )
-            ],
+            [_sample_full_sheet_row(item_id, evidence_summary="A1 SAYS_THIS_IS_GOOD")],
         )
         _write_jsonl(
             batch_path,

@@ -22,6 +22,7 @@ After this runs, every row has a populated ``adjudicated_goal_met``, and
 
 This is idempotent — running twice produces the same sheet.
 """
+
 from __future__ import annotations
 
 import csv
@@ -35,7 +36,9 @@ if str(REPO_ROOT) not in sys.path:
 from components.schemas import GOAL_FAILURE_MODES
 from services.governance.iaa import normalize_bool_label
 
-FULL_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+FULL_SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+)
 
 # Active failure-mode vocabulary. Codes outside this set were valid in
 # pre-Phase-5 drafts (e.g. ``incomplete-run`` was renamed to

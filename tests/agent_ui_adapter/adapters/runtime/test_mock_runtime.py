@@ -21,9 +21,7 @@ from trust.models import AgentFacts
 
 
 def _facts() -> AgentFacts:
-    return AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
-    )
+    return AgentFacts(agent_id="a1", agent_name="Bot", owner="team", version="1.0.0")
 
 
 def _scripted_events() -> list:

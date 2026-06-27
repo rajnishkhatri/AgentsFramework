@@ -906,5 +906,3 @@ Thought: No tools available to query feature drift metrics.
 | **Hypothesize** | "What do I expect to find?"          | Falsifiable hypotheses with evidence requirements     | Prioritization by impact and testability                      |
 | **Act**         | "What does the evidence show?"       | Evidence assigned to branches, gaps flagged           | Each finding to exactly one branch, cross-branch checks       |
 | **Synthesize**  | "What does it all mean?"             | Pyramid: governing thought + key arguments + evidence | Induction at top, deduction inside, 8 validation checks       |
-
-

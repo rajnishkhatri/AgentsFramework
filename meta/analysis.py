@@ -64,7 +64,9 @@ def load_eval_records(path: Path) -> list[EvalRecord]:
             if schema_version in (1, 2):
                 records.append(EvalRecord.model_validate(data))
             else:
-                logger.warning("Unsupported schema_version=%d, attempting parse", schema_version)
+                logger.warning(
+                    "Unsupported schema_version=%d, attempting parse", schema_version
+                )
                 records.append(EvalRecord.model_validate(data))
         except Exception as exc:
             logger.warning("Skipping invalid record: %s", exc)

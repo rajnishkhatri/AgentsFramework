@@ -38,13 +38,43 @@ _TIER1_FIXTURE = Path("cache/goaljudge_eval/planning_floor_understanding.jsonl")
 _DEPTH_CAP = {"L0": 1, "L1": 3, "L2": 5}
 
 # Mirror of the signals select_planning_depth reads, for the "signals" column.
-_MULTI_PART = ("compare", "trade-off", "tradeoff", "architecture", "migration",
-               "refactor", "roadmap", "design")
-_INCIDENT = ("trace how", "figure out", "root cause", "propagat", "identify every",
-             "times out", "sometimes", "intermitt", "race condition")
-_STRONG_VERBS = ("plan", "design", "refactor", "audit", "migrate", "implement",
-                 "build", "investigate", "debug", "diagnose", "optimize",
-                 "redesign", "trace", "compare")
+_MULTI_PART = (
+    "compare",
+    "trade-off",
+    "tradeoff",
+    "architecture",
+    "migration",
+    "refactor",
+    "roadmap",
+    "design",
+)
+_INCIDENT = (
+    "trace how",
+    "figure out",
+    "root cause",
+    "propagat",
+    "identify every",
+    "times out",
+    "sometimes",
+    "intermitt",
+    "race condition",
+)
+_STRONG_VERBS = (
+    "plan",
+    "design",
+    "refactor",
+    "audit",
+    "migrate",
+    "implement",
+    "build",
+    "investigate",
+    "debug",
+    "diagnose",
+    "optimize",
+    "redesign",
+    "trace",
+    "compare",
+)
 
 
 def _depth_signals(text: str) -> str:
@@ -80,66 +110,95 @@ def _run_case(row: dict) -> list[dict]:
 
     if row.get("want_depth") is not None:
         got, reason = select_planning_depth(
-            task_input=ti, task_tool_results_count=int(row.get("task_tool_results_count") or 0))
-        out.append({
-            "surface": "depth",
-            "expected": row["want_depth"], "actual": got,
-            "ok": got == row["want_depth"],
-            "signals": f"count={row.get('task_tool_results_count', 0)}; "
-                       + _depth_signals(ti) + f"; reason={reason}",
-        })
+            task_input=ti,
+            task_tool_results_count=int(row.get("task_tool_results_count") or 0),
+        )
+        out.append(
+            {
+                "surface": "depth",
+                "expected": row["want_depth"],
+                "actual": got,
+                "ok": got == row["want_depth"],
+                "signals": f"count={row.get('task_tool_results_count', 0)}; "
+                + _depth_signals(ti)
+                + f"; reason={reason}",
+            }
+        )
 
     if row.get("want_branch_count") is not None:
         br = _extract_branches(ti)
-        out.append({
-            "surface": "branches",
-            "expected": row["want_branch_count"], "actual": len(br),
-            "ok": len(br) == row["want_branch_count"],
-            "signals": "branches=[" + " | ".join(br) + "]",
-        })
+        out.append(
+            {
+                "surface": "branches",
+                "expected": row["want_branch_count"],
+                "actual": len(br),
+                "ok": len(br) == row["want_branch_count"],
+                "signals": "branches=[" + " | ".join(br) + "]",
+            }
+        )
 
-    if row.get("want_min_conditions") is not None or row.get("want_generic_tail") is not None:
+    if (
+        row.get("want_min_conditions") is not None
+        or row.get("want_generic_tail") is not None
+    ):
         br = _extract_branches(ti)
         conds = derive_success_conditions(br)
         tail = _GENERIC_TAIL_CONDITION in conds
         exp = row.get("want_min_conditions")
         ok = (exp is None or len(conds) == exp) and (
-            row.get("want_generic_tail") is None or tail == bool(row["want_generic_tail"]))
-        out.append({
-            "surface": "conditions",
-            "expected": f"{exp} conds, tail={row.get('want_generic_tail')}",
-            "actual": f"{len(conds)} conds, tail={tail}",
-            "ok": ok,
-            "signals": f"{len(br)} branches -> {len(conds)} conditions (incl. generic tail)",
-        })
+            row.get("want_generic_tail") is None
+            or tail == bool(row["want_generic_tail"])
+        )
+        out.append(
+            {
+                "surface": "conditions",
+                "expected": f"{exp} conds, tail={row.get('want_generic_tail')}",
+                "actual": f"{len(conds)} conds, tail={tail}",
+                "ok": ok,
+                "signals": f"{len(br)} branches -> {len(conds)} conditions (incl. generic tail)",
+            }
+        )
 
     if row.get("want_mece_valid") is not None:
         plan = PlanArtifact(**row["mece_plan"])
         res = validate_plan_mece(plan)
         valid_ok = res.is_valid == bool(row["want_mece_valid"])
-        issue_ok = (not row.get("want_mece_issue")
-                    or any(row["want_mece_issue"] in i for i in res.issues))
-        out.append({
-            "surface": "mece",
-            "expected": f"valid={row['want_mece_valid']}"
-                        + (f", issue~'{row['want_mece_issue']}'" if row.get("want_mece_issue") else ""),
-            "actual": f"valid={res.is_valid}",
-            "ok": valid_ok and issue_ok,
-            "signals": "; ".join(res.issues) or "no issues",
-        })
+        issue_ok = not row.get("want_mece_issue") or any(
+            row["want_mece_issue"] in i for i in res.issues
+        )
+        out.append(
+            {
+                "surface": "mece",
+                "expected": f"valid={row['want_mece_valid']}"
+                + (
+                    f", issue~'{row['want_mece_issue']}'"
+                    if row.get("want_mece_issue")
+                    else ""
+                ),
+                "actual": f"valid={res.is_valid}",
+                "ok": valid_ok and issue_ok,
+                "signals": "; ".join(res.issues) or "no issues",
+            }
+        )
 
     if row.get("want_stale") is not None:
         plan = PlanArtifact(
-            ordered_steps=[{"step_id": 1, "title": "a", "goal": "build"},
-                           {"step_id": 2, "title": "b", "goal": "verify"}],
-            success_conditions=["done"])
+            ordered_steps=[
+                {"step_id": 1, "title": "a", "goal": "build"},
+                {"step_id": 2, "title": "b", "goal": "verify"},
+            ],
+            success_conditions=["done"],
+        )
         got = plan_is_stale(plan, row.get("last_tool_result"))
-        out.append({
-            "surface": "replan",
-            "expected": row["want_stale"], "actual": got,
-            "ok": got == bool(row["want_stale"]),
-            "signals": f"last_tool_result={row.get('last_tool_result')}",
-        })
+        out.append(
+            {
+                "surface": "replan",
+                "expected": row["want_stale"],
+                "actual": got,
+                "ok": got == bool(row["want_stale"]),
+                "signals": f"last_tool_result={row.get('last_tool_result')}",
+            }
+        )
 
     return out
 
@@ -166,33 +225,44 @@ def _emit_tier1_crosscheck(lines: list[str]) -> None:
     A = lines.append
     A("## Tier 1 cross-check — checklist length vs fired depth cap\n")
     if not _TIER1_FIXTURE.exists():
-        A("*(Tier 1 fixture not captured — run "
-          "`python scripts/diagnose_understanding_vs_depth.py --capture` to populate "
-          f"`{_TIER1_FIXTURE}`, then regenerate this report. See "
-          "[`planning_floor_outcome_validation.tier1_results.md`]"
-          "(planning_floor_outcome_validation.tier1_results.md).)*\n")
+        A(
+            "*(Tier 1 fixture not captured — run "
+            "`python scripts/diagnose_understanding_vs_depth.py --capture` to populate "
+            f"`{_TIER1_FIXTURE}`, then regenerate this report. See "
+            "[`planning_floor_outcome_validation.tier1_results.md`]"
+            "(planning_floor_outcome_validation.tier1_results.md).)*\n"
+        )
         return
 
     recs = [json.loads(l) for l in _TIER1_FIXTURE.read_text().splitlines() if l.strip()]
-    A("Cross-references the deterministic depth verdict above with the **Tier 1** "
-      "offline probe ([`planning_floor_outcome_validation.tier1_results.md`]"
-      "(planning_floor_outcome_validation.tier1_results.md)): a once-captured, "
-      "3-sample `TaskUnderstanding.success_conditions` checklist per prompt. The "
-      "checklist is generated **at plan time, independent of the fired depth**, so "
-      "`effective_len > cap` (generic tail removed) is an offline under-budgeting "
-      "signal. **Caveat (results §2a):** checklist length over-reads the step cap by "
-      "a near-constant offset — every L0 task is \"over cap\" too — so read the trap "
-      "rows *relative to* their correctly-fired L1 peers, not in absolute terms.\n")
-    A("| id | det. depth (want→fired) | det. ✓ | cap | checklist len ×3 | spread | over cap? |")
-    A("|----|-------------------------|--------|-----|------------------|--------|-----------|")
+    A(
+        "Cross-references the deterministic depth verdict above with the **Tier 1** "
+        "offline probe ([`planning_floor_outcome_validation.tier1_results.md`]"
+        "(planning_floor_outcome_validation.tier1_results.md)): a once-captured, "
+        "3-sample `TaskUnderstanding.success_conditions` checklist per prompt. The "
+        "checklist is generated **at plan time, independent of the fired depth**, so "
+        "`effective_len > cap` (generic tail removed) is an offline under-budgeting "
+        "signal. **Caveat (results §2a):** checklist length over-reads the step cap by "
+        'a near-constant offset — every L0 task is "over cap" too — so read the trap '
+        "rows *relative to* their correctly-fired L1 peers, not in absolute terms.\n"
+    )
+    A(
+        "| id | det. depth (want→fired) | det. ✓ | cap | checklist len ×3 | spread | over cap? |"
+    )
+    A(
+        "|----|-------------------------|--------|-----|------------------|--------|-----------|"
+    )
     for rec in recs:
         ti = rec["task_input"]
         fired, _ = select_planning_depth(task_input=ti, task_tool_results_count=0)
         cap = _DEPTH_CAP[fired]
         want = rec["want_depth"]
         det_ok = "✅" if want == fired else "❌"
-        lens = [_tu_effective_len(s["conditions"]) for s in rec["samples"]
-                if not s.get("error")]
+        lens = [
+            _tu_effective_len(s["conditions"])
+            for s in rec["samples"]
+            if not s.get("error")
+        ]
         if not lens:
             lens_s, spread_s, over = "(gate-rej)", "—", "—"
         else:
@@ -200,19 +270,24 @@ def _emit_tier1_crosscheck(lines: list[str]) -> None:
             spread_s = str(max(lens) - min(lens))
             n_over = sum(1 for n in lens if n > cap)
             over = ("**yes**" if n_over * 2 > len(lens) else "no") + (
-                " ⚠FLIP" if 0 < n_over < len(lens) else "")
-        A(f"| `{rec['id']}` | {want}→{fired} | {det_ok} | {cap} | {lens_s} | "
-          f"{spread_s} | {over} |")
+                " ⚠FLIP" if 0 < n_over < len(lens) else ""
+            )
+        A(
+            f"| `{rec['id']}` | {want}→{fired} | {det_ok} | {cap} | {lens_s} | "
+            f"{spread_s} | {over} |"
+        )
     A("")
-    A("**Reading.** The 3 multi-marker prose traps (`depth-l2-trap-1/2/3`) fire L1 "
-      "(cap 3) yet stably return a 4-item checklist (spread 0) → the floor budgets "
-      "fewer steps than the task's own success criteria, corroborating the divergence "
-      "deep-dive above. `depth-l2-trap-4` stably returns 3 (a corpus-label question, "
-      "not a floor miss). Rows marked ⚠FLIP straddle the cap across samples (the "
-      "3-sample variance guard surfaced them) — honestly inconclusive, not signal. "
-      "This raises the ROI of an Option A `distinct_marker_count >= 3 -> L2` rule but, "
-      "per the §2a caveat, is *corroborating* not *causal* — a live A/B (Tier 2) "
-      "remains the only test of \"deeper → better answer.\"\n")
+    A(
+        "**Reading.** The 3 multi-marker prose traps (`depth-l2-trap-1/2/3`) fire L1 "
+        "(cap 3) yet stably return a 4-item checklist (spread 0) → the floor budgets "
+        "fewer steps than the task's own success criteria, corroborating the divergence "
+        "deep-dive above. `depth-l2-trap-4` stably returns 3 (a corpus-label question, "
+        "not a floor miss). Rows marked ⚠FLIP straddle the cap across samples (the "
+        "3-sample variance guard surfaced them) — honestly inconclusive, not signal. "
+        "This raises the ROI of an Option A `distinct_marker_count >= 3 -> L2` rule but, "
+        "per the §2a caveat, is *corroborating* not *causal* — a live A/B (Tier 2) "
+        'remains the only test of "deeper → better answer."\n'
+    )
 
 
 # Group corpus by surface for section ordering.
@@ -240,14 +315,20 @@ def main() -> None:
     lines: list[str] = []
     A = lines.append
     A("# Planning-floor baseline — case-by-case walkthrough\n")
-    A("**Generated:** 2026-06-17 by `scripts/report_planning_floor_walkthrough.py` "
-      "(every *Actual* value is computed live against `components/`, not transcribed).\n")
-    A("**Corpus:** `cache/goaljudge_eval/planning_floor_strata.jsonl` "
-      f"({len(rows)} rows) · **Harness:** `scripts/diagnose_planning_floor.py`\n")
-    A("**Scope:** the case-by-case body is offline, deterministic, zero-cost — no LLM, "
-      "no network, no deploy; each row is scored only on the surface(s) whose `want_*` "
-      "field is set. The final **Tier 1 cross-check** section additionally reads a "
-      "once-captured LLM checklist fixture (if present) for comparison.\n")
+    A(
+        "**Generated:** 2026-06-17 by `scripts/report_planning_floor_walkthrough.py` "
+        "(every *Actual* value is computed live against `components/`, not transcribed).\n"
+    )
+    A(
+        "**Corpus:** `cache/goaljudge_eval/planning_floor_strata.jsonl` "
+        f"({len(rows)} rows) · **Harness:** `scripts/diagnose_planning_floor.py`\n"
+    )
+    A(
+        "**Scope:** the case-by-case body is offline, deterministic, zero-cost — no LLM, "
+        "no network, no deploy; each row is scored only on the surface(s) whose `want_*` "
+        "field is set. The final **Tier 1 cross-check** section additionally reads a "
+        "once-captured LLM checklist fixture (if present) for comparison.\n"
+    )
 
     # scorecard
     A("## Scorecard\n")
@@ -261,8 +342,8 @@ def main() -> None:
         ok = sum(t)
         gt += len(t)
         go += ok
-        A(f"| {s} | {ok} | {len(t)} | {100*ok/len(t):.1f}% |")
-    A(f"| **OVERALL** | **{go}** | **{gt}** | **{100*go/gt:.1f}%** |\n")
+        A(f"| {s} | {ok} | {len(t)} | {100 * ok / len(t):.1f}% |")
+    A(f"| **OVERALL** | **{go}** | **{gt}** | **{100 * go / gt:.1f}%** |\n")
 
     # per-surface sections
     for s in _ORDER:
@@ -274,13 +355,14 @@ def main() -> None:
         A("|---|----|----------------|----------|--------|---|---------------------|")
         for i, (row, res) in enumerate(cases, 1):
             verdict = "✅" if res["ok"] else "❌ **MISS**"
-            prompt = row.get("task_input") or (
-                "(plan fixture)" if s == "mece" else "")
+            prompt = row.get("task_input") or ("(plan fixture)" if s == "mece" else "")
             prompt = _md_escape(prompt)[:90] + ("…" if len(prompt) > 90 else "")
             note = _md_escape(row.get("note", ""))
             signals = _md_escape(str(res["signals"]))[:160]
-            A(f"| {i} | `{row['id']}` | {prompt} | `{res['expected']}` | "
-              f"`{res['actual']}` | {verdict} | {signals}<br/>**why:** {note} |")
+            A(
+                f"| {i} | `{row['id']}` | {prompt} | `{res['expected']}` | "
+                f"`{res['actual']}` | {verdict} | {signals}<br/>**why:** {note} |"
+            )
         A("")
 
     # divergence deep-dive
@@ -289,16 +371,20 @@ def main() -> None:
     if not misses:
         A("No divergences — every scored surface matched its authored expectation.\n")
     else:
-        A(f"{len(misses)} divergence(s). Each is a recorded baseline miss, surfaced not hidden.\n")
-        A("**Root cause (all four are one failure mode).** The additive scorer needs "
-          "`score >= 3` for L2. `has_multi_part_marker` contributes **+1 regardless of "
-          "how many markers match** (it is a single boolean), and word count only adds "
-          "points at >=35 / >=80. So a multi-marker *prose* task — many strong verbs but "
-          "<35 words and no enumeration — tops out at score 2 (marker +1, conjunction +1) "
-          "and fires `moderate-complexity-initial-task` (L1). Enumeration `(1)(2)(3)` is the "
-          "orthogonal signal that pushes the comparable L2 rows over the line; prose lacks it. "
-          "This is the single systematic residual and the only thing an Option A/B depth "
-          "rule could move (e.g. a `distinct_marker_count >= 3 -> L2` rule).\n")
+        A(
+            f"{len(misses)} divergence(s). Each is a recorded baseline miss, surfaced not hidden.\n"
+        )
+        A(
+            "**Root cause (all four are one failure mode).** The additive scorer needs "
+            "`score >= 3` for L2. `has_multi_part_marker` contributes **+1 regardless of "
+            "how many markers match** (it is a single boolean), and word count only adds "
+            "points at >=35 / >=80. So a multi-marker *prose* task — many strong verbs but "
+            "<35 words and no enumeration — tops out at score 2 (marker +1, conjunction +1) "
+            "and fires `moderate-complexity-initial-task` (L1). Enumeration `(1)(2)(3)` is the "
+            "orthogonal signal that pushes the comparable L2 rows over the line; prose lacks it. "
+            "This is the single systematic residual and the only thing an Option A/B depth "
+            "rule could move (e.g. a `distinct_marker_count >= 3 -> L2` rule).\n"
+        )
         for row, res in misses:
             A(f"### `{row['id']}` — {res['surface']} (family: `{row['family']}`)\n")
             A(f"- **Prompt:** {row.get('task_input', '')}")

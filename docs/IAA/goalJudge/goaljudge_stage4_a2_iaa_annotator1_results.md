@@ -1,10 +1,10 @@
 # Stage 4 A2 Human IAA — Annotator 1 Results
 
-> **Annotator:** Session walkthrough analyst (2026-06-09 observations session)  
-> **Evidence batch:** GCP Playwright `gcp_2026-06-09`  
-> **Procedure:** [`06_goaljudge_stage4_a2_iaa_case_walkthrough.md`](../../walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md)  
-> **Session log:** [`goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md`](goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md)  
-> **Filled sheet:** [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](goaljudge_stage4_a2_iaa_grader_sheet.csv) (`r1_*` columns)  
+> **Annotator:** Session walkthrough analyst (2026-06-09 observations session)
+> **Evidence batch:** GCP Playwright `gcp_2026-06-09`
+> **Procedure:** [`06_goaljudge_stage4_a2_iaa_case_walkthrough.md`](../../walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md)
+> **Session log:** [`goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md`](goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md)
+> **Filled sheet:** [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](goaljudge_stage4_a2_iaa_grader_sheet.csv) (`r1_*` columns)
 > **Status:** Annotator 1 complete · Annotator 2 complete · **G5 PASS** (κ = 1.0 — see [results](goaljudge_stage4_a2_iaa_results.md))
 
 ---

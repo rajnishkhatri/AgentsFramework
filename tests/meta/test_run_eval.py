@@ -45,12 +45,14 @@ class TestEvalPipeline:
     @pytest.mark.asyncio
     async def test_pipeline_produces_valid_report(self):
         mock_response = MagicMock()
-        mock_response.content = json.dumps({
-            "score": 4,
-            "failure_categories": [],
-            "reasoning": "Good",
-            "confidence": 0.9,
-        })
+        mock_response.content = json.dumps(
+            {
+                "score": 4,
+                "failure_categories": [],
+                "reasoning": "Good",
+                "confidence": 0.9,
+            }
+        )
         mock_service = MagicMock()
         mock_service.invoke = AsyncMock(return_value=mock_response)
 

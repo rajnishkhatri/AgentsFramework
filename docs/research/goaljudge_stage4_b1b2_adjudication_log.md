@@ -1,6 +1,6 @@
 # GoalJudge Stage 4 — B1/B2 Adjudication Log (Step 3)
 
-> **Status:** Signed off for batch re-run — June 9, 2026  
+> **Status:** Signed off for batch re-run — June 9, 2026
 > **Scope:** Per-case adjudication for Axis-B codes B1 (allowlist) and B2 (metachar) before the
 > G3 synthetic saturation batch. **No validator relaxation** — security posture unchanged.
 > **Companion:** [`goaljudge_axis_b_remediation_strategy.md`](goaljudge_axis_b_remediation_strategy.md) §5.

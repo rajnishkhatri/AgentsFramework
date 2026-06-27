@@ -43,9 +43,7 @@ def _read_events(cache_dir: Path, workflow_id: str) -> list[dict]:
     if not trace_file.exists():
         return []
     return [
-        json.loads(line)
-        for line in trace_file.read_text().strip().split("\n")
-        if line
+        json.loads(line) for line in trace_file.read_text().strip().split("\n") if line
     ]
 
 
@@ -107,9 +105,13 @@ class TestOutputGuardrailAlwaysObservable:
         cache_dir = await _run_with_content(
             "Contact bob@foo.com for details.", tmp_path, "wf-redact"
         )
-        outputs = _guardrail_events(_read_events(cache_dir, "wf-redact"), stage="output")
+        outputs = _guardrail_events(
+            _read_events(cache_dir, "wf-redact"), stage="output"
+        )
         assert any(
-            e["details"]["checked"] and e["details"]["redacted"] and not e["details"]["blocked"]
+            e["details"]["checked"]
+            and e["details"]["redacted"]
+            and not e["details"]["blocked"]
             for e in outputs
         )
 

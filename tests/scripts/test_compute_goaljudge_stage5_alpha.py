@@ -104,9 +104,7 @@ class TestAlphaGatePass:
     Catches: a refactor that introduces a hidden truthiness flip would
     break this."""
 
-    def test_perfect_agreement_reports_pass_and_alpha_one(
-        self, tmp_path: Path
-    ) -> None:
+    def test_perfect_agreement_reports_pass_and_alpha_one(self, tmp_path: Path) -> None:
         rows = [
             {"item_id": "GJ-001", "r1_goal_met": "true", "r2_goal_met": "true"},
             {"item_id": "GJ-002", "r1_goal_met": "false", "r2_goal_met": "false"},
@@ -136,9 +134,7 @@ class TestAlphaGateDiffOutput:
     a per-row diff. The CLI's ``--diff OUT.csv`` flag MUST emit a CSV
     where each row identifies an item and the two diverging labels."""
 
-    def test_diff_flag_emits_disagreement_rows_only(
-        self, tmp_path: Path
-    ) -> None:
+    def test_diff_flag_emits_disagreement_rows_only(self, tmp_path: Path) -> None:
         rows = [
             {"item_id": "GJ-001", "r1_goal_met": "true", "r2_goal_met": "true"},
             {"item_id": "GJ-002", "r1_goal_met": "true", "r2_goal_met": "false"},
@@ -172,9 +168,7 @@ class TestAlphaGateDiffOutput:
         assert diff_rows[1]["r1"] == "true"
         assert diff_rows[1]["r2"] == "false"
 
-    def test_diff_flag_absent_does_not_write_file(
-        self, tmp_path: Path
-    ) -> None:
+    def test_diff_flag_absent_does_not_write_file(self, tmp_path: Path) -> None:
         """Back-compat: today's invocations (no --diff) must NOT write
         anything beyond stdout, so existing scripts and notebooks aren't
         broken."""

@@ -101,9 +101,7 @@ class LangfuseEvalTelemetrySink:
                     "model": model or "",
                     "subject": user_id,
                     "task_input": ai_input.get("task_input", ""),
-                    "dropped_prefix_digest": ai_input.get(
-                        "dropped_prefix_digest", ""
-                    ),
+                    "dropped_prefix_digest": ai_input.get("dropped_prefix_digest", ""),
                     "pinned_constraints": ai_input.get("pinned_constraints", []),
                     "summary": ai_input.get("summary", ""),
                     "__output": serialize_ai_response(ai_response),

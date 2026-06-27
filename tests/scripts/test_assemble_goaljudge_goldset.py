@@ -58,40 +58,56 @@ SCRIPT = REPO_ROOT / "scripts" / "assemble_goaljudge_goldset.py"
 
 
 _SHEET_FIELDS: tuple[str, ...] = (
-    "item_id", "split", "provenance",
-    "stratum", "domain",
-    "planning_depth", "tool_cluster",
-    "task", "claim", "evidence_summary",
-    "r1_goal_met", "r1_graceful_failure", "r1_partial_fraction", "r1_failure_mode",
-    "r2_goal_met", "r2_graceful_failure", "r2_partial_fraction", "r2_failure_mode",
-    "adjudicated_goal_met", "adjudicated_failure_mode",
-    "rubric_version", "note",
+    "item_id",
+    "split",
+    "provenance",
+    "stratum",
+    "domain",
+    "planning_depth",
+    "tool_cluster",
+    "task",
+    "claim",
+    "evidence_summary",
+    "r1_goal_met",
+    "r1_graceful_failure",
+    "r1_partial_fraction",
+    "r1_failure_mode",
+    "r2_goal_met",
+    "r2_graceful_failure",
+    "r2_partial_fraction",
+    "r2_failure_mode",
+    "adjudicated_goal_met",
+    "adjudicated_failure_mode",
+    "rubric_version",
+    "note",
 )
 
 
 def _make_row(**overrides: str) -> dict[str, str]:
     base: dict[str, str] = {f: "" for f in _SHEET_FIELDS}
-    base.update({
-        "item_id": "GJ-001",
-        "split": "dev",
-        "provenance": "production",
-        "stratum": "representative",
-        "domain": "file_io",
-        "planning_depth": "L1",
-        "tool_cluster": "file-only",
-        "task": "do thing",
-        "claim": "did thing",
-        "evidence_summary": "tool evidence",
-        "r1_goal_met": "false",
-        "r2_goal_met": "false",
-        "r1_partial_fraction": "0.5",
-        "r2_partial_fraction": "0.5",
-        "r1_failure_mode": "subtask-dropped",
-        "r2_failure_mode": "subtask-dropped",
-        "adjudicated_goal_met": "false",
-        "adjudicated_failure_mode": "subtask-dropped",
-        "rubric_version": "stage4_confirmed",
-    })
+    base.update(
+        {
+            "item_id": "GJ-001",
+            "split": "dev",
+            "provenance": "production",
+            "stratum": "representative",
+            "domain": "file_io",
+            "planning_depth": "L1",
+            "tool_cluster": "file-only",
+            "task": "do thing",
+            "claim": "did thing",
+            "evidence_summary": "tool evidence",
+            "r1_goal_met": "false",
+            "r2_goal_met": "false",
+            "r1_partial_fraction": "0.5",
+            "r2_partial_fraction": "0.5",
+            "r1_failure_mode": "subtask-dropped",
+            "r2_failure_mode": "subtask-dropped",
+            "adjudicated_goal_met": "false",
+            "adjudicated_failure_mode": "subtask-dropped",
+            "rubric_version": "stage4_confirmed",
+        }
+    )
     base.update(overrides)
     return base
 
@@ -151,18 +167,23 @@ class TestAssembleCliSuccess:
 
         proc = subprocess.run(
             [
-                sys.executable, str(SCRIPT),
-                "--sheet", str(sheet),
-                "--manifest", str(manifest),
+                sys.executable,
+                str(SCRIPT),
+                "--sheet",
+                str(sheet),
+                "--manifest",
+                str(manifest),
                 "--dry-run",
                 # Lower the floors so a 10-row test exercises the
                 # invariant path; production floors require ~250 items.
-                "--min-goal-met-false-share", "0.60",
+                "--min-goal-met-false-share",
+                "0.60",
                 # 10-row fixture can't satisfy the production D1/D5
                 # floors (which require ~250 items). The CLI's
                 # production gate keeps them on; smoke runs opt out.
                 "--skip-cell-coverage",
-                "--frozen-at", "2026-06-09T00:00:00Z",
+                "--frozen-at",
+                "2026-06-09T00:00:00Z",
             ],
             capture_output=True,
             text=True,
@@ -181,10 +202,17 @@ class TestAssembleCliSuccess:
         assert payload["goal_met_false_share"] == 0.80
         # All 12 required keys present
         for key in [
-            "dataset_name", "total_items", "dev_count", "test_count",
-            "test_split_sha256", "rubric_version", "frozen_at",
-            "stratum_distribution", "planning_depth_distribution",
-            "tool_cluster_distribution", "failure_mode_distribution",
+            "dataset_name",
+            "total_items",
+            "dev_count",
+            "test_count",
+            "test_split_sha256",
+            "rubric_version",
+            "frozen_at",
+            "stratum_distribution",
+            "planning_depth_distribution",
+            "tool_cluster_distribution",
+            "failure_mode_distribution",
             "goal_met_false_share",
         ]:
             assert key in payload, f"manifest missing required key {key!r}"
@@ -221,11 +249,15 @@ class TestAssembleCliFirewall:
 
         proc = subprocess.run(
             [
-                sys.executable, str(SCRIPT),
-                "--sheet", str(sheet),
-                "--manifest", str(manifest),
+                sys.executable,
+                str(SCRIPT),
+                "--sheet",
+                str(sheet),
+                "--manifest",
+                str(manifest),
                 "--dry-run",
-                "--frozen-at", "2026-06-09T00:00:00Z",
+                "--frozen-at",
+                "2026-06-09T00:00:00Z",
             ],
             capture_output=True,
             text=True,
@@ -233,8 +265,7 @@ class TestAssembleCliFirewall:
         assert proc.returncode != 0
         combined = proc.stdout + proc.stderr
         assert "firewall" in combined.lower() or "synthetic" in combined.lower()
-        assert not manifest.exists(), \
-            "manifest must not be written when assembly fails"
+        assert not manifest.exists(), "manifest must not be written when assembly fails"
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -273,12 +304,17 @@ class TestAssembleCliInvariant:
 
         proc = subprocess.run(
             [
-                sys.executable, str(SCRIPT),
-                "--sheet", str(sheet),
-                "--manifest", str(manifest),
+                sys.executable,
+                str(SCRIPT),
+                "--sheet",
+                str(sheet),
+                "--manifest",
+                str(manifest),
                 "--dry-run",
-                "--min-goal-met-false-share", "0.60",
-                "--frozen-at", "2026-06-09T00:00:00Z",
+                "--min-goal-met-false-share",
+                "0.60",
+                "--frozen-at",
+                "2026-06-09T00:00:00Z",
             ],
             capture_output=True,
             text=True,
@@ -300,9 +336,7 @@ class TestAssembleCliProvisional:
     into the manifest itself + sets ``provisional=true`` so downstream
     readers can introspect what kind of artifact they're looking at."""
 
-    def test_provisional_writes_manifest_with_gap_summary(
-        self, tmp_path: Path
-    ) -> None:
+    def test_provisional_writes_manifest_with_gap_summary(self, tmp_path: Path) -> None:
         """Standard 10-row fixture — too small to meet the production
         floors. ``--provisional`` lets the run succeed and records the
         gap as a per-cell summary."""
@@ -324,13 +358,18 @@ class TestAssembleCliProvisional:
 
         proc = subprocess.run(
             [
-                sys.executable, str(SCRIPT),
-                "--sheet", str(sheet),
-                "--manifest", str(manifest),
+                sys.executable,
+                str(SCRIPT),
+                "--sheet",
+                str(sheet),
+                "--manifest",
+                str(manifest),
                 "--dry-run",
                 "--provisional",
-                "--min-goal-met-false-share", "0.60",
-                "--frozen-at", "2026-06-11T00:00:00Z",
+                "--min-goal-met-false-share",
+                "0.60",
+                "--frozen-at",
+                "2026-06-11T00:00:00Z",
             ],
             capture_output=True,
             text=True,
@@ -351,9 +390,7 @@ class TestAssembleCliProvisional:
         assert payload["total_items"] == 10
         assert payload["test_split_sha256"]
 
-    def test_non_provisional_emits_empty_gap_summary(
-        self, tmp_path: Path
-    ) -> None:
+    def test_non_provisional_emits_empty_gap_summary(self, tmp_path: Path) -> None:
         """The smoke path (``--skip-cell-coverage`` without
         ``--provisional``) still emits the keys, but ``provisional=false``
         and ``floor_gap_summary={}``. Stage 6's gate fails-closed on the
@@ -375,13 +412,18 @@ class TestAssembleCliProvisional:
 
         proc = subprocess.run(
             [
-                sys.executable, str(SCRIPT),
-                "--sheet", str(sheet),
-                "--manifest", str(manifest),
+                sys.executable,
+                str(SCRIPT),
+                "--sheet",
+                str(sheet),
+                "--manifest",
+                str(manifest),
                 "--dry-run",
                 "--skip-cell-coverage",
-                "--min-goal-met-false-share", "0.60",
-                "--frozen-at", "2026-06-11T00:00:00Z",
+                "--min-goal-met-false-share",
+                "0.60",
+                "--frozen-at",
+                "2026-06-11T00:00:00Z",
             ],
             capture_output=True,
             text=True,

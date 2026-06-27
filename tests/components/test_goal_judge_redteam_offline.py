@@ -135,7 +135,9 @@ class TestOfflineA2CorruptSuccessMitigation:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("fixture", A2_SESSION_FIXTURES, ids=lambda f: f["id"])
-    async def test_a2_shaped_fixtures_digest_surfaces_tool_evidence(self, fixture: dict):
+    async def test_a2_shaped_fixtures_digest_surfaces_tool_evidence(
+        self, fixture: dict
+    ):
         digest = _summarize_evidence(fixture["evidence"])
         assert "file_io" in digest or "shell" in digest or "web_search" in digest
 
@@ -154,4 +156,3 @@ class TestOfflineA2CorruptSuccessMitigation:
         assert verdict.goal_met is False
         assert verdict.partial_fraction == pytest.approx(0.67)
         assert verdict.graceful_failure is False
-

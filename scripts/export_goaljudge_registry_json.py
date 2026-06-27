@@ -6,6 +6,7 @@ Output: frontend/e2e/fixtures/goaljudge_registry.json
 Regenerate after registry edits:
     python scripts/export_goaljudge_registry_json.py
 """
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,9 @@ from tests.fixtures.goaljudge.case_registry import LIVE_CASES
 OUT_PATH = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "goaljudge_registry.json"
 
 # Registry prompts use the local file_io sandbox; Playwright GCP batch needs /workspace.
-_LOCAL_WORKSPACE_PREFIX = "/Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace"
+_LOCAL_WORKSPACE_PREFIX = (
+    "/Users/rajnishkhatri/Documents/AgentsFramework/agent/workspace"
+)
 
 
 def prompt_for_gcp(prompt: str) -> str:

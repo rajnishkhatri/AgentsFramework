@@ -191,9 +191,7 @@ class TestValidationGates:
 
     def test_length_gate_rejects_201_char_item(self):
         long_item = "task " + "x" * 200
-        issues = validate_conditions(
-            ["task is done", long_item], task_input="the task"
-        )
+        issues = validate_conditions(["task is done", long_item], task_input="the task")
         assert any("length" in issue for issue in issues)
 
     def test_grounding_gate_rejects_offtopic_condition(self):
@@ -257,10 +255,12 @@ class TestTaskUnderstandingGenerator:
     async def test_gate_rejection_raises_validation_error(self):
         # One ungrounded condition → grounding gate trips → generator raises.
         generator, _ = _generator(
-            _payload(success_conditions=[
-                "The file /workspace/f3.txt exists.",
-                "Zorblat frequencies harmonized",
-            ])
+            _payload(
+                success_conditions=[
+                    "The file /workspace/f3.txt exists.",
+                    "Zorblat frequencies harmonized",
+                ]
+            )
         )
         with pytest.raises(TaskUnderstandingValidationError):
             await generator.generate(task_input=_TASK)
@@ -268,7 +268,11 @@ class TestTaskUnderstandingGenerator:
     @pytest.mark.asyncio
     async def test_count_overflow_raises_validation_error(self):
         generator, _ = _generator(
-            _payload(success_conditions=[f"weather condition {i} in Austin" for i in range(9)])
+            _payload(
+                success_conditions=[
+                    f"weather condition {i} in Austin" for i in range(9)
+                ]
+            )
         )
         with pytest.raises(TaskUnderstandingValidationError):
             await generator.generate(task_input="weather conditions in Austin")
@@ -408,7 +412,9 @@ class TestTaskUnderstandingRetry:
         with pytest.raises(Exception):
             await generator.generate(
                 task_input=_TASK,
-                on_gate_rejection=lambda issues, attempt, conditions: seen.append(attempt),
+                on_gate_rejection=lambda issues, attempt, conditions: seen.append(
+                    attempt
+                ),
             )
         assert len(llm.calls) == 1
         assert seen == []
@@ -424,7 +430,9 @@ class TestTaskUnderstandingRetry:
         with pytest.raises(RuntimeError):
             await generator.generate(
                 task_input=_TASK,
-                on_gate_rejection=lambda issues, attempt, conditions: seen.append(attempt),
+                on_gate_rejection=lambda issues, attempt, conditions: seen.append(
+                    attempt
+                ),
             )
         assert len(llm.calls) == 1
         assert seen == []

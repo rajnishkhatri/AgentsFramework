@@ -137,4 +137,3 @@ single coding source; Phase 3 §4 and §6.2 are derived views of it.
 Axis-A tally, and flagged for re-coding on the post-SearXNG batch re-run (Phase 3 §7).
 - Phase 3 §6 remains the canonical landing spot inside the taxonomy report; this artifact is the
 derived, evidence-annotated view the Step 6 frequency count is computed from.
-

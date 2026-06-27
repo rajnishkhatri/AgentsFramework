@@ -301,9 +301,7 @@ class TestReasoningTierEscalation:
         # model_history entries are dicts carrying a "tier" key
         history = [{"step": i, "tier": "reasoning"} for i in range(3)]
         # 3 reasoning picks already used -> budget exhausted -> fall through
-        profile, reason = select_model(
-            5, 5, "model_error", 0.1, history, cfg, rcfg
-        )
+        profile, reason = select_model(5, 5, "model_error", 0.1, history, cfg, rcfg)
         assert reason == "steady-state-fast"
         assert profile.tier == "fast"
 
@@ -317,15 +315,11 @@ class TestDeepSeekSetRoutesThroughTiers:
         from services.llm_config import build_model_registry
 
         models, default_model = build_model_registry("deepseek")
-        return AgentConfig(
-            default_model=default_model, max_cost_usd=1.0, models=models
-        )
+        return AgentConfig(default_model=default_model, max_cost_usd=1.0, models=models)
 
     def test_first_step_planning_picks_flash_capable(self):
         cfg = self._deepseek_config()
-        profile, reason = select_model(
-            0, 0, "", 0.0, [], cfg, _routing_config()
-        )
+        profile, reason = select_model(0, 0, "", 0.0, [], cfg, _routing_config())
         assert reason == "capable-for-planning"
         assert profile.tier == "capable"
         assert profile.name == "deepseek-v4-flash-capable"
@@ -350,7 +344,13 @@ class TestDeepSeekSetRoutesThroughTiers:
     def test_pin_resolves_to_deepseek_pro(self):
         cfg = self._deepseek_config()
         profile, reason = select_model(
-            5, 0, "", 0.1, ["fast"] * 5, cfg, _routing_config(),
+            5,
+            0,
+            "",
+            0.1,
+            ["fast"] * 5,
+            cfg,
+            _routing_config(),
             pinned_model="deepseek-v4-pro",
         )
         assert profile.name == "deepseek-v4-pro"
@@ -501,8 +501,8 @@ class TestDepthCollapseRegression:
                     f"want={want} fired={fired} ({reason}) :: {prompt[:70]!r}"
                 )
 
-        assert not mismatches, "depth collapse — rows under intended depth:\n" + "\n".join(
-            mismatches
+        assert not mismatches, (
+            "depth collapse — rows under intended depth:\n" + "\n".join(mismatches)
         )
 
     def test_post_tool_synthesis_still_collapses_to_l0(self) -> None:

@@ -309,7 +309,9 @@ class BlackBoxToTelemetryRelay:
                     attrs["__output"] = redact_details(event.details)
 
                 if "parent_observation_id" in kwargs:
-                    attrs["__bb_parent_observation_id"] = kwargs["parent_observation_id"]
+                    attrs["__bb_parent_observation_id"] = kwargs[
+                        "parent_observation_id"
+                    ]
                 if "model" in kwargs:
                     attrs["__bb_model"] = kwargs["model"]
                 if "usage" in kwargs:
@@ -330,9 +332,7 @@ class BlackBoxToTelemetryRelay:
                 # dropped every BlackBox observation). ``None`` is treated as
                 # success for backward compatibility with older exporters.
                 if exported is False:
-                    self._write_dlq(
-                        wf_dir, line, "exporter swallowed export failure"
-                    )
+                    self._write_dlq(wf_dir, line, "exporter swallowed export failure")
                     return False
 
                 if event.event_type == EventType.TASK_COMPLETED:
@@ -366,7 +366,9 @@ class BlackBoxToTelemetryRelay:
 
         try:
             recorder = BlackBoxRecorder(storage_dir=self._storage_dir)
-            phase_logger = PhaseLogger(storage_dir=self._storage_dir.parent / "phase_logs")
+            phase_logger = PhaseLogger(
+                storage_dir=self._storage_dir.parent / "phase_logs"
+            )
             bundle = recorder.export_for_compliance(
                 workflow_id,
                 agent_facts_registry=self._agent_facts_registry,
@@ -390,16 +392,18 @@ class BlackBoxToTelemetryRelay:
                 trace_id=workflow_id,
                 name="hash_chain_valid",
                 value=1.0 if chain_valid else 0.0,
-                comment=None if chain_valid else "Integrity hash chain broken or invalid",
+                comment=None
+                if chain_valid
+                else "Integrity hash chain broken or invalid",
             )
         except Exception as exc:
-            logger.warning(
-                "Failed to score trace %s: %s", workflow_id, exc
-            )
+            logger.warning("Failed to score trace %s: %s", workflow_id, exc)
 
         try:
             self._compliance_publisher.create_dataset_item(
-                dataset_name=self.DATASET_AUDIT if chain_valid else self.DATASET_INCIDENT,
+                dataset_name=self.DATASET_AUDIT
+                if chain_valid
+                else self.DATASET_INCIDENT,
                 input_data=redact_compliance_bundle(bundle),
                 item_id=workflow_id,
                 metadata={"workflow_id": workflow_id, "chain_valid": chain_valid},
@@ -407,7 +411,8 @@ class BlackBoxToTelemetryRelay:
         except Exception as exc:
             logger.warning(
                 "Failed to publish compliance dataset item for %s: %s",
-                workflow_id, exc,
+                workflow_id,
+                exc,
             )
 
         if chain_valid and outcome == "failure":
@@ -421,7 +426,8 @@ class BlackBoxToTelemetryRelay:
             except Exception as exc:
                 logger.warning(
                     "Failed to publish incident dataset item for %s: %s",
-                    workflow_id, exc,
+                    workflow_id,
+                    exc,
                 )
 
     def _publish_outcome_scores(
@@ -442,7 +448,9 @@ class BlackBoxToTelemetryRelay:
             if value is None:
                 continue
             try:
-                numeric = 1.0 if value is True else 0.0 if value is False else float(value)
+                numeric = (
+                    1.0 if value is True else 0.0 if value is False else float(value)
+                )
             except (TypeError, ValueError):
                 continue
             try:
@@ -454,7 +462,9 @@ class BlackBoxToTelemetryRelay:
             except Exception as exc:
                 logger.warning(
                     "Failed to publish outcome score %s for %s: %s",
-                    field, workflow_id, exc,
+                    field,
+                    workflow_id,
+                    exc,
                 )
 
     @staticmethod

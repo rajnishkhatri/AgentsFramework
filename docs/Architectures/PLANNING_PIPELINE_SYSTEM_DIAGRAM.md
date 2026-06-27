@@ -7,8 +7,8 @@ tags: [architecture]
 
 # Planning Pipeline — End-to-End System Diagram
 
-**Status:** Operational companion to [`planning_pipeline_tiered_loops.design.md`](../plans/planning_pipeline_tiered_loops.design.md) §B.  
-**Source of truth:** [`orchestration/react_loop.py`](../../orchestration/react_loop.py) (shipped StateGraph).  
+**Status:** Operational companion to [`planning_pipeline_tiered_loops.design.md`](../plans/planning_pipeline_tiered_loops.design.md) §B.
+**Source of truth:** [`orchestration/react_loop.py`](../../orchestration/react_loop.py) (shipped StateGraph).
 **Scope:** Backend agent runtime only — no frontend/BFF, no Langfuse carrier detail.
 
 > **Naming note:** **T1 / T2 / T3** here are **pipeline tiers** (Plan-and-Execute, Reflexion, Supervisor fan-out). They are **not** the Playwright E2E tiers (`test:e2e:t1` = SSE mock, `t2` = BFF mock, `t3` = full-stack Cloud Run).

@@ -94,18 +94,12 @@ class WorkOSRoleAcl:
         granting_roles = [
             role
             for role in claims.roles
-            if role in self._role_to_tools
-            and tool_name in self._role_to_tools[role]
+            if role in self._role_to_tools and tool_name in self._role_to_tools[role]
         ]
         if not granting_roles:
-            unknown_only = all(
-                r not in self._role_to_tools for r in claims.roles
-            )
+            unknown_only = all(r not in self._role_to_tools for r in claims.roles)
             if unknown_only:
-                reason = (
-                    "unknown role(s): "
-                    + ", ".join(sorted(claims.roles))
-                )
+                reason = "unknown role(s): " + ", ".join(sorted(claims.roles))
             else:
                 reason = (
                     f"role(s) {sorted(claims.roles)!r} lack permission "

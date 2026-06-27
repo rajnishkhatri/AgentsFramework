@@ -1,0 +1,20 @@
+# Gitleaks configuration — keeps the built-in default rules and allowlists
+# the deterministic fake keys used in the redaction-pipeline tests.
+#
+# Track A sensor layer: paired with the gitleaks pre-commit hook in
+# .pre-commit-config.yaml and the CI workflow in
+# .github/workflows/pre-commit.yml. Gitleaks auto-discovers this file at the
+# repo root; `[extend] useDefault = true` keeps every built-in rule active so
+# adding this allowlist does not weaken detection anywhere else.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Deterministic fake API keys used by the redaction-pipeline test fixtures."
+
+# Test fixture: a non-secret `sk-...` string used to assert that the black-box
+# publisher scrubs API keys from event details. Not a credential — never live.
+paths = [
+    '''tests/middleware/sidecars/test_e2e_blackbox_pipeline.py''',
+]

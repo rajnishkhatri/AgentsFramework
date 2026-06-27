@@ -29,6 +29,7 @@ def freeze_time(*args, **kwargs):
             ignore.append(name)
     return _freezegun_freeze_time(*args, ignore=ignore, **kwargs)
 
+
 AGENT_ROOT = Path(__file__).resolve().parent.parent
 if str(AGENT_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT_ROOT))

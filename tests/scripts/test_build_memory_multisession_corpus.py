@@ -102,7 +102,14 @@ class TestCaseSchema:
 
     def test_required_keys(self, corpus: list[dict]) -> None:
         for c in corpus:
-            for key in ("case", "mem_id", "ability", "provenance", "user_id", "sessions"):
+            for key in (
+                "case",
+                "mem_id",
+                "ability",
+                "provenance",
+                "user_id",
+                "sessions",
+            ):
                 assert key in c, f"{c.get('case', '?')} missing {key}"
 
     def test_ability_and_provenance_in_vocab(self, corpus: list[dict]) -> None:
@@ -155,7 +162,9 @@ class TestSessionShape:
                 # A crud-seed session carries no conversational turns (it plants
                 # memories via seed_memory); every other kind needs real turns.
                 if s["kind"] == "crud-seed":
-                    assert s.get("seed_memory"), f"{c['case']} crud-seed needs seed_memory"
+                    assert s.get("seed_memory"), (
+                        f"{c['case']} crud-seed needs seed_memory"
+                    )
                 else:
                     assert s["turns"]
                     assert all(isinstance(t, str) and t for t in s["turns"])

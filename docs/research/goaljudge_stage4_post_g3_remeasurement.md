@@ -1,6 +1,6 @@
 # GoalJudge Stage 4 — Post-G3 Re-measurement (Steps 5–7)
 
-> **Status:** Template for analyst execution after G3 batch re-run  
+> **Status:** Template for analyst execution after G3 batch re-run
 > **Prerequisite:** G1 batch complete under `synthetic-saturation-user` with E1
 > `eval.goal_judge` observations joinable per trace.
 

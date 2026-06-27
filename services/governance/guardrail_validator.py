@@ -93,9 +93,7 @@ class GuardRailValidator:
             failed = bool(matches) or length_violation
 
             if length_violation and not matches:
-                details = (
-                    f"Content length {len(content)} exceeds max_length {rule.max_length}"
-                )
+                details = f"Content length {len(content)} exceeds max_length {rule.max_length}"
             elif matches:
                 details = f"{len(matches)} match(es) for rule '{rule.name}'"
             else:
@@ -111,15 +109,17 @@ class GuardRailValidator:
             )
             results.append(result)
 
-            self._trace.append({
-                "timestamp": datetime.now(UTC).isoformat(),
-                "rule_name": rule.name,
-                "passed": not failed,
-                "severity": rule.severity.value,
-                "fail_action": rule.fail_action.value,
-                "match_count": len(matches),
-                "length_violation": length_violation,
-            })
+            self._trace.append(
+                {
+                    "timestamp": datetime.now(UTC).isoformat(),
+                    "rule_name": rule.name,
+                    "passed": not failed,
+                    "severity": rule.severity.value,
+                    "fail_action": rule.fail_action.value,
+                    "match_count": len(matches),
+                    "length_violation": length_violation,
+                }
+            )
 
             if failed:
                 logger.info(

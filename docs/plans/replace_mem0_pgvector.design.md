@@ -290,7 +290,7 @@ CREATE TABLE agent_memories (
 );
 
 CREATE INDEX agent_memories_user_idx ON agent_memories (user_id);
-CREATE INDEX agent_memories_embedding_idx 
+CREATE INDEX agent_memories_embedding_idx
   ON agent_memories USING hnsw (embedding vector_cosine_ops);
 ```
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -35,7 +36,7 @@ def validate_synthesis(
     final_answer: str,
     task_input: str,
     planning_depth: Literal["L0", "L1", "L2"],
-    todos: list[dict] | None,
+    todos: Sequence[Mapping[str, object]] | None,
 ) -> SynthesisValidationResult:
     """Validate that final synthesis is complete enough for selected depth."""
     feedback: list[str] = []
@@ -49,7 +50,8 @@ def validate_synthesis(
         )
 
     open_todos = [
-        todo for todo in (todos or [])
+        todo
+        for todo in (todos or [])
         if str(todo.get("status", "")).lower() in {"pending", "in_progress"}
     ]
     if planning_depth in {"L1", "L2"} and open_todos:
@@ -72,7 +74,8 @@ def validate_synthesis(
 
     confidence = max(0.0, min(1.0, confidence))
     return SynthesisValidationResult(
-        passed=confidence >= 0.6 and not any("empty" in item.lower() for item in feedback),
+        passed=confidence >= 0.6
+        and not any("empty" in item.lower() for item in feedback),
         confidence=confidence,
         feedback=feedback,
     )

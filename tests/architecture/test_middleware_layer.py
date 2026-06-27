@@ -54,7 +54,7 @@ MIDDLEWARE_DIR = AGENT_ROOT / "middleware"
 
 # SDKs that must be confined to middleware/adapters/* per F-R2 / A1.
 SDK_PACKAGES = {
-    "jwt",          # PyJWT
+    "jwt",  # PyJWT
     "mem0",
     "mem0ai",
     "langfuse",
@@ -130,9 +130,7 @@ class TestM1_BackendDoesNotImportMiddleware:
                     if layer == "services" and module.startswith("middleware.ports"):
                         continue
                     rel = py.relative_to(AGENT_ROOT)
-                    violations.append(
-                        f"{rel}:{imp['line']} imports {module}"
-                    )
+                    violations.append(f"{rel}:{imp['line']} imports {module}")
         assert violations == [], (
             "M1 violated: backend layer imports from middleware/:\n"
             + "\n".join(violations)
@@ -193,8 +191,7 @@ class TestF4_MiddlewareDependencyDirection:
             if pkg == "meta"
         ]
         assert violations == [], (
-            "F4 violated: middleware/ must not import meta/:\n"
-            + "\n".join(violations)
+            "F4 violated: middleware/ must not import meta/:\n" + "\n".join(violations)
         )
 
 
@@ -213,9 +210,7 @@ class TestPortPurity:
         if not port_imports:
             pytest.skip("ports/ scaffolded but empty")
         violations = [
-            f"{path} imports {pkg}"
-            for path, pkg in port_imports
-            if pkg in SDK_PACKAGES
+            f"{path} imports {pkg}" for path, pkg in port_imports if pkg in SDK_PACKAGES
         ]
         assert violations == [], (
             "Port purity violated: middleware/ports/ must NOT import SDKs "
@@ -332,9 +327,7 @@ class TestAdapterIsolation:
                     if pkg == f"middleware.adapters.{other}" or pkg.startswith(
                         f"middleware.adapters.{other}."
                     ):
-                        violations.append(
-                            f"{path} imports sibling family {other}"
-                        )
+                        violations.append(f"{path} imports sibling family {other}")
         assert violations == [], (
             "A2 violated: adapter families must not import each other:\n"
             + "\n".join(violations)
@@ -360,9 +353,7 @@ class TestAppProdSdkIsolation:
         main_file = MIDDLEWARE_DIR / "__main__.py"
         if not main_file.exists():
             pytest.skip("__main__.py not yet scaffolded")
-        imports = collect_imports_in_directory(
-            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(MIDDLEWARE_DIR, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
@@ -378,9 +369,7 @@ class TestAppProdSdkIsolation:
         app_prod = MIDDLEWARE_DIR / "app_prod.py"
         if not app_prod.exists():
             pytest.skip("app_prod.py not yet scaffolded")
-        imports = collect_imports_in_directory(
-            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(MIDDLEWARE_DIR, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
@@ -395,9 +384,7 @@ class TestAppProdSdkIsolation:
         bridge = MIDDLEWARE_DIR / "telemetry_bridge.py"
         if not bridge.exists():
             pytest.skip("telemetry_bridge.py not yet created")
-        imports = collect_imports_in_directory(
-            MIDDLEWARE_DIR, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(MIDDLEWARE_DIR, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
@@ -405,8 +392,7 @@ class TestAppProdSdkIsolation:
         ]
         assert violations == [], (
             "C1/I-10 violated: telemetry_bridge.py must NOT import langfuse "
-            "SDK (use port TelemetryExporter instead):\n"
-            + "\n".join(violations)
+            "SDK (use port TelemetryExporter instead):\n" + "\n".join(violations)
         )
 
 
@@ -473,8 +459,7 @@ class TestSidecarMainLayering:
         ]
         assert violations == [], (
             "Sprint D layering violated: sidecars/__main__.py must NOT "
-            "import components/orchestration/governance/meta:\n"
-            + "\n".join(violations)
+            "import components/orchestration/governance/meta:\n" + "\n".join(violations)
         )
 
 
@@ -496,13 +481,12 @@ class TestBlackBoxPipelineLayering:
         publisher = AGENT_ROOT / "services" / "governance" / "black_box_publisher.py"
         if not publisher.exists():
             pytest.skip("black_box_publisher.py not yet created")
-        imports = collect_imports_in_directory(
-            publisher.parent, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(publisher.parent, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
-            if "black_box_publisher" in str(path) and pkg in ("langfuse", "langgraph", "langchain")
+            if "black_box_publisher" in str(path)
+            and pkg in ("langfuse", "langgraph", "langchain")
         ]
         assert violations == [], (
             "Pipeline layering violated: black_box_publisher.py must NOT "
@@ -513,13 +497,12 @@ class TestBlackBoxPipelineLayering:
         relay = AGENT_ROOT / "middleware" / "sidecars" / "black_box_to_telemetry.py"
         if not relay.exists():
             pytest.skip("black_box_to_telemetry.py not yet created")
-        imports = collect_imports_in_directory(
-            relay.parent, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(relay.parent, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
-            if "black_box_to_telemetry" in str(path) and pkg in ("langfuse", "langgraph", "langchain")
+            if "black_box_to_telemetry" in str(path)
+            and pkg in ("langfuse", "langgraph", "langchain")
         ]
         assert violations == [], (
             "Pipeline layering violated: black_box_to_telemetry.py must NOT "
@@ -533,9 +516,7 @@ class TestBlackBoxPipelineLayering:
         if not publisher.exists():
             pytest.skip("black_box_publisher.py not yet created")
         forbidden = {"middleware", "components", "orchestration", "meta"}
-        imports = collect_imports_in_directory(
-            publisher.parent, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(publisher.parent, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
@@ -550,9 +531,7 @@ class TestBlackBoxPipelineLayering:
         port = AGENT_ROOT / "middleware" / "ports" / "compliance_publisher.py"
         if not port.exists():
             pytest.skip("compliance_publisher.py not yet created")
-        imports = collect_imports_in_directory(
-            port.parent, relative_to=AGENT_ROOT
-        )
+        imports = collect_imports_in_directory(port.parent, relative_to=AGENT_ROOT)
         violations = [
             f"{path} imports {pkg}"
             for path, pkg in imports
@@ -633,16 +612,14 @@ class TestTelemetryBridgeImportAllowlist:
 
             # Shared PII scrubber (same module the BlackBox relay uses via to_export_kwargs)
             if top == "services" and not any(
-                full_module.startswith(sub)
-                for sub in self.ALLOWED_SERVICES_SUBPACKAGES
+                full_module.startswith(sub) for sub in self.ALLOWED_SERVICES_SUBPACKAGES
             ):
                 violations.append(
                     f"imports '{full_module}' — only services.governance.black_box_publisher allowed"
                 )
 
         assert violations == [], (
-            "telemetry_bridge.py import allowlist violated:\n"
-            + "\n".join(violations)
+            "telemetry_bridge.py import allowlist violated:\n" + "\n".join(violations)
         )
 
     @staticmethod

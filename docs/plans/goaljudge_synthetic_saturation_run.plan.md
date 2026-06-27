@@ -13,7 +13,7 @@ This document details the end-to-end execution plan for running the GoalJudge sy
 
 ## 1. Prerequisites & Keys Check
 
-Before starting, ensure that `/Users/rajnishkhatri/Documents/AgentsFramework/agent/.env` contains the required keys. 
+Before starting, ensure that `/Users/rajnishkhatri/Documents/AgentsFramework/agent/.env` contains the required keys.
 All pipeline scripts automatically load this `.env` file upon startup.
 
 *   `OPENAI_API_KEY` (OpenAI model calls)

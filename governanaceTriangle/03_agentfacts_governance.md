@@ -1,7 +1,7 @@
 # Tutorial 3: AgentFacts for Governance
 
-**Duration:** ~25 minutes  
-**Level:** Intermediate  
+**Duration:** ~25 minutes
+**Level:** Intermediate
 **Prerequisites:** [Tutorial 1: Explainability Fundamentals](01_explainability_fundamentals.md)
 
 ---
@@ -252,13 +252,13 @@ def calculate_monthly_cost(agent_id: str, usage_log: list) -> dict:
     agent = registry.get(agent_id)
     if not agent:
         return {"error": "Agent not found"}
-    
+
     # Build cost lookup from capabilities
     cost_lookup = {
-        cap.name: cap.cost_per_call or 0 
+        cap.name: cap.cost_per_call or 0
         for cap in agent.capabilities
     }
-    
+
     # Calculate from usage
     total_cost = 0
     breakdown = {}
@@ -269,7 +269,7 @@ def calculate_monthly_cost(agent_id: str, usage_log: list) -> dict:
         cost = count * cap_cost
         total_cost += cost
         breakdown[cap_name] = {"calls": count, "cost": cost}
-    
+
     return {
         "agent_id": agent_id,
         "owner": agent.owner,
@@ -314,16 +314,16 @@ lineage_tracked_agent = AgentFacts(
         "model_name": "gpt-4-turbo",
         "model_version": "gpt-4-turbo-2024-04-09",
         "model_snapshot_date": "2024-04-09",
-        
+
         # Training lineage
         "fine_tuned": False,
         "prompt_version": "v3.2.1",
         "prompt_last_updated": "2024-10-20",
-        
+
         # Embedding model for RAG
         "embedding_model": "text-embedding-3-large",
         "embedding_dimensions": 3072,
-        
+
         # Performance baseline
         "baseline_accuracy": 0.94,
         "baseline_date": "2024-09-15"
@@ -377,7 +377,7 @@ capability = Capability(
     # Identity
     name="extract_vendor",
     description="Extracts vendor name and details from invoice documents",
-    
+
     # Contract (what goes in, what comes out)
     input_schema={
         "type": "object",
@@ -396,14 +396,14 @@ capability = Capability(
         },
         "required": ["vendor_name", "confidence"]
     },
-    
+
     # Performance SLAs
     estimated_latency_ms=500,  # Expected response time
     cost_per_call=0.005,       # Cost per invocation
-    
+
     # Governance
     requires_approval=False,   # Does this need human approval?
-    
+
     # Discovery
     tags=["extraction", "ocr", "vendor", "invoice"]
 )
@@ -424,7 +424,7 @@ Schemas serve multiple purposes:
 fraud_scoring_capability = Capability(
     name="score_transaction",
     description="Calculates fraud risk score for a financial transaction",
-    
+
     input_schema={
         "type": "object",
         "properties": {
@@ -444,7 +444,7 @@ fraud_scoring_capability = Capability(
         },
         "required": ["transaction_id", "amount"]
     },
-    
+
     output_schema={
         "type": "object",
         "properties": {
@@ -471,7 +471,7 @@ fraud_scoring_capability = Capability(
         },
         "required": ["fraud_score", "risk_level"]
     },
-    
+
     estimated_latency_ms=350,
     cost_per_call=0.01,
     requires_approval=False,
@@ -557,7 +557,7 @@ def execute_capability(agent_id: str, capability_name: str, input_data: dict) ->
     """Execute a capability with approval checks."""
     agent = registry.get(agent_id)
     capability = agent.get_capability(capability_name)
-    
+
     if capability.requires_approval:
         approval = get_human_approval(
             agent_id=agent_id,
@@ -569,7 +569,7 @@ def execute_capability(agent_id: str, capability_name: str, input_data: dict) ->
                 f"Capability '{capability_name}' requires approval. "
                 f"Request ID: {approval.request_id}"
             )
-    
+
     # Execute the capability
     return agent.execute(capability_name, input_data)
 ```
@@ -626,18 +626,18 @@ policy = Policy(
     name="API Rate Limit",
     description="Limits API calls to prevent abuse and control costs",
     policy_type="rate_limit",  # Type categorization
-    
+
     # Policy-specific constraints
     constraints={
         "max_calls_per_minute": 60,
         "max_calls_per_hour": 1000,
         "burst_limit": 10
     },
-    
+
     # Temporal bounds
     effective_from=datetime.now(UTC),
     effective_until=None,  # No expiration
-    
+
     # Active status
     is_active=True
 )
@@ -675,14 +675,14 @@ class RateLimiter:
             p for p in agent.get_active_policies()
             if p.policy_type == "rate_limit"
         ]
-        
+
         for policy in rate_policies:
             constraints = policy.constraints
             current_minute_calls = self.get_calls_in_window(agent_id, minutes=1)
-            
+
             if current_minute_calls >= constraints.get("max_calls_per_minute", float("inf")):
                 return False
-        
+
         return True
 ```
 
@@ -714,13 +714,13 @@ def filter_data_access(agent_id: str, requested_data: dict) -> dict:
         p for p in agent.get_active_policies()
         if p.policy_type == "data_access"
     ]
-    
+
     filtered = requested_data.copy()
-    
+
     for policy in access_policies:
         restricted = policy.constraints.get("restricted_fields", [])
         pii_mode = policy.constraints.get("pii_handling_mode", "block")
-        
+
         for field in restricted:
             if field in filtered:
                 if pii_mode == "redact":
@@ -729,7 +729,7 @@ def filter_data_access(agent_id: str, requested_data: dict) -> dict:
                     filtered[field] = hash_value(filtered[field])
                 else:  # block
                     del filtered[field]
-    
+
     return filtered
 ```
 
@@ -755,8 +755,8 @@ approval_policy = Policy(
 
 # Enforcement example
 def process_with_approval_check(
-    agent_id: str, 
-    transaction: dict, 
+    agent_id: str,
+    transaction: dict,
     approver_service
 ) -> dict:
     """Process transaction with approval check if required."""
@@ -765,27 +765,27 @@ def process_with_approval_check(
         p for p in agent.get_active_policies()
         if p.policy_type == "approval_required"
     ]
-    
+
     amount = transaction.get("amount", 0)
-    
+
     for policy in approval_policies:
         constraints = policy.constraints
         auto_approve = constraints.get("auto_approve_below", 0)
         threshold = constraints.get("threshold_amount", float("inf"))
-        
+
         if amount < auto_approve:
             return {"status": "auto_approved", "amount": amount}
-        
+
         if amount >= threshold:
             approval = approver_service.request_approval(
                 transaction=transaction,
                 required_role=constraints.get("approval_role"),
                 timeout_minutes=constraints.get("escalation_timeout_minutes")
             )
-            
+
             if not approval.granted:
                 return {"status": "pending_approval", "approval_id": approval.id}
-    
+
     return {"status": "approved", "amount": amount}
 ```
 
@@ -846,7 +846,7 @@ When multiple policies apply, you need rules for resolving conflicts:
 ```python
 def get_effective_constraints(agent_id: str, policy_type: str) -> dict:
     """Get merged constraints from all active policies of a type.
-    
+
     Precedence rules:
     1. More specific policies override general policies
     2. Lower limits take precedence (conservative approach)
@@ -857,10 +857,10 @@ def get_effective_constraints(agent_id: str, policy_type: str) -> dict:
         p for p in agent.get_active_policies()
         if p.policy_type == policy_type
     ]
-    
+
     # Sort by effective_from (most recent first for conflict resolution)
     applicable.sort(key=lambda p: p.effective_from, reverse=True)
-    
+
     merged = {}
     for policy in applicable:
         for key, value in policy.constraints.items():
@@ -873,7 +873,7 @@ def get_effective_constraints(agent_id: str, policy_type: str) -> dict:
                 # For lists (like allowed_fields), intersect
                 merged[key] = list(set(merged[key]) & set(value))
             # For other types, first (most recent) wins
-    
+
     return merged
 ```
 
@@ -891,7 +891,7 @@ import json
 
 def compute_signature(agent_facts: AgentFacts) -> str:
     """Compute SHA256 hash of essential agent fields.
-    
+
     This function mirrors AgentFacts.compute_signature() to explain the process.
     """
     # Fields included in signature (everything except signature_hash itself)
@@ -902,11 +902,11 @@ def compute_signature(agent_facts: AgentFacts) -> str:
         "version": agent_facts.version,
         "description": agent_facts.description,
         "capabilities": [
-            cap.model_dump(mode="json") 
+            cap.model_dump(mode="json")
             for cap in agent_facts.capabilities
         ],
         "policies": [
-            pol.model_dump(mode="json") 
+            pol.model_dump(mode="json")
             for pol in agent_facts.policies
         ],
         "created_at": agent_facts.created_at.isoformat(),
@@ -914,10 +914,10 @@ def compute_signature(agent_facts: AgentFacts) -> str:
         "parent_agent_id": agent_facts.parent_agent_id,
         "metadata": agent_facts.metadata,
     }
-    
+
     # Serialize deterministically (sorted keys ensure consistent ordering)
     serialized = json.dumps(hash_data, sort_keys=True, default=str)
-    
+
     # Compute SHA256 hash
     return hashlib.sha256(serialized.encode()).hexdigest()
 
@@ -939,23 +939,23 @@ print(f"Signature: {signature}")
 ```mermaid
 flowchart TD
     START([Verify Agent]) --> LOAD[Load AgentFacts from Registry]
-    
+
     LOAD --> CHECK_STORED{Has stored<br/>signature_hash?}
-    
+
     CHECK_STORED -->|No| INVALID1[❌ INVALID<br/>No signature stored]
-    
+
     CHECK_STORED -->|Yes| COMPUTE[Compute fresh signature<br/>from current fields]
-    
+
     COMPUTE --> COMPARE{Stored signature<br/>== Computed signature?}
-    
+
     COMPARE -->|Yes| VALID[✅ VALID<br/>Agent integrity confirmed]
-    
+
     COMPARE -->|No| INVALID2[❌ INVALID<br/>Tampering detected!]
-    
+
     INVALID2 --> AUDIT[Log to audit trail:<br/>verification failed]
-    
+
     VALID --> AUDIT2[Log to audit trail:<br/>verification passed]
-    
+
     style VALID fill:#4CAF50,color:#fff
     style INVALID1 fill:#f44336,color:#fff
     style INVALID2 fill:#f44336,color:#fff
@@ -1030,23 +1030,23 @@ print(f"Computed signature: {agent.compute_signature()[:40]}...")
 ```python
 def execute_agent_safely(agent_id: str, input_data: dict) -> dict:
     """Execute an agent only after verifying its integrity."""
-    
+
     # ALWAYS verify before execution
     if not registry.verify(agent_id):
         raise SecurityError(
             f"Agent '{agent_id}' failed integrity verification. "
             "Possible tampering detected. Execution blocked."
         )
-    
+
     agent = registry.get(agent_id)
-    
+
     # Additional checks
     if not agent.get_active_policies():
         raise PolicyError(
             f"Agent '{agent_id}' has no active policies. "
             "Execution requires at least one governing policy."
         )
-    
+
     # Safe to execute
     return agent.execute(input_data)
 ```
@@ -1171,21 +1171,21 @@ def generate_compliance_report(
     export_dir: Path
 ) -> dict:
     """Generate a compliance report for a specific regulatory framework."""
-    
+
     # Find agents with this compliance framework
     all_agents = registry.list_all()
     compliant_agents = []
-    
+
     for agent_id in all_agents:
         agent = registry.get(agent_id)
         frameworks = agent.metadata.get("compliance_frameworks", [])
         if framework in frameworks:
             compliant_agents.append(agent_id)
-    
+
     # Export all compliant agents
     export_path = export_dir / f"{framework.lower()}_audit_{datetime.now().strftime('%Y%m%d')}.json"
     registry.export_for_audit(compliant_agents, export_path)
-    
+
     # Generate summary
     summary = {
         "framework": framework,
@@ -1195,18 +1195,18 @@ def generate_compliance_report(
         "agents_failed_verification": 0,
         "export_path": str(export_path)
     }
-    
+
     for agent_id in compliant_agents:
         if registry.verify(agent_id):
             summary["agents_verified"] += 1
         else:
             summary["agents_failed_verification"] += 1
-    
+
     # Save summary
     summary_path = export_dir / f"{framework.lower()}_summary_{datetime.now().strftime('%Y%m%d')}.json"
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
-    
+
     return summary
 
 # Generate HIPAA compliance report
@@ -1342,7 +1342,7 @@ diagnosis_agent = AgentFacts(
     owner="healthcare-ai-team",
     version="2.0.0",
     description="AI assistant for differential diagnosis, requires physician approval for all suggestions",
-    
+
     capabilities=[
         Capability(
             name="analyze_symptoms",
@@ -1409,7 +1409,7 @@ diagnosis_agent = AgentFacts(
             tags=["healthcare", "labs", "hipaa"]
         )
     ],
-    
+
     policies=[
         Policy(
             policy_id="hipaa-phi-protection",
@@ -1451,26 +1451,26 @@ diagnosis_agent = AgentFacts(
             }
         )
     ],
-    
+
     metadata={
         # Compliance metadata
         "compliance_frameworks": ["HIPAA", "HITECH", "FDA_SaMD"],
         "fda_classification": "Class II Medical Device Software",
         "hipaa_safeguards": ["administrative", "physical", "technical"],
-        
+
         # Model lineage
         "model_provider": "openai",
         "model_name": "gpt-4-turbo",
         "model_version": "gpt-4-turbo-2024-04-09",
         "fine_tuned": False,
         "training_data_description": "Medical literature, clinical guidelines (no PHI)",
-        
+
         # Operational metadata
         "deployment_environment": "production",
         "last_security_review": "2024-10-01",
         "last_bias_assessment": "2024-09-15",
         "incident_response_contact": "security@healthtech-medical.com",
-        
+
         # Performance baseline
         "baseline_accuracy": 0.89,
         "baseline_sensitivity": 0.92,
@@ -1499,11 +1499,11 @@ def daily_compliance_check(registry: AgentFactsRegistry) -> dict:
         "expired_policies": [],
         "high_risk_capabilities": []
     }
-    
+
     for agent_id in registry.list_all():
         results["agents_checked"] += 1
         agent = registry.get(agent_id)
-        
+
         # Verify signature integrity
         if registry.verify(agent_id):
             results["verification_passed"] += 1
@@ -1513,7 +1513,7 @@ def daily_compliance_check(registry: AgentFactsRegistry) -> dict:
                 "owner": agent.owner,
                 "alert": "SIGNATURE_MISMATCH"
             })
-        
+
         # Check for expired policies
         for policy in agent.policies:
             if not policy.is_effective():
@@ -1523,7 +1523,7 @@ def daily_compliance_check(registry: AgentFactsRegistry) -> dict:
                     "policy_name": policy.name,
                     "expired_at": policy.effective_until.isoformat() if policy.effective_until else "N/A"
                 })
-        
+
         # Flag high-risk capabilities
         for cap in agent.capabilities:
             if cap.requires_approval and "phi" in cap.tags:
@@ -1532,7 +1532,7 @@ def daily_compliance_check(registry: AgentFactsRegistry) -> dict:
                     "capability": cap.name,
                     "requires_approval": cap.requires_approval
                 })
-    
+
     return results
 
 # Run daily check
@@ -1551,22 +1551,22 @@ print(f"High-risk capabilities: {len(compliance_results['high_risk_capabilities'
 # Quarterly HIPAA audit export
 def hipaa_quarterly_audit(registry: AgentFactsRegistry, quarter: str, year: int) -> Path:
     """Generate quarterly HIPAA audit package."""
-    
+
     # Find all HIPAA-compliant agents
     hipaa_agents = []
     for agent_id in registry.list_all():
         agent = registry.get(agent_id)
         if "HIPAA" in agent.metadata.get("compliance_frameworks", []):
             hipaa_agents.append(agent_id)
-    
+
     # Create audit directory
     audit_dir = Path(f"hipaa_audits/{year}_Q{quarter}")
     audit_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Export agent facts and audit trails
     export_path = audit_dir / "agent_facts_export.json"
     registry.export_for_audit(hipaa_agents, export_path)
-    
+
     # Generate summary report
     summary = {
         "audit_period": f"{year} Q{quarter}",
@@ -1574,11 +1574,11 @@ def hipaa_quarterly_audit(registry: AgentFactsRegistry, quarter: str, year: int)
         "total_hipaa_agents": len(hipaa_agents),
         "agents": []
     }
-    
+
     for agent_id in hipaa_agents:
         agent = registry.get(agent_id)
         audit_trail = registry.audit_trail(agent_id)
-        
+
         summary["agents"].append({
             "agent_id": agent_id,
             "agent_name": agent.agent_name,
@@ -1589,20 +1589,20 @@ def hipaa_quarterly_audit(registry: AgentFactsRegistry, quarter: str, year: int)
             "total_audit_entries": len(audit_trail),
             "last_updated": agent.updated_at.isoformat(),
             "phi_capabilities": [
-                cap.name for cap in agent.capabilities 
+                cap.name for cap in agent.capabilities
                 if "phi" in cap.tags
             ]
         })
-    
+
     summary_path = audit_dir / "audit_summary.json"
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
-    
+
     print(f"✓ HIPAA audit package created: {audit_dir}")
     print(f"  - Agent facts export: {export_path}")
     print(f"  - Audit summary: {summary_path}")
     print(f"  - Total agents: {len(hipaa_agents)}")
-    
+
     return audit_dir
 
 # Generate Q4 2024 audit
@@ -1745,4 +1745,3 @@ In this tutorial, you learned:
 ---
 
 *Tutorial created as part of Lesson 17: Agent Explainability Framework*
-

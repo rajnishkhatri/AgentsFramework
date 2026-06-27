@@ -680,7 +680,7 @@ def record_parameter_substitution(
     agent_id: str | None = None,
 ) -> None:
     # Validation...
-    
+
     substitution = ParameterSubstitution(
         param_name=param,
         old_value=str(old_val),
@@ -789,7 +789,7 @@ recorder.record_execution_trace("task-extract-invoice", trace)
 ```python
 def add_trace_event(self, task_id: str, event: TraceEvent) -> None:
     # Validation...
-    
+
     if task_id not in self._execution_traces:
         # Create new trace if doesn't exist
         self._execution_traces[task_id] = ExecutionTrace(
@@ -841,7 +841,7 @@ recorder.add_trace_event("task-extract-invoice", event)
 ```python
 def export_black_box(self, task_id: str, filepath: Path) -> None:
     # Validation...
-    
+
     export_data = {
         "workflow_id": self.workflow_id,
         "task_id": task_id,
@@ -899,7 +899,7 @@ recorder.export_black_box(
 ```python
 def replay(self, task_id: str) -> Iterator[RecordedEvent]:
     # Validation...
-    
+
     # Load from disk if not in memory
     self._load_from_disk(task_id)
 

@@ -7,8 +7,8 @@ tags: [recipe, gcp]
 
 # GCP Tier A — Live Deployment Operator Runbook
 
-**Audience:** Solo operator on a laptop with `gcloud`, OpenTofu, Docker, and repo checkout.  
-**Stack:** Combined backend + Next.js frontend on Cloud Run, Cloud SQL Postgres, GCS traces/facts, Secret Manager, Cloud Monitoring.  
+**Audience:** Solo operator on a laptop with `gcloud`, OpenTofu, Docker, and repo checkout.
+**Stack:** Combined backend + Next.js frontend on Cloud Run, Cloud SQL Postgres, GCS traces/facts, Secret Manager, Cloud Monitoring.
 **Time:** Day-0 preflight ~30 min · Day-1 first deploy ~60–90 min · Day-2 ops reference (ongoing).
 
 This runbook stitches [Recipes 0–8](.) into a single top-to-bottom walkthrough. Each step is a copy-paste block plus a link to the deep recipe for the *why*. For account setup (project, billing, deployer SA), start with [HUMAN_SETUP.md](HUMAN_SETUP.md).
@@ -127,9 +127,9 @@ Expected: all architecture tests pass. Fix any import/layer violations before to
 
 Complete [HUMAN_SETUP.md](HUMAN_SETUP.md) Steps 1–4 before continuing:
 
-1. GCP project + billing linked  
-2. Remote state bucket `${PROJECT}-tofu-state`  
-3. `tofu-deployer` SA + key → `GOOGLE_APPLICATION_CREDENTIALS`  
+1. GCP project + billing linked
+2. Remote state bucket `${PROJECT}-tofu-state`
+3. `tofu-deployer` SA + key → `GOOGLE_APPLICATION_CREDENTIALS`
 4. `infra/gcp/terraform.tfvars` populated (gitignored)
 
 One-shot auth + billing preflight:
@@ -499,11 +499,11 @@ Deep dive: [05_frontend_cloudrun.md](05_frontend_cloudrun.md).
 tofu -chdir="$INFRA" output -raw frontend_workos_redirect_uri
 ```
 
-1. Open WorkOS Dashboard → Authentication → Redirects  
-2. Add the URI (format: `https://agent-frontend-….run.app/api/auth/callback`)  
-3. Save  
-4. Browser: open `FRONTEND_URL`, sign in  
-5. DevTools → Network → copy Bearer JWT from an authenticated API call  
+1. Open WorkOS Dashboard → Authentication → Redirects
+2. Add the URI (format: `https://agent-frontend-….run.app/api/auth/callback`)
+3. Save
+4. Browser: open `FRONTEND_URL`, sign in
+5. DevTools → Network → copy Bearer JWT from an authenticated API call
 
 Keep the JWT for §1.10.
 
@@ -699,9 +699,9 @@ Current Tier A: `timeout=3600s`, `cpu_idle=true`, `min_instances=0` (cost-optimi
 
 If users report SSE freezes mid-stream:
 
-1. Set `--min-instances=1` and `--no-cpu-throttling` on backend  
-2. Ensure responses send `X-Accel-Buffering: no`  
-3. Send 20–30s heartbeats from the stream handler  
+1. Set `--min-instances=1` and `--no-cpu-throttling` on backend
+2. Ensure responses send `X-Accel-Buffering: no`
+3. Send 20–30s heartbeats from the stream handler
 
 Trade-off: `min_instances=1` adds ~$117/mo compute — defer unless symptoms appear. See [TIER_B_FUTURE.md](TIER_B_FUTURE.md) for production SSE posture.
 
@@ -755,9 +755,9 @@ gcloud billing budgets list --billing-account="$BILLING_ACCOUNT"
 
 If alert fires, check:
 
-- Cloud SQL disk autogrowth (Tier A caps at 10 GB with `disk_autoresize = false`)  
-- Accidental `min_instances >= 1` on backend or frontend  
-- Runaway LLM loop (5xx/latency alerts in dashboard)  
+- Cloud SQL disk autogrowth (Tier A caps at 10 GB with `disk_autoresize = false`)
+- Accidental `min_instances >= 1` on backend or frontend
+- Runaway LLM loop (5xx/latency alerts in dashboard)
 
 ### 2.10 Teardown
 

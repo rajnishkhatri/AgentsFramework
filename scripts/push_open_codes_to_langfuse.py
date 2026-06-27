@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 import uuid
 from pathlib import Path
 
@@ -35,11 +34,19 @@ SCORE_NAME = "open_code"
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("jsonl", help="coded JSONL exported by the HTML coder")
-    ap.add_argument("--write", action="store_true", help="actually write (default: dry run)")
-    ap.add_argument("--name", default=SCORE_NAME, help=f"score name (default: {SCORE_NAME})")
+    ap.add_argument(
+        "--write", action="store_true", help="actually write (default: dry run)"
+    )
+    ap.add_argument(
+        "--name", default=SCORE_NAME, help=f"score name (default: {SCORE_NAME})"
+    )
     args = ap.parse_args()
 
-    rows = [json.loads(line) for line in Path(args.jsonl).read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line)
+        for line in Path(args.jsonl).read_text().splitlines()
+        if line.strip()
+    ]
 
     # Only push rows that were actually coded; skip empties so we don't create blank scores.
     coded = [r for r in rows if r.get("open_codes") or r.get("memo", "").strip()]
@@ -47,10 +54,14 @@ def main() -> None:
 
     bad = [r for r in coded if len(str(r.get("trace_id", ""))) < 32]
     if bad:
-        print("WARNING: these rows have short/missing trace_ids and will NOT match Langfuse:")
+        print(
+            "WARNING: these rows have short/missing trace_ids and will NOT match Langfuse:"
+        )
         for r in bad:
-            print(f"  {r.get('trace_id')!r}  {r.get('prompt','')[:50]}")
-        print("  (use the full-id JSONL, e.g. depth_strata_rich.jsonl-derived export)\n")
+            print(f"  {r.get('trace_id')!r}  {r.get('prompt', '')[:50]}")
+        print(
+            "  (use the full-id JSONL, e.g. depth_strata_rich.jsonl-derived export)\n"
+        )
 
     client = Langfuse() if args.write else None
     for r in coded:
@@ -61,7 +72,10 @@ def main() -> None:
         # deterministic id so re-runs update rather than duplicate
         sid = uuid.uuid5(uuid.NAMESPACE_DNS, f"{tid}:{args.name}").hex
         action = "WRITE" if args.write else "would write"
-        print(f"[{action}] trace {tid[:12]} <- {args.name}={value!r}" + (f"  // {comment}" if comment else ""))
+        print(
+            f"[{action}] trace {tid[:12]} <- {args.name}={value!r}"
+            + (f"  // {comment}" if comment else "")
+        )
         if args.write and len(tid) >= 32:
             client.create_score(
                 name=args.name,

@@ -48,7 +48,11 @@ class _ToolInput(BaseModel):
 def _registry_with(executor) -> ToolRegistry:
     """Real registry whose single ``the_tool`` runs ``executor`` (Pattern 6 shape)."""
     return ToolRegistry(
-        {"the_tool": ToolDefinition(executor=executor, schema=_ToolInput, cacheable=False)}
+        {
+            "the_tool": ToolDefinition(
+                executor=executor, schema=_ToolInput, cacheable=False
+            )
+        }
     )
 
 
@@ -56,7 +60,14 @@ def _state_calling(tool_name: str) -> dict:
     """Minimal state whose last message is one tool_call to ``tool_name``."""
     ai = AIMessage(
         content="",
-        tool_calls=[{"name": tool_name, "args": {"value": "x"}, "id": "call-1", "type": "tool_call"}],
+        tool_calls=[
+            {
+                "name": tool_name,
+                "args": {"value": "x"},
+                "id": "call-1",
+                "type": "tool_call",
+            }
+        ],
     )
     return {"workflow_id": "wf-errclass", "messages": [ai], "step_count": 1}
 
@@ -96,7 +107,9 @@ def _raise_runtime(_args):
 
 
 def _return_failure(_args):
-    return ToolExecutionResult(output="Error: tool said no", ok=False, error="tool said no")
+    return ToolExecutionResult(
+        output="Error: tool said no", ok=False, error="tool said no"
+    )
 
 
 def _return_typed_validation(_args):
@@ -125,7 +138,11 @@ def _return_ok(_args):
         # unknown tool: name not in the registry -> KeyError branch
         ("missing_tool", _return_ok, "unknown_tool"),
         # malformed args: executor raises a Pydantic ValidationError
-        ("the_tool", lambda a: (_ for _ in ()).throw(_validation_error()), "validation"),
+        (
+            "the_tool",
+            lambda a: (_ for _ in ()).throw(_validation_error()),
+            "validation",
+        ),
         # timeout: executor raises subprocess.TimeoutExpired
         ("the_tool", _raise_timeout, "timeout"),
         # runtime: any other raised exception
@@ -138,7 +155,9 @@ def _return_ok(_args):
         ("the_tool", _return_typed_validation, "validation"),
     ],
 )
-def test_error_occurred_carries_error_class(tool_name, executor, expected_class, tmp_path):
+def test_error_occurred_carries_error_class(
+    tool_name, executor, expected_class, tmp_path
+):
     registry = _registry_with(executor)
     errors = _run(_state_calling(tool_name), registry, tmp_path)
     assert errors, f"expected an ERROR_OCCURRED for {expected_class}"
@@ -228,7 +247,9 @@ def test_repair_hint_disabled_by_flag(tmp_path):
 
     cfg = AgentConfig(tool_repair_hint_enabled=False)
     registry = _registry_with(_return_typed_validation)
-    response = _run_full(_state_calling("the_tool"), registry, tmp_path, agent_config=cfg)
+    response = _run_full(
+        _state_calling("the_tool"), registry, tmp_path, agent_config=cfg
+    )
     joined = "\n".join(_tool_message_contents(response)).lower()
     assert "retry" not in joined and "correct" not in joined
 
@@ -237,7 +258,11 @@ def test_repair_hint_disabled_by_flag(tmp_path):
     "tool_name,executor,expected_class",
     [
         ("missing_tool", _return_ok, "unknown_tool"),
-        ("the_tool", lambda a: (_ for _ in ()).throw(_validation_error()), "validation"),
+        (
+            "the_tool",
+            lambda a: (_ for _ in ()).throw(_validation_error()),
+            "validation",
+        ),
         ("the_tool", _raise_timeout, "timeout"),
         ("the_tool", _raise_runtime, "runtime"),
         ("the_tool", _return_failure, "tool_reported"),

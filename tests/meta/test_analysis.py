@@ -107,9 +107,7 @@ class TestLoadEvalRecords:
     def test_load_from_jsonl_file(self, tmp_path):
         jsonl_path = tmp_path / "eval.jsonl"
         records = [_make_record(task_id=f"t{i}") for i in range(3)]
-        jsonl_path.write_text(
-            "\n".join(r.model_dump_json() for r in records) + "\n"
-        )
+        jsonl_path.write_text("\n".join(r.model_dump_json() for r in records) + "\n")
 
         loaded = load_eval_records(jsonl_path)
         assert len(loaded) == 3
@@ -122,9 +120,11 @@ class TestLoadEvalRecords:
         jsonl_path = tmp_path / "eval.jsonl"
         good_record = _make_record(task_id="t1")
         jsonl_path.write_text(
-            good_record.model_dump_json() + "\n"
+            good_record.model_dump_json()
+            + "\n"
             + "THIS IS NOT JSON\n"
-            + good_record.model_dump_json() + "\n"
+            + good_record.model_dump_json()
+            + "\n"
         )
         loaded = load_eval_records(jsonl_path)
         assert len(loaded) == 2
@@ -155,7 +155,9 @@ class TestOptimizerInput:
 class TestFailureRateBeforeEscalation:
     def test_fast_failure_then_capable_escalation(self):
         records = [
-            _make_record(task_id="t1", model="gpt-4o-mini", error_type="retryable", step=0),
+            _make_record(
+                task_id="t1", model="gpt-4o-mini", error_type="retryable", step=0
+            ),
             _make_record(task_id="t1", model="gpt-4o", step=1),
             _make_record(task_id="t2", model="gpt-4o-mini", step=0),
         ]
@@ -202,7 +204,9 @@ class TestBuildOptimizerInput:
             _make_record(task_id="t2", cost_usd=0.02),
         ]
         config = {"escalate_after_failures": 2}
-        oi = build_optimizer_input(records, config_snapshot=config, golden_set_scores=[4.0])
+        oi = build_optimizer_input(
+            records, config_snapshot=config, golden_set_scores=[4.0]
+        )
         assert oi.metrics.total_tasks == 2
         assert oi.config_snapshot == config
         assert oi.golden_set_scores == [4.0]

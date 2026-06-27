@@ -70,9 +70,7 @@ class GcpIdentityResolver:
             )
 
         agent_id = self._map_sa_to_agent_id(sa_email)
-        logger.info(
-            "Resolved identity: SA=%s → agent_id=%s", sa_email, agent_id
-        )
+        logger.info("Resolved identity: SA=%s → agent_id=%s", sa_email, agent_id)
         return self._registry.get(agent_id)
 
     def _map_sa_to_agent_id(self, sa_email: str) -> str:

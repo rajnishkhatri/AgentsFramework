@@ -433,5 +433,3 @@ The bundle contains:
 | `orchestration/react_loop.py`         | Graph nodes that drive all four layers          |
 | `logging.json`                        | Per-concern log routing configuration           |
 | `tests/middleware/conftest.py`        | In-process RSA keys + JWKS fixtures for testing |
-
-

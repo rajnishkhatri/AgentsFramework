@@ -126,9 +126,7 @@ class GuardrailSample(BaseModel):
     @classmethod
     def _owasp_shape(cls, value: str) -> str:
         if not _OWASP_RE.match(value):
-            raise ValueError(
-                f"owasp must look like 'LLM01' (got {value!r})"
-            )
+            raise ValueError(f"owasp must look like 'LLM01' (got {value!r})")
         return value
 
     @model_validator(mode="after")

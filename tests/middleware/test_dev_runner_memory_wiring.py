@@ -69,14 +69,16 @@ def _boot_dev_app_capturing_runtime():
 
     reload(mod)
 
-    with patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}, clear=False), \
-         patch.object(mod, "_GCP_EXECUTION_ENV", None), \
-         patch.object(mod, "_build_agent_components", return_value=full_bag), \
-         patch.object(mod, "_load_graph_factory", return_value=MagicMock()), \
-         patch.object(mod, "build_runtime_graph", return_value=MagicMock()), \
-         patch.object(mod, "LangGraphRuntime", side_effect=_spy_runtime), \
-         patch.object(mod, "TraceService", return_value=MagicMock()), \
-         patch.object(mod, "JsonlFileTraceSink", return_value=MagicMock()):
+    with (
+        patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}, clear=False),
+        patch.object(mod, "_GCP_EXECUTION_ENV", None),
+        patch.object(mod, "_build_agent_components", return_value=full_bag),
+        patch.object(mod, "_load_graph_factory", return_value=MagicMock()),
+        patch.object(mod, "build_runtime_graph", return_value=MagicMock()),
+        patch.object(mod, "LangGraphRuntime", side_effect=_spy_runtime),
+        patch.object(mod, "TraceService", return_value=MagicMock()),
+        patch.object(mod, "JsonlFileTraceSink", return_value=MagicMock()),
+    ):
         app = mod.build_dev_app()
         # Enter the lifespan so the graph + runtime are constructed.
         from fastapi.testclient import TestClient

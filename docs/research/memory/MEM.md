@@ -2,7 +2,7 @@ link: https://www.linkedin.com/pulse/building-your-first-a-mem-system-connected-
 article: Building Your First A-MEM System - Connected Memory for Smarter Agents
 
  rajnish khatri
-rajnish khatri 
+rajnish khatri
 
 Principal Consultant at Infosys | LLM Evaluation & Multi-Agent Systems Expert
 
@@ -55,26 +55,26 @@ class SimpleAMEM:
         self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.notes = {}  # Store notes by ID
         self.graph = {}  # Store connections
-        
+
     def add_note(self, content: str) -> str:
         """Add a note and auto-link to similar notes"""
-        
+
         # Step 1: Create embedding for similarity search
         embedding = self.encoder.encode(content)
-        
+
         # Step 2: Generate unique ID from content
         note_id = hashlib.md5(content.encode()).hexdigest()[:8]
-        
+
         # Step 3: Find similar existing notes
         similar_notes = self._find_similar(embedding)
-        
+
         # Step 4: Store the note
         self.notes[note_id] = {
             'content': content,
             'embedding': embedding,
             'keywords': self._extract_keywords(content)
         }
-        
+
         # Step 5: Create links to similar notes
         self.graph[note_id] = []
         for similar_id, similarity in similar_notes:
@@ -84,42 +84,42 @@ class SimpleAMEM:
                     'strength': similarity,
                     'type': 'related'
                 })
-        
+
         return note_id
-    
+
     def search_with_links(self, query: str, max_depth: int = 1):
         """Search notes and include linked context"""
-        
+
         # Find directly matching notes
         query_embedding = self.encoder.encode(query)
         direct_matches = self._find_similar(query_embedding)
-        
+
         # Expand to include linked notes
         all_results = set()
         for note_id, score in direct_matches[:3]:
             all_results.add(note_id)
-            
+
             # Add linked notes (depth = 1)
             if note_id in self.graph:
                 for link in self.graph[note_id]:
                     all_results.add(link['to'])
-        
+
         # Return note contents
         return [self.notes[nid]['content'] for nid in all_results]
-    
+
     def _find_similar(self, embedding, top_k: int = 5):
         """Find most similar notes by embedding"""
         similarities = []
-        
+
         for note_id, note in self.notes.items():
             # Cosine similarity
             similarity = np.dot(embedding, note['embedding']) / (
                 np.linalg.norm(embedding) * np.linalg.norm(note['embedding'])
             )
             similarities.append((note_id, float(similarity)))
-        
+
         return sorted(similarities, key=lambda x: x[1], reverse=True)[:top_k]
-    
+
     def _extract_keywords(self, content: str) -> List[str]:
         """Simple keyword extraction"""
         # In production, use an LLM or NLP library

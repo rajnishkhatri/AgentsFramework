@@ -2,13 +2,13 @@ link: https://www.linkedin.com/pulse/memory-systems-fundamentals-rajnish-khatri-
 article: Memory Systems Fundamentals
 
  rajnish khatri
-rajnish khatri 
+rajnish khatri
 
 Principal Consultant at Infosys | LLM Evaluation & Multi-Agent Systems Expert
 
 
 November 17, 2025
-Why Memory Matters 
+Why Memory Matters
 
 Large language models (LLMs) are inherently stateless—each call forgets every prior interaction unless context is replayed—so they cannot remember a user’s name, past failures, or open tasks without explicit memory scaffolding. Hosted assistants feel persistent only because they bolt on memory modules and tool outputs that track prior actions, which is exactly what we must reproduce inside our custom agents. An “LLM” answers in isolation; an “agent” couples the base model with memory (plus tools, planning, safety) so it can reason about prior choices, avoid loops, and build long-lived context quickly
 
@@ -100,14 +100,14 @@ def summarize_block(block: List[Message]) -> str:
 
 memory = ConversationMemory(max_tokens=200, summary_trigger=120)
 memory.add_turn("I love Kashmiri food, especially rogan josh.", "Noted! I'll remember that.")
-memory.add_turn("Also remind me if a recipe uses nuts.", "I'll flag nut-heavy recipes from now on.") 
-This toy class mirrors the notebook helpers we will formalize later: trim aggressively once the token budget is breached, then fall back to rolling summaries so key preferences stay available even after many turns. 
+memory.add_turn("Also remind me if a recipe uses nuts.", "I'll flag nut-heavy recipes from now on.")
+This toy class mirrors the notebook helpers we will formalize later: trim aggressively once the token budget is breached, then fall back to rolling summaries so key preferences stay available even after many turns.
 
 Long-Term Memory Patterns
 
 3.1 Episodic vs Semantic vs Procedural
 
-Long-term memory is not monolithic; we partition it so agents can reason about specific experiences (episodic), persistent knowledge (semantic), and how-to rules (procedural). 
+Long-term memory is not monolithic; we partition it so agents can reason about specific experiences (episodic), persistent knowledge (semantic), and how-to rules (procedural).
 
 Episodic memories include task traces, user-specific facts, and prior tool calls, often stored in append-only logs or vector DB collections keyed by interaction IDs.
 
@@ -121,7 +121,7 @@ Classic Retrieval-Augmented Generation works in two stages:
 
  ingestion (chunk → embed → store)
 
- and 
+ and
 
 inference (embed query → retrieve top k → stuff into prompt → generate).
 
@@ -133,18 +133,18 @@ MemoryBank stores multi-turn conversations, summaries, and a “user portrait”
 
 3.4 A-MEM Pattern
 
-A-MEM reimagines memory as a Zettelkasten notebook: each interaction becomes a single “note” with keywords, tags, timestamp, description, and embedding. Newly created notes immediately run similarity searches to link to existing ones, and both sides update metadata so the graph evolves over time. 
+A-MEM reimagines memory as a Zettelkasten notebook: each interaction becomes a single “note” with keywords, tags, timestamp, description, and embedding. Newly created notes immediately run similarity searches to link to existing ones, and both sides update metadata so the graph evolves over time.
 
 This suits research and investigation agents (e.g., Bhagavad Gita commentary explorer) because it encourages atomic knowledge chunks and rich cross-linking. Implementation tips you will revisit in the notebook: keep embeddings for the concatenated note payload, maintain adjacency lists for linked notes, and periodically relabel tags when new connections emerge.
 
 3.5 Search-o1 Pattern
 
-Search-o1 injects retrieval directly into the reasoning trace: the agent emits <|begin_search_query|> ,<|end_search_query|> tags , mid-thought, fetches results, and then passes both the documents and ongoing reasoning to a Reason-in-Documents module that condenses information before writing the next reasoning token. 
+Search-o1 injects retrieval directly into the reasoning trace: the agent emits <|begin_search_query|> ,<|end_search_query|> tags , mid-thought, fetches results, and then passes both the documents and ongoing reasoning to a Reason-in-Documents module that condenses information before writing the next reasoning token.
 
-Token accounting: you pay for search queries, retrieved document tokens, and condensed reasoning tokens. 
+Token accounting: you pay for search queries, retrieved document tokens, and condensed reasoning tokens.
 Context freshness: because retrieval happens inside the reasoning loop, the agent can branch into secondary searches (e.g., first learn flamingos are pink due to diet, then re-query for “carotenoid pigments”) without restarting the outer conversation.
 
-Use Search-o1 when your agent needs to reason deeply about emerging facts (thick research memos, regulatory analysis) and you can afford the ~15–30% overhead shown in the forthcoming notebook metrics. 
+Use Search-o1 when your agent needs to reason deeply about emerging facts (thick research memos, regulatory analysis) and you can afford the ~15–30% overhead shown in the forthcoming notebook metrics.
 
 For routine FAQ-style queries, classic RAG or MemoryBank is simpler and cheaper.
 
@@ -152,7 +152,7 @@ search-o1 diagram
 
 Article content
 search-o1
-Vector DB Decision Matrix 
+Vector DB Decision Matrix
 
 4.1 Pinecone / Weaviate / Chroma
 
@@ -166,15 +166,15 @@ Article content
 
 4.3 Compass Metrics Extraction
 
-Short-term lookup vs. vector retrieval: Redis-based caches deliver <5 ms access for hot episodic facts compared with 50–200 ms vector round trips, so blending both tiers keeps agents responsive. 
+Short-term lookup vs. vector retrieval: Redis-based caches deliver <5 ms access for hot episodic facts compared with 50–200 ms vector round trips, so blending both tiers keeps agents responsive.
 End-to-end RAG latency budget averages 630 ms–2.4 s (embeddings 20–50 ms, vector search 50–200 ms, retrieval 10–30 ms, optional rerank 50–100 ms, LLM generation 500–2000 ms). Build dashboards that isolate each stage for bottleneck hunting. lines 89-90.
-Context compression vs. selective retrieval ROI: 100 turns without management cost $24; add 50% compression → $12; add selective retrieval (20% context) → $4.80. Use these deltas when justifying Chroma → Pinecone upgrades. 
+Context compression vs. selective retrieval ROI: 100 turns without management cost $24; add 50% compression → $12; add selective retrieval (20% context) → $4.80. Use these deltas when justifying Chroma → Pinecone upgrades.
 
 4.4 Decision Framework
 
-80/20 guidance. 
+80/20 guidance.
 
-For ~80% of agent teams, start with Pinecone (if you need managed uptime) or Weaviate (if you need hybrid search + optional self-hosting). They balance feature depth, latency, and cost 
+For ~80% of agent teams, start with Pinecone (if you need managed uptime) or Weaviate (if you need hybrid search + optional self-hosting). They balance feature depth, latency, and cost
 
 The remaining 20% fall into edge categories:
 
@@ -226,4 +226,3 @@ Trade-off discussion.
 MemoryBank optimizes for personalization but adds storage/maintenance overhead → best for user-facing assistants.
 A-MEM excels when knowledge must remain explorable via backlinks; however, embeddings and linking logic add latency, so pair with asynchronous indexing.
 Search-o1 burns extra tokens (search + condensation) but dramatically improves reasoning quality on fresh data—reserve it for high-value analytical work and monitor costs in the notebook metrics dashboard.
-

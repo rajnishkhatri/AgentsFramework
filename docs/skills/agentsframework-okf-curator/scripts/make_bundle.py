@@ -51,13 +51,23 @@ def main() -> int:
     ap.add_argument("--title", required=True)
     ap.add_argument("--date", default=dt.date.today().isoformat())
     ap.add_argument("--recurse-index", action="store_true")
-    ap.add_argument("--depth-to-root", type=int, default=None,
-                    help="(legacy) number of ../ to reach docs/. Prefer --conventions-path "
-                         "or let the script compute the link automatically.")
-    ap.add_argument("--conventions-path", default="docs/CONVENTIONS_OKF.md",
-                    help="path to the convention doc, relative to repo root")
-    ap.add_argument("--note", default="Declared as an OKF bundle.",
-                    help="the log.md seed entry text")
+    ap.add_argument(
+        "--depth-to-root",
+        type=int,
+        default=None,
+        help="(legacy) number of ../ to reach docs/. Prefer --conventions-path "
+        "or let the script compute the link automatically.",
+    )
+    ap.add_argument(
+        "--conventions-path",
+        default="docs/CONVENTIONS_OKF.md",
+        help="path to the convention doc, relative to repo root",
+    )
+    ap.add_argument(
+        "--note",
+        default="Declared as an OKF bundle.",
+        help="the log.md seed entry text",
+    )
     args = ap.parse_args()
 
     base = Path(args.target)
@@ -69,6 +79,7 @@ def main() -> int:
         conv_link = "../" * args.depth_to_root + "CONVENTIONS_OKF.md"
     else:
         import os as _os
+
         conv_link = _os.path.relpath(args.conventions_path, base.as_posix())
     files = base.rglob("*.md") if args.recurse_index else base.glob("*.md")
     entries = []
@@ -77,14 +88,14 @@ def main() -> int:
             continue
         d = _fm(f)
         rel = f.relative_to(base).as_posix()
-        entries.append(f"- [{d.get('title', f.stem)}]({rel}) — {d.get('description', '')}")
+        entries.append(
+            f"- [{d.get('title', f.stem)}]({rel}) — {d.get('description', '')}"
+        )
 
     idx = (
         f"# {args.title} — bundle index\n\n"
         f"OKF bundle. Each entry is a typed Concept. See the convention in "
-        f"[CONVENTIONS_OKF.md]({conv_link}).\n\n"
-        + "\n".join(entries)
-        + "\n"
+        f"[CONVENTIONS_OKF.md]({conv_link}).\n\n" + "\n".join(entries) + "\n"
     )
     (base / "index.md").write_text(idx, encoding="utf-8")
 

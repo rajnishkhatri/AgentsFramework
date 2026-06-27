@@ -102,18 +102,14 @@ def _check_limit(
 def _check_user_isolation(
     user_id: str, kept: list[MemoryRecord]
 ) -> RecallInvariantResult:
-    foreign = [
-        (r.user_id, r.key) for r in kept if r.user_id != user_id
-    ]
+    foreign = [(r.user_id, r.key) for r in kept if r.user_id != user_id]
     passed = not foreign
     if passed:
         details = f"all {len(kept)} records owned by user_id={user_id!r}"
     else:
         # Identifiers only — user_id + key are content-free per the
         # privacy invariant. Payload values are NOT referenced.
-        sample = ", ".join(
-            f"{uid!r}:{key!r}" for uid, key in foreign[:3]
-        )
+        sample = ", ".join(f"{uid!r}:{key!r}" for uid, key in foreign[:3])
         details = (
             f"{len(foreign)} foreign-owner record(s) leaked into recall "
             f"for user_id={user_id!r} (sample: {sample})"

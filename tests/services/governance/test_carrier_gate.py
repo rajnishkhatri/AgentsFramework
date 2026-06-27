@@ -37,7 +37,6 @@ from trust.governance_carrier_spec import (
     EVT_TASK_STARTED,
     Pillar,
     RunShape,
-    default_spec,
 )
 
 
@@ -48,69 +47,108 @@ from trust.governance_carrier_spec import (
 _MATRIX = [
     # ── rejections first ──
     pytest.param(
-        WorkflowPhase.INITIALIZATION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.INITIALIZATION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.IDENTITY,),
         id="fresh-init-missing-task-started→Identity",
     ),
     pytest.param(
-        WorkflowPhase.MODEL_INVOCATION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.MODEL_INVOCATION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.RECORDING,),
         id="model-invocation-no-step-executed→Recording",
     ),
     pytest.param(
-        WorkflowPhase.ROUTING, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.ROUTING,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.REASONING,),
         id="routing-no-model-selected→Reasoning",
     ),
     pytest.param(
-        WorkflowPhase.TOOL_EXECUTION, set(), True, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.TOOL_EXECUTION,
+        set(),
+        True,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.VALIDATION,),
         id="failed-tool-no-error-occurred→Validation (silent failure)",
     ),
     pytest.param(
-        WorkflowPhase.INPUT_VALIDATION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.INPUT_VALIDATION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.VALIDATION,),
         id="input-validation-no-guardrail-check→Validation",
     ),
     pytest.param(
-        WorkflowPhase.OUTPUT_VALIDATION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.OUTPUT_VALIDATION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.VALIDATION,),
         id="output-validation-no-guardrail-check→Validation",
     ),
     pytest.param(
-        WorkflowPhase.COMPLETION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.COMPLETION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (Pillar.REASONING,),
         id="completion-no-goal-judge→Reasoning (corrupt-success class)",
     ),
     # ── the SKILL.md exemptions (legitimate skips → NO gap) ──
     pytest.param(
-        WorkflowPhase.INITIALIZATION, set(), False, RunShape.RESUMED,
+        WorkflowPhase.INITIALIZATION,
+        set(),
+        False,
+        RunShape.RESUMED,
         (),
         id="resumed-init-no-task-started→∅ (UNVERIFIABLE, not FAIL)",
     ),
     pytest.param(
-        WorkflowPhase.TOOL_EXECUTION, set(), False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.TOOL_EXECUTION,
+        set(),
+        False,
+        RunShape.FROM_STEP_ZERO,
         (),
         id="clean-tool-pass→∅ (quiet)",
     ),
     # ── acceptances (carrier present → NO gap) ──
     pytest.param(
-        WorkflowPhase.INITIALIZATION, {EVT_TASK_STARTED}, False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.INITIALIZATION,
+        {EVT_TASK_STARTED},
+        False,
+        RunShape.FROM_STEP_ZERO,
         (),
         id="fresh-init-with-task-started→∅",
     ),
     pytest.param(
-        WorkflowPhase.MODEL_INVOCATION, {EVT_STEP_EXECUTED}, False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.MODEL_INVOCATION,
+        {EVT_STEP_EXECUTED},
+        False,
+        RunShape.FROM_STEP_ZERO,
         (),
         id="model-invocation-with-step-executed→∅",
     ),
     pytest.param(
-        WorkflowPhase.COMPLETION, {EVT_GOAL_JUDGE}, False, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.COMPLETION,
+        {EVT_GOAL_JUDGE},
+        False,
+        RunShape.FROM_STEP_ZERO,
         (),
         id="completion-with-goal-judge→∅",
     ),
     pytest.param(
-        WorkflowPhase.TOOL_EXECUTION, {EVT_ERROR_OCCURRED}, True, RunShape.FROM_STEP_ZERO,
+        WorkflowPhase.TOOL_EXECUTION,
+        {EVT_ERROR_OCCURRED},
+        True,
+        RunShape.FROM_STEP_ZERO,
         (),
         id="failed-tool-with-error-occurred→∅",
     ),
@@ -188,7 +226,9 @@ class TestConsumerContract:
         import json
 
         trace = storage / workflow_id / "trace.jsonl"
-        return [json.loads(line) for line in trace.read_text().splitlines() if line.strip()]
+        return [
+            json.loads(line) for line in trace.read_text().splitlines() if line.strip()
+        ]
 
     def test_gap_emits_alert_carrier(self, tmp_path):
         bb = BlackBoxRecorder(tmp_path)
@@ -280,7 +320,9 @@ class TestEnforcementCarrierContract:
         import json
 
         trace = storage / workflow_id / "trace.jsonl"
-        return [json.loads(line) for line in trace.read_text().splitlines() if line.strip()]
+        return [
+            json.loads(line) for line in trace.read_text().splitlines() if line.strip()
+        ]
 
     def test_degrade_records_loud_enforced_carrier(self, tmp_path):
         bb = BlackBoxRecorder(tmp_path)
@@ -311,4 +353,6 @@ class TestEnforcementCarrierContract:
         d = decide_enforcement(_gap(missing=False), mode="degrade")  # clean → none
         record_enforcement(bb, "wf-clean", d)
         trace = tmp_path / "wf-clean" / "trace.jsonl"
-        assert not trace.exists(), "a clean/none decision must record no enforce carrier"
+        assert not trace.exists(), (
+            "a clean/none decision must record no enforce carrier"
+        )

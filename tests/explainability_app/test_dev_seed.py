@@ -8,7 +8,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 
 from explainability_app.dev_seed import (
     DEV_SEED_AGENT_FACTS_SECRET,

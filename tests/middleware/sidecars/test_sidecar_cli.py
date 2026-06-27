@@ -74,9 +74,10 @@ class TestCLIStructure:
             pytest.skip("sidecars/__main__.py not yet created")
 
         source = SIDECAR_MAIN.read_text()
-        assert 'if __name__ == "__main__"' in source or "if __name__ == '__main__'" in source, (
-            "sidecars/__main__.py must have an if __name__ == '__main__' guard"
-        )
+        assert (
+            'if __name__ == "__main__"' in source
+            or "if __name__ == '__main__'" in source
+        ), "sidecars/__main__.py must have an if __name__ == '__main__' guard"
 
 
 # ─────────────────────────────────────────────────────────────────────

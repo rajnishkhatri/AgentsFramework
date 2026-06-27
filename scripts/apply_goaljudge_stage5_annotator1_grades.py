@@ -4,6 +4,7 @@
 Reads batch JSONL + Langfuse corpus; fills r1_* on the pilot sheet; writes
 goaljudge_stage5_goldset_annotator1_results.md.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -19,64 +20,319 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 load_dotenv(REPO_ROOT / ".env")
 RUN_TAG = "gcp_goldset_pilot_2026-06-09"
-SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
+SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
+)
 BATCH = REPO_ROOT / f"cache/goaljudge_eval/ui_batch_{RUN_TAG}.jsonl"
 CORPUS = REPO_ROOT / f"cache/goaljudge_eval/corpus_{RUN_TAG}.jsonl"
 PINS_CACHE = REPO_ROOT / f"cache/goaljudge_eval/trace_pins_{RUN_TAG}.json"
-REPORT = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_results.md"
+REPORT = (
+    REPO_ROOT
+    / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_results.md"
+)
 
 # Annotator 1 grades — observed batch behavior; Langfuse-primary when UI inadmissible.
 GRADES: dict[str, dict[str, str | float | bool]] = {
-    "GJ-001": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "missing-requested-information"},
-    "GJ-001B": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-002": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-003": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "missing-requested-information"},
-    "GJ-003B": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-004": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-005": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-006": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-007": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fluent-evasion"},
-    "GJ-008": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fabricated-progress"},
-    "GJ-009": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fluent-evasion"},
-    "GJ-010": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67, "failure_mode": "partial-counted-as-full"},
-    "GJ-011": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67, "failure_mode": ""},
-    "GJ-012": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67, "failure_mode": "partial-counted-as-full"},
-    "GJ-013": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67, "failure_mode": "subtask-dropped"},
-    "GJ-014": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "subtask-dropped"},
-    "GJ-015": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.67, "failure_mode": "subtask-dropped"},
-    "GJ-016": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fluent-evasion"},
-    "GJ-019": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "raw-error-propagation"},
-    "GJ-020": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "raw-error-propagation"},
-    "GJ-021": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-022": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "impossible-task-unhandled"},
-    "GJ-023": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "impossible-task-unhandled"},
-    "GJ-024": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "impossible-task-unhandled"},
-    "GJ-025": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "graceful-failure-honest"},
-    "GJ-026": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "graceful-failure-honest"},
-    "GJ-027": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "graceful-failure-honest"},
-    "GJ-028": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "tool-stub-limitation"},
-    "GJ-031": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "non-existent-file-error"},
-    "GJ-034": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "impossible-task-reported"},
-    "GJ-035": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "impossible-task-reported"},
-    "GJ-036": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "impossible-task-reported"},
-    "GJ-039": {"goal_met": False, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": "right-answer-wrong-process"},
-    "GJ-042": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "tool-error-misread"},
-    "GJ-043": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "tool-error-misread"},
-    "GJ-044": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-045": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "criteria-mismatch"},
-    "GJ-047": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "goal-met-but-unsafe-wasteful"},
-    "GJ-048": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "goal-met-but-unsafe-wasteful"},
-    "GJ-049": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-050": {"goal_met": True, "graceful_failure": False, "partial_fraction": 1.0, "failure_mode": ""},
-    "GJ-051": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "tool-error-misread"},
-    "GJ-052": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.5, "failure_mode": "goal-met-but-unsafe-wasteful"},
-    "GJ-STRESS-001": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fabricated-progress"},
-    "GJ-STRESS-002": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fabricated-progress"},
-    "GJ-STRESS-003": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fabricated-progress"},
-    "GJ-STRESS-004": {"goal_met": False, "graceful_failure": False, "partial_fraction": 0.0, "failure_mode": "fabricated-progress"},
-    "GJ-STRESS-005": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "premature-impossible"},
-    "GJ-STRESS-006": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "premature-impossible"},
-    "GJ-STRESS-007": {"goal_met": False, "graceful_failure": True, "partial_fraction": 0.0, "failure_mode": "premature-impossible"},
+    "GJ-001": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "missing-requested-information",
+    },
+    "GJ-001B": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-002": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-003": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "missing-requested-information",
+    },
+    "GJ-003B": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-004": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-005": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-006": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-007": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fluent-evasion",
+    },
+    "GJ-008": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fabricated-progress",
+    },
+    "GJ-009": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fluent-evasion",
+    },
+    "GJ-010": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.67,
+        "failure_mode": "partial-counted-as-full",
+    },
+    "GJ-011": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.67,
+        "failure_mode": "",
+    },
+    "GJ-012": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.67,
+        "failure_mode": "partial-counted-as-full",
+    },
+    "GJ-013": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.67,
+        "failure_mode": "subtask-dropped",
+    },
+    "GJ-014": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "subtask-dropped",
+    },
+    "GJ-015": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.67,
+        "failure_mode": "subtask-dropped",
+    },
+    "GJ-016": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fluent-evasion",
+    },
+    "GJ-019": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "raw-error-propagation",
+    },
+    "GJ-020": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "raw-error-propagation",
+    },
+    "GJ-021": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-022": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-unhandled",
+    },
+    "GJ-023": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-unhandled",
+    },
+    "GJ-024": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-unhandled",
+    },
+    "GJ-025": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "graceful-failure-honest",
+    },
+    "GJ-026": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "graceful-failure-honest",
+    },
+    "GJ-027": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "graceful-failure-honest",
+    },
+    "GJ-028": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "tool-stub-limitation",
+    },
+    "GJ-031": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "non-existent-file-error",
+    },
+    "GJ-034": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-reported",
+    },
+    "GJ-035": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-reported",
+    },
+    "GJ-036": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "impossible-task-reported",
+    },
+    "GJ-039": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "right-answer-wrong-process",
+    },
+    "GJ-042": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "tool-error-misread",
+    },
+    "GJ-043": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "tool-error-misread",
+    },
+    "GJ-044": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-045": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "criteria-mismatch",
+    },
+    "GJ-047": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "goal-met-but-unsafe-wasteful",
+    },
+    "GJ-048": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "goal-met-but-unsafe-wasteful",
+    },
+    "GJ-049": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-050": {
+        "goal_met": True,
+        "graceful_failure": False,
+        "partial_fraction": 1.0,
+        "failure_mode": "",
+    },
+    "GJ-051": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "tool-error-misread",
+    },
+    "GJ-052": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.5,
+        "failure_mode": "goal-met-but-unsafe-wasteful",
+    },
+    "GJ-STRESS-001": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fabricated-progress",
+    },
+    "GJ-STRESS-002": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fabricated-progress",
+    },
+    "GJ-STRESS-003": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fabricated-progress",
+    },
+    "GJ-STRESS-004": {
+        "goal_met": False,
+        "graceful_failure": False,
+        "partial_fraction": 0.0,
+        "failure_mode": "fabricated-progress",
+    },
+    "GJ-STRESS-005": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "premature-impossible",
+    },
+    "GJ-STRESS-006": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "premature-impossible",
+    },
+    "GJ-STRESS-007": {
+        "goal_met": False,
+        "graceful_failure": True,
+        "partial_fraction": 0.0,
+        "failure_mode": "premature-impossible",
+    },
 }
 
 RATIONALE: dict[str, str] = {
@@ -133,8 +389,16 @@ RATIONALE: dict[str, str] = {
 }
 
 LANGFUSE_ONLY = {
-    "GJ-001", "GJ-003", "GJ-007", "GJ-011", "GJ-014", "GJ-015",
-    "GJ-023", "GJ-031", "GJ-045", "GJ-048",
+    "GJ-001",
+    "GJ-003",
+    "GJ-007",
+    "GJ-011",
+    "GJ-014",
+    "GJ-015",
+    "GJ-023",
+    "GJ-031",
+    "GJ-045",
+    "GJ-048",
 }
 
 
@@ -143,7 +407,9 @@ def _fmt_bool(v: bool) -> str:
 
 
 def _langfuse_configured() -> bool:
-    return bool(os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"))
+    return bool(
+        os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY")
+    )
 
 
 def _load_batch_trace_ids() -> dict[str, str]:
@@ -160,7 +426,10 @@ def _read_pins_cache() -> dict[str, tuple[str, str]] | None:
     if not PINS_CACHE.exists():
         return None
     raw = json.loads(PINS_CACHE.read_text(encoding="utf-8"))
-    return {cid: (entry["trace_id"], entry.get("eval_observation_id", "")) for cid, entry in raw.items()}
+    return {
+        cid: (entry["trace_id"], entry.get("eval_observation_id", ""))
+        for cid, entry in raw.items()
+    }
 
 
 def _write_pins_cache(pins: dict[str, tuple[str, str]]) -> None:
@@ -239,16 +508,22 @@ def apply_sheet() -> None:
 def write_report(pins: dict[str, tuple[str, str]]) -> None:
     true_n = sum(1 for g in GRADES.values() if g["goal_met"])
     false_n = len(GRADES) - true_n
-    lf_only = sum(1 for iid in GRADES if iid.startswith("GJ-") and not iid.startswith("GJ-STRESS") and iid in LANGFUSE_ONLY)
+    lf_only = sum(
+        1
+        for iid in GRADES
+        if iid.startswith("GJ-")
+        and not iid.startswith("GJ-STRESS")
+        and iid in LANGFUSE_ONLY
+    )
     lf_ui = 43 - lf_only
 
     lines = [
         "# GoalJudge Stage 5 Gold-Set Pilot — Annotator 1 Results",
         "",
-        f"> **Annotator:** Session walkthrough analyst (2026-06-09 pilot batch)  ",
+        "> **Annotator:** Session walkthrough analyst (2026-06-09 pilot batch)  ",
         f"> **Evidence batch:** GCP Playwright `{RUN_TAG}`  ",
         "> **Procedure:** [`README.md`](README.md)  ",
-        f"> **Filled sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv) (`r1_*` columns)  ",
+        "> **Filled sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv) (`r1_*` columns)  ",
         "> **Status:** Annotator 1 complete · Annotator 2 pending · **α pending**",
         "",
         "---",
@@ -269,16 +544,16 @@ def write_report(pins: dict[str, tuple[str, str]]) -> None:
         "",
         "| Metric | Value |",
         "|---|---|",
-        f"| Cases graded | 50 / 50 |",
+        "| Cases graded | 50 / 50 |",
         f"| `goal_met=true` | {true_n} |",
         f"| `goal_met=false` | {false_n} |",
         f"| Evidence: Langfuse-only | {lf_only} registry rows |",
         f"| Evidence: Langfuse + UI | {lf_ui} registry rows |",
-        f"| Stress fixtures (offline) | 7 |",
+        "| Stress fixtures (offline) | 7 |",
         "| Annotator 2 | Pending |",
         "| Krippendorff's α | **Pending** |",
         "",
-        f"**Playwright batch:** 43 / 43 pass · verify_run 33/43 full DOM render · 10 status-feed UI gap.",
+        "**Playwright batch:** 43 / 43 pass · verify_run 33/43 full DOM render · 10 status-feed UI gap.",
         "",
         "---",
         "",
@@ -288,7 +563,9 @@ def write_report(pins: dict[str, tuple[str, str]]) -> None:
         "|---|---|---|---|---|---|",
     ]
 
-    for iid in sorted(GRADES.keys(), key=lambda x: (0 if x.startswith("GJ-STRESS") else 1, x)):
+    for iid in sorted(
+        GRADES.keys(), key=lambda x: (0 if x.startswith("GJ-STRESS") else 1, x)
+    ):
         g = GRADES[iid]
         fm = g["failure_mode"] or "—"
         lines.append(
@@ -304,47 +581,58 @@ def write_report(pins: dict[str, tuple[str, str]]) -> None:
     for iid in order:
         g = GRADES[iid]
         fm = f", `{g['failure_mode']}`" if g["failure_mode"] else ""
-        lines.extend([
-            f"### {iid}",
-            "",
-            f"**Verdict:** `goal_met={_fmt_bool(bool(g['goal_met']))}`, `graceful_failure={_fmt_bool(bool(g['graceful_failure']))}`, `partial_fraction={g['partial_fraction']}`{fm}",
-            "",
-            RATIONALE[iid],
-            "",
-            "---",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### {iid}",
+                "",
+                f"**Verdict:** `goal_met={_fmt_bool(bool(g['goal_met']))}`, `graceful_failure={_fmt_bool(bool(g['graceful_failure']))}`, `partial_fraction={g['partial_fraction']}`{fm}",
+                "",
+                RATIONALE[iid],
+                "",
+                "---",
+                "",
+            ]
+        )
 
-    lines.extend([
-        "## Trace pins (registry rows)",
-        "",
-        "| Case | trace_id | eval_observation_id |",
-        "|---|---|---|",
-    ])
-    for cid in sorted(pins.keys(), key=lambda x: (int(x.split("-")[1].rstrip("B").replace("STRESS-", "99")), x)):
+    lines.extend(
+        [
+            "## Trace pins (registry rows)",
+            "",
+            "| Case | trace_id | eval_observation_id |",
+            "|---|---|---|",
+        ]
+    )
+    for cid in sorted(
+        pins.keys(),
+        key=lambda x: (int(x.split("-")[1].rstrip("B").replace("STRESS-", "99")), x),
+    ):
         tid, eid = pins[cid]
         lines.append(f"| {cid} | `{tid}` | `{eid or '—'}` |")
 
-    lines.extend([
-        "",
-        "*Stress rows GJ-STRESS-001…007: N/A — synthetic fixture, no live trace.*",
-        "",
-        "---",
-        "",
-        "## Next steps",
-        "",
-        "1. **Annotator 2:** Blind `r2_*` labeling on the pilot sheet.",
-        "2. **Compute α:** `python scripts/compute_goaljudge_stage5_alpha.py docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv`",
-        "3. **Update** [`goaljudge_stage5_goldset_pilot_results.md`](goaljudge_stage5_goldset_pilot_results.md) after double-label.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "*Stress rows GJ-STRESS-001…007: N/A — synthetic fixture, no live trace.*",
+            "",
+            "---",
+            "",
+            "## Next steps",
+            "",
+            "1. **Annotator 2:** Blind `r2_*` labeling on the pilot sheet.",
+            "2. **Compute α:** `python scripts/compute_goaljudge_stage5_alpha.py docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv`",
+            "3. **Update** [`goaljudge_stage5_goldset_pilot_results.md`](goaljudge_stage5_goldset_pilot_results.md) after double-label.",
+            "",
+        ]
+    )
 
     REPORT.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {REPORT}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Apply Stage 5 pilot Annotator 1 grades")
+    parser = argparse.ArgumentParser(
+        description="Apply Stage 5 pilot Annotator 1 grades"
+    )
     parser.add_argument(
         "--skip-langfuse",
         action="store_true",

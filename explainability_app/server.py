@@ -30,7 +30,6 @@ from explainability_app.wire.responses import (
     IntegrityReportResponse,
     LogRowResponse,
     WorkflowEventsResponse,
-    WorkflowIntegritySummaryResponse,
     WorkflowSummaryResponse,
 )
 from services.explainability_service import (
@@ -66,7 +65,9 @@ def build_app(service: ExplainabilityService | None = None) -> FastAPI:
     app.state.port = DEFAULT_PORT
 
     @app.exception_handler(Exception)
-    async def _unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    async def _unhandled_exception_handler(
+        request: Request, exc: Exception
+    ) -> JSONResponse:
         logger.exception("Unhandled error on %s %s", request.method, request.url.path)
         return JSONResponse(
             status_code=500,
@@ -95,9 +96,7 @@ def build_app(service: ExplainabilityService | None = None) -> FastAPI:
     ) -> JSONResponse | list[WorkflowSummaryResponse]:
         try:
             summaries = service.list_workflows(since=since, until=until)
-            return [
-                WorkflowSummaryResponse(**s.model_dump()) for s in summaries
-            ]
+            return [WorkflowSummaryResponse(**s.model_dump()) for s in summaries]
         except Exception:
             logger.exception("Failed to list workflows")
             return JSONResponse(
@@ -114,9 +113,7 @@ def build_app(service: ExplainabilityService | None = None) -> FastAPI:
         try:
             result = service.get_workflow_events(wf_id)
         except WorkflowNotFoundError:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown workflow_id: {wf_id}"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown workflow_id: {wf_id}")
         return WorkflowEventsResponse(**result.model_dump())
 
     @app.get(
@@ -168,9 +165,7 @@ def build_app(service: ExplainabilityService | None = None) -> FastAPI:
         try:
             report = service.get_workflow_integrity(wf_id)
         except WorkflowNotFoundError:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown workflow_id: {wf_id}"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown workflow_id: {wf_id}")
         return IntegrityReportResponse(**report.model_dump())
 
     @app.get(
@@ -182,9 +177,7 @@ def build_app(service: ExplainabilityService | None = None) -> FastAPI:
         try:
             bundle = service.get_compliance_bundle(wf_id)
         except WorkflowNotFoundError:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown workflow_id: {wf_id}"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown workflow_id: {wf_id}")
         return ComplianceBundleResponse(**bundle.model_dump())
 
     @app.get(
@@ -415,9 +408,7 @@ def _build_agents_router(service: ExplainabilityService) -> APIRouter:
         try:
             card = service.get_agent_card(agent_id)
         except AgentNotFoundError:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown agent_id: {agent_id}"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown agent_id: {agent_id}")
         return AgentCardResponse(**card.model_dump())
 
     @router.get(
@@ -432,9 +423,7 @@ def _build_agents_router(service: ExplainabilityService) -> APIRouter:
         try:
             entries = service.get_agent_audit(agent_id)
         except AgentNotFoundError:
-            raise HTTPException(
-                status_code=404, detail=f"Unknown agent_id: {agent_id}"
-            )
+            raise HTTPException(status_code=404, detail=f"Unknown agent_id: {agent_id}")
         return [AgentAuditEntryResponse(**e.model_dump()) for e in entries]
 
     return router

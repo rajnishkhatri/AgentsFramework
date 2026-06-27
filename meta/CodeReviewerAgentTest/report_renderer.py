@@ -77,32 +77,60 @@ def _format_pyramid_self_validation(report: ReviewReport) -> str:
     n_dims = len(report.dimensions)
     n_findings = sum(len(d.findings) for d in report.dimensions)
     rows = [
-        ("1", "Completeness",
-         "PASS" if n_dims >= 1 else "N/A",
-         f"{n_dims} dimension result(s) emitted"),
-        ("2", "Non-Overlap",
-         "PASS",
-         "Each finding assigned to exactly one dimension by construction"),
-        ("3", "Item Placement",
-         "PASS" if n_findings == sum(1 for d in report.dimensions for _ in d.findings)
-         else "PARTIAL",
-         f"{n_findings} finding(s) placed across {n_dims} dimension(s)"),
-        ("4", "So-What",
-         "PASS" if all(f.fix_suggestion for d in report.dimensions for f in d.findings)
-         else "PARTIAL",
-         "Findings carry fix_suggestion -> impact -> remediation chain"),
-        ("5", "Vertical Logic",
-         "PASS",
-         "Each dimension answers the production-readiness question for its lens"),
-        ("6", "Remove-One",
-         "PASS",
-         "Verdict logic is monotonic; removing any single finding cannot worsen the verdict"),
-        ("7", "Never-One",
-         "PASS" if all(d.hypotheses_tested >= 1 for d in report.dimensions) else "PARTIAL",
-         "Every dimension tested at least one hypothesis"),
-        ("8", "Mathematical",
-         "N/A",
-         "No quantitative claims aggregated; counts reported per dimension"),
+        (
+            "1",
+            "Completeness",
+            "PASS" if n_dims >= 1 else "N/A",
+            f"{n_dims} dimension result(s) emitted",
+        ),
+        (
+            "2",
+            "Non-Overlap",
+            "PASS",
+            "Each finding assigned to exactly one dimension by construction",
+        ),
+        (
+            "3",
+            "Item Placement",
+            "PASS"
+            if n_findings == sum(1 for d in report.dimensions for _ in d.findings)
+            else "PARTIAL",
+            f"{n_findings} finding(s) placed across {n_dims} dimension(s)",
+        ),
+        (
+            "4",
+            "So-What",
+            "PASS"
+            if all(f.fix_suggestion for d in report.dimensions for f in d.findings)
+            else "PARTIAL",
+            "Findings carry fix_suggestion -> impact -> remediation chain",
+        ),
+        (
+            "5",
+            "Vertical Logic",
+            "PASS",
+            "Each dimension answers the production-readiness question for its lens",
+        ),
+        (
+            "6",
+            "Remove-One",
+            "PASS",
+            "Verdict logic is monotonic; removing any single finding cannot worsen the verdict",
+        ),
+        (
+            "7",
+            "Never-One",
+            "PASS"
+            if all(d.hypotheses_tested >= 1 for d in report.dimensions)
+            else "PARTIAL",
+            "Every dimension tested at least one hypothesis",
+        ),
+        (
+            "8",
+            "Mathematical",
+            "N/A",
+            "No quantitative claims aggregated; counts reported per dimension",
+        ),
     ]
     lines = [
         "\n## 2. Pyramid Self-Validation Log (8 checks)\n",
@@ -225,8 +253,11 @@ def _format_dimension_results(report: ReviewReport) -> str:
 
 def _format_cross_dimension(report: ReviewReport) -> str:
     lines = ["\n## 5. Cross-Dimension Interactions\n"]
-    failing = [d for d in report.dimensions
-               if d.status in (DimensionStatus.FAIL, DimensionStatus.PARTIAL)]
+    failing = [
+        d
+        for d in report.dimensions
+        if d.status in (DimensionStatus.FAIL, DimensionStatus.PARTIAL)
+    ]
     if len(failing) < 2:
         lines.append(
             "No cross-dimension interactions captured "
@@ -236,7 +267,7 @@ def _format_cross_dimension(report: ReviewReport) -> str:
         lines.append("| Branches | Status interaction |")
         lines.append("|----------|--------------------|")
         for i, a in enumerate(failing):
-            for b in failing[i + 1:]:
+            for b in failing[i + 1 :]:
                 lines.append(
                     f"| {a.dimension} \u2194 {b.dimension} | "
                     f"{a.status.value.upper()} \u2194 {b.status.value.upper()} -- "
@@ -267,9 +298,14 @@ def _format_gaps(report: ReviewReport) -> str:
 
 def _format_judge_log(report: ReviewReport) -> str:
     lines = ["\n## 7. Judge Filter Log\n"]
-    judge_lines = [line for line in report.validation_log
-                   if "judge" in line.lower() or "killed" in line.lower()
-                   or "kept" in line.lower() or "filter" in line.lower()]
+    judge_lines = [
+        line
+        for line in report.validation_log
+        if "judge" in line.lower()
+        or "killed" in line.lower()
+        or "kept" in line.lower()
+        or "filter" in line.lower()
+    ]
     if judge_lines:
         lines.append("Judge-related entries from `validation_log`:\n")
         for entry in judge_lines:
@@ -287,14 +323,24 @@ def _format_judge_log(report: ReviewReport) -> str:
 
 
 def _format_verdict_decision(report: ReviewReport) -> str:
-    crit = sum(1 for d in report.dimensions for f in d.findings
-               if f.severity == Severity.CRITICAL)
-    warn = sum(1 for d in report.dimensions for f in d.findings
-               if f.severity == Severity.WARNING)
-    crit_d1d4 = sum(1 for d in report.dimensions
-                    for f in d.findings
-                    if f.severity == Severity.CRITICAL
-                    and f.dimension in ("D1", "D4"))
+    crit = sum(
+        1
+        for d in report.dimensions
+        for f in d.findings
+        if f.severity == Severity.CRITICAL
+    )
+    warn = sum(
+        1
+        for d in report.dimensions
+        for f in d.findings
+        if f.severity == Severity.WARNING
+    )
+    crit_d1d4 = sum(
+        1
+        for d in report.dimensions
+        for f in d.findings
+        if f.severity == Severity.CRITICAL and f.dimension in ("D1", "D4")
+    )
     lines = [
         "\n## 8. Verdict Decision Trace\n",
         "Per the Code Reviewer system prompt verdict rules:\n",
@@ -380,19 +426,21 @@ def render_markdown(report: ReviewReport, ctx: dict[str, Any] | None = None) -> 
     required; sensible fall-backs are used.
     """
     ctx = dict(ctx or {})
-    return "".join([
-        _format_header(report, ctx),
-        _format_governing_thought(report),
-        _format_pyramid_self_validation(report),
-        _format_files_reviewed(report),
-        _format_dimension_results(report),
-        _format_cross_dimension(report),
-        _format_gaps(report),
-        _format_judge_log(report),
-        _format_verdict_decision(report),
-        _format_action_list(report),
-        _format_metadata(report, ctx),
-    ])
+    return "".join(
+        [
+            _format_header(report, ctx),
+            _format_governing_thought(report),
+            _format_pyramid_self_validation(report),
+            _format_files_reviewed(report),
+            _format_dimension_results(report),
+            _format_cross_dimension(report),
+            _format_gaps(report),
+            _format_judge_log(report),
+            _format_verdict_decision(report),
+            _format_action_list(report),
+            _format_metadata(report, ctx),
+        ]
+    )
 
 
 __all__ = ["render_markdown"]

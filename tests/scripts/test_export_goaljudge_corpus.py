@@ -36,9 +36,9 @@ class TestResolveFailureMode:
         assert _resolve_failure_mode({}, "unknown") is None
 
     def test_invalid_verdict_code_falls_back_when_target_valid(self) -> None:
-        assert _resolve_failure_mode({"failure_mode": "not-a-code"}, "fluent-evasion") == (
-            "fluent-evasion"
-        )
+        assert _resolve_failure_mode(
+            {"failure_mode": "not-a-code"}, "fluent-evasion"
+        ) == ("fluent-evasion")
 
 
 class TestCaseMapFromJsonl:

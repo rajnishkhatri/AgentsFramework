@@ -29,10 +29,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import tempfile
 from pathlib import Path
 
-import pytest
 
 from services.governance.black_box import (
     BlackBoxRecorder,
@@ -60,9 +58,7 @@ class TestEventTypeMember:
         )
 
         assert EventType.CONTEXT_COMPACTED in _EVENT_TYPE_TO_OBSERVATION
-        obs_type, obs_name = _EVENT_TYPE_TO_OBSERVATION[
-            EventType.CONTEXT_COMPACTED
-        ]
+        obs_type, obs_name = _EVENT_TYPE_TO_OBSERVATION[EventType.CONTEXT_COMPACTED]
         assert obs_type == "span"
         assert obs_name == "context.compacted"
 
@@ -111,9 +107,7 @@ def _fresh_recorder(tmp_path: Path) -> BlackBoxRecorder:
 
 
 class TestEmitCompactionCarrier:
-    def test_emit_records_context_compacted_event(
-        self, tmp_path: Path
-    ) -> None:
+    def test_emit_records_context_compacted_event(self, tmp_path: Path) -> None:
         """Calling the emitter lands exactly one ``CONTEXT_COMPACTED`` event
         on the recorder, with workflow_id + step + details propagated."""
         from services.governance.context_compaction_carrier import (
@@ -132,9 +126,7 @@ class TestEmitCompactionCarrier:
         path = tmp_path / "bb" / "wf-c1-7" / "trace.jsonl"
         assert path.exists(), f"recorder JSONL missing: {path}"
         events = [json.loads(line) for line in path.read_text().splitlines()]
-        compacted = [
-            e for e in events if e["event_type"] == "context_compacted"
-        ]
+        compacted = [e for e in events if e["event_type"] == "context_compacted"]
         assert len(compacted) == 1, (
             f"expected exactly one context_compacted event; got "
             f"{len(compacted)}: {events!r}"
@@ -200,9 +192,9 @@ class TestEmitCompactionCarrier:
             .read_text()
             .splitlines()
         ]
-        details = next(
-            e for e in events if e["event_type"] == "context_compacted"
-        )["details"]
+        details = next(e for e in events if e["event_type"] == "context_compacted")[
+            "details"
+        ]
 
         # Counts
         assert details["tokens_before"] == 1500
@@ -251,9 +243,9 @@ class TestEmitCompactionCarrier:
             .read_text()
             .splitlines()
         ]
-        details = next(
-            e for e in events if e["event_type"] == "context_compacted"
-        )["details"]
+        details = next(e for e in events if e["event_type"] == "context_compacted")[
+            "details"
+        ]
         assert "fold_committed" in details, (
             "carrier details missing the fold_committed flag (Fix 3)"
         )

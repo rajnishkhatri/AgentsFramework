@@ -74,14 +74,20 @@ def main() -> None:
         )
 
     # 2. Load both raters' labels.
-    r1 = {json.loads(l)["item_id"]: json.loads(l)["verdict"]
-          for l in RATER1.read_text().splitlines() if l.strip()}
+    r1 = {
+        json.loads(l)["item_id"]: json.loads(l)["verdict"]
+        for l in RATER1.read_text().splitlines()
+        if l.strip()
+    }
     r2 = parse_rater2()
     # persist the parsed rater-2 labels (the human's final inline calls).
-    RATER2_LABELS.write_text("\n".join(
-        json.dumps({"item_id": i, "rater": "human", "verdict": v})
-        for i, v in r2.items()
-    ) + "\n")
+    RATER2_LABELS.write_text(
+        "\n".join(
+            json.dumps({"item_id": i, "rater": "human", "verdict": v})
+            for i, v in r2.items()
+        )
+        + "\n"
+    )
 
     assert set(r1) == set(r2), f"rater coverage mismatch: {set(r1) ^ set(r2)}"
     n = len(r1)
@@ -94,6 +100,7 @@ def main() -> None:
 
     def _bin(v: str) -> str:
         return "correct" if v == "correct" else "not"
+
     alpha_bin = krippendorff_alpha_nominal([[_bin(r1[i]), _bin(r2[i])] for i in r1])
 
     if alpha < ALPHA_GATE:
@@ -109,21 +116,26 @@ def main() -> None:
 
     # 5. NOW open the sealed key (blinding already verified) to attach arm identity.
     sealed = json.loads(SEALED_KEY.read_text())
-    blind = {json.loads(l)["item_id"]: json.loads(l)
-             for l in BLIND_ITEMS.read_text().splitlines() if l.strip()}
+    blind = {
+        json.loads(l)["item_id"]: json.loads(l)
+        for l in BLIND_ITEMS.read_text().splitlines()
+        if l.strip()
+    }
 
     rows = []
     for i in r1:
         meta = sealed[i]
-        rows.append({
-            "item_id": i,
-            "case": meta["case"],
-            "arm": meta["arm"],
-            "rater1": r1[i],
-            "rater2": r2[i],
-            "adjudicated": final[i],
-            "was_disagreement": i in disagreements,
-        })
+        rows.append(
+            {
+                "item_id": i,
+                "case": meta["case"],
+                "arm": meta["arm"],
+                "rater1": r1[i],
+                "rater2": r2[i],
+                "adjudicated": final[i],
+                "was_disagreement": i in disagreements,
+            }
+        )
 
     test_split_sha = hashlib.sha256(
         json.dumps(sorted((r["item_id"], r["adjudicated"]) for r in rows)).encode()
@@ -170,9 +182,12 @@ def main() -> None:
     OUT.write_text(json.dumps({"manifest": manifest, "rows": rows}, indent=2) + "\n")
 
     from collections import Counter
+
     print(f"FROZEN -> {OUT}")
-    print(f"  rows: {len(rows)}  alpha(3class): {alpha:.3f} ({band})  "
-          f"alpha(binary): {alpha_bin:.3f}")
+    print(
+        f"  rows: {len(rows)}  alpha(3class): {alpha:.3f} ({band})  "
+        f"alpha(binary): {alpha_bin:.3f}"
+    )
     print(f"  raw agreement: {agree}/{n}  disagreements: {len(disagreements)}")
     print(f"  adjudicated verdicts: {dict(Counter(r['adjudicated'] for r in rows))}")
     print(f"  blinding held: {manifest['blinding']['held']}")

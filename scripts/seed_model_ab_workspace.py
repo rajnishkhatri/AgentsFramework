@@ -39,14 +39,15 @@ class ExpectedAnswer:
     """
 
     case: str
-    kind: str            # "numeric" | "substring"
-    value: str           # canonical expected (string; numeric parsed by scorer)
-    tol: float = 0.0     # numeric tolerance (0.05 covers 1-decimal rounding)
+    kind: str  # "numeric" | "substring"
+    value: str  # canonical expected (string; numeric parsed by scorer)
+    tol: float = 0.0  # numeric tolerance (0.05 covers 1-decimal rounding)
 
 
 # ── The fixtures + the answers they imply (ONE source of truth) ──────────────
 # Each seeder returns nothing; it writes its file(s) under ``ws``. The EXPECTED
 # row below it records the answer those exact contents produce.
+
 
 def _seed(ws: Path) -> None:
     (ws / "nums").mkdir(parents=True, exist_ok=True)
@@ -112,7 +113,7 @@ def seed_workspace(workspace: Path | None = None) -> Path:
     """Write all GEN-L1 fixtures under ``workspace`` (default <repo>/workspace).
 
     Returns the workspace path. Idempotent (overwrites)."""
-    ws = (workspace or DEFAULT_WORKSPACE)
+    ws = workspace or DEFAULT_WORKSPACE
     ws.mkdir(parents=True, exist_ok=True)
     _seed(ws)
     return ws

@@ -65,11 +65,13 @@ class FakeExporter:
             raise RuntimeError(f"Simulated failure #{self._call_count}")
         if self._swallow_export:
             return False
-        self.events.append({
-            "name": name,
-            "trace_id": trace_id,
-            "attributes": dict(attributes) if attributes else {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "trace_id": trace_id,
+                "attributes": dict(attributes) if attributes else {},
+            }
+        )
         return True
 
     def release_trace(self, trace_id: str) -> None:
@@ -167,9 +169,7 @@ class TestDLQPromotion:
         assert "this is not json" in dlq_entry["line"]
         assert dlq_entry["error"] != ""
 
-    def test_exporter_failure_triggers_dlq_after_retries(
-        self, storage: Path
-    ) -> None:
+    def test_exporter_failure_triggers_dlq_after_retries(self, storage: Path) -> None:
         ev = _make_event(workflow_id="wf-fail")
         _record_events(storage, "wf-fail", [ev])
         (storage / "wf-fail" / ".langfuse_offset").write_text("0")
@@ -246,7 +246,11 @@ class TestSwallowedExportSignal:
         class LegacyExporter(FakeExporter):
             def export_event(self, *, name, trace_id, attributes=None):  # type: ignore[override]
                 self.events.append(
-                    {"name": name, "trace_id": trace_id, "attributes": dict(attributes or {})}
+                    {
+                        "name": name,
+                        "trace_id": trace_id,
+                        "attributes": dict(attributes or {}),
+                    }
                 )
                 return None  # legacy contract
 
@@ -433,18 +437,17 @@ class TestMtimePickup:
         assert published == 1
         assert exporter.events[-1]["name"] == "step.executed"
 
-    def test_mtime_regression(
-        self, storage: Path, exporter: FakeExporter
-    ) -> None:
+    def test_mtime_regression(self, storage: Path, exporter: FakeExporter) -> None:
         """Write events, poll, write more within same mtime resolution, poll again.
         Ensures removing the mtime-only early exit correctly picks up new events
         when mtime float64 hasn't changed.
         """
         import os
+
         ev1 = _make_event(EventType.TASK_STARTED, workflow_id="wf-regress")
         trace_file = _record_events(storage, "wf-regress", [ev1])
         (storage / "wf-regress" / ".langfuse_offset").write_text("0")
-        
+
         # force mtime to a known value
         os.utime(trace_file, (1000.0, 1000.0))
 
@@ -455,7 +458,7 @@ class TestMtimePickup:
         ev2 = _make_event(EventType.STEP_EXECUTED, workflow_id="wf-regress", step=2)
         recorder = BlackBoxRecorder(storage_dir=storage)
         recorder.record(ev2)
-        
+
         # force mtime to exactly the SAME value as before
         os.utime(trace_file, (1000.0, 1000.0))
 
@@ -525,7 +528,11 @@ class TestIdempotentExport:
         ev = _make_event(
             EventType.ERROR_OCCURRED,
             workflow_id="wf-errclass",
-            details={"source": "tool_execution", "tool": "shell", "error_class": "validation"},
+            details={
+                "source": "tool_execution",
+                "tool": "shell",
+                "error_class": "validation",
+            },
         )
         _record_events(storage, "wf-errclass", [ev])
         (storage / "wf-errclass" / ".langfuse_offset").write_text("0")
@@ -570,9 +577,7 @@ class TestIdempotentExport:
 class TestRunForever:
     """run_forever() is an async loop that respects the stop flag."""
 
-    def test_stop_halts_loop(
-        self, storage: Path, exporter: FakeExporter
-    ) -> None:
+    def test_stop_halts_loop(self, storage: Path, exporter: FakeExporter) -> None:
         relay = _build_relay(storage, exporter)
 
         async def _run() -> None:
@@ -714,7 +719,7 @@ class TestDrainWorkflow:
         _record_events(storage, "wf-b", [ev_b])
 
         relay = _build_relay(storage, exporter)
-        
+
         # Drain only wf-a
         processed = relay.drain_workflow("wf-a")
         assert processed == 1
@@ -739,7 +744,9 @@ class _CountingFakeSdkClient:
         self.flushed = False
 
     def start_observation(self, *, trace_context=None, name, **kwargs):
-        self.spans.append({"name": name, "trace_id": (trace_context or {}).get("trace_id")})
+        self.spans.append(
+            {"name": name, "trace_id": (trace_context or {}).get("trace_id")}
+        )
 
         class _Obs:
             def end(self_inner, **_):
@@ -786,9 +793,7 @@ class TestSingleWriterIdempotency:
         assert (wf_dir / ".langfuse_offset").exists()
         assert not (wf_dir / ".langfuse_offset.tmp").exists()
 
-    def test_at_least_once_reread_dedupes_at_exporter(
-        self, storage: Path
-    ) -> None:
+    def test_at_least_once_reread_dedupes_at_exporter(self, storage: Path) -> None:
         """A re-read of the same offset window (crash/race) exports once.
 
         Uses the real ``LangfuseCloudExporter`` so the per-trace ``event_id``
@@ -842,8 +847,11 @@ class TestCuratedViewSuppression:
     def test_tool_called_suppressed_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c1",
-                         details={"tool": "shell", "tool_call_id": "1:c"})
+        ev = _make_event(
+            EventType.TOOL_CALLED,
+            workflow_id="wf-c1",
+            details={"tool": "shell", "tool_call_id": "1:c"},
+        )
         trace_file = _record_events(storage, "wf-c1", [ev])
         (storage / "wf-c1" / ".langfuse_offset").write_text("0")
 
@@ -868,8 +876,12 @@ class TestCuratedViewSuppression:
         ev = _make_event(
             EventType.STEP_EXECUTED,
             workflow_id="wf-c2",
-            details={"model": "gpt-4o-mini", "tokens_in": 50, "tokens_out": 20,
-                     "cost_usd": 0.001},
+            details={
+                "model": "gpt-4o-mini",
+                "tokens_in": 50,
+                "tokens_out": 20,
+                "cost_usd": 0.001,
+            },
         )
         _record_events(storage, "wf-c2", [ev])
         (storage / "wf-c2" / ".langfuse_offset").write_text("0")
@@ -887,8 +899,11 @@ class TestCuratedViewSuppression:
     def test_unchanged_plan_suppressed_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c3",
-                         details={"planning_depth": "L0", "plan_changed": False})
+        ev = _make_event(
+            EventType.STEP_PLANNED,
+            workflow_id="wf-c3",
+            details={"planning_depth": "L0", "plan_changed": False},
+        )
         _record_events(storage, "wf-c3", [ev])
         (storage / "wf-c3" / ".langfuse_offset").write_text("0")
 
@@ -902,8 +917,11 @@ class TestCuratedViewSuppression:
     def test_changed_plan_exported_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c4",
-                         details={"planning_depth": "L0", "plan_changed": True})
+        ev = _make_event(
+            EventType.STEP_PLANNED,
+            workflow_id="wf-c4",
+            details={"planning_depth": "L0", "plan_changed": True},
+        )
         _record_events(storage, "wf-c4", [ev])
         (storage / "wf-c4" / ".langfuse_offset").write_text("0")
 
@@ -916,8 +934,11 @@ class TestCuratedViewSuppression:
         self, storage: Path, exporter: FakeExporter
     ) -> None:
         """Old JSONL rows have no plan_changed key — they must still export."""
-        ev = _make_event(EventType.STEP_PLANNED, workflow_id="wf-c5",
-                         details={"planning_depth": "L0"})
+        ev = _make_event(
+            EventType.STEP_PLANNED,
+            workflow_id="wf-c5",
+            details={"planning_depth": "L0"},
+        )
         _record_events(storage, "wf-c5", [ev])
         (storage / "wf-c5" / ".langfuse_offset").write_text("0")
 
@@ -928,8 +949,11 @@ class TestCuratedViewSuppression:
     def test_task_completed_still_exports_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.TASK_COMPLETED, workflow_id="wf-c6",
-                         details={"outcome": "success", "goal_met": True})
+        ev = _make_event(
+            EventType.TASK_COMPLETED,
+            workflow_id="wf-c6",
+            details={"outcome": "success", "goal_met": True},
+        )
         _record_events(storage, "wf-c6", [ev])
         (storage / "wf-c6" / ".langfuse_offset").write_text("0")
 
@@ -941,8 +965,11 @@ class TestCuratedViewSuppression:
     def test_non_suppressed_event_exported_when_curated_on(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.MODEL_SELECTED, workflow_id="wf-c7",
-                         details={"model": "gpt-4o-mini"})
+        ev = _make_event(
+            EventType.MODEL_SELECTED,
+            workflow_id="wf-c7",
+            details={"model": "gpt-4o-mini"},
+        )
         _record_events(storage, "wf-c7", [ev])
         (storage / "wf-c7" / ".langfuse_offset").write_text("0")
 
@@ -954,8 +981,11 @@ class TestCuratedViewSuppression:
     def test_tool_called_exported_when_curated_off(
         self, storage: Path, exporter: FakeExporter
     ) -> None:
-        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c8",
-                         details={"tool": "shell", "tool_call_id": "1:c"})
+        ev = _make_event(
+            EventType.TOOL_CALLED,
+            workflow_id="wf-c8",
+            details={"tool": "shell", "tool_call_id": "1:c"},
+        )
         _record_events(storage, "wf-c8", [ev])
         (storage / "wf-c8" / ".langfuse_offset").write_text("0")
 
@@ -969,8 +999,12 @@ class TestCuratedViewSuppression:
     ) -> None:
         evs = [
             _make_event(EventType.STEP_EXECUTED, workflow_id="wf-c9", step=1),
-            _make_event(EventType.STEP_PLANNED, workflow_id="wf-c9", step=1,
-                       details={"plan_changed": False}),
+            _make_event(
+                EventType.STEP_PLANNED,
+                workflow_id="wf-c9",
+                step=1,
+                details={"plan_changed": False},
+            ),
         ]
         _record_events(storage, "wf-c9", evs)
         (storage / "wf-c9" / ".langfuse_offset").write_text("0")
@@ -979,22 +1013,23 @@ class TestCuratedViewSuppression:
         published = relay.run_once()
         assert published == 2
 
-    def test_default_is_curated_on(
-        self, storage: Path, exporter: FakeExporter
-    ) -> None:
+    def test_default_is_curated_on(self, storage: Path, exporter: FakeExporter) -> None:
         """The production constructor default is curated_view=True (built here
         directly, bypassing the test helper's dual-view default)."""
         from middleware.sidecars.black_box_to_telemetry import (
             BlackBoxToTelemetryRelay,
         )
 
-        ev = _make_event(EventType.TOOL_CALLED, workflow_id="wf-c10",
-                         details={"tool": "shell"})
+        ev = _make_event(
+            EventType.TOOL_CALLED, workflow_id="wf-c10", details={"tool": "shell"}
+        )
         _record_events(storage, "wf-c10", [ev])
         (storage / "wf-c10" / ".langfuse_offset").write_text("0")
 
         relay = BlackBoxToTelemetryRelay(
-            storage_dir=storage, exporter=exporter, base_delay_s=0.0,
+            storage_dir=storage,
+            exporter=exporter,
+            base_delay_s=0.0,
         )  # no curated_view kwarg → production default
         assert relay.run_once() == 0
         assert len(exporter.events) == 0

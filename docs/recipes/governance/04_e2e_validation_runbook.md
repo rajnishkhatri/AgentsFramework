@@ -9,7 +9,7 @@ tags: [recipe, governance]
 
 **Goal:** Validate the full BlackBox → Langfuse pipeline on GCP: all 9 event types land as Langfuse observations, hash-chain scores are attached, compliance dataset items are created, and PII redaction works. Then verify rollback safety and document findings.
 
-**Status:** Ready to run  
+**Status:** Ready to run
 **Prerequisites:** Recipes 0–3 completed; relay-enabled backend deployed (see [blackbox_langfuse_gcp_deploy.plan.md](../../plans/blackbox_langfuse_gcp_deploy.plan.md))
 
 ---

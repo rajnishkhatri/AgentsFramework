@@ -22,7 +22,6 @@ from typing import Any
 
 from services.governance.black_box import EventType, TraceEvent
 from services.governance.guardrail_validator import (
-    GuardRailValidator,
     api_key_rules,
     pii_rules,
 )
@@ -36,52 +35,58 @@ __all__ = [
 
 _MAX_DETAIL_VALUE_LEN = 200
 
-_SAFE_NUMERIC_KEYS: frozenset[str] = frozenset({
-    "latency_ms",
-    "cost_usd",
-    "total_cost_usd",
-    "tokens_in",
-    "tokens_out",
-    "step_count",
-    "step",
-    "input_tokens",
-    "output_tokens",
-    "budget_limit",
-    "total_tokens",
-    # Phase 1 (E4): terminal/judge scores must stay numeric so Langfuse can
-    # filter and aggregate them (the reviewed trace carried "criteria_met":
-    # "0.0", "task_completion_score": "0.887" as strings — unfilterable).
-    "criteria_met",
-    "task_completion_score",
-    "branch_coverage",
-    "cost_fraction",
-})
+_SAFE_NUMERIC_KEYS: frozenset[str] = frozenset(
+    {
+        "latency_ms",
+        "cost_usd",
+        "total_cost_usd",
+        "tokens_in",
+        "tokens_out",
+        "step_count",
+        "step",
+        "input_tokens",
+        "output_tokens",
+        "budget_limit",
+        "total_tokens",
+        # Phase 1 (E4): terminal/judge scores must stay numeric so Langfuse can
+        # filter and aggregate them (the reviewed trace carried "criteria_met":
+        # "0.0", "task_completion_score": "0.887" as strings — unfilterable).
+        "criteria_met",
+        "task_completion_score",
+        "branch_coverage",
+        "cost_fraction",
+    }
+)
 
 # Phase 1 (E4): boolean governance flags keep native ``bool`` so the trace
 # carries true/false, not the strings "True"/"False" (which sort and filter
 # wrong, and read as noise). Order-independent; values are passed through
 # untouched (a bool is never PII and never oversized).
-_SAFE_BOOL_KEYS: frozenset[str] = frozenset({
-    "plan_valid",
-    "checked",
-    "blocked",
-    "redacted",
-    "goal_met",
-    "termination_clean",
-    "cached",
-    "would_downgrade",
-    "plan_changed",
-    # Phase B: the suppress flag must stay native bool end-to-end (not "True").
-    "suppressed",
-})
+_SAFE_BOOL_KEYS: frozenset[str] = frozenset(
+    {
+        "plan_valid",
+        "checked",
+        "blocked",
+        "redacted",
+        "goal_met",
+        "termination_clean",
+        "cached",
+        "would_downgrade",
+        "plan_changed",
+        # Phase B: the suppress flag must stay native bool end-to-end (not "True").
+        "suppressed",
+    }
+)
 
 # Phase B: recalled key identifiers ride the MEMORY_RECALLED carrier as a list;
 # allowlist so Langfuse keeps a parseable list (not a stringified repr).
-_SAFE_LIST_KEYS: frozenset[str] = frozenset({
-    "keys",
-    "missing_pillars",
-    "missing_carriers",
-})
+_SAFE_LIST_KEYS: frozenset[str] = frozenset(
+    {
+        "keys",
+        "missing_pillars",
+        "missing_carriers",
+    }
+)
 
 _EVENT_TYPE_TO_OBSERVATION: dict[EventType, tuple[str, str]] = {
     EventType.TASK_STARTED: ("agent", "task.started"),
@@ -233,9 +238,8 @@ def _level_for(event: TraceEvent) -> str:
         blocked = bool(details.get("blocked"))
         redacted = bool(details.get("redacted"))
         failed_rules = details.get("failed_rules") or []
-        carrier_gate_alert = (
-            details.get("source") == "carrier_gate"
-            and (details.get("outcome") == "alert" or details.get("would_enforce"))
+        carrier_gate_alert = details.get("source") == "carrier_gate" and (
+            details.get("outcome") == "alert" or details.get("would_enforce")
         )
         if blocked or redacted or failed_rules or carrier_gate_alert:
             return "WARNING"

@@ -95,7 +95,7 @@ def _normalize_report_paths(report: ReviewReport) -> ReviewReport:
 
     def _rel(s: str) -> str:
         if s.startswith(root):
-            return s[len(root):]
+            return s[len(root) :]
         return s
 
     new_files = [_rel(f) for f in report.files_reviewed]
@@ -111,8 +111,10 @@ def _normalize_report_paths(report: ReviewReport) -> ReviewReport:
                 new_findings.append(f)
         new_dimensions.append(dim.model_copy(update={"findings": new_findings}))
 
-    return report.model_copy(update={
-        "files_reviewed": new_files,
-        "validation_log": new_log,
-        "dimensions": new_dimensions,
-    })
+    return report.model_copy(
+        update={
+            "files_reviewed": new_files,
+            "validation_log": new_log,
+            "dimensions": new_dimensions,
+        }
+    )

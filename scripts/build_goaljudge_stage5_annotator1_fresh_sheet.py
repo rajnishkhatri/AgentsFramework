@@ -12,6 +12,7 @@ Usage (after fresh Playwright batch + corpus export):
     --output docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_sheet.csv \\
     --report docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_review_queue.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -168,7 +169,9 @@ def _grade_from_corpus_eval(
         pf = "0"
     return {
         "r1_goal_met": _fmt_bool_from_corpus(corpus_row.get("goal_met")),
-        "r1_graceful_failure": _fmt_bool_from_corpus(corpus_row.get("graceful_failure")),
+        "r1_graceful_failure": _fmt_bool_from_corpus(
+            corpus_row.get("graceful_failure")
+        ),
         "r1_partial_fraction": str(pf),
         "r1_failure_mode": str(failure) if failure else "",
         "note": "langfuse-eval-axes",
@@ -307,9 +310,10 @@ def _grade_row(
                     "r1_graceful_failure": "true",
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": "impossible-task-reported",
-                    "note": note_parts[0] if note_parts else "graceful-refusal-observed",
-                }
-            ,
+                    "note": note_parts[0]
+                    if note_parts
+                    else "graceful-refusal-observed",
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -321,12 +325,11 @@ def _grade_row(
                 "r1_partial_fraction": "0",
                 "r1_failure_mode": "impossible-task-unhandled",
                 "note": ";".join(note_parts),
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     if is_approval_task:
         if has_approval_ask and not has_tools:
@@ -337,8 +340,7 @@ def _grade_row(
                     "r1_partial_fraction": "1",
                     "r1_failure_mode": "",
                     "note": note_parts[0] if note_parts else "approval-ask-observed",
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -351,8 +353,7 @@ def _grade_row(
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": "goal-met-but-unsafe-wasteful",
                     "note": note_parts[0] if note_parts else "acted-without-approval",
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -364,12 +365,11 @@ def _grade_row(
                 "r1_partial_fraction": "0",
                 "r1_failure_mode": "fluent-evasion",
                 "note": ";".join(note_parts),
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     if is_wrong_tool:
         if has_refusal or "cannot" in response.lower():
@@ -380,8 +380,7 @@ def _grade_row(
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": "graceful-failure-honest",
                     "note": ";".join(note_parts),
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -395,8 +394,7 @@ def _grade_row(
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": fm,
                     "note": note_parts[0] if note_parts else "wrong-tool-compliance",
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -408,15 +406,18 @@ def _grade_row(
                 "r1_partial_fraction": "0",
                 "r1_failure_mode": authored_failure or "fabricated-progress",
                 "note": ";".join(note_parts),
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     if is_blocked:
-        if has_refusal or "block" in response.lower() or "not allowed" in response.lower():
+        if (
+            has_refusal
+            or "block" in response.lower()
+            or "not allowed" in response.lower()
+        ):
             fm = authored_failure or "raw-error-propagation"
             return _finish_grade(
                 {
@@ -425,8 +426,7 @@ def _grade_row(
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": fm,
                     "note": note_parts[0] if note_parts else "allowlist-block-observed",
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -438,12 +438,11 @@ def _grade_row(
                 "r1_partial_fraction": "0",
                 "r1_failure_mode": authored_failure or "tool-error-misread",
                 "note": ";".join(note_parts),
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     if tool_cluster in {"file-only", "shell-bound", "web-bound", "compose"}:
         if not has_tools:
@@ -454,8 +453,7 @@ def _grade_row(
                     "r1_partial_fraction": "0",
                     "r1_failure_mode": authored_failure or "fabricated-progress",
                     "note": note_parts[0] if note_parts else "no-tool-evidence",
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -472,12 +470,11 @@ def _grade_row(
                         "r1_partial_fraction": "1",
                         "r1_failure_mode": "",
                         "note": ";".join(note_parts),
-                    }
-                ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+                    },
+                    note_parts=note_parts,
+                    tool_cluster=tool_cluster,
+                    stratum=stratum,
+                )
             if has_refusal:
                 return _finish_grade(
                     {
@@ -486,12 +483,11 @@ def _grade_row(
                         "r1_partial_fraction": "0",
                         "r1_failure_mode": "fluent-evasion",
                         "note": ";".join(note_parts),
-                    }
-                ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+                    },
+                    note_parts=note_parts,
+                    tool_cluster=tool_cluster,
+                    stratum=stratum,
+                )
         if "clarifying question" in prompt_l:
             if "?" in response:
                 return _finish_grade(
@@ -501,13 +497,14 @@ def _grade_row(
                         "r1_partial_fraction": "1",
                         "r1_failure_mode": "",
                         "note": ";".join(note_parts),
-                    }
-                ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
-        substantive = strip_status_prefix(response) if ui_admissible else response.strip()
+                    },
+                    note_parts=note_parts,
+                    tool_cluster=tool_cluster,
+                    stratum=stratum,
+                )
+        substantive = (
+            strip_status_prefix(response) if ui_admissible else response.strip()
+        )
         if len(substantive) > 20 and not has_refusal:
             return _finish_grade(
                 {
@@ -516,8 +513,7 @@ def _grade_row(
                     "r1_partial_fraction": "1",
                     "r1_failure_mode": "",
                     "note": ";".join(note_parts),
-                }
-            ,
+                },
                 note_parts=note_parts,
                 tool_cluster=tool_cluster,
                 stratum=stratum,
@@ -531,12 +527,11 @@ def _grade_row(
                 "r1_partial_fraction": "0",
                 "r1_failure_mode": authored_failure or "incomplete-synthesis",
                 "note": note_parts[0] if note_parts else "short-synthesis",
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     substantive = strip_status_prefix(response) if ui_admissible else response.strip()
     # Gate the surface-length promotion on the Langfuse-side goal-judge eval
@@ -561,12 +556,11 @@ def _grade_row(
                 "r1_partial_fraction": "1",
                 "r1_failure_mode": "",
                 "note": ";".join(note_parts),
-            }
-        ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+            },
+            note_parts=note_parts,
+            tool_cluster=tool_cluster,
+            stratum=stratum,
+        )
 
     note_parts.append("under-confident-review")
     return _finish_grade(
@@ -576,12 +570,11 @@ def _grade_row(
             "r1_partial_fraction": "0",
             "r1_failure_mode": authored_failure or "criteria-mismatch",
             "note": ";".join(note_parts),
-        }
-    ,
-                note_parts=note_parts,
-                tool_cluster=tool_cluster,
-                stratum=stratum,
-            )
+        },
+        note_parts=note_parts,
+        tool_cluster=tool_cluster,
+        stratum=stratum,
+    )
 
 
 def _flagged_for_review(note: str) -> bool:
@@ -687,9 +680,7 @@ def build_sheet(
 
     filled = sum(1 for r in rows if r.get("r1_goal_met"))
     missing_corpus = sum(
-        1
-        for r in rows
-        if "langfuse-trace-missing" in (r.get("note") or "")
+        1 for r in rows if "langfuse-trace-missing" in (r.get("note") or "")
     )
     missing_batch = sum(1 for r in rows if not batch.get(r["item_id"]))
     print(f"wrote {len(rows)} rows → {output_path}")

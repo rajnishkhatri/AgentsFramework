@@ -206,7 +206,8 @@ class TestFailureModeMatrix:
         assert tu["rejected_conditions"] == []
         # Reasoning pillar: the fallback Decision names the failure class.
         decisions = [
-            d for d in _decisions(tmp_path, "wf-tu-raise")
+            d
+            for d in _decisions(tmp_path, "wf-tu-raise")
             if "success-conditions" in d.get("description", "")
         ]
         assert len(decisions) == 1
@@ -226,7 +227,9 @@ class TestFailureModeMatrix:
         round 2's root cause was mis-diagnosed because the text was never
         captured), and ``attempts`` reports the attempts actually MADE — a
         2-attempt terminal fallback is 2, not 3 (bug #1 off-by-one)."""
-        _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+        _issues = [
+            "grounding gate: condition 1 shares no content token with the task input"
+        ]
         _rejected = [
             ["The agent does the thing.", "Zorblat frequencies harmonized."],
             ["The agent does the thing.", "Quantum flux capacitors aligned."],
@@ -254,7 +257,8 @@ class TestFailureModeMatrix:
         # event, carrying the attempt index, the failing gate name, and the
         # rejected condition text itself.
         guardrails = [
-            e for e in _events(tmp_path, "wf-tu-gate")
+            e
+            for e in _events(tmp_path, "wf-tu-gate")
             if e["event_type"] == "guardrail_checked"
             and e["details"].get("guardrail") == "task_understanding_gates"
         ]
@@ -278,7 +282,9 @@ class TestFailureModeMatrix:
         GENERATED conditions; exactly ONE GUARDRAIL_CHECKED (attempt 0); the
         Decision rationale records the retry recovery; ``attempts`` counts the
         rejected attempt plus the recovery (= 2)."""
-        _issues = ["grounding gate: condition 1 shares no content token with the task input"]
+        _issues = [
+            "grounding gate: condition 1 shares no content token with the task input"
+        ]
         _rejected0 = ["The agent compares options.", "Zorblat frequencies harmonized."]
 
         async def _reject_then_recover(*, task_input, on_gate_rejection=None):
@@ -298,7 +304,8 @@ class TestFailureModeMatrix:
         assert _sink.goal_judge[0]["ai_input"]["conditions_source"] == "generated"
         # Exactly one rejected attempt → one GUARDRAIL_CHECKED (attempt 0).
         guardrails = [
-            e for e in _events(tmp_path, "wf-tu-retry")
+            e
+            for e in _events(tmp_path, "wf-tu-retry")
             if e["event_type"] == "guardrail_checked"
             and e["details"].get("guardrail") == "task_understanding_gates"
         ]
@@ -312,7 +319,8 @@ class TestFailureModeMatrix:
         assert [r["conditions"] for r in tu["rejected_conditions"]] == [_rejected0]
         # Reasoning pillar: the Decision rationale flags the retry recovery.
         decisions = [
-            d for d in _decisions(tmp_path, "wf-tu-retry")
+            d
+            for d in _decisions(tmp_path, "wf-tu-retry")
             if "success-conditions" in d.get("description", "")
         ]
         assert len(decisions) == 1
@@ -375,20 +383,26 @@ class TestMemoization:
         class _EchoInput(BaseModel):
             text: str
 
-        registry = ToolRegistry({
-            "echo": ToolDefinition(
-                executor=lambda args: str(args.get("text", "")),
-                schema=_EchoInput,
-                cacheable=False,
-            )
-        })
+        registry = ToolRegistry(
+            {
+                "echo": ToolDefinition(
+                    executor=lambda args: str(args.get("text", "")),
+                    schema=_EchoInput,
+                    cacheable=False,
+                )
+            }
+        )
 
         def _resp(content: str, tool_calls: list[dict], idx: int) -> MagicMock:
             r = MagicMock()
             r.content = content
             r.tool_calls = [
-                {"name": tc["name"], "args": tc["args"],
-                 "id": f"tc-{idx}-{p}", "type": "tool_call"}
+                {
+                    "name": tc["name"],
+                    "args": tc["args"],
+                    "id": f"tc-{idx}-{p}",
+                    "type": "tool_call",
+                }
                 for p, tc in enumerate(tool_calls)
             ]
             r.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
@@ -491,9 +505,7 @@ class TestCrossTurnRegeneration:
             return r
 
         generate = AsyncMock(side_effect=[turn_1, turn_2])
-        judge = AsyncMock(
-            return_value=GoalVerdict(goal_met=True, criteria_met=1.0)
-        )
+        judge = AsyncMock(return_value=GoalVerdict(goal_met=True, criteria_met=1.0))
         reader = InMemoryGoalJudgeConfigReader(
             goal_judge_enabled=True,
             goal_judge_downgrade_enabled=False,
@@ -540,11 +552,13 @@ class TestCrossTurnRegeneration:
                         "messages": [],
                         "workflow_id": wf,
                     },
-                    config={"configurable": {
-                        "thread_id": "thread-multi-turn",
-                        "task_id": task_id,
-                        "user_id": "u",
-                    }},
+                    config={
+                        "configurable": {
+                            "thread_id": "thread-multi-turn",
+                            "task_id": task_id,
+                            "user_id": "u",
+                        }
+                    },
                 )
 
         # Generation fired once PER TURN (not once per thread).
@@ -570,9 +584,7 @@ class TestCrossTurnRegeneration:
 
 class TestGovernanceRecording:
     @pytest.mark.asyncio
-    async def test_step_planned_carries_join_keys_and_decision_matches(
-        self, tmp_path
-    ):
+    async def test_step_planned_carries_join_keys_and_decision_matches(self, tmp_path):
         generate = AsyncMock(return_value=_GENERATED)
         await _run(
             tmp_path,
@@ -590,7 +602,8 @@ class TestGovernanceRecording:
         assert decision_id
         # Cross-pillar join: the decision_id resolves to a ROUTING Decision.
         decisions = [
-            d for d in _decisions(tmp_path, "wf-tu-gov")
+            d
+            for d in _decisions(tmp_path, "wf-tu-gov")
             if d.get("decision_id") == decision_id
         ]
         assert len(decisions) == 1
@@ -661,20 +674,26 @@ class TestEditResumeSimulation:
         class _EchoInput(BaseModel):
             text: str
 
-        registry = ToolRegistry({
-            "echo": ToolDefinition(
-                executor=lambda args: str(args.get("text", "")),
-                schema=_EchoInput,
-                cacheable=False,
-            )
-        })
+        registry = ToolRegistry(
+            {
+                "echo": ToolDefinition(
+                    executor=lambda args: str(args.get("text", "")),
+                    schema=_EchoInput,
+                    cacheable=False,
+                )
+            }
+        )
 
         def _resp(content: str, tool_calls: list[dict], idx: int) -> MagicMock:
             r = MagicMock()
             r.content = content
             r.tool_calls = [
-                {"name": tc["name"], "args": tc["args"],
-                 "id": f"tc-{idx}-{p}", "type": "tool_call"}
+                {
+                    "name": tc["name"],
+                    "args": tc["args"],
+                    "id": f"tc-{idx}-{p}",
+                    "type": "tool_call",
+                }
                 for p, tc in enumerate(tool_calls)
             ]
             r.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
@@ -789,20 +808,26 @@ class TestEditResumeSimulation:
         class _EchoInput(BaseModel):
             text: str
 
-        registry = ToolRegistry({
-            "echo": ToolDefinition(
-                executor=lambda args: str(args.get("text", "")),
-                schema=_EchoInput,
-                cacheable=False,
-            )
-        })
+        registry = ToolRegistry(
+            {
+                "echo": ToolDefinition(
+                    executor=lambda args: str(args.get("text", "")),
+                    schema=_EchoInput,
+                    cacheable=False,
+                )
+            }
+        )
 
         def _resp(content: str, tool_calls: list[dict], idx: int) -> MagicMock:
             r = MagicMock()
             r.content = content
             r.tool_calls = [
-                {"name": tc["name"], "args": tc["args"],
-                 "id": f"tc-{idx}-{p}", "type": "tool_call"}
+                {
+                    "name": tc["name"],
+                    "args": tc["args"],
+                    "id": f"tc-{idx}-{p}",
+                    "type": "tool_call",
+                }
                 for p, tc in enumerate(tool_calls)
             ]
             r.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
@@ -867,8 +892,7 @@ class TestEditResumeSimulation:
                 )
             ]
             trace_id = next(
-                ev.trace_id for ev in first_leg
-                if isinstance(ev, RunStartedDomain)
+                ev.trace_id for ev in first_leg if isinstance(ev, RunStartedDomain)
             )
             assert judge.await_count == 0, "paused run must not reach the judge"
 
@@ -894,9 +918,7 @@ class TestEditResumeSimulation:
                 )
             ]
 
-        resumed_start = next(
-            ev for ev in resumed if isinstance(ev, RunStartedDomain)
-        )
+        resumed_start = next(ev for ev in resumed if isinstance(ev, RunStartedDomain))
         assert resumed_start.trace_id == trace_id, "resume must keep the trace"
         cards = [ev for ev in resumed if isinstance(ev, TaskUnderstood)]
         assert cards and cards[-1].source == "user_edited"

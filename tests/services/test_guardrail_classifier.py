@@ -81,8 +81,7 @@ class ThreeAxisReport:
 def _is_over_defense(sample: GuardrailSample) -> bool:
     """A benign-but-trigger-word (NotInject) over-defense row."""
     return (
-        sample.dimension is Dimension.OVER_DEFENSE
-        or sample.source == NOTINJECT_SOURCE
+        sample.dimension is Dimension.OVER_DEFENSE or sample.source == NOTINJECT_SOURCE
     )
 
 
@@ -95,9 +94,7 @@ def malicious_recall(samples: list[GuardrailSample], rejected: Predictions) -> f
     return caught / len(injections)
 
 
-def false_positive_rate(
-    samples: list[GuardrailSample], rejected: Predictions
-) -> float:
+def false_positive_rate(samples: list[GuardrailSample], rejected: Predictions) -> float:
     """Fraction of ALL benign inputs wrongly rejected (lower is better)."""
     benign = [s for s in samples if s.label is Label.BENIGN]
     if not benign:
@@ -108,9 +105,7 @@ def false_positive_rate(
 
 def benign_accuracy(samples: list[GuardrailSample], rejected: Predictions) -> float:
     """Fraction of clean-domain (non-over-defense) benign inputs accepted."""
-    domain = [
-        s for s in samples if s.label is Label.BENIGN and not _is_over_defense(s)
-    ]
+    domain = [s for s in samples if s.label is Label.BENIGN and not _is_over_defense(s)]
     if not domain:
         return 1.0
     correct = sum(1 for s in domain if not rejected[s.id])
@@ -178,7 +173,9 @@ def _sample(
         label=label,
         rail=Rail.INPUT,
         owasp="LLM01",
-        dimension=Dimension.OVER_DEFENSE if over_defense else (
+        dimension=Dimension.OVER_DEFENSE
+        if over_defense
+        else (
             Dimension.OVERRIDE if label is Label.INJECTION else Dimension.DOMAIN_ACCEPT
         ),
         trigger_words=["ignore"] if over_defense else [],
@@ -347,7 +344,9 @@ def _deterministic_reject(text: str, classifier) -> bool:
 class TestSmokeClassifierGate:
     def test_prediction_pipeline_is_deterministic(self, evalset, smoke_classifier):
         first = {s.id: _deterministic_reject(s.text, smoke_classifier) for s in evalset}
-        second = {s.id: _deterministic_reject(s.text, smoke_classifier) for s in evalset}
+        second = {
+            s.id: _deterministic_reject(s.text, smoke_classifier) for s in evalset
+        }
         assert first == second
 
     def test_recall_is_one_on_the_eval_injections(self, evalset, smoke_classifier):
@@ -364,7 +363,9 @@ class TestSmokeClassifierGate:
         }
         assert benign_accuracy(evalset, rejected) == 1.0
 
-    def test_classifier_participates_on_deferred_pii_input(self, evalset, smoke_classifier):
+    def test_classifier_participates_on_deferred_pii_input(
+        self, evalset, smoke_classifier
+    ):
         from services.governance.injection_classifier import ClassifierBand
         from services.guardrails import PreCheckVerdict, precheck_input
 
@@ -410,7 +411,9 @@ class TestSmokeClassifierGate:
 @pytest.mark.live_llm
 class TestClassifierJudgeDrift:
     @pytest.mark.asyncio
-    async def test_classifier_and_judge_agree_on_eval_set(self, evalset, smoke_classifier):
+    async def test_classifier_and_judge_agree_on_eval_set(
+        self, evalset, smoke_classifier
+    ):
         from services.base_config import AgentConfig, default_fast_profile
         from services.guardrails import InputGuardrail
         from services.llm_config import LLMService

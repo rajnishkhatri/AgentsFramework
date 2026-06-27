@@ -65,8 +65,9 @@ def _read_gold(path: Path) -> list[GoldRow]:
             adjudicated = (r.get("adjudicated_should_store") or "").strip().lower()
             if adjudicated == "":
                 # unlabeled row — skip with a stderr note, don't silently pass
-                print(f"  (skip {item_id}: no adjudicated_should_store)",
-                      file=sys.stderr)
+                print(
+                    f"  (skip {item_id}: no adjudicated_should_store)", file=sys.stderr
+                )
                 continue
             gtype = (r.get("adjudicated_type") or "").strip().lower() or None
             rows.append(
@@ -162,23 +163,46 @@ def _emit_certificate(
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--gold", required=True, type=Path,
-                   help="adjudicated gold CSV (memory-extract-gold-v1 schema)")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--gold",
+        required=True,
+        type=Path,
+        help="adjudicated gold CSV (memory-extract-gold-v1 schema)",
+    )
     src = p.add_mutually_exclusive_group(required=True)
-    src.add_argument("--proposals", type=Path,
-                     help="pre-computed proposals JSONL {item_id,proposed_store,proposed_type}")
-    src.add_argument("--shadow", type=Path,
-                     help="Langfuse shadow-carrier export JSONL (memory.stored, proposed_only)")
-    src.add_argument("--run-extractor", action="store_true",
-                     help="call the LIVE extractor on each window (needs a provider key)")
-    p.add_argument("--split", default="test", choices=["dev", "test"],
-                   help="which split to score (test is the frozen gate; default)")
-    p.add_argument("--emit-certificate", type=Path, default=None, metavar="PATH",
-                   help="on a PASSING frozen-test-split run, write the enable-policy "
-                        "certificate the runtime guard re-checks "
-                        "(MEMORY_AUTOCAPTURE_CERT). Refused on dev or a blocked run.")
+    src.add_argument(
+        "--proposals",
+        type=Path,
+        help="pre-computed proposals JSONL {item_id,proposed_store,proposed_type}",
+    )
+    src.add_argument(
+        "--shadow",
+        type=Path,
+        help="Langfuse shadow-carrier export JSONL (memory.stored, proposed_only)",
+    )
+    src.add_argument(
+        "--run-extractor",
+        action="store_true",
+        help="call the LIVE extractor on each window (needs a provider key)",
+    )
+    p.add_argument(
+        "--split",
+        default="test",
+        choices=["dev", "test"],
+        help="which split to score (test is the frozen gate; default)",
+    )
+    p.add_argument(
+        "--emit-certificate",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="on a PASSING frozen-test-split run, write the enable-policy "
+        "certificate the runtime guard re-checks "
+        "(MEMORY_AUTOCAPTURE_CERT). Refused on dev or a blocked run.",
+    )
     args = p.parse_args(argv)
 
     gold = _read_gold(args.gold)

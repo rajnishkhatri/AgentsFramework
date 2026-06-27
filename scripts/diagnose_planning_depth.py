@@ -47,7 +47,9 @@ def _planning_input(trace_id: str) -> dict | None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=int, default=6)
-    ap.add_argument("--all", action="store_true", help="print every trace's depth, not just flagged")
+    ap.add_argument(
+        "--all", action="store_true", help="print every trace's depth, not just flagged"
+    )
     args = ap.parse_args()
 
     trace_ids = list_recent_trace_ids(hours=args.hours)
@@ -80,12 +82,21 @@ def main() -> None:
         # Miss C: a strong marker present but still capped at L0.
         elif fired_depth == "L0" and any(
             m in task.lower()
-            for m in ("refactor", "migration", "architecture", "design", "compare", "roadmap")
+            for m in (
+                "refactor",
+                "migration",
+                "architecture",
+                "design",
+                "compare",
+                "roadmap",
+            )
         ):
             flag = "MARKER-CAPPED: strong complexity marker but L0"
 
         if args.all:
-            print(f"{fired_depth:3} ({fired_reason:32}) {tid[:12]}  ::  {task[:70].strip()!r}")
+            print(
+                f"{fired_depth:3} ({fired_reason:32}) {tid[:12]}  ::  {task[:70].strip()!r}"
+            )
 
         if flag:
             suspects.append((tid, fired_depth, fired_reason, rescored, flag, task))

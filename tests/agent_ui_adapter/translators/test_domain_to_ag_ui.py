@@ -76,9 +76,7 @@ def test_to_ag_ui_raises_when_state_mutated_has_no_payload() -> None:
 
 
 def test_run_started_maps_to_run_started() -> None:
-    out = to_ag_ui(
-        RunStartedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1")
-    )
+    out = to_ag_ui(RunStartedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1"))
     assert len(out) == 1
     assert isinstance(out[0], RunStarted)
     assert out[0].type == EventType.RUN_STARTED
@@ -88,9 +86,7 @@ def test_run_started_maps_to_run_started() -> None:
 
 
 def test_run_finished_no_error_maps_to_run_finished() -> None:
-    out = to_ag_ui(
-        RunFinishedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1")
-    )
+    out = to_ag_ui(RunFinishedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1"))
     assert len(out) == 1
     assert isinstance(out[0], RunFinished)
     assert out[0].run_id == "r1"
@@ -123,9 +119,7 @@ def test_llm_message_started_maps_to_text_message_start() -> None:
 
 
 def test_llm_token_emitted_maps_to_text_message_content() -> None:
-    out = to_ag_ui(
-        LLMTokenEmitted(trace_id=TRACE_ID, message_id="m1", delta="hello")
-    )
+    out = to_ag_ui(LLMTokenEmitted(trace_id=TRACE_ID, message_id="m1", delta="hello"))
     assert len(out) == 1
     assert isinstance(out[0], TextMessageContent)
     assert out[0].message_id == "m1"
@@ -181,9 +175,7 @@ def test_tool_result_received_maps_to_tool_result() -> None:
 
 
 def test_state_mutated_with_snapshot_maps_to_state_snapshot() -> None:
-    out = to_ag_ui(
-        StateMutated(trace_id=TRACE_ID, snapshot={"k": "v"})
-    )
+    out = to_ag_ui(StateMutated(trace_id=TRACE_ID, snapshot={"k": "v"}))
     assert len(out) == 1
     assert isinstance(out[0], StateSnapshot)
     assert out[0].snapshot == {"k": "v"}
@@ -281,13 +273,15 @@ def test_task_understood_maps_to_custom_task_understanding() -> None:
     translator special-cases the name (the F10 reasoning_summary idiom)."""
     from agent_ui_adapter.wire.domain_events import TaskUnderstood
 
-    out = to_ag_ui(TaskUnderstood(
-        trace_id=TRACE_ID,
-        restated_intent="Create the file and verify it.",
-        success_conditions=["file exists", "contents verified"],
-        confidence=0.8,
-        source="generated",
-    ))
+    out = to_ag_ui(
+        TaskUnderstood(
+            trace_id=TRACE_ID,
+            restated_intent="Create the file and verify it.",
+            success_conditions=["file exists", "contents verified"],
+            confidence=0.8,
+            source="generated",
+        )
+    )
     assert len(out) == 1
     assert isinstance(out[0], Custom)
     assert out[0].name == "task_understanding"
@@ -356,15 +350,17 @@ def test_approval_requested_maps_to_custom_approval_requested() -> None:
     task_understanding / reasoning_summary idiom)."""
     from agent_ui_adapter.wire.domain_events import ApprovalRequested
 
-    out = to_ag_ui(ApprovalRequested(
-        trace_id=TRACE_ID,
-        approval_id="ap-42",
-        tool="shell",
-        command="rm foo.txt",
-        severity="high",
-        band="ask",
-        timeout_seconds=90,
-    ))
+    out = to_ag_ui(
+        ApprovalRequested(
+            trace_id=TRACE_ID,
+            approval_id="ap-42",
+            tool="shell",
+            command="rm foo.txt",
+            severity="high",
+            band="ask",
+            timeout_seconds=90,
+        )
+    )
     assert len(out) == 1
     assert isinstance(out[0], Custom)
     assert out[0].name == "approval_requested"

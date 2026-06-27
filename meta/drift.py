@@ -57,39 +57,45 @@ def detect_performance_drift(
         return alerts
 
     baseline_mean = sum(baseline_scores) / len(baseline_scores)
-    baseline_var = sum((x - baseline_mean) ** 2 for x in baseline_scores) / len(baseline_scores)
+    baseline_var = sum((x - baseline_mean) ** 2 for x in baseline_scores) / len(
+        baseline_scores
+    )
     baseline_std = math.sqrt(baseline_var) if baseline_var > 0 else 0.0
 
     production_mean = sum(production_scores) / len(production_scores)
 
     if baseline_std == 0:
         if production_mean != baseline_mean:
-            alerts.append(DriftAlert(
+            alerts.append(
+                DriftAlert(
+                    level=1,
+                    alert_type="performance_drift",
+                    metric_name="mean_score",
+                    baseline_value=baseline_mean,
+                    current_value=production_mean,
+                    threshold=sigma_threshold,
+                    message=f"Score changed from {baseline_mean:.3f} to {production_mean:.3f} (zero-variance baseline)",
+                )
+            )
+        return alerts
+
+    z_score = abs(production_mean - baseline_mean) / baseline_std
+
+    if z_score >= sigma_threshold:
+        alerts.append(
+            DriftAlert(
                 level=1,
                 alert_type="performance_drift",
                 metric_name="mean_score",
                 baseline_value=baseline_mean,
                 current_value=production_mean,
                 threshold=sigma_threshold,
-                message=f"Score changed from {baseline_mean:.3f} to {production_mean:.3f} (zero-variance baseline)",
-            ))
-        return alerts
-
-    z_score = abs(production_mean - baseline_mean) / baseline_std
-
-    if z_score >= sigma_threshold:
-        alerts.append(DriftAlert(
-            level=1,
-            alert_type="performance_drift",
-            metric_name="mean_score",
-            baseline_value=baseline_mean,
-            current_value=production_mean,
-            threshold=sigma_threshold,
-            message=(
-                f"Performance drift detected: baseline={baseline_mean:.3f}, "
-                f"production={production_mean:.3f}, z={z_score:.2f} >= {sigma_threshold}"
-            ),
-        ))
+                message=(
+                    f"Performance drift detected: baseline={baseline_mean:.3f}, "
+                    f"production={production_mean:.3f}, z={z_score:.2f} >= {sigma_threshold}"
+                ),
+            )
+        )
 
     return alerts
 
@@ -117,7 +123,10 @@ def compute_cohens_kappa(
     po = sum(confusion[i][i] for i in range(num_categories)) / n
 
     row_sums = [sum(confusion[i]) for i in range(num_categories)]
-    col_sums = [sum(confusion[j][i] for j in range(num_categories)) for i in range(num_categories)]
+    col_sums = [
+        sum(confusion[j][i] for j in range(num_categories))
+        for i in range(num_categories)
+    ]
     pe = sum(row_sums[i] * col_sums[i] for i in range(num_categories)) / (n * n)
 
     if pe == 1.0:
@@ -137,17 +146,19 @@ def detect_calibration_drift(
     kappa = compute_cohens_kappa(human_labels, judge_labels)
 
     if kappa < kappa_threshold:
-        alerts.append(DriftAlert(
-            level=2,
-            alert_type="calibration_drift",
-            metric_name="cohens_kappa",
-            baseline_value=kappa_threshold,
-            current_value=kappa,
-            threshold=kappa_threshold,
-            message=(
-                f"Judge calibration drift: kappa={kappa:.3f} < {kappa_threshold} threshold"
-            ),
-        ))
+        alerts.append(
+            DriftAlert(
+                level=2,
+                alert_type="calibration_drift",
+                metric_name="cohens_kappa",
+                baseline_value=kappa_threshold,
+                current_value=kappa,
+                threshold=kappa_threshold,
+                message=(
+                    f"Judge calibration drift: kappa={kappa:.3f} < {kappa_threshold} threshold"
+                ),
+            )
+        )
 
     return alerts
 
@@ -169,6 +180,7 @@ def detect_governance_drift(
         return alerts
 
     from pathlib import Path
+
     storage = Path(storage_dir)
     if not storage.exists():
         return alerts
@@ -183,26 +195,30 @@ def detect_governance_drift(
         try:
             if not agent_facts_registry.verify(agent_id):
                 failed += 1
-                alerts.append(DriftAlert(
+                alerts.append(
+                    DriftAlert(
+                        level=3,
+                        alert_type="governance_drift",
+                        metric_name="agent_facts_integrity",
+                        baseline_value=1.0,
+                        current_value=0.0,
+                        threshold=1.0,
+                        message=f"AgentFacts integrity check failed for agent_id={agent_id!r}",
+                    )
+                )
+        except Exception as exc:
+            failed += 1
+            alerts.append(
+                DriftAlert(
                     level=3,
                     alert_type="governance_drift",
                     metric_name="agent_facts_integrity",
                     baseline_value=1.0,
                     current_value=0.0,
                     threshold=1.0,
-                    message=f"AgentFacts integrity check failed for agent_id={agent_id!r}",
-                ))
-        except Exception as exc:
-            failed += 1
-            alerts.append(DriftAlert(
-                level=3,
-                alert_type="governance_drift",
-                metric_name="agent_facts_integrity",
-                baseline_value=1.0,
-                current_value=0.0,
-                threshold=1.0,
-                message=f"AgentFacts verification error for {agent_id!r}: {exc}",
-            ))
+                    message=f"AgentFacts verification error for {agent_id!r}: {exc}",
+                )
+            )
 
     return alerts
 
@@ -301,7 +317,9 @@ def run_full_drift_check(
     if baseline_scores is not None and production_scores is not None:
         report.level1_checked = True
         report.alerts.extend(
-            detect_performance_drift(baseline_scores, production_scores, sigma_threshold)
+            detect_performance_drift(
+                baseline_scores, production_scores, sigma_threshold
+            )
         )
 
     if human_labels is not None and judge_labels is not None:
@@ -377,13 +395,18 @@ class _RegistryStub:
 
     def verify(self, agent_id: str) -> bool:
         import json
+        import os
+
         from trust.signature import verify_signature
-        from trust.models import AgentFacts
 
         facts_file = self._storage_dir / f"{agent_id}.json"
         data = json.loads(facts_file.read_text())
-        facts = AgentFacts(**data)
-        return verify_signature(facts)
+        # Mirror AgentFactsRegistry.verify: the stored signature_hash is the
+        # expected value; sign the remaining fields with the shared secret.
+        expected_hash = data.get("signature_hash", "")
+        signable = {k: v for k, v in data.items() if k != "signature_hash"}
+        secret = os.environ.get("AGENT_FACTS_SECRET", "")
+        return verify_signature(signable, secret, expected_hash)
 
 
 def _create_registry_stub(registry_path: Any) -> _RegistryStub:
@@ -404,7 +427,9 @@ def run_drift_cli(args: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Drift detection CLI")
     parser.add_argument("--baseline", type=str, help="Path to baseline scores JSONL")
-    parser.add_argument("--production", type=str, help="Path to production scores JSONL")
+    parser.add_argument(
+        "--production", type=str, help="Path to production scores JSONL"
+    )
     parser.add_argument(
         "--registry-dir", type=str, help="Path to AgentFacts registry directory"
     )
@@ -415,9 +440,7 @@ def run_drift_cli(args: list[str] | None = None) -> int:
         choices=["1", "2", "3", "all"],
         help="Which drift level to check (default: all)",
     )
-    parser.add_argument(
-        "--output", type=str, help="Output file path (default: stdout)"
-    )
+    parser.add_argument("--output", type=str, help="Output file path (default: stdout)")
     parser.add_argument(
         "--alert-log-dir",
         type=str,
@@ -483,9 +506,7 @@ def run_drift_cli(args: list[str] | None = None) -> int:
                 from services.governance.phase_logger import PhaseLogger
 
                 phase_logger = PhaseLogger(storage_dir=parsed.alert_log_dir)
-                logged = emit_drift_alerts(
-                    report, phase_logger, parsed.workflow_id
-                )
+                logged = emit_drift_alerts(report, phase_logger, parsed.workflow_id)
                 logger.info(
                     "Emitted %d drift alert(s) to PhaseLogger at %s",
                     logged,

@@ -15,6 +15,7 @@ record/replay; no gate logic in the test itself — TAP-1 clean).
 
 Run from repo root: python docs/research/goaljudge_tu_gate_longterm_plan/build_gate_benchmark_fixture.py
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -54,7 +55,8 @@ def _grounding_fails(conditions: list[str], task: str, *, strip: bool) -> list[i
     xf = _strip if strip else (lambda s: s)
     task_tokens = xf(_base_tokens(task))
     return [
-        i for i, c in enumerate(conditions)
+        i
+        for i, c in enumerate(conditions)
         if task_tokens and not (xf(_base_tokens(c)) & task_tokens)
     ]
 
@@ -90,8 +92,10 @@ def main() -> None:
     must_accept, must_reject = [], []
     skipped_unparsed = 0
 
-    for group, origin in (("failed", "failed_case_resample"),
-                          ("passing", "passing_case_resample")):
+    for group, origin in (
+        ("failed", "failed_case_resample"),
+        ("passing", "passing_case_resample"),
+    ):
         for case, rec in sorted(corpus[group].items(), key=lambda kv: int(kv[0])):
             task = rec["task"]
             for s, conditions in enumerate(rec["samples"]):
@@ -99,7 +103,9 @@ def main() -> None:
                     skipped_unparsed += 1
                     continue
                 other = _other_gate_issues(conditions)
-                assert not other, f"non-grounding gate trip in corpus: {case}/{s} {other}"
+                assert not other, (
+                    f"non-grounding gate trip in corpus: {case}/{s} {other}"
+                )
                 fixed_fails = _grounding_fails(conditions, task, strip=True)
                 v0_fails = _grounding_fails(conditions, task, strip=False)
                 entry = {
@@ -122,20 +128,26 @@ def main() -> None:
     for case, rec in sorted(corpus["failed"].items(), key=lambda kv: int(kv[0])):
         for probe in ADVERSARIAL:
             grounds = not _grounding_fails([probe], rec["task"], strip=True)
-            adversarial.append({
-                "case": int(case),
-                "task": rec["task"],
-                "probe": probe,
-                "grounds": grounds,
-            })
+            adversarial.append(
+                {
+                    "case": int(case),
+                    "task": rec["task"],
+                    "probe": probe,
+                    "grounds": grounds,
+                }
+            )
 
     # ── verification against the archived evidence numbers ──
-    n_failed_accept = sum(1 for e in must_accept if e["origin"] == "failed_case_resample")
+    n_failed_accept = sum(
+        1 for e in must_accept if e["origin"] == "failed_case_resample"
+    )
     n_v0_rejected = sum(1 for e in must_accept if e["v0_rejected"])
     leaks = [(a["probe"], a["case"]) for a in adversarial if a["grounds"]]
     print(f"unparsed skipped: {skipped_unparsed}")
-    print(f"must_accept: {len(must_accept)} (failed-case {n_failed_accept}, "
-          f"v0_rejected {n_v0_rejected})")
+    print(
+        f"must_accept: {len(must_accept)} (failed-case {n_failed_accept}, "
+        f"v0_rejected {n_v0_rejected})"
+    )
     print(f"must_reject: {len(must_reject)}")
     for e in must_reject:
         for i in e["ungrounded_indexes"]:

@@ -32,18 +32,12 @@ from tests.synthetic.blackbox.dataset import (
     ScenarioID,
 )
 from tests.synthetic.blackbox.langfuse_assertions import (
-    AUDIT_DATASET,
-    ComplianceDatasetReport,
-    INCIDENT_DATASET,
-    ScenarioVerification,
     assert_compliance_score,
     assert_dataset_item_exists,
     assert_no_redacted_content,
     assert_observations_present,
     assert_trace_exists,
-    fetch_dataset_items,
     verify_compliance_datasets,
-    verify_scenario,
 )
 
 pytestmark = [
@@ -56,7 +50,12 @@ RELAY_FLUSH_WAIT_S = 8
 
 def _skip_if_missing_env():
     """Skip test if required env vars are missing."""
-    required = ["FRONTEND_URL", "WOS_SESSION_COOKIE", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY"]
+    required = [
+        "FRONTEND_URL",
+        "WOS_SESSION_COOKIE",
+        "LANGFUSE_PUBLIC_KEY",
+        "LANGFUSE_SECRET_KEY",
+    ]
     missing = [v for v in required if not os.environ.get(v)]
     if missing:
         pytest.skip(f"Missing env vars: {', '.join(missing)}")
@@ -86,6 +85,7 @@ async def _drive_scenario(bff_client, scenario: Scenario) -> str:
     trace_id, raw = await bff_client.post_run_stream(scenario.bff_payload)
     if trace_id is None:
         import re
+
         uuid_pattern = re.compile(
             r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
         )
@@ -97,9 +97,7 @@ async def _drive_scenario(bff_client, scenario: Scenario) -> str:
             hex_matches = hex_pattern.findall(raw)
             if hex_matches:
                 trace_id = hex_matches[0]
-    assert trace_id is not None, (
-        f"Could not extract trace_id for {scenario.id.value}"
-    )
+    assert trace_id is not None, f"Could not extract trace_id for {scenario.id.value}"
     return trace_id
 
 
@@ -160,6 +158,7 @@ class TestS2ToolUsing:
 
     def test_tool_called_observation(self, trace_id):
         from tests.synthetic.blackbox.dataset import ExpectedObservation
+
         results = assert_observations_present(
             trace_id, [ExpectedObservation(name="tool.called", observation_type="tool")]
         )
@@ -194,9 +193,14 @@ class TestS3ErrorRecovery:
 
     def test_error_occurred_observation(self, trace_id):
         from tests.synthetic.blackbox.dataset import ExpectedObservation
+
         results = assert_observations_present(
             trace_id,
-            [ExpectedObservation(name="error.occurred", observation_type="span", level="ERROR")],
+            [
+                ExpectedObservation(
+                    name="error.occurred", observation_type="span", level="ERROR"
+                )
+            ],
         )
         assert all(r.passed for r in results), "\n".join(
             r.description for r in results if not r.passed
@@ -204,6 +208,7 @@ class TestS3ErrorRecovery:
 
     def test_task_still_completes(self, trace_id):
         from tests.synthetic.blackbox.dataset import ExpectedObservation
+
         results = assert_observations_present(
             trace_id,
             [ExpectedObservation(name="task.completed", observation_type="agent")],
@@ -238,6 +243,7 @@ class TestS4RoutingTierChange:
     def test_parameter_changed_observation(self, trace_id):
         """PARAMETER_CHANGED may not always fire (depends on router heuristics)."""
         from tests.synthetic.blackbox.dataset import ExpectedObservation
+
         results = assert_observations_present(
             trace_id,
             [ExpectedObservation(name="parameter.changed", observation_type="span")],
@@ -275,6 +281,7 @@ class TestS5ForcedFailure:
 
     def test_task_completed_present(self, trace_id):
         from tests.synthetic.blackbox.dataset import ExpectedObservation
+
         results = assert_observations_present(
             trace_id,
             [ExpectedObservation(name="task.completed", observation_type="agent")],
@@ -314,9 +321,7 @@ class TestS6Redaction:
 
     def test_pii_not_in_metadata(self, trace_id):
         scenario = ALL_SCENARIOS[ScenarioID.S6]
-        results = assert_no_redacted_content(
-            trace_id, scenario.redaction_assertions
-        )
+        results = assert_no_redacted_content(trace_id, scenario.redaction_assertions)
         failures = [r for r in results if not r.passed]
         assert not failures, "\n".join(f.description for f in failures)
 
@@ -360,12 +365,10 @@ class TestS8ConcurrentIsolation:
     def test_independent_observations(self, trace_ids):
         scenario = ALL_SCENARIOS[ScenarioID.S8]
         for tid in trace_ids:
-            results = assert_observations_present(
-                tid, scenario.expected_observations
-            )
+            results = assert_observations_present(tid, scenario.expected_observations)
             failures = [r for r in results if not r.passed]
-            assert not failures, (
-                f"Trace {tid}: " + "\n".join(f.description for f in failures)
+            assert not failures, f"Trace {tid}: " + "\n".join(
+                f.description for f in failures
             )
 
     def test_independent_compliance_items(self, trace_ids):
@@ -475,10 +478,8 @@ class TestPhase5ComplianceDatasets:
         """Run the full Phase 5 verify_compliance_datasets aggregate check."""
         report = verify_compliance_datasets(trace_map)
         failures = [
-            r for r in report.audit_results + report.incident_results
-            if not r.passed
+            r for r in report.audit_results + report.incident_results if not r.passed
         ]
-        assert not failures, (
-            f"Phase 5 compliance failures:\n"
-            + "\n".join(f"  - {f.description}" for f in failures)
+        assert not failures, "Phase 5 compliance failures:\n" + "\n".join(
+            f"  - {f.description}" for f in failures
         )

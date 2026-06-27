@@ -33,7 +33,9 @@ def _agent_config() -> AgentConfig:
     return AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
 
 
-def _mock_response(content: str, *, tokens_in: int = 100, tokens_out: int = 800) -> MagicMock:
+def _mock_response(
+    content: str, *, tokens_in: int = 100, tokens_out: int = 800
+) -> MagicMock:
     response = MagicMock()
     response.content = content
     response.tool_calls = []
@@ -64,7 +66,9 @@ class TestPyramidLoopHappyPath:
             mock_llm.ainvoke = AsyncMock(return_value=json_response)
             mock_llm.bind_tools = MagicMock(return_value=mock_llm)
 
-            from StructuredReasoning.orchestration.pyramid_loop import build_pyramid_graph
+            from StructuredReasoning.orchestration.pyramid_loop import (
+                build_pyramid_graph,
+            )
 
             graph = build_pyramid_graph(
                 agent_config=_agent_config(),
@@ -80,29 +84,44 @@ class TestPyramidLoopHappyPath:
                     "messages": [],
                     "workflow_id": "wf-pyramid-test-1",
                 },
-                config={"configurable": {
-                    "task_id": "t-1",
-                    "user_id": "test-user",
-                    "workflow_id": "wf-pyramid-test-1",
-                }},
+                config={
+                    "configurable": {
+                        "task_id": "t-1",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-pyramid-test-1",
+                    }
+                },
             )
 
         assert result["last_outcome"] == "done"
-        assert result["analysis_output_json"]["governing_thought"]["statement"] == \
-            payload["governing_thought"]["statement"]
+        assert (
+            result["analysis_output_json"]["governing_thought"]["statement"]
+            == payload["governing_thought"]["statement"]
+        )
 
         # Persistence check.
-        persisted = tmp_path / "cache" / "pyramid" / "wf-pyramid-test-1" / "analysis.json"
+        persisted = (
+            tmp_path / "cache" / "pyramid" / "wf-pyramid-test-1" / "analysis.json"
+        )
         assert persisted.exists()
-        assert json.loads(persisted.read_text())["problem_definition"]["problem_type"] == "diagnostic"
+        assert (
+            json.loads(persisted.read_text())["problem_definition"]["problem_type"]
+            == "diagnostic"
+        )
 
         # Black-box trace + phase-decision JSONL produced.
         bb_trace = (
-            tmp_path / "cache" / "pyramid" / "black_box_recordings"
-            / "wf-pyramid-test-1" / "trace.jsonl"
+            tmp_path
+            / "cache"
+            / "pyramid"
+            / "black_box_recordings"
+            / "wf-pyramid-test-1"
+            / "trace.jsonl"
         )
         assert bb_trace.exists()
-        events = [json.loads(line) for line in bb_trace.read_text().splitlines() if line]
+        events = [
+            json.loads(line) for line in bb_trace.read_text().splitlines() if line
+        ]
         event_types = [e["event_type"] for e in events]
         assert "task_started" in event_types
         assert "step_executed" in event_types
@@ -124,7 +143,9 @@ class TestPyramidLoopRejectedInput:
             mock_llm.ainvoke = AsyncMock(return_value=_mock_response("{}"))
             mock_llm.bind_tools = MagicMock(return_value=mock_llm)
 
-            from StructuredReasoning.orchestration.pyramid_loop import build_pyramid_graph
+            from StructuredReasoning.orchestration.pyramid_loop import (
+                build_pyramid_graph,
+            )
 
             graph = build_pyramid_graph(
                 agent_config=_agent_config(),
@@ -138,17 +159,23 @@ class TestPyramidLoopRejectedInput:
                     "messages": [],
                     "workflow_id": "wf-pyramid-test-2",
                 },
-                config={"configurable": {
-                    "task_id": "t-2",
-                    "user_id": "test-user",
-                    "workflow_id": "wf-pyramid-test-2",
-                }},
+                config={
+                    "configurable": {
+                        "task_id": "t-2",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-pyramid-test-2",
+                    }
+                },
             )
 
         assert result["last_outcome"] == "rejected"
-        assert "analysis_output_json" not in result or not result.get("analysis_output_json")
+        assert "analysis_output_json" not in result or not result.get(
+            "analysis_output_json"
+        )
         # No persistence on rejection.
-        persisted = tmp_path / "cache" / "pyramid" / "wf-pyramid-test-2" / "analysis.json"
+        persisted = (
+            tmp_path / "cache" / "pyramid" / "wf-pyramid-test-2" / "analysis.json"
+        )
         assert not persisted.exists()
 
 
@@ -171,7 +198,9 @@ class TestPyramidLoopParseRetry:
             mock_llm.ainvoke = AsyncMock(side_effect=[garbage, valid])
             mock_llm.bind_tools = MagicMock(return_value=mock_llm)
 
-            from StructuredReasoning.orchestration.pyramid_loop import build_pyramid_graph
+            from StructuredReasoning.orchestration.pyramid_loop import (
+                build_pyramid_graph,
+            )
 
             graph = build_pyramid_graph(
                 agent_config=_agent_config(),
@@ -185,11 +214,13 @@ class TestPyramidLoopParseRetry:
                     "messages": [],
                     "workflow_id": "wf-pyramid-test-3",
                 },
-                config={"configurable": {
-                    "task_id": "t-3",
-                    "user_id": "test-user",
-                    "workflow_id": "wf-pyramid-test-3",
-                }},
+                config={
+                    "configurable": {
+                        "task_id": "t-3",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-pyramid-test-3",
+                    }
+                },
             )
 
         assert result["last_outcome"] == "done"
@@ -210,7 +241,9 @@ class TestPyramidLoopParseRetry:
             mock_llm.ainvoke = AsyncMock(return_value=garbage)
             mock_llm.bind_tools = MagicMock(return_value=mock_llm)
 
-            from StructuredReasoning.orchestration.pyramid_loop import build_pyramid_graph
+            from StructuredReasoning.orchestration.pyramid_loop import (
+                build_pyramid_graph,
+            )
 
             graph = build_pyramid_graph(
                 agent_config=_agent_config(),
@@ -224,15 +257,19 @@ class TestPyramidLoopParseRetry:
                     "messages": [],
                     "workflow_id": "wf-pyramid-test-4",
                 },
-                config={"configurable": {
-                    "task_id": "t-4",
-                    "user_id": "test-user",
-                    "workflow_id": "wf-pyramid-test-4",
-                }},
+                config={
+                    "configurable": {
+                        "task_id": "t-4",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-pyramid-test-4",
+                    }
+                },
             )
 
         assert result["last_outcome"] == "parse_failed"
         assert result["parse_error"]
         # No file persisted on failure.
-        persisted = tmp_path / "cache" / "pyramid" / "wf-pyramid-test-4" / "analysis.json"
+        persisted = (
+            tmp_path / "cache" / "pyramid" / "wf-pyramid-test-4" / "analysis.json"
+        )
         assert not persisted.exists()

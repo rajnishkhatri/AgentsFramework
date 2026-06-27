@@ -83,7 +83,9 @@ class TestErrorPropagation:
             )
 
         error_history = result.get("error_history", [])
-        retryable_errors = [e for e in error_history if e.get("error_type") == "retryable"]
+        retryable_errors = [
+            e for e in error_history if e.get("error_type") == "retryable"
+        ]
         assert len(retryable_errors) >= 1, "429 should be classified as retryable"
 
     @pytest.mark.asyncio
@@ -98,16 +100,25 @@ class TestErrorPropagation:
         def _failing_tool(args: dict) -> str:
             raise RuntimeError("Tool execution failed")
 
-        registry = ToolRegistry({
-            "failing_tool": ToolDefinition(
-                executor=_failing_tool, schema=_TestInput, cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "failing_tool": ToolDefinition(
+                    executor=_failing_tool,
+                    schema=_TestInput,
+                    cacheable=False,
+                ),
+            }
+        )
 
         mock_response = MagicMock()
         mock_response.content = ""
         mock_response.tool_calls = [
-            {"name": "failing_tool", "args": {"value": "test"}, "id": "call-1", "type": "tool_call"}
+            {
+                "name": "failing_tool",
+                "args": {"value": "test"},
+                "id": "call-1",
+                "type": "tool_call",
+            }
         ]
         mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
 
@@ -153,7 +164,9 @@ class TestErrorPropagation:
                     "workflow_id": "wf-tool-err",
                     "registered_agent_id": "agent-test",
                 },
-                config={"configurable": {"task_id": "test-tool-err", "user_id": "test"}},
+                config={
+                    "configurable": {"task_id": "test-tool-err", "user_id": "test"}
+                },
             )
 
         assert result.get("step_count", 0) >= 1

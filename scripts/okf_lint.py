@@ -27,7 +27,6 @@ under ``scripts/``. Run from the repo root::
 from __future__ import annotations
 
 import re
-import sys
 from pathlib import Path
 
 # Bundles we have formally declared as OKF-conformant.

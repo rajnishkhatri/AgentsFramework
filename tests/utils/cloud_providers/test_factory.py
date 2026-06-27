@@ -30,7 +30,8 @@ class TestGetProviderLocal:
 
     def test_local_returns_correct_protocol_types(self):
         settings = TrustProviderSettings(
-            provider="local", _env_file=None,  # type: ignore[call-arg]
+            provider="local",
+            _env_file=None,  # type: ignore[call-arg]
         )
         identity, policy, credential = get_provider(settings)
         assert isinstance(identity, IdentityProvider)
@@ -39,7 +40,8 @@ class TestGetProviderLocal:
 
     def test_accepts_settings_override(self):
         settings = TrustProviderSettings(
-            provider="local", region="eu-west-1",
+            provider="local",
+            region="eu-west-1",
             _env_file=None,  # type: ignore[call-arg]
         )
         identity, policy, credential = get_provider(settings)
@@ -49,7 +51,8 @@ class TestGetProviderLocal:
 class TestGetProviderAWS:
     def test_aws_returns_correct_protocol_types(self):
         settings = TrustProviderSettings(
-            provider="aws", _env_file=None,  # type: ignore[call-arg]
+            provider="aws",
+            _env_file=None,  # type: ignore[call-arg]
         )
         identity, policy, credential = get_provider(settings)
         assert isinstance(identity, IdentityProvider)

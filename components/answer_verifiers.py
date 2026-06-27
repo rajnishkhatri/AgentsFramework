@@ -102,7 +102,9 @@ def _evidence_text(evidence: list[dict[str, Any]] | None) -> str:
     if not evidence:
         return ""
     return "\n".join(
-        str(e.get("tool_output", "")) for e in evidence if isinstance(e.get("tool_output"), str)
+        str(e.get("tool_output", ""))
+        for e in evidence
+        if isinstance(e.get("tool_output"), str)
     )
 
 
@@ -111,7 +113,9 @@ def _numbers_in(text: str) -> list[float]:
     return [float(n.replace(",", "")) for n in re.findall(r"\d[\d,]*(?:\.\d+)?", text)]
 
 
-def _answer_asserts_value(final_answer: str, value: float, *, wrong: set[float]) -> bool | None:
+def _answer_asserts_value(
+    final_answer: str, value: float, *, wrong: set[float]
+) -> bool | None:
     """True if the answer asserts ``value`` and asserts none of ``wrong``.
 
     Abstains (``None``) if the answer states no usable number at all — we cannot
@@ -127,13 +131,17 @@ def _answer_asserts_value(final_answer: str, value: float, *, wrong: set[float])
     # Both the right value and a wrong value appear (or neither): ambiguous → defer.
     if value in present and (wrong & present):
         return None
-    return False  # the value is absent and no specific wrong value either → not asserted
+    return (
+        False  # the value is absent and no specific wrong value either → not asserted
+    )
 
 
 # ── 07: sum of 'paid' invoice amounts ───────────────────────────────
 
 
-def _verify_paid_subtotal(final_answer: str, evidence: list[dict[str, Any]] | None) -> bool | None:
+def _verify_paid_subtotal(
+    final_answer: str, evidence: list[dict[str, Any]] | None
+) -> bool | None:
     src = _evidence_text(evidence)
     # Each invoice block has an ``amount: N`` and a ``status: X`` line.
     amounts = [int(m.group(1)) for m in re.finditer(r"amount:\s*(\d+)", src, re.I)]
@@ -148,7 +156,9 @@ def _verify_paid_subtotal(final_answer: str, evidence: list[dict[str, Any]] | No
 # ── 08: orders-per-region counts ────────────────────────────────────
 
 
-def _verify_region_counts(final_answer: str, evidence: list[dict[str, Any]] | None) -> bool | None:
+def _verify_region_counts(
+    final_answer: str, evidence: list[dict[str, Any]] | None
+) -> bool | None:
     src = _evidence_text(evidence)
     # customer_id,region rows and order_id,customer_id rows (skip the headers).
     cust_region = dict(re.findall(r"^(c\d+),(\w+)\s*$", src, re.M))
@@ -186,7 +196,9 @@ def _count_for_label(answer: str, label: str) -> int | None:
 # ── 09: peak error hour ─────────────────────────────────────────────
 
 
-def _verify_peak_error_hour(final_answer: str, evidence: list[dict[str, Any]] | None) -> bool | None:
+def _verify_peak_error_hour(
+    final_answer: str, evidence: list[dict[str, Any]] | None
+) -> bool | None:
     src = _evidence_text(evidence)
     hours: dict[str, int] = {}
     for line in src.splitlines():
@@ -222,7 +234,9 @@ def _answer_asserts_hour(final_answer: str, peak: str, others: set[str]) -> bool
 # ── 10: quarter-over-quarter growth rates ───────────────────────────
 
 
-def _verify_growth_rates(final_answer: str, evidence: list[dict[str, Any]] | None) -> bool | None:
+def _verify_growth_rates(
+    final_answer: str, evidence: list[dict[str, Any]] | None
+) -> bool | None:
     src = _evidence_text(evidence)
     totals = [int(m.group(1)) for m in re.finditer(r"TOTAL:\s*(\d+)", src, re.I)]
     if len(totals) < 2:
@@ -232,7 +246,10 @@ def _verify_growth_rates(final_answer: str, evidence: list[dict[str, Any]] | Non
         for i in range(len(totals) - 1)
     ]
     # The answer's percentage figures must include each expected rate.
-    pcts = {round(float(m.group(1)), 1) for m in re.finditer(r"(\d+(?:\.\d+)?)\s*%", final_answer)}
+    pcts = {
+        round(float(m.group(1)), 1)
+        for m in re.finditer(r"(\d+(?:\.\d+)?)\s*%", final_answer)
+    }
     if len(pcts) < len(rates):
         return None  # didn't report enough rates to confirm → defer
     return all(r in pcts for r in rates)
@@ -241,7 +258,9 @@ def _verify_growth_rates(final_answer: str, evidence: list[dict[str, Any]] | Non
 # ── 13: earliest slot covering >= 4 people ──────────────────────────
 
 
-def _verify_earliest_slot(final_answer: str, evidence: list[dict[str, Any]] | None) -> bool | None:
+def _verify_earliest_slot(
+    final_answer: str, evidence: list[dict[str, Any]] | None
+) -> bool | None:
     # Each person's availability file is one evidence entry of HH:MM lines.
     if not evidence:
         return None
@@ -262,7 +281,6 @@ def _verify_earliest_slot(final_answer: str, evidence: list[dict[str, Any]] | No
     if not covering:
         return None
     earliest = covering[0]
-    others = {s for s in counts if s != earliest}
     reported = set(re.findall(r"\b(\d{2}:\d{2})\b", final_answer))
     candidates = {s for s in reported if s == earliest or s in covering}
     if not candidates:
@@ -279,9 +297,7 @@ def _verify_earliest_slot(final_answer: str, evidence: list[dict[str, Any]] | No
 
 def _is_topological_sort_task(task_input: str) -> bool:
     text = task_input.lower()
-    return "topological sort" in text or (
-        "install order" in text and "depend" in text
-    )
+    return "topological sort" in text or ("install order" in text and "depend" in text)
 
 
 def _verify_topological_sort(
@@ -395,7 +411,7 @@ def _node_runs(text: str, nodes: set[str]) -> list[tuple[list[str], bool]]:
     pos = 0
     token_re = re.compile(r"[A-Za-z][\w-]*")
     for m in token_re.finditer(text):
-        gap = text[pos:m.start()]
+        gap = text[pos : m.start()]
         tok = m.group(0)
         sep = bool(_ORDER_SEP_RE.fullmatch(gap or " "))
         if tok in nodes:

@@ -7,8 +7,8 @@ tags: [recipe, gcp]
 
 # GCP Log Pipeline Guide — End-to-End Flow Analysis
 
-**Audience:** Operators debugging Tier A deploys on Cloud Run.  
-**Stack:** Browser → `agent-frontend` (BFF) → `agent-backend-combined` → Postgres / GCS / LLM.  
+**Audience:** Operators debugging Tier A deploys on Cloud Run.
+**Stack:** Browser → `agent-frontend` (BFF) → `agent-backend-combined` → Postgres / GCS / LLM.
 **Prerequisites:** `gcloud` CLI, repo checkout, OpenTofu outputs or `terraform.tfvars` for project ID.
 
 Use this guide after a deploy or when chat/auth fails in production. For metrics and alerts, see [07_observability.md](07_observability.md). For the full deploy walkthrough, see [LIVE_DEPLOYMENT.md](LIVE_DEPLOYMENT.md).

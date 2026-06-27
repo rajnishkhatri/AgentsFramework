@@ -11,7 +11,6 @@ import ast
 from pathlib import Path
 from typing import AsyncIterator
 
-import pytest
 
 from agent_ui_adapter.ports.agent_runtime import AgentRuntime
 from agent_ui_adapter.wire.agent_protocol import ThreadState
@@ -35,14 +34,15 @@ class TestSinglePortInvariant:
             for node in ast.walk(tree):
                 if isinstance(node, ast.ClassDef):
                     base_names = {
-                        b.id if isinstance(b, ast.Name)
+                        b.id
+                        if isinstance(b, ast.Name)
                         else (b.attr if isinstance(b, ast.Attribute) else "")
                         for b in node.bases
                     }
                     if "Protocol" in base_names:
                         protocol_defs.append(f"{py.name}:{node.name}")
         assert len(protocol_defs) == 1, (
-            f"R9 violation: ports/ must define exactly one Protocol; found:\n"
+            "R9 violation: ports/ must define exactly one Protocol; found:\n"
             + "\n".join(protocol_defs)
         )
 

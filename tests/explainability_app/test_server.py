@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from explainability_app.server import DEFAULT_HOST, build_app
+from explainability_app.server import build_app
 from services.explainability_service import (
     AgentAuditEntry,
     AgentCard,
@@ -21,7 +21,6 @@ from services.explainability_service import (
     CorrelationHealth,
     DashboardMetrics,
     DecisionRecord,
-    ExplainabilityService,
     GuardrailFailure,
     GuardrailSummary,
     IntegrityReport,
@@ -512,9 +511,7 @@ def _make_agent_card(
     signature_verification_status: str | None = None,
 ) -> AgentCard:
     if signature_verification_status is None:
-        signature_verification_status = (
-            "verified" if signature_verified else "failed"
-        )
+        signature_verification_status = "verified" if signature_verified else "failed"
     return AgentCard(
         agent_id=agent_id,
         agent_name=f"{agent_id}-name",
@@ -598,8 +595,7 @@ async def test_agents_router_rejects_post_put_patch_delete() -> None:
         ]:
             resp = await client.request(method, path)
             assert resp.status_code == 405, (
-                f"{method} {path} should be Method Not Allowed (got "
-                f"{resp.status_code})"
+                f"{method} {path} should be Method Not Allowed (got {resp.status_code})"
             )
 
 
@@ -1083,9 +1079,7 @@ class _ComplianceSummaryStub:
                         status="completed",
                         primary_agent_id="cli-agent",
                     ),
-                    integrity=IntegrityReport(
-                        workflow_id="wf-clean", chain_valid=True
-                    ),
+                    integrity=IntegrityReport(workflow_id="wf-clean", chain_valid=True),
                 ),
                 WorkflowIntegritySummary(
                     workflow=WorkflowSummary(
@@ -1162,6 +1156,8 @@ async def test_compliance_summary_returns_seeded_rows() -> None:
         assert len(body["rows"]) == 2
         ids = {row["workflow"]["workflow_id"] for row in body["rows"]}
         assert ids == {"wf-clean", "wf-bad"}
-        bad = next(row for row in body["rows"] if row["workflow"]["workflow_id"] == "wf-bad")
+        bad = next(
+            row for row in body["rows"] if row["workflow"]["workflow_id"] == "wf-bad"
+        )
         assert bad["integrity"]["chain_valid"] is False
         assert bad["integrity"]["broken_at_event_id"] == "evt-2"

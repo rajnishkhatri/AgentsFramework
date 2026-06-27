@@ -25,6 +25,7 @@ by the live run, never in CI.
     .venv/bin/python scripts/analyze_model_ab.py \
         --jsonl cache/model_ab_live/<run-id>/ui_batch.jsonl
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,7 +48,6 @@ from scripts.analyze_planning_traces import (  # noqa: E402
 )
 from scripts.model_ab_eval import (  # noqa: E402
     _LOCAL_LIMIT_NOTE,
-    check_arm_integrity,
     corpus_hash,
     diff_summaries,
 )
@@ -104,9 +104,7 @@ def _seeded_sample(
     import hashlib
 
     def _key(case: dict) -> str:
-        h = hashlib.sha256(
-            f"{model}|{run_id}|{case['case']}".encode()
-        ).hexdigest()
+        h = hashlib.sha256(f"{model}|{run_id}|{case['case']}".encode()).hexdigest()
         return h
 
     if budget is not None and budget >= 0:
@@ -175,9 +173,7 @@ def build_matrix(
 def load_capture_rows(jsonl_path: Path) -> list[dict]:
     """Read the spec's ``ui_batch.jsonl`` capture rows (one per run)."""
     rows = [
-        json.loads(line)
-        for line in jsonl_path.read_text().strip().split("\n")
-        if line
+        json.loads(line) for line in jsonl_path.read_text().strip().split("\n") if line
     ]
     return rows
 
@@ -251,9 +247,7 @@ def gate_row_integrity(
         return True, None
     stray = [m for m in used if m != pinned]
     if stray:
-        return False, (
-            f"WRONG-MODEL :: {row.get('case')} pinned={pinned} ran {stray}"
-        )
+        return False, (f"WRONG-MODEL :: {row.get('case')} pinned={pinned} ran {stray}")
     return True, None
 
 
@@ -468,9 +462,7 @@ def matched_comparison(
         baseline_cases.update(cell.get("cases", []))
     matched = reasoning_cases & baseline_cases
 
-    reasoning_rows = [
-        r for r in rows if r.get("model") == reasoning_model
-    ]
+    reasoning_rows = [r for r in rows if r.get("model") == reasoning_model]
     baseline_rows = [r for r in rows if r.get("model") == baseline_model]
 
     base_summary = _score_summary_for_cases(baseline_rows, events_by_trace, matched)
@@ -482,9 +474,7 @@ def matched_comparison(
         for r in model_rows:
             if r.get("case") not in matched:
                 continue
-            _, _, c = _trace_tokens_cost(
-                events_by_trace.get(r.get("trace_id", ""), [])
-            )
+            _, _, c = _trace_tokens_cost(events_by_trace.get(r.get("trace_id", ""), []))
             total += c
         return total
 
@@ -652,9 +642,7 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="the spec's ui_batch.jsonl capture file",
     )
-    p.add_argument(
-        "--source", choices=["blackbox", "langfuse"], default="langfuse"
-    )
+    p.add_argument("--source", choices=["blackbox", "langfuse"], default="langfuse")
     p.add_argument(
         "--corpus", type=Path, default=_CORPUS, help="the frozen corpus (for hash)"
     )

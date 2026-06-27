@@ -7,9 +7,9 @@ tags: [architecture]
 
 # NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture
 
-**Model:** Gemini 3.1 Pro  
-**Regulatory Basis:** NAIC AI Systems Evaluation Tool 4.0 (July 2025) & NAIC Model Bulletin on AI Systems (December 2023)  
-**Implementation Substrate:** Four-Layer Architecture + Seven-Layer Trust Framework  
+**Model:** Gemini 3.1 Pro
+**Regulatory Basis:** NAIC AI Systems Evaluation Tool 4.0 (July 2025) & NAIC Model Bulletin on AI Systems (December 2023)
+**Implementation Substrate:** Four-Layer Architecture + Seven-Layer Trust Framework
 
 ---
 
@@ -23,7 +23,7 @@ The existing mapping guide provides a compact matrix relating NAIC exhibits to t
 
 The regulatory landscape has matured. The NAIC AI Systems Evaluation Tool 4.0 has shifted from a rigid checklist to a principle-based, tailorable assessment. Simultaneously, the December 2023 Model Bulletin mandates a documented AI System (AIS) Program encompassing governance, risk controls, auditability, and lifecycle coverage. A static spreadsheet might suffice for a point-in-time audit, but continuous compliance requires runtime evidence.
 
-The complication arises from the dynamic nature of agentic AI. Unlike a static predictive model, an agent plans, invokes tools, delegates subtasks, and routes decisions. An underwriting agent synthesizes internal policy with third-party data under strict authorization boundaries. A fraud detection system may involve multiple agents coordinating via an event stream. 
+The complication arises from the dynamic nature of agentic AI. Unlike a static predictive model, an agent plans, invokes tools, delegates subtasks, and routes decisions. An underwriting agent synthesizes internal policy with third-party data under strict authorization boundaries. A fraud detection system may involve multiple agents coordinating via an event stream.
 
 The core question is: How does a carrier generate defensible evidence for each NAIC exhibit without constructing a parallel, burdensome compliance bureaucracy?
 

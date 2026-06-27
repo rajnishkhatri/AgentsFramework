@@ -34,6 +34,7 @@ It mutates nothing — read-only over the captured traces.
     python scripts/analyze_planning_traces.py --source langfuse \
         --jsonl cache/planning_stress/ui_batch.jsonl
 """
+
 from __future__ import annotations
 
 import argparse
@@ -138,7 +139,7 @@ def _load_langfuse_events(trace_id: str) -> list[dict]:
         except urllib.error.HTTPError as exc:
             if exc.code == 429 and attempt < 5:
                 retry_after = exc.headers.get("Retry-After")
-                delay = float(retry_after) if retry_after else (2.0 ** attempt)
+                delay = float(retry_after) if retry_after else (2.0**attempt)
                 time.sleep(min(delay, 30.0))
                 continue
             raise
@@ -299,7 +300,7 @@ def _delegation_requested_count(events: list[dict]) -> int:
     """
     n = 0
     for e in events:
-        et = (e.get("event_type") or "")
+        et = e.get("event_type") or ""
         details = e.get("details") if isinstance(e.get("details"), dict) else {}
         if et.endswith("delegation_requested"):
             n += 1
@@ -391,7 +392,12 @@ def _fanout_partial_survived(events: list[dict]) -> bool:
 # is deliberately unwired (its eval.goal_judge is in the eval-overlay sink, not the
 # black box). TOOL_EXECUTION only fires when the run drove a tool — so its absence
 # on a no-tool run is EXPECTED, not a gap.
-_WIRED_CARRIER_PHASES = ("initialization", "routing", "model_invocation", "output_validation")
+_WIRED_CARRIER_PHASES = (
+    "initialization",
+    "routing",
+    "model_invocation",
+    "output_validation",
+)
 _TOOL_CARRIER_PHASE = "tool_execution"
 
 
@@ -419,7 +425,10 @@ def _carrier_gate_enforce_events(events: list[dict]) -> list[dict]:
         if not (e.get("event_type") or "").endswith("guardrail_checked"):
             continue
         details = e.get("details")
-        if isinstance(details, dict) and details.get("source") == "carrier_gate_enforce":
+        if (
+            isinstance(details, dict)
+            and details.get("source") == "carrier_gate_enforce"
+        ):
             out.append(details)
     return out
 
@@ -635,9 +644,7 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
                 bucket["hits"] += 1
             else:  # missed escalate
                 esc["fn"] += 1
-                bucket["mismatches"].append(
-                    f"MISSED-ESCALATE :: {case} (got={got})"
-                )
+                bucket["mismatches"].append(f"MISSED-ESCALATE :: {case} (got={got})")
 
         elif phase == "fanout":
             want_fanout = _as_bool(row.get("want_fanout"))
@@ -783,7 +790,9 @@ def gate_failures(summary: dict) -> list[str]:
     if conf["fp"] > 0:
         fails.append(f"escalation false-positives: {conf['fp']} (thrash risk)")
     if conf["fn"] > 0:
-        fails.append(f"escalation missed-escalations: {conf['fn']} (ships wrong answer)")
+        fails.append(
+            f"escalation missed-escalations: {conf['fn']} (ships wrong answer)"
+        )
     # Fan-out (T3): precision >= 0.9 (the fp cell is the GAIA-failure headline);
     # partial-survival == 1.0. Recall is reported but NOT gated — a missed
     # fan-out is the cheap error (plan §3.5a / Stage B5).
@@ -819,7 +828,9 @@ def gate_failures(summary: dict) -> list[str]:
 # ── driver ─────────────────────────────────────────────────────────────────────
 
 
-def _build_events_by_row(rows: list[dict], args: argparse.Namespace) -> dict[str, list[dict]]:
+def _build_events_by_row(
+    rows: list[dict], args: argparse.Namespace
+) -> dict[str, list[dict]]:
     events_by_row: dict[str, list[dict]] = {}
     for row in rows:
         case = row["case"]
@@ -887,9 +898,7 @@ def main() -> int:
         print(f"no capture file at {args.jsonl} — run the stress spec first")
         return 2
     rows = [
-        json.loads(line)
-        for line in args.jsonl.read_text().strip().split("\n")
-        if line
+        json.loads(line) for line in args.jsonl.read_text().strip().split("\n") if line
     ]
     if not rows:
         print(f"capture file {args.jsonl} is empty")
@@ -901,7 +910,9 @@ def main() -> int:
         events_by_row = _build_events_by_row(rows, args)
         cg = score_carrier_gate(rows, events_by_row)
         print(f"carrier-gate shadow validation :: source={args.source}")
-        print(f"  rows={len(rows)} jsonl={args.jsonl.name} runs_scored={cg['runs_scored']}")
+        print(
+            f"  rows={len(rows)} jsonl={args.jsonl.name} runs_scored={cg['runs_scored']}"
+        )
         print()
         for phase in (*_WIRED_CARRIER_PHASES, _TOOL_CARRIER_PHASE):
             b = cg["per_phase"].get(phase)
@@ -922,7 +933,9 @@ def main() -> int:
         # Phase-2 enforcement (only non-zero when enforce mode is ON, e.g. the
         # fault-injection validation revision).
         if cg.get("total_enforced"):
-            print(f"  ENFORCED         {cg['total_enforced']} (Phase-2 acted: degrade/raise)")
+            print(
+                f"  ENFORCED         {cg['total_enforced']} (Phase-2 acted: degrade/raise)"
+            )
             for ed in cg["enforced_detail"]:
                 print(f"      * {ed}")
         if cg["coverage_gaps"]:
@@ -983,7 +996,11 @@ def main() -> int:
                 f"({ps['survived']}/{ps['eligible']} fault rows survived)"
             )
     comp = summary.get("compaction") or {}
-    if comp.get("folded", 0) or comp.get("not_folded", 0) or comp.get("unsafe_folds_total", 0):
+    if (
+        comp.get("folded", 0)
+        or comp.get("not_folded", 0)
+        or comp.get("unsafe_folds_total", 0)
+    ):
         print(
             f"  compaction folded {comp['folded']} of "
             f"{comp['folded'] + comp['not_folded']} rows  "

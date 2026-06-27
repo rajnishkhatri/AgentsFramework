@@ -1,0 +1,46 @@
+# Git-level sensor layer (Track A — defense in depth).
+#
+# These run at `git commit` for EVERYONE, regardless of editor — the backstop
+# for edits made outside Claude Code (vim, a teammate, etc.). The same ruff
+# checks also run as a Claude Code PostToolUse hook (fast, in-loop) and in CI
+# (.github/workflows/pre-commit.yml — the un-bypassable layer, because
+# `git commit --no-verify` skips these local hooks).
+#
+# Install once:  .venv/bin/pre-commit install
+# Run manually:  .venv/bin/pre-commit run --all-files
+#
+# ruff rev is pinned to match the venv ruff (0.15.16) so the commit hook and
+# local `make format` never disagree on formatting. Bump both together.
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.16
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+
+# Never touch generated / vendored trees.
+exclude: |
+  (?x)^(
+      \.venv/.*|
+      node_modules/.*|
+      .*/node_modules/.*|
+      .*\.min\.(js|css)|
+      cache/.*|
+      logs/.*
+  )$

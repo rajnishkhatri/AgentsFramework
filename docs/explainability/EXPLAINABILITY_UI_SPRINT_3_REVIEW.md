@@ -15,7 +15,7 @@ analysis protocol in `research/pyramid_react_system_prompt.md`.
 
 ### F1 — JSON export is not a compliance bundle
 
-**Severity:** High  
+**Severity:** High
 **Scope:** `frontend-explainability/components/compliance/ComplianceExportButtons.tsx`,
 `frontend-explainability/app/compliance/page.tsx`
 
@@ -50,7 +50,7 @@ JSON includes `correlation_health`, `events`, `identity_cards`, and
 
 ### F2 — "Across all workflows in range" is not implemented
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `frontend-explainability/app/compliance/page.tsx`,
 `frontend-explainability/lib/ports/explainability_client.ts`,
 `explainability_app/server.py`
@@ -79,7 +79,7 @@ range inclusion/exclusion and URL query propagation.
 
 ### F3 — Compliance home introduces an N+1 hash verification path
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `frontend-explainability/app/compliance/page.tsx`,
 `services/explainability_service.py`, `services/governance/black_box.py`
 
@@ -99,7 +99,7 @@ mtime/size if the dataset grows beyond seed scale.
 
 ### F4 — Deep-dive omits the break location from the Recording quadrant
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `services/explainability_service.py`,
 `explainability_app/wire/responses.py`,
 `frontend-explainability/components/compliance/WorkflowDeepDive.tsx`
@@ -119,7 +119,7 @@ the Recording quadrant. Add a tampered deep-dive component test.
 
 ### F5 — Frontend component owns validation aggregation logic
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `frontend-explainability/components/compliance/WorkflowDeepDive.tsx`
 
 `WorkflowDeepDive` derives guardrail pass/fail counts from raw events in the
@@ -144,7 +144,7 @@ missing details. Keep `WorkflowDeepDive` as a renderer of translated view-models
 
 ### F6 — A stale comment claims `Promise.allSettled` but implementation uses `Promise.all`
 
-**Severity:** Low  
+**Severity:** Low
 **Scope:** `frontend-explainability/app/compliance/page.tsx`
 
 The route comment says per-workflow integrity is fetched with
@@ -447,4 +447,3 @@ analysis_output:
   - `npm run test -- components/compliance lib/adapters/http_explainability_client.test.ts lib/wire/baseline_drift.test.ts`
 - Frontend type/lint/architecture: clean
   - `npm run typecheck && npm run lint && npm run test:arch`
-

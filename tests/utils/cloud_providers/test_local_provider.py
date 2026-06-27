@@ -136,7 +136,11 @@ class TestLocalPolicyProvider:
         config = {
             "agent-001": {
                 "policies": [
-                    {"policy_id": "p1", "policy_name": "ReadOnly", "policy_type": "managed"},
+                    {
+                        "policy_id": "p1",
+                        "policy_name": "ReadOnly",
+                        "policy_type": "managed",
+                    },
                 ],
             },
         }
@@ -248,7 +252,8 @@ class TestLocalCredentialProvider:
         facts = _make_facts(agent_id="agent-002")
         creds = provider.issue_credentials(facts, scope=[])
         creds_with_bad_id = TemporaryCredentials(
-            provider="local", access_token="x",
+            provider="local",
+            access_token="x",
             expiry=datetime.now(UTC) + timedelta(minutes=15),
             agent_id="agent-001",
         )
@@ -265,7 +270,8 @@ class TestLocalCredentialProvider:
         config = {"agent-001": {"raise_error": True}}
         provider = LocalCredentialProvider(config=config)
         creds = TemporaryCredentials(
-            provider="local", access_token="x",
+            provider="local",
+            access_token="x",
             expiry=datetime.now(UTC) + timedelta(minutes=15),
             agent_id="agent-001",
         )

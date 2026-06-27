@@ -16,10 +16,10 @@ categories:
 Output: a markdown report at cache/goaljudge_eval/a1_len80_fix_impact_report.md.
 Do NOT modify A1's sheet. The R-6 candidates route to post-α adjudication.
 """
+
 from __future__ import annotations
 
 import csv
-import json
 import sys
 from pathlib import Path
 
@@ -35,9 +35,16 @@ from scripts.build_goaljudge_stage5_annotator1_fresh_sheet import (
 from tests.fixtures.goaljudge.fresh_test_tasks import FRESH_TEST_TASKS
 
 
-BATCH_PATH = REPO_ROOT / "cache/goaljudge_eval/ui_batch_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
-CORPUS_PATH = REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
-A1_SHEET_PATH = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_sheet.csv"
+BATCH_PATH = (
+    REPO_ROOT / "cache/goaljudge_eval/ui_batch_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
+)
+CORPUS_PATH = (
+    REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
+)
+A1_SHEET_PATH = (
+    REPO_ROOT
+    / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator1_sheet.csv"
+)
 REPORT_PATH = REPO_ROOT / "cache/goaljudge_eval/a1_len80_fix_impact_report.md"
 
 
@@ -102,10 +109,16 @@ def main() -> int:
     lines.append(f"- Batch: `{BATCH_PATH.relative_to(REPO_ROOT)}`")
     lines.append(f"- Corpus: `{CORPUS_PATH.relative_to(REPO_ROOT)}`")
     lines.append(f"- A1 sheet: `{A1_SHEET_PATH.relative_to(REPO_ROOT)}`")
-    lines.append(f"- Total GJ-F-* rows compared: {sum(1 for k in a1_rows if k.startswith('GJ-F-'))}")
+    lines.append(
+        f"- Total GJ-F-* rows compared: {sum(1 for k in a1_rows if k.startswith('GJ-F-'))}"
+    )
     lines.append(f"- Skipped (missing corpus/batch/fixture): {len(skipped_missing)}")
-    lines.append(f"- **Over-grade candidates** (A1=true, fixed=false): **{len(over_grades)}**")
-    lines.append(f"- Under-grade candidates (A1=false, fixed=true): {len(under_grades)}")
+    lines.append(
+        f"- **Over-grade candidates** (A1=true, fixed=false): **{len(over_grades)}**"
+    )
+    lines.append(
+        f"- Under-grade candidates (A1=false, fixed=true): {len(under_grades)}"
+    )
     lines.append("")
     lines.append(
         "**Action policy (per A2 plan §5.2 / R-6):** do NOT modify A1's sheet pre-α. "
@@ -128,7 +141,11 @@ def main() -> int:
         )
         lines.append("|---|---|---|---|---|---|---|")
         for item_id, a1_row, fixed in bucket:
-            has_assessment = "yes" if (a1_row.get("r1_review_assessment") or "").strip() else "**NO (R-6)**"
+            has_assessment = (
+                "yes"
+                if (a1_row.get("r1_review_assessment") or "").strip()
+                else "**NO (R-6)**"
+            )
             a1_note = (a1_row.get("note") or "").replace("|", "\\|")[:60]
             lines.append(
                 f"| {item_id} | {a1_row.get('r1_goal_met')} | "

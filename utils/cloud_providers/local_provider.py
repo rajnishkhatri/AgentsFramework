@@ -117,7 +117,8 @@ class LocalPolicyProvider:
         )
 
     def get_permission_boundary(
-        self, identity: IdentityContext,
+        self,
+        identity: IdentityContext,
     ) -> PermissionBoundary | None:
         entry = self._config.get(identity.principal_id, {})
         boundary = entry.get("boundary")
@@ -137,7 +138,9 @@ class LocalCredentialProvider:
         self._config = config or {}
 
     def issue_credentials(
-        self, agent_facts: AgentFacts, scope: list[str],
+        self,
+        agent_facts: AgentFacts,
+        scope: list[str],
     ) -> TemporaryCredentials:
         entry = self._config.get(agent_facts.agent_id, {})
         if entry.get("raise_error"):
@@ -156,7 +159,8 @@ class LocalCredentialProvider:
         )
 
     def refresh_credentials(
-        self, credentials: TemporaryCredentials,
+        self,
+        credentials: TemporaryCredentials,
     ) -> TemporaryCredentials:
         entry = self._config.get(credentials.agent_id, {})
         if entry.get("raise_error"):

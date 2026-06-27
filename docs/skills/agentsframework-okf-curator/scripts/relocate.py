@@ -50,9 +50,9 @@ def _docs_rel(token: str) -> str | None:
     """Strip optional `agent/` prefix; return the docs-relative path or None."""
     t = token
     if t.startswith("agent/docs/"):
-        return t[len("agent/docs/"):]
+        return t[len("agent/docs/") :]
     if t.startswith("docs/"):
-        return t[len("docs/"):]
+        return t[len("docs/") :]
     return None
 
 
@@ -61,8 +61,13 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group()
     g.add_argument("--plan", action="store_true", help="dry run (default)")
     g.add_argument("--apply", action="store_true")
-    ap.add_argument("--move", action="append", default=[], required=True,
-                    help="OLD=NEW, both relative to docs/")
+    ap.add_argument(
+        "--move",
+        action="append",
+        default=[],
+        required=True,
+        help="OLD=NEW, both relative to docs/",
+    )
     args = ap.parse_args()
 
     old2new = dict(m.split("=", 1) for m in args.move)
@@ -115,7 +120,9 @@ def main() -> int:
         if not src.exists():
             print(f"  WARN missing source: docs/{o}")
             continue
-        r = subprocess.run(["git", "mv", str(src), str(dst)], capture_output=True, text=True)
+        r = subprocess.run(
+            ["git", "mv", str(src), str(dst)], capture_output=True, text=True
+        )
         if r.returncode != 0:
             src.rename(dst)
             print(f"  (untracked) mv docs/{o} -> docs/{n}")
@@ -164,24 +171,32 @@ def main() -> int:
         def out_sub(m):
             target = m.group(2)
             raw = target.split("#", 1)[0]
-            anchor = target[len(raw):]
+            anchor = target[len(raw) :]
             if not raw or raw.startswith(("http", "mailto:", "#", "/", "<")):
                 return m.group(0)
             old_abs = (old_parent / raw).resolve()
             if not old_abs.exists():
                 return m.group(0)
             new_rel = os.path.relpath(old_abs, moved.parent)
-            return m.group(1) + new_rel + anchor + m.group(3) if new_rel != raw else m.group(0)
+            return (
+                m.group(1) + new_rel + anchor + m.group(3)
+                if new_rel != raw
+                else m.group(0)
+            )
 
         new_text = _MD_LINK.sub(out_sub, text)
         if new_text != text:
             moved.write_text(new_text, encoding="utf-8")
 
     changed = sum(rewrite(f) for f in _iter_text_files())
-    print(f"\nmoved={len(old2new)}; rewrote inbound references in {changed} files "
-          "(outbound links in moved files fixed separately)")
-    print("VERIFY: git status rename count, then grep that no ref resolves to an OLD path, "
-          "then `python scripts/okf_lint.py`.")
+    print(
+        f"\nmoved={len(old2new)}; rewrote inbound references in {changed} files "
+        "(outbound links in moved files fixed separately)"
+    )
+    print(
+        "VERIFY: git status rename count, then grep that no ref resolves to an OLD path, "
+        "then `python scripts/okf_lint.py`."
+    )
     return 0
 
 

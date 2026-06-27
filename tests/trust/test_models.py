@@ -66,7 +66,9 @@ class TestAgentFactsSchema:
 class TestCapability:
     def test_valid(self):
         cap = Capability(name="write", description="write articles")
-        assert cap.name == "write", "Capability.name must round-trip from the constructor"
+        assert cap.name == "write", (
+            "Capability.name must round-trip from the constructor"
+        )
 
     def test_frozen(self):
         cap = Capability(name="write")
@@ -121,9 +123,7 @@ class TestAuditEntry:
             entry.action = "suspend"
 
     def test_auto_timestamp(self):
-        entry = AuditEntry(
-            agent_id="a1", action="test", performed_by="admin"
-        )
+        entry = AuditEntry(agent_id="a1", action="test", performed_by="admin")
         assert isinstance(entry.timestamp, datetime), (
             "AuditEntry.timestamp must be auto-populated with a datetime"
         )
@@ -155,9 +155,7 @@ class TestVerificationReport:
 class TestCloudBinding:
     def test_valid_providers(self):
         for provider in ("aws", "gcp", "azure", "local"):
-            binding = CloudBinding(
-                agent_id="a1", provider=provider
-            )
+            binding = CloudBinding(agent_id="a1", provider=provider)
             assert binding.provider == provider, (
                 f"CloudBinding.provider must round-trip the constructor value '{provider}'"
             )
@@ -234,7 +232,9 @@ class TestRoundtrip:
         )
 
     def test_capability_roundtrip(self):
-        cap = Capability(name="write", description="writes articles", parameters={"max": 100})
+        cap = Capability(
+            name="write", description="writes articles", parameters={"max": 100}
+        )
         serialized = cap.model_dump_json()
         deserialized = Capability.model_validate_json(serialized)
         assert deserialized == cap, (

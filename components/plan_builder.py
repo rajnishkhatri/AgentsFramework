@@ -95,10 +95,14 @@ def _extract_branches(task_input: str) -> list[str]:
         # _INLINE_ENUM has two capture groups; .split() includes them as
         # interleaved items. Reassemble: text segments are at even indices
         # (0, 3, 6, …) given two groups per match.
-        if len(enum_parts) > 1 and any(p and p.strip().isdigit() for p in enum_parts[1::3]):
+        if len(enum_parts) > 1 and any(
+            p and p.strip().isdigit() for p in enum_parts[1::3]
+        ):
             # Keep only the textual segments between enumerators.
             text_segments = [enum_parts[0]] + enum_parts[3::3]
-            stripped = [seg.strip(" ,;.") for seg in text_segments if seg and seg.strip(" ,;.")]
+            stripped = [
+                seg.strip(" ,;.") for seg in text_segments if seg and seg.strip(" ,;.")
+            ]
             if len(stripped) >= 2:
                 branches.extend(stripped)
                 continue
@@ -111,7 +115,9 @@ def _extract_branches(task_input: str) -> list[str]:
                 # Stage 4 — comma/semicolon clauses with imperative conjunctions.
                 # Use semicolon as a hard split first, then "and"/"then" with
                 # an action-verb lookahead.
-                semicolon_parts = [p.strip(" ,;.") for p in re.split(r";\s+", s) if p.strip()]
+                semicolon_parts = [
+                    p.strip(" ,;.") for p in re.split(r";\s+", s) if p.strip()
+                ]
                 for sp in semicolon_parts:
                     conj_parts = _CONJUNCTION_CLAUSE.split(sp)
                     conj_parts = [p.strip(" ,;.") for p in conj_parts if p.strip()]
@@ -231,14 +237,10 @@ def _parse_plan(raw: dict, planning_depth: PlanningDepth) -> PlanArtifact:
         raise ValueError("plan response yielded no non-empty steps")
 
     constraints = [
-        str(c).strip()
-        for c in (raw.get("constraints") or [])
-        if str(c).strip()
+        str(c).strip() for c in (raw.get("constraints") or []) if str(c).strip()
     ] or ["Preserve user intent and requested constraints."]
     success_conditions = [
-        str(s).strip()
-        for s in (raw.get("success_conditions") or [])
-        if str(s).strip()
+        str(s).strip() for s in (raw.get("success_conditions") or []) if str(s).strip()
     ]
     # Backstop only when the LLM returned no usable conditions — keeps the
     # MECE non-empty invariant without baking an answer-grading check into the
@@ -311,9 +313,7 @@ def plan_is_stale(plan: PlanArtifact, last_tool_result: dict | None) -> bool:
     outcome = str(last_tool_result.get("outcome", "")).strip().lower()
     if outcome in ("error", "failed", "failure"):
         return True
-    if bool(last_tool_result.get("surprising")) or bool(
-        last_tool_result.get("replan")
-    ):
+    if bool(last_tool_result.get("surprising")) or bool(last_tool_result.get("replan")):
         return True
     return False
 
@@ -375,7 +375,9 @@ def validate_plan_mece(plan: PlanArtifact) -> PlanValidationResult:
         issues.append("ordered_steps contain overlapping goals; plan is not MECE.")
 
     if not plan.success_conditions:
-        issues.append("success_conditions must include at least one completion criterion.")
+        issues.append(
+            "success_conditions must include at least one completion criterion."
+        )
 
     if any(not step.goal.strip() for step in plan.ordered_steps):
         issues.append("each step must define a non-empty goal.")

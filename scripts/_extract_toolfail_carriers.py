@@ -6,6 +6,7 @@ same way the glm-5.2 report did. Read-only; prints a per-trace summary.
 
 Usage: .venv/bin/python scripts/_extract_toolfail_carriers.py <candidate_dir>
 """
+
 from __future__ import annotations
 
 import json
@@ -18,7 +19,13 @@ def classify(tool: str, error_text: str) -> str:
     t = error_text.lower()
     if "timed out" in t or "timeout" in t:
         return "timeout"
-    if "validation" in t or "illegal" in t or "blocked" in t or "not allowed" in t or "disallowed" in t:
+    if (
+        "validation" in t
+        or "illegal" in t
+        or "blocked" in t
+        or "not allowed" in t
+        or "disallowed" in t
+    ):
         return f"masked-validation({tool})"
     if "exit code" in t or "non-zero" in t or "nonzero" in t:
         return "nonzero-exit"
@@ -57,7 +64,14 @@ def summarize(trace: Path) -> dict:
             text = ""
             for k in ("error", "result", "message", "stderr", "error_class"):
                 v = d.get(k)
-                if isinstance(v, str) and ("error" in v.lower() or "fail" in v.lower() or "illegal" in v.lower() or "timed out" in v.lower() or "exit code" in v.lower() or "validation" in v.lower()):
+                if isinstance(v, str) and (
+                    "error" in v.lower()
+                    or "fail" in v.lower()
+                    or "illegal" in v.lower()
+                    or "timed out" in v.lower()
+                    or "exit code" in v.lower()
+                    or "validation" in v.lower()
+                ):
                     text = v
                     break
             if text:
@@ -90,12 +104,17 @@ def main() -> None:
             clean += 1
         print(json.dumps(s))
     print("\n# ROLLUP")
-    print(json.dumps({
-        "traces": len(traces),
-        "clean_runs": clean,
-        "error_families": dict(agg_err),
-        "messages_illegal_total": illegal_total,
-    }, indent=2))
+    print(
+        json.dumps(
+            {
+                "traces": len(traces),
+                "clean_runs": clean,
+                "error_families": dict(agg_err),
+                "messages_illegal_total": illegal_total,
+            },
+            indent=2,
+        )
+    )
 
 
 if __name__ == "__main__":

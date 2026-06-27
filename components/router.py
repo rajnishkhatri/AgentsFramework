@@ -69,9 +69,7 @@ def _pick_profile_by_tier(models: list[ModelProfile], tier: str) -> ModelProfile
     return None
 
 
-def _pick_profile_by_name(
-    models: list[ModelProfile], name: str
-) -> ModelProfile | None:
+def _pick_profile_by_name(models: list[ModelProfile], name: str) -> ModelProfile | None:
     """Find a registered profile by exact ``name`` (the user-pin lookup)."""
     if not name:
         return None
@@ -159,15 +157,12 @@ def select_planning_depth(
         "roadmap",
         "design",
     )
-    has_multi_part_marker = any(
-        marker in lowered for marker in multi_part_markers
-    )
+    has_multi_part_marker = any(marker in lowered for marker in multi_part_markers)
     if has_multi_part_marker:
         complexity_score += 1
 
     has_conjunction = any(
-        marker in lowered
-        for marker in (" and ", " then ", " also ", "\n- ", "\n1.")
+        marker in lowered for marker in (" and ", " then ", " also ", "\n- ", "\n1.")
     )
     if has_conjunction:
         complexity_score += 1
@@ -257,9 +252,9 @@ EscalationDecision = Literal["escalate", "hold"]
 
 def decide_escalation(
     *,
-    goal_verdict: str,            # "success"|"partial"|"failed" (primary, §5)
+    goal_verdict: str,  # "success"|"partial"|"failed" (primary, §5)
     unmet_conditions: list[str],
-    prose_kind: str,              # "tool_repeat"|"prose_repeat"|"none" (tertiary, §5/D3)
+    prose_kind: str,  # "tool_repeat"|"prose_repeat"|"none" (tertiary, §5/D3)
     attempt: int,
     max_attempts: int,
 ) -> EscalationDecision:

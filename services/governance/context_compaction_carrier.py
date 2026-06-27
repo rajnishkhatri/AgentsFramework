@@ -38,7 +38,7 @@ from typing import Any, Protocol
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
 
 
-class _CompactionOutcome(Protocol):
+class CompactionOutcome(Protocol):
     """The slice of a fold's outcome that the Recording carrier reports.
 
     Every field is a scalar (int / bool) or a hex digest (``str``), so
@@ -69,13 +69,18 @@ class _CompactionOutcome(Protocol):
     fold_committed: bool
 
 
+# Backward-compat alias: the Protocol was private until orchestration became a
+# legitimate cross-module consumer (it builds the outcome and passes it here).
+_CompactionOutcome = CompactionOutcome
+
+
 def emit_compaction_carrier(
     black_box: BlackBoxRecorder,
     *,
     workflow_id: str,
     step: int,
     decision_id: str | None,
-    outcome: _CompactionOutcome,
+    outcome: CompactionOutcome,
 ) -> None:
     """Record one ``CONTEXT_COMPACTED`` carrier — counts + hash + flags only.
 

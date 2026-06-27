@@ -383,9 +383,9 @@ class TestMemSessionIdJoin:
         # trace_id / user_id are NOT in the backend sessionId, so changing them
         # must not change the join key.
         base = {"mem_id": "MEM-0001", "session_idx": 0}
-        assert mod._mem_session_id({**base, "user_id": "u1", "probe_trace_id": "a" * 32}) == (
-            mod._mem_session_id({**base, "user_id": "u2", "trace_id": "b" * 32})
-        )
+        assert mod._mem_session_id(
+            {**base, "user_id": "u1", "probe_trace_id": "a" * 32}
+        ) == (mod._mem_session_id({**base, "user_id": "u2", "trace_id": "b" * 32}))
         assert mod._mem_session_id(base) == "session-mem-0001-s0"
 
     def test_empty_when_required_segment_missing(self) -> None:
@@ -402,7 +402,9 @@ class TestMemSessionIdJoin:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _consolidation_event(user_id: str, mem_type: str, *, kept: int, evicted: int, deduped: int = 0) -> dict:
+def _consolidation_event(
+    user_id: str, mem_type: str, *, kept: int, evicted: int, deduped: int = 0
+) -> dict:
     return {
         "event_type": "memory_consolidated",
         "details": {
@@ -431,7 +433,12 @@ class TestBudgetConsolidationHardZero:
                 "expect_consolidation": True,
             }
         ]
-        events = {"MEM-BUDGET-safety": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=5, evicted=1)]}
+        events = {
+            "MEM-BUDGET-safety": [
+                _recall_event("userB", 5),
+                _consolidation_event("userB", "semantic", kept=5, evicted=1),
+            ]
+        }
         summary = mod.score_run(rows, events)
         assert summary["hard_zero"]["evicted_high_salience"] == 1
         assert mod.gate_failures(summary), "wrong-order eviction must fail the gate"
@@ -449,7 +456,12 @@ class TestBudgetConsolidationHardZero:
                 "expect_consolidation": True,
             }
         ]
-        events = {"MEM-BUDGET-ok": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=5, evicted=1)]}
+        events = {
+            "MEM-BUDGET-ok": [
+                _recall_event("userB", 5),
+                _consolidation_event("userB", "semantic", kept=5, evicted=1),
+            ]
+        }
         summary = mod.score_run(rows, events)
         assert summary["hard_zero"]["evicted_high_salience"] == 0
         assert summary["abilities"]["budget-consolidation"]["hits"] == 1
@@ -469,7 +481,9 @@ class TestBudgetConsolidationHardZero:
                 "expect_consolidation": True,
             }
         ]
-        events = {"MEM-BUDGET-noconsol": [_recall_event("userB", 6)]}  # no consolidation event
+        events = {
+            "MEM-BUDGET-noconsol": [_recall_event("userB", 6)]
+        }  # no consolidation event
         summary = mod.score_run(rows, events)
         b = summary["abilities"]["budget-consolidation"]
         assert b["hits"] == 0
@@ -505,7 +519,12 @@ class TestBudgetConsolidationHardZero:
                 "expect_consolidation": False,
             }
         ]
-        events = {"MEM-BUDGET-control": [_recall_event("userB", 5), _consolidation_event("userB", "semantic", kept=4, evicted=1)]}
+        events = {
+            "MEM-BUDGET-control": [
+                _recall_event("userB", 5),
+                _consolidation_event("userB", "semantic", kept=4, evicted=1),
+            ]
+        }
         summary = mod.score_run(rows, events)
         b = summary["abilities"]["budget-consolidation"]
         assert b["hits"] == 0
@@ -643,7 +662,13 @@ class TestRejectPhaseScoring:
                 "user_id": "u1",
                 "seed_snippets": ["metric"],
             },
-            {"case": "PHASEB-X", "run": 2, "trace_id": "t2", "user_id": "u1", "reject_key": "k1"},
+            {
+                "case": "PHASEB-X",
+                "run": 2,
+                "trace_id": "t2",
+                "user_id": "u1",
+                "reject_key": "k1",
+            },
         ]
         events = {
             "t1": [_recall_event_with_keys("u1", ["k1", "k2"])],
@@ -687,7 +712,13 @@ class TestRejectPhaseScoring:
         mod = _load()
         rows = [
             {"case": "PHASEB-MISS", "run": 1, "trace_id": "t1", "user_id": "u1"},
-            {"case": "PHASEB-MISS", "run": 2, "trace_id": "t2", "user_id": "u1", "reject_key": "k1"},
+            {
+                "case": "PHASEB-MISS",
+                "run": 2,
+                "trace_id": "t2",
+                "user_id": "u1",
+                "reject_key": "k1",
+            },
         ]
         summary = mod.score_reject_batch(rows, {})
         assert summary["hard_zero"]["missing_trace_join"] >= 1
@@ -709,7 +740,9 @@ class TestRejectPhaseScoring:
             "t1": [_recall_event_with_keys("u1", ["k1"])],
             "t2": [_recall_event_with_keys("u1", [])],
         }
-        summary = mod.score_reject_batch(rows, events, suppress_found={"PHASEB-NOSUP": False})
+        summary = mod.score_reject_batch(
+            rows, events, suppress_found={"PHASEB-NOSUP": False}
+        )
         assert summary["hard_zero"]["suppress_carrier_missing"] == 1
         assert mod.gate_failures_reject(summary)
 
@@ -725,7 +758,10 @@ class TestC5ContentLeak:
     def test_clean_carrier_does_not_leak(self) -> None:
         mod = _load()
         events = [_recall_event_with_keys("u1", ["k1", "k2"])]
-        assert mod._content_leaked_in_recall_carriers(events, seed_snippets=["Berlin"]) is False
+        assert (
+            mod._content_leaked_in_recall_carriers(events, seed_snippets=["Berlin"])
+            is False
+        )
 
     def test_trace_envelope_plumbing_is_not_a_leak(self) -> None:
         """The Langfuse flattener merges envelope fields onto the carrier dict.

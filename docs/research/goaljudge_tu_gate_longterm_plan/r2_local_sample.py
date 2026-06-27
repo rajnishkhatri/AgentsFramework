@@ -1,7 +1,11 @@
 """Locally regenerate TU conditions with the EXACT deployed prompt (local HEAD
 == deployed commit e72920c) so candidate gates can be simulated offline.
 Failed cases k=4, passing cases k=2. Saves raw conditions only."""
-import asyncio, json, os, sys
+
+import asyncio
+import json
+import os
+import sys
 
 # load .env into the process env (keys never printed)
 for line in open(".env"):
@@ -19,7 +23,9 @@ from services.prompt_service import PromptService  # noqa: E402
 
 results = json.load(open("/tmp/shadow_2a_r2_results.json"))
 tasks = json.load(open("/tmp/shadow_2a_r2_tasks.json"))
-failed_idx = [r["i"] for r in results if r.get("span") and r.get("source") != "generated"]
+failed_idx = [
+    r["i"] for r in results if r.get("span") and r.get("source") != "generated"
+]
 passing_idx = [r["i"] for r in results if r.get("source") == "generated"]
 print(f"failed={failed_idx} passing_n={len(passing_idx)}")
 
@@ -28,17 +34,22 @@ llm = LLMService(config=config)
 ps = PromptService()
 profile = default_fast_profile()
 
+
 async def sample_one(task: str):
     rendered = ps.render_prompt(
-        "task_understanding_prompt", task_input=task, rejection_feedback="")
+        "task_understanding_prompt", task_input=task, rejection_feedback=""
+    )
     resp = await llm.invoke(profile, [{"role": "user", "content": rendered}])
     content = str(getattr(resp, "content", resp))
     try:
         data = json.loads(_extract_json(content))
-        conds = [str(c).strip() for c in data.get("success_conditions", []) if str(c).strip()]
+        conds = [
+            str(c).strip() for c in data.get("success_conditions", []) if str(c).strip()
+        ]
         return conds
     except Exception as exc:
         return [f"<unparsed:{type(exc).__name__}>"]
+
 
 async def main():
     out = {"failed": {}, "passing": {}}
@@ -57,5 +68,6 @@ async def main():
     json.dump(out, open("/tmp/r2_local_samples.json", "w"), indent=2)
     n = sum(len(v["samples"]) for d in out.values() for v in d.values())
     print(f"saved {n} samples -> /tmp/r2_local_samples.json")
+
 
 asyncio.run(main())

@@ -212,8 +212,7 @@ class TestPsycopgConfinement:
                         )
         assert violations == [], (
             "psycopg confinement violated — in services/ it may live "
-            "only under memory_backends/pgvector.py:\n  "
-            + "\n  ".join(violations)
+            "only under memory_backends/pgvector.py:\n  " + "\n  ".join(violations)
         )
 
 
@@ -266,8 +265,7 @@ class TestMemoryRecallValidatorIsolation:
                 violations.append(f"line {imp['line']}: imports {imp['module']}")
         assert violations == [], (
             f"{self.MV} must not import "
-            "orchestration/components/meta/trust:\n  "
-            + "\n  ".join(violations)
+            "orchestration/components/meta/trust:\n  " + "\n  ".join(violations)
         )
 
     def test_does_not_import_frameworks(self) -> None:

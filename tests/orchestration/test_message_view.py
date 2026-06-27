@@ -122,12 +122,16 @@ class TestToViews:
     def test_tool_message_react_loop_349_shape(self):
         """Round-trip the ToolMessage shape from react_loop.py:349 (cached branch)."""
         out = to_views([_tool("cached output", tool_call_id="call_X")])
-        assert out == [MessageView(role="tool", content="cached output", tool_call_id="call_X")]
+        assert out == [
+            MessageView(role="tool", content="cached output", tool_call_id="call_X")
+        ]
 
     def test_tool_message_react_loop_477_shape(self):
         """Round-trip the ToolMessage shape from react_loop.py:477 (uncached branch)."""
         out = to_views([_tool("uncached output", tool_call_id="call_Y")])
-        assert out == [MessageView(role="tool", content="uncached output", tool_call_id="call_Y")]
+        assert out == [
+            MessageView(role="tool", content="uncached output", tool_call_id="call_Y")
+        ]
 
     def test_multi_message_order_preserved(self):
         msgs: list[BaseMessage] = [
@@ -203,12 +207,18 @@ class TestRebuild:
         assert out[0].content == "S"
 
     def test_no_summary_no_tail_returns_preserved_verbatim(self):
-        preserved: list[BaseMessage] = [HumanMessage(content="h"), AIMessage(content="a")]
+        preserved: list[BaseMessage] = [
+            HumanMessage(content="h"),
+            AIMessage(content="a"),
+        ]
         out = rebuild(summary=None, preserved=preserved, tail=None)
         assert out == preserved  # same objects, not copies
 
     def test_summary_plus_preserved_order(self):
-        preserved: list[BaseMessage] = [HumanMessage(content="h"), AIMessage(content="a")]
+        preserved: list[BaseMessage] = [
+            HumanMessage(content="h"),
+            AIMessage(content="a"),
+        ]
         out = rebuild(summary="S", preserved=preserved, tail=None)
         assert len(out) == 3
         assert isinstance(out[0], SystemMessage) and out[0].content == "S"
@@ -264,14 +274,17 @@ def _basemessages(draw):
         return SystemMessage(content=content)
     if role == "human":
         return HumanMessage(content=content)
-    ids = draw(st.lists(st.text(alphabet="abcdef0123456789", min_size=1, max_size=4), max_size=3))
+    ids = draw(
+        st.lists(
+            st.text(alphabet="abcdef0123456789", min_size=1, max_size=4), max_size=3
+        )
+    )
     if ids:
         return _ai_with_calls(content, ids=ids)
     return AIMessage(content=content)
 
 
 class TestRoundTripProperties:
-
     @given(msgs=st.lists(_basemessages(), max_size=8))
     @settings(deadline=400, max_examples=80)
     def test_to_views_preserves_length_and_role_order(self, msgs):
@@ -287,11 +300,15 @@ class TestRoundTripProperties:
         out = rebuild(summary=None, preserved=msgs, tail=None)
         assert out == msgs
 
-    @given(content=st.text(min_size=0, max_size=64),
-           call_id=st.text(alphabet="abcdef0123456789", min_size=1, max_size=8),
-           placeholder=st.text(min_size=0, max_size=16))
+    @given(
+        content=st.text(min_size=0, max_size=64),
+        call_id=st.text(alphabet="abcdef0123456789", min_size=1, max_size=8),
+        placeholder=st.text(min_size=0, max_size=16),
+    )
     @settings(deadline=400, max_examples=60)
-    def test_mask_observation_tool_call_id_invariant(self, content, call_id, placeholder):
+    def test_mask_observation_tool_call_id_invariant(
+        self, content, call_id, placeholder
+    ):
         original = _tool(content, tool_call_id=call_id)
         masked = mask_observation(original, placeholder)
         assert masked.tool_call_id == call_id

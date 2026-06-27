@@ -1,0 +1,40 @@
+name: pre-commit
+
+# Git-level sensor backstop (Track A — defense in depth).
+#
+# Re-runs the .pre-commit-config.yaml hooks on every push/PR. This is the
+# un-bypassable layer: `git commit --no-verify` skips the local hooks, and the
+# Claude Code PostToolUse hook only fires inside Claude Code — CI catches edits
+# made any other way. No secrets / no network model calls: ruff, gitleaks, and
+# the basic hygiene hooks all run offline.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to keep the queue small.
+concurrency:
+  group: pre-commit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    name: ruff + gitleaks + hygiene
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # gitleaks needs full history to scan the diff range on PRs.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1

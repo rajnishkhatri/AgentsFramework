@@ -17,6 +17,7 @@ Env (from .env): LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST.
 Usage:
     .venv/bin/python scripts/fetch_memory_trace.py [--limit 40] [--trace-id ID] [--since ISO] [--out PATH]
 """
+
 from __future__ import annotations
 
 import argparse
@@ -63,7 +64,7 @@ def _get(host: str, path: str, params: dict | None = None, *, retries: int = 5) 
         except urllib.error.HTTPError as e:
             last_err = e
             if e.code == 429:
-                wait = 2 ** attempt
+                wait = 2**attempt
                 sys.stderr.write(f"  429 — backing off {wait}s\n")
                 time.sleep(wait)
                 continue
@@ -161,14 +162,26 @@ def main() -> int:
     out_path = args.out or f"/tmp/memory_trace_{tid[:8]}.json"
     Path(out_path).write_text(json.dumps(obs, indent=2, default=str))
     mem_names = sorted(
-        {o.get("name") for o in obs if any(m in (o.get("name") or "") for m in _MEMORY_NAMES)}
+        {
+            o.get("name")
+            for o in obs
+            if any(m in (o.get("name") or "") for m in _MEMORY_NAMES)
+        }
     )
     sys.stderr.write(
         f"\nCHOSEN trace {tid}\n  observations: {len(obs)}\n"
         f"  memory carriers: {mem_names}\n  written to: {out_path}\n"
     )
-    print(json.dumps({"trace_id": tid, "out": out_path, "n_obs": len(obs),
-                      "memory_carriers": mem_names}))
+    print(
+        json.dumps(
+            {
+                "trace_id": tid,
+                "out": out_path,
+                "n_obs": len(obs),
+                "memory_carriers": mem_names,
+            }
+        )
+    )
     return 0
 
 

@@ -21,9 +21,7 @@ from trust.models import AgentFacts
 
 
 def _facts() -> AgentFacts:
-    return AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
-    )
+    return AgentFacts(agent_id="a1", agent_name="Bot", owner="team", version="1.0.0")
 
 
 def _make_mock() -> AgentRuntime:
@@ -57,9 +55,7 @@ class TestAgentRuntimeConformance:
         assert isinstance(make_runtime(), AgentRuntime)
 
     @pytest.mark.asyncio
-    async def test_happy_path_run_completes_without_raising(
-        self, make_runtime
-    ) -> None:
+    async def test_happy_path_run_completes_without_raising(self, make_runtime) -> None:
         rt = make_runtime()
         out = []
         async for ev in rt.run(thread_id="t1", input={}, identity=_facts()):

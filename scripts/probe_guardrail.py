@@ -184,7 +184,9 @@ async def _run_cascade(
     if meta and "expect_cascade" in meta and accepted is not None:
         expected = meta["expect_cascade"] == "accept"
         ok = accepted is expected
-        print(f"expect_cascade   = {meta['expect_cascade']}  →  {'PASS' if ok else 'FAIL'}")
+        print(
+            f"expect_cascade   = {meta['expect_cascade']}  →  {'PASS' if ok else 'FAIL'}"
+        )
 
 
 def _run_retrieval(text: str, meta: dict[str, str] | None) -> None:
@@ -198,7 +200,9 @@ def _run_retrieval(text: str, meta: dict[str, str] | None) -> None:
     if meta and "expect_modified" in meta:
         expected = meta["expect_modified"] == "true"
         ok = result.modified is expected
-        print(f"expect_modified  = {meta['expect_modified']}  →  {'PASS' if ok else 'FAIL'}")
+        print(
+            f"expect_modified  = {meta['expect_modified']}  →  {'PASS' if ok else 'FAIL'}"
+        )
 
 
 def _resolve_example(
@@ -285,7 +289,11 @@ def main() -> int:
         else:
             _run_classifier(body, classifier)
 
-    if args.live_judge or args.classifier or (meta and meta.get("expect_precheck") == "defer"):
+    if (
+        args.live_judge
+        or args.classifier
+        or (meta and meta.get("expect_precheck") == "defer")
+    ):
         asyncio.run(
             _run_cascade(
                 body,

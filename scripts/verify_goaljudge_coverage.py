@@ -8,6 +8,7 @@ Performs two critical checks on the exported synthetic corpus:
      Mismatches are highlighted as qualitative data (such as judge-quality J2/J3 codes),
      not re-rolled to match.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,9 +25,10 @@ AGENT_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(AGENT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(AGENT_ROOT / ".env")
 
-from tests.fixtures.goaljudge.case_registry import LIVE_CASES, GoalJudgeCase
+from tests.fixtures.goaljudge.case_registry import LIVE_CASES
 
 console = Console()
 
@@ -42,7 +44,9 @@ _NON_FAILURE_BASELINE = {"correct-complete"}
 def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
     p = Path(AGENT_ROOT / jsonl_path)
     if not p.exists():
-        console.print(f"[bold red]Error: Exported corpus file {jsonl_path} does not exist. Please run export first.[/bold red]")
+        console.print(
+            f"[bold red]Error: Exported corpus file {jsonl_path} does not exist. Please run export first.[/bold red]"
+        )
         return False
 
     # 1. Load exported rows
@@ -64,30 +68,46 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
     intended_trace_ids = set(intended_case_map.keys())
 
     # 4. Integrity assertions: Scoping and foreign rows
-    console.print(Panel("[bold green]Step 1: Checking Corpus Integrity & Scoping Boundaries[/bold green]"))
-    
+    console.print(
+        Panel(
+            "[bold green]Step 1: Checking Corpus Integrity & Scoping Boundaries[/bold green]"
+        )
+    )
+
     orphans = intended_trace_ids - exported_trace_ids
     foreign_rows = exported_trace_ids - intended_trace_ids
 
     integrity_passed = True
     if orphans:
-        console.print(f"[bold yellow]Warning: {len(orphans)} intended cases are missing from the exported corpus (orphans):[/bold yellow]")
+        console.print(
+            f"[bold yellow]Warning: {len(orphans)} intended cases are missing from the exported corpus (orphans):[/bold yellow]"
+        )
         for o in orphans:
             console.print(f"  - Case ID: {intended_case_map[o].id} (Trace ID: {o})")
         integrity_passed = False
     else:
-        console.print("[bold green]✓ No orphan rows: All intended cases were successfully exported.[/bold green]")
+        console.print(
+            "[bold green]✓ No orphan rows: All intended cases were successfully exported.[/bold green]"
+        )
 
     if foreign_rows:
-        console.print(f"[bold red]Error: {len(foreign_rows)} foreign/unintended trace IDs found in the exported corpus (pollution):[/bold red]")
+        console.print(
+            f"[bold red]Error: {len(foreign_rows)} foreign/unintended trace IDs found in the exported corpus (pollution):[/bold red]"
+        )
         for f in foreign_rows:
             console.print(f"  - Foreign Trace ID: {f}")
         integrity_passed = False
     else:
-        console.print("[bold green]✓ No foreign rows: Corpus is perfectly clean and isolated to intended cases.[/bold green]")
+        console.print(
+            "[bold green]✓ No foreign rows: Corpus is perfectly clean and isolated to intended cases.[/bold green]"
+        )
 
     # 5. Coverage and Divergence verification
-    console.print(Panel("[bold green]Step 2: Checking Axis Coverage & Recording Divergences[/bold green]"))
+    console.print(
+        Panel(
+            "[bold green]Step 2: Checking Axis Coverage & Recording Divergences[/bold green]"
+        )
+    )
 
     table = Table(title="GoalJudge Expected vs Observed Axes")
     table.add_column("Case ID", style="cyan")
@@ -136,9 +156,9 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
                 return exp != obs
 
         has_divergence = (
-            (exp_goal != obs_goal and obs_goal != "N/A") or
-            (exp_grace != obs_grace and obs_grace != "N/A") or
-            _partial_diverges(exp_partial, obs_partial)
+            (exp_goal != obs_goal and obs_goal != "N/A")
+            or (exp_grace != obs_grace and obs_grace != "N/A")
+            or _partial_diverges(exp_partial, obs_partial)
         )
 
         goal_str = f"{exp_goal} / {obs_goal}"
@@ -147,13 +167,23 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
 
         if has_divergence:
             status_note = "[bold yellow]Divergence[/bold yellow]"
-            divergences.append({
-                "case_id": case.id,
-                "target_code": case.target_code,
-                "expected": {"goal_met": exp_goal, "graceful": exp_grace, "partial": exp_partial},
-                "observed": {"goal_met": obs_goal, "graceful": obs_grace, "partial": obs_partial},
-                "rationale": row.get("rationale")
-            })
+            divergences.append(
+                {
+                    "case_id": case.id,
+                    "target_code": case.target_code,
+                    "expected": {
+                        "goal_met": exp_goal,
+                        "graceful": exp_grace,
+                        "partial": exp_partial,
+                    },
+                    "observed": {
+                        "goal_met": obs_goal,
+                        "graceful": obs_grace,
+                        "partial": obs_partial,
+                    },
+                    "rationale": row.get("rationale"),
+                }
+            )
         else:
             status_note = "[green]Matched[/green]"
 
@@ -161,18 +191,17 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
         code_coverage[case.target_code] = code_coverage.get(case.target_code, 0) + 1
 
         table.add_row(
-            case.id,
-            case.target_code,
-            goal_str,
-            grace_str,
-            partial_str,
-            status_note
+            case.id, case.target_code, goal_str, grace_str, partial_str, status_note
         )
 
     console.print(table)
 
     if divergences:
-        console.print(Panel(f"[bold yellow]Recorded {len(divergences)} Divergences (Valuable Empirical Data)[/bold yellow]"))
+        console.print(
+            Panel(
+                f"[bold yellow]Recorded {len(divergences)} Divergences (Valuable Empirical Data)[/bold yellow]"
+            )
+        )
         for d in divergences:
             console.print(
                 f"[bold cyan]{d['case_id']} ({d['target_code']}):[/bold cyan]\n"
@@ -183,9 +212,13 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
             )
 
     # 6. Report failure code saturation
-    console.print(Panel("[bold green]Step 3: Taxonomy Coverage & Saturation Audit[/bold green]"))
-    
-    taxonomy_table = Table(title="Taxonomy Saturation Status (~3-5 examples per code target)")
+    console.print(
+        Panel("[bold green]Step 3: Taxonomy Coverage & Saturation Audit[/bold green]")
+    )
+
+    taxonomy_table = Table(
+        title="Taxonomy Saturation Status (~3-5 examples per code target)"
+    )
     taxonomy_table.add_column("Failure Relevant Code", style="cyan")
     taxonomy_table.add_column("Observed Cases", style="green")
     taxonomy_table.add_column("Saturation Status", style="yellow")
@@ -204,7 +237,7 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
         else:
             status = "[bold yellow]UNDER-SATURATED (<3 examples)[/bold yellow]"
             under_saturated.append(code)
-        
+
         taxonomy_table.add_row(code, str(count), status)
 
     # Show the baseline count separately (informational, not gated).
@@ -218,23 +251,38 @@ def verify_corpus(jsonl_path: str = "cache/goaljudge_eval/run.jsonl") -> bool:
     console.print(taxonomy_table)
 
     if under_saturated:
-        console.print(f"[bold yellow]Warning: {len(under_saturated)} codes are under-saturated.[/bold yellow]")
+        console.print(
+            f"[bold yellow]Warning: {len(under_saturated)} codes are under-saturated.[/bold yellow]"
+        )
         return False
     else:
-        console.print("[bold green]✓ Saturated: Every failure-relevant code has reached a saturation level of >= 3 examples.[/bold green]")
+        console.print(
+            "[bold green]✓ Saturated: Every failure-relevant code has reached a saturation level of >= 3 examples.[/bold green]"
+        )
         return integrity_passed
 
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="Verify GoalJudge Coverage and Integrity Gate")
-    parser.add_argument("--corpus", default="cache/goaljudge_eval/run.jsonl", help="Path to exported run.jsonl")
+
+    parser = argparse.ArgumentParser(
+        description="Verify GoalJudge Coverage and Integrity Gate"
+    )
+    parser.add_argument(
+        "--corpus",
+        default="cache/goaljudge_eval/run.jsonl",
+        help="Path to exported run.jsonl",
+    )
     args = parser.parse_args()
 
     success = verify_corpus(args.corpus)
     if success:
-        console.print("[bold green]✓ Coverage verification gate passed successfully.[/bold green]")
+        console.print(
+            "[bold green]✓ Coverage verification gate passed successfully.[/bold green]"
+        )
         sys.exit(0)
     else:
-        console.print("[bold red]✗ Coverage verification gate did not pass completely.[/bold red]")
+        console.print(
+            "[bold red]✗ Coverage verification gate did not pass completely.[/bold red]"
+        )
         sys.exit(1)

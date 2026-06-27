@@ -40,8 +40,7 @@ def _expected_yaml() -> str:
 
 def test_committed_openapi_yaml_exists() -> None:
     assert COMMITTED_OPENAPI.exists(), (
-        f"openapi.yaml not committed at repo root ({COMMITTED_OPENAPI}). "
-        + REGEN_HINT
+        f"openapi.yaml not committed at repo root ({COMMITTED_OPENAPI}). " + REGEN_HINT
     )
 
 

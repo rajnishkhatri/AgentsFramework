@@ -152,9 +152,7 @@ def reviewer_profile_from_env(env_var: str = "MODEL_NAME") -> ModelProfile:
     litellm_id = getattr(settings, field_name, None)
 
     if not litellm_id:
-        logger.info(
-            "%s is unset; falling back to default_fast_profile().", env_var
-        )
+        logger.info("%s is unset; falling back to default_fast_profile().", env_var)
         return default_fast_profile()
 
     return _profile_from_litellm_id(litellm_id)

@@ -283,4 +283,3 @@ Finalize architecture documentation, reviewer policy, and migration cleanup once
 - [ ] Every merged story references this board and marks evidence.
 - [ ] Shared Definition of Done is evaluated before story closure.
 - [ ] Architecture, style, and TDD references are kept current with changes.
-

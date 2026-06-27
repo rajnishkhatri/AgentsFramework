@@ -195,10 +195,11 @@ class KeyArgument(BaseModel):
 
     @model_validator(mode="after")
     def _deductive_requires_chain(self) -> KeyArgument:
-        if self.reasoning_mode is ReasoningMode.DEDUCTIVE and self.deductive_chain is None:
-            raise ValueError(
-                "reasoning_mode=deductive requires a deductive_chain"
-            )
+        if (
+            self.reasoning_mode is ReasoningMode.DEDUCTIVE
+            and self.deductive_chain is None
+        ):
+            raise ValueError("reasoning_mode=deductive requires a deductive_chain")
         return self
 
 
@@ -307,7 +308,9 @@ class AnalysisOutput(BaseModel):
     key_arguments: list[KeyArgument] = Field(min_length=1)
     evidence: list[Evidence] = Field(default_factory=list)
     gaps: Gaps = Field(default_factory=Gaps)
-    cross_branch_interactions: list[CrossBranchInteraction] = Field(default_factory=list)
+    cross_branch_interactions: list[CrossBranchInteraction] = Field(
+        default_factory=list
+    )
     validation_log: list[ValidationCheck] = Field(default_factory=list)
     metadata: Metadata = Field(default_factory=Metadata)
 

@@ -13,7 +13,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 
@@ -49,7 +48,10 @@ class TestSuperpositionGuard:
 
     def test_no_supervisor_carrier_is_not_contaminated(self) -> None:
         # A non-fanout phase trace (no supervisor at all) must not false-fire.
-        assert superposition_smell([{"event_type": "task_completed", "details": {}}]) is None
+        assert (
+            superposition_smell([{"event_type": "task_completed", "details": {}}])
+            is None
+        )
 
     def test_mixed_fanout_and_decline_is_contaminated(self) -> None:
         # The real Stage-B trip-research trace: 4 runs superimposed →
@@ -62,7 +64,10 @@ class TestSuperpositionGuard:
         assert "5 decisions" in smell
 
     def test_decisions_preserve_order(self) -> None:
-        assert _supervisor_decisions(_ev("decline", "fan_out")) == ["decline", "fan_out"]
+        assert _supervisor_decisions(_ev("decline", "fan_out")) == [
+            "decline",
+            "fan_out",
+        ]
 
 
 class TestSameDecisionSuperposition:
