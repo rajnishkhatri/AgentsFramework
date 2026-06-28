@@ -14,16 +14,13 @@ for prompts, Pydantic for validation.
 
 ## Key Commands
 
-Run these after making changes. Fix all failures before proceeding.
+Run after making changes; fix all failures before proceeding.
 
-- **Install:** `pip install -e ".[dev]"`
 - **Check (lint + format-check + typecheck + test):** `make check` — the canonical
-  pre-commit gate. Read-only.
-- **Test:** `pytest tests/ -q` — run immediately after changes.
-- **Architecture tests:** `pytest tests/architecture/ -q` — verify layer
-  boundaries. These MUST pass.
-- **Run:** `python -m agent.cli "What is the capital of France?"`
-- **Docker:** `docker build -t react-agent . && docker run -e OPENAI_API_KEY=$OPENAI_API_KEY react-agent "What is 2+2?"`
+  read-only pre-commit gate.
+- **Test:** `pytest tests/ -q`. **Architecture tests:** `pytest tests/architecture/ -q`
+  (these MUST pass).
+- **Install / Run:** `pip install -e ".[dev]"` · `python -m agent.cli "..."`.
 
 ## Architecture Invariants — STRICTLY ENFORCED
 
@@ -118,10 +115,8 @@ can't.
 | `docs/vision/` | Intent docs: `MISSION.md`, `SOUL.md`. |
 | `docs/adr/` | Architecture Decision Records (OKF bundle). |
 
-> **Repository layout note.** The root holds only build/config files
-> (`pyproject.toml`, `Dockerfile*`, `langgraph.json`, `Makefile`, `requirements*`,
-> `README.md`, this file) plus the importable package dirs above. Put design docs
-> under `docs/plan/` and intent docs under `docs/vision/` — keep the root scannable.
+> **Repo layout:** root holds only build/config files + the package dirs above.
+> Design docs → `docs/plan/`, intent docs → `docs/vision/`. Keep the root scannable.
 
 ## Cross-cutting References
 
