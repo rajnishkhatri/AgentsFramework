@@ -109,7 +109,13 @@ def _models_used(events: list[dict]) -> list[str]:
 @dataclass
 class ArmIntegrity:
     """Per-arm integrity result. ``ok`` is the gate; ``mismatches`` is the
-    verbatim evidence list the report prints."""
+    verbatim evidence list the report prints.
+
+    ``rows_scored`` / ``rows_missing_trace`` are per-arm totals. In the
+    single-run path that is one trial's count; in the pass^k path
+    (``_passk_arm_integrity``) they are the SUM across trials (total scored
+    rows over all trials, not per-trial). A reader comparing arms should treat
+    these as "instrumentation coverage," not "trials × rows"."""
 
     ok: bool
     expected: set[str]
@@ -233,10 +239,52 @@ def paired_bootstrap_ci(
         resample = (deltas[rng.randrange(n)] for _ in range(n))
         means.append(sum(resample) / n)
     means.sort()
+    # Percentile indices scaled by (iterations - 1) so lo/hi are symmetric about
+    # the median and the hi index cannot reach ``iterations`` (no ``min`` guard
+    # needed): for tail in (0, 0.5), (1-tail)*(n-1) < n-1 < n. This is the floor
+    # of the standard linear-interpolation percentile index (numpy's default
+    # uses interpolation between means[floor] and means[ceil]; at iterations=10k
+    # the floor alone is well within the noise the bootstrap is estimating, and
+    # keeping it floor-only preserves the deterministic-for-seed contract without
+    # a fractional-index dependency).
     tail = (1.0 - confidence) / 2.0
-    lo = means[int(tail * iterations)]
-    hi = means[min(int((1.0 - tail) * iterations), iterations - 1)]
+    lo = means[int(tail * (iterations - 1))]
+    hi = means[int((1.0 - tail) * (iterations - 1))]
     return mean_delta, lo, hi
+
+
+def decide_passk_verdict(
+    base_passk: float | None,
+    cand_passk: float | None,
+    *,
+    tolerance: float,
+    ci_includes_zero: bool,
+    integrity_ok: bool,
+    provider_contaminated: bool,
+) -> str:
+    """The pass^k verdict rule, as a pure function (review #6).
+
+    Extracted from ``_run_passk`` so the rule is tested DIRECTLY rather than only
+    mirrored by a parallel spec — a refactor of the caller can no longer silently
+    re-collapse NOISE into HOLD without this test failing.
+
+    Precedence (instrumentation failure dominates a behavior signal):
+      1. integrity failure OR provider error OR an undecidable pass^k (``None``)
+         -> ``CONTAMINATED`` (never scored as a regression).
+      2. candidate pass^k below baseline past ``tolerance`` -> ``HOLD``, unless the
+         paired per-task delta CI straddles 0 (``ci_includes_zero``) -> ``NOISE``.
+      3. otherwise -> ``PROMOTE``.
+    """
+    if (
+        not integrity_ok
+        or provider_contaminated
+        or base_passk is None
+        or cand_passk is None
+    ):
+        return CONTAMINATED
+    if cand_passk < base_passk - tolerance:
+        return NOISE if ci_includes_zero else HOLD
+    return PROMOTE
 
 
 # ── diff + verdict ─────────────────────────────────────────────────────────────
@@ -709,12 +757,8 @@ async def _drive_arm(
     import os
 
     from scripts.run_goaljudge_synthetic_batch import (
-        AGENT_ROOT as _BATCH_ROOT,
-        build_agent_and_tools,
-        run_case,
         truncate_eval_log,
     )
-    from tests.fixtures.goaljudge.case_registry import GoalJudgeCase
 
     # Isolate the eval-capture log to THIS arm: truncate the global logs/evals.log
     # before the arm drives, snapshot it into the arm's out_dir afterward. The
@@ -729,17 +773,58 @@ async def _drive_arm(
     # symlink/point that name at the real recordings dir below.
     arm_cache = out_dir / "cache"
     arm_cache.mkdir(parents=True, exist_ok=True)
-    if arm_set:
-        # Set arm: Auto routes across the named stack.
-        os.environ["MODEL_PROFILE_SET"] = arm_set
-    else:
-        # Pinned arm: the router can only resolve a pin to a profile that EXISTS
-        # in the active registry (_pick_profile_by_name). The default "openai"
-        # set has only gpt-4o/gpt-4o-mini, so pinning e.g. claude-haiku-4-5 would
-        # MISS and silently fall back to the default model — invalidating the
-        # arm. Build from the "all" meta-set so every pinnable model is present;
-        # the pin then resolves and the arm truly runs the model-under-test.
-        os.environ["MODEL_PROFILE_SET"] = "all"
+    # MODEL_PROFILE_SET is process-global; both arms (and every trial) run in this
+    # one process, so save the prior value and restore it in the finally below
+    # (review #9). Each arm overwrites it before building, but any code that reads
+    # the var BEFORE the next arm resets it would otherwise see a stale arm's set.
+    _prev_profile_set = os.environ.get("MODEL_PROFILE_SET")
+    try:
+        if arm_set:
+            # Set arm: Auto routes across the named stack.
+            os.environ["MODEL_PROFILE_SET"] = arm_set
+        else:
+            # Pinned arm: the router can only resolve a pin to a profile that EXISTS
+            # in the active registry (_pick_profile_by_name). The default "openai"
+            # set has only gpt-4o/gpt-4o-mini, so pinning e.g. claude-haiku-4-5 would
+            # MISS and silently fall back to the default model — invalidating the
+            # arm. Build from the "all" meta-set so every pinnable model is present;
+            # the pin then resolves and the arm truly runs the model-under-test.
+            os.environ["MODEL_PROFILE_SET"] = "all"
+        await _drive_arm_body(
+            rows,
+            arm_model=arm_model,
+            arm_set=arm_set,
+            out_dir=out_dir,
+            arm_cache=arm_cache,
+        )
+    finally:
+        if _prev_profile_set is None:
+            os.environ.pop("MODEL_PROFILE_SET", None)
+        else:
+            os.environ["MODEL_PROFILE_SET"] = _prev_profile_set
+
+
+async def _drive_arm_body(
+    rows: list[dict],
+    *,
+    arm_model: str,
+    arm_set: str | None,
+    out_dir: Path,
+    arm_cache: Path,
+) -> None:
+    """The arm-drive work, after MODEL_PROFILE_SET has been set by the caller.
+
+    Split out of ``_drive_arm`` so the env save/restore (review #9) wraps the whole
+    body in a single ``try/finally`` without indenting it.
+    """
+    import os
+
+    from scripts.run_goaljudge_synthetic_batch import (
+        AGENT_ROOT as _BATCH_ROOT,
+        build_agent_and_tools,
+        run_case,
+    )
+    from tests.fixtures.goaljudge.case_registry import GoalJudgeCase
 
     workspace = AGENT_ROOT / "workspace"
     workspace.mkdir(parents=True, exist_ok=True)
@@ -879,14 +964,16 @@ def _passk_trials_with_eval_log(arm_dir: Path, trials: int) -> int:
     )
 
 
-def _passk_provider_contaminated(arm_dir: Path, trials: int, cases: list[str]) -> bool:
-    """True if ANY trial's eval log has a provider/transport error (same guard
-    as the single-run ``--answer-score`` path — not a model signal)."""
-    from scripts.model_ab_answer_score import score_answers
+def _passk_provider_contaminated(arm_dir: Path, trials: int) -> bool:
+    """True if ANY trial's eval log has a provider/transport error.
+
+    Sweeps EVERY ``call_llm`` answer in each trial log, not just the L1
+    ``EXPECTED_BY_CASE`` subset that ``score_answers`` grades — a transport error
+    on an L2/L3 case must contaminate the pass^k verdict too (review #2)."""
+    from scripts.model_ab_answer_score import log_has_provider_error
 
     for i in range(trials):
-        log = arm_dir / f"trial_{i}" / "evals.log"
-        if log.exists() and score_answers(log, cases=cases).contaminated:
+        if log_has_provider_error(arm_dir / f"trial_{i}" / "evals.log"):
             return True
     return False
 
@@ -897,7 +984,16 @@ def _passk_arm_integrity(
     trials: int,
     expected_models: set[str],
 ) -> ArmIntegrity:
-    """Per-trial arm integrity — ANY trial with wrong/empty model contaminates."""
+    """Per-trial arm integrity — ANY trial with wrong/empty model contaminates.
+
+    A trial that produced NO scored rows at all (no recordings) is itself a
+    mismatch, not a silent pass: ``check_arm_integrity`` returns ``mismatches=[]``
+    for a wholly-uninstrumented trial (every row hits ``rows_missing += 1;
+    continue``), and a previous ``max(...)`` roll-up let one good trial mask a
+    fully-empty sibling — a contamination that ALSO depresses pass^k, so it would
+    masquerade as a real regression. We flag the empty trial explicitly and
+    ``sum`` the per-trial counts so the report payload isn't undercounted.
+    """
     mismatches: list[str] = []
     rows_scored = 0
     rows_missing = 0
@@ -905,8 +1001,10 @@ def _passk_arm_integrity(
         trial_dir = arm_dir / f"trial_{i}"
         _, events_by_row, _ = _score_arm(rows, _recordings_dir(trial_dir))
         trial = check_arm_integrity(rows, events_by_row, expected_models)
-        rows_scored = max(rows_scored, trial.rows_scored)
-        rows_missing = max(rows_missing, trial.rows_missing_trace)
+        rows_scored += trial.rows_scored
+        rows_missing += trial.rows_missing_trace
+        if trial.rows_scored == 0:
+            mismatches.append(f"trial_{i}: no scored rows (no recordings)")
         for m in trial.mismatches:
             mismatches.append(f"trial_{i}: {m}")
     ok = not mismatches and rows_scored > 0
@@ -940,7 +1038,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--gate",
         action="store_true",
-        help="exit non-zero on HOLD/CONTAMINATED (CI mode)",
+        help=(
+            "CI mode: exit non-zero on HOLD/CONTAMINATED. NOISE and PROMOTE exit 0 "
+            "(NOISE = inside the noise band, not decision-grade, so it does not "
+            "block a swap)."
+        ),
     )
     p.add_argument(
         "--score-only",
@@ -1046,8 +1148,8 @@ def _run_passk(args: Any, run_dir: Path, rows: list[dict]) -> int:
         _arm_models(args.candidate, args.candidate_set),
     )
     provider_contaminated = _passk_provider_contaminated(
-        baseline_dir, args.trials, l1_cases
-    ) or _passk_provider_contaminated(candidate_dir, args.trials, l1_cases)
+        baseline_dir, args.trials
+    ) or _passk_provider_contaminated(candidate_dir, args.trials)
 
     base_succ = _successes_per_task(rows, baseline_dir, args.trials, l1_cases)
     cand_succ = _successes_per_task(rows, candidate_dir, args.trials, l1_cases)
@@ -1067,20 +1169,15 @@ def _run_passk(args: Any, run_dir: Path, rows: list[dict]) -> int:
         if (base_passk is not None and cand_passk is not None)
         else None
     )
-    # Verdict: integrity + provider errors dominate (same as single-run path).
-    # Then: candidate pass^k below baseline (past tolerance) is HOLD; if the paired
-    # per-task delta CI straddles 0 the regression is NOISE, not signal.
-    if (
-        not (base_integrity.ok and cand_integrity.ok)
-        or provider_contaminated
-        or base_passk is None
-        or cand_passk is None
-    ):
-        verdict = CONTAMINATED
-    elif cand_passk < base_passk - args.tolerance:
-        verdict = NOISE if ci_includes_zero else HOLD
-    else:
-        verdict = PROMOTE
+    # Verdict rule lives in decide_passk_verdict (pure, directly tested — review #6).
+    verdict = decide_passk_verdict(
+        base_passk,
+        cand_passk,
+        tolerance=args.tolerance,
+        ci_includes_zero=ci_includes_zero,
+        integrity_ok=base_integrity.ok and cand_integrity.ok,
+        provider_contaminated=provider_contaminated,
+    )
 
     payload = {
         "run_id": run_dir.name,
