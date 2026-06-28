@@ -241,6 +241,129 @@ def validate_judge(
 
 
 # ───────────────────────────────────────────────────────────────────────────
+# Test-retest reliability (2026 MVVP bar) -- judge self-consistency across runs
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class TestRetest(NamedTuple):
+    """Judge self-consistency across repeated runs on the SAME items.
+
+    A judge that flips its verdict between identical re-runs is unreliable even
+    if its average accuracy looks fine. ``consistency`` is the share of items on
+    which EVERY trial agreed; ``mean_majority_fraction`` is the average, per
+    item, of the majority verdict's share (1.0 = always unanimous). ``flipped``
+    lists the item_ids that disagreed across trials. ``None`` rates mean the
+    input was under-defined (no item had >= 2 trials).
+    """
+
+    n_items: int
+    consistency: float | None
+    mean_majority_fraction: float | None
+    flipped: tuple[str, ...]
+
+
+def test_retest(repeated: Mapping[str, list[bool]]) -> TestRetest:
+    """Measure judge self-consistency from per-item repeated verdicts.
+
+    ``repeated`` maps ``item_id -> [verdict_trial_1, verdict_trial_2, ...]`` (the
+    shape ``residual_fp_revalidation.json`` already records: 5 trials per item).
+    An item with fewer than 2 trials is skipped (no retest possible) -- never
+    silently counted as consistent (AP-6: don't fabricate agreement from a
+    single sample). Returns ``None`` rates when no item is eligible.
+    """
+    eligible = {i: v for i, v in repeated.items() if len(v) >= 2}
+    n = len(eligible)
+    if n == 0:
+        return TestRetest(
+            n_items=0, consistency=None, mean_majority_fraction=None, flipped=()
+        )
+
+    flipped: list[str] = []
+    majority_fractions: list[float] = []
+    for item_id, trials in eligible.items():
+        trues = sum(1 for t in trials if t)
+        majority = max(trues, len(trials) - trues)
+        majority_fractions.append(majority / len(trials))
+        if trues != 0 and trues != len(trials):
+            flipped.append(item_id)
+
+    consistency = (n - len(flipped)) / n
+    mean_majority = sum(majority_fractions) / n
+    return TestRetest(
+        n_items=n,
+        consistency=round(consistency, 4),
+        mean_majority_fraction=round(mean_majority, 4),
+        flipped=tuple(sorted(flipped)),
+    )
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# Position bias (pairwise judging only) -- order-swap agreement
+# ───────────────────────────────────────────────────────────────────────────
+
+
+class PositionBias(NamedTuple):
+    """Order-dependence of a PAIRWISE judge (A-vs-B preference).
+
+    Only meaningful when the judge compares two candidates and could be swayed
+    by which one is presented first. For each item we have the verdict with the
+    original order and with the candidates swapped; a *consistent* judge picks
+    the same underlying winner both ways. ``agreement`` is the share of items
+    whose decision was order-invariant; ``first_position_rate`` is how often the
+    judge preferred whichever candidate was shown FIRST (0.5 = no positional
+    pull; far from 0.5 = bias). ``None`` when there is no pairwise data -- which
+    is the case for the single-answer GoalJudge, so this stays N/A there.
+    """
+
+    n_items: int
+    agreement: float | None
+    first_position_rate: float | None
+    inconsistent: tuple[str, ...]
+
+
+def position_bias(
+    original: Mapping[str, bool],
+    swapped: Mapping[str, bool],
+) -> PositionBias:
+    """Measure pairwise position bias from original vs order-swapped verdicts.
+
+    Convention: each map is ``item_id -> chose_first`` -- ``True`` means the
+    judge picked whichever candidate was in the FIRST slot of that presentation.
+    A position-invariant judge picks the same real candidate regardless of order,
+    so ``original[i]`` and ``swapped[i]`` should be OPPOSITE (the winner moved
+    slots). Agreement on the underlying winner = ``original[i] != swapped[i]``.
+
+    Returns ``None`` rates when the key sets don't align or are empty (no
+    pairwise data) -- the single-answer GoalJudge has none, so position bias is
+    reported N/A rather than a fabricated number.
+    """
+    keys = set(original) & set(swapped)
+    if not keys or set(original) != set(swapped):
+        return PositionBias(
+            n_items=len(keys), agreement=None, first_position_rate=None, inconsistent=()
+        )
+
+    inconsistent: list[str] = []
+    first_picks = 0
+    for item_id in keys:
+        # winner-invariant ⇒ the "chose first" flag flips when slots swap.
+        if original[item_id] == swapped[item_id]:
+            inconsistent.append(item_id)
+        # count first-slot preference across BOTH presentations (2 obs/item).
+        first_picks += int(original[item_id]) + int(swapped[item_id])
+
+    n = len(keys)
+    agreement = (n - len(inconsistent)) / n
+    first_position_rate = first_picks / (2 * n)
+    return PositionBias(
+        n_items=n,
+        agreement=round(agreement, 4),
+        first_position_rate=round(first_position_rate, 4),
+        inconsistent=tuple(sorted(inconsistent)),
+    )
+
+
+# ───────────────────────────────────────────────────────────────────────────
 # CLI -- read the L2/L3 seed + judge verdicts, print the validation report
 # ───────────────────────────────────────────────────────────────────────────
 
@@ -290,6 +413,16 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     )
     parser.add_argument("--tpr-min", type=float, default=DEFAULT_TPR_MIN)
     parser.add_argument("--tnr-min", type=float, default=DEFAULT_TNR_MIN)
+    parser.add_argument(
+        "--retest",
+        type=str,
+        default=None,
+        help=(
+            "optional path to a per-item repeated-verdict JSON "
+            "(residual_fp_revalidation.json shape: cases[].verdicts[].goal_met); "
+            "prints judge test-retest self-consistency"
+        ),
+    )
     parsed = parser.parse_args(args)
 
     # Single source of truth for the mapping + exclusion rule.
@@ -352,6 +485,34 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     )
     for reason in result.reasons:
         print(f"  - {reason}")
+
+    # Optional test-retest self-consistency from a repeated-verdict file
+    # (residual_fp_revalidation.json shape). Diagnostic only -- it does not gate.
+    if parsed.retest:
+        try:
+            retest_raw = json.loads(Path(parsed.retest).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"  test-retest: error reading {parsed.retest}: {exc}")
+        else:
+            repeated: dict[str, list[bool]] = {}
+            for case in retest_raw.get("cases", []):
+                verdicts = case.get("verdicts", [])
+                item = str(case.get("item", case.get("case", "")))
+                if item and verdicts:
+                    repeated[item] = [bool(v.get("goal_met")) for v in verdicts]
+            tr = test_retest(repeated)
+            print(
+                f"  test-retest (n={tr.n_items}): "
+                f"consistency={_fmt(tr.consistency)} "
+                f"mean_majority={_fmt(tr.mean_majority_fraction)}"
+                + (f" flipped={list(tr.flipped)}" if tr.flipped else "")
+            )
+
+    # Position bias only applies to a PAIRWISE judge; the single-answer GoalJudge
+    # has no order-swapped data, so we state N/A explicitly rather than silently
+    # omit it (a reader must not infer "no bias" from an absent line).
+    print("  position-bias: N/A (single-answer judge; pairwise-only metric)")
+
     return 0 if result.passed else 1
 
 

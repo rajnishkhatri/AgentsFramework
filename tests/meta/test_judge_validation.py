@@ -20,9 +20,11 @@ from meta.judge_validation import (
     DEFAULT_TPR_MIN,
     JudgeRates,
     judge_rates,
+    position_bias,
     rogan_gladen,
     validate_judge,
 )
+from meta.judge_validation import test_retest as retest  # aliased: not a test fn
 from services.governance.goaljudge_calibration import ConfusionCounts
 
 
@@ -236,3 +238,66 @@ def test_validation_cli_rejects_partial_judge_coverage(tmp_path) -> None:
         ["--seed", str(seed_path), "--judge", str(judge_path), "--mapping", "strict"]
     )
     assert rc == 2
+
+
+# ── test-retest reliability ─────────────────────────────────────────────────
+
+
+class TestTestRetest:
+    def test_unanimous_items_are_fully_consistent(self):
+        r = retest({"a": [True, True, True], "b": [False, False]})
+        assert r.n_items == 2
+        assert r.consistency == 1.0
+        assert r.mean_majority_fraction == 1.0
+        assert r.flipped == ()
+
+    def test_flipped_item_is_flagged(self):
+        # 'b' disagrees across trials (2 True / 3 False) -> a flip.
+        r = retest({"a": [True, True], "b": [True, False, False]})
+        assert r.consistency == 0.5
+        assert r.flipped == ("b",)
+        # majority fraction: a=1.0, b=2/3 -> mean ~0.8333
+        assert r.mean_majority_fraction == pytest.approx(0.8333, abs=1e-3)
+
+    def test_single_trial_items_are_skipped(self):
+        # An item with one trial gives no retest signal -> excluded, not counted.
+        r = retest({"a": [True], "b": [True, True]})
+        assert r.n_items == 1
+        assert r.consistency == 1.0
+
+    def test_no_eligible_items_returns_none(self):
+        r = retest({"a": [True], "b": []})
+        assert r.n_items == 0
+        assert r.consistency is None
+        assert r.mean_majority_fraction is None
+
+
+# ── position bias (pairwise only) ───────────────────────────────────────────
+
+
+class TestPositionBias:
+    def test_invariant_judge_full_agreement(self):
+        # winner-invariant: chose_first flips when slots swap -> opposite verdicts.
+        pb = position_bias({"x": True, "y": False}, {"x": False, "y": True})
+        assert pb.n_items == 2
+        assert pb.agreement == 1.0
+        assert pb.inconsistent == ()
+        # each item: one first-pick across the two presentations -> 0.5.
+        assert pb.first_position_rate == 0.5
+
+    def test_order_dependent_item_is_inconsistent(self):
+        # 'x' picks the first slot BOTH ways -> order-dependent (biased).
+        pb = position_bias({"x": True, "y": False}, {"x": True, "y": True})
+        assert pb.inconsistent == ("x",)
+        assert pb.agreement == 0.5
+        # x contributes 2 first-picks, y contributes 1 -> 3/4.
+        assert pb.first_position_rate == 0.75
+
+    def test_misaligned_keys_return_none(self):
+        pb = position_bias({"x": True}, {"y": False})
+        assert pb.agreement is None
+        assert pb.first_position_rate is None
+
+    def test_empty_returns_none(self):
+        pb = position_bias({}, {})
+        assert pb.agreement is None
