@@ -77,7 +77,9 @@ Capture the *why* behind structural changes — the human engagement automation 
   seam it governs. Copy `docs/adr/0000-template.md` (Context / Decision /
   Options / Rationale / Consequences — the rejected alternatives are the
   intent-debt payload). OKF: every ADR needs frontmatter `type:`, an `index.md`
-  entry, and a newest-first `log.md` line.
+  entry, and a newest-first `log.md` line. (`tests/architecture/test_adr_ratchet.py`
+  is the mechanical gate: a trigger path changed without a new `docs/adr/*` file —
+  or an `ADR-OK:` waiver in a range commit message — fails it.)
 - **G1 — new-abstraction gate.** Automation can't judge whether an abstraction
   earns its place. Before adding one, state in the PR/commit what it buys and what
   you considered instead (→ an ADR for anything load-bearing).

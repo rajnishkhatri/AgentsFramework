@@ -752,3 +752,359 @@ def _get_call_name(node: ast.Call) -> str:
     if isinstance(node.func, ast.Attribute):
         return node.func.attr
     return ""
+
+
+# ── ADR.1: file-list scan for the ADR ratchet (WI-5) ────────────────────
+#
+# The ``⚠️ Ask first`` triggers in AGENTS.md are mechanically detectable from the
+# changed-file list (see root REVIEW.md "ADR.1 detection (mechanical)"). This
+# detector is the deterministic half of that gate: it flags a diff that touches
+# an Ask-first seam AND ships no new ``docs/adr/`` file. Pure stdlib — no git;
+# the caller resolves the changed/added file list.
+
+# Repo-relative paths whose presence in a diff is an ``⚠️ Ask first`` trigger.
+# A pyproject.toml *dependency* change can't be told from a comment tweak at the
+# file-list level, so any pyproject.toml touch is treated as a trigger
+# (conservative — the ADR ratchet prefers over-flagging to silent drift).
+_ADR1_TRIGGER_PATHS: frozenset[str] = frozenset(
+    {
+        "pyproject.toml",
+        "trust/models.py",
+        "orchestration/react_loop.py",
+    }
+)
+
+
+def detect_adr1_missing(
+    changed_files: list[str],
+    *,
+    added_files: list[str] | None = None,
+) -> dict[str, Any]:
+    """Deterministic ADR.1 (ADR ratchet) check from a changed-file list.
+
+    Flags when the diff touches an ``⚠️ Ask first`` trigger **and** ships no new
+    file under ``docs/adr/``. The triggers (AGENTS.md §Ask first):
+
+    * ``pyproject.toml`` (a dependency/config change),
+    * ``trust/models.py`` (a trust-kernel type change → re-signing),
+    * ``orchestration/react_loop.py`` (a new graph node),
+    * a new horizontal service — a newly-added ``services/<name>/__init__.py``
+      (a package that didn't exist before). Requires ``added_files``; without it
+      only the three file-presence triggers fire.
+
+    Relief: any path under ``docs/adr/`` in ``changed_files`` (typically added)
+    ⇒ an ADR was filed, no violation.
+
+    Returns the standard ``{"pass": bool, "violations": [...]}`` shape. Each
+    violation carries ``rule="ADR.1"``, the list of ``triggers`` that fired, and
+    a human-readable description. Pure: no I/O, no git.
+    """
+
+    # Normalize to posix, folding Windows-style backslashes (git on Windows can
+    # emit them); on POSIX, Path treats "\" as a literal char, so do it by hand.
+    def _norm(p: str) -> str:
+        return Path(p.replace("\\", "/")).as_posix()
+
+    changed = {_norm(p) for p in changed_files}
+    added = {_norm(p) for p in (added_files or [])}
+
+    triggers: list[str] = []
+    for trigger in _ADR1_TRIGGER_PATHS:
+        if trigger in changed:
+            triggers.append(trigger)
+    # New horizontal service: a freshly-added services/<name>/__init__.py.
+    if added:
+        for path in sorted(added):
+            parts = Path(path).parts
+            if (
+                len(parts) >= 3
+                and parts[0] == "services"
+                and parts[-1] == "__init__.py"
+            ):
+                triggers.append(path)
+                break  # one new service is enough to trip the trigger
+
+    # Relief: a new ADR is typically an *added* file, so check both sets.
+    adr_filed = any(p.startswith("docs/adr/") for p in changed) or any(
+        p.startswith("docs/adr/") for p in added
+    )
+    if not triggers or adr_filed:
+        return {
+            "pass": True,
+            "violations": [],
+            "triggers": triggers,
+            "adr_filed": adr_filed,
+        }
+
+    description = (
+        "⚠️ Ask-first trigger(s) present with no new docs/adr/ file: "
+        + ", ".join(triggers)
+        + ". File an ADR (copy docs/adr/0000-template.md) or document the waiver."
+    )
+    return {
+        "pass": False,
+        "violations": [
+            {"rule": "ADR.1", "triggers": triggers, "description": description}
+        ],
+        "triggers": triggers,
+        "adr_filed": False,
+    }
+
+
+# ── TAP-2: mock-abuse detector (>3 mocks/test) ──────────────────────────
+#
+# services/AGENTS.md: "TAP-2 (mock addiction): >3 mocks in one test is a warning
+# — prefer real in-memory implementations; reserve mocks for truly external
+# systems." Pure AST: counts mock anchors per ``def test_*``.
+
+_MOCK_TYPES: frozenset[str] = frozenset(
+    {"MagicMock", "AsyncMock", "Mock", "NonCallableMock"}
+)
+_PATCH_LEAVES: frozenset[str] = frozenset({"patch", "patch.object", "patch.multiple"})
+
+
+def _dotted_name(node: ast.expr) -> str:
+    """Dotted name for a Name/Attribute chain (``mock.patch.object`` → that
+    string). Returns ``""`` for anything not a plain dotted expression."""
+    parts: list[str] = []
+    cur: ast.expr = node
+    while isinstance(cur, ast.Attribute):
+        parts.append(cur.attr)
+        cur = cur.value
+    if isinstance(cur, ast.Name):
+        parts.append(cur.id)
+    else:
+        return ""
+    return ".".join(reversed(parts))
+
+
+def _is_patch_dotted(name: str) -> bool:
+    """True for ``patch`` / ``patch.object`` / ``patch.multiple`` (bare or
+    dotted, e.g. ``unittest.mock.patch.object``)."""
+    if not name:
+        return False
+    return any(name == leaf or name.endswith("." + leaf) for leaf in _PATCH_LEAVES)
+
+
+def _is_mock_construction(name: str) -> bool:
+    """True for ``MagicMock()`` / ``AsyncMock()`` / ``Mock()`` /
+    ``NonCallableMock()`` (bare or dotted, e.g. ``mock.MagicMock``)."""
+    if not name:
+        return False
+    leaf = name.split(".")[-1]
+    return leaf in _MOCK_TYPES
+
+
+def _decorator_dotted(dec: ast.expr) -> str:
+    target = dec.func if isinstance(dec, ast.Call) else dec
+    return _dotted_name(target)
+
+
+def _count_mocks(func_node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """Mock anchors for one test function: ``@patch(...)`` decorators plus
+    ``patch(...)`` / ``MagicMock()`` / … calls anywhere in the body."""
+    count = 0
+    for dec in func_node.decorator_list:
+        if _is_patch_dotted(_decorator_dotted(dec)):
+            count += 1
+    for stmt in func_node.body:
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Call):
+                name = _dotted_name(node.func)
+                if _is_patch_dotted(name) or _is_mock_construction(name):
+                    count += 1
+    return count
+
+
+def detect_mock_abuse(source: str, *, threshold: int = 3) -> dict[str, Any]:
+    """TAP-2 (mock addiction) detector: flag ``def test_*`` with more than
+    ``threshold`` mock anchors (``@patch`` / ``patch(...)`` / ``MagicMock()`` /
+    ``AsyncMock()`` / ``Mock()`` / ``NonCallableMock()``).
+
+    Pure AST — parses ``source`` and executes nothing. A syntax error is
+    reported conservatively (never silently pass). Returns
+    ``{"pass": bool, "violations": [{"rule": "TAP-2", "test", "line",
+    "mock_count", "description"}]}``.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        return {
+            "pass": False,
+            "violations": [
+                {
+                    "rule": "TAP-2.PARSE",
+                    "test": "",
+                    "line": 0,
+                    "mock_count": 0,
+                    "description": f"test module unparseable: {exc}",
+                }
+            ],
+        }
+
+    violations: list[dict[str, Any]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not node.name.startswith("test_"):
+            continue
+        count = _count_mocks(node)
+        if count > threshold:
+            violations.append(
+                {
+                    "rule": "TAP-2",
+                    "test": node.name,
+                    "line": node.lineno,
+                    "mock_count": count,
+                    "description": (
+                        f"{node.name} uses {count} mocks (> {threshold} threshold) — "
+                        f"prefer real in-memory implementations; reserve mocks for "
+                        f"truly external systems"
+                    ),
+                }
+            )
+    return {"pass": len(violations) == 0, "violations": violations}
+
+
+# ── TAP-4: failure-path ratio detector ──────────────────────────────────
+#
+# trust/AGENTS.md: "TAP-4 (gap blindness): write the rejection test before the
+# acceptance test." services/AGENTS.md: "Failure paths first (TAP-4)." The
+# REVIEW.md "AST (failure-test ratio)" label is realized as a per-test-module
+# ratio of failure-asserting tests. This is an honest, conservative heuristic:
+# true per-decision-point coverage needs impl→test mapping (deferred); the
+# file-level ratio catches a suite that is overwhelmingly happy-path.
+
+# Test-name tokens that signal a rejection / failure-path test.
+_FAILURE_NAME_TOKENS: frozenset[str] = frozenset(
+    {
+        "reject",
+        "fail",
+        "invalid",
+        "error",
+        "missing",
+        "empty",
+        "denied",
+        "unauthorized",
+        "forbidden",
+        "raises",
+        "raises_",
+    }
+)
+
+
+def _is_failure_asserting(
+    func_node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> bool:
+    """Heuristic: does this test assert a failure / rejection path?
+
+    Counted as failure-asserting when it either calls a raises/warns/fail
+    helper (``pytest.raises``, ``pytest.warns``, ``pytest.fail``,
+    ``self.assertRaises``), or asserts a falsy primary outcome
+    (``assert not x`` / ``assert x is None`` / ``assert x is False``), or has a
+    rejection-shaped name (``test_*_rejects_*`` / ``test_invalid_*`` / …).
+    Generous on purpose — for a *warning*-severity rule, false negatives (a
+    missed gap) are cheaper than false positives (flagging a clean suite).
+    """
+    name_lower = func_node.name.lower()
+    if any(tok in name_lower for tok in _FAILURE_NAME_TOKENS):
+        return True
+
+    for stmt in func_node.body:
+        for node in ast.walk(stmt):
+            # raises/warns/fail/assertRaises call.
+            if isinstance(node, ast.Call):
+                name = _dotted_name(node.func)
+                if not name:
+                    continue
+                leaf = name.split(".")[-1]
+                if leaf in {"raises", "warns", "fail", "assertRaises", "assertWarns"}:
+                    return True
+            # assert not <expr> / assert <expr> is None / is False.
+            if isinstance(node, ast.Assert):
+                test = node.test
+                if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+                    return True
+                if isinstance(test, ast.Compare):
+                    # ``x is None`` / ``x is False`` / ``x == False``
+                    for cmp in test.ops:
+                        if isinstance(cmp, (ast.Is, ast.Eq)):
+                            for comp in test.comparators:
+                                if isinstance(comp, ast.Constant) and comp.value in (
+                                    None,
+                                    False,
+                                ):
+                                    return True
+    return False
+
+
+def detect_failure_path_ratio(
+    source: str,
+    *,
+    min_tests: int = 4,
+    min_ratio: float = 0.25,
+) -> dict[str, Any]:
+    """TAP-4 (failure-paths-first) detector: flag a test module whose
+    failure-asserting tests fall below ``min_ratio`` of the total, once the
+    module has at least ``min_tests`` tests.
+
+    Pure AST — parses ``source`` and executes nothing. A syntax error is
+    reported conservatively. Returns::
+
+        {"pass": bool,
+         "total": int, "failure_tests": int, "ratio": float,
+         "violations": [{"rule": "TAP-4", "description": ...}]}
+
+    Honest limit: this is the *file-level* failure-test ratio, not true
+    per-decision-point coverage (which needs impl→test mapping and is
+    deferred). It catches a suite that is overwhelmingly happy-path; a module
+    with a few well-targeted rejection tests will pass even if some decision
+    points are uncovered.
+    """
+    try:
+        tree = ast.parse(source)
+    except SyntaxError as exc:
+        return {
+            "pass": False,
+            "total": 0,
+            "failure_tests": 0,
+            "ratio": 0.0,
+            "violations": [
+                {
+                    "rule": "TAP-4.PARSE",
+                    "description": f"test module unparseable: {exc}",
+                }
+            ],
+        }
+
+    total = 0
+    failure = 0
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not node.name.startswith("test_"):
+            continue
+        total += 1
+        if _is_failure_asserting(node):
+            failure += 1
+
+    ratio = (failure / total) if total else 0.0
+    violations: list[dict[str, Any]] = []
+    if total >= min_tests and ratio < min_ratio:
+        violations.append(
+            {
+                "rule": "TAP-4",
+                "description": (
+                    f"failure-path ratio {failure}/{total} = {ratio:.0%} < "
+                    f"{min_ratio:.0%} threshold — write rejection/failure tests "
+                    f"before acceptance tests (gap blindness)"
+                ),
+            }
+        )
+    return {
+        "pass": len(violations) == 0,
+        "total": total,
+        "failure_tests": failure,
+        "ratio": ratio,
+        "violations": violations,
+    }
