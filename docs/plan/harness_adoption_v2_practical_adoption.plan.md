@@ -1,12 +1,58 @@
 # Practical-Adoption Assessment — Harness Adoption v2 Plan
 
-> **Status:** In progress — **Wave 0 COMPLETE**, **Wave 1 SUBSTANTIVELY COMPLETE**
-> (2026-06-28). Waves 2–4 pending. Wave 1's residual gate now PASSES; the only Wave-1
-> remainder is the *deferred live A/B + blind re-adjudication* that grows the frozen
-> seed past 100 rows (corpus authored; live runs gated for go-ahead). Nothing
-> committed yet (commit only when asked).
+> **Status:** In progress — **Waves 0, 1, 2, 3 COMPLETE** (2026-06-28); Wave 4
+> (deferred subsystems) is the remainder, plus the gated live A/B (Wave-1 remainder).
+> All committed (standing go-ahead this session). Commits: `dddaab3` (W0+W1+3.1),
+> `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92` (2.1), `506f247` (2.2/2.3),
+> `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives in gitignored `.claude/`).
 >
 > ### Execution log
+>
+> **2026-06-28 — Wave 3 landed** (Track C mechanism; verify-first).
+> - **2.1 — ADR.1 ratchet gate.** The pure detector `detect_adr1_missing` already
+>   shipped (Track A) but was never run against the branch (named-gate-without-
+>   mechanism). Added `tests/architecture/test_adr_ratchet.py` wiring it to the
+>   merge-base diff; fails when an ⚠️ Ask-first trigger lands without a new
+>   `docs/adr/*` (waiver: `ADR-OK:` in a range commit). **Verify-first outcome:**
+>   chose the git-diff arch-test over a Stop hook (hooks can't capture the typed
+>   answer, are version-dependent, don't run in CI). Recorded in `decisions.md`.
+> - **2.2/2.3 — GATES.md.** New `docs/adr/GATES.md`: the answer-before-reveal
+>   *preamble* (generative, not recognitional) + **re-added G3 (security) / G7
+>   (architecture)** + **rotating wordings** per gate. Names stay in AGENTS.md;
+>   mechanism lives in GATES.md. Honest limit unchanged (convention + PR-review).
+> - **5.4 — AGENTS.md trim (bounded).** Converted the six `@`-imports (which
+>   eager-loaded 5 huge style guides + the TDD prompt EVERY session) to plain links,
+>   and condensed Key Directories. The real win is per-session context load, not the
+>   line count (~141; Wave 2/3 added legitimate mechanism refs). Did NOT drop the
+>   Architecture Invariants to hit a number, per this plan's guidance.
+> - **5.1 — explore subagent (the explore half).** `.claude/agents/explore.md`: a
+>   read-only context-firewall agent + AGENTS.md convention prose. `.claude/` is
+>   gitignored repo-wide, so the agent lives locally; the committed prose documents
+>   it. The `reviewer` subagent stays with unified-reviewer WI-6.
+>
+> **2026-06-28 — Wave 2 landed** (sensors + practice; the 🟠 core). All no-live-LLM.
+> - **3.1 — test-weakening sensor.** `utils.code_analysis.detect_test_weakening`
+>   (pure, 12 unit tests) + `tests/architecture/test_no_test_weakening.py`: a removed
+>   `def test_*` or a newly skip/xfail'd test without a justification token
+>   (`G8-OK` / `ADR-` / `flaky-tracked:` / `live_llm` / `env-gated:`) fails the gate.
+>   Verified end-to-end (fires on a real working-tree weakening; clears with a
+>   `# G8-OK: <test>` waiver). Wired into AGENTS.md G8.
+> - **4.3 — graduate `tier: regression` + floor gate.** Tagged the 10 deterministic
+>   GEN-L1 rows `tier:"regression"` at *generation time* in `build_model_ab_corpus.py`
+>   (source of truth, not the JSON artifact). New `scripts/eval_regression_gate.py`
+>   scores them from a run's `evals.log` via the trustworthy deterministic scorer and
+>   runs `regression_floor_violations()` (fails on a miss OR a silent-gap). `make
+>   eval-regression-gate`. The biggest machinery→practice fix.
+> - **4.1 — judge test-retest + position-bias.** Added `test_retest` (self-consistency
+>   across repeated runs; bootstraps from the 5-trial `residual_fp_revalidation.json`)
+>   and `position_bias` (pairwise-only; N/A for the single-answer GoalJudge, stated
+>   explicitly) to `meta/judge_validation.py`. CLI `--retest`. Diagnostics, don't gate.
+> - **4.4 — `make model-ab-passk`** wrapping the existing `--trials/--answer-score`
+>   pass^k machinery. Cadence/pre-swap only, NEVER CI (live LLM).
+> - **Incident note:** mid-wave, a `git reset --hard` to undo two throwaway G8-probe
+>   commits **wiped all uncommitted tracked-file edits** (W0 + W1). Recovered by
+>   re-applying from memory + re-running the generator scripts; gate re-verified PASS.
+>   Lesson recorded; from here work is committed incrementally.
 >
 > **2026-06-28 — Wave 1 landed** (residuals; the 🔴 core). The re-adjudication the
 > plan demanded (1.1) **overturned the plan's premise** and the work followed the
