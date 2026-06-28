@@ -1,10 +1,12 @@
 # Practical-Adoption Assessment — Harness Adoption v2 Plan
 
-> **Status:** In progress — **Waves 0, 1, 2, 3 COMPLETE** (2026-06-28); Wave 4
-> (deferred subsystems) is the remainder, plus the gated live A/B (Wave-1 remainder).
-> All committed (standing go-ahead this session). Commits: `dddaab3` (W0+W1+3.1),
-> `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92` (2.1), `506f247` (2.2/2.3),
-> `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives in gitignored `.claude/`).
+> **Status:** **Waves 0–3 COMPLETE + committed** (2026-06-28). Agreed stopping point
+> (user, 2026-06-28): Wave 4 (deferred subsystems — every item a DEFER verdict: new
+> dep / scheduled infra / 2nd LLM provider+cost / heavy trial) and the gated live A/B
+> (Wave-1 remainder) are left as **documented follow-ups**, not done this session.
+> Commits: `dddaab3` (W0+W1+3.1), `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92`
+> (2.1), `506f247` (2.2/2.3), `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives
+> in gitignored `.claude/`).
 >
 > ### Execution log
 >
