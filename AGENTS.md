@@ -22,6 +22,12 @@ Run after making changes; fix all failures before proceeding.
   (these MUST pass).
 - **Install / Run:** `pip install -e ".[dev]"` · `python -m agent.cli "..."`.
 
+> **Subagents as context firewalls.** For broad fan-out reading ("where is X / how
+> does Y work") spawn the read-only `explore` subagent (`.claude/agents/explore.md`):
+> the dozens of files it reads stay in *its* context and only the distilled answer
+> returns, keeping the main thread uncluttered. Use it before an implementation task,
+> not as a substitute for reading the few files you're about to edit.
+
 ## Architecture Invariants — STRICTLY ENFORCED
 
 Tests in `tests/architecture/` verify these. Never break them. (These stay in the
