@@ -10,6 +10,7 @@ import uuid
 
 from scripts.convert_model_ab_corpus import ANSWER_PHASE, convert, write_jsonl
 from scripts.model_ab_answer_score import (
+    log_has_provider_error,
     score_answers,
     score_answers_goaljudge,
     score_mixed,
@@ -215,6 +216,29 @@ class TestAnswerScorer:
         self._write_eval_log(log, {"GEN-L1-read-sum-01": ("42", 5)})
         s = score_answers(log, cases=["GEN-L1-read-sum-01"])
         assert s.errored == 0 and s.contaminated is False
+
+    def test_log_has_provider_error_sees_non_l1_case(self, tmp_path):
+        """Review #2: the log-level sweep catches a transport error on a case that
+        is NOT in EXPECTED_BY_CASE — score_answers' contaminated flag would miss
+        it because it only grades the L1 subset, but the pass^k guard sweeps the
+        whole log."""
+        log = tmp_path / "evals.log"
+        self._write_eval_log(
+            log,
+            {"L2-reasoning-case-99": ("litellm.APIConnectionError: overloaded", 0)},
+        )
+        # score_answers (L1-scoped) sees nothing to contaminate here...
+        assert score_answers(log, cases=["L2-reasoning-case-99"]).contaminated is False
+        # ...but the log sweep does.
+        assert log_has_provider_error(log) is True
+
+    def test_log_has_provider_error_clean_log_is_false(self, tmp_path):
+        log = tmp_path / "evals.log"
+        self._write_eval_log(log, {"GEN-L1-read-sum-01": ("42", 5)})
+        assert log_has_provider_error(log) is False
+
+    def test_log_has_provider_error_missing_log_is_false(self, tmp_path):
+        assert log_has_provider_error(tmp_path / "nope.log") is False
 
     def test_missing_record_is_missing_not_silent_pass(self, tmp_path):
         log = tmp_path / "evals.log"

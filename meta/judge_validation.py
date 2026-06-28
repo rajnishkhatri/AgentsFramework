@@ -341,9 +341,13 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     print(f"  TNR (specificity) {_fmt(r.tnr)}  (floor {result.tnr_min})")
     print(f"  FPR (false-down)  {_fmt(r.fpr)}")
     print(f"  FNR (miss)        {_fmt(r.fnr)}")
+    # Distinguish an UNDECIDABLE correction (TPR==FPR, the judge has no
+    # discriminative power) from a real value — both would otherwise print the
+    # bare "—" the _fmt(None) yields, which a reader could misread as zero (#11).
+    corrected_str = "— (undecidable)" if rg.corrected is None else _fmt(rg.corrected)
     print(
         f"  Rogan-Gladen: observed_failure={_fmt(rg.observed)} "
-        f"corrected={_fmt(rg.corrected)}"
+        f"corrected={corrected_str}"
         + (f" (clamped from {_fmt(rg.corrected_raw)})" if rg.clamped else "")
     )
     for reason in result.reasons:

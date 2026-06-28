@@ -114,6 +114,34 @@ def is_provider_error(answer: str) -> bool:
     return any(m in a for m in _PROVIDER_ERROR_MARKERS)
 
 
+def log_has_provider_error(eval_log: Path) -> bool:
+    """True if ANY ``call_llm`` record in the log shows a provider/transport error.
+
+    ``score_answers`` only inspects the ``EXPECTED_BY_CASE`` (L1) subset, so a
+    transport failure on an L2/L3 case is invisible to its ``contaminated`` flag.
+    For the pass^k contamination guard — where catching contamination is the
+    whole point — we sweep EVERY ``call_llm`` answer in the log, independent of
+    the L1 grading scope. Non-JSON noise and non-``call_llm`` records are skipped.
+    """
+    if not eval_log.exists():
+        return False
+    for line in eval_log.read_text().splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if rec.get("target") != "call_llm":
+            continue
+        resp = rec.get("ai_response", "")
+        text = resp if isinstance(resp, str) else json.dumps(resp)
+        if is_provider_error(text):
+            return True
+    return False
+
+
 # An answer that admits the task did NOT complete must never grade correct, even
 # if it happens to contain the expected token (the prompt-leak false-positive:
 # write-readback-06's apology contains 'ready' because 'ready' is in the prompt;

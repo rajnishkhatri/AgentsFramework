@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from scripts.model_ab_eval import (
+    CONTAMINATED,
     HOLD,
     NOISE,
     PROMOTE,
@@ -24,6 +25,7 @@ from scripts.model_ab_eval import (
     _passk_provider_contaminated,
     _passk_trials_with_eval_log,
     _run_passk,
+    decide_passk_verdict,
     paired_bootstrap_ci,
     pass_hat_k,
 )
@@ -117,36 +119,57 @@ def test_bootstrap_deterministic_for_seed() -> None:
     assert paired_bootstrap_ci(d, seed=7) == paired_bootstrap_ci(d, seed=7)
 
 
-# ── NOISE-downgrade verdict logic (the B-3 contract, replicated inline) ──────────
+# ── verdict rule (decide_passk_verdict, the B-3 contract, tested DIRECTLY) ───────
 #
-# _run_passk's verdict rule: a candidate pass^k below baseline is HOLD, BUT if the
-# paired per-task delta CI includes 0 it downgrades to NOISE. We assert the rule
-# on its two pure inputs (pass^k delta sign + ci_includes_zero) so a refactor of
-# _run_passk can't silently re-collapse NOISE into HOLD.
+# decide_passk_verdict is the real rule extracted from _run_passk (review #6): a
+# candidate pass^k below baseline is HOLD, BUT if the paired per-task delta CI
+# includes 0 it downgrades to NOISE; integrity failure / provider error / an
+# undecidable (None) pass^k dominate to CONTAMINATED. We test the actual function,
+# not a mirror, so a refactor of the rule can't pass a parallel spec while
+# diverging from what _run_passk computes.
 
 
-def _verdict(base_passk, cand_passk, tolerance, ci_includes_zero):
-    if base_passk is None or cand_passk is None:
-        return "CONTAMINATED"
-    if cand_passk < base_passk - tolerance:
-        return NOISE if ci_includes_zero else HOLD
-    return PROMOTE
+def _decide(
+    base, cand, *, tolerance=0.0, ci_includes_zero=False, ok=True, contam=False
+):
+    return decide_passk_verdict(
+        base,
+        cand,
+        tolerance=tolerance,
+        ci_includes_zero=ci_includes_zero,
+        integrity_ok=ok,
+        provider_contaminated=contam,
+    )
 
 
 def test_verdict_regression_with_tight_ci_is_hold() -> None:
-    assert _verdict(0.9, 0.6, 0.0, ci_includes_zero=False) == HOLD
+    assert _decide(0.9, 0.6, ci_includes_zero=False) == HOLD
 
 
 def test_verdict_regression_with_straddling_ci_is_noise() -> None:
-    assert _verdict(0.9, 0.85, 0.0, ci_includes_zero=True) == NOISE
+    assert _decide(0.9, 0.85, ci_includes_zero=True) == NOISE
 
 
 def test_verdict_improvement_is_promote() -> None:
-    assert _verdict(0.6, 0.9, 0.0, ci_includes_zero=False) == PROMOTE
+    assert _decide(0.6, 0.9, ci_includes_zero=False) == PROMOTE
 
 
 def test_verdict_within_tolerance_is_promote() -> None:
-    assert _verdict(0.9, 0.88, 0.05, ci_includes_zero=False) == PROMOTE
+    assert _decide(0.9, 0.88, tolerance=0.05, ci_includes_zero=False) == PROMOTE
+
+
+def test_verdict_none_passk_is_contaminated() -> None:
+    assert _decide(None, 0.9) == CONTAMINATED
+    assert _decide(0.9, None) == CONTAMINATED
+
+
+def test_verdict_integrity_failure_dominates_promote() -> None:
+    # Candidate would PROMOTE on score alone, but a failed integrity check wins.
+    assert _decide(0.6, 0.9, ok=False) == CONTAMINATED
+
+
+def test_verdict_provider_contamination_dominates_promote() -> None:
+    assert _decide(0.6, 0.9, contam=True) == CONTAMINATED
 
 
 # ── pass^k guards (Bugbot: integrity / contamination / missing artifacts) ───────
@@ -190,7 +213,24 @@ def test_passk_provider_contaminated_detects_transport_error(tmp_path: Path) -> 
             )
         },
     )
-    assert _passk_provider_contaminated(arm, trials=1, cases=["GEN-L1-read-sum-01"])
+    assert _passk_provider_contaminated(arm, trials=1)
+
+
+def test_passk_provider_contaminated_detects_error_on_non_l1_case(
+    tmp_path: Path,
+) -> None:
+    """Review #2: a transport error on a case NOT in EXPECTED_BY_CASE (an L2/L3
+    case) must still contaminate — the guard sweeps every call_llm answer, not
+    just the L1 subset the answer scorer grades."""
+    arm = tmp_path / "baseline"
+    (arm / "trial_0").mkdir(parents=True)
+    _write_eval_log(
+        arm / "trial_0" / "evals.log",
+        # An arbitrary non-GEN-L1 case id => invisible to score_answers, but the
+        # log sweep still sees the provider-error marker in its answer.
+        {"L2-some-reasoning-case": ("litellm.RateLimitError: overloaded", 0)},
+    )
+    assert _passk_provider_contaminated(arm, trials=1)
 
 
 def test_passk_arm_integrity_fails_when_no_recordings(tmp_path: Path) -> None:
@@ -207,6 +247,25 @@ def test_passk_arm_integrity_fails_when_no_recordings(tmp_path: Path) -> None:
     result = _passk_arm_integrity(rows, arm, trials=1, expected_models={"gpt-4o-mini"})
     assert not result.ok
     assert result.rows_scored == 0
+
+
+def test_passk_arm_integrity_one_empty_trial_contaminates(tmp_path: Path) -> None:
+    """Review #1: a wholly-uninstrumented trial must NOT be masked by a good
+    sibling. Before the fix, ``rows_scored = max(...)`` let one trial's nonzero
+    count hide an empty trial, yielding ``ok=True`` while pass^k was silently
+    depressed. trial_0 has no recordings; with the fix the arm is NOT ok and the
+    empty trial is named in the mismatches."""
+    rows = [
+        {"case": "GEN-L1-read-sum-01", "prompt": "sum", "trace_id": "t", "phase": "d"}
+    ]
+    arm = tmp_path / "baseline"
+    # trial_0: empty (no recordings). trial_1: also no recordings here, but the
+    # point is the per-trial empty-trial mismatch fires regardless of siblings.
+    (arm / "trial_0").mkdir(parents=True)
+    (arm / "trial_1").mkdir(parents=True)
+    result = _passk_arm_integrity(rows, arm, trials=2, expected_models={"gpt-4o-mini"})
+    assert not result.ok
+    assert any("no scored rows" in m for m in result.mismatches)
 
 
 def test_run_passk_score_only_missing_logs_exits_2(tmp_path: Path) -> None:

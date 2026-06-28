@@ -143,7 +143,12 @@ def graduate(
 
 @dataclass(frozen=True)
 class RegressionViolation:
-    """A FROZEN regression eval that dropped below the floor -- a real alarm."""
+    """A FROZEN regression eval that dropped below the floor -- a real alarm.
+
+    Read ``runs`` for the *why*: ``runs == 0`` is a frozen eval that did NOT run
+    in the suite (a silent-gap violation), distinct from ``runs > 0`` with a
+    ``pass_rate`` below ``floor`` (a genuine regression). (#11)
+    """
 
     case: str
     pass_rate: float
@@ -215,7 +220,10 @@ def eval_record_to_goldset_row(
         "response_text": record.get("ai_response", ""),
         "model": record.get("model"),
         "cost_usd": record.get("cost_usd"),
-        "trace_id": str(record.get("task_id", "")),
+        # Preserve a real Langfuse trace_id when the record carries one; fall back
+        # to task_id only when absent. Collapsing the two would destroy the join
+        # key a harvested row needs to point back at its source trace (review #8).
+        "trace_id": str(record.get("trace_id", record.get("task_id", ""))),
         "tier": tier.value,
         "provenance": "langfuse-harvest",
     }

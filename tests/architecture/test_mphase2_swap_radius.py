@@ -69,9 +69,95 @@ def _is_source_file(path: str) -> bool:
 
 
 def _ruff_bin() -> str | None:
-    """The repo-pinned ruff (.venv), or None if absent (skip the format filter)."""
+    """Locate a ruff to run the format filter with, or None if none is found.
+
+    Prefer the repo-pinned ``.venv`` ruff; fall back to a ``ruff`` on PATH (review
+    #5 — a fresh CI checkout installs ruff via pre-commit's own env or a global
+    install, not necessarily ``.venv``, and without this the format filter would be
+    bypassed and the gate would fire on the very reformat it exists to exempt)."""
+    import shutil
+
     candidate = _REPO_ROOT / ".venv" / "bin" / "ruff"
-    return str(candidate) if candidate.exists() else None
+    if candidate.exists():
+        return str(candidate)
+    return shutil.which("ruff")
+
+
+def _repo_root_writable() -> bool:
+    """True iff a tempfile can be created in _REPO_ROOT (the discriminator and its
+    test helper both host their ruff-config-resolving tempfile there). A read-only
+    checkout (some hardened CI runners) makes this False; the gate stays
+    conservative-fire and the discriminator unit tests skip rather than false-pass."""
+    import tempfile
+
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=_REPO_ROOT, delete=True):
+            return True
+    except OSError:
+        return False
+
+
+def _reformatted_matches(old_text: str, new_text: str) -> bool:
+    """True iff ruff-reformatting ``old_text`` reproduces ``new_text`` exactly.
+
+    The discriminator core, factored out of git glue so it is directly unit-tested
+    (review #3 — this is the logic that decides whether the swap-radius gate fires,
+    and a silent inversion here would stop the gate firing on a real swap). Runs
+    the repo's ruff (``format`` + plain safe ``--fix``) on the OLD text and
+    compares to the NEW text. Equal ⇒ the only change WAS the reformat (``git diff
+    -w`` is insufficient: removing an unused import changes non-whitespace tokens).
+
+    Returns ``False`` (conservative — keep the gate firing) when ruff is
+    unavailable or errors: never silently classify a possible real swap as
+    format-only.
+    """
+    ruff = _ruff_bin()
+    if ruff is None:
+        return False
+
+    import tempfile
+
+    # The tempfile lives in _REPO_ROOT (not tmp_path) so ruff resolves the repo's
+    # pyproject.toml ruff config by walking up from the file's path -- a tempfile
+    # in /tmp would inherit ruff's defaults, NOT the repo's fix-set, and the
+    # discriminator would no longer reproduce the baseline's reformat. The
+    # trade-off: a read-only repo checkout (some hardened CI runners) can't host
+    # the tempfile; we catch OSError and return False (conservative -- keep the
+    # gate firing on every change rather than silently exempting reformats the
+    # discriminator couldn't actually check).
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".py", delete=False, dir=_REPO_ROOT
+        ) as fh:
+            fh.write(old_text)
+            tmp = Path(fh.name)
+    except OSError:
+        return False
+    try:
+        subprocess.run(
+            [ruff, "format", "-q", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        # Plain --fix (no --select): reproduce the SAME safe-fix families the repo
+        # baseline applied (I import-sort, UP pyupgrade, F, E, ...), per the repo
+        # ruff config. A narrower --select F,E (review #4) would not reproduce an
+        # I/UP-only reformat, so a pure reformat in those families would wrongly
+        # read as substantive and fire the gate.
+        subprocess.run(
+            [ruff, "check", "-q", "--fix", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        reformatted_old = tmp.read_text()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    return reformatted_old == new_text
 
 
 def _has_substantive_change(default_branch: str, path: str) -> bool:
@@ -83,14 +169,9 @@ def _has_substantive_change(default_branch: str, path: str) -> bool:
     rejoining included -- which would otherwise read as a false swap-radius
     violation the moment any unrelated ``services/*.py`` also changed.
 
-    The discriminator: take the OLD version of the file, run the repo's ruff
-    (format + safe fixes) on it, and compare to the NEW version. If they match,
-    the only change WAS the reformat -- not a swap (``git diff -w`` is
-    insufficient here: removing an unused import changes non-whitespace tokens).
-
-    Conservative fallbacks (keep the gate firing -- never silently drop a
-    possible real swap): if git can't show either version, or ruff isn't
-    available, treat the change as substantive.
+    Git glue around :func:`_reformatted_matches`. Conservative fallbacks (keep the
+    gate firing -- never silently drop a possible real swap): if git can't show
+    either version, treat the change as substantive.
     """
     merge_base = _git("merge-base", "HEAD", default_branch)
     if not merge_base:
@@ -99,37 +180,7 @@ def _has_substantive_change(default_branch: str, path: str) -> bool:
     new_path = _REPO_ROOT / path
     if old is None or not new_path.exists():
         return True
-    ruff = _ruff_bin()
-    if ruff is None:
-        return True
-
-    import tempfile
-
-    with tempfile.NamedTemporaryFile(
-        "w", suffix=".py", delete=False, dir=_REPO_ROOT
-    ) as fh:
-        fh.write(old)
-        tmp = Path(fh.name)
-    try:
-        subprocess.run(
-            [ruff, "format", "-q", str(tmp)],
-            capture_output=True,
-            cwd=_REPO_ROOT,
-            timeout=30,
-        )
-        subprocess.run(
-            [ruff, "check", "-q", "--fix", "--select", "F,E", str(tmp)],
-            capture_output=True,
-            cwd=_REPO_ROOT,
-            timeout=30,
-        )
-        reformatted_old = tmp.read_text()
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return True
-    finally:
-        tmp.unlink(missing_ok=True)
-
-    return reformatted_old != new_path.read_text()
+    return not _reformatted_matches(old, new_path.read_text())
 
 
 class TestMPhase2SwapRadius:
@@ -172,3 +223,98 @@ class TestMPhase2SwapRadius:
             "If this is intentional (not a backend swap), this test can be "
             "skipped with -k 'not swap_radius'."
         )
+
+
+class TestReformattedMatchesDiscriminator:
+    """Direct unit tests for the format-only discriminator (review #3).
+
+    ``_reformatted_matches`` decides whether the swap-radius gate fires. Without
+    these, a refactor could silently invert it and the gate would stop firing on
+    real swaps (the G8 risk, applied to this gate's own logic). Skipped when no
+    ruff is available OR the repo root is not writable (the discriminator cannot
+    host its config-resolving tempfile; the gate falls back to treating every
+    change as substantive, which is the conservative-fire direction)."""
+
+    _OLD_BADLY_FORMATTED = (
+        "import os\n"
+        "import sys\n"
+        "\n\n"
+        "def f(x):\n"
+        "    y =  x+1\n"  # extra space + no spaces around +: ruff format fixes
+        "    return y\n"
+    )
+
+    def _skip_if_cannot_run(self) -> None:
+        ruff = _ruff_bin()
+        if ruff is None:
+            pytest.skip("no ruff available to run the discriminator")
+        if not _repo_root_writable():
+            pytest.skip(
+                "repo root not writable, cannot host the discriminator tempfile"
+            )
+
+    def test_pure_reformat_is_format_only(self) -> None:
+        """OLD reformatted by ruff == NEW (the reformatted text) ⇒ format-only."""
+        self._skip_if_cannot_run()
+        # Produce the canonical reformat of OLD by running ruff on it once.
+        new_text = _canonical_reformat(self._OLD_BADLY_FORMATTED)
+        # OLD differs from NEW only by formatting/safe-fixes ⇒ matches ⇒ True.
+        assert _reformatted_matches(self._OLD_BADLY_FORMATTED, new_text) is True
+
+    def test_unused_import_removal_is_format_only(self) -> None:
+        """Removing an unused import is a safe ``--fix``, so it's NOT a swap.
+
+        This is the case ``git diff -w`` gets wrong (it's a non-whitespace token
+        change) — the ruff-equivalence discriminator must classify it format-only."""
+        self._skip_if_cannot_run()
+        old = "import os\nimport sys\n\n\ndef f():\n    return sys.argv\n"
+        # NEW = same, but the unused `import os` removed (what ruff --fix F401 does).
+        new = _canonical_reformat(old)
+        assert "import os" not in new  # sanity: ruff did remove it
+        assert _reformatted_matches(old, new) is True
+
+    def test_semantic_edit_is_substantive(self) -> None:
+        """A real logic change (new appended statement) is NOT format-only."""
+        self._skip_if_cannot_run()
+        old = "def f(x):\n    return x + 1\n"
+        new = "def f(x):\n    return x + 2\n"  # changed the constant: a real swap
+        assert _reformatted_matches(old, new) is False
+
+
+def _canonical_reformat(text: str) -> str:
+    """Run the same ruff (format + plain --fix) the discriminator uses, returning
+    the reformatted text. Test helper so the 'NEW' side of a format-only pair is
+    exactly what the discriminator would produce.
+
+    Skips the calling test when _REPO_ROOT is not writable (some hardened CI
+    runners mount the checkout read-only); the discriminator's production path
+    returns False in that case, so the gate stays conservative-fire and these
+    unit tests simply can't exercise the equivalence here."""
+    import tempfile
+
+    ruff = _ruff_bin()
+    assert ruff is not None  # guarded by skip in callers
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".py", delete=False, dir=_REPO_ROOT
+        ) as fh:
+            fh.write(text)
+            tmp = Path(fh.name)
+    except OSError as exc:
+        pytest.skip(f"repo root not writable, cannot run ruff discriminator: {exc}")
+    try:
+        subprocess.run(
+            [ruff, "format", "-q", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        subprocess.run(
+            [ruff, "check", "-q", "--fix", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        return tmp.read_text()
+    finally:
+        tmp.unlink(missing_ok=True)
