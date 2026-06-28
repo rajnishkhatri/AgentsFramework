@@ -71,6 +71,9 @@ the non-layering boundaries.)
 ## Decision records (intent debt) + comprehension gates
 
 Capture the *why* behind structural changes — the human engagement automation can't.
+The gate *mechanism* (the answer-before-reveal preamble + rotating wordings, incl.
+**G3** security-boundary and **G7** architecture) lives in `docs/adr/GATES.md`; the
+names below are the triggers.
 
 - **ADR.1 — ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above,
   append a numbered ADR to the `docs/adr/` OKF bundle and link it from the code
