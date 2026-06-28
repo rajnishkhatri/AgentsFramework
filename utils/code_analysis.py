@@ -548,6 +548,173 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
     }
 
 
+# ── G8: test-weakening detector ────────────────────────────────────────
+
+# A skip/xfail with one of these substrings in its reason is treated as
+# justified (the G8 escape hatch — see AGENTS.md "G8 — test-mass-rewrite gate").
+# Keep the tokens explicit so a reviewer grepping for them finds every waiver.
+_G8_JUSTIFICATION_TOKENS = ("G8-OK", "ADR-", "flaky-tracked:", "live_llm", "env-gated:")
+
+# pytest markers that, when newly added, weaken a test's enforcement.
+_WEAKENING_MARKERS = ("skip", "skipif", "xfail")
+
+
+def _test_func_names(tree: ast.Module) -> set[str]:
+    """Names of every ``def test_*`` / ``async def test_*`` in a module tree,
+    at any nesting depth (class methods included)."""
+    names: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            if node.name.startswith("test_"):
+                names.add(node.name)
+    return names
+
+
+def _marker_name(node: ast.expr) -> str | None:
+    """Return the pytest.mark.<name> marker name for a decorator node, else None.
+
+    Matches both ``@pytest.mark.skip`` (Attribute) and
+    ``@pytest.mark.skipif(...)`` (Call wrapping an Attribute)."""
+    target = node.func if isinstance(node, ast.Call) else node
+    # pytest.mark.<name>
+    if isinstance(target, ast.Attribute) and isinstance(target.value, ast.Attribute):
+        if target.value.attr == "mark":
+            return target.attr
+    return None
+
+
+def _decorator_reason(node: ast.expr) -> str:
+    """Best-effort extraction of a marker's reason string (positional or kw)."""
+    if not isinstance(node, ast.Call):
+        return ""
+    parts: list[str] = []
+    for arg in node.args:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            parts.append(arg.value)
+    for kw in node.keywords:
+        if kw.arg == "reason" and isinstance(kw.value, ast.Constant):
+            if isinstance(kw.value.value, str):
+                parts.append(kw.value.value)
+    return " ".join(parts)
+
+
+def _weakening_markers(tree: ast.Module) -> dict[str, list[tuple[str, str]]]:
+    """Map each test function -> list of (marker_name, reason) for its
+    skip/skipif/xfail decorators. Only test functions are inspected."""
+    out: dict[str, list[tuple[str, str]]] = {}
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if not node.name.startswith("test_"):
+            continue
+        marks: list[tuple[str, str]] = []
+        for dec in node.decorator_list:
+            name = _marker_name(dec)
+            if name in _WEAKENING_MARKERS:
+                marks.append((name, _decorator_reason(dec)))
+        if marks:
+            out[node.name] = marks
+    return out
+
+
+def _is_justified(reason: str) -> bool:
+    return any(token in reason for token in _G8_JUSTIFICATION_TOKENS)
+
+
+def _removal_waived(new_source: str, removed_test: str) -> bool:
+    """True iff ``new_source`` carries a ``# G8-OK:`` comment naming the removed
+    test — the explicit, specific waiver for a legitimate rename/consolidation."""
+    for line in new_source.splitlines():
+        stripped = line.strip()
+        if (
+            stripped.startswith("#")
+            and "G8-OK" in stripped
+            and removed_test in stripped
+        ):
+            return True
+    return False
+
+
+def detect_test_weakening(old_source: str, new_source: str) -> dict[str, Any]:
+    """Compare two versions of a test module for G8 (test-mass-rewrite) weakening.
+
+    Returns a structured verdict. A change weakens the suite when, versus
+    ``old_source``, the new version either:
+
+    * **removes** a ``def test_*`` (the function name disappears), or
+    * **newly adds** a ``@pytest.mark.skip`` / ``skipif`` / ``xfail`` to a test
+      that did not have that marker before — unless the marker's reason carries a
+      justification token (``G8-OK``, an ``ADR-`` reference, ``flaky-tracked:``,
+      ``live_llm``, ``env-gated:``).
+
+    Pure: parses both sources with ``ast``; executes nothing. A syntax error in
+    either side is reported as a violation (conservative — never silently pass).
+    The git glue (resolving old/new content from the merge base) lives in the
+    architecture test, so this core is directly unit-testable.
+    """
+    try:
+        old_tree = ast.parse(old_source)
+    except SyntaxError as exc:
+        return _weakening_result(
+            [_weak_v("G8.PARSE_OLD", 0, f"old unparseable: {exc}")]
+        )
+    try:
+        new_tree = ast.parse(new_source)
+    except SyntaxError as exc:
+        return _weakening_result(
+            [_weak_v("G8.PARSE_NEW", 0, f"new unparseable: {exc}")]
+        )
+
+    violations: list[dict[str, Any]] = []
+
+    old_tests = _test_func_names(old_tree)
+    new_tests = _test_func_names(new_tree)
+    for removed in sorted(old_tests - new_tests):
+        # A removal/rename is allowed when the NEW source carries a waiver comment
+        # that names the removed test, e.g. ``# G8-OK: test_real_corpus_has_nine
+        # renamed to …``. This is the same escape hatch as the skip-reason tokens —
+        # a legitimate rename or consolidation declares itself; a silent deletion
+        # does not. The comment must name the test so the waiver is specific.
+        if _removal_waived(new_source, removed):
+            continue
+        violations.append(
+            _weak_v(
+                "G8.TEST_REMOVED",
+                0,
+                f"test '{removed}' was removed (present in the base, gone now); "
+                f"add a '# G8-OK: {removed} …' waiver comment if intentional",
+            )
+        )
+
+    old_marks = _weakening_markers(old_tree)
+    new_marks = _weakening_markers(new_tree)
+    for test_name, marks in sorted(new_marks.items()):
+        prior = {m for m, _ in old_marks.get(test_name, [])}
+        for marker, reason in marks:
+            if marker in prior:
+                continue  # marker already existed in the base — not newly weakened
+            if _is_justified(reason):
+                continue
+            violations.append(
+                _weak_v(
+                    "G8.TEST_SKIPPED",
+                    0,
+                    f"test '{test_name}' newly marked @pytest.mark.{marker} "
+                    f"without a justification token (reason={reason!r})",
+                )
+            )
+
+    return _weakening_result(violations)
+
+
+def _weak_v(rule: str, line: int, description: str) -> dict[str, Any]:
+    return {"rule": rule, "line": line, "description": description}
+
+
+def _weakening_result(violations: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"pass": len(violations) == 0, "violations": violations}
+
+
 # ── Private helpers ────────────────────────────────────────────────────
 
 

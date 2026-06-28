@@ -17,6 +17,7 @@ from utils.code_analysis import (
     check_trust_purity,
     classify_layer,
     detect_anti_patterns,
+    detect_test_weakening,
     parse_imports,
 )
 
@@ -624,3 +625,153 @@ class TestDetectAntiPatterns:
         result = detect_anti_patterns(f)
         assert result["pass"] is False
         assert result["violations"][0]["rule"] == "AP.PARSE"
+
+
+# ── G8: test-weakening detector ────────────────────────────────────────
+
+
+class TestDetectTestWeakening:
+    """Pure detector for the G8 (test-mass-rewrite) gate. Failure paths first."""
+
+    def test_removed_test_is_flagged(self):
+        old = textwrap.dedent("""\
+            def test_a():
+                assert True
+
+            def test_b():
+                assert 1 == 1
+        """)
+        new = textwrap.dedent("""\
+            def test_a():
+                assert True
+        """)
+        result = detect_test_weakening(old, new)
+        assert result["pass"] is False
+        rules = {v["rule"] for v in result["violations"]}
+        assert "G8.TEST_REMOVED" in rules
+        assert any("test_b" in v["description"] for v in result["violations"])
+
+    def test_newly_added_skip_is_flagged(self):
+        old = textwrap.dedent("""\
+            def test_a():
+                assert True
+        """)
+        new = textwrap.dedent("""\
+            import pytest
+
+            @pytest.mark.skip
+            def test_a():
+                assert True
+        """)
+        result = detect_test_weakening(old, new)
+        assert result["pass"] is False
+        assert {v["rule"] for v in result["violations"]} == {"G8.TEST_SKIPPED"}
+
+    def test_newly_added_xfail_is_flagged(self):
+        old = "def test_a():\n    assert True\n"
+        new = textwrap.dedent("""\
+            import pytest
+
+            @pytest.mark.xfail(reason="broken")
+            def test_a():
+                assert True
+        """)
+        result = detect_test_weakening(old, new)
+        assert result["pass"] is False
+        assert "test_a" in result["violations"][0]["description"]
+
+    def test_skipif_on_method_is_flagged(self):
+        old = textwrap.dedent("""\
+            class TestThing:
+                def test_x(self):
+                    assert True
+        """)
+        new = textwrap.dedent("""\
+            import pytest
+
+            class TestThing:
+                @pytest.mark.skipif(True, reason="meh")
+                def test_x(self):
+                    assert True
+        """)
+        result = detect_test_weakening(old, new)
+        assert result["pass"] is False
+        assert "test_x" in result["violations"][0]["description"]
+
+    def test_unchanged_suite_passes(self):
+        src = textwrap.dedent("""\
+            def test_a():
+                assert True
+
+            def test_b():
+                assert 2 == 2
+        """)
+        assert detect_test_weakening(src, src)["pass"] is True
+
+    def test_added_test_passes(self):
+        old = "def test_a():\n    assert True\n"
+        new = "def test_a():\n    assert True\n\n\ndef test_b():\n    assert True\n"
+        assert detect_test_weakening(old, new)["pass"] is True
+
+    def test_preexisting_skip_not_flagged(self):
+        # A skip that was already there in the base must not fire (only NEW skips do).
+        src = textwrap.dedent("""\
+            import pytest
+
+            @pytest.mark.skip(reason="legacy")
+            def test_a():
+                assert True
+        """)
+        assert detect_test_weakening(src, src)["pass"] is True
+
+    def test_justified_skip_is_allowed(self):
+        old = "def test_a():\n    assert True\n"
+        for reason in ("G8-OK env not available", "see ADR-0007", "flaky-tracked: #42"):
+            new = textwrap.dedent(f"""\
+                import pytest
+
+                @pytest.mark.skip(reason="{reason}")
+                def test_a():
+                    assert True
+            """)
+            result = detect_test_weakening(old, new)
+            assert result["pass"] is True, f"justification {reason!r} should pass"
+
+    def test_live_llm_marker_is_allowed(self):
+        # The repo bans live LLM in CI; marking a test live_llm is a sanctioned guard.
+        old = "def test_a():\n    assert True\n"
+        new = textwrap.dedent("""\
+            import pytest
+
+            @pytest.mark.skipif(True, reason="live_llm only")
+            def test_a():
+                assert True
+        """)
+        assert detect_test_weakening(old, new)["pass"] is True
+
+    def test_unparseable_new_is_conservative_fail(self):
+        result = detect_test_weakening("def test_a():\n    pass\n", "def broken(:\n")
+        assert result["pass"] is False
+        assert result["violations"][0]["rule"] == "G8.PARSE_NEW"
+
+    def test_removal_waived_by_named_comment(self):
+        # A rename declared with a '# G8-OK: <removed test>' comment is allowed.
+        old = "def test_old_name():\n    assert True\n"
+        new = textwrap.dedent("""\
+            # G8-OK: test_old_name renamed to test_new_name (same assertion)
+            def test_new_name():
+                assert True
+        """)
+        assert detect_test_weakening(old, new)["pass"] is True
+
+    def test_removal_waiver_must_name_the_test(self):
+        # A generic '# G8-OK' that does NOT name the removed test must not waive it.
+        old = "def test_old_name():\n    assert True\n"
+        new = textwrap.dedent("""\
+            # G8-OK: unrelated waiver
+            def test_new_name():
+                assert True
+        """)
+        result = detect_test_weakening(old, new)
+        assert result["pass"] is False
+        assert result["violations"][0]["rule"] == "G8.TEST_REMOVED"

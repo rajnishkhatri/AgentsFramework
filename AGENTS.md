@@ -53,6 +53,10 @@ the non-layering boundaries.)
 - `make check` after changes · `PromptService.render_prompt()` for all prompts (no
   hardcoded strings) · record every LLM call via `eval_capture.record()` with
   `user_id`+`task_id` · new prompts are `.j2` files in `prompts/`.
+- **Red/green TDD for anything verifiable** — write the test, *watch it fail first*,
+  then implement. A test that never failed proves nothing.
+- **Demand evidence, not assertions** — paste the actual command/test output, not a
+  summary of it. "Tests pass" without the output is not a result.
 
 ### ⚠️ Ask first  (also ADR triggers — see Decision records)
 - New `pyproject.toml` dependency · trust-kernel type change in `trust/models.py`
@@ -68,12 +72,12 @@ the non-layering boundaries.)
 
 Capture the *why* behind structural changes — the human engagement automation can't.
 
-- **ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above, append a
-  numbered ADR to the `docs/adr/` OKF bundle and link it from the code seam it
-  governs. Copy `docs/adr/0000-template.md` (Context / Decision / Options /
-  Rationale / Consequences — the rejected alternatives are the intent-debt
-  payload). OKF: every ADR needs frontmatter `type:`, an `index.md` entry, and a
-  newest-first `log.md` line.
+- **ADR.1 — ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above,
+  append a numbered ADR to the `docs/adr/` OKF bundle and link it from the code
+  seam it governs. Copy `docs/adr/0000-template.md` (Context / Decision /
+  Options / Rationale / Consequences — the rejected alternatives are the
+  intent-debt payload). OKF: every ADR needs frontmatter `type:`, an `index.md`
+  entry, and a newest-first `log.md` line.
 - **G1 — new-abstraction gate.** Automation can't judge whether an abstraction
   earns its place. Before adding one, state in the PR/commit what it buys and what
   you considered instead (→ an ADR for anything load-bearing).
@@ -84,6 +88,13 @@ Capture the *why* behind structural changes — the human engagement automation 
 - **G8 — test-mass-rewrite gate.** A large rewrite of existing tests can silently
   weaken the suite (TAP-1/3/4). When a diff rewrites many tests, justify *why each
   weakened assertion is still sound* before relying on the green result.
+  (`tests/architecture/test_no_test_weakening.py` is the mechanical sensor: it
+  fails a removed `def test_*` or a newly skipped/xfailed test that lacks a
+  justification token.)
+- **Spec the *what*, ADR the *why*.** For a non-trivial durable change, copy
+  `docs/plan/_spec_template.md` → `docs/plan/<name>.spec.md` (EARS acceptance criteria
+  → testable). The spec is the *what*; the ADR is the *why*. Small non-obvious choices
+  too minor for an ADR go in `docs/adr/decisions.md` (2–4 lines).
 - **Ratchet rule.** Every instruction line here traces to a real failure. Delete
   aspirational lines; don't add a rule without a failure that justifies it.
 

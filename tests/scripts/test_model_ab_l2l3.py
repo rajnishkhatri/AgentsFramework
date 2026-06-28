@@ -30,6 +30,16 @@ L2L3_CASES = [
     "GEN-L3-constraint-solve-13",
     "GEN-L3-multi-hop-synthesis-14",
     "GEN-L3-iterative-refine-15",
+    # Wave-1 growth cases (16–24); see scripts/build_l2l3_growth_corpus.py.
+    "GEN-L2-multi-file-reconcile-16",
+    "GEN-L2-cross-ref-lookup-17",
+    "GEN-L2-pipeline-transform-18",
+    "GEN-L2-multi-source-synthesis-19",
+    "GEN-L2-dependency-resolve-20",
+    "GEN-L3-constraint-solve-21",
+    "GEN-L2-verify-and-fix-22",
+    "GEN-L3-multi-hop-synthesis-23",
+    "GEN-L3-iterative-refine-24",
 ]
 
 
@@ -48,8 +58,58 @@ class TestSeed:
             "schedule/p1.txt",
             "papers/paper-3.txt",
             "budget.csv",
+            # Wave-1 growth fixtures (16–24).
+            "invoices2/inv2-1.txt",
+            "orders2.csv",
+            "customers2.csv",
+            "events2.log",
+            "reports2/r1.txt",
+            "config2.json",
+            "deps2.txt",
+            "schedule2/q1.txt",
+            "memos/memo-2.txt",
+            "budget2.csv",
         ):
             assert (ws / rel).exists(), f"missing fixture {rel}"
+
+    def test_growth_fixtures_match_ground_truth(self, tmp_path):
+        # Spot-check the arithmetic of the Wave-1 growth fixtures against the
+        # GROUND_TRUTH the rubric keys are projected from.
+        from collections import Counter
+
+        ws = seed_l2l3_workspace(tmp_path)
+
+        # 16 paid subtotal = 410.
+        paid = sum(
+            int(body.split("amount:")[1].split("\n")[0])
+            for n in range(1, 6)
+            for body in [(ws / "invoices2" / f"inv2-{n}.txt").read_text()]
+            if "status: paid" in body
+        )
+        assert paid == 410
+        assert any(
+            "410" in f
+            for f in GROUND_TRUTH_BY_CASE["GEN-L2-multi-file-reconcile-16"].facts
+        )
+
+        # 17 region counts = east 4 / west 3 / north 1.
+        cust = dict(
+            line.split(",")
+            for line in (ws / "customers2.csv").read_text().splitlines()[1:]
+        )
+        counts = Counter(
+            cust[line.split(",")[1]]
+            for line in (ws / "orders2.csv").read_text().splitlines()[1:]
+        )
+        assert counts == {"east": 4, "west": 3, "north": 1}
+
+        # 24 overrun = 80 (only salaries over).
+        rows = [
+            line.split(",")
+            for line in (ws / "budget2.csv").read_text().splitlines()[1:]
+        ]
+        overrun = sum(int(a) - int(p) for _c, p, a in rows if int(a) > int(p))
+        assert overrun == 80
 
     def test_tolerates_stray_file_where_dir_must_go(self, tmp_path):
         # A contaminated prior run can leave a FILE at invoices/; seeding must
@@ -119,13 +179,16 @@ class TestCorpusFilter:
         out = filter_l2l3(src)
         assert out == [row]
 
-    def test_real_corpus_has_nine(self):
-        # The actual converted corpus (if present) yields exactly 9 L2/L3 rows.
+    # G8-OK: test_real_corpus_has_nine renamed to test_real_corpus_has_eighteen
+    # (the L2/L3 corpus grew 9 -> 18 in Wave 1; same assertion, updated count).
+    def test_real_corpus_has_eighteen(self):
+        # The actual corpus (if present) yields 18 L2/L3 rows: the original 9
+        # (07–15) plus the Wave-1 growth cases (16–24).
         from scripts.build_l2l3_corpus import DEFAULT_SOURCE
 
         if not DEFAULT_SOURCE.exists():
             pytest.skip("ui_batch.jsonl not built in this env")
-        assert len(filter_l2l3(DEFAULT_SOURCE)) == 9
+        assert len(filter_l2l3(DEFAULT_SOURCE)) == 18
 
 
 class TestAnswerKeys:
@@ -163,10 +226,10 @@ class TestHarvest:
         assert out[case] == "FINAL"
 
     def test_harvest_surfaces_missing_cell(self, tmp_path):
-        # An arm whose evals.log is missing -> all 9 cases reported missing.
+        # An arm whose evals.log is missing -> every case reported missing.
         sources = {"phantom-arm": ("nope_run", "candidate")}
         raw, missing = harvest(sources, cases=L2L3_CASES, model_ab=tmp_path)
-        assert len(missing) == 9
+        assert len(missing) == len(L2L3_CASES)
         assert all(arm == "phantom-arm" for arm, _ in missing)
 
 

@@ -163,6 +163,106 @@ def _seed(ws: Path) -> None:
         "rent,500,500\n"
     )
 
+    # ── Wave-1 growth cases (16–24): new fixtures, same answer SHAPES so the
+    #    deterministic verifier (components/answer_verifiers.py) can grade 16–21
+    #    for free; 22–24 stay prose (LLM-judged). Distinct sub-dirs avoid any
+    #    collision with the 07–15 fixtures above.
+
+    # 16 multi-file-reconcile (paid-subtotal shape): inv2-*.txt.
+    #    inv2-1 200 paid, inv2-2 60 paid, inv2-3 90 unpaid, inv2-4 150 paid,
+    #    inv2-5 25 unpaid  => paid subtotal = 200+60+150 = 410
+    inv2 = _fresh_dir(ws / "invoices2")
+    (inv2 / "inv2-1.txt").write_text("amount: 200\nstatus: paid\n")
+    (inv2 / "inv2-2.txt").write_text("amount: 60\nstatus: paid\n")
+    (inv2 / "inv2-3.txt").write_text("amount: 90\nstatus: unpaid\n")
+    (inv2 / "inv2-4.txt").write_text("amount: 150\nstatus: paid\n")
+    (inv2 / "inv2-5.txt").write_text("amount: 25\nstatus: unpaid\n")
+
+    # 17 cross-ref-lookup (region-counts shape): new orders/customers.
+    #    customers: c1=east, c2=east, c3=west, c4=north, c5=west
+    #    orders: o1->c1, o2->c3, o3->c1, o4->c4, o5->c2, o6->c5, o7->c3, o8->c1
+    #    east = c1(o1,o3,o8)+c2(o5) = 4 ; west = c3(o2,o7)+c5(o6) = 3 ; north = c4(o4) = 1
+    (ws / "orders2.csv").write_text(
+        "order_id,customer_id\no1,c1\no2,c3\no3,c1\no4,c4\no5,c2\no6,c5\no7,c3\no8,c1\n"
+    )
+    (ws / "customers2.csv").write_text(
+        "customer_id,region\nc1,east\nc2,east\nc3,west\nc4,north\nc5,west\n"
+    )
+
+    # 18 pipeline-transform (peak-error-hour shape): new log.
+    #    13:xx -> 2 ERROR ; 14:xx -> 1 ERROR ; 15:xx -> 4 ERROR  => peak hour 15
+    (ws / "events2.log").write_text(
+        "13:00:01 INFO start\n"
+        "13:04:00 ERROR disk\n"
+        "13:40:00 ERROR net\n"
+        "14:10:00 ERROR timeout\n"
+        "14:55:00 WARN slow\n"
+        "15:01:00 ERROR oom\n"
+        "15:09:00 ERROR oom\n"
+        "15:30:00 ERROR timeout\n"
+        "15:59:00 ERROR disk\n"
+    )
+
+    # 19 multi-source-synthesis (growth-rate shape): q1=400, q2=300, q3=360.
+    #    q1->q2 = (300-400)/400 = -25% ; q2->q3 = (360-300)/300 = 20%
+    rep2 = _fresh_dir(ws / "reports2")
+    (rep2 / "r1.txt").write_text("Region 1 summary.\nTOTAL: 400\n")
+    (rep2 / "r2.txt").write_text("Region 2 summary.\nTOTAL: 300\n")
+    (rep2 / "r3.txt").write_text("Region 3 summary.\nTOTAL: 360\n")
+
+    # 20 dependency-resolve (topological-sort shape): a 5-node DAG.
+    #    W->X, W->Y, X->Z, Y->Z, Z->V  (W needs X,Y; X,Y need Z; Z needs V)
+    #    install order (deps first): V, Z, then X and Y, then W.
+    (ws / "deps2.txt").write_text("W -> X\nW -> Y\nX -> Z\nY -> Z\nZ -> V\n")
+
+    # 21 constraint-solve (earliest-slot shape): five people, 30-min slots.
+    #    q1{08:30,09:00} q2{09:00,09:30} q3{08:30,09:30} q4{09:00,10:00} q5{09:00}
+    #    08:30 -> q1,q3 = 2 ; 09:00 -> q1,q2,q4,q5 = 4 ; 09:30 -> q2,q3 = 2 ;
+    #    10:00 -> q4 = 1  => earliest covering >=4 = 09:00 (q1,q2,q4,q5; absent q3)
+    sch2 = _fresh_dir(ws / "schedule2")
+    (sch2 / "q1.txt").write_text("08:30\n09:00\n")
+    (sch2 / "q2.txt").write_text("09:00\n09:30\n")
+    (sch2 / "q3.txt").write_text("08:30\n09:30\n")
+    (sch2 / "q4.txt").write_text("09:00\n10:00\n")
+    (sch2 / "q5.txt").write_text("09:00\n")
+
+    # 22 verify-and-fix (prose): config missing 'host' AND port is a string.
+    #    Two defects: host absent; port "abc" not an int in 1..65535.
+    (ws / "config2.json").write_text(json.dumps({"port": "abc", "timeout": 30}) + "\n")
+
+    # 23 multi-hop-synthesis (prose): new citation graph; most-cited + claim.
+    #    cites: m1->m2 ; m3->m2 ; m4->m2 ; m2->m1  => m2 cited by 3 (the most)
+    #    m2's claim is in its body; its dependents (citers) are m1,m3,m4.
+    mem = _fresh_dir(ws / "memos")
+    (mem / "memo-1.txt").write_text(
+        "Title: Rollout plan.\nClaim: Phased rollout cuts incident rate.\ncites: 2\n"
+    )
+    (mem / "memo-2.txt").write_text(
+        "Title: Reliability baseline.\n"
+        "Claim: Error budgets must precede feature work.\ncites: 1\n"
+    )
+    (mem / "memo-3.txt").write_text(
+        "Title: On-call policy.\nClaim: Follow-the-sun halves fatigue.\ncites: 2\n"
+    )
+    (mem / "memo-4.txt").write_text(
+        "Title: Capacity model.\nClaim: Headroom 30% absorbs spikes.\ncites: 2\n"
+    )
+
+    # 24 iterative-refine (prose): budget over/under; offsetting cuts to zero.
+    #    category,planned,actual
+    #    salaries 1000 1080 (over by 80)   tools 300 200 (under, slack 100)
+    #    travel   150  150  (exact)        events 250 180 (under, slack 70)
+    #    total overrun = 80 ; cuts from under-budget WITHOUT planned below actual:
+    #    tools slack=100, events slack=70. a valid offset: cut tools by 80 (300->220,
+    #    still >=200). offset balances to zero.
+    (ws / "budget2.csv").write_text(
+        "category,planned,actual\n"
+        "salaries,1000,1080\n"
+        "tools,300,200\n"
+        "travel,150,150\n"
+        "events,250,180\n"
+    )
+
 
 GROUND_TRUTH: tuple[GroundTruth, ...] = (
     GroundTruth(
@@ -239,6 +339,91 @@ GROUND_TRUTH: tuple[GroundTruth, ...] = (
         notes=(
             "many valid cut sets (e.g. travel -30, or travel -20 + office -10); "
             "correctness = overrun identified AND cuts total 30 AND no category "
+            "cut below its actual",
+        ),
+    ),
+    # ── Wave-1 growth cases (16–24) ──────────────────────────────────────────
+    GroundTruth(
+        "GEN-L2-multi-file-reconcile-16",
+        facts=(
+            "paid invoices are inv2-1 (200), inv2-2 (60), inv2-4 (150)",
+            "paid subtotal = 410",
+            "410 is written to out/paid2.txt",
+        ),
+        notes=("currency symbol optional; the file write must actually happen",),
+    ),
+    GroundTruth(
+        "GEN-L2-cross-ref-lookup-17",
+        facts=("east: 4", "west: 3", "north: 1"),
+        notes=("sorted by region name; counts are the load-bearing facts",),
+    ),
+    GroundTruth(
+        "GEN-L2-pipeline-transform-18",
+        facts=(
+            "peak error hour = 15 (four ERRORs)",
+            "per-hour table: 13=2, 14=1, 15=4, written to out/errors2_by_hour.txt",
+        ),
+        notes=("hour may be '15' or '15:00'; table file write must happen",),
+    ),
+    GroundTruth(
+        "GEN-L2-multi-source-synthesis-19",
+        facts=("r1->r2 growth = -25%", "r2->r3 growth = 20%"),
+        notes=(
+            "the first growth rate is NEGATIVE (a decline); percent vs fraction "
+            "(-0.25) both acceptable if labeled and the sign is correct",
+        ),
+    ),
+    GroundTruth(
+        "GEN-L2-dependency-resolve-20",
+        facts=(
+            "valid topological install order with V before Z, Z before X and Y, "
+            "and X,Y before W",
+            "e.g. V, Z, X, Y, W (or V, Z, Y, X, W)",
+            "no cycle exists",
+        ),
+        notes=("any order respecting deps-first is correct; X/Y interchangeable",),
+    ),
+    GroundTruth(
+        "GEN-L3-constraint-solve-21",
+        facts=(
+            "earliest slot covering >=4 people = 09:00",
+            "attendees at 09:00 = q1, q2, q4, q5 (q3 absent)",
+        ),
+        notes=("09:00 is the only slot covering >=4; it is therefore required",),
+    ),
+    GroundTruth(
+        "GEN-L2-verify-and-fix-22",
+        facts=(
+            "config is INVALID for two reasons: 'host' key is missing, and 'port' "
+            "is the string 'abc' (not an integer in 1..65535)",
+            "corrected config written to out/config2.fixed.json with host and a "
+            "valid integer port",
+        ),
+        notes=(
+            "the corrected host/port values depend on the prompt's named fallbacks; "
+            "both defects must be reported",
+        ),
+    ),
+    GroundTruth(
+        "GEN-L3-multi-hop-synthesis-23",
+        facts=(
+            "most-cited memo = memo-2 (cited by 3)",
+            "memo-2's claim: error budgets must precede feature work",
+            "its dependents (citers) are memo-1, memo-3, memo-4",
+        ),
+        notes=("claim wording may paraphrase; the memo id + citers are load-bearing",),
+    ),
+    GroundTruth(
+        "GEN-L3-iterative-refine-24",
+        facts=(
+            "only salaries is over budget, by 80 (total overrun = 80)",
+            "cuts come from under-budget categories without going below actual "
+            "(tools slack 100, events slack 70)",
+            "the proposed cuts sum to 80 and the offset balances to zero",
+        ),
+        notes=(
+            "many valid cut sets (e.g. tools -80, or tools -50 + events -30); "
+            "correctness = overrun identified AND cuts total 80 AND no category "
             "cut below its actual",
         ),
     ),
