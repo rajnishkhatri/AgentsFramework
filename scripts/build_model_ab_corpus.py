@@ -606,6 +606,21 @@ def build_corpus() -> list[dict]:
         tag = family_tag[r["family"]]
         counters[tag] = counters.get(tag, 0) + 1
         r["gj_id"] = f"GJ-AB{tag}-{counters[tag]:02d}"
+
+    # Regression tier (harness v2 plan, item 4.3). The GEN-L1 rows carry a
+    # deterministic EXPECTED ground truth and are graded by the trustworthy
+    # substring scorer (the plan certifies L1 deterministic grading) — so they are
+    # FROZEN as the seed regression set: scripts/eval_regression_gate.py runs them
+    # continuously and a drop below 100% is a real regression alarm. Tagging lives
+    # HERE (the generator, single source of truth), never hand-edited into the
+    # JSON artifact. CAPABILITY rows (L2/L3 prose) stay untagged — they have no
+    # trustworthy automated grader yet (see the L2/L3 blind-adjudication track).
+    from scripts.seed_model_ab_workspace import EXPECTED_BY_CASE
+
+    deterministic_l1 = set(EXPECTED_BY_CASE)
+    for r in rows:
+        if r["case"] in deterministic_l1 and r["difficulty"] == "L1":
+            r["tier"] = "regression"
     return rows
 
 

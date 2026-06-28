@@ -8,7 +8,8 @@ RUFF := .venv/bin/ruff
 PYRIGHT := npx --yes pyright
 
 .PHONY: test test-fast lint lint-fix format format-check typecheck check \
-        explainability-backend explainability-frontend explainability model-ab
+        explainability-backend explainability-frontend explainability model-ab \
+        model-ab-passk eval-regression-gate
 
 # Default test run (excludes the infra tree, which needs the `infra` extra and
 # its own marker — see [tool.pytest.ini_options] norecursedirs in pyproject.toml).
@@ -54,6 +55,23 @@ check: lint format-check typecheck test
 #   make model-ab ARGS="--baseline-set openai --candidate-set anthropic --gate"
 model-ab:
 	$(PYTHON) scripts/model_ab_eval.py $(ARGS)
+
+# pass^k cadence wrapper (plan Track B-2 / harness v2 item 4.4): runs each arm
+# N trials and reports pass^k = all-trials-pass per task. Real LLM calls —
+# CADENCE/PRE-SWAP ONLY, NEVER in CI (same constraint as model-ab). Defaults to
+# 8 trials with --answer-score; override arms + N via ARGS, e.g.:
+#   make model-ab-passk ARGS="--baseline gpt-4o-mini --candidate claude-haiku-4-5"
+#   make model-ab-passk TRIALS=10 ARGS="--baseline-set openai --candidate-set anthropic"
+TRIALS ?= 8
+model-ab-passk:
+	$(PYTHON) scripts/model_ab_eval.py --trials $(TRIALS) --answer-score $(ARGS)
+
+# Regression floor gate (harness v2 item 4.3): scores the committed corpus's
+# tier:regression rows from a run's evals.log and fails on any drop below 100%.
+# No live LLM — grades an already-produced log. Point EVAL_LOG at the run to gate:
+#   make eval-regression-gate EVAL_LOG=cache/model_ab/<run>/candidate/evals.log
+eval-regression-gate:
+	$(PYTHON) scripts/eval_regression_gate.py --eval-log $(EVAL_LOG) $(ARGS)
 
 explainability-backend:
 	$(PYTHON) -m explainability_app
