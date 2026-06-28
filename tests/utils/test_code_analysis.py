@@ -549,7 +549,7 @@ class TestDetectAntiPatterns:
         )
         result = detect_anti_patterns(f)
         assert result["pass"] is False
-        assert any(v["rule"] == "AP2" for v in result["violations"])
+        assert any(v["rule"] == "AP-2" for v in result["violations"])
 
     def test_ap3_hardcoded_prompt(self, tmp_project):
         f = _write_file(
@@ -562,7 +562,7 @@ class TestDetectAntiPatterns:
         )
         result = detect_anti_patterns(f)
         assert result["pass"] is False
-        assert any(v["rule"] == "AP3" for v in result["violations"])
+        assert any(v["rule"] == "AP-3" for v in result["violations"])
 
     def test_ap5_direct_io_in_agents(self, tmp_project):
         f = _write_file(
@@ -577,7 +577,7 @@ class TestDetectAntiPatterns:
         )
         result = detect_anti_patterns(f)
         assert result["pass"] is False
-        assert any(v["rule"] == "AP5" for v in result["violations"])
+        assert any(v["rule"] == "AP-5" for v in result["violations"])
 
     def test_ap6_basemodel_in_utils(self, tmp_project):
         f = _write_file(
@@ -592,7 +592,7 @@ class TestDetectAntiPatterns:
         )
         result = detect_anti_patterns(f)
         assert result["pass"] is False
-        assert any(v["rule"] == "AP6" for v in result["violations"])
+        assert any(v["rule"] == "AP-6" for v in result["violations"])
 
     def test_ap6_not_triggered_in_trust(self, tmp_project):
         f = _write_file(
@@ -1116,4 +1116,3 @@ class TestDetectFailurePathRatio:
         assert result["pass"] is True
         assert result["total"] == 0
         assert result["ratio"] == 0.0
-

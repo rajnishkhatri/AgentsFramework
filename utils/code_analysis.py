@@ -426,14 +426,19 @@ def check_protocol_conformance(
 
 
 def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
-    """Heuristic checks for AP1-AP9 anti-patterns via AST analysis.
+    """Heuristic checks for AP-1..AP-9 anti-patterns via AST analysis.
+
+    Rule ids emitted in violations use the canonical hyphenated form
+    (``AP-2``, ``AP-3``, ``AP-5``, ``AP-6``) — the same form used in
+    ``AGENTS.md`` and the ``rule_id`` column of every ``REVIEW.md``. This
+    keeps finding-dedup at merge time consistent (P2-10).
 
     Detects:
-    - AP2: Vertical-to-vertical imports (agents/ importing from agents/)
-    - AP3: Hardcoded prompt strings (f-strings assigned to prompt vars)
-    - AP5: Direct file I/O in vertical components (open() calls)
-    - AP6: Pydantic BaseModel definitions inside utils/
-    - AP9: Mixing signed/unsigned metadata patterns
+    - AP-2: Vertical-to-vertical imports (agents/ importing from agents/)
+    - AP-3: Hardcoded prompt strings (f-strings assigned to prompt vars)
+    - AP-5: Direct file I/O in vertical components (open() calls)
+    - AP-6: Pydantic BaseModel definitions inside utils/
+    - AP-9: Mixing signed/unsigned metadata patterns
     """
     filepath = Path(filepath)
 
@@ -464,7 +469,7 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                 if node.module.split(".")[0] == "agents":
                     violations.append(
                         {
-                            "rule": "AP2",
+                            "rule": "AP-2",
                             "file": str(filepath),
                             "line": node.lineno,
                             "description": (
@@ -490,7 +495,7 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                     if isinstance(node.value, ast.JoinedStr):
                         violations.append(
                             {
-                                "rule": "AP3",
+                                "rule": "AP-3",
                                 "file": str(filepath),
                                 "line": node.lineno,
                                 "description": (
@@ -508,7 +513,7 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                 if func_name == "open":
                     violations.append(
                         {
-                            "rule": "AP5",
+                            "rule": "AP-5",
                             "file": str(filepath),
                             "line": node.lineno,
                             "description": (
@@ -531,7 +536,7 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                     if base_name == "BaseModel":
                         violations.append(
                             {
-                                "rule": "AP6",
+                                "rule": "AP-6",
                                 "file": str(filepath),
                                 "line": node.lineno,
                                 "description": (
@@ -1108,3 +1113,33 @@ def detect_failure_path_ratio(
         "ratio": ratio,
         "violations": violations,
     }
+
+
+# ── Detector rule-id contract (P2-10) ──────────────────────────────────
+# Static registry mapping each public detector to the set of ``rule`` ids it
+# may emit in its ``violations`` list. This is the contract the
+# ``REVIEW.md`` detection labels are checked against: any rule-id token named
+# inside an ``AST (`<callable>` <token>)`` label must be in this set for the
+# named callable. It is what makes finding-dedup at merge time sound — the
+# label can't claim a rule id the detector never emits.
+#
+# Detectors whose rule ids are *dynamic* (e.g. ``check_dependency_rules``
+# emits ``DEP.<layer>_cannot_import_<pkg>``) are intentionally absent: their
+# REVIEW.md labels use prose ("framework"), not a rule-id token, so there is
+# nothing to cross-check. Add a detector here only when it has a fixed
+# rule-id vocabulary.
+DETECTOR_RULE_IDS: dict[str, frozenset[str]] = {
+    "detect_anti_patterns": frozenset({"AP-2", "AP-3", "AP-5", "AP-6", "AP.PARSE"}),
+    "detect_adr1_missing": frozenset({"ADR.1"}),
+    "detect_mock_abuse": frozenset({"TAP-2", "TAP-2.PARSE"}),
+    "detect_failure_path_ratio": frozenset({"TAP-4", "TAP-4.PARSE"}),
+    "check_trust_purity": frozenset(
+        {
+            "TRUST_PURITY.io_import",
+            "PROTOCOL.parse_error",
+            "PROTOCOL.not_found",
+            "PROTOCOL.class_not_found",
+            "PROTOCOL.missing_method",
+        }
+    ),
+}
