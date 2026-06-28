@@ -109,34 +109,33 @@ names below are the triggers.
 
 ## Key Directories
 
+The four package layers + their support dirs (per-folder detail lives in each
+nested `AGENTS.md` — read those, not this map, for the rules):
+
 | Directory | Purpose |
 |-----------|---------|
-| `trust/` | Shared kernel: pure types, protocols, crypto. ZERO framework dependencies. |
-| `services/` | Horizontal infrastructure: prompts, guardrails, LLM config, eval capture, observability. |
-| `services/governance/` | Governance services: black box, phase logger, agent facts registry. |
-| `services/tools/` | Tool registry and implementations (shell, file I/O). |
+| `trust/` | Shared kernel: pure types, protocols, crypto. ZERO framework deps. |
+| `services/` | Horizontal infrastructure (`governance/`, `tools/` subpkgs). |
 | `components/` | Framework-agnostic domain logic: router, evaluator, schemas. |
-| `orchestration/` | LangGraph graph topology (`react_loop.py`) and state (`state.py`). |
-| `prompts/` | Jinja2 templates (`.j2`). Subdirs: `codeReviewer/`, `includes/`. |
-| `meta/` | Offline meta-optimization: optimizer, analysis, judge, drift, judge validation. |
-| `frontend/`, `middleware/` | The Frontend Ring (Next.js BFF + credentialed middleware). |
-| `governanaceTriangle/` | Governance explainability narratives and deep-dive docs. *(Directory name is misspelled on disk; left as-is — 26 docs reference the path.)* |
+| `orchestration/` | LangGraph topology (`react_loop.py`) + state (`state.py`). |
+| `prompts/` | Jinja2 `.j2` templates. | `meta/` | Offline meta-optimization. |
+| `frontend/`, `middleware/` | The Frontend Ring (Next.js BFF + middleware). |
 | `utils/` | Shared utilities. Prefer `services/` for new infrastructure. |
-| `docs/plan/` | Design & planning docs. New plans land here, not at the repo root. |
-| `docs/vision/` | Intent docs: `MISSION.md`, `SOUL.md`. |
-| `docs/adr/` | Architecture Decision Records (OKF bundle). |
+| `docs/` | `plan/` (designs), `vision/` (`MISSION`/`SOUL`), `adr/` (OKF bundle). |
 
 > **Repo layout:** root holds only build/config files + the package dirs above.
-> Design docs → `docs/plan/`, intent docs → `docs/vision/`. Keep the root scannable.
+> `governanaceTriangle/` (misspelled on disk; 26 docs reference it) holds governance
+> explainability narratives. Keep the root scannable.
 
 ## Cross-cutting References
 
 Layer patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the security model
-live in each folder's nested `AGENTS.md`. Canonical catalogs:
+live in each folder's nested `AGENTS.md`. Read these canonical catalogs on demand
+(plain links, not `@`-imports — they're large; don't eager-load them every session):
 
-- @docs/style-guides/STYLE_GUIDE_LAYERING.md — four-layer rules and anti-patterns.
-- @docs/style-guides/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1–H7, V1–V6).
-- @docs/style-guides/STYLE_GUIDE_FRONTEND.md — Frontend Ring (F/W/P/A/T/X/C/B/U/S/O).
-- @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md — trust foundation, ports, policy engines.
-- @docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework.
-- @research/tdd_agentic_systems_prompt.md — the agentic testing pyramid (11 patterns).
+- [STYLE_GUIDE_LAYERING.md](docs/style-guides/STYLE_GUIDE_LAYERING.md) — four-layer rules and anti-patterns.
+- [STYLE_GUIDE_PATTERNS.md](docs/style-guides/STYLE_GUIDE_PATTERNS.md) — design patterns catalog (H1–H7, V1–V6).
+- [STYLE_GUIDE_FRONTEND.md](docs/style-guides/STYLE_GUIDE_FRONTEND.md) — Frontend Ring (F/W/P/A/T/X/C/B/U/S/O).
+- [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md) — trust foundation, ports, policy engines.
+- [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md) — seven-layer trust framework.
+- [tdd_agentic_systems_prompt.md](research/tdd_agentic_systems_prompt.md) — the agentic testing pyramid (11 patterns).
