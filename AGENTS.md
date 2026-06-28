@@ -46,32 +46,27 @@ root because a nested file loads too late to stop an upward import in a *new* fi
 
 ## Boundaries
 
-### ✅ Always
-- Run `make check` after making changes.
-- Use `PromptService.render_prompt()` for all prompts — no hardcoded strings.
-- Record every LLM call via `eval_capture.record()` with `user_id` and `task_id`.
-- Create `.j2` files in `prompts/` for new prompts.
+(The Architecture Invariants above already cover layering/import rules — these add
+the non-layering boundaries.)
 
-### ⚠️ Ask first  (these are also ADR triggers — see Decision records)
-- Adding new dependencies to `pyproject.toml`.
-- Modifying trust kernel types in `trust/models.py` (triggers re-signing).
-- Adding new graph nodes to `orchestration/react_loop.py`.
-- Creating new horizontal services.
-- Introducing a new abstraction, or any deviation from an architecture invariant.
+### ✅ Always
+- `make check` after changes · `PromptService.render_prompt()` for all prompts (no
+  hardcoded strings) · record every LLM call via `eval_capture.record()` with
+  `user_id`+`task_id` · new prompts are `.j2` files in `prompts/`.
+
+### ⚠️ Ask first  (also ADR triggers — see Decision records)
+- New `pyproject.toml` dependency · trust-kernel type change in `trust/models.py`
+  (triggers re-signing) · new graph node in `orchestration/react_loop.py` · new
+  horizontal service · a new abstraction or any deviation from an invariant.
 
 ### 🚫 Never
-- Import from `orchestration/` in `components/` or `services/`.
-- Import from `langgraph` or `langchain` in `components/` or `trust/`.
-- Place shared trust types inside a service module — they belong in `trust/`.
-- Hardcode model names — reference tiers from `services/llm_config.py`.
-- Commit secrets, API keys, or `.env` files.
-- Run live LLM calls in CI test suites.
-- Create peer imports between components (e.g., `router` importing `evaluator`).
+- Commit secrets, API keys, or `.env` files · run live LLM calls in CI · hardcode
+  model names (use tiers from `services/llm_config.py`) · place shared trust types
+  in a service module (they belong in `trust/`).
 
 ## Decision records (intent debt) + comprehension gates
 
-Capture the *why* behind structural changes; add the human engagement automation
-can't.
+Capture the *why* behind structural changes — the human engagement automation can't.
 
 - **ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above, append a
   numbered ADR to the `docs/adr/` OKF bundle and link it from the code seam it
@@ -120,9 +115,8 @@ can't.
 
 ## Cross-cutting References
 
-Layer-specific patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the
-security model now live in the **nested `AGENTS.md`** for each folder. For the
-canonical catalogs:
+Layer patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the security model
+live in each folder's nested `AGENTS.md`. Canonical catalogs:
 
 - @docs/style-guides/STYLE_GUIDE_LAYERING.md — four-layer rules and anti-patterns.
 - @docs/style-guides/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1–H7, V1–V6).
