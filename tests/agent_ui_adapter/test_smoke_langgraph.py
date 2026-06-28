@@ -154,7 +154,7 @@ def test_langgraph_runtime_end_to_end_sse() -> None:
         idx = body.find(marker, cursor)
         assert idx >= 0, (
             f"missing or out-of-order: {marker!r} after pos {cursor}\n"
-            f"body excerpt: ...{body[max(0, cursor - 50):cursor + 200]!r}..."
+            f"body excerpt: ...{body[max(0, cursor - 50) : cursor + 200]!r}..."
         )
         cursor = idx + len(marker)
 

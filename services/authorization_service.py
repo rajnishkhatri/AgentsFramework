@@ -178,9 +178,7 @@ class AuthorizationService:
                 f"got {type(facts).__name__}"
             )
         if not isinstance(action, str):
-            raise TypeError(
-                f"action must be a string, got {type(action).__name__}"
-            )
+            raise TypeError(f"action must be a string, got {type(action).__name__}")
         if not action:
             raise ValueError("action must not be empty")
         ctx: dict[str, Any] = dict(context or {})
@@ -231,7 +229,9 @@ class AuthorizationService:
         if self._trace_emit is None:
             return
         outcome = "pass" if decision.enforcement == "allow" else "fail"
-        event_type = "access_granted" if decision.enforcement == "allow" else "access_denied"
+        event_type = (
+            "access_granted" if decision.enforcement == "allow" else "access_denied"
+        )
         record = TrustTraceRecord(
             event_id=str(uuid.uuid4()),
             timestamp=datetime.now(UTC),
@@ -250,9 +250,7 @@ class AuthorizationService:
         try:
             self._trace_emit(record)
         except Exception as exc:
-            logger.error(
-                "trace_emit failed: %s: %s", type(exc).__name__, exc
-            )
+            logger.error("trace_emit failed: %s: %s", type(exc).__name__, exc)
 
 
 __all__ = [

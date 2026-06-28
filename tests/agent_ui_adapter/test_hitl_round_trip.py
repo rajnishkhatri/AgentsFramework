@@ -76,9 +76,7 @@ def _build_hitl_runtime() -> MockRuntime:
     """
     return MockRuntime(
         events=[
-            RunStartedDomain(
-                trace_id=TRACE_ID, run_id=RUN_ID, thread_id=THREAD_ID
-            ),
+            RunStartedDomain(trace_id=TRACE_ID, run_id=RUN_ID, thread_id=THREAD_ID),
             ToolCallStarted(
                 trace_id=TRACE_ID,
                 tool_call_id=TOOL_CALL_ID,
@@ -86,9 +84,7 @@ def _build_hitl_runtime() -> MockRuntime:
                 args_json=json.dumps(APPROVAL_ARGS),
             ),
             ToolCallEnded(trace_id=TRACE_ID, tool_call_id=TOOL_CALL_ID),
-            RunFinishedDomain(
-                trace_id=TRACE_ID, run_id=RUN_ID, thread_id=THREAD_ID
-            ),
+            RunFinishedDomain(trace_id=TRACE_ID, run_id=RUN_ID, thread_id=THREAD_ID),
         ]
     )
 

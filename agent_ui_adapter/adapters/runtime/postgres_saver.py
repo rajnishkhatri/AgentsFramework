@@ -56,8 +56,7 @@ class PostgresCheckpointer:
         url = os.environ.get("DATABASE_URL")
         if not url:
             raise RuntimeError(
-                "DATABASE_URL environment variable is required for "
-                "PostgresCheckpointer"
+                "DATABASE_URL environment variable is required for PostgresCheckpointer"
             )
         return cls(url)
 

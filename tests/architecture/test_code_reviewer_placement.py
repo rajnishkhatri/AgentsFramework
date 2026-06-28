@@ -36,8 +36,7 @@ class TestReviewSchemaPlacement:
                 top = node.module.split(".")[0]
                 if top not in allowed_packages:
                     violations.append(
-                        f"line {node.lineno}: imports {node.module} "
-                        f"(top-level: {top})"
+                        f"line {node.lineno}: imports {node.module} (top-level: {top})"
                     )
             elif isinstance(node, ast.Import):
                 for alias in node.names:
@@ -49,16 +48,23 @@ class TestReviewSchemaPlacement:
                         )
 
         assert violations == [], (
-            "trust/review_schema.py has forbidden imports:\n"
-            + "\n".join(violations)
+            "trust/review_schema.py has forbidden imports:\n" + "\n".join(violations)
         )
 
     def test_no_io_imports(self):
         filepath = AGENT_ROOT / "trust" / "review_schema.py"
         tree = ast.parse(filepath.read_text())
         io_modules = {
-            "os", "logging", "pathlib", "subprocess", "requests",
-            "socket", "http", "urllib", "io", "tempfile",
+            "os",
+            "logging",
+            "pathlib",
+            "subprocess",
+            "requests",
+            "socket",
+            "http",
+            "urllib",
+            "io",
+            "tempfile",
         }
 
         violations = []
@@ -78,8 +84,7 @@ class TestReviewSchemaPlacement:
                         )
 
         assert violations == [], (
-            "trust/review_schema.py imports I/O modules:\n"
-            + "\n".join(violations)
+            "trust/review_schema.py imports I/O modules:\n" + "\n".join(violations)
         )
 
 
@@ -99,8 +104,7 @@ class TestCodeAnalysisPlacement:
                 top = node.module.split(".")[0]
                 if top in forbidden_packages:
                     violations.append(
-                        f"line {node.lineno}: imports {node.module} "
-                        f"(forbidden: {top})"
+                        f"line {node.lineno}: imports {node.module} (forbidden: {top})"
                     )
             elif isinstance(node, ast.Import):
                 for alias in node.names:
@@ -135,8 +139,7 @@ class TestCodeAnalysisPlacement:
                 top = node.module.split(".")[0]
                 if top not in allowed_packages:
                     violations.append(
-                        f"line {node.lineno}: imports {node.module} "
-                        f"(top-level: {top})"
+                        f"line {node.lineno}: imports {node.module} (top-level: {top})"
                     )
             elif isinstance(node, ast.Import):
                 for alias in node.names:

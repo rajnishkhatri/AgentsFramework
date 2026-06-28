@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from trust.cloud_identity import TemporaryCredentials
@@ -28,11 +27,15 @@ class AWSCredentialProvider:
         self._sts = boto3.client("sts", **kwargs)
 
     def issue_credentials(
-        self, agent_facts: AgentFacts, scope: list[str],
+        self,
+        agent_facts: AgentFacts,
+        scope: list[str],
     ) -> TemporaryCredentials:
         role_arn = self._resolve_role_arn(agent_facts)
         duration = int(
-            agent_facts.metadata.get("credential_ttl_seconds", _DEFAULT_DURATION_SECONDS)
+            agent_facts.metadata.get(
+                "credential_ttl_seconds", _DEFAULT_DURATION_SECONDS
+            )
         )
         assume_kwargs: dict[str, Any] = {
             "RoleArn": role_arn,
@@ -66,7 +69,8 @@ class AWSCredentialProvider:
         )
 
     def refresh_credentials(
-        self, credentials: TemporaryCredentials,
+        self,
+        credentials: TemporaryCredentials,
     ) -> TemporaryCredentials:
         role_arn = credentials.raw_credentials.get("RoleArn", "")
         if not role_arn:
@@ -81,7 +85,9 @@ class AWSCredentialProvider:
             "DurationSeconds": _DEFAULT_DURATION_SECONDS,
         }
         if credentials.scope:
-            assume_kwargs["Policy"] = self._build_session_policy(list(credentials.scope))
+            assume_kwargs["Policy"] = self._build_session_policy(
+                list(credentials.scope)
+            )
         try:
             resp = self._sts.assume_role(**assume_kwargs)
         except (ClientError, BotoCoreError) as exc:
@@ -126,11 +132,15 @@ class AWSCredentialProvider:
 
     @staticmethod
     def _build_session_policy(scope: list[str]) -> str:
-        return json.dumps({
-            "Version": "2012-10-17",
-            "Statement": [{
-                "Effect": "Allow",
-                "Action": scope,
-                "Resource": "*",
-            }],
-        })
+        return json.dumps(
+            {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": scope,
+                        "Resource": "*",
+                    }
+                ],
+            }
+        )

@@ -24,7 +24,9 @@ def test_gj008_rejects_stale_fluent_evasion_coding():
 def test_live_case_ids_are_unique():
     """Duplicate IDs would silently overwrite CASE_BY_ID lookups."""
     ids = [c.id for c in LIVE_CASES]
-    assert len(ids) == len(set(ids)), f"duplicate ids: {[i for i in ids if ids.count(i) > 1]}"
+    assert len(ids) == len(set(ids)), (
+        f"duplicate ids: {[i for i in ids if ids.count(i) > 1]}"
+    )
 
 
 @pytest.mark.parametrize("case_id", _PHASE0_MATRIX_IDS)

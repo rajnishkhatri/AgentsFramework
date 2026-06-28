@@ -38,13 +38,15 @@ class TestBlackBoxExport:
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-export-test"
 
-        for i, et in enumerate([
-            EventType.TASK_STARTED,
-            EventType.MODEL_SELECTED,
-            EventType.STEP_EXECUTED,
-            EventType.TOOL_CALLED,
-            EventType.TASK_COMPLETED,
-        ]):
+        for i, et in enumerate(
+            [
+                EventType.TASK_STARTED,
+                EventType.MODEL_SELECTED,
+                EventType.STEP_EXECUTED,
+                EventType.TOOL_CALLED,
+                EventType.TASK_COMPLETED,
+            ]
+        ):
             bb.record(_make_event(wf, et, step=i))
 
         export = bb.export(wf)
@@ -220,12 +222,17 @@ class TestComplianceSummaryBlock:
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-summary-rejected"
         bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
-        bb.record(_make_terminal_event(wf, {
-            "outcome": "rejected",
-            "reason": "agent_facts_verification_failed",
-            "step_count": 0,
-            "total_cost_usd": 0.0,
-        }))
+        bb.record(
+            _make_terminal_event(
+                wf,
+                {
+                    "outcome": "rejected",
+                    "reason": "agent_facts_verification_failed",
+                    "step_count": 0,
+                    "total_cost_usd": 0.0,
+                },
+            )
+        )
 
         summary = bb.export_for_compliance(wf)["summary"]
         assert summary["task_completed_present"] is True
@@ -239,12 +246,17 @@ class TestComplianceSummaryBlock:
         # Failure path: budget-exceeded terminal shape (no goal fields, no reason).
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-summary-budget"
-        bb.record(_make_terminal_event(wf, {
-            "outcome": "budget_exceeded",
-            "step_count": 3,
-            "total_cost_usd": 5.0,
-            "budget_limit": 5.0,
-        }))
+        bb.record(
+            _make_terminal_event(
+                wf,
+                {
+                    "outcome": "budget_exceeded",
+                    "step_count": 3,
+                    "total_cost_usd": 5.0,
+                    "budget_limit": 5.0,
+                },
+            )
+        )
 
         summary = bb.export_for_compliance(wf)["summary"]
         assert summary["outcome"] == "budget_exceeded"
@@ -256,14 +268,20 @@ class TestComplianceSummaryBlock:
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-summary-rich"
         bb.record(_make_event(wf, EventType.TASK_STARTED, step=0))
-        bb.record(_make_terminal_event(wf, {
-            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-            "outcome": "partial",
-            "goal_met": False,
-            "criteria_met": 0.667,
-            "termination_reason": "no_progress",
-            "unmet_conditions": ["coverage"],
-        }, step=4))
+        bb.record(
+            _make_terminal_event(
+                wf,
+                {
+                    "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                    "outcome": "partial",
+                    "goal_met": False,
+                    "criteria_met": 0.667,
+                    "termination_reason": "no_progress",
+                    "unmet_conditions": ["coverage"],
+                },
+                step=4,
+            )
+        )
 
         summary = bb.export_for_compliance(wf)["summary"]
         assert summary["task_completed_present"] is True
@@ -278,8 +296,12 @@ class TestComplianceSummaryBlock:
         # one wins so the summary reflects the true final state.
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         wf = "wf-summary-last-wins"
-        bb.record(_make_terminal_event(wf, {"outcome": "partial", "goal_met": False}, step=1))
-        bb.record(_make_terminal_event(wf, {"outcome": "success", "goal_met": True}, step=2))
+        bb.record(
+            _make_terminal_event(wf, {"outcome": "partial", "goal_met": False}, step=1)
+        )
+        bb.record(
+            _make_terminal_event(wf, {"outcome": "success", "goal_met": True}, step=2)
+        )
 
         summary = bb.export_for_compliance(wf)["summary"]
         assert summary["outcome"] == "success"

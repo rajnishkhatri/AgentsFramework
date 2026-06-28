@@ -578,4 +578,3 @@ Cumulative breakdown: Recipe 1 ~$0.50 (8 secrets) + Recipe 2 ~$8.70 (Cloud SQL d
 | `infra/gcp/features/cloud_run_backend.feature` | Created — terraform-compliance BDD scenarios |
 | `infra/gcp/terraform.tfvars.example` | Modified — `backend_image` comment block |
 | `tests/infra/gcp/test_cloud_run_backend.py` | Created — 17 Recipe 4 contract tests |
-

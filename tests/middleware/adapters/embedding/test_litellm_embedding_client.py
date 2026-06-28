@@ -87,15 +87,12 @@ class TestLiteLLMEmbeddingClientRejections:
             api_key="sk-test-not-used",
         )
         with pytest.raises(EmbeddingClientError) as excinfo:
-            asyncio.run(client.embed(texts=["hello world"])
-            )
+            asyncio.run(client.embed(texts=["hello world"]))
         # The original cause is preserved for debugging but doesn't leak past
         # the boundary type.
         assert "simulated litellm outage" in str(excinfo.value)
 
-    def test_dimension_mismatch_raises(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_dimension_mismatch_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Pattern 11: if the provider returns a vector of unexpected
         dimension (e.g. someone misconfigured ``EMBEDDING_DIMENSION``),
         the adapter MUST refuse rather than write a bad row to pgvector
@@ -118,8 +115,7 @@ class TestLiteLLMEmbeddingClientRejections:
             api_key="sk-test-not-used",
         )
         with pytest.raises(EmbeddingClientError) as excinfo:
-            asyncio.run(client.embed(texts=["mismatched"])
-            )
+            asyncio.run(client.embed(texts=["mismatched"]))
         assert "dimension" in str(excinfo.value).lower()
 
     def test_response_missing_data_field_raises(
@@ -143,8 +139,7 @@ class TestLiteLLMEmbeddingClientRejections:
             api_key="sk-test-not-used",
         )
         with pytest.raises(EmbeddingClientError):
-            asyncio.run(client.embed(texts=["malformed"])
-            )
+            asyncio.run(client.embed(texts=["malformed"]))
 
     def test_constructor_rejects_non_positive_dimension(self) -> None:
         """Defensive: ``dimension`` defines the pgvector column shape;
@@ -183,18 +178,15 @@ class TestFakeEmbeddingClient:
         import asyncio
 
         fake = FakeEmbeddingClient(dimension=REQUIRED_DIMENSION)
-        a = asyncio.run(fake.embed(texts=["What is pgvector?"])
-        )
-        b = asyncio.run(fake.embed(texts=["What is pgvector?"])
-        )
+        a = asyncio.run(fake.embed(texts=["What is pgvector?"]))
+        b = asyncio.run(fake.embed(texts=["What is pgvector?"]))
         assert a == b
 
     def test_distinct_inputs_produce_distinct_vectors(self) -> None:
         import asyncio
 
         fake = FakeEmbeddingClient(dimension=REQUIRED_DIMENSION)
-        result = asyncio.run(fake.embed(texts=["alpha", "beta"])
-        )
+        result = asyncio.run(fake.embed(texts=["alpha", "beta"]))
         assert len(result) == 2
         assert result[0] != result[1]
         assert len(result[0]) == REQUIRED_DIMENSION
@@ -233,8 +225,7 @@ class TestLiteLLMEmbeddingClientHappyPath:
             dimension=REQUIRED_DIMENSION,
             api_key="sk-test-not-used",
         )
-        out = asyncio.run(client.embed(texts=["a", "b", "c"])
-        )
+        out = asyncio.run(client.embed(texts=["a", "b", "c"]))
         assert len(out) == 3
         assert all(len(v) == REQUIRED_DIMENSION for v in out)
         assert client.dimension == REQUIRED_DIMENSION

@@ -9,14 +9,17 @@ rules. The assessment field is a 1-3 sentence rationale; open_question is
 Per A2 plan §9 firewall: NO references to A1's sheet, A1's review queue, A1's
 session plan, or §10 of the A2 plan during this labeling pass.
 """
+
 from __future__ import annotations
 
 import csv
-import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-A2_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv"
+A2_SHEET = (
+    REPO_ROOT
+    / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv"
+)
 
 
 # Each entry: item_id -> dict with r2_goal_met, r2_graceful_failure,

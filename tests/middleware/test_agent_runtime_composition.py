@@ -187,9 +187,7 @@ class TestMemoryBackendSelection:
         """
         from services.long_term_memory import InMemoryMemoryBackend
 
-        settings = AgentRuntimeSettings(
-            agent_env="local", mem0_api_key="mem0_test_key"
-        )
+        settings = AgentRuntimeSettings(agent_env="local", mem0_api_key="mem0_test_key")
         backend = self._service_backend(settings, tmp_path, monkeypatch)
         assert isinstance(backend, InMemoryMemoryBackend)
 
@@ -228,9 +226,7 @@ class TestPgvectorBackendSelectionRejectionPaths:
             build_components(settings, agent_root=tmp_path)
         assert "DATABASE_URL" in str(excinfo.value)
 
-    def test_pgvector_without_embedding_provider_raises(
-        self, tmp_path, monkeypatch
-    ):
+    def test_pgvector_without_embedding_provider_raises(self, tmp_path, monkeypatch):
         """OPENAI_API_KEY drives ``_build_embedding_client`` — absent, no
         EmbeddingClient can be constructed and the backend would store rows
         whose embeddings dimension was unverified. Must raise, not warn.
@@ -292,15 +288,11 @@ class TestPgvectorBackendSelectionAcceptance:
     def test_inmemory_explicit_selects_in_memory(self, tmp_path, monkeypatch):
         from services.long_term_memory import InMemoryMemoryBackend
 
-        settings = AgentRuntimeSettings(
-            agent_env="local", memory_backend="inmemory"
-        )
+        settings = AgentRuntimeSettings(agent_env="local", memory_backend="inmemory")
         backend = self._service_backend(settings, tmp_path, monkeypatch)
         assert isinstance(backend, InMemoryMemoryBackend)
 
-    def test_pgvector_with_db_and_key_selects_pgvector(
-        self, tmp_path, monkeypatch
-    ):
+    def test_pgvector_with_db_and_key_selects_pgvector(self, tmp_path, monkeypatch):
         from services.memory_backends.pgvector import PgVectorMemoryBackend
 
         settings = AgentRuntimeSettings(
@@ -346,9 +338,7 @@ class TestAutocaptureEnablePolicyGuard:
         svc = self._autocapture(settings, tmp_path, monkeypatch)
         assert svc._write_back is False
 
-    def test_flag_on_with_passing_test_certificate_enables(
-        self, tmp_path, monkeypatch
-    ):
+    def test_flag_on_with_passing_test_certificate_enables(self, tmp_path, monkeypatch):
         import json
 
         from services.governance.memory_enable_policy import CERT_SCHEMA
@@ -504,7 +494,11 @@ class TestTieredLoopFlags:
         """REFLEXION_ENABLED coerces like the other flags; the attempt count
         is an int, not the raw string."""
         s = AgentRuntimeSettings.from_mapping(
-            {"AGENT_ENV": "local", "REFLEXION_ENABLED": "true", "MAX_REFLEXION_ATTEMPTS": "5"}
+            {
+                "AGENT_ENV": "local",
+                "REFLEXION_ENABLED": "true",
+                "MAX_REFLEXION_ATTEMPTS": "5",
+            }
         )
         assert s.reflexion_enabled is True
         assert s.max_reflexion_attempts == 5
@@ -551,9 +545,7 @@ class TestC1ContextCompactionFlags:
         # sites pass user_constraints=[] (byte-identical with the prior code).
         assert cfg.context_extract_user_constraints is False
 
-    def test_extract_user_constraints_env_alias_flips_on(
-        self, tmp_path, monkeypatch
-    ):
+    def test_extract_user_constraints_env_alias_flips_on(self, tmp_path, monkeypatch):
         """Fix 1: CONTEXT_EXTRACT_USER_CONSTRAINTS coerces through the bool-list
         like the master flag, flipping the harvest gate ON."""
         monkeypatch.chdir(tmp_path)
@@ -564,7 +556,9 @@ class TestC1ContextCompactionFlags:
         cfg = build_components(settings, agent_root=tmp_path).agent_config
         assert cfg.context_extract_user_constraints is True
 
-    def test_master_flag_env_alias_is_context_compact_messages(self, tmp_path, monkeypatch):
+    def test_master_flag_env_alias_is_context_compact_messages(
+        self, tmp_path, monkeypatch
+    ):
         """The env alias CONTEXT_COMPACT_MESSAGES coerces through the bool-list
         like REFLEXION_ENABLED / T3_FANOUT_ENABLED."""
         monkeypatch.chdir(tmp_path)

@@ -40,22 +40,34 @@ from StructuredReasoning.trust import (
 class TestEnumCompleteness:
     def test_phase_members(self):
         assert {p.value for p in Phase} == {
-            "decompose", "hypothesize", "act", "synthesize",
+            "decompose",
+            "hypothesize",
+            "act",
+            "synthesize",
         }
 
     def test_problem_type_members(self):
         assert {p.value for p in ProblemType} == {
-            "diagnostic", "design", "evaluation", "prediction",
+            "diagnostic",
+            "design",
+            "evaluation",
+            "prediction",
         }
 
     def test_ordering_type_members(self):
         assert {o.value for o in OrderingType} == {
-            "structural", "chronological", "comparative", "degree",
+            "structural",
+            "chronological",
+            "comparative",
+            "degree",
         }
 
     def test_hypothesis_status_members(self):
         assert {h.value for h in HypothesisStatus} == {
-            "confirmed", "killed", "inconclusive", "untested",
+            "confirmed",
+            "killed",
+            "inconclusive",
+            "untested",
         }
 
     def test_reasoning_mode_members(self):
@@ -63,18 +75,29 @@ class TestEnumCompleteness:
 
     def test_so_what_levels(self):
         assert {s.value for s in SoWhatLevel} == {
-            "fact", "impact", "implication", "connection",
+            "fact",
+            "impact",
+            "implication",
+            "connection",
         }
 
     def test_validation_check_names(self):
         assert {v.value for v in ValidationCheckName} == {
-            "completeness", "non_overlap", "item_placement", "so_what",
-            "vertical_logic", "remove_one", "never_one", "mathematical",
+            "completeness",
+            "non_overlap",
+            "item_placement",
+            "so_what",
+            "vertical_logic",
+            "remove_one",
+            "never_one",
+            "mathematical",
         }
 
     def test_validation_result_members(self):
         assert {v.value for v in ValidationResult} == {
-            "pass", "fail", "not_applicable",
+            "pass",
+            "fail",
+            "not_applicable",
         }
 
     def test_weakness_severity_members(self):
@@ -269,53 +292,61 @@ def _minimal_valid_payload() -> dict:
         "issue_tree": {
             "root_question": "Restated?",
             "ordering_type": "degree",
-            "branches": [{
-                "id": "b_1",
-                "label": "data_drifts",
-                "question": "Did data drift?",
-                "hypothesis": "PSI > 0.2",
-                "hypothesis_status": "confirmed",
-                "evidence_ids": ["ev_1"],
-                "sub_branches": [],
-            }],
+            "branches": [
+                {
+                    "id": "b_1",
+                    "label": "data_drifts",
+                    "question": "Did data drift?",
+                    "hypothesis": "PSI > 0.2",
+                    "hypothesis_status": "confirmed",
+                    "evidence_ids": ["ev_1"],
+                    "sub_branches": [],
+                }
+            ],
         },
         "governing_thought": {
             "statement": "Cause is data drift; retrain.",
             "confidence": 0.85,
         },
-        "key_arguments": [{
-            "id": "arg_1",
-            "statement": "Drift is the root cause.",
-            "dimension": "diagnosis",
-            "reasoning_mode": "inductive",
-            "evidence_ids": ["ev_1"],
-            "confidence": 0.85,
-            "so_what_chain": [
-                {"level": "fact", "statement": "PSI rose to 0.31."},
-                {"level": "impact", "statement": "Model sees novel inputs."},
-                {"level": "implication", "statement": "Accuracy degrades."},
-                {"level": "connection", "statement": "Retrain to recover."},
-            ],
-        }],
-        "evidence": [{
-            "id": "ev_1",
-            "fact": "PSI 0.31 on day 8.",
-            "source": "monitoring dashboard",
-            "assigned_to": "arg_1",
-            "branch_id": "b_1",
-            "confidence": 0.95,
-        }],
+        "key_arguments": [
+            {
+                "id": "arg_1",
+                "statement": "Drift is the root cause.",
+                "dimension": "diagnosis",
+                "reasoning_mode": "inductive",
+                "evidence_ids": ["ev_1"],
+                "confidence": 0.85,
+                "so_what_chain": [
+                    {"level": "fact", "statement": "PSI rose to 0.31."},
+                    {"level": "impact", "statement": "Model sees novel inputs."},
+                    {"level": "implication", "statement": "Accuracy degrades."},
+                    {"level": "connection", "statement": "Retrain to recover."},
+                ],
+            }
+        ],
+        "evidence": [
+            {
+                "id": "ev_1",
+                "fact": "PSI 0.31 on day 8.",
+                "source": "monitoring dashboard",
+                "assigned_to": "arg_1",
+                "branch_id": "b_1",
+                "confidence": 0.95,
+            }
+        ],
         "gaps": {
             "untested_hypotheses": [],
             "missing_data": [],
             "known_weaknesses": [],
         },
         "cross_branch_interactions": [],
-        "validation_log": [{
-            "check": "completeness",
-            "result": "pass",
-            "details": "all branches covered",
-        }],
+        "validation_log": [
+            {
+                "check": "completeness",
+                "result": "pass",
+                "details": "all branches covered",
+            }
+        ],
         "metadata": {
             "problem_scope": "fraud detection accuracy decline",
             "tools_used": [],

@@ -86,9 +86,7 @@ class Mem0MemoryBackend:
         # test checks top-level imports only.
         from mem0 import MemoryClient as _SdkClient
 
-        self._sdk_client = _SdkClient(
-            api_key=self._api_key, host=self._base_url
-        )
+        self._sdk_client = _SdkClient(api_key=self._api_key, host=self._base_url)
         return self._sdk_client
 
     # ── helpers ──────────────────────────────────────────────────────
@@ -142,9 +140,7 @@ class Mem0MemoryBackend:
     def _get_all(self, user_id: str) -> list[dict]:
         """List a user's memories. Mem0 v2 requires ``filters={user_id}`` and
         REJECTS a top-level ``user_id`` kwarg (``ENTITY_PARAMS``)."""
-        return self._rows(
-            self._client().get_all(filters={"user_id": user_id})
-        )
+        return self._rows(self._client().get_all(filters={"user_id": user_id}))
 
     def _find_row_id(self, user_id: str, key: str) -> str | None:
         """Resolve our caller key to Mem0's opaque id (or None)."""
@@ -192,9 +188,7 @@ class Mem0MemoryBackend:
                 f"mem0 backend failed during put("
                 f"user_id={record.user_id!r}, key={record.key!r})"
             ) from exc
-        logger.info(
-            "memory.backend.put user_id=%s key=%s", record.user_id, record.key
-        )
+        logger.info("memory.backend.put user_id=%s key=%s", record.user_id, record.key)
 
     def get(self, user_id: str, key: str) -> MemoryRecord | None:
         try:
@@ -204,30 +198,23 @@ class Mem0MemoryBackend:
                     return self._row_to_record(user_id, row)
         except Exception as exc:  # noqa: BLE001
             raise MemoryBackendError(
-                f"mem0 backend failed during get("
-                f"user_id={user_id!r}, key={key!r})"
+                f"mem0 backend failed during get(user_id={user_id!r}, key={key!r})"
             ) from exc
         return None
 
-    def search(
-        self, user_id: str, query: str, limit: int = 10
-    ) -> list[MemoryRecord]:
+    def search(self, user_id: str, query: str, limit: int = 10) -> list[MemoryRecord]:
         try:
             # Mem0 v2: user scope rides ``filters`` (top-level ``user_id`` is
             # rejected); the result count knob is ``top_k``.
             rows = self._rows(
-                self._client().search(
-                    query, filters={"user_id": user_id}, top_k=limit
-                )
+                self._client().search(query, filters={"user_id": user_id}, top_k=limit)
             )
         except Exception as exc:  # noqa: BLE001
             raise MemoryBackendError(
                 f"mem0 backend failed during search(user_id={user_id!r})"
             ) from exc
         records = [self._row_to_record(user_id, row) for row in rows[:limit]]
-        logger.debug(
-            "memory.backend.search user_id=%s count=%d", user_id, len(records)
-        )
+        logger.debug("memory.backend.search user_id=%s count=%d", user_id, len(records))
         return records
 
     def delete(self, user_id: str, key: str) -> bool:
@@ -238,12 +225,9 @@ class Mem0MemoryBackend:
             self._client().delete(memory_id=rid)
         except Exception as exc:  # noqa: BLE001
             raise MemoryBackendError(
-                f"mem0 backend failed during delete("
-                f"user_id={user_id!r}, key={key!r})"
+                f"mem0 backend failed during delete(user_id={user_id!r}, key={key!r})"
             ) from exc
-        logger.info(
-            "memory.backend.delete user_id=%s key=%s", user_id, key
-        )
+        logger.info("memory.backend.delete user_id=%s key=%s", user_id, key)
         return True
 
     def list_all(self, user_id: str) -> list[MemoryRecord]:

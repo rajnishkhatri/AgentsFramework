@@ -22,37 +22,45 @@ PHASE1_CONFIG = (
 
 def test_missing_name_is_rejected():
     with pytest.raises(ValidationError):
-        ReviewAgentConfig.model_validate({
-            "files": ["trust/__init__.py"],
-            "output_json": "out.json",
-        })
+        ReviewAgentConfig.model_validate(
+            {
+                "files": ["trust/__init__.py"],
+                "output_json": "out.json",
+            }
+        )
 
 
 def test_missing_files_is_rejected():
     with pytest.raises(ValidationError):
-        ReviewAgentConfig.model_validate({
-            "name": "x",
-            "output_json": "out.json",
-        })
+        ReviewAgentConfig.model_validate(
+            {
+                "name": "x",
+                "output_json": "out.json",
+            }
+        )
 
 
 def test_empty_files_is_rejected():
     with pytest.raises(ValidationError):
-        ReviewAgentConfig.model_validate({
-            "name": "x",
-            "files": [],
-            "output_json": "out.json",
-        })
+        ReviewAgentConfig.model_validate(
+            {
+                "name": "x",
+                "files": [],
+                "output_json": "out.json",
+            }
+        )
 
 
 def test_unknown_field_is_rejected():
     with pytest.raises(ValidationError):
-        ReviewAgentConfig.model_validate({
-            "name": "x",
-            "files": ["a.py"],
-            "output_json": "out.json",
-            "totally_unknown_field": True,
-        })
+        ReviewAgentConfig.model_validate(
+            {
+                "name": "x",
+                "files": ["a.py"],
+                "output_json": "out.json",
+                "totally_unknown_field": True,
+            }
+        )
 
 
 def test_phase1_config_loads_clean():

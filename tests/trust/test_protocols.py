@@ -26,8 +26,10 @@ from trust.protocols import CredentialProvider, IdentityProvider, PolicyProvider
 class ConformingIdentityProvider:
     def get_caller_identity(self) -> IdentityContext:
         return IdentityContext(
-            provider="stub", principal_id="x",
-            display_name="x", account_id="x",
+            provider="stub",
+            principal_id="x",
+            display_name="x",
+            account_id="x",
         )
 
     def resolve_identity(self, identifier: str) -> IdentityContext:
@@ -35,8 +37,10 @@ class ConformingIdentityProvider:
 
     def verify_identity(self, identity: IdentityContext) -> VerificationResult:
         return VerificationResult(
-            verified=True, reason="ok",
-            provider="stub", checked_at=datetime.now(UTC),
+            verified=True,
+            reason="ok",
+            provider="stub",
+            checked_at=datetime.now(UTC),
         )
 
 
@@ -48,7 +52,9 @@ class ConformingPolicyProvider:
         self, identity: IdentityContext, action: str, resource: str
     ) -> AccessDecision:
         return AccessDecision(
-            allowed=True, reason="ok", provider="stub",
+            allowed=True,
+            reason="ok",
+            provider="stub",
         )
 
     def get_permission_boundary(
@@ -62,7 +68,8 @@ class ConformingCredentialProvider:
         self, agent_facts: AgentFacts, scope: list[str]
     ) -> TemporaryCredentials:
         return TemporaryCredentials(
-            provider="stub", access_token="t",
+            provider="stub",
+            access_token="t",
             expiry=datetime.now(UTC) + timedelta(minutes=15),
             agent_id=agent_facts.agent_id,
         )
@@ -78,15 +85,19 @@ class ConformingCredentialProvider:
 
 class NonConformingEmpty:
     """Has no protocol methods at all."""
+
     pass
 
 
 class NonConformingPartialIdentity:
     """Has get_caller_identity but missing others."""
+
     def get_caller_identity(self) -> IdentityContext:
         return IdentityContext(
-            provider="x", principal_id="x",
-            display_name="x", account_id="x",
+            provider="x",
+            principal_id="x",
+            display_name="x",
+            account_id="x",
         )
 
 
@@ -157,6 +168,4 @@ class TestNonConformingClasses:
         assert not isinstance(NonConformingEmpty(), CredentialProvider)
 
     def test_partial_identity_fails(self):
-        assert not isinstance(
-            NonConformingPartialIdentity(), IdentityProvider
-        )
+        assert not isinstance(NonConformingPartialIdentity(), IdentityProvider)

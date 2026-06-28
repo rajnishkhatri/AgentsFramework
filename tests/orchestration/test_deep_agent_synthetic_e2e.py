@@ -54,23 +54,25 @@ def _emit_large_output(args: dict) -> str:
 
 
 def _build_registry() -> ToolRegistry:
-    return ToolRegistry({
-        "state_file": ToolDefinition(
-            executor=execute_state_file_tool,
-            schema=StateFileToolInput,
-            cacheable=False,
-        ),
-        "state_todo": ToolDefinition(
-            executor=execute_state_todo_tool,
-            schema=StateTodoToolInput,
-            cacheable=False,
-        ),
-        "emit_large": ToolDefinition(
-            executor=_emit_large_output,
-            schema=_EmitLargeInput,
-            cacheable=False,
-        ),
-    })
+    return ToolRegistry(
+        {
+            "state_file": ToolDefinition(
+                executor=execute_state_file_tool,
+                schema=StateFileToolInput,
+                cacheable=False,
+            ),
+            "state_todo": ToolDefinition(
+                executor=execute_state_todo_tool,
+                schema=StateTodoToolInput,
+                cacheable=False,
+            ),
+            "emit_large": ToolDefinition(
+                executor=_emit_large_output,
+                schema=_EmitLargeInput,
+                cacheable=False,
+            ),
+        }
+    )
 
 
 def _load_cases(fixture_name: str) -> list[dict]:
@@ -90,7 +92,11 @@ def _make_llm_response(content: str, tool_calls: list[dict], idx: int) -> MagicM
         }
         for pos, tc in enumerate(tool_calls)
     ]
-    response.usage_metadata = {"input_tokens": 50, "output_tokens": 20, "total_tokens": 70}
+    response.usage_metadata = {
+        "input_tokens": 50,
+        "output_tokens": 20,
+        "total_tokens": 70,
+    }
     response.response_metadata = {"model_name": "gpt-4o-mini"}
     return response
 
@@ -167,7 +173,11 @@ async def _run_case(
 
     if assert_initial_depth:
         initial_plan_ref = next(
-            (path for path in files.keys() if path.startswith(".agent_plans/") and "_step_0.json" in path),
+            (
+                path
+                for path in files.keys()
+                if path.startswith(".agent_plans/") and "_step_0.json" in path
+            ),
             None,
         )
         assert initial_plan_ref is not None, "expected initial step plan artifact"

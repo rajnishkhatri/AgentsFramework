@@ -49,7 +49,6 @@ from tests.synthetic.blackbox.dataset import (
 )
 from tests.synthetic.blackbox.langfuse_assertions import (
     AUDIT_DATASET,
-    ComplianceDatasetReport,
     INCIDENT_DATASET,
     LANGFUSE_POLL_INTERVAL_S,
     LANGFUSE_POLL_MAX_ATTEMPTS,
@@ -176,9 +175,9 @@ async def run_scenario(
 
     If gate=True, pauses for human confirmation after printing UI checklist.
     """
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"  SCENARIO {scenario.id.value}: {scenario.description[:60]}")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     print("[1/4] Sending request to BFF...")
     try:
@@ -232,7 +231,7 @@ async def run_scenario(
 
     print(f"\n  {verification.summary}")
 
-    print(f"\n[4/4] UI Checklist:")
+    print("\n[4/4] UI Checklist:")
     checklist = print_ui_checklist(scenario, trace_id)
     print(checklist)
 
@@ -254,9 +253,9 @@ async def run_scenario_s8_concurrent(
     gate: bool = True,
 ) -> list[ScenarioVerification]:
     """Special handler for S8: run two workflows concurrently."""
-    print(f"\n{'='*70}")
-    print(f"  SCENARIO S8: Two concurrent workflows")
-    print(f"{'='*70}\n")
+    print(f"\n{'=' * 70}")
+    print("  SCENARIO S8: Two concurrent workflows")
+    print(f"{'=' * 70}\n")
 
     print("[1/5] Sending TWO concurrent requests to BFF...")
 
@@ -264,9 +263,7 @@ async def run_scenario_s8_concurrent(
         trace_id, raw = await client.post_run_stream(scenario.bff_payload)
         return trace_id, raw
 
-    results = await asyncio.gather(
-        _send("S8-A"), _send("S8-B"), return_exceptions=True
-    )
+    results = await asyncio.gather(_send("S8-A"), _send("S8-B"), return_exceptions=True)
 
     verifications: list[ScenarioVerification] = []
     trace_ids: list[str] = []
@@ -403,9 +400,7 @@ async def main() -> int:
         scenario = ALL_SCENARIOS[sid]
 
         if sid == ScenarioID.S8:
-            s8_results = await run_scenario_s8_concurrent(
-                client, scenario, gate=gate
-            )
+            s8_results = await run_scenario_s8_concurrent(client, scenario, gate=gate)
             for i, v in enumerate(s8_results):
                 verifications.append(v)
                 trace_map[f"S8-{'AB'[i]}"] = v.trace_id
@@ -419,9 +414,9 @@ async def main() -> int:
     # Phase 5 — Compliance datasets + scores
     # ─────────────────────────────────────────────────────────────────
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("  PHASE 5: Compliance Datasets + Scores")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     print(f"  Trace map ({len(trace_map)} entries):")
     for k, v in sorted(trace_map.items()):
@@ -437,7 +432,7 @@ async def main() -> int:
         if r.details:
             print(f"           {r.details}")
 
-    print(f"\n  agent-incident-replay:")
+    print("\n  agent-incident-replay:")
     for r in compliance_report.incident_results:
         status = "PASS" if r.passed else "FAIL"
         print(f"    [{status}] {r.description}")
@@ -460,9 +455,9 @@ async def main() -> int:
     # Final Report
     # ─────────────────────────────────────────────────────────────────
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("  FINAL REPORT")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     all_passed = True
     for v in verifications:

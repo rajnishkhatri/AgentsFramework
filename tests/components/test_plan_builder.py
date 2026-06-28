@@ -269,8 +269,13 @@ def test_floor_generic_pair_never_returns() -> None:
 def test_floor_branch_count_capped_at_six() -> None:
     # 8 branches → capped at _MAX_BRANCH_CONDITIONS (6), and with the generic
     # tail moved to judge-time there is no +1, so exactly 6 task conditions.
-    task = ". ".join(f"Do subtask number {w}" for w in
-                     ["one", "two", "three", "four", "five", "six", "seven", "eight"]) + "."
+    task = (
+        ". ".join(
+            f"Do subtask number {w}"
+            for w in ["one", "two", "three", "four", "five", "six", "seven", "eight"]
+        )
+        + "."
+    )
     artifact = build_plan_artifact("L2", task_input=task)
     assert len(artifact.success_conditions) == 6
     assert not any("internally consistent" in c for c in artifact.success_conditions)
@@ -339,9 +344,7 @@ def test_build_plan_artifact_llm_floors_on_empty_steps() -> None:
         task_input="Refactor the auth module.",
         generate=lambda _t: {"ordered_steps": [], "success_conditions": ["x"]},
     )
-    assert artifact == build_plan_artifact(
-        "L1", task_input="Refactor the auth module."
-    )
+    assert artifact == build_plan_artifact("L1", task_input="Refactor the auth module.")
 
 
 def test_build_plan_artifact_llm_floors_on_garbage_shape() -> None:

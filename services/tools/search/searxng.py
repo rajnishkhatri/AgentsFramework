@@ -16,7 +16,6 @@ from services.tools.search.port import (
     SearchResult,
     WebSearchEmpty,
     WebSearchError,
-    WebSearchProvider,
 )
 
 logger = logging.getLogger(__name__)

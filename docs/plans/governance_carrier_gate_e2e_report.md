@@ -124,7 +124,7 @@ Each case: the prompt sent, the rendered answer, the Langfuse reasoning trace (r
 
 ## 5. What this establishes for Phase 2
 
-The §5 exit criterion was: *"a real run-corpus shows the missing-carrier rate is true signal, not false-positive on legitimate phase-skips."* This run establishes the **healthy-traffic baseline = 0.000 gap rate** with full coverage — the warn signal is quiet when it should be quiet, and the legitimate skips (resumed-init, no-tool TOOL_EXECUTION) correctly produce no gap (no false-positives). 
+The §5 exit criterion was: *"a real run-corpus shows the missing-carrier rate is true signal, not false-positive on legitimate phase-skips."* This run establishes the **healthy-traffic baseline = 0.000 gap rate** with full coverage — the warn signal is quiet when it should be quiet, and the legitimate skips (resumed-init, no-tool TOOL_EXECUTION) correctly produce no gap (no false-positives).
 
 **This does NOT yet prove the gate *catches* a gap live** — by design (plan CE-4): the L2 failure-mode matrix proves detection deterministically offline, and forcing a live seam defect risks polluting the baseline. A fault-injection live test is the natural **next** calibration step before any Phase-2 enforce decision.
 

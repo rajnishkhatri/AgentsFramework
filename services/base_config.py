@@ -249,9 +249,9 @@ class AgentConfig(BaseModel):
     # at/above it pauses for the approval card; CRITICAL is always un-promptable
     # (hard-deny) regardless of this knob. Default "high" = only the riskiest
     # band asks during early rollout.
-    shell_approval_severity_threshold: Literal[
-        "low", "medium", "high", "critical"
-    ] = "high"
+    shell_approval_severity_threshold: Literal["low", "medium", "high", "critical"] = (
+        "high"
+    )
     # Fail-closed approval timeout. No human decision within this many seconds →
     # DENY (OWASP "a timeout = denial, no exception path"). Bounds the interrupt.
     shell_approval_timeout_seconds: int = 120

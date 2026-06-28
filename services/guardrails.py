@@ -111,7 +111,9 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     ),
     # Jailbreak: persona / mode tricks that remove safety constraints.
     re.compile(r"\byou\s+are\s+now\s+(dan|an?\s+\w+\s+with\s+no\b)", re.IGNORECASE),
-    re.compile(r"\b(developer|dev|god|jailbreak(?:en)?|unrestricted)\s+mode\b", re.IGNORECASE),
+    re.compile(
+        r"\b(developer|dev|god|jailbreak(?:en)?|unrestricted)\s+mode\b", re.IGNORECASE
+    ),
     re.compile(r"\bdo\s+anything\s+now\b", re.IGNORECASE),
     re.compile(
         r"\b(pretend|act\s+as\s+if|imagine)\b[^.\n]{0,40}\b"
@@ -162,9 +164,7 @@ def _shannon_entropy(token: str) -> float:
         return 0.0
     counts = Counter(token)
     length = len(token)
-    return -sum(
-        (n / length) * math.log2(n / length) for n in counts.values()
-    )
+    return -sum((n / length) * math.log2(n / length) for n in counts.values())
 
 
 def _looks_like_decoded_injection(blob: str) -> bool:

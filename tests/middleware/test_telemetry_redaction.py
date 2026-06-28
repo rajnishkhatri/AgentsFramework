@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import pytest
 
 from agent_ui_adapter.wire.domain_events import LLMMessageEnded, LLMMessageStarted
 from middleware.telemetry_bridge import emit_domain_event
@@ -62,7 +61,8 @@ class TestRedactText:
 
 class TestRelayOutputRedaction:
     def test_task_started_output_uses_redacted_details(
-        self, tmp_path: Path,
+        self,
+        tmp_path: Path,
     ) -> None:
         exporter = _StubExporter()
         storage = tmp_path / "black_box_recordings"
@@ -88,7 +88,10 @@ class TestRelayOutputRedaction:
         output_str = str(output)
         assert _EMAIL not in output_str
         assert _SECRET not in output_str
-        assert exporter.events[0]["attributes"]["details"]["task_input"] == output["task_input"]
+        assert (
+            exporter.events[0]["attributes"]["details"]["task_input"]
+            == output["task_input"]
+        )
 
 
 class TestBridgeInputRedaction:

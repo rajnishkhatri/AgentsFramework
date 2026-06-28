@@ -372,5 +372,3 @@ This document extends the Trust Foundation layer defined in [FOUR_LAYER_ARCHITEC
 | `TRUST_FRAMEWORK_ARCHITECTURE.md` | The three protocols map to L1 (IdentityProvider), L2 (PolicyProvider), and L1+L2 (CredentialProvider)                               |
 | `LAYER1_IDENTITY_ANALYSIS.md`     | The AgentFacts-to-IAM mapping builds on the Phase 1 data model defined there                                                        |
 | `STYLE_GUIDE_LAYERING.md`         | Cloud adapters follow horizontal service rules (H1-H4), especially H4 (parameterized)                                               |
-
-

@@ -54,7 +54,9 @@ def build_run_stream_context(
     saturation = parse_goaljudge_thread_id(str(raw_thread_id))
     eval_user_id = resolve_eval_user_id(identity.owner, saturation, subject)
     thread_id = (
-        saturation.checkpoint_thread_id if saturation is not None else str(raw_thread_id)
+        saturation.checkpoint_thread_id
+        if saturation is not None
+        else str(raw_thread_id)
     )
 
     runtime_input: dict[str, Any] = {**user_input}

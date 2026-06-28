@@ -161,7 +161,9 @@ class TestShadowValidationHarness:
 
         llm = MultiTraceFakeLLM(SHADOW_TRACES)
         with pytest.raises(AssertionError, match="no recorded verdict matched"):
-            asyncio.run(llm.invoke(_profile(), [{"role": "user", "content": "unknown task"}]))
+            asyncio.run(
+                llm.invoke(_profile(), [{"role": "user", "content": "unknown task"}])
+            )
 
 
 class TestLangfuseReplaySwapSeam:
@@ -211,7 +213,10 @@ class TestLangfuseReplaySwapSeam:
         """§8.3 behavioral gate: real batch export via GOALJUDGE_LANGFUSE_EXPORT."""
         import os
 
-        from tests.fixtures.goaljudge.langfuse_replay import EXPORT_ENV_VAR, replay_source
+        from tests.fixtures.goaljudge.langfuse_replay import (
+            EXPORT_ENV_VAR,
+            replay_source,
+        )
 
         if not os.environ.get(EXPORT_ENV_VAR):
             pytest.skip(f"{EXPORT_ENV_VAR} not set — run batch + export first")
@@ -245,7 +250,10 @@ class TestLangfuseReplaySwapSeam:
         export.write_text(
             json.dumps(
                 [
-                    {"trace_id": "deadbeef-not-an-anchor", "verdict": {"goal_met": True}},
+                    {
+                        "trace_id": "deadbeef-not-an-anchor",
+                        "verdict": {"goal_met": True},
+                    },
                     {
                         "trace_id": "cbfe84539b675824a1eb08b331204b8d",
                         "verdict": {"goal_met": False, "partial_fraction": 0.0},
@@ -278,7 +286,12 @@ class TestLangfuseReplaySwapSeam:
         export = tmp_path / "notaverdict.json"
         export.write_text(
             json.dumps(
-                [{"trace_id": "cbfe84539b675824a1eb08b331204b8d", "verdict": {"foo": 1}}]
+                [
+                    {
+                        "trace_id": "cbfe84539b675824a1eb08b331204b8d",
+                        "verdict": {"foo": 1},
+                    }
+                ]
             )
         )
         with pytest.raises(ReplayExportError, match="not a verdict"):

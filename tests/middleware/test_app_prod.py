@@ -111,6 +111,7 @@ class TestAppProdModule:
             os.environ.pop("GCS_FACTS_BUCKET", None)
             with pytest.raises(RuntimeError, match="GCS_FACTS_BUCKET"):
                 from middleware.app_prod import build_combined_app
+
                 build_combined_app()
 
     def test_build_combined_app_requires_gcs_traces_bucket(self) -> None:
@@ -128,6 +129,7 @@ class TestAppProdModule:
             os.environ.pop("GCS_TRACES_BUCKET", None)
             with pytest.raises(RuntimeError, match="GCS_TRACES_BUCKET"):
                 from middleware.app_prod import build_combined_app
+
                 build_combined_app()
 
 
@@ -167,21 +169,24 @@ class TestAppProdHealthz:
             mock_reader,
         )
 
-        with patch.dict(os.environ, env, clear=False), \
-             patch(
-                 "middleware.app_prod.GcsTraceSink",
-                 return_value=mock_gcs_sink,
-             ), \
-             patch(
-                 "middleware.app_prod._load_graph_factory",
-                 return_value=MagicMock(),
-             ), \
-             patch(
-                 "middleware.composition.build_adapters",
-                 return_value=MagicMock(profile="v3"),
-             ):
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "middleware.app_prod.GcsTraceSink",
+                return_value=mock_gcs_sink,
+            ),
+            patch(
+                "middleware.app_prod._load_graph_factory",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "middleware.composition.build_adapters",
+                return_value=MagicMock(profile="v3"),
+            ),
+        ):
             from importlib import reload
             import middleware.app_prod as mod
+
             reload(mod)
             with patch.object(
                 mod, "_build_components", return_value=build_components_return
@@ -189,6 +194,7 @@ class TestAppProdHealthz:
                 app = mod.build_combined_app()
 
         from fastapi.testclient import TestClient
+
         return TestClient(app, raise_server_exceptions=False)
 
     def test_healthz_returns_200(self, prod_client) -> None:
@@ -287,27 +293,30 @@ def _build_crud_client(
         MagicMock(),  # goal_judge_config_reader
     )
 
-    with patch.dict(os.environ, env, clear=False), \
-         patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()), \
-         patch(
-             "middleware.app_prod._load_graph_factory",
-             return_value=MagicMock(),
-         ), \
-         patch(
-             "middleware.composition.build_adapters",
-             return_value=mock_adapters,
-         ), \
-         patch(
-             "middleware.app_prod.LangGraphRuntime",
-             return_value=MagicMock(),
-         ):
+    with (
+        patch.dict(os.environ, env, clear=False),
+        patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()),
+        patch(
+            "middleware.app_prod._load_graph_factory",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "middleware.composition.build_adapters",
+            return_value=mock_adapters,
+        ),
+        patch(
+            "middleware.app_prod.LangGraphRuntime",
+            return_value=MagicMock(),
+        ),
+    ):
         import middleware.app_prod as mod
 
         reload(mod)
-        with patch.object(
-            mod, "_build_components", return_value=build_components_return
-        ), patch.object(
-            mod, "_build_agent_components", return_value=mock_components
+        with (
+            patch.object(
+                mod, "_build_components", return_value=build_components_return
+            ),
+            patch.object(mod, "_build_agent_components", return_value=mock_components),
         ):
             app = mod.build_combined_app()
 
@@ -417,12 +426,8 @@ class TestAppProdMemoryCrud:
         )
 
         shared_mem = LongTermMemoryService(InMemoryMemoryBackend())
-        alice, _ = _build_crud_client(
-            memory_service=shared_mem, subject="user_ALICE"
-        )
-        bob, _ = _build_crud_client(
-            memory_service=shared_mem, subject="user_BOB"
-        )
+        alice, _ = _build_crud_client(memory_service=shared_mem, subject="user_ALICE")
+        bob, _ = _build_crud_client(memory_service=shared_mem, subject="user_BOB")
         alice.post(
             "/agent/memory",
             json={"content": "alice secret", "type": "semantic"},
@@ -493,29 +498,32 @@ class TestAppProdAutoProvision:
             MagicMock(),
         )
 
-        with patch.dict(os.environ, env, clear=False), \
-             patch(
-                 "middleware.app_prod.GcsTraceSink",
-                 return_value=MagicMock(),
-             ), \
-             patch(
-                 "middleware.app_prod._load_graph_factory",
-                 return_value=MagicMock(),
-             ), \
-             patch(
-                 "middleware.composition.build_adapters",
-                 return_value=mock_adapters,
-             ), \
-             patch(
-                 "agent_ui_adapter.adapters.runtime.postgres_saver.PostgresCheckpointer.from_env",
-                 return_value=mock_pg_cm,
-             ), \
-             patch(
-                 "middleware.app_prod.LangGraphRuntime",
-                 return_value=mock_runtime,
-             ):
+        with (
+            patch.dict(os.environ, env, clear=False),
+            patch(
+                "middleware.app_prod.GcsTraceSink",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "middleware.app_prod._load_graph_factory",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "middleware.composition.build_adapters",
+                return_value=mock_adapters,
+            ),
+            patch(
+                "agent_ui_adapter.adapters.runtime.postgres_saver.PostgresCheckpointer.from_env",
+                return_value=mock_pg_cm,
+            ),
+            patch(
+                "middleware.app_prod.LangGraphRuntime",
+                return_value=mock_runtime,
+            ),
+        ):
             from importlib import reload
             import middleware.app_prod as mod
+
             reload(mod)
             with patch.object(
                 mod,
@@ -526,6 +534,7 @@ class TestAppProdAutoProvision:
             app.state.runtime = mock_runtime
 
         from fastapi.testclient import TestClient
+
         client = TestClient(app, raise_server_exceptions=False)
         return client, mock_registry, subject
 
@@ -660,20 +669,22 @@ def _build_telemetry_client(
         MagicMock(),  # goal_judge_config_reader
     )
 
-    with patch.dict(os.environ, env, clear=False), \
-         patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()), \
-         patch(
-             "middleware.app_prod._load_graph_factory",
-             return_value=MagicMock(),
-         ), \
-         patch(
-             "middleware.composition.build_adapters",
-             return_value=mock_adapters,
-         ), \
-         patch(
-             "middleware.app_prod.LangGraphRuntime",
-             return_value=mock_runtime,
-         ):
+    with (
+        patch.dict(os.environ, env, clear=False),
+        patch("middleware.app_prod.GcsTraceSink", return_value=MagicMock()),
+        patch(
+            "middleware.app_prod._load_graph_factory",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "middleware.composition.build_adapters",
+            return_value=mock_adapters,
+        ),
+        patch(
+            "middleware.app_prod.LangGraphRuntime",
+            return_value=mock_runtime,
+        ),
+    ):
         import middleware.app_prod as mod
 
         reload(mod)
@@ -774,9 +785,7 @@ class TestTelemetryWiring:
                 tool_name="shell",
                 args_json='{"cmd":"ls"}',
             ),
-            ToolResultReceived(
-                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
-            ),
+            ToolResultReceived(trace_id="t-1", tool_call_id="tc-1", result="file.txt"),
             RunFinishedDomain(
                 trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
             ),
@@ -798,9 +807,7 @@ class TestTelemetryWiring:
                 tool_name="shell",
                 args_json='{"cmd":"ls"}',
             ),
-            ToolResultReceived(
-                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
-            ),
+            ToolResultReceived(trace_id="t-1", tool_call_id="tc-1", result="file.txt"),
             RunFinishedDomain(
                 trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
             ),
@@ -826,9 +833,7 @@ class TestTelemetryWiring:
                 tool_name="shell",
                 args_json='{"cmd":"ls"}',
             ),
-            ToolResultReceived(
-                trace_id="t-1", tool_call_id="tc-1", result="file.txt"
-            ),
+            ToolResultReceived(trace_id="t-1", tool_call_id="tc-1", result="file.txt"),
             RunFinishedDomain(
                 trace_id="t-1", run_id="r-1", thread_id="th-1", error=None
             ),
@@ -947,28 +952,32 @@ def _prod_app_with_relay(relay):
         "DATABASE_URL": "postgresql://test:test@localhost/test",
     }
 
-    with patch.dict(os.environ, env, clear=False), \
-         patch(
-             "middleware.composition.build_adapters",
-             return_value=mock_adapters,
-         ), \
-         patch(
-             "agent_ui_adapter.adapters.runtime.postgres_saver."
-             "PostgresCheckpointer.from_env",
-             return_value=mock_pg_cm,
-         ):
+    with (
+        patch.dict(os.environ, env, clear=False),
+        patch(
+            "middleware.composition.build_adapters",
+            return_value=mock_adapters,
+        ),
+        patch(
+            "agent_ui_adapter.adapters.runtime.postgres_saver."
+            "PostgresCheckpointer.from_env",
+            return_value=mock_pg_cm,
+        ),
+    ):
         import middleware.app_prod as mod
 
         # Reload first, then patch module attributes: reload() re-binds the
         # module's imported names to the real implementations, so patches must
         # be applied to the reloaded module (and stay active through lifespan).
         reload(mod)
-        with patch.object(mod, "GcsTraceSink", return_value=MagicMock()), \
-             patch.object(mod, "_load_graph_factory", return_value=MagicMock()), \
-             patch.object(mod, "LangGraphRuntime", return_value=MagicMock()), \
-             patch.object(
-                 mod, "_build_components", return_value=build_components_return
-             ):
+        with (
+            patch.object(mod, "GcsTraceSink", return_value=MagicMock()),
+            patch.object(mod, "_load_graph_factory", return_value=MagicMock()),
+            patch.object(mod, "LangGraphRuntime", return_value=MagicMock()),
+            patch.object(
+                mod, "_build_components", return_value=build_components_return
+            ),
+        ):
             app = mod.build_combined_app()
             # Keep patches active while the caller drives the lifespan.
             yield app, mock_telemetry
@@ -987,9 +996,7 @@ class TestAppProdRelayLifecycle:
                 # A request pumps the loop so run_forever's body executes.
                 assert client.get("/healthz").status_code == 200
 
-            assert relay.started is True, (
-                "relay.run_forever should have been scheduled"
-            )
+            assert relay.started is True, "relay.run_forever should have been scheduled"
             assert relay.stopped is True, "relay.stop() should run on shutdown"
             mock_telemetry.shutdown.assert_called_once()
 

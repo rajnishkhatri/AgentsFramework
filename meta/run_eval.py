@@ -6,7 +6,6 @@ with the LLM judge, and produces a structured report.
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import UTC, datetime
 from pathlib import Path
@@ -160,7 +159,9 @@ def resolve_input_path(path: str, *, cache_dir: Path = Path("/tmp/meta_eval")) -
     return Path(path)
 
 
-def persist_output_path(report: EvalReport, path: str, *, cache_dir: Path = Path("/tmp/meta_eval")) -> Path:
+def persist_output_path(
+    report: EvalReport, path: str, *, cache_dir: Path = Path("/tmp/meta_eval")
+) -> Path:
     """Write report locally and optionally upload to ``gs://``."""
     if path.startswith("gs://"):
         local_path = cache_dir / "report.json"
@@ -194,7 +195,9 @@ def run_eval_cli(args: list[str] | None = None) -> int:
     from services.base_config import AgentConfig
     from services.llm_config import LLMService
 
-    parser = argparse.ArgumentParser(description="Run the meta evaluation scoring pipeline.")
+    parser = argparse.ArgumentParser(
+        description="Run the meta evaluation scoring pipeline."
+    )
     parser.add_argument(
         "--golden-set",
         required=True,

@@ -30,7 +30,9 @@ def _append_list_by_record_id(existing: list, new: list) -> list:
     ]
 
 
-def _merge_dict(existing: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any]:
+def _merge_dict(
+    existing: dict[str, Any] | None, new: dict[str, Any] | None
+) -> dict[str, Any]:
     """Merge dictionaries with new values overriding existing values."""
     if not existing:
         return dict(new or {})

@@ -162,7 +162,10 @@ _GJ001B = ShadowTrace(
     evidence=[
         {
             "tool_name": "file_io",
-            "tool_input": {"path": "/workspace/abc/gj_p1_temp1.txt", "contents": "status=active"},
+            "tool_input": {
+                "path": "/workspace/abc/gj_p1_temp1.txt",
+                "contents": "status=active",
+            },
             "tool_output": "wrote 13 bytes",
         },
         {

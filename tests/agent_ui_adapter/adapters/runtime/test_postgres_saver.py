@@ -17,7 +17,6 @@ import pytest
 
 from agent_ui_adapter.adapters.runtime.postgres_saver import (
     PostgresCheckpointer,
-    postgres_checkpointer_from_env,
 )
 
 
@@ -94,9 +93,7 @@ class TestPostgresCheckpointerPoolResilience:
 
         with (
             patch("psycopg_pool.AsyncConnectionPool", pool_cls),
-            patch(
-                "langgraph.checkpoint.postgres.aio.AsyncPostgresSaver", saver_cls
-            ),
+            patch("langgraph.checkpoint.postgres.aio.AsyncPostgresSaver", saver_cls),
         ):
             cp = PostgresCheckpointer("postgresql://localhost/test")
             await cp.__aenter__()

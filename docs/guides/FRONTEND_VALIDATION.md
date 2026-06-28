@@ -780,4 +780,3 @@ rules and anti-patterns this checklist enforces.
 - [docs/Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md](../Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md)
 — wire/trust-view kernel context for §2.10 and §3.5.
 - [AGENTS.md](../../AGENTS.md) — "Frontend Conventions" block.
-

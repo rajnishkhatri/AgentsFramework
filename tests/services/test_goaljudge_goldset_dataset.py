@@ -14,7 +14,6 @@ from services.governance.goaljudge_goldset_dataset import (
     FRESH_TASK_BENCHMARK_SCHEMAS,
     STRATA_SHARES,
     AssemblyInvariantError,
-    CoverageReport,
     DuplicateItemError,
     FirewallError,
     FreshTask,
@@ -198,7 +197,9 @@ class TestRealLangfuseDatasetClient:
         result = client.create_dataset(name="ds")
         assert result == {"name": "ds", "id": "abc"}
 
-    def test_builder_raises_when_env_missing(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_builder_raises_when_env_missing(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         from scripts.langfuse_dataset_client import build_real_langfuse_dataset_client
 
         monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
@@ -302,6 +303,7 @@ class TestComputeTestSplitHash:
         h = compute_test_split_hash([dev_only])
         # SHA-256 of "[]" (json of empty list)
         import hashlib
+
         expected = hashlib.sha256(b"[]").hexdigest()
         assert h == expected
 
@@ -467,7 +469,10 @@ class TestCellVocabularyAndFloors:
         over-allocate by rounding."""
         assert sum(STRATA_SHARES.values()) == pytest.approx(1.0)
         assert set(STRATA_SHARES) == {
-            "representative", "boundary", "edge", "impossible"
+            "representative",
+            "boundary",
+            "edge",
+            "impossible",
         }
 
     def test_cell_tool_clusters_locks_the_d5_vocabulary(self) -> None:
@@ -478,10 +483,18 @@ class TestCellVocabularyAndFloors:
         cluster is added, the builder + manifest must learn about it via
         CELL_TOOL_CLUSTERS, not by reading classify_tool_cluster's source.
         """
-        assert CELL_TOOL_CLUSTERS == frozenset({
-            "file-only", "shell-bound", "web-bound", "no-tool",
-            "compose", "wrong-tool", "blocked-tool", "request_approval",
-        })
+        assert CELL_TOOL_CLUSTERS == frozenset(
+            {
+                "file-only",
+                "shell-bound",
+                "web-bound",
+                "no-tool",
+                "compose",
+                "wrong-tool",
+                "blocked-tool",
+                "request_approval",
+            }
+        )
 
 
 class TestComputeCellCoverage:
@@ -547,9 +560,9 @@ class TestComputeCellCoverage:
     def test_report_renders_markdown(self) -> None:
         """The CoverageReport must serialize to a human-readable markdown
         table — that's what Phase 4 authors actually read."""
-        report = compute_cell_coverage([
-            self._row(planning_depth="L1", tool_cluster="web-bound")
-        ])
+        report = compute_cell_coverage(
+            [self._row(planning_depth="L1", tool_cluster="web-bound")]
+        )
         rendered = report.to_markdown()
         assert "planning_depth" in rendered.lower() or "D1" in rendered
         assert "L1" in rendered
@@ -743,6 +756,7 @@ class TestFreshTaskSchema:
         An unknown value (e.g. ``L3``) must be rejected at construction —
         otherwise Phase 4 authors could silently drift the cell vocabulary."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(expected_planning_depth="L3"))
 
@@ -759,6 +773,7 @@ class TestFreshTaskSchema:
         A typo or new-cluster drift must fail — silently accepting it would
         invalidate Phase 3's gap report."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(expected_tool_cluster="non-existent-cluster"))
 
@@ -776,6 +791,7 @@ class TestFreshTaskSchema:
         or ``None``. An unknown code must be rejected (consistency with the
         existing GoldsetItem._normalize_failure_mode validator)."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(expected_failure_mode="totally-made-up-mode"))
 
@@ -796,6 +812,7 @@ class TestFreshTaskSchema:
         Phase 4 spec §8 locks the allowed schemas — silent drift here would
         break the "reuse schemas, not items" discipline."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(source_benchmark_schema="unknown-bench-2030"))
 
@@ -811,6 +828,7 @@ class TestFreshTaskSchema:
         """``stratum`` must match the spec §4 closed set so the allocator
         can balance shares correctly."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(stratum="unstratified-bonus-bucket"))
 
@@ -826,6 +844,7 @@ class TestFreshTaskSchema:
     def test_rejects_missing_prompt(self) -> None:
         """``prompt`` is required (no silent empty-prompt drift)."""
         from pydantic import ValidationError
+
         bad = _fresh_kwargs()
         del bad["prompt"]
         with pytest.raises(ValidationError):
@@ -834,6 +853,7 @@ class TestFreshTaskSchema:
     def test_rejects_empty_prompt(self) -> None:
         """Empty-string ``prompt`` rejected (`min_length=1`)."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(prompt=""))
 
@@ -842,6 +862,7 @@ class TestFreshTaskSchema:
         instead of ``expected_failure_mode``) becomes a loud error, not a
         silent drop."""
         from pydantic import ValidationError
+
         with pytest.raises(ValidationError):
             FreshTask(**_fresh_kwargs(failure_mode="fabricated-progress"))  # typo
 
@@ -865,13 +886,15 @@ class TestFreshTaskBenchmarkSchemasVocabulary:
     this test, which forces a code review of the schema list."""
 
     def test_benchmark_schemas_matches_phase4_spec(self) -> None:
-        assert FRESH_TASK_BENCHMARK_SCHEMAS == frozenset({
-            "tau-bench",
-            "the-agent-company-checkpoint",
-            "webarena-impossible",
-            "agentboard-subgoal",
-            "novel",
-        })
+        assert FRESH_TASK_BENCHMARK_SCHEMAS == frozenset(
+            {
+                "tau-bench",
+                "the-agent-company-checkpoint",
+                "webarena-impossible",
+                "agentboard-subgoal",
+                "novel",
+            }
+        )
 
 
 class TestJaccardSimilarity:
@@ -953,17 +976,25 @@ class TestValidateFreshTaskSet:
         returns ``L0`` so any non-L0 expected depth disagrees.
         """
         if agree:
-            def _agreeing(*, task_input: str, task_tool_results_count: int) -> tuple[str, str]:
+
+            def _agreeing(
+                *, task_input: str, task_tool_results_count: int
+            ) -> tuple[str, str]:
                 # Encode expected depth in the prompt prefix so the stub
                 # mirrors author intent.
                 for depth in ("L2", "L1", "L0"):
                     if task_input.startswith(depth + ":"):
                         return depth, "stub:agree"
                 return "L0", "stub:default"
+
             return _agreeing
         else:
-            def _disagreeing(*, task_input: str, task_tool_results_count: int) -> tuple[str, str]:
+
+            def _disagreeing(
+                *, task_input: str, task_tool_results_count: int
+            ) -> tuple[str, str]:
                 return "L0", "stub:always-L0"
+
             return _disagreeing
 
     # ── Failure path 1: duplicate id ──────────────────────────────────────
@@ -973,7 +1004,9 @@ class TestValidateFreshTaskSet:
         Without this, the gold set could silently collide on freeze."""
         tasks = [
             FreshTask(**_fresh_kwargs(id="GJ-F-001")),
-            FreshTask(**_fresh_kwargs(id="GJ-F-001", prompt="totally different prompt")),
+            FreshTask(
+                **_fresh_kwargs(id="GJ-F-001", prompt="totally different prompt")
+            ),
         ]
         with pytest.raises(FreshTaskValidationError, match=r"(?i)duplicate"):
             validate_fresh_task_set(tasks, [], self._stub_router(agree=True))
@@ -987,7 +1020,9 @@ class TestValidateFreshTaskSet:
         whole reason D1 is a cell dimension."""
         # Author says L2 but the stub router always returns L0 ⇒ disagreement.
         tasks = [FreshTask(**_fresh_kwargs(expected_planning_depth="L2"))]
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)router|planning_depth"):
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)router|planning_depth"
+        ):
             validate_fresh_task_set(tasks, [], self._stub_router(agree=False))
 
     # ── Failure path 3: registry-prompt contamination (Jaccard ≥ 0.5) ────
@@ -998,8 +1033,12 @@ class TestValidateFreshTaskSet:
         registry_prompt = "Sum a column from /workspace/data.csv and return the total."
         # Identical prompt ⇒ Jaccard = 1.0 ⇒ must reject.
         tasks = [FreshTask(**_fresh_kwargs(prompt=registry_prompt))]
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)jaccard|registry|contamination"):
-            validate_fresh_task_set(tasks, [registry_prompt], self._stub_router(agree=True))
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)jaccard|registry|contamination"
+        ):
+            validate_fresh_task_set(
+                tasks, [registry_prompt], self._stub_router(agree=True)
+            )
 
     # ── Happy path: clean corpus passes ───────────────────────────────────
 
@@ -1007,9 +1046,18 @@ class TestValidateFreshTaskSet:
         """A corpus with: unique ids, router-agreement, and no
         registry-overlap passes silently (returns None)."""
         tasks = [
-            FreshTask(**_fresh_kwargs(id="GJ-F-001", prompt="L0:Echo back the user's name verbatim.")),
-            FreshTask(**_fresh_kwargs(id="GJ-F-002", prompt="L1:Open journal.md and append today's date.",
-                                       expected_planning_depth="L1")),
+            FreshTask(
+                **_fresh_kwargs(
+                    id="GJ-F-001", prompt="L0:Echo back the user's name verbatim."
+                )
+            ),
+            FreshTask(
+                **_fresh_kwargs(
+                    id="GJ-F-002",
+                    prompt="L1:Open journal.md and append today's date.",
+                    expected_planning_depth="L1",
+                )
+            ),
         ]
         registry = ["completely unrelated registry prompt"]
         # Must not raise. Explicit None return = "all guards passed".
@@ -1026,7 +1074,9 @@ class TestValidateFreshTaskSet:
         registry = ["L0:foo bar baz"]
         with pytest.raises(FreshTaskValidationError):
             validate_fresh_task_set(
-                tasks, registry, self._stub_router(agree=True),
+                tasks,
+                registry,
+                self._stub_router(agree=True),
                 jaccard_threshold=0.99,
             )
 
@@ -1111,10 +1161,7 @@ class TestEvaluateGoldsetPostAlphaCoverage:
         # Use the larger of the two floors so both cells close
         # simultaneously without over-filling either dimension.
         n = max(l0_floor, no_tool_floor)
-        rows = [
-            _row(planning_depth="L0", tool_cluster="no-tool")
-            for _ in range(n)
-        ]
+        rows = [_row(planning_depth="L0", tool_cluster="no-tool") for _ in range(n)]
         report = evaluate_goldset_post_alpha_coverage(rows)
         assert report.total_items == n
         assert report.d1_gaps["L0"] == 0
@@ -1131,13 +1178,19 @@ class TestEvaluateGoldsetPostAlphaCoverage:
         close L1 but the FAILURE-ONLY count does not."""
         # 50 L1+file-only rows: half pass, half fail.
         successes = [
-            _row(planning_depth="L1", tool_cluster="file-only",
-                 adjudicated_goal_met="true")
+            _row(
+                planning_depth="L1",
+                tool_cluster="file-only",
+                adjudicated_goal_met="true",
+            )
             for _ in range(50)
         ]
         failures = [
-            _row(planning_depth="L1", tool_cluster="file-only",
-                 adjudicated_goal_met="false")
+            _row(
+                planning_depth="L1",
+                tool_cluster="file-only",
+                adjudicated_goal_met="false",
+            )
             for _ in range(50)
         ]
         report = evaluate_goldset_post_alpha_coverage(successes + failures)
@@ -1210,7 +1263,9 @@ class TestRowToGoldsetItem:
         """A blank ``item_id`` would yield duplicate-collision risk at
         Langfuse load. MUST raise (pydantic min_length=1)."""
         row = _csv_row(item_id="")
-        with pytest.raises(ValueError, match=r"(?i)item_id|min_length|String should have at least"):
+        with pytest.raises(
+            ValueError, match=r"(?i)item_id|min_length|String should have at least"
+        ):
             row_to_goldset_item(row)
 
     # ── Failure path 2: invalid adjudicated_goal_met ─────────────────────
@@ -1360,7 +1415,8 @@ class TestAssertAssemblyInvariants:
         validator — this is the realistic failure path because the
         bundle is the only defense once pydantic is bypassed."""
         synthetic_dev = _item(
-            "GJ-1", split=GoldsetSplit.DEV,
+            "GJ-1",
+            split=GoldsetSplit.DEV,
             provenance=GoldsetProvenance.SYNTHETIC,
         )
         # Use model_construct to bypass the model-level firewall on this
@@ -1380,9 +1436,7 @@ class TestAssertAssemblyInvariants:
             provenance=GoldsetProvenance.SYNTHETIC,
             source_trace_id=None,
         )
-        with pytest.raises(
-            AssemblyInvariantError, match=r"(?i)firewall|synthetic"
-        ):
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)firewall|synthetic"):
             assert_assembly_invariants([synthetic_dev, synthetic_test])
 
     # ── Failure path 3: goal_met=false share below 60% ──────────────────
@@ -1393,13 +1447,10 @@ class TestAssertAssemblyInvariants:
         with not enough failure variety to power Stage 6's per-code
         precision/recall."""
         # 5 true, 5 false ⇒ false share = 50% ⇒ FAIL
-        items = (
-            [_item(f"T{i}", goal_met=True, failure_mode=None) for i in range(5)]
-            + [_item(f"F{i}", goal_met=False) for i in range(5)]
-        )
-        with pytest.raises(
-            AssemblyInvariantError, match=r"(?i)goal_met.*false|60"
-        ):
+        items = [_item(f"T{i}", goal_met=True, failure_mode=None) for i in range(5)] + [
+            _item(f"F{i}", goal_met=False) for i in range(5)
+        ]
+        with pytest.raises(AssemblyInvariantError, match=r"(?i)goal_met.*false|60"):
             assert_assembly_invariants(items, min_goal_met_false_share=0.60)
 
     # ── Failure path 4: per-D1 floor unmet ──────────────────────────────
@@ -1412,10 +1463,7 @@ class TestAssertAssemblyInvariants:
         # Construct a tiny dataset where only L0 cell is populated and
         # the planning_depth floors are simulated via a custom floor
         # dict for testability.
-        items = [
-            _item(f"GJ-{i}", goal_met=False)
-            for i in range(20)
-        ]
+        items = [_item(f"GJ-{i}", goal_met=False) for i in range(20)]
         # Provide a CSV-side row index keyed by item_id so the bundle
         # can read planning_depth (which lives on the sheet, not the
         # GoldsetItem). All 20 items map to L0.
@@ -1439,12 +1487,8 @@ class TestAssertAssemblyInvariants:
         passes. The default floors are unreachable at 12 items by design;
         we lower them via the floor-override kwargs so the test stays
         deterministic without authoring 250 items."""
-        items = [
-            _item(f"D{i}", goal_met=False)
-            for i in range(10)
-        ] + [
-            _item(f"S{i}", goal_met=True, failure_mode=None)
-            for i in range(2)
+        items = [_item(f"D{i}", goal_met=False) for i in range(10)] + [
+            _item(f"S{i}", goal_met=True, failure_mode=None) for i in range(2)
         ]
         depths = {item.item_id: "L1" for item in items}
         clusters = {item.item_id: "file-only" for item in items}
@@ -1455,9 +1499,16 @@ class TestAssertAssemblyInvariants:
             planning_depth_by_id=depths,
             tool_cluster_by_id=clusters,
             d1_floors={"L0": 0, "L1": 10, "L2": 0},
-            d5_floors={"file-only": 10, "shell-bound": 0, "web-bound": 0,
-                       "no-tool": 0, "compose": 0, "wrong-tool": 0,
-                       "blocked-tool": 0, "request_approval": 0},
+            d5_floors={
+                "file-only": 10,
+                "shell-bound": 0,
+                "web-bound": 0,
+                "no-tool": 0,
+                "compose": 0,
+                "wrong-tool": 0,
+                "blocked-tool": 0,
+                "request_approval": 0,
+            },
             min_goal_met_false_share=0.60,
         )
         assert result is None
@@ -1522,8 +1573,7 @@ class TestBuildGoldsetManifest:
         items = [
             _item("GJ-1", goal_met=False, split=GoldsetSplit.DEV),
             _item("GJ-2", goal_met=False, split=GoldsetSplit.DEV),
-            _item("GJ-3", goal_met=True, failure_mode=None,
-                  split=GoldsetSplit.TEST),
+            _item("GJ-3", goal_met=True, failure_mode=None, split=GoldsetSplit.TEST),
         ]
         manifest = build_goldset_manifest(
             items,
@@ -1688,8 +1738,7 @@ class TestBuildGoldsetManifestProvisional:
         flow through into the manifest body verbatim — they're the inputs
         Stage 6's gate reads."""
         items = [_item("GJ-1", goal_met=False)]
-        gaps = {"L0": 28, "L1": 56, "L2": 35,
-                "web-bound": 16, "wrong-tool": 14}
+        gaps = {"L0": 28, "L1": 56, "L2": 35, "web-bound": 16, "wrong-tool": 14}
         manifest = build_goldset_manifest(
             items,
             test_split_sha256="abc",
@@ -1751,9 +1800,7 @@ class TestGateGoldsetV1Floors:
         """Defense-in-depth: the manifest builder rejects this case, but
         if a caller hand-rolled a manifest dict the gate must still catch
         it."""
-        manifest = _v1_manifest(
-            provisional=False, floor_gap_summary={"web-bound": 16}
-        )
+        manifest = _v1_manifest(provisional=False, floor_gap_summary={"web-bound": 16})
         with pytest.raises(AssemblyInvariantError, match=r"(?i)floor"):
             gate_goldset_v1_floors(manifest)
 
@@ -1771,7 +1818,9 @@ class TestGateGoldsetV1Floors:
 
     def test_blank_test_split_sha256_raises(self) -> None:
         manifest = _v1_manifest(test_split_sha256="")
-        with pytest.raises(AssemblyInvariantError, match=r"(?i)test_split_sha256|blank|empty"):
+        with pytest.raises(
+            AssemblyInvariantError, match=r"(?i)test_split_sha256|blank|empty"
+        ):
             gate_goldset_v1_floors(manifest)
 
     # ── Idempotency: repeated calls don't mutate ──────────────────────────

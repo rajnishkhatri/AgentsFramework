@@ -28,7 +28,7 @@
 
 ## Full batch — 43 cases
 
-**Run tag:** `gcp_goldset_pilot_2026-06-09`  
+**Run tag:** `gcp_goldset_pilot_2026-06-09`
 **Wall clock:** 5.2 min (43 passed, 0 failed)
 
 | Artifact | Path |

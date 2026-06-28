@@ -121,8 +121,7 @@ async def test_generated_conditions_quality_over_goldset_sample():
 
     gate_rate = gate_passes / len(tasks)
     assert gate_rate >= _GATE_PASS_THRESHOLD, (
-        f"gate pass-rate {gate_rate:.2f} < {_GATE_PASS_THRESHOLD}; "
-        f"failures: {failures}"
+        f"gate pass-rate {gate_rate:.2f} < {_GATE_PASS_THRESHOLD}; failures: {failures}"
     )
     if multi_branch_total:
         coverage_rate = coverage_passes / multi_branch_total

@@ -95,13 +95,16 @@ class TestFlagOnButCertificateFailingFailsSafe:
         # Defensive: a hand-edited cert claiming passed=true while a hard-zero
         # gate failed must still be rejected (the guard re-checks per-gate).
         cert = EnablePolicyCertificate.from_dict(
-            _cert_dict(passed=True, gates={
-                "store_class_precision": True,
-                "false_store_on_trivia": True,
-                "mistype_rate": True,
-                "pii_flip_rate": False,  # hard zero failed
-                "kappa_judge_vs_gold": True,
-            })
+            _cert_dict(
+                passed=True,
+                gates={
+                    "store_class_precision": True,
+                    "false_store_on_trivia": True,
+                    "mistype_rate": True,
+                    "pii_flip_rate": False,  # hard zero failed
+                    "kappa_judge_vs_gold": True,
+                },
+            )
         )
         decision = resolve_write_back(flag_requested=True, certificate=cert)
         assert decision.write_back_enabled is False
@@ -112,9 +115,7 @@ class TestFlagOnButCertificateFailingFailsSafe:
 class TestWrongSplitFailsSafe:
     def test_dev_split_certificate_does_not_enable(self) -> None:
         # Only the FROZEN test split clears the gate (AP-4: never enable off dev).
-        cert = EnablePolicyCertificate.from_dict(
-            _cert_dict(split="dev")
-        )
+        cert = EnablePolicyCertificate.from_dict(_cert_dict(split="dev"))
         decision = resolve_write_back(flag_requested=True, certificate=cert)
         assert decision.write_back_enabled is False
         assert decision.blocked is True

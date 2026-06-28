@@ -127,7 +127,11 @@ def _tier_prefix(record: MemoryRecord, authoritative_at: float) -> str:
     salience = metadata.get(_SALIENCE_KEY)
     if not isinstance(salience, (int, float)) or isinstance(salience, bool):
         return ""
-    tier = _TIER_AUTHORITATIVE if float(salience) >= authoritative_at else _TIER_SPECULATIVE
+    tier = (
+        _TIER_AUTHORITATIVE
+        if float(salience) >= authoritative_at
+        else _TIER_SPECULATIVE
+    )
     return f"{tier} "
 
 

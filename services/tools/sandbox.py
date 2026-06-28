@@ -75,11 +75,13 @@ class RemoteSandboxExecutor(SandboxExecutor):
         try:
             import urllib.request
 
-            payload = json.dumps({
-                "tool_name": tool_name,
-                "tool_args": tool_args,
-                "session_id": self._session_id,
-            }).encode()
+            payload = json.dumps(
+                {
+                    "tool_name": tool_name,
+                    "tool_args": tool_args,
+                    "session_id": self._session_id,
+                }
+            ).encode()
 
             req = urllib.request.Request(
                 f"{self._api_url}/execute",

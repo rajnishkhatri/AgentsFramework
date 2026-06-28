@@ -83,6 +83,7 @@ class TaskOutcome(BaseModel):
         when no success_conditions were declared. NEVER changes ``outcome`` — semantic
         goal satisfaction belongs in a future L3 LLM-as-judge.
     """
+
     outcome: str
     termination_clean: bool
     criteria_met: float
@@ -216,7 +217,9 @@ class GoalVerdict(BaseModel):
                     f"{sorted(GOAL_FAILURE_MODES)} or null"
                 )
             return stripped
-        raise ValueError(f"failure_mode must be a string or null, got {type(value).__name__}")
+        raise ValueError(
+            f"failure_mode must be a string or null, got {type(value).__name__}"
+        )
 
     @property
     def unmet_conditions(self) -> list[str]:

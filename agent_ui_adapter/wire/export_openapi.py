@@ -123,9 +123,7 @@ def _build_paths() -> dict[str, Any]:
                     },
                 ],
                 "responses": {
-                    "200": _json_response(
-                        "ThreadListResponse", "The caller's threads"
-                    ),
+                    "200": _json_response("ThreadListResponse", "The caller's threads"),
                     "401": {"description": "Unauthorized"},
                 },
             },

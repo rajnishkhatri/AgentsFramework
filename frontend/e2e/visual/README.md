@@ -147,4 +147,3 @@ noisy.
 2. Run `pnpm test:e2e:visual:update` to generate the baseline.
 3. Commit the new PNG under `ui-visual.spec.ts-snapshots/` along with the
   spec change.
-

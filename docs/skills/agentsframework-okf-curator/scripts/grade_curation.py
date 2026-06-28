@@ -65,7 +65,9 @@ def _concept_files(outputs: str) -> list[str]:
 
 def _lint_zero(outputs: str) -> bool:
     t = _read(os.path.join(outputs, "lint_result.txt")).lower()
-    return any(k in t for k in ("exit code: 0", "exit_code=0", "exit code:0", "0 failure"))
+    return any(
+        k in t for k in ("exit code: 0", "exit_code=0", "exit code:0", "0 failure")
+    )
 
 
 def grade_document_feature(outputs: str) -> list[dict]:
@@ -77,20 +79,32 @@ def grade_document_feature(outputs: str) -> list[dict]:
     registered = "declared_bundles" in tr or "declared bundles" in tr
     parent_linked = "recipes/index" in tr or "parent" in tr and "index" in tr
     return [
-        {"text": "recipe has type frontmatter",
-         "passed": bool(c) and _fm_type(c) is not None,
-         "evidence": f"type={_fm_type(c) if c else None}"},
-        {"text": "recipe lands inside a topic sub-bundle (not a flat orphan)",
-         "passed": in_topic_bundle and not flat_orphan,
-         "evidence": f"topic-bundle={in_topic_bundle}, flat-orphan={flat_orphan}"},
-        {"text": "new topic registered in DECLARED_BUNDLES",
-         "passed": registered or not in_topic_bundle,  # only required if a new topic dir was made
-         "evidence": f"registered={registered}"},
-        {"text": "linked from the parent recipes index",
-         "passed": parent_linked or not in_topic_bundle,
-         "evidence": f"parent-index-linked={parent_linked}"},
-        {"text": "okf_lint exits 0",
-         "passed": _lint_zero(outputs), "evidence": f"lint0={_lint_zero(outputs)}"},
+        {
+            "text": "recipe has type frontmatter",
+            "passed": bool(c) and _fm_type(c) is not None,
+            "evidence": f"type={_fm_type(c) if c else None}",
+        },
+        {
+            "text": "recipe lands inside a topic sub-bundle (not a flat orphan)",
+            "passed": in_topic_bundle and not flat_orphan,
+            "evidence": f"topic-bundle={in_topic_bundle}, flat-orphan={flat_orphan}",
+        },
+        {
+            "text": "new topic registered in DECLARED_BUNDLES",
+            "passed": registered
+            or not in_topic_bundle,  # only required if a new topic dir was made
+            "evidence": f"registered={registered}",
+        },
+        {
+            "text": "linked from the parent recipes index",
+            "passed": parent_linked or not in_topic_bundle,
+            "evidence": f"parent-index-linked={parent_linked}",
+        },
+        {
+            "text": "okf_lint exits 0",
+            "passed": _lint_zero(outputs),
+            "evidence": f"lint0={_lint_zero(outputs)}",
+        },
     ]
 
 
@@ -112,37 +126,65 @@ def grade_file_research(outputs: str) -> list[dict]:
         tags = m.group(1) if m else ""
     not_mistagged = "recipe" not in tags
     return [
-        {"text": "research filed in AUTHORED home (root research/), not excluded evidence",
-         "passed": authored_home and avoids_evidence,
-         "evidence": f"authored={authored_home}, avoids-docs/research={avoids_evidence}"},
-        {"text": "note has a research-appropriate type (not mis-tagged 'recipe')",
-         "passed": ttype is not None and not_mistagged,
-         "evidence": f"type={ttype}, tags=[{tags}]"},
-        {"text": "research bundle index + log updated",
-         "passed": bool(glob.glob(os.path.join(outputs, "*index*.md")))
-                   and bool(glob.glob(os.path.join(outputs, "*log*.md"))),
-         "evidence": "index+log present"},
-        {"text": "okf_lint exits 0",
-         "passed": _lint_zero(outputs), "evidence": f"lint0={_lint_zero(outputs)}"},
+        {
+            "text": "research filed in AUTHORED home (root research/), not excluded evidence",
+            "passed": authored_home and avoids_evidence,
+            "evidence": f"authored={authored_home}, avoids-docs/research={avoids_evidence}",
+        },
+        {
+            "text": "note has a research-appropriate type (not mis-tagged 'recipe')",
+            "passed": ttype is not None and not_mistagged,
+            "evidence": f"type={ttype}, tags=[{tags}]",
+        },
+        {
+            "text": "research bundle index + log updated",
+            "passed": bool(glob.glob(os.path.join(outputs, "*index*.md")))
+            and bool(glob.glob(os.path.join(outputs, "*log*.md"))),
+            "evidence": "index+log present",
+        },
+        {
+            "text": "okf_lint exits 0",
+            "passed": _lint_zero(outputs),
+            "evidence": f"lint0={_lint_zero(outputs)}",
+        },
     ]
 
 
 def grade_drift_check(outputs: str) -> list[dict]:
     rep = _read(os.path.join(outputs, "drift_report.txt"))
     tr = _transcript(outputs)
-    edited = [os.path.basename(f) for f in glob.glob(os.path.join(outputs, "*.md"))
-              if os.path.basename(f) != "transcript.md"]
-    labels_match = "[path]" in rep or "match type" in rep.lower() or "symbol" in rep.lower()
-    explains_window = "window" in rep.lower() or "docs-only" in rep.lower() or "--since" in rep
+    edited = [
+        os.path.basename(f)
+        for f in glob.glob(os.path.join(outputs, "*.md"))
+        if os.path.basename(f) != "transcript.md"
+    ]
+    labels_match = (
+        "[path]" in rep or "match type" in rep.lower() or "symbol" in rep.lower()
+    )
+    explains_window = (
+        "window" in rep.lower() or "docs-only" in rep.lower() or "--since" in rep
+    )
     return [
-        {"text": "drift report produced", "passed": len(rep) > 200,
-         "evidence": f"len={len(rep)}"},
-        {"text": "report-only (no docs created/edited)", "passed": len(edited) == 0,
-         "evidence": f"extra-md={edited}"},
-        {"text": "labels match type (path vs symbol)", "passed": labels_match,
-         "evidence": f"labelled={labels_match}"},
-        {"text": "explains the drift window choice", "passed": explains_window,
-         "evidence": f"window-explained={explains_window}"},
+        {
+            "text": "drift report produced",
+            "passed": len(rep) > 200,
+            "evidence": f"len={len(rep)}",
+        },
+        {
+            "text": "report-only (no docs created/edited)",
+            "passed": len(edited) == 0,
+            "evidence": f"extra-md={edited}",
+        },
+        {
+            "text": "labels match type (path vs symbol)",
+            "passed": labels_match,
+            "evidence": f"labelled={labels_match}",
+        },
+        {
+            "text": "explains the drift window choice",
+            "passed": explains_window,
+            "evidence": f"window-explained={explains_window}",
+        },
     ]
 
 

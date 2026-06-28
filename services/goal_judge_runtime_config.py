@@ -7,7 +7,6 @@ No langgraph imports — wiring lives in middleware/composition.py.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import threading
@@ -131,7 +130,9 @@ class GoalJudgeRuntimeConfigReader:
         defaults_enabled: bool = False,
         defaults_downgrade: bool = False,
     ) -> None:
-        resolved_uri = uri if uri is not None else os.environ.get("GOAL_JUDGE_CONFIG_URI", "")
+        resolved_uri = (
+            uri if uri is not None else os.environ.get("GOAL_JUDGE_CONFIG_URI", "")
+        )
         self._uri = resolved_uri.strip() or None
         self._ttl_s = float(
             ttl_s
@@ -209,7 +210,9 @@ class GoalJudgeRuntimeConfigReader:
             "success_conditions_source": resolved.success_conditions_source,
             "source": resolved.source,
             "schema_version": resolved.schema_version,
-            "updated_at": resolved.updated_at.isoformat() if resolved.updated_at else None,
+            "updated_at": resolved.updated_at.isoformat()
+            if resolved.updated_at
+            else None,
             "updated_by": resolved.updated_by,
         }
 
@@ -251,7 +254,9 @@ class GoalJudgeRuntimeConfigReader:
                     )
             return self._fallback_without_uri(source="default")
 
-    def _fallback_without_uri(self, *, source: str | None = None) -> ResolvedGoalJudgeConfig:
+    def _fallback_without_uri(
+        self, *, source: str | None = None
+    ) -> ResolvedGoalJudgeConfig:
         if self._env_enabled_explicit or self._env_downgrade_explicit:
             return ResolvedGoalJudgeConfig(
                 goal_judge_enabled=self._env_enabled,

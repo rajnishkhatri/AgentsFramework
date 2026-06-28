@@ -27,7 +27,7 @@ tags: [architecture]
 - **Situation:** The local architecture relies on local SQLite checkpointers, JSONL file sinks, and local `.env` files to maintain agent state, trace governance, and API keys. The Next.js UI relies on Server-Sent Events (SSE) to stream real-time agent thoughts.
 - **Complication:** Containerized deployments in GCP (e.g., Cloud Run/GKE) have ephemeral file systems. Standard API gateways have strict timeout limits that can break long-running SSE streams. The offline Meta Ring must process massive amounts of trace data asynchronously without impacting the real-time agent loops.
 - **Question:** How do we map the four-layer ReAct grid and its rings to GCP managed services to ensure high availability, security, and persistence without violating the architectural invariants?
-- **Answer:** Deploy compute on **Cloud Run** (Frontend, BFF, and Backend). Swap SQLite for **Cloud SQL (PostgreSQL)**, local file logs for **Google Cloud Storage (GCS) via Pub/Sub**, and local `.env` configurations for **Secret Manager**. 
+- **Answer:** Deploy compute on **Cloud Run** (Frontend, BFF, and Backend). Swap SQLite for **Cloud SQL (PostgreSQL)**, local file logs for **Google Cloud Storage (GCS) via Pub/Sub**, and local `.env` configurations for **Secret Manager**.
 
 ---
 
@@ -55,7 +55,7 @@ To support the streaming nature of LangGraph agents (SSE), we utilize Global HTT
 1. **Browser Ring (Frontend)**
    - **Service:** Cloud Run (or Firebase Hosting combined with Cloud Run for SSR).
    - **Role:** Hosts the Next.js 15 App Router application. Supports native edge caching (Cloud CDN) and streaming responses.
-   
+
 2. **Middleware Ring (BFF / FastAPI)**
    - **Service:** Cloud Run + Global HTTP(S) Load Balancer.
    - **Role:** Handles authentication (WorkOS), rate-limiting, and SDK telemetry (Langfuse, Mem0). Bridges the frontend to the internal agent infrastructure. Timeout settings on the Load Balancer are extended for SSE.
@@ -89,7 +89,7 @@ flowchart TD
         BFF[Cloud Run: BFF<br/>FastAPI + WorkOS]
         Internal_LB[Internal HTTP(S) LB<br/>Extended Timeout]
         Backend[Cloud Run: Backend<br/>Internal Ingress Only]
-        
+
         Meta[Cloud Run Jobs: Meta Ring<br/>run_eval.py]
     end
 

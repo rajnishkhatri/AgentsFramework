@@ -42,7 +42,9 @@ class _ThreadResult:
 class LocalLLMDelegationDispatcher:
     """Concrete delegation callback using the configured local LLM stack."""
 
-    def __init__(self, agent_config: AgentConfig, *, worker_model: str | None = None) -> None:
+    def __init__(
+        self, agent_config: AgentConfig, *, worker_model: str | None = None
+    ) -> None:
         self._agent_config = agent_config
         self._llm_service = LLMService(agent_config)
         self._prompt_service = PromptService()
@@ -56,7 +58,9 @@ class LocalLLMDelegationDispatcher:
         worker node uses :meth:`dispatch_async` instead (it is already inside
         the graph's loop — no shim needed).
         """
-        return self._run_async(self._dispatch_core(DelegationDispatchRequest(**request)))
+        return self._run_async(
+            self._dispatch_core(DelegationDispatchRequest(**request))
+        )
 
     async def dispatch_async(self, request: dict[str, Any]) -> dict[str, Any]:
         """Async delegation for the T3 worker node (inside the graph loop).
@@ -132,7 +136,9 @@ class LocalLLMDelegationDispatcher:
             "subagents/delegation_worker_system_prompt",
             subagent_type=validated.subagent_type,
             constraints=validated.constraints,
-            expected_output_schema=json.dumps(validated.expected_output_schema, sort_keys=True, indent=2),
+            expected_output_schema=json.dumps(
+                validated.expected_output_schema, sort_keys=True, indent=2
+            ),
         )
         return await self._llm_service.invoke(
             profile,

@@ -85,7 +85,12 @@ class TestTrainSplitContaminationGuard:
 
     def test_notinject_held_out_rows_are_excluded(self):
         rows = [
-            _row("inj-1", label=Label.INJECTION, source="deepset", split=DatasetSplit.TRAIN),
+            _row(
+                "inj-1",
+                label=Label.INJECTION,
+                source="deepset",
+                split=DatasetSplit.TRAIN,
+            ),
             _row(
                 "ni-1",
                 label=Label.BENIGN,
@@ -109,7 +114,12 @@ class TestTrainSplitContaminationGuard:
 class TestTrainSplitSelection:
     def test_keeps_train_injections_and_local_augment(self):
         rows = [
-            _row("inj-1", label=Label.INJECTION, source="deepset", split=DatasetSplit.TRAIN),
+            _row(
+                "inj-1",
+                label=Label.INJECTION,
+                source="deepset",
+                split=DatasetSplit.TRAIN,
+            ),
             _row(
                 "aug-1",
                 label=Label.BENIGN,
@@ -118,8 +128,18 @@ class TestTrainSplitSelection:
                 dimension=Dimension.OVER_DEFENSE,
                 trigger_words=["ignore"],
             ),
-            _row("domain-1", label=Label.BENIGN, source="blackbox_S3", split=DatasetSplit.TRAIN),
-            _row("eval-1", label=Label.INJECTION, source="deepset", split=DatasetSplit.HELD_OUT),
+            _row(
+                "domain-1",
+                label=Label.BENIGN,
+                source="blackbox_S3",
+                split=DatasetSplit.TRAIN,
+            ),
+            _row(
+                "eval-1",
+                label=Label.INJECTION,
+                source="deepset",
+                split=DatasetSplit.HELD_OUT,
+            ),
         ]
         train = select_train_split(rows)
         assert {r.id for r in train} == {"inj-1", "aug-1", "domain-1"}

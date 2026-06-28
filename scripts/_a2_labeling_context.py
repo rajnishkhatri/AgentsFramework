@@ -18,6 +18,7 @@ Usage:
   python scripts/_a2_labeling_context.py --range 1 10
   python scripts/_a2_labeling_context.py --all
 """
+
 from __future__ import annotations
 
 import argparse
@@ -31,16 +32,21 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from scripts.goaljudge_ui_evidence import (
-    extract_answer_text,
     is_ui_admissible,
-    strip_status_prefix,
 )
 from services.governance.goaljudge_goldset_dataset import project_trajectory_tools
 from tests.fixtures.goaljudge.fresh_test_tasks import FRESH_TEST_TASKS
 
-A2_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv"
-BATCH = REPO_ROOT / "cache/goaljudge_eval/ui_batch_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
-CORPUS = REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
+A2_SHEET = (
+    REPO_ROOT
+    / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv"
+)
+BATCH = (
+    REPO_ROOT / "cache/goaljudge_eval/ui_batch_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
+)
+CORPUS = (
+    REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_fresh_stage5_rerun_2026-06-10.jsonl"
+)
 
 
 def _load_jsonl_by_key(path: Path, key: str) -> dict:
@@ -55,7 +61,9 @@ def _load_jsonl_by_key(path: Path, key: str) -> dict:
     return out
 
 
-def print_row_context(item_id: str, batch: dict, corpus: dict, fresh_by_id: dict, a2_rows: dict) -> None:
+def print_row_context(
+    item_id: str, batch: dict, corpus: dict, fresh_by_id: dict, a2_rows: dict
+) -> None:
     print(f"\n{'=' * 78}")
     print(f"ITEM: {item_id}")
     print(f"{'=' * 78}")
@@ -71,9 +79,13 @@ def print_row_context(item_id: str, batch: dict, corpus: dict, fresh_by_id: dict
     corp = corpus.get(trace_id) if trace_id else None
 
     # Identity + authored intent
-    print(f"stratum: {a2_row['stratum']}    cluster: {a2_row['tool_cluster']}    depth: {a2_row['planning_depth']}    domain: {a2_row['domain']}")
+    print(
+        f"stratum: {a2_row['stratum']}    cluster: {a2_row['tool_cluster']}    depth: {a2_row['planning_depth']}    domain: {a2_row['domain']}"
+    )
     if task:
-        print(f"AUTHORED expected_failure_mode: {task.expected_failure_mode or '(blank - representative pass-shaped)'}")
+        print(
+            f"AUTHORED expected_failure_mode: {task.expected_failure_mode or '(blank - representative pass-shaped)'}"
+        )
     print()
 
     # Prompt
@@ -109,7 +121,7 @@ def print_row_context(item_id: str, batch: dict, corpus: dict, fresh_by_id: dict
         ui_adm = is_ui_admissible(ui_resp, outcome)
         print(f"  UI outcome: {outcome}    admissible: {ui_adm}")
         if not ui_adm:
-            print(f"  → status-feed-only UI; langfuse-only evidence")
+            print("  → status-feed-only UI; langfuse-only evidence")
     else:
         print("  [NO BATCH CAPTURE]")
 
@@ -120,7 +132,9 @@ def print_row_context(item_id: str, batch: dict, corpus: dict, fresh_by_id: dict
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("item_id", nargs="?", help="single item id to print")
-    parser.add_argument("--range", nargs=2, type=int, help="numeric range, e.g. --range 1 10")
+    parser.add_argument(
+        "--range", nargs=2, type=int, help="numeric range, e.g. --range 1 10"
+    )
     parser.add_argument("--all", action="store_true", help="print all 79 rows")
     args = parser.parse_args()
 

@@ -7,7 +7,6 @@ unset URI zero I/O. Acceptance paths: valid parse, TTL cache, stale-on-error.
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -19,7 +18,6 @@ from services.goal_judge_runtime_config import (
     GoalJudgeRuntimeConfig,
     GoalJudgeRuntimeConfigReader,
     InMemoryGoalJudgeConfigReader,
-    ResolvedGoalJudgeConfig,
 )
 
 
@@ -218,9 +216,7 @@ class TestReaderAcceptance:
             read_count += 1
             return original_read(self, path)
 
-        reader = GoalJudgeRuntimeConfigReader(
-            uri=f"file://{cfg_file}", ttl_s=30
-        )
+        reader = GoalJudgeRuntimeConfigReader(uri=f"file://{cfg_file}", ttl_s=30)
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
                 GoalJudgeRuntimeConfigReader,
@@ -243,9 +239,7 @@ class TestReaderAcceptance:
             read_count += 1
             return original_read(self, path)
 
-        reader = GoalJudgeRuntimeConfigReader(
-            uri=f"file://{cfg_file}", ttl_s=30
-        )
+        reader = GoalJudgeRuntimeConfigReader(uri=f"file://{cfg_file}", ttl_s=30)
         with pytest.MonkeyPatch.context() as mp:
             mp.setattr(
                 GoalJudgeRuntimeConfigReader,
@@ -262,9 +256,7 @@ class TestReaderAcceptance:
         cfg_file = tmp_path / "goal_judge_config.json"
         cfg_file.write_text(json.dumps(_VALID_JSON), encoding="utf-8")
 
-        reader = GoalJudgeRuntimeConfigReader(
-            uri=f"file://{cfg_file}", ttl_s=0
-        )
+        reader = GoalJudgeRuntimeConfigReader(uri=f"file://{cfg_file}", ttl_s=0)
         first = reader.get()
         assert first.source.startswith("file:")
 

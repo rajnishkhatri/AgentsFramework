@@ -79,9 +79,7 @@ class TestUpdateTaskUnderstanding:
         """Edit after completion is a no-op with an explicit error."""
         rt = LangGraphRuntime(graph=_FakeGraph(snapshot=_snapshot(next_nodes=())))
         with pytest.raises(RuntimeError, match="completed"):
-            await rt.update_task_understanding(
-                thread_id="t1", trace_id="tr-1", **_EDIT
-            )
+            await rt.update_task_understanding(thread_id="t1", trace_id="tr-1", **_EDIT)
 
     @pytest.mark.asyncio
     async def test_happy_path_writes_user_edited_and_returns_old_new(self):

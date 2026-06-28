@@ -68,7 +68,11 @@ class TestReactLoopHappyPath:
         mock_response = MagicMock()
         mock_response.content = "FINAL ANSWER: Paris is the capital of France."
         mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 50, "output_tokens": 20, "total_tokens": 70}
+        mock_response.usage_metadata = {
+            "input_tokens": 50,
+            "output_tokens": 20,
+            "total_tokens": 70,
+        }
         mock_response.response_metadata = {"model_name": "gpt-4o-mini"}
 
         agent_config = AgentConfig(
@@ -124,20 +128,30 @@ class _EchoArgs(BaseModel):
     value: str
 
 
-def _build_registry(call_counter: dict[str, int], *, cacheable: bool = True) -> ToolRegistry:
+def _build_registry(
+    call_counter: dict[str, int], *, cacheable: bool = True
+) -> ToolRegistry:
     def _echo_executor(args: dict) -> str:
         call_counter["count"] = call_counter.get("count", 0) + 1
         return f"echo:{args.get('value', '')}"
 
-    return ToolRegistry({
-        "echo": ToolDefinition(executor=_echo_executor, schema=_EchoArgs, cacheable=cacheable),
-    })
+    return ToolRegistry(
+        {
+            "echo": ToolDefinition(
+                executor=_echo_executor, schema=_EchoArgs, cacheable=cacheable
+            ),
+        }
+    )
 
 
-def _build_tool_message_state(tool_name: str, args: dict, *, cache: dict | None = None) -> dict:
+def _build_tool_message_state(
+    tool_name: str, args: dict, *, cache: dict | None = None
+) -> dict:
     ai_msg = AIMessage(
         content="",
-        tool_calls=[{"name": tool_name, "args": args, "id": "call-1", "type": "tool_call"}],
+        tool_calls=[
+            {"name": tool_name, "args": args, "id": "call-1", "type": "tool_call"}
+        ],
     )
     return {
         "messages": [ai_msg],
@@ -153,7 +167,10 @@ def _tool_cfg(**overrides) -> AgentConfig:
 
 class TestToolCache:
     def test_cache_miss_executes_and_populates(self, tmp_path):
-        from orchestration.react_loop import _compute_tool_cache_key, _execute_tools_impl
+        from orchestration.react_loop import (
+            _compute_tool_cache_key,
+            _execute_tools_impl,
+        )
 
         counter: dict[str, int] = {}
         registry = _build_registry(counter)
@@ -170,7 +187,10 @@ class TestToolCache:
         assert result["tool_cache"][key] == "echo:hello"
 
     def test_cache_hit_skips_executor(self, tmp_path):
-        from orchestration.react_loop import _compute_tool_cache_key, _execute_tools_impl
+        from orchestration.react_loop import (
+            _compute_tool_cache_key,
+            _execute_tools_impl,
+        )
 
         counter: dict[str, int] = {}
         registry = _build_registry(counter)
@@ -191,16 +211,17 @@ class TestToolCache:
     def test_cache_hit_emits_cached_true_black_box_event(self, tmp_path):
         import json as _json
 
-        from orchestration.react_loop import _compute_tool_cache_key, _execute_tools_impl
+        from orchestration.react_loop import (
+            _compute_tool_cache_key,
+            _execute_tools_impl,
+        )
 
         counter: dict[str, int] = {}
         registry = _build_registry(counter)
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
 
         key = _compute_tool_cache_key("echo", {"value": "x"})
-        state = _build_tool_message_state(
-            "echo", {"value": "x"}, cache={key: "c"}
-        )
+        state = _build_tool_message_state("echo", {"value": "x"}, cache={key: "c"})
         _execute_tools_impl(
             state, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
         )
@@ -218,7 +239,10 @@ class TestToolCache:
 
         Cache-hit path.
         """
-        from orchestration.react_loop import _compute_tool_cache_key, _execute_tools_impl
+        from orchestration.react_loop import (
+            _compute_tool_cache_key,
+            _execute_tools_impl,
+        )
 
         registry = _build_registry({})
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
@@ -264,7 +288,9 @@ class TestToolCache:
 
         record_id = result["tool_results"][0]["record_id"]  # "0:call-1"
         events = _read_bb_events(tmp_path / "bb", "wf-contract")
-        tool_call_id = _events_of_type(events, "tool_called")[0]["details"]["tool_call_id"]
+        tool_call_id = _events_of_type(events, "tool_called")[0]["details"][
+            "tool_call_id"
+        ]
         assert record_id.split(":", 1)[-1] == tool_call_id
 
     def test_non_cacheable_tool_bypasses_cache(self, tmp_path):
@@ -282,7 +308,9 @@ class TestToolCache:
         assert counter["count"] == 1
         assert result["tool_cache"] == {}
 
-        state2 = _build_tool_message_state("echo", {"value": "hi"}, cache=result["tool_cache"])
+        state2 = _build_tool_message_state(
+            "echo", {"value": "hi"}, cache=result["tool_cache"]
+        )
         _execute_tools_impl(
             state2, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
         )
@@ -301,7 +329,9 @@ class TestToolCache:
         )
         assert counter["count"] == 1
 
-        s2 = _build_tool_message_state("echo", {"value": "once"}, cache=r1["tool_cache"])
+        s2 = _build_tool_message_state(
+            "echo", {"value": "once"}, cache=r1["tool_cache"]
+        )
         _execute_tools_impl(
             s2, tool_registry=registry, black_box=bb, agent_config=_tool_cfg()
         )
@@ -326,18 +356,22 @@ class TestToolCache:
                 ok=True,
                 state_delta={
                     "files": {"notes.md": "draft"},
-                    "todos": [{"id": "1", "content": "Draft notes", "status": "completed"}],
+                    "todos": [
+                        {"id": "1", "content": "Draft notes", "status": "completed"}
+                    ],
                     "plan_ref": "plan://s1-us1",
                 },
             )
 
-        registry = ToolRegistry({
-            "stateful": ToolDefinition(
-                executor=_stateful_executor,
-                schema=_StateAwareArgs,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "stateful": ToolDefinition(
+                    executor=_stateful_executor,
+                    schema=_StateAwareArgs,
+                    cacheable=False,
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         state = _build_tool_message_state("stateful", {"value": "x"})
 
@@ -356,13 +390,15 @@ class TestToolCache:
         class _LargeArgs(BaseModel):
             value: str
 
-        registry = ToolRegistry({
-            "large": ToolDefinition(
-                executor=lambda _args: "X" * 40,
-                schema=_LargeArgs,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "large": ToolDefinition(
+                    executor=lambda _args: "X" * 40,
+                    schema=_LargeArgs,
+                    cacheable=False,
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         state = _build_tool_message_state("large", {"value": "x"})
 
@@ -389,20 +425,37 @@ class TestToolCache:
         class _EchoManyArgs(BaseModel):
             value: str
 
-        registry = ToolRegistry({
-            "echo": ToolDefinition(
-                executor=lambda args: f"echo:{args.get('value', '')}",
-                schema=_EchoManyArgs,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "echo": ToolDefinition(
+                    executor=lambda args: f"echo:{args.get('value', '')}",
+                    schema=_EchoManyArgs,
+                    cacheable=False,
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         ai_msg = AIMessage(
             content="",
             tool_calls=[
-                {"name": "echo", "args": {"value": "1"}, "id": "call-1", "type": "tool_call"},
-                {"name": "echo", "args": {"value": "2"}, "id": "call-2", "type": "tool_call"},
-                {"name": "echo", "args": {"value": "3"}, "id": "call-3", "type": "tool_call"},
+                {
+                    "name": "echo",
+                    "args": {"value": "1"},
+                    "id": "call-1",
+                    "type": "tool_call",
+                },
+                {
+                    "name": "echo",
+                    "args": {"value": "2"},
+                    "id": "call-2",
+                    "type": "tool_call",
+                },
+                {
+                    "name": "echo",
+                    "args": {"value": "3"},
+                    "id": "call-3",
+                    "type": "tool_call",
+                },
             ],
         )
         state = {
@@ -425,13 +478,15 @@ class TestToolCache:
     def test_reasoning_trace_delta_from_think_tool_is_propagated(self, tmp_path):
         from orchestration.react_loop import _execute_tools_impl
 
-        registry = ToolRegistry({
-            "think": ToolDefinition(
-                executor=execute_think_tool,
-                schema=ThinkToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "think": ToolDefinition(
+                    executor=execute_think_tool,
+                    schema=ThinkToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         state = _build_tool_message_state(
             "think",
@@ -450,13 +505,15 @@ class TestToolCache:
     def test_task_tool_emits_delegation_trace_records(self, tmp_path):
         from orchestration.react_loop import _execute_tools_impl
 
-        registry = ToolRegistry({
-            "task": ToolDefinition(
-                executor=execute_task_tool,
-                schema=TaskToolInput,
-                cacheable=False,
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "task": ToolDefinition(
+                    executor=execute_task_tool,
+                    schema=TaskToolInput,
+                    cacheable=False,
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         sink = InMemoryTraceSink()
         trace_service = TraceService([sink])
@@ -620,11 +677,13 @@ class TestErrorOccurredEmission:
         def _boom_executor(_args: dict) -> str:
             raise RuntimeError("disk full")
 
-        registry = ToolRegistry({
-            "boom": ToolDefinition(
-                executor=_boom_executor, schema=_BoomArgs, cacheable=False
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "boom": ToolDefinition(
+                    executor=_boom_executor, schema=_BoomArgs, cacheable=False
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         state = _build_tool_message_state("boom", {"value": "x"})
 
@@ -658,7 +717,11 @@ class TestErrorOccurredEmission:
     def test_error_occurred_on_failed_tool_result(self, tmp_path):
         """Non-zero / ok=False tool results must emit ERROR_OCCURRED."""
         from orchestration.react_loop import _execute_tools_impl
-        from services.tools.registry import ToolDefinition, ToolExecutionResult, ToolRegistry
+        from services.tools.registry import (
+            ToolDefinition,
+            ToolExecutionResult,
+            ToolRegistry,
+        )
 
         class _FailArgs(BaseModel):
             value: str
@@ -670,11 +733,13 @@ class TestErrorOccurredEmission:
                 error="simulated tool failure",
             )
 
-        registry = ToolRegistry({
-            "fail_tool": ToolDefinition(
-                executor=_fail_executor, schema=_FailArgs, cacheable=False
-            ),
-        })
+        registry = ToolRegistry(
+            {
+                "fail_tool": ToolDefinition(
+                    executor=_fail_executor, schema=_FailArgs, cacheable=False
+                ),
+            }
+        )
         bb = BlackBoxRecorder(storage_dir=tmp_path / "bb")
         state = _build_tool_message_state("fail_tool", {"value": "x"})
 
@@ -765,19 +830,34 @@ class TestF7UserMessagePersistence:
         turn1 = MagicMock()
         turn1.content = ""
         turn1.tool_calls = [
-            {"name": "think", "args": {"thought": "considering"}, "id": "c1", "type": "tool_call"}
+            {
+                "name": "think",
+                "args": {"thought": "considering"},
+                "id": "c1",
+                "type": "tool_call",
+            }
         ]
-        turn1.usage_metadata = {"input_tokens": 10, "output_tokens": 5, "total_tokens": 15}
+        turn1.usage_metadata = {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "total_tokens": 15,
+        }
         turn1.response_metadata = {"model_name": "gpt-4o-mini"}
 
         turn2 = MagicMock()
         turn2.content = "FINAL ANSWER: done."
         turn2.tool_calls = []
-        turn2.usage_metadata = {"input_tokens": 12, "output_tokens": 6, "total_tokens": 18}
+        turn2.usage_metadata = {
+            "input_tokens": 12,
+            "output_tokens": 6,
+            "total_tokens": 18,
+        }
         turn2.response_metadata = {"model_name": "gpt-4o-mini"}
 
         ainvoke, captured = self._capturing_llm([turn1, turn2])
-        agent_config = AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini", models=[_fast_profile()]
+        )
 
         with (
             patch("langchain_litellm.ChatLiteLLM") as MockLLM,
@@ -820,7 +900,9 @@ class TestF7UserMessagePersistence:
         the turn-≥2 path where the cascade actually bites."""
         from langchain_core.messages import AIMessage as LCAIMessage, ToolMessage
 
-        agent_config = AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini", models=[_fast_profile()]
+        )
 
         with (
             patch("langchain_litellm.ChatLiteLLM") as MockLLM,
@@ -838,9 +920,17 @@ class TestF7UserMessagePersistence:
             graph = build_graph(agent_config=agent_config, cache_dir=tmp_path / "cache")
             # Prior history present -> this is a mid-conversation (turn >=2) call.
             prior = [
-                LCAIMessage(content="", tool_calls=[
-                    {"name": "think", "args": {"thought": "x"}, "id": "p1", "type": "tool_call"}
-                ]),
+                LCAIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "think",
+                            "args": {"thought": "x"},
+                            "id": "p1",
+                            "type": "tool_call",
+                        }
+                    ],
+                ),
                 ToolMessage(content="ok", tool_call_id="p1"),
             ]
             result = await graph.ainvoke(
@@ -854,15 +944,19 @@ class TestF7UserMessagePersistence:
             )
 
         # The error carrier still fires.
-        events = _read_bb_events(tmp_path / "cache" / "black_box_recordings", "wf-f7-002")
+        events = _read_bb_events(
+            tmp_path / "cache" / "black_box_recordings", "wf-f7-002"
+        )
         errors = _events_of_type(events, EventType.ERROR_OCCURRED.value)
         assert any(e["details"].get("source") == "llm_call" for e in errors)
 
         # No persisted assistant message carries the raw invocation-error text.
         persisted = result.get("messages", [])
         ai_error_turns = [
-            m for m in persisted
-            if isinstance(m, LCAIMessage) and "messages parameter is illegal" in str(m.content)
+            m
+            for m in persisted
+            if isinstance(m, LCAIMessage)
+            and "messages parameter is illegal" in str(m.content)
         ]
         assert not ai_error_turns, (
             "LLM-invocation error text must not be persisted as an assistant turn"
@@ -922,7 +1016,8 @@ class TestModelResolutionHonesty:
         )
         param_changes = _events_of_type(events, EventType.PARAMETER_CHANGED.value)
         fallbacks = [
-            e for e in param_changes
+            e
+            for e in param_changes
             if e["details"].get("parameter") == "model_resolution_fallback"
         ]
         assert fallbacks == [], (
@@ -1173,7 +1268,12 @@ class TestParameterChangedBudgetDowngrade:
                     "step_count": 5,
                     "total_cost_usd": 0.85,
                     "model_history": [
-                        {"step": 0, "model": "gpt-4o", "tier": "capable", "reason": "capable-for-planning"},
+                        {
+                            "step": 0,
+                            "model": "gpt-4o",
+                            "tier": "capable",
+                            "reason": "capable-for-planning",
+                        },
                     ],
                 },
                 config={"configurable": {"task_id": "t-budget-param", "user_id": "u1"}},
@@ -1235,7 +1335,12 @@ class TestParameterChangedEscalation:
                     "consecutive_errors": 3,
                     "last_error_type": "model_error",
                     "model_history": [
-                        {"step": 0, "model": "gpt-4o-mini", "tier": "fast", "reason": "steady-state-fast"},
+                        {
+                            "step": 0,
+                            "model": "gpt-4o-mini",
+                            "tier": "fast",
+                            "reason": "steady-state-fast",
+                        },
                     ],
                 },
                 config={"configurable": {"task_id": "t-escalate", "user_id": "u1"}},
@@ -1245,7 +1350,9 @@ class TestParameterChangedEscalation:
             tmp_path / "cache" / "black_box_recordings", "wf-escalate-001"
         )
         changed = _events_of_type(events, EventType.PARAMETER_CHANGED.value)
-        assert len(changed) >= 1, "Expected PARAMETER_CHANGED on escalation after failures"
+        assert len(changed) >= 1, (
+            "Expected PARAMETER_CHANGED on escalation after failures"
+        )
         detail = changed[0]["details"]
         assert detail["parameter"] == "model_tier"
         assert "escalate" in detail["reason"]
@@ -1269,11 +1376,13 @@ class TestParameterChangedEscalation:
 def _file_io_registry(*, cacheable: bool) -> ToolRegistry:
     from services.tools.file_io import FileIOInput, execute_file_io
 
-    return ToolRegistry({
-        "file_io": ToolDefinition(
-            executor=execute_file_io, schema=FileIOInput, cacheable=cacheable
-        ),
-    })
+    return ToolRegistry(
+        {
+            "file_io": ToolDefinition(
+                executor=execute_file_io, schema=FileIOInput, cacheable=cacheable
+            ),
+        }
+    )
 
 
 class TestFileIOOverwriteFreshness:
@@ -1380,11 +1489,13 @@ class TestFileIOOverwriteFreshness:
 def _shell_registry(*, cacheable: bool) -> ToolRegistry:
     from services.tools.shell import ShellToolInput, execute_shell
 
-    return ToolRegistry({
-        "shell": ToolDefinition(
-            executor=execute_shell, schema=ShellToolInput, cacheable=cacheable
-        ),
-    })
+    return ToolRegistry(
+        {
+            "shell": ToolDefinition(
+                executor=execute_shell, schema=ShellToolInput, cacheable=cacheable
+            ),
+        }
+    )
 
 
 class TestShellCommandFreshness:

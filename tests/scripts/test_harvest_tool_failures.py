@@ -94,7 +94,10 @@ class TestClassifyFailureMode:
         [
             ("Error: empty_results: no hits for query", "web-search-empty"),
             ("Error: provider_error: 503 from backend", "web-search-provider-error"),
-            ("Error: Invalid input: validation_error: bad query", "web-search-validation"),
+            (
+                "Error: Invalid input: validation_error: bad query",
+                "web-search-validation",
+            ),
         ],
     )
     def test_web_search_typed(self, raw, expected):
@@ -144,7 +147,11 @@ class TestCaseFromWorkflow:
             {"event_type": "task_started", "details": {"task_input": "run echo"}},
             {
                 "event_type": "tool_called",
-                "details": {"tool": "shell", "args": {"command": "echo hi"}, "cached": False},
+                "details": {
+                    "tool": "shell",
+                    "args": {"command": "echo hi"},
+                    "cached": False,
+                },
             },
             {
                 "event_type": "error_occurred",
@@ -237,7 +244,10 @@ class TestCaseFromWorkflow:
         the harvester's filter can drop it (covered here via tools_touched)."""
         events = [
             {"event_type": "task_started", "details": {"task_input": "p"}},
-            {"event_type": "tool_called", "details": {"tool": "file_io", "cached": False}},
+            {
+                "event_type": "tool_called",
+                "details": {"tool": "file_io", "cached": False},
+            },
             {"event_type": "task_completed", "details": {"outcome": "success"}},
         ]
         case = case_from_workflow("wf-f", events, model="m")

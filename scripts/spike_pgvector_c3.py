@@ -174,7 +174,9 @@ def main() -> int:
             if not (0.0 <= score <= 1.0):
                 print(f"FAIL: score out of [0,1]: {score}")
                 return 1
-            print(f"  search returned {len(results)} row(s); top={key} score={score:.4f}")
+            print(
+                f"  search returned {len(results)} row(s); top={key} score={score:.4f}"
+            )
 
             print("\n=== C3.5 cleanup ===")
             cur.execute("DROP TABLE IF EXISTS agent_memories_spike;")

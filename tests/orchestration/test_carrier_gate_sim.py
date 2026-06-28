@@ -113,7 +113,9 @@ class TestCarrierGateWiring:
         assert result is not None
 
         gate_events = _carrier_gate_events(cache_dir, workflow_id)
-        init_events = [e for e in gate_events if e["details"]["phase"] == "initialization"]
+        init_events = [
+            e for e in gate_events if e["details"]["phase"] == "initialization"
+        ]
         assert init_events, "INITIALIZATION must emit a shadow carrier-gate event"
         d = init_events[0]["details"]
         # task_started IS recorded on the happy path → no gap (pass).
@@ -151,8 +153,15 @@ class TestCarrierGateWiring:
 
         gate_events = _carrier_gate_events(cache_dir, workflow_id)
         phases_seen = {e["details"]["phase"] for e in gate_events}
-        for expected in ("initialization", "routing", "model_invocation", "output_validation"):
-            assert expected in phases_seen, f"{expected} must emit a shadow carrier-gate event"
+        for expected in (
+            "initialization",
+            "routing",
+            "model_invocation",
+            "output_validation",
+        ):
+            assert expected in phases_seen, (
+                f"{expected} must emit a shadow carrier-gate event"
+            )
         # Every emitted carrier on the clean path is a pass (no gap, no warn).
         for e in gate_events:
             assert e["details"]["outcome"] == "pass", (
@@ -191,7 +200,9 @@ class TestCarrierGateWiring:
         )
 
         gate_events = _carrier_gate_events(cache_dir, workflow_id)
-        init_events = [e for e in gate_events if e["details"]["phase"] == "initialization"]
+        init_events = [
+            e for e in gate_events if e["details"]["phase"] == "initialization"
+        ]
         assert init_events == [], (
             "a resumed run skips the INITIALIZATION boundary, so it must emit no "
             "carrier-gate event for it (no false-positive on an absent boundary)"
@@ -265,8 +276,12 @@ class TestEnforceWiring:
         with pytest.raises(CarrierGateViolation):
             # Empty recorded set at a fresh INITIALIZATION ⇒ Identity gap ⇒ raise.
             _shadow_check_phase_carriers(
-                bb, "wf-raise", WorkflowPhase.INITIALIZATION,
-                set(), step=0, enforce_mode="raise",
+                bb,
+                "wf-raise",
+                WorkflowPhase.INITIALIZATION,
+                set(),
+                step=0,
+                enforce_mode="raise",
             )
         # ... and it still left the shadow + enforced carriers (never silent).
         export = bb.export("wf-raise")
@@ -280,8 +295,12 @@ class TestEnforceWiring:
         bb = BlackBoxRecorder(storage_dir=tmp_path)
         # No exception — degrade lets the run continue.
         _shadow_check_phase_carriers(
-            bb, "wf-degrade", WorkflowPhase.INITIALIZATION,
-            set(), step=0, enforce_mode="degrade",
+            bb,
+            "wf-degrade",
+            WorkflowPhase.INITIALIZATION,
+            set(),
+            step=0,
+            enforce_mode="degrade",
         )
         enforced = _enforce_carriers(tmp_path, "wf-degrade")
         assert len(enforced) == 1
@@ -294,13 +313,19 @@ class TestEnforceWiring:
 
         bb = BlackBoxRecorder(storage_dir=tmp_path)
         _shadow_check_phase_carriers(
-            bb, "wf-off", WorkflowPhase.INITIALIZATION,
-            set(), step=0, enforce_mode="off",
+            bb,
+            "wf-off",
+            WorkflowPhase.INITIALIZATION,
+            set(),
+            step=0,
+            enforce_mode="off",
         )
         # Shadow carrier still recorded, but NO enforce carrier (Phase-1 parity).
         assert _enforce_carriers(tmp_path, "wf-off") == []
         export = bb.export("wf-off")
-        assert any(e["details"].get("source") == "carrier_gate" for e in export["events"])
+        assert any(
+            e["details"].get("source") == "carrier_gate" for e in export["events"]
+        )
 
     def test_clean_phase_never_enforces_even_in_raise_mode(self, tmp_path):
         from orchestration.react_loop import _shadow_check_phase_carriers
@@ -310,8 +335,12 @@ class TestEnforceWiring:
         bb = BlackBoxRecorder(storage_dir=tmp_path)
         # task_started IS present → clean → no raise, no enforce carrier.
         _shadow_check_phase_carriers(
-            bb, "wf-clean", WorkflowPhase.INITIALIZATION,
-            {ET.TASK_STARTED.value}, step=0, enforce_mode="raise",
+            bb,
+            "wf-clean",
+            WorkflowPhase.INITIALIZATION,
+            {ET.TASK_STARTED.value},
+            step=0,
+            enforce_mode="raise",
         )
         assert _enforce_carriers(tmp_path, "wf-clean") == []
 
@@ -334,12 +363,18 @@ class TestFaultInjection:
         # it → the gate sees a gap → raise. This simulates the real seam defect.
         with pytest.raises(CarrierGateViolation):
             _shadow_check_phase_carriers(
-                bb, "wf-fault-raise", WorkflowPhase.INITIALIZATION,
-                {ET.TASK_STARTED.value}, step=0,
-                enforce_mode="raise", fault_inject=True,
+                bb,
+                "wf-fault-raise",
+                WorkflowPhase.INITIALIZATION,
+                {ET.TASK_STARTED.value},
+                step=0,
+                enforce_mode="raise",
+                fault_inject=True,
                 task_input="please help __DROP_CARRIER:initialization__",
             )
-        sources = {e["details"].get("source") for e in bb.export("wf-fault-raise")["events"]}
+        sources = {
+            e["details"].get("source") for e in bb.export("wf-fault-raise")["events"]
+        }
         assert "carrier_gate_enforce" in sources, "the alarm must leave a trace"
 
     def test_fault_drives_degrade_alert_without_blocking(self, tmp_path):
@@ -350,9 +385,13 @@ class TestFaultInjection:
         bb = BlackBoxRecorder(storage_dir=tmp_path)
         # Degrade mode: the fault produces a gap → loud alert carrier, no raise.
         _shadow_check_phase_carriers(
-            bb, "wf-fault-degrade", WorkflowPhase.OUTPUT_VALIDATION,
-            {ET.GUARDRAIL_CHECKED.value}, step=0,
-            enforce_mode="degrade", fault_inject=True,
+            bb,
+            "wf-fault-degrade",
+            WorkflowPhase.OUTPUT_VALIDATION,
+            {ET.GUARDRAIL_CHECKED.value},
+            step=0,
+            enforce_mode="degrade",
+            fault_inject=True,
             task_input="__DROP_CARRIER:output_validation__ summarize this",
         )
         enf = _enforce_carriers(tmp_path, "wf-fault-degrade")
@@ -369,9 +408,13 @@ class TestFaultInjection:
         # The token in the prompt does NOTHING when the flag is OFF (prod safety):
         # the carrier is present, so no gap, no enforce — even in raise mode.
         _shadow_check_phase_carriers(
-            bb, "wf-token-inert", WorkflowPhase.INITIALIZATION,
-            {ET.TASK_STARTED.value}, step=0,
-            enforce_mode="raise", fault_inject=False,
+            bb,
+            "wf-token-inert",
+            WorkflowPhase.INITIALIZATION,
+            {ET.TASK_STARTED.value},
+            step=0,
+            enforce_mode="raise",
+            fault_inject=False,
             task_input="__DROP_CARRIER:initialization__",
         )
         assert _enforce_carriers(tmp_path, "wf-token-inert") == []
@@ -384,9 +427,13 @@ class TestFaultInjection:
         bb = BlackBoxRecorder(storage_dir=tmp_path)
         # Token names ROUTING, but we're checking INITIALIZATION → no drop, no gap.
         _shadow_check_phase_carriers(
-            bb, "wf-other-phase", WorkflowPhase.INITIALIZATION,
-            {ET.TASK_STARTED.value}, step=0,
-            enforce_mode="raise", fault_inject=True,
+            bb,
+            "wf-other-phase",
+            WorkflowPhase.INITIALIZATION,
+            {ET.TASK_STARTED.value},
+            step=0,
+            enforce_mode="raise",
+            fault_inject=True,
             task_input="__DROP_CARRIER:routing__",
         )
         assert _enforce_carriers(tmp_path, "wf-other-phase") == []

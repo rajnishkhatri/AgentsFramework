@@ -24,7 +24,9 @@ from services.tools.search.port import (
 )
 from services.tools.search.searxng import SearxngProvider
 from services.tools.search.stub import StubProvider
-from services.tools.web_search import WebSearchInput, WebSearchOutput, build_web_search_executor
+from services.tools.web_search import (
+    build_web_search_executor,
+)
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -33,8 +35,16 @@ from services.tools.web_search import WebSearchInput, WebSearchOutput, build_web
 
 SEARXNG_SUCCESS_RESPONSE = {
     "results": [
-        {"title": "Austin Weather", "url": "https://weather.com/austin", "content": "Sunny, 85F"},
-        {"title": "Austin TX Forecast", "url": "https://forecast.io/austin", "content": "Clear skies"},
+        {
+            "title": "Austin Weather",
+            "url": "https://weather.com/austin",
+            "content": "Sunny, 85F",
+        },
+        {
+            "title": "Austin TX Forecast",
+            "url": "https://forecast.io/austin",
+            "content": "Clear skies",
+        },
     ]
 }
 
@@ -59,7 +69,9 @@ class TestProtocolConformance:
         assert isinstance(StubProvider(), WebSearchProvider)
 
     def test_searxng_satisfies_protocol(self):
-        assert isinstance(SearxngProvider(base_url="http://localhost:8888"), WebSearchProvider)
+        assert isinstance(
+            SearxngProvider(base_url="http://localhost:8888"), WebSearchProvider
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -133,7 +145,11 @@ class TestSearxngProviderSuccess:
     def test_max_results_limits_output(self):
         many_results = {
             "results": [
-                {"title": f"Result {i}", "url": f"https://example.com/{i}", "content": f"Snippet {i}"}
+                {
+                    "title": f"Result {i}",
+                    "url": f"https://example.com/{i}",
+                    "content": f"Snippet {i}",
+                }
                 for i in range(20)
             ]
         }
@@ -146,7 +162,9 @@ class TestSearxngProviderSuccess:
     def test_passes_correct_query_params(self):
         with patch("httpx.get") as mock_get:
             mock_get.return_value = _mock_response(SEARXNG_SUCCESS_RESPONSE)
-            provider = SearxngProvider(base_url="http://searxng:8888", categories="news")
+            provider = SearxngProvider(
+                base_url="http://searxng:8888", categories="news"
+            )
             provider.search("test")
             call_kwargs = mock_get.call_args
             assert call_kwargs[0][0] == "http://searxng:8888/search"

@@ -32,6 +32,7 @@ Pilot legacy failure_mode codes (``incomplete-run`` etc.) are remapped to
 the active vocabulary via the same precedence rule the fresh-sheet
 backfill uses: prefer A1's iff in vocab, else A2's, else blank.
 """
+
 from __future__ import annotations
 
 import csv
@@ -51,11 +52,19 @@ from services.governance.goaljudge_goldset_dataset import (
 )
 from services.governance.iaa import normalize_bool_label
 
-FRESH_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
-PILOT_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
-PILOT_CORPUS = REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_goldset_pilot_2026-06-09.jsonl"
+FRESH_SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+)
+PILOT_SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
+)
+PILOT_CORPUS = (
+    REPO_ROOT / "cache/goaljudge_eval/corpus_gcp_goldset_pilot_2026-06-09.jsonl"
+)
 REGISTRY = REPO_ROOT / "frontend/e2e/fixtures/goaljudge_registry.json"
-COMBINED_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_combined_sheet.csv"
+COMBINED_SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_combined_sheet.csv"
+)
 
 _VALID_FM = set(GOAL_FAILURE_MODES)
 
@@ -79,7 +88,8 @@ def main() -> int:
     # Load pilot sheet — filter to production provenance only.
     with PILOT_SHEET.open(newline="", encoding="utf-8") as fh:
         pilot_rows = [
-            r for r in csv.DictReader(fh)
+            r
+            for r in csv.DictReader(fh)
             if r.get("provenance", "").strip().lower() == "production"
         ]
 
@@ -105,7 +115,9 @@ def main() -> int:
         trace_id = trace_for_id.get(iid, "")
         tools = tool_index.get(trace_id, [])
 
-        depth, _reason = select_planning_depth(task_input=task, task_tool_results_count=0)
+        depth, _reason = select_planning_depth(
+            task_input=task, task_tool_results_count=0
+        )
         cluster = classify_tool_cluster(tools)
 
         r1_gm = normalize_bool_label(r.get("r1_goal_met", ""))
@@ -163,12 +175,23 @@ def main() -> int:
 
     # Sanity tallies.
     import collections
+
     print()
-    print(f"D1 (planning_depth): {dict(collections.Counter(r['planning_depth'] for r in combined_rows))}")
-    print(f"D5 (tool_cluster):   {dict(collections.Counter(r['tool_cluster'] for r in combined_rows))}")
-    print(f"Split:              {dict(collections.Counter(r['split'] for r in combined_rows))}")
-    print(f"Provenance:         {dict(collections.Counter(r['provenance'] for r in combined_rows))}")
-    print(f"adjudicated_goal_met: {dict(collections.Counter(r['adjudicated_goal_met'] for r in combined_rows))}")
+    print(
+        f"D1 (planning_depth): {dict(collections.Counter(r['planning_depth'] for r in combined_rows))}"
+    )
+    print(
+        f"D5 (tool_cluster):   {dict(collections.Counter(r['tool_cluster'] for r in combined_rows))}"
+    )
+    print(
+        f"Split:              {dict(collections.Counter(r['split'] for r in combined_rows))}"
+    )
+    print(
+        f"Provenance:         {dict(collections.Counter(r['provenance'] for r in combined_rows))}"
+    )
+    print(
+        f"adjudicated_goal_met: {dict(collections.Counter(r['adjudicated_goal_met'] for r in combined_rows))}"
+    )
 
     return 0
 

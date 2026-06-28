@@ -25,7 +25,7 @@ import json
 import logging
 import shutil
 import subprocess
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
@@ -149,7 +149,11 @@ def run_pytest_node(node: str, *, timeout_s: int = 120) -> dict[str, Any]:
     except subprocess.TimeoutExpired:
         return {"pass": False, "exit_code": 2, "output": f"pytest timed out: {node}"}
     output = (proc.stdout + "\n" + proc.stderr).strip()
-    return {"pass": proc.returncode == 0, "exit_code": proc.returncode, "output": output[:8000]}
+    return {
+        "pass": proc.returncode == 0,
+        "exit_code": proc.returncode,
+        "output": output[:8000],
+    }
 
 
 # ── Helpers for `--rules-only` mode ─────────────────────────────────

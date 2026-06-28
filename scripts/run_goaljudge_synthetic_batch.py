@@ -9,6 +9,7 @@ Before running, ensure you have the outbox relay running in another terminal:
     python -m middleware.sidecars
 And ensure your LANGFUSE_* keys and OPENAI_API_KEY are configured.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,6 +26,7 @@ AGENT_ROOT = SCRIPTS_DIR.parent
 sys.path.insert(0, str(AGENT_ROOT))
 
 from dotenv import load_dotenv
+
 load_dotenv(AGENT_ROOT / ".env")
 
 # Run from AGENT_ROOT so that logging.json's relative handlers (e.g.
@@ -34,6 +36,7 @@ os.chdir(str(AGENT_ROOT))
 
 # Setup logging
 from services.observability import setup_logging
+
 setup_logging()
 
 # Import core dependencies
@@ -94,12 +97,16 @@ def truncate_eval_log() -> None:
     """Truncate logs/evals.log to isolate this batch run's capture half."""
     evals_path = AGENT_ROOT / "logs" / "evals.log"
     evals_path.parent.mkdir(exist_ok=True)
-    console.print(f"[bold yellow]Truncating {evals_path} to isolate batch run...[/bold yellow]")
+    console.print(
+        f"[bold yellow]Truncating {evals_path} to isolate batch run...[/bold yellow]"
+    )
     with open(evals_path, "w") as fh:
         fh.write("")  # clear file
 
 
-def build_agent_and_tools() -> tuple[AgentConfig, RoutingConfig, ToolRegistry, AgentFactsRegistry]:
+def build_agent_and_tools() -> tuple[
+    AgentConfig, RoutingConfig, ToolRegistry, AgentFactsRegistry
+]:
     """Assemble agent config, routing config, tools, and identity registry."""
     # One source of truth for the catalog (H2 registry). Honors MODEL_PROFILE_SET
     # from the env so the model-A/B harness's set-arm (Part II) can swap the whole
@@ -124,24 +131,44 @@ def build_agent_and_tools() -> tuple[AgentConfig, RoutingConfig, ToolRegistry, A
     routing_config = RoutingConfig(default_model=default_model)
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
-    tool_registry = ToolRegistry({
-        # shell/file_io not cacheable: thread tool_cache never invalidates, so
-        # repeating an identical command/read after the file changes is stale.
-        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
-        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=False),
-        "state_file": ToolDefinition(executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False),
-        "state_todo": ToolDefinition(executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False),
-        "task": ToolDefinition(
-            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
-            schema=TaskToolInput,
-            cacheable=False,
-        ),
-        "think": ToolDefinition(executor=execute_think_tool, schema=ThinkToolInput, cacheable=False),
-        "web_search": ToolDefinition(executor=execute_web_search, schema=WebSearchInput, cacheable=False),
-    })
+    tool_registry = ToolRegistry(
+        {
+            # shell/file_io not cacheable: thread tool_cache never invalidates, so
+            # repeating an identical command/read after the file changes is stale.
+            "shell": ToolDefinition(
+                executor=execute_shell, schema=ShellToolInput, cacheable=False
+            ),
+            "file_io": ToolDefinition(
+                executor=execute_file_io, schema=FileIOInput, cacheable=False
+            ),
+            "state_file": ToolDefinition(
+                executor=execute_state_file_tool,
+                schema=StateFileToolInput,
+                cacheable=False,
+            ),
+            "state_todo": ToolDefinition(
+                executor=execute_state_todo_tool,
+                schema=StateTodoToolInput,
+                cacheable=False,
+            ),
+            "task": ToolDefinition(
+                executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+                schema=TaskToolInput,
+                cacheable=False,
+            ),
+            "think": ToolDefinition(
+                executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
+            ),
+            "web_search": ToolDefinition(
+                executor=execute_web_search, schema=WebSearchInput, cacheable=False
+            ),
+        }
+    )
 
     cache_dir = AGENT_ROOT / "cache"
-    agent_facts_secret = os.environ.get("AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production")
+    agent_facts_secret = os.environ.get(
+        "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
+    )
     agent_facts_dir = cache_dir / "agent_facts"
     agent_facts_registry = AgentFactsRegistry(
         storage_dir=agent_facts_dir,
@@ -199,19 +226,24 @@ async def run_case(
     extra = graph_input_extra or {}
     task_input = _normalize_prompt_for_batch(case.prompt, workspace)
 
-    console.print(Panel(
-        f"[bold cyan]Case ID:[/bold cyan] {case.id}\n"
-        f"[bold cyan]Target Code:[/bold cyan] {case.target_code}\n"
-        f"[bold cyan]Stratum / Domain:[/bold cyan] {case.stratum} / {case.domain}\n"
-        f"[bold cyan]Trace ID (32-hex):[/bold cyan] {trace_id}\n"
-        f"[bold cyan]Prompt:[/bold cyan] {task_input}",
-        title="Executing Synthetic Case"
-    ))
+    console.print(
+        Panel(
+            f"[bold cyan]Case ID:[/bold cyan] {case.id}\n"
+            f"[bold cyan]Target Code:[/bold cyan] {case.target_code}\n"
+            f"[bold cyan]Stratum / Domain:[/bold cyan] {case.stratum} / {case.domain}\n"
+            f"[bold cyan]Trace ID (32-hex):[/bold cyan] {trace_id}\n"
+            f"[bold cyan]Prompt:[/bold cyan] {task_input}",
+            title="Executing Synthetic Case",
+        )
+    )
 
     # AsyncSqliteSaver.from_conn_string is used to enable checkpointer
     try:
         from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-        async with AsyncSqliteSaver.from_conn_string(str(cache_dir / "checkpoints.db")) as checkpointer:
+
+        async with AsyncSqliteSaver.from_conn_string(
+            str(cache_dir / "checkpoints.db")
+        ) as checkpointer:
             graph = build_graph(
                 agent_config=agent_config,
                 routing_config=routing_config,
@@ -275,17 +307,28 @@ async def run_case(
 async def main() -> None:
     # Ensure keys are present
     if not os.environ.get("OPENAI_API_KEY"):
-        console.print("[bold red]Error: OPENAI_API_KEY environment variable is not configured.[/bold red]")
+        console.print(
+            "[bold red]Error: OPENAI_API_KEY environment variable is not configured.[/bold red]"
+        )
         sys.exit(1)
-    if not os.environ.get("LANGFUSE_PUBLIC_KEY") or not os.environ.get("LANGFUSE_SECRET_KEY"):
-        console.print("[bold red]Error: LANGFUSE keys are not configured. Telemetry is required.[/bold red]")
+    if not os.environ.get("LANGFUSE_PUBLIC_KEY") or not os.environ.get(
+        "LANGFUSE_SECRET_KEY"
+    ):
+        console.print(
+            "[bold red]Error: LANGFUSE keys are not configured. Telemetry is required.[/bold red]"
+        )
         sys.exit(1)
 
-    console.print(f"[bold green]Found {len(LIVE_CASES)} live cases to execute.[/bold green]")
-    
+    console.print(
+        f"[bold green]Found {len(LIVE_CASES)} live cases to execute.[/bold green]"
+    )
+
     # Prompt before full live run
     import argparse
-    parser = argparse.ArgumentParser(description="Run GoalJudge synthetic saturation corpus batch")
+
+    parser = argparse.ArgumentParser(
+        description="Run GoalJudge synthetic saturation corpus batch"
+    )
     parser.add_argument("--case", help="Specific Case ID to run (e.g., GJ-001)")
     parser.add_argument(
         "--anchors",
@@ -306,7 +349,9 @@ async def main() -> None:
     if args.case:
         cases_to_run = [c for c in LIVE_CASES if c.id == args.case]
         if not cases_to_run:
-            console.print(f"[bold red]Case {args.case} not found in registry.[/bold red]")
+            console.print(
+                f"[bold red]Case {args.case} not found in registry.[/bold red]"
+            )
             sys.exit(1)
     elif args.anchors:
         cases_to_run = [c for c in LIVE_CASES if c.id in _PRE_G3_SHADOW_ANCHORS]
@@ -319,7 +364,9 @@ async def main() -> None:
             sys.exit(1)
 
     if not args.yes:
-        confirm = input(f"Do you want to run {len(cases_to_run)} cases locally? This will cost real LLM tokens. (y/N): ")
+        confirm = input(
+            f"Do you want to run {len(cases_to_run)} cases locally? This will cost real LLM tokens. (y/N): "
+        )
         if confirm.lower() != "y":
             console.print("[yellow]Batch execution canceled.[/yellow]")
             sys.exit(0)
@@ -328,11 +375,15 @@ async def main() -> None:
     truncate_eval_log()
 
     # Build agent wiring
-    agent_config, routing_config, tool_registry, agent_facts_registry = build_agent_and_tools()
+    agent_config, routing_config, tool_registry, agent_facts_registry = (
+        build_agent_and_tools()
+    )
 
     success_count = 0
     for i, case in enumerate(cases_to_run, 1):
-        console.print(f"\n[bold green]=== [Running Case {i}/{len(cases_to_run)}] ===[/bold green]")
+        console.print(
+            f"\n[bold green]=== [Running Case {i}/{len(cases_to_run)}] ===[/bold green]"
+        )
         try:
             result = await run_case(
                 case,
@@ -343,16 +394,20 @@ async def main() -> None:
                 workspace=workspace,
             )
             success_count += 1
-            console.print(f"[bold green]Case {case.id} completed successfully.[/bold green]")
+            console.print(
+                f"[bold green]Case {case.id} completed successfully.[/bold green]"
+            )
         except Exception as e:
             console.print(f"[bold red]Case {case.id} failed to run: {e}[/bold red]")
 
-    console.print(Panel(
-        f"Executed: {len(cases_to_run)} cases\n"
-        f"Completed: {success_count} successfully\n"
-        f"Failed: {len(cases_to_run) - success_count} failures",
-        title="Batch Run Complete"
-    ))
+    console.print(
+        Panel(
+            f"Executed: {len(cases_to_run)} cases\n"
+            f"Completed: {success_count} successfully\n"
+            f"Failed: {len(cases_to_run) - success_count} failures",
+            title="Batch Run Complete",
+        )
+    )
 
     if args.export_replay:
         from scripts.export_goaljudge_shadow_replay import export_shadow_replay

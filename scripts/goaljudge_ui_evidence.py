@@ -1,4 +1,5 @@
 """Shared UI evidence helpers for GoalJudge batch grading and verification."""
+
 from __future__ import annotations
 
 import re

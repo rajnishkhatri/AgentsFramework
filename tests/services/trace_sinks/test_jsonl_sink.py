@@ -34,7 +34,9 @@ def _make_record(trace_id: str = "t-1") -> TrustTraceRecord:
 
 
 class TestJsonlTraceSinkFailurePaths:
-    def test_missing_parent_directory_raises_at_construction(self, tmp_path: Path) -> None:
+    def test_missing_parent_directory_raises_at_construction(
+        self, tmp_path: Path
+    ) -> None:
         bad_parent = tmp_path / "nonexistent" / "trace.jsonl"
         with pytest.raises(FileNotFoundError, match="Parent directory"):
             JsonlTraceSink(bad_parent)

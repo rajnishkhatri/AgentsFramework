@@ -11,6 +11,7 @@ Downstream consumers (meta/analysis.py) parse with EvalRecord.model_validate_jso
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,7 +22,7 @@ async def record(
     target: str,
     ai_input: dict[str, Any],
     ai_response: Any,
-    config: dict[str, Any],
+    config: Mapping[str, Any],
     step: int = 0,
     model: str | None = None,
     tokens_in: int | None = None,
@@ -40,7 +41,9 @@ async def record(
         "target": target,
         "model": model,
         "ai_input": ai_input,
-        "ai_response": ai_response if isinstance(ai_response, (dict, str)) else str(ai_response),
+        "ai_response": ai_response
+        if isinstance(ai_response, (dict, str))
+        else str(ai_response),
         "tokens_in": tokens_in,
         "tokens_out": tokens_out,
         "cost_usd": cost_usd,

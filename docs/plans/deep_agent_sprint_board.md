@@ -392,4 +392,3 @@ For each story in each sprint:
   - **Mitigation:** enforce layer-tagged test strategy from TDD guide.
 - **Risk:** Prompt/reviewer updates diverge from implementation behavior.
   - **Mitigation:** keep reviewer v2 prompts versioned and mapped to explicit story acceptance criteria.
-

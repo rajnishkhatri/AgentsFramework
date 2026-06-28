@@ -6,6 +6,7 @@ that must be EXCLUDED from the aggregate, never silently averaged in. Then the
 eligibility/sampling matrix construction, the per-(model,family) aggregation, and
 the matched-subset fairness comparison (§3.3a).
 """
+
 from __future__ import annotations
 
 import json
@@ -99,9 +100,7 @@ class TestBuildMatrix:
         ]
 
     def test_cheap_arm_takes_every_case_at_full_repeat(self):
-        m = build_matrix(
-            self._corpus(), models=["gpt-4o-mini"], run_id="r1", repeat=3
-        )
+        m = build_matrix(self._corpus(), models=["gpt-4o-mini"], run_id="r1", repeat=3)
         assert len(m["gpt-4o-mini"]["cases"]) == 5
         assert m["gpt-4o-mini"]["repeat"] == 3
         assert m["gpt-4o-mini"]["reasoning"] is False
@@ -121,11 +120,15 @@ class TestBuildMatrix:
 
     def test_reasoning_sample_is_seeded_and_reproducible(self):
         a = build_matrix(
-            self._corpus(), models=["deepseek-v4-pro"], run_id="run-X",
+            self._corpus(),
+            models=["deepseek-v4-pro"],
+            run_id="run-X",
             reasoning_sample=0.5,
         )
         b = build_matrix(
-            self._corpus(), models=["deepseek-v4-pro"], run_id="run-X",
+            self._corpus(),
+            models=["deepseek-v4-pro"],
+            run_id="run-X",
             reasoning_sample=0.5,
         )
         assert [c["case"] for c in a["deepseek-v4-pro"]["cases"]] == [
@@ -134,11 +137,15 @@ class TestBuildMatrix:
 
     def test_different_run_id_can_resample(self):
         a = build_matrix(
-            self._corpus(), models=["deepseek-v4-pro"], run_id="run-X",
+            self._corpus(),
+            models=["deepseek-v4-pro"],
+            run_id="run-X",
             reasoning_sample=0.4,
         )
         b = build_matrix(
-            self._corpus(), models=["deepseek-v4-pro"], run_id="run-Y",
+            self._corpus(),
+            models=["deepseek-v4-pro"],
+            run_id="run-Y",
             reasoning_sample=0.4,
         )
         # Seeded on model+run_id — a different run_id is allowed to pick a
@@ -154,7 +161,9 @@ class TestBuildMatrix:
             _corpus_case("MT-a", "multi-turn", "L2"),
         ]
         m = build_matrix(
-            corpus, models=["claude-opus-4-8"], run_id="r1",
+            corpus,
+            models=["claude-opus-4-8"],
+            run_id="r1",
             reasoning_budget=2,
         )
         cases = m["claude-opus-4-8"]["cases"]
@@ -302,7 +311,8 @@ class TestMatchedComparison:
         }
         agg = aggregate_matrix(rows, events)
         mc = matched_comparison(
-            rows, events,
+            rows,
+            events,
             reasoning_model="claude-opus-4-8",
             baseline_model="gpt-4o",
             matrix_aggregate=agg,
@@ -323,7 +333,8 @@ class TestMatchedComparison:
         }
         agg = aggregate_matrix(rows, events)
         mc = matched_comparison(
-            rows, events,
+            rows,
+            events,
             reasoning_model="claude-opus-4-8",
             baseline_model="gpt-4o",
             matrix_aggregate=agg,
@@ -380,8 +391,12 @@ class TestReportWriters:
         corpus = tmp_path / "model_ab_corpus.json"
         corpus.write_text(json.dumps([{"case": "C0"}]))
         payload = build_report_payload(
-            run_id="r", corpus_path=corpus, baseline_model="gpt-4o",
-            matrix_aggregate=agg, matched_comparisons=[], rows=rows,
+            run_id="r",
+            corpus_path=corpus,
+            baseline_model="gpt-4o",
+            matrix_aggregate=agg,
+            matched_comparisons=[],
+            rows=rows,
         )
         md = render_markdown(payload)
         assert "WRONG-MODEL" in md

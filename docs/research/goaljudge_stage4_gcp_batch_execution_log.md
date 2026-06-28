@@ -45,8 +45,8 @@ Smoke artifacts: `frontend/cache/goaljudge_eval/ui_batch_gcp_2026-06-09_smoke.js
 
 ## Full batch — 22 cases
 
-**Run tag:** `gcp_2026-06-09`  
-**Command:** `CI=1 pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts --project=chromium-desktop`  
+**Run tag:** `gcp_2026-06-09`
+**Command:** `CI=1 pnpm exec playwright test e2e/full-stack/goaljudge-batch.spec.ts --project=chromium-desktop`
 **Wall clock:** 2.6 min (22 passed, 0 failed)
 
 | Artifact | Path |

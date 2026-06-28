@@ -65,10 +65,26 @@ class TestPolarity:
 
     def test_precision_recall_from_known_counts(self):
         # tp=2 fp=1 fn=1 tn=4 -> precision 2/3, recall 2/3, FD 1/5
-        judge = {"a": False, "b": False, "c": False, "d": True,
-                 "e": True, "f": True, "g": True, "h": True}
-        gold = {"a": False, "b": False, "c": True, "d": False,
-                "e": True, "f": True, "g": True, "h": True}
+        judge = {
+            "a": False,
+            "b": False,
+            "c": False,
+            "d": True,
+            "e": True,
+            "f": True,
+            "g": True,
+            "h": True,
+        }
+        gold = {
+            "a": False,
+            "b": False,
+            "c": True,
+            "d": False,
+            "e": True,
+            "f": True,
+            "g": True,
+            "h": True,
+        }
         c = confusion_counts(judge, gold)
         assert (c.tp, c.fp, c.fn, c.tn) == (2, 1, 1, 4)
         prf = precision_recall_fd(c)
@@ -101,6 +117,7 @@ class TestRealArtifacts:
 
     def test_verdicts_and_seed_align(self):
         from scripts.measure_l2l3_goaljudge import GJ_VERDICTS, SEED
+
         if not (GJ_VERDICTS.exists() and SEED.exists()):
             pytest.skip("artifacts not built in this env")
         gj = json.loads(GJ_VERDICTS.read_text())

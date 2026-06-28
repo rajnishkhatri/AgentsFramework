@@ -135,4 +135,3 @@ The initial 12-case file (`tests/fixtures/deep_agent_benchmark_adapted_cases.jso
 - Uses existing deterministic tools and expectations schema.
 - Adds adaptation `metadata` for future analysis without breaking existing loaders.
 - Provides a baseline for later expansion to larger benchmark tiers.
-

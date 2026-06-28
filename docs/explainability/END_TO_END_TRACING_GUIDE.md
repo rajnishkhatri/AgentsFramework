@@ -316,5 +316,3 @@ The `trace_id` from the SSE stream matches the `workflow_id` in every black box 
 | `frontend/lib/adapters/runtime/self_hosted_langgraph_dev_client.ts` | Browser client; reads `trace_id` from SSE, never generates one       |
 | `frontend/lib/transport/sse_client.ts`                              | Parses AG-UI events; routes `raw_event.trace_id` to UI runtime       |
 | `frontend/app/api/run/stream/route.ts`                              | BFF route; forwards POST to middleware with bearer token             |
-
-

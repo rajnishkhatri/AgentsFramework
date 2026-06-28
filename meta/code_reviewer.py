@@ -6,7 +6,6 @@ Zero imports from orchestration/.
 
 from __future__ import annotations
 
-import ast
 import json
 import logging
 import sys
@@ -46,55 +45,67 @@ def check_import_rules(file_path: str) -> list[ReviewFinding]:
 
     dep_result = check_dependency_rules(file_path)
     for v in dep_result.get("violations", []):
-        findings.append(ReviewFinding(
-            rule_id=v["rule"],
-            dimension="D1",
-            severity=Severity.CRITICAL,
-            file=v["file"],
-            line=v.get("line"),
-            description=v["description"],
-            fix_suggestion="Remove the forbidden import and restructure to follow the dependency table.",
-            confidence=1.0,
-            certificate=Certificate(
-                premises=[f"[P1] check_dependency_rules: {v['file']}:{v.get('line', '?')} — {v['description']}"],
-                traces=[f"[T1] {v['file']} imports from forbidden layer"],
-                conclusion=f"{v['rule']} FAIL — {v['description']}",
-            ),
-        ))
+        findings.append(
+            ReviewFinding(
+                rule_id=v["rule"],
+                dimension="D1",
+                severity=Severity.CRITICAL,
+                file=v["file"],
+                line=v.get("line"),
+                description=v["description"],
+                fix_suggestion="Remove the forbidden import and restructure to follow the dependency table.",
+                confidence=1.0,
+                certificate=Certificate(
+                    premises=[
+                        f"[P1] check_dependency_rules: {v['file']}:{v.get('line', '?')} — {v['description']}"
+                    ],
+                    traces=[f"[T1] {v['file']} imports from forbidden layer"],
+                    conclusion=f"{v['rule']} FAIL — {v['description']}",
+                ),
+            )
+        )
 
     purity_result = check_trust_purity(file_path)
     for v in purity_result.get("violations", []):
-        findings.append(ReviewFinding(
-            rule_id=v["rule"],
-            dimension="D4",
-            severity=Severity.CRITICAL,
-            file=v["file"],
-            line=v.get("line"),
-            description=v["description"],
-            fix_suggestion="Remove the I/O import. Trust foundation must be pure data and pure functions.",
-            confidence=1.0,
-            certificate=Certificate(
-                premises=[f"[P1] check_trust_purity: {v['file']}:{v.get('line', '?')} — {v['description']}"],
-                conclusion=f"{v['rule']} FAIL — {v['description']}",
-            ),
-        ))
+        findings.append(
+            ReviewFinding(
+                rule_id=v["rule"],
+                dimension="D4",
+                severity=Severity.CRITICAL,
+                file=v["file"],
+                line=v.get("line"),
+                description=v["description"],
+                fix_suggestion="Remove the I/O import. Trust foundation must be pure data and pure functions.",
+                confidence=1.0,
+                certificate=Certificate(
+                    premises=[
+                        f"[P1] check_trust_purity: {v['file']}:{v.get('line', '?')} — {v['description']}"
+                    ],
+                    conclusion=f"{v['rule']} FAIL — {v['description']}",
+                ),
+            )
+        )
 
     ap_result = detect_anti_patterns(file_path)
     for v in ap_result.get("violations", []):
-        findings.append(ReviewFinding(
-            rule_id=v["rule"],
-            dimension="D5",
-            severity=Severity.WARNING,
-            file=v["file"],
-            line=v.get("line"),
-            description=v["description"],
-            fix_suggestion="Address the anti-pattern per the architecture style guide.",
-            confidence=0.9,
-            certificate=Certificate(
-                premises=[f"[P1] detect_anti_patterns: {v['file']}:{v.get('line', '?')} — {v['description']}"],
-                conclusion=f"{v['rule']} FAIL — {v['description']}",
-            ),
-        ))
+        findings.append(
+            ReviewFinding(
+                rule_id=v["rule"],
+                dimension="D5",
+                severity=Severity.WARNING,
+                file=v["file"],
+                line=v.get("line"),
+                description=v["description"],
+                fix_suggestion="Address the anti-pattern per the architecture style guide.",
+                confidence=0.9,
+                certificate=Certificate(
+                    premises=[
+                        f"[P1] detect_anti_patterns: {v['file']}:{v.get('line', '?')} — {v['description']}"
+                    ],
+                    conclusion=f"{v['rule']} FAIL — {v['description']}",
+                ),
+            )
+        )
 
     return findings
 
@@ -136,18 +147,22 @@ def run_deterministic_review(files: list[str]) -> ReviewReport:
     ]:
         findings = dim_findings.get(dim_id, [])
         has_critical = any(f.severity == Severity.CRITICAL for f in findings)
-        status = DimensionStatus.FAIL if has_critical else (
-            DimensionStatus.PARTIAL if findings else DimensionStatus.PASS
+        status = (
+            DimensionStatus.FAIL
+            if has_critical
+            else (DimensionStatus.PARTIAL if findings else DimensionStatus.PASS)
         )
-        dimensions.append(DimensionResult(
-            dimension=dim_id,
-            name=dim_name,
-            status=status,
-            hypotheses_tested=len(files_reviewed),
-            hypotheses_confirmed=len(findings),
-            hypotheses_killed=len(files_reviewed) - len(findings),
-            findings=findings,
-        ))
+        dimensions.append(
+            DimensionResult(
+                dimension=dim_id,
+                name=dim_name,
+                status=status,
+                hypotheses_tested=len(files_reviewed),
+                hypotheses_confirmed=len(findings),
+                hypotheses_killed=len(files_reviewed) - len(findings),
+                findings=findings,
+            )
+        )
 
     # Determine verdict
     critical_count = sum(1 for f in all_findings if f.severity == Severity.CRITICAL)
@@ -169,15 +184,19 @@ def run_deterministic_review(files: list[str]) -> ReviewReport:
             f"architectural compliance or trust integrity."
         )
     else:
-        statement = f"REQUEST CHANGES: {warning_count} warning(s) detected requiring attention."
+        statement = (
+            f"REQUEST CHANGES: {warning_count} warning(s) detected requiring attention."
+        )
 
     return ReviewReport(
         verdict=verdict,
         statement=statement,
         confidence=1.0 if not all_findings else 0.9,
         dimensions=dimensions,
-        gaps=["D2 (Style Guide) not evaluated — deterministic mode",
-              "D3 (Test Quality) not evaluated — deterministic mode"],
+        gaps=[
+            "D2 (Style Guide) not evaluated — deterministic mode",
+            "D3 (Test Quality) not evaluated — deterministic mode",
+        ],
         validation_log=validation_log,
         files_reviewed=files_reviewed,
     )
@@ -245,9 +264,7 @@ class CodeReviewerAgent:
         # Merge: deterministic findings take precedence, LLM adds new ones
         return self._merge_reports(deterministic_report, llm_report)
 
-    async def _run_llm_review(
-        self, files: list[str], diff: str | None
-    ) -> ReviewReport:
+    async def _run_llm_review(self, files: list[str], diff: str | None) -> ReviewReport:
         """Run LLM-based review with retry on schema validation failure."""
         system_prompt = self._prompt_service.render_prompt(
             self._system_prompt_template()
@@ -258,12 +275,14 @@ class CodeReviewerAgent:
             p = Path(fp)
             if p.exists() and p.suffix == ".py":
                 layer_info = classify_layer(fp)
-                files_data.append({
-                    "path": fp,
-                    "layer": layer_info["layer"],
-                    "content": p.read_text()[:10000],
-                    "language": "python",
-                })
+                files_data.append(
+                    {
+                        "path": fp,
+                        "layer": layer_info["layer"],
+                        "content": p.read_text()[:10000],
+                        "language": "python",
+                    }
+                )
 
         submission = self._prompt_service.render_prompt(
             self._submission_prompt_template(),
@@ -283,9 +302,7 @@ class CodeReviewerAgent:
         max_retries = 2
         for attempt in range(max_retries + 1):
             try:
-                response = await self._llm_service.invoke(
-                    self._judge_profile, messages
-                )
+                response = await self._llm_service.invoke(self._judge_profile, messages)
                 raw = getattr(response, "content", str(response))
                 parsed = self._parse_review_response(raw)
                 await eval_capture.record(
@@ -317,7 +334,9 @@ class CodeReviewerAgent:
                     return err_report
 
         # Unreachable but satisfies type checker
-        return ReviewReport(verdict=Verdict.REJECT, statement="Unexpected error", confidence=0.0)
+        return ReviewReport(
+            verdict=Verdict.REJECT, statement="Unexpected error", confidence=0.0
+        )
 
     def _parse_review_response(self, raw: str) -> ReviewReport:
         """Parse LLM response into ReviewReport."""
@@ -342,6 +361,7 @@ class CodeReviewerAgent:
         - alias fields (`rule` -> `rule_id`, etc.)
         - dimension labels merged with ids (e.g. "D1 Architectural Compliance")
         """
+
         def _to_status(value: str | None) -> str:
             if not value:
                 return "partial"
@@ -382,7 +402,9 @@ class CodeReviewerAgent:
                 return "reject"
             return "request_changes"
 
-        def _infer_dimension_id_and_name(dim_raw: Any, name_raw: Any) -> tuple[str, str]:
+        def _infer_dimension_id_and_name(
+            dim_raw: Any, name_raw: Any
+        ) -> tuple[str, str]:
             canonical = {
                 "D1": "Architectural Compliance",
                 "D2": "Style Guide Adherence",
@@ -399,7 +421,7 @@ class CodeReviewerAgent:
                 if dim_text == dim_id:
                     return dim_id, (name_text or dim_name)
                 if dim_text.lower().startswith(f"{dim_id.lower()} "):
-                    suffix = dim_text[len(dim_id):].strip()
+                    suffix = dim_text[len(dim_id) :].strip()
                     return dim_id, (suffix or name_text or dim_name)
                 if dim_name.lower() in combined.lower():
                     return dim_id, dim_name
@@ -429,7 +451,9 @@ class CodeReviewerAgent:
                 dim.get("dimension"),
                 dim.get("name"),
             )
-            status = _to_status(dim.get("status") if isinstance(dim.get("status"), str) else None)
+            status = _to_status(
+                dim.get("status") if isinstance(dim.get("status"), str) else None
+            )
 
             findings = dim.get("findings")
             if not isinstance(findings, list):
@@ -451,7 +475,9 @@ class CodeReviewerAgent:
                 finding.setdefault("rule_id", "LLM.UNKNOWN_RULE")
                 finding.setdefault("severity", "warning")
                 finding["severity"] = _to_severity(
-                    finding["severity"] if isinstance(finding.get("severity"), str) else None
+                    finding["severity"]
+                    if isinstance(finding.get("severity"), str)
+                    else None
                 )
                 finding.setdefault("file", "<unknown>")
                 finding.setdefault("description", "LLM-reported finding")
@@ -464,22 +490,30 @@ class CodeReviewerAgent:
                         finding.get("description", "LLM-reported finding")
                     )
                     finding["certificate"] = {
-                        "premises": ["[P1] LLM-reported finding (normalization fallback)."],
+                        "premises": [
+                            "[P1] LLM-reported finding (normalization fallback)."
+                        ],
                         "traces": [],
                         "conclusion": f"{rule_id} FAIL -- {description}",
                     }
 
                 normalized_findings.append(finding)
 
-            normalized_dimensions.append({
-                "dimension": dim_id,
-                "name": dim_name,
-                "status": status,
-                "hypotheses_tested": int(dim.get("hypotheses_tested", len(normalized_findings) or 1)),
-                "hypotheses_confirmed": int(dim.get("hypotheses_confirmed", len(normalized_findings))),
-                "hypotheses_killed": int(dim.get("hypotheses_killed", 0)),
-                "findings": normalized_findings,
-            })
+            normalized_dimensions.append(
+                {
+                    "dimension": dim_id,
+                    "name": dim_name,
+                    "status": status,
+                    "hypotheses_tested": int(
+                        dim.get("hypotheses_tested", len(normalized_findings) or 1)
+                    ),
+                    "hypotheses_confirmed": int(
+                        dim.get("hypotheses_confirmed", len(normalized_findings))
+                    ),
+                    "hypotheses_killed": int(dim.get("hypotheses_killed", 0)),
+                    "findings": normalized_findings,
+                }
+            )
 
         payload["dimensions"] = normalized_dimensions
         return payload
@@ -510,7 +544,8 @@ class CodeReviewerAgent:
                     reconciliation_gaps=reconciliation_gaps,
                 )
                 extra_findings = [
-                    f for f in reconciled_llm_findings
+                    f
+                    for f in reconciled_llm_findings
                     if not any(
                         ef.rule_id == f.rule_id and ef.file == f.file
                         for ef in d.findings
@@ -521,8 +556,10 @@ class CodeReviewerAgent:
                         dimension=d.dimension,
                         name=d.name,
                         status=d.status,
-                        hypotheses_tested=d.hypotheses_tested + llm_dim.hypotheses_tested,
-                        hypotheses_confirmed=d.hypotheses_confirmed + len(extra_findings),
+                        hypotheses_tested=d.hypotheses_tested
+                        + llm_dim.hypotheses_tested,
+                        hypotheses_confirmed=d.hypotheses_confirmed
+                        + len(extra_findings),
                         hypotheses_killed=d.hypotheses_killed,
                         findings=list(d.findings) + extra_findings,
                     )
@@ -578,9 +615,13 @@ class CodeReviewerAgent:
             statement=statement,
             confidence=min(deterministic.confidence, llm.confidence),
             dimensions=merged_dims,
-            gaps=list(set(deterministic.gaps) | set(llm.gaps) | set(reconciliation_gaps)),
+            gaps=list(
+                set(deterministic.gaps) | set(llm.gaps) | set(reconciliation_gaps)
+            ),
             validation_log=deterministic.validation_log + llm.validation_log,
-            files_reviewed=list(set(deterministic.files_reviewed) | set(llm.files_reviewed)),
+            files_reviewed=list(
+                set(deterministic.files_reviewed) | set(llm.files_reviewed)
+            ),
         )
 
     def _reconcile_llm_findings(
@@ -674,7 +715,9 @@ def run_code_reviewer_cli(args: list[str] | None = None) -> int:
     import os
 
     parser = argparse.ArgumentParser(description="CodeReviewer CLI")
-    parser.add_argument("--files", nargs="+", required=True, help="Python files to review")
+    parser.add_argument(
+        "--files", nargs="+", required=True, help="Python files to review"
+    )
     parser.add_argument("--diff", type=str, help="Path to diff file")
     parser.add_argument("--output", type=str, help="Output file path (default: stdout)")
     parser.add_argument(

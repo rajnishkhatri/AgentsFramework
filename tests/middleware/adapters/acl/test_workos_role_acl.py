@@ -99,7 +99,9 @@ class TestRejectionPaths:
             tool_name="file_io",
         )
         assert decision.allowed is False
-        assert "unknown" in decision.reason.lower() or "no role" in decision.reason.lower()
+        assert (
+            "unknown" in decision.reason.lower() or "no role" in decision.reason.lower()
+        )
 
     def test_R3_viewer_denied_all_tools(self, acl: ToolAclProvider) -> None:
         """Viewer role exists but has no tool permissions -> deny."""
@@ -110,9 +112,7 @@ class TestRejectionPaths:
             )
             assert decision.allowed is False, f"viewer must NOT call {tool}"
 
-    def test_R4_unknown_tool_denied_for_admin(
-        self, acl: ToolAclProvider
-    ) -> None:
+    def test_R4_unknown_tool_denied_for_admin(self, acl: ToolAclProvider) -> None:
         """Default-deny when the tool isn't in the known-tools set
         (fail-closed, even for admin).
         """
@@ -191,9 +191,7 @@ class TestBehavioralContract:
             decision = acl.decide(weird_claims, tool_name=tool)
             assert isinstance(decision, ToolAclDecision)
 
-    def test_first_role_wins_for_audit_trace(
-        self, acl: ToolAclProvider
-    ) -> None:
+    def test_first_role_wins_for_audit_trace(self, acl: ToolAclProvider) -> None:
         """When a user has multiple roles, the *highest-privilege* role
         granting the tool wins (so admin+beta is admin for shell).
         """

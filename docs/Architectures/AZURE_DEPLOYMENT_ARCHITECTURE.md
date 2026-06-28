@@ -55,7 +55,7 @@ To support the streaming nature of LangGraph agents (SSE), we utilize Azure Appl
 1. **Browser Ring (Frontend)**
    - **Service:** Azure Static Web Apps (with Next.js support) or Azure Container Apps.
    - **Role:** Hosts the Next.js 15 App Router application. Supports native edge caching, SSR, and streaming responses out of the box.
-   
+
 2. **Middleware Ring (BFF / FastAPI)**
    - **Service:** Azure Container Apps + Azure Front Door or Application Gateway.
    - **Role:** Handles authentication (WorkOS), rate-limiting, and SDK telemetry (Langfuse, Mem0). Bridges the frontend to the internal agent infrastructure. Timeout settings are optimized for long-running SSE.
@@ -84,7 +84,7 @@ flowchart TD
     subgraph VNet ["Azure Virtual Network (VNet)"]
         BFF[Azure Container Apps: BFF<br/>FastAPI + WorkOS]
         Backend[Azure Container Apps: Backend<br/>agent_ui_adapter/server.py<br/>Internal Ingress]
-        
+
         Meta[Azure Container Apps Jobs<br/>Meta Ring: run_eval.py]
     end
 

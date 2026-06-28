@@ -143,15 +143,11 @@ def _build_dev_telemetry_exporter() -> TelemetryExporter:
             or os.environ.get("LANGFUSE_BASE_URL")
             or "https://cloud.langfuse.com"
         )
-        exporter = LangfuseCloudExporter(
-            public_key=pk, secret_key=sk, host=host
-        )
+        exporter = LangfuseCloudExporter(public_key=pk, secret_key=sk, host=host)
         logger.info("Langfuse telemetry enabled for dev")
         return exporter
     except Exception as exc:
-        logger.warning(
-            "Langfuse exporter init failed: %s; dev telemetry disabled", exc
-        )
+        logger.warning("Langfuse exporter init failed: %s; dev telemetry disabled", exc)
         return _NoopTelemetryExporter()
 
 
@@ -169,11 +165,17 @@ def _build_dev_relay(
         return None
 
     storage_dir_str = os.environ.get("BLACKBOX_STORAGE_DIR", "")
-    storage_dir = Path(storage_dir_str) if storage_dir_str else (cache_dir / "black_box_recordings")
+    storage_dir = (
+        Path(storage_dir_str)
+        if storage_dir_str
+        else (cache_dir / "black_box_recordings")
+    )
 
     from middleware.ports.compliance_publisher import CompliancePublisher
 
-    compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
+    compliance_publisher = (
+        exporter if isinstance(exporter, CompliancePublisher) else None
+    )
 
     # Phase 4: curated view on by default; LANGFUSE_RELAY_CURATED=false restores
     # the audit-complete dual view (Option B).
@@ -314,7 +316,9 @@ def build_dev_app() -> FastAPI:
 
         gcs_traces_bucket = os.environ.get("GCS_TRACES_BUCKET", "")
         if not gcs_traces_bucket:
-            raise RuntimeError("GCS_TRACES_BUCKET is required when GCP_EXECUTION_ENV is set")
+            raise RuntimeError(
+                "GCS_TRACES_BUCKET is required when GCP_EXECUTION_ENV is set"
+            )
         trace_service = TraceService(sinks=[GcsTraceSink(gcs_traces_bucket)])
     else:
         trust_traces_dir = cache_dir / "trust_traces"
@@ -340,7 +344,9 @@ def build_dev_app() -> FastAPI:
 
         try:
             if _GCP_EXECUTION_ENV:
-                from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
+                from agent_ui_adapter.adapters.runtime.postgres_saver import (
+                    PostgresCheckpointer,
+                )
 
                 async with PostgresCheckpointer.from_env() as pg_cp:
                     graph = build_runtime_graph(
@@ -380,7 +386,9 @@ def build_dev_app() -> FastAPI:
                         app.state.telemetry_exporter = dev_telemetry
                         yield
                 except ImportError:
-                    logger.warning("AsyncSqliteSaver not available; running without checkpointer")
+                    logger.warning(
+                        "AsyncSqliteSaver not available; running without checkpointer"
+                    )
                     graph = build_runtime_graph(
                         components,
                         build_graph,
@@ -572,23 +580,23 @@ def build_dev_app() -> FastAPI:
                         run_finished_emitted = True
 
                     for ag_ui_event in to_ag_ui(domain_event):
-                        yield encode_event(
-                            ag_ui_event, event_id=uuid.uuid4().hex
-                        )
+                        yield encode_event(ag_ui_event, event_id=uuid.uuid4().hex)
                 yield SENTINEL_LINE
             except Exception as exc:
                 errored = True
                 logger.exception("stream error: %s", exc)
-                yield encode_error(
-                    f"{type(exc).__name__}: {exc}", code="runtime_error"
-                )
+                yield encode_error(f"{type(exc).__name__}: {exc}", code="runtime_error")
                 yield SENTINEL_LINE
             finally:
                 duration_ms = int((time.monotonic() - run_started_at) * 1000)
                 logger.info(
                     "stream_ended run_id=%s thread=%s trace=%s "
                     "duration_ms=%d errored=%s",
-                    run_id, run_ctx.thread_id, trace_id_seen, duration_ms, errored,
+                    run_id,
+                    run_ctx.thread_id,
+                    trace_id_seen,
+                    duration_ms,
+                    errored,
                 )
                 # I6: teardown order is drain -> release_trace -> flush. The
                 # relay tail MUST be drained before any step.N span is closed,
@@ -718,7 +726,9 @@ def build_dev_app() -> FastAPI:
             thread = {
                 "thread_id": thread_id,
                 "user_id": DEV_USER_ID,
-                "title": _thread_title({}, fallback=str(body.get("user", ""))[:60] or "New chat"),
+                "title": _thread_title(
+                    {}, fallback=str(body.get("user", ""))[:60] or "New chat"
+                ),
                 "messages": [],
                 "created_at": now,
                 "updated_at": now,
@@ -727,9 +737,7 @@ def build_dev_app() -> FastAPI:
             threads_store[thread_id] = thread
         # Idempotent on turn_id: a retried POST must not double-append.
         turn_id = str(body.get("turn_id", ""))
-        if turn_id and any(
-            m.get("turn_id") == turn_id for m in thread["messages"]
-        ):
+        if turn_id and any(m.get("turn_id") == turn_id for m in thread["messages"]):
             return thread
         user_text = str(body.get("user", ""))
         assistant_text = str(body.get("assistant", ""))

@@ -59,8 +59,8 @@ class TestDependencyRules:
         for filepath, pkg in _collect_imported_packages(AGENT_ROOT / "trust"):
             if pkg == "agents":
                 violations.append(f"{filepath} imports agents")
-        assert violations == [], (
-            "trust/ must not import from agents/:\n" + "\n".join(violations)
+        assert violations == [], "trust/ must not import from agents/:\n" + "\n".join(
+            violations
         )
 
     def test_utils_does_not_import_agents(self):
@@ -160,7 +160,13 @@ class TestDependencyRules:
             pytest.skip("services/llm_providers/ not yet created")
         violations = []
         for filepath, pkg in _collect_imported_packages(providers_dir):
-            if pkg in {"components", "orchestration", "agents", "governance", "middleware"}:
+            if pkg in {
+                "components",
+                "orchestration",
+                "agents",
+                "governance",
+                "middleware",
+            }:
                 violations.append(f"{filepath} imports {pkg}")
         assert violations == [], (
             "services/llm_providers/ must not import from upper layers:\n"
@@ -198,9 +204,7 @@ class TestDependencyRules:
 
 
 SUPERVISOR_PLAN = AGENT_ROOT / "components" / "supervisor_plan.py"
-SUPERVISOR_PLAN_TEST = (
-    AGENT_ROOT / "tests" / "components" / "test_supervisor_plan.py"
-)
+SUPERVISOR_PLAN_TEST = AGENT_ROOT / "tests" / "components" / "test_supervisor_plan.py"
 
 
 def _imports_of(py_file: Path) -> list[dict]:
@@ -271,7 +275,12 @@ class TestSupervisorPlanLayerPurity:
         """LP-1 preserved: the Step-5b async edit keeps the dispatcher clean."""
         dispatcher = AGENT_ROOT / "services" / "tools" / "delegation_dispatcher.py"
         assert dispatcher.exists(), "delegation_dispatcher.py must exist"
-        forbidden = {"langgraph", "langchain_core", "langchain_community", "orchestration"}
+        forbidden = {
+            "langgraph",
+            "langchain_core",
+            "langchain_community",
+            "orchestration",
+        }
         violations = [
             f"line {imp['line']}: imports {imp['top_package']}"
             for imp in _imports_of(dispatcher)
@@ -285,7 +294,9 @@ class TestSupervisorPlanLayerPurity:
     def test_component_test_does_not_import_orchestration(self):
         """AP7: run P7 against the test tree too — the component test is pure."""
         if not SUPERVISOR_PLAN_TEST.exists():
-            pytest.skip("tests/components/test_supervisor_plan.py not yet created (RED)")
+            pytest.skip(
+                "tests/components/test_supervisor_plan.py not yet created (RED)"
+            )
         forbidden = {"langgraph", "orchestration"}
         violations = [
             f"line {imp['line']}: imports {imp['top_package']}"
@@ -402,7 +413,7 @@ class TestSharedUtilityParity:
                 marker = f"{layer_dir}_cannot_import_"
                 if not suffix.startswith(marker):
                     continue
-                pkg = suffix[len(marker):]
+                pkg = suffix[len(marker) :]
                 utility_violations.add((rel, layer_dir, pkg))
 
         assert harness_violations == utility_violations, (
@@ -417,9 +428,7 @@ class TestDeclaredDependencies:
 
     def test_boto3_in_pyproject(self):
         pyproject_path = AGENT_ROOT / "pyproject.toml"
-        assert pyproject_path.exists(), (
-            f"pyproject.toml must exist at {pyproject_path}"
-        )
+        assert pyproject_path.exists(), f"pyproject.toml must exist at {pyproject_path}"
         content = pyproject_path.read_text()
         assert "boto3" in content, (
             "boto3 must be listed in pyproject.toml (aws optional-deps)"

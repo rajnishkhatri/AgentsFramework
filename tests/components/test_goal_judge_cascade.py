@@ -23,7 +23,6 @@ import json
 import pytest
 
 from components.goal_judge import GoalJudge
-from components.schemas import GoalVerdict
 from services.base_config import ModelProfile
 from services.prompt_service import PromptService
 

@@ -42,9 +42,7 @@ from services.governance.guardrail_dataset import (
     teacher_label,
 )
 
-EVALSET_PATH = (
-    Path(__file__).resolve().parent / "fixtures" / "guardrail_evalset.jsonl"
-)
+EVALSET_PATH = Path(__file__).resolve().parent / "fixtures" / "guardrail_evalset.jsonl"
 
 
 def _valid_kwargs(**overrides) -> dict:
@@ -182,17 +180,27 @@ class TestContaminationGuard:
 
     def test_collection_guard_passes_on_clean_dataset(self):
         rows = [
-            _sample(id="t-1", source="deepset", label=Label.INJECTION,
-                    dimension=Dimension.OVERRIDE, split=DatasetSplit.TRAIN),
-            _sample(id="h-1", source=NOTINJECT_SOURCE,
-                    dimension=Dimension.OVER_DEFENSE, split=DatasetSplit.HELD_OUT),
+            _sample(
+                id="t-1",
+                source="deepset",
+                label=Label.INJECTION,
+                dimension=Dimension.OVERRIDE,
+                split=DatasetSplit.TRAIN,
+            ),
+            _sample(
+                id="h-1",
+                source=NOTINJECT_SOURCE,
+                dimension=Dimension.OVER_DEFENSE,
+                split=DatasetSplit.HELD_OUT,
+            ),
         ]
         assert_no_contamination(rows)  # does not raise
 
     def test_freeze_blocks_contaminated_dataset(self, tmp_path):
         leaked = GuardrailSample.model_construct(
-            **_valid_kwargs(id="leak-2", source=NOTINJECT_SOURCE,
-                            split=DatasetSplit.TRAIN)
+            **_valid_kwargs(
+                id="leak-2", source=NOTINJECT_SOURCE, split=DatasetSplit.TRAIN
+            )
         )
         with pytest.raises(ContaminationError):
             freeze([leaked], tmp_path / "out.jsonl")
@@ -248,8 +256,12 @@ class TestPipelineStages:
             assert s.split is DatasetSplit.TRAIN  # local negatives are trainable
 
     def test_augment_skips_injection_frames(self):
-        frame = _sample(label=Label.INJECTION, dimension=Dimension.OVERRIDE,
-                        source="deepset", split=DatasetSplit.TRAIN)
+        frame = _sample(
+            label=Label.INJECTION,
+            dimension=Dimension.OVERRIDE,
+            source="deepset",
+            split=DatasetSplit.TRAIN,
+        )
         assert augment_domain_negatives([frame], ["ignore"]) == []
 
     def test_teacher_label_passthrough_when_offline(self):
@@ -264,8 +276,13 @@ class TestPipelineStages:
 
     def test_split_counts(self):
         rows = [
-            _sample(id="a", split=DatasetSplit.TRAIN, source="deepset",
-                    label=Label.INJECTION, dimension=Dimension.OVERRIDE),
+            _sample(
+                id="a",
+                split=DatasetSplit.TRAIN,
+                source="deepset",
+                label=Label.INJECTION,
+                dimension=Dimension.OVERRIDE,
+            ),
             _sample(id="b", split=DatasetSplit.HELD_OUT),
         ]
         assert split_counts(rows) == {"train": 1, "held_out": 1}
@@ -274,10 +291,19 @@ class TestPipelineStages:
 class TestFreezeRoundTrip:
     def test_freeze_then_load_is_lossless_and_sorted(self, tmp_path):
         rows = [
-            _sample(id="z", source="deepset", label=Label.INJECTION,
-                    dimension=Dimension.OVERRIDE, split=DatasetSplit.TRAIN),
-            _sample(id="a", source=NOTINJECT_SOURCE,
-                    dimension=Dimension.OVER_DEFENSE, split=DatasetSplit.HELD_OUT),
+            _sample(
+                id="z",
+                source="deepset",
+                label=Label.INJECTION,
+                dimension=Dimension.OVERRIDE,
+                split=DatasetSplit.TRAIN,
+            ),
+            _sample(
+                id="a",
+                source=NOTINJECT_SOURCE,
+                dimension=Dimension.OVER_DEFENSE,
+                split=DatasetSplit.HELD_OUT,
+            ),
         ]
         out = tmp_path / "ds.jsonl"
         freeze(rows, out)

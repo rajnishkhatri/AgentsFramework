@@ -11,7 +11,9 @@ def test_deep_agents_from_scratch_package_removed() -> None:
     scratch_dir = AGENT_ROOT / "deep_agents_from_scratch"
     if not scratch_dir.exists():
         return
-    remaining_python = sorted(str(p.relative_to(AGENT_ROOT)) for p in scratch_dir.rglob("*.py"))
+    remaining_python = sorted(
+        str(p.relative_to(AGENT_ROOT)) for p in scratch_dir.rglob("*.py")
+    )
     assert remaining_python == [], (
         "Sprint 4 cleanup incomplete: deep_agents_from_scratch/ still contains Python modules:\n"
         + "\n".join(remaining_python)

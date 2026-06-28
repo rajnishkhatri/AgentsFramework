@@ -98,9 +98,7 @@ def test_phase_1_unauthenticated_request_returns_401_no_sse_leak() -> None:
         agent_facts={},
     )
     client = TestClient(app)
-    r = client.post(
-        "/agent/runs/stream", json={"thread_id": "t", "input": {}}
-    )
+    r = client.post("/agent/runs/stream", json={"thread_id": "t", "input": {}})
     assert r.status_code == 401
     # No SSE bytes leak in error response
     assert b"event:" not in r.content

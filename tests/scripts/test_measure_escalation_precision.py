@@ -28,8 +28,8 @@ def test_committed_corpus_scores_perfectly() -> None:
     metrics = score_corpus(rows)
 
     # Headline: zero mismatches — no false escalate, no missed escalate.
-    assert metrics["mismatches"] == [], (
-        "escalation oracle drifted:\n" + "\n".join(metrics["mismatches"])
+    assert metrics["mismatches"] == [], "escalation oracle drifted:\n" + "\n".join(
+        metrics["mismatches"]
     )
     assert metrics["precision"] == 1.0
     assert metrics["recall"] == 1.0

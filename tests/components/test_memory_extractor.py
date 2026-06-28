@@ -150,9 +150,7 @@ class TestExtractFailurePaths:
 
     async def test_item_with_extra_field_is_dropped(self):
         # extra="forbid" rejects a smuggled raw-content field; item dropped.
-        extractor, _ = _extractor(
-            _items_json({**_VALID_ITEM, "raw_turns": "..."})
-        )
+        extractor, _ = _extractor(_items_json({**_VALID_ITEM, "raw_turns": "..."}))
         result = await extractor.extract(messages=_MESSAGES)
         assert result.memories == []
 
@@ -212,8 +210,6 @@ class TestExtractAcceptance:
         assert "metric units" in rendered
 
     async def test_handles_fenced_json(self):
-        extractor, _ = _extractor(
-            "```json\n" + _items_json(_VALID_ITEM) + "\n```"
-        )
+        extractor, _ = _extractor("```json\n" + _items_json(_VALID_ITEM) + "\n```")
         result = await extractor.extract(messages=_MESSAGES)
         assert len(result.memories) == 1

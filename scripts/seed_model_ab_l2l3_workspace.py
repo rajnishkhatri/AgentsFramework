@@ -62,6 +62,7 @@ class GroundTruth:
 
 # ── Fixtures + the ground truth they imply (ONE source of truth) ─────────────
 
+
 def _seed(ws: Path) -> None:
     # 07 multi-file-reconcile: sum 'paid' invoice amounts -> write to out/paid.txt
     #    inv-1 100 paid, inv-2 250 unpaid, inv-3 75 paid, inv-4 300 paid,
@@ -78,8 +79,7 @@ def _seed(ws: Path) -> None:
     #    orders: o1->c1, o2->c2, o3->c1, o4->c3, o5->c4, o6->c2, o7->c1
     #    regions: north = c1(o1,o3,o7)+c3(o4) = 4 ; south = c2(o2,o6) = 2 ; west = c4(o5) = 1
     (ws / "orders.csv").write_text(
-        "order_id,customer_id\n"
-        "o1,c1\no2,c2\no3,c1\no4,c3\no5,c4\no6,c2\no7,c1\n"
+        "order_id,customer_id\no1,c1\no2,c2\no3,c1\no4,c3\no5,c4\no6,c2\no7,c1\n"
     )
     (ws / "customers.csv").write_text(
         "customer_id,region\nc1,north\nc2,south\nc3,north\nc4,west\n"
@@ -207,7 +207,9 @@ GROUND_TRUTH: tuple[GroundTruth, ...] = (
             "e.g. D, B, C, A (or D, C, B, A)",
             "no cycle exists",
         ),
-        notes=("any order respecting deps-first is correct; B/C order interchangeable",),
+        notes=(
+            "any order respecting deps-first is correct; B/C order interchangeable",
+        ),
     ),
     GroundTruth(
         "GEN-L3-constraint-solve-13",

@@ -29,6 +29,7 @@ Reuses, unchanged (imported, not subprocessed):
 Unit tests live in ``tests/scripts/test_model_ab_eval.py`` (no live LLM). The
 ``--smoke`` real-LLM path is opt-in and never runs in CI.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -72,11 +73,7 @@ CONTAMINATED = "CONTAMINATED"
 
 def load_corpus(path: Path) -> list[dict]:
     """Read a frozen ``ui_batch.jsonl`` corpus into row dicts."""
-    rows = [
-        json.loads(line)
-        for line in path.read_text().strip().split("\n")
-        if line
-    ]
+    rows = [json.loads(line) for line in path.read_text().strip().split("\n") if line]
     return _merge_corpus_expectations(rows)
 
 
@@ -97,7 +94,7 @@ def _models_used(events: list[dict]) -> list[str]:
     all-empty run as a contamination, never a silent pass."""
     seen: list[str] = []
     for e in events:
-        et = (e.get("event_type") or "")
+        et = e.get("event_type") or ""
         if not et.endswith("step_executed"):
             continue
         details = e.get("details")
@@ -163,6 +160,83 @@ def check_arm_integrity(
         rows_missing_trace=rows_missing,
         mismatches=mismatches,
     )
+
+
+# ── pass^k + statistical honesty (plan Track B-2 / B-3) ─────────────────────────
+#
+# Single-run A/B hides reliability: a 75%-per-trial arm over 3 trials is only
+# ~42% all-pass (pass^3). We run the frozen corpus N times per arm with FRESH
+# graph state and report pass^k -- the unbiased probability that a random size-k
+# subset of a task's n trials ALL pass -- not pass^1. And at n=100, p=.5 a delta
+# under ~4 points is inside the noise band, so a paired bootstrap downgrades such
+# a HOLD to NOISE. These are pure functions: no graph, no I/O, no LLM.
+
+NOISE = "NOISE"  # a HOLD whose paired-delta CI includes 0 -- not decision-grade
+
+
+def _n_choose_k(n: int, k: int) -> int:
+    """C(n, k) with the n<k -> 0 convention (no subset of size k exists)."""
+    import math
+
+    if k < 0 or n < 0 or k > n:
+        return 0
+    return math.comb(n, k)
+
+
+def pass_hat_k(successes_per_task: list[int], trials: int, k: int) -> float | None:
+    """Unbiased pass^k over a corpus (Chen et al. 2021, the pass@k estimator).
+
+    ``successes_per_task[i]`` = how many of ``trials`` runs of task i passed.
+    Per task the unbiased estimate that a random size-``k`` subset ALL pass is
+    ``C(c, k) / C(trials, k)`` (with c successes); pass^k is the mean over tasks.
+
+    Returns ``None`` when undecidable: no tasks, or ``k > trials`` (no size-k
+    subset exists) -- never a fabricated 0.0 (AP-6).
+    """
+    if not successes_per_task or k < 1 or k > trials:
+        return None
+    denom = _n_choose_k(trials, k)
+    if denom == 0:
+        return None
+    per_task = [_n_choose_k(c, k) / denom for c in successes_per_task]
+    return sum(per_task) / len(per_task)
+
+
+def paired_bootstrap_ci(
+    deltas: list[float],
+    *,
+    iterations: int = 10_000,
+    confidence: float = 0.95,
+    seed: int = 0,
+) -> tuple[float, float, float]:
+    """Paired bootstrap CI on per-item deltas (candidate - baseline per task).
+
+    The two arms run the SAME frozen corpus, so the deltas are PAIRED -- a paired
+    bootstrap (resample tasks, average their deltas) is far more powerful than
+    two independent CIs. Returns ``(mean_delta, lo, hi)`` at the given two-sided
+    confidence. Deterministic for a fixed ``seed`` so the verdict is reproducible.
+
+    Raises on empty input -- an empty delta list is a caller bug, not a 0-width CI.
+    """
+    if not deltas:
+        raise ValueError("paired_bootstrap_ci: deltas must be non-empty")
+    import random
+
+    rng = random.Random(seed)
+    n = len(deltas)
+    mean_delta = sum(deltas) / n
+    if n == 1:
+        # One task: no resampling signal -- the point estimate IS the interval.
+        return mean_delta, mean_delta, mean_delta
+    means: list[float] = []
+    for _ in range(iterations):
+        resample = (deltas[rng.randrange(n)] for _ in range(n))
+        means.append(sum(resample) / n)
+    means.sort()
+    tail = (1.0 - confidence) / 2.0
+    lo = means[int(tail * iterations)]
+    hi = means[min(int((1.0 - tail) * iterations), iterations - 1)]
+    return mean_delta, lo, hi
 
 
 # ── diff + verdict ─────────────────────────────────────────────────────────────
@@ -270,11 +344,7 @@ def diff_summaries(
     # Cost — surfaced, never auto-HOLD unless --max-cost-ratio opted in.
     cost_per_task_baseline = round(cost_baseline / n_tasks, 6) if n_tasks else 0.0
     cost_per_task_candidate = round(cost_candidate / n_tasks, 6) if n_tasks else 0.0
-    cost_ratio = (
-        round(cost_candidate / cost_baseline, 3)
-        if cost_baseline > 0
-        else None
-    )
+    cost_ratio = round(cost_candidate / cost_baseline, 3) if cost_baseline > 0 else None
     cost_violation = (
         max_cost_ratio is not None
         and cost_ratio is not None
@@ -421,10 +491,12 @@ def render_markdown(payload: dict) -> str:
         lines.append(f"_grader: {ans.get('grader', 'L1-deterministic')}_")
         lines.append("")
         if ans.get("provider_contaminated"):
-            lines.append("> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
-                         "provider/transport error (litellm InternalServerError / "
-                         "rate-limit / Cannot connect). Accuracy below is NOT a valid "
-                         "model signal — re-run. Verdict forced CONTAMINATED.")
+            lines.append(
+                "> **⚠ PROVIDER-CONTAMINATED:** one or more cases returned a "
+                "provider/transport error (litellm InternalServerError / "
+                "rate-limit / Cannot connect). Accuracy below is NOT a valid "
+                "model signal — re-run. Verdict forced CONTAMINATED."
+            )
             lines.append("")
         lines.append("| arm | accuracy | correct/n | errored | outcomes |")
         lines.append("|---|---|---|---|---|")
@@ -435,7 +507,9 @@ def render_markdown(payload: dict) -> str:
                 f"{a.get('errored', 0)} | {a['outcomes']} |"
             )
         lines.append("")
-        lines.append(f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**")
+        lines.append(
+            f"accuracy Δ (candidate − baseline): **{ans['accuracy_delta']:+}**"
+        )
         lines.append("")
         # L2/L3 — ungraded for verdict; GoalJudge shown as informational only.
         l2 = ans.get("l2l3_ungraded")
@@ -446,14 +520,20 @@ def render_markdown(payload: dict) -> str:
             lines.append("")
             gj = l2.get("goaljudge_crosscheck", {})
             if gj.get("baseline") and gj.get("candidate"):
-                lines.append("GoalJudge cross-check (informational, NOT a verdict input):")
+                lines.append(
+                    "GoalJudge cross-check (informational, NOT a verdict input):"
+                )
                 lines.append("")
                 lines.append("| arm | GoalJudge acc (L2/L3) |")
                 lines.append("|---|---|")
-                lines.append(f"| baseline | {gj['baseline']['accuracy']:.3f} "
-                             f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |")
-                lines.append(f"| candidate | {gj['candidate']['accuracy']:.3f} "
-                             f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |")
+                lines.append(
+                    f"| baseline | {gj['baseline']['accuracy']:.3f} "
+                    f"({gj['baseline']['correct']}/{gj['baseline']['n']}) |"
+                )
+                lines.append(
+                    f"| candidate | {gj['candidate']['accuracy']:.3f} "
+                    f"({gj['candidate']['correct']}/{gj['candidate']['n']}) |"
+                )
                 lines.append("")
         lines.append("### Per-case answers (candidate, L1)")
         lines.append("")
@@ -493,8 +573,7 @@ def render_markdown(payload: dict) -> str:
     lines.append("| metric | baseline | candidate |")
     lines.append("|---|---|---|")
     lines.append(
-        f"| total USD | {cost['baseline_total_usd']} | "
-        f"{cost['candidate_total_usd']} |"
+        f"| total USD | {cost['baseline_total_usd']} | {cost['candidate_total_usd']} |"
     )
     lines.append(
         f"| per-task USD | {cost['baseline_per_task_usd']} | "
@@ -726,6 +805,120 @@ async def _drive_arm(
         (out_dir / "evals.log").write_text(eval_src.read_text())
 
 
+# ── multi-trial drive (pass^k, plan Track B-2) ──────────────────────────────────
+
+
+async def _drive_arm_trials(
+    rows: list[dict],
+    *,
+    arm_model: str,
+    arm_set: str | None,
+    out_dir: Path,
+    trials: int,
+) -> None:
+    """Drive an arm ``trials`` times into ``out_dir/trial_<i>`` with FRESH state.
+
+    Each trial is a full independent ``_drive_arm`` into its own subdir, so the
+    per-trial recordings/checkpoint/eval-log never cross-contaminate -- exactly
+    the fresh-graph-state requirement pass^k needs (a re-used checkpointer would
+    leak trial i's context into trial i+1 and collapse the variance pass^k
+    measures).
+    """
+    for i in range(trials):
+        await _drive_arm(
+            rows,
+            arm_model=arm_model,
+            arm_set=arm_set,
+            out_dir=out_dir / f"trial_{i}",
+        )
+
+
+def _successes_per_task(
+    rows: list[dict],
+    arm_dir: Path,
+    trials: int,
+    cases: list[str],
+) -> dict[str, int]:
+    """Per L1 task, count how many of ``trials`` runs produced a correct answer.
+
+    Reads each trial's ``evals.log`` snapshot via the existing answer scorer
+    (single source of truth for correctness) -- no new grading logic. A task with
+    no score in a trial (missing/errored) counts as a non-pass for that trial,
+    which is the conservative pass^k reading.
+    """
+    from scripts.model_ab_answer_score import score_answers
+
+    counts: dict[str, int] = {c: 0 for c in cases}
+    for i in range(trials):
+        log = arm_dir / f"trial_{i}" / "evals.log"
+        if not log.exists():
+            continue
+        summary = score_answers(log, cases=cases)
+        for s in summary.scores:
+            if s.correct and s.case in counts:
+                counts[s.case] += 1
+    return counts
+
+
+def _recordings_dir(arm_dir: Path) -> Path:
+    """Resolve an arm's recordings dir. Prefer the ``recordings`` symlink the
+    drive creates; fall back to the real ``cache/black_box_recordings`` when
+    the symlink is absent or broken (e.g. ``--score-only`` re-reads, which
+    skip ``_drive_arm`` and so never create the link)."""
+    link = arm_dir / "recordings"
+    if link.exists():
+        return link
+    real = arm_dir / "cache" / "black_box_recordings"
+    return real if real.exists() else link
+
+
+def _passk_trials_with_eval_log(arm_dir: Path, trials: int) -> int:
+    """How many ``trial_<i>/evals.log`` snapshots exist (0 => nothing to score)."""
+    return sum(
+        1 for i in range(trials) if (arm_dir / f"trial_{i}" / "evals.log").exists()
+    )
+
+
+def _passk_provider_contaminated(arm_dir: Path, trials: int, cases: list[str]) -> bool:
+    """True if ANY trial's eval log has a provider/transport error (same guard
+    as the single-run ``--answer-score`` path — not a model signal)."""
+    from scripts.model_ab_answer_score import score_answers
+
+    for i in range(trials):
+        log = arm_dir / f"trial_{i}" / "evals.log"
+        if log.exists() and score_answers(log, cases=cases).contaminated:
+            return True
+    return False
+
+
+def _passk_arm_integrity(
+    rows: list[dict],
+    arm_dir: Path,
+    trials: int,
+    expected_models: set[str],
+) -> ArmIntegrity:
+    """Per-trial arm integrity — ANY trial with wrong/empty model contaminates."""
+    mismatches: list[str] = []
+    rows_scored = 0
+    rows_missing = 0
+    for i in range(trials):
+        trial_dir = arm_dir / f"trial_{i}"
+        _, events_by_row, _ = _score_arm(rows, _recordings_dir(trial_dir))
+        trial = check_arm_integrity(rows, events_by_row, expected_models)
+        rows_scored = max(rows_scored, trial.rows_scored)
+        rows_missing = max(rows_missing, trial.rows_missing_trace)
+        for m in trial.mismatches:
+            mismatches.append(f"trial_{i}: {m}")
+    ok = not mismatches and rows_scored > 0
+    return ArmIntegrity(
+        ok=ok,
+        expected=expected_models,
+        rows_scored=rows_scored,
+        rows_missing_trace=rows_missing,
+        mismatches=mismatches,
+    )
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 
@@ -760,6 +953,23 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--run-id", default=None, help="explicit run id (else timestamp)")
     p.add_argument("--limit", type=int, default=0, help="cap rows (smoke runs)")
     p.add_argument(
+        "--trials",
+        type=int,
+        default=1,
+        help=(
+            "run each arm N times with fresh graph state and report pass^k "
+            "(plan Track B-2) instead of a single pass^1. N>=8 recommended to "
+            "read pass^8. Requires --answer-score (pass/fail is per-task answer "
+            "correctness). N=1 (default) keeps the single-run path unchanged."
+        ),
+    )
+    p.add_argument(
+        "--passk-k",
+        type=int,
+        default=0,
+        help="k for pass^k (default: --trials, i.e. pass^N = all-trials-pass).",
+    )
+    p.add_argument(
         "--answer-score",
         action="store_true",
         help=(
@@ -770,6 +980,172 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     return p
+
+
+def _run_passk(args: Any, run_dir: Path, rows: list[dict]) -> int:
+    """Multi-trial pass^k path (plan Track B-2/B-3). Additive: only reached when
+    ``--trials > 1``; the single-run ``main`` body is never touched.
+
+    Drives each arm ``--trials`` times with fresh state, scores per-task answer
+    correctness per trial, reports pass^k per arm + the pass^k delta, then runs a
+    PAIRED bootstrap over the per-task pass-rate deltas and DOWNGRADES a
+    behavior-HOLD to NOISE when the delta CI includes 0 (the delta is inside the
+    noise band -- not decision-grade).
+    """
+    import asyncio
+
+    from scripts.model_ab_answer_score import EXPECTED_BY_CASE
+
+    k = args.passk_k or args.trials
+    if k > args.trials:
+        print(f"--passk-k={k} exceeds --trials={args.trials} (no size-k subset)")
+        return 2
+
+    case_ids = [r["case"] for r in rows]
+    l1_cases = [c for c in case_ids if c in EXPECTED_BY_CASE]
+    if not l1_cases:
+        print(
+            "pass^k needs L1 cases with a deterministic EXPECTED answer; none in "
+            "this corpus. Use the GEN-L1 answer corpus."
+        )
+        return 2
+
+    baseline_dir = run_dir / "baseline"
+    candidate_dir = run_dir / "candidate"
+    if not args.score_only:
+        for arm_model, arm_set, out_dir in (
+            (args.baseline, args.baseline_set, baseline_dir),
+            (args.candidate, args.candidate_set, candidate_dir),
+        ):
+            asyncio.run(
+                _drive_arm_trials(
+                    rows,
+                    arm_model=arm_model,
+                    arm_set=arm_set,
+                    out_dir=out_dir,
+                    trials=args.trials,
+                )
+            )
+
+    base_logs = _passk_trials_with_eval_log(baseline_dir, args.trials)
+    cand_logs = _passk_trials_with_eval_log(candidate_dir, args.trials)
+    if base_logs == 0 or cand_logs == 0:
+        print(
+            "pass^k: missing trial evals.log on one or both arms "
+            f"(baseline {base_logs}/{args.trials}, candidate {cand_logs}/{args.trials})"
+        )
+        return 2
+
+    base_integrity = _passk_arm_integrity(
+        rows, baseline_dir, args.trials, _arm_models(args.baseline, args.baseline_set)
+    )
+    cand_integrity = _passk_arm_integrity(
+        rows,
+        candidate_dir,
+        args.trials,
+        _arm_models(args.candidate, args.candidate_set),
+    )
+    provider_contaminated = _passk_provider_contaminated(
+        baseline_dir, args.trials, l1_cases
+    ) or _passk_provider_contaminated(candidate_dir, args.trials, l1_cases)
+
+    base_succ = _successes_per_task(rows, baseline_dir, args.trials, l1_cases)
+    cand_succ = _successes_per_task(rows, candidate_dir, args.trials, l1_cases)
+
+    base_passk = pass_hat_k([base_succ[c] for c in l1_cases], args.trials, k)
+    cand_passk = pass_hat_k([cand_succ[c] for c in l1_cases], args.trials, k)
+
+    # Per-task pass-RATE delta (candidate - baseline), the paired bootstrap unit.
+    deltas = [
+        (cand_succ[c] / args.trials) - (base_succ[c] / args.trials) for c in l1_cases
+    ]
+    mean_delta, lo, hi = paired_bootstrap_ci(deltas)
+    ci_includes_zero = lo <= 0.0 <= hi
+
+    passk_delta = (
+        round(cand_passk - base_passk, 4)
+        if (base_passk is not None and cand_passk is not None)
+        else None
+    )
+    # Verdict: integrity + provider errors dominate (same as single-run path).
+    # Then: candidate pass^k below baseline (past tolerance) is HOLD; if the paired
+    # per-task delta CI straddles 0 the regression is NOISE, not signal.
+    if (
+        not (base_integrity.ok and cand_integrity.ok)
+        or provider_contaminated
+        or base_passk is None
+        or cand_passk is None
+    ):
+        verdict = CONTAMINATED
+    elif cand_passk < base_passk - args.tolerance:
+        verdict = NOISE if ci_includes_zero else HOLD
+    else:
+        verdict = PROMOTE
+
+    payload = {
+        "run_id": run_dir.name,
+        "verdict": verdict,
+        "mode": "passk",
+        "corpus": str(args.corpus),
+        "corpus_hash": corpus_hash(args.corpus),
+        "trials": args.trials,
+        "k": k,
+        "n_l1_tasks": len(l1_cases),
+        "arms": {
+            "baseline": args.baseline_set or args.baseline,
+            "candidate": args.candidate_set or args.candidate,
+        },
+        "integrity": {
+            "baseline": {
+                "ok": base_integrity.ok,
+                "expected": sorted(base_integrity.expected),
+                "rows_scored": base_integrity.rows_scored,
+                "rows_missing_trace": base_integrity.rows_missing_trace,
+                "mismatches": base_integrity.mismatches,
+            },
+            "candidate": {
+                "ok": cand_integrity.ok,
+                "expected": sorted(cand_integrity.expected),
+                "rows_scored": cand_integrity.rows_scored,
+                "rows_missing_trace": cand_integrity.rows_missing_trace,
+                "mismatches": cand_integrity.mismatches,
+            },
+        },
+        "provider_contaminated": provider_contaminated,
+        "passk": {
+            "baseline": base_passk,
+            "candidate": cand_passk,
+            "delta": passk_delta,
+        },
+        "paired_bootstrap": {
+            "mean_delta": round(mean_delta, 4),
+            "ci_95": [round(lo, 4), round(hi, 4)],
+            "ci_includes_zero": ci_includes_zero,
+            "note": (
+                "per-task pass-rate delta (candidate - baseline); CI includes 0 "
+                "=> inside the noise band, HOLD downgraded to NOISE"
+            ),
+        },
+        "successes_per_task": {
+            "baseline": base_succ,
+            "candidate": cand_succ,
+        },
+        "limit": _LOCAL_LIMIT_NOTE,
+    }
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / "model_ab_passk_report.json").write_text(json.dumps(payload, indent=2))
+
+    print(f"VERDICT: {verdict}  (pass^{k} over {args.trials} trials)")
+    print(f"  baseline pass^{k}={base_passk}  candidate pass^{k}={cand_passk}")
+    print(f"  pass^{k} delta: {passk_delta}")
+    print(
+        f"  paired bootstrap mean Δ={round(mean_delta, 4)} "
+        f"95% CI [{round(lo, 4)}, {round(hi, 4)}] "
+        f"(includes 0: {ci_includes_zero})"
+    )
+    if args.gate and verdict in (HOLD, CONTAMINATED):
+        return 1
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -783,8 +1159,10 @@ def main(argv: list[str] | None = None) -> int:
     baseline_arm = args.baseline_set or args.baseline
     candidate_arm = args.candidate_set or args.candidate
     if not baseline_arm or not candidate_arm:
-        print("both a baseline and candidate arm are required "
-              "(--baseline/--candidate or --baseline-set/--candidate-set)")
+        print(
+            "both a baseline and candidate arm are required "
+            "(--baseline/--candidate or --baseline-set/--candidate-set)"
+        )
         return 2
 
     # F2: a SET arm runs Auto routing, but the "all" set is PIN-ONLY — its first
@@ -793,13 +1171,17 @@ def main(argv: list[str] | None = None) -> int:
     # test. Reject it explicitly (pinned arms reach "all" internally via
     # MODEL_PROFILE_SET so the pin resolves — that path is unaffected; this guard
     # is only on the Auto-routing --*-set selectors). Fail loud, not silently.
-    for flag, value in (("--baseline-set", args.baseline_set),
-                        ("--candidate-set", args.candidate_set)):
+    for flag, value in (
+        ("--baseline-set", args.baseline_set),
+        ("--candidate-set", args.candidate_set),
+    ):
         if value == "all":
-            print(f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
-                  f"escalate into opus-4-8). Use a routable set "
-                  f"(openai/anthropic/deepseek) for a set arm, or pin a single "
-                  f"model with --baseline/--candidate.")
+            print(
+                f"{flag}=all is rejected: the 'all' set is pin-only (Auto would "
+                f"escalate into opus-4-8). Use a routable set "
+                f"(openai/anthropic/deepseek) for a set arm, or pin a single "
+                f"model with --baseline/--candidate."
+            )
             return 2
 
     run_id = args.run_id or time.strftime("%Y%m%dT%H%M%S")
@@ -812,6 +1194,14 @@ def main(argv: list[str] | None = None) -> int:
         rows = rows[: args.limit]
     n_tasks = len(rows)
 
+    # Multi-trial pass^k path (plan Track B-2/B-3) -- additive, self-contained.
+    # The default --trials=1 falls straight through to the single-run path below.
+    if args.trials > 1:
+        if not args.answer_score:
+            print("--trials>1 requires --answer-score (pass/fail = answer correctness)")
+            return 2
+        return _run_passk(args, run_dir, rows)
+
     if not args.score_only:
         import asyncio
 
@@ -820,21 +1210,8 @@ def main(argv: list[str] | None = None) -> int:
             (args.candidate, args.candidate_set, candidate_dir),
         ):
             asyncio.run(
-                _drive_arm(
-                    rows, arm_model=arm_model, arm_set=arm_set, out_dir=out_dir
-                )
+                _drive_arm(rows, arm_model=arm_model, arm_set=arm_set, out_dir=out_dir)
             )
-
-    def _recordings_dir(arm_dir: Path) -> Path:
-        """Resolve an arm's recordings dir. Prefer the ``recordings`` symlink the
-        drive creates; fall back to the real ``cache/black_box_recordings`` when
-        the symlink is absent or broken (e.g. ``--score-only`` re-reads, which
-        skip ``_drive_arm`` and so never create the link)."""
-        link = arm_dir / "recordings"
-        if link.exists():
-            return link
-        real = arm_dir / "cache" / "black_box_recordings"
-        return real if real.exists() else link
 
     base_summary, base_events, base_cost = _score_arm(
         rows, _recordings_dir(baseline_dir)
@@ -897,10 +1274,16 @@ def main(argv: list[str] | None = None) -> int:
             verdict = PROMOTE
 
         # L2/L3 GoalJudge cross-check — INFORMATIONAL ONLY (ungraded for verdict).
-        base_gj = score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases) \
-            if l2l3_cases else None
-        cand_gj = score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases) \
-            if l2l3_cases else None
+        base_gj = (
+            score_answers_goaljudge(baseline_dir / "evals.log", l2l3_cases)
+            if l2l3_cases
+            else None
+        )
+        cand_gj = (
+            score_answers_goaljudge(candidate_dir / "evals.log", l2l3_cases)
+            if l2l3_cases
+            else None
+        )
 
         def _arm_block(ans):
             return {
@@ -911,8 +1294,12 @@ def main(argv: list[str] | None = None) -> int:
                 "contaminated": ans.contaminated,
                 "outcomes": ans.outcomes(),
                 "per_case": [
-                    {"case": s.case, "outcome": s.outcome, "expected": s.expected,
-                     "answer": s.answer}
+                    {
+                        "case": s.case,
+                        "outcome": s.outcome,
+                        "expected": s.expected,
+                        "answer": s.answer,
+                    }
                     for s in ans.scores
                 ],
             }
@@ -926,15 +1313,27 @@ def main(argv: list[str] | None = None) -> int:
             "l2l3_ungraded": {
                 "cases": l2l3_cases,
                 "note": "prose answers; verdict-excluded. GoalJudge shown as "
-                        "informational cross-check only — see "
-                        "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
+                "informational cross-check only — see "
+                "docs/plans/model_ab_l2l3_blind_adjudication.plan.md",
                 "goaljudge_crosscheck": {
-                    "baseline": ({"accuracy": base_gj.accuracy,
-                                  "correct": base_gj.correct, "n": base_gj.n}
-                                 if base_gj else None),
-                    "candidate": ({"accuracy": cand_gj.accuracy,
-                                   "correct": cand_gj.correct, "n": cand_gj.n}
-                                  if cand_gj else None),
+                    "baseline": (
+                        {
+                            "accuracy": base_gj.accuracy,
+                            "correct": base_gj.correct,
+                            "n": base_gj.n,
+                        }
+                        if base_gj
+                        else None
+                    ),
+                    "candidate": (
+                        {
+                            "accuracy": cand_gj.accuracy,
+                            "correct": cand_gj.correct,
+                            "n": cand_gj.n,
+                        }
+                        if cand_gj
+                        else None
+                    ),
                 },
             },
         }

@@ -10,8 +10,7 @@ Failure paths first (TAP-4):
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

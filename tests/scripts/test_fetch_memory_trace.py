@@ -58,7 +58,9 @@ def test_find_by_name_picks_latest_trace_id(monkeypatch: pytest.MonkeyPatch) -> 
         },
     }
 
-    def fake_get(host: str, path: str, params: dict | None = None, *, retries: int = 5) -> dict:
+    def fake_get(
+        host: str, path: str, params: dict | None = None, *, retries: int = 5
+    ) -> dict:
         assert path == "/api/public/observations"
         assert params is not None
         return pages[params["name"]]
@@ -70,7 +72,9 @@ def test_find_by_name_picks_latest_trace_id(monkeypatch: pytest.MonkeyPatch) -> 
 def test_find_by_name_passes_since_filter(monkeypatch: pytest.MonkeyPatch) -> None:
     seen: list[dict] = []
 
-    def fake_get(host: str, path: str, params: dict | None = None, *, retries: int = 5) -> dict:
+    def fake_get(
+        host: str, path: str, params: dict | None = None, *, retries: int = 5
+    ) -> dict:
         seen.append(params or {})
         return {"data": []}
 
@@ -103,7 +107,9 @@ def test_main_exit_2_when_no_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk")
     monkeypatch.setattr(sys, "argv", ["fetch_memory_trace.py"])
 
-    def fake_get(host: str, path: str, params: dict | None = None, *, retries: int = 5) -> dict:
+    def fake_get(
+        host: str, path: str, params: dict | None = None, *, retries: int = 5
+    ) -> dict:
         if path == "/api/public/observations":
             return {"data": []}
         if path == "/api/public/traces":
@@ -115,14 +121,17 @@ def test_main_exit_2_when_no_carriers(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_main_fallback_skips_429_trace_instead_of_crashing(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk")
     out = tmp_path / "trace.json"
     monkeypatch.setattr(sys, "argv", ["fetch_memory_trace.py", "--out", str(out)])
 
-    def fake_get(host: str, path: str, params: dict | None = None, *, retries: int = 5) -> dict:
+    def fake_get(
+        host: str, path: str, params: dict | None = None, *, retries: int = 5
+    ) -> dict:
         if path == "/api/public/observations":
             return {"data": []}
         if path == "/api/public/traces":
@@ -144,7 +153,8 @@ def test_main_fallback_skips_429_trace_instead_of_crashing(
 
 
 def test_main_trace_id_skips_discovery(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk")
@@ -155,7 +165,9 @@ def test_main_trace_id_skips_discovery(
         ["fetch_memory_trace.py", "--trace-id", "explicit-id", "--out", str(out)],
     )
 
-    def fake_get(host: str, path: str, params: dict | None = None, *, retries: int = 5) -> dict:
+    def fake_get(
+        host: str, path: str, params: dict | None = None, *, retries: int = 5
+    ) -> dict:
         assert path == "/api/public/traces/explicit-id"
         return {"observations": [{"name": "memory.recalled", "metadata": {"count": 1}}]}
 

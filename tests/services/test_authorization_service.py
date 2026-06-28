@@ -10,7 +10,6 @@ Spec: docs/plan/services/AUTHORIZATION_SERVICE_PLAN.md.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 import pytest
 from hypothesis import given, settings
@@ -62,13 +61,13 @@ class _StubBackend:
     def __init__(self, decision: PolicyDecision) -> None:
         self._decision = decision
 
-    def evaluate(
-        self, facts: AgentFacts, action: str, context: dict
-    ) -> PolicyDecision:
+    def evaluate(self, facts: AgentFacts, action: str, context: dict) -> PolicyDecision:
         return self._decision
 
 
-def _decision(enforcement: str, *, backend: str = "embedded", reason: str = "stub") -> PolicyDecision:
+def _decision(
+    enforcement: str, *, backend: str = "embedded", reason: str = "stub"
+) -> PolicyDecision:
     return PolicyDecision(
         enforcement=enforcement,
         reason=reason,
@@ -401,9 +400,7 @@ class TestEmbeddedDenyAlwaysWinsProperty:
 
         facts = _make_facts(capabilities=[_cap("delete")])
         embedded = _StubBackend(_decision("deny", reason="hard no"))
-        external = _StubBackend(
-            _decision(external_enforcement, backend="yaml")
-        )
+        external = _StubBackend(_decision(external_enforcement, backend="yaml"))
         service = AuthorizationService(
             embedded_backend=embedded,
             external_backend=external,

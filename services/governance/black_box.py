@@ -270,7 +270,9 @@ class BlackBoxRecorder:
                 for aid in agent_ids:
                     if aid:
                         try:
-                            identity_cards[aid] = agent_facts_registry.get(aid).model_dump(mode="json")
+                            identity_cards[aid] = agent_facts_registry.get(
+                                aid
+                            ).model_dump(mode="json")
                         except KeyError:
                             identity_cards[aid] = None
                         audit_trails[aid] = [
@@ -280,19 +282,27 @@ class BlackBoxRecorder:
                 bundle["identity_cards"] = identity_cards
                 bundle["audit_trails"] = audit_trails
             except Exception as exc:
-                logger.warning("Failed to include AgentFacts in compliance bundle: %s", exc)
+                logger.warning(
+                    "Failed to include AgentFacts in compliance bundle: %s", exc
+                )
 
         bundle["phase_log_schema_version"] = PHASE_LOG_SCHEMA_VERSION
 
         if phase_logger is not None:
             try:
-                bundle["phase_decisions"] = phase_logger.export_workflow_log(workflow_id)
+                bundle["phase_decisions"] = phase_logger.export_workflow_log(
+                    workflow_id
+                )
             except Exception as exc:
-                logger.warning("Failed to include phase decisions in compliance bundle: %s", exc)
+                logger.warning(
+                    "Failed to include phase decisions in compliance bundle: %s", exc
+                )
             try:
                 bundle["phase_events"] = phase_logger.export_phase_events(workflow_id)
             except Exception as exc:
-                logger.warning("Failed to include phase events in compliance bundle: %s", exc)
+                logger.warning(
+                    "Failed to include phase events in compliance bundle: %s", exc
+                )
 
         bundle["bundle_type"] = "compliance_audit"
         return bundle

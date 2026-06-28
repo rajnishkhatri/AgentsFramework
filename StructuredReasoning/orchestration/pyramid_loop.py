@@ -51,10 +51,12 @@ def _tool_descriptions(tool_registry: ToolRegistry | None) -> list[dict[str, str
         return []
     descriptions: list[dict[str, str]] = []
     for schema in tool_registry.get_schemas():
-        descriptions.append({
-            "name": schema["name"],
-            "description": schema.get("description", "") or "(no description)",
-        })
+        descriptions.append(
+            {
+                "name": schema["name"],
+                "description": schema.get("description", "") or "(no description)",
+            }
+        )
     return descriptions
 
 
@@ -88,7 +90,9 @@ def build_pyramid_graph(
 
     llm_service = LLMService(config=agent_config)
     prompt_service = PromptService()
-    black_box = BlackBoxRecorder(storage_dir=cache_dir / "pyramid" / "black_box_recordings")
+    black_box = BlackBoxRecorder(
+        storage_dir=cache_dir / "pyramid" / "black_box_recordings"
+    )
     phase_logger = PhaseLogger(storage_dir=cache_dir / "pyramid" / "phase_logs")
     guardrail = InputGuardrail(
         name="pyramid_input",
@@ -113,26 +117,30 @@ def build_pyramid_graph(
         workflow_id = state.get("workflow_id", "")
         task_input = state.get("task_input", "")
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.TASK_STARTED,
-            timestamp=datetime.now(UTC),
-            details={"task_input": task_input[:200], "agent": "pyramid"},
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_STARTED,
+                timestamp=datetime.now(UTC),
+                details={"task_input": task_input[:200], "agent": "pyramid"},
+            )
+        )
 
         try:
             accepted = await guardrail.is_acceptable(task_input)
         except Exception:
             accepted = True
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.GUARDRAIL_CHECKED,
-            timestamp=datetime.now(UTC),
-            details={"accepted": accepted, "guardrail": "pyramid_input"},
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.GUARDRAIL_CHECKED,
+                timestamp=datetime.now(UTC),
+                details={"accepted": accepted, "guardrail": "pyramid_input"},
+            )
+        )
 
         await eval_capture.record(
             target="pyramid_guardrail",
@@ -157,10 +165,14 @@ def build_pyramid_graph(
     def _guard_routing(state: PyramidState) -> str:
         return "rejected" if state.get("last_outcome") == "rejected" else "accepted"
 
-    async def _invoke_llm(messages: list[Any], config: RunnableConfig, *, step: int) -> tuple[str, dict[str, Any]]:
+    async def _invoke_llm(
+        messages: list[Any], config: RunnableConfig, *, step: int
+    ) -> tuple[str, dict[str, Any]]:
         profile = llm_service.get_default_profile()
         start = time.time()
-        response = await llm_service.invoke_with_tools(profile, messages, tool_schemas=None)
+        response = await llm_service.invoke_with_tools(
+            profile, messages, tool_schemas=None
+        )
         latency_ms = (time.time() - start) * 1000
 
         usage = getattr(response, "usage_metadata", {}) or {}
@@ -212,18 +224,20 @@ def build_pyramid_graph(
         total_in += metrics["tokens_in"]
         total_out += metrics["tokens_out"]
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.STEP_EXECUTED,
-            timestamp=datetime.now(UTC),
-            step=0,
-            details={
-                "node": "analyze",
-                "attempt": 1,
-                **metrics,
-            },
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.STEP_EXECUTED,
+                timestamp=datetime.now(UTC),
+                step=0,
+                details={
+                    "node": "analyze",
+                    "attempt": 1,
+                    **metrics,
+                },
+            )
+        )
 
         analysis: AnalysisOutput | None = None
         parse_error_msg = ""
@@ -231,28 +245,32 @@ def build_pyramid_graph(
             analysis = parse_analysis_output(content)
         except ParseError as exc:
             parse_error_msg = str(exc)
-            messages.extend([
-                AIMessage(content=content),
-                HumanMessage(content=build_retry_prompt(exc)),
-            ])
+            messages.extend(
+                [
+                    AIMessage(content=content),
+                    HumanMessage(content=build_retry_prompt(exc)),
+                ]
+            )
             retry_content, retry_metrics = await _invoke_llm(messages, config, step=1)
             total_cost += retry_metrics["cost_usd"]
             total_in += retry_metrics["tokens_in"]
             total_out += retry_metrics["tokens_out"]
 
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.STEP_EXECUTED,
-                timestamp=datetime.now(UTC),
-                step=1,
-                details={
-                    "node": "analyze",
-                    "attempt": 2,
-                    "parse_error": parse_error_msg,
-                    **retry_metrics,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.STEP_EXECUTED,
+                    timestamp=datetime.now(UTC),
+                    step=1,
+                    details={
+                        "node": "analyze",
+                        "attempt": 2,
+                        "parse_error": parse_error_msg,
+                        **retry_metrics,
+                    },
+                )
+            )
 
             try:
                 analysis = parse_analysis_output(retry_content)
@@ -277,12 +295,14 @@ def build_pyramid_graph(
             "total_cost_usd": total_cost,
             "total_input_tokens": total_in,
             "total_output_tokens": total_out,
-            "phase_log": [{
-                "phase": "analyze",
-                "outcome": outcome,
-                "model": metrics["model"],
-                "iterations": iteration,
-            }],
+            "phase_log": [
+                {
+                    "phase": "analyze",
+                    "outcome": outcome,
+                    "model": metrics["model"],
+                    "iterations": iteration,
+                }
+            ],
         }
         if analysis is not None:
             result["analysis_output_json"] = analysis.to_dict()
@@ -311,13 +331,15 @@ def build_pyramid_graph(
                 analysis_dict=analysis_dict,
             )
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.TASK_COMPLETED,
-            timestamp=datetime.now(UTC),
-            details={"outcome": outcome, "persisted": bool(analysis_dict)},
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TASK_COMPLETED,
+                timestamp=datetime.now(UTC),
+                details={"outcome": outcome, "persisted": bool(analysis_dict)},
+            )
+        )
         return {}
 
     builder = StateGraph(PyramidState)

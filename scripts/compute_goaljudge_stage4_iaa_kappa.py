@@ -8,6 +8,7 @@ Usage:
   python scripts/compute_goaljudge_stage4_iaa_kappa.py \\
     docs/IAA/goalJudge/goaljudge_stage4_a2_iaa_grader_sheet.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -65,7 +66,8 @@ def main() -> None:
     r2_col = f"r2_{args.column}"
 
     graded = [
-        row for row in rows
+        row
+        for row in rows
         if row.get(r1_col, "").strip() and row.get(r2_col, "").strip()
     ]
     if not graded:

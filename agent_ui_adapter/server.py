@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, Header, HTTPException, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -359,9 +359,7 @@ def build_app(
             raise HTTPException(status_code=401, detail="token expired")
         identity = agent_facts.get(claims.subject)
         if identity is None:
-            raise HTTPException(
-                status_code=401, detail="unknown identity for subject"
-            )
+            raise HTTPException(status_code=401, detail="unknown identity for subject")
         if authorization_service is not None:
             preflight_trace_id = uuid.uuid4().hex
             decision = authorization_service.authorize(
@@ -371,9 +369,7 @@ def build_app(
                 trace_id=preflight_trace_id,
             )
             if not decision.allowed:
-                raise HTTPException(
-                    status_code=401, detail=decision.reason
-                )
+                raise HTTPException(status_code=401, detail=decision.reason)
         return identity
 
     # ── routes ──────────────────────────────────────────────────────
@@ -414,9 +410,7 @@ def build_app(
         # Scoped to identity.owner (caller's own only — B6 / no cross-user
         # leak). Newest-first, cursor-paginated, archived hidden.
         bounded = max(1, min(100, limit))
-        page, next_cursor = threads.list(
-            identity.owner, cursor=cursor, limit=bounded
-        )
+        page, next_cursor = threads.list(identity.owner, cursor=cursor, limit=bounded)
         return ThreadListResponse(threads=page, next_cursor=next_cursor)
 
     @app.post("/agent/threads", response_model=ThreadState)
@@ -523,9 +517,7 @@ def build_app(
                     trace_id_seen,
                     exc,
                 )
-                yield encode_error(
-                    f"{type(exc).__name__}: {exc}", code="runtime_error"
-                )
+                yield encode_error(f"{type(exc).__name__}: {exc}", code="runtime_error")
                 yield SENTINEL_LINE
             finally:
                 if run_id is not None:
@@ -557,9 +549,7 @@ def build_app(
 
     def _require_memory() -> LongTermMemoryService:
         if long_term_memory is None:
-            raise HTTPException(
-                status_code=503, detail="memory service not available"
-            )
+            raise HTTPException(status_code=503, detail="memory service not available")
         return long_term_memory
 
     @app.get("/agent/memory", response_model=MemoryListResponse)
@@ -591,7 +581,9 @@ def build_app(
         # renders unmarked. store() consolidates the type on budget overflow.
         if body.salience is not None:
             meta["salience"] = body.salience
-        outcome = memory.store(identity.owner, key, {"text": body.content}, metadata=meta)
+        outcome = memory.store(
+            identity.owner, key, {"text": body.content}, metadata=meta
+        )
         # A1 / P1 #6a: a CRUD write that overflowed the budget pruned memory —
         # leave the MEMORY_CONSOLIDATED carrier so the eviction is not silent
         # (Validation pillar). No-op when nothing was pruned or no recordings dir
@@ -624,9 +616,7 @@ def build_app(
         # recalled/injected but the row is RETAINED (audit); un-suppress
         # restores. Scoped to the verified bearer identity (cross-user guard).
         memory = _require_memory()
-        existed = memory.suppress(
-            identity.owner, key, suppressed=body.suppressed
-        )
+        existed = memory.suppress(identity.owner, key, suppressed=body.suppressed)
         if not existed:
             raise HTTPException(status_code=404, detail="memory not found")
         _emit_suppressed_carrier(

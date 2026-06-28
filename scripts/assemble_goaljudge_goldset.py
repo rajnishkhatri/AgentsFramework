@@ -29,6 +29,7 @@ The script exits non-zero on any invariant violation, and never writes
 the manifest if assembly fails — a partial manifest would mask the
 violation from Stage 6's diff.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -58,9 +59,9 @@ def _load_rows(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(fh))
 
 
-def _build_dimension_maps(rows: list[dict[str, str]]) -> tuple[
-    dict[str, str], dict[str, str], dict[str, str]
-]:
+def _build_dimension_maps(
+    rows: list[dict[str, str]],
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Carry sheet-side dimension labels into the invariant + manifest
     helpers keyed by ``item_id`` (the labels don't live on the
     GoldsetItem itself).
@@ -82,23 +83,44 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Assemble, freeze, and (optionally) load the Stage 5 v1 gold set"
     )
-    parser.add_argument("--sheet", type=Path, required=True,
-                        help="Adjudicated full sheet CSV (Phase 3 builder output, "
-                        "post-Phase 5 adjudication).")
-    parser.add_argument("--manifest", type=Path, required=True,
-                        help="Output path for goldset_v1_manifest.json.")
-    parser.add_argument("--frozen-at", type=str, required=True,
-                        help="ISO-8601 timestamp recorded as the freeze "
-                        "moment in the manifest (e.g. 2026-06-09T12:00:00Z).")
-    parser.add_argument("--rubric-version", type=str, default="stage4_confirmed",
-                        help="Rubric version string (defaults to "
-                        "stage4_confirmed per Tier 2 close).")
-    parser.add_argument("--min-goal-met-false-share", type=float, default=0.60,
-                        help="Minimum goal_met=false share required "
-                        "(default 0.60 per spec §4).")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Skip the Langfuse load step (use the in-memory "
-                        "client). The manifest is still written on success.")
+    parser.add_argument(
+        "--sheet",
+        type=Path,
+        required=True,
+        help="Adjudicated full sheet CSV (Phase 3 builder output, "
+        "post-Phase 5 adjudication).",
+    )
+    parser.add_argument(
+        "--manifest",
+        type=Path,
+        required=True,
+        help="Output path for goldset_v1_manifest.json.",
+    )
+    parser.add_argument(
+        "--frozen-at",
+        type=str,
+        required=True,
+        help="ISO-8601 timestamp recorded as the freeze "
+        "moment in the manifest (e.g. 2026-06-09T12:00:00Z).",
+    )
+    parser.add_argument(
+        "--rubric-version",
+        type=str,
+        default="stage4_confirmed",
+        help="Rubric version string (defaults to stage4_confirmed per Tier 2 close).",
+    )
+    parser.add_argument(
+        "--min-goal-met-false-share",
+        type=float,
+        default=0.60,
+        help="Minimum goal_met=false share required (default 0.60 per spec §4).",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip the Langfuse load step (use the in-memory "
+        "client). The manifest is still written on success.",
+    )
     parser.add_argument(
         "--dataset-name",
         type=str,
@@ -145,8 +167,9 @@ def main() -> None:
             )
             sys.exit(2)
 
-    stratum_by_id, planning_depth_by_id, tool_cluster_by_id = \
-        _build_dimension_maps(rows)
+    stratum_by_id, planning_depth_by_id, tool_cluster_by_id = _build_dimension_maps(
+        rows
+    )
 
     # --- Step 3: assert assembly invariants -------------------------------
     skip_floors = args.skip_cell_coverage or args.provisional
@@ -191,13 +214,13 @@ def main() -> None:
         from scripts.langfuse_dataset_client import (
             build_real_langfuse_dataset_client,
         )
+
         client = build_real_langfuse_dataset_client()
 
     repo = GoalJudgeGoldsetRepository(client, dataset_name=args.dataset_name)
     inserted = repo.upsert_many(items)
     print(
-        f"upserted {inserted} item(s) into {args.dataset_name} "
-        f"(dry_run={args.dry_run})"
+        f"upserted {inserted} item(s) into {args.dataset_name} (dry_run={args.dry_run})"
     )
 
     # --- Step 6: write the manifest ---------------------------------------

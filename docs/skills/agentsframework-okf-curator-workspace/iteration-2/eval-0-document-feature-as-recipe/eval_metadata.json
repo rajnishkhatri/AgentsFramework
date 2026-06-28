@@ -1,0 +1,12 @@
+{
+  "eval_id": 0,
+  "eval_name": "document-feature-as-recipe",
+  "prompt": "We just shipped a standalone OKF linter at scripts/okf_lint.py plus the convention doc at docs/CONVENTIONS_OKF.md \u2014 it declares knowledge bundles and checks that each has an index.md/log.md and that every Concept carries `type` frontmatter. Document this as a recipe so the team knows how to add and lint a bundle. Then make sure the docs tree still lints clean.",
+  "assertions": [
+    "recipe file created with type frontmatter",
+    "recipe follows house shape (Goal+Status)",
+    "sub-bundle index.md updated to list it",
+    "log.md has a dated entry",
+    "okf_lint exits 0"
+  ]
+}

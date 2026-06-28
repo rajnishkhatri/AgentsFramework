@@ -60,9 +60,7 @@ class EventBuffer:
         """
         buf = self._buffers.get(thread_id)
         if buf is None:
-            raise UnknownCursorError(
-                f"thread {thread_id!r} has no buffered events"
-            )
+            raise UnknownCursorError(f"thread {thread_id!r} has no buffered events")
 
         snapshot = list(buf)
         for index, (eid, _) in enumerate(snapshot):
@@ -71,8 +69,7 @@ class EventBuffer:
 
         if last_event_id in self._evicted_ids.get(thread_id, set()):
             raise UnknownCursorError(
-                f"event_id {last_event_id!r} for thread {thread_id!r} "
-                "has been evicted"
+                f"event_id {last_event_id!r} for thread {thread_id!r} has been evicted"
             )
         raise UnknownCursorError(
             f"event_id {last_event_id!r} unknown for thread {thread_id!r}"

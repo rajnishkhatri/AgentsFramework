@@ -86,9 +86,7 @@ def client(adapters_test: MiddlewareAdapters) -> TestClient:
 
 
 class TestLiveness:
-    def test_healthz_returns_200_without_token(
-        self, client: TestClient
-    ) -> None:
+    def test_healthz_returns_200_without_token(self, client: TestClient) -> None:
         """Cloud Run liveness probe must work pre-auth."""
         r = client.get("/healthz")
         assert r.status_code == 200
@@ -114,9 +112,7 @@ class TestAuthRejectionPaths:
         assert r.status_code == 401
 
     def test_invalid_token_returns_401(self, client: TestClient) -> None:
-        r = client.get(
-            "/me", headers={"Authorization": "Bearer not-a-jwt"}
-        )
+        r = client.get("/me", headers={"Authorization": "Bearer not-a-jwt"})
         assert r.status_code == 401
 
     def test_expired_token_returns_401(
@@ -129,9 +125,7 @@ class TestAuthRejectionPaths:
         token = make_token(
             expires_at=datetime.now(UTC) - timedelta(seconds=10),
         )
-        r = client.get(
-            "/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        r = client.get("/me", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 401
 
     def test_wrong_issuer_returns_401(
@@ -140,9 +134,7 @@ class TestAuthRejectionPaths:
         make_token: Callable[..., str],
     ) -> None:
         token = make_token(issuer="https://attacker.example.com")
-        r = client.get(
-            "/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        r = client.get("/me", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 401
 
 
@@ -158,9 +150,7 @@ class TestAuthAcceptance:
         make_token: Callable[..., str],
     ) -> None:
         token = make_token(subject="user_happy", roles=["beta"])
-        r = client.get(
-            "/me", headers={"Authorization": f"Bearer {token}"}
-        )
+        r = client.get("/me", headers={"Authorization": f"Bearer {token}"})
         assert r.status_code == 200
         body = r.json()
         assert body["subject"] == "user_happy"

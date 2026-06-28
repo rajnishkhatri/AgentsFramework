@@ -17,7 +17,6 @@ TDD layer: Protocol A — Trust-Foundation-style pure TDD (Red-Green-Refactor).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
 
 import pytest
 from hypothesis import HealthCheck, given, settings
@@ -106,7 +105,9 @@ class TestCompactionPlanShape:
             plan.cutoff = 99  # type: ignore[misc]
 
     def test_pinned_constraint_polarity_must_be_validated_string(self):
-        pc = PinnedConstraint(text="never delete X", polarity="must-not", source="success")
+        pc = PinnedConstraint(
+            text="never delete X", polarity="must-not", source="success"
+        )
         assert pc.text == "never delete X"
         assert pc.polarity == "must-not"
         assert pc.source == "success"
@@ -386,8 +387,12 @@ class TestBuildMessageCompaction:
 
     def test_pinned_constraints_rendered_verbatim(self):
         pinned = (
-            PinnedConstraint(text="MUST NOT delete /etc/hosts", polarity="must-not", source="success"),
-            PinnedConstraint(text="Always sign with EdDSA", polarity="must-do", source="user"),
+            PinnedConstraint(
+                text="MUST NOT delete /etc/hosts", polarity="must-not", source="success"
+            ),
+            PinnedConstraint(
+                text="Always sign with EdDSA", polarity="must-do", source="user"
+            ),
         )
         out = build_message_compaction([_human("hi")], keep_last_k=4, pinned=pinned)
         # Verbatim — including the case-sensitive spelling (design §8.2 L1-a NO case-fold).
@@ -406,7 +411,9 @@ class TestBuildMessageCompaction:
         pinned = (PinnedConstraint(text="x", polarity="must-not", source="user"),)
         first = build_message_compaction(views, keep_last_k=2, pinned=pinned)
         for _ in range(9):
-            assert build_message_compaction(views, keep_last_k=2, pinned=pinned) == first
+            assert (
+                build_message_compaction(views, keep_last_k=2, pinned=pinned) == first
+            )
 
     def test_no_langchain_string_appears_in_output(self):
         # Trivial smoke: the deterministic v1 builder must not leak a BaseMessage repr.
@@ -476,7 +483,9 @@ class TestDerivePinnedFloor:
             for atom in atoms:
                 stripped = atom.strip()
                 if stripped:
-                    assert stripped in joined, f"missing atom {stripped!r} in {joined!r}"
+                    assert stripped in joined, (
+                        f"missing atom {stripped!r} in {joined!r}"
+                    )
 
 
 # ════════════════════════════════════════════════════════════════════════════
@@ -652,7 +661,9 @@ class TestBuildConstraintFloor:
 
     def test_default_polarity_filter_is_must_not(self):
         pinned = (
-            PinnedConstraint(text="do not delete X", polarity="must-not", source="user"),
+            PinnedConstraint(
+                text="do not delete X", polarity="must-not", source="user"
+            ),
             PinnedConstraint(text="always log Y", polarity="must-do", source="success"),
         )
         out = build_constraint_floor(pinned)
@@ -671,7 +682,9 @@ class TestBuildConstraintFloor:
     def test_verbatim_preserves_case_sensitive_tokens(self):
         # design §8.2 L1-a note: whitespace normalization yes; case NO.
         pinned = (
-            PinnedConstraint(text="DO NOT DELETE /etc/hosts", polarity="must-not", source="user"),
+            PinnedConstraint(
+                text="DO NOT DELETE /etc/hosts", polarity="must-not", source="user"
+            ),
         )
         out = build_constraint_floor(pinned)
         assert "DO NOT DELETE /etc/hosts" in out  # case preserved
@@ -753,8 +766,12 @@ class TestL1aPinnedSubstringPresent:
         )
 
         pinned = (
-            PinnedConstraint(text="never run rm -rf /", polarity="must-not", source="success"),
-            PinnedConstraint(text="must call confirm()", polarity="must-do", source="success"),
+            PinnedConstraint(
+                text="never run rm -rf /", polarity="must-not", source="success"
+            ),
+            PinnedConstraint(
+                text="must call confirm()", polarity="must-do", source="success"
+            ),
         )
         post_fold_text = (
             "PINNED:\n"
@@ -770,7 +787,9 @@ class TestL1aPinnedSubstringPresent:
         from services.summarizer import check_pinned_substring_present
 
         pinned = (
-            PinnedConstraint(text="never run rm -rf /", polarity="must-not", source="success"),
+            PinnedConstraint(
+                text="never run rm -rf /", polarity="must-not", source="success"
+            ),
         )
         post_fold_text = "PINNED:\n  - [must-do] something completely different\n"
         result = check_pinned_substring_present(pinned, post_fold_text)
@@ -802,7 +821,9 @@ class TestL1aPinnedSubstringPresent:
         from services.summarizer import check_pinned_substring_present
 
         pinned = (
-            PinnedConstraint(text="DO NOT DELETE /etc/hosts", polarity="must-not", source="user"),
+            PinnedConstraint(
+                text="DO NOT DELETE /etc/hosts", polarity="must-not", source="user"
+            ),
         )
         post_fold_text = "  - [must-not] do not delete /etc/hosts\n"  # case flipped
         result = check_pinned_substring_present(pinned, post_fold_text)
@@ -1011,14 +1032,19 @@ class TestCollectCompactionL1:
         from services.summarizer import collect_compaction_l1
 
         pinned = (
-            PinnedConstraint(text="never delete files", polarity="must-not", source="success"),
+            PinnedConstraint(
+                text="never delete files", polarity="must-not", source="success"
+            ),
         )
         results = collect_compaction_l1(
             pinned=pinned,
             summary="SUMMARY:\n  ok\nPINNED:\n  - [must-not] never delete files\n",
             tokens_before=1200,
             tokens_after=400,
-            preserved_views=[_ai("calling", tool_calls=("t1",)), _tool("done", tool_call_id="t1")],
+            preserved_views=[
+                _ai("calling", tool_calls=("t1",)),
+                _tool("done", tool_call_id="t1"),
+            ],
             floor_exceeded=False,
             fold_committed=True,
         )
@@ -1030,7 +1056,9 @@ class TestCollectCompactionL1:
         from services.summarizer import collect_compaction_l1
 
         pinned = (
-            PinnedConstraint(text="never delete files", polarity="must-not", source="success"),
+            PinnedConstraint(
+                text="never delete files", polarity="must-not", source="success"
+            ),
         )
         results = collect_compaction_l1(
             pinned=pinned,
@@ -1066,4 +1094,3 @@ class TestCollectCompactionL1:
             assert [(r.criterion, r.passed) for r in again] == [
                 (r.criterion, r.passed) for r in first
             ]
-

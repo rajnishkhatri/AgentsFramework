@@ -7,7 +7,6 @@ from __future__ import annotations
 import json
 import uuid
 
-import pytest
 
 from scripts.convert_model_ab_corpus import ANSWER_PHASE, convert, write_jsonl
 from scripts.model_ab_answer_score import (
@@ -21,14 +20,26 @@ from scripts.seed_model_ab_workspace import EXPECTED_BY_CASE, seed_workspace
 class TestSeed:
     def test_seeds_every_referenced_file(self, tmp_path):
         ws = seed_workspace(tmp_path)
-        for rel in ("nums/a.txt", "nums/b.txt", "nums/c.txt", "contact.txt",
-                    "log.txt", "scores.csv", "distance.txt", "profile.json",
-                    "words.txt", "n.txt", "access.log"):
+        for rel in (
+            "nums/a.txt",
+            "nums/b.txt",
+            "nums/c.txt",
+            "contact.txt",
+            "log.txt",
+            "scores.csv",
+            "distance.txt",
+            "profile.json",
+            "words.txt",
+            "n.txt",
+            "access.log",
+        ):
             assert (ws / rel).exists(), f"missing fixture {rel}"
 
     def test_nums_sum_matches_expected_answer(self, tmp_path):
         ws = seed_workspace(tmp_path)
-        total = sum(int((ws / "nums" / f).read_text()) for f in ("a.txt", "b.txt", "c.txt"))
+        total = sum(
+            int((ws / "nums" / f).read_text()) for f in ("a.txt", "b.txt", "c.txt")
+        )
         assert str(total) == EXPECTED_BY_CASE["GEN-L1-read-sum-01"].value
 
     def test_profile_name_matches_expected(self, tmp_path):
@@ -78,10 +89,17 @@ class TestAnswerScorer:
         lines = []
         for case, (answer, toks) in case_to_answer.items():
             tid = uuid.uuid5(uuid.NAMESPACE_DNS, case).hex
-            lines.append(json.dumps({
-                "target": "call_llm", "task_id": tid,
-                "ai_response": answer, "tokens_out": toks, "step": 1,
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "target": "call_llm",
+                        "task_id": tid,
+                        "ai_response": answer,
+                        "tokens_out": toks,
+                        "step": 1,
+                    }
+                )
+            )
         path.write_text("\n".join(lines) + "\n")
 
     def test_numeric_answer_graded_correct(self, tmp_path):
@@ -107,7 +125,9 @@ class TestAnswerScorer:
 
     def test_substring_answer_graded_correct(self, tmp_path):
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {"GEN-L1-lookup-format-02": ("The domain is example.com", 8)})
+        self._write_eval_log(
+            log, {"GEN-L1-lookup-format-02": ("The domain is example.com", 8)}
+        )
         s = score_answers(log, cases=["GEN-L1-lookup-format-02"])
         assert s.correct == 1
 
@@ -129,8 +149,15 @@ class TestAnswerScorer:
         # that says "I attempted to write 'ready' but encountered errors" must NOT
         # grade correct just because 'ready' appears (the prompt-leak false-positive).
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {"GEN-L1-write-readback-06":
-                                   ("I attempted to write 'ready' but encountered errors.", 20)})
+        self._write_eval_log(
+            log,
+            {
+                "GEN-L1-write-readback-06": (
+                    "I attempted to write 'ready' but encountered errors.",
+                    20,
+                )
+            },
+        )
         s = score_answers(log, cases=["GEN-L1-write-readback-06"])
         assert s.correct == 0
         assert s.scores[0].outcome == "wrong"
@@ -139,16 +166,24 @@ class TestAnswerScorer:
         # bool-check-15 expects 'odd'; "I was unable to access the file" must fail
         # even though no token matches — the guard is kind-agnostic.
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {"GEN-L1-bool-check-15":
-                                   ("I was unable to access the file at the path.", 15)})
+        self._write_eval_log(
+            log,
+            {
+                "GEN-L1-bool-check-15": (
+                    "I was unable to access the file at the path.",
+                    15,
+                )
+            },
+        )
         s = score_answers(log, cases=["GEN-L1-bool-check-15"])
         assert s.scores[0].outcome == "wrong"
 
     def test_confident_correct_answer_still_passes(self, tmp_path):
         # Guard must not create false-NEGATIVES: a real answer mentioning the value.
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {"GEN-L1-bool-check-15":
-                                   ("The file contains 17, which is odd.", 12)})
+        self._write_eval_log(
+            log, {"GEN-L1-bool-check-15": ("The file contains 17, which is odd.", 12)}
+        )
         s = score_answers(log, cases=["GEN-L1-bool-check-15"])
         assert s.correct == 1
 
@@ -157,12 +192,17 @@ class TestAnswerScorer:
         # provider/transport failure. It must be outcome 'errored' and flag the
         # summary contaminated (so the run reads CONTAMINATED, not fake 0.0).
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {
-            "GEN-L1-read-sum-01":
-                ("Error: litellm.InternalServerError: DeepseekException - "
-                 "Cannot connect", 0),
-            "GEN-L1-lookup-format-02": ("example.com", 5),
-        })
+        self._write_eval_log(
+            log,
+            {
+                "GEN-L1-read-sum-01": (
+                    "Error: litellm.InternalServerError: DeepseekException - "
+                    "Cannot connect",
+                    0,
+                ),
+                "GEN-L1-lookup-format-02": ("example.com", 5),
+            },
+        )
         s = score_answers(log, cases=["GEN-L1-read-sum-01", "GEN-L1-lookup-format-02"])
         outcomes = {sc.case: sc.outcome for sc in s.scores}
         assert outcomes["GEN-L1-read-sum-01"] == "errored"
@@ -185,14 +225,22 @@ class TestAnswerScorer:
 
     def test_accuracy_and_outcome_breakdown(self, tmp_path):
         log = tmp_path / "evals.log"
-        self._write_eval_log(log, {
-            "GEN-L1-read-sum-01": ("42", 5),                    # correct
-            "GEN-L1-lookup-format-02": ("example.com", 5),      # correct
-            "GEN-L1-count-lines-03": ("99", 5),                 # wrong
-        })
-        s = score_answers(log, cases=[
-            "GEN-L1-read-sum-01", "GEN-L1-lookup-format-02", "GEN-L1-count-lines-03",
-        ])
+        self._write_eval_log(
+            log,
+            {
+                "GEN-L1-read-sum-01": ("42", 5),  # correct
+                "GEN-L1-lookup-format-02": ("example.com", 5),  # correct
+                "GEN-L1-count-lines-03": ("99", 5),  # wrong
+            },
+        )
+        s = score_answers(
+            log,
+            cases=[
+                "GEN-L1-read-sum-01",
+                "GEN-L1-lookup-format-02",
+                "GEN-L1-count-lines-03",
+            ],
+        )
         assert s.n == 3 and s.correct == 2
         assert abs(s.accuracy - 2 / 3) < 1e-9
         assert s.outcomes() == {"correct": 2, "wrong": 1}
@@ -205,11 +253,19 @@ class TestGoalJudgeScorer:
         lines = []
         for case, (goal_met, criteria) in case_to_verdict.items():
             tid = uuid.uuid5(uuid.NAMESPACE_DNS, case).hex
-            lines.append(json.dumps({
-                "target": "goal_judge", "task_id": tid,
-                "ai_response": {"goal_met": goal_met, "criteria_met": criteria,
-                                "rationale": "ok" if goal_met else "missed"},
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "target": "goal_judge",
+                        "task_id": tid,
+                        "ai_response": {
+                            "goal_met": goal_met,
+                            "criteria_met": criteria,
+                            "rationale": "ok" if goal_met else "missed",
+                        },
+                    }
+                )
+            )
         path.write_text("\n".join(lines) + "\n")
 
     def test_goal_met_true_is_correct(self, tmp_path):
@@ -236,23 +292,42 @@ class TestMixedScorer:
 
     def test_mixed_l1_deterministic_l2_goaljudge(self, tmp_path):
         log = tmp_path / "evals.log"
-        l1_case = "GEN-L1-read-sum-01"           # in EXPECTED -> deterministic
+        l1_case = "GEN-L1-read-sum-01"  # in EXPECTED -> deterministic
         l2_case = "GEN-L2-multi-file-reconcile-07"  # not in EXPECTED -> GoalJudge
         l1_tid = uuid.uuid5(uuid.NAMESPACE_DNS, l1_case).hex
         l2_tid = uuid.uuid5(uuid.NAMESPACE_DNS, l2_case).hex
-        log.write_text("\n".join([
-            json.dumps({"target": "call_llm", "task_id": l1_tid,
-                        "ai_response": "The sum is 42.", "tokens_out": 5}),
-            json.dumps({"target": "goal_judge", "task_id": l2_tid,
-                        "ai_response": {"goal_met": True, "criteria_met": 1.0,
-                                        "rationale": "ok"}}),
-        ]) + "\n")
+        log.write_text(
+            "\n".join(
+                [
+                    json.dumps(
+                        {
+                            "target": "call_llm",
+                            "task_id": l1_tid,
+                            "ai_response": "The sum is 42.",
+                            "tokens_out": 5,
+                        }
+                    ),
+                    json.dumps(
+                        {
+                            "target": "goal_judge",
+                            "task_id": l2_tid,
+                            "ai_response": {
+                                "goal_met": True,
+                                "criteria_met": 1.0,
+                                "rationale": "ok",
+                            },
+                        }
+                    ),
+                ]
+            )
+            + "\n"
+        )
         s = score_mixed(log, cases=[l1_case, l2_case])
         assert s.n == 2 and s.correct == 2
         # order preserved
         assert [sc.case for sc in s.scores] == [l1_case, l2_case]
-        assert s.scores[0].kind == "numeric"     # L1 path
-        assert s.scores[1].kind == "goaljudge"    # L2 path
+        assert s.scores[0].kind == "numeric"  # L1 path
+        assert s.scores[1].kind == "goaljudge"  # L2 path
 
 
 class TestAnswerVerdictWiring:
@@ -262,11 +337,21 @@ class TestAnswerVerdictWiring:
 
     def _corpus(self, tmp_path, cases):
         corpus = tmp_path / "corpus.jsonl"
-        corpus.write_text("\n".join(
-            json.dumps({"case": c, "gj_id": "", "phase": "answer",
-                        "trace_id": c, "prompt": "x"})
-            for c in cases
-        ) + "\n")
+        corpus.write_text(
+            "\n".join(
+                json.dumps(
+                    {
+                        "case": c,
+                        "gj_id": "",
+                        "phase": "answer",
+                        "trace_id": c,
+                        "prompt": "x",
+                    }
+                )
+                for c in cases
+            )
+            + "\n"
+        )
         return corpus
 
     def _write_arm_recordings(self, run_dir, arm, model, cases):
@@ -275,18 +360,29 @@ class TestAnswerVerdictWiring:
             rec = run_dir / arm / "recordings" / tid
             rec.mkdir(parents=True, exist_ok=True)
             (rec / "trace.jsonl").write_text(
-                json.dumps({"event_type": "step_executed",
-                            "details": {"model": model, "cost_usd": 0.01}}) + "\n"
+                json.dumps(
+                    {
+                        "event_type": "step_executed",
+                        "details": {"model": model, "cost_usd": 0.01},
+                    }
+                )
+                + "\n"
             )
 
     def _write_arm_eval_log(self, run_dir, arm, case_to_answer):
         lines = []
         for c, ans in case_to_answer.items():
             tid = uuid.uuid5(uuid.NAMESPACE_DNS, c).hex
-            lines.append(json.dumps({
-                "target": "call_llm", "task_id": tid,
-                "ai_response": ans, "tokens_out": 10,
-            }))
+            lines.append(
+                json.dumps(
+                    {
+                        "target": "call_llm",
+                        "task_id": tid,
+                        "ai_response": ans,
+                        "tokens_out": 10,
+                    }
+                )
+            )
         (run_dir / arm).mkdir(parents=True, exist_ok=True)
         (run_dir / arm / "evals.log").write_text("\n".join(lines) + "\n")
 
@@ -299,18 +395,33 @@ class TestAnswerVerdictWiring:
         self._write_arm_recordings(run_dir, "baseline", "gpt-4o-mini", cases)
         self._write_arm_recordings(run_dir, "candidate", "claude-haiku-4-5", cases)
         # baseline: 1/2; candidate: 2/2 -> PROMOTE
-        self._write_arm_eval_log(run_dir, "baseline",
-                                 {"GEN-L1-read-sum-01": "wrong 0",
-                                  "GEN-L1-lookup-format-02": "example.com"})
-        self._write_arm_eval_log(run_dir, "candidate",
-                                 {"GEN-L1-read-sum-01": "42",
-                                  "GEN-L1-lookup-format-02": "example.com"})
-        rc = main([
-            "--score-only", "--answer-score", "--gate",
-            "--corpus", str(corpus),
-            "--baseline", "gpt-4o-mini", "--candidate", "claude-haiku-4-5",
-            "--out", str(tmp_path / "ab"), "--run-id", "r",
-        ])
+        self._write_arm_eval_log(
+            run_dir,
+            "baseline",
+            {"GEN-L1-read-sum-01": "wrong 0", "GEN-L1-lookup-format-02": "example.com"},
+        )
+        self._write_arm_eval_log(
+            run_dir,
+            "candidate",
+            {"GEN-L1-read-sum-01": "42", "GEN-L1-lookup-format-02": "example.com"},
+        )
+        rc = main(
+            [
+                "--score-only",
+                "--answer-score",
+                "--gate",
+                "--corpus",
+                str(corpus),
+                "--baseline",
+                "gpt-4o-mini",
+                "--candidate",
+                "claude-haiku-4-5",
+                "--out",
+                str(tmp_path / "ab"),
+                "--run-id",
+                "r",
+            ]
+        )
         assert rc == 0  # PROMOTE
 
     def test_hold_when_candidate_answer_accuracy_regresses(self, tmp_path):
@@ -322,18 +433,33 @@ class TestAnswerVerdictWiring:
         self._write_arm_recordings(run_dir, "baseline", "gpt-4o-mini", cases)
         self._write_arm_recordings(run_dir, "candidate", "claude-haiku-4-5", cases)
         # baseline: 2/2; candidate: 1/2 -> HOLD (regression)
-        self._write_arm_eval_log(run_dir, "baseline",
-                                 {"GEN-L1-read-sum-01": "42",
-                                  "GEN-L1-lookup-format-02": "example.com"})
-        self._write_arm_eval_log(run_dir, "candidate",
-                                 {"GEN-L1-read-sum-01": "wrong 0",
-                                  "GEN-L1-lookup-format-02": "example.com"})
-        rc = main([
-            "--score-only", "--answer-score", "--gate",
-            "--corpus", str(corpus),
-            "--baseline", "gpt-4o-mini", "--candidate", "claude-haiku-4-5",
-            "--out", str(tmp_path / "ab"), "--run-id", "r2",
-        ])
+        self._write_arm_eval_log(
+            run_dir,
+            "baseline",
+            {"GEN-L1-read-sum-01": "42", "GEN-L1-lookup-format-02": "example.com"},
+        )
+        self._write_arm_eval_log(
+            run_dir,
+            "candidate",
+            {"GEN-L1-read-sum-01": "wrong 0", "GEN-L1-lookup-format-02": "example.com"},
+        )
+        rc = main(
+            [
+                "--score-only",
+                "--answer-score",
+                "--gate",
+                "--corpus",
+                str(corpus),
+                "--baseline",
+                "gpt-4o-mini",
+                "--candidate",
+                "claude-haiku-4-5",
+                "--out",
+                str(tmp_path / "ab"),
+                "--run-id",
+                "r2",
+            ]
+        )
         assert rc == 1  # HOLD
 
     def test_contamination_dominates_even_with_perfect_answers(self, tmp_path):
@@ -347,10 +473,21 @@ class TestAnswerVerdictWiring:
         self._write_arm_recordings(run_dir, "candidate", "ghost-model", cases)
         self._write_arm_eval_log(run_dir, "baseline", {"GEN-L1-read-sum-01": "42"})
         self._write_arm_eval_log(run_dir, "candidate", {"GEN-L1-read-sum-01": "42"})
-        rc = main([
-            "--score-only", "--answer-score", "--gate",
-            "--corpus", str(corpus),
-            "--baseline", "gpt-4o-mini", "--candidate", "claude-haiku-4-5",
-            "--out", str(tmp_path / "ab"), "--run-id", "r3",
-        ])
+        rc = main(
+            [
+                "--score-only",
+                "--answer-score",
+                "--gate",
+                "--corpus",
+                str(corpus),
+                "--baseline",
+                "gpt-4o-mini",
+                "--candidate",
+                "claude-haiku-4-5",
+                "--out",
+                str(tmp_path / "ab"),
+                "--run-id",
+                "r3",
+            ]
+        )
         assert rc == 1  # CONTAMINATED

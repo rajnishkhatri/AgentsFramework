@@ -1,6 +1,6 @@
 # GoalJudge Axis-B Remediation Strategy: Critical Evaluation & Sequencing
 
-> **Status:** Research memo — June 5, 2026  
+> **Status:** Research memo — June 5, 2026
 > **Context:** Human analyst plans to remediate **Axis B (harness/environment confounds)** before
 > proceeding to Stage 4 rubric design or Axis-C judge calibration. This document records a critical
 > evaluation of that plan: trade-off reasoning, external grounding, repo-specific fix surfaces, and a

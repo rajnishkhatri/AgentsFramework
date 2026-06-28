@@ -31,10 +31,12 @@ from services.prompt_service import PromptService
 
 def _redact_all_validator() -> GuardRailValidator:
     """Mirror the graph-build judge redactor: all PII/API-key rules as REDACT."""
-    return GuardRailValidator([
-        rule.model_copy(update={"fail_action": FailAction.REDACT})
-        for rule in (pii_rules() + api_key_rules())
-    ])
+    return GuardRailValidator(
+        [
+            rule.model_copy(update={"fail_action": FailAction.REDACT})
+            for rule in (pii_rules() + api_key_rules())
+        ]
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -621,8 +623,7 @@ class TestFailureModeEnumIntegrity:
         registry_codes = {
             case.target_code
             for case in LIVE_CASES
-            if case.target_code
-            not in {"correct-complete", "tool-stub-limitation"}
+            if case.target_code not in {"correct-complete", "tool-stub-limitation"}
         }
         assert registry_codes <= GOAL_FAILURE_MODES, (
             "registry has Axis-A codes missing from GOAL_FAILURE_MODES: "
@@ -767,18 +768,14 @@ class TestSummarizeToolCalls:
     def test_limit_keeps_only_tail(self):
         from components.goal_judge import summarize_tool_calls
 
-        evidence = [
-            {"tool_name": f"t{i}", "tool_input": {}} for i in range(12)
-        ]
+        evidence = [{"tool_name": f"t{i}", "tool_input": {}} for i in range(12)]
         summary = summarize_tool_calls(evidence, limit=3)
         assert [s["tool_name"] for s in summary] == ["t9", "t10", "t11"]
 
     def test_default_limit_is_eight(self):
         from components.goal_judge import summarize_tool_calls
 
-        evidence = [
-            {"tool_name": f"t{i}", "tool_input": {}} for i in range(20)
-        ]
+        evidence = [{"tool_name": f"t{i}", "tool_input": {}} for i in range(20)]
         summary = summarize_tool_calls(evidence)
         assert len(summary) == 8
         assert summary[0]["tool_name"] == "t12"
@@ -790,7 +787,10 @@ class TestSummarizeToolCalls:
         from components.goal_judge import summarize_tool_calls
 
         evidence = [
-            {"tool_name": "file_io", "tool_input": {"operation": "write", "path": "/x"}},
+            {
+                "tool_name": "file_io",
+                "tool_input": {"operation": "write", "path": "/x"},
+            },
             {"tool_name": "shell", "tool_input": {"command": "cat /x"}},
             {"tool_name": "web_search", "tool_input": {"query": "Austin weather"}},
         ]

@@ -223,7 +223,9 @@ class TestPhaseWiringIntegration:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         model_selected = [
-            e for e in export["events"] if e.get("event_type") == EventType.MODEL_SELECTED.value
+            e
+            for e in export["events"]
+            if e.get("event_type") == EventType.MODEL_SELECTED.value
         ]
         assert model_selected
         assert model_selected[0]["details"]["decision_id"] == decision_id
@@ -290,7 +292,8 @@ class TestPhaseWiringIntegration:
         routing_ends = [
             e
             for e in pl.export_phase_events(workflow_id)
-            if e.get("event") == "phase_end" and e.get("phase") == WorkflowPhase.ROUTING.value
+            if e.get("event") == "phase_end"
+            and e.get("phase") == WorkflowPhase.ROUTING.value
         ]
         step_counts = {e["step_count"] for e in routing_ends}
         assert 0 in step_counts
@@ -327,7 +330,8 @@ class TestPhaseWiringIntegration:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         planned = [
-            e for e in export["events"]
+            e
+            for e in export["events"]
             if e.get("event_type") == EventType.STEP_PLANNED.value
             and "plan_fingerprint" in e.get("details", {})
         ]
@@ -382,7 +386,8 @@ class TestPhase5ContentIdentityEnrichment:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         selected = [
-            e for e in export["events"]
+            e
+            for e in export["events"]
             if e.get("event_type") == EventType.MODEL_SELECTED.value
         ]
         assert selected, "expected at least one MODEL_SELECTED"
@@ -394,9 +399,7 @@ class TestPhase5ContentIdentityEnrichment:
         assert d["reason"] in d["rationale"]
 
     @pytest.mark.asyncio
-    async def test_step_planned_changed_carries_plan_summary(
-        self, tmp_path, mock_llm
-    ):
+    async def test_step_planned_changed_carries_plan_summary(self, tmp_path, mock_llm):
         """E8: a CHANGED plan carries a capped plan_summary (≤5 ordered-step
         titles, each ≤120 chars) so the trace shows what was planned without
         opening the plan payload. Unchanged re-emissions need not repeat it."""
@@ -423,7 +426,8 @@ class TestPhase5ContentIdentityEnrichment:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         changed = [
-            e for e in export["events"]
+            e
+            for e in export["events"]
             if e.get("event_type") == EventType.STEP_PLANNED.value
             and e.get("details", {}).get("plan_changed") is True
         ]
@@ -464,7 +468,8 @@ class TestPhase5ContentIdentityEnrichment:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         started = [
-            e for e in export["events"]
+            e
+            for e in export["events"]
             if e.get("event_type") == EventType.TASK_STARTED.value
         ]
         assert started, "expected a TASK_STARTED"
@@ -503,7 +508,8 @@ class TestPhase5ContentIdentityEnrichment:
         bb = BlackBoxRecorder(storage_dir=cache_dir / "black_box_recordings")
         export = bb.export(workflow_id)
         started = [
-            e for e in export["events"]
+            e
+            for e in export["events"]
             if e.get("event_type") == EventType.TASK_STARTED.value
         ]
         assert started

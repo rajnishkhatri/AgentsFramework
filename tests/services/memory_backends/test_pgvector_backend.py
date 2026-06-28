@@ -125,9 +125,7 @@ def backend(
     """A PgVectorMemoryBackend bound to the live Docker container."""
     from services.memory_backends.pgvector import PgVectorMemoryBackend
 
-    with PgVectorMemoryBackend(
-        embedding_client=fake_embedder, dsn=PGVECTOR_DSN
-    ) as b:
+    with PgVectorMemoryBackend(embedding_client=fake_embedder, dsn=PGVECTOR_DSN) as b:
         yield b
 
 
@@ -173,9 +171,7 @@ class TestConstructorRejections:
 class TestEmbeddingClientFailureTranslation:
     """A5/Pattern 11: embed errors come out as ``MemoryBackendError``."""
 
-    def test_embed_raise_is_translated(
-        self, truncated_table: None
-    ) -> None:
+    def test_embed_raise_is_translated(self, truncated_table: None) -> None:
         from middleware.ports.embedding_client import EmbeddingClientError
         from services.memory_backends.pgvector import PgVectorMemoryBackend
 
@@ -203,9 +199,7 @@ class TestEmbeddingClientFailureTranslation:
         finally:
             backend.close()
 
-    def test_dimension_mismatch_is_translated(
-        self, truncated_table: None
-    ) -> None:
+    def test_dimension_mismatch_is_translated(self, truncated_table: None) -> None:
         """An embed client whose actual output disagrees with its
         advertised ``dimension`` is caught at the boundary so we never
         write a malformed row.
@@ -312,13 +306,9 @@ class TestPgVectorBackendCrud:
         assert got.payload["v"] == 2
         assert got.payload["text"] == "second"
 
-    def test_delete_returns_true_then_get_returns_none(
-        self, backend: object
-    ) -> None:
+    def test_delete_returns_true_then_get_returns_none(self, backend: object) -> None:
         backend.put(  # type: ignore[attr-defined]
-            MemoryRecord(
-                user_id="u1", key="k", payload={"text": "x"}, metadata={}
-            )
+            MemoryRecord(user_id="u1", key="k", payload={"text": "x"}, metadata={})
         )
         assert backend.delete(user_id="u1", key="k") is True  # type: ignore[attr-defined]
         assert backend.get(user_id="u1", key="k") is None  # type: ignore[attr-defined]
@@ -385,7 +375,9 @@ class TestPgVectorSearch:
             MemoryRecord(user_id="u1", key="a", payload={"text": "apple"}, metadata={})
         )
         backend.put(  # type: ignore[attr-defined]
-            MemoryRecord(user_id="u1", key="z", payload={"text": "zzzz-far-away"}, metadata={})
+            MemoryRecord(
+                user_id="u1", key="z", payload={"text": "zzzz-far-away"}, metadata={}
+            )
         )
         hits = backend.search(user_id="u1", query="apple", limit=2)  # type: ignore[attr-defined]
         assert len(hits) == 2
@@ -409,9 +401,7 @@ class TestPgVectorListAll:
                 )
             )
         backend.put(  # type: ignore[attr-defined]
-            MemoryRecord(
-                user_id="bob", key="kb", payload={"text": "b"}, metadata={}
-            )
+            MemoryRecord(user_id="bob", key="kb", payload={"text": "b"}, metadata={})
         )
         alice_rows = backend.list_all("alice")  # type: ignore[attr-defined]
         assert {r.key for r in alice_rows} == {"k0", "k1", "k2"}
@@ -435,9 +425,7 @@ def _make_in_memory() -> MemoryBackend:
 def _make_pgvector(fake: FakeEmbeddingClient) -> MemoryBackend:
     from services.memory_backends.pgvector import PgVectorMemoryBackend
 
-    return PgVectorMemoryBackend(
-        embedding_client=fake, dsn=PGVECTOR_DSN
-    )
+    return PgVectorMemoryBackend(embedding_client=fake, dsn=PGVECTOR_DSN)
 
 
 @pytest.fixture(
@@ -462,14 +450,10 @@ def conformance_backend(
 class TestMemoryBackendConsumerContract:
     """Same suite, two backends — proves the swap is invisible to callers."""
 
-    def test_get_missing_returns_none(
-        self, conformance_backend: MemoryBackend
-    ) -> None:
+    def test_get_missing_returns_none(self, conformance_backend: MemoryBackend) -> None:
         assert conformance_backend.get(user_id="u1", key="absent") is None
 
-    def test_put_then_get_round_trip(
-        self, conformance_backend: MemoryBackend
-    ) -> None:
+    def test_put_then_get_round_trip(self, conformance_backend: MemoryBackend) -> None:
         rec = MemoryRecord(
             user_id="u1",
             key="k",
@@ -491,25 +475,17 @@ class TestMemoryBackendConsumerContract:
         self, conformance_backend: MemoryBackend
     ) -> None:
         conformance_backend.put(
-            MemoryRecord(
-                user_id="u1", key="k", payload={"text": "x"}, metadata={}
-            )
+            MemoryRecord(user_id="u1", key="k", payload={"text": "x"}, metadata={})
         )
         assert conformance_backend.delete(user_id="u1", key="k") is True
         assert conformance_backend.get(user_id="u1", key="k") is None
 
-    def test_users_isolated(
-        self, conformance_backend: MemoryBackend
-    ) -> None:
+    def test_users_isolated(self, conformance_backend: MemoryBackend) -> None:
         conformance_backend.put(
-            MemoryRecord(
-                user_id="alice", key="k", payload={"text": "A"}, metadata={}
-            )
+            MemoryRecord(user_id="alice", key="k", payload={"text": "A"}, metadata={})
         )
         conformance_backend.put(
-            MemoryRecord(
-                user_id="bob", key="k", payload={"text": "B"}, metadata={}
-            )
+            MemoryRecord(user_id="bob", key="k", payload={"text": "B"}, metadata={})
         )
         assert conformance_backend.get(user_id="alice", key="k").payload["text"] == "A"  # type: ignore[union-attr]
         assert conformance_backend.get(user_id="bob", key="k").payload["text"] == "B"  # type: ignore[union-attr]
@@ -582,9 +558,7 @@ class TestEmbedTextOfPrecedence:
             payload={"other": "data"},
             metadata={},
         )
-        assert PgVectorMemoryBackend._embed_text_of(rec) == repr(
-            {"other": "data"}
-        )
+        assert PgVectorMemoryBackend._embed_text_of(rec) == repr({"other": "data"})
 
     def test_non_str_embed_text_falls_through(self) -> None:
         """Type guard (``isinstance(x, str)``) defends against payloads where
@@ -609,9 +583,7 @@ class TestMemTypeColumn:
     so a future R1 push-down can rely on its B-tree index.
     """
 
-    def test_mem_type_defaults_to_semantic_when_absent(
-        self, backend: object
-    ) -> None:
+    def test_mem_type_defaults_to_semantic_when_absent(self, backend: object) -> None:
         """No ``metadata['type']`` ⇒ DB stores ``'semantic'``."""
         import psycopg
 
@@ -626,17 +598,14 @@ class TestMemTypeColumn:
         with psycopg.connect(PGVECTOR_DSN, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT mem_type FROM agent_memories "
-                    "WHERE user_id=%s AND key=%s",
+                    "SELECT mem_type FROM agent_memories WHERE user_id=%s AND key=%s",
                     ("u1", "k1"),
                 )
                 row = cur.fetchone()
         assert row is not None
         assert row[0] == "semantic"
 
-    @pytest.mark.parametrize(
-        "type_value", ["semantic", "episodic", "procedural"]
-    )
+    @pytest.mark.parametrize("type_value", ["semantic", "episodic", "procedural"])
     def test_mem_type_is_derived_verbatim_from_metadata(
         self, backend: object, type_value: str
     ) -> None:
@@ -653,8 +622,7 @@ class TestMemTypeColumn:
         with psycopg.connect(PGVECTOR_DSN, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT mem_type FROM agent_memories "
-                    "WHERE user_id=%s AND key=%s",
+                    "SELECT mem_type FROM agent_memories WHERE user_id=%s AND key=%s",
                     ("u1", f"k-{type_value}"),
                 )
                 row = cur.fetchone()
@@ -685,8 +653,7 @@ class TestMemTypeColumn:
         with psycopg.connect(PGVECTOR_DSN, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT mem_type FROM agent_memories "
-                    "WHERE user_id=%s AND key=%s",
+                    "SELECT mem_type FROM agent_memories WHERE user_id=%s AND key=%s",
                     ("u1", "k1"),
                 )
                 row = cur.fetchone()
@@ -700,9 +667,7 @@ class TestSchemaFoldFourFieldRoundTripPreserved:
     ``id``, ``embed_text``, and ``created_at`` stay DB-side-only.
     """
 
-    def test_get_does_not_expose_mem_type_or_ts(
-        self, backend: object
-    ) -> None:
+    def test_get_does_not_expose_mem_type_or_ts(self, backend: object) -> None:
         original = MemoryRecord(
             user_id="u1",
             key="k1",
@@ -724,9 +689,7 @@ class TestSchemaFoldFourFieldRoundTripPreserved:
                 f"{forbidden} must stay DB-side, not leak into MemoryRecord"
             )
 
-    def test_search_does_not_expose_mem_type_or_ts(
-        self, backend: object
-    ) -> None:
+    def test_search_does_not_expose_mem_type_or_ts(self, backend: object) -> None:
         backend.put(  # type: ignore[attr-defined]
             MemoryRecord(
                 user_id="u1",
@@ -793,9 +756,7 @@ class TestGeneratedTsColumn:
     GENERATED expression is the load-bearing guard).
     """
 
-    def test_ts_populated_when_payload_text_present(
-        self, backend: object
-    ) -> None:
+    def test_ts_populated_when_payload_text_present(self, backend: object) -> None:
         import psycopg
 
         backend.put(  # type: ignore[attr-defined]
@@ -820,9 +781,7 @@ class TestGeneratedTsColumn:
         # tsvector ``::text`` lists stems; at least one of our tokens shows up.
         assert "quick" in ts_text or "brown" in ts_text or "fox" in ts_text
 
-    def test_ts_is_empty_not_null_when_text_absent(
-        self, backend: object
-    ) -> None:
+    def test_ts_is_empty_not_null_when_text_absent(self, backend: object) -> None:
         """``COALESCE(payload->>'text','')`` guards against NULL — the column
         is ``tsvector GENERATED ALWAYS AS (...) STORED``, and on a payload
         without ``text`` we get an empty-but-non-NULL tsvector.
@@ -877,9 +836,7 @@ class TestSchemaShape:
         assert default is not None and "semantic" in default
         assert is_nullable == "NO"
 
-    def test_ts_column_is_generated_tsvector(
-        self, _schema_applied: None
-    ) -> None:
+    def test_ts_column_is_generated_tsvector(self, _schema_applied: None) -> None:
         import psycopg
 
         with psycopg.connect(PGVECTOR_DSN, autocommit=True) as conn:
@@ -903,14 +860,13 @@ class TestSchemaShape:
         with psycopg.connect(PGVECTOR_DSN, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT indexname FROM pg_indexes "
-                    "WHERE tablename='agent_memories'"
+                    "SELECT indexname FROM pg_indexes WHERE tablename='agent_memories'"
                 )
                 names = {r[0] for r in cur.fetchall()}
         assert "agent_memories_user_type_idx" in names  # B-tree on (user_id, mem_type)
-        assert "agent_memories_ts_idx" in names         # GIN on ts
-        assert "agent_memories_hnsw_idx" in names       # pre-existing
-        assert "agent_memories_user_idx" in names       # pre-existing
+        assert "agent_memories_ts_idx" in names  # GIN on ts
+        assert "agent_memories_hnsw_idx" in names  # pre-existing
+        assert "agent_memories_user_idx" in names  # pre-existing
 
 
 # ─────────────────────────────────────────────────────────────────────

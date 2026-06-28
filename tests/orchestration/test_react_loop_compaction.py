@@ -586,9 +586,7 @@ class _RecordingLLM:
     def __init__(self) -> None:
         self.calls: list[list] = []
 
-    async def invoke_with_tools(
-        self, profile, messages, tool_schemas=None, **kw
-    ):
+    async def invoke_with_tools(self, profile, messages, tool_schemas=None, **kw):
         self.calls.append(list(messages))
         return _FakeLLMResponse()
 
@@ -682,25 +680,21 @@ class TestCallLlmReadWireFlagOff:
     def test_flag_off_no_mask_no_tail(self) -> None:
         node, rec, _cleanup = _build_llm_node_with_recording(flag=False)
         try:
-            state = _minimal_state(
-                messages=_msgs_with_old_tool_obs(), step_count=15
-            )
+            state = _minimal_state(messages=_msgs_with_old_tool_obs(), step_count=15)
             out = _invoke(node, state, _config_for_thread("th-r-off-1"))
 
             assert rec.calls, "LLM was not invoked"
             # No ToolMessage was masked — every original obs-* content survived.
             sent = rec.calls[0]
-            obs_contents = [
-                m.content for m in sent if isinstance(m, ToolMessage)
-            ]
+            obs_contents = [m.content for m in sent if isinstance(m, ToolMessage)]
             assert all(c.startswith("obs-") for c in obs_contents), (
-                "flag OFF masked an observation — byte-identical-when-off "
-                "violated"
+                "flag OFF masked an observation — byte-identical-when-off violated"
             )
             # And nothing tail-floor-ish landed in result["messages"]: only the
             # AIMessage the node always appends.
             assert isinstance(out["messages"], list)
             from langchain_core.messages import AIMessage as _AI
+
             assert all(isinstance(m, _AI) for m in out["messages"]), (
                 "flag OFF appended something other than the AI response — "
                 "byte-identical-when-off violated"
@@ -746,9 +740,7 @@ class TestCallLlmReadWireMaskOn:
             msgs = _msgs_with_old_tool_obs()
             # Compute the planner's expected mask once; assert the wire applies
             # exactly that set.
-            expected_mask = plan_observation_mask(
-                to_views(msgs), mask_after_steps=10
-            )
+            expected_mask = plan_observation_mask(to_views(msgs), mask_after_steps=10)
             # The planner SHOULD mask at least one obs in this 12-triple
             # transcript (else the test is trivially passing).
             assert expected_mask, (
@@ -817,6 +809,7 @@ class TestCallLlmReadWireMaskOn:
             # SystemMessage (no tail-floor, reinject_turns defaulted to 0).
             deltas = out.get("messages") or []
             from langchain_core.messages import AIMessage as _AI
+
             assert all(isinstance(m, _AI) for m in deltas), (
                 f"READ-side mask leaked into result['messages']: {deltas!r}"
             )
@@ -827,12 +820,11 @@ class TestCallLlmReadWireMaskOn:
         """Flag-OFF must NOT apply the mask even when mask_after_steps is
         configured — the gate is the master flag, not the knob."""
         node, rec, _cleanup = _build_llm_node_with_recording(
-            flag=False, mask_after_steps=2  # would mask aggressively if applied
+            flag=False,
+            mask_after_steps=2,  # would mask aggressively if applied
         )
         try:
-            state = _minimal_state(
-                messages=_msgs_with_old_tool_obs(), step_count=12
-            )
+            state = _minimal_state(messages=_msgs_with_old_tool_obs(), step_count=12)
             _invoke(node, state, _config_for_thread("th-r-mask-3"))
 
             sent = rec.calls[0]
@@ -893,6 +885,7 @@ class TestCallLlmReadWireTailFloor:
             # SystemMessages in deltas would be the tail floor — there must
             # be none.
             from langchain_core.messages import SystemMessage as _Sys
+
             assert not any(isinstance(m, _Sys) for m in deltas), (
                 "tail floor was appended even when N=0 — opt-in gate leak"
             )
@@ -918,6 +911,7 @@ class TestCallLlmReadWireTailFloor:
 
             deltas = out.get("messages") or []
             from langchain_core.messages import SystemMessage as _Sys
+
             sys_msgs = [m for m in deltas if isinstance(m, _Sys)]
             assert len(sys_msgs) == 1, (
                 f"expected exactly one tail-floor SystemMessage in deltas, "
@@ -945,6 +939,7 @@ class TestCallLlmReadWireTailFloor:
             out = _invoke(node, state, _config_for_thread("th-r-tail-2"))
 
             from langchain_core.messages import SystemMessage as _Sys
+
             deltas = out.get("messages") or []
             assert not any(isinstance(m, _Sys) for m in deltas), (
                 "tail floor was appended on a non-cadence turn"
@@ -1046,21 +1041,15 @@ class TestEvaluateNodeCompactionCarrierWiring:
         with ``alternatives=["keep_full"]`` and a non-empty ``decision_id``
         (the join key §7.0)."""
         profile = self._tiny_profile()
-        node = _flag_on_evaluate_callable(
-            profile=profile, cache_dir=tmp_path
-        )
-        out = _invoke(
-            node, self._fold_state(profile), _config_for_thread("th-wire-1")
-        )
+        node = _flag_on_evaluate_callable(profile=profile, cache_dir=tmp_path)
+        out = _invoke(node, self._fold_state(profile), _config_for_thread("th-wire-1"))
 
         # Sanity: the fold actually ran.
         assert "messages" in out, (
             "fold did NOT run — wiring test cannot assert on its carriers"
         )
 
-        decisions_path = (
-            tmp_path / "phase_logs" / "wf-c1-wire" / "decisions.jsonl"
-        )
+        decisions_path = tmp_path / "phase_logs" / "wf-c1-wire" / "decisions.jsonl"
         assert decisions_path.exists(), (
             f"phase_logger decisions.jsonl missing at {decisions_path}"
         )
@@ -1077,8 +1066,7 @@ class TestEvaluateNodeCompactionCarrierWiring:
             and "keep_full" in (d.get("alternatives") or [])
         ]
         assert compaction_decisions, (
-            f"no compaction Decision found in {lines!r} — Reasoning sink "
-            "did not fire"
+            f"no compaction Decision found in {lines!r} — Reasoning sink did not fire"
         )
         dec = compaction_decisions[0]
         assert dec.get("decision_id"), (
@@ -1090,36 +1078,24 @@ class TestEvaluateNodeCompactionCarrierWiring:
             f"Decision.rationale leaks dropped message content: {rationale!r}"
         )
 
-    def test_fold_emits_black_box_context_compacted_event(
-        self, tmp_path
-    ) -> None:
+    def test_fold_emits_black_box_context_compacted_event(self, tmp_path) -> None:
         """The Recording sink: a ``CONTEXT_COMPACTED`` event lands in the
         black_box JSONL with counts/hash/flags."""
         import json as _json
 
         profile = self._tiny_profile()
-        node = _flag_on_evaluate_callable(
-            profile=profile, cache_dir=tmp_path
-        )
-        out = _invoke(
-            node, self._fold_state(profile), _config_for_thread("th-wire-2")
-        )
+        node = _flag_on_evaluate_callable(profile=profile, cache_dir=tmp_path)
+        out = _invoke(node, self._fold_state(profile), _config_for_thread("th-wire-2"))
         assert "messages" in out, "fold did not run"
 
-        events_path = (
-            tmp_path / "black_box_recordings" / "wf-c1-wire" / "trace.jsonl"
-        )
-        assert events_path.exists(), (
-            f"black_box JSONL missing at {events_path}"
-        )
+        events_path = tmp_path / "black_box_recordings" / "wf-c1-wire" / "trace.jsonl"
+        assert events_path.exists(), f"black_box JSONL missing at {events_path}"
         events = [
             _json.loads(line)
             for line in events_path.read_text().splitlines()
             if line.strip()
         ]
-        compacted = [
-            e for e in events if e["event_type"] == "context_compacted"
-        ]
+        compacted = [e for e in events if e["event_type"] == "context_compacted"]
         assert len(compacted) == 1, (
             f"expected exactly one CONTEXT_COMPACTED event; got "
             f"{len(compacted)}: {[e['event_type'] for e in events]!r}"
@@ -1154,16 +1130,10 @@ class TestEvaluateNodeCompactionCarrierWiring:
         import json as _json
 
         profile = self._tiny_profile()
-        node = _flag_on_evaluate_callable(
-            profile=profile, cache_dir=tmp_path
-        )
-        _invoke(
-            node, self._fold_state(profile), _config_for_thread("th-wire-3")
-        )
+        node = _flag_on_evaluate_callable(profile=profile, cache_dir=tmp_path)
+        _invoke(node, self._fold_state(profile), _config_for_thread("th-wire-3"))
 
-        decisions_path = (
-            tmp_path / "phase_logs" / "wf-c1-wire" / "decisions.jsonl"
-        )
+        decisions_path = tmp_path / "phase_logs" / "wf-c1-wire" / "decisions.jsonl"
         decisions = [
             _json.loads(line)
             for line in decisions_path.read_text().splitlines()
@@ -1175,9 +1145,7 @@ class TestEvaluateNodeCompactionCarrierWiring:
         dec_id = fold_decisions[0]["decision_id"]
         assert dec_id
 
-        events_path = (
-            tmp_path / "black_box_recordings" / "wf-c1-wire" / "trace.jsonl"
-        )
+        events_path = tmp_path / "black_box_recordings" / "wf-c1-wire" / "trace.jsonl"
         events = [
             _json.loads(line)
             for line in events_path.read_text().splitlines()
@@ -1208,18 +1176,16 @@ class TestEvaluateNodeCompactionCarrierWiring:
         _invoke(node, state, _config_for_thread("th-wire-off"))
 
         # No CONTEXT_COMPACTED event in the JSONL.
-        ev_path = (
-            tmp_path / "black_box_recordings" / "wf-c1-off" / "trace.jsonl"
-        )
+        ev_path = tmp_path / "black_box_recordings" / "wf-c1-off" / "trace.jsonl"
         if ev_path.exists():
             events = [
                 _json.loads(line)
                 for line in ev_path.read_text().splitlines()
                 if line.strip()
             ]
-            assert not any(
-                e["event_type"] == "context_compacted" for e in events
-            ), "CONTEXT_COMPACTED emitted while master flag was OFF"
+            assert not any(e["event_type"] == "context_compacted" for e in events), (
+                "CONTEXT_COMPACTED emitted while master flag was OFF"
+            )
 
         # No keep_full-alternative Decision in decisions.jsonl.
         dec_path = tmp_path / "phase_logs" / "wf-c1-off" / "decisions.jsonl"
@@ -1247,9 +1213,7 @@ class TestFix1UserConstraintFloor:
     """
 
     # SHA-256 of the empty string — the bug's fingerprint on the carrier.
-    _EMPTY_STR_HASH = (
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    )
+    _EMPTY_STR_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
     def _tiny_profile(self, window: int = 1000) -> ModelProfile:
         return ModelProfile(
@@ -1269,9 +1233,7 @@ class TestFix1UserConstraintFloor:
         which isolates Fix 1 from the planner's success_conditions path.
         """
         out: list = [
-            HumanMessage(
-                content="P2 (safety): please avoid destructive file tools."
-            )
+            HumanMessage(content="P2 (safety): please avoid destructive file tools.")
         ]
         out.extend(_fake_pre_fold_msgs())
         return out
@@ -1305,18 +1267,14 @@ class TestFix1UserConstraintFloor:
     def _carrier_details(self, tmp_path, wf: str) -> dict:
         import json as _json
 
-        events_path = (
-            tmp_path / "black_box_recordings" / wf / "trace.jsonl"
-        )
+        events_path = tmp_path / "black_box_recordings" / wf / "trace.jsonl"
         assert events_path.exists(), f"black_box JSONL missing at {events_path}"
         events = [
             _json.loads(line)
             for line in events_path.read_text().splitlines()
             if line.strip()
         ]
-        compacted = [
-            e for e in events if e["event_type"] == "context_compacted"
-        ]
+        compacted = [e for e in events if e["event_type"] == "context_compacted"]
         assert len(compacted) == 1, (
             f"expected one CONTEXT_COMPACTED event; got {len(compacted)}"
         )
@@ -1328,7 +1286,8 @@ class TestFix1UserConstraintFloor:
         profile = self._tiny_profile()
         node = self._on_node(profile, tmp_path, extract=True)
         out = _invoke(
-            node, self._fold_state(profile, "wf-fix1-on"),
+            node,
+            self._fold_state(profile, "wf-fix1-on"),
             _config_for_thread("th-fix1-on"),
         )
         assert "messages" in out, "fold did not run"
@@ -1350,7 +1309,8 @@ class TestFix1UserConstraintFloor:
         profile = self._tiny_profile()
         node = self._on_node(profile, tmp_path, extract=False)
         out = _invoke(
-            node, self._fold_state(profile, "wf-fix1-off"),
+            node,
+            self._fold_state(profile, "wf-fix1-off"),
             _config_for_thread("th-fix1-off"),
         )
         assert "messages" in out, "fold did not run"
@@ -1364,7 +1324,8 @@ class TestFix1UserConstraintFloor:
         profile = self._tiny_profile()
         node = self._on_node(profile, tmp_path, extract=True)
         out = _invoke(
-            node, self._fold_state(profile, "wf-fc-on"),
+            node,
+            self._fold_state(profile, "wf-fc-on"),
             _config_for_thread("th-fc-on"),
         )
         assert "messages" in out, "fold did not run"
@@ -1400,8 +1361,7 @@ class TestFix1UserConstraintFloor:
             workflow_id="wf-fc-decline",
             selected_model=profile.name,
             task_understanding={
-                "success_conditions": ["MUST preserve constraint " + ("X" * 1000)]
-                * 50,
+                "success_conditions": ["MUST preserve constraint " + ("X" * 1000)] * 50,
                 "source": "deterministic",
                 "restated_intent": "test",
             },
@@ -1415,9 +1375,7 @@ class TestFix1UserConstraintFloor:
 
     # ── Fix 2 — floor_reinjected truthful (was hardcoded False) ──────────────
 
-    def test_committed_fold_with_floor_reports_reinjected_true(
-        self, tmp_path
-    ) -> None:
+    def test_committed_fold_with_floor_reports_reinjected_true(self, tmp_path) -> None:
         """Fix 2: when the fold COMMITS and the must-not floor is non-empty,
         the rewrite carries that floor verbatim into the model's new context —
         so ``floor_reinjected`` is True (not the old hardcoded False).
@@ -1427,7 +1385,8 @@ class TestFix1UserConstraintFloor:
         profile = self._tiny_profile()
         node = self._on_node(profile, tmp_path, extract=True)
         out = _invoke(
-            node, self._fold_state(profile, "wf-ri-on"),
+            node,
+            self._fold_state(profile, "wf-ri-on"),
             _config_for_thread("th-ri-on"),
         )
         assert "messages" in out, "fold did not run"
@@ -1450,7 +1409,8 @@ class TestFix1UserConstraintFloor:
         profile = self._tiny_profile()
         node = self._on_node(profile, tmp_path, extract=False)
         out = _invoke(
-            node, self._fold_state(profile, "wf-ri-off"),
+            node,
+            self._fold_state(profile, "wf-ri-off"),
             _config_for_thread("th-ri-off"),
         )
         assert "messages" in out, "fold did not run"
@@ -1480,8 +1440,7 @@ class TestFix1UserConstraintFloor:
         # pin exists in the human turn.
         state = self._fold_state(profile, "wf-ri-decline")
         state["task_understanding"] = {
-            "success_conditions": ["MUST preserve constraint " + ("X" * 1000)]
-            * 50,
+            "success_conditions": ["MUST preserve constraint " + ("X" * 1000)] * 50,
             "source": "deterministic",
             "restated_intent": "test",
         }
@@ -1533,10 +1492,7 @@ class TestFix4L2ShadowFiresOnCommittedFold:
         tu = {"success_conditions": []}
         if oversized:
             tu = {
-                "success_conditions": [
-                    "MUST preserve constraint " + ("X" * 1000)
-                ]
-                * 50,
+                "success_conditions": ["MUST preserve constraint " + ("X" * 1000)] * 50,
                 "source": "deterministic",
                 "restated_intent": "test",
             }
@@ -1555,46 +1511,38 @@ class TestFix4L2ShadowFiresOnCommittedFold:
             task_understanding=tu,
         )
 
-    def test_committed_fold_emits_l2_fidelity_record(
-        self, tmp_path, caplog
-    ) -> None:
+    def test_committed_fold_emits_l2_fidelity_record(self, tmp_path, caplog) -> None:
         """Committed fold + sample_rate=1.0 ⇒ exactly one eval_capture record
         tagged ``compaction_fidelity`` (the L2 shadow). This is what the probe
         could not produce because every fold declined."""
         import logging
 
         profile = self._tiny_profile()
-        node = self._node(
-            profile, tmp_path, sample_rate=1.0, oversized=False
-        )
+        node = self._node(profile, tmp_path, sample_rate=1.0, oversized=False)
         with caplog.at_level(logging.INFO, logger="services.eval_capture"):
             out = _invoke(
-                node, self._state(profile, "wf-l2-on", oversized=False),
+                node,
+                self._state(profile, "wf-l2-on", oversized=False),
                 _config_for_thread("th-l2-on"),
             )
         assert "messages" in out, "fold must commit for L2 to fire"
-        targets = [
-            getattr(r, "target", None) for r in caplog.records
-        ]
+        targets = [getattr(r, "target", None) for r in caplog.records]
         assert targets.count("compaction_fidelity") == 1, (
             f"expected one compaction_fidelity L2 record; got targets={targets!r}"
         )
 
-    def test_declined_fold_emits_no_l2_record(
-        self, tmp_path, caplog
-    ) -> None:
+    def test_declined_fold_emits_no_l2_record(self, tmp_path, caplog) -> None:
         """A declined fold (the probe's every-fold case) emits NO L2 record
         even at sample_rate=1.0 — the capture is committed-only. This pins Fix
         4's root cause as a regression guard."""
         import logging
 
         profile = self._tiny_profile()
-        node = self._node(
-            profile, tmp_path, sample_rate=1.0, oversized=True
-        )
+        node = self._node(profile, tmp_path, sample_rate=1.0, oversized=True)
         with caplog.at_level(logging.INFO, logger="services.eval_capture"):
             out = _invoke(
-                node, self._state(profile, "wf-l2-decline", oversized=True),
+                node,
+                self._state(profile, "wf-l2-decline", oversized=True),
                 _config_for_thread("th-l2-decline"),
             )
         assert "messages" not in out, "fold should have declined"
@@ -1785,12 +1733,8 @@ class TestEvaluateNodeL1FoldDeclineWire:
                 / "trace.jsonl"
             )
             assert trace_path.exists(), f"recorder JSONL missing: {trace_path}"
-            events = [
-                _json.loads(line) for line in trace_path.read_text().splitlines()
-            ]
-            compacted = [
-                e for e in events if e["event_type"] == "context_compacted"
-            ]
+            events = [_json.loads(line) for line in trace_path.read_text().splitlines()]
+            compacted = [e for e in events if e["event_type"] == "context_compacted"]
             assert len(compacted) == 1, (
                 f"expected exactly one context_compacted carrier on declined "
                 f"fold; got {len(compacted)}"
@@ -1886,9 +1830,7 @@ class TestSamplingGateAndEvalCapture:
         finally:
             _ec.record = original
 
-    def test_sample_rate_one_emits_eval_capture_with_identity(
-        self, tmp_path
-    ) -> None:
+    def test_sample_rate_one_emits_eval_capture_with_identity(self, tmp_path) -> None:
         """``sample_rate=1.0`` ⇒ every committed fold emits exactly one
         ``eval_capture.record(target="compaction_fidelity", ...)`` carrying
         ``user_id``/``task_id`` via ``config.configurable`` (design §8.3).

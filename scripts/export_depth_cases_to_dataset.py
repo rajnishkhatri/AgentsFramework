@@ -35,7 +35,9 @@ CODED = Path("cache/goaljudge_eval/open_coding/depth_strata_coded.jsonl")
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--write", action="store_true", help="actually create (default: dry run)")
+    ap.add_argument(
+        "--write", action="store_true", help="actually create (default: dry run)"
+    )
     ap.add_argument("--dataset", default=DATASET)
     args = ap.parse_args()
 
@@ -47,7 +49,8 @@ def main() -> None:
     rich_path = Path("cache/goaljudge_eval/depth_strata_rich.jsonl")
     answers = {
         json.loads(l)["trace_id"]: json.loads(l).get("final_answer")
-        for l in rich_path.read_text().splitlines() if l.strip()
+        for l in rich_path.read_text().splitlines()
+        if l.strip()
     }
     for r in rows:
         r["final_answer"] = answers.get(r["trace_id"])
@@ -78,7 +81,9 @@ def main() -> None:
         }
         codes = ", ".join(r["open_codes"])
         action = "WRITE" if args.write else "would write"
-        print(f"[{action}] {r['want_depth']}/{r['fired_depth']} {r['prompt'][:46]!r}  codes=[{codes}]")
+        print(
+            f"[{action}] {r['want_depth']}/{r['fired_depth']} {r['prompt'][:46]!r}  codes=[{codes}]"
+        )
         if args.write:
             client.create_dataset_item(
                 dataset_name=args.dataset,

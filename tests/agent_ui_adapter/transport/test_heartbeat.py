@@ -16,7 +16,6 @@ from __future__ import annotations
 import asyncio
 from typing import AsyncIterator
 
-import pytest
 
 from agent_ui_adapter.transport.heartbeat import (
     DEFAULT_INTERVAL_SECONDS,

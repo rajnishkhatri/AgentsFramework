@@ -30,9 +30,7 @@ def _all_domain_events() -> list[DomainEventBase]:
     return [
         RunStartedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1"),
         RunFinishedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1"),
-        RunFinishedDomain(
-            trace_id=TRACE_ID, run_id="r1", thread_id="t1", error="boom"
-        ),
+        RunFinishedDomain(trace_id=TRACE_ID, run_id="r1", thread_id="t1", error="boom"),
         LLMMessageStarted(trace_id=TRACE_ID, message_id="m1"),
         LLMTokenEmitted(trace_id=TRACE_ID, message_id="m1", delta="x"),
         LLMMessageEnded(trace_id=TRACE_ID, message_id="m1"),
@@ -43,9 +41,7 @@ def _all_domain_events() -> list[DomainEventBase]:
             args_json="{}",
         ),
         ToolCallEnded(trace_id=TRACE_ID, tool_call_id="tc1"),
-        ToolResultReceived(
-            trace_id=TRACE_ID, tool_call_id="tc1", result="ok"
-        ),
+        ToolResultReceived(trace_id=TRACE_ID, tool_call_id="tc1", result="ok"),
         StateMutated(trace_id=TRACE_ID, snapshot={"k": "v"}),
         StateMutated(
             trace_id=TRACE_ID,

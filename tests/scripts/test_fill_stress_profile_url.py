@@ -5,6 +5,7 @@ risk it guards: a line-scan YAML edit that touches the WRONG block (clobbering
 prod/local) or strips comments. Pure, no gcloud, no network — the `--url` path is
 exercised directly via `_write_profile_url`.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -65,6 +66,6 @@ def test_idempotent_when_already_set() -> None:
 
 
 def test_raises_when_no_stress_base_url() -> None:
-    no_stress = "default_profile: local\nprofiles:\n  local:\n    base_url: \"x\"\n"
+    no_stress = 'default_profile: local\nprofiles:\n  local:\n    base_url: "x"\n'
     with pytest.raises(SystemExit):
         _write_profile_url(no_stress, "stress", _URL)

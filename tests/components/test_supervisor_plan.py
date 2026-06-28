@@ -239,9 +239,7 @@ def test_validate_independence_empty_depends_on_true() -> None:
     assert validate_independence(plan) is True
 
 
-@pytest.mark.parametrize(
-    "edges", [[2], [1], [1, 2]]
-)
+@pytest.mark.parametrize("edges", [[2], [1], [1, 2]])
 def test_validate_independence_any_edge_false(edges: list[int]) -> None:
     """Any non-empty depends_on in the fanned set ⇒ False (the crux signal)."""
     plan = _fanout(_branch(1, "A"), _branch(2, "B", depends_on=edges))
@@ -267,7 +265,9 @@ def test_validate_independence_noncontiguous_ids_false() -> None:
 
 def test_validate_independence_decline_false() -> None:
     """A decline plan is never independent (decision gate) ⇒ False."""
-    assert validate_independence(SupervisorPlan(decision="decline", reason="x")) is False
+    assert (
+        validate_independence(SupervisorPlan(decision="decline", reason="x")) is False
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -277,81 +277,106 @@ def test_validate_independence_decline_false() -> None:
 
 def test_dep_explicit_sequencing() -> None:
     """Signal 1 — explicit sequencing ('then') in a later step ⇒ dependent."""
-    assert detect_sequential_dependence(
-        _plan("fetch the data", "then transform the data")
-    ) is True
+    assert (
+        detect_sequential_dependence(_plan("fetch the data", "then transform the data"))
+        is True
+    )
 
 
 def test_dep_result_backref() -> None:
     """Signal 1 — result back-reference ('use those numbers') ⇒ dependent."""
-    assert detect_sequential_dependence(
-        _plan("benchmark the caches", "use those numbers to recommend one")
-    ) is True
+    assert (
+        detect_sequential_dependence(
+            _plan("benchmark the caches", "use those numbers to recommend one")
+        )
+        is True
+    )
 
 
 def test_dep_conditional_gating() -> None:
     """Signal 1 — conditional gating ('if eligible, then') ⇒ dependent."""
-    assert detect_sequential_dependence(
-        _plan("check eligibility", "if eligible then apply the discount")
-    ) is True
+    assert (
+        detect_sequential_dependence(
+            _plan("check eligibility", "if eligible then apply the discount")
+        )
+        is True
+    )
 
 
 def test_dep_anaphora_that_file() -> None:
     """Signal 1 — anaphora ('that file') to a prior artifact ⇒ dependent."""
-    assert detect_sequential_dependence(
-        _plan("read the seed to get a filename", "read that file and summarize it")
-    ) is True
+    assert (
+        detect_sequential_dependence(
+            _plan("read the seed to get a filename", "read that file and summarize it")
+        )
+        is True
+    )
 
 
 def test_dep_shared_write_structural() -> None:
     """THE STRUCTURAL HEADLINE (signal 2): two steps WRITE the same path ⇒
     dependent — the case a naive 'scan for then' implementation misses."""
-    assert detect_sequential_dependence(
-        _plan(
-            "write the intro to /workspace/report.md",
-            "write the conclusion to /workspace/report.md",
+    assert (
+        detect_sequential_dependence(
+            _plan(
+                "write the intro to /workspace/report.md",
+                "write the conclusion to /workspace/report.md",
+            )
         )
-    ) is True
+        is True
+    )
 
 
 def test_dep_shared_write_phrase() -> None:
     """Signal 2 backstop: a single step declaring multiple writers against one
     target ('the same report file') ⇒ dependent (survives T1 collapse)."""
-    assert detect_sequential_dependence(
-        _plan(
-            "have three workers append to the same report file",
-            "the intro section",
-            "the conclusion section",
+    assert (
+        detect_sequential_dependence(
+            _plan(
+                "have three workers append to the same report file",
+                "the intro section",
+                "the conclusion section",
+            )
         )
-    ) is True
+        is True
+    )
 
 
 def test_dep_three_independent_summaries_not_dependent() -> None:
     """The true negative: three independent imperatives must NOT over-fire."""
-    assert detect_sequential_dependence(
-        _plan("summarize doc A", "summarize doc B", "summarize doc C")
-    ) is False
+    assert (
+        detect_sequential_dependence(
+            _plan("summarize doc A", "summarize doc B", "summarize doc C")
+        )
+        is False
+    )
 
 
 def test_dep_join_step_not_dependent() -> None:
     """A terminal aggregation/join step ('then report all three') is the
     EXPECTED fan-out shape, not an inter-branch dependency ⇒ NOT dependent."""
-    assert detect_sequential_dependence(
-        _plan(
-            "summarize doc A",
-            "summarize doc B",
-            "then report all three results",
+    assert (
+        detect_sequential_dependence(
+            _plan(
+                "summarize doc A",
+                "summarize doc B",
+                "then report all three results",
+            )
         )
-    ) is False
+        is False
+    )
 
 
 def test_dep_unmarked_semantic_chain_false_negative() -> None:
     """Documented FN (component spec §3a 'honest limit'): an unmarked semantic
     chain reads as independent. Pinned as a RECORDED false-negative, caught
     downstream by validate_independence — not a silent surprise."""
-    assert detect_sequential_dependence(
-        _plan("compute the project budget", "staff the project")
-    ) is False
+    assert (
+        detect_sequential_dependence(
+            _plan("compute the project budget", "staff the project")
+        )
+        is False
+    )
 
 
 def test_dep_single_step_not_dependent() -> None:

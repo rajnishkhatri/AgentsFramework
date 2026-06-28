@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Apply human review citations to semi-automated Annotator 1 fresh sheet rows."""
+
 from __future__ import annotations
 
 import argparse
@@ -55,7 +56,9 @@ def _review_note(
             str(capture.get("response_text") or ""),
             str(capture.get("outcome") or ""),
         )
-        tools = [t["tool_name"] for t in project_trajectory_tools(corpus.get("trajectory"))]
+        tools = [
+            t["tool_name"] for t in project_trajectory_tools(corpus.get("trajectory"))
+        ]
         answer = extract_answer_text(
             corpus_final_answer=corpus.get("final_answer"),
             ui_response=str(capture.get("response_text") or ""),

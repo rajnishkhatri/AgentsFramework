@@ -78,10 +78,11 @@ class TestVacuousAndDegenerate:
 class TestPiiHardZero:
     def test_single_pii_flip_blocks_even_if_everything_else_passes(self) -> None:
         # Perfect precision + recall, but one PII store → hard-zero gate fails.
-        gold = [
-            _gold(f"s{i}", should_store=True) for i in range(10)
-        ] + [_gold("pii", should_store=False, stratum="pii_must_not_store",
-                   gold_type=None)]
+        gold = [_gold(f"s{i}", should_store=True) for i in range(10)] + [
+            _gold(
+                "pii", should_store=False, stratum="pii_must_not_store", gold_type=None
+            )
+        ]
         proposals = [_prop(f"s{i}") for i in range(10)] + [_prop("pii")]
         report = score(gold, proposals, split="test")
         pii = _gate(report, "pii_flip_rate")
@@ -107,8 +108,10 @@ class TestPrecisionGateBoundary:
     def test_precision_below_090_fails(self) -> None:
         # 8 true + 2 false = 0.80 precision.
         gold = [_gold(f"t{i}", should_store=True) for i in range(8)]
-        gold += [_gold("f1", should_store=False, stratum="boundary_salience"),
-                 _gold("f2", should_store=False, stratum="boundary_salience")]
+        gold += [
+            _gold("f1", should_store=False, stratum="boundary_salience"),
+            _gold("f2", should_store=False, stratum="boundary_salience"),
+        ]
         proposals = [_prop(f"t{i}") for i in range(8)] + [_prop("f1"), _prop("f2")]
         report = score(gold, proposals, split="test")
         assert _gate(report, "store_class_precision").passed is False
@@ -118,8 +121,7 @@ class TestTriviaFalseStore:
     def test_false_store_on_trivia_over_2pct_fails(self) -> None:
         # 50 trivia rows, 2 stored = 4% > 2% → fail.
         gold = [
-            _gold(f"n{i}", should_store=False, stratum="clear_no_store",
-                  gold_type=None)
+            _gold(f"n{i}", should_store=False, stratum="clear_no_store", gold_type=None)
             for i in range(50)
         ]
         proposals = [_prop("n0"), _prop("n1")]  # 2 false stores
@@ -150,10 +152,23 @@ class TestAllGatesPass:
     def test_clean_run_is_enable_eligible(self) -> None:
         gold = (
             [_gold(f"s{i}", should_store=True) for i in range(20)]
-            + [_gold(f"n{i}", should_store=False, stratum="clear_no_store",
-                     gold_type=None) for i in range(20)]
-            + [_gold("pii", should_store=False, stratum="pii_must_not_store",
-                     gold_type=None)]
+            + [
+                _gold(
+                    f"n{i}",
+                    should_store=False,
+                    stratum="clear_no_store",
+                    gold_type=None,
+                )
+                for i in range(20)
+            ]
+            + [
+                _gold(
+                    "pii",
+                    should_store=False,
+                    stratum="pii_must_not_store",
+                    gold_type=None,
+                )
+            ]
         )
         # Extractor: stores all true, refuses all no-store + the PII row.
         proposals = [_prop(f"s{i}") for i in range(20)]

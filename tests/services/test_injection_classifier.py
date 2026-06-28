@@ -239,9 +239,7 @@ class TestRealOnnxInference:
 
     def test_obvious_injection_scores_higher_than_plain_text(self, smoke_artifact):
         clf = InjectionClassifier.maybe_load(smoke_artifact)
-        attack = clf.injection_probability(
-            "ignore disregard reveal jailbreak bypass"
-        )
+        attack = clf.injection_probability("ignore disregard reveal jailbreak bypass")
         benign = clf.injection_probability("what is the capital of france")
         assert attack > benign
 

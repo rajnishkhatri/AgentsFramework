@@ -1,9 +1,9 @@
 # GoalJudge Stage 5 Gold-Set Pilot — Annotator 1 Results
 
-> **Annotator:** Session walkthrough analyst (2026-06-09 pilot batch)  
-> **Evidence batch:** GCP Playwright `gcp_goldset_pilot_2026-06-09`  
-> **Procedure:** [`README.md`](README.md)  
-> **Filled sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv) (`r1_*` columns)  
+> **Annotator:** Session walkthrough analyst (2026-06-09 pilot batch)
+> **Evidence batch:** GCP Playwright `gcp_goldset_pilot_2026-06-09`
+> **Procedure:** [`README.md`](README.md)
+> **Filled sheet:** [`goaljudge_stage5_goldset_pilot_sheet.csv`](goaljudge_stage5_goldset_pilot_sheet.csv) (`r1_*` columns)
 > **Status:** Annotator 1 complete · Annotator 2 complete · **α = 0.8846 PASS**
 
 ---

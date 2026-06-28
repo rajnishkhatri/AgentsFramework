@@ -1,12 +1,12 @@
 # GoalJudge Stage 4 A2 IAA — Session Observations (Preflight Shell)
 
-> **Superseded by live session log:** [`goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md`](goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md)  
+> **Superseded by live session log:** [`goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md`](goaljudge_stage4_a2_iaa_walkthrough_session_2026-06-09.md)
 > This file retains preflight pins only; case observations are recorded in the walkthrough session log.
 
-**Prepared:** 2026-06-09  
-**Mode:** Observations only — **no** `a2_fail`, `goal_met`, or `partial_fraction` verdicts in this document.  
-**Batch anchor:** GCP Playwright run `gcp_2026-06-09`  
-**Procedure:** [`docs/walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md`](../../walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md)  
+**Prepared:** 2026-06-09
+**Mode:** Observations only — **no** `a2_fail`, `goal_met`, or `partial_fraction` verdicts in this document.
+**Batch anchor:** GCP Playwright run `gcp_2026-06-09`
+**Procedure:** [`docs/walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md`](../../walk-through/06_goaljudge_stage4_a2_iaa_case_walkthrough.md)
 **Answer key:** Withheld until blind grading completes.
 
 | Artifact | Path |

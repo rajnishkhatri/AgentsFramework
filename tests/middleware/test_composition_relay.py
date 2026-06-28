@@ -18,9 +18,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 from typing import Any, Mapping
-from unittest.mock import AsyncMock, patch
-
-import pytest
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -41,7 +38,9 @@ class FakeExporter:
         trace_id: str,
         attributes: Mapping[str, Any] | None = None,
     ) -> None:
-        self.events.append({"name": name, "trace_id": trace_id, "attributes": dict(attributes or {})})
+        self.events.append(
+            {"name": name, "trace_id": trace_id, "attributes": dict(attributes or {})}
+        )
 
     def release_trace(self, trace_id: str) -> None:
         pass
@@ -192,6 +191,7 @@ class TestCompositionIntegration:
 
         # Verify field exists in the dataclass
         import dataclasses
+
         field_names = {f.name for f in dataclasses.fields(MiddlewareAdapters)}
         assert "black_box_relay" in field_names
 

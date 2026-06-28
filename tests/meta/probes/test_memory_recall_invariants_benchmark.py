@@ -121,9 +121,9 @@ def test_fixture_covers_every_invariant_at_least_once() -> None:
     clean = validate_recall(
         user_id="probe",
         requested_limit=1,
-        kept=[MemoryRecord(
-            user_id="probe", key="k", payload={"text": "x"}, metadata={}
-        )],
+        kept=[
+            MemoryRecord(user_id="probe", key="k", payload={"text": "x"}, metadata={})
+        ],
     )
     invariant_names = {r.name for r in clean}
     missing = invariant_names - seen

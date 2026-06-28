@@ -1,9 +1,9 @@
 # Stage 4 A2 Human IAA — Annotator 2 Results
 
-> **Annotator:** Independent blind rater (2026-06-09 batch evidence)  
-> **Evidence batch:** GCP Playwright `gcp_2026-06-09` (corpus + batch JSONL)  
-> **Procedure:** [`README.md`](README.md) (answer key withheld during grading)  
-> **Filled sheet:** [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](goaljudge_stage4_a2_iaa_grader_sheet.csv) (`r2_*` columns)  
+> **Annotator:** Independent blind rater (2026-06-09 batch evidence)
+> **Evidence batch:** GCP Playwright `gcp_2026-06-09` (corpus + batch JSONL)
+> **Procedure:** [`README.md`](README.md) (answer key withheld during grading)
+> **Filled sheet:** [`goaljudge_stage4_a2_iaa_grader_sheet.csv`](goaljudge_stage4_a2_iaa_grader_sheet.csv) (`r2_*` columns)
 > **Status:** Annotator 2 complete · κ ready
 
 ---

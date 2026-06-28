@@ -32,6 +32,7 @@ ranks the decisions:
   GJ-F-041 (charitable empty-set → "no files" is logically sound).
   GJ-F-051 (clean web_search, currency-of-LTS out of scope per Rule 1).
 """
+
 from __future__ import annotations
 
 import csv
@@ -44,7 +45,9 @@ if str(REPO_ROOT) not in sys.path:
 
 from services.governance.iaa import apply_adjudication
 
-FULL_SHEET = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+FULL_SHEET = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv"
+)
 
 
 # fmt: off
@@ -100,7 +103,9 @@ def main() -> int:
 
     adj_true = sum(1 for r in out_rows if r.get("adjudicated_goal_met") == "true")
     adj_false = sum(1 for r in out_rows if r.get("adjudicated_goal_met") == "false")
-    blank = sum(1 for r in out_rows if not (r.get("adjudicated_goal_met") or "").strip())
+    blank = sum(
+        1 for r in out_rows if not (r.get("adjudicated_goal_met") or "").strip()
+    )
     print(f"Adjudicated {adj_true + adj_false} disagreements → {FULL_SHEET}")
     print(f"  adjudicated_goal_met=true:  {adj_true}")
     print(f"  adjudicated_goal_met=false: {adj_false}")

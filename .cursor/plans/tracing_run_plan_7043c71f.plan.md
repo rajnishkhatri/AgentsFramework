@@ -188,4 +188,3 @@ After switching to Agent mode, I will run exactly one step at a time, summarize 
 - Steps 6, 8, and 10 each make a real LLM call (~$0.0024 each per the walkthrough's example). Cap at one prompt per cycle.
 - Step 3 changes runtime wiring; Step 4 must pass before Step 5.
 - Wiping cache/logs is intentionally NOT done in this plan; existing workflow ids will remain visible in the dashboard.
-

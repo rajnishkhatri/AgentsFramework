@@ -226,6 +226,7 @@ _GLM_PROFILES: list[ModelProfile] = [
     *_OPENAI_PROFILES,
 ]
 
+
 def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
     """First-wins dedupe by ``name`` (LLMService._profiles keys by name, so a
     duplicate name would silently collapse; we keep the first to make the order
@@ -415,8 +416,7 @@ def _ensure_user_first(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     placeholder = {
         "role": "user",
         "content": (
-            "Use the tool results above to complete the task and give the final "
-            "answer."
+            "Use the tool results above to complete the task and give the final answer."
         ),
     }
     return messages[:first_non_system] + [placeholder] + messages[first_non_system:]
@@ -502,7 +502,9 @@ class LLMService:
 
     def get_profile(self, name: str) -> ModelProfile:
         if name not in self._profiles:
-            raise KeyError(f"Model profile '{name}' not found. Available: {list(self._profiles.keys())}")
+            raise KeyError(
+                f"Model profile '{name}' not found. Available: {list(self._profiles.keys())}"
+            )
         return self._profiles[name]
 
     def get_default_profile(self) -> ModelProfile:

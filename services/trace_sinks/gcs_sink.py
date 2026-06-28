@@ -10,7 +10,6 @@ Key layout: ``traces/{date}/{trace_id}/{event_id}.json``
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from trust.models import TrustTraceRecord

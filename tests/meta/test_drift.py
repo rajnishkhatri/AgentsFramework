@@ -89,6 +89,7 @@ class TestGovernanceDrift:
         )
 
         import json
+
         facts_file = tmp_path / "facts" / "agent-ok.json"
         data = json.loads(facts_file.read_text())
         data["agent_name"] = "Tampered Name"
@@ -199,7 +200,7 @@ class TestPerformanceDriftExtended:
         baseline = [4.0, 4.5, 3.5, 4.2, 3.8, 4.1, 3.9, 4.0, 4.3, 3.7]
         mean = sum(baseline) / len(baseline)
         var = sum((x - mean) ** 2 for x in baseline) / len(baseline)
-        std = var ** 0.5
+        std = var**0.5
         safe_value = mean + std  # 1-sigma away, well within 2-sigma
         production = [safe_value] * 5
         alerts = detect_performance_drift(baseline, production)
@@ -396,11 +397,16 @@ class TestDriftCLI:
         baseline.write_text("4.0\n4.0\n4.0\n")
         production.write_text("4.0\n4.0\n4.0\n")
 
-        exit_code = run_drift_cli([
-            "--baseline", str(baseline),
-            "--production", str(production),
-            "--level", "1",
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(baseline),
+                "--production",
+                str(production),
+                "--level",
+                "1",
+            ]
+        )
         assert exit_code == 0
 
     def test_cli_drift_detected(self, tmp_path):
@@ -409,19 +415,29 @@ class TestDriftCLI:
         baseline.write_text("4.0\n4.0\n4.0\n4.0\n4.0\n")
         production.write_text("1.0\n1.0\n1.0\n1.0\n1.0\n")
 
-        exit_code = run_drift_cli([
-            "--baseline", str(baseline),
-            "--production", str(production),
-            "--level", "1",
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(baseline),
+                "--production",
+                str(production),
+                "--level",
+                "1",
+            ]
+        )
         assert exit_code == 1
 
     def test_cli_missing_baseline(self, tmp_path):
-        exit_code = run_drift_cli([
-            "--baseline", str(tmp_path / "nonexistent.jsonl"),
-            "--production", str(tmp_path / "nonexistent.jsonl"),
-            "--level", "1",
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(tmp_path / "nonexistent.jsonl"),
+                "--production",
+                str(tmp_path / "nonexistent.jsonl"),
+                "--level",
+                "1",
+            ]
+        )
         assert exit_code == 2
 
     def test_cli_output_file(self, tmp_path):
@@ -431,15 +447,22 @@ class TestDriftCLI:
         baseline.write_text("4.0\n4.0\n4.0\n")
         production.write_text("4.0\n4.0\n4.0\n")
 
-        exit_code = run_drift_cli([
-            "--baseline", str(baseline),
-            "--production", str(production),
-            "--level", "1",
-            "--output", str(output),
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(baseline),
+                "--production",
+                str(production),
+                "--level",
+                "1",
+                "--output",
+                str(output),
+            ]
+        )
         assert exit_code == 0
         assert output.exists()
         import json
+
         report = json.loads(output.read_text())
         assert "alerts" in report
 
@@ -449,11 +472,16 @@ class TestDriftCLI:
         baseline.write_text("4.0\n4.0\n4.0\n")
         production.write_text("4.0\n4.0\n4.0\n")
 
-        exit_code = run_drift_cli([
-            "--baseline", str(baseline),
-            "--production", str(production),
-            "--level", "1",
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(baseline),
+                "--production",
+                str(production),
+                "--level",
+                "1",
+            ]
+        )
         assert exit_code == 0
 
 
@@ -545,18 +573,26 @@ class TestEmitDriftAlerts:
         production.write_text("1.0\n1.0\n1.0\n1.0\n1.0\n")
 
         alert_dir = tmp_path / "phase_logs"
-        exit_code = run_drift_cli([
-            "--baseline", str(baseline),
-            "--production", str(production),
-            "--level", "1",
-            "--alert-log-dir", str(alert_dir),
-            "--workflow-id", "drift-cli-001",
-        ])
+        exit_code = run_drift_cli(
+            [
+                "--baseline",
+                str(baseline),
+                "--production",
+                str(production),
+                "--level",
+                "1",
+                "--alert-log-dir",
+                str(alert_dir),
+                "--workflow-id",
+                "drift-cli-001",
+            ]
+        )
         assert exit_code == 1
 
         decisions_file = alert_dir / "drift-cli-001" / "decisions.jsonl"
         assert decisions_file.exists()
         import json
+
         lines = [
             json.loads(line)
             for line in decisions_file.read_text().strip().split("\n")

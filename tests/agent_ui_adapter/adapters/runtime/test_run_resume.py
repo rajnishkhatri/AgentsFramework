@@ -41,9 +41,7 @@ class _FakeResumableGraph:
 
 
 def _facts() -> AgentFacts:
-    return AgentFacts(
-        agent_id="a1", agent_name="Bot", owner="team", version="1.0.0"
-    )
+    return AgentFacts(agent_id="a1", agent_name="Bot", owner="team", version="1.0.0")
 
 
 def _snapshot(
@@ -156,7 +154,8 @@ class TestRunResumeHappyPath:
         graph = _FakeResumableGraph(snapshot=_snapshot())
         rt = LangGraphRuntime(graph=graph)
         async for _ in rt.run(
-            thread_id="t1", input={"task_input": "hi", "_resume": False},
+            thread_id="t1",
+            input={"task_input": "hi", "_resume": False},
             identity=_facts(),
         ):
             pass

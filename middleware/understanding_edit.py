@@ -113,22 +113,24 @@ def register_understanding_edit_route(
             raise HTTPException(status_code=409, detail=str(exc)) from None
 
         recorder = BlackBoxRecorder(storage_dir=black_box_dir)
-        recorder.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=edit.trace_id,
-            event_type=EventType.PARAMETER_CHANGED,
-            timestamp=datetime.now(UTC),
-            details={
-                "parameter": "success_conditions",
-                "old_hash": _conditions_hash(old),
-                "new_hash": _conditions_hash(new),
-                "old_source": str(old.get("source", "")),
-                "new_source": "user_edited",
-                "condition_count": len(new.get("success_conditions", [])),
-                "reason": "user_edit",
-                "user_id": user_id,
-            },
-        ))
+        recorder.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=edit.trace_id,
+                event_type=EventType.PARAMETER_CHANGED,
+                timestamp=datetime.now(UTC),
+                details={
+                    "parameter": "success_conditions",
+                    "old_hash": _conditions_hash(old),
+                    "new_hash": _conditions_hash(new),
+                    "old_source": str(old.get("source", "")),
+                    "new_source": "user_edited",
+                    "condition_count": len(new.get("success_conditions", [])),
+                    "reason": "user_edit",
+                    "user_id": user_id,
+                },
+            )
+        )
         logger.info(
             "task_understanding edited trace=%s thread=%s user=%s",
             edit.trace_id,

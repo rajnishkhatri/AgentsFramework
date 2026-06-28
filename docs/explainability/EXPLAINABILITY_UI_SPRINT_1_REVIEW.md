@@ -72,7 +72,7 @@ analysis_output:
           statement: "Sprint 1 deliverables are ready for use, increasing system transparency."
         - level: "connection"
           statement: "This confirms the implementation meets functional ACs."
-    
+
     - id: "arg_2"
       statement: "The codebase strictly conforms to the four-layer and frontend architectural invariants."
       dimension: "Architecture"
@@ -226,4 +226,3 @@ analysis_output:
       - "The implementation is a resounding success and strictly adheres to all complex constraints."
       - "The scaling risk is a known tradeoff accepted in the sprint board ('Acceptable for <=1k events per workflow; cache results in the service if larger') but should be tracked for v1.1."
 ```
-

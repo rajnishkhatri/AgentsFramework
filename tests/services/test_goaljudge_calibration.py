@@ -27,7 +27,6 @@ from services.governance.goaljudge_calibration import (
     judge_gold_kappa,
     precision_recall_fd,
 )
-from services.governance.goaljudge_goldset_dataset import AssemblyInvariantError
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -46,8 +45,12 @@ def _shadow_pairs() -> tuple[dict[str, bool], dict[str, bool]]:
     judge: dict[str, bool] = {}
     gold: dict[str, bool] = {}
     i = 0
-    for n, (j, g) in [(69, (False, False)), (8, (False, True)),
-                      (8, (True, False)), (12, (True, True))]:
+    for n, (j, g) in [
+        (69, (False, False)),
+        (8, (False, True)),
+        (8, (True, False)),
+        (12, (True, True)),
+    ]:
         for _ in range(n):
             judge[f"GJ-X-{i:03d}"] = j
             gold[f"GJ-X-{i:03d}"] = g
@@ -72,8 +75,11 @@ def _v1_manifest(**overrides: object) -> dict[str, object]:
 
 
 _PASSING = dict(
-    precision=0.95, recall=0.85, false_downgrade_rate=0.01,
-    kappa=0.75, flip=0.02,
+    precision=0.95,
+    recall=0.85,
+    false_downgrade_rate=0.01,
+    kappa=0.75,
+    flip=0.02,
 )
 
 
@@ -108,9 +114,7 @@ class TestConfusionCounts:
     def test_all_four_quadrants(self) -> None:
         judge = {"tp": False, "fp": False, "fn": True, "tn": True}
         gold = {"tp": False, "fp": True, "fn": False, "tn": True}
-        assert confusion_counts(judge, gold) == ConfusionCounts(
-            tp=1, fp=1, fn=1, tn=1
-        )
+        assert confusion_counts(judge, gold) == ConfusionCounts(tp=1, fp=1, fn=1, tn=1)
 
     def test_shadow_fixture_counts(self) -> None:
         """Audit §4: TP=69 FP=8 FN=8 TN=12 over n=97."""
@@ -197,9 +201,7 @@ class TestJudgeGoldKappa:
         α  = 1 − Do/De = 0.4987013…
         """
         judge, gold = _shadow_pairs()
-        assert judge_gold_kappa(judge, gold) == pytest.approx(
-            0.4987013, abs=1e-6
-        )
+        assert judge_gold_kappa(judge, gold) == pytest.approx(0.4987013, abs=1e-6)
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -273,9 +275,7 @@ class TestEvaluateSection28Gates:
     # ── Fail-closed on the manifest ───────────────────────────────────────
 
     def test_provisional_manifest_refuses_even_with_passing_metrics(self) -> None:
-        manifest = _v1_manifest(
-            provisional=True, floor_gap_summary={"L0": 28}
-        )
+        manifest = _v1_manifest(provisional=True, floor_gap_summary={"L0": 28})
         decision = evaluate_section_2_8_gates(manifest=manifest, **_PASSING)
         assert decision.verdict == "REFUSE_PROVISIONAL"
         assert any("provisional" in r.lower() for r in decision.reasons)
@@ -289,9 +289,7 @@ class TestEvaluateSection28Gates:
     # ── ENABLE only when every gate passes ────────────────────────────────
 
     def test_all_gates_pass_enables(self) -> None:
-        decision = evaluate_section_2_8_gates(
-            manifest=_v1_manifest(), **_PASSING
-        )
+        decision = evaluate_section_2_8_gates(manifest=_v1_manifest(), **_PASSING)
         assert decision.verdict == "ENABLE"
         assert set(decision.gates.values()) == {"pass"}
 
@@ -299,8 +297,11 @@ class TestEvaluateSection28Gates:
         """Gates are inclusive: precision == 0.90 passes, FD == 0.02 passes."""
         decision = evaluate_section_2_8_gates(
             manifest=_v1_manifest(),
-            precision=0.90, recall=0.70, false_downgrade_rate=0.02,
-            kappa=0.6, flip=0.05,
+            precision=0.90,
+            recall=0.70,
+            false_downgrade_rate=0.02,
+            kappa=0.6,
+            flip=0.05,
         )
         assert decision.verdict == "ENABLE"
 
@@ -352,12 +353,14 @@ class TestEvaluateSection28Gates:
     # ── Shape / purity ────────────────────────────────────────────────────
 
     def test_decision_is_immutable_and_complete(self) -> None:
-        decision = evaluate_section_2_8_gates(
-            manifest=_v1_manifest(), **_PASSING
-        )
+        decision = evaluate_section_2_8_gates(manifest=_v1_manifest(), **_PASSING)
         assert isinstance(decision, GateDecision)
         assert set(decision.gates) == {
-            "precision", "recall", "false_downgrade_rate", "kappa", "flip",
+            "precision",
+            "recall",
+            "false_downgrade_rate",
+            "kappa",
+            "flip",
         }
         with pytest.raises(AttributeError):
             decision.verdict = "ENABLE"  # type: ignore[misc]
@@ -373,9 +376,7 @@ class TestEvaluateSection28Gates:
         itself must also reject mutation — a caller quietly flipping
         ``gates["precision"]`` after the fact would falsify the decision
         record."""
-        decision = evaluate_section_2_8_gates(
-            manifest=_v1_manifest(), **_PASSING
-        )
+        decision = evaluate_section_2_8_gates(manifest=_v1_manifest(), **_PASSING)
         with pytest.raises(TypeError):
             decision.gates["precision"] = "fail"  # type: ignore[index]
 

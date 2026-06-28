@@ -189,15 +189,11 @@ def build_smoke_artifact(out_dir: str | Path) -> Path:
             ),
         ],
         outputs=[
-            helper.make_tensor_value_info(
-                "logits", TensorProto.FLOAT, ["batch", 2]
-            )
+            helper.make_tensor_value_info("logits", TensorProto.FLOAT, ["batch", 2])
         ],
         initializer=[emb_init, axis1, axis2],
     )
-    model = helper.make_model(
-        graph, opset_imports=[helper.make_operatorsetid("", 13)]
-    )
+    model = helper.make_model(graph, opset_imports=[helper.make_operatorsetid("", 13)])
     model.ir_version = 9
     onnx.checker.check_model(model)
     onnx.save(model, str(out / ARTIFACT_MODEL))
@@ -258,15 +254,11 @@ def train_and_export(
     logger.info("training on %d rows (NotInject excluded)", len(train_rows))
 
     tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        BASE_MODEL, num_labels=2
-    )
+    model = AutoModelForSequenceClassification.from_pretrained(BASE_MODEL, num_labels=2)
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
 
     texts = [r.text for r in train_rows]
-    labels = torch.tensor(
-        [1 if r.label is Label.INJECTION else 0 for r in train_rows]
-    )
+    labels = torch.tensor([1 if r.label is Label.INJECTION else 0 for r in train_rows])
     # MOF mask: benign hard-negatives (trigger words present, benign label).
     mof_mask = torch.tensor(
         [
@@ -277,9 +269,7 @@ def train_and_export(
 
     model.train()
     for epoch in range(epochs):
-        enc = tokenizer(
-            texts, padding=True, truncation=True, return_tensors="pt"
-        )
+        enc = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
         optimizer.zero_grad()
         logits = model(**enc).logits
         ce = F.cross_entropy(logits, labels)
@@ -310,8 +300,11 @@ def _export_onnx(model, tokenizer, out: Path, *, quantize: bool) -> None:
 
     model.eval()
     dummy = tokenizer(
-        "export sample", return_tensors="pt", padding="max_length",
-        truncation=True, max_length=SMOKE_MAX_LENGTH,
+        "export sample",
+        return_tensors="pt",
+        padding="max_length",
+        truncation=True,
+        max_length=SMOKE_MAX_LENGTH,
     )
     input_names = list(dummy.keys())
     raw_path = out / "model.raw.onnx"
@@ -330,9 +323,7 @@ def _export_onnx(model, tokenizer, out: Path, *, quantize: bool) -> None:
     if quantize:
         from onnxruntime.quantization import QuantType, quantize_dynamic
 
-        quantize_dynamic(
-            str(raw_path), str(final_path), weight_type=QuantType.QInt8
-        )
+        quantize_dynamic(str(raw_path), str(final_path), weight_type=QuantType.QInt8)
         raw_path.unlink(missing_ok=True)
     else:
         raw_path.rename(final_path)

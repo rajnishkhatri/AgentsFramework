@@ -28,6 +28,7 @@ from typing import Any
 
 import pytest
 from langgraph.checkpoint.memory import MemorySaver
+
 try:
     from langgraph.checkpoint.sqlite import SqliteSaver
 except ImportError:  # absent OR version-incompatible with locked checkpoint
@@ -96,9 +97,7 @@ class TestEnsureCheckpointSaverInstance:
         AsyncSqliteSaver is None,
         reason="langgraph sqlite checkpointer extras not installed",
     )
-    def test_rejects_unentered_async_sqlite_context_manager(
-        self, tmp_path
-    ) -> None:
+    def test_rejects_unentered_async_sqlite_context_manager(self, tmp_path) -> None:
         cm = AsyncSqliteSaver.from_conn_string(str(tmp_path / "a.db"))
         with pytest.raises(TypeError):
             _ensure_checkpoint_saver_instance(cm)
@@ -107,9 +106,7 @@ class TestEnsureCheckpointSaverInstance:
         SqliteSaver is None,
         reason="langgraph sqlite checkpointer extras not installed",
     )
-    def test_rejects_unentered_sync_sqlite_context_manager(
-        self, tmp_path
-    ) -> None:
+    def test_rejects_unentered_sync_sqlite_context_manager(self, tmp_path) -> None:
         cm = SqliteSaver.from_conn_string(str(tmp_path / "s.db"))
         with pytest.raises(TypeError):
             _ensure_checkpoint_saver_instance(cm)
@@ -272,9 +269,7 @@ class TestErrorMessageActionability:
         AsyncSqliteSaver is None,
         reason="langgraph sqlite checkpointer extras not installed",
     )
-    def test_message_calls_out_unentered_context_manager(
-        self, tmp_path
-    ) -> None:
+    def test_message_calls_out_unentered_context_manager(self, tmp_path) -> None:
         cm = AsyncSqliteSaver.from_conn_string(str(tmp_path / "z.db"))
         with pytest.raises(TypeError) as excinfo:
             _ensure_checkpoint_saver_instance(cm)

@@ -79,9 +79,7 @@ class GLMDirectProvider:
         }
 
         try:
-            response = await self._get_client().post(
-                url, json=payload, headers=headers
-            )
+            response = await self._get_client().post(url, json=payload, headers=headers)
         except httpx.HTTPError as exc:  # network/transport failure
             raise TrustProviderError(
                 f"GLM request failed: {exc}",
@@ -129,9 +127,7 @@ def _parse_completion(body: dict) -> LLMCompletion:
         "input_tokens": usage_raw.get("prompt_tokens", 0),
         "output_tokens": usage_raw.get("completion_tokens", 0),
     }
-    return LLMCompletion(
-        content=content, tool_calls=tool_calls, usage=usage, raw=body
-    )
+    return LLMCompletion(content=content, tool_calls=tool_calls, usage=usage, raw=body)
 
 
 def _content_text(content: Any) -> str:
@@ -169,8 +165,12 @@ def _map_tool_calls(raw_calls: list[dict]) -> list[dict]:
         fn = call.get("function", {}) or {}
         raw_args = fn.get("arguments", "")
         try:
-            args = json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+            args = (
+                json.loads(raw_args) if isinstance(raw_args, str) else (raw_args or {})
+            )
         except (json.JSONDecodeError, ValueError):
             args = {}
-        mapped.append({"name": fn.get("name", ""), "args": args, "id": call.get("id", "")})
+        mapped.append(
+            {"name": fn.get("name", ""), "args": args, "id": call.get("id", "")}
+        )
     return mapped

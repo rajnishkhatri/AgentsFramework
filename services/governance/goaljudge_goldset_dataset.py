@@ -237,9 +237,7 @@ def assert_firewall_batch(items: Iterable[GoldsetItem]) -> None:
         if i.split == GoldsetSplit.TEST and i.provenance == GoldsetProvenance.SYNTHETIC
     ]
     if test_synthetic:
-        raise FirewallError(
-            f"test ∩ synthetic is non-empty: {test_synthetic}"
-        )
+        raise FirewallError(f"test ∩ synthetic is non-empty: {test_synthetic}")
 
 
 def active_failure_modes() -> frozenset[str]:
@@ -450,7 +448,7 @@ def project_trajectory_tools(
             continue
         if span.get("name") != "tool.called":
             continue
-        details = ((span.get("input") or {}).get("details") or {})
+        details = (span.get("input") or {}).get("details") or {}
         if not isinstance(details, dict):
             continue
         tool_name = details.get("tool", "")
@@ -496,7 +494,7 @@ FRESH_TASK_BENCHMARK_SCHEMAS: frozenset[str] = frozenset(
         "webarena-impossible",
         "agentboard-subgoal",
         "novel",  # author-original; ``novel`` is the explicit signal that the
-                  # task was hand-authored from scratch with no upstream schema
+        # task was hand-authored from scratch with no upstream schema
     }
 )
 
@@ -551,8 +549,7 @@ class FreshTask(BaseModel):
     def _check_stratum(cls, value: str) -> str:
         if value not in STRATA_SHARES:
             raise ValueError(
-                f"unknown stratum {value!r}; expected one of "
-                f"{sorted(STRATA_SHARES)}"
+                f"unknown stratum {value!r}; expected one of {sorted(STRATA_SHARES)}"
             )
         return value
 
@@ -675,9 +672,7 @@ def validate_fresh_task_set(
     seen_ids: set[str] = set()
     for task in tasks:
         if task.id in seen_ids:
-            raise FreshTaskValidationError(
-                f"duplicate fresh-task id {task.id!r}"
-            )
+            raise FreshTaskValidationError(f"duplicate fresh-task id {task.id!r}")
         seen_ids.add(task.id)
 
     # 2. Router agreement (calls the injected router once per task).
@@ -746,7 +741,7 @@ class CoverageReport(BaseModel):
         return "\n".join(lines) + "\n"
 
 
-def compute_cell_coverage(rows: Iterable[dict[str, Any]]) -> CoverageReport:
+def compute_cell_coverage(rows: Iterable[Mapping[str, Any]]) -> CoverageReport:
     """Compute per-(D1, D5) gap counts against the locked floors.
 
     A row is any mapping with ``planning_depth`` ∈ {"L0", "L1", "L2"} and
@@ -918,9 +913,7 @@ def row_to_goldset_item(row: Mapping[str, str]) -> GoldsetItem:
 
     task = str(row.get("task", "")).strip()
     if not task:
-        raise ValueError(
-            f"row {row.get('item_id', '<?>')!r}: task is blank"
-        )
+        raise ValueError(f"row {row.get('item_id', '<?>')!r}: task is blank")
 
     raw_goal_met = str(row.get("adjudicated_goal_met", "")).strip()
     normalized_goal_met = normalize_bool_label(raw_goal_met)
@@ -933,12 +926,16 @@ def row_to_goldset_item(row: Mapping[str, str]) -> GoldsetItem:
     goal_met = normalized_goal_met == "true"
 
     # Graceful-failure is the same normalization story.
-    raw_graceful = str(row.get("adjudicated_graceful_failure", row.get("r1_graceful_failure", ""))).strip()
+    raw_graceful = str(
+        row.get("adjudicated_graceful_failure", row.get("r1_graceful_failure", ""))
+    ).strip()
     normalized_graceful = normalize_bool_label(raw_graceful)
     graceful_failure = normalized_graceful == "true"
 
     # Partial fraction — float in [0, 1]. Fallback to 1.0 / 0.0 if blank.
-    raw_partial = str(row.get("adjudicated_partial_fraction", row.get("r1_partial_fraction", ""))).strip()
+    raw_partial = str(
+        row.get("adjudicated_partial_fraction", row.get("r1_partial_fraction", ""))
+    ).strip()
     if raw_partial:
         try:
             partial_fraction = float(raw_partial)
@@ -1014,9 +1011,7 @@ def assert_assembly_invariants(
     if not items:
         # Empty input is a programming bug at the call site, not a
         # silent-pass: raise so the operator notices.
-        raise AssemblyInvariantError(
-            "no items provided to assert_assembly_invariants"
-        )
+        raise AssemblyInvariantError("no items provided to assert_assembly_invariants")
 
     # Layer 2: goal_met=false share.
     total = len(items)
@@ -1152,9 +1147,7 @@ def build_goldset_manifest(
     model_tier_distribution_observed = dict(
         observed.get("model_tier_distribution_observed", {})
     )
-    cost_fraction_bins_observed = dict(
-        observed.get("cost_fraction_bins_observed", {})
-    )
+    cost_fraction_bins_observed = dict(observed.get("cost_fraction_bins_observed", {}))
 
     return {
         "dataset_name": dataset_name,
@@ -1168,12 +1161,9 @@ def build_goldset_manifest(
         "planning_depth_distribution": planning_depth_distribution,
         "tool_cluster_distribution": tool_cluster_distribution,
         "failure_mode_distribution": failure_mode_distribution,
-        "routing_reason_distribution_observed":
-            routing_reason_distribution_observed,
-        "model_tier_distribution_observed":
-            model_tier_distribution_observed,
-        "cost_fraction_bins_observed":
-            cost_fraction_bins_observed,
+        "routing_reason_distribution_observed": routing_reason_distribution_observed,
+        "model_tier_distribution_observed": model_tier_distribution_observed,
+        "cost_fraction_bins_observed": cost_fraction_bins_observed,
         "goal_met_false_share": goal_met_false_share,
         "provisional": bool(provisional),
         "floor_gap_summary": gap_summary,
@@ -1209,9 +1199,7 @@ def gate_goldset_v1_floors(manifest: Mapping[str, Any]) -> None:
     """
     missing = [k for k in _V1_GATE_REQUIRED_KEYS if k not in manifest]
     if missing:
-        raise AssemblyInvariantError(
-            f"manifest missing required v1 keys: {missing}"
-        )
+        raise AssemblyInvariantError(f"manifest missing required v1 keys: {missing}")
     sha = str(manifest.get("test_split_sha256", "")).strip()
     if not sha:
         raise AssemblyInvariantError(
@@ -1225,6 +1213,5 @@ def gate_goldset_v1_floors(manifest: Mapping[str, Any]) -> None:
     gaps = dict(manifest.get("floor_gap_summary") or {})
     if gaps:
         raise AssemblyInvariantError(
-            f"manifest claims non-provisional but has unmet floor gaps: "
-            f"{sorted(gaps)}"
+            f"manifest claims non-provisional but has unmet floor gaps: {sorted(gaps)}"
         )

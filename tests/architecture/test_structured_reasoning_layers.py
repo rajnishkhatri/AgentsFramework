@@ -32,10 +32,15 @@ SR_ROOT = AGENT_ROOT / "StructuredReasoning"
 # whose top package is in this set and matches a forbidden cell signals a
 # layer violation. Sibling outer layers (e.g. outer ``services``) are NOT
 # in this set when allowed, but ARE in this set when forbidden upward.
-FRAMEWORK_PACKAGES = frozenset({
-    "langgraph", "langchain", "langchain_core", "langchain_community",
-    "langchain_litellm",
-})
+FRAMEWORK_PACKAGES = frozenset(
+    {
+        "langgraph",
+        "langchain",
+        "langchain_core",
+        "langchain_community",
+        "langchain_litellm",
+    }
+)
 
 
 def _scan(layer: str) -> list[tuple[str, str]]:
@@ -49,10 +54,7 @@ class TestStructuredReasoningTrustPurity:
     """Inner trust/ may only import stdlib + pydantic + outer trust + sibling SR trust."""
 
     def test_inner_trust_does_not_import_outer_services(self):
-        violations = [
-            (path, pkg) for path, pkg in _scan("trust")
-            if pkg == "services"
-        ]
+        violations = [(path, pkg) for path, pkg in _scan("trust") if pkg == "services"]
         assert violations == [], (
             "StructuredReasoning/trust/ must not import outer services/:\n"
             + "\n".join(f"{p} imports {pkg}" for p, pkg in violations)
@@ -60,8 +62,7 @@ class TestStructuredReasoningTrustPurity:
 
     def test_inner_trust_does_not_import_outer_components(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("trust")
-            if pkg == "components"
+            (path, pkg) for path, pkg in _scan("trust") if pkg == "components"
         ]
         assert violations == [], (
             "StructuredReasoning/trust/ must not import outer components/:\n"
@@ -70,8 +71,7 @@ class TestStructuredReasoningTrustPurity:
 
     def test_inner_trust_does_not_import_orchestration(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("trust")
-            if pkg == "orchestration"
+            (path, pkg) for path, pkg in _scan("trust") if pkg == "orchestration"
         ]
         assert violations == [], (
             "StructuredReasoning/trust/ must not import orchestration/:\n"
@@ -80,8 +80,7 @@ class TestStructuredReasoningTrustPurity:
 
     def test_inner_trust_no_framework_imports(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("trust")
-            if pkg in FRAMEWORK_PACKAGES
+            (path, pkg) for path, pkg in _scan("trust") if pkg in FRAMEWORK_PACKAGES
         ]
         assert violations == [], (
             "StructuredReasoning/trust/ must not import langgraph/langchain:\n"
@@ -89,10 +88,7 @@ class TestStructuredReasoningTrustPurity:
         )
 
     def test_inner_trust_does_not_import_meta(self):
-        violations = [
-            (path, pkg) for path, pkg in _scan("trust")
-            if pkg == "meta"
-        ]
+        violations = [(path, pkg) for path, pkg in _scan("trust") if pkg == "meta"]
         assert violations == [], (
             "StructuredReasoning/trust/ must not import meta/:\n"
             + "\n".join(f"{p} imports {pkg}" for p, pkg in violations)
@@ -107,8 +103,7 @@ class TestStructuredReasoningServicesIsolation:
 
     def test_inner_services_does_not_import_components(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("services")
-            if pkg == "components"
+            (path, pkg) for path, pkg in _scan("services") if pkg == "components"
         ]
         assert violations == [], (
             "StructuredReasoning/services/ must not import outer components/:\n"
@@ -117,8 +112,7 @@ class TestStructuredReasoningServicesIsolation:
 
     def test_inner_services_does_not_import_orchestration(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("services")
-            if pkg == "orchestration"
+            (path, pkg) for path, pkg in _scan("services") if pkg == "orchestration"
         ]
         assert violations == [], (
             "StructuredReasoning/services/ must not import orchestration/:\n"
@@ -127,8 +121,7 @@ class TestStructuredReasoningServicesIsolation:
 
     def test_inner_services_no_framework_imports(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("services")
-            if pkg in FRAMEWORK_PACKAGES
+            (path, pkg) for path, pkg in _scan("services") if pkg in FRAMEWORK_PACKAGES
         ]
         assert violations == [], (
             "StructuredReasoning/services/ must not import langgraph/langchain:\n"
@@ -144,8 +137,7 @@ class TestStructuredReasoningComponentsIsolation:
 
     def test_inner_components_does_not_import_orchestration(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("components")
-            if pkg == "orchestration"
+            (path, pkg) for path, pkg in _scan("components") if pkg == "orchestration"
         ]
         assert violations == [], (
             "StructuredReasoning/components/ must not import orchestration/:\n"
@@ -154,7 +146,8 @@ class TestStructuredReasoningComponentsIsolation:
 
     def test_inner_components_no_framework_imports(self):
         violations = [
-            (path, pkg) for path, pkg in _scan("components")
+            (path, pkg)
+            for path, pkg in _scan("components")
             if pkg in FRAMEWORK_PACKAGES
         ]
         assert violations == [], (

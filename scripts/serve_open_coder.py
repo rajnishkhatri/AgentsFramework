@@ -20,7 +20,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
-ROOT = Path(__file__).resolve().parent.parent / "cache" / "goaljudge_eval" / "open_coding"
+ROOT = (
+    Path(__file__).resolve().parent.parent / "cache" / "goaljudge_eval" / "open_coding"
+)
 SAVE_PATH = ROOT / "depth_strata_coded.jsonl"
 
 # A save smaller than this fraction of the existing file is rejected as a likely
@@ -80,7 +82,9 @@ class Handler(SimpleHTTPRequestHandler):
         # (2) reject a save that would dramatically shrink the file (truncation
         # clobber) unless explicitly forced
         if SAVE_PATH.exists() and not force:
-            existing = sum(1 for line in SAVE_PATH.read_text().splitlines() if line.strip())
+            existing = sum(
+                1 for line in SAVE_PATH.read_text().splitlines() if line.strip()
+            )
             if existing and n < existing * TRUNCATION_FLOOR:
                 self._reject(
                     f"refusing to shrink {existing} rows -> {n} "

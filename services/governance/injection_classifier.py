@@ -121,10 +121,7 @@ def guardrails_extra_available() -> bool:
 def artifact_available(artifact_dir: str | Path | None = None) -> bool:
     """Return whether a complete ONNX artifact exists in ``artifact_dir``."""
     base = Path(artifact_dir) if artifact_dir is not None else default_artifact_dir()
-    return all(
-        (base / name).is_file()
-        for name in (ARTIFACT_MODEL, ARTIFACT_TOKENIZER)
-    )
+    return all((base / name).is_file() for name in (ARTIFACT_MODEL, ARTIFACT_TOKENIZER))
 
 
 def decide_band(
@@ -243,7 +240,9 @@ class InjectionClassifier:
             }
         raw: Mapping[str, Any] = json.loads(path.read_text())
         return {
-            "injection_index": int(raw.get("injection_index", _DEFAULT_INJECTION_INDEX)),
+            "injection_index": int(
+                raw.get("injection_index", _DEFAULT_INJECTION_INDEX)
+            ),
             "max_length": int(raw.get("max_length", _DEFAULT_MAX_LENGTH)),
         }
 

@@ -44,7 +44,11 @@ class _FakeShell:
 
 def _registry(executor) -> ToolRegistry:
     return ToolRegistry(
-        {"shell": ToolDefinition(executor=executor, schema=_ShellInput, cacheable=False)}
+        {
+            "shell": ToolDefinition(
+                executor=executor, schema=_ShellInput, cacheable=False
+            )
+        }
     )
 
 
@@ -52,7 +56,12 @@ def _state_calling_shell(command: str) -> dict:
     ai = AIMessage(
         content="",
         tool_calls=[
-            {"name": "shell", "args": {"command": command}, "id": "c1", "type": "tool_call"}
+            {
+                "name": "shell",
+                "args": {"command": command},
+                "id": "c1",
+                "type": "tool_call",
+            }
         ],
     )
     return {"workflow_id": "wf-shellgate", "messages": [ai], "step_count": 1}
@@ -73,7 +82,9 @@ def _run(state: dict, registry: ToolRegistry, config: AgentConfig, tmp_path):
 def test_disabled_flag_runs_unchanged_no_guardrail_carrier(tmp_path):
     shell = _FakeShell()
     config = AgentConfig(shell_approval_enabled=False)
-    carriers = _run(_state_calling_shell("mkdir build"), _registry(shell), config, tmp_path)
+    carriers = _run(
+        _state_calling_shell("mkdir build"), _registry(shell), config, tmp_path
+    )
     assert shell.ran == ["mkdir build"]
     assert carriers == []  # gate off → byte-identical to today
 
@@ -91,7 +102,9 @@ def test_low_command_auto_runs_with_one_carrier(tmp_path):
 def test_critical_command_is_denied_and_never_runs(tmp_path):
     shell = _FakeShell()
     config = AgentConfig(shell_approval_enabled=True, shell_approval_enforce=True)
-    carriers = _run(_state_calling_shell("rm -rf /"), _registry(shell), config, tmp_path)
+    carriers = _run(
+        _state_calling_shell("rm -rf /"), _registry(shell), config, tmp_path
+    )
     assert shell.ran == []  # hard-deny: subprocess never invoked
     assert len(carriers) == 1
     assert carriers[0].details["band"] == "deny"
@@ -106,7 +119,9 @@ def test_shadow_ask_runs_anyway_and_marks_would_enforce(tmp_path):
         shell_approval_enforce=False,
         shell_approval_severity_threshold="medium",
     )
-    carriers = _run(_state_calling_shell("mkdir build"), _registry(shell), config, tmp_path)
+    carriers = _run(
+        _state_calling_shell("mkdir build"), _registry(shell), config, tmp_path
+    )
     assert shell.ran == ["mkdir build"]
     assert len(carriers) == 1
     assert carriers[0].details["would_enforce"] is True

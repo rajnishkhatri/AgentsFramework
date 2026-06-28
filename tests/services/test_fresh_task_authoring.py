@@ -90,7 +90,9 @@ class TestFreshTaskCorpusDriftGuard:
                 source_benchmark_schema="novel",
             )
         ]
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)jaccard|contamination"):
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)jaccard|contamination"
+        ):
             validate_fresh_task_set(corrupt, registry, select_planning_depth)
 
     # ── Failure path 2: an author's D1 prediction disagreeing with router ─
@@ -114,7 +116,9 @@ class TestFreshTaskCorpusDriftGuard:
             source_benchmark_schema="novel",
         )
         corrupt = list(FRESH_TEST_TASKS) + [bad]
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)router|planning_depth"):
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)router|planning_depth"
+        ):
             validate_fresh_task_set(corrupt, registry, select_planning_depth)
 
     # ── Failure path 3: duplicated id within the corpus ─────────────────
@@ -195,9 +199,7 @@ class TestFreshTaskCorpusCoverage:
         gap report shows non-trivial stratum spread on day one. If the
         seed clumps to one stratum, the gap report becomes uninformative."""
         strata_seen = {t.stratum for t in FRESH_TEST_TASKS}
-        assert len(strata_seen) >= 3, (
-            f"seed should span ≥3 strata; saw {strata_seen}"
-        )
+        assert len(strata_seen) >= 3, f"seed should span ≥3 strata; saw {strata_seen}"
 
     def test_seed_cites_only_known_benchmark_schemas(self) -> None:
         """Phase 4 §8: reuse schemas, not items. Every seed cites a

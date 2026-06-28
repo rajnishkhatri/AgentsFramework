@@ -53,11 +53,13 @@ class FakeExporter:
     ) -> None:
         if name in self._fail_on_names:
             raise RuntimeError(f"Simulated export failure for {name}")
-        self.events.append({
-            "name": name,
-            "trace_id": trace_id,
-            "attributes": dict(attributes) if attributes else {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "trace_id": trace_id,
+                "attributes": dict(attributes) if attributes else {},
+            }
+        )
 
     def release_trace(self, trace_id: str) -> None:
         pass
@@ -81,12 +83,14 @@ class FakeCompliancePublisher:
         item_id: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        self.dataset_items.append({
-            "dataset_name": dataset_name,
-            "input_data": input_data,
-            "item_id": item_id,
-            "metadata": metadata,
-        })
+        self.dataset_items.append(
+            {
+                "dataset_name": dataset_name,
+                "input_data": input_data,
+                "item_id": item_id,
+                "metadata": metadata,
+            }
+        )
 
     def score_trace(
         self,
@@ -96,12 +100,14 @@ class FakeCompliancePublisher:
         value: float,
         comment: str | None = None,
     ) -> None:
-        self.scores.append({
-            "trace_id": trace_id,
-            "name": name,
-            "value": value,
-            "comment": comment,
-        })
+        self.scores.append(
+            {
+                "trace_id": trace_id,
+                "name": name,
+                "value": value,
+                "comment": comment,
+            }
+        )
 
 
 def _make_event(
@@ -128,7 +134,10 @@ ALL_NINE_EVENT_TYPES = [
     (EventType.GUARDRAIL_CHECKED, {"passed": True}),
     (EventType.STEP_EXECUTED, {"action": "search"}),
     (EventType.TOOL_CALLED, {"tool": "web_search", "args": "query"}),
-    (EventType.PARAMETER_CHANGED, {"parameter": "model_tier", "old_value": "fast", "new_value": "capable"}),
+    (
+        EventType.PARAMETER_CHANGED,
+        {"parameter": "model_tier", "old_value": "fast", "new_value": "capable"},
+    ),
     (EventType.ERROR_OCCURRED, {"error": "timeout", "type": "retryable"}),
     (EventType.TASK_COMPLETED, {"outcome": "success"}),
 ]
@@ -150,9 +159,14 @@ def _record_all_nine(storage_dir: Path, workflow_id: str = "wf-e2e") -> None:
     """Record all 9 event types for a workflow using the real BlackBoxRecorder."""
     recorder = BlackBoxRecorder(storage_dir=storage_dir)
     for i, (event_type, details) in enumerate(ALL_NINE_EVENT_TYPES):
-        recorder.record(_make_event(
-            event_type, workflow_id=workflow_id, step=i, details=details,
-        ))
+        recorder.record(
+            _make_event(
+                event_type,
+                workflow_id=workflow_id,
+                step=i,
+                details=details,
+            )
+        )
 
 
 def _build_relay(
@@ -201,7 +215,10 @@ class TestPipelineFailurePaths:
     """Failure paths through the full pipeline."""
 
     def test_corrupted_json_goes_to_dlq_valid_events_still_publish(
-        self, storage: Path, exporter: FakeExporter, compliance_pub: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_pub: FakeCompliancePublisher,
     ) -> None:
         """A corrupt JSONL line should DLQ; surrounding valid events publish."""
         recorder = BlackBoxRecorder(storage_dir=storage)
@@ -211,7 +228,9 @@ class TestPipelineFailurePaths:
         with open(trace_file, "a") as f:
             f.write("{INVALID JSON\n")
 
-        recorder.record(_make_event(EventType.TASK_COMPLETED, details={"outcome": "success"}))
+        recorder.record(
+            _make_event(EventType.TASK_COMPLETED, details={"outcome": "success"})
+        )
 
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
         relay = _build_relay(storage, exporter, compliance_pub, max_retries=0)
@@ -233,8 +252,14 @@ class TestPipelineFailurePaths:
         failing_exporter = FakeExporter(fail_on_names=frozenset({"step.executed"}))
         recorder = BlackBoxRecorder(storage_dir=storage)
         recorder.record(_make_event(EventType.TASK_STARTED, details={"task": "t1"}))
-        recorder.record(_make_event(EventType.STEP_EXECUTED, step=1, details={"action": "run"}))
-        recorder.record(_make_event(EventType.TASK_COMPLETED, step=2, details={"outcome": "success"}))
+        recorder.record(
+            _make_event(EventType.STEP_EXECUTED, step=1, details={"action": "run"})
+        )
+        recorder.record(
+            _make_event(
+                EventType.TASK_COMPLETED, step=2, details={"outcome": "success"}
+            )
+        )
 
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
         relay = _build_relay(storage, failing_exporter, compliance_pub, max_retries=0)
@@ -279,7 +304,10 @@ class TestFullPipelineFlow:
     """All 9 event types flow through the pipeline correctly."""
 
     def test_all_nine_event_types_produce_correct_observation_types(
-        self, storage: Path, exporter: FakeExporter, compliance_pub: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_pub: FakeCompliancePublisher,
     ) -> None:
         _record_all_nine(storage)
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
@@ -324,10 +352,12 @@ class TestFullPipelineFlow:
     ) -> None:
         """ERROR_OCCURRED events should carry __bb_level=ERROR."""
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(
-            EventType.ERROR_OCCURRED,
-            details={"error": "timeout", "type": "retryable"},
-        ))
+        recorder.record(
+            _make_event(
+                EventType.ERROR_OCCURRED,
+                details={"error": "timeout", "type": "retryable"},
+            )
+        )
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter)
@@ -354,13 +384,15 @@ class TestFullPipelineFlow:
     ) -> None:
         """PII in event details is scrubbed by the publisher before export."""
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(
-            EventType.STEP_EXECUTED,
-            details={
-                "user_email": "alice@example.com",
-                "query": "normal text",
-            },
-        ))
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED,
+                details={
+                    "user_email": "alice@example.com",
+                    "query": "normal text",
+                },
+            )
+        )
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter)
@@ -378,10 +410,12 @@ class TestFullPipelineFlow:
     ) -> None:
         """API keys in event details are scrubbed by the publisher."""
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(
-            EventType.STEP_EXECUTED,
-            details={"config": "key=sk-abc123def456ghi789jkl012mno345pqrstu678vwx"},
-        ))
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED,
+                details={"config": "key=sk-abc123def456ghi789jkl012mno345pqrstu678vwx"},
+            )
+        )
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter)
@@ -396,10 +430,12 @@ class TestFullPipelineFlow:
         """Detail values exceeding 200 characters are truncated."""
         long_val = "x" * 300
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(
-            EventType.STEP_EXECUTED,
-            details={"long_field": long_val},
-        ))
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED,
+                details={"long_field": long_val},
+            )
+        )
         (storage / "wf-e2e" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter)
@@ -413,11 +449,13 @@ class TestFullPipelineFlow:
     ) -> None:
         """Exported trace_id must equal the BlackBox workflow_id (§2.2 design)."""
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(
-            EventType.TASK_STARTED,
-            workflow_id="wf-trace-match",
-            details={"task": "test"},
-        ))
+        recorder.record(
+            _make_event(
+                EventType.TASK_STARTED,
+                workflow_id="wf-trace-match",
+                details={"task": "test"},
+            )
+        )
         (storage / "wf-trace-match" / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter)
@@ -455,10 +493,26 @@ class TestMultiWorkflowIsolation:
         """Each workflow has its own offset and events are attributed correctly."""
         recorder = BlackBoxRecorder(storage_dir=storage)
 
-        recorder.record(_make_event(EventType.TASK_STARTED, workflow_id="wf-A", details={"task": "A"}))
-        recorder.record(_make_event(EventType.TASK_STARTED, workflow_id="wf-B", details={"task": "B"}))
-        recorder.record(_make_event(EventType.STEP_EXECUTED, workflow_id="wf-A", step=1, details={"a": 1}))
-        recorder.record(_make_event(EventType.STEP_EXECUTED, workflow_id="wf-B", step=1, details={"b": 1}))
+        recorder.record(
+            _make_event(
+                EventType.TASK_STARTED, workflow_id="wf-A", details={"task": "A"}
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.TASK_STARTED, workflow_id="wf-B", details={"task": "B"}
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED, workflow_id="wf-A", step=1, details={"a": 1}
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED, workflow_id="wf-B", step=1, details={"b": 1}
+            )
+        )
 
         (storage / "wf-A" / ".langfuse_offset").write_text("0")
         (storage / "wf-B" / ".langfuse_offset").write_text("0")
@@ -474,22 +528,35 @@ class TestMultiWorkflowIsolation:
         assert len(wf_b_events) == 2
 
     def test_compliance_bundle_per_workflow(
-        self, storage: Path, exporter: FakeExporter, compliance_pub: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_pub: FakeCompliancePublisher,
     ) -> None:
         """Each TASK_COMPLETED triggers its own compliance bundle."""
         recorder = BlackBoxRecorder(storage_dir=storage)
 
         for wf_id in ("wf-X", "wf-Y"):
-            recorder.record(_make_event(EventType.TASK_STARTED, workflow_id=wf_id, details={"task": wf_id}))
-            recorder.record(_make_event(EventType.TASK_COMPLETED, workflow_id=wf_id, step=1, details={"outcome": "success"}))
+            recorder.record(
+                _make_event(
+                    EventType.TASK_STARTED, workflow_id=wf_id, details={"task": wf_id}
+                )
+            )
+            recorder.record(
+                _make_event(
+                    EventType.TASK_COMPLETED,
+                    workflow_id=wf_id,
+                    step=1,
+                    details={"outcome": "success"},
+                )
+            )
             (storage / wf_id / ".langfuse_offset").write_text("0")
 
         relay = _build_relay(storage, exporter, compliance_pub)
         relay.run_once()
 
         workflow_ids_in_items = {
-            item["input_data"]["workflow_id"]
-            for item in compliance_pub.dataset_items
+            item["input_data"]["workflow_id"] for item in compliance_pub.dataset_items
         }
         assert "wf-X" in workflow_ids_in_items
         assert "wf-Y" in workflow_ids_in_items
@@ -505,8 +572,16 @@ class TestMultiWorkflowIsolation:
         failing_exporter = FakeExporter(fail_on_names=frozenset({"task.started"}))
         recorder = BlackBoxRecorder(storage_dir=storage)
 
-        recorder.record(_make_event(EventType.TASK_STARTED, workflow_id="wf-fail", details={"task": "x"}))
-        recorder.record(_make_event(EventType.STEP_EXECUTED, workflow_id="wf-ok", details={"action": "y"}))
+        recorder.record(
+            _make_event(
+                EventType.TASK_STARTED, workflow_id="wf-fail", details={"task": "x"}
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED, workflow_id="wf-ok", details={"action": "y"}
+            )
+        )
 
         (storage / "wf-fail" / ".langfuse_offset").write_text("0")
         (storage / "wf-ok" / ".langfuse_offset").write_text("0")
@@ -560,7 +635,9 @@ class TestStartupAndIncremental:
         relay.run_once()
         assert len(exporter.events) == 1
 
-        recorder.record(_make_event(EventType.STEP_EXECUTED, step=1, details={"new": True}))
+        recorder.record(
+            _make_event(EventType.STEP_EXECUTED, step=1, details={"new": True})
+        )
         relay.run_once()
 
         assert len(exporter.events) == 2
@@ -611,7 +688,9 @@ class TestDevRelayComplianceGap:
             def shutdown(self):
                 pass
 
-            def create_dataset_item(self, *, dataset_name, input_data, item_id=None, metadata=None):
+            def create_dataset_item(
+                self, *, dataset_name, input_data, item_id=None, metadata=None
+            ):
                 pass
 
             def score_trace(self, *, trace_id, name, value, comment=None):
@@ -621,6 +700,7 @@ class TestDevRelayComplianceGap:
         assert isinstance(exp, CompliancePublisher)
 
         import os
+
         old_mode = os.environ.get("BLACKBOX_RELAY_MODE")
         old_storage = os.environ.get("BLACKBOX_STORAGE_DIR")
         try:
@@ -643,6 +723,7 @@ class TestDevRelayComplianceGap:
     def test_dev_relay_without_compliance_capable_exporter(self) -> None:
         """When exporter lacks CompliancePublisher methods, relay has None."""
         import os
+
         old_mode = os.environ.get("BLACKBOX_RELAY_MODE")
         try:
             os.environ["BLACKBOX_RELAY_MODE"] = "in_process"
@@ -670,7 +751,10 @@ class TestCompliancePipelineIntegration:
     """Compliance bundle flows end-to-end through the pipeline."""
 
     def test_full_workflow_produces_audit_dataset_and_score(
-        self, storage: Path, exporter: FakeExporter, compliance_pub: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_pub: FakeCompliancePublisher,
     ) -> None:
         """A complete valid workflow produces audit dataset item + score=1.0."""
         _record_all_nine(storage, workflow_id="wf-full")
@@ -680,7 +764,8 @@ class TestCompliancePipelineIntegration:
         relay.run_once()
 
         audit_items = [
-            item for item in compliance_pub.dataset_items
+            item
+            for item in compliance_pub.dataset_items
             if item["dataset_name"] == "agent-compliance-audit"
         ]
         assert len(audit_items) == 1
@@ -692,13 +777,34 @@ class TestCompliancePipelineIntegration:
         assert scores[0]["value"] == 1.0
 
     def test_tampered_chain_produces_incident_dataset_and_zero_score(
-        self, storage: Path, exporter: FakeExporter, compliance_pub: FakeCompliancePublisher
+        self,
+        storage: Path,
+        exporter: FakeExporter,
+        compliance_pub: FakeCompliancePublisher,
     ) -> None:
         """A workflow with tampered hash chain → incident dataset + score=0.0."""
         recorder = BlackBoxRecorder(storage_dir=storage)
-        recorder.record(_make_event(EventType.TASK_STARTED, workflow_id="wf-tampered", details={"task": "t"}))
-        recorder.record(_make_event(EventType.STEP_EXECUTED, workflow_id="wf-tampered", step=1, details={"a": 1}))
-        recorder.record(_make_event(EventType.TASK_COMPLETED, workflow_id="wf-tampered", step=2, details={"outcome": "success"}))
+        recorder.record(
+            _make_event(
+                EventType.TASK_STARTED, workflow_id="wf-tampered", details={"task": "t"}
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.STEP_EXECUTED,
+                workflow_id="wf-tampered",
+                step=1,
+                details={"a": 1},
+            )
+        )
+        recorder.record(
+            _make_event(
+                EventType.TASK_COMPLETED,
+                workflow_id="wf-tampered",
+                step=2,
+                details={"outcome": "success"},
+            )
+        )
 
         trace_file = storage / "wf-tampered" / "trace.jsonl"
         lines = trace_file.read_text().strip().split("\n")
@@ -713,7 +819,8 @@ class TestCompliancePipelineIntegration:
         relay.run_once()
 
         incident_items = [
-            item for item in compliance_pub.dataset_items
+            item
+            for item in compliance_pub.dataset_items
             if item["dataset_name"] == "agent-incident-replay"
         ]
         assert len(incident_items) == 1

@@ -223,7 +223,9 @@ def _met_flags(per_criterion: Any) -> list[bool]:
             return []
         met = entry.get("met")
         if isinstance(met, str):
-            flags.append(met.strip().lower() not in {"false", "f", "no", "n", "off", "0"})
+            flags.append(
+                met.strip().lower() not in {"false", "f", "no", "n", "off", "0"}
+            )
         else:
             flags.append(bool(met))
     return flags

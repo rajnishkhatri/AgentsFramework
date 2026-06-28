@@ -398,9 +398,7 @@ class TestKillSwitch:
         assert len(fake_client.traces) == 0
         assert len(fake_client.spans) == 0
 
-    def test_disabled_shutdown_is_noop(
-        self, fake_client: FakeLangfuseClient
-    ) -> None:
+    def test_disabled_shutdown_is_noop(self, fake_client: FakeLangfuseClient) -> None:
         with patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}):
             exp = LangfuseCloudExporter(
                 public_key="pk-test",
@@ -428,9 +426,7 @@ class TestKillSwitch:
         exporter.export_event(name="run.started", trace_id="trace-001")
         assert len(fake_client.traces) == 1
 
-    def test_enabled_true_explicit(
-        self, fake_client: FakeLangfuseClient
-    ) -> None:
+    def test_enabled_true_explicit(self, fake_client: FakeLangfuseClient) -> None:
         with patch.dict(os.environ, {"LANGFUSE_ENABLED": "true"}):
             exp = LangfuseCloudExporter(
                 public_key="pk-test",
@@ -557,9 +553,7 @@ class TestExportEventReturnValue:
     instead of being silently counted as published.
     """
 
-    def test_returns_true_on_success(
-        self, exporter: LangfuseCloudExporter
-    ) -> None:
+    def test_returns_true_on_success(self, exporter: LangfuseCloudExporter) -> None:
         assert exporter.export_event(name="run.started", trace_id="t-1") is True
 
     def test_returns_false_on_swallowed_sdk_exception(self) -> None:
@@ -572,9 +566,7 @@ class TestExportEventReturnValue:
         )
         assert exp.export_event(name="run.started", trace_id="t-1") is False
 
-    def test_returns_true_when_disabled(
-        self, fake_client: FakeLangfuseClient
-    ) -> None:
+    def test_returns_true_when_disabled(self, fake_client: FakeLangfuseClient) -> None:
         with patch.dict(os.environ, {"LANGFUSE_ENABLED": "false"}):
             exp = LangfuseCloudExporter(
                 public_key="pk-test",
@@ -664,9 +656,7 @@ class TestScoreTrace:
     def test_score_trace_records_score(
         self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
     ) -> None:
-        exporter.score_trace(
-            trace_id="t-1", name="hash_chain_valid", value=1.0
-        )
+        exporter.score_trace(trace_id="t-1", name="hash_chain_valid", value=1.0)
         assert len(fake_client.scores) == 1
         score = fake_client.scores[0]
         assert score["trace_id"] == "t-1"
@@ -921,12 +911,18 @@ class TestEventIdIdempotency:
         self, exporter: LangfuseCloudExporter, fake_client: FakeLangfuseClient
     ) -> None:
         attrs = {"__bb_observation_id": "ev-1", "event_id": "ev-1", "k": "v"}
-        assert exporter.export_event(
-            name="task.completed", trace_id="wf-1", attributes=dict(attrs)
-        ) is True
-        assert exporter.export_event(
-            name="task.completed", trace_id="wf-1", attributes=dict(attrs)
-        ) is True
+        assert (
+            exporter.export_event(
+                name="task.completed", trace_id="wf-1", attributes=dict(attrs)
+            )
+            is True
+        )
+        assert (
+            exporter.export_event(
+                name="task.completed", trace_id="wf-1", attributes=dict(attrs)
+            )
+            is True
+        )
         assert len(fake_client.spans) == 1, "second export of same event_id is a no-op"
 
     def test_distinct_event_ids_each_export(
@@ -967,15 +963,21 @@ class TestEventIdIdempotency:
         exp = LangfuseCloudExporter(
             public_key="pk-test", secret_key="sk-test", sdk_client=broken
         )
-        assert exp.export_event(
-            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
-        ) is False
+        assert (
+            exp.export_event(
+                name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+            )
+            is False
+        )
         # Recover the client; the retry must now go through (not be deduped).
         good = FakeLangfuseClient()
         exp._sdk_client = good
-        assert exp.export_event(
-            name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
-        ) is True
+        assert (
+            exp.export_event(
+                name="task.completed", trace_id="wf-1", attributes={"event_id": "ev-1"}
+            )
+            is True
+        )
         assert len(good.spans) == 1
 
     def test_release_trace_clears_seen_set(
@@ -1015,9 +1017,7 @@ class TestEventIdIdempotency:
 class TestPortCompliance:
     """LangfuseCloudExporter satisfies TelemetryExporter Protocol."""
 
-    def test_is_telemetry_exporter(
-        self, exporter: LangfuseCloudExporter
-    ) -> None:
+    def test_is_telemetry_exporter(self, exporter: LangfuseCloudExporter) -> None:
         from middleware.ports.telemetry_exporter import TelemetryExporter
 
         assert isinstance(exporter, TelemetryExporter)

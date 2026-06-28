@@ -15,7 +15,7 @@ analysis protocol in `research/pyramid_react_system_prompt.md`.
 
 ### F1 — `since` log filtering can 500 with the frontend's ISO timestamps
 
-**Severity:** High  
+**Severity:** High
 **Scope:** `services/explainability_service.py`,
 `explainability_app/server.py`, `frontend-explainability/lib/adapters/http_explainability_client.ts`
 
@@ -54,7 +54,7 @@ only a stub.
 
 ### F2 — Log `concerns` are unsanitized filesystem path segments
 
-**Severity:** High  
+**Severity:** High
 **Scope:** `services/explainability_service.py`
 
 `query_logs()` and `tail_logs()` accept arbitrary concern strings and build file
@@ -80,7 +80,7 @@ and `concerns=["guards/../../x"]`. Apply the same allowlist to `tail_logs()`.
 
 ### F3 — `/logs` filters do not update the static log list
 
-**Severity:** High  
+**Severity:** High
 **Scope:** `frontend-explainability/app/logs/page.tsx`,
 `frontend-explainability/components/logs/LogViewer.tsx`
 
@@ -122,7 +122,7 @@ unchecking a concern, and typing search changes the rendered rows.
 
 ### F4 — SSE parse-error handling does not meet the Sprint 4 TDD requirement
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `frontend-explainability/lib/transport/sse_client.ts`,
 `frontend-explainability/components/logs/LogViewer.tsx`, tests
 
@@ -159,7 +159,7 @@ connection lifecycle controllable.
 
 ### F5 — Replay architecture test does not enforce the stated invariant
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `frontend-explainability/tests/architecture/test_replay_no_runtime_calls.test.ts`
 
 The Sprint 4 acceptance criterion says the Replay architecture test asserts
@@ -194,7 +194,7 @@ page and exclude the list page intentionally with a comment.
 
 ### F6 — `WARN` filter likely misses real Python warning rows
 
-**Severity:** Medium  
+**Severity:** Medium
 **Scope:** `services/explainability_service.py`,
 `frontend-explainability/lib/wire/responses.ts`,
 `frontend-explainability/components/logs/LogViewer.tsx`
@@ -220,7 +220,7 @@ at least a `WARNING` fixture.
 
 ### F7 — "Monaco-rendered list" is not implemented
 
-**Severity:** Low  
+**Severity:** Low
 **Scope:** `frontend-explainability/components/logs/LogTable.tsx`,
 `frontend-explainability/package.json`
 

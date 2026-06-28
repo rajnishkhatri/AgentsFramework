@@ -121,7 +121,9 @@ class CarrierRequirement(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     pillar: Pillar
-    event_value: str = Field(description="EventType.value (wire string) the phase must carry.")
+    event_value: str = Field(
+        description="EventType.value (wire string) the phase must carry."
+    )
     conditional_on_tool_failure: bool = False
     exempt_when_resumed: bool = False
 
@@ -187,17 +189,11 @@ def default_spec() -> PillarCarrierSpec:
             _req(Pillar.IDENTITY, EVT_TASK_STARTED, exempt_resumed=True),
         ),
         # Validation — the input rail must leave a check span.
-        PH_INPUT_VALIDATION: (
-            _req(Pillar.VALIDATION, EVT_GUARDRAIL_CHECKED),
-        ),
+        PH_INPUT_VALIDATION: (_req(Pillar.VALIDATION, EVT_GUARDRAIL_CHECKED),),
         # Reasoning — routing must record the model choice (rationale+decision_id).
-        PH_ROUTING: (
-            _req(Pillar.REASONING, EVT_MODEL_SELECTED),
-        ),
+        PH_ROUTING: (_req(Pillar.REASONING, EVT_MODEL_SELECTED),),
         # Recording — an LLM-invoking phase must leave a token-bearing step.
-        PH_MODEL_INVOCATION: (
-            _req(Pillar.RECORDING, EVT_STEP_EXECUTED),
-        ),
+        PH_MODEL_INVOCATION: (_req(Pillar.RECORDING, EVT_STEP_EXECUTED),),
         # Validation — a failed tool MUST surface an error_occurred (silent-failure
         # guard); a clean tool pass stays quiet.
         PH_TOOL_EXECUTION: (
@@ -206,13 +202,9 @@ def default_spec() -> PillarCarrierSpec:
         PH_EVALUATION: (),
         PH_CONTINUATION: (),
         # Validation — the output rail must leave a check span.
-        PH_OUTPUT_VALIDATION: (
-            _req(Pillar.VALIDATION, EVT_GUARDRAIL_CHECKED),
-        ),
+        PH_OUTPUT_VALIDATION: (_req(Pillar.VALIDATION, EVT_GUARDRAIL_CHECKED),),
         # Reasoning — a completed run must carry the goal-judge verdict
         # (the corrupt-success class the audit skill flags).
-        PH_COMPLETION: (
-            _req(Pillar.REASONING, EVT_GOAL_JUDGE),
-        ),
+        PH_COMPLETION: (_req(Pillar.REASONING, EVT_GOAL_JUDGE),),
     }
     return PillarCarrierSpec(spec_version=SPEC_VERSION, requirements=requirements)

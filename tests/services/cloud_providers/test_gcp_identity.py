@@ -85,7 +85,9 @@ class TestGcpIdentityResolverHappyPath:
             },
         )
 
-        env = {"GCP_SERVICE_ACCOUNT": "agent-backend-runtime@my-project.iam.gserviceaccount.com"}
+        env = {
+            "GCP_SERVICE_ACCOUNT": "agent-backend-runtime@my-project.iam.gserviceaccount.com"
+        }
         with patch.dict("os.environ", env, clear=True):
             with patch.object(
                 GcpIdentityResolver, "_query_metadata_server", return_value=None
@@ -99,7 +101,9 @@ class TestGcpIdentityResolverHappyPath:
         registry = _make_registry({"agent-backend-runtime": facts})
         resolver = GcpIdentityResolver(registry)
 
-        env = {"GCP_SERVICE_ACCOUNT": "agent-backend-runtime@my-project.iam.gserviceaccount.com"}
+        env = {
+            "GCP_SERVICE_ACCOUNT": "agent-backend-runtime@my-project.iam.gserviceaccount.com"
+        }
         with patch.dict("os.environ", env, clear=True):
             with patch.object(
                 GcpIdentityResolver, "_query_metadata_server", return_value=None
@@ -126,10 +130,12 @@ class TestGcpIdentityResolverHappyPath:
     def test_gcp_agent_id_takes_priority_over_service_account(self) -> None:
         facts_explicit = _make_facts("priority-agent")
         facts_sa = _make_facts("sa-agent")
-        registry = _make_registry({
-            "priority-agent": facts_explicit,
-            "sa-agent": facts_sa,
-        })
+        registry = _make_registry(
+            {
+                "priority-agent": facts_explicit,
+                "sa-agent": facts_sa,
+            }
+        )
         resolver = GcpIdentityResolver(registry)
 
         env = {

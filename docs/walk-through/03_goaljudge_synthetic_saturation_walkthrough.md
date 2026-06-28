@@ -58,7 +58,7 @@ The batch runner executes the agent locally and writes events to the local SQLit
 
 ## Step 2 — Run Local Batch Runner
 
-The programmatic batch runner reads the live prompt matrix defined in `tests/fixtures/goaljudge/case_registry.py`, truncates the local `logs/evals.log` to isolate this batch run, and executes each case locally. 
+The programmatic batch runner reads the live prompt matrix defined in `tests/fixtures/goaljudge/case_registry.py`, truncates the local `logs/evals.log` to isolate this batch run, and executes each case locally.
 
 Each case runs under:
 *   A dedicated scoping `user_id`: `"synthetic-saturation-user"`.
@@ -118,7 +118,7 @@ After passing the coverage gate, export the final joined telemetry corpus. This 
 
 ## Step 5 — Open Coding & Saturation Log
 
-With the exported corpus in hand, a researcher annotates each trace to reach **theoretical saturation** of the taxonomy. 
+With the exported corpus in hand, a researcher annotates each trace to reach **theoretical saturation** of the taxonomy.
 
 ### 5.1 Open Coding Protocol
 1.  Open `cache/goaljudge_eval/run.jsonl`.
@@ -127,7 +127,7 @@ With the exported corpus in hand, a researcher annotates each trace to reach **t
 4.  Record any instances of Judge Criterion Conflation (J2) or Outcome Bias (J3) in the coding log.
 
 ### 5.2 Saturation Log Audit
-Check the saturation log (added to the Phase 2b open-coding report). Saturation is mathematically reached when the **last ~20 annotated cases reveal no brand-new failure codes**. 
+Check the saturation log (added to the Phase 2b open-coding report). Saturation is mathematically reached when the **last ~20 annotated cases reveal no brand-new failure codes**.
 
 *   *If a new code emerges:* Update the dimension space mapping, author new prompts to cover the new code to saturation (≥ 3 examples), and re-run.
 *   *If saturated:* Proceed to Step 6.

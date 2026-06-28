@@ -120,10 +120,22 @@ def is_provider_error(answer: str) -> bool:
 # the gave-up baseline answers contain leaked tokens too). These phrases are
 # strong "I failed / couldn't do it" signals — distinct from a confident answer.
 _FAILURE_PHRASES = (
-    "i attempted", "i was unable", "unable to", "could not", "couldn't",
-    "i encountered error", "encountered errors", "i don't see", "i cannot",
-    "i can't", "outside the allowed", "no such file", "does not exist",
-    "i could not", "please provide", "please upload",
+    "i attempted",
+    "i was unable",
+    "unable to",
+    "could not",
+    "couldn't",
+    "i encountered error",
+    "encountered errors",
+    "i don't see",
+    "i cannot",
+    "i can't",
+    "outside the allowed",
+    "no such file",
+    "does not exist",
+    "i could not",
+    "please provide",
+    "please upload",
 )
 
 
@@ -213,17 +225,27 @@ def score_answers(eval_log: Path, cases: list[str] | None = None) -> AnswerSumma
         text, toks = answers[case]
         if is_provider_error(text):
             # Provider/transport failure — contaminates the run, not a model miss.
-            scores.append(CaseScore(case, exp.value, exp.kind, text[:160], False,
-                                    "errored", toks))
+            scores.append(
+                CaseScore(case, exp.value, exp.kind, text[:160], False, "errored", toks)
+            )
             continue
         if not text or not text.strip():
             outcome = "no_answer_thinking" if (toks or 0) > 0 else "no_answer_silent"
-            scores.append(CaseScore(case, exp.value, exp.kind, "", False, outcome, toks))
+            scores.append(
+                CaseScore(case, exp.value, exp.kind, "", False, outcome, toks)
+            )
             continue
         ok = _grade(text, exp)
         scores.append(
-            CaseScore(case, exp.value, exp.kind, text[:160], ok,
-                      "correct" if ok else "wrong", toks)
+            CaseScore(
+                case,
+                exp.value,
+                exp.kind,
+                text[:160],
+                ok,
+                "correct" if ok else "wrong",
+                toks,
+            )
         )
     correct = sum(1 for s in scores if s.correct)
     return AnswerSummary(n=len(scores), correct=correct, scores=scores)
@@ -236,7 +258,11 @@ def score_mixed(eval_log: Path, cases: list[str]) -> AnswerSummary:
     det_cases = [c for c in cases if c in EXPECTED_BY_CASE]
     judge_cases = [c for c in cases if c not in EXPECTED_BY_CASE]
     det = score_answers(eval_log, cases=det_cases) if det_cases else AnswerSummary(0, 0)
-    jud = score_answers_goaljudge(eval_log, judge_cases) if judge_cases else AnswerSummary(0, 0)
+    jud = (
+        score_answers_goaljudge(eval_log, judge_cases)
+        if judge_cases
+        else AnswerSummary(0, 0)
+    )
     by_case = {s.case: s for s in (*det.scores, *jud.scores)}
     ordered = [by_case[c] for c in cases if c in by_case]
     correct = sum(1 for s in ordered if s.correct)
@@ -288,16 +314,22 @@ def score_answers_goaljudge(eval_log: Path, cases: list[str]) -> AnswerSummary:
     for case in cases:
         verdict = judged.get(case)
         if verdict is None:
-            scores.append(CaseScore(case, "goal_met", "goaljudge", "", False, "missing"))
+            scores.append(
+                CaseScore(case, "goal_met", "goaljudge", "", False, "missing")
+            )
             continue
         goal_met = bool(verdict.get("goal_met"))
         criteria = verdict.get("criteria_met")
         rationale = str(verdict.get("rationale", ""))[:160]
-        scores.append(CaseScore(
-            case, "goal_met", "goaljudge",
-            f"criteria_met={criteria} :: {rationale}",
-            goal_met,
-            "correct" if goal_met else "wrong",
-        ))
+        scores.append(
+            CaseScore(
+                case,
+                "goal_met",
+                "goaljudge",
+                f"criteria_met={criteria} :: {rationale}",
+                goal_met,
+                "correct" if goal_met else "wrong",
+            )
+        )
     correct = sum(1 for s in scores if s.correct)
     return AnswerSummary(n=len(scores), correct=correct, scores=scores)

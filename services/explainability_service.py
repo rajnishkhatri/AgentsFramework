@@ -11,7 +11,7 @@ import json
 import logging
 import re
 from collections import Counter
-from collections.abc import AsyncIterator, Iterable, Sequence
+from collections.abc import AsyncIterator, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
@@ -400,13 +400,14 @@ class ExplainabilityService:
             summaries.append(summary)
 
         summaries.sort(
-            key=lambda s: s.started_at
-            or datetime.min.replace(tzinfo=timezone.utc),
+            key=lambda s: s.started_at or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True,
         )
         return summaries
 
-    def _parse_workflow(self, workflow_id: str, trace_file: Path) -> WorkflowSummary | None:
+    def _parse_workflow(
+        self, workflow_id: str, trace_file: Path
+    ) -> WorkflowSummary | None:
         events: list[dict] = []
         for line in trace_file.read_text().splitlines():
             line = line.strip()
@@ -605,7 +606,9 @@ class ExplainabilityService:
                         latency_buckets.setdefault(bucket, []).append(float(latency))
                     if isinstance(cost, (int, float)):
                         costs.append(float(cost))
-                        cost_buckets[bucket] = cost_buckets.get(bucket, 0.0) + float(cost)
+                        cost_buckets[bucket] = cost_buckets.get(bucket, 0.0) + float(
+                            cost
+                        )
                     step_tokens = int(tin) + int(tout)
                     if step_tokens:
                         tokens.append(step_tokens)
@@ -730,9 +733,7 @@ class ExplainabilityService:
                         GuardrailFailure(
                             workflow_id=wf_dir.name,
                             validator=validator,
-                            fail_action=(
-                                str(fail_action) if fail_action else None
-                            ),
+                            fail_action=(str(fail_action) if fail_action else None),
                             timestamp=ts,
                         )
                     )
@@ -786,8 +787,7 @@ class ExplainabilityService:
             agent_ids = self._agent_facts_registry.list_agent_ids()
         except Exception:
             logger.warning(
-                "Failed to enumerate agents from registry; "
-                "returning empty list",
+                "Failed to enumerate agents from registry; returning empty list",
                 exc_info=True,
             )
             return []
@@ -869,9 +869,7 @@ class ExplainabilityService:
         except KeyError as exc:
             raise AgentNotFoundError(agent_id) from exc
 
-        raw_entries: list[AuditEntry] = self._agent_facts_registry.audit_trail(
-            agent_id
-        )
+        raw_entries: list[AuditEntry] = self._agent_facts_registry.audit_trail(agent_id)
         return [
             AgentAuditEntry(
                 agent_id=entry.agent_id,
@@ -965,9 +963,7 @@ class ExplainabilityService:
         phase_decisions: list[DecisionRecord] = []
         for raw_decision in raw.get("phase_decisions", []) or []:
             try:
-                phase_decisions.append(
-                    DecisionRecord.model_validate(raw_decision)
-                )
+                phase_decisions.append(DecisionRecord.model_validate(raw_decision))
             except Exception:
                 logger.warning(
                     "Skipping unparseable phase decision in %s: %r",
@@ -1036,9 +1032,7 @@ class ExplainabilityService:
                     exc_info=True,
                 )
                 report = None
-            rows.append(
-                WorkflowIntegritySummary(workflow=summary, integrity=report)
-            )
+            rows.append(WorkflowIntegritySummary(workflow=summary, integrity=report))
         return ComplianceSummary(
             rows=rows,
             generated_at=datetime.now(timezone.utc),
@@ -1177,9 +1171,7 @@ class ExplainabilityService:
                     if not line.strip():
                         continue
                     row = _parse_log_line(line, concern=concern)
-                    if not _row_matches(
-                        row, level=level, search=search, since=None
-                    ):
+                    if not _row_matches(row, level=level, search=search, since=None):
                         continue
                     yield row
             await asyncio.sleep(poll_interval)
@@ -1237,14 +1229,10 @@ def _normalize_concerns(concerns: Sequence[str] | None) -> list[str]:
             continue
         # Reject anything that smells like a path component.
         if "/" in raw or "\\" in raw or raw in {".", ".."}:
-            logger.warning(
-                "Rejecting log concern %r: contains a path separator", raw
-            )
+            logger.warning("Rejecting log concern %r: contains a path separator", raw)
             continue
         if raw not in _ALLOWED_LOG_CONCERNS:
-            logger.warning(
-                "Rejecting log concern %r: not in the known allowlist", raw
-            )
+            logger.warning("Rejecting log concern %r: not in the known allowlist", raw)
             continue
         if raw in seen:
             continue
@@ -1271,9 +1259,7 @@ def _guardrail_accepted(details: dict) -> bool | None:
         return details["accepted"]
     if "verified" in details and isinstance(details["verified"], bool):
         return details["verified"]
-    if details.get("stage") == "output" and isinstance(
-        details.get("blocked"), bool
-    ):
+    if details.get("stage") == "output" and isinstance(details.get("blocked"), bool):
         return not details["blocked"]
     return None
 
@@ -1342,9 +1328,7 @@ def _percentile(values: list[float], percentile: float) -> float:
     lower = int(rank)
     upper = min(lower + 1, len(sorted_values) - 1)
     weight = rank - lower
-    return float(
-        sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight
-    )
+    return float(sorted_values[lower] * (1 - weight) + sorted_values[upper] * weight)
 
 
 def _parse_log_line(line: str, *, concern: str) -> LogRow:

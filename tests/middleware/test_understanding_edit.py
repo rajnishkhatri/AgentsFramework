@@ -14,7 +14,6 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-import pytest
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
@@ -93,13 +92,15 @@ _AUTH = {"Authorization": "Bearer good-token"}
 def _seed_trace(tmp_path, workflow_id: str = "tr-1") -> None:
     """Start a chained trace the way the graph would."""
     recorder = BlackBoxRecorder(storage_dir=tmp_path / "black_box_recordings")
-    recorder.record(TraceEvent(
-        event_id=str(uuid.uuid4()),
-        workflow_id=workflow_id,
-        event_type=EventType.TASK_STARTED,
-        timestamp=datetime.now(UTC),
-        details={"task_input": "create the file"},
-    ))
+    recorder.record(
+        TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.TASK_STARTED,
+            timestamp=datetime.now(UTC),
+            details={"task_input": "create the file"},
+        )
+    )
 
 
 # ── Failure paths first ──────────────────────────────────────────────
@@ -138,9 +139,7 @@ class TestRejections:
 
     def test_trace_mismatch_is_400(self, tmp_path):
         """F-R7: wrong/missing trace_id echo is rejected."""
-        client = _client(
-            tmp_path, _FakeRuntime(raises=ValueError("trace_id mismatch"))
-        )
+        client = _client(tmp_path, _FakeRuntime(raises=ValueError("trace_id mismatch")))
         resp = client.post(_URL, json=_VALID_BODY, headers=_AUTH)
         assert resp.status_code == 400
 
@@ -161,9 +160,7 @@ class TestRejections:
         _seed_trace(tmp_path)
         client = _client(tmp_path, _FakeRuntime(raises=KeyError("no checkpoint")))
         client.post(_URL, json=_VALID_BODY, headers=_AUTH)
-        trace = (
-            tmp_path / "black_box_recordings" / "tr-1" / "trace.jsonl"
-        ).read_text()
+        trace = (tmp_path / "black_box_recordings" / "tr-1" / "trace.jsonl").read_text()
         assert "parameter_changed" not in trace
 
 

@@ -11,6 +11,7 @@ fix's "no prior artifact" branch is exercised 101× — every row is a turn-1,
 from-step-0 run. Reads BFF auth from frontend/e2e/.auth/state.json (refresh
 the WorkOS session first — `access-token` is short-lived).
 """
+
 import csv
 import json
 import time
@@ -41,12 +42,16 @@ for i, task in enumerate(tasks):
     if thread_id in done_threads:
         print(f"[{i:03d}] already done, skipping", flush=True)
         continue
-    body = json.dumps({
-        "thread_id": thread_id,
-        "input": {"messages": [{"role": "user", "content": task}]},
-    }).encode()
+    body = json.dumps(
+        {
+            "thread_id": thread_id,
+            "input": {"messages": [{"role": "user", "content": task}]},
+        }
+    ).encode()
     req = urllib.request.Request(
-        f"{BASE}/api/run/stream", data=body, method="POST",
+        f"{BASE}/api/run/stream",
+        data=body,
+        method="POST",
         headers={
             "content-type": "application/json",
             "accept": "text/event-stream",
@@ -72,7 +77,9 @@ for i, task in enumerate(tasks):
                     continue
                 t = evt.get("type")
                 if t == "RUN_STARTED" and trace_id is None:
-                    trace_id = (evt.get("raw_event") or {}).get("trace_id") or evt.get("trace_id")
+                    trace_id = (evt.get("raw_event") or {}).get("trace_id") or evt.get(
+                        "trace_id"
+                    )
                 if t == "RUN_FINISHED":
                     status = "finished"
                     break

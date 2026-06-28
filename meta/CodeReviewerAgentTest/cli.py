@@ -173,7 +173,9 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 def main() -> int:  # pragma: no cover -- thin wrapper
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
     return run_cli()
 
 

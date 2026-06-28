@@ -77,16 +77,13 @@ class LiteLLMEmbeddingClient(EmbeddingClient):
             )
         except Exception as exc:
             # A5: vendor exceptions never leak past the boundary.
-            raise EmbeddingClientError(
-                f"{type(exc).__name__}: {exc}"
-            ) from exc
+            raise EmbeddingClientError(f"{type(exc).__name__}: {exc}") from exc
         latency_ms = (time.perf_counter() - t0) * 1000.0
 
         data = self._extract_data(response)
         if len(data) != len(texts):
             raise EmbeddingClientError(
-                f"provider returned {len(data)} embeddings for "
-                f"{len(texts)} inputs"
+                f"provider returned {len(data)} embeddings for {len(texts)} inputs"
             )
 
         vectors: list[list[float]] = []
@@ -114,7 +111,9 @@ class LiteLLMEmbeddingClient(EmbeddingClient):
                 "dimension": self._dimension,
                 "input_count": len(texts),
                 "latency_ms": latency_ms,
-                "tokens_in": usage.get("prompt_tokens") if isinstance(usage, dict) else None,
+                "tokens_in": usage.get("prompt_tokens")
+                if isinstance(usage, dict)
+                else None,
             },
         )
 
@@ -133,7 +132,5 @@ class LiteLLMEmbeddingClient(EmbeddingClient):
         else:
             data = getattr(response, "data", None)
         if not isinstance(data, list):
-            raise EmbeddingClientError(
-                "provider response missing 'data' list field"
-            )
+            raise EmbeddingClientError("provider response missing 'data' list field")
         return data

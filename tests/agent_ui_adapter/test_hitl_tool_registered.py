@@ -60,9 +60,7 @@ class TestRequestApprovalInputRejections:
 def test_virtual_executor_raises_when_invoked_directly() -> None:
     """The HITL trust boundary fails loud, never silent-auto-approves."""
     with pytest.raises(NotImplementedError, match="virtual tool"):
-        execute_request_approval(
-            {"action": "delete-files", "justification": "cleanup"}
-        )
+        execute_request_approval({"action": "delete-files", "justification": "cleanup"})
 
 
 # ── Acceptance ────────────────────────────────────────────────────────
@@ -81,17 +79,13 @@ def test_factory_returns_tool_definition() -> None:
 
 
 def test_registry_can_register_request_approval() -> None:
-    registry = ToolRegistry(
-        {REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()}
-    )
+    registry = ToolRegistry({REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()})
     assert registry.has(REQUEST_APPROVAL_TOOL_NAME)
 
 
 def test_registry_schema_advertises_action_and_justification() -> None:
     """``get_schemas()`` is what ``bind_tools()`` consumers see."""
-    registry = ToolRegistry(
-        {REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()}
-    )
+    registry = ToolRegistry({REQUEST_APPROVAL_TOOL_NAME: request_approval_tool()})
     schemas = registry.get_schemas()
     assert len(schemas) == 1
     schema = schemas[0]

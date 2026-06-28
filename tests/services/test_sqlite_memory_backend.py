@@ -30,9 +30,7 @@ from services.memory_backends.sqlite import SqliteMemoryBackend
 
 
 class TestSqliteBackendInitErrors:
-    def test_invalid_database_path_raises_sqlite_error(
-        self, tmp_path: Path
-    ) -> None:
+    def test_invalid_database_path_raises_sqlite_error(self, tmp_path: Path) -> None:
         # A directory cannot be opened as a database file.
         with pytest.raises(sqlite3.OperationalError):
             SqliteMemoryBackend(database=str(tmp_path))
@@ -46,9 +44,7 @@ class TestGetMissingKey:
     def test_unknown_key_for_known_user_returns_none(self) -> None:
         with SqliteMemoryBackend(":memory:") as backend:
             backend.put(
-                MemoryRecord(
-                    user_id="u1", key="other", payload={"a": 1}, metadata={}
-                )
+                MemoryRecord(user_id="u1", key="other", payload={"a": 1}, metadata={})
             )
             assert backend.get(user_id="u1", key="x") is None
 
@@ -83,23 +79,17 @@ class TestSqliteBackendCrud:
     def test_put_overwrites_existing_key(self) -> None:
         with SqliteMemoryBackend(":memory:") as backend:
             backend.put(
-                MemoryRecord(
-                    user_id="u1", key="k", payload={"v": 1}, metadata={}
-                )
+                MemoryRecord(user_id="u1", key="k", payload={"v": 1}, metadata={})
             )
             backend.put(
-                MemoryRecord(
-                    user_id="u1", key="k", payload={"v": 2}, metadata={}
-                )
+                MemoryRecord(user_id="u1", key="k", payload={"v": 2}, metadata={})
             )
             assert backend.get(user_id="u1", key="k").payload == {"v": 2}
 
     def test_delete_returns_true_when_key_existed(self) -> None:
         with SqliteMemoryBackend(":memory:") as backend:
             backend.put(
-                MemoryRecord(
-                    user_id="u1", key="k", payload={"v": 1}, metadata={}
-                )
+                MemoryRecord(user_id="u1", key="k", payload={"v": 1}, metadata={})
             )
             assert backend.delete(user_id="u1", key="k") is True
             assert backend.get(user_id="u1", key="k") is None
@@ -107,14 +97,10 @@ class TestSqliteBackendCrud:
     def test_two_users_are_isolated(self) -> None:
         with SqliteMemoryBackend(":memory:") as backend:
             backend.put(
-                MemoryRecord(
-                    user_id="alice", key="k", payload={"v": "a"}, metadata={}
-                )
+                MemoryRecord(user_id="alice", key="k", payload={"v": "a"}, metadata={})
             )
             backend.put(
-                MemoryRecord(
-                    user_id="bob", key="k", payload={"v": "b"}, metadata={}
-                )
+                MemoryRecord(user_id="bob", key="k", payload={"v": "b"}, metadata={})
             )
             assert backend.get(user_id="alice", key="k").payload == {"v": "a"}
             assert backend.get(user_id="bob", key="k").payload == {"v": "b"}
@@ -154,9 +140,7 @@ class TestSqliteBackendCrud:
 
 
 class TestSqliteBackendPersistence:
-    def test_data_survives_backend_close_and_reopen(
-        self, tmp_path: Path
-    ) -> None:
+    def test_data_survives_backend_close_and_reopen(self, tmp_path: Path) -> None:
         db = tmp_path / "ltm.sqlite3"
         with SqliteMemoryBackend(database=db) as backend1:
             backend1.put(

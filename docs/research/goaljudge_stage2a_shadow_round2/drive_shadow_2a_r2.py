@@ -4,6 +4,7 @@ Identical mechanics to round 1 (sequential, 240s bound, resumable on rerun),
 but a FRESH thread namespace shadow-2a-r2-{00..29} and its own run-log so the
 round-2 corpus never collides with round-1 threads.
 """
+
 import json
 import time
 import urllib.request
@@ -28,12 +29,16 @@ for i, task in enumerate(tasks):
     if thread_id in done_threads:
         print(f"[{i:02d}] already done, skipping", flush=True)
         continue
-    body = json.dumps({
-        "thread_id": thread_id,
-        "input": {"messages": [{"role": "user", "content": task}]},
-    }).encode()
+    body = json.dumps(
+        {
+            "thread_id": thread_id,
+            "input": {"messages": [{"role": "user", "content": task}]},
+        }
+    ).encode()
     req = urllib.request.Request(
-        f"{BASE}/api/run/stream", data=body, method="POST",
+        f"{BASE}/api/run/stream",
+        data=body,
+        method="POST",
         headers={
             "content-type": "application/json",
             "accept": "text/event-stream",
@@ -59,7 +64,9 @@ for i, task in enumerate(tasks):
                     continue
                 t = evt.get("type")
                 if t == "RUN_STARTED" and trace_id is None:
-                    trace_id = (evt.get("raw_event") or {}).get("trace_id") or evt.get("trace_id")
+                    trace_id = (evt.get("raw_event") or {}).get("trace_id") or evt.get(
+                        "trace_id"
+                    )
                 if t == "RUN_FINISHED":
                     status = "finished"
                     break

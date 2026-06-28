@@ -212,5 +212,3 @@ Each substrate's upgrade path is composition-root-only per `FRONTEND_ARCHITECTUR
 | Neon Free → Pro         | Storage > 0.5 GB OR CU-hr exhausted                             | `neon.tf` (drop the project_settings overrides) + `terraform.tfvars` plan tier |
 | Edge WAF/DDoS (if ever) | Public exposure needs L7 filtering                              | **Cloud Armor + external HTTPS LB** (GCP) — Cloudflare removed 2026-06-18      |
 | Self-hosted runtime     | >100 K LangGraph nodes/mo                                       | (out of scope here — switch profile in `frontend/lib/composition.ts`)          |
-
-

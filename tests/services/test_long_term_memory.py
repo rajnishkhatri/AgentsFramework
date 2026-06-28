@@ -451,7 +451,14 @@ class TestConsolidate:
     def test_consolidate_only_touches_its_type(self):
         s = _service()
         for i in range(4):
-            _store(s, "u", f"sem{i}", f"semantic {i}", mem_type="semantic", salience=0.1 * i)
+            _store(
+                s,
+                "u",
+                f"sem{i}",
+                f"semantic {i}",
+                mem_type="semantic",
+                salience=0.1 * i,
+            )
         _store(s, "u", "ep", "an episode", mem_type="episodic", salience=0.5)
         s.consolidate("u", "semantic", budget=2)
         # The episodic record is untouched by a semantic consolidation.
@@ -469,16 +476,25 @@ class TestStoreBudgetEnforcement:
             LongTermMemoryService,
         )
 
-        return LongTermMemoryService(InMemoryMemoryBackend(), budgets={"semantic": budget})
+        return LongTermMemoryService(
+            InMemoryMemoryBackend(), budgets={"semantic": budget}
+        )
 
     def test_store_returns_none_when_no_budget_configured(self):
         # Default service (no budgets) → store never consolidates, returns None.
         s = _service()
-        assert s.store("u", "k", {"text": "a fact"}, metadata={"type": "semantic"}) is None
+        assert (
+            s.store("u", "k", {"text": "a fact"}, metadata={"type": "semantic"}) is None
+        )
 
     def test_store_returns_none_under_budget(self):
         s = self._budgeted(5)
-        out = s.store("u", "k1", {"text": "fact one"}, metadata={"type": "semantic", "salience": 0.5})
+        out = s.store(
+            "u",
+            "k1",
+            {"text": "fact one"},
+            metadata={"type": "semantic", "salience": 0.5},
+        )
         assert out is None
         assert s.count("u", mem_type="semantic") == 1
 
@@ -486,7 +502,9 @@ class TestStoreBudgetEnforcement:
         s = self._budgeted(2)
         for i in range(3):
             out = s.store(
-                "u", f"k{i}", {"text": f"fact {i}"},
+                "u",
+                f"k{i}",
+                {"text": f"fact {i}"},
                 metadata={"type": "semantic", "salience": 0.1 * (i + 1)},
             )
         # The third write overflows budget 2 → consolidation runs, returns outcome.
@@ -580,7 +598,8 @@ class TestRecencyTieBreak:
     def test_store_preserves_caller_supplied_stored_at(self):
         s = self._budgeted_none()
         s.store(
-            "u", "k",
+            "u",
+            "k",
             {"text": "a fact"},
             metadata={"type": "semantic", "stored_at": "2020-01-01T00:00:00+00:00"},
         )
@@ -593,12 +612,24 @@ class TestRecencyTieBreak:
         (the older stored_at is evicted)."""
         s = self._budgeted_none()
         s.store(
-            "u", "old", {"text": "older fact"},
-            metadata={"type": "semantic", "salience": 0.5, "stored_at": "2020-01-01T00:00:00+00:00"},
+            "u",
+            "old",
+            {"text": "older fact"},
+            metadata={
+                "type": "semantic",
+                "salience": 0.5,
+                "stored_at": "2020-01-01T00:00:00+00:00",
+            },
         )
         s.store(
-            "u", "new", {"text": "newer fact"},
-            metadata={"type": "semantic", "salience": 0.5, "stored_at": "2026-01-01T00:00:00+00:00"},
+            "u",
+            "new",
+            {"text": "newer fact"},
+            metadata={
+                "type": "semantic",
+                "salience": 0.5,
+                "stored_at": "2026-01-01T00:00:00+00:00",
+            },
         )
         s.consolidate("u", "semantic", budget=1)
         assert s.recall("u", "new") is not None

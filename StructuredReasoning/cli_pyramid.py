@@ -51,19 +51,29 @@ def _build_default_tool_registry() -> Any:
     if search_provider_name == "searxng":
         from services.tools.search.searxng import SearxngProvider
 
-        _provider = SearxngProvider(base_url=os.environ.get("SEARXNG_URL", "http://localhost:8888"))
+        _provider = SearxngProvider(
+            base_url=os.environ.get("SEARXNG_URL", "http://localhost:8888")
+        )
     else:
         _provider = StubProvider()
 
-    return ToolRegistry({
-        # shell/file_io not cacheable: thread tool_cache never invalidates, so
-        # repeating an identical command/read after the file changes is stale.
-        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
-        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=False),
-        "web_search": ToolDefinition(
-            executor=build_web_search_executor(_provider), schema=WebSearchInput, cacheable=True
-        ),
-    })
+    return ToolRegistry(
+        {
+            # shell/file_io not cacheable: thread tool_cache never invalidates, so
+            # repeating an identical command/read after the file changes is stale.
+            "shell": ToolDefinition(
+                executor=execute_shell, schema=ShellToolInput, cacheable=False
+            ),
+            "file_io": ToolDefinition(
+                executor=execute_file_io, schema=FileIOInput, cacheable=False
+            ),
+            "web_search": ToolDefinition(
+                executor=build_web_search_executor(_provider),
+                schema=WebSearchInput,
+                cacheable=True,
+            ),
+        }
+    )
 
 
 def _build_agent_config() -> Any:
@@ -93,11 +103,13 @@ def _render_panel(console: Console, analysis: dict[str, Any]) -> None:
         width=100,
         allow_unicode=True,
     )
-    console.print(Panel(
-        yaml_text,
-        title="[bold green]analysis_output[/bold green]",
-        border_style="green",
-    ))
+    console.print(
+        Panel(
+            yaml_text,
+            title="[bold green]analysis_output[/bold green]",
+            border_style="green",
+        )
+    )
 
 
 def main() -> None:
@@ -113,6 +125,7 @@ def main() -> None:
     os.chdir(str(AGENT_ROOT))
 
     from services.observability import setup_logging
+
     setup_logging()
 
     from StructuredReasoning.orchestration.pyramid_loop import build_pyramid_graph
@@ -135,38 +148,44 @@ def main() -> None:
     console.print(f"\n[bold blue]Pyramid Task:[/bold blue] {task_input}")
     console.print(f"[dim]workflow_id={workflow_id} task_id={task_id}[/dim]\n")
 
-    result = asyncio.run(graph.ainvoke(
-        {
-            "task_id": task_id,
-            "task_input": task_input,
-            "messages": [],
-            "workflow_id": workflow_id,
-        },
-        config={
-            "configurable": {
+    result = asyncio.run(
+        graph.ainvoke(
+            {
                 "task_id": task_id,
-                "user_id": user_id,
+                "task_input": task_input,
+                "messages": [],
                 "workflow_id": workflow_id,
             },
-        },
-    ))
+            config={
+                "configurable": {
+                    "task_id": task_id,
+                    "user_id": user_id,
+                    "workflow_id": workflow_id,
+                },
+            },
+        )
+    )
 
     outcome = result.get("last_outcome", "")
     analysis = result.get("analysis_output_json", {})
 
     if outcome == "rejected":
-        console.print(Panel(
-            "Input rejected by the pyramid input guardrail.",
-            title="[bold red]Rejected[/bold red]",
-            border_style="red",
-        ))
+        console.print(
+            Panel(
+                "Input rejected by the pyramid input guardrail.",
+                title="[bold red]Rejected[/bold red]",
+                border_style="red",
+            )
+        )
     elif outcome == "parse_failed" or not analysis:
-        console.print(Panel(
-            f"Pyramid agent did not produce a valid analysis_output.\n"
-            f"parse_error: {result.get('parse_error', 'unknown')}",
-            title="[bold red]Parse Failure[/bold red]",
-            border_style="red",
-        ))
+        console.print(
+            Panel(
+                f"Pyramid agent did not produce a valid analysis_output.\n"
+                f"parse_error: {result.get('parse_error', 'unknown')}",
+                title="[bold red]Parse Failure[/bold red]",
+                border_style="red",
+            )
+        )
     else:
         _render_panel(console, analysis)
         out_path = cache_dir / "pyramid" / workflow_id / "analysis.json"
@@ -174,9 +193,7 @@ def main() -> None:
 
     iterations = result.get("iteration_count", 1)
     cost = result.get("total_cost_usd", 0.0)
-    console.print(
-        f"\n[dim]Iterations: {iterations} | Cost: ${cost:.4f}[/dim]"
-    )
+    console.print(f"\n[dim]Iterations: {iterations} | Cost: ${cost:.4f}[/dim]")
 
 
 if __name__ == "__main__":

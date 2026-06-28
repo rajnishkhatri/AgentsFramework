@@ -167,9 +167,7 @@ def precision_recall_fd(counts: ConfusionCounts) -> PrecisionRecallFD:
 # ───────────────────────────────────────────────────────────────────────────
 
 
-def judge_gold_kappa(
-    judge: Mapping[str, bool], gold: Mapping[str, bool]
-) -> float:
+def judge_gold_kappa(judge: Mapping[str, bool], gold: Mapping[str, bool]) -> float:
     """Nominal Krippendorff α over the (judge, gold) pair per item.
 
     Two raters, complete data ⇒ α coincides with Cohen's κ; Stage 5 used
@@ -218,9 +216,7 @@ def expected_calibration_error(
     out_of_range = {k: v for k, v in confidence.items() if not 0.0 <= v <= 1.0}
     if out_of_range:
         sample = dict(sorted(out_of_range.items())[:3])
-        raise ValueError(
-            f"confidence values out of range [0, 1]: {sample}"
-        )
+        raise ValueError(f"confidence values out of range [0, 1]: {sample}")
     bins: list[list[tuple[float, bool]]] = [[] for _ in range(n_bins)]
     for item_id, conf in confidence.items():
         bins[min(int(conf * n_bins), n_bins - 1)].append((conf, gold[item_id]))
@@ -290,8 +286,7 @@ def _gate(
     if value is None or (isinstance(value, float) and math.isnan(value)):
         gates[name] = "undecidable"
         reasons.append(
-            f"{name}: undecidable (no data / empty denominator) — "
-            "fail-closed per §2.8"
+            f"{name}: undecidable (no data / empty denominator) — fail-closed per §2.8"
         )
         return
     ok = value >= threshold if direction == "min" else value <= threshold
@@ -343,17 +338,46 @@ def evaluate_section_2_8_gates(
     t = SECTION_2_8_THRESHOLDS
     gates: dict[str, str] = {}
     reasons: list[str] = []
-    _gate("precision", precision, threshold=t["precision_min"],
-          direction="min", gates=gates, reasons=reasons)
-    _gate("recall", recall, threshold=t["recall_min"],
-          direction="min", gates=gates, reasons=reasons)
-    _gate("false_downgrade_rate", false_downgrade_rate,
-          threshold=t["false_downgrade_max"], direction="max",
-          gates=gates, reasons=reasons)
-    _gate("kappa", kappa, threshold=t["kappa_min"],
-          direction="min", gates=gates, reasons=reasons)
-    _gate("flip", flip, threshold=t["flip_max"],
-          direction="max", gates=gates, reasons=reasons)
+    _gate(
+        "precision",
+        precision,
+        threshold=t["precision_min"],
+        direction="min",
+        gates=gates,
+        reasons=reasons,
+    )
+    _gate(
+        "recall",
+        recall,
+        threshold=t["recall_min"],
+        direction="min",
+        gates=gates,
+        reasons=reasons,
+    )
+    _gate(
+        "false_downgrade_rate",
+        false_downgrade_rate,
+        threshold=t["false_downgrade_max"],
+        direction="max",
+        gates=gates,
+        reasons=reasons,
+    )
+    _gate(
+        "kappa",
+        kappa,
+        threshold=t["kappa_min"],
+        direction="min",
+        gates=gates,
+        reasons=reasons,
+    )
+    _gate(
+        "flip",
+        flip,
+        threshold=t["flip_max"],
+        direction="max",
+        gates=gates,
+        reasons=reasons,
+    )
     if (
         gates.get("flip") == "fail"
         and flip is not None
@@ -366,9 +390,7 @@ def evaluate_section_2_8_gates(
             "gate admits a documented judgment call"
         )
 
-    verdict: Verdict = (
-        "ENABLE" if set(gates.values()) == {"pass"} else "REFUSE"
-    )
+    verdict: Verdict = "ENABLE" if set(gates.values()) == {"pass"} else "REFUSE"
     return GateDecision(
         verdict=verdict,
         gates=MappingProxyType(gates),

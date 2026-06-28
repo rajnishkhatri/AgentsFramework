@@ -80,13 +80,15 @@ def _make_probe_tool(fail_first: bool):
 
 
 def _registry(fail_first: bool) -> ToolRegistry:
-    return ToolRegistry({
-        "probe": ToolDefinition(
-            executor=_make_probe_tool(fail_first),
-            schema=_ProbeInput,
-            cacheable=False,
-        ),
-    })
+    return ToolRegistry(
+        {
+            "probe": ToolDefinition(
+                executor=_make_probe_tool(fail_first),
+                schema=_ProbeInput,
+                cacheable=False,
+            ),
+        }
+    )
 
 
 def _resp(content: str, tool_calls: list[dict], idx: int) -> MagicMock:
@@ -192,15 +194,17 @@ async def test_generated_plan_source_consumes_llm_plan(tmp_path):
     """
     from orchestration.react_loop import build_graph
 
-    plan_json = json.dumps({
-        "ordered_steps": [
-            {"title": "Inventory", "goal": "inventory the schema objects"},
-            {"title": "Backfill", "goal": "write the backfill migration"},
-            {"title": "Cutover", "goal": "cut over with a rollback plan"},
-        ],
-        "constraints": ["no downtime"],
-        "success_conditions": ["the migration is applied and reversible"],
-    })
+    plan_json = json.dumps(
+        {
+            "ordered_steps": [
+                {"title": "Inventory", "goal": "inventory the schema objects"},
+                {"title": "Backfill", "goal": "write the backfill migration"},
+                {"title": "Cutover", "goal": "cut over with a rollback plan"},
+            ],
+            "constraints": ["no downtime"],
+            "success_conditions": ["the migration is applied and reversible"],
+        }
+    )
     script = [
         _resp(plan_json, [], 0),  # plan generator's call (step 0, in route_node)
         _resp("", [{"name": "probe", "args": {"note": "go"}}], 1),
@@ -376,9 +380,7 @@ async def test_reflexion_never_masks_failed_into_success(tmp_path):
 def _replay_events(tmp_path, workflow_id: str):
     from services.governance.black_box import BlackBoxRecorder
 
-    recorder = BlackBoxRecorder(
-        storage_dir=tmp_path / "cache" / "black_box_recordings"
-    )
+    recorder = BlackBoxRecorder(storage_dir=tmp_path / "cache" / "black_box_recordings")
     return recorder.replay(workflow_id)
 
 
@@ -445,7 +447,8 @@ async def test_disabled_run_records_escalation_reason_disabled(tmp_path):
     assert completed[-1].details["escalation_decision"] == "done"
     # And no reflexion-step carriers were emitted (the loop never re-entered).
     reflexion_steps = [
-        e for e in events
+        e
+        for e in events
         if e.event_type.value == "step_planned" and "reflexion_attempt" in e.details
     ]
     assert reflexion_steps == []
@@ -467,34 +470,43 @@ _FANOUT_TASK = (
     "Independently summarize three unrelated documents: doc A, doc B, and doc C."
 )
 
-_INDEPENDENT_PLAN_JSON = json.dumps({
-    "ordered_steps": [
-        {"title": "A", "goal": "summarize document A"},
-        {"title": "B", "goal": "summarize document B"},
-        {"title": "C", "goal": "summarize document C"},
-    ],
-    "constraints": [],
-    "success_conditions": ["all three documents are summarized"],
-})
+_INDEPENDENT_PLAN_JSON = json.dumps(
+    {
+        "ordered_steps": [
+            {"title": "A", "goal": "summarize document A"},
+            {"title": "B", "goal": "summarize document B"},
+            {"title": "C", "goal": "summarize document C"},
+        ],
+        "constraints": [],
+        "success_conditions": ["all three documents are summarized"],
+    }
+)
 
 # A DEPENDENT plan (sequencing markers → supervisor must decline).
-_DEPENDENT_PLAN_JSON = json.dumps({
-    "ordered_steps": [
-        {"title": "Fetch", "goal": "fetch the dataset from /workspace/raw.csv"},
-        {"title": "Clean", "goal": "then clean the fetched data"},
-        {"title": "Stat", "goal": "then compute the statistic from the cleaned data"},
-    ],
-    "constraints": [],
-    "success_conditions": ["the statistic is computed"],
-})
+_DEPENDENT_PLAN_JSON = json.dumps(
+    {
+        "ordered_steps": [
+            {"title": "Fetch", "goal": "fetch the dataset from /workspace/raw.csv"},
+            {"title": "Clean", "goal": "then clean the fetched data"},
+            {
+                "title": "Stat",
+                "goal": "then compute the statistic from the cleaned data",
+            },
+        ],
+        "constraints": [],
+        "success_conditions": ["the statistic is computed"],
+    }
+)
 
-_DECOMPOSE_JSON = json.dumps({
-    "branches": [
-        {"objective": "summarize document A", "subagent_type": "general"},
-        {"objective": "summarize document B", "subagent_type": "general"},
-        {"objective": "summarize document C", "subagent_type": "general"},
-    ]
-})
+_DECOMPOSE_JSON = json.dumps(
+    {
+        "branches": [
+            {"objective": "summarize document A", "subagent_type": "general"},
+            {"objective": "summarize document B", "subagent_type": "general"},
+            {"objective": "summarize document C", "subagent_type": "general"},
+        ]
+    }
+)
 
 
 def _make_branch_dispatch(behavior):
@@ -504,6 +516,7 @@ def _make_branch_dispatch(behavior):
     (raise RuntimeError — the superstep-cancel hazard), "slow" (sleep past any
     timeout). Default is "ok".
     """
+
     async def _dispatch_async(self, request):  # noqa: ANN001
         objective = str(request.get("objective", ""))
         mode = "ok"
@@ -515,6 +528,7 @@ def _make_branch_dispatch(behavior):
             raise RuntimeError(f"branch boom: {objective[:20]}")
         if mode == "slow":
             import asyncio as _a
+
             await _a.sleep(5.0)
         return {
             "status": "completed",
@@ -553,7 +567,7 @@ async def _run_fanout(
     from orchestration.react_loop import build_graph
 
     script = [
-        _resp(plan_json, [], 0),       # route_node plan generator (step 0)
+        _resp(plan_json, [], 0),  # route_node plan generator (step 0)
         _resp(_DECOMPOSE_JSON, [], 1),  # supervisor_node decompose
     ] + [_resp(f"Joined / answered #{i}.", [], 10 + i) for i in range(extra_llm_after)]
 
@@ -623,9 +637,9 @@ async def test_fanout_decline_is_identical_to_today(tmp_path):
     # The supervisor recorded a decline decision carrier.
     events = _replay_events(tmp_path, "wf-fanout-decline")
     decisions = [
-        e for e in events
-        if e.event_type.value == "step_planned"
-        and e.details.get("supervisor_decision")
+        e
+        for e in events
+        if e.event_type.value == "step_planned" and e.details.get("supervisor_decision")
     ]
     assert decisions and decisions[-1].details["supervisor_decision"] == "decline"
     assert "sequential-dependent" in decisions[-1].details["supervisor_reason"]
@@ -677,7 +691,11 @@ async def test_fanout_all_workers_fail_judge_still_runs(tmp_path):
     non-empty joined answer — the corrupt-success guard holds)."""
     result = await _run_fanout(
         plan_json=_INDEPENDENT_PLAN_JSON,
-        branch_behavior={"document A": "raise", "document B": "raise", "document C": "raise"},
+        branch_behavior={
+            "document A": "raise",
+            "document B": "raise",
+            "document C": "raise",
+        },
         tmp_path=tmp_path,
         workflow_id="wf-fanout-allfail",
     )
@@ -727,8 +745,7 @@ async def test_fanout_happy_path_all_succeed(tmp_path):
     # since the sim wires no trace_service).
     events = _replay_events(tmp_path, "wf-fanout-happy")
     requested = [
-        e for e in events
-        if e.details.get("delegation_event") == "delegation_requested"
+        e for e in events if e.details.get("delegation_event") == "delegation_requested"
     ]
     assert len(requested) == 3
 
@@ -788,7 +805,8 @@ async def test_fanout_supervisor_logs_phaselogger_decision(tmp_path):
     pl = PhaseLogger(storage_dir=tmp_path / "cache" / "phase_logs")
     decisions = pl.export_workflow_log("wf-fanout-decision")
     sup_decisions = [
-        d for d in decisions
+        d
+        for d in decisions
         if "fan_out" in str(d.get("description", "")).lower()
         or "decline" in str(d.get("description", "")).lower()
     ]
@@ -800,9 +818,9 @@ async def test_fanout_supervisor_logs_phaselogger_decision(tmp_path):
     # black_box sink: the step.planned carrier shares the SAME decision_id.
     events = _replay_events(tmp_path, "wf-fanout-decision")
     sup_planned = [
-        e for e in events
-        if e.event_type.value == "step_planned"
-        and "supervisor_decision" in e.details
+        e
+        for e in events
+        if e.event_type.value == "step_planned" and "supervisor_decision" in e.details
     ]
     assert sup_planned, "no supervisor step.planned carrier"
     assert sup_planned[-1].details.get("decision_id") == sup["decision_id"], (
@@ -838,7 +856,7 @@ async def test_fanout_is_not_memory_blind(tmp_path):
     captured: list = []
     script = [
         _resp(_INDEPENDENT_PLAN_JSON, [], 0),  # route_node plan generator
-        _resp(_DECOMPOSE_JSON, [], 1),          # supervisor decompose
+        _resp(_DECOMPOSE_JSON, [], 1),  # supervisor decompose
     ] + [_resp(f"Joined #{i}.", [], 10 + i) for i in range(4)]
 
     with (
@@ -897,9 +915,7 @@ async def test_fanout_is_not_memory_blind(tmp_path):
     # The supervisor decompose call (LLM call #2) carried the recalled block in
     # its user message — proof the fan-out run saw memory.
     all_text = " ".join(
-        str(getattr(m, "content", m))
-        for batch in captured
-        for m in batch
+        str(getattr(m, "content", m)) for batch in captured for m in batch
     )
     assert "terse document summaries" in all_text, (
         "the recalled memory never reached any fan-out prompt — memory-blind"

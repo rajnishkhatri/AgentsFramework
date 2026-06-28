@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": ".venv/bin/python scripts/hooks/cursor_after_edit.py",
+        "failClosed": false
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".venv/bin/python scripts/hooks/cursor_before_shell.py",
+        "failClosed": true
+      }
+    ]
+  }
+}

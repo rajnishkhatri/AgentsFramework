@@ -80,7 +80,9 @@ def _effective_len(success_conditions: list[str]) -> int:
     rephrase, but ``_build`` appends the exact constant — identity is the common
     path). Never returns below the schema floor of 1 real condition.
     """
-    real = [c for c in success_conditions if c.strip() != GENERIC_TAIL_CONDITION.strip()]
+    real = [
+        c for c in success_conditions if c.strip() != GENERIC_TAIL_CONDITION.strip()
+    ]
     if len(real) == len(success_conditions) and success_conditions:
         # tail not found by identity — subtract one defensively
         return max(0, len(success_conditions) - 1)
@@ -128,31 +130,50 @@ async def _capture(samples: int) -> None:
 
     rows = _load_corpus_depth_rows()
     out: list[dict] = []
-    print(f"capturing {samples} sample(s) for {len(rows)} prompt(s) "
-          f"({len(rows) * samples} fast-tier calls) ...", file=sys.stderr)
+    print(
+        f"capturing {samples} sample(s) for {len(rows)} prompt(s) "
+        f"({len(rows) * samples} fast-tier calls) ...",
+        file=sys.stderr,
+    )
     for row in rows:
         ti = row["task_input"]
         gathered: list[dict] = []
         for s in range(samples):
             try:
                 tu = await gen.generate(task_input=ti)
-                gathered.append({
-                    "conditions": list(tu.success_conditions),
-                    "confidence": tu.confidence,
-                    "model": tu.model,
-                    "error": None,
-                })
+                gathered.append(
+                    {
+                        "conditions": list(tu.success_conditions),
+                        "confidence": tu.confidence,
+                        "model": tu.model,
+                        "error": None,
+                    }
+                )
             except TaskUnderstandingValidationError as exc:
                 # Gate rejection is itself a datum (the model could not produce
                 # a grounded checklist for this prompt) — record, don't crash.
-                gathered.append({"conditions": [], "confidence": 0.0,
-                                 "model": gen.model_name, "error": f"gate: {exc}"})
-            print(f"  {row['id']} sample {s + 1}/{samples} "
-                  f"-> {len(gathered[-1]['conditions'])} conds", file=sys.stderr)
-        out.append({
-            "id": row["id"], "family": row["family"], "task_input": ti,
-            "want_depth": row["want_depth"], "samples": gathered,
-        })
+                gathered.append(
+                    {
+                        "conditions": [],
+                        "confidence": 0.0,
+                        "model": gen.model_name,
+                        "error": f"gate: {exc}",
+                    }
+                )
+            print(
+                f"  {row['id']} sample {s + 1}/{samples} "
+                f"-> {len(gathered[-1]['conditions'])} conds",
+                file=sys.stderr,
+            )
+        out.append(
+            {
+                "id": row["id"],
+                "family": row["family"],
+                "task_input": ti,
+                "want_depth": row["want_depth"],
+                "samples": gathered,
+            }
+        )
 
     _FIXTURE.parent.mkdir(parents=True, exist_ok=True)
     _FIXTURE.write_text("\n".join(json.dumps(r) for r in out) + "\n")
@@ -187,11 +208,15 @@ def _score_prompt(rec: dict) -> dict:
     under_budgeted = n_valid > 0 and n_under * 2 > n_valid  # strict majority
 
     return {
-        "id": rec["id"], "family": rec["family"],
-        "fired_depth": fired, "fired_reason": reason,
+        "id": rec["id"],
+        "family": rec["family"],
+        "fired_depth": fired,
+        "fired_reason": reason,
         "want_depth": rec["want_depth"],
-        "cap": cap, "want_cap": want_cap,
-        "lens": lens, "errors": errs,
+        "cap": cap,
+        "want_cap": want_cap,
+        "lens": lens,
+        "errors": errs,
         "len_min": min(lens) if lens else None,
         "len_max": max(lens) if lens else None,
         "len_med": statistics.median(lens) if lens else None,
@@ -201,7 +226,8 @@ def _score_prompt(rec: dict) -> dict:
         # under-promotes (want > fired) should need more than fired_cap and
         # fit within want_cap.
         "is_underpromote": want_cap > cap,
-        "confirms_underplan": (want_cap > cap) and under_budgeted
+        "confirms_underplan": (want_cap > cap)
+        and under_budgeted
         and (rec["want_depth"] == "L0" or (lens and max(lens) <= want_cap)),
     }
 
@@ -220,9 +246,11 @@ def _report(scored: list[dict]) -> int:
     for s in scored:
         lens = ",".join(str(n) for n in s["lens"]) if s["lens"] else "(gate-rej)"
         flag = "  FLIP" if s["flips"] else ""
-        A(f"{s['id']:22} {s['family'][:22]:22} {s['fired_depth']:6} "
-          f"{s['cap']:<4} {lens:14} {str(s['under_budgeted']):7} "
-          f"{str(s['flips']):6}{flag}")
+        A(
+            f"{s['id']:22} {s['family'][:22]:22} {s['fired_depth']:6} "
+            f"{s['cap']:<4} {lens:14} {str(s['under_budgeted']):7} "
+            f"{str(s['flips']):6}{flag}"
+        )
 
     # The headline: do the under-promote rows (want>fired) show under-budgeting?
     underpromote = [s for s in scored if s["is_underpromote"]]
@@ -235,20 +263,30 @@ def _report(scored: list[dict]) -> int:
     if not underpromote:
         A("  none — every depth-surface row fired its want_depth (floor agrees).")
     for s in underpromote:
-        verdict = "CONFIRMS under-plan" if s["confirms_underplan"] else "does NOT confirm"
-        A(f"  {s['id']:22} fired {s['fired_depth']} (cap {s['cap']}) want "
-          f"{s['want_depth']} (cap {s['want_cap']})  lens={s['lens']}  -> {verdict}")
-    A(f"\n  {len(confirmed)}/{len(underpromote)} under-promote rows show the floor "
-      f"budgeting fewer steps than TaskUnderstanding's checklist needs.")
+        verdict = (
+            "CONFIRMS under-plan" if s["confirms_underplan"] else "does NOT confirm"
+        )
+        A(
+            f"  {s['id']:22} fired {s['fired_depth']} (cap {s['cap']}) want "
+            f"{s['want_depth']} (cap {s['want_cap']})  lens={s['lens']}  -> {verdict}"
+        )
+    A(
+        f"\n  {len(confirmed)}/{len(underpromote)} under-promote rows show the floor "
+        f"budgeting fewer steps than TaskUnderstanding's checklist needs."
+    )
 
     if flips:
-        A(f"\nVERDICT-FLIP FLAGS ({len(flips)}): samples disagreed — treat as "
-          "INCONCLUSIVE, not a signal:")
+        A(
+            f"\nVERDICT-FLIP FLAGS ({len(flips)}): samples disagreed — treat as "
+            "INCONCLUSIVE, not a signal:"
+        )
         for s in flips:
             A(f"  {s['id']}  lens={s['lens']} (cap {s['cap']})")
     if gate_rej:
-        A(f"\nGATE-REJECTED ({len(gate_rej)}): model produced no grounded checklist "
-          "(excluded from the verdict):")
+        A(
+            f"\nGATE-REJECTED ({len(gate_rej)}): model produced no grounded checklist "
+            "(excluded from the verdict):"
+        )
         for s in gate_rej:
             A(f"  {s['id']}")
 
@@ -272,15 +310,26 @@ def _report(scored: list[dict]) -> int:
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description=__doc__,
-                                formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--capture", action="store_true",
-                   help="Spend tokens: generate samples to the fixture (needs LLM creds).")
-    p.add_argument("--samples", type=int, default=3,
-                   help="Samples per prompt during --capture (VD-3 variance guard; default 3).")
-    p.add_argument("--strict", action="store_true",
-                   help="Exit 1 unless every under-promote row confirms under-planning "
-                        "with no verdict-flips (calibration aid; not yet a CI gate).")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    p.add_argument(
+        "--capture",
+        action="store_true",
+        help="Spend tokens: generate samples to the fixture (needs LLM creds).",
+    )
+    p.add_argument(
+        "--samples",
+        type=int,
+        default=3,
+        help="Samples per prompt during --capture (VD-3 variance guard; default 3).",
+    )
+    p.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit 1 unless every under-promote row confirms under-planning "
+        "with no verdict-flips (calibration aid; not yet a CI gate).",
+    )
     args = p.parse_args()
 
     if args.capture:
@@ -288,9 +337,11 @@ def main() -> int:
         # fall through to score the freshly-captured fixture
 
     if not _FIXTURE.exists():
-        print(f"no fixture at {_FIXTURE}. Run with --capture first (spends ~"
-              f"{len(_load_corpus_depth_rows()) * args.samples} fast-tier calls).",
-              file=sys.stderr)
+        print(
+            f"no fixture at {_FIXTURE}. Run with --capture first (spends ~"
+            f"{len(_load_corpus_depth_rows()) * args.samples} fast-tier calls).",
+            file=sys.stderr,
+        )
         return 2
 
     records = [json.loads(l) for l in _FIXTURE.read_text().splitlines() if l.strip()]

@@ -9,6 +9,7 @@ Env: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, LANGFUSE_HOST.
 SDK: langfuse>=4 — verified API surface: api.trace.list / api.trace.get /
      api.observations.get_many (mirrors tests/synthetic/blackbox/langfuse_assertions.py).
 """
+
 from __future__ import annotations
 
 import json
@@ -19,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
+
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from langfuse import Langfuse
@@ -99,7 +101,9 @@ def _eval_goal_judge_from_langfuse(trace_id: str) -> dict[str, Any]:
         name = obs.get("name") if isinstance(obs, dict) else getattr(obs, "name", "")
         if name not in ("eval.goal_judge", "eval_capture.goal_judge"):
             continue
-        output = obs.get("output") if isinstance(obs, dict) else getattr(obs, "output", None)
+        output = (
+            obs.get("output") if isinstance(obs, dict) else getattr(obs, "output", None)
+        )
         if isinstance(output, dict):
             return output
         if isinstance(output, str):
@@ -165,6 +169,7 @@ def export(
     if case_map is None:
         try:
             from tests.fixtures.goaljudge.case_registry import LIVE_CASES
+
             case_map = {}
             for c in LIVE_CASES:
                 tid = uuid.uuid5(uuid.NAMESPACE_DNS, c.id).hex
@@ -186,14 +191,20 @@ def export(
                 continue
             details = _task_completed_details(trace_id)
             verdict = verdicts.get(trace_id) or _eval_goal_judge_from_langfuse(trace_id)
-            
+
             case_info = case_map.get(trace_id) if case_map else None
-            provenance = getattr(case_info, "provenance", "live") if case_info else "live"
-            stratum = getattr(case_info, "stratum", "unknown") if case_info else "unknown"
-            target_code = getattr(case_info, "target_code", "unknown") if case_info else "unknown"
+            provenance = (
+                getattr(case_info, "provenance", "live") if case_info else "live"
+            )
+            stratum = (
+                getattr(case_info, "stratum", "unknown") if case_info else "unknown"
+            )
+            target_code = (
+                getattr(case_info, "target_code", "unknown") if case_info else "unknown"
+            )
 
             row = {
-                "trace_id": trace_id,            # == workflow_id == task_id
+                "trace_id": trace_id,  # == workflow_id == task_id
                 "task_input": trace.get("input"),
                 "final_answer": trace.get("output"),
                 "trajectory": fetch_trace_observations(trace_id),
@@ -289,10 +300,13 @@ def _case_map_from_jsonl(jsonl_path: str) -> dict[str, Any]:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Export GoalJudge runs")
     parser.add_argument("--user-id", help="Filter by user_id")
     parser.add_argument("--hours", type=int, default=2, help="Hours back to fetch")
-    parser.add_argument("--out", default="cache/goaljudge_eval/run.jsonl", help="Output path")
+    parser.add_argument(
+        "--out", default="cache/goaljudge_eval/run.jsonl", help="Output path"
+    )
     parser.add_argument(
         "--trace-ids-from-jsonl",
         metavar="PATH",

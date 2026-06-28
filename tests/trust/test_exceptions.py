@@ -39,24 +39,18 @@ class TestTrustProviderErrorBase:
         assert exc.original_error is original
 
     def test_original_error_defaults_to_none(self):
-        exc = TrustProviderError(
-            "no original", provider="local", operation="test"
-        )
+        exc = TrustProviderError("no original", provider="local", operation="test")
         assert exc.original_error is None
 
     def test_repr_contains_provider_and_operation(self):
-        exc = TrustProviderError(
-            "msg", provider="aws", operation="op"
-        )
+        exc = TrustProviderError("msg", provider="aws", operation="op")
         r = repr(exc)
         assert "aws" in r
         assert "op" in r
         assert "TrustProviderError" in r
 
     def test_is_exception(self):
-        exc = TrustProviderError(
-            "test", provider="local", operation="test"
-        )
+        exc = TrustProviderError("test", provider="local", operation="test")
         assert isinstance(exc, Exception)
 
 

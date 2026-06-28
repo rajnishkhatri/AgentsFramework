@@ -16,13 +16,10 @@ from the capture policy so the policy stays deterministic.
 
 from __future__ import annotations
 
-import asyncio
-
-import pytest
 
 from components.schemas import TypedMemory
 from services.governance.black_box import BlackBoxRecorder, EventType
-from services.memory_autocapture import CaptureOutcome, MemoryAutoCaptureService
+from services.memory_autocapture import MemoryAutoCaptureService
 
 # ─────────────────────────────────────────────────────────────────────
 # Fakes (Pattern 6 / 4 — ≤3 mocks)
@@ -329,7 +326,11 @@ def _items_semantic(n, *, salience_lo_first=True):
     # n distinct semantic facts; first item lowest salience when lo_first.
     out = []
     for i in range(n):
-        sal = round((i + 1) / (n + 1), 3) if salience_lo_first else round(0.9 - i * 0.1, 3)
+        sal = (
+            round((i + 1) / (n + 1), 3)
+            if salience_lo_first
+            else round(0.9 - i * 0.1, 3)
+        )
         out.append(_item(content=f"fact number {i}", key=f"k{i}", sal=sal))
     return out
 
@@ -423,7 +424,10 @@ class TestConsolidationOnWriteBack:
 
     async def test_consolidation_carrier_never_contains_content(self, tmp_path):
         ex = FakeExtractor(
-            memories=[_item(content="SECRET-EVICTED-FACT", key=f"k{i}", sal=0.1 * i) for i in range(4)]
+            memories=[
+                _item(content="SECRET-EVICTED-FACT", key=f"k{i}", sal=0.1 * i)
+                for i in range(4)
+            ]
         )
         mem = _real_memory(budgets={"semantic": 1})
         rec = _recorder(tmp_path)

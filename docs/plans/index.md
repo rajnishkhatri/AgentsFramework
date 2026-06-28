@@ -2,7 +2,7 @@
 
 OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
-- [aws_deployment_recipes.plan](aws_deployment_recipes.plan.md) — 
+- [aws_deployment_recipes.plan](aws_deployment_recipes.plan.md) —
 - [Option B — Cloud SQL–compatible BFF ThreadRepo (durable sidebar on `agent-frontend`)](bff_cloudsql_thread_repo.plan.md) — The BFF sidebar needs DATABASE_URL to persist threads.
 - [BlackBox → Langfuse End-to-End Validation on GCP](blackbox_e2e_validation.plan.md) — Status: In Progress
 - [Close BlackBox to Langfuse Governance Gaps](blackbox_langfuse_gap_closure.plan.md) — Status: In Progress
@@ -17,12 +17,12 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [C1 — Message-History Compaction + B2 Pinned-Facts Floor: Implementation Plan](c1_message_compaction.impl.md) — The what-file/what-function/what-line/what-test build sheet for the C1 design; default-OFF.
 - [C1 — Phase 9 live-validation runbook](c1_message_compaction.phase9.runbook.md) — Tagged `--no-traffic` Cloud Run rev + planning-stress corpus + analyzer assert; operator-driven, prod untouched.
 - [C1 — Phases 1-9 GCP validation walkthrough (synthetic stress prompts)](c1_message_compaction.phases1-9_gcp_validation.walkthrough.md) — Teaching walkthrough: deploy compaction-ON `--no-traffic`, drive the synthetic compaction corpus, read the DOM+Langfuse+analyzer evidence triad, assert the §B2-R bars.
-- [cloud_cost_comparison_pyramids.plan](cloud_cost_comparison_pyramids.plan.md) — 
+- [cloud_cost_comparison_pyramids.plan](cloud_cost_comparison_pyramids.plan.md) —
 - [Critical-Path Smoke Testing Plan](critical_path_smoke_testing.plan.md) — Status: COMPLETE 2026-06-12 — Phase 1 PASSED; Phase 2 PASSED (live GCP)
 - [Dataset Adaptation Plan for Deep-Agent Benchmark](dataset_adaptation_plan.md) — This plan defines how to adapt external and internal sources into a stable, reproducible benchmark fixture for deep-agent capability evaluation.
 - [Deep Agent Capabilities Sprint Board](deep_agent_capabilities_793b5c9b.plan.md) — This document is the execution board for the deep-agent capability ladder (P0-P4).
 - [Deep Agent Sprint Board](deep_agent_sprint_board.md) — Build a sprint board for the deep-agent capability roadmap in docs/plans/deep_agent_capabilities_793b5c9b.plan.md, with clear sprint scopes, user stories, and a strict Definition
-- [deploy_gcp_langfuse.plan](deploy_gcp_langfuse.plan.md) — 
+- [deploy_gcp_langfuse.plan](deploy_gcp_langfuse.plan.md) —
 - [Generalized Eval + Probe Pipeline Skill — Plan](eval_probe_pipeline_skill.plan.md) — The deep read found this repo is not missing eval infrastructure — it is missing a
 - [Eval UI — Honesty & Triage Improvements](eval_ui_honesty_improvements.plan.md) — The trace-explainability plan made three things first-class in telemetry:
 - [Fetch Memory Trace from Langfuse — plan](fetch_memory_trace.plan.md) — Pull the most recent trace that emitted memory carriers (memory.recalled / memory.stored)
@@ -30,9 +30,9 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Fix S1 BlackBox Relay Observations](fix_s1_blackbox_relay.plan.md) — Status: Root cause fixed in code (verified locally + in Langfuse UI).
 - [Fix S1 BlackBox Relay — Deploy & Re-validation Plan](fix_s1_blackbox_relay_deploy.plan.md) — Status: Code fix + follow-up hardening complete (88/88 tests).
 - [Debug Session: S2 No-Progress Detection Failure](fix_s2_no_progress_detection.debug.md) — Debug session 3f33d4.
-- [fix_session_observations_revised.plan](fix_session_observations_revised.plan.md) — 
-- [gcp_deploy_change_detection_f6c98808.plan](gcp_deploy_change_detection_f6c98808.plan.md) — 
-- [gcp_deployment_recipes.plan](gcp_deployment_recipes.plan.md) — 
+- [fix_session_observations_revised.plan](fix_session_observations_revised.plan.md) —
+- [gcp_deploy_change_detection_f6c98808.plan](gcp_deploy_change_detection_f6c98808.plan.md) —
+- [gcp_deployment_recipes.plan](gcp_deployment_recipes.plan.md) —
 - [GoalJudge Eval UI — Trajectory + Admissible-Capture Phase](goaljudge_eval_ui_trajectory_phase.plan.md) — Implemented phase-by-phase in the Appendix B interleaved order, backend emission
 - [GoalJudge — GCP Compatibility Plan (make the flags *settable* for validation)](goaljudge_gcp_compatibility.plan.md) — A just-completed validation walkthrough
 - [GoalJudge GCP Playwright Batch — Injection Plan (G1 via UI)](goaljudge_gcp_playwright_batch.plan.md) — Dependencies flow inward — Playwright never imports Python; it reads exported JSON only.
@@ -45,7 +45,7 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [GoalJudge Stage 5 — Phase 6-C v0.9 shipment + Phase 4 wave 2 brief](goaljudge_stage5_phase6c_v09_and_wave2.plan.md) — At the end of the Phase 5 + Phase 6-A/B session, two facts were true:
 - [Plan — GoalJudge Stage 5 Tier 3: Assemble `goaljudge_goldset_v1`](goaljudge_stage5_tier3_assembly.plan.md) — The Tier 2 unblock session produced (a) a confirmed A2 rubric, (b) two corrected agent fixes (planner per-task scoping + saturation task_id decoupling), and (c) enriched
 - [GoalJudge Stage 6 — Judge Calibration against `goaljudge_goldset_v1`](goaljudge_stage6_calibration.plan.md) — Stage 5 produced a trusted gold-set (101 rows now at v0.9; ~250 at v1).
-- [goaljudge_synthetic_saturation_corpus.plan](goaljudge_synthetic_saturation_corpus.plan.md) — 
+- [goaljudge_synthetic_saturation_corpus.plan](goaljudge_synthetic_saturation_corpus.plan.md) —
 - [GoalJudge Synthetic Saturation Run Plan](goaljudge_synthetic_saturation_run.plan.md) — This document details the end-to-end execution plan for running the GoalJudge synthetic saturation corpus pipeline locally to calibrate and export a clean failure-taxonomy corpus.
 - [GoalJudge — TaskUnderstanding Generation & Soft-Gate UI (Option D + intent card)](goaljudge_task_understanding_gate.plan.md) — Replace the constant generic success_conditions pair with a per-task
 - [Carrier-gate E2E validation — report](governance_carrier_gate_e2e_report.md) — Status: validation report — 2026-06-17.
@@ -53,22 +53,22 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Carrier-gate — GCP deploy guide & required config](governance_carrier_gate_gcp_deploy.md) — Status: deploy guide — 2026-06-17.
 - [Carrier-gate post-deploy walkthrough — case-by-case report](governance_carrier_gate_post_deploy_walkthrough.md) — Status: validation walkthrough — 2026-06-17 (post-GCP deploy).
 - [Governance-trace enforcement gate — implementation plan](governance_trace_enforcement_gate.impl.md) — Status: Phase 1 + Phase 2 BUILT, committed (2386660), deployed — 2026-06-17.
-- [guardrails_tuning_refinement.plan](guardrails_tuning_refinement.plan.md) — 
+- [guardrails_tuning_refinement.plan](guardrails_tuning_refinement.plan.md) —
 - [Guardrails Tuning Sprint Board](guardrails_tuning_sprint_board.md) — Execute the dimension-aware guardrails program defined in docs/plans/guardrails_tuning_refinement.plan.md as dependency-ordered sprints.
-- [langfuse_gcp_integration.plan](langfuse_gcp_integration.plan.md) — 
+- [langfuse_gcp_integration.plan](langfuse_gcp_integration.plan.md) —
 - [LLM Eval Pipeline Skill — Plan (workspace-bound)](llm_eval_pipeline_skill.plan.md) — The deep end-to-end read of the pipeline surfaced a stack of repo-specific facts that a generic
 - [Add a Memory Layer to the Agent (wire the orphaned long-term memory into the react loop)](memory_layer_wiring.plan.md) — Gates re-run today, both rings, full:
 - [Memory Layer — Multi-Turn / Multi-Session E2E Stress + Governance Trace Analysis Plan](memory_multisession_e2e_stress.plan.md) — The memory layer is wired but never validated across sessions.
-- [memory_pipeline_remediation.plan](memory_pipeline_remediation.plan.md) — 
+- [memory_pipeline_remediation.plan](memory_pipeline_remediation.plan.md) —
 - [Native-wrap UI redesign plan](native_wrap_ui_redesign.plan.md) — Ship the Next.js/CopilotKit chat as native-feeling macOS (Tauri 2) + iOS (Capacitor 7) apps; code-first shadcn + DTCG tokens, design surface = Claude Design via /design-sync (Figma dropped).
 - [DesignSync setup runbook (Claude Design / /design-sync)](native_wrap_ui_redesign.design_sync_setup.runbook.md) — Operational companion to native_wrap §2.5: how to authorize (/design-login, Pro account), the safe list→finalize_plan→write push flow, and the P-sync readiness gate (don't sync before the primitive layer exists).
 - [Phase 3 PhaseLogger Wiring — Sprint Board](phase_3_phaselogger_sprint_board.md) — Execute the PhaseLogger wiring program defined in docs/plans/phase_3_phaselogger_wiring.plan.md as dependency-ordered sprints.
-- [phase_3_phaselogger_wiring.plan](phase_3_phaselogger_wiring.plan.md) — 
+- [phase_3_phaselogger_wiring.plan](phase_3_phaselogger_wiring.plan.md) —
 - [Planning Pipeline — E2E Stress Test + Langfuse Trace Analysis Plan](planning_pipeline_e2e_stress_and_trace_analysis.plan.md) — Three deliverables, in dependency order:
 - [Planning Pipeline — Tiered Reasoning Loops: Detailed Design](planning_pipeline_tiered_loops.design.md) — The plan uses the word "protocol" for three distinct things; the design doc must keep them in separate
 - [Planning Pipeline — Tiered Reasoning Loops: Implementation Plan](planning_pipeline_tiered_loops.impl.md) — The plan's §6 / design's §D left three decisions open.
 - [Planning Pipeline — Tiered Reasoning Loops (ReAct → Plan-Execute → Reflexion)](planning_pipeline_tiered_loops.plan.md) — Phases 0–3 are committed.
-- [recipe_0_story_docs.plan](recipe_0_story_docs.plan.md) — 
+- [recipe_0_story_docs.plan](recipe_0_story_docs.plan.md) —
 - [Architecture Design: Replacing mem0 with pgvector](replace_mem0_pgvector.design.md) — Detailed architecture + diagrams for the pgvector swap behind the unchanged sync MemoryBackend Protocol; §4 is the SQL-schema source of truth for the Phase 5 S1 migration.
 - [Replace mem0 with an in-repo pgvector memory backend](replace_mem0_pgvector.plan.md) — Retire mem0 for pgvector on Cloud SQL behind the unchanged sync MemoryBackend Protocol; Phase 0 spike (C1–C6) + Phase 0.5 runtime/infra compat (R1–R7) + 7 phases + an honest review (B1–B10) and 14 validated follow-ups across 3 rounds. Key fixes: EmbeddingClient → services/ (M1 bug); async client is a dead seam (delete-not-port); build_adapters hard-requires MEM0_API_KEY (deploy blocker); locked S0–S6 rollback; 9 tests + 5 infra refs in scope.
 - [Real SearXNG web_search (sidecar on GCP) + no-progress detection](searxng_real_web_search.plan.md) — Two coupled changes: (A) swap the stub for a real, provider-agnostic web search backed by SearXNG, deployed as a Cloud Run sidecar; (B) add no-progress detection so the agent no
@@ -80,7 +80,7 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [T3 Stage B — Case-by-case walkthrough (input → output → Langfuse reasoning)](t3_stage_b_case_walkthrough.md) — Date: 2026-06-16 | Run: 29/29 cases, credentialed Langfuse traces, per-run trace_ids, single-run validated
 - [`components/supervisor_plan.py` — the decompose-or-decline component (T3)](t3_supervisor_plan.component.md) — Two functions, mirroring plan_builder's build_plan_artifact_llm + validate_plan_mece split: one *produces*
 - [Trace Explainability Optimization — Curated Langfuse View over Canonical BlackBox](trace_explainability_optimization.plan.md) — Make the Langfuse trace a curated, human-first explainability view — every fact
-- [trace_gap_closure.plan](trace_gap_closure.plan.md) — 
+- [trace_gap_closure.plan](trace_gap_closure.plan.md) —
 - [Typed-Memory Searchability — Per-Type Retrieval Design](typed_memory_searchability.design.md) — Improvement over the pgvector design: forward-compatible type-aware schema (mem_type / created_at / tsvector) + a deferred per-type retrieval roadmap (semantic / episodic / procedural), grounded in 2026 research. Schema-now / behavior-later.
 - [UI — Left Panel Refresh & Right Panel Removal: Visual Design](ui_left_panel_refresh.design.md) — BEFORE — three columns, right "What I remember" panel present.
 - [UI — Left Panel Refresh & Right Panel Removal](ui_left_panel_refresh.plan.md) — grid lg:grid-cols-auto_1fr_auto → left ThreadSidebar · center chat ·

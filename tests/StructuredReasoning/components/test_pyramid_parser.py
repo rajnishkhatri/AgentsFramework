@@ -64,7 +64,7 @@ class TestParseFailures:
 
 class TestExtractJsonObject:
     def test_strips_fenced_code_block(self):
-        wrapped = "Sure! Here you go:\n```json\n{\"a\": 1}\n```\nAnything else?"
+        wrapped = 'Sure! Here you go:\n```json\n{"a": 1}\n```\nAnything else?'
         assert extract_json_object(wrapped).strip() == '{"a": 1}'
 
     def test_handles_unfenced_object_with_prose(self):
@@ -85,7 +85,10 @@ class TestParseSuccess:
         payload = _minimal_valid_payload()
         result = parse_analysis_output(json.dumps(payload))
         assert isinstance(result, AnalysisOutput)
-        assert result.governing_thought.statement == payload["governing_thought"]["statement"]
+        assert (
+            result.governing_thought.statement
+            == payload["governing_thought"]["statement"]
+        )
 
     def test_tolerates_fenced_response(self):
         payload = _minimal_valid_payload()

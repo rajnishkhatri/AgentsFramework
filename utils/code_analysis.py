@@ -31,10 +31,16 @@ LAYER_DIRS = {
 # via ``check_dependency_rules`` so the boundary definition lives in
 # exactly one place.
 FORBIDDEN_IMPORTS: dict[str, set[str]] = {
-    "trust": {"utils", "services", "components", "agents",
-              "orchestration", "governance", "meta"},
-    "utils": {"components", "agents", "orchestration",
-              "governance", "meta"},
+    "trust": {
+        "utils",
+        "services",
+        "components",
+        "agents",
+        "orchestration",
+        "governance",
+        "meta",
+    },
+    "utils": {"components", "agents", "orchestration", "governance", "meta"},
     "services": {"components", "agents", "orchestration", "meta"},
     "components": {"orchestration", "meta"},
     "agents": {"orchestration", "governance", "meta"},
@@ -42,51 +48,53 @@ FORBIDDEN_IMPORTS: dict[str, set[str]] = {
 }
 
 FRAMEWORK_FORBIDDEN: dict[str, set[str]] = {
-    "components": {"langgraph", "langchain", "langchain_core",
-                   "langchain_community"},
-    "services": {"langgraph", "langchain", "langchain_core",
-                 "langchain_community"},
+    "components": {"langgraph", "langchain", "langchain_core", "langchain_community"},
+    "services": {"langgraph", "langchain", "langchain_core", "langchain_community"},
 }
 
-IO_MODULES = frozenset({
-    "os",
-    "shutil",
-    "socket",
-    "http",
-    "urllib",
-    "requests",
-    "httpx",
-    "aiohttp",
-    "boto3",
-    "botocore",
-    "sqlite3",
-    "sqlalchemy",
-    "redis",
-    "pymongo",
-    "logging",
-    "pathlib",
-    "subprocess",
-    "tempfile",
-    "io",
-})
+IO_MODULES = frozenset(
+    {
+        "os",
+        "shutil",
+        "socket",
+        "http",
+        "urllib",
+        "requests",
+        "httpx",
+        "aiohttp",
+        "boto3",
+        "botocore",
+        "sqlite3",
+        "sqlalchemy",
+        "redis",
+        "pymongo",
+        "logging",
+        "pathlib",
+        "subprocess",
+        "tempfile",
+        "io",
+    }
+)
 
-TRUST_ALLOWED_STDLIB = frozenset({
-    "__future__",
-    "datetime",
-    "enum",
-    "typing",
-    "dataclasses",
-    "hashlib",
-    "hmac",
-    "json",
-    "re",
-    "abc",
-    "collections",
-    "functools",
-    "uuid",
-    "copy",
-    "math",
-})
+TRUST_ALLOWED_STDLIB = frozenset(
+    {
+        "__future__",
+        "datetime",
+        "enum",
+        "typing",
+        "dataclasses",
+        "hashlib",
+        "hmac",
+        "json",
+        "re",
+        "abc",
+        "collections",
+        "functools",
+        "uuid",
+        "copy",
+        "math",
+    }
+)
 
 
 def parse_imports(filepath: str | Path) -> dict[str, Any]:
@@ -113,28 +121,36 @@ def parse_imports(filepath: str | Path) -> dict[str, Any]:
             "file": str(filepath),
             "imports": [],
             "violations": [
-                {"rule": "PARSE", "file": str(filepath), "line": 0,
-                 "description": f"Could not parse file: {exc}"}
+                {
+                    "rule": "PARSE",
+                    "file": str(filepath),
+                    "line": 0,
+                    "description": f"Could not parse file: {exc}",
+                }
             ],
         }
 
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
             names = [alias.name for alias in node.names]
-            imports.append({
-                "module": node.module,
-                "names": names,
-                "line": node.lineno,
-                "top_package": node.module.split(".")[0],
-            })
+            imports.append(
+                {
+                    "module": node.module,
+                    "names": names,
+                    "line": node.lineno,
+                    "top_package": node.module.split(".")[0],
+                }
+            )
         elif isinstance(node, ast.Import):
             for alias in node.names:
-                imports.append({
-                    "module": alias.name,
-                    "names": [alias.asname or alias.name],
-                    "line": node.lineno,
-                    "top_package": alias.name.split(".")[0],
-                })
+                imports.append(
+                    {
+                        "module": alias.name,
+                        "names": [alias.asname or alias.name],
+                        "line": node.lineno,
+                        "top_package": alias.name.split(".")[0],
+                    }
+                )
 
     return {"pass": True, "file": str(filepath), "imports": imports}
 
@@ -196,15 +212,17 @@ def check_dependency_rules(filepath: str | Path) -> dict[str, Any]:
     for imp in import_result["imports"]:
         top_pkg = imp["top_package"]
         if top_pkg in forbidden:
-            violations.append({
-                "rule": f"DEP.{layer_dir}_cannot_import_{top_pkg}",
-                "file": str(filepath),
-                "line": imp["line"],
-                "description": (
-                    f"{layer_info['layer']} ({layer_dir}/) imports "
-                    f"from {LAYER_DIRS.get(top_pkg, top_pkg)} ({top_pkg}/)"
-                ),
-            })
+            violations.append(
+                {
+                    "rule": f"DEP.{layer_dir}_cannot_import_{top_pkg}",
+                    "file": str(filepath),
+                    "line": imp["line"],
+                    "description": (
+                        f"{layer_info['layer']} ({layer_dir}/) imports "
+                        f"from {LAYER_DIRS.get(top_pkg, top_pkg)} ({top_pkg}/)"
+                    ),
+                }
+            )
 
     return {
         "pass": len(violations) == 0,
@@ -279,15 +297,17 @@ def check_trust_purity(filepath: str | Path) -> dict[str, Any]:
     for imp in import_result["imports"]:
         top_pkg = imp["top_package"]
         if top_pkg in IO_MODULES:
-            violations.append({
-                "rule": "TRUST_PURITY.io_import",
-                "file": str(filepath),
-                "line": imp["line"],
-                "description": (
-                    f"trust/ file imports I/O module '{imp['module']}' "
-                    f"(top-level: {top_pkg})"
-                ),
-            })
+            violations.append(
+                {
+                    "rule": "TRUST_PURITY.io_import",
+                    "file": str(filepath),
+                    "line": imp["line"],
+                    "description": (
+                        f"trust/ file imports I/O module '{imp['module']}' "
+                        f"(top-level: {top_pkg})"
+                    ),
+                }
+            )
 
     return {
         "pass": len(violations) == 0,
@@ -316,8 +336,12 @@ def check_protocol_conformance(
             "file": str(adapter_filepath),
             "protocol": protocol_name,
             "violations": [
-                {"rule": "PROTOCOL.parse_error", "file": str(adapter_filepath),
-                 "line": 0, "description": f"Could not parse adapter: {exc}"}
+                {
+                    "rule": "PROTOCOL.parse_error",
+                    "file": str(adapter_filepath),
+                    "line": 0,
+                    "description": f"Could not parse adapter: {exc}",
+                }
             ],
         }
 
@@ -328,9 +352,12 @@ def check_protocol_conformance(
             "file": str(adapter_filepath),
             "protocol": protocol_name,
             "violations": [
-                {"rule": "PROTOCOL.not_found", "file": str(adapter_filepath),
-                 "line": 0,
-                 "description": f"Could not locate protocols.py for {protocol_name}"}
+                {
+                    "rule": "PROTOCOL.not_found",
+                    "file": str(adapter_filepath),
+                    "line": 0,
+                    "description": f"Could not locate protocols.py for {protocol_name}",
+                }
             ],
         }
 
@@ -342,8 +369,12 @@ def check_protocol_conformance(
             "file": str(adapter_filepath),
             "protocol": protocol_name,
             "violations": [
-                {"rule": "PROTOCOL.parse_error", "file": str(protocol_filepath),
-                 "line": 0, "description": f"Could not parse protocols: {exc}"}
+                {
+                    "rule": "PROTOCOL.parse_error",
+                    "file": str(protocol_filepath),
+                    "line": 0,
+                    "description": f"Could not parse protocols: {exc}",
+                }
             ],
         }
 
@@ -354,9 +385,12 @@ def check_protocol_conformance(
             "file": str(adapter_filepath),
             "protocol": protocol_name,
             "violations": [
-                {"rule": "PROTOCOL.class_not_found", "file": str(protocol_filepath),
-                 "line": 0,
-                 "description": f"Protocol class '{protocol_name}' not found"}
+                {
+                    "rule": "PROTOCOL.class_not_found",
+                    "file": str(protocol_filepath),
+                    "line": 0,
+                    "description": f"Protocol class '{protocol_name}' not found",
+                }
             ],
         }
 
@@ -370,15 +404,17 @@ def check_protocol_conformance(
     missing = protocol_methods - adapter_methods
     violations: list[dict[str, Any]] = []
     for method in sorted(missing):
-        violations.append({
-            "rule": "PROTOCOL.missing_method",
-            "file": str(adapter_filepath),
-            "line": 0,
-            "description": (
-                f"Adapter is missing method '{method}' "
-                f"required by protocol '{protocol_name}'"
-            ),
-        })
+        violations.append(
+            {
+                "rule": "PROTOCOL.missing_method",
+                "file": str(adapter_filepath),
+                "line": 0,
+                "description": (
+                    f"Adapter is missing method '{method}' "
+                    f"required by protocol '{protocol_name}'"
+                ),
+            }
+        )
 
     return {
         "pass": len(violations) == 0,
@@ -409,8 +445,12 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
             "pass": False,
             "file": str(filepath),
             "violations": [
-                {"rule": "AP.PARSE", "file": str(filepath), "line": 0,
-                 "description": f"Could not parse file: {exc}"}
+                {
+                    "rule": "AP.PARSE",
+                    "file": str(filepath),
+                    "line": 0,
+                    "description": f"Could not parse file: {exc}",
+                }
             ],
         }
 
@@ -422,15 +462,17 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module:
                 if node.module.split(".")[0] == "agents":
-                    violations.append({
-                        "rule": "AP2",
-                        "file": str(filepath),
-                        "line": node.lineno,
-                        "description": (
-                            f"Vertical-to-vertical import: agents/ file "
-                            f"imports from agents/ ({node.module})"
-                        ),
-                    })
+                    violations.append(
+                        {
+                            "rule": "AP2",
+                            "file": str(filepath),
+                            "line": node.lineno,
+                            "description": (
+                                f"Vertical-to-vertical import: agents/ file "
+                                f"imports from agents/ ({node.module})"
+                            ),
+                        }
+                    )
 
     # AP3: Hardcoded prompts -- f-strings containing prompt-like keywords
     for node in ast.walk(tree):
@@ -441,17 +483,22 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                     target_name = target.id
                 elif isinstance(target, ast.Attribute):
                     target_name = target.attr
-                if any(kw in target_name.lower() for kw in ("prompt", "system_prompt", "instruction")):
+                if any(
+                    kw in target_name.lower()
+                    for kw in ("prompt", "system_prompt", "instruction")
+                ):
                     if isinstance(node.value, ast.JoinedStr):
-                        violations.append({
-                            "rule": "AP3",
-                            "file": str(filepath),
-                            "line": node.lineno,
-                            "description": (
-                                f"Hardcoded prompt f-string assigned to "
-                                f"'{target_name}' -- use a .j2 template"
-                            ),
-                        })
+                        violations.append(
+                            {
+                                "rule": "AP3",
+                                "file": str(filepath),
+                                "line": node.lineno,
+                                "description": (
+                                    f"Hardcoded prompt f-string assigned to "
+                                    f"'{target_name}' -- use a .j2 template"
+                                ),
+                            }
+                        )
 
     # AP5: Direct file I/O in vertical components
     if layer_info["layer_dir"] == "agents":
@@ -459,15 +506,17 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
             if isinstance(node, ast.Call):
                 func_name = _get_call_name(node)
                 if func_name == "open":
-                    violations.append({
-                        "rule": "AP5",
-                        "file": str(filepath),
-                        "line": node.lineno,
-                        "description": (
-                            "Direct open() call in vertical component -- "
-                            "use a horizontal service for I/O"
-                        ),
-                    })
+                    violations.append(
+                        {
+                            "rule": "AP5",
+                            "file": str(filepath),
+                            "line": node.lineno,
+                            "description": (
+                                "Direct open() call in vertical component -- "
+                                "use a horizontal service for I/O"
+                            ),
+                        }
+                    )
 
     # AP6: Pydantic BaseModel in utils/
     if layer_info["layer_dir"] == "utils":
@@ -480,15 +529,17 @@ def detect_anti_patterns(filepath: str | Path) -> dict[str, Any]:
                     elif isinstance(base, ast.Attribute):
                         base_name = base.attr
                     if base_name == "BaseModel":
-                        violations.append({
-                            "rule": "AP6",
-                            "file": str(filepath),
-                            "line": node.lineno,
-                            "description": (
-                                f"Pydantic BaseModel '{node.name}' defined "
-                                f"in utils/ -- shared models belong in trust/"
-                            ),
-                        })
+                        violations.append(
+                            {
+                                "rule": "AP6",
+                                "file": str(filepath),
+                                "line": node.lineno,
+                                "description": (
+                                    f"Pydantic BaseModel '{node.name}' defined "
+                                    f"in utils/ -- shared models belong in trust/"
+                                ),
+                            }
+                        )
 
     return {
         "pass": len(violations) == 0,

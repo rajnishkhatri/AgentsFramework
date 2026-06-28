@@ -42,7 +42,11 @@ _FILE_IO = "file_io"
 # as distinct rows without re-parsing the error string downstream.
 _RULES: list[tuple[re.Pattern[str], str, int | None]] = [
     (re.compile(r"Command '([^']+)' not in allowlist"), "command-not-in-allowlist", 1),
-    (re.compile(r"metacharacter detected in token '([^']+)'"), "metacharacter-blocked", 1),
+    (
+        re.compile(r"metacharacter detected in token '([^']+)'"),
+        "metacharacter-blocked",
+        1,
+    ),
     (re.compile(r"Blocked argument"), "blocked-arg", None),
     (re.compile(r"Blocked pattern"), "blocked-pattern", None),
     (re.compile(r"exit code \d+"), "shell-exit-nonzero", None),
@@ -111,7 +115,11 @@ def case_from_workflow(
             if tool and tool not in tools_touched:
                 tools_touched.append(tool)
             trajectory.append(
-                {"ev": "tool_called", "tool": tool, "cached": bool(details.get("cached", False))}
+                {
+                    "ev": "tool_called",
+                    "tool": tool,
+                    "cached": bool(details.get("cached", False)),
+                }
             )
         elif et == "error_occurred":
             # Only TOOL-execution errors are tool-calling failures. An
@@ -184,7 +192,19 @@ def _infer_model(trace_file: Path) -> str:
     """
     for part in trace_file.parts:
         low = part.lower()
-        if any(k in low for k in ("gpt", "haiku", "deepseek", "glm", "opus", "sonnet", "candidate", "baseline")):
+        if any(
+            k in low
+            for k in (
+                "gpt",
+                "haiku",
+                "deepseek",
+                "glm",
+                "opus",
+                "sonnet",
+                "candidate",
+                "baseline",
+            )
+        ):
             return part
     return "unknown"
 
@@ -232,7 +252,11 @@ def main() -> None:
 
     cases = harvest(Path(args.root))
     if args.with_errors_only:
-        cases = [c for c in cases if any(e["ev"] == "error.occurred" for e in c["trajectory"])]
+        cases = [
+            c
+            for c in cases
+            if any(e["ev"] == "error.occurred" for e in c["trajectory"])
+        ]
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

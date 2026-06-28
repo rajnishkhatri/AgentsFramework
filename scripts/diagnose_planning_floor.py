@@ -54,10 +54,15 @@ def _score_row(row: dict) -> list[dict]:
             task_input=task_input,
             task_tool_results_count=int(row.get("task_tool_results_count") or 0),
         )
-        results.append({
-            "surface": "depth", "want": row["want_depth"], "got": got,
-            "ok": got == row["want_depth"], "detail": reason,
-        })
+        results.append(
+            {
+                "surface": "depth",
+                "want": row["want_depth"],
+                "got": got,
+                "ok": got == row["want_depth"],
+                "detail": reason,
+            }
+        )
 
     # ── branches ─────────────────────────────────────────────────────────
     if row.get("want_branch_count") is not None or row.get("want_branches") is not None:
@@ -65,20 +70,33 @@ def _score_row(row: dict) -> list[dict]:
         if row.get("want_branches") is not None:
             want = row["want_branches"]
             ok = branches == want
-            results.append({
-                "surface": "branches", "want": want, "got": branches,
-                "ok": ok, "detail": f"{len(branches)} branches",
-            })
+            results.append(
+                {
+                    "surface": "branches",
+                    "want": want,
+                    "got": branches,
+                    "ok": ok,
+                    "detail": f"{len(branches)} branches",
+                }
+            )
         else:
             want_n = int(row["want_branch_count"])
             ok = len(branches) == want_n
-            results.append({
-                "surface": "branches", "want": want_n, "got": len(branches),
-                "ok": ok, "detail": " | ".join(branches)[:80],
-            })
+            results.append(
+                {
+                    "surface": "branches",
+                    "want": want_n,
+                    "got": len(branches),
+                    "ok": ok,
+                    "detail": " | ".join(branches)[:80],
+                }
+            )
 
     # ── conditions ───────────────────────────────────────────────────────
-    if row.get("want_min_conditions") is not None or row.get("want_generic_tail") is not None:
+    if (
+        row.get("want_min_conditions") is not None
+        or row.get("want_generic_tail") is not None
+    ):
         branches = _extract_branches(task_input)
         conds = derive_success_conditions(branches)
         checks = []
@@ -90,14 +108,21 @@ def _score_row(row: dict) -> list[dict]:
             checks.append(f"count {len(conds)}=={want_n}:{c_ok}")
         if row.get("want_generic_tail") is not None:
             from components.plan_builder import _GENERIC_TAIL_CONDITION
-            tail_ok = (_GENERIC_TAIL_CONDITION in conds) == bool(row["want_generic_tail"])
+
+            tail_ok = (_GENERIC_TAIL_CONDITION in conds) == bool(
+                row["want_generic_tail"]
+            )
             ok = ok and tail_ok
             checks.append(f"tail:{tail_ok}")
-        results.append({
-            "surface": "conditions",
-            "want": row.get("want_min_conditions"), "got": len(conds),
-            "ok": ok, "detail": " ".join(checks),
-        })
+        results.append(
+            {
+                "surface": "conditions",
+                "want": row.get("want_min_conditions"),
+                "got": len(conds),
+                "ok": ok,
+                "detail": " ".join(checks),
+            }
+        )
 
     # ── mece ─────────────────────────────────────────────────────────────
     if row.get("want_mece_valid") is not None:
@@ -108,11 +133,15 @@ def _score_row(row: dict) -> list[dict]:
         if row.get("want_mece_issue"):
             issue_ok = any(row["want_mece_issue"] in i for i in res.issues)
         ok = valid_ok and issue_ok
-        results.append({
-            "surface": "mece",
-            "want": row["want_mece_valid"], "got": res.is_valid,
-            "ok": ok, "detail": "; ".join(res.issues)[:80] or "valid",
-        })
+        results.append(
+            {
+                "surface": "mece",
+                "want": row["want_mece_valid"],
+                "got": res.is_valid,
+                "ok": ok,
+                "detail": "; ".join(res.issues)[:80] or "valid",
+            }
+        )
 
     # ── replan ───────────────────────────────────────────────────────────
     if row.get("want_stale") is not None:
@@ -127,18 +156,26 @@ def _score_row(row: dict) -> list[dict]:
         )
         got = plan_is_stale(plan, row.get("last_tool_result"))
         ok = got == bool(row["want_stale"])
-        results.append({
-            "surface": "replan", "want": row["want_stale"], "got": got,
-            "ok": ok, "detail": str(row.get("last_tool_result"))[:60],
-        })
+        results.append(
+            {
+                "surface": "replan",
+                "want": row["want_stale"],
+                "got": got,
+                "ok": ok,
+                "detail": str(row.get("last_tool_result"))[:60],
+            }
+        )
 
     return results
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--strict", action="store_true",
-                    help="exit 1 if any surface diverges (CI-gate mode)")
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit 1 if any surface diverges (CI-gate mode)",
+    )
     args = ap.parse_args()
 
     rows = [json.loads(l) for l in _CORPUS.read_text().splitlines() if l.strip()]
@@ -172,7 +209,9 @@ def main() -> None:
     gpct = 100 * grand_ok / grand_total if grand_total else 0.0
     print(f"  {'OVERALL':11} {grand_ok:3}/{grand_total:<3} ({gpct:5.1f}%)")
 
-    print(f"\n## DIVERGENCES ({len(divergences)})  — baseline misses, surfaced not hidden")
+    print(
+        f"\n## DIVERGENCES ({len(divergences)})  — baseline misses, surfaced not hidden"
+    )
     if not divergences:
         print("  (none)")
     for row, res in divergences:

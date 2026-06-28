@@ -8,6 +8,7 @@ docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv.
 Usage:
   python scripts/build_goaljudge_stage5_pilot_sheet.py
 """
+
 from __future__ import annotations
 
 import csv
@@ -23,7 +24,9 @@ from tests.fixtures.goaljudge.case_registry import CASE_BY_ID
 from tests.fixtures.goaljudge.stress_fixtures import ALL_STRESS_CASES
 
 DEFAULT_BATCH_JSONL = REPO_ROOT / "cache/goaljudge_eval/ui_batch_gcp_2026-06-09.jsonl"
-OUTPUT = REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
+OUTPUT = (
+    REPO_ROOT / "docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_pilot_sheet.csv"
+)
 
 # Walkthrough production subset (22) — first block in the pilot sheet.
 PRODUCTION_IDS = [
@@ -142,18 +145,20 @@ def _production_row(batch: dict) -> dict[str, str]:
             "not registry-intent relabel. Langfuse-only."
         )
     if case_id == "GJ-003B":
-        ui_note = (
-            "Anchor miss — else-branch executed in batch; observed pass not registry-intent fail."
-        )
+        ui_note = "Anchor miss — else-branch executed in batch; observed pass not registry-intent fail."
     evidence = GRADER_EVIDENCE.get(case_id, "")
     if not evidence:
         response = batch.get("response_text", "").strip()
-        evidence = response[:300] if response else f"trace_id={batch.get('trace_id', '')}"
+        evidence = (
+            response[:300] if response else f"trace_id={batch.get('trace_id', '')}"
+        )
     row = _blank_row()
     row.update(
         {
             "item_id": case_id,
-            "split": "test" if case_id in {"GJ-001B", "GJ-008", "GJ-010", "GJ-012", "GJ-019"} else "dev",
+            "split": "test"
+            if case_id in {"GJ-001B", "GJ-008", "GJ-010", "GJ-012", "GJ-019"}
+            else "dev",
             "provenance": "production",
             "stratum": stratum,
             "domain": domain,
@@ -191,7 +196,9 @@ def _registry_synthetic_row(case_id: str, batch: dict | None = None) -> dict[str
     if batch:
         row = _blank_row()
         response = batch.get("response_text", "").strip()
-        evidence = response[:300] if response else f"trace_id={batch.get('trace_id', '')}"
+        evidence = (
+            response[:300] if response else f"trace_id={batch.get('trace_id', '')}"
+        )
         row.update(
             {
                 "item_id": case_id,
@@ -247,9 +254,7 @@ def _load_batch_index(batch_jsonl: Path) -> dict[str, dict]:
 
 
 def main() -> None:
-    batch_path = Path(
-        os.environ.get("GOALJUDGE_BATCH_JSONL", str(DEFAULT_BATCH_JSONL))
-    )
+    batch_path = Path(os.environ.get("GOALJUDGE_BATCH_JSONL", str(DEFAULT_BATCH_JSONL)))
     if not batch_path.is_absolute():
         batch_path = REPO_ROOT / batch_path
     if not batch_path.exists():
@@ -261,7 +266,9 @@ def main() -> None:
     for case_id in PRODUCTION_IDS:
         batch = batch_by_id.get(case_id)
         if not batch:
-            raise SystemExit(f"Missing production batch row for {case_id} in {batch_path}")
+            raise SystemExit(
+                f"Missing production batch row for {case_id} in {batch_path}"
+            )
         rows.append(_production_row(batch))
 
     for fixture in ALL_STRESS_CASES:

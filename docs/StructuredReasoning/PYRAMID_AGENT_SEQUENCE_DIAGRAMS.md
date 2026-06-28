@@ -35,9 +35,9 @@ sequenceDiagram
     participant CLI as cli_pyramid
 
     User ->> CLI: Run script with input
-    
+
     note over CLI: 1. Build AgentConfig<br/>2. Build ToolRegistry<br/>3. Generate IDs
-    
+
     CLI ->> CLI: build_pyramid_graph()
     note over CLI: Graph compiled:<br/>START → guard_input → analyze → persist → END
 ```

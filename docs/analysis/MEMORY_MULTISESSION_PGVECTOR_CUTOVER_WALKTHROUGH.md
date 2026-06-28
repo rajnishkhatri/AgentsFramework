@@ -98,7 +98,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** The per-case `mem:` bridge scopes recall to `userleak01`. That user was never seeded with unit preferences (those live under `userpref01` from the recall case). pgvector search returned zero rows; the model honestly abstained. This is the privacy control working under pgvector.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-LEAK-units-cross-user-01-s0.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-LEAK-units-cross-user-01-s0.png`
 **Trace:** `c247ce5ace3390ed2afa2018dd00450e`
 
 ---
@@ -122,7 +122,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** Badge count ≠ fabrication. The recall carrier shows the pipeline searched and found one record, but the model correctly refused to invent a pet name. The gate scores on **answer text**, not badge count — this is why answer-grounded scoring matters after the pgvector cutover.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-ABSTAIN-pet-name-01-s1.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-ABSTAIN-pet-name-01-s1.png`
 **Trace:** `1e10917e06ec7f9177968260bacb73ad`
 
 ---
@@ -147,7 +147,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** Session 0's conversational seed was embedded and stored in Cloud SQL via the autocapture path. Session 1's probe query was embedded, pgvector similarity search retrieved the metric preference, and the LLM used it. This is the core Phase 5 validation: **pgvector store → embed → recall → answer** works end-to-end.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-RECALL-units-01-s1.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-RECALL-units-01-s1.png`
 **Trace:** `9730ad7780c6d7669df76ca6a57523ae`
 
 ---
@@ -172,7 +172,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** Unlike the pre-cutover run (where memory was effectively off and this case abstained), pgvector now persists both seed turns under `usermulti01`. The probe's embedding matched both trip destination and budget facts. Multi-session recall is the headline win of this cutover run.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-MULTI-trip-01-s2.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-MULTI-trip-01-s2.png`
 **Trace:** `c5e4586f05630c2a7ee46c44b54cb669`
 
 ---
@@ -197,7 +197,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** pgvector returns both records by similarity; the LLM selected Denver (the update) over Chicago. Temporal recency is a model-level resolution on top of vector retrieval — both facts were available, the correct one surfaced.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-TEMPORAL-city-move-01-s2.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-TEMPORAL-city-move-01-s2.png`
 **Trace:** `88eb8044547eb1fd94e546f5966a80b0`
 
 ---
@@ -223,7 +223,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** Both preferences exist in `agent_memories`; the model correctly privileges the correction. No stale-after-update hard-0 violation.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-UPDATE-units-01-s2.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-UPDATE-units-01-s2.png`
 **Trace:** `bb45ecb5922f4740644376686f1c66a0`
 
 ---
@@ -249,7 +249,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** pgvector retained the full persona chain across four sessions. The model hedged (asked for more detail) but anchored on marathon/10k — no contradictory profile drift.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-PERSONA-fitness-01-s3.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-PERSONA-fitness-01-s3.png`
 **Trace:** `600df508352b4e7ef88ebdeeb9a19b3a`
 
 ---
@@ -275,7 +275,7 @@ Trace IDs are the `probe_trace_id` values written to `cache/memory_multisession/
 
 **Reasoning:** Both facts were stored in pgvector, but the probe query ("UI/theme preferences") is semantically closer to dark-mode than breakfast. The relevance floor prevented the decoy from polluting the answer. Clean A2 demonstration on the pgvector backend.
 
-**Screenshot:** `cache/memory_multisession/screenshots/MEM-RELFLOOR-oneoff-topic-01-s2.png`  
+**Screenshot:** `cache/memory_multisession/screenshots/MEM-RELFLOOR-oneoff-topic-01-s2.png`
 **Trace:** `7d9e9bb9d63ea28680c69be668238221`
 
 ---

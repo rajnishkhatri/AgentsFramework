@@ -116,9 +116,7 @@ def harvest(
     missing: list[tuple[str, str]] = []
     for arm, (run_dir, sub) in sources.items():
         eval_log = model_ab / run_dir / sub / "evals.log"
-        answers = (
-            final_answers_for_cases(eval_log, cases) if eval_log.exists() else {}
-        )
+        answers = final_answers_for_cases(eval_log, cases) if eval_log.exists() else {}
         raw[arm] = {}
         for case in cases:
             text = answers.get(case, "")

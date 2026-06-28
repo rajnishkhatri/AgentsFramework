@@ -95,7 +95,11 @@ def test_async_dispatch_matches_sync_shape(monkeypatch):
     result = asyncio.run(dispatcher.dispatch_async(_REQUEST))
 
     assert set(result) == {
-        "status", "output", "error", "child_correlation_id", "usage",
+        "status",
+        "output",
+        "error",
+        "child_correlation_id",
+        "usage",
     }
     assert result["status"] == "completed"
     assert result["error"] is None

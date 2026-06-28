@@ -6,7 +6,7 @@ TDD Protocol A (Pure TDD), failure paths first per AGENTS.md TAP-4.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError

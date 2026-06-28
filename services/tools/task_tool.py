@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import PurePosixPath
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -93,7 +93,9 @@ def _gate_budget(validated: TaskToolInput) -> ReasonCode | None:
     return None
 
 
-def _with_reason_error(code: ReasonCode, msg: str, trace_event: dict[str, Any]) -> ToolExecutionResult:
+def _with_reason_error(
+    code: ReasonCode, msg: str, trace_event: dict[str, Any]
+) -> ToolExecutionResult:
     payload = json.dumps({"ok": False, "reason_code": code, "message": msg})
     return ToolExecutionResult(
         output=f"Error: {payload}",
@@ -143,23 +145,35 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
             trace = _build_trace_event(
                 event_type="delegation_reconcile_failed",
                 outcome="fail",
-                details={"reason_code": "HANDOFF_NOT_FOUND", "handoff_ref": validated.handoff_ref},
+                details={
+                    "reason_code": "HANDOFF_NOT_FOUND",
+                    "handoff_ref": validated.handoff_ref,
+                },
             )
-            return _with_reason_error("HANDOFF_NOT_FOUND", "handoff artifact not found", trace)
+            return _with_reason_error(
+                "HANDOFF_NOT_FOUND", "handoff artifact not found", trace
+            )
         try:
             handoff_payload = json.loads(str(raw))
         except Exception:
             trace = _build_trace_event(
                 event_type="delegation_reconcile_failed",
                 outcome="fail",
-                details={"reason_code": "HANDOFF_INVALID", "handoff_ref": validated.handoff_ref},
+                details={
+                    "reason_code": "HANDOFF_INVALID",
+                    "handoff_ref": validated.handoff_ref,
+                },
             )
-            return _with_reason_error("HANDOFF_INVALID", "handoff artifact is not valid JSON", trace)
+            return _with_reason_error(
+                "HANDOFF_INVALID", "handoff artifact is not valid JSON", trace
+            )
 
         handoff_parent = str(PurePosixPath(validated.handoff_ref).parent)
         reconcile_ref = f"{handoff_parent}/reconciled.json"
         reconciled = {
-            "correlation_id": handoff_payload.get("correlation_id", parent_correlation_id),
+            "correlation_id": handoff_payload.get(
+                "correlation_id", parent_correlation_id
+            ),
             "status": handoff_payload.get("status", "unknown"),
             "output": handoff_payload.get("output", ""),
             "error": handoff_payload.get("error"),
@@ -167,12 +181,17 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
         trace = _build_trace_event(
             event_type="delegation_reconciled",
             outcome="pass",
-            details={"handoff_ref": validated.handoff_ref, "reconcile_ref": reconcile_ref},
+            details={
+                "handoff_ref": validated.handoff_ref,
+                "reconcile_ref": reconcile_ref,
+            },
         )
         return ToolExecutionResult(
             output=f"Reconciled child output from {validated.handoff_ref}",
             ok=True,
-            state_delta={"files": {reconcile_ref: json.dumps(reconciled, sort_keys=True)}},
+            state_delta={
+                "files": {reconcile_ref: json.dumps(reconciled, sort_keys=True)}
+            },
             metadata={"trace_records": [trace]},
         )
 
@@ -182,9 +201,14 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
         trace = _build_trace_event(
             event_type="delegation_denied",
             outcome="fail",
-            details={"reason_code": policy_reason, "policy_mode": validated.policy_mode},
+            details={
+                "reason_code": policy_reason,
+                "policy_mode": validated.policy_mode,
+            },
         )
-        return _with_reason_error(policy_reason, "delegation denied by policy gate", trace)
+        return _with_reason_error(
+            policy_reason, "delegation denied by policy gate", trace
+        )
 
     allowlist_reason = _gate_subagent_allowlist(validated)
     if allowlist_reason is not None:
@@ -212,7 +236,9 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
                 "estimated_cost_usd": validated.estimated_cost_usd,
             },
         )
-        return _with_reason_error(budget_reason, "delegation denied by budget gate", trace)
+        return _with_reason_error(
+            budget_reason, "delegation denied by budget gate", trace
+        )
 
     request_ref = f"{handoff_root}/request.json"
     result_ref = f"{handoff_root}/result.json"
@@ -226,14 +252,20 @@ def execute_task_tool(args: dict[str, Any]) -> ToolExecutionResult:
         "expected_output_schema": validated.expected_output_schema,
     }
 
+    dispatch_output: dict[str, Any]
     if callable(validated.dispatch):
         try:
-            dispatch_output = validated.dispatch(request_payload)
+            dispatch_output = cast(
+                "dict[str, Any]", validated.dispatch(request_payload)
+            )
         except Exception as exc:
             trace = _build_trace_event(
                 event_type="delegation_dispatch_failed",
                 outcome="fail",
-                details={"reason_code": "DELEGATION_DISPATCH_FAILED", "error": str(exc)},
+                details={
+                    "reason_code": "DELEGATION_DISPATCH_FAILED",
+                    "error": str(exc),
+                },
             )
             return _with_reason_error("DELEGATION_DISPATCH_FAILED", str(exc), trace)
     else:

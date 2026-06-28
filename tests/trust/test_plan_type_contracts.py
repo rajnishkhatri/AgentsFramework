@@ -37,35 +37,39 @@ class TestBranch2_CloudIdentityFields:
 
     def test_identity_context_has_all_planned_fields(self):
         planned = {
-            "provider", "principal_id", "display_name", "account_id",
-            "roles", "tags", "session_expiry", "raw_attributes",
+            "provider",
+            "principal_id",
+            "display_name",
+            "account_id",
+            "roles",
+            "tags",
+            "session_expiry",
+            "raw_attributes",
         }
         actual = set(IdentityContext.model_fields.keys())
         missing = planned - actual
-        assert missing == set(), (
-            f"IdentityContext missing planned fields: {missing}"
-        )
+        assert missing == set(), f"IdentityContext missing planned fields: {missing}"
 
     def test_verification_result_has_all_planned_fields(self):
         planned = {"verified", "reason", "provider", "checked_at"}
         actual = set(VerificationResult.model_fields.keys())
         missing = planned - actual
-        assert missing == set(), (
-            f"VerificationResult missing planned fields: {missing}"
-        )
+        assert missing == set(), f"VerificationResult missing planned fields: {missing}"
 
     def test_access_decision_has_all_planned_fields(self):
         planned = {"allowed", "reason", "evaluated_policies", "provider"}
         actual = set(AccessDecision.model_fields.keys())
         missing = planned - actual
-        assert missing == set(), (
-            f"AccessDecision missing planned fields: {missing}"
-        )
+        assert missing == set(), f"AccessDecision missing planned fields: {missing}"
 
     def test_temporary_credentials_has_all_planned_fields(self):
         planned = {
-            "provider", "access_token", "expiry", "scope",
-            "agent_id", "raw_credentials",
+            "provider",
+            "access_token",
+            "expiry",
+            "scope",
+            "agent_id",
+            "raw_credentials",
         }
         actual = set(TemporaryCredentials.model_fields.keys())
         missing = planned - actual
@@ -77,17 +81,13 @@ class TestBranch2_CloudIdentityFields:
         planned = {"policy_id", "policy_name", "policy_type", "provider", "attached_to"}
         actual = set(PolicyBinding.model_fields.keys())
         missing = planned - actual
-        assert missing == set(), (
-            f"PolicyBinding missing planned fields: {missing}"
-        )
+        assert missing == set(), f"PolicyBinding missing planned fields: {missing}"
 
     def test_permission_boundary_has_all_planned_fields(self):
         planned = {"boundary_id", "max_permissions", "provider"}
         actual = set(PermissionBoundary.model_fields.keys())
         missing = planned - actual
-        assert missing == set(), (
-            f"PermissionBoundary missing planned fields: {missing}"
-        )
+        assert missing == set(), f"PermissionBoundary missing planned fields: {missing}"
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -96,8 +96,12 @@ class TestBranch2_CloudIdentityFields:
 
 
 FROZEN_MODELS = [
-    IdentityContext, VerificationResult, AccessDecision,
-    TemporaryCredentials, PolicyBinding, PermissionBoundary,
+    IdentityContext,
+    VerificationResult,
+    AccessDecision,
+    TemporaryCredentials,
+    PolicyBinding,
+    PermissionBoundary,
 ]
 
 
@@ -123,7 +127,8 @@ class TestBranch2_ProtocolSignatures:
     def test_identity_provider_has_three_methods(self):
         expected = {"get_caller_identity", "resolve_identity", "verify_identity"}
         actual = {
-            name for name in dir(IdentityProvider)
+            name
+            for name in dir(IdentityProvider)
             if not name.startswith("_")
             and callable(getattr(IdentityProvider, name, None))
         }
@@ -134,7 +139,8 @@ class TestBranch2_ProtocolSignatures:
     def test_policy_provider_has_three_methods(self):
         expected = {"list_policies", "evaluate_access", "get_permission_boundary"}
         actual = {
-            name for name in dir(PolicyProvider)
+            name
+            for name in dir(PolicyProvider)
             if not name.startswith("_")
             and callable(getattr(PolicyProvider, name, None))
         }
@@ -145,7 +151,8 @@ class TestBranch2_ProtocolSignatures:
     def test_credential_provider_has_three_methods(self):
         expected = {"issue_credentials", "refresh_credentials", "revoke_credentials"}
         actual = {
-            name for name in dir(CredentialProvider)
+            name
+            for name in dir(CredentialProvider)
             if not name.startswith("_")
             and callable(getattr(CredentialProvider, name, None))
         }

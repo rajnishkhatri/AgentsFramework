@@ -193,8 +193,11 @@ def decide_shell_approval(
 
     if decision == "approve":
         carrier = _carrier(
-            command=command, severity=severity, band=band,
-            decision="approve", would_enforce=True,
+            command=command,
+            severity=severity,
+            band=band,
+            decision="approve",
+            would_enforce=True,
         )
         return GateResult(
             outcome=GateOutcome.EXECUTED,
@@ -206,8 +209,11 @@ def decide_shell_approval(
     if decision == "edit":
         edited = resolution.edited_command or command
         carrier = _carrier(
-            command=edited, severity=severity, band=band,
-            decision="edit", would_enforce=True,
+            command=edited,
+            severity=severity,
+            band=band,
+            decision="edit",
+            would_enforce=True,
         )
         return GateResult(
             outcome=GateOutcome.EXECUTED,
@@ -219,8 +225,11 @@ def decide_shell_approval(
     # reject / timeout / any unknown decision → fail-closed deny, never executed.
     final_decision = decision if decision in ("reject", "timeout") else "reject"
     carrier = _carrier(
-        command=command, severity=severity, band=band,
-        decision=final_decision, would_enforce=True,
+        command=command,
+        severity=severity,
+        band=band,
+        decision=final_decision,
+        would_enforce=True,
     )
     return GateResult(
         outcome=GateOutcome.DENIED,

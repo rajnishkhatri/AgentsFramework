@@ -226,7 +226,9 @@ class TestEventCompleteness:
         bridge_skipped = set(_SKIPPED_TYPES)
         assert bridge_skipped == self.SKIPPED_TYPES
 
-    @pytest.mark.parametrize("event_type", sorted(MAPPED_TYPES, key=lambda t: t.__name__))
+    @pytest.mark.parametrize(
+        "event_type", sorted(MAPPED_TYPES, key=lambda t: t.__name__)
+    )
     def test_mapped_type_produces_export_call(
         self, stub: StubTelemetryExporter, event_type: type
     ) -> None:
@@ -237,7 +239,9 @@ class TestEventCompleteness:
             f"{event_type.__name__} should produce 1 export call"
         )
 
-    @pytest.mark.parametrize("event_type", sorted(BUFFERED_TYPES, key=lambda t: t.__name__))
+    @pytest.mark.parametrize(
+        "event_type", sorted(BUFFERED_TYPES, key=lambda t: t.__name__)
+    )
     def test_buffered_type_produces_zero_direct_calls(
         self, stub: StubTelemetryExporter, event_type: type
     ) -> None:
@@ -248,7 +252,9 @@ class TestEventCompleteness:
             f"{event_type.__name__} (buffered) should produce 0 direct export calls"
         )
 
-    @pytest.mark.parametrize("event_type", sorted(SKIPPED_TYPES, key=lambda t: t.__name__))
+    @pytest.mark.parametrize(
+        "event_type", sorted(SKIPPED_TYPES, key=lambda t: t.__name__)
+    )
     def test_skipped_type_produces_zero_calls(
         self, stub: StubTelemetryExporter, event_type: type
     ) -> None:
@@ -351,7 +357,9 @@ class TestConcurrentTraceIsolation:
         emit_domain_event(
             stub,
             ToolCallStarted(
-                trace_id="t-A", tool_call_id="tc-A1", tool_name="shell",
+                trace_id="t-A",
+                tool_call_id="tc-A1",
+                tool_name="shell",
                 args_json="{}",
             ),
         )
@@ -362,7 +370,9 @@ class TestConcurrentTraceIsolation:
         emit_domain_event(
             stub,
             ToolCallStarted(
-                trace_id="t-B", tool_call_id="tc-B1", tool_name="file",
+                trace_id="t-B",
+                tool_call_id="tc-B1",
+                tool_name="file",
                 args_json="{}",
             ),
         )
@@ -388,11 +398,13 @@ class TestConcurrentTraceIsolation:
         exporter.export_event(name="run.started", trace_id="t-X")
         exporter.export_event(name="run.started", trace_id="t-Y")
         exporter.export_event(
-            name="tool.started", trace_id="t-X",
+            name="tool.started",
+            trace_id="t-X",
             attributes={"tool_name": "shell"},
         )
         exporter.export_event(
-            name="tool.started", trace_id="t-Y",
+            name="tool.started",
+            trace_id="t-Y",
             attributes={"tool_name": "file"},
         )
         assert len(fake_client.traces) == 2
@@ -408,11 +420,13 @@ class TestConcurrentTraceIsolation:
         exporter.export_event(name="run.started", trace_id="t-X")
         exporter.export_event(name="run.started", trace_id="t-Y")
         exporter.export_event(
-            name="tool.started", trace_id="t-X",
+            name="tool.started",
+            trace_id="t-X",
             attributes={"tool_name": "shell"},
         )
         exporter.export_event(
-            name="llm.started", trace_id="t-Y",
+            name="llm.started",
+            trace_id="t-Y",
             attributes={"message_id": "m-1"},
         )
 
@@ -434,7 +448,8 @@ class TestConcurrentTraceIsolation:
         exporter.release_trace("t-A")
         assert exporter.active_trace_count == 1
         exporter.export_event(
-            name="tool.started", trace_id="t-B",
+            name="tool.started",
+            trace_id="t-B",
             attributes={"tool_name": "shell"},
         )
         b_spans = [s for s in fake_client.spans if s["trace_id"] == "t-B"]
@@ -460,9 +475,7 @@ class TestTraceHandleLifecycle:
         exporter.release_trace("never-seen")
         assert exporter.active_trace_count == 0
 
-    def test_double_release_is_noop(
-        self, exporter: LangfuseCloudExporter
-    ) -> None:
+    def test_double_release_is_noop(self, exporter: LangfuseCloudExporter) -> None:
         exporter.export_event(name="run.started", trace_id="t-1")
         exporter.release_trace("t-1")
         exporter.release_trace("t-1")  # second release must not raise
@@ -507,9 +520,7 @@ class TestTraceHandleLifecycle:
         exporter.shutdown()
         assert fake_client.flushed is True
 
-    def test_many_traces_all_releasable(
-        self, exporter: LangfuseCloudExporter
-    ) -> None:
+    def test_many_traces_all_releasable(self, exporter: LangfuseCloudExporter) -> None:
         """Stress: 100 concurrent traces can all be opened and released."""
         for i in range(100):
             exporter.export_event(name="run.started", trace_id=f"t-{i}")
@@ -566,8 +577,10 @@ class TestVerticalIntegration:
         emit_domain_event(
             exporter,
             ToolCallStarted(
-                trace_id="vert-002", tool_call_id="tc-99",
-                tool_name="file_write", args_json='{"path": "/tmp/x"}',
+                trace_id="vert-002",
+                tool_call_id="tc-99",
+                tool_name="file_write",
+                args_json='{"path": "/tmp/x"}',
             ),
         )
         assert len(fake_client.spans) == 0  # started buffers
@@ -591,11 +604,13 @@ class TestVerticalIntegration:
     ) -> None:
         """Phase 3: the merged ``llm.call`` span carries message_id."""
         emit_domain_event(
-            exporter, LLMMessageStarted(trace_id="vert-003", message_id="msg-42"),
+            exporter,
+            LLMMessageStarted(trace_id="vert-003", message_id="msg-42"),
         )
         assert len(fake_client.spans) == 0  # started buffers
         emit_domain_event(
-            exporter, LLMMessageEnded(trace_id="vert-003", message_id="msg-42"),
+            exporter,
+            LLMMessageEnded(trace_id="vert-003", message_id="msg-42"),
         )
         assert fake_client.spans[0]["name"] == "llm.call"
         assert fake_client.spans[0]["input"]["message_id"] == "msg-42"
@@ -652,9 +667,7 @@ class TestVerticalIntegration:
         fake_client: FakeLangfuseClient,
     ) -> None:
         """Subject attribute flows from bridge caller through to SDK span."""
-        event = RunStartedDomain(
-            trace_id="vert-007", run_id="r-7", thread_id="th-7"
-        )
+        event = RunStartedDomain(trace_id="vert-007", run_id="r-7", thread_id="th-7")
         emit_domain_event(exporter, event, subject="user@corp.com")
         span_input = fake_client.spans[0]["input"]
         assert span_input["subject"] == "user@corp.com"
@@ -672,8 +685,10 @@ class TestVerticalIntegration:
         emit_domain_event(
             exporter,
             ToolCallStarted(
-                trace_id="vert-008", tool_call_id="tc-big",
-                tool_name="shell", args_json=large_args,
+                trace_id="vert-008",
+                tool_call_id="tc-big",
+                tool_name="shell",
+                args_json=large_args,
             ),
         )
         emit_domain_event(
@@ -744,13 +759,17 @@ class TestBridgeToolEventsCarryStep:
         emit_domain_event(
             stub,
             ToolCallStarted(
-                trace_id="t-step", tool_call_id="5:call_xyz",
-                tool_name="shell", args_json="{}",
+                trace_id="t-step",
+                tool_call_id="5:call_xyz",
+                tool_name="shell",
+                args_json="{}",
             ),
         )
         emit_domain_event(
             stub,
-            ToolResultReceived(trace_id="t-step", tool_call_id="5:call_xyz", result="ok"),
+            ToolResultReceived(
+                trace_id="t-step", tool_call_id="5:call_xyz", result="ok"
+            ),
         )
         assert len(stub.events) == 1
         assert stub.events[0]["attributes"]["step"] == 5
@@ -762,7 +781,9 @@ class TestBridgeToolEventsCarryStep:
         emit_domain_event(
             stub,
             ToolResultReceived(
-                trace_id="t-step", tool_call_id="5:call_xyz", result="ok",
+                trace_id="t-step",
+                tool_call_id="5:call_xyz",
+                result="ok",
             ),
         )
         assert stub.events[0]["attributes"]["step"] == 5
@@ -773,13 +794,17 @@ class TestBridgeToolEventsCarryStep:
         emit_domain_event(
             stub,
             ToolCallStarted(
-                trace_id="t-step", tool_call_id="call_bare",
-                tool_name="shell", args_json="{}",
+                trace_id="t-step",
+                tool_call_id="call_bare",
+                tool_name="shell",
+                args_json="{}",
             ),
         )
         emit_domain_event(
             stub,
-            ToolResultReceived(trace_id="t-step", tool_call_id="call_bare", result="ok"),
+            ToolResultReceived(
+                trace_id="t-step", tool_call_id="call_bare", result="ok"
+            ),
         )
         assert "step" not in stub.events[0]["attributes"]
 
@@ -790,7 +815,9 @@ class TestBridgeToolEventsCarryStep:
         emit_domain_event(
             stub,
             ToolResultReceived(
-                trace_id="t-step", tool_call_id="garbage:prefix", result="ok",
+                trace_id="t-step",
+                tool_call_id="garbage:prefix",
+                result="ok",
             ),
         )
         assert len(stub.events) == 1
@@ -824,7 +851,9 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
         )
     if event_type is ToolCallStarted:
         return ToolCallStarted(
-            trace_id=trace_id, tool_call_id="tc-1", tool_name="shell",
+            trace_id=trace_id,
+            tool_call_id="tc-1",
+            tool_name="shell",
             args_json='{"cmd":"ls"}',
         )
     if event_type is ToolResultReceived:
@@ -868,21 +897,19 @@ def _make_event(event_type: type, trace_id: str = "t-test") -> Any:
     raise ValueError(f"Unknown event type: {event_type}")
 
 
-def _make_full_run(
-    trace_id: str, *, run_id: str, thread_id: str
-) -> list[DomainEvent]:
+def _make_full_run(trace_id: str, *, run_id: str, thread_id: str) -> list[DomainEvent]:
     """Construct a realistic full-run event sequence (6 exported events)."""
     return [
         RunStartedDomain(trace_id=trace_id, run_id=run_id, thread_id=thread_id),
         LLMMessageStarted(trace_id=trace_id, message_id="msg-1"),
         LLMMessageEnded(trace_id=trace_id, message_id="msg-1"),
         ToolCallStarted(
-            trace_id=trace_id, tool_call_id="tc-1", tool_name="shell",
+            trace_id=trace_id,
+            tool_call_id="tc-1",
+            tool_name="shell",
             args_json='{"cmd":"ls"}',
         ),
-        ToolResultReceived(
-            trace_id=trace_id, tool_call_id="tc-1", result="file.txt"
-        ),
+        ToolResultReceived(trace_id=trace_id, tool_call_id="tc-1", result="file.txt"),
         RunFinishedDomain(
             trace_id=trace_id, run_id=run_id, thread_id=thread_id, error=None
         ),

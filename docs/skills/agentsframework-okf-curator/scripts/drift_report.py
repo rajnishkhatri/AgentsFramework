@@ -26,18 +26,39 @@ from pathlib import Path
 # Where authored knowledge lives. Evidence dirs (docs/research, docs/reports, …)
 # are intentionally NOT scanned — they are excluded from the OKF convention.
 KNOWLEDGE_GLOBS = ("docs/**/*.md", "research/**/*.md")
-EXCLUDE_SEGMENTS = ("/research/", "/reports/", "/reviews/", "/test-reports/",
-                    "/IAA/", "/amp/", "-workspace/", "/outputs/")
+EXCLUDE_SEGMENTS = (
+    "/research/",
+    "/reports/",
+    "/reviews/",
+    "/test-reports/",
+    "/IAA/",
+    "/amp/",
+    "-workspace/",
+    "/outputs/",
+)
 # Only treat these as "code/pipeline" changes worth correlating to docs.
-CODE_PREFIXES = ("services/", "components/", "orchestration/", "middleware/",
-                 "trust/", "agent_ui_adapter/", "infra/", "scripts/", "meta/",
-                 "frontend/lib/", "frontend/app/", "frontend/components/")
+CODE_PREFIXES = (
+    "services/",
+    "components/",
+    "orchestration/",
+    "middleware/",
+    "trust/",
+    "agent_ui_adapter/",
+    "infra/",
+    "scripts/",
+    "meta/",
+    "frontend/lib/",
+    "frontend/app/",
+    "frontend/components/",
+)
 
 
 def _changed_files(since: str, restrict: list[str]) -> list[str]:
     out = subprocess.run(
         ["git", "diff", "--name-only", f"{since}...HEAD"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.splitlines()
     files = []
     for f in out:
@@ -57,8 +78,18 @@ def _is_knowledge(path: Path) -> bool:
 
 
 # A basename is too generic to match on its own (README.md in 40 dirs is noise).
-_GENERIC_BASENAMES = {"README.md", "index.md", "log.md", "__init__.py", "config.json",
-                      "package.json", "conftest.py", "server.py", "main.py", "utils.py"}
+_GENERIC_BASENAMES = {
+    "README.md",
+    "index.md",
+    "log.md",
+    "__init__.py",
+    "config.json",
+    "package.json",
+    "conftest.py",
+    "server.py",
+    "main.py",
+    "utils.py",
+}
 
 # Identifier definitions worth correlating to docs by NAME (a doc that describes
 # the architecture but never names a brand-new public symbol is a drift candidate
@@ -74,7 +105,9 @@ def _added_symbols(since: str, changed: list[str]) -> set[str]:
     try:
         diff = subprocess.run(
             ["git", "diff", f"{since}...HEAD", "--", *changed],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout
     except subprocess.CalledProcessError:
         return set()
@@ -95,16 +128,23 @@ def _path_anchored(changed_path: str, text: str) -> bool:
     if name in _GENERIC_BASENAMES:
         return False  # too generic to count on its own
     # require the basename to appear as part of a path or in code-ish context
-    return bool(re.search(rf"[\w./-]+/{re.escape(name)}\b", text) or
-                re.search(rf"[`'\"]{re.escape(name)}[`'\"]", text))
+    return bool(
+        re.search(rf"[\w./-]+/{re.escape(name)}\b", text)
+        or re.search(rf"[`'\"]{re.escape(name)}[`'\"]", text)
+    )
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--since", default="HEAD~3")
-    ap.add_argument("--paths", nargs="*", default=[], help="restrict changed-code prefixes")
-    ap.add_argument("--symbols", action="store_true",
-                    help="also flag docs missing brand-new public symbols (deeper, slower)")
+    ap.add_argument(
+        "--paths", nargs="*", default=[], help="restrict changed-code prefixes"
+    )
+    ap.add_argument(
+        "--symbols",
+        action="store_true",
+        help="also flag docs missing brand-new public symbols (deeper, slower)",
+    )
     args = ap.parse_args()
 
     changed = _changed_files(args.since, args.paths)
@@ -112,12 +152,16 @@ def main() -> int:
 
     print(f"# Drift report — code changed since {args.since}\n")
     if docs_only:
-        print("> NOTE: the commits in this window are **docs-only** (frontmatter/links). "
-              "Widen the window (e.g. `--since HEAD~7` or a feature-branch base) to reach "
-              "the real code changes, or the report below will be empty/misleading.\n")
+        print(
+            "> NOTE: the commits in this window are **docs-only** (frontmatter/links). "
+            "Widen the window (e.g. `--since HEAD~7` or a feature-branch base) to reach "
+            "the real code changes, or the report below will be empty/misleading.\n"
+        )
     if not changed:
-        print(f"No code/pipeline changes since {args.since} (matched by prefix). "
-              "Try a wider --since or different --paths.")
+        print(
+            f"No code/pipeline changes since {args.since} (matched by prefix). "
+            "Try a wider --since or different --paths."
+        )
         return 0
 
     docs = [p for g in KNOWLEDGE_GLOBS for p in Path(".").glob(g) if _is_knowledge(p)]
@@ -128,8 +172,10 @@ def main() -> int:
 
     added = _added_symbols(args.since, changed) if args.symbols else set()
     if args.symbols:
-        print(f"New public symbols added in window ({len(added)}): "
-              f"{', '.join(sorted(added)) or '(none)'}\n")
+        print(
+            f"New public symbols added in window ({len(added)}): "
+            f"{', '.join(sorted(added)) or '(none)'}\n"
+        )
 
     # hit = (doc, list of (kind, evidence))
     hits: dict[str, list[tuple[str, str]]] = {}
@@ -153,20 +199,28 @@ def main() -> int:
             hits[doc.as_posix()] = why
 
     if not hits:
-        print("No authored docs reference the changed paths. "
-              "Either the change needs a NEW recipe, or it's purely internal.")
+        print(
+            "No authored docs reference the changed paths. "
+            "Either the change needs a NEW recipe, or it's purely internal."
+        )
         return 0
 
-    print(f"## {len(hits)} doc(s) correlate with changed code — review for staleness:\n")
-    print("Match types: **path** = references a changed file path; "
-          "**symbol-absent** = describes the changed area but is missing a brand-new symbol.\n")
+    print(
+        f"## {len(hits)} doc(s) correlate with changed code — review for staleness:\n"
+    )
+    print(
+        "Match types: **path** = references a changed file path; "
+        "**symbol-absent** = describes the changed area but is missing a brand-new symbol.\n"
+    )
     for doc, why in sorted(hits.items()):
         print(f"- **{doc}**")
         for kind, ev in why:
             print(f"    ↳ [{kind}] `{ev}`")
-    print("\nThis correlates mentions, it does not prove staleness — read each. "
-          "Update prose/Status where stale, or write a new recipe for net-new behaviour. "
-          "Then run `python scripts/okf_lint.py`.")
+    print(
+        "\nThis correlates mentions, it does not prove staleness — read each. "
+        "Update prose/Status where stale, or write a new recipe for net-new behaviour. "
+        "Then run `python scripts/okf_lint.py`."
+    )
     return 0
 
 
@@ -175,13 +229,13 @@ def _docs_only_window(since: str) -> bool:
     try:
         out = subprocess.run(
             ["git", "diff", "--name-only", f"{since}...HEAD"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         ).stdout.splitlines()
     except subprocess.CalledProcessError:
         return False
-    return bool(out) and all(
-        f.startswith(("docs/", "research/")) for f in out
-    )
+    return bool(out) and all(f.startswith(("docs/", "research/")) for f in out)
 
 
 if __name__ == "__main__":

@@ -6,12 +6,10 @@ Uses trust.signature for compute/verify operations.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from trust.enums import IdentityStatus
 from trust.models import AgentFacts, AuditEntry
@@ -81,7 +79,9 @@ class AgentFactsRegistry:
         expected_hash = facts_dict.get("signature_hash", None)
         if not expected_hash:
             return False
-        return verify_signature(self._signable_dict(facts_dict), self._secret, expected_hash)
+        return verify_signature(
+            self._signable_dict(facts_dict), self._secret, expected_hash
+        )
 
     def get(self, agent_id: str) -> AgentFacts:
         path = self._facts_path(agent_id)

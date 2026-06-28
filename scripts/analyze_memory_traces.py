@@ -27,6 +27,7 @@ REUSED verbatim from ``scripts/analyze_planning_traces.py`` (no new API surface)
         --recordings cache/black_box_recordings
     python scripts/analyze_memory_traces.py --source langfuse --gate
 """
+
 from __future__ import annotations
 
 import argparse
@@ -61,11 +62,16 @@ def _load_env() -> None:
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
+
 _DEFAULT_JSONL = AGENT_ROOT / "cache" / "memory_multisession" / "probe_batch.jsonl"
 _DEFAULT_REJECT_JSONL = AGENT_ROOT / "cache" / "phaseb_reject" / "probe_batch.jsonl"
 _DEFAULT_RECORDINGS = AGENT_ROOT / "cache" / "black_box_recordings"
-_CORPUS = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "memory_multisession_corpus.json"
-_REJECT_CORPUS = AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "phaseb_reject_corpus.json"
+_CORPUS = (
+    AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "memory_multisession_corpus.json"
+)
+_REJECT_CORPUS = (
+    AGENT_ROOT / "frontend" / "e2e" / "fixtures" / "phaseb_reject_corpus.json"
+)
 
 
 def _planning_module():
@@ -137,9 +143,7 @@ _FORBIDDEN_RECALL_DETAIL_KEYS = frozenset({"content", "text", "payload", "memory
 # event_time / a re-nested ``details`` dict — is trace-envelope PLUMBING, not
 # payload, and must be ignored by the C5 leak check (else the blunt len>80
 # heuristic flags OTel/SDK metadata as a "leak" — a false positive).
-_RECALL_DETAIL_KEYS = frozenset(
-    {"user_id", "count", "query_len", "error_kind", "keys"}
-)
+_RECALL_DETAIL_KEYS = frozenset({"user_id", "count", "query_len", "error_kind", "keys"})
 
 # Trace-envelope fields the Langfuse flattener attaches to every event. These
 # are NOT carrier details — the C5 leak check must skip them (they're SDK/OTel
@@ -382,7 +386,9 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
             # Both evidence facts must surface: recall count>=2 AND all expected
             # substrings present.
             expect = row.get("expect_substring", []) or []
-            ok = recall_count >= 2 and (_answer_contains(response, expect) if expect else True)
+            ok = recall_count >= 2 and (
+                _answer_contains(response, expect) if expect else True
+            )
             if ok:
                 bucket["hits"] += 1
             else:
@@ -494,8 +500,7 @@ def score_run(rows: list[dict], events_by_row: dict[str, list[dict]]) -> dict:
                 bucket["hits"] += 1
             else:
                 bucket["mismatches"].append(
-                    f"{case}: MISS (recall_count={recall_count} "
-                    f"has_fact={has_fact})"
+                    f"{case}: MISS (recall_count={recall_count} has_fact={has_fact})"
                 )
 
     # finalize per-ability rates
@@ -584,9 +589,7 @@ def score_reject_batch(
             continue
 
         reject_key = (
-            reject_row.get("reject_key")
-            if reject_row
-            else run2.get("reject_key")
+            reject_row.get("reject_key") if reject_row else run2.get("reject_key")
         )
         seed_snippets = run1.get("seed_snippets") or []
 
@@ -595,8 +598,7 @@ def score_reject_batch(
         if not events1 or not events2:
             hard_zero["missing_trace_join"] += 1
             hard_zero_detail.append(
-                f"MISSING-TRACE :: {case} "
-                f"(run1={bool(events1)} run2={bool(events2)})"
+                f"MISSING-TRACE :: {case} (run1={bool(events1)} run2={bool(events2)})"
             )
             continue
 
@@ -655,8 +657,7 @@ def gate_failures_reject(summary: dict) -> list[str]:
     hz = summary["hard_zero"]
     if hz["reject_not_excluded"]:
         fails.append(
-            f"reject not excluded: {hz['reject_not_excluded']} "
-            "(C4 — headline defect)"
+            f"reject not excluded: {hz['reject_not_excluded']} (C4 — headline defect)"
         )
     if hz["recall_keys_missing"]:
         fails.append(f"recall keys missing: {hz['recall_keys_missing']} (C1)")
@@ -665,9 +666,7 @@ def gate_failures_reject(summary: dict) -> list[str]:
             f"content leaked in carrier: {hz['content_leaked_in_carrier']} (C5)"
         )
     if hz["suppress_carrier_missing"]:
-        fails.append(
-            f"suppress carrier missing: {hz['suppress_carrier_missing']} (C3)"
-        )
+        fails.append(f"suppress carrier missing: {hz['suppress_carrier_missing']} (C3)")
     if hz["missing_trace_join"]:
         fails.append(
             f"missing trace join: {hz['missing_trace_join']} "
@@ -805,7 +804,7 @@ def _write_reject_report(summary: dict, *, jsonl: Path, report_path: Path) -> No
         "# Chat persistence Phase B — E2E validation report",
         "",
         f"**Status:** generated report — **{verdict}**.",
-        f"**Plan:** [`chat_persistence_phaseb_gcp_e2e_validation.plan.md`](chat_persistence_phaseb_gcp_e2e_validation.plan.md).",
+        "**Plan:** [`chat_persistence_phaseb_gcp_e2e_validation.plan.md`](chat_persistence_phaseb_gcp_e2e_validation.plan.md).",
         f"**Capture:** `{jsonl.relative_to(AGENT_ROOT) if jsonl.is_relative_to(AGENT_ROOT) else jsonl}`",
         "",
         "## Per-case results",
@@ -874,7 +873,10 @@ def _merge_corpus_expectations(rows: list[dict]) -> list[dict]:
             for s in c.get("sessions", []):
                 if s.get("kind") == "probe":
                     probe = s  # last probe wins (matches the terminal probe)
-            fill: dict[str, Any] = {"ability": c.get("ability"), "user_id": c.get("user_id")}
+            fill: dict[str, Any] = {
+                "ability": c.get("ability"),
+                "user_id": c.get("user_id"),
+            }
             if probe:
                 if "expect_substring" in probe:
                     fill["expect_substring"] = probe["expect_substring"]
@@ -960,7 +962,7 @@ def _resolve_langfuse_trace_id(session_id_prefix: str) -> str:
         except urllib.error.HTTPError as exc:
             if exc.code == 429 and attempt < 5:
                 retry_after = exc.headers.get("Retry-After")
-                delay = float(retry_after) if retry_after else (2.0 ** attempt)
+                delay = float(retry_after) if retry_after else (2.0**attempt)
                 time.sleep(min(delay, 30.0))
                 continue
             raise
@@ -1014,7 +1016,9 @@ def _load_langfuse_events_for_row(row: dict) -> list[dict]:
     return []
 
 
-def _build_events_by_row(rows: list[dict], args: argparse.Namespace) -> dict[str, list[dict]]:
+def _build_events_by_row(
+    rows: list[dict], args: argparse.Namespace
+) -> dict[str, list[dict]]:
     events_by_row: dict[str, list[dict]] = {}
     for row in rows:
         case = row["case"]
@@ -1058,7 +1062,9 @@ def main() -> int:
         help="multisession (default) or reject (Phase B recall→reject harness)",
     )
     parser.add_argument("--jsonl", type=Path, default=None)
-    parser.add_argument("--source", choices=["blackbox", "langfuse"], default="blackbox")
+    parser.add_argument(
+        "--source", choices=["blackbox", "langfuse"], default="blackbox"
+    )
     parser.add_argument("--recordings", type=Path, default=_DEFAULT_RECORDINGS)
     parser.add_argument(
         "--gate",
@@ -1089,9 +1095,7 @@ def main() -> int:
     args = parser.parse_args()
 
     if args.jsonl is None:
-        args.jsonl = (
-            _DEFAULT_REJECT_JSONL if args.phase == "reject" else _DEFAULT_JSONL
-        )
+        args.jsonl = _DEFAULT_REJECT_JSONL if args.phase == "reject" else _DEFAULT_JSONL
 
     if args.source == "langfuse":
         _load_env()
@@ -1101,9 +1105,7 @@ def main() -> int:
         print(f"no capture file at {args.jsonl} — run the {label} spec first")
         return 2
     rows = [
-        json.loads(line)
-        for line in args.jsonl.read_text().strip().split("\n")
-        if line
+        json.loads(line) for line in args.jsonl.read_text().strip().split("\n") if line
     ]
     if not rows:
         print(f"capture file {args.jsonl} is empty")
@@ -1166,7 +1168,9 @@ def main() -> int:
                 print(f"  - {f}")
             return 1
         if hz["missing_trace_join"] and not summary.get("per_case"):
-            print("\nGATE INCONCLUSIVE: no case joined to traces — check Langfuse creds.")
+            print(
+                "\nGATE INCONCLUSIVE: no case joined to traces — check Langfuse creds."
+            )
             return 1
         if args.gate:
             print("\nGATE PASSED")

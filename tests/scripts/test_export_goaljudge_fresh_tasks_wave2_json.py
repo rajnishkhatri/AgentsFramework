@@ -18,8 +18,16 @@ def test_exports_one_row_per_task_with_required_keys() -> None:
     rows = build_rows()
     assert len(rows) == len(FRESH_TEST_TASKS_WAVE2)
     required = {
-        "id", "prompt", "target_code", "target_axes", "stratum", "domain",
-        "expected_feasibility", "provenance", "trace_id", "session_id",
+        "id",
+        "prompt",
+        "target_code",
+        "target_axes",
+        "stratum",
+        "domain",
+        "expected_feasibility",
+        "provenance",
+        "trace_id",
+        "session_id",
     }
     for row in rows:
         assert required <= row.keys()

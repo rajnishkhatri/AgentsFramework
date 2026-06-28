@@ -17,6 +17,7 @@ Regenerate after editing the rows below:
 
 Output: frontend/e2e/fixtures/planning_stress_corpus.json
 """
+
 from __future__ import annotations
 
 import json
@@ -467,8 +468,10 @@ def _fanout_rows() -> list[dict]:
     control are the negatives; a near-miss fanned out is the GAIA-failure ``fp``
     cell) + partial-survival rate for the fault rows. Calibration-first.
     """
-    return _fanout_independent_rows() + _fanout_decline_rows() + (
-        _fanout_fault_rows() + _fanout_control_rows()
+    return (
+        _fanout_independent_rows()
+        + _fanout_decline_rows()
+        + (_fanout_fault_rows() + _fanout_control_rows())
     )
 
 
@@ -798,9 +801,7 @@ def _fanout_control_rows() -> list[dict]:
         ),
         ctrl(
             case="FANOUT-control-ambiguous-trivial-04",
-            prompt=(
-                "Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt."
-            ),
+            prompt=("Write 'a' to /workspace/a.txt and 'b' to /workspace/b.txt."),
             axis=["A:independent", "B:2-below-floor"],
             rationale="boundary: 2 trivial independent writes BELOW the '<3 don't bother' floor -> decline",
         ),

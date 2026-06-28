@@ -123,7 +123,7 @@ Intent: {intent}
 Your job:
 1. List the most important observable facts, events, outputs, behaviors about this topic.
 2. Look only at what is directly visible or measurable.
-3. Form a causal hypothesis: what is generating these observations? 
+3. Form a causal hypothesis: what is generating these observations?
    This hypothesis must point to something you CANNOT explain at this layer alone.
 4. Identify any anomalies — facts that don't fit the dominant pattern.
 
@@ -287,7 +287,7 @@ Each `<LayerCard>` renders:
 
 ## 9. Example Run
 
-**Topic:** Amazon  
+**Topic:** Amazon
 **Intent:** Understand what will remain true about this company regardless of market conditions
 
 ```

@@ -74,9 +74,7 @@ def _supervisor_decisions(events: list[dict]) -> list[str]:
 
 def _run_started_count(events: list[dict]) -> int:
     """Number of ``run.started`` markers. One run emits exactly one."""
-    return sum(
-        1 for e in events if (e.get("event_type") or "").endswith("run_started")
-    )
+    return sum(1 for e in events if (e.get("event_type") or "").endswith("run_started"))
 
 
 def superposition_smell(events: list[dict]) -> str | None:
@@ -103,8 +101,11 @@ def superposition_smell(events: list[dict]) -> str | None:
     decisions = set(_supervisor_decisions(events))
     if {"fan_out", "decline"} <= decisions:
         n = len(_supervisor_decisions(events))
-        return f"CONTAMINATED: {n} decisions, both fan_out+decline (>1 run superimposed)"
+        return (
+            f"CONTAMINATED: {n} decisions, both fan_out+decline (>1 run superimposed)"
+        )
     return None
+
 
 AGENT_ROOT = Path(__file__).resolve().parents[1]
 UI_BATCH = AGENT_ROOT / "cache" / "planning_stress" / "ui_batch.jsonl"
@@ -223,7 +224,9 @@ def build_records() -> list[dict]:
         delivered = not rec["is_fallback"] and (rec["dom_chars"] or 0) > 60
         if not decision_ok:
             # The expensive cell only when we fanned out a row that should not.
-            rec["verdict"] = "DECISION-WRONG (GAIA fp)" if got_fanout else "MISSED (cheap)"
+            rec["verdict"] = (
+                "DECISION-WRONG (GAIA fp)" if got_fanout else "MISSED (cheap)"
+            )
         elif want_fanout and not delivered:
             rec["verdict"] = "EXEC-EMPTY (decision ok, answer lost)"
         else:
@@ -242,18 +245,22 @@ def render(records: list[dict]) -> str:
         "Stage-B split legible — a correct server-side fan-out *decision* whose "
         "*answer* never reached the browser.\n"
     )
-    L.append("> `chars`/`cards` = browser-side; `decision`/`br#`/`joins`/"
-             "`join_chars`/`br c/t` = graph-side (Langfuse); `want` = corpus "
-             "expectation. `joins`>1 = fanned out again under reflexion. These "
-             "traces carry no `delegation_requested` obs — the `decision` + a real "
-             "`fanout_join` carrier IS the fan-out signal.\n")
+    L.append(
+        "> `chars`/`cards` = browser-side; `decision`/`br#`/`joins`/"
+        "`join_chars`/`br c/t` = graph-side (Langfuse); `want` = corpus "
+        "expectation. `joins`>1 = fanned out again under reflexion. These "
+        "traces carry no `delegation_requested` obs — the `decision` + a real "
+        "`fanout_join` carrier IS the fan-out signal.\n"
+    )
 
     # legend
-    L.append("**Verdict key:** `OK` = decision correct + answer delivered · "
-             "`EXEC-EMPTY` = correct fan-out, empty browser answer (the defect) · "
-             "`MISSED` = should have fanned out, ran sequential (cheap, un-gated) · "
-             "`DECISION-WRONG` = fanned out a dependent chain (GAIA fp) · "
-             "`NOT-RUN` = timed out / no trace.\n")
+    L.append(
+        "**Verdict key:** `OK` = decision correct + answer delivered · "
+        "`EXEC-EMPTY` = correct fan-out, empty browser answer (the defect) · "
+        "`MISSED` = should have fanned out, ran sequential (cheap, un-gated) · "
+        "`DECISION-WRONG` = fanned out a dependent chain (GAIA fp) · "
+        "`NOT-RUN` = timed out / no trace.\n"
+    )
 
     header = (
         "| Case | Fam | want | decision | br# | joins | join_chars | br c/t | "
@@ -275,7 +282,7 @@ def render(records: list[dict]) -> str:
                 )
                 continue
             bc = (
-                f"{r.get('branches_completed','?')}/{r.get('branches_total','?')}"
+                f"{r.get('branches_completed', '?')}/{r.get('branches_total', '?')}"
                 if "branches_total" in r
                 else "—"
             )
@@ -283,10 +290,10 @@ def render(records: list[dict]) -> str:
                 f"| {r['case']} | {fam[:3]} | {r['want_fanout']} | "
                 f"{r.get('supervisor_decision') or '—'} | "
                 f"{r.get('branch_count') if r.get('branch_count') is not None else '—'} | "
-                f"{r.get('joins','—')} | "
-                f"{r.get('join_chars','—')} | {bc} | {r.get('dom_chars','—')} | "
-                f"{r.get('dom_cards','—')} | {r.get('is_fallback')} | "
-                f"{r.get('shot','—')} | "
+                f"{r.get('joins', '—')} | "
+                f"{r.get('join_chars', '—')} | {bc} | {r.get('dom_chars', '—')} | "
+                f"{r.get('dom_cards', '—')} | {r.get('is_fallback')} | "
+                f"{r.get('shot', '—')} | "
                 f"**{r['verdict']}** |"
             )
 
@@ -296,8 +303,10 @@ def render(records: list[dict]) -> str:
     for r in records:
         verdicts[r["verdict"]] = verdicts.get(r["verdict"], 0) + 1
     L.append("\n## Roll-up\n")
-    L.append(f"- cases total: **{len(records)}**, ran: **{len(ran)}**, "
-             f"not-run: **{len(records) - len(ran)}**")
+    L.append(
+        f"- cases total: **{len(records)}**, ran: **{len(ran)}**, "
+        f"not-run: **{len(records) - len(ran)}**"
+    )
     for v, n in sorted(verdicts.items()):
         L.append(f"- `{v}`: **{n}**")
     L.append("")

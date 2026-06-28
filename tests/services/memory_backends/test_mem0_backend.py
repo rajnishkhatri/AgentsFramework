@@ -233,9 +233,7 @@ class TestMem0BackendCrud:
         b = _backend()
         for i in range(5):
             b.put(
-                MemoryRecord(
-                    user_id="u1", key=f"k{i}", payload={"text": f"note {i}"}
-                )
+                MemoryRecord(user_id="u1", key=f"k{i}", payload={"text": f"note {i}"})
             )
         assert len(b.search(user_id="u1", query="note", limit=2)) == 2
 
@@ -250,9 +248,7 @@ class TestMem0BackendCrud:
         # Mem0's default infer=True is async + may reword/drop the text. The
         # live smoke test surfaced this — pin it.
         sdk = _FakeMem0Sdk()
-        _backend(sdk).put(
-            MemoryRecord(user_id="u1", key="k1", payload={"text": "x"})
-        )
+        _backend(sdk).put(MemoryRecord(user_id="u1", key="k1", payload={"text": "x"}))
         assert sdk.infer_seen and all(v is False for v in sdk.infer_seen)
 
 

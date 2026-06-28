@@ -1,0 +1,186 @@
+================================================================================
+DOC DRIFT REPORT — are docs stale relative to recently-changed code?
+================================================================================
+Generated: 2026-06-20   Branch: feat/memory-layer-wiring   HEAD: cf79094
+Report only — NO docs were created or edited.
+
+--------------------------------------------------------------------------------
+0. HOW THE WINDOW WAS CHOSEN
+--------------------------------------------------------------------------------
+The 3 most-recent commits (cf79094, 3f33db5, 38e6fa2) are docs-only: the "OKF
+bundle migration". They added YAML frontmatter and rewrote doc-to-doc link
+paths, but did NOT change any prose to track code. So `git log -1 -- <doc>`
+reports them as "last edited today" — that date is misleading for drift.
+
+The last few commits that actually changed CODE are the memory-layer / chat-
+persistence feature line (mid-June 2026):
+    4efd155  feat(chat): durable thread persistence and recalled-memories UI
+    f4cd671  feat(memory): Phase B reject carriers, soft-suppress wiring + E2E
+    e80068f  fix(chat): align thread list API contract + persistence validation
+    1b18ee4  feat(memory): Hermes H1/H2/H3 remediation (recall floor, budget...)
+(plus 5d92df9, 01863ec earlier in the same branch).
+
+DRIFT WINDOW analysed: 4efd155~1 .. HEAD
+  - 51 changed source files (excluding tests/fixtures/e2e)
+  - the load-bearing source files are listed in §3.
+
+METHOD: extracted distinctive symbols (CamelCase classes/types, hooks `useX`,
+factories `makeX`, long snake_case fns, `*_node`/`*_carrier`) from the CURRENT
+text of every changed source file, then grepped all 454 tracked Markdown docs
+(eval-workspace outputs excluded) for those symbols AND for literal changed
+file paths. Each candidate doc was then triaged by (a) its last SUBSTANTIVE
+(non-OKF) edit date and (b) whether it actually mentions the NEW capabilities.
+
+--------------------------------------------------------------------------------
+1. HEADLINE FINDING
+--------------------------------------------------------------------------------
+YES — there is real drift, concentrated in the long-lived ARCHITECTURE / WIRE /
+TRACING reference docs. These describe "current state" but were last
+substantively edited in Apr–May 2026, BEFORE the June memory + chat-persistence
+work landed. They do not mention three capabilities that now exist in code:
+
+    (a) memory soft-suppress / reject     (PATCH /agent/memory/{key}, suppressed flag,
+                                           MEMORY_SUPPRESSED carrier)
+    (b) recalled-memories-with-keys       (MemoryRecalled domain event carrying `keys`;
+                                           RecalledMemories.tsx UI panel)
+    (c) durable thread persistence        (ThreadStore/NeonFreeThreadStore ports + BFF
+                                           thread CRUD handlers, persistTurn flow)
+
+Concrete proof (grep counts in the stalest reference docs):
+    AGENT_UI_ADAPTER_ARCHITECTURE.md : suppress=0  MemoryRecalled=0  ThreadStore=0
+    FRONTEND_WIRE..._DEEP_DIVE.md    : suppress=0  MemoryRecalled=0  ThreadStore=0
+                                       (also memory_store/thread_store ports = 0)
+    BACKEND_SOLUTION_ARCHITECTURE.md : suppress=0  MemoryRecalled=0  ThreadStore=0
+    END_TO_END_TRACING_GUIDE.md      : suppress=0  MemoryRecalled=0  ThreadStore=0
+
+Plan / research docs that were edited WITHIN the window (memory_layer_wiring,
+memory_pipeline_remediation, hermes_adoptions_design, the chat_persistence
+plans) co-evolved with the code and are LOW drift risk — listed in Tier C for
+a spot-check, not as required edits.
+
+--------------------------------------------------------------------------------
+2. WORKLIST  (priority order — start at the top)
+--------------------------------------------------------------------------------
+Legend:  last-sub = last commit that changed the doc's BODY (OKF commits skipped)
+
+TIER A — STALE REFERENCE DOCS THAT DESCRIBE CURRENT STATE  (fix these first)
+............................................................................
+A1. docs/Architectures/AGENT_UI_ADAPTER_ARCHITECTURE.md
+    last-sub: dedf94f  2026-04-23   (Sprint 1)   — ~2 months behind the code
+    WHY: enumerates the DomainEvent catalog (LLMMessage*, ToolCall*, StateMutated,
+         ToolResultReceived, RunStarted) but is MISSING the events added since:
+            MemoryRecalled, ReasoningSummarized, StepProgressed, TaskUnderstood
+         (all present as classes in agent_ui_adapter/wire/domain_events.py, absent
+         from the doc). Also omits the new PATCH /agent/memory/{key} suppress route
+         and the thread CRUD routes added to server.py.
+    DO: add the 4 missing domain events to the catalog; document the suppress +
+        thread endpoints.
+
+A2. docs/Architectures/FRONTEND_WIRE_AND_TRANSLATORS_DEEP_DIVE.md
+    last-sub: dedf94f  2026-04-23   — ~2 months behind
+    WHY: "wire & translators" deep-dive, but mentions none of the new frontend
+         wire surface: memory_store / thread_store ports, HttpMemoryStore,
+         NeonFreeThreadStore, MemoryRecalledEvent, RecalledMemories panel,
+         the recall-keys JOIN (recalledKeySignature). All shipped in the window.
+    DO: add a section for the memory_store + thread_store ports/adapters and the
+        memory_recalled -> RecalledMemories translation path.
+
+A3. docs/explainability/END_TO_END_TRACING_GUIDE.md
+    last-sub: f382ae7  2026-05-28   — predates Phase B
+    WHY: governance/tracing guide that references black_box, black_box_publisher,
+         export_for_compliance, redact_details — all touched in f4cd671 — but does
+         not cover the new MEMORY_SUPPRESSED carrier (memory_suppressed_carrier.py,
+         emit_suppressed_carrier) or the recall/suppress carrier types now on the
+         trace. Note: f4cd671 also changed redact_details behaviour for `details`.
+    DO: document the memory-suppressed carrier + recall carrier on the trace.
+
+A4. docs/Architectures/BACKEND_SOLUTION_ARCHITECTURE.md
+    last-sub: e39112f  2026-05-24   — predates memory wiring
+    WHY: backend layer map citing LongTermMemoryService, MemoryBackend, react_loop,
+         black_box. The memory service is now WIRED into the react loop (recall at
+         call_llm_node, store at run-end, suppress path) and prod assembly
+         (app_prod build_combined_app) — the doc still presents memory as
+         unwired/peripheral. Lower-precision than A1–A3 (broad doc); skim for the
+         react-loop + app_prod memory wiring description.
+
+TIER B — STALE PLAN/SPRINT DOCS THAT MAY MISREPRESENT STATUS  (verify, maybe annotate)
+.....................................................................................
+B1. docs/plan/services/LONG_TERM_MEMORY_PLAN.md         last-sub f3f8acf 2026-04-23
+    Memory service plan; "recall keys" appears (2x) but no suppress / MemoryRecalled
+    event / store-at-run-end wiring. Likely needs a status note that Phase 3 + B
+    shipped.
+B2. docs/plan/adapter/AGENT_UI_ADAPTER_PLAN.md          last-sub dedf94f 2026-04-23
+    Adapter plan; references the wire types + server that gained memory/thread routes.
+B3. docs/plan/adapter/AGENT_UI_ADAPTER_SPRINTS.md       last-sub dedf94f 2026-04-23
+    Sprint board; references LangGraphRuntime, agent_protocol, domain_events that
+    grew new events/requests. (path-refs are mostly to test files — weaker signal.)
+B4. docs/plan/adapter/sprints/IMPLEMENTATION_REVIEW.md  last-sub 3865c96 2026-04-23
+    Highest raw path-ref count but mostly because it lists every adapter test file;
+    review whether the "implemented" inventory now omits memory/thread endpoints.
+B5. docs/plans/blackbox_to_langfuse.plan.md             last-sub 4ad575e 2026-05-28
+    Governance/Langfuse plan touching black_box_publisher/redact_details (changed).
+B6. docs/plans/phase_3_phaselogger_sprint_board.md      last-sub a496c68 2026-06-01
+    PhaseLogger board referencing react_loop + domain_events.
+B7. docs/plans/langfuse_gcp_integration.plan.md         last-sub 8682d2d 2026-05-27
+    Trace-correlation plan referencing the wire events that grew.
+
+TIER C — DOCS EDITED *WITHIN* THE WINDOW  (co-evolved; spot-check only, low risk)
+................................................................................
+    docs/plans/memory_layer_wiring.plan.md               last-sub 1b18ee4 2026-06-19
+    docs/plans/memory_pipeline_remediation.plan.md       last-sub 1b18ee4 2026-06-19
+    docs/research/memory/hermes_adoptions_design.md      last-sub 1b18ee4 2026-06-19
+    docs/plans/chat_persistence_memory_integration.plan.md  last-sub f4cd671 2026-06-19
+    docs/plans/chat_persistence_phaseb_gcp_e2e_validation.plan.md last-sub f4cd671 2026-06-19
+    These are the highest symbol-overlap docs (expected — they describe this exact
+    work) but were updated alongside the code, so they are NOT presumed stale.
+
+TIER D — INCIDENTAL MATCHES  (likely fine; named only for completeness)
+.......................................................................
+    docs/plans/trace_explainability_optimization.plan.md   (COMPLETE; historical)
+    docs/plans/goaljudge_eval_ui_trajectory_phase.plan.md  (shared wire-event vocab)
+    docs/plans/planning_pipeline_tiered_loops.plan.md      (react_loop route/_route_fanout names)
+    docs/research/openmanus_comparison.md                  (react_loop node names; comparison essay)
+
+--------------------------------------------------------------------------------
+3. CHANGED SOURCE FILES DRIVING THE DRIFT  (window 4efd155~1..HEAD)
+--------------------------------------------------------------------------------
+Backend:
+    agent_ui_adapter/server.py                    (+ memory suppress + thread CRUD routes)
+    agent_ui_adapter/wire/domain_events.py        (+ MemoryRecalled, ReasoningSummarized, ...)
+    agent_ui_adapter/wire/agent_protocol.py       (+ MemorySuppressRequest, Thread* requests)
+    agent_ui_adapter/adapters/runtime/langgraph_runtime.py
+    agent_ui_adapter/translators/domain_to_ag_ui.py
+    agent_ui_adapter/wire/export_openapi.py
+    orchestration/react_loop.py                   (recall/store/suppress wiring in the loop)
+    orchestration/state.py
+    components/memory_context.py                  (render_recall_block, should_recall, build_store_payload)
+    middleware/app_prod.py                        (build_combined_app passes memory_service)
+    services/long_term_memory.py                  (+ suppress, exclude_suppressed, count)
+    services/governance/memory_suppressed_carrier.py  (NEW — MEMORY_SUPPRESSED carrier)
+    services/governance/black_box.py, black_box_publisher.py  (redact_details, carrier publish)
+    scripts/analyze_memory_traces.py, fetch_memory_trace.py, fill_stress_profile_url.py
+Frontend:
+    frontend/lib/wire/ui_runtime_events.ts        (+ MemoryRecalledEvent w/ keys)
+    frontend/lib/wire/agent_protocol.ts, wire-types.ts
+    frontend/lib/ports/memory_store.ts, thread_store.ts            (ports)
+    frontend/lib/adapters/memory_store/http_memory_store.ts        (+ suppress)
+    frontend/lib/adapters/thread_store/neon_free_thread_store.ts   (durable persistence)
+    frontend/lib/bff/handlers.ts                  (+ makeMemorySuppressHandler, thread handlers)
+    frontend/components/memory/RecalledMemories.tsx               (NEW panel)
+    frontend/components/chat/use_agent_run.ts, use_chat_sidebars.ts
+    frontend/app/chat-shell.tsx, app/api/memory/[key]/route.ts, app/api/threads/[id]/messages/route.ts
+    frontend/lib/translators/ag_ui_to_ui_runtime.ts, run_view_reducer.ts
+
+--------------------------------------------------------------------------------
+4. CAVEATS
+--------------------------------------------------------------------------------
+- Symbol-name matching is heuristic: a doc that NAMES a changed symbol is a
+  candidate, not a proven defect. Tier A/A3 were additionally confirmed by
+  checking that the NEW concepts are ABSENT from the doc (grep count 0).
+- Generic identifiers (messages, count, start, phase, metadata, ...) were
+  filtered out to avoid false positives; a few may remain in Tier B/D.
+- "last-sub" deliberately skips the 3 OKF migration commits so a doc's real age
+  is visible. If you instead trust `git log -1`, every doc looks edited today.
+- No doc files were read into / written by this analysis beyond grepping; the
+  two output files live under the eval workspace, not the docs corpus.
+================================================================================

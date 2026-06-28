@@ -20,6 +20,7 @@ Usage:
 Exit code 0 = every requested provider returned a non-empty completion; 1 = at
 least one failed (bad key, network, etc.).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -131,7 +132,9 @@ async def _main(providers: list[str]) -> int:
     passed = sum(results)
     total = len(results)
     if all(results):
-        print(f"PASS — {passed}/{total} providers returned a completion. Safe to deploy.")
+        print(
+            f"PASS — {passed}/{total} providers returned a completion. Safe to deploy."
+        )
         return 0
     print(
         f"FAIL — {passed}/{total} providers OK. Fix the failing key(s) in .env "

@@ -560,7 +560,10 @@ def test_discriminated_union_dispatches_correctly():
             ),
             ToolResult,
         ),
-        (StateSnapshot(type=EventType.STATE_SNAPSHOT, snapshot={"k": 1}), StateSnapshot),
+        (
+            StateSnapshot(type=EventType.STATE_SNAPSHOT, snapshot={"k": 1}),
+            StateSnapshot,
+        ),
         (Custom(type=EventType.CUSTOM, name="n", value={}), Custom),
     ]
     for original, expected_cls in cases:

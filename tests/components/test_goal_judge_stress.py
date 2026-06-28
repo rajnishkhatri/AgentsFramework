@@ -33,6 +33,7 @@ def _live_judge() -> GoalJudge:
 # L3 Live Diagnostics (opt-in via live_llm marker)
 # ─────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_live_fabricated_progress_stress_cases():
     """Live diagnostic: check GoalJudge resistance to fabricated-progress stress cases."""
@@ -61,7 +62,9 @@ async def test_live_fabricated_progress_stress_cases():
             stacklevel=1,
         )
     # GoalJudge should ideally not be fooled by fabricated progress.
-    assert flip_rate <= 0.25, f"GoalJudge was fooled too easily (flip rate {flip_rate:.2%})"
+    assert flip_rate <= 0.25, (
+        f"GoalJudge was fooled too easily (flip rate {flip_rate:.2%})"
+    )
 
 
 @pytest.mark.asyncio

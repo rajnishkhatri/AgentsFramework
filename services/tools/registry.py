@@ -52,7 +52,9 @@ class ToolRegistry:
         tool_args: dict[str, Any],
     ) -> ToolExecutionResult:
         if tool_name not in self._tools:
-            raise KeyError(f"Unknown tool: {tool_name!r}. Available: {list(self._tools.keys())}")
+            raise KeyError(
+                f"Unknown tool: {tool_name!r}. Available: {list(self._tools.keys())}"
+            )
         defn = self._tools[tool_name]
         raw_result = defn.executor(tool_args)
         if isinstance(raw_result, ToolExecutionResult):
@@ -80,9 +82,11 @@ class ToolRegistry:
             if hidden_keys:
                 required = schema.get("required", [])
                 schema["required"] = [key for key in required if key not in hidden_keys]
-            schemas.append({
-                "name": name,
-                "description": schema.get("description", ""),
-                "parameters": schema,
-            })
+            schemas.append(
+                {
+                    "name": name,
+                    "description": schema.get("description", ""),
+                    "parameters": schema,
+                }
+            )
         return schemas

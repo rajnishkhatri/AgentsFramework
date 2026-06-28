@@ -52,8 +52,8 @@ def main() -> None:
 
     # One source of truth for the catalog (H2 registry); honors MODEL_PROFILE_SET
     # from the env so an A/B set-arm run can swap the whole Auto stack.
-    import os
-
+    # (`os` is already imported at module scope — a second function-local import
+    # here made `os` a local, breaking the earlier os.chdir with UnboundLocalError.)
     from services.llm_config import build_model_registry
 
     models, default_model = build_model_registry(
@@ -71,26 +71,46 @@ def main() -> None:
     routing_config = RoutingConfig(default_model=default_model)
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
-    tool_registry = ToolRegistry({
-        # shell/file_io not cacheable: thread tool_cache never invalidates, so
-        # repeating an identical command/read after the file changes is stale.
-        "shell": ToolDefinition(executor=execute_shell, schema=ShellToolInput, cacheable=False),
-        "file_io": ToolDefinition(executor=execute_file_io, schema=FileIOInput, cacheable=False),
-        "state_file": ToolDefinition(executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False),
-        "state_todo": ToolDefinition(executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False),
-        "task": ToolDefinition(
-            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
-            schema=TaskToolInput,
-            cacheable=False,
-        ),
-        "think": ToolDefinition(executor=execute_think_tool, schema=ThinkToolInput, cacheable=False),
-        "web_search": ToolDefinition(executor=execute_web_search, schema=WebSearchInput, cacheable=False),
-    })
+    tool_registry = ToolRegistry(
+        {
+            # shell/file_io not cacheable: thread tool_cache never invalidates, so
+            # repeating an identical command/read after the file changes is stale.
+            "shell": ToolDefinition(
+                executor=execute_shell, schema=ShellToolInput, cacheable=False
+            ),
+            "file_io": ToolDefinition(
+                executor=execute_file_io, schema=FileIOInput, cacheable=False
+            ),
+            "state_file": ToolDefinition(
+                executor=execute_state_file_tool,
+                schema=StateFileToolInput,
+                cacheable=False,
+            ),
+            "state_todo": ToolDefinition(
+                executor=execute_state_todo_tool,
+                schema=StateTodoToolInput,
+                cacheable=False,
+            ),
+            "task": ToolDefinition(
+                executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+                schema=TaskToolInput,
+                cacheable=False,
+            ),
+            "think": ToolDefinition(
+                executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
+            ),
+            "web_search": ToolDefinition(
+                executor=execute_web_search, schema=WebSearchInput, cacheable=False
+            ),
+        }
+    )
 
     cache_dir = AGENT_ROOT / "cache"
 
     # Story 1.4: AgentFacts registry setup
-    agent_facts_secret = os.environ.get("AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production")
+    agent_facts_secret = os.environ.get(
+        "AGENT_FACTS_SECRET", "dev-secret-do-not-use-in-production"
+    )
     agent_facts_dir = cache_dir / "agent_facts"
     agent_facts_registry = AgentFactsRegistry(
         storage_dir=agent_facts_dir,
@@ -199,11 +219,13 @@ def main() -> None:
             break
 
     if final_answer:
-        console.print(Panel(
-            final_answer,
-            title="[bold green]Final Answer[/bold green]",
-            border_style="green",
-        ))
+        console.print(
+            Panel(
+                final_answer,
+                title="[bold green]Final Answer[/bold green]",
+                border_style="green",
+            )
+        )
     else:
         console.print("[yellow]No final answer produced.[/yellow]")
 

@@ -13,6 +13,7 @@ compaction needs judgment (which lever, whether to prune), so the model should d
 Usage (also runnable by hand to test):
     python3 session_start_check.py [MEMORY_DIR]
 """
+
 from __future__ import annotations
 
 import os
@@ -26,7 +27,9 @@ def resolve_memory_dir(explicit: str | None = None) -> str:
         return explicit
     project = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
     encoded = project.replace("/", "-")
-    return os.path.join(os.path.expanduser("~"), ".claude", "projects", encoded, "memory")
+    return os.path.join(
+        os.path.expanduser("~"), ".claude", "projects", encoded, "memory"
+    )
 
 
 def main() -> int:

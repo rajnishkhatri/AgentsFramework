@@ -50,9 +50,9 @@ def _description(text: str, fallback: str) -> str:
             continue
         if line.startswith(("#", ">", "|", "---", "- ", "* ", "<!--")):
             continue
-        line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)            # bold
-        line = re.sub(r"`([^`]+)`", r"\1", line)                # inline code
-        line = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", line)    # md link -> text
+        line = re.sub(r"\*\*(.+?)\*\*", r"\1", line)  # bold
+        line = re.sub(r"`([^`]+)`", r"\1", line)  # inline code
+        line = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", line)  # md link -> text
         line = line.replace("[", "").replace("]", "")
         sentence = re.split(r"(?<=[.!?])\s", line)[0]
         if len(sentence) > 180:
@@ -78,11 +78,16 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("target", help="dir (recursed) relative to cwd")
     ap.add_argument("--type", required=True)
-    ap.add_argument("--tag", required=True, help="comma-joined tag list, e.g. 'recipe, gcp'")
+    ap.add_argument(
+        "--tag", required=True, help="comma-joined tag list, e.g. 'recipe, gcp'"
+    )
     ap.add_argument("--override", action="append", default=[], help="RELPATH=type")
     ap.add_argument("--no-recurse", action="store_true")
-    ap.add_argument("--insert-type-if-missing", action="store_true",
-                    help="for files with frontmatter lacking `type`, insert a type key")
+    ap.add_argument(
+        "--insert-type-if-missing",
+        action="store_true",
+        help="for files with frontmatter lacking `type`, insert a type key",
+    )
     args = ap.parse_args()
 
     overrides = dict(ov.split("=", 1) for ov in args.override)
@@ -110,7 +115,9 @@ def main() -> int:
             if any(l.strip().startswith("type:") for l in block.splitlines()):
                 skipped += 1
                 continue
-            md.write_text(text[:start] + f"type: {ctype}\n" + text[start:], encoding="utf-8")
+            md.write_text(
+                text[:start] + f"type: {ctype}\n" + text[start:], encoding="utf-8"
+            )
             inserted += 1
             continue
 
@@ -129,7 +136,9 @@ def main() -> int:
         md.write_text(new_text, encoding="utf-8")
         patched += 1
 
-    print(f"{args.target}: prepended={patched} type-inserted={inserted} skipped={skipped}")
+    print(
+        f"{args.target}: prepended={patched} type-inserted={inserted} skipped={skipped}"
+    )
     return 0
 
 

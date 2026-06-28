@@ -206,4 +206,3 @@ The abstraction-introduction principle: do not create `adapters/storage/` until 
 - **Understanding the adapter internals** — read `docs/Architectures/AGENT_UI_ADAPTER_ADAPTERS_DEEP_DIVE.md`. It covers the complete runtime translation contract, the formal dependency rules table, the conformance test bundle requirement, and the Phase 2/3 extension roadmap in full detail.
 - **Adding a new concrete adapter** — read `docs/contributing/AGENT_UI_ADAPTER_ADAPTERS_HANDBOOK.md`. It has a decision tree, step-by-step recipe, definition-of-done checklist, and common pitfalls.
 - **Understanding the four-layer backend this ring sits above** — read `docs/Architectures/Architectures/FOUR_LAYER_ARCHITECTURE.md`.
-

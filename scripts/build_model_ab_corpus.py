@@ -31,6 +31,7 @@ Regenerate after editing the rows below:
 
 Output: frontend/e2e/fixtures/model_ab_corpus.json
 """
+
 from __future__ import annotations
 
 import json
@@ -204,8 +205,7 @@ def _general_rows() -> list[dict]:
             family="general",
             difficulty="L1",
             prompt=(
-                "Read /workspace/profile.json and report the value of its 'name' "
-                "field."
+                "Read /workspace/profile.json and report the value of its 'name' field."
             ),
             want_answer="the name field value",
             rationale="single read + field lookup; routine L1",

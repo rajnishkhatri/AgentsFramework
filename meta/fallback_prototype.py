@@ -122,10 +122,7 @@ class FallbackReactLoop:
         payload = state.model_dump_json()
         if self._checkpoint_dir is not None:
             self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
-            path = (
-                self._checkpoint_dir
-                / f"{state.task_id}-step{state.step_count}.json"
-            )
+            path = self._checkpoint_dir / f"{state.task_id}-step{state.step_count}.json"
             path.write_text(payload)
         return payload
 
@@ -174,7 +171,9 @@ class FallbackReactLoop:
             except Exception as exc:
                 logger.warning(
                     "LLM completion failed for task=%s step=%d: %s",
-                    state.task_id, state.step_count, exc,
+                    state.task_id,
+                    state.step_count,
+                    exc,
                 )
                 state = self.restore(checkpoint_payload)
                 state.consecutive_errors += 1
@@ -199,7 +198,9 @@ class FallbackReactLoop:
                 except Exception as exc:
                     logger.warning(
                         "Tool %s failed for task=%s: %s",
-                        tool_name, state.task_id, exc,
+                        tool_name,
+                        state.task_id,
+                        exc,
                     )
                     state = self.restore(tool_checkpoint)
                     failure_step = build_step_result(
@@ -227,11 +228,13 @@ class FallbackReactLoop:
                     state.step_count += 1
                     continue
 
-                state.messages.append(FallbackMessage(
-                    role="tool",
-                    content=str(tool_output),
-                    tool_call_id=tool_call.get("id"),
-                ))
+                state.messages.append(
+                    FallbackMessage(
+                        role="tool",
+                        content=str(tool_output),
+                        tool_call_id=tool_call.get("id"),
+                    )
+                )
                 outcome, error_record = "success", None
             else:
                 final = _extract_final_answer(
@@ -241,7 +244,8 @@ class FallbackReactLoop:
                     state.final_answer = final
                     state.status = "completed"
                 outcome, error_record = classify_outcome(
-                    assistant_msg.content, None,
+                    assistant_msg.content,
+                    None,
                     model=profile.name,
                     step=state.step_count,
                 )
@@ -267,12 +271,14 @@ class FallbackReactLoop:
             state.consecutive_errors = (
                 0 if outcome == "success" else state.consecutive_errors + 1
             )
-            state.model_history.append({
-                "step": state.step_count,
-                "model": profile.name,
-                "tier": profile.tier,
-                "reason": reason,
-            })
+            state.model_history.append(
+                {
+                    "step": state.step_count,
+                    "model": profile.name,
+                    "tier": profile.tier,
+                    "reason": reason,
+                }
+            )
 
         elapsed_ms = (time.time() - start) * 1000
         return TaskResult(
@@ -311,10 +317,7 @@ class FallbackReactLoop:
         else:
             completion_fn = self._completion_fn
 
-        messages = [
-            {"role": m.role, "content": m.content}
-            for m in state.messages
-        ]
+        messages = [{"role": m.role, "content": m.content} for m in state.messages]
         raw = completion_fn(
             model=profile.litellm_id,
             messages=messages,
@@ -339,10 +342,12 @@ class FallbackReactLoop:
                 target="fallback_prototype",
                 ai_input={"task_input": state.task_input[:200]},
                 ai_response=str(response.get("content", ""))[:500],
-                config={"configurable": {
-                    "user_id": user_id,
-                    "task_id": state.task_id,
-                }},
+                config={
+                    "configurable": {
+                        "user_id": user_id,
+                        "task_id": state.task_id,
+                    }
+                },
                 step=state.step_count,
                 model=profile.name,
             )
@@ -439,7 +444,8 @@ def _normalize_litellm_response(raw: Any) -> dict[str, Any]:
 
     first = choices[0]
     message = (
-        first.get("message", {}) if isinstance(first, dict)
+        first.get("message", {})
+        if isinstance(first, dict)
         else getattr(first, "message", {}) or {}
     )
     if isinstance(message, dict):
@@ -458,10 +464,10 @@ def _normalize_litellm_response(raw: Any) -> dict[str, Any]:
             tc_id = tc.get("id")
         else:
             fn = getattr(tc, "function", None)
-            name = getattr(fn, "name", "") if fn is not None else getattr(tc, "name", "")
-            arguments_raw = (
-                getattr(fn, "arguments", "{}") if fn is not None else "{}"
+            name = (
+                getattr(fn, "name", "") if fn is not None else getattr(tc, "name", "")
             )
+            arguments_raw = getattr(fn, "arguments", "{}") if fn is not None else "{}"
             tc_id = getattr(tc, "id", None)
 
         if isinstance(arguments_raw, str):

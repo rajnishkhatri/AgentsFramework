@@ -96,8 +96,7 @@ def build_middleware_app(
     app = FastAPI(
         title="Agent Middleware",
         description=(
-            "WorkOS auth + tool ACL + LangGraph runtime gateway. "
-            "Sprint 1 surface."
+            "WorkOS auth + tool ACL + LangGraph runtime gateway. Sprint 1 surface."
         ),
         version="0.1.0",
     )

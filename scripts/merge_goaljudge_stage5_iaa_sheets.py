@@ -23,6 +23,7 @@ Usage:
     --a2 docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_annotator2_sheet.csv \\
     --full docs/IAA/goalJudge/goldset/goaljudge_stage5_goldset_full_sheet.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -32,8 +33,18 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-R1_COLS = ("r1_goal_met", "r1_graceful_failure", "r1_partial_fraction", "r1_failure_mode")
-R2_COLS = ("r2_goal_met", "r2_graceful_failure", "r2_partial_fraction", "r2_failure_mode")
+R1_COLS = (
+    "r1_goal_met",
+    "r1_graceful_failure",
+    "r1_partial_fraction",
+    "r1_failure_mode",
+)
+R2_COLS = (
+    "r2_goal_met",
+    "r2_graceful_failure",
+    "r2_partial_fraction",
+    "r2_failure_mode",
+)
 R1_REVIEW_COLS = ("r1_review_assessment", "r1_review_open_question")
 
 
@@ -56,19 +67,31 @@ def main() -> int:
     full_fields, full = _load(args.full)
 
     if set(a1) != set(a2):
-        print(f"FATAL: A1/A2 row sets diverge: only in A1={sorted(set(a1) - set(a2))[:5]} only in A2={sorted(set(a2) - set(a1))[:5]}", file=sys.stderr)
+        print(
+            f"FATAL: A1/A2 row sets diverge: only in A1={sorted(set(a1) - set(a2))[:5]} only in A2={sorted(set(a2) - set(a1))[:5]}",
+            file=sys.stderr,
+        )
         return 1
     if set(a1) != set(full):
-        print(f"FATAL: A1/full row sets diverge: only in A1={sorted(set(a1) - set(full))[:5]} only in full={sorted(set(full) - set(a1))[:5]}", file=sys.stderr)
+        print(
+            f"FATAL: A1/full row sets diverge: only in A1={sorted(set(a1) - set(full))[:5]} only in full={sorted(set(full) - set(a1))[:5]}",
+            file=sys.stderr,
+        )
         return 1
 
     a1_filled = sum(1 for r in a1.values() if r.get("r1_goal_met", "").strip())
     a2_filled = sum(1 for r in a2.values() if r.get("r2_goal_met", "").strip())
     if a1_filled != len(a1):
-        print(f"FATAL: A1 has {a1_filled}/{len(a1)} r1_goal_met filled — A1 labeling is incomplete", file=sys.stderr)
+        print(
+            f"FATAL: A1 has {a1_filled}/{len(a1)} r1_goal_met filled — A1 labeling is incomplete",
+            file=sys.stderr,
+        )
         return 1
     if a2_filled != len(a2):
-        print(f"FATAL: A2 has {a2_filled}/{len(a2)} r2_goal_met filled — A2 labeling is incomplete", file=sys.stderr)
+        print(
+            f"FATAL: A2 has {a2_filled}/{len(a2)} r2_goal_met filled — A2 labeling is incomplete",
+            file=sys.stderr,
+        )
         return 1
 
     out_rows: list[dict[str, str]] = []
@@ -88,8 +111,12 @@ def main() -> int:
         writer.writerows(out_rows)
 
     print(f"Merged {len(out_rows)} rows → {args.full}")
-    print(f"  r1_goal_met filled: {sum(1 for r in out_rows if r.get('r1_goal_met','').strip())}")
-    print(f"  r2_goal_met filled: {sum(1 for r in out_rows if r.get('r2_goal_met','').strip())}")
+    print(
+        f"  r1_goal_met filled: {sum(1 for r in out_rows if r.get('r1_goal_met', '').strip())}"
+    )
+    print(
+        f"  r2_goal_met filled: {sum(1 for r in out_rows if r.get('r2_goal_met', '').strip())}"
+    )
     return 0
 
 

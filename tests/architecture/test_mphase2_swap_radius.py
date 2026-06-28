@@ -68,6 +68,70 @@ def _is_source_file(path: str) -> bool:
     return path.endswith(".py") and not path.startswith("tests/")
 
 
+def _ruff_bin() -> str | None:
+    """The repo-pinned ruff (.venv), or None if absent (skip the format filter)."""
+    candidate = _REPO_ROOT / ".venv" / "bin" / "ruff"
+    return str(candidate) if candidate.exists() else None
+
+
+def _has_substantive_change(default_branch: str, path: str) -> bool:
+    """True iff ``path``'s change vs the merge base is more than a reformat.
+
+    The swap-radius rule gates real backend SWAPS, not mechanical reformats. A
+    repo-wide ``ruff format`` + safe ``--fix`` (a one-time lint baseline)
+    rewrites files across every ring at once -- import removals and line
+    rejoining included -- which would otherwise read as a false swap-radius
+    violation the moment any unrelated ``services/*.py`` also changed.
+
+    The discriminator: take the OLD version of the file, run the repo's ruff
+    (format + safe fixes) on it, and compare to the NEW version. If they match,
+    the only change WAS the reformat -- not a swap (``git diff -w`` is
+    insufficient here: removing an unused import changes non-whitespace tokens).
+
+    Conservative fallbacks (keep the gate firing -- never silently drop a
+    possible real swap): if git can't show either version, or ruff isn't
+    available, treat the change as substantive.
+    """
+    merge_base = _git("merge-base", "HEAD", default_branch)
+    if not merge_base:
+        return True
+    old = _git("show", f"{merge_base}:{path}")
+    new_path = _REPO_ROOT / path
+    if old is None or not new_path.exists():
+        return True
+    ruff = _ruff_bin()
+    if ruff is None:
+        return True
+
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".py", delete=False, dir=_REPO_ROOT
+    ) as fh:
+        fh.write(old)
+        tmp = Path(fh.name)
+    try:
+        subprocess.run(
+            [ruff, "format", "-q", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        subprocess.run(
+            [ruff, "check", "-q", "--fix", "--select", "F,E", str(tmp)],
+            capture_output=True,
+            cwd=_REPO_ROOT,
+            timeout=30,
+        )
+        reformatted_old = tmp.read_text()
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return True
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    return reformatted_old != new_path.read_text()
+
+
 class TestMPhase2SwapRadius:
     def test_service_swap_does_not_touch_adapter(self) -> None:
         """If any services/*.py (non-test) changed, no agent_ui_adapter/**
@@ -81,16 +145,24 @@ class TestMPhase2SwapRadius:
             pytest.skip("could not compute merge-base (shallow clone?)")
 
         service_changes = [
-            p for p in changed
-            if p.startswith("services/") and _is_source_file(p)
+            p for p in changed if p.startswith("services/") and _is_source_file(p)
         ]
         adapter_changes = [
-            p for p in changed
-            if p.startswith("agent_ui_adapter/") and _is_source_file(p)
+            p
+            for p in changed
+            if p.startswith("agent_ui_adapter/")
+            and _is_source_file(p)
+            and _has_substantive_change(default_branch, p)
+        ]
+
+        # Mirror the same format-only filter on the service side, so a repo-wide
+        # reformat that only touched whitespace doesn't trip the gate at all.
+        service_changes = [
+            p for p in service_changes if _has_substantive_change(default_branch, p)
         ]
 
         if not service_changes:
-            pytest.skip("no services/*.py source changes in this range")
+            pytest.skip("no substantive services/*.py source changes in this range")
 
         assert not adapter_changes, (
             "M-Phase2 swap-radius violation: backend service swap must not "

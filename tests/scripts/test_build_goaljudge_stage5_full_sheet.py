@@ -34,13 +34,6 @@ from pathlib import Path
 
 import pytest
 
-from services.governance.goaljudge_goldset_dataset import (
-    CELL_TOOL_CLUSTERS,
-    D1_FLOORS,
-    D5_FLOORS,
-    STRATA_SHARES,
-)
-
 
 pytestmark = pytest.mark.usefixtures("_isolate_cwd")
 
@@ -114,14 +107,14 @@ class TestMultiBatchDedupe:
 
         older = tmp_path / "ui_batch_old.jsonl"
         newer = tmp_path / "ui_batch_new.jsonl"
-        _write_batch(older, [
-            _batch_row("GJ-001", trace_id="OLD", response_text="stale claim")
-        ])
-        _write_batch(newer, [
-            _batch_row("GJ-001", trace_id="NEW", response_text="fresh claim")
-        ])
+        _write_batch(
+            older, [_batch_row("GJ-001", trace_id="OLD", response_text="stale claim")]
+        )
+        _write_batch(
+            newer, [_batch_row("GJ-001", trace_id="NEW", response_text="fresh claim")]
+        )
         _set_mtime(older, time.time() - 3600)  # 1 hour old
-        _set_mtime(newer, time.time())          # now
+        _set_mtime(newer, time.time())  # now
 
         rows = load_and_dedupe_batches([older, newer])
 
@@ -171,9 +164,7 @@ class TestFirewallAtWrite:
         allocated = allocate_splits(rows)
         assert allocated[0]["split"] == "dev"
 
-    def test_synthetic_row_never_lands_on_test_split(
-        self, tmp_path: Path
-    ) -> None:
+    def test_synthetic_row_never_lands_on_test_split(self, tmp_path: Path) -> None:
         """Defense in depth: even with 100 synthetic items in a stratum
         whose test target is 40, none of them may end up in test."""
         from scripts.build_goaljudge_stage5_full_sheet import (
@@ -246,9 +237,7 @@ class TestBuilderCLI:
     the classifier or the allocator (those have their own tests above).
     """
 
-    def test_dry_run_emits_gap_report_does_not_write_csv(
-        self, tmp_path: Path
-    ) -> None:
+    def test_dry_run_emits_gap_report_does_not_write_csv(self, tmp_path: Path) -> None:
         from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
 
         batch = tmp_path / "batches" / "ui_batch_x.jsonl"
@@ -272,11 +261,8 @@ class TestBuilderCLI:
         # The result carries the gap counts so a caller can act on them.
         assert result.coverage_report is not None
 
-    def test_real_run_writes_csv_with_extended_fields(
-        self, tmp_path: Path
-    ) -> None:
+    def test_real_run_writes_csv_with_extended_fields(self, tmp_path: Path) -> None:
         from scripts.build_goaljudge_stage5_full_sheet import (
-            FIELDS,
             build_full_sheet,
         )
 
@@ -317,7 +303,6 @@ class TestBuilderCLI:
         to trigger L1+ must NOT be tagged L0.
         """
         from scripts.build_goaljudge_stage5_full_sheet import (
-            FIELDS,
             build_full_sheet,
         )
 
@@ -365,9 +350,9 @@ class TestExtendedFieldsContract:
         # D1 + D5 + D7 + D8 must be present.
         for required in (
             "planning_depth",  # D1
-            "tool_cluster",    # D5
-            "stratum",         # D8
-            "domain",          # D8
+            "tool_cluster",  # D5
+            "stratum",  # D8
+            "domain",  # D8
             "provenance",
             "split",
             "item_id",
@@ -381,9 +366,14 @@ class TestExtendedFieldsContract:
         from scripts.build_goaljudge_stage5_full_sheet import FIELDS
 
         for required in (
-            "r1_goal_met", "r1_partial_fraction", "r1_failure_mode",
-            "r2_goal_met", "r2_partial_fraction", "r2_failure_mode",
-            "adjudicated_goal_met", "adjudicated_failure_mode",
+            "r1_goal_met",
+            "r1_partial_fraction",
+            "r1_failure_mode",
+            "r2_goal_met",
+            "r2_partial_fraction",
+            "r2_failure_mode",
+            "adjudicated_goal_met",
+            "adjudicated_failure_mode",
         ):
             assert required in FIELDS, f"FIELDS missing pilot column {required!r}"
 
@@ -434,9 +424,7 @@ class TestFreshTaskMerge:
     the sheet; ``--fresh-only`` skips batch JSONLs for the 79-row Phase 5
     labeling corpus."""
 
-    def test_fresh_only_writes_seventy_nine_gj_f_rows(
-        self, tmp_path: Path
-    ) -> None:
+    def test_fresh_only_writes_seventy_nine_gj_f_rows(self, tmp_path: Path) -> None:
         from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
 
         csv_out = tmp_path / "sheet.csv"
@@ -461,9 +449,7 @@ class TestFreshTaskMerge:
         assert all(r["r1_goal_met"] == "" and r["r2_goal_met"] == "" for r in rows)
         assert all(r["stratum"] for r in rows)
 
-    def test_fresh_tasks_merge_appended_after_batch_rows(
-        self, tmp_path: Path
-    ) -> None:
+    def test_fresh_tasks_merge_appended_after_batch_rows(self, tmp_path: Path) -> None:
         from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
 
         batch = tmp_path / "ui_batch.jsonl"
@@ -506,9 +492,7 @@ class TestCorpusSidecarJoin:
          cover every UI batch row).
     """
 
-    def test_corpus_unset_preserves_no_tool_default(
-        self, tmp_path: Path
-    ) -> None:
+    def test_corpus_unset_preserves_no_tool_default(self, tmp_path: Path) -> None:
         """Regression guard: today's behavior must survive."""
         from scripts.build_goaljudge_stage5_full_sheet import build_full_sheet
 
@@ -533,9 +517,7 @@ class TestCorpusSidecarJoin:
         # silent regression.
         assert gjx["tool_cluster"] == "no-tool"
 
-    def test_corpus_match_shifts_cluster_off_no_tool(
-        self, tmp_path: Path
-    ) -> None:
+    def test_corpus_match_shifts_cluster_off_no_tool(self, tmp_path: Path) -> None:
         """The point of the extension: when the corpus carries a
         ``tool.called`` span for the row's ``trace_id``, D5 reflects the
         projected cluster, not the bare-batch ``no-tool`` default."""
@@ -546,15 +528,18 @@ class TestCorpusSidecarJoin:
         _write_batch(batch, [_batch_row("GJ-Y", trace_id="trace-match")])
 
         corpus = tmp_path / "corpus.jsonl"
-        _write_batch(corpus, [
-            _corpus_row(
-                "trace-match",
-                tool_calls=[
-                    ("file_io", "{'path': '/x', 'operation': 'read'}"),
-                    ("web_search", "{'query': 'weather'}"),
-                ],
-            ),
-        ])
+        _write_batch(
+            corpus,
+            [
+                _corpus_row(
+                    "trace-match",
+                    tool_calls=[
+                        ("file_io", "{'path': '/x', 'operation': 'read'}"),
+                        ("web_search", "{'query': 'weather'}"),
+                    ],
+                ),
+            ],
+        )
 
         csv_out = tmp_path / "sheet.csv"
         report_out = tmp_path / "report.md"
@@ -580,9 +565,7 @@ class TestCorpusSidecarJoin:
         )
         assert gjy["tool_cluster"] == "compose"
 
-    def test_corpus_miss_falls_through_to_no_tool(
-        self, tmp_path: Path
-    ) -> None:
+    def test_corpus_miss_falls_through_to_no_tool(self, tmp_path: Path) -> None:
         """Defensive join: a UI-batch row whose ``trace_id`` is NOT in
         any provided corpus must NOT crash; it must classify as
         ``no-tool`` so the builder is safe to run with a partial-corpus
@@ -595,12 +578,15 @@ class TestCorpusSidecarJoin:
 
         # Corpus has a different trace_id — the join misses.
         corpus = tmp_path / "corpus.jsonl"
-        _write_batch(corpus, [
-            _corpus_row(
-                "trace-other",
-                tool_calls=[("shell", "{'command': 'ls'}")],
-            ),
-        ])
+        _write_batch(
+            corpus,
+            [
+                _corpus_row(
+                    "trace-other",
+                    tool_calls=[("shell", "{'command': 'ls'}")],
+                ),
+            ],
+        )
 
         csv_out = tmp_path / "sheet.csv"
         report_out = tmp_path / "report.md"

@@ -35,12 +35,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 AGENT_ROOT = SCRIPTS_DIR.parent
@@ -182,7 +180,11 @@ def _assert_probe(row: dict, events: list[dict]) -> tuple[str, list[str]]:
         triggered = False
         if want_class and want_class in classes:
             triggered = True
-        if want_goal is False and completed and _as_bool(completed.get("goal_met")) is False:
+        if (
+            want_goal is False
+            and completed
+            and _as_bool(completed.get("goal_met")) is False
+        ):
             # Only counts as "empty-answer floor fired" if the answer was empty.
             if float(completed.get("criteria_met") or 1.0) == 0.0:
                 triggered = True
@@ -330,9 +332,7 @@ def main() -> int:
         print(f"no capture file at {args.jsonl} — run the fix-probe spec first")
         return 2
     rows = [
-        json.loads(line)
-        for line in args.jsonl.read_text().strip().split("\n")
-        if line
+        json.loads(line) for line in args.jsonl.read_text().strip().split("\n") if line
     ]
     if not rows:
         print(f"capture file {args.jsonl} is empty")

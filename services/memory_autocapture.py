@@ -63,6 +63,7 @@ class _ExtractorPort(Protocol):
         existing_profile: Iterable[str] | None = None,
     ) -> Any: ...
 
+
 logger = logging.getLogger("services.memory_autocapture")
 
 __all__ = ["MemoryAutoCaptureService", "CaptureOutcome"]
@@ -223,8 +224,7 @@ class MemoryAutoCaptureService:
                 except Exception as exc:
                     store_error = type(exc).__name__
                     logger.warning(
-                        "memory.autocapture store degraded user_id=%s key=%s "
-                        "error=%s",
+                        "memory.autocapture store degraded user_id=%s key=%s error=%s",
                         subject,
                         item.key,
                         store_error,
@@ -278,9 +278,7 @@ class MemoryAutoCaptureService:
         fail the capture over it.
         """
         try:
-            records = self._memory.search(
-                subject, "", limit=50, mem_type="semantic"
-            )
+            records = self._memory.search(subject, "", limit=50, mem_type="semantic")
         except Exception:
             return set()
         facts: set[str] = set()

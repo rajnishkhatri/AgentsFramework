@@ -48,8 +48,7 @@ FRESH_TEST_TASKS: list[FreshTask] = [
     FreshTask(
         id="GJ-F-002",
         prompt=(
-            "Read /workspace/input.txt, transform it to uppercase, "
-            "and save the result."
+            "Read /workspace/input.txt, transform it to uppercase, and save the result."
         ),
         stratum="representative",
         domain="file_io",
@@ -87,8 +86,7 @@ FRESH_TEST_TASKS: list[FreshTask] = [
     FreshTask(
         id="GJ-F-005",
         prompt=(
-            "Visit /workspace/journal.md and prepend a timestamped "
-            "greeting paragraph."
+            "Visit /workspace/journal.md and prepend a timestamped greeting paragraph."
         ),
         stratum="boundary",
         domain="file_io",
@@ -1111,7 +1109,6 @@ FRESH_TEST_TASKS: list[FreshTask] = [
     # author them here. Each prompt describes a task that cannot succeed for
     # a *structural* reason (kernel-locked file, hardware not present,
     # category error), not for safety/policy reasons (those live in no-tool).
-
     # ── (L1, file-only, impossible) — sandbox PID-bound nonexistence ──
     FreshTask(
         id="GJ-F-101",

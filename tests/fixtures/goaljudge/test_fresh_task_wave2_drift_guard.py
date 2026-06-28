@@ -44,9 +44,17 @@ from tests.fixtures.goaljudge.fresh_test_tasks_wave2 import (
 # The 11 under-floor cells from cache/goaljudge_eval/goldset_v0_9_manifest.json
 # floor_gap_summary — wave 2 must hit each at least this many times.
 _GAP_TARGETS = {
-    "L0": 28, "L1": 56, "L2": 35,
-    "web-bound": 16, "wrong-tool": 14, "blocked-tool": 11, "compose": 11,
-    "file-only": 9, "no-tool": 7, "request_approval": 6, "shell-bound": 5,
+    "L0": 28,
+    "L1": 56,
+    "L2": 35,
+    "web-bound": 16,
+    "wrong-tool": 14,
+    "blocked-tool": 11,
+    "compose": 11,
+    "file-only": 9,
+    "no-tool": 7,
+    "request_approval": 6,
+    "shell-bound": 5,
 }
 
 
@@ -74,12 +82,17 @@ class TestWave2DriftGuard:
             FreshTask(
                 id="GJ-F-W2-DRIFT",
                 prompt=colliding,
-                stratum="representative", domain="knowledge",
-                expected_planning_depth="L0", expected_tool_cluster="no-tool",
-                expected_failure_mode=None, source_benchmark_schema="novel",
+                stratum="representative",
+                domain="knowledge",
+                expected_planning_depth="L0",
+                expected_tool_cluster="no-tool",
+                expected_failure_mode=None,
+                source_benchmark_schema="novel",
             )
         ]
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)jaccard|contamination"):
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)jaccard|contamination"
+        ):
             validate_fresh_task_set(corrupt, corpus, select_planning_depth)
 
     def test_rejects_router_disagreement(self) -> None:
@@ -89,25 +102,36 @@ class TestWave2DriftGuard:
         bad = FreshTask(
             id="GJ-F-W2-DRIFT-D1",
             prompt="State the atomic number of helium.",
-            stratum="representative", domain="knowledge",
+            stratum="representative",
+            domain="knowledge",
             expected_planning_depth="L2",  # overconfident — router says L0
             expected_tool_cluster="no-tool",
-            expected_failure_mode=None, source_benchmark_schema="novel",
+            expected_failure_mode=None,
+            source_benchmark_schema="novel",
         )
-        with pytest.raises(FreshTaskValidationError, match=r"(?i)router|planning_depth"):
-            validate_fresh_task_set([*FRESH_TEST_TASKS_WAVE2, bad], corpus, select_planning_depth)
+        with pytest.raises(
+            FreshTaskValidationError, match=r"(?i)router|planning_depth"
+        ):
+            validate_fresh_task_set(
+                [*FRESH_TEST_TASKS_WAVE2, bad], corpus, select_planning_depth
+            )
 
     def test_rejects_duplicate_id(self) -> None:
         corpus = _contamination_corpus()
         clash = FreshTask(
             id="GJ-F-W2-001",  # already in the wave-2 set
             prompt="A genuinely unrelated wave-2 prompt with no overlap whatsoever.",
-            stratum="boundary", domain="knowledge",
-            expected_planning_depth="L0", expected_tool_cluster="no-tool",
-            expected_failure_mode=None, source_benchmark_schema="novel",
+            stratum="boundary",
+            domain="knowledge",
+            expected_planning_depth="L0",
+            expected_tool_cluster="no-tool",
+            expected_failure_mode=None,
+            source_benchmark_schema="novel",
         )
         with pytest.raises(FreshTaskValidationError, match=r"(?i)duplicate"):
-            validate_fresh_task_set([*FRESH_TEST_TASKS_WAVE2, clash], corpus, select_planning_depth)
+            validate_fresh_task_set(
+                [*FRESH_TEST_TASKS_WAVE2, clash], corpus, select_planning_depth
+            )
 
     # ── Acceptance: the real wave-2 corpus passes against registry ∪ wave-1 ──
 
@@ -127,7 +151,9 @@ class TestWave2CellCoverage:
     def test_ids_are_wave2_namespaced_and_unique(self) -> None:
         ids = [t.id for t in FRESH_TEST_TASKS_WAVE2]
         assert len(ids) == len(set(ids)), "duplicate wave-2 ids"
-        assert all(i.startswith("GJ-F-W2-") for i in ids), "wave-2 ids must be GJ-F-W2-*"
+        assert all(i.startswith("GJ-F-W2-") for i in ids), (
+            "wave-2 ids must be GJ-F-W2-*"
+        )
         assert FRESH_BY_ID_WAVE2.keys() == set(ids)
 
     def test_no_id_overlap_with_wave1(self) -> None:
@@ -140,9 +166,13 @@ class TestWave2CellCoverage:
         """Each of the 11 under-floor cells is filled to >= its v0.9 gap count.
         D1 cells (L0/L1/L2) tally on planning_depth; the rest on tool_cluster."""
         if cell in ("L0", "L1", "L2"):
-            have = sum(1 for t in FRESH_TEST_TASKS_WAVE2 if t.expected_planning_depth == cell)
+            have = sum(
+                1 for t in FRESH_TEST_TASKS_WAVE2 if t.expected_planning_depth == cell
+            )
         else:
-            have = sum(1 for t in FRESH_TEST_TASKS_WAVE2 if t.expected_tool_cluster == cell)
+            have = sum(
+                1 for t in FRESH_TEST_TASKS_WAVE2 if t.expected_tool_cluster == cell
+            )
         assert have >= target, f"cell {cell!r}: have {have}, need >= {target}"
 
     def test_vocabularies_locked(self) -> None:

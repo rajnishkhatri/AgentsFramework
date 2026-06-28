@@ -178,9 +178,7 @@ S1 = Scenario(
     id=ScenarioID.S1,
     description="Simple Q&A: forces TASK_STARTED, STEP_PLANNED, MODEL_SELECTED, "
     "GUARDRAIL_CHECKED, STEP_EXECUTED, TASK_COMPLETED",
-    bff_payload=_bff_payload(
-        "What is the capital of France? Answer in one sentence."
-    ),
+    bff_payload=_bff_payload("What is the capital of France? Answer in one sentence."),
     expected_observations=[
         ExpectedObservation(name="task.started", observation_type="agent"),
         ExpectedObservation(name="step.planned", observation_type="chain"),
@@ -465,7 +463,9 @@ S9 = Scenario(
     synthetic_events=(
         SyntheticEvent("task_started", {"task": "tampered-evidence task"}, step=0),
         SyntheticEvent("model_selected", {"model": "fast-tier"}, step=0),
-        SyntheticEvent("step_executed", {"action": "answer", "tampered_target": True}, step=1),
+        SyntheticEvent(
+            "step_executed", {"action": "answer", "tampered_target": True}, step=1
+        ),
         SyntheticEvent(
             "task_completed",
             {

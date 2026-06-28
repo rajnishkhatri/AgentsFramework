@@ -19,7 +19,6 @@ Discipline (same as the topo fix):
 
 from __future__ import annotations
 
-import pytest
 
 from components.answer_verifiers import verify_answer
 
@@ -38,8 +37,14 @@ INVOICE_TASK = (
 )
 
 REGION_EV = [
-    {"tool_name": "file_io", "tool_output": "order_id,customer_id\no1,c1\no2,c2\no3,c1\no4,c3\no5,c4\no6,c2\no7,c1\n"},
-    {"tool_name": "file_io", "tool_output": "customer_id,region\nc1,north\nc2,south\nc3,north\nc4,west\n"},
+    {
+        "tool_name": "file_io",
+        "tool_output": "order_id,customer_id\no1,c1\no2,c2\no3,c1\no4,c3\no5,c4\no6,c2\no7,c1\n",
+    },
+    {
+        "tool_name": "file_io",
+        "tool_output": "customer_id,region\nc1,north\nc2,south\nc3,north\nc4,west\n",
+    },
 ]
 REGION_TASK = (
     "For each order, resolve its customer's region, then report how many orders "
@@ -47,10 +52,12 @@ REGION_TASK = (
 )
 
 EVENTS_EV = [
-    {"tool_name": "file_io", "tool_output":
-        "08:01:10 INFO start\n08:15:00 ERROR disk full\n09:02:11 ERROR timeout\n"
+    {
+        "tool_name": "file_io",
+        "tool_output": "08:01:10 INFO start\n08:15:00 ERROR disk full\n09:02:11 ERROR timeout\n"
         "09:05:42 WARN retry\n09:10:00 ERROR timeout\n09:59:59 ERROR timeout\n"
-        "10:00:01 INFO ok\n10:30:00 ERROR oom\n"},
+        "10:00:01 INFO ok\n10:30:00 ERROR oom\n",
+    },
 ]
 EVENTS_TASK = (
     "Keep only the lines containing 'ERROR', extract the timestamp at the start "
@@ -70,10 +77,10 @@ REPORTS_TASK = (
 
 SCHEDULE_EV = [
     {"tool_name": "file_io", "tool_output": "09:00\n10:00\n11:00\n"},  # p1
-    {"tool_name": "file_io", "tool_output": "09:00\n11:00\n"},          # p2
-    {"tool_name": "file_io", "tool_output": "09:00\n10:00\n"},          # p3
-    {"tool_name": "file_io", "tool_output": "09:00\n11:00\n"},          # p4
-    {"tool_name": "file_io", "tool_output": "10:00\n11:00\n"},          # p5
+    {"tool_name": "file_io", "tool_output": "09:00\n11:00\n"},  # p2
+    {"tool_name": "file_io", "tool_output": "09:00\n10:00\n"},  # p3
+    {"tool_name": "file_io", "tool_output": "09:00\n11:00\n"},  # p4
+    {"tool_name": "file_io", "tool_output": "10:00\n11:00\n"},  # p5
 ]
 SCHEDULE_TASK = (
     "Find a single 30-minute slot that works for at least four of the five "
@@ -122,7 +129,9 @@ class TestCountByGroup:
         assert verify_answer(REGION_TASK, answer, REGION_EV) is True
 
     def test_correct_colon_list(self):
-        assert verify_answer(REGION_TASK, "north: 4, south: 2, west: 1", REGION_EV) is True
+        assert (
+            verify_answer(REGION_TASK, "north: 4, south: 2, west: 1", REGION_EV) is True
+        )
 
 
 # ── peak-bucket: the events task also bundles a file write ──────────
@@ -136,12 +145,24 @@ class TestPeakBucketSideEffectAbstains:
     )
 
     def test_peak_hour_with_write_abstains(self):
-        assert verify_answer(self.EVENTS_TASK_FULL, "The hour with the most errors is 09.", EVENTS_EV) is None
+        assert (
+            verify_answer(
+                self.EVENTS_TASK_FULL, "The hour with the most errors is 09.", EVENTS_EV
+            )
+            is None
+        )
 
     def test_peak_hour_no_write_requirement_validates(self):
         # Without the write clause the pure value check applies.
-        assert verify_answer(EVENTS_TASK, "The hour with the most errors is 09.", EVENTS_EV) is True
-        assert verify_answer(EVENTS_TASK, "The peak error hour is 10.", EVENTS_EV) is False
+        assert (
+            verify_answer(
+                EVENTS_TASK, "The hour with the most errors is 09.", EVENTS_EV
+            )
+            is True
+        )
+        assert (
+            verify_answer(EVENTS_TASK, "The peak error hour is 10.", EVENTS_EV) is False
+        )
 
 
 # ── growth-rate (q-o-q → 25.0%, 20.0%) ──────────────────────────────
@@ -167,7 +188,10 @@ class TestGrowthRate:
 class TestEarliestSlot:
     def test_wrong_slot_rejected(self):
         # 11:00 also covers 4 but is NOT the earliest — wrong answer.
-        assert verify_answer(SCHEDULE_TASK, "The best slot is 11:00.", SCHEDULE_EV) is False
+        assert (
+            verify_answer(SCHEDULE_TASK, "The best slot is 11:00.", SCHEDULE_EV)
+            is False
+        )
 
     def test_no_slot_abstains(self):
         assert verify_answer(SCHEDULE_TASK, "I found a good slot.", SCHEDULE_EV) is None
@@ -189,6 +213,10 @@ class TestStillAbstains:
             "propose a set of cuts that fully offsets it, and verify the offset "
             "balances to zero."
         )
-        ev = [{"tool_name": "file_io", "tool_output":
-               "category,planned,actual\nfood,100,130\ntravel,200,150\noffice,80,60\nrent,500,500\n"}]
+        ev = [
+            {
+                "tool_name": "file_io",
+                "tool_output": "category,planned,actual\nfood,100,130\ntravel,200,150\noffice,80,60\nrent,500,500\n",
+            }
+        ]
         assert verify_answer(task, "Food is over by 30; cut travel by 30.", ev) is None

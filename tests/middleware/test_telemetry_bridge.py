@@ -17,7 +17,6 @@ Anti-patterns avoided:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 
 import pytest
 
@@ -94,9 +93,7 @@ class TestEmitDomainEvent:
         "domain_event,expected_name,expected_attrs",
         [
             pytest.param(
-                RunStartedDomain(
-                    trace_id="t1", run_id="run-1", thread_id="thread-1"
-                ),
+                RunStartedDomain(trace_id="t1", run_id="run-1", thread_id="thread-1"),
                 "run.started",
                 {"run_id": "run-1", "thread_id": "thread-1"},
                 id="RunStartedDomain",
@@ -167,14 +164,18 @@ class TestEmitDomainEvent:
         [
             pytest.param(
                 ToolCallStarted(
-                    trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                    trace_id="t1",
+                    tool_call_id="tc-1",
+                    tool_name="shell",
                     args_json='{"cmd": "ls"}',
                 ),
                 id="ToolCallStarted-buffers",
             ),
             pytest.param(
                 LLMMessageStarted(
-                    trace_id="t1", message_id="msg-1", input_text="hi",
+                    trace_id="t1",
+                    message_id="msg-1",
+                    input_text="hi",
                 ),
                 id="LLMMessageStarted-buffers",
             ),
@@ -194,9 +195,7 @@ class TestEmitDomainEvent:
     ) -> None:
         from middleware.telemetry_bridge import emit_domain_event
 
-        event = RunStartedDomain(
-            trace_id="t1", run_id="run-1", thread_id="thread-1"
-        )
+        event = RunStartedDomain(trace_id="t1", run_id="run-1", thread_id="thread-1")
         emit_domain_event(stub_exporter, event, subject="user@example.com")
         assert stub_exporter.events[0]["attributes"]["subject"] == "user@example.com"
 
@@ -205,9 +204,7 @@ class TestEmitDomainEvent:
     ) -> None:
         from middleware.telemetry_bridge import emit_domain_event
 
-        event = RunStartedDomain(
-            trace_id="t1", run_id="run-1", thread_id="thread-1"
-        )
+        event = RunStartedDomain(trace_id="t1", run_id="run-1", thread_id="thread-1")
         emit_domain_event(stub_exporter, event, subject=None)
         assert "subject" not in stub_exporter.events[0]["attributes"]
 
@@ -267,9 +264,13 @@ class TestLLMContentExport:
         )
         emit_domain_event(
             stub_exporter,
-            LLMTokenEmitted(trace_id="t1", message_id="msg-1", delta=" is the capital."),
+            LLMTokenEmitted(
+                trace_id="t1", message_id="msg-1", delta=" is the capital."
+            ),
         )
-        emit_domain_event(stub_exporter, LLMMessageEnded(trace_id="t1", message_id="msg-1"))
+        emit_domain_event(
+            stub_exporter, LLMMessageEnded(trace_id="t1", message_id="msg-1")
+        )
 
         # ONE merged observation (started buffered, not exported).
         assert len(stub_exporter.events) == 1
@@ -287,13 +288,18 @@ class TestLLMContentExport:
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
         )
         emit_domain_event(
             stub_exporter,
             LLMMessageEnded(
-                trace_id="t1", message_id="m", output_text="a",
-                tokens_in=2144, tokens_out=113, model="gpt-4o-mini",
+                trace_id="t1",
+                message_id="m",
+                output_text="a",
+                tokens_in=2144,
+                tokens_out=113,
+                model="gpt-4o-mini",
             ),
         )
         attrs = stub_exporter.events[0]["attributes"]
@@ -310,11 +316,13 @@ class TestLLMContentExport:
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
         )
         time.sleep(0.01)
         emit_domain_event(
-            stub_exporter, LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
+            stub_exporter,
+            LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
         )
         latency = stub_exporter.events[0]["attributes"]["latency_ms"]
         assert latency >= 10.0
@@ -326,10 +334,12 @@ class TestLLMContentExport:
         from middleware.telemetry_bridge import emit_domain_event
 
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="t1", message_id="m", input_text="q"),
         )
         emit_domain_event(
-            stub_exporter, LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
+            stub_exporter,
+            LLMMessageEnded(trace_id="t1", message_id="m", output_text="a"),
         )
         attrs = stub_exporter.events[0]["attributes"]
         assert "__bb_model" not in attrs
@@ -360,7 +370,9 @@ class TestMergedToolCall:
         emit_domain_event(
             stub_exporter,
             ToolCallStarted(
-                trace_id="t1", tool_call_id="7:c1", tool_name="file_io",
+                trace_id="t1",
+                tool_call_id="7:c1",
+                tool_name="file_io",
                 args_json='{"path": "/x"}',
             ),
         )
@@ -388,7 +400,10 @@ class TestMergedToolCall:
         emit_domain_event(
             stub_exporter,
             ToolCallStarted(
-                trace_id="t1", tool_call_id="c1", tool_name="shell", args_json="{}",
+                trace_id="t1",
+                tool_call_id="c1",
+                tool_name="shell",
+                args_json="{}",
             ),
         )
         time.sleep(0.01)
@@ -446,16 +461,21 @@ class TestOrphanAndCleanup:
         )
 
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="t-leak", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="t-leak", message_id="m", input_text="q"),
         )
         emit_domain_event(
             stub_exporter,
             ToolCallStarted(
-                trace_id="t-leak", tool_call_id="c", tool_name="shell", args_json="{}",
+                trace_id="t-leak",
+                tool_call_id="c",
+                tool_name="shell",
+                args_json="{}",
             ),
         )
         emit_domain_event(
-            stub_exporter, LLMTokenEmitted(trace_id="t-leak", message_id="m", delta="x"),
+            stub_exporter,
+            LLMTokenEmitted(trace_id="t-leak", message_id="m", delta="x"),
         )
         # Buffers are populated mid-run.
         assert any(k[0] == "t-leak" for k in _llm_start_buffers)
@@ -463,7 +483,9 @@ class TestOrphanAndCleanup:
 
         emit_domain_event(
             stub_exporter,
-            RunFinishedDomain(trace_id="t-leak", run_id="r", thread_id="th", error=None),
+            RunFinishedDomain(
+                trace_id="t-leak", run_id="r", thread_id="th", error=None
+            ),
         )
 
         # All per-trace buffers for this trace are gone.
@@ -480,10 +502,12 @@ class TestOrphanAndCleanup:
         )
 
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="keep", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="keep", message_id="m", input_text="q"),
         )
         emit_domain_event(
-            stub_exporter, LLMMessageStarted(trace_id="drop", message_id="m", input_text="q"),
+            stub_exporter,
+            LLMMessageStarted(trace_id="drop", message_id="m", input_text="q"),
         )
         emit_domain_event(
             stub_exporter,
@@ -512,7 +536,9 @@ class TestTruncation:
         emit_domain_event(
             stub_exporter,
             ToolCallStarted(
-                trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                trace_id="t1",
+                tool_call_id="tc-1",
+                tool_name="shell",
                 args_json=large_args,
             ),
         )
@@ -547,7 +573,9 @@ class TestTruncation:
         emit_domain_event(
             stub_exporter,
             ToolCallStarted(
-                trace_id="t1", tool_call_id="tc-1", tool_name="shell",
+                trace_id="t1",
+                tool_call_id="tc-1",
+                tool_name="shell",
                 args_json=small_args,
             ),
         )
@@ -582,9 +610,7 @@ class TestReleaseTraceOnFinish:
     ) -> None:
         from middleware.telemetry_bridge import emit_domain_event
 
-        event = RunStartedDomain(
-            trace_id="t1", run_id="run-1", thread_id="thread-1"
-        )
+        event = RunStartedDomain(trace_id="t1", run_id="run-1", thread_id="thread-1")
         emit_domain_event(stub_exporter, event)
         assert len(stub_exporter.released_traces) == 0
 
@@ -619,9 +645,7 @@ class TestEmitRunFinished:
         assert exported["attributes"]["duration_ms"] == 1500
         assert exported["attributes"]["errored"] is False
 
-    def test_emits_with_error_flag(
-        self, stub_exporter: StubTelemetryExporter
-    ) -> None:
+    def test_emits_with_error_flag(self, stub_exporter: StubTelemetryExporter) -> None:
         from middleware.telemetry_bridge import emit_run_finished
 
         emit_run_finished(
@@ -693,9 +717,7 @@ class TestTelemetryNeverBlocks:
         from middleware.telemetry_bridge import emit_domain_event
 
         broken_exporter = StubTelemetryExporter(raise_on_export=True)
-        event = RunStartedDomain(
-            trace_id="t1", run_id="run-1", thread_id="thread-1"
-        )
+        event = RunStartedDomain(trace_id="t1", run_id="run-1", thread_id="thread-1")
         # Must not raise
         emit_domain_event(broken_exporter, event)
 

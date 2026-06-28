@@ -120,14 +120,26 @@ CITATION_ANSWER = (
 )
 # paper-3.txt carries the CLAIM the answer omitted (identical bytes to the seeder).
 CITATION_EVIDENCE = [
-    {"tool_name": "file_io", "tool_input": {"path": "/workspace/papers/paper-1.txt"},
-     "tool_output": "Title: Caching strategies.\nClaim: LRU beats FIFO under skew.\ncites: 3\n"},
-    {"tool_name": "file_io", "tool_input": {"path": "/workspace/papers/paper-2.txt"},
-     "tool_output": "Title: Index tuning.\nClaim: Covering indexes cut IO.\ncites: 3\n"},
-    {"tool_name": "file_io", "tool_input": {"path": "/workspace/papers/paper-3.txt"},
-     "tool_output": "Title: Foundations of locality.\nClaim: Temporal locality dominates real workloads.\ncites: \n"},
-    {"tool_name": "file_io", "tool_input": {"path": "/workspace/papers/paper-4.txt"},
-     "tool_output": "Title: Prefetching.\nClaim: Prefetch depth 2 is optimal.\ncites: 3\n"},
+    {
+        "tool_name": "file_io",
+        "tool_input": {"path": "/workspace/papers/paper-1.txt"},
+        "tool_output": "Title: Caching strategies.\nClaim: LRU beats FIFO under skew.\ncites: 3\n",
+    },
+    {
+        "tool_name": "file_io",
+        "tool_input": {"path": "/workspace/papers/paper-2.txt"},
+        "tool_output": "Title: Index tuning.\nClaim: Covering indexes cut IO.\ncites: 3\n",
+    },
+    {
+        "tool_name": "file_io",
+        "tool_input": {"path": "/workspace/papers/paper-3.txt"},
+        "tool_output": "Title: Foundations of locality.\nClaim: Temporal locality dominates real workloads.\ncites: \n",
+    },
+    {
+        "tool_name": "file_io",
+        "tool_input": {"path": "/workspace/papers/paper-4.txt"},
+        "tool_output": "Title: Prefetching.\nClaim: Prefetch depth 2 is optimal.\ncites: 3\n",
+    },
 ]
 
 # Canned verdict — the rendered prompt is what we assert on; the verdict is inert.
@@ -181,8 +193,10 @@ class TestBothCasesRouteToLLMFallback:
     async def test_budget_evaluate_consults_the_llm(self):
         judge, llm = _judge()
         await judge.evaluate(
-            task_input=BUDGET_TASK, final_answer=BUDGET_ANSWER,
-            success_conditions=[], evidence=BUDGET_EVIDENCE,
+            task_input=BUDGET_TASK,
+            final_answer=BUDGET_ANSWER,
+            success_conditions=[],
+            evidence=BUDGET_EVIDENCE,
         )
         assert llm.calls, "budget-offset must fall through to the LLM judge"
 
@@ -190,8 +204,10 @@ class TestBothCasesRouteToLLMFallback:
     async def test_citation_evaluate_consults_the_llm(self):
         judge, llm = _judge()
         await judge.evaluate(
-            task_input=CITATION_TASK, final_answer=CITATION_ANSWER,
-            success_conditions=[], evidence=CITATION_EVIDENCE,
+            task_input=CITATION_TASK,
+            final_answer=CITATION_ANSWER,
+            success_conditions=[],
+            evidence=CITATION_EVIDENCE,
         )
         assert llm.calls, "citation-synthesis must fall through to the LLM judge"
 
@@ -238,13 +254,21 @@ class TestSofteningKeepsTheGuards:
     async def test_corrupt_success_markers_survive(self):
         prompt = await _rendered_prompt(BUDGET_TASK, BUDGET_ANSWER, BUDGET_EVIDENCE)
         for marker in ("CORRUPT-SUCCESS", "partial_fraction", "claims done"):
-            assert marker in prompt, f"softening dropped corrupt-success marker {marker!r}"
+            assert marker in prompt, (
+                f"softening dropped corrupt-success marker {marker!r}"
+            )
 
     @pytest.mark.asyncio
     async def test_evidence_grounding_markers_survive(self):
         prompt = await _rendered_prompt(BUDGET_TASK, BUDGET_ANSWER, BUDGET_EVIDENCE)
-        for marker in ("EVIDENCE-GROUNDING", "Treat the agent's own", "narration of progress"):
-            assert marker in prompt, f"softening dropped evidence-grounding marker {marker!r}"
+        for marker in (
+            "EVIDENCE-GROUNDING",
+            "Treat the agent's own",
+            "narration of progress",
+        ):
+            assert marker in prompt, (
+                f"softening dropped evidence-grounding marker {marker!r}"
+            )
 
     @pytest.mark.asyncio
     async def test_citation_evidence_exposes_the_unstated_claim(self):

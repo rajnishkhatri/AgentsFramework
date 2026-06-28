@@ -20,7 +20,7 @@ OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OK
 - [Guardrails Dimension Space](GUARDRAILS_DIMENSION_SPACE.md) — Status: Sprint 0 contract (frozen) | Documentation only — no runtime code, no ML in this sprint
 - [Layer 1: Identity and Authentication -- Structured Analysis](LAYER1_IDENTITY_ANALYSIS.md) — Analysis method: Pyramid Principle with MECE decomposition
 - [Planning Pipeline — End-to-End System Diagram](PLANNING_PIPELINE_SYSTEM_DIAGRAM.md) — Status: Operational companion to planning_pipeline_tiered_loops.design.md §B.
-- [PLAYWRIGHT_TESTING_ARCHITECTURE](PLAYWRIGHT_TESTING_ARCHITECTURE.md) — 
+- [PLAYWRIGHT_TESTING_ARCHITECTURE](PLAYWRIGHT_TESTING_ARCHITECTURE.md) —
 - [Seven-Layer Agent Trust Framework -- High-Level Architecture](TRUST_FRAMEWORK_ARCHITECTURE.md) — Analysis method: Pyramid Principle with MECE decomposition
 - [Notes on the AgentsFramework Architecture](agents_framework_architecture_notes.md) — Author: Rajnish Khatri
 - [NAIC Narrative: Insurance Agentic AI Mapping to the Four-Layer Architecture](naic_insurance_mapping_gemni31.md) — Model: Gemini 3.1 Pro

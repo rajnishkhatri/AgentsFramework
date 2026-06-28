@@ -64,8 +64,7 @@ def test_committed_wire_types_matches_openapi_typescript_codegen(
     """The drift gate: regen MUST produce byte-equal output."""
     if not COMMITTED_OPENAPI.exists():
         pytest.fail(
-            "openapi.yaml is missing; cannot regenerate wire-types.ts. "
-            + REGEN_HINT
+            "openapi.yaml is missing; cannot regenerate wire-types.ts. " + REGEN_HINT
         )
     if not _node_available():
         pytest.skip(

@@ -47,7 +47,7 @@ os.environ.setdefault("LANGGRAPH_DEFAULT_RECURSION_LIMIT", "150")
 sys.path.insert(0, str(AGENT_ROOT))
 
 from agent_ui_adapter.adapters.runtime.langgraph_runtime import LangGraphRuntime
-from agent_ui_adapter.server import _ThreadStore, derive_thread_title
+from agent_ui_adapter.server import _ThreadStore
 from agent_ui_adapter.translators.domain_to_ag_ui import to_ag_ui
 from agent_ui_adapter.transport.sse import (
     PROXY_HEADERS,
@@ -227,7 +227,9 @@ def build_combined_app() -> FastAPI:
         mirrors the dev entry point (``middleware/__main__.py``); without it
         BlackBox recordings written to tmpfs are never exported to Langfuse.
         """
-        from agent_ui_adapter.adapters.runtime.postgres_saver import PostgresCheckpointer
+        from agent_ui_adapter.adapters.runtime.postgres_saver import (
+            PostgresCheckpointer,
+        )
 
         relay = adapters.black_box_relay
         relay_task: asyncio.Task | None = None
@@ -309,7 +311,7 @@ def build_combined_app() -> FastAPI:
         """JWT → WorkOS subject for the understanding edit route (401 on failure)."""
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="missing bearer token")
-        token = authorization[len("Bearer "):].strip()
+        token = authorization[len("Bearer ") :].strip()
         try:
             return adapters.jwt_verifier.verify(token).subject
         except Exception as exc:
@@ -352,7 +354,7 @@ def build_combined_app() -> FastAPI:
         """
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="missing bearer token")
-        token = authorization[len("Bearer "):].strip()
+        token = authorization[len("Bearer ") :].strip()
         try:
             claims = adapters.jwt_verifier.verify(token)
         except Exception as exc:
@@ -368,9 +370,7 @@ def build_combined_app() -> FastAPI:
         when MEMORY is unwired in a given deployment.
         """
         if memory_service is None:
-            raise HTTPException(
-                status_code=503, detail="memory service not available"
-            )
+            raise HTTPException(status_code=503, detail="memory service not available")
         return memory_service
 
     # ── Thread CRUD (Phase 3 sidebar surface) ─────────────────────────
@@ -412,9 +412,7 @@ def build_combined_app() -> FastAPI:
         identity: AgentFacts = Depends(_bearer_identity),
     ) -> ThreadListResponse:
         bounded = max(1, min(100, limit))
-        page, next_cursor = threads.list(
-            identity.owner, cursor=cursor, limit=bounded
-        )
+        page, next_cursor = threads.list(identity.owner, cursor=cursor, limit=bounded)
         return ThreadListResponse(threads=page, next_cursor=next_cursor)
 
     @app.post("/agent/threads", response_model=ThreadState)
@@ -495,7 +493,9 @@ def build_combined_app() -> FastAPI:
         # unmarked (A3 back-compat). store() consolidates the type on overflow.
         if body.salience is not None:
             meta["salience"] = body.salience
-        outcome = memory.store(identity.owner, key, {"text": body.content}, metadata=meta)
+        outcome = memory.store(
+            identity.owner, key, {"text": body.content}, metadata=meta
+        )
         # A1 / P1 #6a: store() bounds the type and returns a ConsolidationOutcome
         # when this write overflowed the budget. A CRUD/panel write must NOT prune
         # memory silently — leave the MEMORY_CONSOLIDATED carrier (Validation
@@ -555,7 +555,7 @@ def build_combined_app() -> FastAPI:
         runtime: LangGraphRuntime = request.app.state.runtime
         body = await request.json()
 
-        token = authorization[len("Bearer "):].strip()
+        token = authorization[len("Bearer ") :].strip()
         try:
             claims = adapters.jwt_verifier.verify(token)
         except Exception as exc:
@@ -611,23 +611,23 @@ def build_combined_app() -> FastAPI:
                         run_finished_emitted = True
 
                     for ag_ui_event in to_ag_ui(domain_event):
-                        yield encode_event(
-                            ag_ui_event, event_id=uuid.uuid4().hex
-                        )
+                        yield encode_event(ag_ui_event, event_id=uuid.uuid4().hex)
                 yield SENTINEL_LINE
             except Exception as exc:
                 errored = True
                 logger.exception("stream error: %s", exc)
-                yield encode_error(
-                    f"{type(exc).__name__}: {exc}", code="runtime_error"
-                )
+                yield encode_error(f"{type(exc).__name__}: {exc}", code="runtime_error")
                 yield SENTINEL_LINE
             finally:
                 duration_ms = int((time.monotonic() - run_started_at) * 1000)
                 logger.info(
                     "stream_ended run_id=%s thread=%s trace=%s "
                     "duration_ms=%d errored=%s",
-                    run_id, run_ctx.thread_id, trace_id_seen, duration_ms, errored,
+                    run_id,
+                    run_ctx.thread_id,
+                    trace_id_seen,
+                    duration_ms,
+                    errored,
                 )
                 # I6: teardown order is drain -> release_trace -> flush. The
                 # relay tail MUST be drained before any step.N span is closed,

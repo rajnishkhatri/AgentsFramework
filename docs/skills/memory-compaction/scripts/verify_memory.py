@@ -14,6 +14,7 @@ Usage:
 
 Exit code 0 = all checks pass; 1 = at least one failure.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,9 +30,9 @@ HOOK_HARD_LIMIT = 150
 def _hook(line: str) -> str:
     # Anchor on the link end first — titles can contain the em-dash separator.
     m = LINK_RE.search(line)
-    rest = line[m.end():] if m else line
+    rest = line[m.end() :] if m else line
     i = rest.find(HOOK_SPLIT)
-    return rest[i + len(HOOK_SPLIT):].strip() if i != -1 else ""
+    return rest[i + len(HOOK_SPLIT) :].strip() if i != -1 else ""
 
 
 def verify(memory_dir: str, target_kb: float) -> list[tuple[str, bool, str]]:
@@ -45,8 +46,9 @@ def verify(memory_dir: str, target_kb: float) -> list[tuple[str, bool, str]]:
 
     # Hook length (hard ceiling, by character).
     over = [ln for ln in items if len(_hook(ln)) > HOOK_HARD_LIMIT]
-    checks.append(("hook_length", not over,
-                   f"{len(over)} hook(s) over {HOOK_HARD_LIMIT} chars"))
+    checks.append(
+        ("hook_length", not over, f"{len(over)} hook(s) over {HOOK_HARD_LIMIT} chars")
+    )
 
     # Links: unique, no dups.
     linked = []
@@ -57,14 +59,22 @@ def verify(memory_dir: str, target_kb: float) -> list[tuple[str, bool, str]]:
 
     # No dangling links (every linked .md must exist on disk).
     linked_set = set(linked)
-    dangling = sorted(f for f in linked_set if not os.path.isfile(os.path.join(memory_dir, f)))
-    checks.append(("no_dangling_links", not dangling, f"dangling: {dangling or 'none'}"))
+    dangling = sorted(
+        f for f in linked_set if not os.path.isfile(os.path.join(memory_dir, f))
+    )
+    checks.append(
+        ("no_dangling_links", not dangling, f"dangling: {dangling or 'none'}")
+    )
 
     # No orphans: every topic file must be represented in the index (as a link OR
     # named in plain text — a deliberately-unlinked entry still counts).
-    topic = [f for f in os.listdir(memory_dir) if f.endswith(".md") and f != "MEMORY.md"]
+    topic = [
+        f for f in os.listdir(memory_dir) if f.endswith(".md") and f != "MEMORY.md"
+    ]
     missing = [f for f in topic if f not in raw and f[:-3] not in raw]
-    checks.append(("no_orphan_topic_files", not missing, f"unreferenced: {missing or 'none'}"))
+    checks.append(
+        ("no_orphan_topic_files", not missing, f"unreferenced: {missing or 'none'}")
+    )
 
     return checks
 
@@ -79,6 +89,7 @@ def main() -> int:
         # Reuse the resolver from the analyzer for portability.
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         from analyze_memory import resolve_memory_dir  # noqa: E402
+
         memory_dir = resolve_memory_dir()
 
     results = verify(memory_dir, target)

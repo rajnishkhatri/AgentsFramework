@@ -48,17 +48,19 @@ def convert(source: Path = SOURCE) -> list[dict]:
         prompt = r.get("prompt")
         if not prompt:
             continue  # defensive: a general row without a flat prompt is unusable
-        out.append({
-            "case": r["case"],
-            "gj_id": r.get("gj_id", ""),
-            "phase": ANSWER_PHASE,
-            "difficulty": r.get("difficulty", ""),
-            "family": r.get("family", "general"),
-            "trace_id": r["trace_id"],
-            "session_id": r.get("session_id", ""),
-            "prompt": prompt,
-            "want_answer": r.get("want_answer", ""),
-        })
+        out.append(
+            {
+                "case": r["case"],
+                "gj_id": r.get("gj_id", ""),
+                "phase": ANSWER_PHASE,
+                "difficulty": r.get("difficulty", ""),
+                "family": r.get("family", "general"),
+                "trace_id": r["trace_id"],
+                "session_id": r.get("session_id", ""),
+                "prompt": prompt,
+                "want_answer": r.get("want_answer", ""),
+            }
+        )
     return out
 
 

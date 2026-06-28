@@ -79,7 +79,11 @@ def make_handler(workdir: Path, save_path: Path, cases_path: Path):
             if parsed.path != "/save":
                 self.send_error(404)
                 return
-            force = parse_qs(parsed.query).get("force", ["0"])[0] not in ("0", "", "false")
+            force = parse_qs(parsed.query).get("force", ["0"])[0] not in (
+                "0",
+                "",
+                "false",
+            )
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
 
@@ -92,7 +96,9 @@ def make_handler(workdir: Path, save_path: Path, cases_path: Path):
 
             # (2) reject a save that would dramatically shrink the file
             if save_path.exists() and not force:
-                existing = sum(1 for line in save_path.read_text().splitlines() if line.strip())
+                existing = sum(
+                    1 for line in save_path.read_text().splitlines() if line.strip()
+                )
                 if existing and n < existing * TRUNCATION_FLOOR:
                     msg = (
                         f"refusing to shrink {existing} rows -> {n} "
@@ -116,9 +122,17 @@ def make_handler(workdir: Path, save_path: Path, cases_path: Path):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=3117)
-    ap.add_argument("--dir", default=".", help="work dir holding coder.html + cases.json")
-    ap.add_argument("--coded", default="coded.jsonl", help="coded JSONL filename (relative to --dir)")
-    ap.add_argument("--cases", default="cases.json", help="cases filename (relative to --dir)")
+    ap.add_argument(
+        "--dir", default=".", help="work dir holding coder.html + cases.json"
+    )
+    ap.add_argument(
+        "--coded",
+        default="coded.jsonl",
+        help="coded JSONL filename (relative to --dir)",
+    )
+    ap.add_argument(
+        "--cases", default="cases.json", help="cases filename (relative to --dir)"
+    )
     args = ap.parse_args()
 
     workdir = Path(args.dir).resolve()

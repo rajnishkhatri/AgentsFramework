@@ -72,7 +72,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, LiteralString, cast
 
 import psycopg
 from psycopg_pool import ConnectionPool
@@ -204,7 +204,10 @@ class PgVectorMemoryBackend:
             with conn.cursor() as cur:
                 # CREATE EXTENSION requires autocommit; flip per-conn.
                 conn.autocommit = True
-                cur.execute(ddl)
+                # DDL is a trusted module constant; `dim` is an int we control,
+                # so there is no injection surface — assert LiteralString for the
+                # typed psycopg execute() overload.
+                cur.execute(cast("LiteralString", ddl))
                 conn.autocommit = False
         self._schema_applied = True
 
@@ -315,7 +318,8 @@ class PgVectorMemoryBackend:
         metadata_dict = dict(record.metadata or {})
         mem_type_raw = metadata_dict.get("type", "semantic")
         mem_type = (
-            mem_type_raw if isinstance(mem_type_raw, str) and mem_type_raw
+            mem_type_raw
+            if isinstance(mem_type_raw, str) and mem_type_raw
             else "semantic"
         )
         pool = self._get_pool()
@@ -350,9 +354,7 @@ class PgVectorMemoryBackend:
                 f"pgvector backend failed during put("
                 f"user_id={record.user_id!r}, key={record.key!r})"
             ) from exc
-        logger.info(
-            "memory.backend.put user_id=%s key=%s", record.user_id, record.key
-        )
+        logger.info("memory.backend.put user_id=%s key=%s", record.user_id, record.key)
 
     def get(self, user_id: str, key: str) -> MemoryRecord | None:
         pool = self._get_pool()
@@ -367,8 +369,7 @@ class PgVectorMemoryBackend:
                     row = cur.fetchone()
         except psycopg.Error as exc:
             raise MemoryBackendError(
-                f"pgvector backend failed during get("
-                f"user_id={user_id!r}, key={key!r})"
+                f"pgvector backend failed during get(user_id={user_id!r}, key={key!r})"
             ) from exc
         if row is None:
             return None
@@ -380,9 +381,7 @@ class PgVectorMemoryBackend:
             metadata=metadata or {},
         )
 
-    def search(
-        self, user_id: str, query: str, limit: int = 10
-    ) -> list[MemoryRecord]:
+    def search(self, user_id: str, query: str, limit: int = 10) -> list[MemoryRecord]:
         if limit <= 0:
             return []
         embedding = self._embed_sync(query)
@@ -423,9 +422,7 @@ class PgVectorMemoryBackend:
                     metadata=meta,
                 )
             )
-        logger.debug(
-            "memory.backend.search user_id=%s count=%d", user_id, len(records)
-        )
+        logger.debug("memory.backend.search user_id=%s count=%d", user_id, len(records))
         return records
 
     def delete(self, user_id: str, key: str) -> bool:
@@ -447,9 +444,7 @@ class PgVectorMemoryBackend:
             ) from exc
         deleted = row is not None
         if deleted:
-            logger.info(
-                "memory.backend.delete user_id=%s key=%s", user_id, key
-            )
+            logger.info("memory.backend.delete user_id=%s key=%s", user_id, key)
         return deleted
 
     def list_all(self, user_id: str) -> list[MemoryRecord]:

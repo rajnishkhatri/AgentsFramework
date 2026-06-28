@@ -95,9 +95,7 @@ _DEFAULT_ROLE_TO_TOOLS: dict[str, frozenset[str]] = {
     "member": frozenset(),
 }
 
-_DEFAULT_KNOWN_TOOLS: frozenset[str] = frozenset(
-    {"shell", "file_io", "web_search"}
-)
+_DEFAULT_KNOWN_TOOLS: frozenset[str] = frozenset({"shell", "file_io", "web_search"})
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -192,9 +190,7 @@ def _build_v3(e: Mapping[str, str]) -> MiddlewareAdapters:
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
-    workos_issuer = e.get(
-        "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
-    )
+    workos_issuer = e.get("WORKOS_ISSUER", default_workos_issuer(workos_client_id))
     langfuse_host = (
         e.get("LANGFUSE_HOST")
         or e.get("LANGFUSE_BASE_URL")
@@ -254,9 +250,7 @@ def _build_v2(e: Mapping[str, str]) -> MiddlewareAdapters:
     langfuse_public = _require(e, "LANGFUSE_PUBLIC_KEY")
     langfuse_secret = _require(e, "LANGFUSE_SECRET_KEY")
 
-    workos_issuer = e.get(
-        "WORKOS_ISSUER", default_workos_issuer(workos_client_id)
-    )
+    workos_issuer = e.get("WORKOS_ISSUER", default_workos_issuer(workos_client_id))
     langfuse_host = e.get("LANGFUSE_HOST", "https://langfuse.internal")
     jwks_url = e.get(
         "WORKOS_JWKS_URL",
@@ -341,9 +335,7 @@ def _build_relay(
     """
     mode = e.get("BLACKBOX_RELAY_MODE", _RELAY_MODE_IN_PROCESS)
     if mode not in _VALID_RELAY_MODES:
-        _logger.warning(
-            "Unknown BLACKBOX_RELAY_MODE=%r; treating as 'off'", mode
-        )
+        _logger.warning("Unknown BLACKBOX_RELAY_MODE=%r; treating as 'off'", mode)
         return None
     if mode != _RELAY_MODE_IN_PROCESS:
         return None
@@ -352,7 +344,9 @@ def _build_relay(
 
     from middleware.ports.compliance_publisher import CompliancePublisher
 
-    compliance_publisher = exporter if isinstance(exporter, CompliancePublisher) else None
+    compliance_publisher = (
+        exporter if isinstance(exporter, CompliancePublisher) else None
+    )
 
     # Phase 4: curated view on by default; LANGFUSE_RELAY_CURATED=false restores
     # the audit-complete dual view (Option B) without a redeploy of logic.
@@ -420,10 +414,18 @@ class AgentRuntimeSettings(BaseSettings):
         validation_alias="AGENT_FACTS_SECRET",
     )
     agent_offload_dir: str = Field(default="", validation_alias="AGENT_OFFLOAD_DIR")
-    web_search_provider: str = Field(default="stub", validation_alias="WEB_SEARCH_PROVIDER")
-    searxng_url: str = Field(default="http://localhost:8888", validation_alias="SEARXNG_URL")
-    goal_judge_config_uri: str = Field(default="", validation_alias="GOAL_JUDGE_CONFIG_URI")
-    goal_judge_enabled: bool = Field(default=False, validation_alias="GOAL_JUDGE_ENABLED")
+    web_search_provider: str = Field(
+        default="stub", validation_alias="WEB_SEARCH_PROVIDER"
+    )
+    searxng_url: str = Field(
+        default="http://localhost:8888", validation_alias="SEARXNG_URL"
+    )
+    goal_judge_config_uri: str = Field(
+        default="", validation_alias="GOAL_JUDGE_CONFIG_URI"
+    )
+    goal_judge_enabled: bool = Field(
+        default=False, validation_alias="GOAL_JUDGE_ENABLED"
+    )
     goal_judge_downgrade_enabled: bool = Field(
         default=False, validation_alias="GOAL_JUDGE_DOWNGRADE_ENABLED"
     )
@@ -589,9 +591,7 @@ class AgentRuntimeSettings(BaseSettings):
     context_observation_clear_fraction: float = Field(
         default=0.3, validation_alias="CONTEXT_OBSERVATION_CLEAR_FRACTION"
     )
-    context_keep_last_k: int = Field(
-        default=10, validation_alias="CONTEXT_KEEP_LAST_K"
-    )
+    context_keep_last_k: int = Field(default=10, validation_alias="CONTEXT_KEEP_LAST_K")
     context_mask_after_steps: int = Field(
         default=10, validation_alias="CONTEXT_MASK_AFTER_STEPS"
     )
@@ -715,7 +715,6 @@ def _model_profiles(profile_set: str = "openai") -> tuple[list[Any], str]:
 
 
 def _resolve_search_provider(settings: AgentRuntimeSettings) -> Any:
-    from services.tools.search.port import WebSearchProvider
     from services.tools.search.stub import StubProvider
 
     provider_name = settings.web_search_provider.lower()
@@ -819,39 +818,49 @@ def build_components(
     )
 
     delegation_dispatcher = LocalLLMDelegationDispatcher(agent_config)
-    tool_registry = ToolRegistry({
-        "shell": ToolDefinition(
-            # Not cacheable: same hazard as file_io below — shell reads mutable
-            # filesystem state (cat/ls/grep/...), so a cached result is silently
-            # stale after the file changes later in the thread.
-            executor=execute_shell, schema=ShellToolInput, cacheable=False
-        ),
-        "file_io": ToolDefinition(
-            # Not cacheable: the thread-level tool_cache keys on exact args and
-            # never invalidates, so a cached read returns stale content after
-            # the same path is overwritten later in the thread.
-            executor=execute_file_io, schema=FileIOInput, cacheable=False
-        ),
-        "state_file": ToolDefinition(
-            executor=execute_state_file_tool, schema=StateFileToolInput, cacheable=False
-        ),
-        "state_todo": ToolDefinition(
-            executor=execute_state_todo_tool, schema=StateTodoToolInput, cacheable=False
-        ),
-        "task": ToolDefinition(
-            executor=build_task_tool_executor(delegation_dispatcher.dispatch),
-            schema=TaskToolInput,
-            cacheable=False,
-        ),
-        "think": ToolDefinition(
-            executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
-        ),
-        "web_search": ToolDefinition(
-            executor=build_web_search_executor(_resolve_search_provider(settings)),
-            schema=WebSearchInput,
-            cacheable=True,
-        ),
-    })
+    tool_registry = ToolRegistry(
+        {
+            "shell": ToolDefinition(
+                # Not cacheable: same hazard as file_io below — shell reads mutable
+                # filesystem state (cat/ls/grep/...), so a cached result is silently
+                # stale after the file changes later in the thread.
+                executor=execute_shell,
+                schema=ShellToolInput,
+                cacheable=False,
+            ),
+            "file_io": ToolDefinition(
+                # Not cacheable: the thread-level tool_cache keys on exact args and
+                # never invalidates, so a cached read returns stale content after
+                # the same path is overwritten later in the thread.
+                executor=execute_file_io,
+                schema=FileIOInput,
+                cacheable=False,
+            ),
+            "state_file": ToolDefinition(
+                executor=execute_state_file_tool,
+                schema=StateFileToolInput,
+                cacheable=False,
+            ),
+            "state_todo": ToolDefinition(
+                executor=execute_state_todo_tool,
+                schema=StateTodoToolInput,
+                cacheable=False,
+            ),
+            "task": ToolDefinition(
+                executor=build_task_tool_executor(delegation_dispatcher.dispatch),
+                schema=TaskToolInput,
+                cacheable=False,
+            ),
+            "think": ToolDefinition(
+                executor=execute_think_tool, schema=ThinkToolInput, cacheable=False
+            ),
+            "web_search": ToolDefinition(
+                executor=build_web_search_executor(_resolve_search_provider(settings)),
+                schema=WebSearchInput,
+                cacheable=True,
+            ),
+        }
+    )
 
     if settings.agent_env == "prod":
         cache_dir = Path(settings.agent_offload_dir or "/tmp/agent_offload")

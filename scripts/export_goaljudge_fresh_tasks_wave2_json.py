@@ -10,6 +10,7 @@ Output: frontend/e2e/fixtures/goaljudge_fresh_tasks_wave2.json
 Regenerate after fresh_test_tasks_wave2.py edits:
     .venv/bin/python -m scripts.export_goaljudge_fresh_tasks_wave2_json
 """
+
 from __future__ import annotations
 
 import json

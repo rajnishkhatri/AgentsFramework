@@ -13,10 +13,15 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+from trust.models import TraceOutcome
+
+if TYPE_CHECKING:
+    from services.governance.context_compaction_carrier import CompactionOutcome
 
 from langchain_core.messages import AIMessage, RemoveMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
@@ -66,7 +71,7 @@ from orchestration.message_view import (  # C1 §3.2 BaseMessage↔view boundary
     to_views,
 )
 from orchestration.state import AgentState
-from services.base_config import AgentConfig, ModelProfile, default_fast_profile
+from services.base_config import AgentConfig, default_fast_profile
 from services.llm_config import response_text
 from services.goal_judge_runtime_config import (
     GoalJudgeRuntimeConfigReader,
@@ -138,7 +143,7 @@ class ContextWindowExhaustedError(Exception):
     """The terminal §5.4 ceiling: floor-exceeded fold under the hard window cap."""
 
 
-def _resolve_context_window(state: dict, agent_config: AgentConfig) -> int:
+def _resolve_context_window(state: Mapping[str, Any], agent_config: AgentConfig) -> int:
     """Look up the active profile's ``context_window`` for §5.4 / §5.1 gating.
 
     Reads ``state["selected_model"]`` and finds the matching ``ModelProfile``
@@ -464,14 +469,16 @@ def _gate_shell_command(
 
     # One GUARDRAIL_CHECKED carrier per decision (one fact, one carrier).
     for carrier in gate.carriers:
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.GUARDRAIL_CHECKED,
-            timestamp=datetime.now(UTC),
-            step=step,
-            details={**carrier, "reason": verdict.reason, "stage": verdict.stage},
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.GUARDRAIL_CHECKED,
+                timestamp=datetime.now(UTC),
+                step=step,
+                details={**carrier, "reason": verdict.reason, "stage": verdict.stage},
+            )
+        )
 
     if gate.outcome is GateOutcome.EXECUTED:
         return last_result["res"]
@@ -530,16 +537,28 @@ def _execute_tools_impl(
     error_recorded = False
 
     delegation_call_count = sum(
-        1 for result in state.get("tool_results", []) if result.get("tool_name") == "task"
+        1
+        for result in state.get("tool_results", [])
+        if result.get("tool_name") == "task"
     )
 
     for tc in tool_calls:
-        tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
-        tool_args = tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
-        tool_id = tc.get("id", str(uuid.uuid4())) if isinstance(tc, dict) else getattr(tc, "id", str(uuid.uuid4()))
+        tool_name = (
+            tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+        )
+        tool_args = (
+            tc.get("args", {}) if isinstance(tc, dict) else getattr(tc, "args", {})
+        )
+        tool_id = (
+            tc.get("id", str(uuid.uuid4()))
+            if isinstance(tc, dict)
+            else getattr(tc, "id", str(uuid.uuid4()))
+        )
 
         cache_key = _compute_tool_cache_key(tool_name, tool_args)
-        cacheable = tool_registry.has(tool_name) and tool_registry.is_cacheable(tool_name)
+        cacheable = tool_registry.has(tool_name) and tool_registry.is_cacheable(
+            tool_name
+        )
         tool_args_with_state = {
             **tool_args,
             "_state": {
@@ -565,35 +584,46 @@ def _execute_tools_impl(
                 ok=True,
                 metadata={"cached": True},
             )
-            message_output, recorded_output, offloaded, offload_ref = _apply_tool_output_thresholds(
-                tool_name=tool_name,
-                output=execution_result.output,
-                offload_key=cache_key,
-                files=updated_files,
-                agent_config=agent_config,
+            message_output, recorded_output, offloaded, offload_ref = (
+                _apply_tool_output_thresholds(
+                    tool_name=tool_name,
+                    output=execution_result.output,
+                    offload_key=cache_key,
+                    files=updated_files,
+                    agent_config=agent_config,
+                )
             )
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.TOOL_CALLED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={"tool": tool_name, "args": tool_args, "cached": True, "tool_call_id": tool_id},
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.TOOL_CALLED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "tool": tool_name,
+                        "args": tool_args,
+                        "cached": True,
+                        "tool_call_id": tool_id,
+                    },
+                )
+            )
             results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
-            tool_results.append({
-                "record_id": f"{state.get('step_count', 0)}:{tool_id}",
-                "step_id": state.get("step_count", 0),
-                "task_id": state.get("task_id", ""),
-                "tool_name": tool_name,
-                "tool_input": tool_args,
-                "tool_output": recorded_output,
-                "ok": execution_result.ok,
-                "error": execution_result.error,
-                "cached": True,
-                "offloaded": offloaded,
-                "offload_ref": offload_ref,
-            })
+            tool_results.append(
+                {
+                    "record_id": f"{state.get('step_count', 0)}:{tool_id}",
+                    "step_id": state.get("step_count", 0),
+                    "task_id": state.get("task_id", ""),
+                    "tool_name": tool_name,
+                    "tool_input": tool_args,
+                    "tool_output": recorded_output,
+                    "ok": execution_result.ok,
+                    "error": execution_result.error,
+                    "cached": True,
+                    "offloaded": offloaded,
+                    "offload_ref": offload_ref,
+                }
+            )
             continue
 
         # Per-call guard: the raise branches below record their own ERROR_OCCURRED
@@ -621,7 +651,9 @@ def _execute_tools_impl(
                     step=state.get("step_count", 0),
                 )
             else:
-                execution_result = tool_registry.execute_with_result(tool_name, tool_args_with_state)
+                execution_result = tool_registry.execute_with_result(
+                    tool_name, tool_args_with_state
+                )
         except KeyError:
             # The registry's KeyError carries the available-tools list; preserve
             # it so the model can self-correct (F3/F4) instead of looping on the
@@ -633,21 +665,23 @@ def _execute_tools_impl(
                 error=f"Unknown tool '{tool_name}'",
                 error_class="unknown_tool",
             )
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.ERROR_OCCURRED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    "source": "tool_execution",
-                    "tool": tool_name,
-                    "error": f"Unknown tool '{tool_name}'",
-                    # error_class discriminates the failure mode for trace analysis:
-                    # a hallucinated/absent tool name vs a real execution failure.
-                    "error_class": "unknown_tool",
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.ERROR_OCCURRED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "source": "tool_execution",
+                        "tool": tool_name,
+                        "error": f"Unknown tool '{tool_name}'",
+                        # error_class discriminates the failure mode for trace analysis:
+                        # a hallucinated/absent tool name vs a real execution failure.
+                        "error_class": "unknown_tool",
+                    },
+                )
+            )
             error_recorded = True
             error_already_recorded = True
         except Exception as exc:
@@ -656,53 +690,64 @@ def _execute_tools_impl(
                 ok=False,
                 error=str(exc),
             )
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.ERROR_OCCURRED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    "source": "tool_execution",
-                    "tool": tool_name,
-                    "error": str(exc),
-                    # Split the formerly-conflated generic bucket: malformed LLM args
-                    # (Pydantic ValidationError) vs a timeout vs any other crash.
-                    "error_class": _classify_tool_exception(exc),
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.ERROR_OCCURRED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "source": "tool_execution",
+                        "tool": tool_name,
+                        "error": str(exc),
+                        # Split the formerly-conflated generic bucket: malformed LLM args
+                        # (Pydantic ValidationError) vs a timeout vs any other crash.
+                        "error_class": _classify_tool_exception(exc),
+                    },
+                )
+            )
             error_recorded = True
             error_already_recorded = True
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.TOOL_CALLED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={"tool": tool_name, "args": tool_args, "cached": False, "tool_call_id": tool_id},
-        ))
-
-        if not execution_result.ok and not error_already_recorded:
-            black_box.record(TraceEvent(
+        black_box.record(
+            TraceEvent(
                 event_id=str(uuid.uuid4()),
                 workflow_id=workflow_id,
-                event_type=EventType.ERROR_OCCURRED,
+                event_type=EventType.TOOL_CALLED,
                 timestamp=datetime.now(UTC),
                 step=state.get("step_count", 0),
                 details={
-                    "source": "tool_execution",
                     "tool": tool_name,
-                    "error": execution_result.error or "tool returned failure",
-                    # The executor reported failure via its envelope (no raise).
-                    # If the tool *declared* a specific class on the envelope (F1:
-                    # a self-handling tool that caught its own malformed-args error
-                    # and surfaced ``validation`` instead of masking it as a generic
-                    # "Error:" string), honor it; otherwise fall back to the generic
-                    # "the tool ran but its own logic rejected the request" class.
-                    "error_class": execution_result.error_class or "tool_reported",
+                    "args": tool_args,
+                    "cached": False,
+                    "tool_call_id": tool_id,
                 },
-            ))
+            )
+        )
+
+        if not execution_result.ok and not error_already_recorded:
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.ERROR_OCCURRED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "source": "tool_execution",
+                        "tool": tool_name,
+                        "error": execution_result.error or "tool returned failure",
+                        # The executor reported failure via its envelope (no raise).
+                        # If the tool *declared* a specific class on the envelope (F1:
+                        # a self-handling tool that caught its own malformed-args error
+                        # and surfaced ``validation`` instead of masking it as a generic
+                        # "Error:" string), honor it; otherwise fall back to the generic
+                        # "the tool ran but its own logic rejected the request" class.
+                        "error_class": execution_result.error_class or "tool_reported",
+                    },
+                )
+            )
             error_recorded = True
 
         if cacheable:
@@ -715,8 +760,12 @@ def _execute_tools_impl(
             updated_todos = state_delta["todos"]
         if "plan_ref" in state_delta and isinstance(state_delta["plan_ref"], str):
             updated_plan_ref = state_delta["plan_ref"]
-        if "reasoning_trace" in state_delta and isinstance(state_delta["reasoning_trace"], list):
-            reasoning_trace_delta.extend(str(item) for item in state_delta["reasoning_trace"])
+        if "reasoning_trace" in state_delta and isinstance(
+            state_delta["reasoning_trace"], list
+        ):
+            reasoning_trace_delta.extend(
+                str(item) for item in state_delta["reasoning_trace"]
+            )
         if trace_service is not None:
             trace_records = (execution_result.metadata or {}).get("trace_records", [])
             if trace_records:
@@ -735,21 +784,31 @@ def _execute_tools_impl(
                                 agent_id=configurable_agent_id or "unknown-agent",
                                 source_agent_id=configurable_agent_id or None,
                                 layer="L4",
-                                event_type=str(trace_record.get("event_type", "delegation_event")),
+                                event_type=str(
+                                    trace_record.get("event_type", "delegation_event")
+                                ),
                                 details=dict(trace_record.get("details", {})),
                                 causation_id=trace_record.get("causation_id"),
-                                outcome=trace_record.get("outcome"),
+                                # trace_record is an untyped tool-relayed dict;
+                                # cast the Any at this boundary to the declared
+                                # TraceOutcome (consistent with the cast discipline
+                                # used elsewhere for outcome fields).
+                                outcome=cast(
+                                    "TraceOutcome | None", trace_record.get("outcome")
+                                ),
                             )
                         )
                     except Exception:
                         logger.exception("failed to emit delegation trace event")
 
-        message_output, recorded_output, offloaded, offload_ref = _apply_tool_output_thresholds(
-            tool_name=tool_name,
-            output=execution_result.output,
-            offload_key=cache_key,
-            files=updated_files,
-            agent_config=agent_config,
+        message_output, recorded_output, offloaded, offload_ref = (
+            _apply_tool_output_thresholds(
+                tool_name=tool_name,
+                output=execution_result.output,
+                offload_key=cache_key,
+                files=updated_files,
+                agent_config=agent_config,
+            )
         )
 
         # F2 repair seam: a validation-class failure (malformed args the
@@ -757,7 +816,10 @@ def _execute_tools_impl(
         # can self-repair instead of looping on syntactic variants and giving up.
         # Recorded telemetry is unchanged (recorded_output above) — only the
         # model-facing message is enriched.
-        if getattr(agent_config, "tool_repair_hint_enabled", False) and not execution_result.ok:
+        if (
+            getattr(agent_config, "tool_repair_hint_enabled", False)
+            and not execution_result.ok
+        ):
             if execution_result.error_class == "validation":
                 message_output = (
                     f"{message_output}{_repair_hint(tool_name, execution_result.error)}"
@@ -769,19 +831,21 @@ def _execute_tools_impl(
                 )
 
         results.append(ToolMessage(content=message_output, tool_call_id=tool_id))
-        tool_results.append({
-            "record_id": f"{state.get('step_count', 0)}:{tool_id}",
-            "step_id": state.get("step_count", 0),
-            "task_id": state.get("task_id", ""),
-            "tool_name": tool_name,
-            "tool_input": tool_args,
-            "tool_output": recorded_output,
-            "ok": execution_result.ok,
-            "error": execution_result.error,
-            "cached": False,
-            "offloaded": offloaded,
-            "offload_ref": offload_ref,
-        })
+        tool_results.append(
+            {
+                "record_id": f"{state.get('step_count', 0)}:{tool_id}",
+                "step_id": state.get("step_count", 0),
+                "task_id": state.get("task_id", ""),
+                "tool_name": tool_name,
+                "tool_input": tool_args,
+                "tool_output": recorded_output,
+                "ok": execution_result.ok,
+                "error": execution_result.error,
+                "cached": False,
+                "offloaded": offloaded,
+                "offload_ref": offload_ref,
+            }
+        )
 
     history_limit = max(1, int(agent_config.tool_result_history_limit))
     if len(tool_results) > history_limit:
@@ -936,7 +1000,7 @@ def build_graph(
         *,
         workflow_id: str,
         event_type: str,
-        outcome: str,
+        outcome: TraceOutcome,
         details: dict[str, Any],
     ) -> None:
         """Emit a per-branch ``delegation_*`` carrier (T3, GTP-1).
@@ -951,29 +1015,33 @@ def build_graph(
             try:
                 from trust.models import TrustTraceRecord
 
-                trace_service.emit(TrustTraceRecord(
-                    event_id=str(uuid.uuid4()),
-                    timestamp=datetime.now(UTC),
-                    trace_id=workflow_id,
-                    agent_id="fanout-supervisor",
-                    source_agent_id="fanout-supervisor",
-                    layer="L4",
-                    event_type=event_type,
-                    details=dict(details),
-                    outcome=outcome,
-                ))
+                trace_service.emit(
+                    TrustTraceRecord(
+                        event_id=str(uuid.uuid4()),
+                        timestamp=datetime.now(UTC),
+                        trace_id=workflow_id,
+                        agent_id="fanout-supervisor",
+                        source_agent_id="fanout-supervisor",
+                        layer="L4",
+                        event_type=event_type,
+                        details=dict(details),
+                        outcome=outcome,
+                    )
+                )
                 return
             except Exception:
                 logger.exception("failed to emit fan-out delegation trace event")
         # Fallback: still record the carrier on the BlackBox trace.
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.TOOL_CALLED,
-            timestamp=datetime.now(UTC),
-            step=int(details.get("step_count", 0) or 0),
-            details={"delegation_event": event_type, "outcome": outcome, **details},
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.TOOL_CALLED,
+                timestamp=datetime.now(UTC),
+                step=int(details.get("step_count", 0) or 0),
+                details={"delegation_event": event_type, "outcome": outcome, **details},
+            )
+        )
 
     guardrail = InputGuardrail(
         name="prompt_injection",
@@ -1001,10 +1069,12 @@ def build_graph(
         (m for m in agent_config.models if m.tier == "capable"),
         judge_profile,
     )
-    judge_redactor = GuardRailValidator([
-        rule.model_copy(update={"fail_action": FailAction.REDACT})
-        for rule in (pii_rules() + api_key_rules())
-    ])
+    judge_redactor = GuardRailValidator(
+        [
+            rule.model_copy(update={"fail_action": FailAction.REDACT})
+            for rule in (pii_rules() + api_key_rules())
+        ]
+    )
     goal_judge = GoalJudge(
         llm_service=llm_service,
         prompt_service=prompt_service,
@@ -1052,28 +1122,34 @@ def build_graph(
         # TASK_STARTED can answer "who did it?". agent_name/agent_version are
         # config-sourced (always present, no registry round-trip); agent_facts_id
         # is the resolved registered id.
-        registered_agent_id = (
-            config.get("configurable", {}).get("registered_agent_id")
-            or state.get("registered_agent_id", "")
-        )
+        registered_agent_id = config.get("configurable", {}).get(
+            "registered_agent_id"
+        ) or state.get("registered_agent_id", "")
 
-        async with phase_logger.phase(workflow_id, WorkflowPhase.INITIALIZATION, step_count):
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.TASK_STARTED,
-                timestamp=datetime.now(UTC),
-                details={
-                    "task_input": task_input[:200],
-                    "agent_name": agent_config.agent_name,
-                    "agent_version": agent_config.agent_version,
-                    "agent_facts_id": registered_agent_id,
-                },
-            ))
+        async with phase_logger.phase(
+            workflow_id, WorkflowPhase.INITIALIZATION, step_count
+        ):
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.TASK_STARTED,
+                    timestamp=datetime.now(UTC),
+                    details={
+                        "task_input": task_input[:200],
+                        "agent_name": agent_config.agent_name,
+                        "agent_version": agent_config.agent_version,
+                        "agent_facts_id": registered_agent_id,
+                    },
+                )
+            )
         # Phase-1 shadow carrier gate: the Identity pillar (task_started) just fired.
         _shadow_check_phase_carriers(
-            black_box, workflow_id, WorkflowPhase.INITIALIZATION,
-            {EventType.TASK_STARTED.value}, step=step_count,
+            black_box,
+            workflow_id,
+            WorkflowPhase.INITIALIZATION,
+            {EventType.TASK_STARTED.value},
+            step=step_count,
             enforce_mode=agent_config.carrier_gate_enforce_mode,
             fault_inject=agent_config.carrier_gate_fault_inject,
             task_input=state.get("task_input", ""),
@@ -1092,31 +1168,35 @@ def build_graph(
                         agent_capabilities = [cap.name for cap in facts.capabilities]
                     except Exception:
                         agent_capabilities = []
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.GUARDRAIL_CHECKED,
-                    timestamp=datetime.now(UTC),
-                    details={
-                        "guardrail": "agent_facts",
-                        "agent_id": registered_agent_id,
-                        "verified": agent_facts_verified,
-                    },
-                ))
-                if not agent_facts_verified:
-                    black_box.record(TraceEvent(
+                black_box.record(
+                    TraceEvent(
                         event_id=str(uuid.uuid4()),
                         workflow_id=workflow_id,
-                        event_type=EventType.TASK_COMPLETED,
+                        event_type=EventType.GUARDRAIL_CHECKED,
                         timestamp=datetime.now(UTC),
                         details={
-                            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                            "outcome": "rejected",
-                            "reason": "agent_facts_verification_failed",
-                            "step_count": step_count,
-                            "total_cost_usd": 0.0,
+                            "guardrail": "agent_facts",
+                            "agent_id": registered_agent_id,
+                            "verified": agent_facts_verified,
                         },
-                    ))
+                    )
+                )
+                if not agent_facts_verified:
+                    black_box.record(
+                        TraceEvent(
+                            event_id=str(uuid.uuid4()),
+                            workflow_id=workflow_id,
+                            event_type=EventType.TASK_COMPLETED,
+                            timestamp=datetime.now(UTC),
+                            details={
+                                "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                                "outcome": "rejected",
+                                "reason": "agent_facts_verification_failed",
+                                "step_count": step_count,
+                                "total_cost_usd": 0.0,
+                            },
+                        )
+                    )
                     rejection_payload = {
                         "agent_facts_verified": False,
                         "agent_capabilities": [],
@@ -1133,19 +1213,22 @@ def build_graph(
             except Exception:
                 accepted, decision_stage = True, "error"
 
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.GUARDRAIL_CHECKED,
-                timestamp=datetime.now(UTC),
-                details={
-                    "guardrail": "prompt_injection",
-                    "accepted": accepted,
-                    "decision_stage": decision_stage,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.GUARDRAIL_CHECKED,
+                    timestamp=datetime.now(UTC),
+                    details={
+                        "guardrail": "prompt_injection",
+                        "accepted": accepted,
+                        "decision_stage": decision_stage,
+                    },
+                )
+            )
 
             from services import eval_capture
+
             await eval_capture.record(
                 target="guardrail",
                 ai_input={"prompt": task_input[:200]},
@@ -1154,19 +1237,21 @@ def build_graph(
             )
 
             if not accepted:
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.TASK_COMPLETED,
-                    timestamp=datetime.now(UTC),
-                    details={
-                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                        "outcome": "rejected",
-                        "reason": "guardrail_rejected",
-                        "step_count": step_count,
-                        "total_cost_usd": 0.0,
-                    },
-                ))
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.TASK_COMPLETED,
+                        timestamp=datetime.now(UTC),
+                        details={
+                            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                            "outcome": "rejected",
+                            "reason": "guardrail_rejected",
+                            "step_count": step_count,
+                            "total_cost_usd": 0.0,
+                        },
+                    )
+                )
                 rejection_payload = {
                     "agent_facts_verified": agent_facts_verified,
                     "agent_capabilities": agent_capabilities,
@@ -1184,7 +1269,9 @@ def build_graph(
                 await _emit_completion_once(workflow_id, step_count, "rejected")
                 return rejection_payload
 
-        async with phase_logger.phase(workflow_id, WorkflowPhase.INPUT_VALIDATION, step_count):
+        async with phase_logger.phase(
+            workflow_id, WorkflowPhase.INPUT_VALIDATION, step_count
+        ):
             return {
                 "agent_facts_verified": agent_facts_verified,
                 "agent_capabilities": agent_capabilities,
@@ -1206,7 +1293,9 @@ def build_graph(
         # Story 5.1: per-user budget check
         configurable = config.get("configurable", {})
         user_max_cost = configurable.get("user_max_cost_per_task")
-        budget_limit = user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
+        budget_limit = (
+            user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
+        )
         total_cost = state.get("total_cost_usd", 0.0)
         if total_cost >= budget_limit:
             async with phase_logger.phase(
@@ -1215,19 +1304,21 @@ def build_graph(
                 step_count,
                 outcome="budget_exceeded",
             ):
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.TASK_COMPLETED,
-                    timestamp=datetime.now(UTC),
-                    details={
-                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                        "outcome": "budget_exceeded",
-                        "step_count": step_count,
-                        "total_cost_usd": total_cost,
-                        "budget_limit": budget_limit,
-                    },
-                ))
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.TASK_COMPLETED,
+                        timestamp=datetime.now(UTC),
+                        details={
+                            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                            "outcome": "budget_exceeded",
+                            "step_count": step_count,
+                            "total_cost_usd": total_cost,
+                            "budget_limit": budget_limit,
+                        },
+                    )
+                )
                 await _emit_completion_once(workflow_id, step_count, "budget_exceeded")
                 return {
                     "last_outcome": "budget_exceeded",
@@ -1253,19 +1344,21 @@ def build_graph(
                 prev_history = state.get("model_history", [])
                 prev_tier = prev_history[-1]["tier"] if prev_history else "fast"
                 if profile.tier != prev_tier:
-                    black_box.record(TraceEvent(
-                        event_id=str(uuid.uuid4()),
-                        workflow_id=workflow_id,
-                        event_type=EventType.PARAMETER_CHANGED,
-                        timestamp=datetime.now(UTC),
-                        step=state.get("step_count", 0),
-                        details={
-                            "parameter": "model_tier",
-                            "old_value": prev_tier,
-                            "new_value": profile.tier,
-                            "reason": reason,
-                        },
-                    ))
+                    black_box.record(
+                        TraceEvent(
+                            event_id=str(uuid.uuid4()),
+                            workflow_id=workflow_id,
+                            event_type=EventType.PARAMETER_CHANGED,
+                            timestamp=datetime.now(UTC),
+                            step=state.get("step_count", 0),
+                            details={
+                                "parameter": "model_tier",
+                                "old_value": prev_tier,
+                                "new_value": profile.tier,
+                                "reason": reason,
+                            },
+                        )
+                    )
 
             current_task_id = state.get("task_id", "")
             # Memoize planning depth at step 0, per task. route_node re-runs
@@ -1390,14 +1483,16 @@ def build_graph(
                 }
                 if recall_error:
                     _recall_details["error_kind"] = recall_error
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.MEMORY_RECALLED,
-                    timestamp=datetime.now(UTC),
-                    step=state.get("step_count", 0),
-                    details=_recall_details,
-                ))
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.MEMORY_RECALLED,
+                        timestamp=datetime.now(UTC),
+                        step=state.get("step_count", 0),
+                        details=_recall_details,
+                    )
+                )
                 # Phase 6 Tier-A invariant check: the L1 deterministic
                 # validator scores the kept records against the four
                 # recall invariants (limit, user isolation, score bounds,
@@ -1410,8 +1505,12 @@ def build_graph(
                     validate_recall,
                 )
 
-                _kept_for_invariants = [] if recall_error else list(
-                    kept  # type: ignore[has-type]
+                _kept_for_invariants = (
+                    []
+                    if recall_error
+                    else list(
+                        kept  # type: ignore[has-type]
+                    )
                 )
                 _invariant_results = validate_recall(
                     user_id=recall_user_id,
@@ -1496,16 +1595,16 @@ def build_graph(
                         plan_gen_failure = f"{type(exc).__name__}: {exc}"
                     if raw_plan is not None:
                         # build_plan_artifact_llm owns parse/validate + floor.
-                        generated_artifact = build_plan_artifact_llm(
+                        generated_plan_artifact = build_plan_artifact_llm(
                             planning_depth,
                             task_input=state.get("task_input", ""),
                             generate=lambda _t, _r=raw_plan: _r,
                         )
-                        plan_generated = generated_artifact != build_plan_artifact(
+                        plan_generated = generated_plan_artifact != build_plan_artifact(
                             planning_depth, task_input=state.get("task_input", "")
                         )
                         if plan_source == "generated":
-                            plan_artifact = generated_artifact
+                            plan_artifact = generated_plan_artifact
 
             # task_understanding plan §4.5: generate the TaskUnderstanding
             # artifact once per run (memoized on the state key — route_node
@@ -1540,25 +1639,29 @@ def build_graph(
                     # ``conditions`` is the rejected artifact TEXT (R3 bug #2):
                     # issue strings alone made round 2's failures un-replayable
                     # offline and its root-cause diagnosis wrong.
-                    tu_rejections.append({
-                        "attempt": attempt,
-                        "issues": issues,
-                        "conditions": conditions,
-                    })
-                    black_box.record(TraceEvent(
-                        event_id=str(uuid.uuid4()),
-                        workflow_id=workflow_id,
-                        event_type=EventType.GUARDRAIL_CHECKED,
-                        timestamp=datetime.now(UTC),
-                        step=state.get("step_count", 0),
-                        details={
-                            "guardrail": "task_understanding_gates",
-                            "passed": False,
+                    tu_rejections.append(
+                        {
                             "attempt": attempt,
                             "issues": issues,
                             "conditions": conditions,
-                        },
-                    ))
+                        }
+                    )
+                    black_box.record(
+                        TraceEvent(
+                            event_id=str(uuid.uuid4()),
+                            workflow_id=workflow_id,
+                            event_type=EventType.GUARDRAIL_CHECKED,
+                            timestamp=datetime.now(UTC),
+                            step=state.get("step_count", 0),
+                            details={
+                                "guardrail": "task_understanding_gates",
+                                "passed": False,
+                                "attempt": attempt,
+                                "issues": issues,
+                                "conditions": conditions,
+                            },
+                        )
+                    )
 
                 tu_gate_exhausted = False
                 if tu_mode in ("shadow", "generated"):
@@ -1606,17 +1709,20 @@ def build_graph(
                     )
                 if tu_stale:
                     tu_rationale += " (regenerated: new task on thread)"
-                tu_decision = phase_logger.log_decision(workflow_id, Decision(
-                    phase=WorkflowPhase.ROUTING,
-                    description="success-conditions source",
-                    alternatives=["generated", "deterministic-fallback"],
-                    rationale=tu_rationale,
-                    confidence=(
-                        generated_artifact.confidence
-                        if generated_artifact is not None
-                        else 1.0
+                tu_decision = phase_logger.log_decision(
+                    workflow_id,
+                    Decision(
+                        phase=WorkflowPhase.ROUTING,
+                        description="success-conditions source",
+                        alternatives=["generated", "deterministic-fallback"],
+                        rationale=tu_rationale,
+                        confidence=(
+                            generated_artifact.confidence
+                            if generated_artifact is not None
+                            else 1.0
+                        ),
                     ),
-                ))
+                )
                 tu_decision_id = tu_decision.decision_id
 
                 if tu_mode in ("shadow", "generated"):
@@ -1712,18 +1818,19 @@ def build_graph(
             # relay suppresses them; repeating the summary would just be noise).
             if plan_changed:
                 step_planned_details["plan_summary"] = [
-                    (s.title or "")[:120]
-                    for s in plan_artifact.ordered_steps[:5]
+                    (s.title or "")[:120] for s in plan_artifact.ordered_steps[:5]
                 ]
 
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.STEP_PLANNED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details=step_planned_details,
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.STEP_PLANNED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details=step_planned_details,
+                )
+            )
 
             plan_validation = validate_plan_mece(plan_artifact)
             if not plan_validation.is_valid:
@@ -1736,22 +1843,26 @@ def build_graph(
                     profile = capable
                     reason = "plan-validation-escalation"
 
-                    black_box.record(TraceEvent(
-                        event_id=str(uuid.uuid4()),
-                        workflow_id=workflow_id,
-                        event_type=EventType.PARAMETER_CHANGED,
-                        timestamp=datetime.now(UTC),
-                        step=state.get("step_count", 0),
-                        details={
-                            "parameter": "model_tier",
-                            "old_value": old_tier,
-                            "new_value": capable.tier,
-                            "reason": "plan-validation-escalation",
-                            "plan_issues": plan_validation.issues,
-                        },
-                    ))
+                    black_box.record(
+                        TraceEvent(
+                            event_id=str(uuid.uuid4()),
+                            workflow_id=workflow_id,
+                            event_type=EventType.PARAMETER_CHANGED,
+                            timestamp=datetime.now(UTC),
+                            step=state.get("step_count", 0),
+                            details={
+                                "parameter": "model_tier",
+                                "old_value": old_tier,
+                                "new_value": capable.tier,
+                                "reason": "plan-validation-escalation",
+                                "plan_issues": plan_validation.issues,
+                            },
+                        )
+                    )
 
-            alternatives = [m.name for m in agent_config.models if m.name != profile.name]
+            alternatives = [
+                m.name for m in agent_config.models if m.name != profile.name
+            ]
             if not alternatives:
                 alternatives = [profile.name]
 
@@ -1783,26 +1894,28 @@ def build_graph(
             )
             decision = phase_logger.log_decision(workflow_id, decision)
 
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.MODEL_SELECTED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    "model": profile.name,
-                    "reason": reason,
-                    "plan_depth": planning_depth,
-                    "plan_valid": plan_validation.is_valid,
-                    "decision_id": decision.decision_id,
-                    # E7 (Reasoning pillar): mirror the PhaseLogger Decision's
-                    # rationale + alternatives onto the event so the "why" of the
-                    # model choice is answerable from the trace without joining
-                    # to the phase log. Same data, two sinks.
-                    "rationale": rationale,
-                    "alternatives": alternatives,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.MODEL_SELECTED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        "model": profile.name,
+                        "reason": reason,
+                        "plan_depth": planning_depth,
+                        "plan_valid": plan_validation.is_valid,
+                        "decision_id": decision.decision_id,
+                        # E7 (Reasoning pillar): mirror the PhaseLogger Decision's
+                        # rationale + alternatives onto the event so the "why" of the
+                        # model choice is answerable from the trace without joining
+                        # to the phase log. Same data, two sinks.
+                        "rationale": rationale,
+                        "alternatives": alternatives,
+                    },
+                )
+            )
 
             plan_payload = {
                 "planning_depth": planning_depth,
@@ -1815,8 +1928,11 @@ def build_graph(
             # Phase-1 shadow carrier gate: ROUTING just recorded the model choice
             # (Reasoning pillar — MODEL_SELECTED w/ rationale + decision_id).
             _shadow_check_phase_carriers(
-                black_box, workflow_id, WorkflowPhase.ROUTING,
-                {EventType.MODEL_SELECTED.value}, step=step_count,
+                black_box,
+                workflow_id,
+                WorkflowPhase.ROUTING,
+                {EventType.MODEL_SELECTED.value},
+                step=step_count,
                 enforce_mode=agent_config.carrier_gate_enforce_mode,
                 fault_inject=agent_config.carrier_gate_fault_inject,
                 task_input=state.get("task_input", ""),
@@ -1839,7 +1955,12 @@ def build_graph(
                 "plan_ref": plan_ref,
                 "last_plan_fingerprint": plan_fingerprint,
                 "model_history": [
-                    {"step": state.get("step_count", 0), "model": profile.name, "tier": profile.tier, "reason": reason}
+                    {
+                        "step": state.get("step_count", 0),
+                        "model": profile.name,
+                        "tier": profile.tier,
+                        "reason": reason,
+                    }
                 ],
                 "current_workflow_phase": WorkflowPhase.ROUTING.value,
                 # Phase 1 memory: persist the recalled block + its task_id so
@@ -1882,23 +2003,29 @@ def build_graph(
         try:
             profile = llm_service.get_profile(model_name)
         except KeyError:
-            profile = agent_config.models[0] if agent_config.models else default_fast_profile()
+            profile = (
+                agent_config.models[0]
+                if agent_config.models
+                else default_fast_profile()
+            )
             if profile.name != model_name:
                 model_resolution_fallback = profile.name
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.PARAMETER_CHANGED,
-                    timestamp=datetime.now(UTC),
-                    step=step_count,
-                    details={
-                        "parameter": "model_resolution_fallback",
-                        "requested_model": model_name,
-                        "resolved_model": profile.name,
-                        "reason": "selected_model not in LLMService profiles; "
-                        "fell back to models[0]",
-                    },
-                ))
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.PARAMETER_CHANGED,
+                        timestamp=datetime.now(UTC),
+                        step=step_count,
+                        details={
+                            "parameter": "model_resolution_fallback",
+                            "requested_model": model_name,
+                            "resolved_model": profile.name,
+                            "reason": "selected_model not in LLMService profiles; "
+                            "fell back to models[0]",
+                        },
+                    )
+                )
 
         # Phase 2 (T2): fold accumulated reflexion critiques into the planning
         # instructions on re-entry — the semantic gradient that steers the retry.
@@ -1961,11 +2088,17 @@ def build_graph(
                         else m
                         for i, m in enumerate(existing_messages)
                     ]
-                    lc_messages = [SystemMessage(content=system_prompt)] + _masked_existing
+                    lc_messages = [
+                        SystemMessage(content=system_prompt)
+                    ] + _masked_existing
                 else:
-                    lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
+                    lc_messages = [SystemMessage(content=system_prompt)] + list(
+                        existing_messages
+                    )
             else:
-                lc_messages = [SystemMessage(content=system_prompt)] + list(existing_messages)
+                lc_messages = [SystemMessage(content=system_prompt)] + list(
+                    existing_messages
+                )
         else:
             lc_messages = [
                 SystemMessage(content=system_prompt),
@@ -1982,7 +2115,9 @@ def build_graph(
         # so it can't accumulate across checkpointed turns.
         _task_input = state.get("task_input", "")
         if _task_input and not any(isinstance(m, HumanMessage) for m in lc_messages):
-            _insert_at = 1 if lc_messages and isinstance(lc_messages[0], SystemMessage) else 0
+            _insert_at = (
+                1 if lc_messages and isinstance(lc_messages[0], SystemMessage) else 0
+            )
             lc_messages.insert(_insert_at, HumanMessage(content=_task_input))
 
         # ── No-progress graceful wrap-up: inject directive + strip tools ──
@@ -1999,16 +2134,20 @@ def build_graph(
             )
             lc_messages.append(HumanMessage(content=wrapup_directive))
             effective_tool_schemas = None
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.STEP_PLANNED,
-                timestamp=datetime.now(UTC),
-                step=step_count,
-                details={"no_progress": True, "repeats": repeats},
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.STEP_PLANNED,
+                    timestamp=datetime.now(UTC),
+                    step=step_count,
+                    details={"no_progress": True, "repeats": repeats},
+                )
+            )
 
-        phase_logger.start_phase(workflow_id, WorkflowPhase.MODEL_INVOCATION, step_count)
+        phase_logger.start_phase(
+            workflow_id, WorkflowPhase.MODEL_INVOCATION, step_count
+        )
         start_time = time.time()
         error: Exception | None = None
         try:
@@ -2022,48 +2161,59 @@ def build_graph(
         except Exception as e:
             latency_ms = (time.time() - start_time) * 1000
             error = e
-            response = type("ErrorResponse", (), {
-                "content": f"Error: {e}",
-                "tool_calls": [],
-                "usage_metadata": {},
-                "response_metadata": {},
-            })()
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.ERROR_OCCURRED,
-                timestamp=datetime.now(UTC),
-                step=step_count,
-                details={
-                    "source": "llm_call",
-                    "model": profile.name,
-                    "error": str(e),
-                    "latency_ms": latency_ms,
+            response = type(
+                "ErrorResponse",
+                (),
+                {
+                    "content": f"Error: {e}",
+                    "tool_calls": [],
+                    "usage_metadata": {},
+                    "response_metadata": {},
                 },
-            ))
+            )()
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.ERROR_OCCURRED,
+                    timestamp=datetime.now(UTC),
+                    step=step_count,
+                    details={
+                        "source": "llm_call",
+                        "model": profile.name,
+                        "error": str(e),
+                        "latency_ms": latency_ms,
+                    },
+                )
+            )
 
         usage = getattr(response, "usage_metadata", {}) or {}
         tokens_in = usage.get("input_tokens", 0)
         tokens_out = usage.get("output_tokens", 0)
-        cost = (tokens_in * profile.cost_per_1k_input / 1000) + (tokens_out * profile.cost_per_1k_output / 1000)
+        cost = (tokens_in * profile.cost_per_1k_input / 1000) + (
+            tokens_out * profile.cost_per_1k_output / 1000
+        )
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.STEP_EXECUTED,
-            timestamp=datetime.now(UTC),
-            step=step_count,
-            details={
-                "model": profile.name,
-                "tokens_in": tokens_in,
-                "tokens_out": tokens_out,
-                "cost_usd": cost,
-                "latency_ms": latency_ms,
-                "error": str(error) if error else None,
-            },
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.STEP_EXECUTED,
+                timestamp=datetime.now(UTC),
+                step=step_count,
+                details={
+                    "model": profile.name,
+                    "tokens_in": tokens_in,
+                    "tokens_out": tokens_out,
+                    "cost_usd": cost,
+                    "latency_ms": latency_ms,
+                    "error": str(error) if error else None,
+                },
+            )
+        )
 
         from services import eval_capture
+
         await eval_capture.record(
             target="call_llm",
             ai_input={"task_input": state.get("task_input", "")[:200]},
@@ -2092,14 +2242,19 @@ def build_graph(
         # Phase-1 shadow carrier gate: MODEL_INVOCATION always records a
         # token-bearing STEP_EXECUTED (Recording pillar), even on an LLM error.
         _shadow_check_phase_carriers(
-            black_box, workflow_id, WorkflowPhase.MODEL_INVOCATION,
-            {EventType.STEP_EXECUTED.value}, step=step_count,
+            black_box,
+            workflow_id,
+            WorkflowPhase.MODEL_INVOCATION,
+            {EventType.STEP_EXECUTED.value},
+            step=step_count,
             enforce_mode=agent_config.carrier_gate_enforce_mode,
             fault_inject=agent_config.carrier_gate_fault_inject,
             task_input=state.get("task_input", ""),
         )
 
-        async with phase_logger.phase(workflow_id, WorkflowPhase.OUTPUT_VALIDATION, step_count):
+        async with phase_logger.phase(
+            workflow_id, WorkflowPhase.OUTPUT_VALIDATION, step_count
+        ):
             # G2: always emit an output-stage guardrail_checked event, even on a
             # clean pass. Previously the event only fired on block/redact, so a
             # clean scan left no record that the rail ran at all — the "guard who
@@ -2108,23 +2263,25 @@ def build_graph(
             # the positive (checked, clean) outcomes provable in the trace.
             scan = output_guardrail_scan(str(content or ""), output_validator)
             redacted = (not scan.blocked) and (scan.sanitized_content != content)
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.GUARDRAIL_CHECKED,
-                timestamp=datetime.now(UTC),
-                step=step_count,
-                details={
-                    "stage": "output",
-                    "guardrail": "output_scan",
-                    "checked": True,
-                    "blocked": scan.blocked,
-                    "redacted": redacted,
-                    "failed_rules": [
-                        r.guardrail_name for r in scan.rule_results if not r.passed
-                    ],
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.GUARDRAIL_CHECKED,
+                    timestamp=datetime.now(UTC),
+                    step=step_count,
+                    details={
+                        "stage": "output",
+                        "guardrail": "output_scan",
+                        "checked": True,
+                        "blocked": scan.blocked,
+                        "redacted": redacted,
+                        "failed_rules": [
+                            r.guardrail_name for r in scan.rule_results if not r.passed
+                        ],
+                    },
+                )
+            )
             if scan.blocked:
                 tool_calls = []
             content = scan.sanitized_content
@@ -2198,22 +2355,24 @@ def build_graph(
                 if _floor_text:
                     _tail_ops: list[Any] = []
                     for _msg in existing_messages or []:
+                        _mid = getattr(_msg, "id", None)
                         if (
                             isinstance(_msg, SystemMessage)
-                            and getattr(_msg, "id", None) is not None
+                            and _mid is not None
                             and isinstance(_msg.content, str)
-                            and _msg.content.startswith(
-                                "Constraint floor (must-not):"
-                            )
+                            and _msg.content.startswith("Constraint floor (must-not):")
                         ):
-                            _tail_ops.append(RemoveMessage(id=_msg.id))
+                            _tail_ops.append(RemoveMessage(id=_mid))
                     _tail_ops.append(SystemMessage(content=_floor_text))
                     result["messages"] = list(result["messages"]) + _tail_ops
             # Phase-1 shadow carrier gate: the output rail always leaves a
             # GUARDRAIL_CHECKED span (Validation pillar), even on a clean pass.
             _shadow_check_phase_carriers(
-                black_box, workflow_id, WorkflowPhase.OUTPUT_VALIDATION,
-                {EventType.GUARDRAIL_CHECKED.value}, step=step_count,
+                black_box,
+                workflow_id,
+                WorkflowPhase.OUTPUT_VALIDATION,
+                {EventType.GUARDRAIL_CHECKED.value},
+                step=step_count,
                 enforce_mode=agent_config.carrier_gate_enforce_mode,
                 fault_inject=agent_config.carrier_gate_fault_inject,
                 task_input=state.get("task_input", ""),
@@ -2225,7 +2384,9 @@ def build_graph(
     async def execute_tool_node(state: AgentState, config: RunnableConfig) -> dict:
         workflow_id = state.get("workflow_id", "")
         step_count = state.get("step_count", 0)
-        async with phase_logger.phase(workflow_id, WorkflowPhase.TOOL_EXECUTION, step_count):
+        async with phase_logger.phase(
+            workflow_id, WorkflowPhase.TOOL_EXECUTION, step_count
+        ):
             result = _execute_tools_impl(
                 dict(state),
                 tool_registry=tool_registry,
@@ -2244,8 +2405,12 @@ def build_graph(
             tool_failed = any(not r.get("ok", True) for r in tool_results)
             recorded = {EventType.ERROR_OCCURRED.value} if error_recorded else set()
             _shadow_check_phase_carriers(
-                black_box, workflow_id, WorkflowPhase.TOOL_EXECUTION,
-                recorded, step=step_count, tool_failed=tool_failed,
+                black_box,
+                workflow_id,
+                WorkflowPhase.TOOL_EXECUTION,
+                recorded,
+                step=step_count,
+                tool_failed=tool_failed,
                 enforce_mode=agent_config.carrier_gate_enforce_mode,
                 fault_inject=agent_config.carrier_gate_fault_inject,
                 task_input=state.get("task_input", ""),
@@ -2254,7 +2419,9 @@ def build_graph(
 
     # ── verify_authorize_log_node: per-tool-call PEP (opt-in) ──
 
-    async def verify_authorize_log_node(state: AgentState, config: RunnableConfig) -> dict:
+    async def verify_authorize_log_node(
+        state: AgentState, config: RunnableConfig
+    ) -> dict:
         """Per-action PEP per docs/Architectures/FOUR_LAYER_ARCHITECTURE.md §verify_authorize_log_node.
 
         When ``authorization_service`` is configured, checks every pending
@@ -2275,9 +2442,8 @@ def build_graph(
             return {}
 
         configurable = config.get("configurable", {})
-        registered_agent_id = (
-            configurable.get("registered_agent_id")
-            or state.get("registered_agent_id", "")
+        registered_agent_id = configurable.get("registered_agent_id") or state.get(
+            "registered_agent_id", ""
         )
 
         facts = None
@@ -2294,7 +2460,9 @@ def build_graph(
         trace_id = configurable.get("trace_id") or workflow_id
 
         for tc in tool_calls:
-            tool_name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+            tool_name = (
+                tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+            )
             decision = authorization_service.authorize(
                 facts, tool_name, {}, trace_id=trace_id
             )
@@ -2400,7 +2568,9 @@ def build_graph(
                 )
                 == "reflect"
             )
-            carrier["escalation_reason"] = "verdict" if verdict_triggers else "prose_repeat"
+            carrier["escalation_reason"] = (
+                "verdict" if verdict_triggers else "prose_repeat"
+            )
         elif attempt >= max_attempts:
             carrier["escalation_reason"] = "budget_exhausted"
         else:
@@ -2413,7 +2583,9 @@ def build_graph(
         workflow_id = state.get("workflow_id", "")
         step_count = state.get("step_count", 0)
 
-        async with phase_logger.phase(workflow_id, WorkflowPhase.EVALUATION, step_count):
+        async with phase_logger.phase(
+            workflow_id, WorkflowPhase.EVALUATION, step_count
+        ):
             messages = state.get("messages", [])
             last_msg = messages[-1] if messages else None
             # Defensive normalization: call_llm already stores a normalized string,
@@ -2455,7 +2627,8 @@ def build_graph(
                         step=state.get("step_count", 0),
                         error_type="synthesis_validation_error",
                         error_code=None,
-                        message="; ".join(synthesis_validation.feedback) or "synthesis validation failed",
+                        message="; ".join(synthesis_validation.feedback)
+                        or "synthesis validation failed",
                         model=state.get("selected_model", ""),
                         timestamp=time.time(),
                     )
@@ -2465,7 +2638,7 @@ def build_graph(
             backoff_until: float | None = None
             if error_type == "retryable":
                 consecutive = state.get("consecutive_errors", 0) + 1
-                backoff_seconds = min(2 ** consecutive, 64)
+                backoff_seconds = min(2**consecutive, 64)
                 backoff_until = time.time() + backoff_seconds
 
             step_result = build_step_result(
@@ -2500,8 +2673,12 @@ def build_graph(
                 "step_count": 1,
                 "last_outcome": outcome,
                 "last_error_type": error_type or "",
-                "consecutive_errors": 0 if outcome == "success" else state.get("consecutive_errors", 0) + 1,
-                "error_history": [error_record.model_dump(mode="json")] if error_record else [],
+                "consecutive_errors": 0
+                if outcome == "success"
+                else state.get("consecutive_errors", 0) + 1,
+                "error_history": [error_record.model_dump(mode="json")]
+                if error_record
+                else [],
                 "step_results": [step_result.model_dump()],
                 "current_workflow_phase": WorkflowPhase.EVALUATION.value,
                 "last_llm_error": "",
@@ -2522,7 +2699,9 @@ def build_graph(
                     latest_output=content,
                 )
                 workflow_id_suffix = (state.get("workflow_id", "") or "wf")[-8:]
-                offload_ref = f".agent_offload/trajectory_summary_{workflow_id_suffix}.md"
+                offload_ref = (
+                    f".agent_offload/trajectory_summary_{workflow_id_suffix}.md"
+                )
                 result["files"] = {offload_ref: summary_text}
                 result["reasoning_trace"] = [summary_text]
                 result["truncation_applied"] = True
@@ -2562,7 +2741,9 @@ def build_graph(
                         else []
                     )
                     _pinned = derive_pinned_floor(
-                        (state.get("task_understanding") or {}).get("success_conditions", []),
+                        (state.get("task_understanding") or {}).get(
+                            "success_conditions", []
+                        ),
                         _user_constraints,
                     )
                     _summary = build_message_compaction(
@@ -2611,9 +2792,8 @@ def build_graph(
                     # is no separate "L1-declined" wire (design §8.2
                     # ``Live wiring`` paragraph).
                     _floor_exceeded = _floor_excess or _l1_failed
-                    _context_exhausted = (
-                        _floor_exceeded
-                        and token_count > int(0.95 * _ctx_window)
+                    _context_exhausted = _floor_exceeded and token_count > int(
+                        0.95 * _ctx_window
                     )
 
                     # ── §7 dual carrier — Reasoning Decision FIRST (so its
@@ -2675,7 +2855,10 @@ def build_graph(
                         workflow_id=_wf_id,
                         step=_step,
                         decision_id=_compaction_decision.decision_id,
-                        outcome=_outcome,
+                        # _outcome is a SimpleNamespace built with exactly the
+                        # CompactionOutcome Protocol's scalar fields (see above);
+                        # cast bridges the dynamic namespace to the structural type.
+                        outcome=cast("CompactionOutcome", _outcome),
                     )
 
                     # §5.4 terminal gate — fold floor + hard ceiling. The
@@ -2728,16 +2911,16 @@ def build_graph(
                                 # The L2 ai_input MAY carry the dropped-prefix
                                 # digest + constraint strings (design §8.3
                                 # privacy asymmetry with §7).
-                                _dropped_count = max(0, len(_msg_list) - len(_preserved))
+                                _dropped_count = max(
+                                    0, len(_msg_list) - len(_preserved)
+                                )
                                 _ai_input: dict[str, Any] = {
                                     "task_input": state.get("task_input", ""),
                                     "dropped_prefix_digest": (
                                         f"sha256:{_floor_hash[:16]}"
                                         f" (dropped={_dropped_count} msgs)"
                                     ),
-                                    "pinned_constraints": [
-                                        pc.text for pc in _pinned
-                                    ],
+                                    "pinned_constraints": [pc.text for pc in _pinned],
                                     "summary": _summary,
                                 }
                                 _ai_response: dict[str, Any] = {
@@ -2770,9 +2953,7 @@ def build_graph(
 
             updated_step_count = state.get("step_count", 0) + 1
             updated_cost = state.get("total_cost_usd", 0.0)
-            has_pending_tool = bool(
-                messages and isinstance(messages[-1], ToolMessage)
-            )
+            has_pending_tool = bool(messages and isinstance(messages[-1], ToolMessage))
             continuation = check_continuation(
                 step_count=updated_step_count,
                 total_cost_usd=updated_cost,
@@ -2977,35 +3158,39 @@ def build_graph(
                 # keys / enums only, never the critique text (§4.7 Recording).
                 _esc = _escalation_carrier(state, effective_outcome, task_outcome)
 
-                black_box.record(TraceEvent(
-                    event_id=str(uuid.uuid4()),
-                    workflow_id=workflow_id,
-                    event_type=EventType.TASK_COMPLETED,
-                    timestamp=datetime.now(UTC),
-                    step=updated_step_count,
-                    details={
-                        "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
-                        "outcome": effective_outcome,
-                        "step_count": updated_step_count,
-                        "total_cost_usd": updated_cost,
-                        "error_type": error_type,
-                        "task_completion_score": task_outcome.score,
-                        "criteria_met": task_outcome.criteria_met,
-                        "branch_coverage": task_outcome.branch_coverage,
-                        "unmet_conditions": task_outcome.unmet_conditions,
-                        "termination_clean": task_outcome.termination_clean,
-                        "termination_reason": task_outcome.termination_reason,
-                        "goal_met": task_outcome.goal_met,
-                        "would_downgrade": would_downgrade,
-                        "downgrade_reason": downgrade_reason,
-                        # Step 0b: tiered-loops escalation carrier (Phase 2/3).
-                        "escalation_decision": _esc["escalation_decision"],
-                        "escalation_reason": _esc["escalation_reason"],
-                        "reflexion_attempt": _esc["reflexion_attempt"],
-                        "max_reflexion_attempts": _esc["max_reflexion_attempts"],
-                    },
-                ))
-                await _emit_completion_once(workflow_id, updated_step_count, effective_outcome)
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.TASK_COMPLETED,
+                        timestamp=datetime.now(UTC),
+                        step=updated_step_count,
+                        details={
+                            "bundle_schema_version": BUNDLE_SCHEMA_VERSION,
+                            "outcome": effective_outcome,
+                            "step_count": updated_step_count,
+                            "total_cost_usd": updated_cost,
+                            "error_type": error_type,
+                            "task_completion_score": task_outcome.score,
+                            "criteria_met": task_outcome.criteria_met,
+                            "branch_coverage": task_outcome.branch_coverage,
+                            "unmet_conditions": task_outcome.unmet_conditions,
+                            "termination_clean": task_outcome.termination_clean,
+                            "termination_reason": task_outcome.termination_reason,
+                            "goal_met": task_outcome.goal_met,
+                            "would_downgrade": would_downgrade,
+                            "downgrade_reason": downgrade_reason,
+                            # Step 0b: tiered-loops escalation carrier (Phase 2/3).
+                            "escalation_decision": _esc["escalation_decision"],
+                            "escalation_reason": _esc["escalation_reason"],
+                            "reflexion_attempt": _esc["reflexion_attempt"],
+                            "max_reflexion_attempts": _esc["max_reflexion_attempts"],
+                        },
+                    )
+                )
+                await _emit_completion_once(
+                    workflow_id, updated_step_count, effective_outcome
+                )
 
             return result
 
@@ -3019,7 +3204,9 @@ def build_graph(
         total_cost = state.get("total_cost_usd", 0.0)
         configurable: dict = {}
         user_max_cost = configurable.get("user_max_cost_per_task")
-        budget_limit = user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
+        budget_limit = (
+            user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
+        )
         if total_cost >= budget_limit:
             return "budget_exceeded"
 
@@ -3102,18 +3289,20 @@ def build_graph(
         # critique text stays in ``reflections``/the prompt, never the trace
         # (§4.7 Recording). reflexion_attempt is the 0-based index BEFORE this
         # entry is appended, so it agrees with the escalation carrier's count.
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=state.get("workflow_id", ""),
-            event_type=EventType.STEP_PLANNED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
-                "reflexion_attempt": attempt,
-                "reflexion_unmet_count": len(unmet),
-                "reflexion_critique_chars": len(critique or ""),
-            },
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=state.get("workflow_id", ""),
+                event_type=EventType.STEP_PLANNED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "reflexion_attempt": attempt,
+                    "reflexion_unmet_count": len(unmet),
+                    "reflexion_critique_chars": len(critique or ""),
+                },
+            )
+        )
 
         return {
             "reflections": [
@@ -3297,37 +3486,41 @@ def build_graph(
             ),
         )
         decision_id = supervisor_decision.decision_id or str(uuid.uuid4())
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=state.get("workflow_id", ""),
-            event_type=EventType.STEP_PLANNED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
-                "supervisor_decision": plan.decision,
-                "supervisor_reason": plan.reason,
-                "supervisor_branch_count": len(plan.branches),
-                "decision_id": decision_id,
-            },
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=state.get("workflow_id", ""),
+                event_type=EventType.STEP_PLANNED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "supervisor_decision": plan.decision,
+                    "supervisor_reason": plan.reason,
+                    "supervisor_branch_count": len(plan.branches),
+                    "decision_id": decision_id,
+                },
+            )
+        )
 
         # Governance Recording: STEP_EXECUTED for the decompose LLM call (only
         # when the LLM was actually consulted; the decline floor makes no call).
         if _sup_usage is not None:
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=state.get("workflow_id", ""),
-                event_type=EventType.STEP_EXECUTED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    **_sup_usage,
-                    "latency_ms": 0.0,
-                    "source": "fanout_supervisor",
-                    "decision_id": decision_id,
-                    "error": None,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=state.get("workflow_id", ""),
+                    event_type=EventType.STEP_EXECUTED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        **_sup_usage,
+                        "latency_ms": 0.0,
+                        "source": "fanout_supervisor",
+                        "decision_id": decision_id,
+                        "error": None,
+                    },
+                )
+            )
 
         return {
             "fanout_decision": {
@@ -3353,27 +3546,34 @@ def build_graph(
         sends = []
         for branch in sup.get("branches", []):
             bid = branch.get("branch_id")
-            sends.append(Send("worker", {
-                "branch_id": bid,
-                "correlation_id": f"{workflow_id}:step:{step_count}:fanout:{bid}",
-                "workflow_id": workflow_id,
-                "step_count": step_count,
-                "objective": branch.get("objective", ""),
-                "subagent_type": branch.get("subagent_type", "general"),
-                "constraints": branch.get("constraints", []),
-                "expected_output_schema": branch.get("expected_output_schema", {}),
-                "task_id": state.get("task_id", ""),
-                "user_id": state.get("user_id", "anonymous"),
-                "decision_id": sup.get("decision_id", ""),
-                # Phase 1 memory (OBP-M1): the recalled block rides the Send
-                # payload BY VALUE — a worker never reads AgentState. Empty
-                # string when memory is off / recall degraded. route_node is the
-                # one recall seam; this just propagates its result to the branch.
-                "recalled_memories": state.get("recalled_memories", ""),
-            }))
+            sends.append(
+                Send(
+                    "worker",
+                    {
+                        "branch_id": bid,
+                        "correlation_id": f"{workflow_id}:step:{step_count}:fanout:{bid}",
+                        "workflow_id": workflow_id,
+                        "step_count": step_count,
+                        "objective": branch.get("objective", ""),
+                        "subagent_type": branch.get("subagent_type", "general"),
+                        "constraints": branch.get("constraints", []),
+                        "expected_output_schema": branch.get(
+                            "expected_output_schema", {}
+                        ),
+                        "task_id": state.get("task_id", ""),
+                        "user_id": state.get("user_id", "anonymous"),
+                        "decision_id": sup.get("decision_id", ""),
+                        # Phase 1 memory (OBP-M1): the recalled block rides the Send
+                        # payload BY VALUE — a worker never reads AgentState. Empty
+                        # string when memory is off / recall degraded. route_node is the
+                        # one recall seam; this just propagates its result to the branch.
+                        "recalled_memories": state.get("recalled_memories", ""),
+                    },
+                )
+            )
         return sends or "call_llm"
 
-    async def worker_node(state: dict, config: RunnableConfig) -> dict:
+    async def worker_node(state: AgentState, config: RunnableConfig) -> dict:
         """OBP-3 + OBP-M1: run ONE branch, append a result/sentinel.
 
         The Send payload arrives as ``state`` here (LangGraph passes the Send
@@ -3385,7 +3585,10 @@ def build_graph(
         carriers with the BRANCH correlation_id (GTP-1), via the same
         trace_service path task_tool uses (no new event names).
         """
-        payload = dict(state)
+        # The Send payload is a superset of AgentState (fan-out injects
+        # branch_id/correlation_id/workflow_id/etc.), so treat it as an
+        # open str-keyed dict for the extra-key reads below.
+        payload: dict[str, Any] = dict(state)
         branch_id = payload.get("branch_id")
         correlation_id = payload.get("correlation_id", "")
         workflow_id = payload.get("workflow_id", "")
@@ -3441,24 +3644,26 @@ def build_graph(
             # call_llm (the only other STEP_EXECUTED site), so without this each
             # branch's cost is invisible in the governance trace.
             _usage = result.get("usage") or {}
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.STEP_EXECUTED,
-                timestamp=datetime.now(UTC),
-                step=int(payload.get("step_count", 0) or 0),
-                details={
-                    "model": _usage.get("model", ""),
-                    "tokens_in": int(_usage.get("tokens_in", 0) or 0),
-                    "tokens_out": int(_usage.get("tokens_out", 0) or 0),
-                    "cost_usd": float(_usage.get("cost_usd", 0.0) or 0.0),
-                    "latency_ms": float(_usage.get("latency_ms", 0.0) or 0.0),
-                    "source": "fanout_worker",
-                    "branch_id": branch_id,
-                    "decision_id": decision_id,
-                    "error": None,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.STEP_EXECUTED,
+                    timestamp=datetime.now(UTC),
+                    step=int(payload.get("step_count", 0) or 0),
+                    details={
+                        "model": _usage.get("model", ""),
+                        "tokens_in": int(_usage.get("tokens_in", 0) or 0),
+                        "tokens_out": int(_usage.get("tokens_out", 0) or 0),
+                        "cost_usd": float(_usage.get("cost_usd", 0.0) or 0.0),
+                        "latency_ms": float(_usage.get("latency_ms", 0.0) or 0.0),
+                        "source": "fanout_worker",
+                        "branch_id": branch_id,
+                        "decision_id": decision_id,
+                        "error": None,
+                    },
+                )
+            )
             _emit_delegation_trace(
                 workflow_id=workflow_id,
                 event_type="delegation_completed",
@@ -3481,19 +3686,21 @@ def build_graph(
                 "error": f"{kind}: {exc}" if str(exc) else kind,
                 "correlation_id": correlation_id,
             }
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=workflow_id,
-                event_type=EventType.ERROR_OCCURRED,
-                timestamp=datetime.now(UTC),
-                step=int(payload.get("step_count", 0) or 0),
-                details={
-                    "source": "fanout_worker",
-                    "branch_id": branch_id,
-                    "error": entry["error"],
-                    "decision_id": decision_id,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=workflow_id,
+                    event_type=EventType.ERROR_OCCURRED,
+                    timestamp=datetime.now(UTC),
+                    step=int(payload.get("step_count", 0) or 0),
+                    details={
+                        "source": "fanout_worker",
+                        "branch_id": branch_id,
+                        "error": entry["error"],
+                        "decision_id": decision_id,
+                    },
+                )
+            )
             _emit_delegation_trace(
                 workflow_id=workflow_id,
                 event_type="delegation_completed",
@@ -3552,9 +3759,7 @@ def build_graph(
         if not joined:
             # Deterministic floor: concat the survivors + note the gaps, so the
             # judge ALWAYS sees a non-empty joined answer (MAST-bounded).
-            parts = [
-                f"- {r.get('output', '')}" for r in completed if r.get("output")
-            ]
+            parts = [f"- {r.get('output', '')}" for r in completed if r.get("output")]
             gaps = [
                 f"- branch {r.get('branch_id')} did not complete ({r.get('error')})"
                 for r in results
@@ -3564,36 +3769,40 @@ def build_graph(
             if gaps:
                 joined += "\n\nIncomplete branches:\n" + "\n".join(gaps)
 
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=state.get("workflow_id", ""),
-            event_type=EventType.STEP_PLANNED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details={
-                "fanout_join": True,
-                "branches_total": len(results),
-                "branches_completed": len(completed),
-                "join_chars": len(joined),
-            },
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=state.get("workflow_id", ""),
+                event_type=EventType.STEP_PLANNED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details={
+                    "fanout_join": True,
+                    "branches_total": len(results),
+                    "branches_completed": len(completed),
+                    "join_chars": len(joined),
+                },
+            )
+        )
 
         # Governance Recording: STEP_EXECUTED for the join LLM call (only when
         # the synthesis LLM was actually called; the floor makes no call).
         if _join_usage is not None:
-            black_box.record(TraceEvent(
-                event_id=str(uuid.uuid4()),
-                workflow_id=state.get("workflow_id", ""),
-                event_type=EventType.STEP_EXECUTED,
-                timestamp=datetime.now(UTC),
-                step=state.get("step_count", 0),
-                details={
-                    **_join_usage,
-                    "latency_ms": 0.0,
-                    "source": "fanout_join",
-                    "error": None,
-                },
-            ))
+            black_box.record(
+                TraceEvent(
+                    event_id=str(uuid.uuid4()),
+                    workflow_id=state.get("workflow_id", ""),
+                    event_type=EventType.STEP_EXECUTED,
+                    timestamp=datetime.now(UTC),
+                    step=state.get("step_count", 0),
+                    details={
+                        **_join_usage,
+                        "latency_ms": 0.0,
+                        "source": "fanout_join",
+                        "error": None,
+                    },
+                )
+            )
 
         return {
             "messages": [AIMessage(content=joined)],
@@ -3669,14 +3878,16 @@ def build_graph(
         _store_details: dict[str, Any] = {"user_id": store_user_id, "key": task_id}
         if store_error:
             _store_details["error_kind"] = store_error
-        black_box.record(TraceEvent(
-            event_id=str(uuid.uuid4()),
-            workflow_id=workflow_id,
-            event_type=EventType.MEMORY_STORED,
-            timestamp=datetime.now(UTC),
-            step=state.get("step_count", 0),
-            details=_store_details,
-        ))
+        black_box.record(
+            TraceEvent(
+                event_id=str(uuid.uuid4()),
+                workflow_id=workflow_id,
+                event_type=EventType.MEMORY_STORED,
+                timestamp=datetime.now(UTC),
+                step=state.get("step_count", 0),
+                details=_store_details,
+            )
+        )
         from services import eval_capture
 
         await eval_capture.record(
@@ -3734,7 +3945,11 @@ def build_graph(
         builder.add_conditional_edges(
             "call_llm",
             _parse_response,
-            {"tool_call": "verify_authorize_log", "final_answer": "evaluate", "budget_exceeded": END},
+            {
+                "tool_call": "verify_authorize_log",
+                "final_answer": "evaluate",
+                "budget_exceeded": END,
+            },
         )
         builder.add_conditional_edges(
             "verify_authorize_log",
@@ -3745,7 +3960,11 @@ def build_graph(
         builder.add_conditional_edges(
             "call_llm",
             _parse_response,
-            {"tool_call": "execute_tool", "final_answer": "evaluate", "budget_exceeded": END},
+            {
+                "tool_call": "execute_tool",
+                "final_answer": "evaluate",
+                "budget_exceeded": END,
+            },
         )
 
     builder.add_edge("execute_tool", "evaluate")

@@ -15,16 +15,12 @@ and services.
 
 from __future__ import annotations
 
-from typing import Any
-
-import pytest
 
 from services.authorization_service import (
     AuthorizationService,
     EmbeddedPolicyBackend,
 )
 from services.trace_service import InMemoryTraceSink, TraceService
-from trust.enums import IdentityStatus
 from trust.models import AgentFacts, Capability, Policy
 
 
@@ -126,9 +122,7 @@ class TestVerifyAuthorizeLogNode:
             embedded_backend=EmbeddedPolicyBackend(),
             trace_emit=trace_svc.emit,
         )
-        decision = authz.authorize(
-            facts, "read", {}, trace_id="test-trace-allow"
-        )
+        decision = authz.authorize(facts, "read", {}, trace_id="test-trace-allow")
         assert decision.enforcement == "allow"
         assert len(sink.records) == 1
         rec = sink.records[0]

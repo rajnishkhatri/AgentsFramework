@@ -1,0 +1,24 @@
+{
+  "expectations": [
+    {
+      "text": "research filed in AUTHORED home (root research/), not excluded evidence",
+      "passed": false,
+      "evidence": "authored=False, avoids-docs/research=True"
+    },
+    {
+      "text": "note has a research-appropriate type (not mis-tagged 'recipe')",
+      "passed": false,
+      "evidence": "type=research-note, tags=[recipe, memory_extractor, calibration, thresholds]"
+    },
+    {
+      "text": "research bundle index + log updated",
+      "passed": true,
+      "evidence": "index+log present"
+    },
+    {
+      "text": "okf_lint exits 0",
+      "passed": true,
+      "evidence": "lint0=True"
+    }
+  ]
+}

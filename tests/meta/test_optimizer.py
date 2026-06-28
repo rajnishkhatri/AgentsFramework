@@ -26,6 +26,7 @@ from services.base_config import ModelProfile
 try:
     from hypothesis import given, settings as hyp_settings
     from hypothesis import strategies as st
+
     HAS_HYPOTHESIS = True
 except ImportError:
     HAS_HYPOTHESIS = False
@@ -90,9 +91,9 @@ if HAS_HYPOTHESIS:
             metrics = OptimizerInput(
                 metrics=AgentMetrics(total_tasks=50, success_rate=0.7)
             )
-            candidates = ConfigMutator(
-                OptimizationSettings(seed=seed)
-            ).propose(config, metrics)
+            candidates = ConfigMutator(OptimizationSettings(seed=seed)).propose(
+                config, metrics
+            )
             for c in candidates:
                 assert isinstance(c, RoutingConfig)
                 assert c.escalate_after_failures >= 1
@@ -156,8 +157,12 @@ class TestSelectBest:
             cost_usd=1.0,
         )
         candidates = [
-            BenchmarkResult(config=RoutingConfig().model_dump(), mean_score=0.5, cost_usd=0.5),
-            BenchmarkResult(config=RoutingConfig().model_dump(), mean_score=0.6, cost_usd=0.6),
+            BenchmarkResult(
+                config=RoutingConfig().model_dump(), mean_score=0.5, cost_usd=0.5
+            ),
+            BenchmarkResult(
+                config=RoutingConfig().model_dump(), mean_score=0.6, cost_usd=0.6
+            ),
         ]
         best = select_best(candidates, baseline)
         assert best == RoutingConfig()
@@ -171,7 +176,9 @@ class TestSelectBest:
         gracefully when no candidate results were produced.
         """
         baseline = BenchmarkResult(
-            config=RoutingConfig().model_dump(), mean_score=0.0, cost_usd=0.0,
+            config=RoutingConfig().model_dump(),
+            mean_score=0.0,
+            cost_usd=0.0,
         )
         best = select_best([], baseline)
         assert best == RoutingConfig()
@@ -322,9 +329,7 @@ class TestBenchmarkRunner:
             judge_profile=_judge_profile(),
             eval_runner=_fake_eval_runner([0.5]),
         )
-        results = await runner.run(
-            [RoutingConfig()], golden_set=[_sample_record()]
-        )
+        results = await runner.run([RoutingConfig()], golden_set=[_sample_record()])
         assert len(results) == 1
         assert results[0].mean_score == 0.5
 
@@ -399,9 +404,7 @@ class TestAstRewriteRoutingConfig:
         from meta.optimizer import _ast_rewrite_routing_config
 
         with pytest.raises(ValueError, match="RoutingConfig"):
-            _ast_rewrite_routing_config(
-                "x = 1\n", RoutingConfig()
-            )
+            _ast_rewrite_routing_config("x = 1\n", RoutingConfig())
 
 
 class TestWriteOptimizedConfig:
@@ -425,9 +428,7 @@ class TestWriteOptimizedConfig:
 
         original = routing_config_file.read_text()
         proposed = RoutingConfig(escalate_after_failures=4)
-        status, diffs = write_optimized_config(
-            routing_config_file, proposed
-        )
+        status, diffs = write_optimized_config(routing_config_file, proposed)
 
         assert status == "written"
         backup = routing_config_file.with_suffix(".py.bak")
@@ -441,9 +442,7 @@ class TestWriteOptimizedConfig:
 
         # Use the file's own values as the proposal.
         proposed = RoutingConfig()
-        status, diffs = write_optimized_config(
-            routing_config_file, proposed
-        )
+        status, diffs = write_optimized_config(routing_config_file, proposed)
         assert status == "unchanged"
         assert diffs == []
         assert not routing_config_file.with_suffix(".py.bak").exists()
@@ -476,15 +475,14 @@ class _SpyPhaseLogger:
 
 
 class TestRunOptimizerCli:
-    def test_dry_run_prints_diff_without_writing(
-        self, routing_config_file, capsys
-    ):
+    def test_dry_run_prints_diff_without_writing(self, routing_config_file, capsys):
         from meta.optimizer import run_optimizer_cli
 
         original = routing_config_file.read_text()
         exit_code = run_optimizer_cli(
             [
-                "--config-file", str(routing_config_file),
+                "--config-file",
+                str(routing_config_file),
                 "--dry-run",
             ],
             proposed_config=RoutingConfig(escalate_after_failures=4),
@@ -499,7 +497,8 @@ class TestRunOptimizerCli:
 
         exit_code = run_optimizer_cli(
             [
-                "--config-file", str(routing_config_file),
+                "--config-file",
+                str(routing_config_file),
                 "--dry-run",
             ],
             proposed_config=RoutingConfig(),  # equal to current
@@ -513,22 +512,22 @@ class TestRunOptimizerCli:
 
         exit_code = run_optimizer_cli(
             [
-                "--config-file", str(routing_config_file),
+                "--config-file",
+                str(routing_config_file),
             ],
             proposed_config=RoutingConfig(escalate_after_failures=4),
         )
         assert exit_code == 0
         assert routing_config_file.with_suffix(".py.bak").exists()
-        assert "escalate_after_failures: int = 4" in (
-            routing_config_file.read_text()
-        )
+        assert "escalate_after_failures: int = 4" in (routing_config_file.read_text())
 
     def test_missing_config_file_returns_two(self, tmp_path, capsys):
         from meta.optimizer import run_optimizer_cli
 
         exit_code = run_optimizer_cli(
             [
-                "--config-file", str(tmp_path / "nope.py"),
+                "--config-file",
+                str(tmp_path / "nope.py"),
                 "--dry-run",
             ],
             proposed_config=RoutingConfig(),
@@ -537,9 +536,7 @@ class TestRunOptimizerCli:
         captured = capsys.readouterr()
         assert "not found" in captured.err
 
-    def test_no_runner_no_proposal_returns_two(
-        self, routing_config_file, capsys
-    ):
+    def test_no_runner_no_proposal_returns_two(self, routing_config_file, capsys):
         from meta.optimizer import run_optimizer_cli
 
         exit_code = run_optimizer_cli(
@@ -567,17 +564,18 @@ class TestRunOptimizerCli:
         finally:
             routing_config_file.parent.chmod(original_mode)
 
-    def test_phase_log_dir_persists_decision(
-        self, routing_config_file, tmp_path
-    ):
+    def test_phase_log_dir_persists_decision(self, routing_config_file, tmp_path):
         from meta.optimizer import run_optimizer_cli
 
         log_dir = tmp_path / "phase_logs"
         exit_code = run_optimizer_cli(
             [
-                "--config-file", str(routing_config_file),
-                "--phase-log-dir", str(log_dir),
-                "--workflow-id", "opt-cli-001",
+                "--config-file",
+                str(routing_config_file),
+                "--phase-log-dir",
+                str(log_dir),
+                "--workflow-id",
+                "opt-cli-001",
                 "--dry-run",
             ],
             proposed_config=RoutingConfig(escalate_after_failures=4),
@@ -586,6 +584,7 @@ class TestRunOptimizerCli:
         decisions_file = log_dir / "opt-cli-001" / "decisions.jsonl"
         assert decisions_file.exists()
         import json
+
         lines = [
             json.loads(line)
             for line in decisions_file.read_text().strip().splitlines()
@@ -605,12 +604,14 @@ class TestBenchmarkRunnerL3:
         import json
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps({
-            "score": 4,
-            "failure_categories": [],
-            "reasoning": "Good output",
-            "confidence": 0.9,
-        })
+        mock_response.content = json.dumps(
+            {
+                "score": 4,
+                "failure_categories": [],
+                "reasoning": "Good output",
+                "confidence": 0.9,
+            }
+        )
         mock_service = MagicMock()
         mock_service.invoke = AsyncMock(return_value=mock_response)
 

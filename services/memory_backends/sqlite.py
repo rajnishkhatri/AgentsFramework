@@ -80,8 +80,7 @@ class SqliteMemoryBackend:
     def get(self, user_id: str, key: str) -> MemoryRecord | None:
         with self._lock:
             row = self._conn.execute(
-                "SELECT payload, metadata FROM memory "
-                "WHERE user_id = ? AND key = ?",
+                "SELECT payload, metadata FROM memory WHERE user_id = ? AND key = ?",
                 (user_id, key),
             ).fetchone()
         if row is None:
@@ -94,9 +93,7 @@ class SqliteMemoryBackend:
             metadata=json.loads(metadata_json),
         )
 
-    def search(
-        self, user_id: str, query: str, limit: int = 10
-    ) -> list[MemoryRecord]:
+    def search(self, user_id: str, query: str, limit: int = 10) -> list[MemoryRecord]:
         like = f"%{query}%"
         with self._lock:
             rows = self._conn.execute(

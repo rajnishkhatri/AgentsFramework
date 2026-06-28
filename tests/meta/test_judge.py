@@ -14,7 +14,6 @@ import pytest
 from components.schemas import EvalRecord
 from meta.judge import (
     JudgeResult,
-    JudgeScore,
     build_judge_prompt,
     load_taxonomy,
     parse_judge_response,
@@ -52,12 +51,14 @@ class TestJudgePromptBuilding:
 
 class TestJudgeResponseParsing:
     def test_parse_valid_json_response(self):
-        raw = json.dumps({
-            "score": 5,
-            "failure_categories": [],
-            "reasoning": "Perfect output",
-            "confidence": 0.95,
-        })
+        raw = json.dumps(
+            {
+                "score": 5,
+                "failure_categories": [],
+                "reasoning": "Perfect output",
+                "confidence": 0.95,
+            }
+        )
         score = parse_judge_response(raw)
         assert score.score == 5
         assert score.failure_categories == []
@@ -77,7 +78,9 @@ class TestJudgeResponseParsing:
         assert "parse_error" in score.failure_categories
 
     def test_parse_out_of_range_score_fails_validation(self):
-        raw = json.dumps({"score": 10, "failure_categories": [], "reasoning": "x", "confidence": 0.5})
+        raw = json.dumps(
+            {"score": 10, "failure_categories": [], "reasoning": "x", "confidence": 0.5}
+        )
         score = parse_judge_response(raw)
         assert score.score == 1  # Fallback on validation error
 
@@ -90,12 +93,14 @@ class TestJudgeScoring:
         from services.base_config import ModelProfile
 
         mock_response = MagicMock()
-        mock_response.content = json.dumps({
-            "score": 4,
-            "failure_categories": [],
-            "reasoning": "Good output",
-            "confidence": 0.9,
-        })
+        mock_response.content = json.dumps(
+            {
+                "score": 4,
+                "failure_categories": [],
+                "reasoning": "Good output",
+                "confidence": 0.9,
+            }
+        )
 
         mock_service = MagicMock()
         mock_service.invoke = AsyncMock(return_value=mock_response)

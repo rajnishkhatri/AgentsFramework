@@ -181,9 +181,7 @@ class TestInstrumentedCheckpointerLangGraphSurface:
         wrapper = InstrumentedCheckpointer(inner, telemetry)
 
         assert wrapper.put_writes({"cfg": True}, [("ch", 1)], "task-1") == "wrote"
-        assert inner.put_writes_calls == [
-            (({"cfg": True}, [("ch", 1)], "task-1"), {})
-        ]
+        assert inner.put_writes_calls == [(({"cfg": True}, [("ch", 1)], "task-1"), {})]
         assert telemetry.checkpoint_invocations == 0, (
             "put_writes (intermediate channel writes) must NOT increment "
             "checkpoint_invocations -- STORY-412 maps a checkpoint to a "
@@ -200,9 +198,7 @@ class TestInstrumentedCheckpointerLangGraphSurface:
             await wrapper.aput_writes({"cfg": True}, [("ch", 1)], "task-1")
             == "wrote-async"
         )
-        assert inner.aput_writes_calls == [
-            (({"cfg": True}, [("ch", 1)], "task-1"), {})
-        ]
+        assert inner.aput_writes_calls == [(({"cfg": True}, [("ch", 1)], "task-1"), {})]
         assert telemetry.checkpoint_invocations == 0
 
     def test_get_next_version_is_a_real_method_not_just_dunder_getattr(self):
@@ -265,9 +261,7 @@ class TestBuildGraphTelemetryIntegration:
                 return_value="accept",
             ),
         ):
-            MockChatLiteLLM.return_value.ainvoke = AsyncMock(
-                return_value=mock_response
-            )
+            MockChatLiteLLM.return_value.ainvoke = AsyncMock(return_value=mock_response)
 
             graph = build_graph(
                 agent_config=agent_config,

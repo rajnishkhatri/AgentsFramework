@@ -38,6 +38,10 @@ logs/
 *.log
 cache/
 
+# Node / frontend dependencies
+node_modules/
+**/node_modules/
+
 # OS / editor
 .DS_Store
 Thumbs.db

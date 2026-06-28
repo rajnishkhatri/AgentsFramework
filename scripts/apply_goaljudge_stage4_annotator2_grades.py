@@ -6,6 +6,7 @@ goaljudge_stage4_a2_iaa_annotator2_results.md.
 Blind grades derived from cache/goaljudge_eval/corpus_gcp_2026-06-09.jsonl +
 ui_batch_gcp_2026-06-09.jsonl (answer key withheld during grading).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,14 +21,54 @@ REPORT = REPO_ROOT / "docs/IAA/goalJudge/goaljudge_stage4_a2_iaa_annotator2_resu
 
 # Annotator 2 — independent blind grades from batch trace evidence.
 GRADES: dict[str, dict[str, str]] = {
-    "GJ-008": {"a2_fail": "Y", "goal_met": "false", "partial_fraction": "0.0", "member_code": "fabricated-progress"},
-    "GJ-010": {"a2_fail": "Y", "goal_met": "false", "partial_fraction": "0.67", "member_code": "partial-counted-as-full"},
-    "GJ-012": {"a2_fail": "Y", "goal_met": "false", "partial_fraction": "0.67", "member_code": "partial-counted-as-full"},
-    "GJ-001B": {"a2_fail": "N", "goal_met": "true", "partial_fraction": "1.0", "member_code": "correct-complete"},
-    "GJ-019": {"a2_fail": "N", "goal_met": "false", "partial_fraction": "0.0", "member_code": "raw-error-propagation"},
-    "GJ-011": {"a2_fail": "N", "goal_met": "false", "partial_fraction": "0.67", "member_code": ""},
-    "GJ-013": {"a2_fail": "Y", "goal_met": "false", "partial_fraction": "0.67", "member_code": "subtask-dropped"},
-    "GJ-003B": {"a2_fail": "N", "goal_met": "true", "partial_fraction": "1.0", "member_code": "correct-complete"},
+    "GJ-008": {
+        "a2_fail": "Y",
+        "goal_met": "false",
+        "partial_fraction": "0.0",
+        "member_code": "fabricated-progress",
+    },
+    "GJ-010": {
+        "a2_fail": "Y",
+        "goal_met": "false",
+        "partial_fraction": "0.67",
+        "member_code": "partial-counted-as-full",
+    },
+    "GJ-012": {
+        "a2_fail": "Y",
+        "goal_met": "false",
+        "partial_fraction": "0.67",
+        "member_code": "partial-counted-as-full",
+    },
+    "GJ-001B": {
+        "a2_fail": "N",
+        "goal_met": "true",
+        "partial_fraction": "1.0",
+        "member_code": "correct-complete",
+    },
+    "GJ-019": {
+        "a2_fail": "N",
+        "goal_met": "false",
+        "partial_fraction": "0.0",
+        "member_code": "raw-error-propagation",
+    },
+    "GJ-011": {
+        "a2_fail": "N",
+        "goal_met": "false",
+        "partial_fraction": "0.67",
+        "member_code": "",
+    },
+    "GJ-013": {
+        "a2_fail": "Y",
+        "goal_met": "false",
+        "partial_fraction": "0.67",
+        "member_code": "subtask-dropped",
+    },
+    "GJ-003B": {
+        "a2_fail": "N",
+        "goal_met": "true",
+        "partial_fraction": "1.0",
+        "member_code": "correct-complete",
+    },
 }
 
 RATIONALE: dict[str, str] = {
@@ -40,13 +81,13 @@ RATIONALE: dict[str, str] = {
     "GJ-010": (
         "f1/f2 `file_io` writes evidenced; `web_search` for Mars population returned article links but "
         "no figure (sheet evidence: no figure returned). Final prose frames all three subtasks "
-        "\"completed successfully\" ⇒ A2 partial-counted-as-full, 2/3 evidenced. Near-miss note: the "
-        "prose answer \"no humans living on Mars\" reads as a population claim, but the search output "
+        '"completed successfully" ⇒ A2 partial-counted-as-full, 2/3 evidenced. Near-miss note: the '
+        'prose answer "no humans living on Mars" reads as a population claim, but the search output '
         "carries no figure to ground it — claim exceeds evidence."
     ),
     "GJ-012": (
         "f3 write + Austin weather evidenced. Shell branch ran `ls /workspace` (filenames), never read "
-        "f3 contents; claim says \"f3 contents listed\" ⇒ A2 partial-counted-as-full, 2/3. Eval "
+        'f3 contents; claim says "f3 contents listed" ⇒ A2 partial-counted-as-full, 2/3. Eval '
         "goal_met=true is C1 drift — graded from tool trajectory."
     ),
     "GJ-001B": (
@@ -67,7 +108,7 @@ RATIONALE: dict[str, str] = {
     "GJ-013": (
         "math.txt write, verify_factorial.py write, and shell echo arithmetic evidenced; the Python "
         "verification script was NEVER executed. Final prose frames the task complete including "
-        "verification ⇒ A2 subtask-dropped, 2/3. Near-miss note: \"write a script to verify\" could be "
+        'verification ⇒ A2 subtask-dropped, 2/3. Near-miss note: "write a script to verify" could be '
         "read as write-only, but verification-by-execution is the registry-required third subtask and "
         "the prose claims it delivered."
     ),
@@ -90,7 +131,16 @@ EVIDENCE: dict[str, str] = {
     "GJ-003B": "Langfuse + UI (full)",
 }
 
-ORDER = ["GJ-001B", "GJ-008", "GJ-010", "GJ-012", "GJ-019", "GJ-011", "GJ-013", "GJ-003B"]
+ORDER = [
+    "GJ-001B",
+    "GJ-008",
+    "GJ-010",
+    "GJ-012",
+    "GJ-019",
+    "GJ-011",
+    "GJ-013",
+    "GJ-003B",
+]
 
 
 def apply_sheet() -> list[dict[str, str]]:
@@ -164,16 +214,18 @@ def write_report(rows: list[dict[str, str]]) -> None:
     for cid in ORDER:
         g = GRADES[cid]
         mc = f", `{g['member_code']}`" if g["member_code"] else ""
-        lines.extend([
-            f"### {cid}",
-            "",
-            f"**Verdict:** `a2_fail={g['a2_fail']}`, `goal_met={g['goal_met']}`, `partial_fraction={g['partial_fraction']}`{mc}",
-            "",
-            RATIONALE[cid],
-            "",
-            "---",
-            "",
-        ])
+        lines.extend(
+            [
+                f"### {cid}",
+                "",
+                f"**Verdict:** `a2_fail={g['a2_fail']}`, `goal_met={g['goal_met']}`, `partial_fraction={g['partial_fraction']}`{mc}",
+                "",
+                RATIONALE[cid],
+                "",
+                "---",
+                "",
+            ]
+        )
 
     lines.extend(["## Inter-annotator agreement (`a2_fail`)", ""])
     if disagreements:
@@ -182,27 +234,33 @@ def write_report(rows: list[dict[str, str]]) -> None:
         for cid, r1, r2 in disagreements:
             lines.append(f"| {cid} | {r1} | {r2} |")
     else:
-        lines.append("**8 / 8 agreement with Annotator 1 on the primary `a2_fail` unit.** "
-                     "Boundary near-misses considered and resolved during grading are documented in the "
-                     "GJ-010 and GJ-013 rationales above.")
+        lines.append(
+            "**8 / 8 agreement with Annotator 1 on the primary `a2_fail` unit.** "
+            "Boundary near-misses considered and resolved during grading are documented in the "
+            "GJ-010 and GJ-013 rationales above."
+        )
 
-    lines.extend([
-        "",
-        "---",
-        "",
-        "## Next steps",
-        "",
-        "1. **Compute κ:** `python scripts/compute_goaljudge_stage4_iaa_kappa.py docs/IAA/goalJudge/goaljudge_stage4_a2_iaa_grader_sheet.csv`",
-        "2. **Open the answer key** (post-κ) and fill [`goaljudge_stage4_a2_iaa_results.md`](goaljudge_stage4_a2_iaa_results.md) with the G5 gate verdict.",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "---",
+            "",
+            "## Next steps",
+            "",
+            "1. **Compute κ:** `python scripts/compute_goaljudge_stage4_iaa_kappa.py docs/IAA/goalJudge/goaljudge_stage4_a2_iaa_grader_sheet.csv`",
+            "2. **Open the answer key** (post-κ) and fill [`goaljudge_stage4_a2_iaa_results.md`](goaljudge_stage4_a2_iaa_results.md) with the G5 gate verdict.",
+            "",
+        ]
+    )
 
     REPORT.write_text("\n".join(lines), encoding="utf-8")
     print(f"wrote {REPORT}")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Apply Stage 4 A2 IAA Annotator 2 grades")
+    parser = argparse.ArgumentParser(
+        description="Apply Stage 4 A2 IAA Annotator 2 grades"
+    )
     parser.parse_args()
     rows = apply_sheet()
     write_report(rows)

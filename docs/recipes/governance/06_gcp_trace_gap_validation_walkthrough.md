@@ -117,7 +117,7 @@ Find the generated trace in Langfuse.
 
 ## Part 4 — G4, G7 & G8 Synthetic Negative Paths (CLI Validation)
 
-Because we cannot honestly prompt the agent to corrupt its own hash chain (G8) or fail its own hardcoded identity checks (G7) via the Frontend UI, these must be verified locally using the synthetic scenarios (S7, S9, S10, S11). 
+Because we cannot honestly prompt the agent to corrupt its own hash chain (G8) or fail its own hardcoded identity checks (G7) via the Frontend UI, these must be verified locally using the synthetic scenarios (S7, S9, S10, S11).
 
 *Note: These scenarios are strictly excluded from the live BFF scenario list so they cannot be driven against the real agent.*
 

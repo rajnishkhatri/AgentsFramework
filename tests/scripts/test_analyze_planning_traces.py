@@ -83,22 +83,36 @@ def test_reflexion_reentry_and_budget_bound() -> None:
     events = {
         # re-entered twice, bounded by max=2 -> hit
         "RF-want": [
-            _step_planned(reflexion_attempt=0, reflexion_critique_chars=40,
-                          reflexion_unmet_count=1),
-            _step_planned(reflexion_attempt=1, reflexion_critique_chars=37,
-                          reflexion_unmet_count=1),
+            _step_planned(
+                reflexion_attempt=0,
+                reflexion_critique_chars=40,
+                reflexion_unmet_count=1,
+            ),
+            _step_planned(
+                reflexion_attempt=1,
+                reflexion_critique_chars=37,
+                reflexion_unmet_count=1,
+            ),
             _task_completed(max_reflexion_attempts=2, escalation_decision="done"),
         ],
         # control: never re-entered -> hit (want_reflexion False)
-        "RF-ctrl": [_task_completed(max_reflexion_attempts=2, escalation_decision="done")],
+        "RF-ctrl": [
+            _task_completed(max_reflexion_attempts=2, escalation_decision="done")
+        ],
         # thrash: a single cycle exceeded its OWN ceiling (attempt 3 > max 2)
         # -> NOT bounded -> miss. (Per-cycle bound: summing carriers across
         # cycles is not thrash; one cycle over its ceiling is.)
         "RF-thrash": [
-            _step_planned(reflexion_attempt=0, reflexion_critique_chars=40,
-                          reflexion_unmet_count=1),
-            _task_completed(reflexion_attempt=3, max_reflexion_attempts=2,
-                            escalation_decision="reflect"),
+            _step_planned(
+                reflexion_attempt=0,
+                reflexion_critique_chars=40,
+                reflexion_unmet_count=1,
+            ),
+            _task_completed(
+                reflexion_attempt=3,
+                max_reflexion_attempts=2,
+                escalation_decision="reflect",
+            ),
         ],
     }
     s = score_run(rows, events)["phases"]["reflexion"]
@@ -242,20 +256,31 @@ def test_fanout_partial_survival_counts_for_fault_rows() -> None:
     """A fault row whose join produced a non-empty answer WITH a failed branch
     counts toward partial-survival; a hung/empty join does not."""
     rows = [
-        {"case": "Flt-survived", "phase": "fanout", "want_fanout": True,
-         "want_survives_partial": True},
-        {"case": "Flt-died", "phase": "fanout", "want_fanout": True,
-         "want_survives_partial": True},
+        {
+            "case": "Flt-survived",
+            "phase": "fanout",
+            "want_fanout": True,
+            "want_survives_partial": True,
+        },
+        {
+            "case": "Flt-died",
+            "phase": "fanout",
+            "want_fanout": True,
+            "want_survives_partial": True,
+        },
     ]
     events = {
         # fanned out (>=2 sends) + join with 1 failure + non-empty -> survived.
         "Flt-survived": [
-            _delegation_requested(1), _delegation_requested(2), _delegation_requested(3),
+            _delegation_requested(1),
+            _delegation_requested(2),
+            _delegation_requested(3),
             _join(total=3, completed=2),
         ],
         # fanned out but the join is empty (a hang/crash) -> did NOT survive.
         "Flt-died": [
-            _delegation_requested(1), _delegation_requested(2),
+            _delegation_requested(1),
+            _delegation_requested(2),
             _join(total=2, completed=0, chars=0),
         ],
     }
@@ -273,12 +298,21 @@ def test_fanout_correct_fanout_scores_tp_and_decline_scores_tn() -> None:
         {"case": "F-fn", "phase": "fanout", "want_fanout": True},  # missed (cheap)
     ]
     events = {
-        "F-tp": [_delegation_requested(1), _delegation_requested(2),
-                 _join(total=2, completed=2)],
-        "F-tn": [_step_planned(supervisor_decision="decline",
-                               supervisor_reason="sequential-dependent")],
-        "F-fn": [_step_planned(supervisor_decision="decline",
-                               supervisor_reason="single-step")],
+        "F-tp": [
+            _delegation_requested(1),
+            _delegation_requested(2),
+            _join(total=2, completed=2),
+        ],
+        "F-tn": [
+            _step_planned(
+                supervisor_decision="decline", supervisor_reason="sequential-dependent"
+            )
+        ],
+        "F-fn": [
+            _step_planned(
+                supervisor_decision="decline", supervisor_reason="single-step"
+            )
+        ],
     }
     conf = score_run(rows, events)["fanout_confusion"]
     assert conf["tp"] == 1
@@ -303,8 +337,13 @@ def test_fanout_gate_fails_on_false_fanout_but_not_on_missed() -> None:
 
     # A pure missed-fan-out batch (recall low, precision perfect) -> NO gate fail.
     fn_rows = [{"case": "F-fn", "phase": "fanout", "want_fanout": True}]
-    fn_events = {"F-fn": [_step_planned(supervisor_decision="decline",
-                                        supervisor_reason="single-step")]}
+    fn_events = {
+        "F-fn": [
+            _step_planned(
+                supervisor_decision="decline", supervisor_reason="single-step"
+            )
+        ]
+    }
     assert gate_failures(score_run(fn_rows, fn_events)) == []
 
 
@@ -345,12 +384,19 @@ def test_compaction_folded_row_with_20pc_drop_is_a_hit() -> None:
     """A row that folded once and dropped tokens 20% counts as a hit + a
     folded-subset row. (The bar is `≥ 0.20`, so exactly 0.20 must hit.)"""
     rows = [
-        {"case": "C-ok", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-ok",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
-        "C-ok": [_context_compacted(
-            tokens_before=1000, tokens_after=800, floor_exceeded=False)],
+        "C-ok": [
+            _context_compacted(
+                tokens_before=1000, tokens_after=800, floor_exceeded=False
+            )
+        ],
     }
     summary = score_run(rows, events)
     assert summary["phases"]["compaction"]["hits"] == 1
@@ -365,14 +411,21 @@ def test_compaction_unsafe_fold_is_an_inviolable_gate_failure() -> None:
     how big the token drop is. The hard gate fires even when drop ratio is
     perfect — the §B2-R bar is non-negotiable."""
     rows = [
-        {"case": "C-unsafe", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-unsafe",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
         # 50% drop — would be a great fold metric — but floor_exceeded=True is
         # an L1 decline, so it counts as unsafe regardless.
-        "C-unsafe": [_context_compacted(
-            tokens_before=2000, tokens_after=1000, floor_exceeded=True)],
+        "C-unsafe": [
+            _context_compacted(
+                tokens_before=2000, tokens_after=1000, floor_exceeded=True
+            )
+        ],
     }
     summary = score_run(rows, events)
     assert summary["compaction"]["unsafe_folds_total"] == 1
@@ -387,14 +440,25 @@ def test_compaction_no_fold_row_is_not_penalized_on_drop_bar() -> None:
     is a tendency, not a guarantee. A no-fold row goes into the not_folded
     bucket and does NOT pull the mean drop ratio down."""
     rows = [
-        {"case": "C-folded", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
-        {"case": "C-nofold", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-folded",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
+        {
+            "case": "C-nofold",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
-        "C-folded": [_context_compacted(
-            tokens_before=1000, tokens_after=700, floor_exceeded=False)],
+        "C-folded": [
+            _context_compacted(
+                tokens_before=1000, tokens_after=700, floor_exceeded=False
+            )
+        ],
         # No CONTEXT_COMPACTED carrier emitted; the trace did exist (so it is
         # NOT a missing-trace row).
         "C-nofold": [_step_planned(planning_depth="L1")],
@@ -415,25 +479,37 @@ def test_compaction_low_drop_on_folded_subset_fails_the_gate() -> None:
     """Two folded rows: one good drop, one 5% drop. The folded-subset mean is
     12.5% — below the 20% bar — so the gate fails with a clear message."""
     rows = [
-        {"case": "C-good", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
-        {"case": "C-thin", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-good",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
+        {
+            "case": "C-thin",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
-        "C-good": [_context_compacted(
-            tokens_before=1000, tokens_after=800, floor_exceeded=False)],
-        "C-thin": [_context_compacted(
-            tokens_before=1000, tokens_after=950, floor_exceeded=False)],
+        "C-good": [
+            _context_compacted(
+                tokens_before=1000, tokens_after=800, floor_exceeded=False
+            )
+        ],
+        "C-thin": [
+            _context_compacted(
+                tokens_before=1000, tokens_after=950, floor_exceeded=False
+            )
+        ],
     }
     summary = score_run(rows, events)
     assert summary["compaction"]["folded"] == 2
     # (0.20 + 0.05) / 2 = 0.125 — below the bar.
     assert summary["compaction"]["mean_drop_ratio"] == 0.125
     fails = gate_failures(summary)
-    assert any(
-        "mean_drop_ratio=0.125" in f and "< 0.20" in f for f in fails
-    )
+    assert any("mean_drop_ratio=0.125" in f and "< 0.20" in f for f in fails)
 
 
 def test_compaction_multi_fold_row_uses_first_before_last_after() -> None:
@@ -441,14 +517,24 @@ def test_compaction_multi_fold_row_uses_first_before_last_after() -> None:
     `tokens_before` of the FIRST fold and `tokens_after` of the LAST fold —
     that is the cumulative effect of compaction across the trace."""
     rows = [
-        {"case": "C-multi", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-multi",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
         "C-multi": [
-            _context_compacted(tokens_before=2000, tokens_after=1500, floor_exceeded=False),
-            _context_compacted(tokens_before=1800, tokens_after=1200, floor_exceeded=False),
-            _context_compacted(tokens_before=1500, tokens_after=1000, floor_exceeded=False),
+            _context_compacted(
+                tokens_before=2000, tokens_after=1500, floor_exceeded=False
+            ),
+            _context_compacted(
+                tokens_before=1800, tokens_after=1200, floor_exceeded=False
+            ),
+            _context_compacted(
+                tokens_before=1500, tokens_after=1000, floor_exceeded=False
+            ),
         ],
     }
     summary = score_run(rows, events)
@@ -464,10 +550,18 @@ def test_compaction_zero_folded_rows_do_not_check_drop_bar() -> None:
     live run was just below the trigger. The gate stays green (the unsafe
     bar trivially holds: 0 folds ⇒ 0 unsafe)."""
     rows = [
-        {"case": "C-1", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
-        {"case": "C-2", "phase": "compaction", "want_compaction": True,
-         "want_unsafe_fold": False},
+        {
+            "case": "C-1",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
+        {
+            "case": "C-2",
+            "phase": "compaction",
+            "want_compaction": True,
+            "want_unsafe_fold": False,
+        },
     ]
     events = {
         "C-1": [_step_planned(planning_depth="L1")],
@@ -490,7 +584,10 @@ def test_compaction_corpus_has_at_least_four_pinned_rows() -> None:
 
     corpus_path = (
         Path(__file__).resolve().parent.parent.parent
-        / "frontend" / "e2e" / "fixtures" / "planning_stress_corpus.json"
+        / "frontend"
+        / "e2e"
+        / "fixtures"
+        / "planning_stress_corpus.json"
     )
     corpus = json.loads(corpus_path.read_text())
     compaction_rows = [r for r in corpus if r.get("phase") == "compaction"]

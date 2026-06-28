@@ -18,12 +18,16 @@ from services.prompt_service import PromptService
 
 
 class _FakeLLMService:
-    def __init__(self, content: str = "Recap text.", error: Exception | None = None) -> None:
+    def __init__(
+        self, content: str = "Recap text.", error: Exception | None = None
+    ) -> None:
         self.calls: list[dict[str, Any]] = []
         self._content = content
         self._error = error
 
-    async def invoke(self, profile: ModelProfile, messages: list[dict], **kwargs: Any) -> Any:
+    async def invoke(
+        self, profile: ModelProfile, messages: list[dict], **kwargs: Any
+    ) -> Any:
         self.calls.append({"profile": profile, "messages": messages, "kwargs": kwargs})
         if self._error is not None:
             raise self._error
@@ -64,7 +68,8 @@ def _state(tool_count: int = 2, task: str = "do the thing") -> dict:
     return {
         "task_input": task,
         "tool_results": [
-            _tool_record(f"tool_{i}", record_id=f"1:call-{i}") for i in range(tool_count)
+            _tool_record(f"tool_{i}", record_id=f"1:call-{i}")
+            for i in range(tool_count)
         ],
         "messages": [
             type("Msg", (), {"content": "Final answer prose.", "tool_calls": []})()
@@ -168,8 +173,18 @@ class TestReasoningRecapTemplate:
             "reasoning_recap",
             task_input="t",
             tool_steps=[
-                {"tool_name": "file_io", "tool_input": {"p": 1}, "ok": True, "error": None},
-                {"tool_name": "web_search", "tool_input": {}, "ok": False, "error": "x"},
+                {
+                    "tool_name": "file_io",
+                    "tool_input": {"p": 1},
+                    "ok": True,
+                    "error": None,
+                },
+                {
+                    "tool_name": "web_search",
+                    "tool_input": {},
+                    "ok": False,
+                    "error": "x",
+                },
             ],
             final_answer="a",
         )

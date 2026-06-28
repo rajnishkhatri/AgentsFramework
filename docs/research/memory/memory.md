@@ -3,7 +3,7 @@ link: https://www.linkedin.com/pulse/understanding-memory-systems-llm-agents-pra
 article: Understanding Memory Systems for LLM Agents - A Practical Introduction
 
  rajnish khatri
-rajnish khatri 
+rajnish khatri
 
 Principal Consultant at Infosys | LLM Evaluation & Multi-Agent Systems Expert
 
@@ -54,7 +54,7 @@ python
 
 # Three-tier storage like human memory:
 conversations = "What you just talked about" # Last 50 messages
-summaries = "Key points from past chats"     # Compressed history  
+summaries = "Key points from past chats"     # Compressed history
 user_portrait = "Who this person is"         # Permanent traits
 
 # Memories that aren't used gradually fade:

@@ -59,6 +59,6 @@ class TestAnswerVerifiersLayer:
             if (top := (imp["module"] or "").split(".")[0])
             and top not in _ALLOWED_TOP_LEVEL
         ]
-        assert unexpected == [], (
-            f"{MODULE} must stay pure stdlib:\n  " + "\n  ".join(unexpected)
+        assert unexpected == [], f"{MODULE} must stay pure stdlib:\n  " + "\n  ".join(
+            unexpected
         )

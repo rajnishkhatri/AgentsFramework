@@ -21,6 +21,7 @@ from services.base_config import AgentConfig
 def _normalize_for_matching(text: str) -> str:
     """Lowercase and strip punctuation for keyword matching."""
     import re
+
     return re.sub(r"[^\w\s]", " ", text.lower())
 
 
@@ -79,15 +80,17 @@ def count_trailing_repeats(tool_results: list[dict[str, Any]]) -> int:
 
     count = 1
     for entry in reversed(tool_results[:-1]):
-        entry_key = (entry.get("tool_name"), str(sorted(entry.get("tool_input", {}).items())))
+        entry_key = (
+            entry.get("tool_name"),
+            str(sorted(entry.get("tool_input", {}).items())),
+        )
         entry_output = entry.get("tool_output", "")
         # Output match ignores input-echo: two calls that return the same
         # template differing only by an echoed query (e.g. the search stub's
         # "Search result for: <query>") count as no-progress, while genuinely
         # different results stay distinct.
         same_output = bool(last_output) and (
-            entry_output == last_output
-            or _echo_normalized_output(entry) == last_sig
+            entry_output == last_output or _echo_normalized_output(entry) == last_sig
         )
         if entry_key == last_key or same_output:
             count += 1
@@ -252,7 +255,10 @@ def check_continuation(
 
     if repeated_tool_calls >= agent_config.no_progress_hard_limit:
         return "done"
-    if repeated_tool_calls >= agent_config.no_progress_repeat_threshold and no_progress_directive_sent:
+    if (
+        repeated_tool_calls >= agent_config.no_progress_repeat_threshold
+        and no_progress_directive_sent
+    ):
         return "done"
 
     current_time = now if now is not None else time.time()
@@ -306,14 +312,14 @@ def evaluate_task_outcome(
     answer_text = (final_answer or "").strip()
     trajectory_text = ""
     if tool_results:
-        trajectory_text = " ".join(
-            str(r.get("tool_output", "")) for r in tool_results
-        )
+        trajectory_text = " ".join(str(r.get("tool_output", "")) for r in tool_results)
     combined_text = f"{answer_text} {trajectory_text}"
 
     has_substance = len(answer_text) > 10 and not answer_text.startswith("Error:")
     is_error_content = answer_text.startswith("Error:")
-    substance_score = 1.0 if has_substance else (0.3 if answer_text and not is_error_content else 0.0)
+    substance_score = (
+        1.0 if has_substance else (0.3 if answer_text and not is_error_content else 0.0)
+    )
 
     if plan_steps:
         branch_scores = []
@@ -322,7 +328,9 @@ def evaluate_task_outcome(
             if goal:
                 overlap = _keyword_overlap(combined_text, goal)
                 branch_scores.append(overlap)
-        branch_coverage = sum(branch_scores) / len(branch_scores) if branch_scores else 1.0
+        branch_coverage = (
+            sum(branch_scores) / len(branch_scores) if branch_scores else 1.0
+        )
     else:
         branch_coverage = 1.0
 
@@ -352,9 +360,7 @@ def evaluate_task_outcome(
             unmet = list(success_conditions)
 
     composite_score = (
-        0.20 * termination_score
-        + 0.50 * substance_score
-        + 0.30 * branch_coverage
+        0.20 * termination_score + 0.50 * substance_score + 0.30 * branch_coverage
     )
 
     if is_clean and has_substance:

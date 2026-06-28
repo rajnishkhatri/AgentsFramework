@@ -252,8 +252,6 @@ def apply_adjudication(
                     f"{goal_met!r}; must be 'true' or 'false'."
                 )
             new_row["adjudicated_goal_met"] = goal_met
-            new_row["adjudicated_failure_mode"] = str(
-                decision.get("failure_mode", "")
-            )
+            new_row["adjudicated_failure_mode"] = str(decision.get("failure_mode", ""))
         out.append(new_row)
     return out

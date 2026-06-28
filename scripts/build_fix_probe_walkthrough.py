@@ -54,9 +54,7 @@ def _load_rows(jsonl: Path) -> list[dict]:
 def _langfuse_url(trace_id: str, cache: dict[str, str | None]) -> str | None:
     """Resolve the clickable Langfuse trace URL (htmlPath). Cached project path."""
     host = (
-        os.environ.get("LANGFUSE_HOST")
-        or os.environ.get("LANGFUSE_BASE_URL")
-        or ""
+        os.environ.get("LANGFUSE_HOST") or os.environ.get("LANGFUSE_BASE_URL") or ""
     ).rstrip("/")
     pk = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
     sk = os.environ.get("LANGFUSE_SECRET_KEY", "")
@@ -107,12 +105,12 @@ def _trajectory(events: list[dict]) -> list[str]:
         elif et.endswith("model_selected"):
             reason = d.get("reason") or d.get("rationale") or ""
             if reason:
-                lines.append(f"- **model** → `{d.get('model','?')}` ({reason})")
+                lines.append(f"- **model** → `{d.get('model', '?')}` ({reason})")
         elif et.endswith("tool_called"):
             step += 1
             args = d.get("args")
             arg_s = json.dumps(args) if isinstance(args, (dict, list)) else str(args)
-            lines.append(f"- **tool[{step}]** `{d.get('tool','?')}` ← `{arg_s[:120]}`")
+            lines.append(f"- **tool[{step}]** `{d.get('tool', '?')}` ← `{arg_s[:120]}`")
         elif et.endswith("error_occurred"):
             ec = d.get("error_class")
             src = d.get("source", "?")
@@ -209,13 +207,15 @@ def build(args: argparse.Namespace) -> str:
         counts[v] += 1
 
     out.append("## Summary\n")
-    out.append(f"**{counts['PASS']} PASS · {counts['FAIL']} FAIL · {counts['SKIP']} SKIP**\n")
+    out.append(
+        f"**{counts['PASS']} PASS · {counts['FAIL']} FAIL · {counts['SKIP']} SKIP**\n"
+    )
     out.append("| Case | Fix | Seam | Pin | Verdict |")
     out.append("|---|---|---|---|---|")
     for r in rows:
         v = verdicts[r["probe_id"]][0]
         out.append(
-            f"| `{r['probe_id']}` | {r['fix']} | {FIX_TITLES.get(r['fix'],'')} "
+            f"| `{r['probe_id']}` | {r['fix']} | {FIX_TITLES.get(r['fix'], '')} "
             f"| `{r.get('pinned_model') or 'default'}` | {VERDICT_GLYPH[v]} |"
         )
     out.append("")
@@ -232,7 +232,9 @@ def build(args: argparse.Namespace) -> str:
             time.sleep(0.4)  # space reads so the batch doesn't trip the 429 limit
         lf_url = None if args.no_langfuse else _langfuse_url(r["trace_id"], lf_meta)
 
-        out.append(f"\n---\n\n## {i}. `{pid}` — {FIX_TITLES.get(r['fix'],'')}  {VERDICT_GLYPH[v]}\n")
+        out.append(
+            f"\n---\n\n## {i}. `{pid}` — {FIX_TITLES.get(r['fix'], '')}  {VERDICT_GLYPH[v]}\n"
+        )
         out.append(
             f"**Fix:** {r['fix']}  ·  **Pinned model:** `{r.get('pinned_model') or 'default'}`  "
             f"·  **Join id:** `{r.get('case_id')}`  ·  **trace_id:** `{r['trace_id']}`\n"
@@ -275,7 +277,9 @@ def build(args: argparse.Namespace) -> str:
             if lat is not None:
                 extra.append(f"latency {lat}ms")
             suffix = f" ({', '.join(extra)})" if extra else ""
-            out.append(f"🔗 **Langfuse trace:** [{r['trace_id'][:16]}…]({lf_url}){suffix}\n")
+            out.append(
+                f"🔗 **Langfuse trace:** [{r['trace_id'][:16]}…]({lf_url}){suffix}\n"
+            )
         else:
             out.append(
                 f"🔗 **Langfuse trace:** `{r['trace_id']}` "
@@ -294,10 +298,26 @@ def build(args: argparse.Namespace) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--jsonl", type=Path, default=AGENT_ROOT / "cache" / "fix_probe_eval" / "ui_batch.jsonl")
-    ap.add_argument("--recordings", type=Path, default=AGENT_ROOT / "cache" / "black_box_recordings")
-    ap.add_argument("--out", type=Path, default=AGENT_ROOT / "docs" / "research" / "toolcalling" / "F1F7_live_walkthrough.md")
-    ap.add_argument("--no-langfuse", action="store_true", help="skip the Langfuse URL fetch")
+    ap.add_argument(
+        "--jsonl",
+        type=Path,
+        default=AGENT_ROOT / "cache" / "fix_probe_eval" / "ui_batch.jsonl",
+    )
+    ap.add_argument(
+        "--recordings", type=Path, default=AGENT_ROOT / "cache" / "black_box_recordings"
+    )
+    ap.add_argument(
+        "--out",
+        type=Path,
+        default=AGENT_ROOT
+        / "docs"
+        / "research"
+        / "toolcalling"
+        / "F1F7_live_walkthrough.md",
+    )
+    ap.add_argument(
+        "--no-langfuse", action="store_true", help="skip the Langfuse URL fetch"
+    )
     args = ap.parse_args()
 
     if not args.jsonl.exists():

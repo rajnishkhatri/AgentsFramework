@@ -15,7 +15,6 @@ from services.explainability_service import (
     AgentNotFoundError,
     ExplainabilityService,
     WorkflowNotFoundError,
-    WorkflowSummary,
 )
 from services.governance.agent_facts_registry import AgentFactsRegistry
 from services.governance.black_box import BlackBoxRecorder, EventType, TraceEvent
@@ -242,7 +241,9 @@ def test_get_workflow_events_raises_for_unknown_workflow(tmp_path: Path) -> None
     assert exc_info.value.workflow_id == "wf-does-not-exist"
 
 
-def test_get_workflow_events_returns_chain_invalid_when_tampered(tmp_path: Path) -> None:
+def test_get_workflow_events_returns_chain_invalid_when_tampered(
+    tmp_path: Path,
+) -> None:
     """Failure-first: tamper one byte then assert hash_chain_valid is False.
 
     Tampered fixture in -> hash_chain_valid = False out.  Never re-implement SHA256.
@@ -656,7 +657,9 @@ def test_get_guardrail_summary_per_validator_breakdown(tmp_path: Path) -> None:
     assert failure_validators == {"prompt_injection", "output_pii_scan"}
 
 
-def test_get_guardrail_summary_trend_delta_compares_prior_window(tmp_path: Path) -> None:
+def test_get_guardrail_summary_trend_delta_compares_prior_window(
+    tmp_path: Path,
+) -> None:
     """Acceptance: trend is a single number (delta vs prior period) per S2.1.1 AC."""
     recordings = tmp_path / "recordings"
     base = datetime(2026, 4, 26, 12, 0, tzinfo=UTC)
@@ -681,9 +684,7 @@ def test_get_guardrail_summary_trend_delta_compares_prior_window(tmp_path: Path)
         )
 
     svc = ExplainabilityService(recordings_dir=recordings)
-    current = svc.get_guardrail_summary(
-        since=base, until=base + timedelta(hours=1)
-    )
+    current = svc.get_guardrail_summary(since=base, until=base + timedelta(hours=1))
     assert current.pass_rate == 1.0
     assert current.trend_pass_rate_delta == pytest.approx(0.5)
 
@@ -857,6 +858,7 @@ def test_get_agent_card_contains_no_setter_fields(tmp_path: Path) -> None:
     assert card.agent_id == "cli-agent"
     assert card.signature_verified is True
     from services.explainability_service import AgentCard
+
     # Field set must not include signature_hash, ensuring no setter leak.
     assert "signature_hash" not in AgentCard.model_fields
     # Capabilities and policies pass through.
@@ -1186,9 +1188,7 @@ def test_list_workflow_integrity_returns_one_row_per_workflow(
     recordings = tmp_path / "recordings"
     base = datetime(2026, 4, 26, 8, 0, 0, tzinfo=UTC)
     _seed_recorded_workflow(recordings, "wf-a", base_time=base)
-    _seed_recorded_workflow(
-        recordings, "wf-b", base_time=base + timedelta(hours=1)
-    )
+    _seed_recorded_workflow(recordings, "wf-b", base_time=base + timedelta(hours=1))
 
     svc = ExplainabilityService(recordings_dir=recordings)
     summary = svc.list_workflow_integrity()
@@ -1207,12 +1207,8 @@ def test_list_workflow_integrity_matches_per_row_calls(tmp_path: Path) -> None:
     recordings = tmp_path / "recordings"
     base = datetime(2026, 4, 26, 8, 0, 0, tzinfo=UTC)
     _seed_recorded_workflow(recordings, "wf-a", base_time=base)
-    _seed_recorded_workflow(
-        recordings, "wf-b", base_time=base + timedelta(hours=1)
-    )
-    _seed_recorded_workflow(
-        recordings, "wf-c", base_time=base + timedelta(hours=2)
-    )
+    _seed_recorded_workflow(recordings, "wf-b", base_time=base + timedelta(hours=1))
+    _seed_recorded_workflow(recordings, "wf-c", base_time=base + timedelta(hours=2))
     # Tamper one workflow so we exercise the chain_valid=False path.
     trace_file = recordings / "wf-b" / "trace.jsonl"
     lines = trace_file.read_text().strip().split("\n")
@@ -1822,10 +1818,7 @@ def test_guardrail_aggregation_recognises_agent_facts_and_output_shapes(
     assert summary.fail_count == 1  # output scanner blocked
 
     assert "agent_facts" in by_name and by_name["agent_facts"].pass_count == 1
-    assert (
-        "prompt_injection" in by_name
-        and by_name["prompt_injection"].pass_count == 1
-    )
+    assert "prompt_injection" in by_name and by_name["prompt_injection"].pass_count == 1
     # Output scanner must not be labelled "unknown".
     assert "output_scanner" in by_name and by_name["output_scanner"].fail_count == 1
     assert "unknown" not in by_name

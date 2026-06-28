@@ -13,6 +13,7 @@ read back from the trace after the run (Langfuse eval.goal_judge input).
     python scripts/export_goaljudge_depth_strata_json.py
     -> frontend/e2e/fixtures/goaljudge_depth_strata.json
 """
+
 from __future__ import annotations
 
 import json

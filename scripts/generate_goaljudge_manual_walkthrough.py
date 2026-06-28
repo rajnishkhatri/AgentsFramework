@@ -7,13 +7,17 @@ Run from repo root:
 Writes:
     docs/walk-through/04_goaljudge_synthetic_prompt_matrix_manual_walkthrough.md
 """
+
 from __future__ import annotations
 
 import uuid
 from pathlib import Path
 
 AGENT_ROOT = Path(__file__).resolve().parent.parent
-OUT_PATH = AGENT_ROOT / "docs/walk-through/04_goaljudge_synthetic_prompt_matrix_manual_walkthrough.md"
+OUT_PATH = (
+    AGENT_ROOT
+    / "docs/walk-through/04_goaljudge_synthetic_prompt_matrix_manual_walkthrough.md"
+)
 
 import sys
 
@@ -49,19 +53,19 @@ def _ec_checklist(case: GoalJudgeCase) -> str:
     ]
     if gf is True:
         lines.append(
-            "- [ ] **EC** `graceful_failure=true` in `logs/evals.log` (`target=\"goal_judge\"`, same `task_id`)"
+            '- [ ] **EC** `graceful_failure=true` in `logs/evals.log` (`target="goal_judge"`, same `task_id`)'
         )
     elif gf is False:
-        lines.append(
-            "- [ ] **EC** `graceful_failure=false`"
-        )
+        lines.append("- [ ] **EC** `graceful_failure=false`")
     if isinstance(pf, (int, float)) and 0 < pf < 1:
         lines.append(f"- [ ] **EC** `partial_fraction` in `(0,1)` (target ≈ `{pf}`)")
     elif pf == 0.0:
         lines.append("- [ ] **EC** `partial_fraction≈0.0`")
     elif pf == 1.0:
         lines.append("- [ ] **EC** `partial_fraction≈1.0`")
-    lines.append("- [ ] **EC** `per_criterion` + `rationale` cite observable tool evidence (not narration alone)")
+    lines.append(
+        "- [ ] **EC** `per_criterion` + `rationale` cite observable tool evidence (not narration alone)"
+    )
     lines.append(
         f"- [ ] **Coding** Record observed open codes (≤3); target `{case.target_code}` — mismatch is data, not a re-roll"
     )
@@ -118,7 +122,11 @@ def _code_sections() -> str:
     n = 0
     for code, cases in _group_cases():
         n += 1
-        label = "baseline (non-failure)" if code in _NON_FAILURE else f"agent-behavior code {n}"
+        label = (
+            "baseline (non-failure)"
+            if code in _NON_FAILURE
+            else f"agent-behavior code {n}"
+        )
         parts.append(f"### Code group: `{code}` ({label})\n")
         parts.append(f"*{len(cases)} case(s) in this group.*\n")
         for case in cases:
@@ -344,7 +352,13 @@ Hand off annotated `cache/goaljudge_eval/run.jsonl` to Stage 3 axial coding per 
 
 
 def main() -> None:
-    body = HEADER + _index_table() + "\n\n---\n\n## The prompt matrix (GJ-001 … GJ-052)\n\n" + _code_sections() + FOOTER
+    body = (
+        HEADER
+        + _index_table()
+        + "\n\n---\n\n## The prompt matrix (GJ-001 … GJ-052)\n\n"
+        + _code_sections()
+        + FOOTER
+    )
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     OUT_PATH.write_text(body, encoding="utf-8")
     print(f"wrote {len(LIVE_CASES)} cases to {OUT_PATH}")

@@ -155,13 +155,19 @@ def _classify_table(command: str) -> SeverityVerdict | None:
 
     # CRITICAL first (un-promptable). sudo / root-path destructive.
     if head in _CRITICAL_COMMANDS:
-        return _verdict(command, Severity.CRITICAL, f"privileged command '{head}'", "table")
+        return _verdict(
+            command, Severity.CRITICAL, f"privileged command '{head}'", "table"
+        )
     if head == "rm":
         recursive = any(t in _RM_DESTRUCTIVE_FLAGS for t in tokens)
         if _touches_root_path(tokens) and recursive:
-            return _verdict(command, Severity.CRITICAL, "recursive rm on root/home path", "table")
+            return _verdict(
+                command, Severity.CRITICAL, "recursive rm on root/home path", "table"
+            )
         if _touches_root_path(tokens):
-            return _verdict(command, Severity.CRITICAL, "rm targeting root/home path", "table")
+            return _verdict(
+                command, Severity.CRITICAL, "rm targeting root/home path", "table"
+            )
     if head in _HIGH_COMMANDS and _touches_root_path(tokens):
         # e.g. chmod 777 /etc/passwd — escalate a privilege-bit op on a root path.
         if head in {"chmod", "chown"}:
@@ -171,11 +177,15 @@ def _classify_table(command: str) -> SeverityVerdict | None:
 
     # HIGH: network / destructive-scoped / privilege-bit (non-root).
     if head in _HIGH_COMMANDS:
-        return _verdict(command, Severity.HIGH, f"destructive/network command '{head}'", "table")
+        return _verdict(
+            command, Severity.HIGH, f"destructive/network command '{head}'", "table"
+        )
 
     # MEDIUM: explicit create/modify, or a write redirect on any command.
     if head in _MEDIUM_COMMANDS:
-        return _verdict(command, Severity.MEDIUM, f"filesystem-modify command '{head}'", "table")
+        return _verdict(
+            command, Severity.MEDIUM, f"filesystem-modify command '{head}'", "table"
+        )
     if has_write_redirect:
         return _verdict(command, Severity.MEDIUM, "write redirect (> / >>)", "table")
 
@@ -218,7 +228,12 @@ def classify_severity(
 
     # Ambiguous band: the tables can't classify the leading command.
     if judge is None:
-        return _verdict(command, _AMBIGUOUS_DEFAULT, "ambiguous; no judge (conservative default)", "default")
+        return _verdict(
+            command,
+            _AMBIGUOUS_DEFAULT,
+            "ambiguous; no judge (conservative default)",
+            "default",
+        )
     try:
         judged = judge(command)
     except Exception:  # noqa: BLE001 - fail closed, never auto-run on judge error
@@ -226,7 +241,12 @@ def classify_severity(
             "shell_severity: judge failed; falling back to conservative default",
             exc_info=True,
         )
-        return _verdict(command, _AMBIGUOUS_DEFAULT, "ambiguous; judge error (conservative default)", "default")
+        return _verdict(
+            command,
+            _AMBIGUOUS_DEFAULT,
+            "ambiguous; judge error (conservative default)",
+            "default",
+        )
 
     # The judge adjudicates the ambiguous band but does NOT unlock auto-run: a
     # command the tables couldn't recognise is never silently LOW, so a LOW
