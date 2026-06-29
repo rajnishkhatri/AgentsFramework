@@ -1,0 +1,152 @@
+name: reviewer-comment
+
+# PR-comment bot for the deterministic code reviewer (roadmap Item 5).
+#
+# Runs after the `python-tests` workflow completes on a pull_request. That
+# workflow's `reviewer` job uploads a `code-review-report` artifact (review.json).
+# Here we download it, summarize the verdict / criticals / gaps, and post (or
+# update in place) a single PR comment. INFORMATIONAL ONLY — the merge gate is
+# the `reviewer` job itself; this workflow never changes pass/fail state.
+#
+# Split from python-tests.yml because posting a comment needs
+# `pull-requests: write`, while the reviewer job runs read-only. A `workflow_run`
+# trigger runs in the base-repo context, so the elevated token is safe even for
+# fork PRs (the artifact is untrusted data we only read + format).
+
+on:
+  workflow_run:
+    workflows: ["python-tests"]
+    types: [completed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  comment:
+    name: post review summary to PR
+    runs-on: ubuntu-latest
+    # Only for PR-triggered runs (the reviewer job is itself PR-only).
+    if: github.event.workflow_run.event == 'pull_request'
+    steps:
+      - name: Download review report artifact
+        id: download
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const runId = context.payload.workflow_run.id;
+            const arts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: runId,
+            });
+            const art = arts.data.artifacts.find(a => a.name === 'code-review-report');
+            if (!art) {
+              core.info('No code-review-report artifact; nothing to comment.');
+              core.setOutput('found', 'false');
+              return;
+            }
+            const zip = await github.rest.actions.downloadArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: art.id,
+              archive_format: 'zip',
+            });
+            fs.writeFileSync('artifact.zip', Buffer.from(zip.data));
+            core.setOutput('found', 'true');
+
+      - name: Unzip artifact
+        if: steps.download.outputs.found == 'true'
+        run: unzip -o artifact.zip -d review-artifact
+
+      - name: Resolve PR number
+        id: pr
+        if: steps.download.outputs.found == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prs = context.payload.workflow_run.pull_requests;
+            if (prs && prs.length > 0) {
+              core.setOutput('number', String(prs[0].number));
+              return;
+            }
+            // Fork PRs aren't listed on workflow_run; match by head SHA.
+            const sha = context.payload.workflow_run.head_sha;
+            const found = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:pr ${sha}`,
+            });
+            if (found.data.items.length > 0) {
+              core.setOutput('number', String(found.data.items[0].number));
+            } else {
+              core.info('Could not resolve a PR number; skipping comment.');
+              core.setOutput('number', '');
+            }
+
+      - name: Build summary and upsert PR comment
+        if: steps.download.outputs.found == 'true' && steps.pr.outputs.number != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const MARKER = '<!-- code-reviewer-summary -->';
+            const prNumber = Number('${{ steps.pr.outputs.number }}');
+
+            let report;
+            try {
+              report = JSON.parse(fs.readFileSync('review-artifact/review.json', 'utf8'));
+            } catch (e) {
+              core.info('review.json missing or unparseable; skipping.');
+              return;
+            }
+
+            const verdictEmoji = {
+              approve: '✅',
+              request_changes: '⚠️',
+              reject: '❌',
+            };
+            const findings = [];
+            for (const d of (report.dimensions || [])) {
+              for (const f of (d.findings || [])) findings.push(f);
+            }
+            const crit = findings.filter(f => f.severity === 'critical');
+            const warn = findings.filter(f => f.severity === 'warning');
+
+            const fmt = (f) => {
+              const loc = f.line ? `${f.file}:${f.line}` : f.file;
+              return `- \`${f.rule_id}\` ${loc} — ${f.description}`;
+            };
+
+            let body = `${MARKER}\n`;
+            body += `### ${verdictEmoji[report.verdict] || ''} Code reviewer (deterministic, v3): \`${report.verdict}\`\n\n`;
+            body += `${report.statement || ''}\n\n`;
+            body += `**${crit.length} critical · ${warn.length} warning · ${(report.files_reviewed||[]).length} files reviewed**\n`;
+            if (crit.length) body += `\n#### Critical\n${crit.slice(0,20).map(fmt).join('\n')}\n`;
+            if (warn.length) body += `\n#### Warnings\n${warn.slice(0,20).map(fmt).join('\n')}\n`;
+            if ((report.gaps || []).length) {
+              body += `\n#### Not evaluated (gaps)\n${report.gaps.slice(0,10).map(g => `- ${g}`).join('\n')}\n`;
+            }
+            body += `\n<sub>Deterministic path only — no live LLM in CI. Run \`make review ARGS="--llm"\` locally for the certified v3 judge. Blocks merge only on \`reject\`.</sub>`;
+
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const existing = comments.data.find(c => c.body && c.body.includes(MARKER));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }

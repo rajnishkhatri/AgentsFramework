@@ -8,8 +8,8 @@ RUFF := .venv/bin/ruff
 PYRIGHT := npx --yes pyright
 
 .PHONY: test test-fast lint lint-fix format format-check typecheck cite-lint check \
-        explainability-backend explainability-frontend explainability model-ab \
-        model-ab-passk eval-regression-gate
+        review explainability-backend explainability-frontend explainability \
+        model-ab model-ab-passk eval-regression-gate
 
 # Default test run (excludes the infra tree, which needs the `infra` extra and
 # its own marker — see [tool.pytest.ini_options] norecursedirs in pyproject.toml).
@@ -57,6 +57,20 @@ cite-lint:
 # to fix lint/format drift; fix cite-lint failures in the REVIEW.md / AGENTS.md
 # themselves.
 check: lint format-check typecheck cite-lint test
+
+# Routed code reviewer (v3) over branch commits vs main. Deterministic by
+# default (no API key, CI-safe); add ARGS="--llm" to also run the certified v3
+# LLM judge (needs ANTHROPIC_API_KEY / OPENAI_API_KEY / LITELLM_API_KEY). Thin
+# wrapper over `python -m meta.code_reviewer` — the same on-demand reviewer the
+# `code-review` skill and the CI `reviewer` job invoke. Exit codes pass through:
+# 0 approve · 1 request_changes · 2 reject · 3 error. Examples:
+#   make review                  # deterministic, vs origin/main
+#   make review ARGS="--llm"     # + LLM judge
+#   make review BASE=HEAD        # just the working-tree diff vs HEAD
+BASE ?= origin/main...HEAD
+review:
+	$(PYTHON) -m meta.code_reviewer --from-git-diff --git-base "$(BASE)" \
+		--prompt-version v3 --output review.json $(ARGS)
 
 # Model-swap A/B gate (plan Part II). Runs the frozen corpus under two arms and
 # diffs into PROMOTE/HOLD/CONTAMINATED. Real LLM calls — opt-in, NEVER in CI.
