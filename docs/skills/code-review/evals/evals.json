@@ -1,0 +1,26 @@
+{
+  "skill_name": "code-review",
+  "evals": [
+    {
+      "id": 0,
+      "name": "review-branch-before-pr",
+      "prompt": "I've finished my changes on this branch and I'm about to open a PR against main. Can you review the diff and tell me if it's ready to merge?",
+      "expected_output": "Picks the deterministic PR-style invocation (--from-git-diff --git-base 'origin/main...HEAD', no --llm by default), runs it via .venv/bin/python, then INTERPRETS review.json: states the verdict + what CI would do (pass/surface/block), lists any criticals to fix first with the owning rule_id/folder, calls out the gaps (LLM-only dimensions not checked) honestly, and gives a next action. Does not just paste raw JSON. CRITICAL (Step 1.5): reads review.json and if files_reviewed is empty, refuses to call the approve a green light — reports the vacuous pass and falls back to a real review, labeling any fallback verdict as a diagnostic surrogate, not the CI verdict.",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "interpret-existing-reviewjson",
+      "prompt": "Here's the review.json from the code reviewer job that just ran on my PR. It says verdict request_changes with a couple of findings. What does this actually mean and what do I need to do before this can merge?",
+      "expected_output": "Recognizes this is an interpret-only task and does NOT re-run the reviewer. Explains the verdict, translates request_changes into the merge consequence (CI surfaces it but does NOT block — only reject blocks), prioritizes the findings (criticals before warnings), maps each finding's rule_id to its owning folder's AGENTS.md/REVIEW.md, gives fix-vs-justify guidance, and is honest about gaps.",
+      "files": ["sample_review_request_changes.json"]
+    },
+    {
+      "id": 2,
+      "name": "seam-change-needs-adr",
+      "prompt": "I added a new horizontal service under services/notifications/ and wired it in. Before I push, run the reviewer over my branch and let me know if there's anything I'm missing.",
+      "expected_output": "Runs the deterministic reviewer with --from-git-diff (so the ADR.1 added-file trigger can fire) vs origin/main...HEAD. Interprets the result: if the ADR.1/D2 trigger fires (new service is an 'Ask first' trigger with no new docs/adr/ file), it surfaces that as the key finding, explains it cites the ADR ratchet, and points the user to copy docs/adr/0000-template.md and file an ADR before re-running. Reports verdict + CI consequence + gaps.",
+      "files": []
+    }
+  ]
+}

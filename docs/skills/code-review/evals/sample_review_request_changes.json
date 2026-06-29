@@ -1,0 +1,90 @@
+{
+  "verdict": "request_changes",
+  "statement": "Request changes: one critical architecture violation (an upward import from services/ into components/) blocks the layering invariant, and the new service's tests are happy-path only. Fix the import; add a failure-path test.",
+  "confidence": 0.95,
+  "dimensions": [
+    {
+      "dimension": "D1",
+      "name": "Architectural Compliance",
+      "status": "fail",
+      "hypotheses_tested": 3,
+      "hypotheses_confirmed": 1,
+      "hypotheses_killed": 2,
+      "findings": [
+        {
+          "rule_id": "D1.R1",
+          "dimension": "D1 Architectural Compliance",
+          "severity": "critical",
+          "file": "services/notifications/sender.py",
+          "line": 12,
+          "description": "Upward import: services/ imports from components/ (`from components.router import route`). Dependencies must flow downward only (Invariant #1); services/ must not import components/.",
+          "fix_suggestion": "Invert the dependency — pass the routed value in as a parameter from the orchestration layer, or move the shared type into trust/.",
+          "confidence": 1.0,
+          "certificate": {
+            "premises": [
+              "services/notifications/sender.py:12 `from components.router import route`",
+              "AGENTS.md Invariant #1: Orchestration → Components → Services → Trust; never upward"
+            ],
+            "traces": [
+              "services/notifications/sender.py -> components/router.py"
+            ],
+            "conclusion": "D1.R1 FAIL — services/ imports components/, an upward dependency."
+          }
+        }
+      ]
+    },
+    {
+      "dimension": "D3",
+      "name": "Test Quality",
+      "status": "partial",
+      "hypotheses_tested": 2,
+      "hypotheses_confirmed": 1,
+      "hypotheses_killed": 1,
+      "findings": [
+        {
+          "rule_id": "D3.TAP4",
+          "dimension": "D3 Test Quality",
+          "severity": "warning",
+          "file": "tests/services/test_notifications.py",
+          "line": null,
+          "description": "Failure-path ratio low: 6 happy-path tests, 0 failure-path tests. TAP-4 wants the rejection path covered before the acceptance path.",
+          "fix_suggestion": "Add at least one test for the send-failure / invalid-recipient path.",
+          "confidence": 0.85,
+          "certificate": {
+            "premises": [
+              "tests/services/test_notifications.py: 6 test_* defs, none assert on error"
+            ],
+            "traces": [],
+            "conclusion": "D3.TAP4 WARN — happy-path-only suite."
+          }
+        }
+      ]
+    },
+    {
+      "dimension": "D4",
+      "name": "Trust Framework Integrity",
+      "status": "pass",
+      "hypotheses_tested": 0,
+      "hypotheses_confirmed": 0,
+      "hypotheses_killed": 0,
+      "findings": []
+    }
+  ],
+  "gaps": [
+    "D2 ADR Ratchet: not evaluated (LLM-only dimension; run with --llm).",
+    "D5 Code Quality style/design: not evaluated deterministically.",
+    "Frontend FD2/FD3: no frontend files in this diff."
+  ],
+  "validation_log": [
+    "check_dependency_rules ran on services/notifications/sender.py -> FAIL",
+    "detect_failure_path_ratio ran on tests/services/test_notifications.py -> WARN",
+    "check_trust_purity ran on services/notifications/sender.py -> PASS"
+  ],
+  "files_reviewed": [
+    "services/notifications/sender.py",
+    "services/notifications/__init__.py",
+    "tests/services/test_notifications.py"
+  ],
+  "created_at": "2026-06-29T11:49:39.224543Z",
+  "metadata": {}
+}
