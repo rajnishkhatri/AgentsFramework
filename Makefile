@@ -7,7 +7,7 @@ RUFF := .venv/bin/ruff
 # pyright is not a Python package dep; run via npx (node is required on PATH).
 PYRIGHT := npx --yes pyright
 
-.PHONY: test test-fast lint lint-fix format format-check typecheck cite-lint check \
+.PHONY: test test-fast lint lint-fix format format-check typecheck cite-lint hygiene check \
         review explainability-backend explainability-frontend explainability \
         model-ab model-ab-passk eval-regression-gate
 
@@ -52,11 +52,26 @@ typecheck:
 cite-lint:
 	$(PYTHON) -m code_reviewer.cite_lint --root .
 
-# The full local gate: lint + format drift + types + cite-lint + tests.
-# READ-ONLY — fails on issues, never rewrites files. Use `make lint-fix format`
-# to fix lint/format drift; fix cite-lint failures in the REVIEW.md / AGENTS.md
-# themselves.
-check: lint format-check typecheck cite-lint test
+# Hygiene hooks (end-of-file-fixer, trailing-whitespace, merge-conflict,
+# large-files) — the SAME pre-commit set CI runs in pre-commit.yml, which
+# `make check` historically did NOT, so a missing trailing newline (e.g. a
+# fixture written by `model_dump_json`) passed locally and failed only in CI.
+# Running it here closes that gap: `pre-commit run` exits non-zero when a hook
+# modifies a file, so this FAILS the gate on drift even though the hook also
+# fixes it — re-stage and re-run, exactly as CI requires. Degrades gracefully
+# if pre-commit isn't installed (skip with a notice rather than break `check`).
+hygiene:
+	@for hook in end-of-file-fixer trailing-whitespace check-merge-conflict check-added-large-files; do \
+		$(PYTHON) -m pre_commit run --all-files "$$hook" \
+			|| { echo "make hygiene: '$$hook' modified/failed — re-stage and re-run (this is the gate CI enforces)"; exit 1; }; \
+	done
+
+# The full local gate: lint + format drift + types + cite-lint + hygiene + tests.
+# READ-ONLY in spirit — fails on issues. Use `make lint-fix format` to fix
+# lint/format drift; `make hygiene` will fix+flag whitespace/newline drift; fix
+# cite-lint failures in the REVIEW.md / AGENTS.md themselves. Matches CI so
+# "green locally" means "green in CI".
+check: lint format-check typecheck cite-lint hygiene test
 
 # Routed code reviewer (v3) over branch commits vs main. Deterministic by
 # default (no API key, CI-safe); add ARGS="--llm" to also run the certified v3
