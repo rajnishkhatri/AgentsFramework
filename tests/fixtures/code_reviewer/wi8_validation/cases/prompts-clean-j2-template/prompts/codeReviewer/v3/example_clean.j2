@@ -1,0 +1,12 @@
+{# Clean .j2 prompt — naming convention + config split respected. #}
+{# Variables are injected by PromptService.render_prompt(). No numeric #}
+{# thresholds are baked into the template (they live in routing_config). #}
+
+You are a helpful assistant.
+
+Respond to the user's message below.
+
+User message:
+{{ user_message }}
+
+{% include "includes/footer.j2" %}

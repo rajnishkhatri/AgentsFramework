@@ -1,0 +1,394 @@
+{
+  "version": 1,
+  "generated_by": "scripts/record_code_reviewer_validation.py",
+  "judge_model": "anthropic/claude-haiku-4-5-20251001",
+  "detection_convention": "goal_met = no critical/warning LLM findings (notes/info do not count as failure detection). This isolates judge detection (WI-8) from verdict-policy calibration (WI-9).",
+  "gate": {
+    "tpr_min": 0.9,
+    "tnr_min": 0.9
+  },
+  "records": [
+    {
+      "case_id": "trust-tap1-tautological-test",
+      "folder": "trust",
+      "gold_goal_met": false,
+      "rule_id": "TAP-1",
+      "llm_verdict": "request_changes",
+      "llm_statement": "The submission introduces a test file with tautological assertions that violate TAP-1 (test anti-pattern). The test reimplements nothing and asserts only identity equality, providing zero validation of the production code. This must be rewritten to assert meaningful behavior.",
+      "llm_confidence": 0.95,
+      "finding_count": 2,
+      "actionable_finding_count": 2,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "TAP-1",
+          "dimension": "D3",
+          "severity": "warning",
+          "file": "tests/trust/test_tautology.py",
+          "description": "Tautological assertion: `assert s == s` passes regardless of whether `IdentityStatus.ACTIVE` is correctly defined or behaves as intended. The test asserts only that a value equals itself, which is always true and provides zero validation of production code correctness."
+        },
+        {
+          "rule_id": "TAP-1",
+          "dimension": "D3",
+          "severity": "warning",
+          "file": "tests/trust/test_tautology.py",
+          "description": "Tautological assertion: `assert p == p` passes regardless of whether `IdentityStatus.ACTIVE` is correctly defined or behaves as intended. The test asserts only that a value equals itself, which is always true and provides zero validation of production code correctness."
+        }
+      ]
+    },
+    {
+      "case_id": "services-h5-no-eval-capture",
+      "folder": "services",
+      "gold_goal_met": false,
+      "rule_id": "H5",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical finding (H5 \u2014 eval_capture.record missing) and one warning (H2 \u2014 model tier not from llm_config). The file violates the eval/governance pipeline contract and deviates from the service design pattern.",
+      "llm_confidence": 0.95,
+      "finding_count": 2,
+      "actionable_finding_count": 2,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "H5",
+          "dimension": "D2",
+          "severity": "critical",
+          "file": "services/example_llm_call.py",
+          "description": "LLM call via `llm.invoke()` is not recorded via `eval_capture.record()`. Every LLM invocation must be recorded with user_id + task_id for eval/governance pipeline visibility. This call site produces an invisible run."
+        },
+        {
+          "rule_id": "H2",
+          "dimension": "D2",
+          "severity": "warning",
+          "file": "services/example_llm_call.py",
+          "description": "Model tier `'gpt-4o-mini'` is hardcoded in AgentConfig instantiation. Per H2, model selection should be delegated to `llm_config.LLMService` tier resolution, not hardcoded at the call site. This breaks the model-tier abstraction and makes it difficult to swap models globally."
+        }
+      ]
+    },
+    {
+      "case_id": "services-ap1-trust-type-in-service",
+      "folder": "services",
+      "gold_goal_met": false,
+      "rule_id": "AP-1",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical finding (AP-1: trust-kernel type defined in service layer) requires moving VerdictRecord to trust/models.py. This violates the shared-kernel boundary and creates hidden coupling to trust semantics.",
+      "llm_confidence": 0.98,
+      "finding_count": 1,
+      "actionable_finding_count": 1,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "AP-1",
+          "dimension": "D4",
+          "severity": "warning",
+          "file": "services/decision_store.py",
+          "description": "VerdictRecord is a trust-kernel type (signed/unsigned verdict metadata) defined in a horizontal service. Trust-level types with re-signing contracts must live in trust/models.py so the trust kernel can enforce its invariants. Placing this in services/ creates hidden coupling: other services will import it, but the trust layer cannot see or govern the re-signing boundary."
+        }
+      ]
+    },
+    {
+      "case_id": "components-v6-raw-dict-output",
+      "folder": "components",
+      "gold_goal_met": false,
+      "rule_id": "V6",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical violation of V6 (Pydantic models for non-trivial outputs) detected in components/summary_reporter.py. The function returns a raw dict with structured data (mean, max, min, count) instead of a Pydantic model, violating the component design pattern that requires type safety and field documentation for non-trivial outputs.",
+      "llm_confidence": 0.95,
+      "finding_count": 1,
+      "actionable_finding_count": 1,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "V6",
+          "dimension": "D2",
+          "severity": "warning",
+          "file": "components/summary_reporter.py",
+          "description": "Function `summarize()` returns a raw `dict[str, Any]` containing non-trivial structured output (mean, max, min, count statistics). V6 requires Pydantic models for non-trivial outputs to provide callers with validation, type safety, and field documentation instead of an untyped mapping."
+        }
+      ]
+    },
+    {
+      "case_id": "orchestration-ap5-fat-node",
+      "folder": "orchestration",
+      "gold_goal_met": false,
+      "rule_id": "AP-5",
+      "llm_verdict": "request_changes",
+      "llm_statement": "The new orchestration node `fat_node.py` violates AP-5 (thin-wrapper rule) by inlining domain logic that must be pushed into a component. The node exceeds the 10\u201315 line guideline and performs routing, scoring, confidence flagging, prompt rendering, and verdict assembly \u2014 all responsibilities that belong in `components/`. Additionally, a new graph node without a corresponding ADR file triggers the ADR.1 ratchet (warning, D2). No deterministic violations detected in D1 (dependencies) or D4 (trust purity).",
+      "llm_confidence": 0.92,
+      "finding_count": 2,
+      "actionable_finding_count": 2,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "AP-5",
+          "dimension": "D5",
+          "severity": "warning",
+          "file": "orchestration/fat_node.py",
+          "description": "Orchestration node `review_node()` violates the thin-wrapper rule (\u226410\u201315 lines). The function inlines domain logic: (1) routing logic (line 16), (2) scoring loop with confidence branching (lines 17\u201322), (3) prompt rendering via PromptService (line 23), (4) verdict assembly and conditional mutation (lines 24\u201327). These responsibilities belong in a dedicated component (e.g., `components/review_orchestrator.py`), not in the graph node. The node should delegate to that component in a single call."
+        },
+        {
+          "rule_id": "ADR.1",
+          "dimension": "D2",
+          "severity": "warning",
+          "file": "orchestration/fat_node.py",
+          "description": "New graph node added (`orchestration/fat_node.py`) without a corresponding ADR file. Per the ADR.1 ratchet (root REVIEW.md), adding a new node to the orchestration graph is an '\u26a0\ufe0f Ask first' trigger. The submission includes no new file under `docs/adr/` documenting the design decision for this node's role, responsibilities, and integration point."
+        }
+      ]
+    },
+    {
+      "case_id": "meta-ap6-fabricated-metric",
+      "folder": "meta",
+      "gold_goal_met": false,
+      "rule_id": "AP-6",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical anti-pattern violation (AP-6: fabricated metric) detected in meta/example_metric.py. The function returns 0.0 when the denominator is zero, fabricating a real-looking metric from undecidable data instead of returning None to fail-closed. This violates the meta/ evaluation conventions and must be corrected before merge.",
+      "llm_confidence": 0.98,
+      "finding_count": 1,
+      "actionable_finding_count": 1,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "AP-6",
+          "dimension": "D5",
+          "severity": "critical",
+          "file": "meta/example_metric.py",
+          "description": "Function `failure_rate()` returns 0.0 when `tp + fn == 0` (no gold-positive data exists). This fabricates a real-looking metric from undecidable data. Per meta/AGENTS.md \u00a7Eval conventions, undecidable cases must return None so downstream gates fail-closed instead of silently trusting a zero. The docstring itself documents this bug (\"WRONG: should be None\")."
+        }
+      ]
+    },
+    {
+      "case_id": "frontend-fd4-a11y-missing-label",
+      "folder": "frontend",
+      "gold_goal_met": false,
+      "rule_id": "FD4",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical accessibility violation (FD4) detected. The EmailForm component lacks proper labeling for its email input, violating WCAG 2.2 AA standards and making it inaccessible to screen-reader users.",
+      "llm_confidence": 0.95,
+      "finding_count": 1,
+      "actionable_finding_count": 1,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "FD4 Accessibility",
+          "dimension": "FD4",
+          "severity": "critical",
+          "file": "frontend/components/EmailForm.tsx",
+          "description": "The <input type=\"email\"> element has no associated <label>, aria-label, or aria-labelledby attribute. Screen-reader users cannot determine the input's purpose. This violates WCAG 2.2 AA Level AA accessibility standards (criterion 1.3.1 Info and Relationships, 3.3.2 Labels or Instructions)."
+        }
+      ]
+    },
+    {
+      "case_id": "frontend-fd7-direct-cloud-call",
+      "folder": "frontend",
+      "gold_goal_met": false,
+      "rule_id": "FD7",
+      "llm_verdict": "reject",
+      "llm_statement": "Critical security violations detected. The component directly calls a cloud API from the browser and embeds a live bearer token in the client bundle, violating FD3 (BFF holds no cloud credentials) and FD7 (auto-reject anti-pattern FE-AP-18: hardcoded secrets in frontend code). All cloud access must route through the BFF/middleware layer.",
+      "llm_confidence": 1.0,
+      "finding_count": 3,
+      "actionable_finding_count": 3,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "FD3 Security \u2014 BFF holds no cloud credentials",
+          "dimension": "FD3",
+          "severity": "critical",
+          "file": "frontend/components/UserList.tsx",
+          "description": "Component directly calls cloud API (https://api.example.com/users) from the browser. The BFF/middleware layer must mediate all cloud service access; the browser must never hold cloud credentials or call external APIs directly."
+        },
+        {
+          "rule_id": "FD3 Security \u2014 BFF holds no cloud credentials",
+          "dimension": "FD3",
+          "severity": "critical",
+          "file": "frontend/components/UserList.tsx",
+          "description": "Hardcoded bearer token 'sk-live-1234567890' embedded in the client bundle. This live secret is exposed to every visitor and will be committed to version control. Secrets must never appear in frontend code."
+        },
+        {
+          "rule_id": "FD7 Anti-Patterns (auto-reject FE-AP-4/6/7/12/18/19)",
+          "dimension": "FD7",
+          "severity": "critical",
+          "file": "frontend/components/UserList.tsx",
+          "description": "FE-AP-18 (hardcoded secrets in frontend code) and FE-AP-4 (direct cloud API calls from browser) are both present. These are auto-reject anti-patterns per the frontend AGENTS.md. The component violates the Frontend Ring architecture: all cloud access must be mediated by the BFF/middleware."
+        }
+      ]
+    },
+    {
+      "case_id": "middleware-fd1-trace-id-generated",
+      "folder": "middleware",
+      "gold_goal_met": false,
+      "rule_id": "F-R2/FD1-trace",
+      "llm_verdict": "request_changes",
+      "llm_statement": "One critical finding in FD3 (BFF credential security) and one warning in FD1 (trace_id generation). The middleware is generating a trace_id that must flow verbatim from upstream; this breaks distributed-trace continuity and violates the credentialed-layer contract.",
+      "llm_confidence": 0.95,
+      "finding_count": 2,
+      "actionable_finding_count": 2,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "FD1",
+          "dimension": "FD1 Layering",
+          "severity": "warning",
+          "file": "middleware/withTrace.ts",
+          "description": "trace_id is generated locally via `crypto.randomUUID()`. Per middleware/AGENTS.md \u00a7Local essentials, trace_id must flow verbatim from the upstream caller (frontend \u2192 middleware \u2192 backend). Generating it here breaks distributed-trace continuity and means this layer owns identity it should only forward."
+        },
+        {
+          "rule_id": "BFF holds no cloud credentials",
+          "dimension": "FD3 Security",
+          "severity": "critical",
+          "file": "middleware/withTrace.ts",
+          "description": "The file `middleware/withTrace.ts` is part of the credentialed BFF layer. Per middleware/AGENTS.md \u00a7Local essentials and the FD3 security rule, the BFF must hold no cloud credentials. While this specific file does not *explicitly* embed credentials in the visible code, the middleware layer's role as a credentialed boundary means any credential-handling logic must be audited. The current implementation does not show credential injection, but the rule requires AST validation (`check_secrets_in_public_env`) to confirm no secrets are embedded in environment variables or hardcoded strings. Assuming the AST check passes, this is a structural compliance note; if the AST check fails, this becomes a blocker."
+        }
+      ]
+    },
+    {
+      "case_id": "scripts-hooks-hook1-blocks-edit",
+      "folder": "scripts/hooks",
+      "gold_goal_met": false,
+      "rule_id": "HOOK-1",
+      "llm_verdict": "reject",
+      "llm_statement": "Critical violation of HOOK-1: PostToolUse hook must never block the edit. This hook emits a 'block' decision and exits non-zero, directly violating the Track A invariant that PostToolUse hooks are observational only.",
+      "llm_confidence": 1.0,
+      "finding_count": 1,
+      "actionable_finding_count": 1,
+      "detected": true,
+      "findings": [
+        {
+          "rule_id": "HOOK-1",
+          "dimension": "D5",
+          "severity": "critical",
+          "file": "scripts/hooks/block_edit.py",
+          "description": "PostToolUse hook violates HOOK-1 by emitting a 'block' decision. Line 16 prints a JSON object with `\"decision\": \"block\"`, and line 17 exits with non-zero status (2). HOOK-1 mandates that PostToolUse hooks must NEVER block the edit\u2014they may only observe, log, or format. A blocking decision from a PostToolUse hook rejects the user's edit, violating the invariant that the edit always stands."
+        }
+      ]
+    },
+    {
+      "case_id": "trust-clean-pure-enum",
+      "folder": "trust",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "trust/enums_extra.py is a clean, minimal enum definition that satisfies all trust-kernel invariants. No violations detected.",
+      "llm_confidence": 1.0,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "services-clean-tier-config",
+      "folder": "services",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "File passes all routed enforcement rules. H2 model-tier pattern correctly implemented; no trust types, components, or framework coupling detected. No deterministic violations found.",
+      "llm_confidence": 0.95,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "components-clean-pydantic-router",
+      "folder": "components",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "File passes all routed enforcement rules. Deterministic checks (D1 dependency/anti-pattern rules) pass; LLM-judged design patterns (V2, V6) are correctly implemented.",
+      "llm_confidence": 0.95,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "orchestration-clean-thin-node",
+      "folder": "orchestration",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "The new orchestration node `clean_node.py` is a thin wrapper that correctly delegates all domain logic to `components.clean_router.route()`. It respects the AP-5 anti-pattern rule (\u226410\u201315 lines, no domain logic in the node itself). No ADR trigger detected (no new dependency, no graph topology change, no config split). No deterministic violations found.",
+      "llm_confidence": 0.95,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "meta-clean-none-metric",
+      "folder": "meta",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "meta/clean_metric.py passes all routed enforcement rules. The function correctly returns None for undecidable cases (AP-6 compliance), contains no orchestration imports (AP-4 compliance), and exhibits sound defensive design. No critical or warning-severity violations detected.",
+      "llm_confidence": 1.0,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "frontend-clean-accessible-form",
+      "folder": "frontend",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "ContactForm.tsx is a clean, accessible frontend component with no violations of the routed FD1\u2013FD7 dimensions. All deterministic security checks pass; accessibility patterns are correctly implemented.",
+      "llm_confidence": 0.95,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "frontend-clean-adapter-hook",
+      "folder": "frontend",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "frontend/hooks/useSession.ts is a clean, well-structured hook that correctly respects FD1 layering (SDK imported only via adapter), avoids JWT in browser storage, and contains no security anti-patterns. No violations detected against the routed frontend/REVIEW.md enforcement map.",
+      "llm_confidence": 1.0,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "middleware-clean-auth-passthrough",
+      "folder": "middleware",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "middleware/authPassthrough.ts passes all routed enforcement rules. FD1 (layering) and FD3 (security) are clean: no SDK imports, no credential storage, trace_id flows verbatim with fail-safe enforcement. No ADR.1 trigger detected.",
+      "llm_confidence": 0.98,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "scripts-hooks-clean-safety-guard",
+      "folder": "scripts/hooks",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "clean_guard.py is a well-structured PreToolUse safety hook that respects all three HOOK invariants (HOOK-1, HOOK-2, HOOK-3). The code is thin, fail-safe, and correctly implements non-blocking safety checks. No violations detected.",
+      "llm_confidence": 0.95,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    },
+    {
+      "case_id": "prompts-clean-j2-template",
+      "folder": "prompts",
+      "gold_goal_met": true,
+      "rule_id": null,
+      "llm_verdict": "approve",
+      "llm_statement": "The submitted prompt file is clean and compliant with all routed enforcement rules. No violations detected.",
+      "llm_confidence": 1.0,
+      "finding_count": 0,
+      "actionable_finding_count": 0,
+      "detected": false,
+      "findings": []
+    }
+  ]
+}

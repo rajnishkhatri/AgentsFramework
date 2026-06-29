@@ -1,0 +1,27 @@
+---
+description: Reviewer enforcement context for services/ — horizontal infrastructure (prompts, guardrails, LLM config, eval capture, observability, governance, tools). Points the unified reviewer at services/REVIEW.md, which cites services/AGENTS.md rule IDs (Invariant #4/#7, AP-1/2/3, H1/H2/H4/H5, TAP-2/TAP-4). Auto-attached when any file under services/ is in context.
+globs: services/**
+alwaysApply: false
+---
+
+# Reviewing changes in `services/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`services/REVIEW.md`** for any
+changed path under `services/`. That map cites rule IDs from `services/AGENTS.md` (e.g.
+`Invariant #4`, `AP-1`, `H1`, `TAP-2`) and root `AGENTS.md` (`Invariant #7`) — it never
+restates the rule text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D1 dependency table (`check_dependency_rules`) — services must not import `components/`
+  or `langgraph`/`langchain` (exception: `llm_config.py` wraps `ChatLiteLLM`).
+- D5 anti-patterns (`detect_anti_patterns` AP-2/AP-3/AP-5/AP-6) including hardcoded prompts (AP-3).
+- D3 TAP-2 mock abuse + TAP-4 failure-path ratio on `tests/services/**`.
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

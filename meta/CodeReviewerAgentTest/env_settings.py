@@ -60,6 +60,13 @@ class EnvSettings(BaseSettings):
 # still work via the defensive fallback below.
 
 _MODEL_REGISTRY: dict[str, dict[str, float | int | str]] = {
+    "anthropic/claude-haiku-4-5-20251001": {
+        "name": "claude-haiku-4-5",
+        "tier": "fast",
+        "context_window": 200_000,
+        "cost_per_1k_input": 0.0008,
+        "cost_per_1k_output": 0.004,
+    },
     "anthropic/claude-3-haiku-20240307": {
         "name": "claude-3-haiku",
         "tier": "fast",

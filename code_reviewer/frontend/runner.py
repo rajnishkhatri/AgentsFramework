@@ -76,6 +76,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from code_reviewer.frontend.findings import severity_for_rule
 from code_reviewer.frontend.tools import (
     REPO_ROOT,
     applicable_tools,
@@ -411,18 +412,10 @@ def _classify_layer(p: str) -> str:
 # ── Rules-only aggregation ────────────────────────────────────────────
 
 
-def severity_for_rule(rule: str) -> str:
-    """Map a tool-emitted rule id to a ReviewReport severity."""
-    crit = {"CSP1", "CSP2", "SBX2"}
-    if rule in crit:
-        return "critical"
-    if rule.startswith("U_") or rule.startswith("HARD"):
-        return "warning"
-    if rule == "SBX1":
-        return "critical"
-    if rule.startswith("name~") or rule.startswith("value~"):
-        return "critical"  # FE-AP-18
-    return "warning"
+# `severity_for_rule` is imported from `code_reviewer.frontend.findings`
+# (single source) — see WI-6. The legacy per-tool mappers below stay local to
+# this runner because it is superseded by v3 and frozen; v3 uses the shared
+# `findings.py` mappers that emit trust-schema ReviewFinding objects.
 
 
 def _findings_from_check_csp_strict(

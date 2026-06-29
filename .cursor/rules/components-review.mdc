@@ -1,0 +1,27 @@
+---
+description: Reviewer enforcement context for components/ — framework-agnostic domain logic (router, evaluator, schemas). Points the unified reviewer at components/REVIEW.md, which cites components/AGENTS.md rule IDs (Invariant #3/#5, V1/V2/V6, TAP-3). Auto-attached when any file under components/ is in context.
+globs: components/**
+alwaysApply: false
+---
+
+# Reviewing changes in `components/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`components/REVIEW.md`** for
+any changed path under `components/`. That map cites rule IDs from
+`components/AGENTS.md` (e.g. `Invariant #3`, `V2`, `TAP-3`) — it never restates the rule
+text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D1 dependency table (`check_dependency_rules`) — components must not import `langgraph`/
+  `langchain`; no peer imports (`router.py` must not import `evaluator.py`).
+- D5 anti-patterns (`detect_anti_patterns` AP-2 peer coupling / AP-5 / AP-6).
+- D1 test-import rule — `tests/components/` must not import orchestration.
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

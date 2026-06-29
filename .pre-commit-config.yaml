@@ -34,6 +34,24 @@ repos:
       - id: check-added-large-files
         args: [--maxkb=1024]
 
+  # Cite + encoding lint for the REVIEW.md / AGENTS.md enforcement maps
+  # (WI-2, P2-11, P3). Runs the full-repo scan only when a REVIEW.md or
+  # AGENTS.md is staged. Catches dangling cites, cross-folder cites, and
+  # mojibake at commit time — the same gate as `make check`, one layer
+  # earlier. `pass_filenames: false` because cite-lint discovers files
+  # itself via --root. Uses plain `python` (not `.venv/bin/python`) so the
+  # same entry works in CI where there's no venv — cite_lint is stdlib-only
+  # and doesn't import the logfire/opentelemetry stack that requires the
+  # pinned venv interpreter.
+  - repo: local
+    hooks:
+      - id: cite-lint
+        name: cite-lint (REVIEW.md / AGENTS.md enforcement maps)
+        entry: python -m code_reviewer.cite_lint --root .
+        language: system
+        pass_filenames: false
+        files: '(^|/)(REVIEW|AGENTS)\.md$'
+
 # Never touch generated / vendored trees.
 exclude: |
   (?x)^(

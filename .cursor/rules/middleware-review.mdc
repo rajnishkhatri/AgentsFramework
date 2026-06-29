@@ -1,0 +1,28 @@
+---
+description: Reviewer enforcement context for middleware/ — the credentialed BFF layer of the Frontend Ring. Points the unified reviewer at middleware/REVIEW.md, which cites middleware/AGENTS.md + frontend/AGENTS.md rule IDs (F-R2, BFF-holds-no-cloud-credentials, trace_id passthrough). Auto-attached when any file under middleware/ is in context.
+globs: middleware/**
+alwaysApply: false
+---
+
+# Reviewing changes in `middleware/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`middleware/REVIEW.md`** for
+any changed path under `middleware/`. That map cites rule IDs from
+`middleware/AGENTS.md` and `frontend/AGENTS.md` (e.g. `F-R2`, the
+BFF-holds-no-cloud-credentials rule, `trace_id` passthrough) — it never restates the rule
+text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- FD3 `check_secrets_in_public_env` — the credentialed BFF must hold no cloud credentials
+  (critical).
+- FD1 F-R2 — SDK imports confined to `middleware/adapters/` (LLM-judged).
+- FD1 `trace_id` flows verbatim, never generated here (LLM-judged).
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

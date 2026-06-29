@@ -1,0 +1,50 @@
+{# codeReviewer/v3 architecture rules
+   Schema-compatible with v1/v2. The authoritative per-folder rules are injected
+   at submission time from the routed REVIEW.md (rules_file_content). This block
+   holds only the stable, repo-wide reference tables the reviewer always needs. #}
+
+## Dependency Table (deterministic — `check_dependency_rules`)
+
+| # | From | To | Allowed? | Rule ID |
+|---|------|----|----------|---------|
+| R1 | Trust Foundation | Anything above | FORBIDDEN | DEP.trust_no_upward |
+| R2 | Horizontal (services) | Trust Foundation | Yes | DEP.h_reads_trust |
+| R4 | Horizontal (services) | Vertical (components) | FORBIDDEN | DEP.h_no_vertical |
+| R7 | Vertical | Vertical | FORBIDDEN | DEP.v_no_v |
+| R11 | Any | Orchestration | FORBIDDEN | DEP.no_upward_to_orch |
+| R12 | Meta | Orchestration | FORBIDDEN | DEP.meta_no_orch (AP-4) |
+
+## Trust Foundation Rules (deterministic — `check_trust_purity`)
+
+- **T1**: `trust/` has zero outward dependencies (Invariant #2).
+- **T2**: `trust/` remains pure — no I/O, logging, network (TRUST_PURITY.io_import).
+- **T4**: signed vs unsigned metadata boundary respected (re-sign trigger).
+
+## Anti-Patterns (AST where marked)
+
+- **AP-1** trust types inside a service → shared types live in `trust/`.
+- **AP-2** horizontal-to-horizontal service coupling.
+- **AP-3** hardcoded prompt strings (AST: `detect_anti_patterns`).
+- **AP-5** orchestration node with domain logic (not a thin wrapper).
+- **AP-6** Pydantic BaseModel defined in `utils/`/`services/` (AST).
+
+## Frontend deterministic predicates (TS — `code_reviewer/frontend/tools.py`)
+
+- `check_csp_strict`, `check_iframe_sandbox`, `check_secrets_in_public_env`,
+  `check_jwt_storage`, `check_composer_keyboard`. These run first for TS/TSX files
+  and their PASS/FAIL takes precedence over LLM judgment.
+
+## ADR Ratchet (Track C — root `REVIEW.md` ADR.1)
+
+A diff matching an `⚠️ Ask first` trigger (new `pyproject.toml` dependency,
+`trust/models.py` change, new node in `orchestration/react_loop.py`, or a new
+horizontal service) with **no** new file under `docs/adr/` → flag **ADR.1**
+(warning, D2). This is mechanically checkable from the changed-file list.
+
+---
+
+## Routed enforcement map (authoritative for THIS review)
+
+The rules you must actually enforce for each file are injected per folder-group
+from the routed `REVIEW.md` as `rules_file_content` in the submission. Enforce
+exactly those rows — this reference block is context, the `REVIEW.md` is the gate.

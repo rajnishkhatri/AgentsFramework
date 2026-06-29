@@ -7,7 +7,7 @@ RUFF := .venv/bin/ruff
 # pyright is not a Python package dep; run via npx (node is required on PATH).
 PYRIGHT := npx --yes pyright
 
-.PHONY: test test-fast lint lint-fix format format-check typecheck check \
+.PHONY: test test-fast lint lint-fix format format-check typecheck cite-lint check \
         explainability-backend explainability-frontend explainability model-ab \
         model-ab-passk eval-regression-gate
 
@@ -44,9 +44,19 @@ format-check:
 typecheck:
 	$(PYRIGHT)
 
-# The full local gate: lint + format drift + types + tests. READ-ONLY —
-# fails on issues, never rewrites files. Use `make lint-fix format` to fix.
-check: lint format-check typecheck test
+# Cite + encoding lint for every REVIEW.md / AGENTS.md enforcement map (WI-2,
+# P2-11, P3). Verifies that every rule_id cited in a REVIEW.md resolves to a
+# real token in the named AGENTS.md, that cites are local (no cross-folder
+# cites), and that no map/source is mojibake-corrupted. Read-only — exits 1
+# on any dangling cite, cross-folder cite, or encoding defect.
+cite-lint:
+	$(PYTHON) -m code_reviewer.cite_lint --root .
+
+# The full local gate: lint + format drift + types + cite-lint + tests.
+# READ-ONLY — fails on issues, never rewrites files. Use `make lint-fix format`
+# to fix lint/format drift; fix cite-lint failures in the REVIEW.md / AGENTS.md
+# themselves.
+check: lint format-check typecheck cite-lint test
 
 # Model-swap A/B gate (plan Part II). Runs the frozen corpus under two arms and
 # diffs into PROMOTE/HOLD/CONTAMINATED. Real LLM calls — opt-in, NEVER in CI.

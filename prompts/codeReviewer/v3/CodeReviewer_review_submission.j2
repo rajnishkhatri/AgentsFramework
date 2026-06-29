@@ -1,0 +1,60 @@
+{# CodeReviewer_review_submission.j2 (v3)
+   Context-routed submission. Files are grouped by their routed REVIEW.md; each
+   group injects that REVIEW.md's enforcement map as rules_file_content. #}
+
+# Code Review Request (v3 — context-routed)
+
+## Submission Context
+
+{{ submission_context | default("No additional context provided.") }}
+
+## Review Scope
+
+{{ review_scope | default("Routed review — enforce each folder-group's injected REVIEW.md; activate FD1-FD7 for TS/TSX groups.") }}
+
+{% if deterministic_findings is defined and deterministic_findings %}
+## Pre-computed deterministic findings (take precedence)
+
+These came from the AST/TS validators run *before* you. Treat them as ground
+truth; do not re-derive or contradict them — extend with LLM-only judgment.
+
+```json
+{{ deterministic_findings }}
+```
+{% endif %}
+
+## Routed folder-groups
+
+{% for group in routed_groups | default([]) %}
+### Group: `{{ group.rules_file }}` — language: {{ group.language | default("mixed") }}
+
+**Enforcement map (cite content lives in the sibling `AGENTS.md`):**
+
+```markdown
+{{ group.rules_file_content | default("(REVIEW.md not found — fall back to root REVIEW.md)") }}
+```
+
+**Files in this group:**
+
+{% for file in group.files %}
+#### {{ file.path }}
+
+**Folder:** {{ file.folder | default("root") }} · **Language:** {{ file.language | default("other") }}
+**Lines changed:** {{ file.lines_changed | default("Full file") }}
+
+```{{ file.language_hint | default("text") }}
+{{ file.content }}
+```
+
+{% endfor %}
+{% endfor %}
+
+## Instructions
+
+1. For each folder-group, load its injected `REVIEW.md` enforcement map.
+2. Record the pre-computed deterministic findings first (precedence).
+3. Judge only the `LLM`-detection rows from each `REVIEW.md`, with calibrated
+   confidence.
+4. Activate FD1-FD7 for any group whose language is `frontend`.
+5. Apply the ADR.1 ratchet from the root `REVIEW.md` against the full file list.
+6. Output exactly one `ReviewReport` JSON object (v1 schema).
