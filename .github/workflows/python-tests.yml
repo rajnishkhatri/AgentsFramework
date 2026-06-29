@@ -110,6 +110,80 @@ jobs:
       - name: Run architecture + trust gates
         run: python -m pytest tests/architecture/ tests/trust/ -q -o addopts=
 
+  reviewer:
+    name: deterministic code reviewer (v3, no LLM)
+    # PR-only: the reviewer diffs branch commits against the PR base. On a push
+    # to main there is no base to diff against, so there is nothing to gate.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      AGENT_FACTS_SECRET: ci-placeholder-not-a-real-secret
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Need the PR base commit on disk for the `base...HEAD` diff range.
+          fetch-depth: 0
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.lock
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      # Deterministic reviewer needs no gcp/aws/sqlite extras — keep it lean.
+      - name: Install project (editable, dev extra only)
+        run: pip install -e ".[dev]"
+
+      # Run the SAME on-demand reviewer developers run via `make review` / the
+      # code-review skill, restricted to its deterministic path (no API key, no
+      # live LLM — repo policy). The certified v3 LLM judge is exercised only by
+      # the recorded WI-8 replay in the `tests` job, never with a live call here.
+      # Verdict → exit: 0 approve · 1 request_changes · 2 reject · 3 error.
+      # Advise-first rollout: BLOCK only on reject (2) or tool error (3);
+      # request_changes (1) is surfaced in the artifact + PR comment but does
+      # not fail the build yet.
+      - name: Run deterministic code reviewer (block on reject only)
+        run: |
+          set +e
+          python -m meta.code_reviewer --from-git-diff \
+            --git-base "origin/${{ github.base_ref }}...HEAD" \
+            --prompt-version v3 --deterministic-only \
+            --output review.json
+          rc=$?
+          echo "reviewer exit code: $rc"
+          if [ "$rc" -eq 2 ]; then
+            echo "::error::Code reviewer returned REJECT — blocking merge."
+            exit 1
+          fi
+          if [ "$rc" -eq 3 ]; then
+            echo "::error::Code reviewer errored (exit 3) — failing loudly."
+            exit 1
+          fi
+          if [ "$rc" -eq 1 ]; then
+            echo "::warning::Code reviewer requested changes (non-blocking). See review.json."
+          fi
+          exit 0
+
+      # Always upload the report (even on request_changes) for the PR-comment
+      # workflow to summarize.
+      - name: Upload review report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-review-report
+          path: review.json
+          if-no-files-found: warn
+
   lockfile-install:
     name: reproducible install from requirements.lock (Python 3.13)
     runs-on: ubuntu-latest
