@@ -1,4 +1,4 @@
-"""Append the Wave-1 GROWTH rows (4 arms x cases 16-24) to the frozen L2/L3 seed.
+"""Append the Wave-1 GROWTH rows (cases 16-24, all live arms) to the frozen L2/L3 seed.
 
 docs/plans/model_ab_l2l3_blind_adjudication.plan.md Phase 4, growth wave. The base
 seed (cache/goaljudge_eval/model_ab_l2l3_goldset_seed.json, 52 rows, cases 07-15)
@@ -138,16 +138,17 @@ def main() -> None:
     m["row_count"] = len(rows)
     m["created_at"] = datetime.now(timezone.utc).isoformat()
     m["test_split_sha256"] = test_split_sha
+    arms = sorted({r["arm"] for r in growth_rows})
     m["note"] = (
         f"v0.2 BOOTSTRAP seed — {len(rows)} items (base cases 07-15 + growth cases "
-        "16-24, 4 live arms: opus/haiku/deepseek-pro/deepseek-flash; gpt-4o-mini + "
-        "gpt-5 growth arms DEFERRED on OpenAI quota). 2-rater blind-adjudicated. NOT "
-        "a calibrated gold set; feeds Stage 5/6 calibration as answer-correctness rows."
+        f"16-24, {len(arms)} live arms: {', '.join(arms)}; gpt-4o-mini + gpt-5 "
+        "DEFERRED). 2-rater blind-adjudicated. NOT a calibrated gold set; feeds "
+        "Stage 5/6 calibration as answer-correctness rows."
     )
     m["growth_wave"] = {
         "added_rows": len(growth_rows),
         "cases": sorted({r["case"] for r in growth_rows}),
-        "arms": sorted({r["arm"] for r in growth_rows}),
+        "arms": arms,
         "raters": ["agent(blind)", "human(blind)"],
         "adjudication_rule": "rater-2 is tiebreaker (matches base)",
         "agreement": {

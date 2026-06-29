@@ -1,17 +1,25 @@
 # Practical-Adoption Assessment — Harness Adoption v2 Plan
 
-> **Status:** **Waves 0–3 COMPLETE + committed** (2026-06-28). Agreed stopping point
-> (user, 2026-06-28): Wave 4 (deferred subsystems — every item a DEFER verdict: new
-> dep / scheduled infra / 2nd LLM provider+cost / heavy trial) is left as a
-> **documented follow-up**, not done this session. The **Wave-1 live A/B sweep is IN
-> PROGRESS this session** (adding `glm-5.1` as a 5th growth arm; Rater-2 grading of
-> the 9 new items pending — see
-> `docs/plans/model_ab_l2l3_blind_adjudication.plan.md` Progress log). Commits:
-> `dddaab3` (W0+W1+3.1), `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92` (2.1),
-> `506f247` (2.2/2.3), `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives in
-> gitignored `.claude/`).
+> **Status:** **Waves 0–3 COMPLETE + Wave-1 SETTLED** (2026-06-28). Agreed stopping
+> point (user, 2026-06-28): Wave 4 (deferred subsystems — every item a DEFER verdict:
+> new dep / scheduled infra / 2nd LLM provider+cost / heavy trial) is left as a
+> **documented follow-up**. Wave-1 live A/B **SETTLED at 97 rows / 5 growth arms**
+> (`glm-5.1` folded in; 2-rater blind adjudication + freeze complete; clean gate PASS
+> TPR 1.0 / TNR 0.974 — see
+> `docs/plans/model_ab_l2l3_blind_adjudication.plan.md`). n≥100 not pursued (gpt arms
+> deferred). Commits: `dddaab3` (W0+W1+3.1), `4859cd0` (4.3+4.4), `1c21854` (4.1),
+> `a175c92` (2.1), `506f247` (2.2/2.3), `65a5c0c` (5.4), `7882f85` (5.1 prose;
+> explore.md lives in gitignored `.claude/`), `1a0d40c` (W1 settle: 97-row seed +
+> truncation-exclusion clean gate).
 >
 > ### Execution log
+>
+> **2026-06-28 — Wave-1 SETTLED (97-row seed, glm-5.1 5th arm).** The deferred live
+> half of 1.3/1.4 is closed at **97 rows / 5 growth arms** (user settle decision: do
+> not pursue n≥100 via gpt arms). `glm-5.1` live-swept, blind-adjudicated (2-rater,
+> α=0.917), frozen; clean gate PASS (`judge_validation --clean` TPR 1.0 / TNR 0.974).
+> Commit `1a0d40c`. Unified-reviewer WI-1…WI-9 lands in the follow-on commit on this
+> branch before merge to main.
 >
 > **2026-06-28 — Wave 3 landed** (Track C mechanism; verify-first).
 > - **2.1 — ADR.1 ratchet gate.** The pure detector `detect_adr1_missing` already
@@ -274,7 +282,7 @@ judge rigor) + a few cheap doc items (5.3, 6.1a, 6.3 — all landed in Wave 0).
 - 5.3 (two AGENTS.md lines) · 3.2 (cursor failClosed decision) · 6.3 (`decisions.md`) ·
   6.1a (`_spec_template.md`). All landed; see Execution log at top.
 
-**Wave 1 — the residuals (the 🔴 core), reordered: 🟡 IN PROGRESS (5th arm sweep; Rater-2 pending)**
+**Wave 1 — the residuals (the 🔴 core), reordered: ✅ SETTLED (2026-06-28)**
 - 1.4 blind adjudication → 1.3 grow seed ≥100 → 1.1 **re-adjudicate `70ff3369`** then
   fix rubric/relabel → 1.2 version + ADR. Gate: `judge_validation` PASS (TPR≥0.90 AND
   TNR≥0.90) on ≥100 rows. Candidate driver: `agentsframework-eval` skill.

@@ -189,44 +189,21 @@ gpt-5 stays in side-files (not folded into the seed) and n≥100 is not pursued 
 the gpt-5 harvest + the `harvest_growth_gpt_arms.py` GoalJudge-on path remain available
 if the arm is wanted later.
 
-### 2026-06-28 — GROWTH 5th arm (glm-5.1) sweep IN PROGRESS (Rater-2 pending)
+### 2026-06-28 — GROWTH 5th arm (glm-5.1) sweep COMPLETE
 
-Adding `glm-5.1` as a 5th live arm to the growth set to progress toward the n≥100
-target (target after freeze: 97 rows; the full 108 still needs the `gpt-4o-mini` +
-`gpt-5` arms deferred on OpenAI quota). The 5th arm is a **distinct** model from the
-4 already-harvested arms (opus/haiku/deepseek-pro/deepseek-flash) — it adds new
-signal rather than duplicating an arm.
-
-Step status:
-- ✅ **Live run.** 9-case sweep with `glm-5.1` candidate vs `deepseek-v4-flash`
-  baseline via `scripts/model_ab_eval.py` (smoke test then full run). GoalJudge
-  (`gpt-4o`) reached — OpenAI quota had recovered, so the judge is no longer
-  contamination-risked.
-- ✅ **Harvest.** 9 final answers extracted and added as the 5th arm to
-  `l2l3_growth_raw_answers.json` (5 arms × 9 cases = 45 cells).
-- ✅ **Blind set rebuilt.** `scripts/build_l2l3_growth_blind_set.py` regenerated
-  `l2l3_growth_blind_items.jsonl` (45 items), sealed key, blinding proof. Existing
-  36 item_ids are **STABLE** (uuid5 of `case|arm|text` + seed-1729 shuffle) → prior
-  Rater-1 labels and Rater-2 verdicts remain valid; only the 9 new `glm-5.1` items
-  need grading. Blinding verified (no arm-token leaks).
-- ✅ **Rater-1 re-graded all 45** (38 correct / 7 partial) via
-  `scripts/rater1_grade_growth.py`.
-- ✅ **Focused worksheet for the 9 NEW items.**
-  `scripts/build_growth_new9_worksheet.py` →
-  `l2l3_growth_new9_rater2_worksheet.md` (arm-blind, fillable `**Verdict:**` lines).
-  Backup of the prior 36-item answered worksheet saved as
-  `l2l3_growth_rater_worksheet_detailed_answered.md.bak36`. No sealed-key opening —
-  new items identified by set-difference.
-- 🟡 **Rater-2 (human) grading of the 9 new items: PENDING** — all 9 verdict lines
-  still blank. **This is the current blocker.**
-- ⏳ **After Rater-2:** run `scripts/merge_growth_rater2_new_verdicts.py` to fold the
-  9 verdicts into the full 45-item answered worksheet (verifies all 45 present), then
-  `scripts/freeze_l2l3_growth_into_seed.py` (seed 88 → 97 rows), then re-run
-  `python -m meta.judge_validation` to confirm the gate holds at N=97.
-
-**Open from before this sweep (still undecided):** the Phase-5 truncation-exclusion
-decision (exclude the 7 harvest-truncated rows → TNR 0.975 PASS, OR re-harvest
-UNCAPPED). Independent of the 5th-arm freeze.
+Added `glm-5.1` as a 5th live arm (distinct from opus/haiku/deepseek-pro/deepseek-flash).
+All steps done:
+- ✅ Live run (9 cases, `glm-5.1` vs `deepseek-v4-flash` baseline).
+- ✅ Harvest → 5 arms × 9 cases = 45 cells in `l2l3_growth_raw_answers.json`.
+- ✅ Blind set rebuilt (45 items; existing 36 item_ids stable).
+- ✅ Rater-1 re-graded all 45 (38 correct / 7 partial).
+- ✅ Rater-2 (human) graded the 9 new items via
+  `l2l3_growth_new9_rater2_worksheet.md` — **7 correct, 1 partial, 1 wrong**
+  (case 19: file-read failures → wrong; case 24: clipped cut set → partial).
+- ✅ Merged into full 45-item answered worksheet; freeze → **seed 97 rows**.
+- ✅ Growth IAA α = 0.917 (44/45 agreement; 1 disagreement: glm-5.1 case 19,
+  rater-1 partial → rater-2 wrong).
+- ✅ `judge_validation --clean` PASS on 97-row seed (TPR 1.000 / TNR 0.974).
 
 ### 2026-06-28 — Phase 5 RAN + truncation-exclusion ADOPTED → clean gate PASS
 **Outcome: full-88 was FAIL as-is (TNR 0.830); user adopted the truncation-exclusion
