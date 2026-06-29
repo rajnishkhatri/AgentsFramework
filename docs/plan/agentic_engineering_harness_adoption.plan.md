@@ -1,10 +1,27 @@
 # Agentic-Engineering Harness Adoption — Phased Plan
 
-> **Status:** Plan (not started). Authored 2026-06-27.
+> **Status:** COMPLETE — all three tracks merged to `origin/main` (2026-06-28).
+> Authored 2026-06-27.
 > **Source research:** `docs/research/agenticengineeringplaybook/` (4 runbooks) + external
 > web research on Claude Code hooks, Cursor, eval-validation discipline, comprehension/intent
 > debt, and nested `AGENTS.md` mechanics. Full subagent research dumps preserved at
 > `~/.claude/plans/docs-research-agenticengineeringplayboo-virtual-haven-agent-*.md`.
+> **Companion:** step-by-step adoption guide at
+> `docs/walk-through/07_agentic_engineering_harness_walkthrough.md`.
+
+## Outcome (verified 2026-06-28)
+
+All work items shipped and live-verified. Two residual items (neither a blocker):
+
+| Track | Result |
+|---|---|
+| **A — Sensors & Hooks** | DONE. `scripts/hooks/{post_edit_ruff,pre_bash_guard,cursor_*}.py`, `.pre-commit-config.yaml`, `.github/workflows/pre-commit.yml`, `.cursor/hooks.json`, `make check` (lint+format-check+typecheck+test). PreToolUse guard confirmed live-blocking `git push origin main`. |
+| **B — Eval Validation** | DONE (machinery). `meta/judge_validation.py` (TPR/TNR + Rogan–Gladen, floors 0.90), `model_ab_eval.py` (`pass_hat_k`, `paired_bootstrap_ci`, `decide_passk_verdict`), `services/governance/eval_graduation.py` (capability→regression + Langfuse bridge). **Residual ①:** GoalJudge fails its own gate — TNR 0.8235 < 0.90 (3 false positives on the 53-row human-adjudicated seed); the validator working as designed caught an untrustworthy judge. Fix the 3 FPs or justify an asymmetric-cost floor before trusting the judge. **Residual ②:** the Langfuse→goldset harvest is wired but not yet *run* on a schedule (cold feedback loop). |
+| **C — Intent-Debt Gates** | DONE. `docs/adr/` OKF bundle (template + 0001 + 0002), G1/G4/G8 + ratchet in AGENTS.md, per-folder nested `AGENTS.md`+`CLAUDE.md` in 8 folders. Root AGENTS.md trimmed 227→132 (target was 90–110; stopped to preserve load-bearing inter-layer invariants). |
+
+The three "Open items to confirm" below were resolved: pyright adopted (in `make check`);
+Cursor parity built; Track C kept prose (the optional `Stop`-hook ADR trigger was *not* built,
+per the honest-enforcement-limit note).
 
 ## Context — why this change
 

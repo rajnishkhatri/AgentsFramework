@@ -14,16 +14,19 @@ for prompts, Pydantic for validation.
 
 ## Key Commands
 
-Run these after making changes. Fix all failures before proceeding.
+Run after making changes; fix all failures before proceeding.
 
-- **Install:** `pip install -e ".[dev]"`
 - **Check (lint + format-check + typecheck + test):** `make check` — the canonical
-  pre-commit gate. Read-only.
-- **Test:** `pytest tests/ -q` — run immediately after changes.
-- **Architecture tests:** `pytest tests/architecture/ -q` — verify layer
-  boundaries. These MUST pass.
-- **Run:** `python -m agent.cli "What is the capital of France?"`
-- **Docker:** `docker build -t react-agent . && docker run -e OPENAI_API_KEY=$OPENAI_API_KEY react-agent "What is 2+2?"`
+  read-only pre-commit gate.
+- **Test:** `pytest tests/ -q`. **Architecture tests:** `pytest tests/architecture/ -q`
+  (these MUST pass).
+- **Install / Run:** `pip install -e ".[dev]"` · `python -m agent.cli "..."`.
+
+> **Subagents as context firewalls.** For broad fan-out reading ("where is X / how
+> does Y work") spawn the read-only `explore` subagent (`.claude/agents/explore.md`):
+> the dozens of files it reads stay in *its* context and only the distilled answer
+> returns, keeping the main thread uncluttered. Use it before an implementation task,
+> not as a substitute for reading the few files you're about to edit.
 
 ## Architecture Invariants — STRICTLY ENFORCED
 
@@ -49,39 +52,43 @@ root because a nested file loads too late to stop an upward import in a *new* fi
 
 ## Boundaries
 
-### ✅ Always
-- Run `make check` after making changes.
-- Use `PromptService.render_prompt()` for all prompts — no hardcoded strings.
-- Record every LLM call via `eval_capture.record()` with `user_id` and `task_id`.
-- Create `.j2` files in `prompts/` for new prompts.
+(The Architecture Invariants above already cover layering/import rules — these add
+the non-layering boundaries.)
 
-### ⚠️ Ask first  (these are also ADR triggers — see Decision records)
-- Adding new dependencies to `pyproject.toml`.
-- Modifying trust kernel types in `trust/models.py` (triggers re-signing).
-- Adding new graph nodes to `orchestration/react_loop.py`.
-- Creating new horizontal services.
-- Introducing a new abstraction, or any deviation from an architecture invariant.
+### ✅ Always
+- `make check` after changes · `PromptService.render_prompt()` for all prompts (no
+  hardcoded strings) · record every LLM call via `eval_capture.record()` with
+  `user_id`+`task_id` · new prompts are `.j2` files in `prompts/`.
+- **Red/green TDD for anything verifiable** — write the test, *watch it fail first*,
+  then implement. A test that never failed proves nothing.
+- **Demand evidence, not assertions** — paste the actual command/test output, not a
+  summary of it. "Tests pass" without the output is not a result.
+
+### ⚠️ Ask first  (also ADR triggers — see Decision records)
+- New `pyproject.toml` dependency · trust-kernel type change in `trust/models.py`
+  (triggers re-signing) · new graph node in `orchestration/react_loop.py` · new
+  horizontal service · a new abstraction or any deviation from an invariant.
 
 ### 🚫 Never
-- Import from `orchestration/` in `components/` or `services/`.
-- Import from `langgraph` or `langchain` in `components/` or `trust/`.
-- Place shared trust types inside a service module — they belong in `trust/`.
-- Hardcode model names — reference tiers from `services/llm_config.py`.
-- Commit secrets, API keys, or `.env` files.
-- Run live LLM calls in CI test suites.
-- Create peer imports between components (e.g., `router` importing `evaluator`).
+- Commit secrets, API keys, or `.env` files · run live LLM calls in CI · hardcode
+  model names (use tiers from `services/llm_config.py`) · place shared trust types
+  in a service module (they belong in `trust/`).
 
 ## Decision records (intent debt) + comprehension gates
 
-Capture the *why* behind structural changes; add the human engagement automation
-can't.
+Capture the *why* behind structural changes — the human engagement automation can't.
+The gate *mechanism* (the answer-before-reveal preamble + rotating wordings, incl.
+**G3** security-boundary and **G7** architecture) lives in `docs/adr/GATES.md`; the
+names below are the triggers.
 
-- **ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above, append a
-  numbered ADR to the `docs/adr/` OKF bundle and link it from the code seam it
-  governs. Copy `docs/adr/0000-template.md` (Context / Decision / Options /
-  Rationale / Consequences — the rejected alternatives are the intent-debt
-  payload). OKF: every ADR needs frontmatter `type:`, an `index.md` entry, and a
-  newest-first `log.md` line.
+- **ADR.1 — ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above,
+  append a numbered ADR to the `docs/adr/` OKF bundle and link it from the code
+  seam it governs. Copy `docs/adr/0000-template.md` (Context / Decision /
+  Options / Rationale / Consequences — the rejected alternatives are the
+  intent-debt payload). OKF: every ADR needs frontmatter `type:`, an `index.md`
+  entry, and a newest-first `log.md` line. (`tests/architecture/test_adr_ratchet.py`
+  is the mechanical gate: a trigger path changed without a new `docs/adr/*` file —
+  or an `ADR-OK:` waiver in a range commit message — fails it.)
 - **G1 — new-abstraction gate.** Automation can't judge whether an abstraction
   earns its place. Before adding one, state in the PR/commit what it buys and what
   you considered instead (→ an ADR for anything load-bearing).
@@ -92,6 +99,13 @@ can't.
 - **G8 — test-mass-rewrite gate.** A large rewrite of existing tests can silently
   weaken the suite (TAP-1/3/4). When a diff rewrites many tests, justify *why each
   weakened assertion is still sound* before relying on the green result.
+  (`tests/architecture/test_no_test_weakening.py` is the mechanical sensor: it
+  fails a removed `def test_*` or a newly skipped/xfailed test that lacks a
+  justification token.)
+- **Spec the *what*, ADR the *why*.** For a non-trivial durable change, copy
+  `docs/plan/_spec_template.md` → `docs/plan/<name>.spec.md` (EARS acceptance criteria
+  → testable). The spec is the *what*; the ADR is the *why*. Small non-obvious choices
+  too minor for an ADR go in `docs/adr/decisions.md` (2–4 lines).
 - **Ratchet rule.** Every instruction line here traces to a real failure. Delete
   aspirational lines; don't add a rule without a failure that justifies it.
 
@@ -101,37 +115,33 @@ can't.
 
 ## Key Directories
 
+The four package layers + their support dirs (per-folder detail lives in each
+nested `AGENTS.md` — read those, not this map, for the rules):
+
 | Directory | Purpose |
 |-----------|---------|
-| `trust/` | Shared kernel: pure types, protocols, crypto. ZERO framework dependencies. |
-| `services/` | Horizontal infrastructure: prompts, guardrails, LLM config, eval capture, observability. |
-| `services/governance/` | Governance services: black box, phase logger, agent facts registry. |
-| `services/tools/` | Tool registry and implementations (shell, file I/O). |
+| `trust/` | Shared kernel: pure types, protocols, crypto. ZERO framework deps. |
+| `services/` | Horizontal infrastructure (`governance/`, `tools/` subpkgs). |
 | `components/` | Framework-agnostic domain logic: router, evaluator, schemas. |
-| `orchestration/` | LangGraph graph topology (`react_loop.py`) and state (`state.py`). |
-| `prompts/` | Jinja2 templates (`.j2`). Subdirs: `codeReviewer/`, `includes/`. |
-| `meta/` | Offline meta-optimization: optimizer, analysis, judge, drift, judge validation. |
-| `frontend/`, `middleware/` | The Frontend Ring (Next.js BFF + credentialed middleware). |
-| `governanaceTriangle/` | Governance explainability narratives and deep-dive docs. *(Directory name is misspelled on disk; left as-is — 26 docs reference the path.)* |
+| `orchestration/` | LangGraph topology (`react_loop.py`) + state (`state.py`). |
+| `prompts/` | Jinja2 `.j2` templates. | `meta/` | Offline meta-optimization. |
+| `frontend/`, `middleware/` | The Frontend Ring (Next.js BFF + middleware). |
 | `utils/` | Shared utilities. Prefer `services/` for new infrastructure. |
-| `docs/plan/` | Design & planning docs. New plans land here, not at the repo root. |
-| `docs/vision/` | Intent docs: `MISSION.md`, `SOUL.md`. |
-| `docs/adr/` | Architecture Decision Records (OKF bundle). |
+| `docs/` | `plan/` (designs), `vision/` (`MISSION`/`SOUL`), `adr/` (OKF bundle). |
 
-> **Repository layout note.** The root holds only build/config files
-> (`pyproject.toml`, `Dockerfile*`, `langgraph.json`, `Makefile`, `requirements*`,
-> `README.md`, this file) plus the importable package dirs above. Put design docs
-> under `docs/plan/` and intent docs under `docs/vision/` — keep the root scannable.
+> **Repo layout:** root holds only build/config files + the package dirs above.
+> `governanaceTriangle/` (misspelled on disk; 26 docs reference it) holds governance
+> explainability narratives. Keep the root scannable.
 
 ## Cross-cutting References
 
-Layer-specific patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the
-security model now live in the **nested `AGENTS.md`** for each folder. For the
-canonical catalogs:
+Layer patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the security model
+live in each folder's nested `AGENTS.md`. Read these canonical catalogs on demand
+(plain links, not `@`-imports — they're large; don't eager-load them every session):
 
-- @docs/style-guides/STYLE_GUIDE_LAYERING.md — four-layer rules and anti-patterns.
-- @docs/style-guides/STYLE_GUIDE_PATTERNS.md — design patterns catalog (H1–H7, V1–V6).
-- @docs/style-guides/STYLE_GUIDE_FRONTEND.md — Frontend Ring (F/W/P/A/T/X/C/B/U/S/O).
-- @docs/Architectures/FOUR_LAYER_ARCHITECTURE.md — trust foundation, ports, policy engines.
-- @docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md — seven-layer trust framework.
-- @research/tdd_agentic_systems_prompt.md — the agentic testing pyramid (11 patterns).
+- [STYLE_GUIDE_LAYERING.md](docs/style-guides/STYLE_GUIDE_LAYERING.md) — four-layer rules and anti-patterns.
+- [STYLE_GUIDE_PATTERNS.md](docs/style-guides/STYLE_GUIDE_PATTERNS.md) — design patterns catalog (H1–H7, V1–V6).
+- [STYLE_GUIDE_FRONTEND.md](docs/style-guides/STYLE_GUIDE_FRONTEND.md) — Frontend Ring (F/W/P/A/T/X/C/B/U/S/O).
+- [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md) — trust foundation, ports, policy engines.
+- [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md) — seven-layer trust framework.
+- [tdd_agentic_systems_prompt.md](research/tdd_agentic_systems_prompt.md) — the agentic testing pyramid (11 patterns).

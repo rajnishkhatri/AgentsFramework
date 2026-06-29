@@ -8,7 +8,8 @@
     "session_id": "session-gen-l1-read-sum-01",
     "prompt": "Read the three files /workspace/nums/a.txt, /workspace/nums/b.txt and /workspace/nums/c.txt \u2014 each holds a single integer. Report their sum.",
     "rationale": "3-step read + add; routine GAIA L1 \u2014 reasoning arms skip",
-    "want_answer": "the integer sum of the three files"
+    "want_answer": "the integer sum of the three files",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-lookup-format-02",
@@ -19,7 +20,8 @@
     "session_id": "session-gen-l1-lookup-format-02",
     "prompt": "Read /workspace/contact.txt, extract the email address it contains, and report just the domain part (after the @).",
     "rationale": "single read + extract; routine L1",
-    "want_answer": "the email domain"
+    "want_answer": "the email domain",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-count-lines-03",
@@ -30,7 +32,8 @@
     "session_id": "session-gen-l1-count-lines-03",
     "prompt": "Count how many non-empty lines are in /workspace/log.txt and report the count as a single integer.",
     "rationale": "single read + count; routine L1",
-    "want_answer": "the non-empty line count"
+    "want_answer": "the non-empty line count",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-pick-max-04",
@@ -41,7 +44,8 @@
     "session_id": "session-gen-l1-pick-max-04",
     "prompt": "Read /workspace/scores.csv (a header row then rows of name,score) and report the name with the highest score.",
     "rationale": "single read + argmax; routine L1",
-    "want_answer": "the top-scoring name"
+    "want_answer": "the top-scoring name",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-convert-unit-05",
@@ -52,7 +56,8 @@
     "session_id": "session-gen-l1-convert-unit-05",
     "prompt": "Read the distance in miles from /workspace/distance.txt, convert it to kilometres (1 mile = 1.60934 km), and report the result rounded to one decimal place.",
     "rationale": "read + single arithmetic; routine L1",
-    "want_answer": "the distance in km to one decimal"
+    "want_answer": "the distance in km to one decimal",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-write-readback-06",
@@ -63,7 +68,8 @@
     "session_id": "session-gen-l1-write-readback-06",
     "prompt": "Write the word 'ready' to /workspace/status.txt, then read it back and confirm the file contains exactly that word.",
     "rationale": "clean write + read-back; routine L1",
-    "want_answer": "confirmation the file says ready"
+    "want_answer": "confirmation the file says ready",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-extract-field-13",
@@ -74,7 +80,8 @@
     "session_id": "session-gen-l1-extract-field-13",
     "prompt": "Read /workspace/profile.json and report the value of its 'name' field.",
     "rationale": "single read + field lookup; routine L1",
-    "want_answer": "the name field value"
+    "want_answer": "the name field value",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-sort-list-14",
@@ -85,7 +92,8 @@
     "session_id": "session-gen-l1-sort-list-14",
     "prompt": "Read /workspace/words.txt (one word per line) and report the words sorted alphabetically, comma-separated.",
     "rationale": "single read + sort; routine L1",
-    "want_answer": "the alphabetically sorted words"
+    "want_answer": "the alphabetically sorted words",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-bool-check-15",
@@ -96,7 +104,8 @@
     "session_id": "session-gen-l1-bool-check-15",
     "prompt": "Read the integer in /workspace/n.txt and report whether it is even or odd.",
     "rationale": "single read + parity; routine L1",
-    "want_answer": "even or odd"
+    "want_answer": "even or odd",
+    "tier": "regression"
   },
   {
     "case": "GEN-L1-first-match-16",
@@ -107,7 +116,8 @@
     "session_id": "session-gen-l1-first-match-16",
     "prompt": "Read /workspace/access.log and report the first line that contains the word 'denied'.",
     "rationale": "single read + first-match; routine L1",
-    "want_answer": "the first matching line"
+    "want_answer": "the first matching line",
+    "tier": "regression"
   },
   {
     "case": "GEN-L2-multi-file-reconcile-07",

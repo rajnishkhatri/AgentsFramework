@@ -4,6 +4,7 @@
     "afterFileEdit": [
       {
         "command": ".venv/bin/python scripts/hooks/cursor_after_edit.py",
+        "_comment_failClosed": "Intentionally false (advisory formatter, HOOK-1 never-block-on-edit): a formatter hiccup must NOT block an edit. Scoped deviation from the harness plan's blanket failClosed:true; the safety gate beforeShellExecution stays true. See docs/adr/decisions.md (2026-06-28).",
         "failClosed": false
       }
     ],

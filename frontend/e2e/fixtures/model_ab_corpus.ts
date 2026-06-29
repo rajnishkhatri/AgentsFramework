@@ -35,6 +35,10 @@ export type ModelAbCase = {
   // optional expectation hooks the analyzer's --judge pass scores against
   want_answer?: string;
   want_policy?: string;
+  // eval lifecycle tier (services/governance/eval_graduation). "regression" =
+  // a frozen, deterministically-graded row the regression floor gate watches;
+  // absent ⇒ capability (the conservative default). Set by build_model_ab_corpus.
+  tier?: "capability" | "regression";
 };
 
 export const MODEL_AB_CORPUS: ModelAbCase[] = corpus as ModelAbCase[];

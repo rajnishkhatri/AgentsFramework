@@ -40,6 +40,22 @@ SEALED_KEY = ANSWER_DIR / "l2l3_arm_key.sealed.json"
 BLIND_ITEMS = ANSWER_DIR / "l2l3_blind_items.jsonl"
 ALPHA_GATE = 0.80
 
+# Items excluded from the frozen seed AFTER blinding is verified. These are
+# data-quality defects (the answer is corrupted at source), not labeling
+# judgments — so they are dropped rather than relabeled. Each entry pins the
+# full 32-hex item_id + the reason, so the exclusion is auditable.
+#
+# 70ff3369…  GEN-L3-iterative-refine-15 / deepseek-v4-pro: the model answer is
+#   TRUNCATED at source (ends mid-sentence at "office: up", before stating the
+#   proposed cuts or the zero-balance verification). The blind raters labeled it
+#   "correct" by inferring the unwritten cut from the visible slack (rater-1's own
+#   note says "proceeds to cut proposal" — the answer never does). GoalJudge's
+#   "fail" was the CORRECT call against the truncated text. Excluded as
+#   truncated-at-source; see docs/adr/0003 + docs/adr/decisions.md (2026-06-28).
+EXCLUDED_ITEMS: dict[str, str] = {
+    "70ff3369ace25c0d8b332e114099f219": "truncated-at-source (answer cut mid-sentence)",
+}
+
 OUT = AGENT_ROOT / "cache" / "goaljudge_eval" / "model_ab_l2l3_goldset_seed.json"
 
 
@@ -90,6 +106,12 @@ def main() -> None:
     )
 
     assert set(r1) == set(r2), f"rater coverage mismatch: {set(r1) ^ set(r2)}"
+
+    # Drop data-quality exclusions AFTER blinding is verified (the hash above
+    # covers the unmodified rater-1 file, so blinding provenance is preserved).
+    for excluded in EXCLUDED_ITEMS:
+        r1.pop(excluded, None)
+        r2.pop(excluded, None)
     n = len(r1)
 
     # 3. IAA via the repo primitives (reused, not hand-rolled).
@@ -145,12 +167,14 @@ def main() -> None:
         "name": "model_ab_l2l3_goldset_seed",
         "provisional": True,
         "note": (
-            "v0.0 BOOTSTRAP seed — small (53 items, 6 arms x 9 L2/L3 cases), "
-            "2-rater blind-adjudicated. NOT a calibrated gold set; cannot pass the "
-            "repo's v1 floor gate. Feeds the Stage 5/6 calibration pipeline as "
-            "wave-0 GAIA-shape answer-correctness rows."
+            f"v0.1 BOOTSTRAP seed — small ({len(rows)} items, 6 arms x 9 L2/L3 "
+            "cases minus data-quality exclusions), 2-rater blind-adjudicated. NOT a "
+            "calibrated gold set; cannot pass the repo's v1 floor gate. Feeds the "
+            "Stage 5/6 calibration pipeline as wave-0 GAIA-shape answer-correctness "
+            "rows."
         ),
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "excluded_items": EXCLUDED_ITEMS,
         "row_count": len(rows),
         "rater_count": 2,
         "raters": ["agent(blind)", "human(blind)"],
