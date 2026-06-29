@@ -16,8 +16,11 @@ for prompts, Pydantic for validation.
 
 Run after making changes; fix all failures before proceeding.
 
-- **Check (lint + format-check + typecheck + test):** `make check` — the canonical
-  read-only pre-commit gate.
+- **Check (lint + format-check + typecheck + cite-lint + hygiene + test):**
+  `make check` — the canonical pre-commit gate; it runs the same hygiene hooks
+  (end-of-file-fixer, trailing-whitespace) as CI, so green locally = green in CI.
+  Mostly read-only; `hygiene` *fixes* whitespace/newline drift **and** fails, so a
+  fixed file still blocks the gate until re-staged.
 - **Test:** `pytest tests/ -q`. **Architecture tests:** `pytest tests/architecture/ -q`
   (these MUST pass).
 - **Install / Run:** `pip install -e ".[dev]"` · `python -m agent.cli "..."`.

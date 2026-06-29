@@ -1547,7 +1547,11 @@ def _git_diff_files(base: str) -> tuple[list[str], list[str]]:
     def _run(extra: list[str]) -> list[str]:
         try:
             proc = subprocess.run(
-                ["git", "diff", "--name-only", *extra, "--", base],
+                # The base ref MUST precede ``--``; ``--`` *terminates* options
+                # and starts the pathspec list. Placing ``base`` after ``--``
+                # makes git treat e.g. ``origin/main...HEAD`` as a path (which
+                # matches nothing) → an empty file list → a vacuous ``approve``.
+                ["git", "diff", "--name-only", *extra, base, "--"],
                 cwd=AGENT_ROOT,
                 capture_output=True,
                 text=True,

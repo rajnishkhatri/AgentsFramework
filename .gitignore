@@ -101,3 +101,12 @@ services/governance/artifacts/
 # coded.jsonl) are pure re-runs — never commit new ones. Already-tracked run-1/ evidence stays
 # tracked (git keeps tracking existing files); this only stops NEW timestamped re-runs landing.
 docs/skills/*-workspace/**/coded.[0-9]*T[0-9]*.jsonl
+
+# code-review skill: eval-run scratch (with_skill/old_skill outputs, benchmarks,
+# feedback.json) is regenerable — keep the skill + its evals/ fixture, not the runs.
+docs/skills/code-review-workspace/
+
+# Reviewer CLI output artifacts (the reviewer writes these to cwd; never source).
+/review.json
+/review_llm.json
+/review_*.json

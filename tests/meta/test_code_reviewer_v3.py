@@ -9,6 +9,7 @@ the v3 LLM injection (rules_file_content + deterministic_findings), and the
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -376,6 +377,66 @@ class TestCLIFromGitDiff:
         with patch("subprocess.run", return_value=fake_proc):
             changed, added = _git_diff_files("HEAD")
         assert changed == [] and added == []
+
+    def test_git_diff_files_passes_base_as_revision_not_pathspec(self):
+        """Regression: the base ref must precede ``--``, not follow it.
+
+        ``git diff --name-only -- <base>`` makes git treat ``<base>`` as a
+        pathspec (matching nothing) → an empty file list → a *vacuous*
+        ``approve``. The base must be a revision: ``... <base> --``. This
+        asserts the exact argv so an arg-order regression can't sneak back in.
+        """
+        fake_proc = MagicMock()
+        fake_proc.returncode = 0
+        fake_proc.stdout = ""
+        fake_proc.stderr = ""
+        with patch("subprocess.run", return_value=fake_proc) as run:
+            _git_diff_files("origin/main...HEAD")
+        argv = run.call_args_list[0].args[0]
+        sep = argv.index("--")
+        # The base sits before the ``--`` separator (a revision), and nothing
+        # but the separator follows it (no pathspec swallows the range).
+        assert argv[sep - 1] == "origin/main...HEAD"
+        assert argv[sep + 1 :] == []
+        assert "--name-only" in argv[:sep]
+
+    def test_git_diff_files_detects_real_change_in_tmp_repo(self, tmp_path):
+        """Integration: a real change vs ``HEAD`` is actually detected.
+
+        This is the test the ``-- <base>`` bug fails — with the broken arg
+        order git returns nothing and the reviewer silently approves an
+        unreviewed tree. We drive the *real* git binary, no mocks.
+        """
+        import subprocess
+
+        repo = tmp_path / "repo"
+        repo.mkdir()
+        env = {
+            **os.environ,
+            "GIT_AUTHOR_NAME": "t",
+            "GIT_AUTHOR_EMAIL": "t@e",
+            "GIT_COMMITTER_NAME": "t",
+            "GIT_COMMITTER_EMAIL": "t@e",
+        }
+
+        def git(*a: str) -> None:
+            subprocess.run(
+                ["git", *a], cwd=repo, env=env, check=True, capture_output=True
+            )
+
+        git("init", "-q")
+        (repo / "a.py").write_text("x = 1\n")
+        git("add", "a.py")
+        git("commit", "-qm", "init")
+        # working-tree edit vs HEAD
+        (repo / "a.py").write_text("x = 2\n")
+
+        with patch("meta.code_reviewer.AGENT_ROOT", repo):
+            changed, _ = _git_diff_files("HEAD")
+        assert changed == ["a.py"], (
+            "real change vs HEAD was not detected — base is being treated as a "
+            "pathspec (the vacuous-approve bug)"
+        )
 
 
 # ── v1/v2 path is unchanged (regression guard) ───────────────────────
