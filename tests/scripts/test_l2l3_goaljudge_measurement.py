@@ -13,7 +13,9 @@ import pytest
 
 from scripts.measure_l2l3_goaljudge import (
     HARNESS_BUG_PREFIXES,
+    TRUNCATED_AT_SOURCE,
     _gold_met,
+    _is_excluded_from_clean,
     _is_harness_bug,
 )
 from services.governance.goaljudge_calibration import (
@@ -110,6 +112,44 @@ class TestCleanSubset:
         kept = [i for i in all_items if not _is_harness_bug(i)]
         assert len(all_items) == 53
         assert len(kept) == 38
+
+
+class TestTruncatedAtSourceExclusion:
+    """Growth wave: answers cut at the 500-char harvest clip before their
+    load-bearing conclusion. GoalJudge correctly marks a cut-off answer not-met
+    while the human read through the truncation per protocol — so these are a
+    data-capture defect, NOT a judge error, and are dropped from the CLEAN gate
+    exactly like the base-wave env-defect items (precedent: 70ff3369). The list
+    is keyed on the truncation criterion, NOT on whether the row helps/hurts the
+    gate (no outcome-driven cherry-picking).
+
+    The original 4-arm growth wave contributed 18 truncated items; the 5th arm
+    (glm-5.1, added 2026-06-28) contributed 5 more under the SAME ans_len>=498
+    criterion (2 of them false-downgrades, 3 not — all 5 excluded uniformly) for
+    a total of 23."""
+
+    def test_twentythree_truncated_items(self):
+        assert len(TRUNCATED_AT_SOURCE) == 23
+
+    def test_truncation_is_separate_from_harness_bug(self):
+        # The two exclusion categories must not be conflated: the harness-bug set
+        # stays exactly 15 (env defects), truncation is its own audited category.
+        assert len(HARNESS_BUG_PREFIXES) == 15
+        assert not (set(TRUNCATED_AT_SOURCE) & HARNESS_BUG_PREFIXES)
+
+    def test_clean_excludes_both_categories(self):
+        a_truncated = next(iter(TRUNCATED_AT_SOURCE))
+        a_harness = next(iter(HARNESS_BUG_PREFIXES)) + "0" * 24
+        a_clean = "df252d5175f35826bfb632ca941cad54"
+        assert _is_excluded_from_clean(a_truncated)
+        assert _is_excluded_from_clean(a_harness)
+        assert not _is_excluded_from_clean(a_clean)
+
+    def test_harness_bug_alone_does_not_match_truncated(self):
+        # _is_harness_bug stays narrow (env defects only); truncation rides the
+        # broader _is_excluded_from_clean so the two stay independently auditable.
+        a_truncated = next(iter(TRUNCATED_AT_SOURCE))
+        assert not _is_harness_bug(a_truncated)
 
 
 class TestRealArtifacts:

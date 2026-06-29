@@ -133,6 +133,22 @@ class TestCountByGroup:
             verify_answer(REGION_TASK, "north: 4, south: 2, west: 1", REGION_EV) is True
         )
 
+    def test_correct_answer_that_shows_its_working_is_right(self):
+        # REGRESSION (growth wave, opus GEN-L2-cross-ref-lookup-17): a correct
+        # answer that NARRATES the per-order chain before the final tally put a
+        # region word next to a customer/order id ("o2→c2→south"), and the old
+        # ``_count_for_label`` matched that FIRST mention — reading the digit
+        # from ``c2`` instead of the FINAL ANSWER's ``south: 2`` — and rejected
+        # a correct answer. The label→count pairing must come from the reported
+        # tally (``region: N``), not from working notes that merely mention the
+        # region. (north=4/south=2/west=1 is the gold tally for REGION_EV.)
+        answer = (
+            "Mapping: o1→c1→north, o2→c2→south, o3→c1→north, o4→c3→north, "
+            "o5→c4→west, o6→c2→south, o7→c1→north.\n\n"
+            "FINAL ANSWER:\n- north: 4\n- south: 2\n- west: 1"
+        )
+        assert verify_answer(REGION_TASK, answer, REGION_EV) is True
+
 
 # ── peak-bucket: the events task also bundles a file write ──────────
 # "Write the full per-hour table to /workspace/out/errors_by_hour.txt as well."

@@ -185,12 +185,25 @@ def _verify_region_counts(
 
 
 def _count_for_label(answer: str, label: str) -> int | None:
-    """The integer the answer pairs with ``label`` (``label: 4`` / ``label | 4`` / ``label (4)``)."""
-    m = re.search(
-        rf"\b{re.escape(label)}\b[^\d\n]{{0,8}}(\d+)",
+    """The integer the answer pairs with ``label`` (``label: 4`` / ``label | 4`` / ``label (4)``).
+
+    Two guards keep working-notes mentions from being misread as the tally
+    (growth wave, opus GEN-L2-cross-ref-lookup-17 — a narrated chain
+    ``o2→c2→south`` put the region word one char before the ``2`` of ``c2``):
+
+    * the digit must NOT be glued to a preceding word char (``(?<![\\w])``),
+      so a count embedded in an id like ``c2`` / ``o5`` is never captured; and
+    * the separator between label and count carries only tally punctuation /
+      whitespace (``[:|(=#.\\s-]``), not the ``→`` / letters of a chain note.
+
+    The LAST such pairing wins, so a final ``region: N`` tally overrides any
+    earlier working-note mention of the same region.
+    """
+    matches = re.findall(
+        rf"\b{re.escape(label)}\b[:|(=#.\s-]{{0,8}}(?<![\w])(\d+)",
         answer,
     )
-    return int(m.group(1)) if m else None
+    return int(matches[-1]) if matches else None
 
 
 # ── 09: peak error hour ─────────────────────────────────────────────

@@ -397,7 +397,11 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     parser.add_argument(
         "--judge",
         type=str,
-        default="cache/model_ab_answer/l2l3_goaljudge_verdicts.json",
+        # Full-seed verdicts (52 base cascade + 45 growth = 97), aligned 1:1 with the
+        # 97-row seed. The base-only file (l2l3_goaljudge_verdicts.json) covered just
+        # cases 07-15 and no longer covers the eligible set, so the bare command would
+        # abort on incomplete coverage. Mirrors scripts/measure_l2l3_goaljudge.GJ_VERDICTS.
+        default="cache/model_ab_answer/l2l3_full97_goaljudge_verdicts.json",
         help="judge verdicts (item_id -> {goal_met}) to validate",
     )
     parser.add_argument(
@@ -426,7 +430,7 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     parsed = parser.parse_args(args)
 
     # Single source of truth for the mapping + exclusion rule.
-    from scripts.measure_l2l3_goaljudge import _gold_met, _is_harness_bug
+    from scripts.measure_l2l3_goaljudge import _gold_met, _is_excluded_from_clean
 
     try:
         seed = json.loads(Path(parsed.seed).read_text())
@@ -440,7 +444,7 @@ def run_validation_cli(args: list[str] | None = None) -> int:
     gold: dict[str, bool] = {}
     eligible: list[str] = []
     for item_id, row in rows.items():
-        if parsed.clean and _is_harness_bug(item_id):
+        if parsed.clean and _is_excluded_from_clean(item_id):
             continue
         g = _gold_met(row["adjudicated"], parsed.mapping)
         if g is None:  # exclude-partial drops partial rows

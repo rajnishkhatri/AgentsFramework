@@ -2,11 +2,14 @@
 
 > **Status:** **Waves 0–3 COMPLETE + committed** (2026-06-28). Agreed stopping point
 > (user, 2026-06-28): Wave 4 (deferred subsystems — every item a DEFER verdict: new
-> dep / scheduled infra / 2nd LLM provider+cost / heavy trial) and the gated live A/B
-> (Wave-1 remainder) are left as **documented follow-ups**, not done this session.
-> Commits: `dddaab3` (W0+W1+3.1), `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92`
-> (2.1), `506f247` (2.2/2.3), `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives
-> in gitignored `.claude/`).
+> dep / scheduled infra / 2nd LLM provider+cost / heavy trial) is left as a
+> **documented follow-up**, not done this session. The **Wave-1 live A/B sweep is IN
+> PROGRESS this session** (adding `glm-5.1` as a 5th growth arm; Rater-2 grading of
+> the 9 new items pending — see
+> `docs/plans/model_ab_l2l3_blind_adjudication.plan.md` Progress log). Commits:
+> `dddaab3` (W0+W1+3.1), `4859cd0` (4.3+4.4), `1c21854` (4.1), `a175c92` (2.1),
+> `506f247` (2.2/2.3), `65a5c0c` (5.4), `7882f85` (5.1 prose; explore.md lives in
+> gitignored `.claude/`).
 >
 > ### Execution log
 >
@@ -88,6 +91,29 @@
 >   **Deferred (gated, spends budget):** the live A/B sweep over the 18-case batch +
 >   judge pass + 2-rater blind re-adjudication that actually grows the *frozen* seed
 >   to ~108 rows. Until then the seed stays at 52 (gate already passes there).
+>
+> **2026-06-28 (cont.) — Wave-1 growth half landed; seed 52 → 88; Phase 5 ran.** The
+> deferred live half of 1.3/1.4 is now done for the 4 reachable arms (gpt-4o-mini +
+> gpt-5 still deferred on the OpenAI 429 → target 108 later):
+> - **Growth wave (cases 16–24, 4 arms) blind-adjudicated → frozen seed 88 rows**
+>   (`provisional: true`, v0.2). 2-rater **α = 1.0** (36/36 agreement; honesty caveat:
+>   2-class outcome, narrower disagreement space). Blinding verified by hashing the
+>   blind items before opening the sealed key. Detail in
+>   `docs/plans/model_ab_l2l3_blind_adjudication.plan.md` (Progress log).
+> - **Phase 5 (GoalJudge vs the full-88 seed) RAN** — the keystone exit signal. The
+>   growth A/B never ran GoalJudge, so it was run fresh (`scripts/run_growth_goaljudge.py`,
+>   **gpt-4o**, evidence reconstructed from on-disk fixtures + `out/` artifacts).
+>   **Gate FAILS as-is: TPR 1.000 / TNR 0.830** (8 fp / 0 missed). BUT **7 of 8 fp are
+>   500-char harvest-truncated answers** (same artifact class as the excluded
+>   `70ff3369`); the 8th is `70ff3369` itself. **Excluding the truncated rows → TPR
+>   1.000 / TNR 0.975 PASS.** This satisfies W1's *quality* bar (≥0.90 on a clean set)
+>   but NOT its *n≥100* bar (88 rows; the gpt arms are the missing 18→106).
+> - **Real verifier bug fixed (TDD):** `components/answer_verifiers._count_for_label`
+>   read a digit glued to an adjacent id from working notes; fix + regression test,
+>   31 verifier/cascade tests green. Committable independently.
+> - **OPEN DECISION:** apply the truncation-exclusion rule (precedent `70ff3369`) for
+>   a clean PASS, **or** re-harvest the growth answers UNCAPPED and re-judge. Did NOT
+>   weaken the floor or silently drop rows.
 >
 > **2026-06-28 — Wave 0 landed** (4 items, docs/json only — no Python touched,
 > JSON valid, `okf_lint` 0 failures):
@@ -173,8 +199,8 @@ Legend: **ADOPT** (do as written) · **ADAPT** (do, but the plan's framing/targe
 |---|---|---|---|
 | **1.1** fix GoalJudge rubric | `meta/judge_prompt.j2` (generic), case rubric in goldset; `goaljudge_calibration.py` ✓ | **ADAPT** | Not a word-allowlist fix. Only 1 of 2 revalidated FPs is real; its answer is arithmetically incoherent. **Re-adjudicate the case first**, then fix the rubric *or* relabel the gold row. Don't ship a fix that teaches the judge to pass incoherent answers. |
 | **1.2** file FP as guardrail bug + version judge | `goaljudge_calibration.py` ✓, `docs/adr/` ✓ | **ADOPT** | After 1.1, bump GoalJudge manifest version + ADR. Correct per playbook P14. |
-| **1.3** grow seed to ≥100 | seed = 53 rows ✓, blind-adj corpus exists | **ADOPT** | Underpowered at n=53 (CI ±13.5pt). Gated on 1.4 for the new rows. |
-| **1.4** run L2/L3 blind adjudication | `docs/plans/model_ab_l2l3_blind_adjudication.plan.md` = "PLAN (not started)" ✓ | **ADOPT** | Plan written + scoped. This is the keystone — unblocks 1.3 *and* the "L2/L3 UNGRADED" gap. **Do first in Phase 1.** |
+| **1.3** grow seed to ≥100 | seed now **97 rows** (53→52→88→97) ✓ | **DONE for 5 arms / n<100 by choice** | Grown 52→97 via the growth wave + glm-5.1 (2026-06-28). Settled at 97; gpt-5 harvested clean into side-files but NOT merged, gpt-4o-mini flaky → n≥100 not pursued further. |
+| **1.4** run L2/L3 blind adjudication | `docs/plans/model_ab_l2l3_blind_adjudication.plan.md` Phases 0–4 ✅, Phase 5 ran | **DONE (two waves)** | Keystone delivered. Base + growth both 2-rater blind-adjudicated; **Phase 5 GoalJudge-vs-seed RAN** (full-88: FAIL as-is TNR 0.830 / PASS clean 0.975 — truncation artifact). |
 
 **Phase-1 reorder:** 1.4 → 1.3 → 1.1 (re-adjudicate) → 1.2. The plan lists 1.1 first;
 the evidence says 1.4 must precede it (the adjudication produces the labels that decide
@@ -248,10 +274,15 @@ judge rigor) + a few cheap doc items (5.3, 6.1a, 6.3 — all landed in Wave 0).
 - 5.3 (two AGENTS.md lines) · 3.2 (cursor failClosed decision) · 6.3 (`decisions.md`) ·
   6.1a (`_spec_template.md`). All landed; see Execution log at top.
 
-**Wave 1 — the residuals (the 🔴 core), reordered: ← NEXT (paused for go-ahead, spends live-LLM budget)**
+**Wave 1 — the residuals (the 🔴 core), reordered: 🟡 IN PROGRESS (5th arm sweep; Rater-2 pending)**
 - 1.4 blind adjudication → 1.3 grow seed ≥100 → 1.1 **re-adjudicate `70ff3369`** then
   fix rubric/relabel → 1.2 version + ADR. Gate: `judge_validation` PASS (TPR≥0.90 AND
   TNR≥0.90) on ≥100 rows. Candidate driver: `agentsframework-eval` skill.
+- **This session (SETTLED):** grew the seed 88 → 97 by adding `glm-5.1` as a 5th growth
+  arm (live run + harvest + blind-set rebuild + 2-rater blind adjudication + freeze all
+  DONE). Clean gate re-verified PASS at 97 rows (TNR 0.974). **gpt arms not merged:**
+  `gpt-5` harvested clean + unclipped into side-files (`l2l3_growth_gpt_*`) but left
+  unmerged by choice; `gpt-4o-mini` flaky in the ReAct loop. n≥100 not pursued further.
 
 **Wave 2 — sensors + practice (🟠/practice):**
 - 3.1 test-weakening arch-test → 4.3 graduate `tier: regression` + wire floor gate →
@@ -292,8 +323,18 @@ judge validation (reuse 4.1 machinery).
 
 - **W0 ✅:** `AGENTS.md` shows the TDD/evidence lines; `_spec_template.md` + `decisions.md`
   exist; `.cursor/hooks.json` decision recorded; `okf_lint` 0 failures.
-- **W1:** `python -m meta.judge_validation` → `VALIDATION: PASS`, TPR≥0.90 AND TNR≥0.90,
-  n≥100; L2/L3 adjudication frozen (κ≥0.80); GoalJudge version bumped + ADR linked.
+- **W1 🟢 quality met (settled at 97 rows / 5 arms):** `python -m
+  meta.judge_validation --clean` on the **97-row** seed (glm-5.1 folded in) →
+  **VALIDATION: PASS, TPR 1.000 / TNR 0.974** (n=59 strict-clean / 47 exclude-partial;
+  1 residual fp = the pre-existing base item). As-is (no exclusion) it was TNR 0.830 —
+  the user adopted the **truncation-exclusion rule** (now 23 items: the 18 original
+  growth + 5 glm-5.1, all 500-char-clipped, same data-defect class as `70ff3369`),
+  wired as the audited `TRUNCATED_AT_SOURCE` set in `scripts/measure_l2l3_goaljudge.py`
+  folded into `judge_validation --clean` (tests green). L2/L3 adjudication frozen,
+  **α 1.0** on the growth wave; GoalJudge version bumped + ADR-0003 linked. **n≥100 not
+  pursued:** gpt-5 harvested clean into side-files but NOT merged (settle decision);
+  gpt-4o-mini flaky in the loop. **Still open:** n≥100
+  (88 rows; gpt-4o-mini + gpt-5 arms = +18 → 106, OpenAI now reachable).
 - **W2:** a commit deleting `def test_*` fails the arch-test; ≥1 row `tier: regression`
   and `regression_floor_violations()` gates a drop; `judge_validation` prints
   test-retest + position-bias; `make model-ab-passk` runs (off-CI).
