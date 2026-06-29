@@ -57,7 +57,12 @@ class ReviewAgentConfig(BaseModel):
     )
     prompt_version: str = Field(
         default="v1",
-        description="Prompt bundle version for the reviewer agent (v1 or v2).",
+        description=(
+            "Prompt bundle version for the reviewer agent. v1/v2 are the "
+            "legacy flat-files families (v2 is the A/B baseline — do not "
+            "mutate). v3 is the unified, context-routed reviewer that "
+            "consumes each folder's REVIEW.md via the path router."
+        ),
     )
     task_id: str | None = None
     user_id: str = "code-reviewer"
@@ -91,8 +96,8 @@ class ReviewAgentConfig(BaseModel):
     @field_validator("prompt_version")
     @classmethod
     def _prompt_version_supported(cls, value: str) -> str:
-        if value not in {"v1", "v2"}:
-            raise ValueError("prompt_version must be 'v1' or 'v2'")
+        if value not in {"v1", "v2", "v3"}:
+            raise ValueError("prompt_version must be 'v1', 'v2', or 'v3'")
         return value
 
     @classmethod

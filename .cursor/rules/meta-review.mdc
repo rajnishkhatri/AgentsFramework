@@ -1,0 +1,27 @@
+---
+description: Reviewer enforcement context for meta/ — offline meta-optimization (optimizer, analysis, judge, drift, judge validation). Points the unified reviewer at meta/REVIEW.md, which cites meta/AGENTS.md rule IDs (AP-4, AP-6, TAP-4, judge drift/validation conventions). Auto-attached when any file under meta/ is in context.
+globs: meta/**
+alwaysApply: false
+---
+
+# Reviewing changes in `meta/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`meta/REVIEW.md`** for any
+changed path under `meta/`. That map cites rule IDs from `meta/AGENTS.md` (e.g. `AP-4`,
+`AP-6`, `TAP-4`) — it never restates the rule text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D1 dependency table (`check_dependency_rules`) — meta must not import from
+  `orchestration/` (AP-4: meta reads logs/config, never calls the graph).
+- D5 AP-6 — no fabricated metrics (`None` not `0.0`) (LLM-judged).
+- D3 TAP-4 (`detect_failure_path_ratio`) on `tests/meta/**` — failure-path ratio per
+  decision point (rule content localized to `meta/AGENTS.md §L4`, P2-11).
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

@@ -1,0 +1,26 @@
+---
+description: Reviewer enforcement context for prompts/ — Jinja2 templates (.j2). Points the unified reviewer at prompts/REVIEW.md, which cites prompts/AGENTS.md rule IDs (H1, AP-3, naming/config-split conventions). Auto-attached when any file under prompts/ is in context.
+globs: prompts/**
+alwaysApply: false
+---
+
+# Reviewing changes in `prompts/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`prompts/REVIEW.md`** for any
+changed path under `prompts/`. That map cites rule IDs from `prompts/AGENTS.md` (e.g.
+`H1`, `AP-3`) — it never restates the rule text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D2 AP-3 (`detect_anti_patterns`) — never hardcode a prompt string in Python; all
+  prompts are `.j2` files rendered via `PromptService.render_prompt()` (H1).
+- D2 naming/config-split — `{component}_system_prompt.j2` naming; no numeric thresholds
+  in templates (LLM-judged).
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

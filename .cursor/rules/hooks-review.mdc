@@ -1,0 +1,28 @@
+---
+description: Reviewer enforcement context for scripts/hooks/ — Cursor + Claude Code hook scripts (PostToolUse formatter, PreToolUse safety guard). Points the unified reviewer at scripts/hooks/REVIEW.md, which cites scripts/hooks/AGENTS.md rule IDs (HOOK-1/2/3, the Track A fail-safe invariants). Auto-attached when any file under scripts/hooks/ is in context.
+globs: scripts/hooks/**
+alwaysApply: false
+---
+
+# Reviewing changes in `scripts/hooks/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`scripts/hooks/REVIEW.md`** for
+any changed path under `scripts/hooks/`. That map cites rule IDs from
+`scripts/hooks/AGENTS.md` (HOOK-1/2/3 — the Track A invariants) — it never restates the
+rule text.
+
+Rules enforced here (LLM-judged; the hooks themselves are the deterministic rung):
+- HOOK-1 — `PostToolUse`/`afterFileEdit` never blocks the edit (formatter is advisory;
+  `failClosed: false` is an intentional, scoped deviation).
+- HOOK-2 — `PreToolUse`/`beforeShellExecution` is safety-only and thin (deny-list guard).
+- HOOK-3 — fail safe on malformed input (Cursor hooks fail OPEN by default; safety hooks
+  set `failClosed: true`).
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

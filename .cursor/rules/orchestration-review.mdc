@@ -1,0 +1,29 @@
+---
+description: Reviewer enforcement context for orchestration/ — the LangGraph graph topology and state (thin node wrappers). Points the unified reviewer at orchestration/REVIEW.md, which cites orchestration/AGENTS.md rule IDs (Invariant #8, AP-5, ADR Ask-first for new graph nodes). Auto-attached when any file under orchestration/ is in context.
+globs: orchestration/**
+alwaysApply: false
+---
+
+# Reviewing changes in `orchestration/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`orchestration/REVIEW.md`**
+for any changed path under `orchestration/`. That map cites rule IDs from
+`orchestration/AGENTS.md` (e.g. `AP-5`, the new-graph-node `⚠️ Ask first` → ADR trigger)
+and root `AGENTS.md` (`Invariant #8`) — it never restates the rule text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D1 dependency table (`check_dependency_rules`) — orchestration is the only layer that
+  may import `langgraph`/`langchain`; nodes delegate logic to `components/` + `services/`.
+- D2 ADR.1 (`detect_adr1_missing`) — a new node in `orchestration/react_loop.py` with no
+  new `docs/adr/` file in the same diff is flagged (use `--from-git-diff`).
+- D5 AP-5 — nodes must be thin wrappers (≤10–15 lines); domain logic belongs in
+  `components/` (LLM-judged).
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

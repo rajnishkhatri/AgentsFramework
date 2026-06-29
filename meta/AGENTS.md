@@ -37,3 +37,9 @@ acts on them.
   `@pytest.mark.simulation` (L4, on-demand) or plain L1 for the pure math.
 - Pure metric functions are L1: exact assertions, golden numbers pinned against
   the audit anchors (e.g. the §4 production-shadow confusion counts).
+- **TAP-4 (failure paths first):** judge/drift/eval-graduation tests must cover
+  the rejection path before the acceptance path — `None`-when-undecidable
+  (AP-6), empty-denominator guards, and regression-floor violations all need a
+  failing-input test, not just the happy path. The detector
+  (`detect_failure_path_ratio`) is shared; the *rule* lives here so `meta/`
+  cites its own AGENTS.md.

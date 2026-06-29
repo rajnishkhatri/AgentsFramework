@@ -1,0 +1,34 @@
+---
+description: Reviewer enforcement context for frontend/ — the Next.js + React Frontend Ring (CopilotKit/AG-UI chat, WorkOS AuthKit). Points the unified reviewer at frontend/REVIEW.md, which cites frontend/AGENTS.md rule IDs (FD1–FD7, FE-AP auto-rejects). Activates the TS/TSX frontend dimensions. Auto-attached when any file under frontend/ is in context.
+globs: frontend/**
+alwaysApply: false
+---
+
+# Reviewing changes in `frontend/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`frontend/REVIEW.md`** for any
+changed path under `frontend/`. That map cites rule IDs from `frontend/AGENTS.md`
+(FD1–FD7, FE-AP-4/6/7/12/18/19 auto-rejects) and `STYLE_GUIDE_FRONTEND.md` — it never
+restates the rule text. This map **supersedes** the legacy
+`prompts/codeReviewer/frontend/` and `prompts/codeReviewer/explainability_frontend/`
+prompt families.
+
+Deterministic TS predicates that fire here first (precedence over LLM), via
+`code_reviewer/frontend/tools.py` → `code_reviewer/frontend/findings.py`:
+- FD3 `check_csp_strict` — no `'unsafe-inline'`; rely on per-request nonce + `strict-dynamic`.
+- FD3 `check_iframe_sandbox` — `sandbox="allow-scripts"` only.
+- FD3 `check_secrets_in_public_env` — no `NEXT_PUBLIC_` secret-shaped values (FE-AP-18).
+- FD3 `check_jwt_storage` — no JWT in `localStorage`/`sessionStorage` (HttpOnly cookie).
+- FD2 `check_composer_keyboard` — composer keyboard contract (U-family).
+
+> Frontend TS tools require `tsx` (`cd frontend && npm install`). Missing `tsx` surfaces
+> as a `gaps[]` entry, not a hard failure.
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "_comment_wi7": "Reviewer dispatch is via .cursor/rules/*.mdc path pointers -> the `code-review` skill / `python -m meta.code_reviewer --from-git-diff --prompt-version v3` CLI (WI-7). No per-edit reviewer hook is added here on purpose: even a certified LLM judge (WI-8: TPR/TNR = 1.0) should not gate every keystroke — cost + latency — so dispatch stays on-demand (deterministic-first). The afterFileEdit formatter + beforeShellExecution safety guard below are the lower rungs of the verification ladder and stay as-is.",
   "hooks": {
     "afterFileEdit": [
       {

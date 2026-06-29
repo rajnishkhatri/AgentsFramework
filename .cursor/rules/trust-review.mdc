@@ -1,0 +1,25 @@
+---
+description: Reviewer enforcement context for trust/ — the trust kernel (pure types, protocols, crypto). Points the unified reviewer at trust/REVIEW.md, which cites trust/AGENTS.md rule IDs (TRUST_PURITY.no_io, AP-1, G4, TAP-1, TAP-4). Auto-attached when any file under trust/ is in context.
+globs: trust/**
+alwaysApply: false
+---
+
+# Reviewing changes in `trust/`
+
+The unified reviewer (`prompts/codeReviewer/v3/`) loads **`trust/REVIEW.md`** for any
+changed path under `trust/`. That map cites rule IDs from `trust/AGENTS.md` (e.g.
+`TRUST_PURITY.no_io`, `AP-1`, `G4`, `TAP-1`, `TAP-4`) — it never restates the rule text.
+
+Deterministic checks that fire here first (precedence over LLM):
+- D1 dependency table (`check_dependency_rules`) — trust has ZERO outward deps.
+- D4 trust purity (`check_trust_purity`) — no I/O / logging / network in `trust/`.
+- D3 TAP-2 mock abuse + TAP-4 failure-path ratio on `tests/trust/**`.
+
+Dispatch the reviewer:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD --prompt-version v3 --output review.json
+```
+
+Deterministic findings are the gate; the v3 LLM judge is WI-8 certified (TPR/TNR = 1.0) so LLM verdicts are gate-grade for the routed LLM-only rules — re-record when the judge model changes.
+Full contract: `docs/skills/code-review/SKILL.md`.

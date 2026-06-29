@@ -1,0 +1,67 @@
+---
+description: Run the unified, context-routed code reviewer (v3) over the current branch's changed files — use when the user asks to "review my changes", "run the reviewer", "code review this branch/PR", or "check my diff before commit". Routes each changed path to its owning folder's REVIEW.md via code_reviewer/routing.py, runs the deterministic AST/TS validators first, then optionally the v3 LLM reviewer.
+alwaysApply: false
+---
+
+# Code Review — unified, context-routed (v3) dispatch
+
+One reviewer, routed by changed path to each folder's thin `REVIEW.md` enforcement
+map. `REVIEW.md` cites `AGENTS.md` rule IDs — it never copies prose.
+
+## Contract
+
+```
+changed paths (git diff --name-only)
+        │
+   path router (deterministic, code_reviewer/routing.py)
+        │  per file: (folder, language, rules_file = nearest REVIEW.md)
+        ▼
+ ONE reviewer (v3) + loads each group's REVIEW.md (cites AGENTS.md)
+        + runs the deterministic checks first (precedence)
+        ▼
+   ReviewReport JSON (verdict / dimensions / findings / gaps)
+```
+
+- `AGENTS.md` = rule **content** (coding agent loads it).
+- `REVIEW.md` = thin **enforcement map** (reviewer loads it; cites rule IDs).
+- Deterministic findings (AST/TS) take precedence over LLM judgment.
+
+## Dispatch (deterministic-only — default, no API key needed, CI-safe)
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base HEAD \
+    --prompt-version v3 --output review.json
+```
+
+For a PR-style review of branch commits vs main:
+
+```bash
+python -m meta.code_reviewer --from-git-diff --git-base 'origin/main...HEAD' \
+    --prompt-version v3 --output review.json
+```
+
+With LLM (requires ANTHROPIC_API_KEY / OPENAI_API_KEY / LITELLM_API_KEY): add `--llm`.
+Exit codes: `0` approve · `1` request_changes · `2` reject · `3` error.
+
+## Per-folder path pointers
+
+When a file in a known subtree is in context, the matching `.cursor/rules/*-review.mdc`
+auto-attaches and points at that folder's `REVIEW.md`. Root-level files (e.g.
+`pyproject.toml`, `Makefile`) and any folder without its own `REVIEW.md` fall back to
+`REVIEW.md` at the repo root.
+
+## Honest limits — say these out loud
+
+- **LLM verdicts are gate-grade — the v3 LLM judge is WI-8 certified** (recorded
+  run at TPR=1.0 / TNR=1.0, `claude-haiku-4-5-20251001`). The deterministic
+  findings remain the primary gate; LLM findings carry calibrated confidence.
+  Re-record `verdicts.json` when the judge model changes.
+- **No per-edit reviewer hook.** The reviewer is dispatched on demand via the CLI above,
+  not on every `afterFileEdit` (deterministic-first; even a certified LLM judge should not
+  gate every keystroke — cost + latency). The existing `afterFileEdit` formatter + `beforeShellExecution`
+  safety hooks are the lower rungs of the verification ladder and stay as-is.
+
+## Full contract + reading the output
+
+See `docs/skills/code-review/SKILL.md` (the agent-agnostic skill doc) and
+`docs/plan/unified_context_routed_reviewer.plan.md` (WI-6/WI-7).

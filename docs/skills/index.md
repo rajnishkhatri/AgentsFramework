@@ -4,6 +4,7 @@ OKF bundle of repo skills. Each entry is a `type: skill` Concept (a `SKILL.md`).
 See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
 - [agentsframework-eval-probe](agentsframework-eval-probe/SKILL.md) — add and operate a continuous-evaluation PROBE on any LLM-call seam in this repo (open coding → taxonomy → rubric → judge → registered probe + drift loop).
+- [code-review](code-review/SKILL.md) — run the unified, context-routed code reviewer (v3) over the current branch's changed files: routes each path to its folder's `REVIEW.md`, runs the deterministic AST/TS validators first (D1/D4/D5 + TAP-2/TAP-4 + ADR.1 + FD2/FD3), then the v3 LLM reviewer with the routed `REVIEW.md` injected.
 - [agentsframework-open-coding](agentsframework-open-coding/SKILL.md) — run a hands-on open-coding session over agent traces: local HTML coder → JSONL → Langfuse dataset for human review.
 - [agentsframework-playwright](agentsframework-playwright/SKILL.md) — concrete Playwright E2E playbook for this repo (WorkOS auth, T1/T2/T3 tiers, Cloud Run, GoalJudge batch, exact commands/selectors).
 - [gcp-live-smoke](gcp-live-smoke/SKILL.md) — Phase 2 live GCP smoke test: one real browser run against the deployed Cloud Run frontend proving the pipeline end-to-end.
