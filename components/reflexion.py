@@ -20,11 +20,58 @@ a model in the loop.
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 ReentryDecision = Literal["reflect", "stop"]
 
-__all__ = ["ReentryDecision", "decide_reentry", "generate_reflection"]
+__all__ = [
+    "ReentryDecision",
+    "decide_reentry",
+    "generate_reflection",
+    "reflections_for_task",
+]
+
+
+def reflections_for_task(
+    reflections: list[dict[str, Any]] | None, task_id: str
+) -> list[dict[str, Any]]:
+    """Filter the append-only ``reflections`` channel to the current task (D1.5).
+
+    ``reflections`` is keyed on the LangGraph ``thread_id``, which is REUSED
+    across chat turns, while ``task_id`` is minted fresh per turn — so a prior
+    turn's critiques physically persist into the next turn's state (a checkpoint
+    reload appends, it does not reset). Every consumer — the prompt injection AND
+    ``len(...)``-as-attempt-counter — must read through this filter so a previous
+    question's failure critique never bleeds into the next, and the reflexion
+    budget is not pre-consumed by a foreign turn.
+
+    Pure (OBP-2): reads no ``AgentState``. Same memoize-on-``task_id`` discipline
+    as ``planning_depth_task_id`` / ``task_understanding_task_id``, expressed as a
+    per-entry tag (the reducer is append-only, so a last-write-wins reset can't be
+    used here). Order is preserved (the gradient is sequential). None-safe: a
+    ``None`` channel (cold checkpoint) is treated as empty.
+
+    Matching rule (ADR-0005): **strict equality** on the recorded ``task_id``.
+
+    - An entry whose recorded ``task_id`` equals the current one is kept — the
+      same-turn gradient.
+    - Any other entry is excluded — including a prior turn's (a DIFFERENT,
+      non-empty ``task_id``: the leak this guard closes) AND an **untagged** entry
+      (no recorded ``task_id``). Untagged entries are excluded deliberately: the
+      filter runs on every read and never prunes, so keeping an untagged entry as
+      "the current task's" would re-attribute it on *every* subsequent turn
+      forever — a permanent cross-turn leak, not a one-deploy grace (the channel
+      rides the reused thread_id and is never reset). The cost is bounded: only a
+      pre-fix in-flight run resumed mid-reflexion has untagged entries, and it
+      simply loses its accumulated gradient that once (``reflect_node`` always
+      stamps a non-empty id now, so no NEW entry is untagged).
+
+    An empty current ``task_id`` cannot scope anything, so it returns ``[]`` (the
+    writer avoids this by falling back to ``workflow_id``; see ``reflect_node``).
+    """
+    if not task_id:
+        return []
+    return [r for r in (reflections or []) if r.get("task_id") == task_id]
 
 
 # Deterministic critique used when no LLM is injected or the call fails. Built

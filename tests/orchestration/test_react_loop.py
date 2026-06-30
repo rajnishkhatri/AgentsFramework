@@ -119,6 +119,134 @@ class TestReactLoopHappyPath:
         assert result.get("step_count", 0) >= 1
 
 
+class TestReflexionCrossTurnLeak:
+    """ADR-0005: a prior chat turn's reflexion critique must NOT bleed into the
+    next turn's system prompt.
+
+    ``reflections`` is append-only on the LangGraph thread_id, which a chat client
+    REUSES across turns, while ``task_id`` is minted fresh per turn — so Turn N's
+    critique physically survives into Turn N+1's state. The fix tags each entry
+    with its task_id and filters every consumer to the current task_id. This drives
+    the REAL ``call_llm_node`` injection path with a leaked Turn-1 reflection in
+    state and asserts it never reaches Turn N+1's system prompt.
+    """
+
+    @pytest.mark.asyncio
+    async def test_prior_turn_critique_absent_from_next_turn_prompt(self, tmp_path):
+        from langchain_core.messages import SystemMessage
+
+        from orchestration.react_loop import build_graph
+
+        captured_system_prompts: list[str] = []
+
+        mock_response = MagicMock()
+        mock_response.content = "FINAL ANSWER: 42."
+        mock_response.tool_calls = []
+        mock_response.usage_metadata = {
+            "input_tokens": 10,
+            "output_tokens": 5,
+            "total_tokens": 15,
+        }
+        mock_response.response_metadata = {"model_name": "gpt-4o-mini"}
+
+        async def _capturing_ainvoke(messages, *args, **kwargs):
+            for m in messages:
+                if isinstance(m, SystemMessage):
+                    captured_system_prompts.append(str(m.content))
+            return mock_response
+
+        # Reflexion ON so the injection branch is live (the leak only matters when
+        # critiques are folded into the prompt at all).
+        agent_config = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile()],
+            reflexion_enabled=True,
+        )
+
+        leaked_prior_turn = "PRIOR_TURN_LEAK: cite an academic source."
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="accept",
+            ),
+        ):
+            mock_llm_instance = MockChatLiteLLM.return_value
+            mock_llm_instance.ainvoke = AsyncMock(side_effect=_capturing_ainvoke)
+
+            graph = build_graph(
+                agent_config=agent_config,
+                cache_dir=tmp_path / "cache",
+            )
+
+            # Turn N+1: task_id "turn-2" runs on a thread that already carries a
+            # Turn-1 ("turn-1") critique in the reused, append-only channel.
+            await graph.ainvoke(
+                {
+                    "task_id": "turn-2",
+                    "task_input": "What is the meaning of life?",
+                    "messages": [],
+                    "workflow_id": "wf-turn-2",
+                    "registered_agent_id": "agent-test",
+                    "reflections": [
+                        {
+                            "step_id": 0,
+                            "attempt": 0,
+                            "critique": leaked_prior_turn,
+                            "unmet_conditions": [],
+                            "task_id": "turn-1",
+                        }
+                    ],
+                },
+                config={
+                    "configurable": {
+                        "task_id": "turn-2",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-turn-2",
+                    }
+                },
+            )
+
+        assert captured_system_prompts, "call_llm must have built a system prompt"
+        joined = "\n".join(captured_system_prompts)
+        assert leaked_prior_turn not in joined, (
+            "Turn-1 critique leaked into Turn-2's system prompt — the task_id "
+            "guard (ADR-0005) is not filtering the reused reflections channel."
+        )
+
+    def test_task_reflections_falls_back_to_workflow_id_when_task_id_empty(self):
+        """ADR-0005 regression: an empty task_id must NOT silently drop the channel
+        and pin the attempt counter at 0 (which would bypass the reflexion budget).
+
+        _task_reflections scopes by ``task_id or workflow_id``, mirroring what
+        reflect_node stamps — so a turn whose task_id is empty but workflow_id is
+        set still counts its own critiques toward the budget.
+        """
+        from orchestration.react_loop import _task_reflections
+
+        state = {
+            "task_id": "",
+            "workflow_id": "wf-99",
+            "reflections": [
+                {"step_id": 0, "critique": "c0", "task_id": "wf-99"},
+                {"step_id": 1, "critique": "c1", "task_id": "wf-99"},
+                {"step_id": 2, "critique": "foreign", "task_id": "wf-other"},
+            ],
+        }
+        scoped = _task_reflections(state)
+        assert [r["critique"] for r in scoped] == ["c0", "c1"]
+        # The attempt counter (len) reflects this turn's two critiques, not 0,
+        # so decide_reentry/decide_escalation can still reach max_reflexion_attempts.
+        assert len(scoped) == 2
+
+    def test_task_reflections_none_channel_is_empty(self):
+        """Cold checkpoint: reflections is None -> [] (no TypeError)."""
+        from orchestration.react_loop import _task_reflections
+
+        assert _task_reflections({"task_id": "t", "reflections": None}) == []
+
+
 # ─────────────────────────────────────────────────────────────────────
 # L2 Contract: Tool result cache (Workstream C)
 # ─────────────────────────────────────────────────────────────────────
