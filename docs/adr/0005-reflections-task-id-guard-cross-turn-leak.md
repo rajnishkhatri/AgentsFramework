@@ -83,19 +83,27 @@ itself, because append-only state cannot carry a last-write-wins reset. Centrali
 predicate in `components/reflexion.py` keeps orchestration nodes thin (AP-5) and the
 logic CI-pure (no `AgentState`, no live LLM), so the contract is provable in L1.
 
-**Matching rule (refined after review).** The filter excludes only entries tagged with a
-*different, non-empty* `task_id` (a real prior turn) — the leak. It **keeps** an entry
-with **no recorded `task_id`** as the current task's: a one-deploy grace so a HITL-resumed
-pre-fix run does not silently lose its accumulated gradient *and* reset its reflexion
-budget (the strict "exclude untagged" rule a first cut used was itself a regression — it
-zeroed the `len()`-as-attempt counter that the pre-guard code advanced). Untagged entries
-exist only transiently: `reflect_node` now stamps a **non-empty** id on every write,
-falling back `task_id or workflow_id` (the same identity fallback the memory-store seam
-uses at `react_loop.py:3890`). That fallback is the second half of the fix — without it a
-turn entered with an empty `task_id` would write entries tagged `""`, which no reader
-could attribute, pinning the attempt counter at 0 and **bypassing the budget ceiling**.
-Read and write share one scope via the orchestration helper `_task_reflections(state)`,
-so the two can never disagree.
+**Matching rule: strict equality on the recorded `task_id`.** Only an entry whose
+recorded `task_id` equals the current one is kept. *Both* a prior turn's entry (a
+different, non-empty `task_id` — the leak) *and* an **untagged** entry (no recorded
+`task_id`) are excluded.
+
+Untagged entries are excluded **deliberately**. A first cut after review tried the
+opposite — keep untagged entries as the current task's, a "one-deploy grace" so a resumed
+pre-fix run kept its gradient. That was unsound: the filter runs on *every* read and never
+prunes the append-only channel, so a surviving untagged entry would be re-attributed to
+the current task on *every* subsequent turn forever — a **permanent** cross-turn leak (and
+permanent budget pre-consumption), not a one-deploy grace. Strict exclusion costs only a
+*bounded* one-time loss: a pre-fix in-flight run resumed mid-reflexion loses its
+accumulated gradient that once. `reflect_node` stamps a **non-empty** id on every write
+(`task_id or workflow_id`, the same identity fallback the memory-store seam uses at
+`react_loop.py:3890`), so no NEW entry is ever untagged, and the bounded cost cannot recur.
+
+That `task_id or workflow_id` fallback is the second half of the fix — without it a turn
+entered with an empty `task_id` would write entries tagged `""`, which no reader could
+attribute, pinning the attempt counter at 0 and **bypassing the budget ceiling**. Read and
+write share one scope via the orchestration helper `_task_reflections(state)`, so the two
+can never disagree.
 
 ---
 
@@ -109,11 +117,13 @@ so the two can never disagree.
   and the orchestration regression tests in `tests/orchestration/test_react_loop.py` pin
   the contract. This is convention, not mechanism — the unbounded-growth follow-on below
   notes a task-aware reducer would make it unbypassable.
-- **Accepted risk (bounded):** entries written before this change carry no `task_id`.
-  Rather than drop them (which would erase a resumed run's gradient and reset its budget),
-  they are kept as the current task's — a one-deploy grace. Safe because once any tagged
-  entry is written the channel is unambiguous, and a genuinely foreign turn is tagged with
-  a different id and still excluded.
+- **Accepted risk (bounded one-time loss):** entries written before this change carry no
+  `task_id` and are excluded by the strict-equality rule. A pre-fix in-flight run resumed
+  mid-reflexion therefore loses its accumulated gradient and starts its budget fresh — a
+  *bounded, one-time* cost. The alternative (keep untagged) was rejected: filter-at-read
+  never prunes, so an untagged entry would leak into every future turn permanently (see the
+  Matching-rule section). The bounded loss cannot recur because `reflect_node` now always
+  stamps a non-empty id.
 - **Within-turn behavior unchanged:** entries sharing the current `task_id` are kept in
   append order, so the per-turn gradient and `len()`-as-attempt-counter are byte-identical
   for a single turn.

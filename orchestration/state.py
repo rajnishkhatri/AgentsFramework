@@ -158,10 +158,11 @@ class AgentState(MessagesState):
     # stamps `task_id or workflow_id`, never empty), and EVERY consumer reads
     # through the orchestration helper react_loop._task_reflections (which wraps
     # components.reflexion.reflections_for_task) to scope to the current task.
-    # A different non-empty task_id is excluded (the leak); an untagged legacy
-    # entry is kept as the current task's (a one-deploy grace). Without this a
-    # prior question's failure critique bleeds into the next question's prompt
-    # AND pre-consumes the reflexion budget.
+    # STRICT equality: a different non-empty task_id (a prior turn) AND an
+    # untagged entry are both excluded — keeping untagged entries would re-attribute
+    # them on every future turn forever (filter-at-read never prunes), a permanent
+    # leak. Without this a prior question's failure critique bleeds into the next
+    # question's prompt AND pre-consumes the reflexion budget.
     reflections: Annotated[list[dict[str, Any]], _append_list]
     # Phase 4 (T3 fan-out): per-branch worker results merged across the parallel
     # superstep — one entry per Send branch: {branch_id, status, output, error}.

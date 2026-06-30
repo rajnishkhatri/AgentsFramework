@@ -149,36 +149,53 @@ def test_reflections_for_task_keeps_same_task_in_order() -> None:
     assert [r["critique"] for r in current] == ["first", "second"]
 
 
-def test_reflections_for_task_keeps_untagged_legacy_entries_as_current() -> None:
+def test_reflections_for_task_excludes_untagged_legacy_entries() -> None:
     """Entries with NO recorded task_id (legacy / in-flight, written before this
-    guard shipped) are kept as the CURRENT task's — a one-deploy grace (ADR-0005).
+    guard shipped) are EXCLUDED — strict equality on task_id (ADR-0005).
 
-    G8 note: this intentionally REVERSES the earlier "exclude untagged" assertion.
-    The exclude behavior was unsound — it silently dropped a resumed pre-fix run's
-    accumulated gradient AND reset its reflexion budget to 0 (a regression vs the
-    pre-guard code that counted all entries). Grace is sound because untagged
-    entries exist only transiently: ``reflect_node`` now always stamps a non-empty
-    id, so no NEW entry is untagged, and a genuine foreign turn is tagged with a
-    different id and still excluded (next assertion)."""
+    Untagged entries are dropped deliberately: the filter runs on every read and
+    never prunes the append-only channel, so keeping an untagged entry as "the
+    current task's" would re-attribute it on EVERY subsequent turn forever — a
+    permanent cross-turn leak, not a one-deploy grace. The cost of excluding is
+    bounded: only a pre-fix in-flight run resumed mid-reflexion has untagged
+    entries, and it loses its accumulated gradient that once (reflect_node always
+    stamps a non-empty id now, so no NEW entry is untagged)."""
     reflections = [
         {"step_id": 0, "attempt": 0, "critique": "untagged", "unmet_conditions": []},
         _reflection("task-T2", "tagged"),
     ]
     current = reflections_for_task(reflections, "task-T2")
-    assert [r["critique"] for r in current] == ["untagged", "tagged"]
+    assert [r["critique"] for r in current] == ["tagged"]
 
 
-def test_reflections_for_task_still_excludes_foreign_tagged_entries() -> None:
-    """The grace does NOT weaken the leak guard: an entry tagged with a DIFFERENT,
-    non-empty task_id (a real prior turn) is still excluded."""
+def test_reflections_for_task_excludes_foreign_and_untagged_keeps_only_current() -> (
+    None
+):
+    """Strict-equality guard: a DIFFERENT-task entry (a real prior turn) AND an
+    untagged entry are both excluded; only the current task's entries survive."""
     reflections = [
         _reflection("task-T1", "prior turn"),
         {"step_id": 1, "critique": "untagged", "unmet_conditions": []},
         _reflection("task-T2", "this turn"),
     ]
     current = reflections_for_task(reflections, "task-T2")
-    assert [r["critique"] for r in current] == ["untagged", "this turn"]
+    assert [r["critique"] for r in current] == ["this turn"]
     assert "prior turn" not in [r["critique"] for r in current]
+    assert "untagged" not in [r["critique"] for r in current]
+
+
+def test_reflections_for_task_untagged_entries_do_not_inflate_budget() -> None:
+    """The len()-as-attempt-counter must NOT be pre-consumed by foreign or
+    untagged entries: a thread carrying several non-current entries still reports
+    0 attempts for a fresh task, so the reflexion budget is fully available
+    (ADR-0005 — the budget-inflation edge the strict guard closes)."""
+    reflections = [
+        _reflection("task-T1", "c0", attempt=0),
+        _reflection("task-T1", "c1", attempt=1),
+        {"step_id": 2, "critique": "untagged", "unmet_conditions": []},
+    ]
+    # New task "task-T2" has written nothing yet → zero attempts counted.
+    assert reflections_for_task(reflections, "task-T2") == []
 
 
 def test_reflections_for_task_is_none_safe() -> None:

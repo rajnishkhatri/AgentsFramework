@@ -51,28 +51,27 @@ def reflections_for_task(
     used here). Order is preserved (the gradient is sequential). None-safe: a
     ``None`` channel (cold checkpoint) is treated as empty.
 
-    Matching rule (ADR-0005):
+    Matching rule (ADR-0005): **strict equality** on the recorded ``task_id``.
 
     - An entry whose recorded ``task_id`` equals the current one is kept — the
       same-turn gradient.
-    - An entry with **no recorded ``task_id``** (a legacy / in-flight critique
-      written before this guard shipped) is kept as the CURRENT task's — a
-      one-deploy grace so a resumed pre-fix run does not silently lose its
-      accumulated gradient and reset its reflexion budget. Such untagged entries
-      exist only transiently: ``reflect_node`` now always stamps a non-empty id.
-    - An entry tagged with a DIFFERENT, non-empty ``task_id`` (a prior turn) is
-      excluded — the leak this guard exists to close.
+    - Any other entry is excluded — including a prior turn's (a DIFFERENT,
+      non-empty ``task_id``: the leak this guard closes) AND an **untagged** entry
+      (no recorded ``task_id``). Untagged entries are excluded deliberately: the
+      filter runs on every read and never prunes, so keeping an untagged entry as
+      "the current task's" would re-attribute it on *every* subsequent turn
+      forever — a permanent cross-turn leak, not a one-deploy grace (the channel
+      rides the reused thread_id and is never reset). The cost is bounded: only a
+      pre-fix in-flight run resumed mid-reflexion has untagged entries, and it
+      simply loses its accumulated gradient that once (``reflect_node`` always
+      stamps a non-empty id now, so no NEW entry is untagged).
 
     An empty current ``task_id`` cannot scope anything, so it returns ``[]`` (the
     writer avoids this by falling back to ``workflow_id``; see ``reflect_node``).
     """
     if not task_id:
         return []
-    return [
-        r
-        for r in (reflections or [])
-        if not r.get("task_id") or r.get("task_id") == task_id
-    ]
+    return [r for r in (reflections or []) if r.get("task_id") == task_id]
 
 
 # Deterministic critique used when no LLM is injected or the call fails. Built
