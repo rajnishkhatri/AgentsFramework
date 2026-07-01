@@ -39,6 +39,7 @@ import { DrizzleContentRepo } from "./adapters/engine/repos/drizzle_content_repo
 import { FsrsScheduler } from "./adapters/engine/scheduler/fsrs_scheduler";
 import { ExactLetterGrader } from "./adapters/engine/grader/exact_letter_grader";
 import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_read_repo";
+import { seedDevCorpus } from "./adapters/engine/_dev_seed";
 
 export interface BuildBrowserEngineAdaptersOptions {
   /**
@@ -84,8 +85,28 @@ let singleton: EnginePortBag | null = null;
  * `browserRuntimeClient()`). The `useEngine()` provider (Phase 0.4) reads this.
  * A stable singleton is required so the provider does not re-mount adapters —
  * and so the in-memory substrate keeps its state across a session.
+ *
+ * DEV SEED (why the guard). A fresh `InMemoryEngineDb` is empty, which makes the
+ * live `/learn` surface unusable in a dev preview (0% dashboard; the Quiz route
+ * throws `no reviewed question` from `openQuizItem`). Outside production we load
+ * the small hand-authored "Maya" corpus (`_dev_seed.ts`) so the Dashboard → Quiz
+ * → Summary loop is exercisable in the browser. The guard keeps it off the
+ * production path, where the on-device SQLite substrate (ADR-0005/0010) is
+ * expected to supply real data. Tests never reach this branch: they inject their
+ * own seeded bag via `buildBrowserEngineAdapters({ engineDb })` / the
+ * `EngineProvider bag` prop and never call this singleton.
  */
 export function browserEngineAdapters(): EnginePortBag {
-  singleton ??= buildBrowserEngineAdapters();
+  if (singleton === null) {
+    if (process.env.NODE_ENV !== "production") {
+      const db = new InMemoryEngineDb();
+      seedDevCorpus(db);
+      singleton = buildBrowserEngineAdapters({ engineDb: db });
+    } else {
+      // Production: an EMPTY substrate. The on-device SQLite EngineDb
+      // (ADR-0005/0010) supplies real data here; the dev corpus must not ship.
+      singleton = buildBrowserEngineAdapters();
+    }
+  }
   return singleton;
 }

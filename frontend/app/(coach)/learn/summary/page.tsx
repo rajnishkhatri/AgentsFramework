@@ -6,14 +6,16 @@
 //
 // Session-resume limitation (ADR-0011 §4): a Summary reached by reload/deep-link
 // has no in-memory `skillStateAtStart` snapshot, so the mastery-delta tile renders
-// "—". Within an unbroken session the snapshot is carried from openQuizSession; a
-// persisted snapshot is a later decision (ADR-0011 §4 decision trigger).
+// "—". Within an unbroken session the snapshot is carried from openQuizSession via
+// the quiz_session_store (read below by session id); a persisted snapshot is a
+// later decision (ADR-0011 §4 decision trigger).
 "use client";
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { SummaryView } from "@/components/summary/SummaryView";
 import { useSummary, type SummaryVM } from "@/components/summary/use_summary";
+import { readQuizSessionSnapshot } from "@/components/quiz/quiz_session_store";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { SkillState } from "@/lib/wire/engine_entities";
 
@@ -34,16 +36,19 @@ export default function SummaryPage(): React.JSX.Element {
     }
     // Sync to the async engine read on mount (sanctioned useEffect §14: an
     // external, non-React data source). `cancelled` guards a late resolve after
-    // unmount. The start snapshot is empty here — a fresh page load lost it
-    // (ADR-0011 §4), so the delta renders "—".
+    // unmount. The start snapshot comes from the quiz_session_store when the
+    // learner reached here via the in-session Finish CTA; a fresh page load /
+    // deep-link finds nothing → empty map → delta "—" (ADR-0011 §4).
     let cancelled = false;
     setError(null);
     const emptySnapshot: ReadonlyMap<string, SkillState> = new Map();
+    const skillStateAtStart =
+      readQuizSessionSnapshot(sessionId) ?? emptySnapshot;
     load({
       subject: DEFAULT_SUBJECT,
       learnerId: LEARNER_ID,
       sessionId,
-      skillStateAtStart: emptySnapshot,
+      skillStateAtStart,
       nowISO: new Date().toISOString(),
     })
       .then((next) => {
