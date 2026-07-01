@@ -21,8 +21,22 @@
 import type { Verdict } from "@/lib/wire/engine_entities";
 import type { QuizItemResult } from "./use_quiz";
 
+/**
+ * The running session tally (FR-D3). Every graded submit increments `total`; a
+ * correct one also increments `correct`. It rides on EVERY phase so it survives
+ * the loading↔answering↔reviewing cycle across a multi-item walk, and is read at
+ * Finish to close the session with the stored score the Summary displays
+ * (`sessionRepo.close`). A `type`, not an `interface`, so the one-interface-per-
+ * file discipline of the phase objects is unaffected.
+ */
+export type SessionTally = {
+  readonly correct: number;
+  readonly total: number;
+};
+
 interface LoadingPhase {
   readonly phase: "loading";
+  readonly score: SessionTally;
 }
 
 interface AnsweringPhase {
@@ -32,6 +46,7 @@ interface AnsweringPhase {
   readonly hintOpen: boolean;
   /** Sticky once true for this item (FR-D5 attempt accounting). */
   readonly usedHint: boolean;
+  readonly score: SessionTally;
 }
 
 interface ReviewingPhase {
@@ -42,10 +57,12 @@ interface ReviewingPhase {
   /** The letter the learner submitted (drives the Feedback per-choice styling). */
   readonly answeredLetter: string;
   readonly usedHint: boolean;
+  readonly score: SessionTally;
 }
 
 interface DonePhase {
   readonly phase: "done";
+  readonly score: SessionTally;
 }
 
 export type QuizScreenState =
@@ -62,7 +79,12 @@ export type QuizScreenAction =
   | { type: "next" }
   | { type: "finish" };
 
-export const initialQuizScreen: QuizScreenState = { phase: "loading" };
+const ZERO_TALLY: SessionTally = { correct: 0, total: 0 };
+
+export const initialQuizScreen: QuizScreenState = {
+  phase: "loading",
+  score: ZERO_TALLY,
+};
 
 export function quizScreenReducer(
   state: QuizScreenState,
@@ -70,13 +92,15 @@ export function quizScreenReducer(
 ): QuizScreenState {
   switch (action.type) {
     case "item_loaded":
-      // A freshly scheduled item always opens a clean answering slate.
+      // A freshly scheduled item always opens a clean answering slate — but the
+      // running tally carries over from the prior item(s).
       return {
         phase: "answering",
         item: action.item,
         selectedLetter: null,
         hintOpen: false,
         usedHint: false,
+        score: state.score,
       };
 
     case "select":
@@ -94,7 +118,8 @@ export function quizScreenReducer(
 
     case "submitted":
       if (state.phase !== "answering") return state;
-      // FR-D2a: a no-selection submit produces no verdict — stay on the question.
+      // FR-D2a: a no-selection submit produces no verdict — stay on the question
+      // AND leave the tally untouched (nothing was answered).
       if (action.verdict == null || action.letter == null) return state;
       return {
         phase: "reviewing",
@@ -102,16 +127,21 @@ export function quizScreenReducer(
         verdict: action.verdict,
         answeredLetter: action.letter,
         usedHint: state.usedHint,
+        score: {
+          correct: state.score.correct + (action.verdict.correct ? 1 : 0),
+          total: state.score.total + 1,
+        },
       };
 
     case "next":
       if (state.phase !== "reviewing") return state;
-      // Back to loading; the page fetches the next scheduled item.
-      return { phase: "loading" };
+      // Back to loading; the page fetches the next scheduled item. Tally carries.
+      return { phase: "loading", score: state.score };
 
     case "finish":
       if (state.phase !== "reviewing") return state;
-      return { phase: "done" };
+      // The final tally rides to `done` so the page closes the session with it.
+      return { phase: "done", score: state.score };
 
     default:
       return state;

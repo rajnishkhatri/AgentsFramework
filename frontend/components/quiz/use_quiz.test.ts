@@ -14,7 +14,12 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
-import { openQuizItem, openQuizSession, runQuizSubmit } from "./use_quiz";
+import {
+  closeQuizSession,
+  openQuizItem,
+  openQuizSession,
+  runQuizSubmit,
+} from "./use_quiz";
 import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
@@ -133,6 +138,36 @@ describe("runQuizSubmit — grade → record → review (FR-D2/D3/A2)", () => {
     const misses = await ports.attemptRepo.misses(SUBJECT, LEARNER);
     expect(misses).toHaveLength(1);
     expect(misses[0]?.used_hint).toBe(true);
+  });
+});
+
+describe("closeQuizSession — stores the tally the Summary reads (FR-D3/G1)", () => {
+  it("writes score_correct/score_total + ended_at onto the session", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const closed = await closeQuizSession(ports, {
+      sessionId: session.id,
+      scoreCorrect: 3,
+      scoreTotal: 5,
+    });
+    expect(closed.score_correct).toBe(3);
+    expect(closed.score_total).toBe(5);
+    expect(closed.ended_at).not.toBeNull();
+    // The stored session — what Summary reads — carries the same tally.
+    const stored = await ports.sessionRepo.get(session.id);
+    expect(stored?.score_correct).toBe(3);
+    expect(stored?.score_total).toBe(5);
+  });
+
+  it("is idempotent: re-closing re-applies the same tally without error", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await closeQuizSession(ports, { sessionId: session.id, scoreCorrect: 2, scoreTotal: 2 });
+    const again = await closeQuizSession(ports, {
+      sessionId: session.id,
+      scoreCorrect: 2,
+      scoreTotal: 2,
+    });
+    expect(again.score_correct).toBe(2);
+    expect(again.score_total).toBe(2);
   });
 });
 

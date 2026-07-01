@@ -122,3 +122,66 @@ describe("quiz_screen_reducer — advance + finish (reviewing)", () => {
     expect(s.phase).toBe("done");
   });
 });
+
+describe("quiz_screen_reducer — running score tally (FR-D3 close)", () => {
+  it("starts the tally at 0/0", () => {
+    expect(initialQuizScreen.score).toEqual({ correct: 0, total: 0 });
+  });
+
+  it("a graded submit increments total; a correct one also increments correct", () => {
+    const answered = quizScreenReducer(
+      quizScreenReducer(initialQuizScreen, { type: "item_loaded", item }),
+      { type: "select", letter: "B" },
+    );
+    const reviewing = quizScreenReducer(answered, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+    });
+    expect(reviewing.score).toEqual({ correct: 1, total: 1 });
+  });
+
+  it("a wrong submit increments total only", () => {
+    const answered = quizScreenReducer(
+      quizScreenReducer(initialQuizScreen, { type: "item_loaded", item }),
+      { type: "select", letter: "A" },
+    );
+    const reviewing = quizScreenReducer(answered, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+    });
+    expect(reviewing.score).toEqual({ correct: 0, total: 1 });
+  });
+
+  it("a no-selection submit leaves the tally untouched (FR-D2a)", () => {
+    const answered = quizScreenReducer(
+      quizScreenReducer(initialQuizScreen, { type: "item_loaded", item }),
+      { type: "select", letter: "B" },
+    );
+    const same = quizScreenReducer(answered, {
+      type: "submitted",
+      verdict: null,
+      letter: null,
+    });
+    expect(same.score).toEqual({ correct: 0, total: 0 });
+  });
+
+  it("the tally survives item_loaded, next, and finish across a two-item walk", () => {
+    // Item 1: correct.
+    let s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, { type: "next" }); // → loading, tally preserved
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+    // Item 2: wrong.
+    s = quizScreenReducer(s, { type: "item_loaded", item });
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(false), letter: "A" });
+    expect(s.score).toEqual({ correct: 1, total: 2 });
+    // Finish carries the final tally to `done` for the session-close.
+    s = quizScreenReducer(s, { type: "finish" });
+    expect(s.phase).toBe("done");
+    expect(s.score).toEqual({ correct: 1, total: 2 });
+  });
+});

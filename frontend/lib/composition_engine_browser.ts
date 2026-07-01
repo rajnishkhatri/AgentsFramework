@@ -31,6 +31,11 @@ import type { EnginePortBag } from "./composition_engine";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
+import type {
+  Question,
+  Skill,
+  SkillState,
+} from "./wire/engine_entities";
 import { DrizzleSkillTaxonomy } from "./adapters/engine/repos/drizzle_skill_taxonomy";
 import { DrizzleQuestionRepo } from "./adapters/engine/repos/drizzle_question_repo";
 import { DrizzleAttemptRepo } from "./adapters/engine/repos/drizzle_attempt_repo";
@@ -100,13 +105,58 @@ export function browserEngineAdapters(): EnginePortBag {
   if (singleton === null) {
     if (process.env.NODE_ENV !== "production") {
       const db = new InMemoryEngineDb();
-      seedDevCorpus(db);
+      // E2E override (non-prod only): a Playwright spec may inject a larger
+      // deterministic corpus on `window` via `page.addInitScript` before the
+      // provider mounts. When present it REPLACES the hand-authored dev corpus,
+      // so specs drive their own byte-stable fixtures without touching prod seed
+      // content. Absent → the normal "Maya" dev corpus (the preview default).
+      const injected = readE2ESeedOverride();
+      if (injected) {
+        db.seedSkills([...injected.skills]);
+        db.seedQuestions([...injected.questions]);
+        db.seedSkillStates([...injected.skillStates]);
+      } else {
+        seedDevCorpus(db);
+      }
       singleton = buildBrowserEngineAdapters({ engineDb: db });
     } else {
       // Production: an EMPTY substrate. The on-device SQLite EngineDb
-      // (ADR-0005/0010) supplies real data here; the dev corpus must not ship.
+      // (ADR-0005/0010) supplies real data here; the dev corpus must not ship,
+      // and the e2e override is never read (guarded by NODE_ENV above).
       singleton = buildBrowserEngineAdapters();
     }
   }
   return singleton;
+}
+
+/** The `window` key an e2e spec sets to inject a seed corpus (non-prod only). */
+const E2E_SEED_GLOBAL_KEY = "__PREACT_E2E_SEED__";
+
+interface InjectedSeedCorpus {
+  readonly skills: readonly Skill[];
+  readonly questions: readonly Question[];
+  readonly skillStates: readonly SkillState[];
+}
+
+/**
+ * Read the e2e seed override off `window`, if a spec injected one. Returns null
+ * outside the browser or when unset/malformed (the caller then falls back to the
+ * dev corpus). Kept intentionally narrow: it validates only that the three arrays
+ * are present, so it imports no test module (the `lib` ring must not depend on
+ * `e2e/`). The corpus rows are `wire/engine_entities` shapes serialized across
+ * `addInitScript`.
+ */
+function readE2ESeedOverride(): InjectedSeedCorpus | null {
+  if (typeof window === "undefined") return null;
+  const raw = (window as unknown as Record<string, unknown>)[E2E_SEED_GLOBAL_KEY];
+  if (raw == null || typeof raw !== "object") return null;
+  const c = raw as Partial<InjectedSeedCorpus>;
+  if (
+    !Array.isArray(c.skills) ||
+    !Array.isArray(c.questions) ||
+    !Array.isArray(c.skillStates)
+  ) {
+    return null;
+  }
+  return { skills: c.skills, questions: c.questions, skillStates: c.skillStates };
 }

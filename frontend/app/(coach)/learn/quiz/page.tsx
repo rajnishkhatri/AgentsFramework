@@ -41,7 +41,7 @@ function socraticHint(stem: string): string {
 }
 
 export default function QuizPage(): React.JSX.Element {
-  const { openSession, openItem, submit } = useQuiz();
+  const { openSession, openItem, submit, closeSession } = useQuiz();
   const router = useRouter();
   const [state, dispatch] = React.useReducer(
     quizScreenReducer,
@@ -117,10 +117,21 @@ export default function QuizPage(): React.JSX.Element {
   const onFinish = React.useCallback(() => {
     if (session == null) return;
     dispatch({ type: "finish" });
-    // Hand off to the Summary route with the session id; the snapshot is already
-    // in the store, so the delta renders live (not "—").
-    router.push(`${screen("summary").route}?session=${session.id}`);
-  }, [session, router]);
+    // Close the session with the running tally BEFORE navigating so the stored
+    // score is durably written when the Summary reads it (FR-D3/G1 — Summary
+    // never re-tallies). Awaiting avoids a race where the route change reads the
+    // session before the close lands. `close` is idempotent. The reducer carried
+    // the tally across the whole walk; read it here.
+    const { correct, total } = state.score;
+    closeSession({ sessionId: session.id, scoreCorrect: correct, scoreTotal: total })
+      .then(() => {
+        // The snapshot is already in the store, so the delta renders live (not "—").
+        router.push(`${screen("summary").route}?session=${session.id}`);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Failed to close the session");
+      });
+  }, [session, state.score, closeSession, router]);
 
   if (error != null) {
     return (

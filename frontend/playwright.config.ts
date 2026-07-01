@@ -110,25 +110,48 @@ export default defineConfig({
   },
 
   projects: [
+    // The chat/full-stack tiers ignore e2e/learn/** — those specs run only under
+    // the dedicated `learn-e2e` project (video on), so a bare `playwright test`
+    // does not double-run them across every browser without video.
     {
       name: "chromium-desktop",
+      testIgnore: "learn/**",
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "mobile-safari",
+      testIgnore: "learn/**",
       use: { ...devices["iPhone 14"] },
     },
     {
       name: "webkit-desktop",
+      testIgnore: "learn/**",
       use: { ...devices["Desktop Safari"] },
     },
     {
       name: "firefox-desktop",
+      testIgnore: "learn/**",
       use: { ...devices["Desktop Firefox"] },
     },
     {
       name: "ipad",
+      testIgnore: "learn/**",
       use: { ...devices["iPad (gen 7)"] },
+    },
+    {
+      // PreAct `/learn` e2e (deterministic loop + mocked Coach + a11y). Scoped to
+      // e2e/learn/ so VIDEO RECORDING is on for these specs ONLY — the reviewable
+      // artifact the loop walk produces — without slowing the chat/full-stack
+      // tiers, which keep trace-on-failure and no video. These specs are pure T1
+      // (seeded browser engine / mocked SSE), so they need no auth.
+      name: "learn-e2e",
+      testDir: "./e2e/learn",
+      use: {
+        ...devices["Desktop Chrome"],
+        video: "on",
+        // Retain the trace too so a failure is debuggable alongside the video.
+        trace: "retain-on-failure",
+      },
     },
   ],
 

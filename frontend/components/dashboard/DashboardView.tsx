@@ -18,6 +18,7 @@ import { screen } from "@/components/shell/nav_model";
 export function DashboardView(props: { vm: DashboardVM }): React.JSX.Element {
   const { vm } = props;
   const quizRoute = screen("quiz").route; // /learn/quiz
+  const testRoute = screen("test").route; // /learn/test (timed section)
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +52,14 @@ export function DashboardView(props: { vm: DashboardVM }): React.JSX.Element {
           className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-selected"
         >
           Review my misses ({vm.reviewMissesCount})
+        </Link>
+        {/* Test Mode entry — a timed, fixed section, distinct from adaptive practice. */}
+        <Link
+          href={testRoute}
+          data-testid="take-timed-test"
+          className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-selected"
+        >
+          Take a timed test
         </Link>
       </section>
     </div>

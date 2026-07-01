@@ -26,6 +26,7 @@ export type ScreenId =
   | "feedback"
   | "coach"
   | "summary"
+  | "test"
   | "skill"
   | "progress";
 
@@ -66,6 +67,9 @@ export const SCREENS: readonly Screen[] = [
   { id: "feedback", route: `${COACH_BASE}/feedback`, navLabel: "Feedback", comingSoon: false, isFocusScreen: true },
   { id: "coach", route: `${COACH_BASE}/coach`, navLabel: "Coach", comingSoon: false, isFocusScreen: true },
   { id: "summary", route: `${COACH_BASE}/summary`, navLabel: "Summary", comingSoon: false, isFocusScreen: true },
+  // Test Mode — a fixed, timed section (Test-01 English), DECOUPLED from the
+  // adaptive quiz. A focus screen (hide the iPhone tab bar while the clock runs).
+  { id: "test", route: `${COACH_BASE}/test`, navLabel: "Test", comingSoon: false, isFocusScreen: true },
   // Screens 6/7 — subjective/tutorial plane. Deferred to the second ADR-0006
   // amendment (getTutorial / listProgressPoints); shipped disabled (FR-B5).
   { id: "skill", route: `${COACH_BASE}/skill`, navLabel: "Skill", comingSoon: true, isFocusScreen: false },
@@ -157,6 +161,7 @@ const SCREEN_TITLES: Readonly<Record<ScreenId, string>> = {
   feedback: "Feedback",
   coach: "Coach",
   summary: "Summary",
+  test: "Timed test",
   skill: "Skill detail",
   progress: "Progress",
 };
