@@ -17,7 +17,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
-import { loadDashboard, pickFocusSkillId } from "./use_dashboard";
+import { loadDashboard } from "./use_dashboard";
 import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
@@ -95,37 +95,9 @@ beforeEach(() => {
   ports = buildBrowserEngineAdapters({ engineDb: db });
 });
 
-describe("pickFocusSkillId — weakest+due, scheduler-parity, pure", () => {
-  it("returns null when there are no skill_state rows (cold start)", () => {
-    expect(pickFocusSkillId([], NOW)).toBeNull();
-  });
-
-  it("prefers a DUE skill with the lowest mastery over a non-due weaker one", () => {
-    const states = [
-      state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW }), // due, weak
-      state({ skill_id: "s-gram", mastery: 0.1, due_at: "2999-01-01T00:00:00.000Z" }), // weaker but NOT due
-    ];
-    expect(pickFocusSkillId(states, NOW)).toBe("s-punc");
-  });
-
-  it("falls back to the globally weakest when none are due", () => {
-    const future = "2999-01-01T00:00:00.000Z";
-    const states = [
-      state({ skill_id: "s-punc", mastery: 0.6, due_at: future }),
-      state({ skill_id: "s-gram", mastery: 0.2, due_at: future }),
-    ];
-    expect(pickFocusSkillId(states, NOW)).toBe("s-gram");
-  });
-
-  it("breaks mastery+due ties deterministically by skill_id", () => {
-    const states = [
-      state({ skill_id: "s-gram", mastery: 0.4, due_at: NOW }),
-      state({ skill_id: "s-punc", mastery: 0.4, due_at: NOW }),
-    ];
-    // localeCompare tie-break: "s-gram" < "s-punc".
-    expect(pickFocusSkillId(states, NOW)).toBe("s-gram");
-  });
-});
+// pickFocusSkillId's own selection-rule table moved to
+// lib/translators/focus_pick.test.ts when the helper was extracted to a shared
+// translator (used by both this screen and the Summary recommended-next card).
 
 describe("loadDashboard — READ-ONLY (FR-A2): rendering must not write skill_state", () => {
   it("does not seed/write skill_state for a brand-new learner", async () => {

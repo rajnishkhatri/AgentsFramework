@@ -27,6 +27,7 @@ import { useEngine } from "@/app/engine-provider";
 import type { SkillState } from "@/lib/wire/engine_entities";
 import { toBucketCardVM, type BucketCardVM } from "@/lib/translators/bucket_card_vm";
 import { toTodayFocusVM, type TodayFocusVM } from "@/lib/translators/today_focus_vm";
+import { pickFocusSkillId } from "@/lib/translators/focus_pick";
 
 export interface DashboardVM {
   /** One card per bucket (FR-C3), in skill `order` — six for English. */
@@ -35,30 +36,6 @@ export interface DashboardVM {
   readonly todayFocus: TodayFocusVM;
   /** "Review my misses (N)" count (FR-C5); 0 for a learner with no misses. */
   readonly reviewMissesCount: number;
-}
-
-/**
- * Pure: the weakest+due focus skill id, or null when there are no rows. Mirrors
- * `FsrsScheduler.next`'s selection EXACTLY (so the dashboard's banner points at
- * the same skill the Scheduler would serve) but without the seeding write:
- * prefer due (`due_at <= now`), then lowest mastery, then earliest due_at, then
- * `skill_id.localeCompare` as a deterministic tie-break.
- */
-export function pickFocusSkillId(
-  states: readonly SkillState[],
-  nowISO: string,
-): string | null {
-  if (states.length === 0) return null;
-  const nowMs = Date.parse(nowISO);
-  const due = states.filter((s) => Date.parse(s.due_at) <= nowMs);
-  const pool = [...(due.length > 0 ? due : states)];
-  pool.sort(
-    (a, b) =>
-      a.mastery - b.mastery ||
-      Date.parse(a.due_at) - Date.parse(b.due_at) ||
-      a.skill_id.localeCompare(b.skill_id),
-  );
-  return pool[0]!.skill_id;
 }
 
 export interface LoadDashboardArgs {
