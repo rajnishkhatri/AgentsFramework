@@ -142,17 +142,40 @@ export async function runQuizSubmit(
   return { verdict, attempt, skillState };
 }
 
+export interface CloseSessionArgs {
+  readonly sessionId: string;
+  readonly scoreCorrect: number;
+  readonly scoreTotal: number;
+}
+
+/**
+ * Close the session with the running tally so the STORED score is what the
+ * Summary reads (FR-D3/G1 — Summary never re-tallies). Called once on Finish,
+ * before the route change. `sessionRepo.close` is idempotent, so a late/duplicate
+ * close (e.g. a double-tap) re-applies the same tally harmlessly.
+ */
+export async function closeQuizSession(
+  ports: EnginePortBag,
+  args: CloseSessionArgs,
+): Promise<QuizSession> {
+  return ports.sessionRepo.close(args.sessionId, {
+    score_correct: args.scoreCorrect,
+    score_total: args.scoreTotal,
+  });
+}
+
 /**
  * Thin React wrapper: reads the engine bag from context (C3) and exposes the
  * orchestration bound to it. The component calls these; it holds no port logic.
- * Tests exercise `openQuizItem` / `runQuizSubmit` directly with an injected bag,
- * so the hook itself stays a trivial context binding (no test-only param that
- * would force a conditional `useEngine()` call).
+ * Tests exercise `openQuizItem` / `runQuizSubmit` / `closeQuizSession` directly
+ * with an injected bag, so the hook itself stays a trivial context binding (no
+ * test-only param that would force a conditional `useEngine()` call).
  */
 export function useQuiz(): {
   openSession: (args: OpenSessionArgs) => Promise<QuizSessionResult>;
   openItem: (args: { subject: string; learnerId: string }) => Promise<QuizItemResult>;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
+  closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -161,6 +184,7 @@ export function useQuiz(): {
       openItem: (args: { subject: string; learnerId: string }) =>
         openQuizItem(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
+      closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
     }),
     [ports],
   );
