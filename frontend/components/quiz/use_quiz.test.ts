@@ -14,8 +14,8 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
-import { openQuizItem, runQuizSubmit } from "./use_quiz";
-import type { Question, Skill } from "@/lib/wire/engine_entities";
+import { openQuizItem, openQuizSession, runQuizSubmit } from "./use_quiz";
+import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
 const LEARNER = "maya";
@@ -54,6 +54,21 @@ function question(over: Partial<Question> = {}): Question {
     item_type: "underlined-span-mc",
     reviewed: true,
     generated_by: "test",
+    ...over,
+  };
+}
+
+function skillState(over: Partial<SkillState> = {}): SkillState {
+  return {
+    subject: SUBJECT,
+    skill_id: "s-punc",
+    learner_id: LEARNER,
+    mastery: 0.42,
+    last_seen: "2026-06-25T00:00:00.000Z",
+    fsrs_stability: 3,
+    fsrs_difficulty: 5,
+    due_at: "2026-07-01T00:00:00.000Z",
+    fsrs_card: null,
     ...over,
   };
 }
@@ -118,6 +133,69 @@ describe("runQuizSubmit — grade → record → review (FR-D2/D3/A2)", () => {
     const misses = await ports.attemptRepo.misses(SUBJECT, LEARNER);
     expect(misses).toHaveLength(1);
     expect(misses[0]?.used_hint).toBe(true);
+  });
+});
+
+describe("openQuizSession — session open + skillStateAtStart snapshot (FR-G1, ADR-0011 §4)", () => {
+  it("brand-new learner: opens a session and captures an EMPTY snapshot (delta '—' path)", async () => {
+    // Edge path first: a learner the scheduler has never seen has no skill_state
+    // rows, so the "before" snapshot is empty — the Summary delta later renders "—".
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+    expect(result.session.subject).toBe(SUBJECT);
+    expect(result.session.ended_at).toBeNull();
+    expect(result.skillStateAtStart.size).toBe(0);
+  });
+
+  it("captures the pre-session mastery once, keyed by skill_id", async () => {
+    db.seedSkillStates([
+      skillState({ skill_id: "s-punc", mastery: 0.42 }),
+      skillState({ skill_id: "s-grammar", mastery: 0.7 }),
+    ]);
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+    expect(result.skillStateAtStart.size).toBe(2);
+    expect(result.skillStateAtStart.get("s-punc")?.mastery).toBe(0.42);
+    expect(result.skillStateAtStart.get("s-grammar")?.mastery).toBe(0.7);
+  });
+
+  it("snapshot is taken at open, BEFORE any review mutates skill_state (the 'before' half)", async () => {
+    db.seedSkillStates([skillState({ skill_id: "s-punc", mastery: 0.42 })]);
+    const { session, skillStateAtStart } = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+    // A review runs and moves mastery; the snapshot must NOT track that change.
+    await runQuizSubmit(ports, {
+      session,
+      question: question({ answer_letter: "B" }),
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 2000,
+      usedHint: false,
+    });
+    const fresh = await ports.learnerRead.listSkillState(SUBJECT, LEARNER);
+    const freshPunc = fresh.find((s) => s.skill_id === "s-punc");
+    // The snapshot froze the pre-review value; the live read reflects the review.
+    expect(skillStateAtStart.get("s-punc")?.mastery).toBe(0.42);
+    expect(freshPunc?.mastery).not.toBe(0.42);
+  });
+
+  it("passes `focus` through to sessionRepo.open for a drill session (FR-A5)", async () => {
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "drill",
+      focus: "s-punc",
+    });
+    expect(result.session.skill_focus).toBe("s-punc");
   });
 });
 

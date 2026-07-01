@@ -12,6 +12,16 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-01 — **Coach surface is routed under `/learn`, not `/`** (Phase 1.1). The
+  design/plan placed the Dashboard at `app/(coach)/page.tsx`, which resolves to `/` —
+  but `app/page.tsx` (the chat landing) already owns `/`, and Next.js route groups add
+  nothing to the URL, so both pages would resolve to `/` → a build-time parallel-page
+  collision. Decision: anchor the whole coach surface under a base segment `COACH_BASE`
+  (`/learn`): Dashboard=`/learn`, Quiz=`/learn/quiz`, etc.; `/` stays the chat landing.
+  Rejected: (a) coach at `/coach` — would double as `/coach/coach` for the Coach screen;
+  (b) coach replaces `/` and chat moves to `/chat` — larger blast radius (touches the
+  existing chat app's routing + every link to `/`). `COACH_BASE` is the single source of
+  truth in `nav_model.ts`; a regression test forbids any screen routing to `/`.
 - 2026-07-01 — **`CoachAgentClient` is not an engine port** (reconciliation). ADR-0006's
   port table + `SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md` §3 + the agent brainstorm §4
   list `CoachAgentClient` as an 8th "engine port over the AG-UI SSE transport." The built
