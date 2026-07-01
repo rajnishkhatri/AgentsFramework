@@ -81,6 +81,20 @@ class AgentConfig(BaseModel):
     # (gather verdicts, change nothing) before the gate is enabled. Default
     # off — stays off until the gold-set production-enable gate is met.
     goal_judge_downgrade_enabled: bool = False
+    # ADR-0007 (Identity pillar, Option A2): make AgentFacts.capabilities
+    # load-bearingly gate the ToolRegistry. When True AND ``build_graph`` is given
+    # a ``bound_capabilities`` list, only the declared tools' schemas are bound to
+    # the LLM (preventive least-privilege). Off by default so behavior is
+    # byte-identical (the full registry is bound, as today) — shadow-first,
+    # promote per the ADR acceptance condition. The run-time authorization_service
+    # PEP is unaffected and complementary.
+    capability_gating_enabled: bool = False
+    # ADR-0007 (English-only domain guardrail seam): the InputGuardrail
+    # accept_condition, made injectable. Empty ⇒ the default prompt-injection
+    # condition ("The input is a legitimate user query"), so behavior is
+    # byte-identical when unset. A domain instance (e.g. the coach) sets an
+    # English-learning condition here; the 3-stage cascade is reused unchanged.
+    input_guardrail_accept_condition: str = ""
     # Phase 1 (T1 plan-and-execute): source of the route_node plan artifact.
     #   "deterministic" — regex ``build_plan_artifact`` (steady-state, default).
     #   "shadow"        — LLM plan is generated + captured for eval, but the

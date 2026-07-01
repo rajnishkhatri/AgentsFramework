@@ -38,6 +38,11 @@ from components.evaluator import (
     evaluate_task_outcome,
     parse_llm_response,
 )
+from components.capability_gating import (
+    CapabilityGateResult,
+    derive_bound_tools,
+    filter_registry_schemas,
+)
 from components.reflexion import (
     decide_reentry,
     generate_reflection,
@@ -966,6 +971,7 @@ def build_graph(
     | InMemoryGoalJudgeConfigReader
     | None = None,
     memory_service: LongTermMemoryService | None = None,
+    bound_capabilities: list[str] | None = None,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -1065,7 +1071,14 @@ def build_graph(
 
     guardrail = InputGuardrail(
         name="prompt_injection",
-        accept_condition="The input is a legitimate user query",
+        # ADR-0007 FR-7: the accept_condition is injectable via AgentConfig so a
+        # domain instance (e.g. the English coach) can gate off-topic input. Empty
+        # ⇒ the default prompt-injection condition, so this is byte-identical when
+        # unset. A plain string flowed verbatim into prompts/input_guardrail.j2.
+        accept_condition=(
+            agent_config.input_guardrail_accept_condition
+            or "The input is a legitimate user query"
+        ),
         llm_service=llm_service,
         prompt_service=prompt_service,
         judge_profile=default_fast_profile(),
@@ -1128,6 +1141,28 @@ def build_graph(
 
     tool_schemas = tool_registry.get_schemas() if tool_registry else []
 
+    # ── ADR-0007 (Option A2): capability-gate the tool set at the build boundary ──
+    # Preventive least-privilege — only the tools the agent DECLARES are bound to
+    # the LLM, so a tool outside the contract is never even offered. Off by default
+    # (byte-identical: the full registry is bound). All logic lives in the
+    # framework-agnostic ``components.capability_gating`` component (AP-5 thin node);
+    # ``derive_bound_tools`` fails fast (FR-5) if a capability names an absent tool.
+    #
+    # The *filtering* happens here (build-once: ``tool_schemas`` is a build-time
+    # constant), but the Identity-pillar *evidence carrier* is emitted per-run in
+    # ``guard_input_node`` — build time has no ``workflow_id`` to record against, so
+    # a carrier here would land in the recorder's root, unreadable by
+    # ``export(workflow_id)``. We stash the gate result for that node to emit.
+    capability_gate: CapabilityGateResult | None = None
+    if agent_config.capability_gating_enabled and bound_capabilities is not None:
+        capability_gate = derive_bound_tools(
+            capability_names=bound_capabilities,
+            available_tool_names=tool_registry.tool_names() if tool_registry else [],
+        )
+        tool_schemas = filter_registry_schemas(
+            tool_schemas, capability_gate.bound_tool_names
+        )
+
     # ── Story 1.2 + 1.4: guard_input_node with rejection branching + AgentFacts ──
 
     async def guard_input_node(state: AgentState, config: RunnableConfig) -> dict:
@@ -1163,6 +1198,27 @@ def build_graph(
                     },
                 )
             )
+            # ADR-0007 Identity-pillar evidence: when the tool set was
+            # capability-gated at build (flag ON + bound_capabilities given),
+            # record declared == bound so the trace proves the contract was
+            # enforced, not merely documented. Emitted here — not at build —
+            # because this is the first point with a real ``workflow_id`` to
+            # record against. Fires once (guard_input returns early for step > 0).
+            if capability_gate is not None:
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.GUARDRAIL_CHECKED,
+                        timestamp=datetime.now(UTC),
+                        step=step_count,
+                        details={
+                            "guardrail": "capability_gating",
+                            "declared_capabilities": capability_gate.capabilities,
+                            "bound_tools": capability_gate.bound_tool_names,
+                        },
+                    )
+                )
         # Phase-1 shadow carrier gate: the Identity pillar (task_started) just fired.
         _shadow_check_phase_carriers(
             black_box,
