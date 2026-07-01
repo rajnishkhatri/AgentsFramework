@@ -1,0 +1,91 @@
+/**
+ * Phase 1.5 — FeedbackView SSR structural tests (FR-E1/E4/A8, L1 jsdom).
+ *
+ * Repo convention (no @testing-library/react): renderToStaticMarkup + JSDOM.
+ * Failure/edge first: a wrong-pick verdict must show the SOFT banner and style
+ * the chosen-wrong row distinctly — AND never convey state by color alone
+ * (FR-A8: each reviewed choice carries a text label + icon, not just a border).
+ */
+
+import { describe, expect, it } from "vitest";
+import { JSDOM } from "jsdom";
+import * as React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { FeedbackView } from "./FeedbackView";
+import { toFeedbackVM } from "@/lib/translators/feedback_vm";
+import type { Answer, Question, Verdict } from "@/lib/wire/engine_entities";
+
+function question(over: Partial<Question> = {}): Question {
+  return {
+    id: "q1",
+    subject: "act-english",
+    skill_id: "s-punc",
+    difficulty: 3,
+    context_html: "The committee <u>have</u> decided.",
+    stem: "Which choice is best?",
+    choices: [
+      { letter: "A", label: "NO CHANGE", is_no_change: true },
+      { letter: "B", label: "has", is_no_change: false },
+      { letter: "C", label: "having", is_no_change: false },
+      { letter: "D", label: "had", is_no_change: false },
+    ],
+    answer_letter: "A",
+    per_choice_rationale: {
+      A: "A is correct: singular collective noun.",
+      B: "B tempted you: sounds plural.",
+    },
+    why_correct_md: "…",
+    why_tempted_md: "…",
+    rule_md: "Collective nouns are singular.",
+    item_type: "underlined-span-mc",
+    reviewed: true,
+    generated_by: "test",
+    ...over,
+  };
+}
+
+function render(verdict: Verdict, answer: Answer): Document {
+  const vm = toFeedbackVM(question(), verdict, answer);
+  const html = renderToStaticMarkup(React.createElement(FeedbackView, { vm }));
+  return new JSDOM(`<!doctype html><html><body>${html}</body></html>`).window
+    .document;
+}
+
+describe("FeedbackView — wrong pick (edge first, FR-E3/E4)", () => {
+  const doc = render(
+    { correct: false, correct_letter: "A", rationale_key: "B" },
+    { letter: "B" },
+  );
+
+  it("shows the soft banner, not celebrate", () => {
+    const banner = doc.querySelector('[data-testid="feedback-banner"]');
+    expect(banner?.getAttribute("data-banner")).toBe("soft");
+  });
+
+  it("styles the correct row 'correct' and the chosen-wrong row 'chosen-wrong' (FR-E4)", () => {
+    expect(doc.querySelector('[data-testid="choice-A"]')?.getAttribute("data-state")).toBe("correct");
+    expect(doc.querySelector('[data-testid="choice-B"]')?.getAttribute("data-state")).toBe("chosen-wrong");
+    expect(doc.querySelector('[data-testid="choice-C"]')?.getAttribute("data-state")).toBe("other");
+  });
+
+  it("never conveys state by color alone — each state row carries a text label (FR-A8)", () => {
+    expect(doc.querySelector('[data-testid="choice-A"]')?.textContent).toContain("CORRECT ANSWER");
+    expect(doc.querySelector('[data-testid="choice-B"]')?.textContent).toContain("YOUR CHOICE");
+  });
+
+  it("renders the distractor rationale and the rule under test (FR-E1)", () => {
+    const body = doc.body.textContent ?? "";
+    expect(body).toContain("B tempted you");
+    expect(body).toContain("Collective nouns are singular.");
+  });
+});
+
+describe("FeedbackView — correct pick (FR-E2)", () => {
+  it("shows the celebrate banner", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(doc.querySelector('[data-testid="feedback-banner"]')?.getAttribute("data-banner")).toBe("celebrate");
+  });
+});

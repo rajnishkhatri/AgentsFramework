@@ -162,6 +162,21 @@ export function reduceRunView(
       if (todos === view.todos && modelBadge === view.modelBadge) return view;
       return { ...view, todos, modelBadge };
     }
+
+    case "approval_requested":
+      // HITL approvals ride their own channel (ShellApprovalCard, fed by
+      // ag_ui_to_ui_runtime); the assistant-message view carries no approval
+      // state, so this event never reshapes it.
+      return view;
+
+    default: {
+      // Exhaustiveness guard: a new UIRuntimeEvent variant that reaches here
+      // fails the type-check (evt is `never`) instead of silently dropping
+      // through. Runtime fallback leaves the view unchanged (defensive).
+      const _exhaustive: never = evt;
+      void _exhaustive;
+      return view;
+    }
   }
 }
 

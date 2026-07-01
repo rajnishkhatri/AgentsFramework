@@ -48,6 +48,10 @@ const SDK_PACKAGES = new Set<string>([
   "drizzle-orm",
   "@neondatabase/serverless",
   "pg",
+  // Subject-Coach engine FSRS lib (ADR-0006 Scheduler). Confined to
+  // lib/adapters/engine/scheduler/ like any vendor SDK (the Scheduler port
+  // is vendor-neutral; the FSRS card type never escapes the adapter).
+  "ts-fsrs",
   // Capacitor native-shell SDK (P6 iOS): confined to lib/adapters/** like any
   // vendor SDK. The `@capacitor/` and `@capacitor-community/` prefixes are
   // matched by the subpath rule in isSdkSpec, so every plugin is covered.
@@ -128,6 +132,20 @@ function ringOf(filePath: string): string | null {
   // the Capacitor bridge + auth controller. Separate from composition.ts so the
   // Capacitor SDK never enters the web/server bundles.
   if (top === "composition_ios.ts") return "composition";
+  // Subject-Coach engine composition root (ADR-0006): the Frontend-Ring-local
+  // engine slice that wires the seven engine ports (Drizzle repos + ts-fsrs
+  // Scheduler + exact-letter Grader + in-repo content). Separate from
+  // composition.ts so the engine bounded context selects its EngineDb by
+  // DATABASE_URL independently of the chat ARCHITECTURE_PROFILE switch.
+  if (top === "composition_engine.ts") return "composition";
+  // Subject-Coach engine BROWSER accessor (FR-C2, the C2 seam): the
+  // client-bundle engine slice. Separate from composition_engine.ts so the
+  // server-only pg/Drizzle driver (pulled in by its `pgEngineDb` import) never
+  // enters the client bundle — exactly the composition_browser.ts ↔
+  // composition.ts split, applied to the engine bounded context. It wires only
+  // the browser-safe InMemoryEngineDb + the driver-free repo/Scheduler/Grader
+  // adapters.
+  if (top === "composition_engine_browser.ts") return "composition";
   // BFF server composition is the server-side counterpart of the React
   // composition seam -- it is allowed to name concrete adapters and read
   // env. The chat / API surface code in `lib/bff/handlers.ts` and the
@@ -279,7 +297,12 @@ describe("Frontend layering enforcement [Pattern 7]", () => {
     for (const file of project.getSourceFiles().filter((sf) => {
       const p = sf.getFilePath();
       return (
-        p.startsWith(portsDir) && !p.endsWith(".test.ts") && !p.endsWith("/index.ts")
+        p.startsWith(portsDir) &&
+        !p.endsWith(".test.ts") &&
+        !p.endsWith("/index.ts") &&
+        // ports-local helper modules (not port interfaces): a shared typed-error
+        // module is allowed (e.g. ports/engine/errors.ts, ADR-0006 P4).
+        !p.endsWith("/errors.ts")
       );
     })) {
       const interfaces = file.getInterfaces().filter((i) => i.isExported());

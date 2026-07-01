@@ -137,6 +137,21 @@ describe("run_view_reducer — failure paths first", () => {
     expect(after.todos?.total).toBe(2);
     expect(after.todos?.done).toBe(1);
   });
+
+  it("approval_requested rides its own channel (ShellApprovalCard) and never reshapes the message view", () => {
+    const before = reduceAll([started(), delta("x")]);
+    const after = reduceRunView(before, {
+      type: "approval_requested",
+      trace_id: TRACE,
+      approval_id: "a1",
+      tool: "shell",
+      command: "rm -rf /tmp/x",
+      severity: "high",
+      band: "ask",
+      timeout_seconds: 60,
+    });
+    expect(after).toBe(before);
+  });
 });
 
 describe("run_view_reducer — trajectory assembly", () => {

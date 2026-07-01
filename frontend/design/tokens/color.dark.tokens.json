@@ -45,6 +45,13 @@
     "placeholder": {
       "$value": "#9c998f",
       "$description": "Dark-only input placeholder — dimmed below --color-muted (frozen v11 safeguard)."
-    }
+    },
+
+    "bucket-rhetoric":           { "$value": "#e5967c", "$description": "Skill-bucket accent: Rhetoric (dark) — FR-A3." },
+    "bucket-usage":              { "$value": "#d6a45a", "$description": "Skill-bucket accent: Usage (dark) — FR-A3." },
+    "bucket-punctuation":        { "$value": "#6bbfa9", "$description": "Skill-bucket accent: Punctuation (dark) — FR-A3." },
+    "bucket-organization":       { "$value": "#9bb56e", "$description": "Skill-bucket accent: Organization (dark) — FR-A3." },
+    "bucket-sentence-structure": { "$value": "#84a6cc", "$description": "Skill-bucket accent: Sentence Structure (dark) — FR-A3." },
+    "bucket-conciseness":        { "$value": "#c08fb4", "$description": "Skill-bucket accent: Conciseness (dark) — FR-A3." }
   }
 }
