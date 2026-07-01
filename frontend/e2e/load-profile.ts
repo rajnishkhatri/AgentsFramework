@@ -36,6 +36,20 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PROFILES_PATH =
   process.env.TEST_PROFILES_FILE ?? path.join(HERE, "testing.profiles.yml");
 
+/**
+ * Expand `${VAR}` / `${VAR:-default}` references against process.env.
+ * A missing VAR with no default expands to "" (shell convention). This lets a
+ * profile carry a canonical default inline (e.g. a tagged Cloud Run URL) while
+ * still allowing a per-run override via the named env var.
+ */
+function interpolate(value: string): string {
+  return value.replace(/\$\{([A-Z0-9_]+)(?::-([^}]*))?\}/g, (_m, name, fallback) => {
+    const env = process.env[name];
+    if (env !== undefined && env !== "") return env;
+    return fallback ?? "";
+  });
+}
+
 /** Set an env var only if it is currently unset/empty (explicit-wins). */
 function fillIfUnset(key: string, value: string): boolean {
   const existing = process.env[key];
@@ -81,10 +95,10 @@ export function applyTestProfile(): string | null {
 
   const applied: string[] = [];
   if (profile.base_url) {
-    if (fillIfUnset("BASE_URL", profile.base_url)) applied.push("BASE_URL");
+    if (fillIfUnset("BASE_URL", interpolate(profile.base_url))) applied.push("BASE_URL");
   }
   for (const [k, v] of Object.entries(profile.env ?? {})) {
-    if (fillIfUnset(k, v)) applied.push(k);
+    if (fillIfUnset(k, interpolate(v))) applied.push(k);
   }
 
   // Quiet during normal runs; the summary is useful when explicitly profiling.

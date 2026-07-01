@@ -64,6 +64,36 @@
       "$value": "#a9741f",
       "$type": "color",
       "$description": "Warning / caution (light) — promoted from inline .badge-warning to a token (frozen v20)"
+    },
+    "bucket-rhetoric": {
+      "$value": "#d87758",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Rhetoric (light) — FR-A3"
+    },
+    "bucket-usage": {
+      "$value": "#c0863a",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Usage (light) — FR-A3"
+    },
+    "bucket-punctuation": {
+      "$value": "#4f9d8b",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Punctuation (light) — FR-A3"
+    },
+    "bucket-organization": {
+      "$value": "#7a9450",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Organization (light) — FR-A3"
+    },
+    "bucket-sentence-structure": {
+      "$value": "#5b7fa6",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Sentence Structure (light) — FR-A3"
+    },
+    "bucket-conciseness": {
+      "$value": "#a06a93",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Conciseness (light) — FR-A3"
     }
   }
 }

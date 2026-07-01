@@ -42,19 +42,24 @@ jobs:
           python-version: "3.13"
           cache: pip
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: npm
-          cache-dependency-path: frontend/package.json
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
 
       - name: Install Python project (editable, no dev extras needed for codegen)
         run: pip install -e .
 
       - name: Install frontend codegen deps
         working-directory: frontend
-        run: npm install --no-audit --no-fund --no-progress
+        run: pnpm install --frozen-lockfile
 
       - name: Regenerate wire artifacts
         run: ./scripts/regenerate_wire_artifacts.sh

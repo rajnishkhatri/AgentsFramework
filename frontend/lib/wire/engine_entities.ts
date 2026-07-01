@@ -1,0 +1,208 @@
+/**
+ * Subject-Coach engine — pure entity + contract shapes (wire kernel).
+ *
+ * These are the vendor-neutral data shapes the seven ADR-0006 engine ports
+ * exchange. They are NOT mirrored from a Python `agent_ui_adapter/wire/` module
+ * (unlike the chat wire shapes) — the engine is a Frontend-Ring-local concern
+ * (ADR-0005: learner-facing engine runs on-device, local-first). They live in
+ * `wire/` for the same reason every other shape does: pure Zod, zero outward
+ * dependencies, imported by ports/translators/adapters but importing nothing
+ * from them (Rule W1).
+ *
+ * Naming: snake_case fields to match the Drizzle row columns 1:1
+ * (`schema.pg.ts` / `schema.sqlite.ts`), so a repo adapter maps a row to one of
+ * these shapes with no key renaming. camelCase happens only in a translator on
+ * the way to a view-model (Rule W6), never here.
+ *
+ * The single hand-pinned contract is `Verdict` (the grading return shape,
+ * ADR-0006): generic enough for a future symbolic/numeric grader
+ * (`canonical_answer`) without being abstract now (English uses `correct_letter`
+ * + `rationale_key`).
+ *
+ * Import rule (W1): this module imports only `zod`. No React, no SDK, no
+ * browser API.
+ */
+
+import { z } from "zod";
+
+/** Default subject discriminator — the OCP seam (engine spec FR-H1). */
+export const DEFAULT_SUBJECT = "act-english";
+
+// --- skill ---------------------------------------------------------------
+
+/** One taxonomy bucket (English: 'punctuation', 'rhetoric', ...). */
+export const Skill = z.object({
+  id: z.string(),
+  subject: z.string(),
+  key: z.string(),
+  name: z.string(),
+  share_of_test_pct: z.number(),
+  accent_var: z.string(),
+  description: z.string(),
+  order: z.number().int(),
+});
+export type Skill = z.infer<typeof Skill>;
+
+// --- question ------------------------------------------------------------
+
+/** One answer choice. English: choice A is "NO CHANGE" (`is_no_change`). */
+export const Choice = z.object({
+  letter: z.string(),
+  label: z.string(),
+  is_no_change: z.boolean().default(false),
+});
+export type Choice = z.infer<typeof Choice>;
+
+/**
+ * One item. `reviewed = false` rows MUST NOT reach a learner (engine spec
+ * FR-B*); `QuestionRepo.nextReviewed` returns reviewed items only. `item_type`
+ * drives the client renderer registry, never a `switch(subject)` (FR-H2).
+ */
+export const Question = z.object({
+  id: z.string(),
+  subject: z.string(),
+  skill_id: z.string(),
+  difficulty: z.number().int(), // 1..5
+  context_html: z.string(),
+  stem: z.string(),
+  choices: z.array(Choice),
+  answer_letter: z.string(),
+  // { A: "...", B: "...", ... } per-choice rationale keyed by letter.
+  per_choice_rationale: z.record(z.string(), z.string()),
+  why_correct_md: z.string(),
+  why_tempted_md: z.string(),
+  rule_md: z.string(),
+  item_type: z.string(),
+  reviewed: z.boolean(),
+  generated_by: z.string(),
+});
+export type Question = z.infer<typeof Question>;
+
+// --- quiz_session --------------------------------------------------------
+
+export const SessionMode = z.enum(["adaptive", "drill", "review"]);
+export type SessionMode = z.infer<typeof SessionMode>;
+
+/** One drill/adaptive/review session; score tally is set on close (FR-D3). */
+export const QuizSession = z.object({
+  id: z.string(),
+  subject: z.string(),
+  learner_id: z.string(),
+  mode: SessionMode,
+  skill_focus: z.string().nullable(),
+  started_at: z.string(), // ISO 8601 on the wire (Rule: Intl + ISO strings)
+  ended_at: z.string().nullable(),
+  score_correct: z.number().int(),
+  score_total: z.number().int(),
+});
+export type QuizSession = z.infer<typeof QuizSession>;
+
+// --- attempt -------------------------------------------------------------
+
+/** Append-only history of one answered item (FR-D2). */
+export const Attempt = z.object({
+  id: z.string(),
+  subject: z.string(),
+  session_id: z.string(),
+  question_id: z.string(),
+  chosen_letter: z.string(),
+  correct: z.boolean(),
+  elapsed_ms: z.number().int(),
+  used_hint: z.boolean(),
+  created_at: z.string(),
+});
+export type Attempt = z.infer<typeof Attempt>;
+
+/** The fields a caller supplies to record an attempt (id + created_at are engine-assigned). */
+export const AttemptInput = Attempt.omit({ id: true, created_at: true });
+export type AttemptInput = z.infer<typeof AttemptInput>;
+
+// --- skill_state ---------------------------------------------------------
+
+/**
+ * The adaptivity source of truth (FR-A2). The Scheduler (FSRS) port is the
+ * ONLY writer. One row per (subject, skill, learner).
+ *
+ * `mastery`, `fsrs_stability`, `fsrs_difficulty`, `due_at`, `last_seen` are the
+ * vendor-neutral projection the rest of the engine reads (UI, weakest-due pick).
+ * `fsrs_card` is the OPAQUE full FSRS card snapshot the Scheduler round-trips so
+ * the card's state machine (state/reps/lapses/learning_steps/…) advances across
+ * reviews instead of resetting to New each time. It is `unknown` precisely so no
+ * FSRS type leaks into the wire kernel (Rule W1 / F-R8): only the Scheduler
+ * adapter ever parses it back into a card; everyone else treats it as opaque.
+ */
+export const SkillState = z.object({
+  subject: z.string(),
+  skill_id: z.string(),
+  learner_id: z.string(),
+  mastery: z.number(), // 0..1
+  last_seen: z.string().nullable(),
+  fsrs_stability: z.number(),
+  fsrs_difficulty: z.number(),
+  due_at: z.string(),
+  // Opaque FSRS card snapshot (null before the first review). Only the FsrsScheduler
+  // adapter reads/writes this; it is never inspected outside the vendor boundary.
+  fsrs_card: z.unknown().nullable().default(null),
+});
+export type SkillState = z.infer<typeof SkillState>;
+
+// --- tutorial / content_string / progress_point --------------------------
+
+/** "Rule in one line" + examples for a skill; same reviewed-gate as question. */
+export const Tutorial = z.object({
+  id: z.string(),
+  subject: z.string(),
+  skill_id: z.string(),
+  body_md: z.string(),
+  examples: z.array(z.string()),
+  generated_from: z.string(),
+  reviewed: z.boolean(),
+});
+export type Tutorial = z.infer<typeof Tutorial>;
+
+/** Sampled progress point for the trend line (UI spec FR-I1). */
+export const ProgressPoint = z.object({
+  id: z.string(),
+  subject: z.string(),
+  learner_id: z.string(),
+  at: z.string(),
+  projected_score: z.number(),
+  items_reviewed: z.number().int(),
+});
+export type ProgressPoint = z.infer<typeof ProgressPoint>;
+
+// --- Verdict (the one pinned grading contract, ADR-0006) -----------------
+
+/**
+ * The grading return shape. `correct` is always present. English fills
+ * `correct_letter` (canonical answer) + `rationale_key` (which per-choice
+ * rationale to surface). `canonical_answer` is reserved for a future
+ * symbolic/numeric grader and stays absent for English (FR-C4).
+ */
+export const Verdict = z.object({
+  correct: z.boolean(),
+  correct_letter: z.string().optional(),
+  canonical_answer: z.string().optional(),
+  rationale_key: z.string().optional(),
+});
+export type Verdict = z.infer<typeof Verdict>;
+
+/** The answer a learner submits for grading. `letter` null = no selection (FR-D2a). */
+export const Answer = z.object({
+  letter: z.string().nullable(),
+});
+export type Answer = z.infer<typeof Answer>;
+
+/** Scheduler pick: which (skill, question) to serve next (FR-A1). */
+export const NextItem = z.object({
+  skill_id: z.string(),
+  question_id: z.string(),
+});
+export type NextItem = z.infer<typeof NextItem>;
+
+/** Session close → recommended next (skill + mode), computed from skill_state (FR-D6). */
+export const RecommendedNext = z.object({
+  skill_id: z.string(),
+  mode: SessionMode,
+});
+export type RecommendedNext = z.infer<typeof RecommendedNext>;

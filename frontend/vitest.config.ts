@@ -50,6 +50,8 @@ export default defineConfig({
             "app/**/*.test.ts",
             "app/**/*.test.tsx",
             "scripts/**/*.test.ts",
+            // Design-token build tests (run the token build + read the emitted CSS).
+            "design/**/*.test.ts",
             // Test-orchestration tooling (e.g. the live-testing profile loader).
             // Only *.test.ts — Playwright *.spec.ts files are never picked up.
             "e2e/**/*.test.ts",

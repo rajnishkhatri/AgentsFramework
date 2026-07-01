@@ -1,30 +1,28 @@
 /**
- * check_axe_a11y.ts — Frontend Reviewer tool (FD4.AXE) — STUB.
+ * check_axe_a11y.ts — Frontend Reviewer tool (FD4.AXE) — STATIC checker.
  *
- * The full implementation requires `@axe-core/playwright` + a Storybook
- * host (`.storybook/` + `npm run storybook`). Per the user's pragmatic
- * decision (D-V3-S4.x — dynamic a11y deferred until Storybook lands),
- * this script ships in stub mode:
+ * The static counterpart to the dynamic `e2e/accessibility.spec.ts`
+ * (which runs `@axe-core/playwright` against live routes). Now that the
+ * Storybook host (`.storybook/`), the `@storybook/addon-a11y` addon, and
+ * the `*.stories.tsx` files have all landed (PS1), this checker verifies
+ * the a11y toolchain is *wired* rather than merely installed:
  *
- *   - If the toolchain is missing, emit
- *       { pass: true, skipped: true, reason, missing: [...] }
- *     and exit 0 so CI does not block.
- *   - If the toolchain IS installed (devDependency present AND
- *     `.storybook/` exists), the placeholder code path documents what
- *     the full implementation will do via a `// TODO` and an
- *     `assert(false, ...)` so the gap is visible the moment the
- *     prerequisites land.
+ *   - the Storybook a11y addon is listed in `.storybook/main.ts`, and
+ *   - at least one `*.stories.tsx` exists for the addon's axe pass to cover.
+ *
+ * (The earlier stub emitted `{ skipped: true }` while the host was absent
+ * and carried an `assert(false)` tripwire to force this replacement the
+ * moment the prerequisites arrived. Both are now retired.)
  *
  * Output JSON conforms to §5 of the Frontend Reviewer system prompt.
  *
- * Exit codes: 0 on PASS or skipped, 1 on FAIL, 2 on tool error.
+ * Exit codes: 0 on PASS, 1 on FAIL, 2 on tool error.
  *
  * Usage: `tsx frontend/scripts/check_axe_a11y.ts [target]`
  */
 
 import * as path from "node:path";
 import * as fs from "node:fs";
-import { strict as assert } from "node:assert";
 
 interface CheckResult {
   pass: boolean;
@@ -39,23 +37,72 @@ interface CheckResult {
 const SCRIPT_DIR = (import.meta as { dirname?: string }).dirname ?? __dirname;
 const FRONTEND_ROOT = path.resolve(SCRIPT_DIR, "..");
 
-function toolchainStatus(): { ready: boolean; missing: string[] } {
+/** The Storybook a11y addon whose presence proves the axe pass is wired. */
+const A11Y_ADDON = "@storybook/addon-a11y";
+
+/** Pure readiness verdict over already-read facts (unit-testable, no I/O). */
+export interface AxeReadinessInput {
+  addons: string[];
+  storyCount: number;
+}
+
+export interface AxeReadinessResult {
+  pass: boolean;
+  skipped: boolean;
+  reason: string;
+  missing: string[];
+}
+
+/**
+ * Static readiness verdict: the a11y addon must be wired AND stories must
+ * exist for the addon's axe pass to have anything to cover. Pure — the
+ * caller supplies the facts (addons list, story count).
+ */
+export function staticAxeReadiness(input: AxeReadinessInput): AxeReadinessResult {
   const missing: string[] = [];
-  const pkgPath = path.join(FRONTEND_ROOT, "package.json");
-  let pkg: { devDependencies?: Record<string, string>; scripts?: Record<string, string> } = {};
-  if (fs.existsSync(pkgPath)) {
-    pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+  if (!input.addons.includes(A11Y_ADDON)) missing.push(A11Y_ADDON);
+  if (input.storyCount === 0) missing.push("*.stories.tsx");
+
+  if (!input.addons.includes(A11Y_ADDON)) {
+    return { pass: false, skipped: false, reason: `${A11Y_ADDON} not wired in .storybook/main.ts`, missing };
   }
-  if (!pkg.devDependencies?.["@axe-core/playwright"]) {
-    missing.push("@axe-core/playwright");
+  if (input.storyCount === 0) {
+    return { pass: false, skipped: false, reason: "no stories for the axe pass to cover", missing };
   }
-  if (!fs.existsSync(path.join(FRONTEND_ROOT, ".storybook"))) {
-    missing.push(".storybook/");
+  return {
+    pass: true,
+    skipped: false,
+    reason: `axe a11y wired: ${A11Y_ADDON} + ${input.storyCount} stories`,
+    missing: [],
+  };
+}
+
+/** Read the addon list declared in `.storybook/main.ts` (best-effort string scan). */
+function readStorybookAddons(): string[] {
+  const mainPath = path.join(FRONTEND_ROOT, ".storybook", "main.ts");
+  if (!fs.existsSync(mainPath)) return [];
+  const src = fs.readFileSync(mainPath, "utf8");
+  const addons: string[] = [];
+  for (const m of src.matchAll(/["']@storybook\/addon-[a-z0-9-]+["']/g)) {
+    addons.push(m[0].slice(1, -1));
   }
-  if (!pkg.scripts?.storybook) {
-    missing.push("storybook script in package.json");
-  }
-  return { ready: missing.length === 0, missing };
+  return addons;
+}
+
+/** Count `*.stories.tsx|ts` files under `components/` (the main.ts stories glob). */
+function countStories(): number {
+  const root = path.join(FRONTEND_ROOT, "components");
+  if (!fs.existsSync(root)) return 0;
+  let count = 0;
+  const walk = (dir: string): void => {
+    for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, ent.name);
+      if (ent.isDirectory()) walk(full);
+      else if (/\.stories\.(tsx|ts)$/.test(ent.name)) count += 1;
+    }
+  };
+  walk(root);
+  return count;
 }
 
 /**
@@ -64,30 +111,16 @@ function toolchainStatus(): { ready: boolean; missing: string[] } {
  * @param target  Storybook story id or rendered route URL.
  */
 export function checkAxeA11y(target: string = "all"): CheckResult {
-  const { ready, missing } = toolchainStatus();
-  if (!ready) {
-    return {
-      pass: true,
-      target,
-      skipped: true,
-      reason: "axe-core toolchain not installed",
-      missing,
-      violations: [],
-      incomplete: [],
-    };
-  }
-
-  // TODO: when @axe-core/playwright + .storybook/ ship, replace this
-  // assertion with the real Playwright + AxeBuilder loop. Until then we
-  // surface the gap explicitly so a misconfigured-but-installed setup
-  // doesn't silently report a green check.
-  assert(false, "axe-core toolchain installed but check_axe_a11y full implementation pending");
+  const readiness = staticAxeReadiness({
+    addons: readStorybookAddons(),
+    storyCount: countStories(),
+  });
   return {
-    pass: false,
+    pass: readiness.pass,
     target,
-    skipped: false,
-    reason: "unreachable",
-    missing: [],
+    skipped: readiness.skipped,
+    reason: readiness.reason,
+    missing: readiness.missing,
     violations: [],
     incomplete: [],
   };

@@ -1,0 +1,210 @@
+/**
+ * Phase 1.2 — Dashboard orchestration (FR-C1..C5, L1 deterministic, TAP-1).
+ *
+ * Per F-R1 the Dashboard component owns NO domain logic: gathering the six
+ * bucket cards (skillTaxonomy + learnerRead), picking today's weakest+due focus,
+ * and counting review-misses all live here, in the React-free `loadDashboard` /
+ * `pickFocusSkillId` orchestration exercised in node against a seeded
+ * InMemoryEngineDb — the analogue of openQuizItem/runQuizSubmit in use_quiz.ts.
+ *
+ * READ-ONLY invariant (FR-A2): the dashboard is a *view*; rendering it must NOT
+ * write skill_state. It therefore reads via learnerRead.listSkillState and does
+ * NOT call scheduler.next() (which seeds/writes for a new learner). The
+ * "no-write" test below is the failure-first guard.
+ */
+
+import { describe, expect, it, beforeEach } from "vitest";
+import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
+import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
+import type { EnginePortBag } from "@/lib/composition_engine";
+import { loadDashboard } from "./use_dashboard";
+import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
+
+const SUBJECT = "act-english";
+const LEARNER = "maya";
+const NOW = "2026-07-01T12:00:00.000Z";
+
+function skill(over: Partial<Skill> = {}): Skill {
+  return {
+    id: "s-punc",
+    subject: SUBJECT,
+    key: "punctuation",
+    name: "Punctuation",
+    share_of_test_pct: 20,
+    accent_var: "--color-bucket-punctuation",
+    description: "…",
+    order: 1,
+    ...over,
+  };
+}
+
+function state(over: Partial<SkillState> = {}): SkillState {
+  return {
+    subject: SUBJECT,
+    skill_id: "s-punc",
+    learner_id: LEARNER,
+    mastery: 0.5,
+    last_seen: null,
+    fsrs_stability: 1,
+    fsrs_difficulty: 5,
+    due_at: NOW,
+    fsrs_card: null,
+    ...over,
+  } as SkillState;
+}
+
+function question(over: Partial<Question> = {}): Question {
+  return {
+    id: "q-punc-1",
+    subject: SUBJECT,
+    skill_id: "s-punc",
+    difficulty: 3,
+    context_html: "The committee <u>have</u> decided.",
+    stem: "Which choice is best?",
+    choices: [
+      { letter: "A", label: "NO CHANGE", is_no_change: true },
+      { letter: "B", label: "has", is_no_change: false },
+    ],
+    answer_letter: "B",
+    per_choice_rationale: { A: "…", B: "…" },
+    why_correct_md: "…",
+    why_tempted_md: "…",
+    rule_md: "…",
+    item_type: "underlined-span-mc",
+    reviewed: true,
+    generated_by: "test",
+    ...over,
+  };
+}
+
+const SIX_SKILLS: Skill[] = [
+  skill({ id: "s-punc", key: "punctuation", name: "Punctuation", order: 1 }),
+  skill({ id: "s-gram", key: "grammar", name: "Grammar", order: 2 }),
+  skill({ id: "s-sent", key: "sentence", name: "Sentence structure", order: 3 }),
+  skill({ id: "s-rhet", key: "rhetoric", name: "Rhetoric", order: 4 }),
+  skill({ id: "s-org", key: "organization", name: "Organization", order: 5 }),
+  skill({ id: "s-style", key: "style", name: "Style", order: 6 }),
+];
+
+let db: InMemoryEngineDb;
+let ports: EnginePortBag;
+
+beforeEach(() => {
+  db = new InMemoryEngineDb();
+  db.seedSkills(SIX_SKILLS);
+  ports = buildBrowserEngineAdapters({ engineDb: db });
+});
+
+// pickFocusSkillId's own selection-rule table moved to
+// lib/translators/focus_pick.test.ts when the helper was extracted to a shared
+// translator (used by both this screen and the Summary recommended-next card).
+
+describe("loadDashboard — READ-ONLY (FR-A2): rendering must not write skill_state", () => {
+  it("does not seed/write skill_state for a brand-new learner", async () => {
+    const before = await db.listSkillState(SUBJECT, LEARNER);
+    expect(before).toEqual([]); // precondition: no rows
+
+    await loadDashboard(ports, { subject: SUBJECT, learnerId: LEARNER, nowISO: NOW });
+
+    const after = await db.listSkillState(SUBJECT, LEARNER);
+    expect(after, "loadDashboard must not create skill_state rows").toEqual([]);
+  });
+});
+
+describe("loadDashboard — FR-C3 six-bucket mastery grid", () => {
+  it("returns exactly six bucket cards (one per skill), even for a new learner", async () => {
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.buckets).toHaveLength(6);
+    // A brand-new learner has no skill_state → every card is 0% and not-due.
+    for (const b of vm.buckets) {
+      expect(b.masteryPct).toBe(0);
+      expect(b.due).toBe(false);
+    }
+  });
+
+  it("maps real mastery + due onto the matching bucket cards", async () => {
+    db.seedSkillStates([
+      state({ skill_id: "s-punc", mastery: 0.42, due_at: NOW }), // due
+      state({ skill_id: "s-gram", mastery: 0.9, due_at: "2999-01-01T00:00:00.000Z" }),
+    ]);
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    const punc = vm.buckets.find((b) => b.skillId === "s-punc")!;
+    const gram = vm.buckets.find((b) => b.skillId === "s-gram")!;
+    expect(punc.masteryPct).toBe(42);
+    expect(punc.due).toBe(true);
+    expect(gram.masteryPct).toBe(90);
+    expect(gram.due).toBe(false);
+  });
+});
+
+describe("loadDashboard — FR-C2 today's-focus banner", () => {
+  it("is the weakest+due skill and carries a reviewed question + Quiz CTA", async () => {
+    db.seedSkillStates([
+      state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW }),
+      state({ skill_id: "s-gram", mastery: 0.7, due_at: NOW }),
+    ]);
+    db.seedQuestions([question({ id: "q-punc-1", skill_id: "s-punc" })]);
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.todayFocus.present).toBe(true);
+    if (vm.todayFocus.present) {
+      expect(vm.todayFocus.skillId).toBe("s-punc");
+      expect(vm.todayFocus.questionId).toBe("q-punc-1");
+      expect(vm.todayFocus.ctaLabel).toBe("Start adaptive session");
+    }
+  });
+
+  it("hides the banner (present:false) when the focus skill has no reviewed question", async () => {
+    db.seedSkillStates([state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW })]);
+    // No questions seeded → no reviewed item to serve.
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.todayFocus.present).toBe(false);
+  });
+});
+
+describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", () => {
+  it("is 0 for a learner with no misses (zero empty state)", async () => {
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.reviewMissesCount).toBe(0);
+  });
+
+  it("counts the learner's incorrect attempts", async () => {
+    db.seedSkillStates([state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW })]);
+    db.seedQuestions([question({ id: "q-punc-1", skill_id: "s-punc", answer_letter: "B" })]);
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: session.id,
+      question_id: "q-punc-1",
+      chosen_letter: "A", // wrong (answer is B)
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+    });
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.reviewMissesCount).toBe(1);
+  });
+});
