@@ -143,11 +143,26 @@ class AgentState(MessagesState):
     replan_count: Annotated[int, operator.add]
     # Phase 2 (T2 reflexion): append-only verbal critiques — the "semantic
     # gradient" (Reflexion, arxiv 2303.11366). reflect_node appends one entry
-    # per re-entry: {step_id, attempt, critique, unmet_conditions}. Append-only
-    # is what lets prior critiques survive a checkpoint reload and accumulate;
-    # call_llm_node folds them into the system prompt on re-entry, and
-    # len(reflections) is the attempt counter decide_reentry checks against the
-    # budget ceiling (no separate counter to drift).
+    # per re-entry: {step_id, attempt, critique, unmet_conditions, task_id}.
+    # Append-only is what lets prior critiques survive a checkpoint reload and
+    # accumulate; call_llm_node folds them into the system prompt on re-entry,
+    # and len(reflections) is the attempt counter decide_reentry checks against
+    # the budget ceiling (no separate counter to drift).
+    #
+    # task_id GUARD (ADR-0005): the channel is keyed on the LangGraph thread_id,
+    # which a chat client REUSES across turns, while task_id is minted fresh per
+    # turn — so a prior turn's critique physically persists into the next turn's
+    # state. The reducer is append-only, so the last-write-wins reset used by
+    # planning_depth_task_id / task_understanding_task_id can't apply here;
+    # instead each entry carries the task_id it was recorded under (reflect_node
+    # stamps `task_id or workflow_id`, never empty), and EVERY consumer reads
+    # through the orchestration helper react_loop._task_reflections (which wraps
+    # components.reflexion.reflections_for_task) to scope to the current task.
+    # STRICT equality: a different non-empty task_id (a prior turn) AND an
+    # untagged entry are both excluded — keeping untagged entries would re-attribute
+    # them on every future turn forever (filter-at-read never prunes), a permanent
+    # leak. Without this a prior question's failure critique bleeds into the next
+    # question's prompt AND pre-consumes the reflexion budget.
     reflections: Annotated[list[dict[str, Any]], _append_list]
     # Phase 4 (T3 fan-out): per-branch worker results merged across the parallel
     # superstep — one entry per Send branch: {branch_id, status, output, error}.

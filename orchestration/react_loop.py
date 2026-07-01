@@ -43,7 +43,11 @@ from components.capability_gating import (
     derive_bound_tools,
     filter_registry_schemas,
 )
-from components.reflexion import decide_reentry, generate_reflection
+from components.reflexion import (
+    decide_reentry,
+    generate_reflection,
+    reflections_for_task,
+)
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.memory_context import (
     build_store_payload,
@@ -174,6 +178,22 @@ def _approx_tokens(text: str) -> int:
     if not text:
         return 0
     return max(1, len(text) // 4)
+
+
+def _task_reflections(state: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """This turn's reflexion critiques, scoped to the current task (ADR-0005).
+
+    Single read seam over the append-only ``reflections`` channel, which rides the
+    reused LangGraph thread_id — so every consumer (prompt injection + the
+    ``len(...)``-as-attempt-counter) must filter to the current task or a prior
+    chat turn's critique leaks into the next question. The scoping id falls back
+    ``task_id or workflow_id`` to match what ``reflect_node`` stamps on each entry,
+    so an empty ``task_id`` does not silently drop the channel and bypass the
+    reflexion budget. Centralized here so a new consumer can't re-introduce the
+    leak by reading ``state["reflections"]`` raw.
+    """
+    scope = state.get("task_id", "") or state.get("workflow_id", "")
+    return reflections_for_task(state.get("reflections"), scope)
 
 
 def _maybe_inject_carrier_fault(
@@ -2087,11 +2107,15 @@ def build_graph(
         # instructions on re-entry — the semantic gradient that steers the retry.
         # Append-only, so each loop pass sees every prior critique (arxiv
         # 2303.11366). No-op when reflexion is disabled or none have accrued.
+        # _task_reflections scopes them to THIS turn: the channel is keyed on the
+        # reused thread_id, so without the filter a prior chat turn's failure
+        # critique would bleed into the next question's prompt (cross-turn leak,
+        # ADR-0005).
         planning_instructions = build_planning_instructions(
             state.get("planning_depth", "L0"),
             task_input=state.get("task_input", ""),
         )
-        reflections = state.get("reflections") or []
+        reflections = _task_reflections(state)
         if reflections:
             critiques = "\n".join(
                 f"- {r.get('critique', '').strip()}"
@@ -2584,7 +2608,10 @@ def build_graph(
           - ``prose_repeat``     D3 no-tool thrash on a clean verdict -> escalate
           - ``clean``            success / no signal -> hold (false-positive guard)
         """
-        attempt = len(state.get("reflections") or [])
+        # Scope to THIS turn: reflections rides the reused thread_id, so a prior
+        # chat turn's entries would otherwise inflate the attempt count and
+        # pre-consume the budget (cross-turn leak, ADR-0005).
+        attempt = len(_task_reflections(state))
         max_attempts = agent_config.max_reflexion_attempts
         carrier: dict[str, Any] = {
             "reflexion_attempt": attempt,
@@ -3308,7 +3335,16 @@ def build_graph(
         appends one entry, and returns the delta. No logic — the reflect-vs-stop
         decision was already made by ``_should_continue_or_escalate``.
         """
-        attempt = len(state.get("reflections") or [])
+        # Tag with task_id, falling back to workflow_id — same identity fallback
+        # as the memory-store seam (`state.get("task_id") or workflow_id`, below)
+        # and as _task_reflections' read scope. Guarantees a NON-EMPTY tag: an
+        # entry tagged "" would be unreadable by reflections_for_task and would
+        # pin the attempt counter at 0, bypassing the reflexion budget (ADR-0005).
+        current_task_id = state.get("task_id", "") or state.get("workflow_id", "")
+        # Count only THIS turn's reflections (the channel rides the reused
+        # thread_id; ADR-0005). This 0-based attempt index is stamped on the
+        # appended entry below and on the trace carrier.
+        attempt = len(_task_reflections(state))
         unmet = list(state.get("last_unmet_conditions") or [])
         last_answer = state.get("last_final_answer", "") or ""
 
@@ -3367,6 +3403,11 @@ def build_graph(
                     "attempt": attempt,
                     "critique": critique,
                     "unmet_conditions": unmet,
+                    # Tag the turn this critique was recorded under. The channel
+                    # is append-only on the reused thread_id, so consumers filter
+                    # by this via reflections_for_task to keep a prior turn's
+                    # critique out of the next question (cross-turn leak, ADR-0005).
+                    "task_id": current_task_id,
                 }
             ],
         }
@@ -3386,7 +3427,9 @@ def build_graph(
         if not agent_config.reflexion_enabled:
             return "done"
 
-        attempt = len(state.get("reflections") or [])
+        # Scope to THIS turn (ADR-0005): a leaked prior-turn critique must not
+        # consume the budget that decides whether to re-enter.
+        attempt = len(_task_reflections(state))
         verdict = state.get("last_task_outcome", "")
 
         # Classify the no-tool prose thrash (D3) so the pure escalation predicate
