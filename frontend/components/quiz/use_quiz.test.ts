@@ -344,4 +344,48 @@ describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () 
     expect(item.question.id).toBe("q1");
     expect(item.skillId).toBe("s-punc");
   });
+
+  it("returns an EMPTY ladder when the question has no reviewed rungs (FR-12)", async () => {
+    db.seedHints([
+      {
+        id: "h-q1-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 1,
+        body_md: "unreviewed generator draft",
+        reviewed: false,
+        generated_by: "gpt-4o-mini@run-9",
+      },
+    ]);
+    const item = await openQuizItem(ports, { subject: SUBJECT, learnerId: LEARNER });
+    expect(item.hintLadder).toEqual([]);
+  });
+
+  it("loads the question's reviewed hint ladder with the item (ADR-0014)", async () => {
+    db.seedHints([
+      {
+        id: "h-q1-2",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 2,
+        body_md: "conceptual rung",
+        reviewed: true,
+        generated_by: "authored",
+      },
+      {
+        id: "h-q1-1b",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 1,
+        body_md: "probe rung",
+        reviewed: true,
+        generated_by: "authored",
+      },
+    ]);
+    const item = await openQuizItem(ports, { subject: SUBJECT, learnerId: LEARNER });
+    expect(item.hintLadder.map((h) => h.body_md)).toEqual([
+      "probe rung",
+      "conceptual rung",
+    ]);
+  });
 });

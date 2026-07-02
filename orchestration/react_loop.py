@@ -2193,7 +2193,19 @@ def build_graph(
         # re-strips answer-bearing fields unless mode == post_feedback, so a
         # payload that evaded the BFF strip still renders leak-free. Empty for
         # every non-coach run → byte-identical (the recall-block shape).
-        coach_block = render_coach_context_block(state.get("coach_context"))
+        # Phase 4 (FR-20): resolve the turn's REVIEWED hint ladder here and
+        # pass rung dicts — peer components never import each other, so the
+        # formatter can't reach the authored asset itself. Without rungs the
+        # persona free-generates (the Stage-0 rule-naming leak class).
+        _coach_ctx = state.get("coach_context")
+        _ladder: list[dict] = []
+        if isinstance(_coach_ctx, dict) and _coach_ctx.get("question_id"):
+            from components.subject_coach_hints import rungs_for_question
+
+            _ladder = [
+                r.model_dump() for r in rungs_for_question(_coach_ctx["question_id"])
+            ]
+        coach_block = render_coach_context_block(_coach_ctx, hint_rungs=_ladder)
         if coach_block:
             planning_instructions += f"\n\n{coach_block}"
 

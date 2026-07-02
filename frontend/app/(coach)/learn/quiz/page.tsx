@@ -158,7 +158,12 @@ export default function QuizPage(): React.JSX.Element {
         onSelect={(letter) => dispatch({ type: "select", letter })}
         onSubmit={onSubmit}
         hintOpen={state.hintOpen}
-        hint={socraticHint(state.item.question.stem)}
+        // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
+        // exists; the generic stem nudge only as the no-ladder fallback.
+        hint={
+          state.item.hintLadder[0]?.body_md ??
+          socraticHint(state.item.question.stem)
+        }
         onToggleHint={() => dispatch({ type: "toggle_hint" })}
       />
     );

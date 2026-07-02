@@ -20,7 +20,7 @@ learner-facing content).
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 # Mirror of frontend/lib/wire/engine_entities.QUESTION_ANSWER_BEARING_FIELDS —
@@ -67,12 +67,22 @@ def coach_context_contract(context: Any) -> dict[str, Any] | None:
     }
 
 
-def render_coach_context_block(context: Mapping[str, Any] | None) -> str:
+def render_coach_context_block(
+    context: Mapping[str, Any] | None,
+    hint_rungs: Sequence[Mapping[str, Any]] | None = None,
+) -> str:
     """Sanitized ``coach_context`` → an ``additional_instructions`` block.
 
     Returns the empty string for ``None``/empty/non-mapping input so the
     caller appends nothing and the system prompt stays byte-identical for
     every non-coach run (the ``render_recall_block`` no-op shape).
+
+    ``hint_rungs`` (Phase 4, FR-20): the question's REVIEWED ladder, passed by
+    the orchestrator (peer components never import each other — invariant #5).
+    Rendered in pre-submit mode only, with the select-and-paraphrase rule the
+    persona's mode contract names — a persona with no rungs free-generates,
+    the Stage-0 rule-naming leak class. Post-feedback has the full rationale;
+    the ladder is never rendered there. Empty/None ⇒ byte-identical output.
     """
     if not isinstance(context, Mapping) or not context:
         return ""
@@ -92,6 +102,15 @@ def render_coach_context_block(context: Mapping[str, Any] | None) -> str:
                 k: v for k, v in question.items() if k not in _ANSWER_BEARING_FIELDS
             }
         _render_question(lines, question, post_feedback=(mode == "post_feedback"))
+
+    if mode != "post_feedback" and hint_rungs:
+        lines.append(
+            "- hint ladder (reviewed; select the ONE rung that matches the "
+            "learner's impasse and paraphrase it — never invent a new hint):"
+        )
+        for rung in hint_rungs:
+            if isinstance(rung, Mapping) and rung.get("body_md"):
+                lines.append(f"  - rung {rung.get('rung', '?')}: {rung['body_md']}")
 
     return "\n".join(lines)
 

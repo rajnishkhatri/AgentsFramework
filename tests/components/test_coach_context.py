@@ -152,3 +152,50 @@ class TestCoachContextContract:
             contract = coach_context_contract(ctx)
             block = render_coach_context_block(ctx)
             assert f"(mode: {contract['mode']})" in block
+
+
+_RUNGS = [
+    {"rung": 1, "body_md": "What job is the clause doing here?"},
+    {"rung": 2, "body_md": "Nonrestrictive clauses need fencing on both sides."},
+    {"rung": 3, "body_md": "Check where the clause that starts the comma ends."},
+]
+
+
+class TestHintLadderRendering:
+    """Phase 4 (FR-20): pre-submit context carries the REVIEWED ladder so the
+    persona selects-and-paraphrases instead of free-generating — the Stage-0
+    rule-naming leak class came from a persona with no rungs to lean on.
+    Failure paths first."""
+
+    def test_no_rungs_renders_byte_identical(self):
+        ctx = _context("pre_submit")
+        assert render_coach_context_block(ctx) == render_coach_context_block(
+            ctx, hint_rungs=None
+        )
+        assert render_coach_context_block(ctx) == render_coach_context_block(
+            ctx, hint_rungs=[]
+        )
+
+    def test_post_feedback_never_renders_the_ladder(self):
+        """Post-feedback has the full rationale; the ladder is pre-submit
+        scaffolding only."""
+        block = render_coach_context_block(_context("post_feedback"), hint_rungs=_RUNGS)
+        assert "hint ladder" not in block
+        assert "What job is the clause doing here?" not in block
+
+    def test_pre_submit_renders_rungs_in_order_with_paraphrase_rule(self):
+        block = render_coach_context_block(_context("pre_submit"), hint_rungs=_RUNGS)
+        assert "hint ladder" in block
+        assert "paraphrase" in block
+        i1 = block.index("What job is the clause doing here?")
+        i2 = block.index("Nonrestrictive clauses need fencing on both sides.")
+        i3 = block.index("Check where the clause that starts the comma ends.")
+        assert i1 < i2 < i3
+
+    def test_ladder_renders_even_when_context_has_no_question(self):
+        """A rung-bearing turn without a question payload still gets the
+        ladder (the stem may ride the conversation instead)."""
+        block = render_coach_context_block(
+            {"mode": "pre_submit", "question_id": "q-1"}, hint_rungs=_RUNGS
+        )
+        assert "hint ladder" in block
