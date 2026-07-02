@@ -1,7 +1,7 @@
 ---
 type: plan
 title: 'Subject-Coach Agent — Detailed Implementation Plan'
-status: 'Phase 1 built + reviewed; 1B-10 middleware shadow wiring OPEN'
+status: 'Phase 1 built + reviewed; 1B-10 DONE — exit needs live admit-rate run + first shadow traces audit'
 authored: 2026-07-02
 ---
 
@@ -25,8 +25,8 @@ All work lives on branch **`feat/subject-coach-agent`** — commits `3c6466c` (b
 | 1B-8 Marker write on submit | ✅ DONE | fires after attempt record, BEFORE scheduler.review (review A2) |
 | 1B-9 BFF sanitizer (FR-19/21/22) | ✅ DONE | fail-closed on absent/mismatched question_id (review C1/C2); mode-spoof strip lock tests |
 | **Stage-7 code review** | ✅ CLOSED | high-effort 8-angle review → 10 findings → ALL fixed red/green in `a1c9a76` (incl. per-run guard re-arm + domain fail-closed, `coach_context` state channel + formatter re-strip, pyramid `domain_gated`) |
-| **1B-10 Middleware shadow wiring** | ⬜ OPEN — next | `/run/stream` must select a coach graph on body `agent_id=subject-coach-english` (BOTH `middleware/app_prod.py` AND `__main__.py`); without it shadow traces never accumulate → Phase 3 entry gate blocked |
-| Phase-1 exit: first shadow traces + §13 governance audit | ⬜ BLOCKED on 1B-10 | audit runs on first `target="subject_coach"` traces |
+| **1B-10 Middleware shadow wiring** | ✅ DONE | BOTH entry points select the coach graph on body `agent_id=subject-coach-english` (`build_coach_components` + `bound_capabilities` passthrough in `middleware/composition.py`; coach graph in each lifespan, fail-safe for chat / **fail-closed 503 for coach** — never the default graph); run identity = registered coach card with `owner=subject`; PLUS the client-side gap closed: `useCoach` now stamps `agent_id` on the run body (`use_agent_run` AgentRunOptions). Tests: `tests/middleware/test_coach_shadow_wiring.py` (16) + `frontend/components/coach/coach_agent_id_flow.test.tsx` |
+| Phase-1 exit: first shadow traces + §13 governance audit | ⬜ OPEN — next | coach now reachable end-to-end; audit runs on first `target="subject_coach"` traces (plus the 1A-4 live admit-rate run) |
 | Phases 2–6 | ⬜ NOT STARTED | Phase 2 executable after 1B-10; Phase 3 human-gated on ≥100 coded turns/mode |
 
 ## Context
@@ -84,8 +84,9 @@ Every artifact in this plan is tested at its **uncertainty boundary** (pyramid L
 
 > **STATUS: BUILT + REVIEWED (see Status ledger).** Tasks 1–9 done and committed
 > (`3c6466c`, `9a99d21`); Stage-7 review closed with all 10 findings fixed
-> (`a1c9a76`). Remaining before phase exit: task 10 (middleware shadow wiring,
-> below) and the live L3 admit-rate run for 1A-4.
+> (`a1c9a76`); task 10 (middleware shadow wiring) done 2026-07-02. Remaining
+> before phase exit: the live L3 admit-rate run for 1A-4 and the first-shadow-
+> traces §13 governance audit.
 
 Coach runs **shadow-first** on existing chat plumbing (no new graph node — prompt-param path per ADR-0007). Red-first tests per spec §8 test plan. This phase starts §12.1 Stage-0 trace accumulation (`target="subject_coach"`).
 
@@ -116,7 +117,7 @@ Coach runs **shadow-first** on existing chat plumbing (no new graph node — pro
    - Carry structured context on the existing `RunCreateRequest.input` mechanism (the `memory_context` precedent); every line through the redactor before prompt assembly.
    - Tests (red-first): pre-submit assembly omits the 4 fields — **lock test keyed to the `Question` wire entity** (so a new answer-bearing field breaks the test, not the contract); post-feedback includes them; mode-spoofing attempt (client says post-feedback, no marker) still strips.
 
-**Phase-1 exit:** `make check` green ✅; coach reachable in shadow ⬜ (needs task 10 — `/run/stream` currently ignores body `agent_id`); first shadow traces get a **§13 governance audit** ⬜ before any coding starts (garbage-in guard).
+**Phase-1 exit:** `make check` green ✅; coach reachable in shadow ✅ (task 10 done — `/run/stream` selects the coach graph on body `agent_id` in both entry points, and the coach client stamps it); first shadow traces get a **§13 governance audit** ⬜ before any coding starts (garbage-in guard).
 
 > **Task 10 implementation notes (from the review + task ledger):** select a coach
 > graph in BOTH `middleware/app_prod.py` and `middleware/__main__.py` run_stream when

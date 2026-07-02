@@ -22,6 +22,14 @@ import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
 import { toCoachMessage, type CoachMessage } from "@/lib/translators/coach_message_vm";
 
+/**
+ * The coach's AgentFacts id (services/governance/subject_coach_identity.py).
+ * Stamped on every run body so the middleware selects the identity-bound
+ * coach graph (ADR-0007/0012 — 1B-10); the BFF coach route forwards it
+ * untouched (see app/api/coach/run/stream/route.ts).
+ */
+export const SUBJECT_COACH_AGENT_ID = "subject-coach-english";
+
 /** One coach exchange: the learner's ask + the coach's (streaming) reply. */
 export interface CoachTurn {
   readonly id: string;
@@ -55,7 +63,9 @@ export function useCoach(runtime: AgentRuntimeClient): {
   ask: (body: string) => Promise<void>;
   retry: () => Promise<void>;
 } {
-  const { turns, busy, send } = useAgentRun(runtime);
+  const { turns, busy, send } = useAgentRun(runtime, undefined, {
+    agentId: SUBJECT_COACH_AGENT_ID,
+  });
   const coachTurns = React.useMemo(() => coachTurnsFromChat(turns), [turns]);
 
   const ask = React.useCallback((body: string) => send(body), [send]);

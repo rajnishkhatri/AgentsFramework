@@ -52,6 +52,7 @@ __all__ = [
     "AgentComponents",
     "AgentRuntimeSettings",
     "build_adapters",
+    "build_coach_components",
     "build_components",
     "build_runtime_graph",
     "MissingEnvError",
@@ -1051,8 +1052,15 @@ def build_runtime_graph(
     authorization_service: Any = None,
     trace_service: Any = None,
     interrupt_before_execute_tool: bool = True,
+    bound_capabilities: list[str] | None = None,
 ) -> Any:
-    """Single call site for ``build_graph`` with reader injection."""
+    """Single call site for ``build_graph`` with reader injection.
+
+    ``bound_capabilities`` (ADR-0007): the declared capability list an
+    identity-bound instance passes so ``build_graph`` binds ONLY those tools'
+    schemas to the LLM. ``None`` (the default) keeps every existing caller
+    byte-identical (full registry bound, as today).
+    """
     return build_graph(
         agent_config=components.agent_config,
         tool_registry=components.tool_registry,
@@ -1065,4 +1073,55 @@ def build_runtime_graph(
         interrupt_before_execute_tool=interrupt_before_execute_tool,
         goal_judge_config_reader=components.goal_judge_config_reader,
         memory_service=components.memory_service,
+        bound_capabilities=bound_capabilities,
     )
+
+
+# Coach identity-contract fields (ADR-0007/ADR-0012): these come from the
+# ratified card in services/governance/subject_coach_identity.py — a base
+# deployment config must never override them (gating OFF, default capture
+# tag, or an empty guardrail would silently un-govern the instance).
+_COACH_IDENTITY_FIELDS: frozenset[str] = frozenset(
+    {
+        "agent_name",
+        "agent_version",
+        "capability_gating_enabled",
+        "input_guardrail_accept_condition",
+        "eval_capture_target",
+        "additional_instructions",
+    }
+)
+
+
+def build_coach_components(components: AgentComponents) -> AgentComponents:
+    """Derive the subject-coach components bag from the deployment bag.
+
+    Identity-contract fields come from ``subject_coach_agent_config`` (the
+    ratified least-privilege contract, FR-1..11); every other knob carries
+    the deployment's runtime posture (models, budgets, compaction flags) so
+    the coach shadows the same stack chat runs on. The persona is the
+    rendered ``.j2`` (H1 — never a hardcoded string), injected via
+    ``additional_instructions``. Callers pass
+    ``bound_capabilities=SUBJECT_COACH_CAPABILITIES`` to
+    ``build_runtime_graph`` alongside this bag.
+    """
+    from dataclasses import replace
+
+    from services.governance.subject_coach_identity import (
+        subject_coach_agent_config,
+    )
+    from services.prompt_service import PromptService
+
+    persona = PromptService().render_prompt(
+        "subject_coach_system_prompt", subject="English"
+    )
+    base = components.agent_config
+    carried = {
+        name: getattr(base, name)
+        for name in type(base).model_fields
+        if name not in _COACH_IDENTITY_FIELDS
+    }
+    coach_config = subject_coach_agent_config(
+        additional_instructions=persona, **carried
+    )
+    return replace(components, agent_config=coach_config)

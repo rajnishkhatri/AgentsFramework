@@ -74,11 +74,17 @@ from middleware.composition import (
     AgentComponents,
     AgentRuntimeSettings,
     build_adapters,
+    build_coach_components,
     build_components,
     build_runtime_graph,
 )
 from middleware.server import build_middleware_app
 from middleware.understanding_edit import register_understanding_edit_route
+from services.governance.subject_coach_identity import (
+    SUBJECT_COACH_AGENT_ID,
+    SUBJECT_COACH_CAPABILITIES,
+    register_subject_coach,
+)
 from services.trace_service import TraceService
 from services.trace_sinks.gcs_sink import GcsTraceSink
 from trust.enums import IdentityStatus
@@ -261,6 +267,35 @@ def build_combined_app() -> FastAPI:
                     autocapture=components.memory_autocapture,
                 )
                 logger.info("Production graph compiled, runtime ready")
+                # 1B-10 (ADR-0007/0012): the identity-bound coach graph,
+                # selected per-request on body agent_id. Fail-SAFE for chat
+                # (a coach composition defect must not take the backend
+                # down) but fail-CLOSED for the coach itself: coach_runtime
+                # stays None and /run/stream 503s coach requests rather
+                # than ever serving them on the ungated default graph.
+                try:
+                    coach_graph = build_runtime_graph(
+                        build_coach_components(components),
+                        build_graph,
+                        checkpointer=pg_cp.saver,
+                        interrupt_before_execute_tool=False,
+                        bound_capabilities=SUBJECT_COACH_CAPABILITIES,
+                    )
+                    app.state.coach_runtime = LangGraphRuntime(
+                        coach_graph,
+                        trace_emit=trace_service.emit,
+                        autocapture=components.memory_autocapture,
+                    )
+                    logger.info(
+                        "Coach graph compiled (%s, shadow)",
+                        SUBJECT_COACH_AGENT_ID,
+                    )
+                except Exception:
+                    app.state.coach_runtime = None
+                    logger.exception(
+                        "coach graph build failed — coach requests will "
+                        "503 (fail-closed, never the default graph)"
+                    )
                 yield
         finally:
             if relay_task is not None and relay is not None:
@@ -543,6 +578,26 @@ def build_combined_app() -> FastAPI:
         black_box_dir=cache_dir / "black_box_recordings",
     )
 
+    # Registered lazily on the first coach request (keeps the GCS write off
+    # the boot path); the stored, signed card is what guard_input verifies
+    # by agent_id per run (FR-2).
+    _coach_card: list[AgentFacts] = []
+
+    def _coach_run_identity(subject: str) -> AgentFacts:
+        """The coach card as the run identity, owner = the verified subject.
+
+        The per-run owner override scopes eval capture + thread ownership to
+        the learner (H5 user_id), mirroring the saturation-bridge idiom;
+        the registry keeps the original signed card.
+        """
+        if not _coach_card:
+            _coach_card.append(
+                register_subject_coach(
+                    agent_facts_registry, registered_by="app_prod:coach_seed"
+                )
+            )
+        return _coach_card[0].model_copy(update={"owner": subject})
+
     @app.post("/run/stream")
     async def run_stream(
         request: Request,
@@ -552,7 +607,6 @@ def build_combined_app() -> FastAPI:
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="missing bearer token")
 
-        runtime: LangGraphRuntime = request.app.state.runtime
         body = await request.json()
 
         token = authorization[len("Bearer ") :].strip()
@@ -568,7 +622,21 @@ def build_combined_app() -> FastAPI:
                 status_code=401, detail=f"invalid token: {exc}"
             ) from None
 
-        identity = _resolve_identity(claims.subject)
+        # 1B-10: body agent_id selects the identity-bound coach graph. A
+        # coach request with no coach runtime fails CLOSED (503) — never
+        # served by the default graph (full tool registry, no English rail).
+        if body.get("agent_id") == SUBJECT_COACH_AGENT_ID:
+            runtime: LangGraphRuntime = getattr(
+                request.app.state, "coach_runtime", None
+            )
+            if runtime is None:
+                raise HTTPException(
+                    status_code=503, detail="coach runtime not available"
+                )
+            identity = _coach_run_identity(claims.subject)
+        else:
+            runtime = request.app.state.runtime
+            identity = _resolve_identity(claims.subject)
 
         run_ctx = build_run_stream_context(
             body,
