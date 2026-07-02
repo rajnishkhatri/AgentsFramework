@@ -227,6 +227,61 @@ class GoalVerdict(BaseModel):
         return [c.criterion for c in self.per_criterion if not c.met]
 
 
+class GraderVerdict(BaseModel):
+    """Grades the COACH'S generated content (FR-14, Subject-Coach design §7.1).
+
+    Reference-free rubric over a hint / explanation / mini-question the coach
+    produced. Sibling of ``GoalVerdict`` and bound by the same TELEMETRY-ONLY
+    discipline: recorded via eval_capture (``target="coach_judges"``), never
+    gating until certified (ADR-0008).
+
+    Each 0..1 float axis pairs with a REQUIRED binary ``*_pass`` companion
+    (design gap G8): the judge asserts the binary directly in the rubric
+    prompt — it is never derived post-hoc from the float. Only the binaries
+    enter κ calibration and the §12.6 gates; the floats are trend telemetry.
+    All axis fields are required — a judge that cannot decide must yield no
+    verdict at all (AP-6), never a defaulted one.
+    """
+
+    faithfulness: float = Field(ge=0.0, le=1.0)
+    correctness: float = Field(ge=0.0, le=1.0)
+    justification: float = Field(ge=0.0, le=1.0)
+    actionability: float = Field(ge=0.0, le=1.0)
+    faithfulness_pass: bool
+    correctness_pass: bool
+    justification_pass: bool
+    actionability_pass: bool
+    rationale: str = ""
+
+
+class PedagogyVerdict(BaseModel):
+    """Grades a coaching TURN as teaching (FR-15/16, Subject-Coach design §7.1).
+
+    Same TELEMETRY-ONLY + binary-companion contract as ``GraderVerdict``.
+    ``answer_leakage`` is the FIRST-CLASS flag (FR-16): it is REQUIRED — a
+    verdict without it is a ``ValidationError``, never a fail-open ``False`` —
+    and it is recorded distinctly, never averaged into a quality score (the
+    schema deliberately offers no aggregate field to average into). It stays
+    telemetry-only until the §7.4 floor (TNR ≥ 0.95, TPR ≥ 0.90, κ ≥ 0.75)
+    certifies it, exactly the ``GoalVerdict.failure_mode`` precedent.
+    """
+
+    mistake_identification: float = Field(ge=0.0, le=1.0)
+    mistake_location: float = Field(ge=0.0, le=1.0)
+    actionability: float = Field(ge=0.0, le=1.0)
+    coherence: float = Field(ge=0.0, le=1.0)
+    productive_struggle: float = Field(ge=0.0, le=1.0)
+    illusion_of_competence: float = Field(ge=0.0, le=1.0)
+    mistake_identification_pass: bool
+    mistake_location_pass: bool
+    actionability_pass: bool
+    coherence_pass: bool
+    productive_struggle_pass: bool
+    illusion_of_competence_pass: bool
+    answer_leakage: bool
+    rationale: str = ""
+
+
 # Answer-grading backstop criterion. This checks the FINAL ANSWER ("is it
 # internally consistent and responsive"), so it is applied at JUDGE-TIME
 # (components.goal_judge / components.evaluator) — NOT baked into the plan-time

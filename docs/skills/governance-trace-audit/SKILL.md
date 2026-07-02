@@ -132,6 +132,38 @@ pillar needs:
   unchanged plan must NOT appear — that's the dedup working); `eval.goal_judge`
   present on completed runs.
 
+### Coach-shape rules (`subject-coach-english` runs)
+
+When `task.started` carries `agent_name`/`agent_facts_id` =
+`subject-coach-english`, three shape rules amend the checks above (mirroring
+the resumed-run Identity rule: shape-aware, never weakened — carrier spec v2,
+Subject-Coach design §13):
+
+1. **Eval-absent-is-expected (Reasoning).** Per ADR-0009 nothing judge-related
+   runs inline on a coach turn: **`eval.goal_judge` absent on a completed
+   coach run is the EXPECTED shape, not a Reasoning FAIL.** The eval evidence
+   is the post-hoc `target="coach_judges"` EvalRecord stream, joined by
+   `task_id`. (Step 1's "no eval.goal_judge at all" escalation does NOT apply
+   to a coach run.)
+2. **Tool vocabulary (Recording).** The only legal tool carriers are
+   **`tool.think` / `tool.file_io`**. Any other `tool.{name}` in a coach trace
+   means the ADR-0007 capability gate failed at bind time — a seam defect,
+   flag it CRITICAL independently of the arch test.
+3. **Context-contract check (the coach's corrupt-success analog — headline).**
+   Read the derived `mode` + `question_id` from the recorded run input
+   (`task.started.details.task_input` → `coach_context`; a client-claimed
+   mode visible in the input is advisory only — audit the DERIVED mode).
+   - **Pre-submit:** the persona-render input in `llm.call.input_text` must
+     show the ADR-0012 exclusion — no `answer_letter`,
+     `per_choice_rationale`, `why_correct_md`, `why_tempted_md`. Any of them
+     present = **NON-COMPLIANT seam defect** (a silent ADR-0012 violation —
+     worse than one leaked reply, because the structural guarantee is broken).
+   - **Post-feedback:** full context is the expected shape; do not flag
+     answer-bearing fields there.
+   - Identity fallback tightens: once the coach instance is registered, an
+     `agent_facts_id` falling back to the subject id on a coach run is a
+     **finding**, not a note.
+
 ## Step 3 — Mechanics checks
 
 The structural invariants, full detail in the reference file:

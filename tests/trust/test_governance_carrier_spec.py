@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from trust.governance_carrier_spec import (
     ALL_PHASE_VALUES,
     SPEC_VERSION,
+    AgentShape,
     CarrierRequirement,
     Pillar,
     PillarCarrierSpec,
@@ -123,6 +124,71 @@ class TestSchemaProperties:
 
     def test_spec_version_pinned(self):
         assert default_spec().spec_version == SPEC_VERSION
+
+
+class TestCoachShape:
+    """Subject-Coach design §13.4 — the coach-shape rubric amendment, spec v2.
+
+    ADR-0009: nothing judge-related runs inline on a coach run, so a missing
+    ``eval.goal_judge`` at COMPLETION is the EXPECTED shape (the eval evidence
+    is the post-hoc ``target="coach_judges"`` stream). Demanding it would be a
+    guaranteed false-positive — the same class as the resumed-Identity
+    exemption (GG-4). Shape-aware, never weakened: the false-positive guard
+    comes first, the no-weakening guard immediately after.
+    """
+
+    def test_coach_completed_run_does_not_require_goal_judge(self):
+        spec = default_spec()
+        reqs = spec.required_for(
+            "completion",
+            tool_failed=False,
+            run_shape=RunShape.FROM_STEP_ZERO,
+            agent_shape=AgentShape.SUBJECT_COACH,
+        )
+        assert reqs == (), (
+            "eval.goal_judge absent on a completed coach run is the EXPECTED "
+            "shape (ADR-0009 post-hoc judges) — requiring it is a false-positive"
+        )
+
+    def test_default_shape_still_requires_goal_judge_at_completion(self):
+        """The amendment must not weaken the default rubric (shape-aware,
+        not weakened — the skill's resumed-run precedent)."""
+        spec = default_spec()
+        reqs = spec.required_for(
+            "completion", tool_failed=False, run_shape=RunShape.FROM_STEP_ZERO
+        )
+        assert [r.event_value for r in reqs] == ["eval.goal_judge"]
+
+    def test_coach_shape_keeps_every_other_phase_requirement(self):
+        """Only the COMPLETION goal-judge rule is shape-exempt: the coach
+        still owes Identity at init, the guardrail carriers, and the
+        token-bearing step — its Validation posture is STRICTER, not looser."""
+        spec = default_spec()
+        for phase in ALL_PHASE_VALUES - {"completion"}:
+            default_reqs = spec.required_for(
+                phase, tool_failed=True, run_shape=RunShape.FROM_STEP_ZERO
+            )
+            coach_reqs = spec.required_for(
+                phase,
+                tool_failed=True,
+                run_shape=RunShape.FROM_STEP_ZERO,
+                agent_shape=AgentShape.SUBJECT_COACH,
+            )
+            assert coach_reqs == default_reqs, phase
+
+    def test_agent_shape_defaults_to_default(self):
+        """Back-compat: existing callers (carrier_gate) pass no agent_shape
+        and must keep the full rubric."""
+        spec = default_spec()
+        reqs = spec.required_for(
+            "completion", tool_failed=False, run_shape=RunShape.FROM_STEP_ZERO
+        )
+        assert len(reqs) == 1
+
+    def test_spec_version_bumped_for_the_coach_amendment(self):
+        """The rubric changed → the version must say so (a deliberate,
+        reviewable diff — never a silent edit of trust data)."""
+        assert SPEC_VERSION == 2
 
 
 class TestDeterminism:

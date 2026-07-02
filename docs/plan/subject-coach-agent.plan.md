@@ -1,7 +1,7 @@
 ---
 type: plan
 title: 'Subject-Coach Agent — Detailed Implementation Plan'
-status: 'Phase 1 built + reviewed; 1B-10 DONE — exit needs live admit-rate run + first shadow traces audit'
+status: 'Phases 1–2 built; Phase-1 exit needs live admit-rate run + first shadow traces audit; Phase-2 exit needs a flags-on sampled shadow pass'
 authored: 2026-07-02
 ---
 
@@ -27,7 +27,9 @@ All work lives on branch **`feat/subject-coach-agent`** — commits `3c6466c` (b
 | **Stage-7 code review** | ✅ CLOSED | high-effort 8-angle review → 10 findings → ALL fixed red/green in `a1c9a76` (incl. per-run guard re-arm + domain fail-closed, `coach_context` state channel + formatter re-strip, pyramid `domain_gated`) |
 | **1B-10 Middleware shadow wiring** | ✅ DONE | BOTH entry points select the coach graph on body `agent_id=subject-coach-english` (`build_coach_components` + `bound_capabilities` passthrough in `middleware/composition.py`; coach graph in each lifespan, fail-safe for chat / **fail-closed 503 for coach** — never the default graph); run identity = registered coach card with `owner=subject`; PLUS the client-side gap closed: `useCoach` now stamps `agent_id` on the run body (`use_agent_run` AgentRunOptions). Tests: `tests/middleware/test_coach_shadow_wiring.py` (16) + `frontend/components/coach/coach_agent_id_flow.test.tsx` |
 | Phase-1 exit: first shadow traces + §13 governance audit | ⬜ OPEN — next | coach now reachable end-to-end; audit runs on first `target="subject_coach"` traces (plus the 1A-4 live admit-rate run) |
-| Phases 2–6 | ⬜ NOT STARTED | Phase 2 executable after 1B-10; Phase 3 human-gated on ≥100 coded turns/mode |
+| **Phase 2: verdicts + judges + config reader + sampler + §13.4 audit amendment** | ✅ BUILT (one increment, 2026-07-02) | `GraderVerdict`/`PedagogyVerdict` + binary `*_pass` companions (`components/schemas.py`); `GraderJudge`/`PedagogyJudge` (`components/subject_coach_judges.py`, undecidable→`None`, FR-18 redaction) + 2 `.j2` rubrics; `SubjectCoachJudgeConfigReader` (all flags default OFF, fail-dark); `meta/subject_coach_judge_sampler.py` (deterministic task_id-hash, paired verdicts → `target="coach_judges"`); carrier-spec **v2** coach-shape exemption (`AgentShape`, eval-absent-is-expected) + SKILL.md coach-shape rules + 2 audit fixtures (violation NON-COMPLIANT before clean COMPLIANT) + `test_coach_audit_fixtures.py` mechanical lock + `test_coach_judges_never_inline.py` (ADR-0009 off-graph gate); FR-17 GoalJudge-unchanged regression locks. `make check` 4707 pass |
+| Phase-2 exit: flags-on sampled shadow pass | ⬜ OPEN | machinery built + fixtures green; needs a shadow run with `COACH_*_JUDGE_ENABLED` on to see first `target="coach_judges"` verdicts (rides the same shadow traffic as the Phase-1 exit audit) |
+| Phases 3–6 | ⬜ NOT STARTED | Phase 3 human-gated on ≥100 coded turns/mode from shadow traffic |
 
 ## Context
 
@@ -132,6 +134,10 @@ Coach runs **shadow-first** on existing chat plumbing (no new graph node — pro
 ---
 
 ## Phase 2 — Verdicts + judges + config reader + sampler (§11 step 3, one increment)
+
+> **STATUS: BUILT (2026-07-02, one increment — see Status ledger).** All six
+> items landed red-first; remaining before phase exit: a flags-on sampled
+> shadow pass producing the first `target="coach_judges"` verdicts.
 
 ADR-0008 condition #2: these land **in one increment** (no `build_graph` change — all off-graph). Rubrics ship **PROVISIONAL** (research-prior seeds), **TELEMETRY-ONLY** (mirrors `GoalVerdict` discipline).
 
