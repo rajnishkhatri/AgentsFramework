@@ -106,6 +106,79 @@ describe("runQuizSubmit — no selection (failure path first, FR-D2a/D4)", () =>
   });
 });
 
+describe("runQuizSubmit — coach-session marker notify (ADR-0012 Amendment, FR-19)", () => {
+  it("no selection ⇒ NO marker notify (failure path first)", async () => {
+    const calls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await runQuizSubmit(
+      { ...ports, quizSubmitNotifier: { notifySubmitted: (q) => calls.push(q) } },
+      {
+        session,
+        question: question(),
+        learnerId: LEARNER,
+        letter: null,
+        elapsedMs: 1000,
+        usedHint: false,
+      },
+    );
+    expect(calls).toHaveLength(0);
+  });
+
+  it("a real submit fires the notifier once with the question id", async () => {
+    const calls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await runQuizSubmit(
+      { ...ports, quizSubmitNotifier: { notifySubmitted: (q) => calls.push(q) } },
+      {
+        session,
+        question: question(),
+        learnerId: LEARNER,
+        letter: "B",
+        elapsedMs: 1000,
+        usedHint: false,
+      },
+    );
+    expect(calls).toEqual(["q1"]);
+  });
+
+  it("fire-and-forget: a throwing notifier never breaks the submit", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const result = await runQuizSubmit(
+      {
+        ...ports,
+        quizSubmitNotifier: {
+          notifySubmitted: () => {
+            throw new Error("marker route down");
+          },
+        },
+      },
+      {
+        session,
+        question: question(),
+        learnerId: LEARNER,
+        letter: "B",
+        elapsedMs: 1000,
+        usedHint: false,
+      },
+    );
+    expect(result.verdict?.correct).toBe(true);
+    expect(result.attempt).not.toBeNull();
+  });
+
+  it("a bag without a notifier still submits (server/legacy path)", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const result = await runQuizSubmit(ports, {
+      session,
+      question: question(),
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 1000,
+      usedHint: false,
+    });
+    expect(result.attempt).not.toBeNull();
+  });
+});
+
 describe("runQuizSubmit — grade → record → review (FR-D2/D3/A2)", () => {
   it("correct answer: verdict.correct true, attempt recorded, skill_state updated", async () => {
     const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");

@@ -26,6 +26,7 @@ import type { Scheduler } from "./ports/engine/scheduler";
 import type { Grader } from "./ports/engine/grader";
 import type { ContentRepo } from "./ports/engine/content_repo";
 import type { LearnerReadRepo } from "./ports/engine/learner_read_repo";
+import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
@@ -55,6 +56,13 @@ export interface EnginePortBag {
   readonly contentRepo: ContentRepo;
   /** Read-only skill_state view for Dashboard mastery + Summary delta (ADR-0011). */
   readonly learnerRead: LearnerReadRepo;
+  /**
+   * Fire-and-forget quiz-submit signal to the coach-session marker store
+   * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the
+   * marker write is a browser→BFF fetch) and in legacy test bags; a missing
+   * notifier fails CLOSED (the coach derives pre_submit and over-strips).
+   */
+  readonly quizSubmitNotifier?: QuizSubmitNotifier;
 }
 
 /**

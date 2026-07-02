@@ -1083,6 +1083,9 @@ def build_graph(
         prompt_service=prompt_service,
         judge_profile=default_fast_profile(),
         classifier=InjectionClassifier.maybe_load(),
+        # FR-7/FR-8: a domain condition means the judge owns topicality — the
+        # precheck/classifier accept shortcuts only prove "not an attack".
+        domain_gated=bool(agent_config.input_guardrail_accept_condition),
     )
     output_validator = GuardRailValidator(pii_rules() + api_key_rules())
 
@@ -2115,6 +2118,14 @@ def build_graph(
             state.get("planning_depth", "L0"),
             task_input=state.get("task_input", ""),
         )
+        # ADR-0007 prompt-param path (FR-10): a per-instance persona (e.g. the
+        # subject coach's rendered `.j2`) rides config, prepended so identity
+        # precedes turn-scoped planning/reflexion/memory lines. Empty ⇒
+        # byte-identical prompt for every existing agent.
+        if agent_config.additional_instructions:
+            planning_instructions = (
+                f"{agent_config.additional_instructions}\n\n{planning_instructions}"
+            )
         reflections = _task_reflections(state)
         if reflections:
             critiques = "\n".join(
@@ -2295,7 +2306,10 @@ def build_graph(
         from services import eval_capture
 
         await eval_capture.record(
-            target="call_llm",
+            # H5 + coach §12.1: a domain instance tags its own LLM turns
+            # (e.g. "subject_coach") so its sampler can find them; default
+            # agents keep "call_llm" byte-identical.
+            target=agent_config.eval_capture_target or "call_llm",
             ai_input={"task_input": state.get("task_input", "")[:200]},
             ai_response=response_text(response)[:500],
             config=config,

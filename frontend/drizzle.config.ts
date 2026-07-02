@@ -60,11 +60,20 @@ import type { Config } from "./drizzle-kit-types";
  * LangGraph checkpoint tables are intentionally absent so drizzle-kit
  * cannot regenerate them (IR-NEON-5).
  */
-const APPLICATION_TABLES: readonly string[] = ["threads", "thread_messages"];
+const APPLICATION_TABLES: readonly string[] = [
+  "threads",
+  "thread_messages",
+  // ADR-0012 Amendment: coach-session marker store (mode-derivation source
+  // for the coach context contract). Monotonic; insert-only.
+  "coach_session_marker",
+];
 
 const config: Config = {
   dialect: "postgresql",
-  schema: "./lib/adapters/thread_store/db/schema.ts",
+  schema: [
+    "./lib/adapters/thread_store/db/schema.ts",
+    "./lib/adapters/coach_marker/db/schema.ts",
+  ],
   out: "./lib/adapters/thread_store/db/migrations",
   tablesFilter: [...APPLICATION_TABLES],
   dbCredentials: {

@@ -78,6 +78,20 @@ export const Question = z.object({
 });
 export type Question = z.infer<typeof Question>;
 
+/**
+ * The four answer-bearing `Question` fields excluded from the coach's
+ * pre-submit context (ADR-0012 / agent spec FR-19). Keyed to the schema at
+ * compile time via `satisfies` — renaming a field here or on `Question`
+ * breaks the build, and the sanitizer lock test freezes the full key set so
+ * a NEW field forces an explicit answer-bearing triage.
+ */
+export const QUESTION_ANSWER_BEARING_FIELDS = [
+  "answer_letter",
+  "per_choice_rationale",
+  "why_correct_md",
+  "why_tempted_md",
+] as const satisfies readonly (keyof Question)[];
+
 // --- quiz_session --------------------------------------------------------
 
 export const SessionMode = z.enum(["adaptive", "drill", "review"]);

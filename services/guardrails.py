@@ -200,6 +200,12 @@ def precheck_input(text: str) -> PreCheckResult:
     """
     stripped = text.strip()
 
+    # 0. Empty / whitespace-only → reject (subject-coach spec §6 edge case:
+    #    "guardrail precheck rejects; no LLM call"). FP-free: an empty prompt
+    #    is never a legitimate query for any agent.
+    if not stripped:
+        return PreCheckResult(PreCheckVerdict.REJECT, "empty_input")
+
     # 1. Length ceiling (objective) → reject.
     if len(text) > MAX_INPUT_LENGTH:
         return PreCheckResult(PreCheckVerdict.REJECT, "length_exceeded")
@@ -368,6 +374,7 @@ class InputGuardrail:
         prompt_service: PromptService,
         judge_profile: ModelProfile,
         classifier: InjectionClassifier | None = None,
+        domain_gated: bool = False,
     ) -> None:
         self.name = name
         self._accept_condition = accept_condition
@@ -379,6 +386,15 @@ class InputGuardrail:
         # and defaulted, so callers (orchestration guard_input_node) are
         # unchanged unless they opt in.
         self._classifier = classifier
+        # ADR-0007 FR-7/FR-8 (subject coach): a DOMAIN accept_condition (e.g.
+        # English-learning-only) must actually be consulted. The precheck's
+        # clean_short ACCEPT shortcut and the classifier's BENIGN auto-accept
+        # are sound only for the injection-only default condition — they say
+        # "not an attack", not "on-topic". When ``domain_gated`` is True those
+        # accept shortcuts fall through to the LLM judge, which owns
+        # topicality; deterministic REJECTs (injection/empty/oversize) still
+        # short-circuit. False (default) ⇒ byte-identical cascade.
+        self._domain_gated = domain_gated
 
     async def decide(self, prompt: str) -> tuple[bool, str]:
         """Run the input cascade and return ``(accepted, decision_stage)``.
@@ -397,10 +413,12 @@ class InputGuardrail:
         if pre.verdict is PreCheckVerdict.REJECT:
             accepted = False
             stage = f"precheck:{pre.reason}"
-        elif pre.verdict is PreCheckVerdict.ACCEPT:
+        elif pre.verdict is PreCheckVerdict.ACCEPT and not self._domain_gated:
             accepted = True
             stage = f"precheck:{pre.reason}"
         else:
+            # DEFER band — or any non-rejected input when domain-gated (the
+            # accept shortcut proves "not an attack", not "on-topic").
             accepted, stage = await self._classify_then_judge(prompt)
 
         logger.info(
@@ -446,7 +464,9 @@ class InputGuardrail:
             verdict = self._classifier.classify(prompt)
             if verdict.band is ClassifierBand.INJECTION:
                 return False, "classifier:injection"
-            if verdict.band is ClassifierBand.BENIGN:
+            if verdict.band is ClassifierBand.BENIGN and not self._domain_gated:
+                # BENIGN means "not an injection" — for a domain-gated rail
+                # topicality is still undecided, so fall through to the judge.
                 return True, "classifier:benign"
             # UNCERTAIN → defer to the narrow judge.
 

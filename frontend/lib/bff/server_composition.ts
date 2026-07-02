@@ -24,9 +24,12 @@ import {
   makeBypassServerSDK,
 } from "../adapters/auth/workos_server_sdk";
 import { selectThreadRepo } from "../adapters/thread_store/neon_thread_repo";
+import { selectCoachMarkerRepo } from "../adapters/coach_marker/marker_repo";
+import type { CoachSessionMarkerRepo } from "../ports/coach_session_marker_repo";
 
 let _bag: PortBag | null = null;
 let _middlewareUrl: string | null = null;
+let _markerRepo: CoachSessionMarkerRepo | null = null;
 
 function middlewareUrl(): string {
   if (_middlewareUrl) return _middlewareUrl;
@@ -60,6 +63,20 @@ export function serverPortBag(): PortBag {
 }
 
 /**
+ * Coach-session marker store (ADR-0012 Amendment). Owned by the composition
+ * seam (C1): the one place the concrete marker repo is named and env is
+ * read. Durable pg table when DATABASE_URL is set; globalThis-backed
+ * in-memory store otherwise (dev/shadow).
+ */
+export function coachMarkerRepo(): CoachSessionMarkerRepo {
+  if (_markerRepo) return _markerRepo;
+  _markerRepo = selectCoachMarkerRepo(
+    process.env as Record<string, string | undefined>,
+  );
+  return _markerRepo;
+}
+
+/**
  * Forward a request to the middleware service. Owned by the composition
  * seam so route handlers never reach into `process.env` themselves
  * (Rule C4/C5, FE-AP-3 / B6). Returns the raw upstream `Response` so the
@@ -77,4 +94,5 @@ export async function forwardToMiddleware(
 export function _resetServerComposition(): void {
   _bag = null;
   _middlewareUrl = null;
+  _markerRepo = null;
 }

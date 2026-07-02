@@ -83,6 +83,22 @@ const PAIRS: ReadonlyArray<PortAdapterPair> = [
     adapter_class: "NeonFreeThreadStore",
   },
   {
+    // ADR-0012 Amendment: coach-session marker store. The file also holds
+    // PgCoachMarkerRepo (same port, durable pg substrate) — one row per file
+    // satisfies the orphan sweep; both classes declare the implements clause.
+    port_file: "lib/ports/coach_session_marker_repo.ts",
+    port_interface: "CoachSessionMarkerRepo",
+    adapter_file: "lib/adapters/coach_marker/marker_repo.ts",
+    adapter_class: "InMemoryCoachMarkerRepo",
+  },
+  {
+    // ADR-0012 Amendment: browser→BFF fire-and-forget quiz-submit notifier.
+    port_file: "lib/ports/quiz_submit_notifier.ts",
+    port_interface: "QuizSubmitNotifier",
+    adapter_file: "lib/adapters/coach_marker/marker_write_client.ts",
+    adapter_class: "FetchQuizSubmitNotifier",
+  },
+  {
     // The Neon-backed ThreadRepo (live-infra Piece C). Its "port" is the
     // narrow ThreadRepo interface that NeonFreeThreadStore depends on; it is
     // co-located with the store (not under lib/ports/) by design — the store
