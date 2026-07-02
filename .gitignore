@@ -50,8 +50,12 @@ Thumbs.db
 *.swp
 *.swo
 
-# Claude / Cursor local
-.claude/
+# Claude / Cursor local — except .claude/skills/, which is a tracked mirror of
+# the canonical docs/skills/ bundles (synced by `make skills-sync`; parity is
+# enforced by tests/architecture/test_skills_mirror_parity.py).
+.claude/*
+!.claude/skills/
+.claude/skills/*-workspace/
 
 # Sprint 0 / V3-Dev-Tier throwaway spike code (per SPRINT_0_RUNBOOK.md §5)
 spikes/

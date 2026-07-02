@@ -1,0 +1,55 @@
+---
+name: sdd-converge
+type: skill
+description: >-
+  Run SDD Stages 9–10 (issue fixes + refine/sign-off) — classify every gap
+  between what was built and what the spec required, spawn append-only fix
+  tasks, and run the production sign-off checklist for THIS repository. Use
+  whenever the user asks "did this converge", "what's missing vs the spec",
+  "classify the gaps / findings", "is this acceptable / ready for
+  production", or after review/test gates come back red. Bounded iteration:
+  append Phase-N tasks, never rewrite history; a hard max-iterations ceiling
+  forces human review. Do NOT use for finding defects in a diff (code-review
+  skill runs Stage 7 first), for mid-flight re-prioritization before
+  implementation "finished" (sdd-replan), or for writing the fixes themselves
+  (sdd-implement executes the spawned tasks).
+---
+
+# SDD Stages 9–10 — Converge · Refine · Sign-off
+
+Runbook: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md`
+§3 Stages 9–10 + §4 (the converge-loop mechanics).
+
+## Stage 9 — classify, then spawn (never fix in place)
+
+Classify every red gate / review finding / test failure:
+
+| Class | Meaning | Route |
+|---|---|---|
+| `missing` | planned, not implemented | fix task → sdd-implement |
+| `partial` | implemented, criterion unmet | fix task → sdd-implement |
+| `contradicts` | conflicts with spec/plan | **sdd-replan** — spec problem, not code |
+| `unrequested` | built but not in the spec (drift) | **sdd-replan** — de-scope or spec it |
+
+**Append-only**: add a `## Phase N — Convergence` section to the change's task
+list with each new task tagged `source-ref` + `gap-type`. Never rewrite
+existing tasks or touch code in this stage. Deferred items go in the
+iteration's plan doc (a `tech-debt-tracker.md` ledger is not yet created).
+
+## Stage 10 — the sign-off gate (all five, human-answered)
+
+1. Converged: every EARS acceptance criterion has a passing test; no
+   `missing`/`partial`/`contradicts` gaps remain.
+2. `make check` green AND `pytest tests/architecture/ -q` green — paste the
+   actual output, not a summary.
+3. Every ADR trigger hit during the change has a filed `docs/adr/*` (+
+   `index.md`/`log.md` entries) — `tests/architecture/test_adr_ratchet.py` is
+   the mechanical backstop.
+4. Every comprehension gate that fired (G1/G3/G4/G7/G8 — wordings in
+   `docs/adr/GATES.md`) was answered by the human in their own words.
+5. LLM calls recorded via `eval_capture.record()` with `user_id` + `task_id`.
+
+**Bounded**: if convergence isn't reached within the agreed `max_iterations`,
+stop and force human review — the loop never calls itself done. Not converged
+→ re-enter sdd-implement with the Phase-N tasks; converged + green + signed →
+production (commit only when the user asks).

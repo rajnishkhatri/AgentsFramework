@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Open-coding cases",
+  "description": "One object per trace to code. The coder renders a card per row. Extra keys beyond those listed survive the round-trip into dataset item metadata, so attach anything you'll want to filter on later (family, severity, model, etc.).",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["trace_id", "prompt"],
+    "properties": {
+      "trace_id": {"type": "string", "description": "Stable id; drives the dataset item id (uuid5) and the /load round-trip."},
+      "prompt": {"type": "string", "description": "The task given to the agent. Shown as the card title."},
+      "final_answer": {"type": "string", "description": "The agent's last message. Shown in the expandable answer panel and used as the dataset expected_output."},
+      "stratum": {"type": "string", "description": "Sampling cell / cohort label, e.g. 'depth:L2:adversarial'."},
+      "goal_met": {"type": "boolean", "description": "Outcome signal surfaced on the card so you code against observable result, not prose."},
+      "partial_fraction": {"type": "number", "description": "0..1 partial-credit signal."},
+      "trajectory": {
+        "type": "array",
+        "description": "Event list; the coder collapses it to per-event counts (step.planned, step.executed, error.occurred, ...).",
+        "items": {"type": "object", "properties": {"ev": {"type": "string"}, "tool": {"type": "string"}, "model": {"type": "string"}}}
+      },
+      "rationale": {"type": "string", "description": "Judge's reasoning, shown for context. NOT a substitute for reading the trajectory."},
+      "want_depth": {"type": "string", "description": "GoalJudge-specific: intended planning depth (L0/L1/L2). Renders a want->fired badge when paired with fired_depth."},
+      "fired_depth": {"type": "string", "description": "GoalJudge-specific: depth the pipeline actually emitted."}
+    }
+  },
+  "examples": [
+    [
+      {
+        "trace_id": "e68552dd78b741598321c7833e7f6843",
+        "stratum": "depth:L1:lone-marker:design",
+        "prompt": "Design a rate limiter for the API.",
+        "final_answer": "Designing a rate limiter involves... (token bucket, Redis sliding window) ...",
+        "goal_met": true,
+        "partial_fraction": 1,
+        "trajectory": [{"ev": "step.planned"}, {"ev": "step.executed", "model": "gpt-4o"}],
+        "rationale": "The answer thoroughly addresses the task.",
+        "want_depth": "L1",
+        "fired_depth": "L0"
+      }
+    ]
+  ]
+}
