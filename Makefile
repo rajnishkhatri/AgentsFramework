@@ -9,7 +9,7 @@ PYRIGHT := npx --yes pyright
 
 .PHONY: test test-fast lint lint-fix format format-check typecheck cite-lint hygiene check \
         review explainability-backend explainability-frontend explainability \
-        model-ab model-ab-passk eval-regression-gate
+        model-ab model-ab-passk eval-regression-gate skills-sync
 
 # Default test run (excludes the infra tree, which needs the `infra` extra and
 # its own marker — see [tool.pytest.ini_options] norecursedirs in pyproject.toml).
@@ -72,6 +72,12 @@ hygiene:
 # cite-lint failures in the REVIEW.md / AGENTS.md themselves. Matches CI so
 # "green locally" means "green in CI".
 check: lint format-check typecheck cite-lint hygiene test
+
+# Project skills mirror sync: docs/skills/ (canonical OKF bundle) → the
+# discovery paths .claude/skills/ + .cursor/skills/. Byte-identical projection;
+# tests/architecture/test_skills_mirror_parity.py fails CI on drift.
+skills-sync:
+	$(PYTHON) scripts/sync_skills.py
 
 # Routed code reviewer (v3) over branch commits vs main. Deterministic by
 # default (no API key, CI-safe); add ARGS="--llm" to also run the certified v3

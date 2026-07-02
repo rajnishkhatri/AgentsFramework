@@ -1,0 +1,95 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open coding</title>
+<style>
+:root{--color-background-primary:#fff;--color-background-secondary:#f6f5f2;--color-text-primary:#1a1a18;--color-text-secondary:#5f5e5a;--color-text-tertiary:#888780;--color-border-tertiary:rgba(0,0,0,.15);--color-border-secondary:rgba(0,0,0,.3);--color-text-success:#0f6e56;--color-text-danger:#a32d2d;--color-background-success:#e1f5ee;--color-background-danger:#fcebeb;--border-radius-md:8px;--border-radius-lg:12px;--font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media(prefers-color-scheme:dark){:root{--color-background-primary:#1f1f1d;--color-background-secondary:#2a2a27;--color-text-primary:#ededec;--color-text-secondary:#b4b2a9;--color-text-tertiary:#888780;--color-border-tertiary:rgba(255,255,255,.15);--color-border-secondary:rgba(255,255,255,.3);--color-background-success:#085041;--color-background-danger:#501313;--color-text-success:#9fe1cb;--color-text-danger:#f09595}}
+body{font-family:var(--font-sans);background:var(--color-background-secondary);color:var(--color-text-primary);margin:0;padding:24px;line-height:1.6}
+.wrap{max-width:820px;margin:0 auto}
+</style></head><body><div class="wrap" id="root">Loading cases…</div>
+<script>
+// CASES are fetched from the server (/cases -> cases.json), not inlined, so this
+// file is a reusable asset across coding sessions. The localStorage key is
+// derived from the cases payload so different sessions don't collide.
+const root=document.getElementById('root');
+let CASES=[];let state=[];let LS_KEY='open_coding_v1';
+
+function lsKeyFor(cases){const ids=cases.map(c=>c.trace_id).join(',');let h=0;for(let i=0;i<ids.length;i++){h=(h*31+ids.charCodeAt(i))|0;}return 'open_coding_'+(h>>>0);}
+function loadState(){
+ try{const saved=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+  if(saved){const byId={};saved.forEach(s=>byId[s.trace_id]=s);
+   return CASES.map(c=>byId[c.trace_id]||{trace_id:c.trace_id,codes:[],memo:''});}
+ }catch(e){}
+ return CASES.map(c=>({trace_id:c.trace_id,codes:[],memo:''}));
+}
+function persist(){localStorage.setItem(LS_KEY,JSON.stringify(state));setStatus('saved locally',true);}
+function esc(s){return (s==null?'':String(s)).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
+function depthBadge(want,fired){if(!want||!fired)return '';const miss=want!==fired;const bg=miss?'var(--color-background-danger)':'var(--color-background-success)';const fg=miss?'var(--color-text-danger)':'var(--color-text-success)';return `<span style="background:${bg};color:${fg};font-size:12px;padding:2px 8px;border-radius:6px">want ${esc(want)} → fired ${esc(fired)}${miss?' ✕':' ✓'}</span>`;}
+function trajLine(t){if(!t)return '';const counts={};t.forEach(s=>counts[s.ev]=(counts[s.ev]||0)+1);const order=['step.planned','step.executed','error.occurred','model.selected','guardrail.checked'];const rest=Object.keys(counts).filter(k=>!order.includes(k));return order.concat(rest).filter(k=>counts[k]).map(k=>`${k.replace('.',' ')}: ${counts[k]}`).join('  ·  ');}
+function render(){
+ let miss=CASES.filter(c=>c.want_depth&&c.fired_depth&&c.want_depth!==c.fired_depth).length;
+ const missNote=miss?` · ${miss} depth-misses`:'';
+ root.innerHTML=`<h1 style="font-size:22px;font-weight:500;margin:0 0 4px">Open coding</h1>
+ <p style="color:var(--color-text-secondary);margin:0 0 20px">${CASES.length} cases${missNote}. Tag short codes per case (press Enter), add a memo, then Save to disk.</p>
+ <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap"><button onclick="saveDisk()" style="padding:8px 14px;border:.5px solid var(--color-border-secondary);background:transparent;border-radius:8px;cursor:pointer;color:inherit;font:inherit">Save to disk</button>
+ <button onclick="exportJSONL()" style="padding:8px 14px;border:.5px solid var(--color-border-secondary);background:transparent;border-radius:8px;cursor:pointer;color:inherit;font:inherit">Download coded JSONL</button>
+ <span id="status" style="font-size:12px;color:var(--color-text-tertiary)"></span></div>`
+ +CASES.map((c,i)=>caseCard(c,i)).join('');
+}
+function caseCard(c,i){
+ const s=state[i];
+ const ans=esc(c.final_answer||'').slice(0,900);
+ const fam=c.trigger_family||c.stratum||'';
+ const sig=[c.goal_met!==undefined?`goal_met: <b style="color:${c.goal_met?'var(--color-text-success)':'var(--color-text-danger)'}">${c.goal_met}</b>`:'',
+            c.partial_fraction!==undefined?`partial: ${c.partial_fraction}`:'',
+            c.plan_steps!==undefined?`plan_steps: ${c.plan_steps}`:''].filter(Boolean).join(' · ');
+ return `<div style="background:var(--color-background-primary);border:.5px solid var(--color-border-tertiary);border-radius:12px;padding:16px 18px;margin-bottom:14px">
+  <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px">
+    <span style="font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono)">${esc(fam)}</span>
+    ${depthBadge(c.want_depth,c.fired_depth)}
+  </div>
+  <p style="font-weight:500;margin:0 0 8px">${esc(c.prompt)}</p>
+  ${sig?`<div style="font-size:13px;color:var(--color-text-secondary);margin:0 0 8px">${sig}</div>`:''}
+  ${c.trajectory?`<div style="font-size:12px;color:var(--color-text-tertiary);font-family:var(--font-mono);margin:0 0 10px">${trajLine(c.trajectory)}</div>`:''}
+  ${(c.final_answer||c.rationale)?`<details style="margin:0 0 10px"><summary style="cursor:pointer;font-size:13px;color:var(--color-text-secondary)">answer${c.rationale?' + judge rationale':''}</summary>
+   ${c.final_answer?`<div style="font-size:13px;background:var(--color-background-secondary);border-radius:8px;padding:10px;margin-top:6px;white-space:pre-wrap">${ans}${(c.final_answer||'').length>900?'…':''}</div>`:''}
+   ${c.rationale?`<div style="font-size:13px;color:var(--color-text-secondary);margin-top:6px"><b>judge:</b> ${esc(c.rationale)}</div>`:''}
+  </details>`:''}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px" id="chips-${i}">${s.codes.map((code,ci)=>`<span style="background:var(--color-background-secondary);border:.5px solid var(--color-border-tertiary);border-radius:14px;padding:3px 10px;font-size:12px">${esc(code)} <a onclick="rmCode(${i},${ci})" style="cursor:pointer;color:var(--color-text-danger)">×</a></span>`).join('')}</div>
+  <input id="code-${i}" placeholder="add open code, press Enter" onkeydown="if(event.key==='Enter')addCode(${i})" style="width:100%;box-sizing:border-box;padding:8px;border:.5px solid var(--color-border-tertiary);border-radius:8px;background:transparent;color:inherit;font:inherit;margin-bottom:6px">
+  <textarea id="memo-${i}" placeholder="memo (optional)" oninput="state[${i}].memo=this.value;persist()" style="width:100%;box-sizing:border-box;padding:8px;border:.5px solid var(--color-border-tertiary);border-radius:8px;background:transparent;color:inherit;font:inherit;min-height:38px">${esc(s.memo)}</textarea>
+ </div>`;
+}
+function addCode(i){const inp=document.getElementById('code-'+i);const v=inp.value.trim();if(!v)return;state[i].codes.push(v);inp.value='';persist();render();const el=document.getElementById('code-'+i);if(el)el.focus();}
+function rmCode(i,ci){state[i].codes.splice(ci,1);persist();render();}
+function setStatus(msg,ok){const el=document.getElementById('status');if(el){el.textContent=msg;el.style.color=ok?'var(--color-text-success)':'var(--color-text-danger)';}}
+function codedJSONL(){return CASES.map((c,i)=>JSON.stringify({...c,open_codes:state[i].codes,memo:state[i].memo})).join('\n');}
+function exportJSONL(){dl(codedJSONL(),'coded.jsonl');}
+function saveDisk(){
+ if(location.protocol!=='http:'&&location.protocol!=='https:'){
+  setStatus('not served over http (page is '+location.protocol+') — downloading instead; serve via python scripts/serve_open_coder.py for disk save',false);
+  exportJSONL();return;
+ }
+ fetch(location.origin+'/save',{method:'POST',headers:{'Content-Type':'application/x-ndjson'},body:codedJSONL()})
+  .then(r=>r.ok?r.text():Promise.reject(r.status))
+  .then(t=>setStatus('saved to disk: '+t,true))
+  .catch(e=>{setStatus('disk save failed ('+e+') — downloading instead; localStorage still holds your codes',false);exportJSONL();});
+}
+function dl(text,name){const b=new Blob([text],{type:'application/x-ndjson'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;a.click();}
+function hydrateFromDisk(){
+ const hasLocal=state.some(s=>(s.codes&&s.codes.length)||(s.memo&&s.memo.trim()));
+ if(hasLocal)return;
+ fetch('/load').then(r=>r.ok?r.text():'').then(txt=>{
+  if(!txt.trim())return;
+  const byId={};
+  txt.split('\n').filter(Boolean).forEach(line=>{try{const r=JSON.parse(line);byId[r.trace_id]={codes:r.open_codes||[],memo:r.memo||''};}catch(e){}});
+  let n=0;
+  state.forEach(s=>{const d=byId[s.trace_id];if(d){s.codes=d.codes;s.memo=d.memo;n++;}});
+  if(n){persist();render();setStatus('loaded '+n+' rows from disk',true);}
+ }).catch(()=>{});
+}
+fetch('/cases').then(r=>r.ok?r.json():Promise.reject(r.status)).then(cases=>{
+ CASES=cases;LS_KEY=lsKeyFor(cases);state=loadState();render();hydrateFromDisk();
+}).catch(e=>{root.innerHTML='<p style="color:var(--color-text-danger)">Could not load cases.json ('+e+'). Put your cases array at the path the server reads and reload.</p>';});
+</script>
+</body></html>

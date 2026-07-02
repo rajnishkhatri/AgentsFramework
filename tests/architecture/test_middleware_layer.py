@@ -663,9 +663,16 @@ class TestEmbeddingClientPortPlacement:
         for py in (AGENT_ROOT).rglob("*.py"):
             if py == canonical:
                 continue
-            # Skip vendored / venv content.
+            # Skip vendored / venv / hidden tool-state content — .claude/worktrees/
+            # holds duplicate agent-session checkouts of this repo.
             sp = str(py)
-            if "/.venv/" in sp or "/site-packages/" in sp or "/node_modules/" in sp:
+            rel_parts = py.relative_to(AGENT_ROOT).parts
+            if (
+                "/site-packages/" in sp
+                or "/node_modules/" in sp
+                or rel_parts[0] == "venv"
+                or any(p.startswith(".") for p in rel_parts[:-1])
+            ):
                 continue
             try:
                 tree = ast.parse(py.read_text())

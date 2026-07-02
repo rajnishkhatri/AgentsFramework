@@ -137,6 +137,9 @@ extend-exclude = [
 "spikes/**" = ["E402", "E741", "F841"]
 "research/**" = ["E402", "E741", "F841"]
 ".cursor/**" = ["E402", "E741", "F841"]
+# .claude/skills is a tracked byte-copy of docs/skills (make skills-sync) —
+# same relief as its canonical source and the .cursor mirror.
+".claude/**" = ["E402", "E741", "F841"]
 # Tests: fixtures/imports are often re-exported or set up lazily; scratch
 # locals (F841) and short names (E741) in test bodies are not worth gating.
 "tests/**" = ["E402", "F811", "F841", "E741"]
