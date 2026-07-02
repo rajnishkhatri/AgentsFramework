@@ -45,6 +45,12 @@ def _coach_guardrail() -> InputGuardrail:
         llm_service=LLMService(config=cfg),
         prompt_service=PromptService(),
         judge_profile=profile,
+        # Mirror the production posture (react_loop: domain_gated=True whenever
+        # the config carries a domain condition). Without this, clean_short
+        # precheck ACCEPTs bypass the condition entirely and the "live" gate
+        # measures the precheck, not the judge — the vacuous 1.000 admit-rate
+        # observed on 2026-07-02 (38/40 off-topic admitted at precheck).
+        domain_gated=True,
     )
 
 

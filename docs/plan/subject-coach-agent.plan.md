@@ -18,7 +18,7 @@ All work lives on branch **`feat/subject-coach-agent`** — commits `3c6466c` (b
 | 1A-1 AgentFacts instance (FR-1/2) | ✅ DONE | `services/governance/subject_coach_identity.py`; tamper-rejection + roundtrip + drift-check tests |
 | 1A-2 Capability binding (FR-3..6) | ✅ DONE | declared=bound arch test extended; fail-fast FR-5 |
 | 1A-3 Persona template (FR-10/11) | ✅ DONE | `prompts/subject_coach_system_prompt.j2` + `AgentConfig.additional_instructions` prepend |
-| 1A-4 English guardrail condition (FR-7..9) | ✅ DONE (offline) | `domain_gated` mechanism + 101-row frozen held-out set; **live ≥98% admit gate still needs a user-shell run** (hook blocks .env): `.venv/bin/python -m pytest tests/services/governance/test_subject_coach_guardrail_live.py -m live_llm -q -s` |
+| 1A-4 English guardrail condition (FR-7..9) | ✅ DONE (incl. live gate) | `domain_gated` mechanism + 101-row frozen held-out set; **live gate PASS 2026-07-02: legit admit-rate 0.984 (60/61) ≥ 0.98**, all decisions at stage `judge` (the earlier 1.000 was vacuous — the live test lacked `domain_gated=True`, fixed). Reported FR-8 signal (not gated): off-topic reject-rate **0.150** — condition is leak-prone on topicality; any revision must be validated on FRESH utterances, never re-tuned on the frozen set (§9) |
 | 1A-5 Authored hint rungs (FR-20) | ✅ DONE | `components/subject_coach_hints.py`; assertion rung unrepresentable |
 | 1A-6 Eval capture target=subject_coach | ✅ DONE | react_loop capture wiring; now READABLE via `meta.analysis.records_for_target` (review I2) |
 | 1B-7 Marker store | ✅ DONE | port + in-mem/pg adapters + **migration `0001_coach_session_marker.sql`** (review fix) |
