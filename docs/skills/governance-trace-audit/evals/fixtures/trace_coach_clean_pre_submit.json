@@ -32,6 +32,17 @@
   "metadata": "{\"event_id\": \"6eb765f0-8f95-4f10-dccc-b1ee7f9d0892\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
  },
  {
+  "id": "9aec7bb64f4141d1",
+  "type": "CHAIN",
+  "name": "guardrail.checked (6ac87da7)",
+  "startTime": "2026-07-02T18:25:10.182Z",
+  "endTime": "2026-07-02T18:25:10.183Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"6ac87da7-e233-4990-a136-e5973d7603f9\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:10.182000+00:00\", \"timestamp\": \"2026-07-02T18:25:10.182000+00:00\", \"integrity_hash\": \"0de3b0a8674f6c5ddb740c079c2bdd2e1ad9b1bb5f7ebae4270f00ab6e59cc92\", \"details\": {\"guardrail\": \"coach_context_contract\", \"mode\": \"pre_submit\", \"answer_fields_rendered\": [], \"answer_fields_stripped\": []}}",
+  "output": null,
+  "metadata": "{\"event_id\": \"6eb765f0-8f95-4f10-dccc-b1ee7f9d0892\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
   "id": "af18b564161b4ec5",
   "type": "SPAN",
   "name": "step.0 (af18b564)",

@@ -132,6 +132,42 @@ class TestCoachShapeInvariants:
         assert _named(observations, "guardrail.checked")
 
 
+def _contract_carriers(observations: list[dict]) -> list[dict]:
+    carriers = []
+    for obs in _named(observations, "guardrail.checked"):
+        payload = json.loads(obs["input"])
+        if payload.get("details", {}).get("guardrail") == "coach_context_contract":
+            carriers.append(payload["details"])
+    return carriers
+
+
+class TestContractCarrier:
+    """§13 audit finding F1: every coach turn records ONE
+    ``coach_context_contract`` carrier — the applied (fail-closed) mode plus
+    the answer-field render/strip testimony. The fixtures must model it so
+    the skill's carrier-first mode derivation is exercised."""
+
+    @pytest.mark.parametrize("name", [VIOLATION_FIXTURE, CLEAN_FIXTURE])
+    def test_exactly_one_contract_carrier(self, name: str):
+        carriers = _contract_carriers(_load(name))
+        assert len(carriers) == 1, "one contract carrier per coach turn"
+        assert carriers[0]["mode"] == "pre_submit"
+        assert carriers[0]["answer_fields_rendered"] == []
+
+    def test_violation_models_a_formatter_bypass(self):
+        """The carrier truthfully reports the formatter stripped all four
+        fields — yet the llm.call input carries them: the contradiction the
+        §13.2 check must flag (fields bypassed the formatter path)."""
+        carriers = _contract_carriers(_load(VIOLATION_FIXTURE))
+        assert set(carriers[0]["answer_fields_stripped"]) == set(ANSWER_BEARING_FIELDS)
+
+    def test_clean_fixture_had_nothing_to_strip(self):
+        """Clean shape: the BFF strip held upstream, so the formatter saw no
+        answer-bearing fields at all."""
+        carriers = _contract_carriers(_load(CLEAN_FIXTURE))
+        assert carriers[0]["answer_fields_stripped"] == []
+
+
 class TestEvalsBinding:
     def test_violation_binds_non_compliant_before_clean_compliant(self):
         evals = json.loads((_EVALS_DIR / "evals.json").read_text(encoding="utf-8"))

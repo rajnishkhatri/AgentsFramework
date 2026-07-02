@@ -383,3 +383,68 @@ class TestPairedVerdictRecording:
             recorder=recorder,
         )
         assert all(r["ai_input"]["mode"] == "pre_submit" for r in recorder.records)
+
+
+class TestRecordedCoachModeCarrier:
+    """§13 audit finding F1: ``task_input`` is last-message-only on real
+    traffic, so the marker parse froze every turn at pre_submit. The run now
+    records the formatter-derived mode as ``ai_input["coach_mode"]``; the
+    sampler prefers it. Fail-closed is preserved: only the exact value
+    ``"post_feedback"`` flips the rubric."""
+
+    @pytest.mark.asyncio
+    async def test_recorded_coach_mode_wins_without_marker(self):
+        rec = _record("t1", task_input="explain why C is wrong")
+        rec.ai_input["coach_mode"] = "post_feedback"
+        grader, pedagogy, _, _ = _judges()
+        recorder = _CapturingRecorder()
+        await run_coach_judge_sampling(
+            [rec],
+            grader_judge=grader,
+            pedagogy_judge=pedagogy,
+            config_reader=_reader(),
+            recorder=recorder,
+        )
+        assert recorder.records
+        assert all(r["ai_input"]["mode"] == "post_feedback" for r in recorder.records)
+
+    @pytest.mark.asyncio
+    async def test_unrecognized_coach_mode_fails_closed(self):
+        """A corrupted/spoofed carrier value must land on the STRICTER
+        pre_submit rubric — anything but the exact string is unknown."""
+        for bogus in ("POST_FEEDBACK", "post-feedback", "review", 1, None):
+            rec = _record("t1", task_input="explain why C is wrong")
+            rec.ai_input["coach_mode"] = bogus
+            grader, pedagogy, _, _ = _judges()
+            recorder = _CapturingRecorder()
+            await run_coach_judge_sampling(
+                [rec],
+                grader_judge=grader,
+                pedagogy_judge=pedagogy,
+                config_reader=_reader(),
+                recorder=recorder,
+            )
+            assert recorder.records
+            assert all(
+                r["ai_input"]["mode"] == "pre_submit" for r in recorder.records
+            ), f"coach_mode={bogus!r} must not flip the rubric"
+
+    @pytest.mark.asyncio
+    async def test_absent_coach_mode_falls_back_to_the_marker(self):
+        """Pre-F1 records (no coach_mode key) keep the marker behavior."""
+        grader, pedagogy, _, _ = _judges()
+        recorder = _CapturingRecorder()
+        await run_coach_judge_sampling(
+            [
+                _record(
+                    "t-marker",
+                    task_input='coach_context: {"mode": "post_feedback"} — explain',
+                )
+            ],
+            grader_judge=grader,
+            pedagogy_judge=pedagogy,
+            config_reader=_reader(),
+            recorder=recorder,
+        )
+        assert recorder.records
+        assert all(r["ai_input"]["mode"] == "post_feedback" for r in recorder.records)

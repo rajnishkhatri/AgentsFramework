@@ -150,14 +150,24 @@ Subject-Coach design §13):
    means the ADR-0007 capability gate failed at bind time — a seam defect,
    flag it CRITICAL independently of the arch test.
 3. **Context-contract check (the coach's corrupt-success analog — headline).**
-   Read the derived `mode` + `question_id` from the recorded run input
-   (`task.started.details.task_input` → `coach_context`; a client-claimed
-   mode visible in the input is advisory only — audit the DERIVED mode).
+   Read the applied `mode` from the **`guardrail.checked` carrier with
+   `details.guardrail = "coach_context_contract"`** (§13 audit F1 fix): its
+   `mode` is what the formatter actually applied (fail-closed), and its
+   `answer_fields_rendered` / `answer_fields_stripped` lists are the
+   assembly's own testimony. **A coach run missing this carrier is itself a
+   finding** (pre-F1 traces only may fall back to parsing
+   `task.started.details.task_input` → `coach_context`; a client-claimed mode
+   is advisory only — audit the APPLIED mode).
    - **Pre-submit:** the persona-render input in `llm.call.input_text` must
      show the ADR-0012 exclusion — no `answer_letter`,
      `per_choice_rationale`, `why_correct_md`, `why_tempted_md`. Any of them
      present = **NON-COMPLIANT seam defect** (a silent ADR-0012 violation —
      worse than one leaked reply, because the structural guarantee is broken).
+     Cross-check the carrier: `answer_fields_stripped` non-empty means the
+     BFF strip was evaded and the re-strip caught it — a frontend seam
+     finding even when the render is clean. If `input_text` ends in
+     `…[truncated]`, the exclusion is **unverifiable from the trace** (F2
+     marker) — say so; never record a clean pass over a truncated render.
    - **Post-feedback:** full context is the expected shape; do not flag
      answer-bearing fields there.
    - Identity fallback tightens: once the coach instance is registered, an

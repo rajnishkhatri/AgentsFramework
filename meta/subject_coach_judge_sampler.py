@@ -124,10 +124,19 @@ def _latest_turn_per_task(records: list[EvalRecord]) -> list[EvalRecord]:
 def _mode_of(record: EvalRecord) -> str:
     """Derive the turn's mode from the recorded input — fail-closed.
 
-    Unknown/absent marker ⇒ ``pre_submit``: the STRICTER leakage rubric.
-    Mis-grading a post-feedback turn as pre-submit costs a false leak flag
-    (human review absorbs it); the reverse would hide a real leak.
+    Preference order (§13 audit finding F1): the run's own carrier
+    ``ai_input["coach_mode"]`` — the formatter-derived mode recorded at the
+    eval seam — then the legacy marker parse for pre-F1 records. On real
+    traffic ``task_input`` is last-message-only, so the marker alone froze
+    every turn at pre_submit.
+
+    Unknown/absent ⇒ ``pre_submit``: the STRICTER leakage rubric. Only the
+    exact string ``"post_feedback"`` flips — mis-grading a post-feedback turn
+    as pre-submit costs a false leak flag (human review absorbs it); the
+    reverse would hide a real leak.
     """
+    if record.ai_input.get("coach_mode") == "post_feedback":
+        return "post_feedback"
     text = str(record.ai_input.get("task_input", ""))
     return "post_feedback" if _POST_FEEDBACK_MARKER in text else "pre_submit"
 

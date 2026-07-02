@@ -36,6 +36,37 @@ _ANSWER_BEARING_FIELDS: tuple[str, ...] = (
 _HEADER = "### Coaching context"
 
 
+def _derive_mode(context: Mapping[str, Any]) -> str:
+    """Unknown, missing, or advisory-spoofed mode ⇒ pre_submit (fail closed)."""
+    return "post_feedback" if context.get("mode") == "post_feedback" else "pre_submit"
+
+
+def coach_context_contract(context: Any) -> dict[str, Any] | None:
+    """The auditable facts of the two-layer assembly (§13 audit finding F1).
+
+    ``None`` when there is no coach context (non-coach runs record nothing).
+    Otherwise the payload the orchestrator records as ONE ``guardrail_checked``
+    carrier per coach turn: the fail-closed ``mode`` the renderer will apply,
+    which answer-bearing fields will render (post-feedback only), and which
+    were withheld — so an evaded BFF strip is visible in the trace instead of
+    silently absorbed by the re-strip.
+    """
+    if not isinstance(context, Mapping) or not context:
+        return None
+    mode = _derive_mode(context)
+    question = context.get("question")
+    present = (
+        [f for f in _ANSWER_BEARING_FIELDS if question.get(f)]
+        if isinstance(question, Mapping)
+        else []
+    )
+    return {
+        "mode": mode,
+        "answer_fields_rendered": present if mode == "post_feedback" else [],
+        "answer_fields_stripped": [] if mode == "post_feedback" else present,
+    }
+
+
 def render_coach_context_block(context: Mapping[str, Any] | None) -> str:
     """Sanitized ``coach_context`` → an ``additional_instructions`` block.
 
@@ -46,10 +77,7 @@ def render_coach_context_block(context: Mapping[str, Any] | None) -> str:
     if not isinstance(context, Mapping) or not context:
         return ""
 
-    mode = context.get("mode")
-    if mode != "post_feedback":
-        # Unknown, missing, or advisory-spoofed mode ⇒ pre_submit (fail closed).
-        mode = "pre_submit"
+    mode = _derive_mode(context)
 
     lines = [f"{_HEADER} (mode: {mode})"]
     for key in ("question_id", "skill_id"):

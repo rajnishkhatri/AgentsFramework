@@ -48,7 +48,7 @@ from components.reflexion import (
     generate_reflection,
     reflections_for_task,
 )
-from components.coach_context import render_coach_context_block
+from components.coach_context import coach_context_contract, render_coach_context_block
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.memory_context import (
     build_store_payload,
@@ -1235,6 +1235,26 @@ def build_graph(
                         },
                     )
                 )
+            # §13 audit finding F1: the two-layer assembly facts (ADR-0012)
+            # had no trace carrier — mode was unauditable and the judge
+            # sampler froze at pre_submit. One carrier per coach turn (this
+            # node is re-entry-guarded); absent for every non-coach run so
+            # default-agent traces stay byte-identical.
+            coach_contract = coach_context_contract(state.get("coach_context"))
+            if coach_contract is not None:
+                black_box.record(
+                    TraceEvent(
+                        event_id=str(uuid.uuid4()),
+                        workflow_id=workflow_id,
+                        event_type=EventType.GUARDRAIL_CHECKED,
+                        timestamp=datetime.now(UTC),
+                        step=step_count,
+                        details={
+                            "guardrail": "coach_context_contract",
+                            **coach_contract,
+                        },
+                    )
+                )
         # Phase-1 shadow carrier gate: the Identity pillar (task_started) just fired.
         _shadow_check_phase_carriers(
             black_box,
@@ -2334,12 +2354,23 @@ def build_graph(
 
         from services import eval_capture
 
+        # §13 audit finding F1 (sampler half): task_input is last-message-only
+        # on real traffic, so the record itself carries the formatter-derived
+        # fail-closed mode for the judge sampler's rubric selection. Absent
+        # for every non-coach run (ai_input stays byte-identical).
+        _eval_ai_input: dict[str, Any] = {
+            "task_input": state.get("task_input", "")[:200]
+        }
+        _coach_contract = coach_context_contract(state.get("coach_context"))
+        if _coach_contract is not None:
+            _eval_ai_input["coach_mode"] = _coach_contract["mode"]
+
         await eval_capture.record(
             # H5 + coach §12.1: a domain instance tags its own LLM turns
             # (e.g. "subject_coach") so its sampler can find them; default
             # agents keep "call_llm" byte-identical.
             target=agent_config.eval_capture_target or "call_llm",
-            ai_input={"task_input": state.get("task_input", "")[:200]},
+            ai_input=_eval_ai_input,
             ai_response=response_text(response)[:500],
             config=config,
             step=step_count,

@@ -44,6 +44,15 @@ logger = logging.getLogger("middleware.telemetry_bridge")
 __all__ = ["emit_domain_event", "emit_run_finished"]
 
 _MAX_FIELD_BYTES = 4096
+# §13 audit finding F2: 4 KB cut ``llm.call.input_text`` BEFORE the persona +
+# coach-context render region, so the §13.2 answer-field exclusion audit was
+# vacuous on real traces. input_text alone gets a cap sized for a full
+# system-prompt render; every other field keeps the 4 KB bound.
+_MAX_INPUT_TEXT_BYTES = 32768
+# Appended whenever a field is cut: a silent truncation reads to an auditor
+# as a clean pass, an explicit marker reads as "unverifiable — go look at
+# the source". Kept inside the byte bound.
+_TRUNCATION_MARKER = "…[truncated]"
 # Phase 3: ``LLMMessageStarted``/``ToolCallStarted``/``LLMTokenEmitted`` are
 # BUFFERED (folded into the merged terminal observation), not skipped — they are
 # intercepted in ``emit_domain_event`` before ``_build_attributes`` and so never
@@ -82,14 +91,13 @@ _llm_start_buffers: dict[tuple[str, str], tuple[dict[str, Any], float]] = {}
 _tool_start_buffers: dict[tuple[str, str], tuple[dict[str, Any], float]] = {}
 
 
-def _truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
-    if len(value) <= limit:
-        return value
-    return value[:limit]
-
-
 def _redact_and_truncate(value: str, limit: int = _MAX_FIELD_BYTES) -> str:
-    return _truncate(redact_text(value, max_len=limit), limit)
+    if len(value) <= limit:
+        return redact_text(value, max_len=limit)
+    # Truncate before redacting (the black_box_publisher order: losing the
+    # tail beats leaking secrets), leaving room for the visible marker.
+    cut = limit - len(_TRUNCATION_MARKER)
+    return redact_text(value[:cut], max_len=cut) + _TRUNCATION_MARKER
 
 
 def _clear_trace_buffers(trace_id: str) -> None:
@@ -244,7 +252,7 @@ def emit_domain_event(
             start_attrs: dict[str, Any] = {}
             if domain_event.input_text:
                 start_attrs["input_text"] = _redact_and_truncate(
-                    domain_event.input_text
+                    domain_event.input_text, _MAX_INPUT_TEXT_BYTES
                 )
             _llm_start_buffers[key] = (start_attrs, time.monotonic())
             return
