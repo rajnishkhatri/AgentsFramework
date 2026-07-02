@@ -85,10 +85,17 @@ describe("drizzle.config tablesFilter [IR-NEON-5 / S2.1.2]", () => {
     expect(asList(liveConfig.tablesFilter).length).toBeGreaterThan(0);
   });
 
-  it("points schema + out under lib/adapters/thread_store/db/ (vendor SDK confined to the adapter ring, F-R2)", () => {
-    expect(liveConfig.schema).toBe(
+  it("points schema + out under lib/adapters/**/db/ (vendor SDK confined to the adapter ring, F-R2)", () => {
+    // Two schema files since the ADR-0012 coach_session_marker table landed;
+    // the F-R2 intent is unchanged — every schema path stays inside the
+    // adapter ring (lib/adapters/**/db/), never upstream of it.
+    expect(liveConfig.schema).toEqual([
       "./lib/adapters/thread_store/db/schema.ts",
-    );
+      "./lib/adapters/coach_marker/db/schema.ts",
+    ]);
+    for (const schemaPath of liveConfig.schema as string[]) {
+      expect(schemaPath).toMatch(/^\.\/lib\/adapters\/[^/]+\/db\/schema\.ts$/);
+    }
     expect(liveConfig.out).toBe(
       "./lib/adapters/thread_store/db/migrations",
     );

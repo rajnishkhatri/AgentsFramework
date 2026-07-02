@@ -37,6 +37,16 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "thread_store.ts", interfaceName: "ThreadStore" },
   { file: "memory_client.ts", interfaceName: "MemoryClient" },
   { file: "memory_store.ts", interfaceName: "MemoryStore" },
+  {
+    file: "coach_session_marker_repo.ts",
+    interfaceName: "CoachSessionMarkerRepo",
+  },
+  {
+    file: "quiz_submit_notifier.ts",
+    interfaceName: "QuizSubmitNotifier",
+    syncJustification:
+      "Fire-and-forget by contract (ADR-0012 Amendment): notifySubmitted returns void so the quiz submit path never awaits — a failed marker write fails CLOSED to pre_submit (justified in JSDoc).",
+  },
   { file: "telemetry_sink.ts", interfaceName: "TelemetrySink" },
   {
     file: "feature_flag_provider.ts",

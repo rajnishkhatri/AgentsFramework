@@ -17,11 +17,14 @@ const getSession = vi.fn();
 const getAccessToken = vi.fn();
 const forwardToMiddleware = vi.fn();
 const proxySSE = vi.fn();
+const isSubmitted = vi.fn();
+const markSubmitted = vi.fn();
 
 vi.mock("@/lib/bff/server_composition", () => ({
   serverPortBag: () => ({
     authProvider: { getSession, getAccessToken },
   }),
+  coachMarkerRepo: () => ({ isSubmitted, markSubmitted }),
   forwardToMiddleware: (...args: unknown[]) => forwardToMiddleware(...args),
 }));
 vi.mock("@/lib/transport/edge_proxy", () => ({
@@ -59,7 +62,7 @@ describe("coach stream route — failure path first (auth gate)", () => {
 
 describe("coach stream route — authed: forward only", () => {
   it("forwards to /run/stream with bearer + SSE accept, pipes through proxySSE", async () => {
-    getSession.mockResolvedValue({ user_id: "u1" });
+    getSession.mockResolvedValue({ sub: "u1" });
     getAccessToken.mockResolvedValue("tok-123");
     const upstream = new Response("data: hi\n\n");
     forwardToMiddleware.mockResolvedValue(upstream);
@@ -77,5 +80,94 @@ describe("coach stream route — authed: forward only", () => {
     expect(headers.accept).toBe("text/event-stream");
     expect(proxySSE).toHaveBeenCalledWith(upstream);
     expect(res).toBe(proxied);
+  });
+});
+
+describe("coach stream route — ADR-0012 sanitizer (FR-19/FR-21)", () => {
+  const question = {
+    id: "q-punc-1",
+    stem: "Which choice best fixes the underlined portion?",
+    answer_letter: "B",
+    per_choice_rationale: { A: "unclosed" },
+    why_correct_md: "closes the clause",
+    why_tempted_md: "reads fine",
+  };
+
+  function coachBody(mode: string) {
+    return JSON.stringify({
+      thread_id: "t1",
+      agent_id: "subject-coach-english",
+      input: {
+        messages: [{ role: "user", content: "help" }],
+        coach_context: {
+          mode,
+          question_id: "q-punc-1",
+          skill_id: "s-punc",
+          question,
+        },
+      },
+    });
+  }
+
+  function forwardedBody(): Record<string, unknown> {
+    const [, init] = forwardToMiddleware.mock.calls[0] as [string, RequestInit];
+    return JSON.parse(init.body as string);
+  }
+
+  beforeEach(() => {
+    getSession.mockResolvedValue({ sub: "maya" });
+    getAccessToken.mockResolvedValue("tok-123");
+    forwardToMiddleware.mockResolvedValue(new Response("data: hi\n\n"));
+    proxySSE.mockReturnValue(new Response("proxied"));
+  });
+
+  it("SPOOF first: no marker + client claims post_feedback ⇒ 4 fields stripped", async () => {
+    isSubmitted.mockResolvedValue(false);
+    await POST(req(coachBody("post_feedback")));
+
+    const body = forwardedBody();
+    const ctx = (body.input as Record<string, unknown>)
+      .coach_context as Record<string, unknown>;
+    const q = ctx.question as Record<string, unknown>;
+    expect(ctx.mode).toBe("pre_submit");
+    for (const field of [
+      "answer_letter",
+      "per_choice_rationale",
+      "why_correct_md",
+      "why_tempted_md",
+    ]) {
+      expect(q).not.toHaveProperty(field);
+    }
+    expect(q.stem).toBe(question.stem);
+    // Mode derived from the SERVER-side session subject, never client input.
+    expect(isSubmitted).toHaveBeenCalledWith("maya", "q-punc-1");
+  });
+
+  it("marker present ⇒ post_feedback with full question forwarded (FR-21)", async () => {
+    isSubmitted.mockResolvedValue(true);
+    await POST(req(coachBody("pre_submit")));
+
+    const ctx = (forwardedBody().input as Record<string, unknown>)
+      .coach_context as Record<string, unknown>;
+    expect(ctx.mode).toBe("post_feedback");
+    expect(ctx.question).toHaveProperty("answer_letter", "B");
+  });
+
+  it("marker lookup failure fails CLOSED to pre_submit (fields stripped)", async () => {
+    isSubmitted.mockRejectedValue(new Error("store down"));
+    await POST(req(coachBody("post_feedback")));
+
+    const ctx = (forwardedBody().input as Record<string, unknown>)
+      .coach_context as Record<string, unknown>;
+    expect(ctx.mode).toBe("pre_submit");
+    expect(ctx.question).not.toHaveProperty("answer_letter");
+  });
+
+  it("plain chat body (no coach_context) is forwarded byte-identical", async () => {
+    const body = '{"thread_id":"t1","input":{"messages":[]}}';
+    await POST(req(body));
+    const [, init] = forwardToMiddleware.mock.calls[0] as [string, RequestInit];
+    expect(init.body).toBe(body);
+    expect(isSubmitted).not.toHaveBeenCalled();
   });
 });
