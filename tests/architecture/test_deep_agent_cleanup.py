@@ -24,8 +24,9 @@ def test_no_runtime_python_references_to_removed_package() -> None:
     violations: list[str] = []
     for py_file in AGENT_ROOT.rglob("*.py"):
         rel = py_file.relative_to(AGENT_ROOT)
-        # .claude holds agent-worktree repo snapshots — out of scan scope.
-        if rel.parts[0] in {".venv", "venv", ".claude"}:
+        # Hidden dirs hold tool state, not repo code — .claude/worktrees/ in
+        # particular contains duplicate agent-session checkouts of this repo.
+        if rel.parts[0] == "venv" or any(p.startswith(".") for p in rel.parts[:-1]):
             continue
         if rel == Path("tests/architecture/test_deep_agent_cleanup.py"):
             continue

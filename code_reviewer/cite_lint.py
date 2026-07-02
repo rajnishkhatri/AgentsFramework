@@ -377,16 +377,17 @@ def _lost_section_marker_defects(text: str) -> list[str]:
 
 
 def find_review_files(repo_root: Path) -> list[Path]:
-    """Find every REVIEW.md under the repo (excluding node_modules / .venv).
+    """Find every REVIEW.md under the repo (excluding vendored / hidden trees).
 
-    ``.claude`` is excluded because agent worktrees under ``.claude/worktrees/``
-    are full repo snapshots — linting their REVIEW.md copies double-reports
-    every rule and fails on cross-folder resolution against the outer root.
+    Hidden dirs are tool state, not repo docs — ``.claude/worktrees/`` in
+    particular holds duplicate agent-session checkouts of this repo.
     """
     out: list[Path] = []
     for path in repo_root.rglob("REVIEW.md"):
-        parts = set(path.parts)
-        if parts & {"node_modules", ".venv", "__pycache__", ".claude"}:
+        rel_parts = path.relative_to(repo_root).parts
+        if set(rel_parts) & {"node_modules", ".venv", "__pycache__"} or any(
+            p.startswith(".") for p in rel_parts[:-1]
+        ):
             continue
         out.append(path)
     return sorted(out)
@@ -485,9 +486,10 @@ def _lint_all_agents_encoding(repo_root: Path) -> list[tuple[str, str]]:
     """Scan every AGENTS.md under root for mojibake. Returns ``(rel, defect)``."""
     out: list[tuple[str, str]] = []
     for path in repo_root.rglob("AGENTS.md"):
-        parts = set(path.parts)
-        # Same skip set as find_review_files (.claude = agent-worktree snapshots).
-        if parts & {"node_modules", ".venv", "__pycache__", ".claude"}:
+        rel_parts = path.relative_to(repo_root).parts
+        if set(rel_parts) & {"node_modules", ".venv", "__pycache__"} or any(
+            p.startswith(".") for p in rel_parts[:-1]
+        ):
             continue
         for defect in lint_encoding(path):
             out.append((_rel(path, repo_root), defect))
