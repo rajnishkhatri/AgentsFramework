@@ -22,28 +22,13 @@ import {
   serverPortBag,
 } from "@/lib/bff/server_composition";
 import {
+  coachMarkerQuestionId,
   deriveCoachMode,
+  hasCoachContext,
   sanitizeCoachRunBody,
 } from "@/lib/translators/coach_context_sanitizer";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Pull `input.coach_context.question_id` out of the raw body, or null when
- * this is a plain chat run (no coach_context) or the body is unparseable —
- * both of which forward byte-identical.
- */
-function extractCoachQuestionId(rawBody: string): string | null {
-  try {
-    const parsed = JSON.parse(rawBody) as {
-      input?: { coach_context?: { question_id?: unknown } };
-    };
-    const qid = parsed?.input?.coach_context?.question_id;
-    return typeof qid === "string" && qid.length > 0 ? qid : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest): Promise<Response> {
   const bag = serverPortBag();
@@ -67,21 +52,32 @@ export async function POST(req: NextRequest): Promise<Response> {
   // coach-session marker store (server-side session subject — client mode is
   // advisory) and strip the four answer-bearing Question fields pre-submit.
   // Pure decision logic lives in the sanitizer translator; this block is the
-  // port-call wiring (B6). Chat bodies without a coach_context pass through
-  // byte-identical. Any failure fails CLOSED to pre_submit.
-  const questionId = extractCoachQuestionId(body);
-  if (questionId !== null) {
+  // port-call wiring (B6). Chat bodies without a coach_context (or with an
+  // unparseable body, which the middleware rejects) pass through
+  // byte-identical. EVERY body with a coach_context is sanitized: a missing,
+  // empty, or question.id-mismatched question_id skips the marker lookup and
+  // fails CLOSED to pre_submit — never a byte-identical forward.
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    // Not JSON ⇒ no coach_context to sanitize; forward as-is.
+  }
+  if (hasCoachContext(parsed)) {
+    const questionId = coachMarkerQuestionId(parsed);
     let hasSubmittedMarker = false;
-    try {
-      hasSubmittedMarker = await coachMarkerRepo().isSubmitted(
-        claim.sub,
-        questionId,
-      );
-    } catch {
-      // Unreadable store ⇒ pre_submit (fields stripped) — never leak.
+    if (questionId !== null) {
+      try {
+        hasSubmittedMarker = await coachMarkerRepo().isSubmitted(
+          claim.sub,
+          questionId,
+        );
+      } catch {
+        // Unreadable store ⇒ pre_submit (fields stripped) — never leak.
+      }
     }
     const mode = deriveCoachMode({ hasSubmittedMarker });
-    body = JSON.stringify(sanitizeCoachRunBody(JSON.parse(body), mode));
+    body = JSON.stringify(sanitizeCoachRunBody(parsed, mode));
   }
 
   const upstream = await forwardToMiddleware("/run/stream", {

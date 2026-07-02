@@ -193,6 +193,12 @@ class AgentState(MessagesState):
     registered_agent_id: str
     agent_facts_verified: bool
     agent_capabilities: list[str]
+    # Guard re-arm marker (review G2): the workflow_id the input guard last
+    # ran under. Every non-resume run mints a fresh workflow_id (runtime
+    # adapter), while resume passes None input and keeps the checkpointed
+    # one — so guard_input re-runs exactly once per user turn and never on
+    # resume. Last-write-wins; written only by guard_input_node.
+    guarded_workflow_id: str
 
     current_workflow_phase: str
 
@@ -232,6 +238,16 @@ class AgentState(MessagesState):
     # recalled_memories_task_id, so a reflexion lap reports the same count
     # without re-querying. 0 = no recall / degraded / flag off. Last-write-wins.
     recalled_memories_count: int
+    # ADR-0012 (review I3): the BFF-sanitized coach context that rides
+    # RunCreateRequest.input.coach_context. Declaring the channel is what
+    # stops LangGraph dropping the key at the boundary; call_llm renders it
+    # via components.coach_context.render_coach_context_block (which
+    # RE-strips answer-bearing fields unless mode == post_feedback — defense
+    # in depth behind the BFF strip). Empty/absent for every non-coach run ⇒
+    # byte-identical prompts. Last-write-wins: each coach turn ships a fresh
+    # context; a turn that omits it inherits the thread's previous one, which
+    # only coach clients (that always send it) can produce.
+    coach_context: dict[str, Any]
     # Phase B (recalled-memories-per-chat): the stable keys of the records
     # actually injected this turn — identifiers, NEVER payload content (the
     # privacy invariant holds; the owner joins them against their own memory

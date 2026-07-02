@@ -13,7 +13,9 @@ import {
   QUESTION_ANSWER_BEARING_FIELDS,
 } from "@/lib/wire/engine_entities";
 import {
+  coachMarkerQuestionId,
   deriveCoachMode,
+  hasCoachContext,
   sanitizeCoachRunBody,
 } from "./coach_context_sanitizer";
 
@@ -101,6 +103,46 @@ describe("sanitizeCoachRunBody — failure paths first", () => {
   it("body without coach_context is returned unchanged (chat runs unaffected)", () => {
     const plain = { thread_id: "t1", input: { messages: [] } };
     expect(sanitizeCoachRunBody(plain, "pre_submit")).toEqual(plain);
+  });
+});
+
+describe("coachMarkerQuestionId — marker lookup key, fail-closed variants first (C1/C2)", () => {
+  function bodyWith(context: Record<string, unknown>): unknown {
+    return { thread_id: "t1", input: { coach_context: context } };
+  }
+
+  it.each([
+    ["question_id missing", bodyWith({ mode: "post_feedback", question })],
+    ["question_id empty string", bodyWith({ question_id: "", question })],
+    ["question_id non-string", bodyWith({ question_id: 42, question })],
+    [
+      "question.id mismatch",
+      bodyWith({ question_id: "q-other", question }), // question.id === q-punc-1
+    ],
+    ["no coach_context", { thread_id: "t1", input: {} }],
+    ["unparseable body (null)", null],
+  ])("%s ⇒ null (no marker lookup; pre_submit strip)", (_name, body) => {
+    expect(coachMarkerQuestionId(body)).toBeNull();
+  });
+
+  it("valid + consistent question_id is returned", () => {
+    expect(
+      coachMarkerQuestionId(bodyWith({ question_id: "q-punc-1", question })),
+    ).toBe("q-punc-1");
+  });
+
+  it("question_id without an embedded question record is still usable", () => {
+    expect(coachMarkerQuestionId(bodyWith({ question_id: "q-punc-1" }))).toBe(
+      "q-punc-1",
+    );
+  });
+
+  it("hasCoachContext distinguishes coach bodies from plain chat bodies", () => {
+    expect(hasCoachContext(bodyWith({ question_id: "q-punc-1" }))).toBe(true);
+    expect(hasCoachContext({ thread_id: "t1", input: { messages: [] } })).toBe(
+      false,
+    );
+    expect(hasCoachContext(null)).toBe(false);
   });
 });
 

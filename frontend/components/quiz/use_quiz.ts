@@ -137,17 +137,20 @@ export async function runQuizSubmit(
     used_hint: args.usedHint,
   });
 
-  const skillState = await ports.scheduler.review(attempt);
-
   // ADR-0012 Amendment (FR-19): fire-and-forget marker write — flips the
-  // coach's derived mode to post_feedback for this item. Only a REAL submit
-  // notifies (the no-selection path returned above); a throwing notifier
-  // never breaks grading (fail-closed: the coach just stays pre_submit).
+  // coach's derived mode to post_feedback for this item. Fires as soon as
+  // the attempt is durably recorded, BEFORE the FSRS review: a failing
+  // review must not strand the coach in pre_submit for a question whose
+  // feedback the learner is already looking at. Only a REAL submit notifies
+  // (the no-selection path returned above); a throwing notifier never
+  // breaks grading (fail-closed: the coach just stays pre_submit).
   try {
     ports.quizSubmitNotifier?.notifySubmitted(args.question.id);
   } catch {
     // Swallow by contract (QuizSubmitNotifier rule 1).
   }
+
+  const skillState = await ports.scheduler.review(attempt);
 
   return { verdict, attempt, skillState };
 }

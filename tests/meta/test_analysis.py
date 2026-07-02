@@ -17,6 +17,7 @@ from meta.analysis import (
     compute_metrics,
     compute_sensitivity,
     load_eval_records,
+    records_for_target,
 )
 
 
@@ -216,3 +217,47 @@ class TestBuildOptimizerInput:
         oi = build_optimizer_input([])
         assert oi.metrics.total_tasks == 0
         assert oi.sensitivity == {}
+
+
+class TestTargetScopedPopulations:
+    """Review finding I2: target="subject_coach" records were write-only —
+    no read seam scoped to a capture target, and the routing-decision
+    metric hardcoded target == "call_llm", silently excluding any agent
+    instance that captures under a custom ``eval_capture_target``."""
+
+    def test_records_for_target_scopes_the_population(self):
+        records = [
+            _make_record(task_id="chat-1"),
+            _make_record(task_id="coach-1", target="subject_coach"),
+            _make_record(task_id="coach-1", target="subject_coach", step=1),
+            _make_record(task_id="chat-1", target="guardrail"),
+        ]
+        coach = records_for_target(records, "subject_coach")
+        assert [r.task_id for r in coach] == ["coach-1", "coach-1"]
+
+    def test_target_counts_expose_the_population_mix(self):
+        records = [
+            _make_record(task_id="chat-1"),
+            _make_record(task_id="coach-1", target="subject_coach"),
+            _make_record(task_id="chat-1", target="guardrail"),
+        ]
+        metrics = compute_metrics(records)
+        assert metrics.target_counts == {
+            "call_llm": 1,
+            "subject_coach": 1,
+            "guardrail": 1,
+        }
+
+    def test_primary_llm_targets_param_scopes_routing_decisions(self):
+        # A capable-tier record at step 1 counts as an escalation — but only
+        # when its target is in the primary-LLM population under analysis.
+        records = [
+            _make_record(task_id="c1", target="subject_coach", model="gpt-4o", step=1),
+        ]
+        default = compute_metrics(records)
+        assert default.unnecessary_escalation_rate == 0.0
+
+        coach_scoped = compute_metrics(
+            records, primary_llm_targets=frozenset({"subject_coach"})
+        )
+        assert coach_scoped.unnecessary_escalation_rate == 1.0

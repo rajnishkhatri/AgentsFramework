@@ -170,4 +170,53 @@ describe("coach stream route — ADR-0012 sanitizer (FR-19/FR-21)", () => {
     expect(init.body).toBe(body);
     expect(isSubmitted).not.toHaveBeenCalled();
   });
+
+  it("coach_context with MISSING question_id still fails CLOSED (fields stripped, no lookup)", async () => {
+    // Review finding C1: the sanitize block must not be gated on a parseable
+    // question_id — a coach_context without one is a malformed/adversarial
+    // body and gets the pre_submit strip, never a byte-identical forward.
+    isSubmitted.mockResolvedValue(true);
+    const body = JSON.stringify({
+      thread_id: "t1",
+      agent_id: "subject-coach-english",
+      input: {
+        messages: [{ role: "user", content: "help" }],
+        coach_context: { mode: "post_feedback", skill_id: "s-punc", question },
+      },
+    });
+    await POST(req(body));
+
+    const ctx = (forwardedBody().input as Record<string, unknown>)
+      .coach_context as Record<string, unknown>;
+    expect(ctx.mode).toBe("pre_submit");
+    expect(ctx.question).not.toHaveProperty("answer_letter");
+    expect(isSubmitted).not.toHaveBeenCalled();
+  });
+
+  it("question_id ↔ question.id MISMATCH fails CLOSED even when the marker says submitted", async () => {
+    // Review finding C2: the marker is keyed by question_id — without the
+    // cross-check, a client could name an already-submitted question_id
+    // while embedding a DIFFERENT question's answer fields.
+    isSubmitted.mockResolvedValue(true);
+    const body = JSON.stringify({
+      thread_id: "t1",
+      agent_id: "subject-coach-english",
+      input: {
+        messages: [{ role: "user", content: "help" }],
+        coach_context: {
+          mode: "post_feedback",
+          question_id: "q-already-submitted",
+          skill_id: "s-punc",
+          question, // question.id === "q-punc-1" ≠ q-already-submitted
+        },
+      },
+    });
+    await POST(req(body));
+
+    const ctx = (forwardedBody().input as Record<string, unknown>)
+      .coach_context as Record<string, unknown>;
+    expect(ctx.mode).toBe("pre_submit");
+    expect(ctx.question).not.toHaveProperty("answer_letter");
+    expect(isSubmitted).not.toHaveBeenCalled();
+  });
 });

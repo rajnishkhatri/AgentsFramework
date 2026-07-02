@@ -173,6 +173,55 @@ class TestPyramidLoopRejectedInput:
             "analysis_output_json"
         )
         # No persistence on rejection.
+
+    async def test_clean_short_offtopic_still_reaches_the_judge(self, tmp_path):
+        # Review finding G3: the pyramid accept_condition is a DOMAIN
+        # condition ("a legitimate analysis problem statement"), so the
+        # precheck clean_short ACCEPT shortcut (which only proves "not an
+        # attack") must NOT bypass the topicality judge. Same defect fixed
+        # for the coach in react_loop (domain_gated).
+        with (
+            patch("langchain_litellm.ChatLiteLLM") as MockChat,
+            patch(
+                "services.guardrails.InputGuardrail._call_judge",
+                new_callable=AsyncMock,
+                return_value="reject",
+            ),
+        ):
+            mock_llm = MockChat.return_value
+            mock_llm.ainvoke = AsyncMock(return_value=_mock_response("{}"))
+            mock_llm.bind_tools = MagicMock(return_value=mock_llm)
+
+            from StructuredReasoning.orchestration.pyramid_loop import (
+                build_pyramid_graph,
+            )
+
+            graph = build_pyramid_graph(
+                agent_config=_agent_config(),
+                cache_dir=tmp_path / "cache",
+            )
+
+            result = await graph.ainvoke(
+                {
+                    "task_id": "t-3",
+                    # Clean + short + benign: precheck-ACCEPT bait, but
+                    # plainly not an analysis problem statement.
+                    "task_input": "hello there",
+                    "messages": [],
+                    "workflow_id": "wf-pyramid-test-3",
+                },
+                config={
+                    "configurable": {
+                        "task_id": "t-3",
+                        "user_id": "test-user",
+                        "workflow_id": "wf-pyramid-test-3",
+                    }
+                },
+            )
+
+        assert result["last_outcome"] == "rejected", (
+            "clean_short precheck must not bypass the domain topicality judge"
+        )
         persisted = (
             tmp_path / "cache" / "pyramid" / "wf-pyramid-test-2" / "analysis.json"
         )

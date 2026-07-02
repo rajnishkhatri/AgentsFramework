@@ -165,6 +165,36 @@ describe("runQuizSubmit — coach-session marker notify (ADR-0012 Amendment, FR-
     expect(result.attempt).not.toBeNull();
   });
 
+  it("notifier fires even when a downstream port (scheduler.review) rejects", async () => {
+    // Review finding A2: the learner HAS submitted once the answer is graded —
+    // a failing FSRS review must not leave the coach in pre_submit forever
+    // (feedback still renders answer fields client-side; the coach would
+    // refuse to discuss them).
+    const calls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await expect(
+      runQuizSubmit(
+        {
+          ...ports,
+          scheduler: {
+            ...ports.scheduler,
+            review: () => Promise.reject(new Error("fsrs store down")),
+          },
+          quizSubmitNotifier: { notifySubmitted: (q) => calls.push(q) },
+        },
+        {
+          session,
+          question: question(),
+          learnerId: LEARNER,
+          letter: "B",
+          elapsedMs: 1000,
+          usedHint: false,
+        },
+      ),
+    ).rejects.toThrow("fsrs store down");
+    expect(calls).toEqual(["q1"]);
+  });
+
   it("a bag without a notifier still submits (server/legacy path)", async () => {
     const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
     const result = await runQuizSubmit(ports, {

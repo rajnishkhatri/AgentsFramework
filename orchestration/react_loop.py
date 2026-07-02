@@ -48,6 +48,7 @@ from components.reflexion import (
     generate_reflection,
     reflections_for_task,
 )
+from components.coach_context import render_coach_context_block
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.memory_context import (
     build_store_payload,
@@ -1170,10 +1171,21 @@ def build_graph(
 
     async def guard_input_node(state: AgentState, config: RunnableConfig) -> dict:
         step_count = state.get("step_count", 0)
-        if step_count > 0:
+        workflow_id = state.get("workflow_id", "")
+
+        # One guard pass per RUN, not per thread (review G2): a new user turn
+        # arrives with a fresh workflow_id (runtime adapter mints one per
+        # non-resume run), while resume passes None input and keeps the
+        # checkpointed channels — so comparing against guarded_workflow_id
+        # re-arms the guard each turn and still skips resume/loop re-entry.
+        # step_count alone skipped every turn after the thread's first.
+        # Bare invocations without a workflow_id keep the step heuristic.
+        if workflow_id:
+            if state.get("guarded_workflow_id", "") == workflow_id:
+                return {}
+        elif step_count > 0:
             return {}
 
-        workflow_id = state.get("workflow_id", "")
         task_input = state.get("task_input", "")
 
         # E9 (Identity pillar): resolve the agent id before the first event so
@@ -1206,7 +1218,8 @@ def build_graph(
             # record declared == bound so the trace proves the contract was
             # enforced, not merely documented. Emitted here — not at build —
             # because this is the first point with a real ``workflow_id`` to
-            # record against. Fires once (guard_input returns early for step > 0).
+            # record against. Fires once per run (guard_input skips re-entry
+            # for an already-guarded workflow_id).
             if capability_gate is not None:
                 black_box.record(
                     TraceEvent(
@@ -1290,7 +1303,13 @@ def build_graph(
             try:
                 accepted, decision_stage = await guardrail.decide(task_input)
             except Exception:
-                accepted, decision_stage = True, "error"
+                # Availability posture is identity-dependent (review G2): the
+                # default agent fails OPEN (a judge outage must not take chat
+                # down), but a DOMAIN-gated instance fails CLOSED — an error
+                # must never admit input the domain condition was guarding
+                # (ADR-0007 FR-7/FR-8).
+                domain_gated = bool(agent_config.input_guardrail_accept_condition)
+                accepted, decision_stage = (not domain_gated), "error"
 
             black_box.record(
                 TraceEvent(
@@ -1346,7 +1365,7 @@ def build_graph(
                 outcome="rejected",
             ):
                 await _emit_completion_once(workflow_id, step_count, "rejected")
-                return rejection_payload
+                return {**rejection_payload, "guarded_workflow_id": workflow_id}
 
         async with phase_logger.phase(
             workflow_id, WorkflowPhase.INPUT_VALIDATION, step_count
@@ -1355,6 +1374,7 @@ def build_graph(
                 "agent_facts_verified": agent_facts_verified,
                 "agent_capabilities": agent_capabilities,
                 "current_workflow_phase": WorkflowPhase.INPUT_VALIDATION.value,
+                "guarded_workflow_id": workflow_id,
             }
 
     def _guard_routing(state: AgentState) -> str:
@@ -2147,6 +2167,15 @@ def build_graph(
         recalled_memories = state.get("recalled_memories", "")
         if recalled_memories:
             planning_instructions += f"\n\n{recalled_memories}"
+
+        # ADR-0012 (review I3): render the sanitized coach context the BFF
+        # forwarded (state channel; see orchestration/state.py). The formatter
+        # re-strips answer-bearing fields unless mode == post_feedback, so a
+        # payload that evaded the BFF strip still renders leak-free. Empty for
+        # every non-coach run → byte-identical (the recall-block shape).
+        coach_block = render_coach_context_block(state.get("coach_context"))
+        if coach_block:
+            planning_instructions += f"\n\n{coach_block}"
 
         system_prompt = prompt_service.render_prompt(
             "system_prompt",

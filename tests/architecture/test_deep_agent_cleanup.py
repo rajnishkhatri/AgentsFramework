@@ -24,7 +24,8 @@ def test_no_runtime_python_references_to_removed_package() -> None:
     violations: list[str] = []
     for py_file in AGENT_ROOT.rglob("*.py"):
         rel = py_file.relative_to(AGENT_ROOT)
-        if rel.parts[0] in {".venv", "venv"}:
+        # .claude holds agent-worktree repo snapshots — out of scan scope.
+        if rel.parts[0] in {".venv", "venv", ".claude"}:
             continue
         if rel == Path("tests/architecture/test_deep_agent_cleanup.py"):
             continue

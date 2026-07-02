@@ -377,11 +377,16 @@ def _lost_section_marker_defects(text: str) -> list[str]:
 
 
 def find_review_files(repo_root: Path) -> list[Path]:
-    """Find every REVIEW.md under the repo (excluding node_modules / .venv)."""
+    """Find every REVIEW.md under the repo (excluding node_modules / .venv).
+
+    ``.claude`` is excluded because agent worktrees under ``.claude/worktrees/``
+    are full repo snapshots — linting their REVIEW.md copies double-reports
+    every rule and fails on cross-folder resolution against the outer root.
+    """
     out: list[Path] = []
     for path in repo_root.rglob("REVIEW.md"):
         parts = set(path.parts)
-        if parts & {"node_modules", ".venv", "__pycache__"}:
+        if parts & {"node_modules", ".venv", "__pycache__", ".claude"}:
             continue
         out.append(path)
     return sorted(out)
@@ -481,7 +486,8 @@ def _lint_all_agents_encoding(repo_root: Path) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     for path in repo_root.rglob("AGENTS.md"):
         parts = set(path.parts)
-        if parts & {"node_modules", ".venv", "__pycache__"}:
+        # Same skip set as find_review_files (.claude = agent-worktree snapshots).
+        if parts & {"node_modules", ".venv", "__pycache__", ".claude"}:
             continue
         for defect in lint_encoding(path):
             out.append((_rel(path, repo_root), defect))

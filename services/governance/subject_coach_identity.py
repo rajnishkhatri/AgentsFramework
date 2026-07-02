@@ -142,19 +142,37 @@ def subject_coach_agent_config(**overrides) -> "AgentConfig":
     return AgentConfig(**params)
 
 
+# Contract-bearing AgentFacts fields for the drift check: everything except
+# the registration-time signature and the per-instantiation timestamps.
+_CONTRACT_EXCLUDE: Final = {"signature_hash", "created_at", "updated_at"}
+
+
 def register_subject_coach(
     registry, registered_by: str = "composition-root"
 ) -> AgentFacts:
     """Idempotently register the coach card (FR-1).
 
-    Composition-root helper: registers on first call, returns the stored card
-    on subsequent calls. A tampered stored card is NOT healed here — it stays
-    on disk and fails ``verify`` at guard_input (FR-2), which is the loud,
-    auditable failure the contract wants.
+    Composition-root helper: registers on first call; on subsequent calls
+    returns the stored card ONLY if it still declares the ratified contract.
+    A stored card that drifted from the current definition (e.g. an older
+    deploy's weaker policy set) raises instead of being silently served, and
+    a registration failure propagates untouched — "already registered" is
+    the one silent path (review finding I1). A tampered stored card is NOT
+    healed here — it stays on disk and fails ``verify`` at guard_input
+    (FR-2), which is the loud, auditable failure the contract wants.
     """
+    expected = subject_coach_english_facts()
     try:
-        return registry.register(
-            subject_coach_english_facts(), registered_by=registered_by
+        stored = registry.get(SUBJECT_COACH_AGENT_ID)
+    except KeyError:
+        return registry.register(expected, registered_by=registered_by)
+
+    stored_contract = stored.model_dump(mode="json", exclude=_CONTRACT_EXCLUDE)
+    expected_contract = expected.model_dump(mode="json", exclude=_CONTRACT_EXCLUDE)
+    if stored_contract != expected_contract:
+        raise ValueError(
+            f"Stored AgentFacts for '{SUBJECT_COACH_AGENT_ID}' drift from the "
+            "ratified contract (stale card from an older deploy?). Refusing to "
+            "serve it as current — migrate or re-register the card explicitly."
         )
-    except ValueError:
-        return registry.get(SUBJECT_COACH_AGENT_ID)
+    return stored
