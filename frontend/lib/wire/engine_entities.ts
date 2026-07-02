@@ -92,6 +92,26 @@ export const QUESTION_ANSWER_BEARING_FIELDS = [
   "why_tempted_md",
 ] as const satisfies readonly (keyof Question)[];
 
+// --- hint (ADR-0014) ------------------------------------------------------
+
+/**
+ * One hint-ladder rung (ADR-0012/ADR-0014, spec FR-12/FR-20). The rung union
+ * keeps the assertion rung (4) UNREPRESENTABLE at the wire — probe (1),
+ * conceptual (2), directive (3) only. `reviewed = false` rows MUST NOT reach
+ * a learner; `HintRepo.list` serves reviewed rungs only. `generated_by` is
+ * `"authored"` or `"<model>@<run_id>"` (generator provenance).
+ */
+export const Hint = z.object({
+  id: z.string(),
+  subject: z.string(),
+  question_id: z.string(),
+  rung: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  body_md: z.string().min(1),
+  reviewed: z.boolean(),
+  generated_by: z.string(),
+});
+export type Hint = z.infer<typeof Hint>;
+
 // --- quiz_session --------------------------------------------------------
 
 export const SessionMode = z.enum(["adaptive", "drill", "review"]);
