@@ -95,6 +95,17 @@ class AgentConfig(BaseModel):
     # byte-identical when unset. A domain instance (e.g. the coach) sets an
     # English-learning condition here; the 3-stage cascade is reused unchanged.
     input_guardrail_accept_condition: str = ""
+    # ADR-0007 prompt-param path (agent spec FR-10): a per-instance persona
+    # block prepended to the system prompt's additional_instructions at render
+    # time. Empty ⇒ byte-identical prompt (default agent unchanged). A domain
+    # instance (e.g. the subject coach) sets its rendered persona `.j2` here
+    # via the composition root — never a hardcoded string (H1).
+    additional_instructions: str = ""
+    # Subject-coach §12.1 Stage-0 (H5 seam): override the ``target`` tag on
+    # the per-step LLM-call EvalRecords so an instance's shadow traffic is
+    # discoverable by its post-hoc sampler (e.g. "subject_coach"). Empty ⇒
+    # the default "call_llm" tag — byte-identical for every existing agent.
+    eval_capture_target: str = ""
     # Phase 1 (T1 plan-and-execute): source of the route_node plan artifact.
     #   "deterministic" — regex ``build_plan_artifact`` (steady-state, default).
     #   "shadow"        — LLM plan is generated + captured for eval, but the

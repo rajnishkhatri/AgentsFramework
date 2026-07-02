@@ -10,9 +10,10 @@
 > spec owns delivery and the UI spec owns rendering.
 >
 > This spec *implements* decisions ratified in its ADRs — it does **not** re-decide them:
-> - [ADR-0007](../adr/0007-subject-coach-agent-tool-capability-gating.md) — `AgentFacts.capabilities` load-bearingly gate the `ToolRegistry`; English-only input guardrail. **Proposed.**
-> - [ADR-0008](../adr/0008-subject-coach-judges-grader-and-pedagogy.md) — the three-judge split (MC Grader / Grader Judge / Pedagogy GoalJudge) + homes. **Proposed.**
-> - [ADR-0009](../adr/0009-subject-coach-reflexion-not-on-live-path.md) — inline T2 Reflexion stays OFF for the coach; reflection is offline (judge layer). **Proposed.**
+> - [ADR-0007](../adr/0007-subject-coach-agent-tool-capability-gating.md) — `AgentFacts.capabilities` load-bearingly gate the `ToolRegistry`; English-only input guardrail. **Accepted.**
+> - [ADR-0008](../adr/0008-subject-coach-judges-grader-and-pedagogy.md) — the three-judge split (MC Grader / Grader Judge / Pedagogy GoalJudge) + homes. **Accepted (with conditions).**
+> - [ADR-0009](../adr/0009-subject-coach-reflexion-not-on-live-path.md) — inline T2 Reflexion stays OFF for the coach; reflection is offline (judge layer). **Accepted.**
+> - [ADR-0012](../adr/0012-subject-coach-context-contract-hint-ladder.md) — mode-dependent context contract + offline leak-checked hint ladder. **Accepted 2026-07-02** (proposed by the [agent detailed design](../Architectures/SUBJECT_COACH_AGENT_DETAILED_DESIGN.md) §10 — the HOW behind §3.4/§3.6 here — and ratified at its §11 step-1 gate).
 >
 > Two `⚠️ Ask first` triggers fire here and are carried by the ADRs above: the
 > capability-gated `ToolRegistry` (a new governance mechanism) and the judge additions.
@@ -99,8 +100,52 @@ criterion-separated, calibrated** judges.
   guidance over revealing the answer, and SHALL **preserve productive struggle** (not rescue
   too early — Holt) (the persona encodes the anti-leakage stance the Pedagogy judge measures).
 - **FR-12.** WHERE the offline generator runs THE SYSTEM SHALL emit typed
-  `question`/`tutorial` rows and SHALL set `reviewed = false` until a verifier gate passes
-  (no learner sees an ungated item — mirrors the engine spec's `reviewed` invariant).
+  `question`/`tutorial`/**`hint`** rows and SHALL set `reviewed = false` until a verifier
+  gate passes (no learner sees an ungated item — mirrors the engine spec's `reviewed`
+  invariant); the cascade SHALL include a **per-rung leakage check** on hint rows
+  (deterministic first; judge assist only after the §7 floor).
+
+### 3.6 Context contract (ADR-0012 — mode-dependent)
+- **FR-19.** WHILE in **pre-submit mode** (quiz hint FR-D5, split-panel nudges FR-J3a) THE
+  SYSTEM SHALL assemble the coach context **excluding the four answer-bearing `Question`
+  fields** — `answer_letter`, `per_choice_rationale`, `why_correct_md`, `why_tempted_md` —
+  with the exclusion applied **server-side** (never trusted to the client). Per the
+  ADR-0012 Amendment (2026-07-02): the BFF derives the authoritative mode from the
+  **coach-session marker store** (`{user_id, question_id, submitted_at}`, monotonic,
+  written from the quiz submit path) and **strips the four fields from client-supplied
+  context** when derived mode = pre-submit — the engine DB stays Frontend-Ring-local.
+- **FR-20.** WHILE in pre-submit mode THE SYSTEM SHALL source hint content **only** from
+  `reviewed = true` hint-ladder rungs (probe → conceptual → directive; **no assertion rung
+  exists**), which the coach selects and paraphrases — never free-generating toward the answer.
+- **FR-21.** WHILE in **post-feedback mode** ("Ask the coach", entered after the answer is
+  rendered) THE SYSTEM SHALL inject the full `Question` context (answer + rationales).
+- **FR-22.** WHEN the client opens a coach turn THE SYSTEM SHALL carry the structured
+  context (`mode`, `question_id`, `skill_id`, misses aggregate, mastery snapshot) on the
+  existing `RunCreateRequest.input` mechanism, passing every line through the
+  `GuardRailValidator` redactor before prompt assembly.
+
+### 3.7 Test Mode integrity stance (ADR-0013)
+
+> The Test Mode *generation/blueprint* FRs (FR-23..FR-27 — family-parameterized generation,
+> test-item cascade, deterministic blueprint assembly, `reviewed=true`-only selection,
+> seed-import enters `reviewed=false`) land with the ADR-0013 build pass. FR-28 lands now
+> because the tripwire posture is the part of the stance that must be mechanically
+> observable from day one — the rest is build-gated behind ratification.
+
+- **FR-28.** THE SYSTEM SHALL expose a `COACH_TEST_KEYS_CLIENT_SERVED` posture flag
+  (default `true` under ADR-0013 Option A — keys remain in the client bundle for the
+  unproctored, zero-stakes MVP) and SHALL flip it to `false` on **any** of the three
+  named decision triggers firing (delivery moves to DB/sync-served rows; any stake
+  attaches to the score — placement, mastery/FSRS feedback, or reporting; the surface
+  gains a proctoring signal). The flag SHALL be the single canonical switch keyed off by
+  `tests/architecture/test_no_client_served_test_keys.py`, so the Option-A → Option-B
+  migration is mechanically observable rather than prose-only (the ADR-0011/0012 lesson:
+  a prose assertion rots; a mechanical check does not). **ADR-0013 acceptance condition
+  (✅ MET 2026-07-02):** implemented as
+  `services/governance/coach_test_mode_posture.py::COACH_TEST_KEYS_CLIENT_SERVED` — a
+  literal `Final[bool]` constant, deliberately **not env-overridable** (flipping it is a
+  reviewed code diff paired with re-opening ADR-0013, never a deploy-time toggle); the
+  arch test keys off the actual flag state and mechanically inverts when it flips.
 
 ### 3.5 Judges (ADR-0008)
 - **FR-13.** WHEN a learner submits a multiple-choice answer THE SYSTEM SHALL grade
@@ -131,6 +176,11 @@ criterion-separated, calibrated** judges.
 | `GraderVerdict` (new) | `{correct: bool}` (MC) ⊕ `{faithfulness, correctness, justification, actionability}` (generated content) | frontend MC = bool; backend Grader Judge = per-criterion. Composes into ADR-0006 `Grader` port `Verdict`. |
 | `PedagogyVerdict` (new) | `{mistake_identification, mistake_location, actionability, coherence, answer_leakage: flag}` | dimensions from the AI-tutor taxonomy; leakage is distinct. |
 | `GoalVerdict` (reuse) | `{goal_met, criteria_met, unmet_conditions}` | unchanged (`components/schemas.py`). |
+| `hint` (new content family) | `{id, subject, question_id, rung(1..3), body_md, reviewed, generated_by}` | ADR-0012; table (both dialects) + wire entity + read seam land under the **ADR-0006 second amendment** with the generator build; authored seed rungs until then. |
+| `TestBlueprint` (ADR-0013, TO-BUILD) | `{id, subject, skill_mix, difficulty_dist, count, minutes, scale_band_table, pass_criteria?, seed}` | deterministic seeded assembler over the `reviewed=true` bank (fixed seed + frozen bank ⇒ byte-identical form); rides the ADR-0006 amendment train, never a silent schema add. |
+| `COACH_TEST_KEYS_CLIENT_SERVED` (posture flag, ADR-0013) | `bool` (default `true` under Option A) | the Option-A → Option-B tripwire switch — **BUILT**: a literal `Final[bool]` in `services/governance/coach_test_mode_posture.py` (not env-overridable by design); flips `false` on the delivery / stake / proctoring triggers; keyed off by `tests/architecture/test_no_client_served_test_keys.py`, whose gate inverts on the flip. |
+| `coach_context` (run input) | `{mode (advisory), question_id, skill_id, question, misses_aggregate: {skill_id, missed, window}, mastery_snapshot}` | rides the existing `RunCreateRequest.input` (`memory_context` precedent); the BFF derives the real mode from the marker store + strips the answer-bearing `question` fields pre-submit (FR-19/FR-21, ADR-0012 Amendment); `misses_aggregate` is **structured, never client prose** — the persona template renders it. |
+| `coach_session_marker` (BFF store) | `{user_id, question_id, submitted_at}` | ADR-0012 Amendment — the mode-derivation source; monotonic (once submitted, always post-feedback for that item); written fire-and-forget from the quiz submit path. |
 
 The new verdict types live in `components/` (framework-agnostic) alongside `GoalJudge`.
 **No `trust/models.py` change** — so no kernel re-sign trigger.
@@ -169,13 +219,20 @@ The new verdict types live in `components/` (framework-agnostic) alongside `Goal
 
 - **MC grading:** deterministic, **L1 exact**, client-side, sub-millisecond, offline. No
   network, no LLM.
-- **Backend judges:** **L2 sampled** (5–10%) live + **L3** rubric evals nightly; calibrated
-  against human raters with **κ** reusing the GoalJudge calibration-cert harness. Target:
-  the Pedagogy judge's answer-leakage detection meets the same TPR/TNR floor discipline as
-  ADR-0003's GoalJudge gate.
+- **Backend judges:** **L2 sampled** (default 10%) post-hoc off `eval_capture` EvalRecords
+  (never inline in `evaluate` — ADR-0009) + **L3** rubric evals nightly; calibrated against
+  human raters reusing the GoalJudge calibration-cert harness. **Stated floor (ADR-0008
+  cond#1): answer-leakage detection TNR ≥ 0.95, TPR ≥ 0.90, κ ≥ 0.75** — below floor the
+  flag stays telemetry-only (`GoalVerdict` TELEMETRY-ONLY discipline) and never gates.
+  The floor is produced and certified through the full evaluation lifecycle in the
+  [agent design doc §12](../Architectures/SUBJECT_COACH_AGENT_DETAILED_DESIGN.md)
+  (grounded-theory pipeline: shadow traces → human open/axial coding → revised rubrics →
+  `coach_goldset_v1` frozen 60/40 → enable-policy cert → drift monitoring); §12.6's
+  augmenting gates (precision ≥ 0.90, false-action ≤ 2%, flip ≤ 5%, human α ≥ 0.80)
+  tighten — never replace — this stated floor.
 - **Guardrail FP rate:** the English-only condition SHALL admit a held-out set of legitimate
-  English-learning prompts at ≥ a stated threshold (over-refusal is the named failure mode
-  in the research; the threshold is the acceptance criterion).
+  coaching utterances (incl. one-word replies and adversarial-but-on-topic "just tell me")
+  at **≥ 98%** (over-refusal is the named failure mode in the research).
 - **Reversibility:** every governance addition is **flag-gated** (registry, guardrail
   condition, each judge) so the coach can run shadow-first (flags OFF) like prior workstreams.
 
@@ -193,6 +250,11 @@ The new verdict types live in `components/` (framework-agnostic) alongside `Goal
 | FR-14–FR-16 | Grader Judge + Pedagogy Judge rubric evals; answer-leakage flag fires on a leaking sample (L3) |
 | FR-17 | general GoalJudge unchanged regression (L2/L3) |
 | FR-18 | redactor scrubs PII before judge prompt (L2) |
+| FR-19 | pre-submit context assembly omits the four answer-bearing fields — **lock test keyed to the `Question` wire entity** (L1) |
+| FR-20 | unreviewed rung never served; no assertion rung representable (schema + L1) |
+| FR-21 | post-feedback assembly includes rationales/answer (L1) |
+| FR-22 | structured context round-trips run-input + redactor (L2) |
+| FR-28 | `tests/architecture/test_no_client_served_test_keys.py` — **keys off the actual flag state** (`coach_test_mode_posture.py`): flag-is-real-switch assertion + tripwire docs-integrity (three triggers + posture flag + detector + "third ADR-0012 mode" present in ADR-0013) + posture-matches-flag (flag `true` ⇒ four answer-bearing fields present in the Test-01 fixture; flag `false` ⇒ inverted gate asserts keys NOT client-served); red→green TDD'd 2026-07-02 (L1 architecture gate) |
 
 **Red/green discipline:** the answer-leakage and off-topic-refusal tests are written
 **failure-first** (TAP-4) — watch them fail before the persona/guardrail lands.

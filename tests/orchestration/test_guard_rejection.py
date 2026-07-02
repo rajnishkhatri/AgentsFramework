@@ -2,10 +2,17 @@
 
 Tests that rejected inputs halt the graph, and that AgentFacts
 verification gates access.
+
+Mocking note (TAP-2): the LLM + judge doubles are the two truly-external
+seams every graph-boundary test needs; they live in the ``mocked_llm``
+fixture so each test body references one shared setup instead of re-wiring
+four patches. The registry is a real in-memory ``AgentFactsRegistry`` (not a
+mock) — identity verification is the behavior under test, so it must be real.
 """
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,27 +40,49 @@ def _agent_config():
     )
 
 
-class TestGuardRejectionBranching:
-    """Story 1.2: rejected input produces last_outcome='rejected' and halts."""
+def _llm_response(content: str):
+    resp = MagicMock()
+    resp.content = content
+    resp.tool_calls = []
+    resp.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
+    return resp
 
-    @pytest.mark.asyncio
-    async def test_rejected_input_halts_graph(self, tmp_path):
-        mock_response = MagicMock()
-        mock_response.content = "Should not see this"
-        mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
 
+@pytest.fixture
+def mocked_llm():
+    """The two external seams for a graph-boundary test, wired once.
+
+    Yields a helper ``run(*, judge, content)`` context manager: it patches
+    ``ChatLiteLLM`` (so no network) and the guardrail's ``_call_judge`` (so the
+    topicality verdict is deterministic), then hands back nothing — the test
+    builds and invokes the graph inside the ``with``. Collapses the previously
+    repeated 4-patch block to a single fixture reference (TAP-2).
+    """
+
+    @contextmanager
+    def _run(*, judge: str, content: str):
         with (
             patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
             patch(
                 "services.guardrails.InputGuardrail._call_judge",
                 new_callable=AsyncMock,
-                return_value="reject",
+                return_value=judge,
             ),
         ):
-            mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(return_value=mock_response)
+            MockChatLiteLLM.return_value.ainvoke = AsyncMock(
+                return_value=_llm_response(content)
+            )
+            yield
 
+    return _run
+
+
+class TestGuardRejectionBranching:
+    """Story 1.2: rejected input produces last_outcome='rejected' and halts."""
+
+    @pytest.mark.asyncio
+    async def test_rejected_input_halts_graph(self, tmp_path, mocked_llm):
+        with mocked_llm(judge="reject", content="Should not see this"):
             from orchestration.react_loop import build_graph
 
             graph = build_graph(
@@ -78,23 +107,8 @@ class TestGuardRejectionBranching:
         )
 
     @pytest.mark.asyncio
-    async def test_accepted_input_proceeds_to_route(self, tmp_path):
-        mock_response = MagicMock()
-        mock_response.content = "Paris is the capital of France."
-        mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 50, "output_tokens": 20}
-
-        with (
-            patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
-            patch(
-                "services.guardrails.InputGuardrail._call_judge",
-                new_callable=AsyncMock,
-                return_value="accept",
-            ),
-        ):
-            mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(return_value=mock_response)
-
+    async def test_accepted_input_proceeds_to_route(self, tmp_path, mocked_llm):
+        with mocked_llm(judge="accept", content="Paris is the capital of France."):
             from orchestration.react_loop import build_graph
 
             graph = build_graph(
@@ -121,28 +135,13 @@ class TestAgentFactsIntegration:
     """Story 1.4: AgentFacts verification gates graph execution."""
 
     @pytest.mark.asyncio
-    async def test_unregistered_agent_halts_graph(self, tmp_path):
-        mock_response = MagicMock()
-        mock_response.content = "Should not see this"
-        mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
-
+    async def test_unregistered_agent_halts_graph(self, tmp_path, mocked_llm):
         registry = AgentFactsRegistry(
             storage_dir=tmp_path / "agent_facts",
             secret="test-secret",
         )
 
-        with (
-            patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
-            patch(
-                "services.guardrails.InputGuardrail._call_judge",
-                new_callable=AsyncMock,
-                return_value="accept",
-            ),
-        ):
-            mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(return_value=mock_response)
-
+        with mocked_llm(judge="accept", content="Should not see this"):
             from orchestration.react_loop import build_graph
 
             graph = build_graph(
@@ -172,12 +171,7 @@ class TestAgentFactsIntegration:
         assert result.get("last_outcome") == "rejected"
 
     @pytest.mark.asyncio
-    async def test_suspended_agent_halts_graph(self, tmp_path):
-        mock_response = MagicMock()
-        mock_response.content = "Should not see this"
-        mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 10, "output_tokens": 5}
-
+    async def test_suspended_agent_halts_graph(self, tmp_path, mocked_llm):
         registry = AgentFactsRegistry(
             storage_dir=tmp_path / "agent_facts",
             secret="test-secret",
@@ -193,17 +187,7 @@ class TestAgentFactsIntegration:
         )
         registry.suspend("suspended-agent", "testing", "test")
 
-        with (
-            patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
-            patch(
-                "services.guardrails.InputGuardrail._call_judge",
-                new_callable=AsyncMock,
-                return_value="accept",
-            ),
-        ):
-            mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(return_value=mock_response)
-
+        with mocked_llm(judge="accept", content="Should not see this"):
             from orchestration.react_loop import build_graph
 
             graph = build_graph(
@@ -233,12 +217,7 @@ class TestAgentFactsIntegration:
         assert result.get("last_outcome") == "rejected"
 
     @pytest.mark.asyncio
-    async def test_valid_active_agent_proceeds(self, tmp_path):
-        mock_response = MagicMock()
-        mock_response.content = "Hello, I can help."
-        mock_response.tool_calls = []
-        mock_response.usage_metadata = {"input_tokens": 50, "output_tokens": 20}
-
+    async def test_valid_active_agent_proceeds(self, tmp_path, mocked_llm):
         registry = AgentFactsRegistry(
             storage_dir=tmp_path / "agent_facts",
             secret="test-secret",
@@ -253,17 +232,7 @@ class TestAgentFactsIntegration:
             registered_by="test",
         )
 
-        with (
-            patch("langchain_litellm.ChatLiteLLM") as MockChatLiteLLM,
-            patch(
-                "services.guardrails.InputGuardrail._call_judge",
-                new_callable=AsyncMock,
-                return_value="accept",
-            ),
-        ):
-            mock_llm_instance = MockChatLiteLLM.return_value
-            mock_llm_instance.ainvoke = AsyncMock(return_value=mock_response)
-
+        with mocked_llm(judge="accept", content="Hello, I can help."):
             from orchestration.react_loop import build_graph
 
             graph = build_graph(
@@ -291,3 +260,67 @@ class TestAgentFactsIntegration:
 
         assert result.get("agent_facts_verified") is True
         assert result.get("step_count", 0) >= 1
+
+
+class TestSubjectCoachIdentityGate:
+    """FR-2 (subject-coach-english): a tampered coach card halts at guard_input.
+
+    The coach is an identity-bound instance (services/governance/
+    subject_coach_identity.py); this pins the graph-boundary rejection —
+    tamper the stored card, run the graph, no LLM step executes.
+    """
+
+    @pytest.mark.asyncio
+    async def test_tampered_coach_card_halts_graph(self, tmp_path, mocked_llm):
+        import json
+
+        from services.governance.subject_coach_identity import (
+            SUBJECT_COACH_AGENT_ID,
+            register_subject_coach,
+        )
+
+        registry = AgentFactsRegistry(
+            storage_dir=tmp_path / "agent_facts",
+            secret="test-secret",
+        )
+        register_subject_coach(registry, registered_by="test")
+
+        # Tamper the stored card: strip the anti-leakage policy on disk.
+        card_path = tmp_path / "agent_facts" / f"{SUBJECT_COACH_AGENT_ID}.json"
+        stored = json.loads(card_path.read_text())
+        stored["policies"] = [
+            p for p in stored["policies"] if p["name"] != "answer-leakage-prohibited"
+        ]
+        card_path.write_text(json.dumps(stored))
+
+        with mocked_llm(judge="accept", content="Should not see this"):
+            from orchestration.react_loop import build_graph
+
+            graph = build_graph(
+                agent_config=_agent_config(),
+                cache_dir=tmp_path / "cache",
+                agent_facts_registry=registry,
+            )
+
+            result = await graph.ainvoke(
+                {
+                    "task_id": "test-coach-tamper",
+                    "task_input": "Why is this comma wrong?",
+                    "messages": [],
+                    "workflow_id": "wf-coach-tamper",
+                    "registered_agent_id": SUBJECT_COACH_AGENT_ID,
+                },
+                config={
+                    "configurable": {
+                        "task_id": "test-coach-tamper",
+                        "user_id": "test",
+                        "registered_agent_id": SUBJECT_COACH_AGENT_ID,
+                    }
+                },
+            )
+
+        assert result.get("agent_facts_verified") is False
+        assert result.get("last_outcome") == "rejected"
+        assert result.get("step_count", 0) == 0, (
+            "No coach LLM step may execute on a tampered identity card"
+        )

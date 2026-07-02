@@ -315,6 +315,14 @@ column closes an OCP door:
 
 ## 8. Open questions handed to the ADRs / spec
 
+> **Status 2026-07-01:** the questions below (and the six follow-on threads — context
+> contract, judge topology, calibration bootstrap, generator interior, context injection,
+> policy concretes) are **designed** in the Stage-4 artifact
+> [SUBJECT_COACH_AGENT_DETAILED_DESIGN.md](../Architectures/SUBJECT_COACH_AGENT_DETAILED_DESIGN.md)
+> (§3–§8), whose §10 adjudication proposes
+> [ADR-0012](../adr/0012-subject-coach-context-contract-hint-ladder.md). This brainstorm
+> stays the Stage-1 record; the design doc is where the answers live.
+
 1. **ADR-0007:** the exact gate point — does `AgentFacts.capabilities` filter the
    `ToolRegistry` inside `build_graph`, or at registry construction in the composition
    root? What architecture test asserts "declared = bound"? What's the failure mode when

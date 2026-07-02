@@ -19,9 +19,11 @@ generator, or the three judges — and anyone reconsidering an open ADR (§7).
 - [ADR-0009](../adr/0009-subject-coach-reflexion-not-on-live-path.md) — Reflexion OFF for the coach. **Accepted** (adjudicated in §7).
 - [ADR-0010](../adr/0010-subject-coach-engine-ports-realization-and-ts-fsrs.md) — ports realization + ts-fsrs + `EngineDb`. **Accepted with conditions.**
 - [ADR-0011](../adr/0011-subject-coach-engine-learner-read-port.md) — the `LearnerReadRepo` read port. **Accepted** (adjudicated in §7; amended 2026-07-01).
+- [ADR-0013](../adr/0013-subject-coach-test-mode-blueprint-generation-integrity.md) — Test Mode: blueprint + governed test generation + client-integrity stance. **Accepted 2026-07-02, with conditions** (adjudicated in the agent doc §10; the pending condition is the FR-28 posture flag in code — §2.5/§4.9 here are the surface catalog).
 
 **The WHAT this refines (does not restate):**
 - [SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md](SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md) — the entity model + the port table. This doc is the HOW-each-is-realized.
+- [SUBJECT_COACH_AGENT_DETAILED_DESIGN.md](SUBJECT_COACH_AGENT_DETAILED_DESIGN.md) — the **backend agent sibling** (subjective plane): identity/policy, the mode-dependent context contract + hint ladder (ADR-0012), persona, judges, generator. §5 here owns the client stream; that doc owns everything behind it.
 - Specs: [UI](../plan/preact-english-coach-ui.spec.md), [engine](../plan/preact-english-coach-engine.spec.md), [agent](../plan/subject-coach-agent.spec.md) (the *what* of each plane).
 - [subject-coach-agent.brainstorm.md](../plan/subject-coach-agent.brainstorm.md) — the pedagogy + reuse-inventory grounding for §5 (Feynman/Oakley/Holt; the live-code reuse map).
 
@@ -79,12 +81,12 @@ families (P=port, A=adapter, C=composition, T=translator, U=UI/hook, B=route).
 | `Scheduler` (FSRS) | P | `lib/ports/engine/scheduler.ts` | BUILT | **sole `skill_state` writer** |
 | `Grader` | P | `lib/ports/engine/grader.ts` | BUILT | pure, sync (P5 exception) |
 | `ContentRepo` | P | `lib/ports/engine/content_repo.ts` | BUILT | objective-plane strings |
-| **`LearnerReadRepo`** | P | `lib/ports/engine/learner_read_repo.ts` | **TO-BUILD** (ADR-0011) | read-only skill_state |
+| **`LearnerReadRepo`** | P | `lib/ports/engine/learner_read_repo.ts` | BUILT (ADR-0011) | read-only skill_state |
 | Drizzle repos ×5 | A | `lib/adapters/engine/repos/drizzle_*.ts` | BUILT | depend on `EngineDb` |
-| `DrizzleLearnerReadRepo` | A | `lib/adapters/engine/repos/drizzle_learner_read_repo.ts` | **TO-BUILD** | depends on **`ReadableEngineDb`** |
+| `DrizzleLearnerReadRepo` | A | `lib/adapters/engine/repos/drizzle_learner_read_repo.ts` | BUILT | depends on **`ReadableEngineDb`**; wired in both composition roots (`composition_engine.ts:94`, browser:82) |
 | `FsrsScheduler` | A | `lib/adapters/engine/scheduler/fsrs_scheduler.ts` | BUILT | ts-fsrs; round-trips opaque `fsrs_card` |
 | `ExactLetterGrader` | A | `lib/adapters/engine/grader/exact_letter_grader.ts` | BUILT | **= ADR-0008 frontend MC-Grader stage** |
-| `EngineDb` / `ReadableEngineDb` | A(seam) | `lib/adapters/engine/db/engine_db.ts` | BUILT / **`ReadableEngineDb` TO-BUILD** | narrow row seam |
+| `EngineDb` / `ReadableEngineDb` | A(seam) | `lib/adapters/engine/db/engine_db.ts` | BUILT (both — `ReadableEngineDb` at `engine_db.ts:49`) | narrow row seam |
 | `InMemoryEngineDb` | A | `lib/adapters/engine/db/in_memory_engine_db.ts` | BUILT | L1/dev/browser fake |
 | `pgEngineDb` | A | `lib/adapters/engine/db/drizzle_engine_db.ts` | BUILT | the one live drizzle+pg seam |
 | dual-dialect schema | A | `lib/adapters/engine/db/schema.{pg,sqlite}.ts` | BUILT (parity test **missing** — ADR-0010) | 8 tables each |
@@ -104,16 +106,18 @@ co-located `.test.ts` (T4 table-driven). New VMs for the deferred plane: `skill_
 
 | Screen | Hook | Component | Status |
 |---|---|---|---|
-| Dashboard | `use_dashboard` | `DashboardView` (+ `BucketCard`, `TodayFocusBanner`) | TO-BUILD |
+| Dashboard | `use_dashboard` (BUILT) | `DashboardView` (+ `BucketCard`, `TodayFocusBanner`) (BUILT) | BUILT (`components/dashboard/`, verified 2026-07-02) |
 | Quiz | `use_quiz` (BUILT) | `QuizView` (BUILT) | BUILT |
 | Feedback | `use_feedback` (BUILT) | `FeedbackView` (BUILT) | BUILT |
-| Coach | `use_coach` | `CoachView` (+ `CoachPanel`, `coach_thread_store`) | TO-BUILD |
-| Summary | `use_summary` | `SummaryView` | TO-BUILD |
+| Coach | `use_coach` (BUILT — wraps `use_agent_run`) | `CoachView` (BUILT; no separate `coach_thread_store` — see §5.1/decisions.md reconciliation) | BUILT (`components/coach/`, verified 2026-07-02) |
+| Summary | `use_summary` | `SummaryView` (BUILT) | BUILT (`components/summary/`, verified 2026-07-02) |
+| Test (Screen 8) | `test_runner_reducer` (BUILT — reducer, not hook) | `TestItemView`, `TestResultsView`, `CountdownTimer` (BUILT) | BUILT — §2.5/§4.9 |
 | Skill-detail | `use_skill_detail` | `SkillDetailView` | DEFERRED (D1) |
 | Progress | `use_progress` | `ProgressView` | DEFERRED (D1) |
 | shell/nav | `use_surface` | `AppNav`, `FocusModeChrome` | TO-BUILD |
-| routes | — | `app/(coach)/{layout,page,quiz,summary,coach}` | TO-BUILD |
-| coach BFF | — | `app/api/coach/stream/route.ts` | TO-BUILD |
+| routes | — | `app/(coach)/learn/{layout,page,quiz,summary,coach,test}` | BUILT (under `/learn` per decisions.md; verified 2026-07-02) |
+| coach BFF | — | `app/api/coach/run/stream/route.ts` (+ co-located test) | **BUILT** (commit `26de854`; was stale-listed TO-BUILD until the 2026-07-02 gap review) |
+| coach-session marker store + BFF sanitizer | — | the coach route extension (ADR-0012 Amendment; agent doc §4.1) | TO-BUILD |
 
 ### 2.4 Backend coach — subjective plane
 
@@ -134,6 +138,34 @@ co-located `.test.ts` (T4 table-driven). New VMs for the deferred plane: `skill_
 (3-stage cascade), `guardrail_validator.py` (the judge-input **redactor**),
 `registry.py::ToolRegistry` (the gating surface), `llm_config.py` (tiers), `prompt_service.py`,
 `goal_judge.py` (the H1/H2 injectable shape + the ADR-0003 cascade the new judges fork).
+
+### 2.5 Test Mode surface — objective plane (ADR-0013)
+
+The timed, client-only test surface (commit `a3cb9ef`) — retro-documented here; §4.9 is the
+per-screen design; the generation/blueprint HOW is the agent doc §8.1–§8.3.
+
+| Component | Layer | File | Status |
+|---|---|---|---|
+| test route | B | `app/(coach)/learn/test/page.tsx` | BUILT |
+| `test_runner_reducer` (intro → in_section → results) | U | `components/test/test_runner_reducer.ts:49–130` | BUILT |
+| `CountdownTimer` + `use_countdown` | U | `components/test/CountdownTimer.tsx`, `use_countdown.ts` | BUILT (auto-submit at zero; non-prod `?dur=<ms>` override) |
+| `TestItemView` / `TestResultsView` | U | `components/test/TestItemView.tsx`, `TestResultsView.tsx` | BUILT |
+| `englishScaleBand` + `format_clock` | T (pure) | `components/test/test_scoring.ts:37`, `format_clock.ts` | BUILT |
+| Test-01 corpus | A (data) | `lib/adapters/engine/_test01_english_corpus.ts` (`TEST01_ENGLISH_QUESTIONS` 48 items; `TEST01_ENGLISH_ANSWER_KEY`; `TEST01_ENGLISH_MINUTES = 35`) | BUILT — checked-in `.ts` fixture, **not** DB rows |
+| `convert:test01` script | tooling | `scripts/convert_test01_english.ts` (`pnpm convert:test01`; source `PreAct/practice-tests/Test-01.md`, untracked) | BUILT — hand-run, **ungoverned** (self-stamps `reviewed:true`, bypassing the FR-E2 cascade) → becomes a **seed importer** per ADR-0013 clause 4 |
+| grading | P | existing `Grader` port via `useEngine()`; `GradeFn` injected into the reducer | BUILT (client-only, one-shot at submit, idempotent; unanswered = null = wrong) |
+| keys-in-bundle tripwire | arch test + flag | `tests/architecture/test_no_client_served_test_keys.py` + `services/governance/coach_test_mode_posture.py::COACH_TEST_KEYS_CLIENT_SERVED` (agent spec FR-28) | **BUILT** — the test keys off actual flag state and mechanically inverts on the flip (ADR-0013 condition MET 2026-07-02) |
+| `TestBlueprint` wire entity | W | `lib/wire/engine_entities.ts` (new) | TO-BUILD (ADR-0013 clause 2; schema rides the ADR-0006 amendment train) |
+| blueprint assembler (seeded, deterministic) | — | home follows the integrity stance (client under Option A) | TO-BUILD |
+| test-session archival / attempt writes | — | — | **DEFERRED** — deliberately absent (no `SessionRepo`/`AttemptRepo` writes, no FSRS feedback, no telemetry); adding any of them **fires the ADR-0013 stake trigger** |
+
+**Data contract:** corpus rows reuse the standard `Question` wire entity
+(`lib/wire/engine_entities.ts:61–79`) with `generated_by: "test01-convert"`,
+`reviewed: true`; skill mapping `s-punc/s-gram/s-sent/s-rhet/s-org/s-style`; difficulty
+base 2, +2 for ★ ceiling items. `TestBlueprint` sketch (ADR-0013):
+`{id, subject, skill_mix, difficulty_dist, count, minutes, scale_band_table, pass_criteria?, seed}`
+— duration + scale band move onto the blueprint, retiring the hardcoded constants as the
+only sources; fixed `seed` + frozen bank ⇒ byte-identical form (the e2e contract).
 
 ---
 
@@ -185,8 +217,9 @@ touched, **(e)** tests, **(f)** status/gaps.
   `::today_focus_is_weakest_due_skill`; `::review_misses_zero_empty_state`.
   `bucket_card_vm.test.ts` + `today_focus_vm.test.ts` BUILT. **Placeholder-path test:** with
   `LearnerReadRepo` absent, the grid renders 0%/"—" (no boundary crossing).
-- **(f) Gap.** Blocked on ADR-0011 for real mastery; ships the 0%/"—" placeholder until the
-  port lands.
+- **(f) Gap.** ~~Blocked on ADR-0011~~ — the port + adapter + `ReadableEngineDb` landed
+  and are wired in both composition roots; remaining gap is only the TO-BUILD
+  `use_dashboard` hook + `DashboardView`.
 
 ### 4.2 Quiz (Screen 2) — BUILT (the reference implementation)
 
@@ -271,7 +304,8 @@ touched, **(e)** tests, **(f)** status/gaps.
 - **(d) Ports.** `SessionRepo`, `SkillTaxonomy`, **`LearnerReadRepo`** (ADR-0011).
 - **(e) Tests.** `summary.spec::score_tile_reads_stored_not_retallied`, `::mastery_delta_signed`,
   `::recommended_drill_reopens_quiz`; `session_summary_vm.test.ts` (BUILT).
-- **(f) Gap.** Delta tile shows "—" until ADR-0011 lands. **Session-resume limitation:** on a
+- **(f) Gap.** ~~Delta tile shows "—" until ADR-0011 lands~~ — `LearnerReadRepo` landed;
+  the delta unblocks once the TO-BUILD `use_summary` hook exists. **Session-resume limitation:** on a
   page reload / cold-start the in-memory `skillStateAtStart` is lost → the delta renders "—"
   for that session (acceptable for Phase-1 single-learner short sessions; ADR-0011 §4 decision
   trigger = real session-resume UX).
@@ -318,6 +352,40 @@ touched, **(e)** tests, **(f)** status/gaps.
 Route group: `app/(coach)/` with an **RSC layout** wrapping `<EngineProvider>` (B1/B2); each
 screen is a **leaf `'use client'` island** with a justifying comment (B1). No control ships
 without a destination (FR-B5).
+
+### 4.9 Test Mode (Screen 8 — `/learn/test`) — BUILT surface, TO-BUILD blueprint plane
+
+- **(a) Regions/states.** Three-phase reducer state machine
+  (`test_runner_reducer.ts:49–130`): *intro* (section name, count, 35-min limit, start
+  CTA) → *in_section* (context HTML + stem + A–D choices; progress "Q# of N · X/N
+  answered"; Prev/Next/Submit; live countdown with warning band ≤5 min) → *results* (raw
+  "X/N" + official scale band via `englishScaleBand`, `test_scoring.ts:37`). Countdown
+  **auto-submits at zero** — no manual tap needed.
+- **(b) Hook contract.** No hook — a **React-free reducer core** with an injected
+  `GradeFn` (`(question, letter|null) => boolean`), honoring the §1 law's React-free-core
+  rule by construction; the page composes it with `useEngine()`'s `Grader`.
+- **(c) VM/data consumed.** The checked-in corpus constants (§2.5) + `englishScaleBand`
+  + `format_clock` (pure).
+- **(d) Ports touched.** **`Grader` only** — stated absence: no `QuestionRepo` scheduling
+  (fixed corpus order), no `SessionRepo`/`AttemptRepo` writes, no `Scheduler`/FSRS
+  feedback, no `LearnerReadRepo`. The test loop is a **dead end w.r.t. mastery today —
+  deliberate** (ADR-0013: making the score feed anything fires the stake trigger).
+- **(e) Tests.** Co-located units (`test_runner_reducer.test.ts`, `test_scoring.test.ts`,
+  `CountdownTimer.test.tsx`, `TestResultsView.test.tsx`, `format_clock.test.ts`) +
+  `e2e/learn/test-mode.spec.ts` (scripted 48-walk with byte-stable score; `?dur=1200`
+  auto-submit-at-zero) + `tests/architecture/test_no_client_served_test_keys.py` (the
+  ADR-0013 tripwire's docs/posture gate).
+- **(f) Status/gaps.** The **integrity finding** — the four answer-bearing `Question`
+  fields ship in the client bundle on a timed surface — is **adjudicated in
+  [ADR-0013](../adr/0013-subject-coach-test-mode-blueprint-generation-integrity.md)
+  (Accepted 2026-07-02 w/ conditions)**: Option A (keys in bundle) stands for the
+  unproctored, zero-stakes MVP behind three any-one-sufficient tripwires
+  (delivery / stake / proctoring); Option B = a third ADR-0012 context-contract mode,
+  already designed. The acceptance condition is MET (2026-07-02): the
+  `COACH_TEST_KEYS_CLIENT_SERVED` flag is a real code switch (FR-28,
+  `coach_test_mode_posture.py`) and the arch test keys off it. Other stated gaps: no
+  resume, no per-item timing (`elapsedMs` always 0), no telemetry, no test table (corpus
+  is a fixture, not rows).
 
 ---
 
@@ -529,6 +597,14 @@ entry** (the OKF triple).
 | 0008 | Proposed | **Accept w/ conditions** | Right design; the κ-floor + `build_graph` injection must be mechanical, not prose |
 | 0010 | Accepted-w/-cond. | **Keep; execute conditions** | Decision sound; conditions gate the next increment only |
 
+### ADR-0013 (2026-07-02) — spawned from the agent doc §10, **Accepted with conditions**
+
+The Test-Mode adjudication lives in the
+[agent design doc §10](SUBJECT_COACH_AGENT_DETAILED_DESIGN.md) (single spawn point — the
+ADR-0012 precedent); this doc carries the surface catalog (§2.5) + per-screen design
+(§4.9). Ratified 2026-07-02 with one condition — **MET the same day** (the FR-28 posture
+flag landed in code); §2.5/§4.9's TO-BUILD rows are unblocked under Option A.
+
 ### Spec-vs-code divergences (documented; follow-ups filed)
 
 1. **`CoachAgentClient` is not an engine port.** The sibling design doc §3 and the agent
@@ -545,8 +621,9 @@ entry** (the OKF triple).
 
 ## 8. Build sequencing
 
-1. **Ratify ADR-0011** → build `LearnerReadRepo` + `ReadableEngineDb` + adapter + conformance
-   row + two composition-bag lines → **unblocks Dashboard (4.1) + Summary delta (4.5)**.
+1. ✅ **DONE — ADR-0011 ratified + built**: `LearnerReadRepo` + `ReadableEngineDb` + adapter +
+   conformance row + both composition-bag lines landed → **Dashboard (4.1) + Summary delta
+   (4.5) unblocked** (their hooks remain TO-BUILD).
 2. **Execute ADR-0010's two conditions** (FR-G3 parity test; real §8 tracked item) → unblocks
    the on-device SQLite increment + Progress (4.7).
 3. Build **Dashboard, Summary, coach client** (`use_coach` + `CoachView` + iPad split panel +
@@ -556,6 +633,11 @@ entry** (the OKF triple).
    judge injection into `build_graph`; **flip the coach flags on shadow-first**.
 5. Resume **Screens 6/7** (deferred) via a **second ADR-0006 amendment** that lands the
    `getTutorial` / `listProgressPoints` reads.
+6. **Test Mode governed plane (ADR-0013, ratified 2026-07-02; ~~FR-28 flag~~ ✅ condition
+   MET same day):** the `TestBlueprint` wire entity + seeded assembler (§2.5 TO-BUILD
+   rows) + the seed-import demotion of `convert:test01`; archival stays DEFERRED (a
+   stake-trigger event, not a follow-up). Red-first per the specs' test-mode rows;
+   statuses in §2.5/§4.9 flip as each lands.
 
 Every build step carries its own red-first tests per the specs' §8 test plans (each screen's
 test list is in §4; the engine's in `preact-english-coach-engine.spec.md` §8; the agent's in

@@ -138,3 +138,91 @@ def _real_input_guardrail_init():
     from services.guardrails import InputGuardrail
 
     return InputGuardrail.__init__
+
+
+def _production_shaped_registry() -> ToolRegistry:
+    """Same tool vocabulary as middleware/composition.py's production registry."""
+    return ToolRegistry(
+        {
+            name: ToolDefinition(executor=_stub, schema=_Noop)
+            for name in (
+                "shell",
+                "file_io",
+                "state_file",
+                "state_todo",
+                "task",
+                "think",
+                "web_search",
+            )
+        }
+    )
+
+
+class TestSubjectCoachContract:
+    """FR-3/4/5/6 for the subject-coach-english instance (agent spec §3.2).
+
+    The coach's declared contract, run against the PRODUCTION tool vocabulary:
+    exactly ``think`` + ``file_io`` bound; shell/web_search/task never reach
+    the LLM binding; a registry missing a declared tool fails the build.
+    """
+
+    def test_coach_binds_exactly_declared_and_never_privileged(self) -> None:
+        from services.governance.subject_coach_identity import (
+            SUBJECT_COACH_CAPABILITIES,
+        )
+
+        registry = _production_shaped_registry()
+        gate = derive_bound_tools(
+            capability_names=SUBJECT_COACH_CAPABILITIES,
+            available_tool_names=registry.tool_names(),
+        )
+        assert (
+            set(gate.bound_tool_names)
+            == set(gate.capabilities)
+            == {
+                "think",
+                "file_io",
+            }
+        )
+        bound_names = {
+            s["name"]
+            for s in filter_registry_schemas(
+                registry.get_schemas(), gate.bound_tool_names
+            )
+        }
+        for privileged in ("shell", "web_search", "task", "state_file", "state_todo"):
+            assert privileged not in bound_names
+
+    def test_coach_config_fails_fast_when_registry_lacks_declared_tool(self) -> None:
+        """FR-5 failure path FIRST: registry without file_io stops the build."""
+        from services.governance.subject_coach_identity import (
+            SUBJECT_COACH_CAPABILITIES,
+            subject_coach_agent_config,
+        )
+
+        crippled = ToolRegistry({"think": ToolDefinition(executor=_stub, schema=_Noop)})
+        with pytest.raises(CapabilityToolMissingError):
+            build_graph(
+                agent_config=subject_coach_agent_config(),
+                tool_registry=crippled,
+                bound_capabilities=SUBJECT_COACH_CAPABILITIES,
+            )
+
+    def test_coach_config_builds_with_gating_enabled(self) -> None:
+        """The coach AgentConfig factory ships with capability gating ON
+        (shadow-first is about judge/gate flags, not the identity contract)."""
+        from services.governance.subject_coach_identity import (
+            SUBJECT_COACH_AGENT_ID,
+            SUBJECT_COACH_CAPABILITIES,
+            subject_coach_agent_config,
+        )
+
+        cfg = subject_coach_agent_config()
+        assert cfg.capability_gating_enabled is True
+        assert cfg.agent_name == SUBJECT_COACH_AGENT_ID
+        # End-to-end: builds clean against the production tool vocabulary.
+        build_graph(
+            agent_config=cfg,
+            tool_registry=_production_shaped_registry(),
+            bound_capabilities=SUBJECT_COACH_CAPABILITIES,
+        )
