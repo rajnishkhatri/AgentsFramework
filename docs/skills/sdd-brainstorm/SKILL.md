@@ -22,25 +22,88 @@ expands + validates → human accepts a direction or re-poses.
 ## Agent work
 
 1. **Read the subtree's nested `AGENTS.md`** for every folder the idea touches.
-2. **Generate ~6 directions**: 3 high-probability (follow existing repo
+2. **Audit the premises before ideation.** The problem statement is itself a
+   hypothesis. Check every load-bearing premise against the working tree
+   (grep/glob; the read-only `explore` subagent for broad sweeps) and publish a
+   premise-status table: `verified` / `refuted` / `unverifiable`.
+   - `refuted` → re-pose the corrected framing with evidence *in the same
+     document* and generate directions over the corrected space; the human
+     gate is where they confirm it. Silently continuing on the stale framing
+     is the failure this step exists to catch. Offer to re-validate on another
+     branch if their mental model may come from elsewhere.
+   - `unverifiable` (needs live data / traffic / external state) → say so and
+     tag dependent directions `needs-probe` instead of assuming.
+   - Audit reveals the system is **live with a known open defect** → name
+     closing it as a blocking direction (D0) ahead of the six; a present risk
+     outranks every future capability.
+3. **Generate ~6 directions**: 3 high-probability (follow existing repo
    patterns — name the file/pattern each one follows) + 3 exploratory
-   (different abstraction / integration / architectural shift). For each:
-   tradeoffs, what-breaks-if-chosen, which Architecture Invariant it stresses.
-3. **Propose hypotheses** for the leading direction: "works *because* X",
+   (different abstraction / integration / architectural shift). Six variations
+   *inside* the stated framing is the most common reviewer rejection — lenses
+   reviewers keep asking for:
+   - **Demand-side, not just supply-side.** When the problem is governing an
+     expensive operation (LLM calls, DB writes, egress), include the direction
+     that makes the operation *not happen*: deterministic cascades / local
+     reasoning / known-answer fast-paths first, the expensive call as
+     fallback. Repo precedents: the router's deterministic tree
+     (`components/router.py`) and the guardrail's regex→classifier→LLM
+     cascade with its `decision_stage` audit field (`services/guardrails.py`).
+   - **Class over instance.** A recurring defect class (a third
+     composition-root drift, say) gets the class-level fix — shared seam + an
+     architecture test that fails the next occurrence — not just the patch.
+   - **Under-used signal.** When an existing telemetry/judge/feedback surface
+     is in scope, seed one direction with "what high-quality signal is
+     currently under-used?".
+   For each direction: tradeoffs, what-breaks-if-chosen, which Architecture
+   Invariant it stresses. Where they apply:
+   - A/B or measurement gate → enumerate confounds and the clean-toggle
+     requirement; no clean toggle → reject as-stated, propose a matched-seed
+     alternative.
+   - Consumes a telemetry/judge/feedback signal → characterize it on
+     coverage × quality and name the bias class.
+   - Depends on a corpus/dataset/runtime quantity → run the cheapest
+     read-only probe first and tag `gated-on-data: <measured-count>`, or
+     `needs-probe` if it can't be measured now.
+   - Crosses a deliberately-maintained discipline (e.g. recalled-content
+     vs metadata) → enumerate *every* surface that discipline protects.
+4. **Propose hypotheses** for the leading direction: "works *because* X",
    "safe *because* Y".
-4. **Validate every hypothesis against repo evidence** — grep/glob the actual
+5. **Validate every hypothesis against repo evidence** — grep/glob the actual
    files, never parametric memory. A hypothesis that references an API, path,
    or helper the repo doesn't contain is REJECTED (the "context blindness"
-   failure mode). Use the read-only `explore` subagent
-   (`.claude/agents/explore.md`) as the context firewall for broad sweeps —
-   only the distilled answer returns to the main thread.
+   failure mode). Evidence rules reviewers consistently enforce:
+   - **Sweep scope matches the claim.** A count that silently skipped
+     `tests/`, `meta/`, `scripts/` is a wrong count = rejected hypothesis;
+     "total waste" includes tests, "prod hot path" may exclude them — say
+     which and why.
+   - **Only verified `file:line` citations** — open the file or drop the
+     line number.
+   - **Name the live prod surface.** `middleware/app_prod.py` hand-builds the
+     prod routes; `agent_ui_adapter/server.py` is dev/standalone. A "ship at
+     seam X" claim citing the dev surface does not relieve prod.
+   - **Feasibility adjectives are hypotheses.** "Trivial", "zero code", "the
+     arms are a flag flip", and especially "these are parallel" get the same
+     check: what fires upstream of the proposed gate, whether experiment arms
+     are actually matched, whether "zero code" hides calendar time (data that
+     must accumulate first).
+6. **Map the dependency structure before naming a lead**: sequenced (B needs
+   A's output) vs independent-parallel; zero-risk / no-ADR hygiene is "do
+   regardless of the pick"; capability and operational deliverables are
+   different goals on a shared substrate — which one the human wants is often
+   the real decision. Engineering time and calendar time are different cost
+   axes — say when the load-bearing cost is the wait.
 
 ## Human gate
 
 Direction-level acceptance only — the human picks *what to specify next*, not
-the spec itself. Loop back if every direction violates an invariant, the
-hypotheses don't validate, or the framing is rejected. Advance → **sdd-spec**
-with the chosen direction + validated hypotheses.
+the spec itself. Pose orthogonal directions as independent tracks
+(do-regardless / pick-the-priority / deferred-behind-X), and split conflated
+axes (what unit is metered vs where it's enforced vs deny-or-degrade) into
+separate questions. Label options with explicit ids — a bare "yes" is not
+valid multi-option consent. Loop back if every direction violates an
+invariant, the hypotheses don't validate, a `refuted` load-bearing premise has
+not been re-posed, or the framing is rejected. Advance → **sdd-spec** with the
+chosen direction + validated hypotheses.
 
 ## Constraints
 
