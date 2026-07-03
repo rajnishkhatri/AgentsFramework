@@ -128,9 +128,11 @@ criterion-separated, calibrated** judges.
 
 > The Test Mode *generation/blueprint* FRs (FR-23..FR-27 — family-parameterized generation,
 > test-item cascade, deterministic blueprint assembly, `reviewed=true`-only selection,
-> seed-import enters `reviewed=false`) land with the ADR-0013 build pass. FR-28 lands now
-> because the tripwire posture is the part of the stance that must be mechanically
-> observable from day one — the rest is build-gated behind ratification.
+> seed-import enters `reviewed=false`) are specified in
+> [coach-test-mode-governed-plane.spec.md](coach-test-mode-governed-plane.spec.md) and
+> **BUILT in Phase 6 (ADR-0015, 2026-07-03)** — see that spec + the plan's Phase-6 section.
+> FR-28 landed earlier because the tripwire posture is the part of the stance that must be
+> mechanically observable from day one.
 
 - **FR-28.** THE SYSTEM SHALL expose a `COACH_TEST_KEYS_CLIENT_SERVED` posture flag
   (default `true` under ADR-0013 Option A — keys remain in the client bundle for the
