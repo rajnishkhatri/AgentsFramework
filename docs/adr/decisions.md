@@ -19,6 +19,18 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Rejected keeping 4 KB + a pre-truncation answer-field scan in the bridge: that
   would hardcode coach domain fields into generic middleware and only answer one
   audit question, while a silent cut stays a vacuous pass everywhere else.
+
+- 2026-07-02 — **Stage-1 brainstorm premise audit runs before direction generation;
+  `refuted` load-bearing premises force a re-pose.** Rejected advisory-only handling
+  ("publish refutation but continue on the stated framing") — it preserves direction
+  selection atop stale premises, the failure seen across the session's brainstorms.
+  Blocking semantics resolved as *correct-and-continue*: the agent re-poses the
+  corrected framing in the same document and generates directions over the corrected
+  space; the human gate is the confirmation point. Rejected present-and-wait (a full
+  round-trip before any directions) — the eval-loop runs that corrected-and-continued
+  scored 100% and drew reviewer praise; a mid-brainstorm stop doubles latency for the
+  common case where the correction is obvious. Spec: `docs/plan/sdd-brainstorm-hardening.spec.md`.
+
 - 2026-07-02 — **PostCompact hooks CANNOT return `additionalContext` (CC 2.1.185).** A
   live `/compact` rejected `postcompact_reinject.py`'s output with `Hook JSON output
   validation failed — (root): Invalid input`: the harness hook-output schema has no
@@ -76,7 +88,6 @@ title: 'Lightweight decision log (intent debt, long tail)'
   both are linked from `index.md`/`log.md`/design docs and commit messages; breaking those
   references costs more than the numbering wart. New ADRs must still take the next free
   number (0012 is next).
->>>>>>> origin/main
 - 2026-07-01 — **Coach surface is routed under `/learn`, not `/`** (Phase 1.1). The
   design/plan placed the Dashboard at `app/(coach)/page.tsx`, which resolves to `/` —
   but `app/page.tsx` (the chat landing) already owns `/`, and Next.js route groups add

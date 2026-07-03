@@ -160,11 +160,20 @@ see §6).
 
 **Agent work:**
 - Read the relevant subtree's nested `AGENTS.md` (the on-demand folder guide).
+- **Audit the human-supplied framing's load-bearing premises against repo
+  evidence *before* generating directions.** Publish a premise-status table:
+  `verified` / `refuted` / `unverifiable`. A `refuted` premise is re-posed
+  with corrected facts in the same document (directions are then generated
+  over the *corrected* space — never silently atop the stale framing); an
+  `unverifiable` premise marks its dependent directions `needs-probe`.
 - Expand the idea: generate candidate approaches. Use the `sdd-brainstorm`
   pattern — produce **~6 directions**: 3 high-probability (follow existing
   patterns in this repo) + 3 exploratory (different abstractions / integrations
   / architectural shifts). For each: tradeoffs, what-breaks-if-chosen, which
-  invariant it stresses.
+  invariant it stresses; measurement proposals name confounds + the
+  clean-toggle requirement, signal-consuming proposals characterize the signal
+  on coverage × quality, and data-dependent directions probe the quantity
+  first and carry `gated-on-data: <measured-count>` (or `needs-probe`).
 - Propose **hypotheses** for the chosen direction: "this works *because* X";
   "this is safe *because* Y".
 - **Validate / reject each hypothesis against repo evidence** — this is the
@@ -175,12 +184,14 @@ see §6).
 
 **Human gate:** Accept one direction, reject all and re-pose, or nudge. The
 accept criterion is *direction-level*, not spec-level — you're choosing *what
-to specify next*, not yet specifying it.
+to specify next*, not yet specifying it. Multi-option prompts label options
+with explicit ids; a bare "yes" is not valid multi-option consent.
 
 **Loop-back:** Re-enter brainstorm if (a) every direction violates an
-invariant, (b) the hypotheses don't validate against repo evidence, or (c) the
-human rejects the framing. Advance to Stage 2 with a chosen direction + the
-validated hypotheses.
+invariant, (b) the hypotheses don't validate against repo evidence, (c) a
+load-bearing premise is `refuted` and the corrected framing has not been
+re-posed, or (d) the human rejects the framing. Advance to Stage 2 with a
+chosen direction + the validated hypotheses.
 
 **Harness instrumentation:**
 - **Today:** nested `AGENTS.md` subtree guide (read on demand); `AGENTS.md`
