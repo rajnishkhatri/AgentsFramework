@@ -218,6 +218,17 @@ class TestVerdictRepairPaths:
         assert verdict.justification_pass is False
 
     @pytest.mark.asyncio
+    async def test_grader_slight_overshoot_clamps_not_rescales(self):
+        """A 0..1-scale verdict that slightly overshoots (1.02, 1.5) is a
+        clamp case, not a percentage reply: rescaling would silently invert
+        a near-perfect score into a near-zero one (1.5 → 0.015)."""
+        judge, _ = _grader(_grader_response(faithfulness=1.02, justification=1.5))
+        verdict = await _grade(judge)
+        assert verdict is not None
+        assert verdict.faithfulness == pytest.approx(1.0)
+        assert verdict.justification == pytest.approx(1.0)
+
+    @pytest.mark.asyncio
     async def test_pedagogy_fenced_json_parsed(self):
         judge, _ = _pedagogy(
             "Here is my verdict:\n```json\n" + _pedagogy_response() + "\n```"

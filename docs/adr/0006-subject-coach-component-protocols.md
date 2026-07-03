@@ -16,6 +16,11 @@ tags: [decision-record]
 below are unchanged). **Amended by [ADR-0014](0014-subject-coach-hint-repo-read-seam.md)**
 (2026-07-02) — adds a ninth read-only port, `HintRepo` (the hint content-family read seam:
 `hint` table both dialects + `Hint` wire entity; ADR-0012's committed amendment window).
+**Amended by [ADR-0015](0015-subject-coach-test-item-bank-blueprint-read-seam.md)**
+(2026-07-03) — adds a tenth + eleventh read-only port, `TestBlueprintRepo.get(id)` +
+`TestItemRepo.listReviewed(subject)` (the test-item content family: `test_item` +
+`test_blueprint` tables both dialects + `TestItem`/`TestBlueprint` wire entities; the window
+ADR-0013 §Consequences committed the `test_blueprint` schema to).
 **Related:** [data & protocols design doc](../Architectures/SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md) · [ADR-0005 engine home](0005-subject-coach-engine-home-and-substrate.md) · [ADR-0011 learner read port](0011-subject-coach-engine-learner-read-port.md) · [Frontend ports deep dive](../Architectures/FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md) · [UI spec](../plan/preact-english-coach-ui.spec.md)
 **Audience:** anyone implementing or changing an engine port signature, the `Verdict` shape, or the coach stream contract.
 

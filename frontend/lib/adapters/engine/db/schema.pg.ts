@@ -127,6 +127,47 @@ export const hint = pgTable(
 );
 
 /**
+ * test_item — governed exam-item bank (ADR-0015 clause 1). A SEPARATE table
+ * from `question` (not a discriminator column) so `QuestionRepo.nextReviewed`
+ * practice scheduling is structurally unable to serve an exam item — the leak
+ * is unrepresentable. `reviewed = true` is EARNED by the Python cascade
+ * (schema → independent-solver key gate → duplicate); `generated_by` is
+ * "<model>@<run_id>" on a reviewed row. No FK to `question` (distinct family).
+ */
+export const testItem = pgTable("test_item", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+  skill_id: uuid("skill_id")
+    .notNull()
+    .references(() => skill.id, { onDelete: "cascade" }),
+  difficulty: integer("difficulty").notNull().default(3), // 1..5
+  stem_md: text("stem_md").notNull(),
+  choices: jsonb("choices").notNull().default([]),
+  answer_letter: text("answer_letter").notNull(),
+  reviewed: boolean("reviewed").notNull().default(false),
+  generated_by: text("generated_by").notNull().default(""),
+});
+
+/**
+ * test_blueprint — deterministic test-form recipe (ADR-0013 §8.2 / ADR-0015
+ * clause 2). `seed` is stored on the row so a form is byte-reproducible from
+ * `(blueprint_id, seed)` within a fixed reviewed bank; there is no
+ * `bank_version` (reproducibility across bank growth is a serving-time concern
+ * deferred to the ADR-0013 delivery re-open).
+ */
+export const testBlueprint = pgTable("test_blueprint", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+  skill_mix: jsonb("skill_mix").notNull().default({}),
+  difficulty_dist: jsonb("difficulty_dist").notNull().default({}),
+  count: integer("count").notNull(),
+  minutes: integer("minutes").notNull(),
+  scale_band_table: jsonb("scale_band_table").notNull().default([]),
+  pass_criteria: jsonb("pass_criteria"),
+  seed: integer("seed").notNull(),
+});
+
+/**
  * quiz_session — one drill/adaptive/review session.
  * Score tally is stored (set on close) so the UI Summary derives from stored
  * values, not re-computation (engine spec FR-D3).
@@ -270,6 +311,10 @@ export type ContentStringRowPg = typeof contentString.$inferSelect;
 export type ContentStringInsertPg = typeof contentString.$inferInsert;
 export type ProgressPointRowPg = typeof progressPoint.$inferSelect;
 export type ProgressPointInsertPg = typeof progressPoint.$inferInsert;
+export type TestItemRowPg = typeof testItem.$inferSelect;
+export type TestItemInsertPg = typeof testItem.$inferInsert;
+export type TestBlueprintRowPg = typeof testBlueprint.$inferSelect;
+export type TestBlueprintInsertPg = typeof testBlueprint.$inferInsert;
 
 // The engine-table whitelist for the IR-NEON-5 `tablesFilter` (see README.md).
 // Exported so drizzle.config can reference one source of truth.
@@ -277,6 +322,8 @@ export const ENGINE_TABLE_NAMES = [
   "skill",
   "question",
   "hint",
+  "test_item",
+  "test_blueprint",
   "quiz_session",
   "attempt",
   "skill_state",

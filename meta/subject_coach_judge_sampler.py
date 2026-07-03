@@ -38,6 +38,8 @@ logger = logging.getLogger("meta.subject_coach_judge_sampler")
 
 __all__ = [
     "CoachJudgeSamplingReport",
+    "latest_turn_per_task",
+    "mode_of",
     "run_coach_judge_sampling",
     "should_sample",
 ]
@@ -104,7 +106,7 @@ def should_sample(task_id: str, rate: float) -> bool:
     return bucket < rate
 
 
-def _latest_turn_per_task(records: list[EvalRecord]) -> list[EvalRecord]:
+def latest_turn_per_task(records: list[EvalRecord]) -> list[EvalRecord]:
     """Collapse a task's LLM calls to its final turn, order-preserving.
 
     Paired judges must see the SAME turn; the last step is the reply the
@@ -121,7 +123,7 @@ def _latest_turn_per_task(records: list[EvalRecord]) -> list[EvalRecord]:
     return [latest[task_id] for task_id in order]
 
 
-def _mode_of(record: EvalRecord) -> str:
+def mode_of(record: EvalRecord) -> str:
     """Derive the turn's mode from the recorded input — fail-closed.
 
     Preference order (§13 audit finding F1): the run's own carrier
@@ -160,7 +162,7 @@ async def run_coach_judge_sampling(
     report.coach_records = len(coach_records)
     turns = [
         rec
-        for rec in _latest_turn_per_task(coach_records)
+        for rec in latest_turn_per_task(coach_records)
         if should_sample(rec.task_id, posture.coach_judge_sample_rate)
     ]
     report.sampled_tasks = len(turns)
@@ -172,7 +174,7 @@ async def run_coach_judge_sampling(
             if isinstance(rec.ai_response, str)
             else str(rec.ai_response)
         )
-        mode = _mode_of(rec)
+        mode = mode_of(rec)
         run_config = {"configurable": {"task_id": rec.task_id, "user_id": rec.user_id}}
 
         if posture.coach_grader_judge_enabled:

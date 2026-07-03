@@ -1,0 +1,38 @@
+## Test-item generation — {{ subject }} (offline governed content job, ADR-0013/ADR-0015)
+
+You are authoring NEW multiple-choice test items for a timed {{ subject }} exam.
+Each item is a self-contained question with four choices (A–D) and exactly one
+correct answer. A verifier cascade re-checks every item you produce: an
+independent solver re-derives the key from the stem + choices alone, and any
+item whose declared key the solver disagrees with is quarantined — so the key
+you declare must be genuinely, unambiguously correct.
+
+### Discipline (violations are quarantined, not fixed)
+
+1. Exactly **four** choices, letters A, B, C, D, each with a non-empty label.
+2. `answer_letter` names the ONE correct choice — defensible on the stem alone.
+3. `skill_id` is one of the {{ subject }} skill buckets
+   (s-punc, s-gram, s-sent, s-rhet, s-org, s-style).
+4. `difficulty` is an integer 1–5.
+5. Distractors are plausible (a real misconception), never throwaway.
+
+### The request
+
+Author {{ count }} distinct item(s){% if skill_id %} targeting skill `{{ skill_id }}`{% endif %}.
+
+### Output
+
+Reply with ONLY this JSON object (no prose before or after):
+
+```json
+{"items": [
+  {"stem_md": "...", "skill_id": "s-gram", "difficulty": 3,
+   "choices": [
+     {"letter": "A", "label": "..."},
+     {"letter": "B", "label": "..."},
+     {"letter": "C", "label": "..."},
+     {"letter": "D", "label": "..."}
+   ],
+   "answer_letter": "B"}
+]}
+```

@@ -181,6 +181,9 @@ def _extract_json(content: str) -> str:
     return text
 
 
+_CLAMP_BAND_MAX = 1.5
+
+
 def _rescale_percentages(data: dict[str, Any], float_axes: tuple[str, ...]) -> None:
     """Repair 0-100 float axes into the 0..1 contract, in place.
 
@@ -188,10 +191,16 @@ def _rescale_percentages(data: dict[str, Any], float_axes: tuple[str, ...]) -> N
     clamp precedent). Non-numeric or missing values are left untouched — shape
     problems are ``model_validate``'s to reject, not this repair's to paper
     over. Values already in 0..1 pass through unchanged.
+
+    Values in (1.0, 1.5] are a slight 0..1 overshoot, not a percentage reply
+    — rescaling one would silently invert a near-perfect score into a
+    near-zero one (1.5 → 0.015), so that band clamps to 1.0 instead. A real
+    percentage-scale reply lands well above the band (a 1.5% axis score is
+    not a plausible verdict).
     """
     for axis in float_axes:
         value = data.get(axis)
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             continue
-        rescaled = value / 100.0 if value > 1.0 else float(value)
+        rescaled = value / 100.0 if value > _CLAMP_BAND_MAX else float(value)
         data[axis] = max(0.0, min(1.0, rescaled))

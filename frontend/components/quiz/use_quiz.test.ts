@@ -106,6 +106,22 @@ describe("runQuizSubmit — no selection (failure path first, FR-D2a/D4)", () =>
   });
 });
 
+describe("runQuizSubmit — real elapsed_ms reaches the attempt (D0 timing plumbing)", () => {
+  it("records the passed elapsedMs onto the attempt (not a fabricated 0)", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const result = await runQuizSubmit(ports, {
+      session,
+      question: question(),
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 4200,
+      usedHint: false,
+    });
+    expect(result.attempt).not.toBeNull();
+    expect(result.attempt?.elapsed_ms).toBe(4200);
+  });
+});
+
 describe("runQuizSubmit — coach-session marker notify (ADR-0012 Amendment, FR-19)", () => {
   it("no selection ⇒ NO marker notify (failure path first)", async () => {
     const calls: string[] = [];

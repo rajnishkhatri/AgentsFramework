@@ -46,6 +46,8 @@ import { FsrsScheduler } from "./adapters/engine/scheduler/fsrs_scheduler";
 import { ExactLetterGrader } from "./adapters/engine/grader/exact_letter_grader";
 import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_read_repo";
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
+import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
+import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
 import { seedDevCorpus } from "./adapters/engine/_dev_seed";
 
@@ -85,6 +87,9 @@ export function buildBrowserEngineAdapters(
     learnerRead: new DrizzleLearnerReadRepo(db),
     // Read-only reviewed hint ladder (ADR-0014): no write surface on the port.
     hintRepo: new DrizzleHintRepo(db),
+    // Read-only governed test plane (ADR-0015): reviewed items + blueprint.
+    testItemRepo: new DrizzleTestItemRepo(db),
+    testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
     // ADR-0012 Amendment (FR-19): browser→BFF fire-and-forget marker write on
     // quiz submit, flipping the coach's derived mode to post_feedback.
     quizSubmitNotifier: new FetchQuizSubmitNotifier(),

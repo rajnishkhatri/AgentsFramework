@@ -12,6 +12,62 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-03 — **D0 elapsed timing: page wiring is typechecked, not RTL-asserted**
+  (review "not checked" gap, JUSTIFY). `QuizPage.onSubmit` computes
+  `elapsedMsFrom(state.presentedAt, performance.now())` and forwards it to `submit`;
+  this wiring is glue (F-R1) and typechecked. Rejected a page-level RTL test: it
+  would mock `useRouter` + `useEngine` + `useSurface` + `buildBrowserRuntimeClient`
+  and stub `performance.now`, then drive the async open→answer→submit chain — high
+  mock cost asserting *wiring*, not logic, with no page-RTL harness precedent under
+  `app/(coach)/`. The elapsed *contract* is already locked deterministically at two
+  layers: `elapsedMsFrom` unit tests (FR-2/4/5) + the reducer clock-less contract
+  guard. Low-ROI glue test deliberately skipped (§20). Spec:
+  `docs/plan/quiz-attempt-elapsed-timing.spec.md`.
+- 2026-07-03 — **Phase-6 test-item solver comparator: single-letter extraction,
+  ambiguous→undecidable** (`components/test_item_generation.py::extract_solver_letter`).
+  Parity-pinned to `ExactLetterGrader` (a verdict is a letter, compared exactly):
+  the comparator pulls the one choice letter a chatty reply names ("The answer is C
+  because…" → "C"); a reply naming zero or ≥2 distinct valid letters is undecidable
+  → quarantine (never guessed). Rejected importing the TS grader across the language
+  boundary (ADR-0015 keeps the dual-literal defense) and a bare `.strip()=="C"`
+  exact-match (the live solver returns prose, not a lone letter). Out-of-range-only
+  letters are ignored, so such a reply is undecidable.
+- 2026-07-03 — **Seeded assembler count split = largest-remainder rounding**
+  (`assemble_test_form.ts::stratumCounts`). `blueprint.count × skill_mix[skill]`
+  rarely lands on integers; independent per-skill `Math.round` can sum to count±1
+  (a short or over-full form). Largest-remainder keeps the parts summing to exactly
+  `count`, tie-broken by sorted skill id so the split never depends on object key
+  order; the PRNG stream is consumed in sorted-skill order so a fixed seed is
+  byte-stable regardless of `skill_mix` key order. Rejected per-skill round
+  (off-by-one forms) and floor-only (drops units).
+
+- 2026-07-03 — **Quiz `attempt.elapsed_ms` real timing (D0 fix).** The former
+  hardcoded `elapsedMs: 0` (quiz/page.tsx) is replaced by a real per-item latency:
+  `item_loaded` stamps `presentedAt = performance.now()` on the reducer's answering
+  state, and `onSubmit` records `elapsedMsFrom(presentedAt, performance.now())`.
+  Chose a **monotonic** clock (`performance.now()`) over `Date.now()` so a wall-clock
+  adjustment mid-answering can't yield a negative elapsed; the helper clamps `≥ 0`
+  and rounds to whole ms. Chose **wall-clock** elapsed (present→submit) over
+  active-focus (blur-pause) timing — active-focus is materially more complex and not
+  needed for the field's intent (out of scope, spec §2.1). Start timestamp lives in
+  reducer state (not a page `useRef`) so timing is node-testable and the page stays
+  glue-only (F-R1). No wire/schema/DB change — the column already existed; only its
+  source was fabricated. A clock-less `item_loaded` (transition-only tests) stores
+  **`NaN`, not `0`**, so the `elapsedMsFrom` `!Number.isFinite` guard stays the single
+  authority on "no start captured"; a finite-`0` default was rejected (review FD2) —
+  `elapsedMsFrom(0, now)` returns `now`, re-fabricating the exact elapsed D0 kills
+  (locked by a red-first contract-guard test). No ⚠️ Ask-first trigger ⇒ no ADR. Spec:
+  `docs/plan/quiz-attempt-elapsed-timing.spec.md`.
+- 2026-07-03 — **Coach-judge float repair: (1.0, 1.5] clamps to 1.0; only >1.5
+  rescales /100** (`_rescale_percentages`, post-merge review W2). The old `>1.0`
+  cutover silently inverted a slight 0..1 overshoot into a near-zero score
+  (1.5 → 0.015) — a corrupt signal feeding future calibration. Band rationale:
+  a real percentage-scale reply lands well above 1.5 (a 1.5% axis score is not
+  a plausible verdict), so everything in the band is an overshoot to clamp.
+  Rejected leaving it justified-only (GoalJudge precedent covers clamping, not
+  this inversion) and rejected rejecting the band outright as unrepairable —
+  a 1.02 from a 0..1-scale model is unambiguous.
+
 - 2026-07-02 — **`llm.call.input_text` truncation posture: raised cap + visible
   marker** (§13 audit finding F2). `input_text` alone gets 32 KB
   (`_MAX_INPUT_TEXT_BYTES`) so the persona + coach-context render region is
@@ -144,3 +200,9 @@ title: 'Lightweight decision log (intent debt, long tail)'
   post-edit ruff hook is advisory formatting (HOOK-1 never-block-on-edit); a
   formatter hiccup must not block an edit. Scoped deviation, documented inline in
   the file. The safety gate `beforeShellExecution` stays `failClosed:true`.
+- 2026-07-03 — `meta/subject_coach_corpus_harvest.py`: `harvest_corpus`'s gate
+  report covers only the rows it returns; `main` re-summarizes the union with the
+  existing corpus file for the operator verdict. Why: the pure function can't see
+  the on-disk corpus, and a gate verdict over a partial view would read as met/
+  unmet dishonestly. Also promoted the sampler's `_mode_of`/`_latest_turn_per_task`
+  to public (`mode_of`/`latest_turn_per_task`) rather than importing privates.
