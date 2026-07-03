@@ -40,6 +40,8 @@ import logging.config
 
 logging.config.dictConfig(json.loads((_REPO / "logging.json").read_text()))
 
+from langgraph.errors import GraphRecursionError
+
 from components.test_item_generation import run_test_item_cascade
 from services import eval_capture
 from services.base_config import default_fast_profile
@@ -101,25 +103,52 @@ def _make_solver(graph, prompts: PromptService):
     One LLM call per candidate item (FR-23.3)."""
 
     async def solve(item) -> str:
+        # The solver is a ONE-SHOT classification, not a ReAct task: it names a
+        # letter and stops. The general success-conditions evaluator does not
+        # recognize a bare "B" as task-complete, so the graph would re-plan the
+        # same call until GraphRecursionError. We only need step 0's answer
+        # (`last_final_answer` is set on every evaluate), so bound recursion and
+        # read the first answer — treating a recursion trip as "answer captured".
         task_input = prompts.render_prompt(
             "test_item_solver", subject=SUBJECT, item=item
         )
         run_id = uuid.uuid4().hex
-        result = await graph.ainvoke(
-            {
+        payload = {
+            "task_id": f"tisolve-{run_id}",
+            "task_input": task_input,
+            "messages": [],
+            "workflow_id": run_id,
+        }
+        config = {
+            "recursion_limit": 6,
+            "configurable": {
                 "task_id": f"tisolve-{run_id}",
-                "task_input": task_input,
-                "messages": [],
-                "workflow_id": run_id,
+                "user_id": "test-item-solver",
             },
-            config={
-                "configurable": {
-                    "task_id": f"tisolve-{run_id}",
-                    "user_id": "test-item-solver",
-                }
-            },
-        )
-        return str(result.get("last_final_answer") or "")
+        }
+        # Stream state updates and grab the FIRST assistant message (the solver's
+        # letter), then stop — no checkpointer needed, and the ReAct re-plan loop
+        # never runs to exhaustion. The solver replies with a terse letter that
+        # the generic success-conditions evaluator never accepts as "done", so a
+        # full ainvoke would GraphRecursionError; we only need that first answer
+        # (it surfaces in `messages` a few supersteps in). A trip before any
+        # assistant message yields "".
+        answer = ""
+        try:
+            async for update in graph.astream(
+                payload, config=config, stream_mode="values"
+            ):
+                ai_messages = [
+                    m
+                    for m in update.get("messages", [])
+                    if type(m).__name__ == "AIMessage"
+                ]
+                if ai_messages:
+                    answer = str(getattr(ai_messages[-1], "content", "") or "")
+                    break
+        except GraphRecursionError:
+            pass
+        return answer
 
     return solve
 
