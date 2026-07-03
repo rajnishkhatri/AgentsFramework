@@ -1369,12 +1369,12 @@ def build_graph(
         workflow_id = state.get("workflow_id", "")
         step_count = state.get("step_count", 0)
 
-        # Story 5.1: per-user budget check
         configurable = config.get("configurable", {})
-        user_max_cost = configurable.get("user_max_cost_per_task")
-        budget_limit = (
-            user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
-        )
+
+        # Story 5.1: per-task budget check. A per-user override knob existed
+        # here but was deleted as reader-without-writer dead code —
+        # docs/adr/decisions.md 2026-07-02.
+        budget_limit = agent_config.max_cost_usd
         total_cost = state.get("total_cost_usd", 0.0)
         if total_cost >= budget_limit:
             async with phase_logger.phase(
@@ -3299,12 +3299,7 @@ def build_graph(
         last_msg = messages[-1]
 
         total_cost = state.get("total_cost_usd", 0.0)
-        configurable: dict = {}
-        user_max_cost = configurable.get("user_max_cost_per_task")
-        budget_limit = (
-            user_max_cost if user_max_cost is not None else agent_config.max_cost_usd
-        )
-        if total_cost >= budget_limit:
+        if total_cost >= agent_config.max_cost_usd:
             return "budget_exceeded"
 
         return parse_llm_response(last_msg)

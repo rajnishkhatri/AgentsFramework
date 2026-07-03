@@ -12,6 +12,13 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-02 — **`user_max_cost_per_task` deleted, not wired.** The per-task budget
+  override (PLAN.md Story 5.1) had two reads in `orchestration/react_loop.py` and zero
+  writers — one read was against a hardcoded empty dict, so it could never fire; the
+  global `AgentConfig.max_cost_usd` cap is what actually enforces budget. Rejected wiring
+  it through the runtime adapter: no per-user budget store or UI field exists to supply a
+  value, so plumbing would be a writer-without-producer (ratchet rule: delete aspirational
+  code). Reintroduction path documented in `tests/architecture/test_no_dead_config_knobs.py`.
 - 2026-07-02 — **PostCompact hooks CANNOT return `additionalContext` (CC 2.1.185).** A
   live `/compact` rejected `postcompact_reinject.py`'s output with `Hook JSON output
   validation failed — (root): Invalid input`: the harness hook-output schema has no
