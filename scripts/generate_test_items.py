@@ -36,9 +36,9 @@ from dotenv import load_dotenv
 _REPO = Path(__file__).resolve().parent.parent
 load_dotenv(_REPO / ".env")
 
-import logging.config
+from services.observability import setup_logging
 
-logging.config.dictConfig(json.loads((_REPO / "logging.json").read_text()))
+setup_logging(_REPO / "logging.json")
 
 from langgraph.errors import GraphRecursionError
 
