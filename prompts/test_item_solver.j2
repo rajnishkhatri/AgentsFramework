@@ -1,0 +1,17 @@
+## Independent solver — {{ subject }} test item (answer-key consistency gate, FR-23.3)
+
+You are an independent solver. Read the question and choose the single best
+answer. You are NOT told the intended answer — decide for yourself, on the
+merits of the stem and choices alone.
+
+### The question
+
+{{ item.get('stem_md') }}
+
+{% for c in item.get('choices') %}- {{ c.get('letter') }}) {{ c.get('label') }}
+{% endfor %}
+
+### Output
+
+Reply with ONLY the single letter (A, B, C, or D) of the best answer. No prose,
+no explanation — just the letter.
