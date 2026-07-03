@@ -10,10 +10,17 @@
  * Pure functions only — `parseTest01English(md)` takes the markdown string and
  * returns `{ questions, answerKey }`; no file I/O here (that lives in the script's
  * thin `main()`), so this is node-testable with a `readFileSync` of the source.
+ *
+ * LOCAL-ONLY ORACLE: the source markdown lives in the developer's untracked
+ * `PreAct/` study-materials directory (deliberately NOT committed — personal
+ * corpus). Where it is absent (CI), this suite SKIPS with that reason; the
+ * committed conversion artifact (`lib/adapters/engine/_test01_english_corpus.ts`)
+ * is what the app + other tests consume, so CI coverage of the corpus itself
+ * is unaffected — only the parse contract re-check needs the raw source.
  */
 
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { parseTest01English } from "./convert_test01_english";
@@ -21,10 +28,17 @@ import { Question } from "../lib/wire/engine_entities";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SOURCE = resolve(HERE, "../../PreAct/practice-tests/Test-01.md");
-const MD = readFileSync(SOURCE, "utf8");
+const SOURCE_AVAILABLE = existsSync(SOURCE);
 
-describe("parseTest01English", () => {
-  const { questions, answerKey } = parseTest01English(MD);
+// The describe BODY still executes at collection time even under skipIf, so
+// the read AND the parse must themselves be guarded — the empty fallback is
+// never asserted against (every test below is skipped when the source is absent).
+const { questions, answerKey }: ReturnType<typeof parseTest01English> =
+  SOURCE_AVAILABLE
+    ? parseTest01English(readFileSync(SOURCE, "utf8"))
+    : { questions: [], answerKey: {} };
+
+describe.skipIf(!SOURCE_AVAILABLE)("parseTest01English", () => {
 
   it("extracts all 48 English questions", () => {
     expect(questions).toHaveLength(48);

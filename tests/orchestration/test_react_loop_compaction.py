@@ -1575,17 +1575,28 @@ class TestCarrierDriftGuardUntouched:
                     f"required for phase={phase}"
                 )
 
-    def test_spec_version_unchanged_at_one(self) -> None:
+    # G8-OK: test_spec_version_unchanged_at_one renamed to
+    # test_spec_version_moves_only_on_rubric_changes — same guard, the literal
+    # pin moved 1→2 because carrier-spec v2 (coach-shape amendment,
+    # §13.4/ADR-0009) is a rubric change; the guarded property ("enrichment
+    # carriers never bump the version") is unchanged and still asserted.
+    def test_spec_version_moves_only_on_rubric_changes(self) -> None:
         """Adding C1 must NOT bump the spec version (enrichment, §7.0).
         A version bump would force every downstream consumer of the
         carrier-spec to re-pin; the drift-guard's whole point is that
-        enrichment carriers don't cost a version."""
+        enrichment carriers don't cost a version.
+
+        The pin stays LITERAL so a silent bump fails loudly. Recorded bump
+        history (each one a deliberate rubric change, never enrichment):
+        v1→v2 = the Subject-Coach coach-shape amendment (§13.4/ADR-0009 —
+        completion goal-judge exempt for AgentShape.SUBJECT_COACH)."""
         from trust.governance_carrier_spec import default_spec
 
         spec = default_spec()
-        assert spec.spec_version == 1, (
-            f"spec_version unexpectedly bumped to {spec.spec_version} — "
-            "C1's CONTEXT_COMPACTED is enrichment and must not move it"
+        assert spec.spec_version == 2, (
+            f"spec_version unexpectedly moved to {spec.spec_version} — a bump "
+            "is only legal for a rubric change (record it here); C1's "
+            "CONTEXT_COMPACTED and other enrichment carriers must not move it"
         )
 
 

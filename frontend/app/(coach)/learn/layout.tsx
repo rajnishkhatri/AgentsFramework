@@ -8,6 +8,7 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { EngineProvider } from "@/app/engine-provider";
+import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { AppNav } from "@/components/shell/AppNav";
 import { FocusModeChrome } from "@/components/shell/FocusModeChrome";
 import { useSurface } from "@/components/shell/use_surface";
@@ -59,20 +60,29 @@ function CoachShell(props: {
     );
   }
 
-  // iPhone non-focus: content above a persistent bottom tab bar.
+  // iPhone non-focus: a slim header (theme toggle — the prototype's "header
+  // toggle themes the whole page", FR-K1) above the content, above a
+  // persistent bottom tab bar.
   if (surface === "iphone") {
     return (
       <div className="flex min-h-dvh flex-col">
+        <header className="flex items-center justify-end border-b border-border px-2 py-1">
+          <ThemeToggle />
+        </header>
         <main className="flex-1 overflow-y-auto">{children}</main>
         <AppNav surface={surface} pathname={pathname} />
       </div>
     );
   }
 
-  // desktop / iPad: persistent sidebar beside the content (FR-B1).
+  // desktop / iPad: persistent sidebar beside the content (FR-B1). The theme
+  // toggle rides the sidebar top so it is reachable from every screen (FR-K1).
   return (
     <div className="flex min-h-dvh">
-      <aside className="w-56 shrink-0 border-r border-border">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-border">
+        <div className="flex justify-end px-2 pt-2">
+          <ThemeToggle />
+        </div>
         <AppNav surface={surface} pathname={pathname} />
       </aside>
       <main className="mx-auto w-full max-w-[1180px] flex-1 px-6 py-6">

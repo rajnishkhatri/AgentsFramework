@@ -26,7 +26,9 @@ def _fast_profile():
     )
 
 
-async def _run_and_capture_records(tmp_path, agent_config: AgentConfig) -> list[dict]:
+async def _run_and_capture_records(
+    tmp_path, agent_config: AgentConfig, coach_context: dict | None = None
+) -> list[dict]:
     mock_response = MagicMock()
     mock_response.content = "FINAL ANSWER: ok"
     mock_response.tool_calls = []
@@ -58,14 +60,17 @@ async def _run_and_capture_records(tmp_path, agent_config: AgentConfig) -> list[
             agent_config=agent_config,
             cache_dir=tmp_path / "cache",
         )
+        state: dict = {
+            "task_id": "test-capture",
+            "task_input": "Why is this comma wrong?",
+            "messages": [],
+            "workflow_id": "wf-capture",
+            "registered_agent_id": "agent-test",
+        }
+        if coach_context is not None:
+            state["coach_context"] = coach_context
         await graph.ainvoke(
-            {
-                "task_id": "test-capture",
-                "task_input": "Why is this comma wrong?",
-                "messages": [],
-                "workflow_id": "wf-capture",
-                "registered_agent_id": "agent-test",
-            },
+            state,
             config={
                 "configurable": {"task_id": "test-capture", "user_id": "learner-1"}
             },
@@ -107,3 +112,54 @@ class TestCoachEvalCaptureTarget:
         )
 
         assert subject_coach_agent_config().eval_capture_target == "subject_coach"
+
+
+class TestCoachModeInEvalRecord:
+    """§13 audit finding F1 (sampler half): ``task_input`` is last-message-only
+    on real traffic, so the record itself must carry the formatter-derived
+    mode for the judge sampler's rubric selection."""
+
+    @pytest.mark.asyncio
+    async def test_default_agent_records_have_no_coach_mode_key(self, tmp_path):
+        """Failure path first: no coach_context ⇒ byte-identical ai_input."""
+        cfg = AgentConfig(default_model="gpt-4o-mini", models=[_fast_profile()])
+        records = await _run_and_capture_records(tmp_path, cfg)
+        llm_records = [r for r in records if r["target"] == "call_llm"]
+        assert llm_records
+        assert all("coach_mode" not in r["ai_input"] for r in llm_records)
+
+    @pytest.mark.asyncio
+    async def test_coach_record_carries_the_fail_closed_mode(self, tmp_path):
+        cfg = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile()],
+            eval_capture_target="subject_coach",
+        )
+        records = await _run_and_capture_records(
+            tmp_path,
+            cfg,
+            coach_context={"mode": "post_feedback", "question_id": "q-1"},
+        )
+        coach_records = [r for r in records if r["target"] == "subject_coach"]
+        assert coach_records
+        assert all(
+            r["ai_input"]["coach_mode"] == "post_feedback" for r in coach_records
+        )
+
+    @pytest.mark.asyncio
+    async def test_spoofed_mode_is_recorded_as_pre_submit(self, tmp_path):
+        """The record carries what the renderer APPLIED (fail-closed), never
+        the advisory client value — the sampler must pick the strict rubric."""
+        cfg = AgentConfig(
+            default_model="gpt-4o-mini",
+            models=[_fast_profile()],
+            eval_capture_target="subject_coach",
+        )
+        records = await _run_and_capture_records(
+            tmp_path,
+            cfg,
+            coach_context={"mode": "POST_FEEDBACK", "question_id": "q-1"},
+        )
+        coach_records = [r for r in records if r["target"] == "subject_coach"]
+        assert coach_records
+        assert all(r["ai_input"]["coach_mode"] == "pre_submit" for r in coach_records)

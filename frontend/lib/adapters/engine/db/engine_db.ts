@@ -19,6 +19,7 @@
 
 import type {
   Attempt,
+  Hint,
   ProgressPoint,
   Question,
   QuizSession,
@@ -68,6 +69,12 @@ export interface EngineDb extends ReadableEngineDb {
   nextReviewedQuestion(subject: string, skillId: string): Promise<Question | null>;
   getQuestion(id: string): Promise<Question | null>;
   insertQuestion(q: Question): Promise<void>;
+
+  // --- hint (ADR-0014; same pushed-down reviewed gate as question) ---
+  /** The question's ladder, reviewed=true ONLY, ordered by rung ascending. */
+  listReviewedHints(subject: string, questionId: string): Promise<Hint[]>;
+  /** Rejects a duplicate (question_id, rung) — one rung per level (ADR-0014). */
+  insertHint(h: Hint): Promise<void>;
 
   // --- quiz_session ---
   insertSession(s: QuizSession): Promise<void>;

@@ -165,6 +165,36 @@ describe("runQuizSubmit — coach-session marker notify (ADR-0012 Amendment, FR-
     expect(result.attempt).not.toBeNull();
   });
 
+  it("notifier fires even when a downstream port (scheduler.review) rejects", async () => {
+    // Review finding A2: the learner HAS submitted once the answer is graded —
+    // a failing FSRS review must not leave the coach in pre_submit forever
+    // (feedback still renders answer fields client-side; the coach would
+    // refuse to discuss them).
+    const calls: string[] = [];
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await expect(
+      runQuizSubmit(
+        {
+          ...ports,
+          scheduler: {
+            ...ports.scheduler,
+            review: () => Promise.reject(new Error("fsrs store down")),
+          },
+          quizSubmitNotifier: { notifySubmitted: (q) => calls.push(q) },
+        },
+        {
+          session,
+          question: question(),
+          learnerId: LEARNER,
+          letter: "B",
+          elapsedMs: 1000,
+          usedHint: false,
+        },
+      ),
+    ).rejects.toThrow("fsrs store down");
+    expect(calls).toEqual(["q1"]);
+  });
+
   it("a bag without a notifier still submits (server/legacy path)", async () => {
     const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
     const result = await runQuizSubmit(ports, {
@@ -313,5 +343,49 @@ describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () 
     expect(item.question.reviewed).toBe(true);
     expect(item.question.id).toBe("q1");
     expect(item.skillId).toBe("s-punc");
+  });
+
+  it("returns an EMPTY ladder when the question has no reviewed rungs (FR-12)", async () => {
+    db.seedHints([
+      {
+        id: "h-q1-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 1,
+        body_md: "unreviewed generator draft",
+        reviewed: false,
+        generated_by: "gpt-4o-mini@run-9",
+      },
+    ]);
+    const item = await openQuizItem(ports, { subject: SUBJECT, learnerId: LEARNER });
+    expect(item.hintLadder).toEqual([]);
+  });
+
+  it("loads the question's reviewed hint ladder with the item (ADR-0014)", async () => {
+    db.seedHints([
+      {
+        id: "h-q1-2",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 2,
+        body_md: "conceptual rung",
+        reviewed: true,
+        generated_by: "authored",
+      },
+      {
+        id: "h-q1-1b",
+        subject: SUBJECT,
+        question_id: "q1",
+        rung: 1,
+        body_md: "probe rung",
+        reviewed: true,
+        generated_by: "authored",
+      },
+    ]);
+    const item = await openQuizItem(ports, { subject: SUBJECT, learnerId: LEARNER });
+    expect(item.hintLadder.map((h) => h.body_md)).toEqual([
+      "probe rung",
+      "conceptual rung",
+    ]);
   });
 });

@@ -76,8 +76,14 @@ from middleware.sidecars.black_box_to_telemetry import BlackBoxToTelemetryRelay
 from middleware.composition import (
     AgentComponents,
     AgentRuntimeSettings,
+    build_coach_components,
     build_components,
     build_runtime_graph,
+)
+from services.governance.subject_coach_identity import (
+    SUBJECT_COACH_AGENT_ID,
+    SUBJECT_COACH_CAPABILITIES,
+    register_subject_coach,
 )
 from services.trace_service import JsonlFileTraceSink, TraceService
 from trust.models import AgentFacts
@@ -334,6 +340,49 @@ def build_dev_app() -> FastAPI:
         # telemetry path — joined here at the composition root).
         dev_relay.set_agent_facts_registry(agent_facts_registry)
 
+    def _install_runtimes(app: FastAPI, checkpointer: Any) -> None:
+        """Compile the default + coach graphs on one checkpointer.
+
+        1B-10 (ADR-0007/0012): the coach graph is selected per-request on
+        body agent_id. Fail-SAFE for chat (a coach composition defect must
+        not take the dev backend down) but fail-CLOSED for the coach:
+        ``coach_runtime`` stays None and /run/stream 503s coach requests
+        rather than ever serving them on the ungated default graph.
+        """
+        graph = build_runtime_graph(
+            components,
+            build_graph,
+            checkpointer=checkpointer,
+            interrupt_before_execute_tool=False,
+        )
+        app.state.runtime = LangGraphRuntime(
+            graph,
+            trace_emit=trace_service.emit,
+            autocapture=components.memory_autocapture,
+        )
+        try:
+            coach_graph = build_runtime_graph(
+                build_coach_components(components),
+                build_graph,
+                checkpointer=checkpointer,
+                interrupt_before_execute_tool=False,
+                bound_capabilities=SUBJECT_COACH_CAPABILITIES,
+            )
+            app.state.coach_runtime = LangGraphRuntime(
+                coach_graph,
+                trace_emit=trace_service.emit,
+                autocapture=components.memory_autocapture,
+            )
+            logger.info("Coach graph compiled (%s, shadow)", SUBJECT_COACH_AGENT_ID)
+        except Exception:
+            app.state.coach_runtime = None
+            logger.exception(
+                "coach graph build failed — coach requests will 503 "
+                "(fail-closed, never the default graph)"
+            )
+        app.state.dev_identity = dev_identity
+        app.state.telemetry_exporter = dev_telemetry
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         """Enter checkpointer context before the graph is compiled."""
@@ -349,59 +398,22 @@ def build_dev_app() -> FastAPI:
                 )
 
                 async with PostgresCheckpointer.from_env() as pg_cp:
-                    graph = build_runtime_graph(
-                        components,
-                        build_graph,
-                        checkpointer=pg_cp.saver,
-                        interrupt_before_execute_tool=False,
-                    )
-                    app.state.runtime = LangGraphRuntime(
-                        graph,
-                        trace_emit=trace_service.emit,
-                        autocapture=components.memory_autocapture,
-                    )
-                    app.state.dev_identity = dev_identity
-                    app.state.telemetry_exporter = dev_telemetry
+                    _install_runtimes(app, pg_cp.saver)
                     yield
             else:
-                checkpointer = None
                 try:
                     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
                     async with AsyncSqliteSaver.from_conn_string(
                         str(cache_dir / "checkpoints.db")
                     ) as cp:
-                        graph = build_runtime_graph(
-                            components,
-                            build_graph,
-                            checkpointer=cp,
-                            interrupt_before_execute_tool=False,
-                        )
-                        app.state.runtime = LangGraphRuntime(
-                            graph,
-                            trace_emit=trace_service.emit,
-                            autocapture=components.memory_autocapture,
-                        )
-                        app.state.dev_identity = dev_identity
-                        app.state.telemetry_exporter = dev_telemetry
+                        _install_runtimes(app, cp)
                         yield
                 except ImportError:
                     logger.warning(
                         "AsyncSqliteSaver not available; running without checkpointer"
                     )
-                    graph = build_runtime_graph(
-                        components,
-                        build_graph,
-                        checkpointer=checkpointer,
-                        interrupt_before_execute_tool=False,
-                    )
-                    app.state.runtime = LangGraphRuntime(
-                        graph,
-                        trace_emit=trace_service.emit,
-                        autocapture=components.memory_autocapture,
-                    )
-                    app.state.dev_identity = dev_identity
-                    app.state.telemetry_exporter = dev_telemetry
+                    _install_runtimes(app, None)
                     yield
         finally:
             if relay_task is not None:
@@ -529,14 +541,40 @@ def build_dev_app() -> FastAPI:
 
     # ── POST /run/stream ───────────────────────────────────────────
 
+    # Registered lazily on the first coach request (mirrors app_prod.py);
+    # the stored, signed card is what guard_input verifies per run (FR-2).
+    _coach_card: list[AgentFacts] = []
+
+    def _coach_run_identity(subject: str) -> AgentFacts:
+        if not _coach_card:
+            _coach_card.append(
+                register_subject_coach(
+                    agent_facts_registry, registered_by="dev-runner:coach_seed"
+                )
+            )
+        return _coach_card[0].model_copy(update={"owner": subject})
+
     @app.post("/run/stream")
     async def run_stream(
         request: Request,
         authorization: str | None = Header(default=None),
     ) -> StreamingResponse:
         identity = _require_bearer(request, authorization)
-        runtime: LangGraphRuntime = request.app.state.runtime
         body = await request.json()
+        # 1B-10: body agent_id selects the identity-bound coach graph.
+        # Fail CLOSED when the coach runtime is unwired — never serve a
+        # coach request on the ungated default graph (mirrors app_prod.py).
+        if body.get("agent_id") == SUBJECT_COACH_AGENT_ID:
+            runtime: LangGraphRuntime = getattr(
+                request.app.state, "coach_runtime", None
+            )
+            if runtime is None:
+                raise HTTPException(
+                    status_code=503, detail="coach runtime not available"
+                )
+            identity = _coach_run_identity(DEV_USER_ID)
+        else:
+            runtime = request.app.state.runtime
         run_ctx = build_run_stream_context(
             body,
             identity=identity,

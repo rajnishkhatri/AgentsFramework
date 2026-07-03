@@ -14,6 +14,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
+import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { screenTitle, COACH_BASE, type ScreenId } from "./nav_model";
 
 export function FocusModeChrome(props: {
@@ -28,14 +29,19 @@ export function FocusModeChrome(props: {
     <div className="flex min-h-dvh flex-col">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h1 className="text-base font-semibold">{title}</h1>
-        <Link
-          href={returnTo}
-          data-testid="focus-close"
-          aria-label={`Close ${title}`}
-          className="grid size-9 place-items-center rounded-full text-muted hover:bg-selected hover:text-fg"
-        >
-          <X aria-hidden="true" className="size-5" />
-        </Link>
+        <div className="flex items-center gap-1">
+          {/* Focus screens hide all other chrome, so the theme control must
+              ride this header or dark mode is unreachable mid-drill (FR-K1). */}
+          <ThemeToggle />
+          <Link
+            href={returnTo}
+            data-testid="focus-close"
+            aria-label={`Close ${title}`}
+            className="grid size-11 place-items-center rounded-full text-muted hover:bg-selected hover:text-fg"
+          >
+            <X aria-hidden="true" className="size-5" />
+          </Link>
+        </div>
       </header>
       <main className="flex-1">{children}</main>
     </div>

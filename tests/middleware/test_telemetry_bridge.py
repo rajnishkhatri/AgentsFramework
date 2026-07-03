@@ -587,6 +587,74 @@ class TestTruncation:
 
 
 # ─────────────────────────────────────────────────────────────────────
+# llm.call input_text render visibility (§13 audit finding F2)
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestInputTextRenderVisibility:
+    """§13 audit finding F2: the 4 KB cap cut ``llm.call.input_text`` before
+    the persona + coach-context render region, making the §13.2 answer-field
+    exclusion check vacuous on real traces. Posture: input_text gets a raised
+    cap sized for a full system-prompt render, and ANY cut is explicitly
+    marked — a silent truncation reads to an auditor as a clean pass."""
+
+    def _drive_llm_call(self, exporter: StubTelemetryExporter, input_text: str) -> dict:
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            exporter,
+            LLMMessageStarted(trace_id="t1", message_id="m1", input_text=input_text),
+        )
+        emit_domain_event(
+            exporter,
+            LLMMessageEnded(trace_id="t1", message_id="m1", output_text="ok"),
+        )
+        return exporter.events[-1]["attributes"]
+
+    def test_render_region_beyond_4k_stays_visible(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """An answer-field name sitting past the old 4096 cut (where the
+        coach context renders in a real prompt) must reach the trace."""
+        text = ("x" * 10_000) + " per_choice_rationale: (should be visible)"
+        attrs = self._drive_llm_call(stub_exporter, text)
+        assert "per_choice_rationale" in attrs["input_text"]
+
+    def test_a_cut_is_explicitly_marked(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """Beyond even the raised cap, the auditor must be able to SEE that
+        the field is partial (verdict: unverifiable, never a clean pass)."""
+        from middleware.telemetry_bridge import _MAX_INPUT_TEXT_BYTES
+
+        text = "y" * (_MAX_INPUT_TEXT_BYTES + 10_000)
+        attrs = self._drive_llm_call(stub_exporter, text)
+        assert attrs["input_text"].endswith("…[truncated]")
+        assert len(attrs["input_text"]) <= _MAX_INPUT_TEXT_BYTES
+
+    def test_small_input_is_untouched(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        attrs = self._drive_llm_call(stub_exporter, "hi")
+        assert attrs["input_text"] == "hi"
+
+    def test_other_fields_mark_their_cut_too(
+        self, stub_exporter: StubTelemetryExporter
+    ) -> None:
+        """The detectability rule is field-agnostic: a truncated tool result
+        must carry the marker inside the (unchanged) 4096 bound."""
+        from middleware.telemetry_bridge import emit_domain_event
+
+        emit_domain_event(
+            stub_exporter,
+            ToolResultReceived(trace_id="t1", tool_call_id="tc-1", result="z" * 8000),
+        )
+        exported = stub_exporter.events[0]["attributes"]["result"]
+        assert exported.endswith("…[truncated]")
+        assert len(exported) <= 4096
+
+
+# ─────────────────────────────────────────────────────────────────────
 # release_trace() on RunFinishedDomain
 # ─────────────────────────────────────────────────────────────────────
 

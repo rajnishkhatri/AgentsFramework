@@ -1,0 +1,40 @@
+## Hint-ladder generation — {{ subject }} (offline content job, ADR-0012/ADR-0014)
+
+You are writing the REVIEWED hint ladder for one multiple-choice question. You
+can see the full answer key below — the learner never will. Your rungs are
+served pre-submit, so they must scaffold WITHOUT giving the answer away; a
+deterministic leakage gate quarantines any rung that does.
+
+### The question
+
+- id: {{ question.get('id') }}
+- stem: {{ question.get('stem_md') or question.get('stem') }}
+{% if question.get('choices') %}- choices:
+{% for c in question.get('choices') %}  - {{ c.get('letter') }}) {{ c.get('label') }}
+{% endfor %}{% endif %}- correct answer: {{ question.get('answer_letter') }}
+{% if question.get('why_correct_md') %}- why correct: {{ question.get('why_correct_md') }}
+{% endif %}
+
+### Ladder discipline (violations are quarantined, not fixed)
+
+1. **rung 1 — probe:** a question about the learner's current thinking; no new
+   information.
+2. **rung 2 — conceptual:** name the underlying rule or concept in general
+   terms — never applied to a specific choice.
+3. **rung 3 — directive:** point at WHERE to look or WHAT to compare; it may
+   narrow ("check where the clause ends") but must NEVER name a choice letter
+   assertively, quote the correct choice's wording, recite the why-correct
+   rationale, or eliminate every wrong choice.
+4. There is NO rung 4. Never state or uniquely imply the answer.
+
+### Output
+
+Reply with ONLY this JSON object (no prose before or after):
+
+```json
+{"rungs": [
+  {"rung": 1, "body_md": "..."},
+  {"rung": 2, "body_md": "..."},
+  {"rung": 3, "body_md": "..."}
+]}
+```

@@ -38,7 +38,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # Bump when the rubric changes. SKILL.md remains the source of truth; the spec is a
 # versioned transcription so a rubric change is a deliberate, reviewable diff.
-SPEC_VERSION = 1
+# v2: coach-shape amendment (Subject-Coach design §13.4/ADR-0009) — the
+# COMPLETION goal-judge requirement is exempt for the subject-coach shape.
+SPEC_VERSION = 2
 
 
 class Pillar(str, Enum):
@@ -61,6 +63,23 @@ class RunShape(str, Enum):
 
     FROM_STEP_ZERO = "from_step_zero"
     RESUMED = "resumed"
+
+
+class AgentShape(str, Enum):
+    """Which agent contract shaped the run — gates coach-shape exemptions.
+
+    Subject-Coach design §13.4 (spec v2): per ADR-0009 nothing judge-related
+    runs inline on a coach run — the eval evidence is the post-hoc
+    ``target="coach_judges"`` EvalRecord stream, joined by task_id, not an
+    in-trace observation. Demanding ``eval.goal_judge`` at COMPLETION on a
+    coach run is therefore a guaranteed false-positive, the same class as the
+    resumed-Identity exemption (GG-4). Shape-aware, never weakened: the
+    exemption applies ONLY to that one requirement; every other carrier rule
+    binds the coach unchanged.
+    """
+
+    DEFAULT = "default"
+    SUBJECT_COACH = "subject_coach"
 
 
 # ── Wire vocabulary (string values mirrored from services/governance, drift-guarded)
@@ -115,7 +134,8 @@ class CarrierRequirement(BaseModel):
     ``conditional_on_tool_failure``: the carrier is required only when a tool failed
     during the phase (the Validation ``error_occurred`` rule — clean passes stay
     quiet; SKILL.md). ``exempt_when_resumed``: skip on a resumed run (the Identity
-    UNVERIFIABLE exemption, GG-4).
+    UNVERIFIABLE exemption, GG-4). ``exempt_for_coach``: skip on a subject-coach
+    run (the §13.4 eval-absent-is-expected rule, ADR-0009 — v2).
     """
 
     model_config = ConfigDict(frozen=True)
@@ -126,6 +146,7 @@ class CarrierRequirement(BaseModel):
     )
     conditional_on_tool_failure: bool = False
     exempt_when_resumed: bool = False
+    exempt_for_coach: bool = False
 
 
 class PillarCarrierSpec(BaseModel):
@@ -145,18 +166,27 @@ class PillarCarrierSpec(BaseModel):
         )
 
     def required_for(
-        self, phase_value: str, *, tool_failed: bool, run_shape: RunShape
+        self,
+        phase_value: str,
+        *,
+        tool_failed: bool,
+        run_shape: RunShape,
+        agent_shape: AgentShape = AgentShape.DEFAULT,
     ) -> tuple[CarrierRequirement, ...]:
-        """Requirements in force for this phase under this run shape / failure state.
+        """Requirements in force for this phase under this run/agent shape.
 
-        Pure: no I/O. Applies the two SKILL.md exemptions (resumed-Identity,
-        clean-pass-no-error) so the caller compares against an already-filtered set.
+        Pure: no I/O. Applies the three exemptions (resumed-Identity,
+        clean-pass-no-error, coach-shape eval-absent — v2) so the caller
+        compares against an already-filtered set. ``agent_shape`` defaults to
+        DEFAULT so pre-v2 callers keep the full rubric unchanged.
         """
         out: list[CarrierRequirement] = []
         for req in self.requirements.get(phase_value, ()):  # unknown phase → no reqs
             if req.exempt_when_resumed and run_shape is RunShape.RESUMED:
                 continue
             if req.conditional_on_tool_failure and not tool_failed:
+                continue
+            if req.exempt_for_coach and agent_shape is AgentShape.SUBJECT_COACH:
                 continue
             out.append(req)
         return tuple(out)
@@ -204,7 +234,15 @@ def default_spec() -> PillarCarrierSpec:
         # Validation — the output rail must leave a check span.
         PH_OUTPUT_VALIDATION: (_req(Pillar.VALIDATION, EVT_GUARDRAIL_CHECKED),),
         # Reasoning — a completed run must carry the goal-judge verdict
-        # (the corrupt-success class the audit skill flags).
-        PH_COMPLETION: (_req(Pillar.REASONING, EVT_GOAL_JUDGE),),
+        # (the corrupt-success class the audit skill flags). Coach-shape
+        # exemption (v2, §13.4/ADR-0009): the coach's judges are post-hoc
+        # (target="coach_judges"), so eval.goal_judge absent is EXPECTED there.
+        PH_COMPLETION: (
+            CarrierRequirement(
+                pillar=Pillar.REASONING,
+                event_value=EVT_GOAL_JUDGE,
+                exempt_for_coach=True,
+            ),
+        ),
     }
     return PillarCarrierSpec(spec_version=SPEC_VERSION, requirements=requirements)

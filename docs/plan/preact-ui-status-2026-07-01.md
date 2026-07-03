@@ -16,6 +16,12 @@ slice is **38 test files / 297 tests passing**. What remains is the Phase-2 **ba
 (coach persona/judges, flags OFF), the responsive/a11y/theme polish (Phase 4), a browser
 dev-seed (in progress in a separate session), and the deferred tutorial/progress screens.
 
+> **Update 2026-07-02 (branch `feat/subject-coach-agent`): Phase 4 is BUILT** — see
+> "Phase 4 — Responsive / iPad-split / a11y / theme" below, now a ✅ ledger. The Phase-2
+> backend also landed on that branch (subject-coach plan Phases 1–2 + its own Phase 4
+> hint pipeline, flags OFF). Remaining here: WKWebView verification (ADR-0001 standing
+> gate), Feedback "Ask the coach" chip (2.4), Socratic-tone eval (2.5), Screens 6/7.
+
 ---
 
 ## ✅ Done
@@ -83,13 +89,33 @@ translators), U4 (single streaming region), read-only `ReadableEngineDb`.
 > `react_loop.py::build_graph`, flags default OFF → shadow-first; ADR-0007 accepted). The coach
 > flags flip on only after the above lands, shadow-first.
 
-### Phase 4 — Responsive / iPad-split / a11y / theme
-- Theme toggle across screens; iPhone **3-tab** footer + focus-mode ✕ (UI-spec §8.1 supersedes
-  FR-B1's 4-tab text); iPad split with persistent live coach panel (`CoachPanel` +
-  `coach_thread_store` shared thread, FR-J3/J4); a11y sweep (axe per surface, ≥44px touch
-  targets, WCAG-AA); desktop ≤1180 / quiz ≤760 width constraints.
-- Playwright `e2e/coach/` (mocked SSE; the prototype suite is the behavioral oracle). Verify
-  the split/responsive surfaces in real WKWebView, not just Chromium (ADR-0001 standing gate).
+### Phase 4 — Responsive / iPad-split / a11y / theme — ✅ BUILT (2026-07-02, `feat/subject-coach-agent`)
+- **4.1 Theme toggle (FR-K1):** `ThemeToggle` wired into all three learn chromes (desktop/iPad
+  sidebar top, iPhone slim header, FocusModeChrome header — focus screens hide all other
+  chrome, so the header must carry it). `e2e/learn/theme.spec.ts` (3): flip → `html[data-theme]`
+  + `--color-accent` re-resolves; persists across nav into a focus screen.
+- **4.2 iPhone 3-tab + focus ✕:** was already built in 1.1 (nav_model/AppNav/FocusModeChrome).
+- **4.3 iPad split (FR-J3/J3a/J4):** `coach_thread_store` module singleton (the
+  `quiz_session_store` precedent) + `useCoach` rewired onto it via `useSyncExternalStore` +
+  React-free `sendCoachAsk`; `CoachPanel` ("Socratic mode · watching this item", item-scoped
+  composer) rendered by the quiz page on the iPad surface, keyed by question id. **One thread
+  proven e2e**: panel ask → in-app nav → same turn on the Coach screen (`ipad.spec.ts`, 3).
+  "One more nudge" steps the ADR-0014 REVIEWED ladder rungs 2→3 in-panel (two-tier,
+  non-leaking by cascade construction; exhausted ⇒ disabled, FR-B5).
+- **4.4 a11y (FR-K2):** light tokens darkened (muted/accent/success + 6 bucket accents; accent
+  twice — #d87758→#a75c44→**#93513d** so accent text clears 4.5:1 on its own `accent-light`
+  tint, the soft-feedback-banner surface); BucketCard `<dl>` fix; axe sweeps un-fixme'd and
+  green on all 5 surfaces; **dark theme now swept too** (3 tests) after the toggle made it
+  reachable — fixed via new `--color-on-accent/-success/-danger` tokens (white in light;
+  dark-bg text in dark, where the dark-tuned fills are light: white-on-fill was 1.9–3.0:1).
+- **4.5 widths + touch targets (FR-J1/K3):** `layout.spec.ts` (5) measures rendered boxes —
+  ≤1180 dashboard / ≤760 quiz; ≥44px sweep CAUGHT 3 real violations (tab-bar links, focus ✕
+  size-9, Get-a-hint) — fixed (`min-h-11` / `size-11`).
+- **Gates:** frontend vitest 124 files / 1318 pass · learn-e2e 27/27 (incl. video artifacts) ·
+  `tsc --noEmit` clean · `make check` 4782 pass · deterministic reviewer approve, 0 findings.
+- **Still open:** verify the split/responsive surfaces in real WKWebView, not just Chromium
+  (ADR-0001 standing gate); the prototype-suite re-point (`APP_URL`) remains optional — the
+  fresh `e2e/learn/` specs re-state its oracle rows.
 
 ### ADR-0010 conditions (gate the *next* increment — on-device SQLite / Progress)
 - Dual-dialect parity test `schema.spec::same_drizzle_schema_compiles_pg_and_sqlite` → add to

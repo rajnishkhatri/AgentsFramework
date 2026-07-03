@@ -53,8 +53,11 @@ export function CoachView(props: {
   busy: boolean;
   onAsk?: (body: string) => void | Promise<void>;
   onRetry?: () => void;
+  /** Composer placeholder override — the iPad panel scopes it to the item
+   *  ("Ask about this item…", FR-J3); default is the full-screen copy. */
+  placeholder?: string;
 }): React.JSX.Element {
-  const { turns, busy, onAsk, onRetry } = props;
+  const { turns, busy, onAsk, onRetry, placeholder = "Ask the coach…" } = props;
   return (
     <div className="flex h-full flex-col gap-4">
       <section
@@ -71,7 +74,7 @@ export function CoachView(props: {
       <Composer
         onSend={(body) => onAsk?.(body)}
         busy={busy}
-        placeholder="Ask the coach…"
+        placeholder={placeholder}
       />
     </div>
   );

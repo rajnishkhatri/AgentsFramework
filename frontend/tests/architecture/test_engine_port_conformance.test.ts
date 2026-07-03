@@ -28,8 +28,9 @@ const ENGINE_PORTS_DIR = path.join(FRONTEND_ROOT, "lib", "ports", "engine");
 // Non-interface helper modules under ports/engine/ — skipped by interface checks.
 const NON_PORT_FILES = new Set(["errors.ts", "index.ts"]);
 
-// The eight engine ports (7 ADR-0006 + LearnerReadRepo, ADR-0011). Adding a port
-// without a row here is a P7 violation (port -> conformance pairing).
+// The nine engine ports (7 ADR-0006 + LearnerReadRepo, ADR-0011 + HintRepo,
+// ADR-0014). Adding a port without a row here is a P7 violation (port ->
+// conformance pairing).
 const REQUIRED_PORTS: ReadonlyArray<{
   file: string;
   interfaceName: string;
@@ -50,6 +51,8 @@ const REQUIRED_PORTS: ReadonlyArray<{
   // ADR-0011: read-only skill_state port that unblocks Dashboard mastery
   // (FR-C3) + Summary delta (FR-G1) without the UI touching the EngineDb seam.
   { file: "learner_read_repo.ts", interfaceName: "LearnerReadRepo" },
+  // ADR-0014: read-only hint-ladder seam (reviewed=true rungs only, FR-12/20).
+  { file: "hint_repo.ts", interfaceName: "HintRepo" },
 ];
 
 // Vendor acronyms a port name must never contain (P2).

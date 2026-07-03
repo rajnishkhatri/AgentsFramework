@@ -18,7 +18,7 @@ export function Toaster(props: ToasterProps): React.JSX.Element {
           toast:
             "group toast border border-border bg-bg text-fg rounded-lg shadow-lg",
           description: "text-muted",
-          actionButton: "bg-accent text-white rounded-md",
+          actionButton: "bg-accent text-on-accent rounded-md",
           cancelButton: "bg-surface text-muted rounded-md",
           error: "border-border",
         },

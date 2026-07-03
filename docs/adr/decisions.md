@@ -12,6 +12,14 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-02 — **`llm.call.input_text` truncation posture: raised cap + visible
+  marker** (§13 audit finding F2). `input_text` alone gets 32 KB
+  (`_MAX_INPUT_TEXT_BYTES`) so the persona + coach-context render region is
+  auditable; every cut field now ends in `…[truncated]` inside its byte bound.
+  Rejected keeping 4 KB + a pre-truncation answer-field scan in the bridge: that
+  would hardcode coach domain fields into generic middleware and only answer one
+  audit question, while a silent cut stays a vacuous pass everywhere else.
+
 - 2026-07-02 — **DEP layer rules exempt test modules.** `classify_layer` matches the
   first path part in `LAYER_DIRS`, so `tests/services/...` graded as the services layer
   and the reviewer bot rejected PR #120 over a live test's legitimate `components`

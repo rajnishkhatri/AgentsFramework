@@ -55,4 +55,20 @@ describe("FocusModeChrome — FR-B2 close affordance", () => {
     expect(doc.body.textContent).toContain("Summary");
     expect(doc.querySelector('[data-testid="child"]')).not.toBeNull();
   });
+
+  it("keeps the theme toggle reachable in the focus header (FR-K1)", () => {
+    // Focus screens hide ALL other chrome (no tab bar, no sidebar), so the
+    // header must carry the theme control or dark mode is unreachable while
+    // drilling. SSR renders ThemeToggle's pre-mount ghost — same control,
+    // generic "Toggle theme" label.
+    const doc = dom(
+      <FocusModeChrome screenId="quiz">
+        <p>item</p>
+      </FocusModeChrome>,
+    );
+    const toggle = Array.from(doc.querySelectorAll("button")).find((b) =>
+      (b.getAttribute("aria-label") ?? "").toLowerCase().includes("theme"),
+    );
+    expect(toggle, "focus header must render the theme toggle").not.toBeUndefined();
+  });
 });

@@ -4,13 +4,12 @@
  * Two kinds of check live here:
  *
  *   1. The AXE SWEEPS (`assertNoBlockers`) run `@axe-core/playwright` on each
- *      seeded surface and require zero serious/critical violations. These are
- *      currently `test.fixme` — the sweep is a working ORACLE, but the surfaces
- *      carry real, pre-existing WCAG-AA debt (color-contrast on the mastery
- *      tokens; a `definition-list` markup gap) that belongs to the deferred
- *      Phase-4 a11y polish, not to this test/fixtures task. Fixme keeps the suite
- *      green while preserving the exact failing assertion for when Phase 4 lands.
- *      Tracked: PreAct Phase 4 (responsive / a11y / theme).
+ *      seeded surface and require zero serious/critical violations. Live since
+ *      the Phase-4 a11y pass closed the two pre-existing violation families:
+ *      color-contrast (the light `--color-muted`/`--color-accent`/`--color-success`
+ *      and six `--color-bucket-*` tokens were darkened at the token source,
+ *      hues preserved — FR-K2) and definition-list (BucketCard's <dl> groups
+ *      now hold exactly a <dt> + <dd>, no bare <span> siblings).
  *
  *   2. The STRUCTURAL checks (feedback-not-color-only; composer touch target)
  *      always run — they already hold and guard specific PreAct a11y contracts.
@@ -59,35 +58,29 @@ async function answerOneItem(page: Page): Promise<void> {
   await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible();
 }
 
-const PHASE4 = "Phase 4 WCAG-AA polish (color-contrast + definition-list) — tracked, deferred.";
-
 test.describe("PreAct /learn axe sweep (Phase-4 oracle)", () => {
   test.beforeEach(async ({ page }) => {
     await seedBrowser(page);
   });
 
   test("Dashboard has zero serious/critical a11y violations", async ({ page }) => {
-    test.fixme(true, PHASE4);
     await page.goto("/learn");
     await expect(page.locator("[data-testid^='bucket-']").first()).toBeVisible();
     await assertNoBlockers(page, "Dashboard");
   });
 
   test("Quiz has zero serious/critical a11y violations", async ({ page }) => {
-    test.fixme(true, PHASE4);
     await page.goto("/learn/quiz");
     await assertNoBlockers(page, "Quiz");
   });
 
   test("Feedback has zero serious/critical a11y violations", async ({ page }) => {
-    test.fixme(true, PHASE4);
     await page.goto("/learn/quiz");
     await answerOneItem(page);
     await assertNoBlockers(page, "Feedback");
   });
 
   test("Summary has zero serious/critical a11y violations", async ({ page }) => {
-    test.fixme(true, PHASE4);
     await page.goto("/learn/quiz");
     await answerOneItem(page);
     await page.locator("[data-testid='quiz-finish']").click();
@@ -97,13 +90,49 @@ test.describe("PreAct /learn axe sweep (Phase-4 oracle)", () => {
   });
 
   test("Coach has zero serious/critical a11y violations", async ({ page }) => {
-    test.fixme(true, PHASE4);
     await page.route("**/api/coach/run/stream", async (route) => {
       await route.fulfill({ status: 200, headers: buildSSEHeaders(), body: buildSSEBody(coachTurn()) });
     });
     await page.goto("/learn/coach");
     await expect(page.locator("[role='log']")).toBeVisible();
     await assertNoBlockers(page, "Coach");
+  });
+});
+
+test.describe("PreAct /learn axe sweep — dark theme (FR-K1 × FR-K2)", () => {
+  // The Phase-4.1 theme toggle makes dark mode reachable from every learn
+  // screen, so the dark palette is now a user-facing surface and gets the same
+  // AA sweep. next-themes persists the choice in localStorage("theme"); seeding
+  // it renders dark from first paint.
+  test.beforeEach(async ({ page }) => {
+    await seedBrowser(page);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("theme", "dark");
+    });
+  });
+
+  test("Dashboard (dark) has zero serious/critical a11y violations", async ({ page }) => {
+    await page.goto("/learn");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("[data-testid^='bucket-']").first()).toBeVisible();
+    await assertNoBlockers(page, "Dashboard dark");
+  });
+
+  test("Quiz (dark) has zero serious/critical a11y violations (accent CTA)", async ({ page }) => {
+    await page.goto("/learn/quiz");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("[data-testid='quiz-context']")).toBeVisible({ timeout: 10_000 });
+    // Select a choice so the accent-filled selected state + live submit button
+    // (the known white-on-accent residual) are both on screen for the sweep.
+    await page.locator("[data-testid^='choice-']").first().click();
+    await assertNoBlockers(page, "Quiz dark");
+  });
+
+  test("Feedback (dark) has zero serious/critical a11y violations (success/danger chips)", async ({ page }) => {
+    await page.goto("/learn/quiz");
+    await answerOneItem(page);
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await assertNoBlockers(page, "Feedback dark");
   });
 });
 

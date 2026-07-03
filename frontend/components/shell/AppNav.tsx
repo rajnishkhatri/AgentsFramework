@@ -41,9 +41,13 @@ export function AppNav(props: {
     >
       {items.map((item) => {
         const isActive = active === item.screenId;
-        const shared =
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium " +
-          "data-[active=true]:bg-selected data-[active=true]:text-fg";
+        const shared = cn(
+          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium",
+          "data-[active=true]:bg-selected data-[active=true]:text-fg",
+          // FR-K3: the tab bar is the coarse-pointer surface — every control
+          // is a ≥44px touch target (sidebar rows keep their compact height).
+          isTabBar && "min-h-11 justify-center",
+        );
 
         if (item.disabled) {
           // Coming soon: a legible, non-interactive control (FR-B5) — not a link.

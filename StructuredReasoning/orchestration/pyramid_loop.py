@@ -100,6 +100,10 @@ def build_pyramid_graph(
         llm_service=llm_service,
         prompt_service=prompt_service,
         judge_profile=default_fast_profile(),
+        # A DOMAIN condition: the precheck/classifier accept shortcuts only
+        # prove "not an attack" — the judge owns topicality (same fix as the
+        # coach rail in react_loop; ADR-0007 FR-7/FR-8).
+        domain_gated=True,
     )
 
     available_tool_descriptions = _tool_descriptions(tool_registry)

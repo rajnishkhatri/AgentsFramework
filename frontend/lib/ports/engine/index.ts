@@ -1,6 +1,6 @@
 /**
- * Barrel re-export for the eight Subject-Coach engine ports (7 ADR-0006 +
- * LearnerReadRepo, ADR-0011).
+ * Barrel re-export for the nine Subject-Coach engine ports (7 ADR-0006 +
+ * LearnerReadRepo, ADR-0011 + HintRepo, ADR-0014).
  *
  * Grouped under `ports/engine/` (not flat in `ports/`) so the engine bounded
  * context stays distinct from the eight V3 chat ports, and the chat
@@ -19,6 +19,7 @@ export type { Scheduler } from "./scheduler";
 export type { Grader } from "./grader";
 export type { ContentRepo } from "./content_repo";
 export type { LearnerReadRepo } from "./learner_read_repo";
+export type { HintRepo } from "./hint_repo";
 
 export {
   EngineError,
