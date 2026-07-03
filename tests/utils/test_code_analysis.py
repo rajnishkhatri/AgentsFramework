@@ -1116,3 +1116,68 @@ class TestDetectFailurePathRatio:
         assert result["pass"] is True
         assert result["total"] == 0
         assert result["ratio"] == 0.0
+
+
+# ── DEP rules exempt test modules ──────────────────────────────────────
+
+
+class TestDependencyRulesExemptTests:
+    """Layer DEP rules govern package code, not the tests that exercise it.
+
+    Real failure (2026-07-02, PR #120): the deterministic reviewer classified
+    ``tests/services/governance/test_subject_coach_persona_offtopic_live.py``
+    as Horizontal Services (``classify_layer`` matches the first path part in
+    LAYER_DIRS — here ``services``) and rejected the PR with
+    ``DEP.services_cannot_import_components`` for the test's legitimate
+    ``components.coach_context`` import. Cross-layer imports are the norm in
+    integration/live tests; the package-level invariants are enforced by
+    ``tests/architecture/`` directly.
+    """
+
+    def test_test_module_under_tests_services_is_exempt(self, tmp_project):
+        f = _write_file(
+            tmp_project,
+            "tests/services/governance/test_persona_live.py",
+            """\
+            from components.coach_context import render_coach_context_block
+            from services.llm_config import LLMService
+        """,
+        )
+        result = check_dependency_rules(f)
+        assert result["pass"] is True
+        assert result["violations"] == []
+
+    def test_test_module_under_tests_trust_is_exempt(self, tmp_project):
+        f = _write_file(
+            tmp_project,
+            "tests/trust/test_signing.py",
+            """\
+            from utils.helper import some_function
+        """,
+        )
+        result = check_dependency_rules(f)
+        assert result["pass"] is True
+
+    def test_conftest_under_tests_is_exempt(self, tmp_project):
+        f = _write_file(
+            tmp_project,
+            "tests/services/conftest.py",
+            """\
+            from components.router import Router
+        """,
+        )
+        result = check_dependency_rules(f)
+        assert result["pass"] is True
+
+    def test_package_code_is_still_gated(self, tmp_project):
+        # The exemption must not weaken the real invariant: a services/
+        # module importing components still fails.
+        f = _write_file(
+            tmp_project,
+            "services/bad.py",
+            """\
+            from components.router import Router
+        """,
+        )
+        result = check_dependency_rules(f)
+        assert result["pass"] is False
