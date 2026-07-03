@@ -28,6 +28,13 @@ title: 'Lightweight decision log (intent debt, long tail)'
   the next cross-layer test (instance fix); package invariants stay enforced by
   `tests/architecture/` and the unchanged package-path scan.
 
+- 2026-07-02 — **`user_max_cost_per_task` deleted, not wired.** The per-task budget
+  override (PLAN.md Story 5.1) had two reads in `orchestration/react_loop.py` and zero
+  writers — one read was against a hardcoded empty dict, so it could never fire; the
+  global `AgentConfig.max_cost_usd` cap is what actually enforces budget. Rejected wiring
+  it through the runtime adapter: no per-user budget store or UI field exists to supply a
+  value, so plumbing would be a writer-without-producer (ratchet rule: delete aspirational
+  code). Reintroduction path documented in `tests/architecture/test_no_dead_config_knobs.py`.
 - 2026-07-02 — **Stage-1 brainstorm premise audit runs before direction generation;
   `refuted` load-bearing premises force a re-pose.** Rejected advisory-only handling
   ("publish refutation but continue on the stated framing") — it preserves direction

@@ -360,7 +360,7 @@ The fast model errored twice in a row. The router escalated.
 
 ### 11.5 A budget-exceeded exit ends the loop before the answer is ready
 
-The accumulated cost on this task crossed `user_max_cost_per_task` (read from the `RunnableConfig` and surfaced in `route_node`) or the per-step cap in `RoutingConfig`. The `_parse_response` conditional edge returned `"budget_exceeded"`.
+The accumulated cost on this task crossed `AgentConfig.max_cost_usd` (checked in `route_node`) or the per-step cap in `RoutingConfig`. The `_parse_response` conditional edge returned `"budget_exceeded"`. (A per-task `user_max_cost_per_task` override was designed in PLAN.md but never wired end-to-end; the dead reads were deleted 2026-07-02 — see `docs/adr/decisions.md`.)
 
 - **Signal:** the trailing line on stdout shows a positive cost and a step count, but no `Rich Panel` -- the loop ended without an answer.
 - **Trail:** the last record in `cache/black_box_recordings/<workflow_id>/trace.jsonl` is a `STEP_EXECUTED` with the budget-breaching cost. There is no `outcome=done`.
