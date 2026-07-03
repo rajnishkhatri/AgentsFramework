@@ -26,6 +26,7 @@ import type { Scheduler } from "./ports/engine/scheduler";
 import type { Grader } from "./ports/engine/grader";
 import type { ContentRepo } from "./ports/engine/content_repo";
 import type { LearnerReadRepo } from "./ports/engine/learner_read_repo";
+import type { HintRepo } from "./ports/engine/hint_repo";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
@@ -39,6 +40,7 @@ import { DrizzleContentRepo } from "./adapters/engine/repos/drizzle_content_repo
 import { FsrsScheduler } from "./adapters/engine/scheduler/fsrs_scheduler";
 import { ExactLetterGrader } from "./adapters/engine/grader/exact_letter_grader";
 import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_read_repo";
+import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
 
 export interface BuildEngineAdaptersOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -56,6 +58,8 @@ export interface EnginePortBag {
   readonly contentRepo: ContentRepo;
   /** Read-only skill_state view for Dashboard mastery + Summary delta (ADR-0011). */
   readonly learnerRead: LearnerReadRepo;
+  /** Read-only reviewed hint ladder (ADR-0014, FR-12/FR-20). */
+  readonly hintRepo: HintRepo;
   /**
    * Fire-and-forget quiz-submit signal to the coach-session marker store
    * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the
@@ -100,5 +104,7 @@ export function buildEngineAdapters(
     // Read-only skill_state view (ADR-0011): depends on the ReadableEngineDb
     // projection, so it cannot reach upsertSkillState (FR-A2, Scheduler-only).
     learnerRead: new DrizzleLearnerReadRepo(db),
+    // Read-only reviewed hint ladder (ADR-0014): no write surface on the port.
+    hintRepo: new DrizzleHintRepo(db),
   };
 }

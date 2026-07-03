@@ -1,0 +1,120 @@
+[
+ {
+  "id": "51bed730b686ef59",
+  "type": "AGENT",
+  "name": "run.started (51bed730)",
+  "startTime": "2026-07-02T18:25:10.000Z",
+  "endTime": "2026-07-02T18:25:10.001Z",
+  "depth": 0,
+  "input": "{\"run_id\": \"f30d431351773bea4605e195c1d1b5fa\", \"thread_id\": \"33741cf0-b625-837e-324a-e331c20f8363\", \"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\"}",
+  "metadata": "{\"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\", \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}, \"scope\": {\"name\": \"langfuse-sdk\", \"version\": \"4.7.1\"}}"
+ },
+ {
+  "id": "ce0c71a481d8ceb0",
+  "type": "CHAIN",
+  "name": "task.started (ce0c71a4)",
+  "startTime": "2026-07-02T18:25:10.120Z",
+  "endTime": "2026-07-02T18:25:10.121Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"ce0c71a4-81d8-ceb0-e582-ca335100ed69\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": null, \"event_time\": \"2026-07-02T18:25:10.120000+00:00\", \"timestamp\": \"2026-07-02T18:25:10.120000+00:00\", \"integrity_hash\": \"fdbb872f8934b7c837941940ee5631f4827955ef14bbe1ff71de780faa0c34d0\", \"details\": {\"task_input\": \"why is the semicolon one right here?\\n\\ncoach_context: {\\\"mode\\\": \\\"pre_submit\\\", \\\"question_id\\\": \\\"q-sem-014\\\", \\\"skill_id\\\": \\\"punctuation.semicolon\\\", \\\"question\\\": {\\\"id\\\": \\\"q-sem-014\\\", \\\"stem_md\\\": \\\"Which sentence uses the semicolon correctly? (A) I like tea; and coffee. (B) The train was late; we missed the meeting. (C) Although it rained; we walked. (D) She bought; apples and pears.\\\"}, \\\"misses_aggregate\\\": {\\\"skill_id\\\": \\\"punctuation.semicolon\\\", \\\"missed\\\": 3, \\\"window\\\": 10}}\", \"agent_name\": \"subject-coach-english\", \"agent_version\": \"0.1.0\", \"agent_facts_id\": \"subject-coach-english\"}}",
+  "output": "{\"task_input\": \"why is the semicolon one right here?\\n\\ncoach_context: {\\\"mode\\\": \\\"pre_submit\\\", \\\"question_id\\\": \\\"q-sem-014\\\", \\\"skill_id\\\": \\\"punctuation.semicolon\\\", \\\"question\\\": {\\\"id\\\": \\\"q-sem-014\\\", \\\"stem_md\\\": \\\"Which sentence uses the semicolon correctly? (A) I like tea; and coffee. (B) The train was late; we missed the meeting. (C) Although it rained; we walked. (D) She bought; apples and pears.\\\"}, \\\"misses_aggregate\\\": {\\\"skill_id\\\": \\\"punctuation.semicolon\\\", \\\"missed\\\": 3, \\\"window\\\": 10}}\", \"agent_name\": \"subject-coach-english\", \"agent_version\": \"0.1.0\", \"agent_facts_id\": \"subject-coach-english\"}",
+  "metadata": "{\"event_id\": \"ce0c71a4-81d8-ceb0-e582-ca335100ed69\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": null, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "6eb765f08f954f10",
+  "type": "CHAIN",
+  "name": "guardrail.checked (6eb765f0)",
+  "startTime": "2026-07-02T18:25:10.180Z",
+  "endTime": "2026-07-02T18:25:10.181Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"6eb765f0-8f95-4f10-dccc-b1ee7f9d0892\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:10.180000+00:00\", \"timestamp\": \"2026-07-02T18:25:10.180000+00:00\", \"integrity_hash\": \"d50bcf5aaa1529eea73ba15b67d68fc89e6d2a63ef38405bb379b4d1211d7d3b\", \"details\": {\"guardrail\": \"input\", \"source\": \"input_guardrail\", \"accepted\": true, \"reason\": \"english-learning: on-topic (semicolon usage)\", \"domain_gated\": true}}",
+  "output": "{\"guardrail\": \"input\", \"source\": \"input_guardrail\", \"accepted\": true, \"reason\": \"english-learning: on-topic (semicolon usage)\", \"domain_gated\": true}",
+  "metadata": "{\"event_id\": \"6eb765f0-8f95-4f10-dccc-b1ee7f9d0892\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "9aec7bb64f4141d1",
+  "type": "CHAIN",
+  "name": "guardrail.checked (6ac87da7)",
+  "startTime": "2026-07-02T18:25:10.182Z",
+  "endTime": "2026-07-02T18:25:10.183Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"6ac87da7-e233-4990-a136-e5973d7603f9\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:10.182000+00:00\", \"timestamp\": \"2026-07-02T18:25:10.182000+00:00\", \"integrity_hash\": \"0de3b0a8674f6c5ddb740c079c2bdd2e1ad9b1bb5f7ebae4270f00ab6e59cc92\", \"details\": {\"guardrail\": \"coach_context_contract\", \"mode\": \"pre_submit\", \"answer_fields_rendered\": [], \"answer_fields_stripped\": []}}",
+  "output": null,
+  "metadata": "{\"event_id\": \"6eb765f0-8f95-4f10-dccc-b1ee7f9d0892\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "af18b564161b4ec5",
+  "type": "SPAN",
+  "name": "step.0 (af18b564)",
+  "startTime": "2026-07-02T18:25:10.200Z",
+  "endTime": "2026-07-02T18:25:13.400Z",
+  "depth": 0,
+  "metadata": "{\"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "aba62f8eb1163926",
+  "type": "CHAIN",
+  "name": "model.selected (aba62f8e)",
+  "startTime": "2026-07-02T18:25:10.220Z",
+  "endTime": "2026-07-02T18:25:10.221Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"aba62f8e-b116-3926-a893-dfc5f8351a49\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:10.220000+00:00\", \"timestamp\": \"2026-07-02T18:25:10.220000+00:00\", \"integrity_hash\": \"d379d448c44d681ac33c1b793ade46c4b10d5b6e2511b14f45fa3a550f9c10c7\", \"details\": {\"model\": \"gpt-4o-mini\", \"reason\": \"steady-state-fast\", \"plan_depth\": \"L0\", \"plan_valid\": true, \"decision_id\": \"15ac075a-1b82-4667-99db-cca9b8c0f07d\", \"rationale\": \"steady-state-fast (step=0, errors=0, last_err=none, cost_usd=0.0000, plan_depth=L0)\", \"alternatives\": \"['gpt-4o']\"}}",
+  "output": "{\"model\": \"gpt-4o-mini\", \"reason\": \"steady-state-fast\", \"plan_depth\": \"L0\", \"plan_valid\": true, \"decision_id\": \"15ac075a-1b82-4667-99db-cca9b8c0f07d\", \"rationale\": \"steady-state-fast (step=0, errors=0, last_err=none, cost_usd=0.0000, plan_depth=L0)\", \"alternatives\": \"['gpt-4o']\"}",
+  "metadata": "{\"event_id\": \"aba62f8e-b116-3926-a893-dfc5f8351a49\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "7407b4a75c0f353a",
+  "type": "GENERATION",
+  "name": "llm.call (7407b4a7)",
+  "startTime": "2026-07-02T18:25:10.240Z",
+  "endTime": "2026-07-02T18:25:12.400Z",
+  "depth": 0,
+  "input": "{\"message_id\": \"1533f8ed-1afb-4b5a-21ba-04e8cac70223\", \"input_text\": \"system: You are the Subject Coach for English. Never state or imply the correct answer choice before the learner submits. Coach the concept, preserve productive struggle.\\n\\n# Coach context (mode=pre_submit)\\n{\\\"id\\\": \\\"q-sem-014\\\", \\\"stem_md\\\": \\\"Which sentence uses the semicolon correctly? (A) I like tea; and coffee. (B) The train was late; we missed the meeting. (C) Although it rained; we walked. (D) She bought; apples and pears.\\\"}\\nmisses_aggregate: {\\\"skill_id\\\": \\\"punctuation.semicolon\\\", \\\"missed\\\": 3, \\\"window\\\": 10}\\nhuman: why is the semicolon one right here?\", \"latency_ms\": 2160.4, \"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\"}",
+  "output": "{\"status\": \"completed\", \"message_id\": \"1533f8ed-1afb-4b5a-21ba-04e8cac70223\"}",
+  "metadata": "{\"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\", \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}, \"scope\": {\"name\": \"langfuse-sdk\", \"version\": \"4.7.1\"}}"
+ },
+ {
+  "id": "f11e7a0ba6b61191",
+  "type": "SPAN",
+  "name": "tool.think (f11e7a0b)",
+  "startTime": "2026-07-02T18:25:12.500Z",
+  "endTime": "2026-07-02T18:25:12.600Z",
+  "depth": 1,
+  "input": "{\"tool_call_id\": \"0:call_think_1\", \"args_json\": \"{\\\"thought\\\": \\\"Learner asks about the semicolon item pre-submit; probe clause independence, do not resolve the choice.\\\"}\"}",
+  "output": "{\"result\": \"ok\", \"latency_ms\": 3.1}",
+  "metadata": "{\"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\", \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}, \"scope\": {\"name\": \"langfuse-sdk\", \"version\": \"4.7.1\"}}"
+ },
+ {
+  "id": "10935f3fc598bf41",
+  "type": "CHAIN",
+  "name": "step.executed (10935f3f)",
+  "startTime": "2026-07-02T18:25:12.700Z",
+  "endTime": "2026-07-02T18:25:12.701Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"10935f3f-c598-bf41-f4f3-4f77dce13981\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:12.700000+00:00\", \"timestamp\": \"2026-07-02T18:25:12.700000+00:00\", \"integrity_hash\": \"f593dfd65e77250f22c6ca38565629c5772ddc9491bfb71ede5eccaf6568d629\", \"details\": {\"model\": \"gpt-4o-mini\", \"tokens_in\": 812, \"tokens_out\": 96, \"cost_usd\": 0.00018, \"latency_ms\": 2160.4, \"error\": null}}",
+  "output": "{\"model\": \"gpt-4o-mini\", \"tokens_in\": 812, \"tokens_out\": 96, \"cost_usd\": 0.00018, \"latency_ms\": 2160.4, \"error\": null}",
+  "metadata": "{\"event_id\": \"10935f3f-c598-bf41-f4f3-4f77dce13981\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "8d1a0a9ee0c07f89",
+  "type": "CHAIN",
+  "name": "task.completed (8d1a0a9e)",
+  "startTime": "2026-07-02T18:25:13.300Z",
+  "endTime": "2026-07-02T18:25:13.301Z",
+  "depth": 1,
+  "input": "{\"event_id\": \"8d1a0a9e-e0c0-7f89-6f31-cd8b6f1e34fd\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"event_time\": \"2026-07-02T18:25:13.300000+00:00\", \"timestamp\": \"2026-07-02T18:25:13.300000+00:00\", \"integrity_hash\": \"72ccd5137d8b0bd65da7667c1f14db24dc80fb3d4888c4b46f1a9280ba8ab010\", \"details\": {\"outcome\": \"success\", \"termination_reason\": \"success\", \"total_steps\": 1}}",
+  "output": "{\"outcome\": \"success\", \"termination_reason\": \"success\", \"total_steps\": 1}",
+  "metadata": "{\"event_id\": \"8d1a0a9e-e0c0-7f89-6f31-cd8b6f1e34fd\", \"workflow_id\": \"86bcd0aca21167ee624da9175434c804\", \"step\": 0, \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}}"
+ },
+ {
+  "id": "d6fbd1c36326df5f",
+  "type": "AGENT",
+  "name": "run.finished (d6fbd1c3)",
+  "startTime": "2026-07-02T18:25:13.450Z",
+  "endTime": "2026-07-02T18:25:13.451Z",
+  "depth": 0,
+  "input": "{\"run_id\": \"f30d431351773bea4605e195c1d1b5fa\", \"status\": \"completed\"}",
+  "output": "{\"status\": \"completed\"}",
+  "metadata": "{\"subject\": \"user_01KQ0FRZDH6HQ4A3ZXC1YEWVSX\", \"resourceAttributes\": {\"service.name\": \"agent-runtime\"}, \"scope\": {\"name\": \"langfuse-sdk\", \"version\": \"4.7.1\"}}"
+ }
+]

@@ -14,9 +14,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
 import { QuizView } from "@/components/quiz/QuizView";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
-import { useQuiz } from "@/components/quiz/use_quiz";
+import { CoachPanel } from "@/components/coach/CoachPanel";
+import { useSurface } from "@/components/shell/use_surface";
+import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
 import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
@@ -43,6 +46,18 @@ function socraticHint(stem: string): string {
 export default function QuizPage(): React.JSX.Element {
   const { openSession, openItem, submit, closeSession } = useQuiz();
   const router = useRouter();
+  // FR-J3: on the iPad surface the Quiz renders as a SPLIT — item on the left,
+  // the persistent live coach panel on the right, feeding the SAME coach
+  // thread as the Coach screen. The coach-pointed runtime is built only when
+  // the split is live (page-level composition access, Rule C1).
+  const surface = useSurface();
+  const coachRuntime = React.useMemo(
+    () =>
+      surface === "ipad"
+        ? buildBrowserRuntimeClient({ baseUrl: "/api/coach" })
+        : null,
+    [surface],
+  );
   const [state, dispatch] = React.useReducer(
     quizScreenReducer,
     initialQuizScreen,
@@ -149,49 +164,75 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
+  let item: QuizItemResult;
+  let content: React.JSX.Element;
   if (state.phase === "answering") {
+    item = state.item;
     const vm = toQuizItemVM(state.item.question);
-    return (
+    content = (
       <QuizView
         vm={vm}
         selectedLetter={state.selectedLetter}
         onSelect={(letter) => dispatch({ type: "select", letter })}
         onSubmit={onSubmit}
         hintOpen={state.hintOpen}
-        hint={socraticHint(state.item.question.stem)}
+        // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
+        // exists; the generic stem nudge only as the no-ladder fallback.
+        hint={
+          state.item.hintLadder[0]?.body_md ??
+          socraticHint(state.item.question.stem)
+        }
         onToggleHint={() => dispatch({ type: "toggle_hint" })}
       />
     );
+  } else {
+    // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
+    // post-answer actions (Next / Finish).
+    item = state.item;
+    const feedback = buildFeedback(
+      state.item.question,
+      state.verdict,
+      { letter: state.answeredLetter },
+    );
+    content = (
+      <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        {feedback.present ? <FeedbackView vm={feedback.vm} /> : null}
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            data-testid="quiz-next"
+            onClick={() => dispatch({ type: "next" })}
+            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+          >
+            Next question →
+          </button>
+          <button
+            type="button"
+            data-testid="quiz-finish"
+            onClick={onFinish}
+            className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
+          >
+            Finish &amp; see summary
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
-  // post-answer actions (Next / Finish).
-  const feedback = buildFeedback(
-    state.item.question,
-    state.verdict,
-    { letter: state.answeredLetter },
-  );
-  return (
-    <div className="mx-auto flex max-w-[760px] flex-col gap-6">
-      {feedback.present ? <FeedbackView vm={feedback.vm} /> : null}
-      <div className="flex items-center justify-between gap-3">
-        <button
-          type="button"
-          data-testid="quiz-next"
-          onClick={() => dispatch({ type: "next" })}
-          className="rounded-full bg-accent px-6 py-3 font-semibold text-white"
-        >
-          Next question →
-        </button>
-        <button
-          type="button"
-          data-testid="quiz-finish"
-          onClick={onFinish}
-          className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
-        >
-          Finish &amp; see summary
-        </button>
+  // iPad split (FR-J3): item on the left, the persistent live coach panel on
+  // the right. Keyed by question id so the panel's nudge tier resets per item
+  // (FR-J3a); the coach THREAD itself lives in coach_thread_store and survives.
+  if (coachRuntime != null) {
+    return (
+      <div className="flex items-start gap-6">
+        <div className="min-w-0 flex-1">{content}</div>
+        <CoachPanel
+          key={item.question.id}
+          runtime={coachRuntime}
+          hintLadder={item.hintLadder}
+        />
       </div>
-    </div>
-  );
+    );
+  }
+  return content;
 }

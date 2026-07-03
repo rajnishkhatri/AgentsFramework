@@ -144,9 +144,20 @@ export async function resumeRunStream(opts: {
   );
 }
 
+export interface AgentRunOptions {
+  /**
+   * Identity-bound agent instance for every run this hook sends (e.g. the
+   * subject coach's "subject-coach-english"). Rides RunCreateRequest.agent_id
+   * so the middleware selects that instance's governed graph (ADR-0007/0012);
+   * omitted (plain chat) ⇒ no agent_id ⇒ the default graph, byte-identical.
+   */
+  readonly agentId?: string;
+}
+
 export function useAgentRun(
   runtime: AgentRuntimeClient,
   persist?: PersistHooks,
+  options?: AgentRunOptions,
 ): {
   turns: ReadonlyArray<ChatTurn>;
   busy: boolean;
@@ -248,6 +259,7 @@ export function useAgentRun(
         const req = uiInputToAgentRequest({
           thread_id: threadId,
           body,
+          ...(options?.agentId !== undefined ? { agent_id: options.agentId } : {}),
           ...(selectedModel !== undefined ? { selectedModel } : {}),
         });
         await consumeRunStream(
@@ -278,7 +290,7 @@ export function useAgentRun(
         setBusy(false);
       }
     },
-    [runtime, dispatchFor],
+    [runtime, dispatchFor, options?.agentId],
   );
 
   const pauseForEdit = React.useCallback((turnId: string): void => {

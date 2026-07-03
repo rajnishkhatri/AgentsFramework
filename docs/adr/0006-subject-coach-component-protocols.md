@@ -13,7 +13,9 @@ tags: [decision-record]
 
 **Status:** Accepted — 2026-06-30. **Amended by [ADR-0011](0011-subject-coach-engine-learner-read-port.md)**
 (2026-07-01) — adds an eighth engine port, the read-only `LearnerReadRepo` (the seven ports
-below are unchanged).
+below are unchanged). **Amended by [ADR-0014](0014-subject-coach-hint-repo-read-seam.md)**
+(2026-07-02) — adds a ninth read-only port, `HintRepo` (the hint content-family read seam:
+`hint` table both dialects + `Hint` wire entity; ADR-0012's committed amendment window).
 **Related:** [data & protocols design doc](../Architectures/SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md) · [ADR-0005 engine home](0005-subject-coach-engine-home-and-substrate.md) · [ADR-0011 learner read port](0011-subject-coach-engine-learner-read-port.md) · [Frontend ports deep dive](../Architectures/FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md) · [UI spec](../plan/preact-english-coach-ui.spec.md)
 **Audience:** anyone implementing or changing an engine port signature, the `Verdict` shape, or the coach stream contract.
 

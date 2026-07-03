@@ -31,6 +31,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 const DEFAULT_SUBJECT = "act-english";
@@ -70,6 +71,23 @@ export const question = sqliteTable("question", {
   reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),
   generated_by: text("generated_by").notNull().default(""),
 });
+
+/** hint — reviewed-gated hint-ladder rungs (ADR-0014); see schema.pg.ts. */
+export const hint = sqliteTable(
+  "hint",
+  {
+    id: text("id").primaryKey(),
+    subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+    question_id: text("question_id")
+      .notNull()
+      .references(() => question.id, { onDelete: "cascade" }),
+    rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
+    body_md: text("body_md").notNull(),
+    reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),
+    generated_by: text("generated_by").notNull().default(""),
+  },
+  (t) => [uniqueIndex("hint_question_rung_uq").on(t.question_id, t.rung)],
+);
 
 /** quiz_session — score tally stored on close; see schema.pg.ts. */
 export const quizSession = sqliteTable("quiz_session", {

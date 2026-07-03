@@ -39,6 +39,10 @@ class AgentMetrics(BaseModel):
 
     model_usage_counts: dict[str, int] = Field(default_factory=dict)
     error_type_counts: dict[str, int] = Field(default_factory=dict)
+    # Population mix by eval-capture target (review I2): makes a mixed
+    # stream visible (e.g. call_llm vs subject_coach vs guardrail) so a
+    # consumer knows when to scope with ``records_for_target`` first.
+    target_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class OptimizerInput(BaseModel):
@@ -73,11 +77,31 @@ def load_eval_records(path: Path) -> list[EvalRecord]:
     return records
 
 
+def records_for_target(records: list[EvalRecord], target: str) -> list[EvalRecord]:
+    """Scope a mixed capture stream to one eval-capture target (review I2).
+
+    The read seam for instance-scoped analysis: an identity-bound agent
+    (e.g. the subject coach, ``eval_capture_target="subject_coach"``)
+    captures under its own target, so pooling it into the default
+    population skews chat metrics and leaves the instance stream
+    write-only. Order-preserving.
+    """
+    return [rec for rec in records if rec.target == target]
+
+
 def compute_metrics(
     records: list[EvalRecord],
     rollback_data: list[dict[str, Any]] | None = None,
+    primary_llm_targets: frozenset[str] = frozenset({"call_llm"}),
 ) -> AgentMetrics:
-    """Compute aggregate metrics from a list of EvalRecords."""
+    """Compute aggregate metrics from a list of EvalRecords.
+
+    ``primary_llm_targets`` names the capture target(s) whose records are
+    the agent's primary think/act LLM calls for routing-decision metrics
+    (review I2: a custom ``eval_capture_target`` — e.g. ``subject_coach`` —
+    was silently excluded by the hardcoded ``call_llm`` comparison; pass it
+    here when analyzing that instance's stream).
+    """
     if not records:
         return AgentMetrics()
 
@@ -98,9 +122,13 @@ def compute_metrics(
     task_has_capable: set[str] = set()
     tasks_routed_to_fast: set[str] = set()
 
+    target_counts: dict[str, int] = {}
+
     for rec in records:
         model = rec.model or "unknown"
         model_counts[model] = model_counts.get(model, 0) + 1
+
+        target_counts[rec.target] = target_counts.get(rec.target, 0) + 1
 
         tier = _infer_tier(model)
         tier_counts[tier] = tier_counts.get(tier, 0) + 1
@@ -130,7 +158,7 @@ def compute_metrics(
 
         steps_per_task[rec.task_id] = steps_per_task.get(rec.task_id, 0) + 1
 
-        if rec.target == "call_llm" and tier == "capable":
+        if rec.target in primary_llm_targets and tier == "capable":
             total_routing_decisions += 1
             if rec.step == 0:
                 pass
@@ -195,6 +223,7 @@ def compute_metrics(
         avg_latency_ms=avg_latency,
         model_usage_counts=model_counts,
         error_type_counts=error_counts,
+        target_counts=target_counts,
     )
 
 

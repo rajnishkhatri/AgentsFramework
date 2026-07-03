@@ -48,7 +48,7 @@ function verdict(correct: boolean): Verdict {
   return { correct, correct_letter: "B" };
 }
 
-const item = { skillId: "s-punc", question: question() };
+const item = { skillId: "s-punc", question: question(), hintLadder: [] };
 
 describe("quiz_screen_reducer — initial + item load", () => {
   it("starts in loading with no item", () => {

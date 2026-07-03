@@ -37,6 +37,35 @@ function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function coachContextOf(rawBody: unknown): JsonRecord | null {
+  if (!isRecord(rawBody)) return null;
+  const input = rawBody.input;
+  if (!isRecord(input)) return null;
+  const context = input.coach_context;
+  return isRecord(context) ? context : null;
+}
+
+/** True when the parsed run body carries an `input.coach_context` record. */
+export function hasCoachContext(rawBody: unknown): boolean {
+  return coachContextOf(rawBody) !== null;
+}
+
+/**
+ * The question_id to key the marker lookup on, or `null` when the body must
+ * fail CLOSED to pre_submit without a lookup: `question_id` missing/empty/
+ * non-string, or an embedded `question.id` that names a DIFFERENT item (the
+ * marker is keyed by `question_id`, so a mismatch would let a client claim
+ * an already-submitted id while embedding another question's answer fields).
+ */
+export function coachMarkerQuestionId(rawBody: unknown): string | null {
+  const context = coachContextOf(rawBody);
+  if (context === null) return null;
+  const qid = context.question_id;
+  if (typeof qid !== "string" || qid.length === 0) return null;
+  if (isRecord(context.question) && context.question.id !== qid) return null;
+  return qid;
+}
+
 /**
  * Return a new run body with the coach context sanitized for `derivedMode`.
  * Never mutates the input. Non-coach bodies (no `input.coach_context`)

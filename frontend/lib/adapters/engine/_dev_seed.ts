@@ -34,6 +34,7 @@
 import type { InMemoryEngineDb } from "./db/in_memory_engine_db";
 import {
   DEFAULT_SUBJECT,
+  type Hint,
   type Question,
   type Skill,
   type SkillState,
@@ -336,6 +337,139 @@ export const DEV_SKILL_STATES: readonly SkillState[] = [
 ];
 
 /**
+ * The authored hint ladder (ADR-0012/ADR-0014): one full probe → conceptual →
+ * directive ladder per dev question. MIRROR of the backend-readable asset
+ * `components/subject_coach_hints.py::AUTHORED_RUNGS` — that Python asset is
+ * the single source (it serves the persona render); a backend parity test
+ * pins this copy against it. Hand-authored + human leak-checked, hence
+ * `reviewed: true` at seed time (generator rows start `false`, ADR-0014).
+ */
+function devHint(question_id: string, rung: 1 | 2 | 3, body_md: string): Hint {
+  return {
+    id: `h-${question_id}-${rung}`,
+    subject: SUBJECT,
+    question_id,
+    rung,
+    body_md,
+    reviewed: true,
+    generated_by: "authored",
+  };
+}
+
+export const DEV_HINTS: readonly Hint[] = [
+  devHint(
+    "q-punc-1",
+    1,
+    "Read the sentence aloud — where do you naturally pause? What job is " +
+      "the phrase 'which opened in 1974' doing in this sentence?",
+  ),
+  devHint(
+    "q-punc-1",
+    2,
+    "Extra, droppable information inside a sentence — a nonrestrictive " +
+      "clause — has to be fenced off from the rest of the sentence on " +
+      "**both** sides, not just one.",
+  ),
+  devHint(
+    "q-punc-1",
+    3,
+    "The clause opens with a comma before 'which'. Check each choice: " +
+      "does it close what that opening comma started?",
+  ),
+  devHint(
+    "q-gram-1",
+    1,
+    "Cover the phrase 'of the runners' and read what's left. What is the " +
+      "subject of this sentence, in your own words?",
+  ),
+  devHint(
+    "q-gram-1",
+    2,
+    "Words like 'each' and 'every' are always singular — no matter what " +
+      "plural noun sits inside the phrase right after them.",
+  ),
+  devHint(
+    "q-gram-1",
+    3,
+    "So the subject is singular. Which verb forms can agree with a " +
+      "singular subject? Eliminate every choice that stays plural.",
+  ),
+  devHint(
+    "q-sent-1",
+    1,
+    "Who was walking to the store? Say it in your own words before you " +
+      "look at the choices again.",
+  ),
+  devHint(
+    "q-sent-1",
+    2,
+    "An opening '-ing' phrase attaches to the first noun after the comma " +
+      "— that noun must be the one actually doing the action.",
+  ),
+  devHint(
+    "q-sent-1",
+    3,
+    "Test each choice: can the noun right after the comma actually walk " +
+      "to the store? Eliminate every choice where it can't.",
+  ),
+  devHint(
+    "q-rhet-1",
+    1,
+    "What would the sentence lose if you dropped one of the two " +
+      "underlined words? Try reading it each way.",
+  ),
+  devHint(
+    "q-rhet-1",
+    2,
+    "Two intensifiers stacked on one adjective do the same job twice; " +
+      "concise writing keeps a single, precise modifier.",
+  ),
+  devHint(
+    "q-rhet-1",
+    3,
+    "Compare the single-word choices: which one carries the emphasis on " +
+      "its own, without repeating another word's work?",
+  ),
+  devHint(
+    "q-org-1",
+    1,
+    "In your own words: how are these two sentences related — time, " +
+      "contrast, example, or simple addition?",
+  ),
+  devHint(
+    "q-org-1",
+    2,
+    "A transition must name the **actual** logical relationship. A long " +
+      "process followed by its outcome is a relationship in time.",
+  ),
+  devHint(
+    "q-org-1",
+    3,
+    "Which choices signal time passing? Rule out any that promise a " +
+      "contrast or an example the passage never delivers.",
+  ),
+  devHint(
+    "q-style-1",
+    1,
+    "What does the verb 'return' already tell you about the direction " +
+      "the book is going?",
+  ),
+  devHint(
+    "q-style-1",
+    2,
+    "When a verb's meaning already contains a word's idea, adding that " +
+      "word is redundancy — and the fix is usually removal, not " +
+      "replacement.",
+  ),
+  devHint(
+    "q-style-1",
+    3,
+    "Try the sentence with the underlined word gone entirely — does any " +
+      "meaning disappear? Compare that against the choices that add words.",
+  ),
+];
+
+/**
  * Load the dev corpus into a fresh browser-safe `InMemoryEngineDb`. Called ONCE
  * by the composition root behind a dev guard (never in tests, never in prod).
  */
@@ -343,4 +477,5 @@ export function seedDevCorpus(db: InMemoryEngineDb): void {
   db.seedSkills([...DEV_SKILLS]);
   db.seedQuestions([...DEV_QUESTIONS]);
   db.seedSkillStates([...DEV_SKILL_STATES]);
+  db.seedHints([...DEV_HINTS]);
 }

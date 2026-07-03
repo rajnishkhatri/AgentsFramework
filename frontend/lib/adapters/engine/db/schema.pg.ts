@@ -44,6 +44,7 @@ import {
   real,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -101,6 +102,29 @@ export const question = pgTable("question", {
   // Provenance for audit (FR-B4 / FR-E3): which model/run produced this.
   generated_by: text("generated_by").notNull().default(""),
 });
+
+/**
+ * hint — reviewed-gated hint-ladder rungs (ADR-0012/ADR-0014, spec FR-12/20).
+ * One rung per level per question (unique index); `reviewed = true` is EARNED
+ * by the generator's verifier cascade (deterministic per-rung leakage check
+ * first) — `reviewed = false` rows MUST NOT reach a learner. `generated_by`
+ * is "authored" or "<model>@<run_id>" (provenance, FR-B4-analog).
+ */
+export const hint = pgTable(
+  "hint",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+    question_id: uuid("question_id")
+      .notNull()
+      .references(() => question.id, { onDelete: "cascade" }),
+    rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
+    body_md: text("body_md").notNull(),
+    reviewed: boolean("reviewed").notNull().default(false),
+    generated_by: text("generated_by").notNull().default(""),
+  },
+  (t) => [uniqueIndex("hint_question_rung_uq").on(t.question_id, t.rung)],
+);
 
 /**
  * quiz_session — one drill/adaptive/review session.
@@ -252,6 +276,7 @@ export type ProgressPointInsertPg = typeof progressPoint.$inferInsert;
 export const ENGINE_TABLE_NAMES = [
   "skill",
   "question",
+  "hint",
   "quiz_session",
   "attempt",
   "skill_state",

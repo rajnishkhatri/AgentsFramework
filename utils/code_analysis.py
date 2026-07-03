@@ -178,16 +178,40 @@ def classify_layer(filepath: str | Path) -> dict[str, Any]:
     }
 
 
+def _is_test_module(filepath: Path) -> bool:
+    """A pytest module (tests/ tree, test_*.py, or conftest.py) is not a
+    layer member — cross-layer imports are the norm in integration/live
+    tests, and the package-level invariants are enforced separately by
+    ``tests/architecture/``."""
+    parts = filepath.parts
+    name = filepath.name
+    return "tests" in parts or name.startswith("test_") or name == "conftest.py"
+
+
 def check_dependency_rules(filepath: str | Path) -> dict[str, Any]:
     """Validate all imports against the dependency table.
 
     Checks the 11 dependency rules from the Four-Layer Architecture:
     - trust/ must not import from utils/, agents/, governance/
     - utils/ must not import from agents/, governance/
+
+    Test modules are exempt: ``classify_layer`` matches the first path part
+    in ``LAYER_DIRS``, so ``tests/services/...`` would otherwise be graded as
+    the services layer and a live test's legitimate ``components`` import
+    would raise ``DEP.services_cannot_import_components`` (the false positive
+    that rejected PR #120).
     """
     filepath = Path(filepath)
     layer_info = classify_layer(filepath)
     layer_dir = layer_info["layer_dir"]
+
+    if _is_test_module(filepath):
+        return {
+            "pass": True,
+            "file": str(filepath),
+            "layer": layer_info["layer"],
+            "violations": [],
+        }
 
     if layer_dir not in FORBIDDEN_IMPORTS:
         return {

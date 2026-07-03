@@ -24,6 +24,7 @@ import type { EnginePortBag } from "@/lib/composition_engine";
 import { useEngine } from "@/app/engine-provider";
 import type {
   Attempt,
+  Hint,
   Question,
   QuizSession,
   SessionMode,
@@ -34,6 +35,12 @@ import type {
 export interface QuizItemResult {
   readonly skillId: string;
   readonly question: Question;
+  /**
+   * The question's REVIEWED hint ladder, rung ascending (ADR-0014, FR-12/20).
+   * `[]` when no reviewed rungs exist — the hint panel falls back to the
+   * generic Socratic nudge, never an unreviewed row.
+   */
+  readonly hintLadder: readonly Hint[];
 }
 
 export interface OpenSessionArgs {
@@ -92,7 +99,10 @@ export async function openQuizItem(
     // rather than handing the learner an empty item.
     throw new Error(`scheduled question ${next.question_id} not found`);
   }
-  return { skillId: next.skill_id, question };
+  // The ladder loads WITH the item (no per-hint fetch): reviewed rungs only
+  // (ADR-0014); [] keeps the panel on the generic nudge fallback.
+  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  return { skillId: next.skill_id, question, hintLadder };
 }
 
 export interface QuizSubmitArgs {
@@ -137,17 +147,20 @@ export async function runQuizSubmit(
     used_hint: args.usedHint,
   });
 
-  const skillState = await ports.scheduler.review(attempt);
-
   // ADR-0012 Amendment (FR-19): fire-and-forget marker write — flips the
-  // coach's derived mode to post_feedback for this item. Only a REAL submit
-  // notifies (the no-selection path returned above); a throwing notifier
-  // never breaks grading (fail-closed: the coach just stays pre_submit).
+  // coach's derived mode to post_feedback for this item. Fires as soon as
+  // the attempt is durably recorded, BEFORE the FSRS review: a failing
+  // review must not strand the coach in pre_submit for a question whose
+  // feedback the learner is already looking at. Only a REAL submit notifies
+  // (the no-selection path returned above); a throwing notifier never
+  // breaks grading (fail-closed: the coach just stays pre_submit).
   try {
     ports.quizSubmitNotifier?.notifySubmitted(args.question.id);
   } catch {
     // Swallow by contract (QuizSubmitNotifier rule 1).
   }
+
+  const skillState = await ports.scheduler.review(attempt);
 
   return { verdict, attempt, skillState };
 }

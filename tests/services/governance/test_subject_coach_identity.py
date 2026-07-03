@@ -80,6 +80,50 @@ class TestRegisterVerifyRoundtrip:
         assert registry.verify(SUBJECT_COACH_AGENT_ID) is True
 
 
+class TestIdempotencyIsNotMasking:
+    """Review finding I1: 'already registered' is the ONLY silent path.
+
+    The original helper caught bare ValueError and returned whatever card was
+    stored — masking pydantic ValidationError (a ValueError subclass) and
+    serving a stale/drifted contract as if freshly ratified.
+    """
+
+    def test_stale_stored_card_raises_instead_of_being_served(self, registry):
+        # A legitimately-signed OLD card (weaker contract: no anti-leakage
+        # policy, older version) is already on disk.
+        stale = subject_coach_english_facts().model_copy(
+            update={
+                "version": "0.9.0",
+                "policies": [
+                    p
+                    for p in subject_coach_english_facts().policies
+                    if p.name != "answer-leakage-prohibited"
+                ],
+            }
+        )
+        registry.register(stale, registered_by="old-deploy")
+
+        with pytest.raises(ValueError, match="drift"):
+            register_subject_coach(registry, registered_by="test")
+
+    def test_registration_failure_propagates_not_masked(self):
+        # A registry whose register() raises a ValidationError-shaped error
+        # (ValueError subclass) for a NOT-yet-registered agent: the old code
+        # swallowed it and re-raised a confusing KeyError from get().
+        class BrokenValidation(ValueError):
+            pass
+
+        class StubRegistry:
+            def get(self, agent_id):
+                raise KeyError(agent_id)
+
+            def register(self, facts, registered_by):
+                raise BrokenValidation("signed dict failed model_validate")
+
+        with pytest.raises(BrokenValidation):
+            register_subject_coach(StubRegistry(), registered_by="test")
+
+
 class TestDeclaredContract:
     """FR-1: the declared contract is exactly what the ADRs ratified."""
 

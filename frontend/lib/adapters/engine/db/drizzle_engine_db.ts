@@ -34,6 +34,7 @@ import * as pg from "./schema.pg";
 import { EngineRepoError } from "../../../ports/engine/errors";
 import type {
   Attempt,
+  Hint,
   ProgressPoint,
   Question,
   QuizSession,
@@ -85,6 +86,18 @@ function toQuestion(r: Record<string, unknown>): Question {
     why_tempted_md: String(r.why_tempted_md ?? ""),
     rule_md: String(r.rule_md ?? ""),
     item_type: String(r.item_type ?? "underlined-span-mc"),
+    reviewed: Boolean(r.reviewed),
+    generated_by: String(r.generated_by ?? ""),
+  };
+}
+
+function toHint(r: Record<string, unknown>): Hint {
+  return {
+    id: String(r.id),
+    subject: String(r.subject),
+    question_id: String(r.question_id),
+    rung: Number(r.rung) as Hint["rung"],
+    body_md: String(r.body_md ?? ""),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };
@@ -246,6 +259,27 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     },
     async insertQuestion(q) {
       await wrap("insertQuestion", db.insert(pg.question).values(q));
+    },
+    async listReviewedHints(subject, questionId) {
+      const rows = await wrap(
+        "listReviewedHints",
+        db
+          .select()
+          .from(pg.hint)
+          .where(
+            and(
+              eq(pg.hint.subject, subject),
+              eq(pg.hint.question_id, questionId),
+              eq(pg.hint.reviewed, true), // HARD GATE (FR-12/FR-20)
+            ),
+          )
+          .orderBy(asc(pg.hint.rung)),
+      );
+      return rows.map((r) => toHint(r as Record<string, unknown>));
+    },
+    async insertHint(h) {
+      // Duplicate (question_id, rung) is rejected by hint_question_rung_uq.
+      await wrap("insertHint", db.insert(pg.hint).values(h));
     },
     async insertSession(s) {
       await wrap(

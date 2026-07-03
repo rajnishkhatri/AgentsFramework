@@ -12,10 +12,17 @@
  * must map to a coach bubble that is `error + canRetry`, NOT a stuck spinner.
  */
 
-import { describe, expect, it } from "vitest";
-import { coachTurnsFromChat } from "./use_coach";
+import { afterEach, describe, expect, it } from "vitest";
+import { coachTurnsFromChat, sendCoachAsk, SUBJECT_COACH_AGENT_ID } from "./use_coach";
+import { coachThreadSnapshot, resetCoachThread } from "./coach_thread_store";
 import type { ChatTurn } from "@/components/chat/use_agent_run";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
+import type {
+  AgentRuntimeClient,
+  StreamRunOptions,
+} from "@/lib/ports/agent_runtime_client";
+import type { RunCreateRequest } from "@/lib/wire/agent_protocol";
+import type { UIRuntimeEvent } from "@/lib/wire/ui_runtime_events";
 
 function view(over: Partial<AssistantRunView> = {}): AssistantRunView {
   return {
@@ -81,5 +88,85 @@ describe("coachTurnsFromChat — happy + streaming", () => {
 
   it("empty transcript maps to empty", () => {
     expect(coachTurnsFromChat([])).toEqual([]);
+  });
+});
+
+// ─── Phase 4.3: the shared coach thread (FR-J3/J4) ─────────────────────────
+
+function scriptedRuntime(reply = "Watch the clause boundary."): {
+  runtime: AgentRuntimeClient;
+  streamReqs: RunCreateRequest[];
+} {
+  const streamReqs: RunCreateRequest[] = [];
+  const runtime: AgentRuntimeClient = {
+    streamRun(req: RunCreateRequest, _options?: StreamRunOptions) {
+      streamReqs.push(req);
+      return (async function* (): AsyncGenerator<UIRuntimeEvent> {
+        yield {
+          type: "run_started",
+          trace_id: "tr-1",
+          run_id: "r1",
+          thread_id: req.thread_id,
+        };
+        yield { type: "chat_message_delta", trace_id: "tr-1", message_id: "m1", delta: reply };
+        yield {
+          type: "run_completed",
+          trace_id: "tr-1",
+          run_id: "r1",
+          thread_id: req.thread_id,
+        };
+      })();
+    },
+    async cancel() {
+      /* unused */
+    },
+    async updateUnderstanding() {
+      /* unused */
+    },
+  };
+  return { runtime, streamReqs };
+}
+
+describe("sendCoachAsk — the store-backed send (FR-J3 shared thread)", () => {
+  afterEach(() => {
+    resetCoachThread();
+  });
+
+  it("a panel ask and a coach-screen ask land in ONE thread (same thread_id on the wire)", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    // Two independent call sites (the iPad panel and the Coach screen) share
+    // the module store — neither holds the thread in React state.
+    await sendCoachAsk(runtime, "panel: why not C?");
+    await sendCoachAsk(runtime, "screen: what rule is this?");
+
+    expect(streamReqs).toHaveLength(2);
+    expect(streamReqs[1]!.thread_id).toBe(streamReqs[0]!.thread_id);
+    const { turns } = coachThreadSnapshot();
+    expect(turns.map((t) => t.user)).toEqual([
+      "panel: why not C?",
+      "screen: what rule is this?",
+    ]);
+    expect(turns.every((t) => t.assistant.status === "complete")).toBe(true);
+  });
+
+  it("stamps the coach agent_id on every run body (governed graph selection)", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    await sendCoachAsk(runtime, "why is B right?");
+    expect(streamReqs[0]!.agent_id).toBe(SUBJECT_COACH_AGENT_ID);
+  });
+
+  it("a synchronously-throwing runtime yields a terminal error turn, never a stuck spinner (FR-F4)", async () => {
+    const runtime = {
+      streamRun(): AsyncIterable<UIRuntimeEvent> {
+        throw new Error("composition not wired");
+      },
+      async cancel() {},
+      async updateUnderstanding() {},
+    } as unknown as AgentRuntimeClient;
+
+    await sendCoachAsk(runtime, "hello?");
+    const snap = coachThreadSnapshot();
+    expect(snap.busy).toBe(false);
+    expect(snap.turns[0]!.assistant.status).toBe("error");
   });
 });

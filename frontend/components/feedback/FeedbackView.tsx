@@ -64,8 +64,8 @@ function ReviewedChoiceRow(props: {
         data-state={state}
         className={cn(
           "grid size-7 place-items-center rounded-full font-semibold",
-          "data-[state=correct]:bg-success data-[state=correct]:text-white",
-          "data-[state=chosen-wrong]:bg-danger data-[state=chosen-wrong]:text-white",
+          "data-[state=correct]:bg-success data-[state=correct]:text-on-success",
+          "data-[state=chosen-wrong]:bg-danger data-[state=chosen-wrong]:text-on-danger",
           "data-[state=other]:bg-selected data-[state=other]:text-muted",
         )}
       >
