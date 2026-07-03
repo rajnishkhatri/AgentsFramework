@@ -19,6 +19,17 @@ title: 'Lightweight decision log (intent debt, long tail)'
   it through the runtime adapter: no per-user budget store or UI field exists to supply a
   value, so plumbing would be a writer-without-producer (ratchet rule: delete aspirational
   code). Reintroduction path documented in `tests/architecture/test_no_dead_config_knobs.py`.
+- 2026-07-02 — **Stage-1 brainstorm premise audit runs before direction generation;
+  `refuted` load-bearing premises force a re-pose.** Rejected advisory-only handling
+  ("publish refutation but continue on the stated framing") — it preserves direction
+  selection atop stale premises, the failure seen across the session's brainstorms.
+  Blocking semantics resolved as *correct-and-continue*: the agent re-poses the
+  corrected framing in the same document and generates directions over the corrected
+  space; the human gate is the confirmation point. Rejected present-and-wait (a full
+  round-trip before any directions) — the eval-loop runs that corrected-and-continued
+  scored 100% and drew reviewer praise; a mid-brainstorm stop doubles latency for the
+  common case where the correction is obvious. Spec: `docs/plan/sdd-brainstorm-hardening.spec.md`.
+
 - 2026-07-02 — **PostCompact hooks CANNOT return `additionalContext` (CC 2.1.185).** A
   live `/compact` rejected `postcompact_reinject.py`'s output with `Hook JSON output
   validation failed — (root): Invalid input`: the harness hook-output schema has no
