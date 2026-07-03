@@ -12,6 +12,14 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-02 — **DEP layer rules exempt test modules.** `classify_layer` matches the
+  first path part in `LAYER_DIRS`, so `tests/services/...` graded as the services layer
+  and the reviewer bot rejected PR #120 over a live test's legitimate `components`
+  import. `check_dependency_rules` now short-circuits for tests/-tree, `test_*.py`, and
+  `conftest.py` paths. Rejected relocating the test instead: the bot would re-trip on
+  the next cross-layer test (instance fix); package invariants stay enforced by
+  `tests/architecture/` and the unchanged package-path scan.
+
 - 2026-07-02 — **Stage-1 brainstorm premise audit runs before direction generation;
   `refuted` load-bearing premises force a re-pose.** Rejected advisory-only handling
   ("publish refutation but continue on the stated framing") — it preserves direction
