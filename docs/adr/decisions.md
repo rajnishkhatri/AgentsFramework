@@ -12,6 +12,16 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-03 — **Coach-judge float repair: (1.0, 1.5] clamps to 1.0; only >1.5
+  rescales /100** (`_rescale_percentages`, post-merge review W2). The old `>1.0`
+  cutover silently inverted a slight 0..1 overshoot into a near-zero score
+  (1.5 → 0.015) — a corrupt signal feeding future calibration. Band rationale:
+  a real percentage-scale reply lands well above 1.5 (a 1.5% axis score is not
+  a plausible verdict), so everything in the band is an overshoot to clamp.
+  Rejected leaving it justified-only (GoalJudge precedent covers clamping, not
+  this inversion) and rejected rejecting the band outright as unrepairable —
+  a 1.02 from a 0..1-scale model is unambiguous.
+
 - 2026-07-02 — **`llm.call.input_text` truncation posture: raised cap + visible
   marker** (§13 audit finding F2). `input_text` alone gets 32 KB
   (`_MAX_INPUT_TEXT_BYTES`) so the persona + coach-context render region is
@@ -137,3 +147,9 @@ title: 'Lightweight decision log (intent debt, long tail)'
   post-edit ruff hook is advisory formatting (HOOK-1 never-block-on-edit); a
   formatter hiccup must not block an edit. Scoped deviation, documented inline in
   the file. The safety gate `beforeShellExecution` stays `failClosed:true`.
+- 2026-07-03 — `meta/subject_coach_corpus_harvest.py`: `harvest_corpus`'s gate
+  report covers only the rows it returns; `main` re-summarizes the union with the
+  existing corpus file for the operator verdict. Why: the pure function can't see
+  the on-disk corpus, and a gate verdict over a partial view would read as met/
+  unmet dishonestly. Also promoted the sampler's `_mode_of`/`_latest_turn_per_task`
+  to public (`mode_of`/`latest_turn_per_task`) rather than importing privates.

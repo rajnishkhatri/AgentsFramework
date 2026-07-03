@@ -6,10 +6,14 @@ module is the DETERMINISTIC-FIRST half of that gate — the judge-assist path
 (PedagogyJudge.answer_leakage) stays out of the cascade until the ADR-0008
 cond#1 κ floor certifies it.
 
-Grounding: the Stage-0 live batch caught the persona free-generating replies
-that uniquely narrowed to the key (the rule-naming-as-leak class); generated
-rungs get mechanically screened for the same classes before ``reviewed`` can
-flip.
+Scope: this check covers exactly four LITERAL leak classes — assertive
+letter reveal, correct-label quote, why-correct rationale recital, and
+eliminate-every-distractor. The rule-naming-as-leak class the Stage-0 live
+batch surfaced (a rung whose named rule uniquely identifies one choice) is
+SEMANTIC and NOT covered here: rung 2 legitimately names the rule in general
+terms, so a deterministic rule-overlap check would quarantine valid rungs.
+That class stays an accepted ADR-0012 residual until the judge-assist path
+above certifies.
 
 Posture: fail-closed. An unverifiable input (no answer key) returns a
 violation — the cascade quarantines it; it never passes silently (AP-6).
