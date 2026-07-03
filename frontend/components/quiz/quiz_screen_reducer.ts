@@ -22,6 +22,27 @@ import type { Verdict } from "@/lib/wire/engine_entities";
 import type { QuizItemResult } from "./use_quiz";
 
 /**
+ * Whole-millisecond elapsed between an item's `presentedAt` clock start and a
+ * submit-time reading, for the D0 real-timing fix (`attempt.elapsed_ms`, replacing
+ * the old hardcoded 0). Both readings come from the monotonic `performance.now()`.
+ * Pure and clock-free so the page's timing is node-testable with fixed inputs.
+ *
+ *   - Non-negative floor: a wall-clock adjustment mid-answering can never yield a
+ *     negative value (FR-5); `now < presentedAt` clamps to 0.
+ *   - Missing start (`undefined` or non-finite `NaN`): a defensive 0, never
+ *     NaN/negative (FR-2). This `!Number.isFinite` guard is the SINGLE authority on
+ *     "no clock captured" — the reducer stores NaN (not 0) for a clock-less
+ *     item_loaded so a miss reaches this guard instead of being laundered into a
+ *     finite 0 (which would return `now`, a fabricated elapsed). Degenerate
+ *     fallback, not a fabricated reading — the universal stub is gone.
+ *   - Rounded to whole ms; a sub-ms delta is an honest 0.
+ */
+export function elapsedMsFrom(presentedAt: number | undefined, now: number): number {
+  if (presentedAt == null || !Number.isFinite(presentedAt)) return 0;
+  return Math.max(0, Math.round(now - presentedAt));
+}
+
+/**
  * The running session tally (FR-D3). Every graded submit increments `total`; a
  * correct one also increments `correct`. It rides on EVERY phase so it survives
  * the loading↔answering↔reviewing cycle across a multi-item walk, and is read at
@@ -46,6 +67,14 @@ interface AnsweringPhase {
   readonly hintOpen: boolean;
   /** Sticky once true for this item (FR-D5 attempt accounting). */
   readonly usedHint: boolean;
+  /**
+   * Monotonic clock reading (`performance.now()`) captured when THIS item was
+   * presented, i.e. on the `item_loaded` transition (D0 elapsed timing). The page
+   * subtracts it from the submit-time reading via `elapsedMsFrom` to record a real
+   * `attempt.elapsed_ms` instead of the old hardcoded 0. Per-item: a fresh
+   * `item_loaded` after Next stamps a new value (never cumulative across the walk).
+   */
+  readonly presentedAt: number;
   readonly score: SessionTally;
 }
 
@@ -72,7 +101,11 @@ export type QuizScreenState =
   | DonePhase;
 
 export type QuizScreenAction =
-  | { type: "item_loaded"; item: QuizItemResult }
+  // `presentedAt` is the monotonic clock reading at item-present time (D0 elapsed
+  // timing). The page supplies `performance.now()`; the reducer stores it as data
+  // and never reads a clock itself (deterministic, node-testable). Optional so the
+  // transition-only tests that don't care about timing can omit it (defaults to 0).
+  | { type: "item_loaded"; item: QuizItemResult; presentedAt?: number }
   | { type: "select"; letter: string }
   | { type: "toggle_hint" }
   | { type: "submitted"; verdict: Verdict | null; letter: string | null }
@@ -93,13 +126,21 @@ export function quizScreenReducer(
   switch (action.type) {
     case "item_loaded":
       // A freshly scheduled item always opens a clean answering slate — but the
-      // running tally carries over from the prior item(s).
+      // running tally carries over from the prior item(s). `presentedAt` stamps the
+      // per-item clock start (D0 elapsed timing); a fresh item_loaded after Next
+      // resets it, so timing is per-item and never cumulative across the walk.
+      // A dispatch that omits the clock reading (transition-only tests) stores NaN,
+      // NOT 0: `elapsedMsFrom`'s `!Number.isFinite` guard is the single authority on
+      // "no start captured" and returns 0 for it. Laundering the miss into a finite 0
+      // would defeat that guard — `elapsedMsFrom(0, now)` = now = a fabricated
+      // multi-million-ms elapsed, the exact D0 bug class.
       return {
         phase: "answering",
         item: action.item,
         selectedLetter: null,
         hintOpen: false,
         usedHint: false,
+        presentedAt: action.presentedAt ?? Number.NaN,
         score: state.score,
       };
 

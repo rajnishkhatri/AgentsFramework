@@ -24,6 +24,7 @@ import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
   quizScreenReducer,
+  elapsedMsFrom,
 } from "@/components/quiz/quiz_screen_reducer";
 import { stashQuizSession } from "@/components/quiz/quiz_session_store";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
@@ -96,7 +97,9 @@ export default function QuizPage(): React.JSX.Element {
     let cancelled = false;
     openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID })
       .then((item) => {
-        if (!cancelled) dispatch({ type: "item_loaded", item });
+        // D0 elapsed timing: stamp the monotonic clock the moment the item is
+        // presented (clock start); onSubmit stops it to record a real elapsed_ms.
+        if (!cancelled) dispatch({ type: "item_loaded", item, presentedAt: performance.now() });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -113,12 +116,15 @@ export default function QuizPage(): React.JSX.Element {
     const letter = state.selectedLetter;
     const { question } = state.item;
     const usedHint = state.usedHint;
+    // D0 elapsed timing: real per-item latency (monotonic stop − start), replacing
+    // the former hardcoded `elapsedMs: 0`. Clamped non-negative / whole-ms by the helper.
+    const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
     submit({
       session,
       question,
       learnerId: LEARNER_ID,
       letter,
-      elapsedMs: 0,
+      elapsedMs,
       usedHint,
     })
       .then((result) => {

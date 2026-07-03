@@ -12,6 +12,17 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-03 — **D0 elapsed timing: page wiring is typechecked, not RTL-asserted**
+  (review "not checked" gap, JUSTIFY). `QuizPage.onSubmit` computes
+  `elapsedMsFrom(state.presentedAt, performance.now())` and forwards it to `submit`;
+  this wiring is glue (F-R1) and typechecked. Rejected a page-level RTL test: it
+  would mock `useRouter` + `useEngine` + `useSurface` + `buildBrowserRuntimeClient`
+  and stub `performance.now`, then drive the async open→answer→submit chain — high
+  mock cost asserting *wiring*, not logic, with no page-RTL harness precedent under
+  `app/(coach)/`. The elapsed *contract* is already locked deterministically at two
+  layers: `elapsedMsFrom` unit tests (FR-2/4/5) + the reducer clock-less contract
+  guard. Low-ROI glue test deliberately skipped (§20). Spec:
+  `docs/plan/quiz-attempt-elapsed-timing.spec.md`.
 - 2026-07-03 — **Phase-6 test-item solver comparator: single-letter extraction,
   ambiguous→undecidable** (`components/test_item_generation.py::extract_solver_letter`).
   Parity-pinned to `ExactLetterGrader` (a verdict is a letter, compared exactly):

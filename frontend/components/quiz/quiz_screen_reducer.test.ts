@@ -17,6 +17,7 @@ import type { Question, Verdict } from "@/lib/wire/engine_entities";
 import {
   quizScreenReducer,
   initialQuizScreen,
+  elapsedMsFrom,
   type QuizScreenState,
 } from "./quiz_screen_reducer";
 
@@ -61,6 +62,63 @@ describe("quiz_screen_reducer — initial + item load", () => {
     expect(s.phase === "answering" && s.item.question.id).toBe("q1");
     expect(s.phase === "answering" && s.selectedLetter).toBeNull();
     expect(s.phase === "answering" && s.hintOpen).toBe(false);
+  });
+});
+
+describe("quiz_screen_reducer — per-item start timestamp (D0 elapsed timing)", () => {
+  it("item_loaded stamps presentedAt on the answering state (FR-3)", () => {
+    const s = quizScreenReducer(initialQuizScreen, {
+      type: "item_loaded",
+      item,
+      presentedAt: 1234,
+    });
+    expect(s.phase === "answering" && s.presentedAt).toBe(1234);
+  });
+
+  it("a second item_loaded after next resets presentedAt (per-item, not cumulative — FR-6)", () => {
+    // Item 1 presented at t=1000, answered, Next → loading.
+    let s = quizScreenReducer(initialQuizScreen, {
+      type: "item_loaded",
+      item,
+      presentedAt: 1000,
+    });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, { type: "next" });
+    // Item 2 presented at t=5000 — the clock restarts for the new item.
+    s = quizScreenReducer(s, { type: "item_loaded", item, presentedAt: 5000 });
+    expect(s.phase === "answering" && s.presentedAt).toBe(5000);
+  });
+
+  it("a clock-less item_loaded stores a non-finite start that elapsedMsFrom reads as 0, NOT a fabricated elapsed (contract guard)", () => {
+    // The reducer must NOT launder a missing presentedAt into a finite 0: feeding a
+    // finite 0 into elapsedMsFrom(0, now) returns `now` — a multi-million-ms
+    // fabricated elapsed, the exact D0 bug. Missing → NaN → the helper's finite-guard
+    // returns 0. This locks the reducer default and the helper guard to one contract.
+    const s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+    const start = s.phase === "answering" ? s.presentedAt : 0;
+    expect(Number.isFinite(start)).toBe(false);
+    expect(elapsedMsFrom(start, 9_999_999)).toBe(0);
+  });
+});
+
+describe("elapsedMsFrom — monotonic, clamped, whole-ms (D0 elapsed timing)", () => {
+  it("clamps to 0 when now < presentedAt (monotonic safety, never negative — FR-5)", () => {
+    // A wall-clock adjustment during answering must not yield a negative elapsed.
+    expect(elapsedMsFrom(3000, 1000)).toBe(0);
+  });
+
+  it("returns 0 (never NaN/negative) when the start timestamp is missing (FR-2)", () => {
+    expect(elapsedMsFrom(undefined, 2500)).toBe(0);
+    expect(Number.isNaN(elapsedMsFrom(undefined, 2500))).toBe(false);
+  });
+
+  it("rounds a sub-millisecond delta to an honest 0 (edge case, not the old universal stub)", () => {
+    expect(elapsedMsFrom(1000.2, 1000.6)).toBe(0);
+  });
+
+  it("computes whole-ms elapsed = now − presentedAt on the happy path (FR-4)", () => {
+    expect(elapsedMsFrom(1000, 3500)).toBe(2500);
   });
 });
 
