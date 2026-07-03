@@ -54,16 +54,26 @@ export function BucketCard(props: { vm: BucketCardVM }): React.JSX.Element {
         />
       </div>
 
+      {/*
+        A <dl> may contain only <dt>/<dd> (optionally grouped in a <div>) — bare
+        <span> siblings trip axe's `definition-list` rule. The visible unit word
+        ("mastery" / "of test") lives inside the <dd> instead of as a loose span,
+        so each grouping <div> holds exactly a <dt> + <dd>.
+      */}
       <dl className="flex items-center justify-between text-xs text-muted">
         <div className="flex gap-1">
           <dt className="sr-only">Mastery</dt>
-          <dd className="font-semibold text-fg">{vm.masteryPct}%</dd>
-          <span>mastery</span>
+          <dd className="flex gap-1">
+            <span className="font-semibold text-fg">{vm.masteryPct}%</span>
+            <span>mastery</span>
+          </dd>
         </div>
         <div className="flex gap-1">
           <dt className="sr-only">Share of test</dt>
-          <dd>{vm.shareOfTestPct}%</dd>
-          <span>of test</span>
+          <dd className="flex gap-1">
+            <span>{vm.shareOfTestPct}%</span>
+            <span>of test</span>
+          </dd>
         </div>
       </dl>
     </article>

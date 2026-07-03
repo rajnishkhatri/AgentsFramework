@@ -30,6 +30,7 @@
 
 import {
   DEFAULT_SUBJECT,
+  type Hint,
   type Question,
   type Skill,
   type SkillState,
@@ -135,6 +136,33 @@ export const LEARN_SKILL_STATES: readonly SkillState[] = [
 ];
 
 /**
+ * Reviewed hint ladders (ADR-0014) — three rungs per question so the iPad
+ * panel's two-tier nudge (FR-J3a) has rungs 2/3 on WHICHEVER item the FSRS
+ * scheduler serves. Bodies are deliberately generic + answer-free (rung 1 probe
+ * / rung 2 conceptual / rung 3 directive — the same discipline the verifier
+ * cascade enforces on generated ladders); the `Nudge N:` prefixes give the
+ * ipad spec a stable, non-leaking assertion target.
+ */
+export const LEARN_HINTS: readonly Hint[] = LEARN_QUESTIONS.flatMap((qn) =>
+  ([1, 2, 3] as const).map(
+    (r): Hint => ({
+      id: `h-${qn.id}-${r}`,
+      subject: SUBJECT,
+      question_id: qn.id,
+      rung: r,
+      body_md:
+        r === 1
+          ? "What is this sentence really testing?"
+          : r === 2
+            ? "Nudge 2: name the rule in play before you compare the choices."
+            : "Nudge 3: find the exact spot where the choices differ and test each against the rule.",
+      reviewed: true,
+      generated_by: "e2e-corpus",
+    }),
+  ),
+);
+
+/**
  * The serializable corpus a spec hands to the browser via the seed-override hook.
  * Plain arrays (JSON-safe) so `page.addInitScript` can pass it across the boundary.
  */
@@ -142,12 +170,14 @@ export interface LearnSeedCorpus {
   readonly skills: readonly Skill[];
   readonly questions: readonly Question[];
   readonly skillStates: readonly SkillState[];
+  readonly hints: readonly Hint[];
 }
 
 export const LEARN_SEED_CORPUS: LearnSeedCorpus = {
   skills: LEARN_SKILLS,
   questions: LEARN_QUESTIONS,
   skillStates: LEARN_SKILL_STATES,
+  hints: LEARN_HINTS,
 };
 
 /** The global key the seed-override hook reads (kept in one place, shared with the app). */

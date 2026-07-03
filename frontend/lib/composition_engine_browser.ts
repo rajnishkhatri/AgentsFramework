@@ -32,6 +32,7 @@ import type { EnginePortBag } from "./composition_engine";
 import type { EngineDb } from "./adapters/engine/db/engine_db";
 import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
 import type {
+  Hint,
   Question,
   Skill,
   SkillState,
@@ -122,6 +123,9 @@ export function browserEngineAdapters(): EnginePortBag {
         db.seedSkills([...injected.skills]);
         db.seedQuestions([...injected.questions]);
         db.seedSkillStates([...injected.skillStates]);
+        // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
+        // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
+        if (injected.hints) db.seedHints([...injected.hints]);
       } else {
         seedDevCorpus(db);
       }
@@ -143,6 +147,8 @@ interface InjectedSeedCorpus {
   readonly skills: readonly Skill[];
   readonly questions: readonly Question[];
   readonly skillStates: readonly SkillState[];
+  /** Optional reviewed hint ladders (ADR-0014); absent in older specs. */
+  readonly hints?: readonly Hint[];
 }
 
 /**
@@ -165,5 +171,10 @@ function readE2ESeedOverride(): InjectedSeedCorpus | null {
   ) {
     return null;
   }
-  return { skills: c.skills, questions: c.questions, skillStates: c.skillStates };
+  return {
+    skills: c.skills,
+    questions: c.questions,
+    skillStates: c.skillStates,
+    ...(Array.isArray(c.hints) ? { hints: c.hints } : {}),
+  };
 }

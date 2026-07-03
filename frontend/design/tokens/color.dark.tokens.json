@@ -12,6 +12,10 @@
     "success": { "$value": "#5cba86", "$description": "Success / complete, dark-tuned." },
     "warning": { "$value": "#e3b357", "$description": "Warning / caution, dark-tuned (frozen v20)." },
 
+    "on-accent":  { "$value": "#241c15", "$description": "Text/icon on an accent fill. The dark-tuned accent is LIGHT coral, so white text fails AA (2.34:1) — dark-bg-colored text clears 7.18:1 (FR-K2, Phase-4 a11y)." },
+    "on-success": { "$value": "#241c15", "$description": "Text/icon on a success fill — white fails AA on the light dark-tuned green (2.38:1); this clears 7.05:1 (FR-K2, Phase-4 a11y)." },
+    "on-danger":  { "$value": "#241c15", "$description": "Text/icon on a danger fill — white fails AA on the light dark-tuned red (3.01:1); this clears 5.58:1 (FR-K2, Phase-4 a11y)." },
+
     "accent-light": {
       "$value": "rgba(229, 150, 124, 0.22)",
       "$description": "Accent wash for badges/hover. Per-mode: 22% in dark (vs 15% light).",

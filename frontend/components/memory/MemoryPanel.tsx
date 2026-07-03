@@ -162,7 +162,7 @@ export function MemoryPanel(props: {
             className={cn(
               "px-3 py-1 rounded-sm text-xs",
               canAdd
-                ? "bg-accent text-white"
+                ? "bg-accent text-on-accent"
                 : "bg-transparent text-muted cursor-not-allowed",
             )}
           >

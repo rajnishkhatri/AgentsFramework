@@ -1,26 +1,37 @@
 /**
- * useCoach — the Coach screen's seam onto the CHAT runtime (FR-F).
+ * useCoach — the Coach surfaces' seam onto the CHAT runtime (FR-F, FR-J3).
  *
  * The coach is NOT an engine port (plan OD-3 / design §7 divergence #1): there
  * is no `CoachAgentClient`. The coach is a *consumer of the chat runtime port*
- * (`AgentRuntimeClient`), so this hook wraps `useAgentRun` and projects each
- * streaming assistant turn (`AssistantRunView`) to a coach bubble via the pure
- * `toCoachMessage` translator (Phase 0.5). It inherits the chat pipeline's
+ * (`AgentRuntimeClient`); each streaming assistant turn is projected to a
+ * coach bubble via the pure `toCoachMessage` translator (Phase 0.5).
+ *
+ * Phase 4.3 (FR-J3): the transcript + thread id moved out of per-mount React
+ * state into `coach_thread_store`, because the iPad split renders the SAME
+ * thread in two mounts (the quiz page's CoachPanel and the Coach screen) and
+ * the thread must survive the client-side navigation between them. This hook
+ * is now a thin `useSyncExternalStore` view over that store; the send loop
+ * (`sendCoachAsk`) is a React-free orchestration reusing the chat pipeline's
+ * pure pieces (`uiInputToAgentRequest`, `consumeRunStream`), so it keeps the
  * terminal-state safety for free: a dropped stream surfaces as a synthetic
  * `run_error` → `toCoachMessage` maps it to `error + canRetry` (FR-F4: retry,
  * never an infinite spinner).
- *
- * Per F-R1 the CoachView owns no run logic. The React-free mapping
- * `coachTurnsFromChat` is exported so the projection is testable in node without
- * React (the analogue of `consumeRunStream`).
  */
 
 "use client";
 
 import * as React from "react";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
-import { useAgentRun, type ChatTurn } from "@/components/chat/use_agent_run";
+import { consumeRunStream, type ChatTurn } from "@/components/chat/use_agent_run";
+import { uiInputToAgentRequest } from "@/lib/translators/ui_input_to_agent_request";
 import { toCoachMessage, type CoachMessage } from "@/lib/translators/coach_message_vm";
+import {
+  applyCoachEvent,
+  beginCoachTurn,
+  coachThreadSnapshot,
+  endCoachTurn,
+  subscribeCoachThread,
+} from "./coach_thread_store";
 
 /**
  * The coach's AgentFacts id (services/governance/subject_coach_identity.py).
@@ -52,10 +63,45 @@ export function coachTurnsFromChat(
 }
 
 /**
- * Thin React wrapper: drives the chat runtime and exposes the coach projection.
- * The CoachView calls `ask`/`retry` and renders `turns`; it holds no run logic.
- * `retry` re-sends the last user ask (FR-F4) — the runtime keys the checkpoint by
- * thread id, so a resend continues the same coach thread server-side.
+ * React-free: send one learner ask on the SHARED coach thread. Any mount may
+ * call it (panel or Coach screen); the turn appears in every subscriber. The
+ * middleware keys checkpoint state by `thread_id`, so consecutive asks — from
+ * either mount — continue one server-side conversation (FR-J3).
+ */
+export async function sendCoachAsk(
+  runtime: AgentRuntimeClient,
+  body: string,
+): Promise<void> {
+  const { threadId, turnId } = beginCoachTurn(body);
+  try {
+    const req = uiInputToAgentRequest({
+      thread_id: threadId,
+      body,
+      agent_id: SUBJECT_COACH_AGENT_ID,
+    });
+    await consumeRunStream(runtime.streamRun(req), (evt) =>
+      applyCoachEvent(turnId, evt),
+    );
+  } catch (e) {
+    // streamRun threw synchronously (e.g. missing composition wiring) —
+    // stream-iteration failures already arrive as run_error via consumeRunStream.
+    applyCoachEvent(turnId, {
+      type: "run_error",
+      trace_id: "no-trace",
+      run_id: "",
+      error_type: "network_error",
+      message: e instanceof Error ? e.message : String(e),
+    });
+  } finally {
+    endCoachTurn();
+  }
+}
+
+/**
+ * Thin React view over the shared thread: subscribes to the store and exposes
+ * the coach projection. The views call `ask`/`retry` and render `turns`; they
+ * hold no run logic. `retry` re-sends the last user ask (FR-F4) — same thread
+ * id, so the resend continues the same coach conversation server-side.
  */
 export function useCoach(runtime: AgentRuntimeClient): {
   turns: ReadonlyArray<CoachTurn>;
@@ -63,20 +109,28 @@ export function useCoach(runtime: AgentRuntimeClient): {
   ask: (body: string) => Promise<void>;
   retry: () => Promise<void>;
 } {
-  const { turns, busy, send } = useAgentRun(runtime, undefined, {
-    agentId: SUBJECT_COACH_AGENT_ID,
-  });
-  const coachTurns = React.useMemo(() => coachTurnsFromChat(turns), [turns]);
+  const snap = React.useSyncExternalStore(
+    subscribeCoachThread,
+    coachThreadSnapshot,
+    coachThreadSnapshot,
+  );
+  const coachTurns = React.useMemo(
+    () => coachTurnsFromChat(snap.turns),
+    [snap.turns],
+  );
 
-  const ask = React.useCallback((body: string) => send(body), [send]);
+  const ask = React.useCallback(
+    (body: string) => sendCoachAsk(runtime, body),
+    [runtime],
+  );
 
   const retry = React.useCallback((): Promise<void> => {
-    const last = turns.at(-1);
-    // Only a terminal error is retryable; a resend of the last ask continues the
-    // same thread (FR-F4). Nothing to retry on an empty/streaming transcript.
+    const last = snap.turns.at(-1);
+    // Only a terminal error is retryable; a resend of the last ask continues
+    // the same thread (FR-F4). Nothing to retry on an empty/streaming transcript.
     if (last == null || last.assistant.status !== "error") return Promise.resolve();
-    return send(last.user);
-  }, [turns, send]);
+    return sendCoachAsk(runtime, last.user);
+  }, [snap.turns, runtime]);
 
-  return { turns: coachTurns, busy, ask, retry };
+  return { turns: coachTurns, busy: snap.busy, ask, retry };
 }

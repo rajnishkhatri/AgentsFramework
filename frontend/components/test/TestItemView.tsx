@@ -92,7 +92,7 @@ export function TestItemView(props: TestItemViewProps): React.JSX.Element {
                   className={cn(
                     "grid size-7 place-items-center rounded-full font-semibold",
                     "data-[selected=false]:bg-selected data-[selected=false]:text-muted",
-                    "data-[selected=true]:bg-accent data-[selected=true]:text-white",
+                    "data-[selected=true]:bg-accent data-[selected=true]:text-on-accent",
                   )}
                 >
                   {c.letter}
@@ -124,7 +124,7 @@ export function TestItemView(props: TestItemViewProps): React.JSX.Element {
             type="button"
             data-testid="test-submit-section"
             onClick={onSubmitSection}
-            className="rounded-full bg-accent px-6 py-3 font-semibold text-white"
+            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
           >
             Submit section
           </button>
@@ -133,7 +133,7 @@ export function TestItemView(props: TestItemViewProps): React.JSX.Element {
             type="button"
             data-testid="test-next"
             onClick={onNext}
-            className="rounded-full bg-accent px-6 py-3 font-semibold text-white"
+            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
           >
             Next →
           </button>

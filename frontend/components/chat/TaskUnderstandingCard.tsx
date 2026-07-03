@@ -175,7 +175,7 @@ export function TaskUnderstandingCard(props: {
                 success_conditions: conditions.map((c) => c.trim()),
               })
             }
-            className="text-xs font-medium text-white bg-accent rounded-sm px-2 py-0.5 disabled:opacity-40 cursor-pointer border-0"
+            className="text-xs font-medium text-on-accent bg-accent rounded-sm px-2 py-0.5 disabled:opacity-40 cursor-pointer border-0"
           >
             Save & resume
           </button>

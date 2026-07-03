@@ -73,7 +73,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
                   className={cn(
                     "grid size-7 place-items-center rounded-full font-semibold",
                     "data-[selected=false]:bg-selected data-[selected=false]:text-muted",
-                    "data-[selected=true]:bg-accent data-[selected=true]:text-white",
+                    "data-[selected=true]:bg-accent data-[selected=true]:text-on-accent",
                   )}
                 >
                   {c.letter}
@@ -90,7 +90,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
           type="button"
           data-testid="quiz-hint-toggle"
           onClick={onToggleHint}
-          className="rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent"
+          className="min-h-11 rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent"
         >
           {hintOpen ? "Hide hint" : "Get a hint"}
         </button>
@@ -98,7 +98,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         <button
           type="button"
           data-testid="quiz-reveal"
-          className="rounded-full px-4 py-2 text-sm text-muted"
+          className="min-h-11 rounded-full px-4 py-2 text-sm text-muted"
         >
           Reveal answer
         </button>
@@ -121,7 +121,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         onClick={onSubmit}
         data-enabled={submittable ? "true" : "false"}
         className={cn(
-          "rounded-full bg-accent px-6 py-3 font-semibold text-white",
+          "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent",
           "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
         )}
       >

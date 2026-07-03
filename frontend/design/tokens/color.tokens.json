@@ -11,14 +11,14 @@
       "$description": "Primary foreground / text (light)"
     },
     "muted": {
-      "$value": "#7d7a75",
+      "$value": "#666460",
       "$type": "color",
-      "$description": "Muted / secondary text (light)"
+      "$description": "Muted / secondary text (light) — darkened from #7d7a75 to clear WCAG-AA 4.5:1 not just on --color-bg but on the lightest tinted surfaces it lands on (accent-tint banners ~#eaedea, composer surface ~#e5e3e1) (FR-K2, Phase-4 a11y)"
     },
     "accent": {
-      "$value": "#d87758",
+      "$value": "#93513d",
       "$type": "color",
-      "$description": "Primary accent / interactive (light) — coral, matched to brand swatch (frozen v16)"
+      "$description": "Primary accent / interactive (light) — coral, darkened from #d87758 (via #a75c44) so accent text clears WCAG-AA 4.5:1 on its own --color-accent-light tint (~#ede0da — the soft feedback banner / badge surface), not just on --color-bg; white-on-accent also clears (FR-K2, Phase-4 a11y)"
     },
     "accent-light": {
       "$value": "color-mix(in oklab, var(--color-accent) 15%, transparent)",
@@ -56,44 +56,59 @@
       "$description": "Destructive action / error (light)"
     },
     "success": {
-      "$value": "#2f8f5b",
+      "$value": "#2a7f51",
       "$type": "color",
-      "$description": "Success / positive state (light)"
+      "$description": "Success / positive state (light) — darkened from #2f8f5b so white-on-success and success-on-bg text both clear WCAG-AA 4.5:1 (FR-K2, Phase-4 a11y)"
     },
     "warning": {
       "$value": "#a9741f",
       "$type": "color",
       "$description": "Warning / caution (light) — promoted from inline .badge-warning to a token (frozen v20)"
     },
-    "bucket-rhetoric": {
-      "$value": "#d87758",
+    "on-accent": {
+      "$value": "#ffffff",
       "$type": "color",
-      "$description": "Skill-bucket accent: Rhetoric (light) — FR-A3"
+      "$description": "Text/icon on an accent fill — white clears 6.03:1 on the light accent; the dark palette overrides to dark-bg text because ITS accent is light coral (FR-K2, Phase-4 a11y)"
+    },
+    "on-success": {
+      "$value": "#ffffff",
+      "$type": "color",
+      "$description": "Text/icon on a success fill — white clears 4.94:1 on the light success; dark palette overrides (FR-K2, Phase-4 a11y)"
+    },
+    "on-danger": {
+      "$value": "#ffffff",
+      "$type": "color",
+      "$description": "Text/icon on a danger fill — white clears 5.44:1 on the light danger; dark palette overrides (FR-K2, Phase-4 a11y)"
+    },
+    "bucket-rhetoric": {
+      "$value": "#a75c44",
+      "$type": "color",
+      "$description": "Skill-bucket accent: Rhetoric (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     },
     "bucket-usage": {
-      "$value": "#c0863a",
+      "$value": "#94672d",
       "$type": "color",
-      "$description": "Skill-bucket accent: Usage (light) — FR-A3"
+      "$description": "Skill-bucket accent: Usage (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     },
     "bucket-punctuation": {
-      "$value": "#4f9d8b",
+      "$value": "#3e7b6d",
       "$type": "color",
-      "$description": "Skill-bucket accent: Punctuation (light) — FR-A3"
+      "$description": "Skill-bucket accent: Punctuation (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     },
     "bucket-organization": {
-      "$value": "#7a9450",
+      "$value": "#627741",
       "$type": "color",
-      "$description": "Skill-bucket accent: Organization (light) — FR-A3"
+      "$description": "Skill-bucket accent: Organization (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     },
     "bucket-sentence-structure": {
-      "$value": "#5b7fa6",
+      "$value": "#537397",
       "$type": "color",
-      "$description": "Skill-bucket accent: Sentence Structure (light) — FR-A3"
+      "$description": "Skill-bucket accent: Sentence Structure (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     },
     "bucket-conciseness": {
-      "$value": "#a06a93",
+      "$value": "#926086",
       "$type": "color",
-      "$description": "Skill-bucket accent: Conciseness (light) — FR-A3"
+      "$description": "Skill-bucket accent: Conciseness (light) — FR-A3; darkened to clear WCAG-AA 4.5:1 as text-on-bg / white-on-fill (FR-K2, Phase-4 a11y)"
     }
   }
 }

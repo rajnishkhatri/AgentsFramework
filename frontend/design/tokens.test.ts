@@ -22,14 +22,21 @@ const FRONTEND_ROOT = path.join(HERE, "..");
 const GENERATED_CSS = path.join(FRONTEND_ROOT, "app", "generated-theme.css");
 const BUILD_SCRIPT = path.join(HERE, "style-dictionary.config.mjs");
 
-/** FR-A3: the six bucket accents (light / dark), verbatim from the spec. */
+/**
+ * FR-A3: the six bucket accents (light / dark), verbatim from the token source.
+ *
+ * The light hexes were darkened in the Phase-4 a11y pass (FR-K2) so each accent
+ * clears WCAG-AA 4.5:1 both as text-on-bg and as white-on-fill; the hues are
+ * preserved and the six remain visually distinct. The dark hexes are unchanged
+ * (they already clear AA against the dark bg — see e2e/learn/a11y.spec.ts).
+ */
 const BUCKET_ACCENTS: ReadonlyArray<readonly [bucket: string, light: string, dark: string]> = [
-  ["rhetoric", "#d87758", "#e5967c"],
-  ["usage", "#c0863a", "#d6a45a"],
-  ["punctuation", "#4f9d8b", "#6bbfa9"],
-  ["organization", "#7a9450", "#9bb56e"],
-  ["sentence-structure", "#5b7fa6", "#84a6cc"],
-  ["conciseness", "#a06a93", "#c08fb4"],
+  ["rhetoric", "#a75c44", "#e5967c"],
+  ["usage", "#94672d", "#d6a45a"],
+  ["punctuation", "#3e7b6d", "#6bbfa9"],
+  ["organization", "#627741", "#9bb56e"],
+  ["sentence-structure", "#537397", "#84a6cc"],
+  ["conciseness", "#926086", "#c08fb4"],
 ];
 
 let css = "";

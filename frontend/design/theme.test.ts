@@ -28,15 +28,27 @@ const FRONTEND_ROOT = path.join(HERE, "..");
 const GENERATED_CSS = path.join(FRONTEND_ROOT, "app", "generated-theme.css");
 const BUILD_SCRIPT = path.join(HERE, "style-dictionary.config.mjs");
 
-/** FR-A1: light base palette, verbatim from the spec §3.A. */
+/**
+ * FR-A1: light base palette. `muted`/`accent`/`success` were darkened in the
+ * Phase-4 a11y pass (FR-K2) so muted-on-bg, accent-on-bg, and white-on-accent
+ * text all clear WCAG-AA 4.5:1 (hues preserved); `accent` was darkened once
+ * more (#a75c44 → #93513d) so accent text also clears 4.5:1 on its own
+ * `--color-accent-light` tint (~#ede0da — the soft feedback banner surface the
+ * axe sweep measures). `bg`/`fg`/`danger`/`warning` already passed and are
+ * unchanged; the dark palette is unchanged.
+ */
 const LIGHT_BASE: ReadonlyArray<readonly [cssVar: string, value: string]> = [
   ["--color-bg", "#f9f7f5"],
   ["--color-fg", "#1f1e1d"],
-  ["--color-muted", "#7d7a75"],
-  ["--color-accent", "#d87758"],
+  ["--color-muted", "#666460"],
+  ["--color-accent", "#93513d"],
   ["--color-danger", "#c0392b"],
-  ["--color-success", "#2f8f5b"],
+  ["--color-success", "#2a7f51"],
   ["--color-warning", "#a9741f"],
+  // On-fill text (Phase-4 a11y): white clears AA on every LIGHT fill …
+  ["--color-on-accent", "#ffffff"],
+  ["--color-on-success", "#ffffff"],
+  ["--color-on-danger", "#ffffff"],
 ];
 
 /** FR-A2: dark base palette, verbatim from the spec §3.A. */
@@ -49,6 +61,12 @@ const DARK_BASE: ReadonlyArray<readonly [cssVar: string, value: string]> = [
   ["--color-warning", "#e3b357"],
   ["--color-surface", "#322a24"],
   ["--color-surface-sunken", "#3f3831"],
+  // … but the dark-tuned fills are LIGHT (lifted-L coral/green/red), so white
+  // text fails AA on them (2.3–3.0:1); on-fill text flips to the dark bg hex
+  // (5.6–7.2:1). The dark axe sweep in e2e/learn/a11y.spec.ts is the oracle.
+  ["--color-on-accent", "#241c15"],
+  ["--color-on-success", "#241c15"],
+  ["--color-on-danger", "#241c15"],
 ];
 
 /** FR-A4: type scale sizes, verbatim from the spec §3.A. */
