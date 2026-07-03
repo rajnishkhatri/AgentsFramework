@@ -27,6 +27,8 @@ import type { Grader } from "./ports/engine/grader";
 import type { ContentRepo } from "./ports/engine/content_repo";
 import type { LearnerReadRepo } from "./ports/engine/learner_read_repo";
 import type { HintRepo } from "./ports/engine/hint_repo";
+import type { TestItemRepo } from "./ports/engine/test_item_repo";
+import type { TestBlueprintRepo } from "./ports/engine/test_blueprint_repo";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
@@ -41,6 +43,8 @@ import { FsrsScheduler } from "./adapters/engine/scheduler/fsrs_scheduler";
 import { ExactLetterGrader } from "./adapters/engine/grader/exact_letter_grader";
 import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_read_repo";
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
+import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
+import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
 
 export interface BuildEngineAdaptersOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
@@ -60,6 +64,10 @@ export interface EnginePortBag {
   readonly learnerRead: LearnerReadRepo;
   /** Read-only reviewed hint ladder (ADR-0014, FR-12/FR-20). */
   readonly hintRepo: HintRepo;
+  /** Read-only reviewed exam-item bank (ADR-0015, FR-27.1). */
+  readonly testItemRepo: TestItemRepo;
+  /** Read-only test-form blueprint (ADR-0015, FR-24.3). */
+  readonly testBlueprintRepo: TestBlueprintRepo;
   /**
    * Fire-and-forget quiz-submit signal to the coach-session marker store
    * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the
@@ -106,5 +114,9 @@ export function buildEngineAdapters(
     learnerRead: new DrizzleLearnerReadRepo(db),
     // Read-only reviewed hint ladder (ADR-0014): no write surface on the port.
     hintRepo: new DrizzleHintRepo(db),
+    // Read-only governed test plane (ADR-0015): reviewed items + blueprint,
+    // no write surface — serving code can never flip the gate.
+    testItemRepo: new DrizzleTestItemRepo(db),
+    testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
   };
 }

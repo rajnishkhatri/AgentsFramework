@@ -40,6 +40,8 @@ import type {
   QuizSession,
   Skill,
   SkillState,
+  TestBlueprint,
+  TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
 import type { EngineDb, SessionClosePatch } from "./engine_db";
@@ -100,6 +102,37 @@ function toHint(r: Record<string, unknown>): Hint {
     body_md: String(r.body_md ?? ""),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
+  };
+}
+
+function toTestItem(r: Record<string, unknown>): TestItem {
+  return {
+    id: String(r.id),
+    subject: String(r.subject),
+    skill_id: String(r.skill_id),
+    difficulty: Number(r.difficulty ?? 3),
+    stem_md: String(r.stem_md ?? ""),
+    choices: (r.choices as TestItem["choices"]) ?? [],
+    answer_letter: String(r.answer_letter),
+    reviewed: Boolean(r.reviewed),
+    generated_by: String(r.generated_by ?? ""),
+  };
+}
+
+function toTestBlueprint(r: Record<string, unknown>): TestBlueprint {
+  return {
+    id: String(r.id),
+    subject: String(r.subject),
+    skill_mix: (r.skill_mix as TestBlueprint["skill_mix"]) ?? {},
+    difficulty_dist: (r.difficulty_dist as TestBlueprint["difficulty_dist"]) ?? {},
+    count: Number(r.count),
+    minutes: Number(r.minutes),
+    scale_band_table:
+      (r.scale_band_table as TestBlueprint["scale_band_table"]) ?? [],
+    ...(r.pass_criteria != null
+      ? { pass_criteria: r.pass_criteria as Record<string, unknown> }
+      : {}),
+    seed: Number(r.seed),
   };
 }
 
@@ -280,6 +313,36 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     async insertHint(h) {
       // Duplicate (question_id, rung) is rejected by hint_question_rung_uq.
       await wrap("insertHint", db.insert(pg.hint).values(h));
+    },
+    async listReviewedTestItems(subject) {
+      const rows = await wrap(
+        "listReviewedTestItems",
+        db
+          .select()
+          .from(pg.testItem)
+          .where(
+            and(
+              eq(pg.testItem.subject, subject),
+              eq(pg.testItem.reviewed, true), // HARD GATE (FR-27.1)
+            ),
+          )
+          .orderBy(asc(pg.testItem.id)),
+      );
+      return rows.map((r) => toTestItem(r as Record<string, unknown>));
+    },
+    async insertTestItem(item) {
+      await wrap("insertTestItem", db.insert(pg.testItem).values(item));
+    },
+    async getTestBlueprint(id) {
+      const rows = await wrap(
+        "getTestBlueprint",
+        db.select().from(pg.testBlueprint).where(eq(pg.testBlueprint.id, id)).limit(1),
+      );
+      const first = rows[0];
+      return first ? toTestBlueprint(first as Record<string, unknown>) : null;
+    },
+    async insertTestBlueprint(bp) {
+      await wrap("insertTestBlueprint", db.insert(pg.testBlueprint).values(bp));
     },
     async insertSession(s) {
       await wrap(

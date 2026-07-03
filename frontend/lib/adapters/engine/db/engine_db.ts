@@ -25,6 +25,8 @@ import type {
   QuizSession,
   Skill,
   SkillState,
+  TestBlueprint,
+  TestItem,
   Tutorial,
 } from "../../../wire/engine_entities";
 
@@ -75,6 +77,15 @@ export interface EngineDb extends ReadableEngineDb {
   listReviewedHints(subject: string, questionId: string): Promise<Hint[]>;
   /** Rejects a duplicate (question_id, rung) — one rung per level (ADR-0014). */
   insertHint(h: Hint): Promise<void>;
+
+  // --- test_item (ADR-0015; same pushed-down reviewed gate as question) ---
+  /** Reviewed=true exam items for a subject ONLY (FR-27.1); [] when none. */
+  listReviewedTestItems(subject: string): Promise<TestItem[]>;
+  insertTestItem(item: TestItem): Promise<void>;
+
+  // --- test_blueprint (ADR-0015) ---
+  getTestBlueprint(id: string): Promise<TestBlueprint | null>;
+  insertTestBlueprint(bp: TestBlueprint): Promise<void>;
 
   // --- quiz_session ---
   insertSession(s: QuizSession): Promise<void>;

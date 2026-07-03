@@ -89,6 +89,38 @@ export const hint = sqliteTable(
   (t) => [uniqueIndex("hint_question_rung_uq").on(t.question_id, t.rung)],
 );
 
+/**
+ * test_item — governed exam-item bank (ADR-0015); see schema.pg.ts. SEPARATE
+ * from `question` so practice scheduling can never serve an exam item.
+ * `reviewed = true` is EARNED by the Python cascade — no FK to `question`.
+ */
+export const testItem = sqliteTable("test_item", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+  skill_id: text("skill_id")
+    .notNull()
+    .references(() => skill.id, { onDelete: "cascade" }),
+  difficulty: integer("difficulty").notNull().default(3), // 1..5
+  stem_md: text("stem_md").notNull(),
+  choices: text("choices", { mode: "json" }).notNull().default([]),
+  answer_letter: text("answer_letter").notNull(),
+  reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),
+  generated_by: text("generated_by").notNull().default(""),
+});
+
+/** test_blueprint — deterministic test-form recipe (ADR-0015); see schema.pg.ts. */
+export const testBlueprint = sqliteTable("test_blueprint", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull().default(DEFAULT_SUBJECT),
+  skill_mix: text("skill_mix", { mode: "json" }).notNull().default({}),
+  difficulty_dist: text("difficulty_dist", { mode: "json" }).notNull().default({}),
+  count: integer("count").notNull(),
+  minutes: integer("minutes").notNull(),
+  scale_band_table: text("scale_band_table", { mode: "json" }).notNull().default([]),
+  pass_criteria: text("pass_criteria", { mode: "json" }),
+  seed: integer("seed").notNull(),
+});
+
 /** quiz_session — score tally stored on close; see schema.pg.ts. */
 export const quizSession = sqliteTable("quiz_session", {
   id: text("id").primaryKey(),

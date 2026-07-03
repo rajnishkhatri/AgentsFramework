@@ -112,6 +112,69 @@ export const Hint = z.object({
 });
 export type Hint = z.infer<typeof Hint>;
 
+// --- test_item + test_blueprint (Phase 6, ADR-0015) ----------------------
+
+/**
+ * One governed exam item (ADR-0015 clause 1). Question-shaped, but a SEPARATE
+ * entity + table from `Question` so practice scheduling
+ * (`QuestionRepo.nextReviewed`) is structurally unable to serve an exam item.
+ * `reviewed = false` rows MUST NOT reach a learner; `TestItemRepo.listReviewed`
+ * serves reviewed rows only. `generated_by` is `"<model>@<run_id>"` on a
+ * reviewed row (never `"test01-import"` — that lives only on unpromoted seed
+ * rows). `reviewed` is earned by the Python cascade, never self-asserted.
+ */
+export const TestItem = z.object({
+  id: z.string(),
+  subject: z.string(),
+  skill_id: z.string(),
+  difficulty: z.number().int(), // 1..5
+  stem_md: z.string().min(1),
+  choices: z.array(Choice).min(4),
+  answer_letter: z.string(),
+  reviewed: z.boolean(),
+  generated_by: z.string(),
+});
+export type TestItem = z.infer<typeof TestItem>;
+
+/** One scale-band row (raw-score range → scaled score). */
+export const ScaleBand = z.object({
+  raw_min: z.number().int(),
+  raw_max: z.number().int(),
+  scale: z.number().int(),
+});
+export type ScaleBand = z.infer<typeof ScaleBand>;
+
+const SKILL_MIX_TOLERANCE = 1e-6;
+
+/**
+ * A test-form blueprint (ADR-0013 §8.2 / ADR-0015 clause 2). The seeded
+ * assembler draws a byte-reproducible form from `(blueprint_id, seed)` over a
+ * fixed reviewed bank. Validation is the FR-24.1 gate: `skill_mix` weights must
+ * sum to 1.0 (within float tolerance), `count > 0`, `scale_band_table`
+ * non-empty, `seed` present — a malformed blueprint throws at parse, never a
+ * silently clamped or partially applied form.
+ */
+export const TestBlueprint = z
+  .object({
+    id: z.string(),
+    subject: z.string(),
+    skill_mix: z.record(z.string(), z.number()),
+    difficulty_dist: z.record(z.string(), z.number()),
+    count: z.number().int().positive(),
+    minutes: z.number().int().positive(),
+    scale_band_table: z.array(ScaleBand).min(1),
+    pass_criteria: z.record(z.string(), z.unknown()).optional(),
+    seed: z.number().int(),
+  })
+  .refine(
+    (bp) => {
+      const sum = Object.values(bp.skill_mix).reduce((a, b) => a + b, 0);
+      return Math.abs(sum - 1.0) <= SKILL_MIX_TOLERANCE;
+    },
+    { message: "skill_mix weights must sum to 1.0", path: ["skill_mix"] },
+  );
+export type TestBlueprint = z.infer<typeof TestBlueprint>;
+
 // --- quiz_session --------------------------------------------------------
 
 export const SessionMode = z.enum(["adaptive", "drill", "review"]);

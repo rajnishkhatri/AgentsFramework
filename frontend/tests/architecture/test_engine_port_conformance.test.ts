@@ -53,6 +53,10 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "learner_read_repo.ts", interfaceName: "LearnerReadRepo" },
   // ADR-0014: read-only hint-ladder seam (reviewed=true rungs only, FR-12/20).
   { file: "hint_repo.ts", interfaceName: "HintRepo" },
+  // ADR-0015: read-only test-blueprint seam (10th port).
+  { file: "test_blueprint_repo.ts", interfaceName: "TestBlueprintRepo" },
+  // ADR-0015: read-only test-item seam (11th, reviewed=true only, FR-27.1).
+  { file: "test_item_repo.ts", interfaceName: "TestItemRepo" },
 ];
 
 // Vendor acronyms a port name must never contain (P2).
@@ -81,7 +85,7 @@ function findInterface(sf: SourceFile, name: string) {
 }
 
 describe("Engine port conformance suite [ADR-0006 / P7]", () => {
-  it("ports/engine/ contains exactly the eight engine ports (+ helper modules)", () => {
+  it("ports/engine/ contains exactly the eleven engine ports (+ helper modules)", () => {
     expect(fs.existsSync(ENGINE_PORTS_DIR), `${ENGINE_PORTS_DIR} must exist`).toBe(true);
     const interfaceFiles = fs
       .readdirSync(ENGINE_PORTS_DIR)
