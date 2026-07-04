@@ -12,7 +12,7 @@ Legend: **[dep: …]** must precede · **‖** may run in parallel with siblings
 
 ---
 
-## 3.5a — Pinned deterministic fixture (test input) [no dep]
+## 3.5a — Pinned deterministic fixture (test input) [no dep] — ✅ DONE
 Create `tests/fixtures/coach_judge_validation/cases.json` (copy the 22 docs cases)
 **and** a small hand-built `verdicts_pinned.json` (≈6 rows: one leak-true, the
 H1/C2 pair, one control, I1 unscorable, one axis-fail) that drives the L1 tests
@@ -22,7 +22,7 @@ without a live call.
 - **Fail if:** a pinned row's `learner_prompt`/`coach_reply` diverges from the
   docs fixture for the same `trace_id` (provenance must hold).
 
-## 3.5b — Scorer core `meta/coach_judge_validation.py` [dep: 3.5a]
+## 3.5b — Scorer core `meta/coach_judge_validation.py` [dep: 3.5a] — ✅ DONE
 Pure replay + scoring. Composes `meta.judge_validation.judge_rates`; **no**
 re-implemented confusion math; imports only `meta`/`services`/`trust`.
 Red first for each, watch fail, then implement:
@@ -47,7 +47,7 @@ Red first for each, watch fail, then implement:
 - **Fail if:** any import of `orchestration`; any confusion arithmetic not routed
   through `judge_validation`/`goaljudge_calibration`.
 
-## 3.5c — CI replay test `tests/meta/test_coach_judge_validation.py` [dep: 3.5b]
+## 3.5c — CI replay test `tests/meta/test_coach_judge_validation.py` [dep: 3.5b] — ✅ DONE
 Offline test binding the scorer to the pinned fixture.
 - **(FR-11)** asserts the deterministic properties (FR-1..FR-5, FR-8) and reports
   FR-6 rates **informationally** — does NOT fail on sub-0.90 leak rate.
@@ -56,7 +56,7 @@ Offline test binding the scorer to the pinned fixture.
   tests precede happy-path).
 - **Fail if:** the test reaches a provider or reads env keys.
 
-## 3.5d — Recording script `scripts/record_coach_judge_validation.py` [dep: 3.5b] ‖ 3.5c
+## 3.5d — Recording script `scripts/record_coach_judge_validation.py` [dep: 3.5b] ‖ 3.5c — ✅ DONE
 Renders each case through `PedagogyJudge.evaluate` (+ `GraderJudge` for
 content-axis cases) via `PromptService.render_prompt`, writes
 `verdicts.json` rows `{case_id, judge, verdict|null, abstained, model,
@@ -69,21 +69,35 @@ recorded_at}`.
 - **Fail if:** the script is referenced by `make check`, a CI workflow, or a test
   that runs live.
 
-## 3.5e — Stage-B baseline recording + commit [dep: 3.5d, 3.5c] — HUMAN/LOCAL
-Run the live recorder over the 22 cases with today's
-`subject_coach_pedagogy_judge.j2`. Score with 3.5b. Commit the real
-`verdicts.json` + README (model id, date, **TPR/TNR + raw counts**, re-record
-instructions).
-- **Pass:** committed baseline replays green under 3.5c (deterministic assertions);
-  rates reported in README; **no live call in CI**.
-- **Fail if:** rates asserted as a gate (they are advisory at 3.5 per clarify).
+## 3.5e — Stage-B baseline recording + commit [dep: 3.5d, 3.5c] — ✅ DONE
+Ran the live recorder over the 22 cases. **Baseline = `claude-opus-4-8`**
+(reasoning tier). Scored with 3.5b; committed `verdicts.json` + README
+(model, date, TPR/TNR + raw counts, model-comparison table, re-record cmd).
+- **Result:** TPR=0.000 (0/5 indirect leaks caught), TNR=1.000, 4 abstentions.
+- **Pass:** ✅ committed baseline replays green under 3.5c; rates reported, not
+  gated; no live call in CI.
+- Surfaced + fixed two real defects en route: reasoning-model content-shape bug
+  in `components/subject_coach_judges.py` (→ `response_text` normalizer) and the
+  recorder's tier selection (added `reasoning` + `MODEL_PROFILE_SET`).
 
-## 3.5f — Analyze/handoff note [dep: 3.5e]
-Record in the plan/enable-policy spec which of the 8 axial assertions the baseline
-judge fails → these become the Task 3.6 rubric-revision acceptance criteria.
-- **Pass:** the failing-assertion list is written and linked from FR-G4.1.
-- **Fail if:** 3.6 is started (rubric `.j2` edit) inside this task — that is a
-  separate spec + ADR (AP-3).
+## 3.5f — Analyze/handoff note [dep: 3.5e] — ✅ DONE
+Failing-assertion list → 3.6 acceptance criteria written to
+[coach-judge-validation-3.5f-handoff.md](coach-judge-validation-3.5f-handoff.md),
+linked from enable-policy FR-G4.1. The 5 baseline misses (A1 rule-naming, A2
+socratic-clothing, A3 strong-implication, B1 refusal-theater, G3 cross-question)
++ two second-order signals (`answer_leakage` omission; scored non-determinism).
+- **Pass:** ✅ failing-assertion list written and linked from FR-G4.1.
+- **Fail if:** 3.6 is started (rubric `.j2` edit) inside this task — NOT done
+  here; it is a separate spec + ADR (AP-3).
+
+### Determinism-check refinement (en route, ✅ DONE)
+The H1≡C2 determinism check (FR-4) was refined to be **decision-field-only**:
+`_check_determinism` in `meta/coach_judge_validation.py` compares only decision-
+bearing fields (verdict / `*_pass` / leakage), treating a divergence confined to
+the free-text `rationale` (`_NON_DECISION_FIELDS`) as prose noise —
+`determinism_prose_only=True`, determinism still holds. This stops rationale
+wording drift from masquerading as a scored-axis flip. The baseline's real
+divergence survives the filter (decision-bearing) and is the 3.6 signal above.
 
 ---
 

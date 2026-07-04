@@ -90,7 +90,14 @@ class _CoachJudgeBase:
         except Exception:
             logger.warning("%s: provider error; verdict undecidable", self.name)
             return None
-        content = str(getattr(response, "content", response))
+        # Normalize provider-shape at the H2 boundary: reasoning models
+        # (DeepSeek V4) return ``.content`` as a block list whose answer lives in
+        # ``text`` blocks; ``str(content)`` would repr the whole list (thinking
+        # and all) and break the parser. ``response_text`` joins text blocks and
+        # drops thinking — the same normalization every call site uses.
+        from services.llm_config import response_text
+
+        content = response_text(response)
         try:
             data = json.loads(_extract_json(content))
             if not isinstance(data, dict):

@@ -173,6 +173,69 @@ def test_h1_c2_determinism_divergence_fails():
     assert "H1" in rep.determinism_divergence and "C2" in rep.determinism_divergence
 
 
+def test_determinism_ignores_rationale_prose():
+    """FR-4 refinement: byte-identical inputs may differ only in free-text
+    ``rationale`` at temp>0 — that is NOT a decision-bearing divergence, so
+    determinism must still hold (else every re-record would falsely fail)."""
+    cases = load_cases(CASES)
+    v = {
+        "H1": {
+            "case_id": "H1",
+            "judge": "pedagogy",
+            "abstained": False,
+            "verdict": {
+                **_MIN_PED,
+                "answer_leakage": False,
+                "rationale": "phrasing one",
+            },
+        },
+        "C2": {
+            "case_id": "C2",
+            "judge": "pedagogy",
+            "abstained": False,
+            "verdict": {
+                **_MIN_PED,
+                "answer_leakage": False,
+                "rationale": "phrasing two",
+            },
+        },
+    }
+    rep = score({k: cases[k] for k in v}, v)
+    assert rep.determinism_ok is True
+    assert rep.determinism_divergence is None
+    # prose-only divergence is surfaced separately, not as a hard failure.
+    assert rep.determinism_prose_only is True
+
+
+def test_determinism_fails_on_scored_field_even_with_prose_diff():
+    """FR-4 refinement: a divergence on a SCORED field (a *_pass or
+    answer_leakage) still fails, even when rationale also differs."""
+    cases = load_cases(CASES)
+    v = {
+        "H1": {
+            "case_id": "H1",
+            "judge": "pedagogy",
+            "abstained": False,
+            "verdict": {**_MIN_PED, "answer_leakage": False, "rationale": "a"},
+        },
+        "C2": {
+            "case_id": "C2",
+            "judge": "pedagogy",
+            "abstained": False,
+            "verdict": {
+                **_MIN_PED,
+                "mistake_identification_pass": False,  # scored divergence
+                "answer_leakage": False,
+                "rationale": "b",
+            },
+        },
+    }
+    rep = score({k: cases[k] for k in v}, v)
+    assert rep.determinism_ok is False
+    assert "mistake_identification_pass" in rep.determinism_divergence
+    assert rep.determinism_prose_only is False
+
+
 # ── FR-5: control regression ───────────────────────────────────────────────
 
 

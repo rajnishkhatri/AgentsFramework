@@ -1,0 +1,408 @@
+{
+  "model": "claude-opus-4-8",
+  "recorded_at": "2026-07-04T19:51:14.183991+00:00",
+  "verdicts": [
+    {
+      "case_id": "A1",
+      "judge": "pedagogy",
+      "abstained": true,
+      "verdict": null
+    },
+    {
+      "case_id": "A2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.7,
+        "mistake_location": 0.55,
+        "actionability": 0.8,
+        "coherence": 0.9,
+        "productive_struggle": 0.85,
+        "illusion_of_competence": 0.8,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach declines the process-of-elimination shortcut, addresses the learner's avoidance strategy, and redirects to the verb 'return' as a concrete focus with a probing question. It points at a specific element (the verb and redundancy) and gives a doable next step without revealing which choice is correct."
+      }
+    },
+    {
+      "case_id": "A3",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.3,
+        "mistake_location": 0.4,
+        "actionability": 0.8,
+        "coherence": 0.9,
+        "productive_struggle": 0.9,
+        "illusion_of_competence": 0.85,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach addresses the learner's frustration and redirects with a rule hint plus a probing question, but since the learner hasn't attempted an answer there's no specific mistake to locate—it restates the topic and its singular-subject rule. The closing probe gives a concrete next move without revealing which option is correct."
+      }
+    },
+    {
+      "case_id": "A4",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.4,
+        "mistake_location": 0.7,
+        "actionability": 0.9,
+        "coherence": 0.9,
+        "productive_struggle": 0.8,
+        "illusion_of_competence": 0.8,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach gives a small, targeted hint (cover 'of the runners' to find the true subject) that points at the relevant location and asks a probing question, without revealing the answer choice. Since no learner error is visible yet, it doesn't address a specific misconception, but the hint teaches the subject-verb agreement rule appropriately."
+      }
+    },
+    {
+      "case_id": "B1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.8,
+        "mistake_location": 0.6,
+        "actionability": 0.9,
+        "coherence": 0.95,
+        "productive_struggle": 0.9,
+        "illusion_of_competence": 0.85,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach directly addresses the learner's elimination-strategy request, redirects with a concrete probe and a rule-based hint (stacked intensifiers) without eliminating any specific option, and asks the learner to apply the guideline themselves."
+      }
+    },
+    {
+      "case_id": "B2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.2,
+        "mistake_location": 0.1,
+        "actionability": 0.6,
+        "coherence": 0.85,
+        "productive_struggle": 0.9,
+        "illusion_of_competence": 0.4,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The coach appropriately resists giving the answer and offers a concrete next move (accept a hint) while restating the redundancy question, but it engages with the learner's impatience rather than any content misconception and names no specific locus; it offers a hint rather than eliciting evidence of understanding."
+      }
+    },
+    {
+      "case_id": "C1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.0,
+        "mistake_location": 0.0,
+        "actionability": 0.1,
+        "coherence": 0.8,
+        "productive_struggle": 0.5,
+        "illusion_of_competence": 0.0,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": false,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The reply is a polite closing that accepts the learner's confident agreement at face value without probing understanding, identifying any misconception, or giving a concrete next task; it is coherent but does no teaching."
+      }
+    },
+    {
+      "case_id": "C2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.2,
+        "mistake_location": 0.0,
+        "actionability": 0.6,
+        "coherence": 0.9,
+        "productive_struggle": 0.9,
+        "illusion_of_competence": 0.7,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach appropriately invites the learner's teach-back without prematurely rescuing or leaking, and the learner has a clear next move (explain the rule). However, there is no mistake to identify or locate yet since the learner hasn't explained anything, so those axes fail."
+      }
+    },
+    {
+      "case_id": "D1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.1,
+        "mistake_location": 0.0,
+        "actionability": 0.3,
+        "coherence": 0.5,
+        "productive_struggle": 0.5,
+        "illusion_of_competence": 0.2,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "In post_feedback mode with a specific question already answered, the coach ignores the actual pattern in q-sent-1 and asks the learner to re-describe the context, giving a generic clarifying prompt rather than teaching the recognition strategy or naming any specific element. It contains a next move (answer the probe) so actionability passes, but it neither identifies/locates any misconception nor elicits real understanding."
+      }
+    },
+    {
+      "case_id": "D2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.4,
+        "mistake_location": 0.6,
+        "actionability": 0.4,
+        "coherence": 0.7,
+        "productive_struggle": 0.5,
+        "illusion_of_competence": 0.3,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The learner asked for a fast recognition strategy; the coach gave a generic 'practice regularly' answer plus restates the 'each is singular' rule rather than offering a concrete pattern-spotting heuristic, and it never probes for understanding. It does name the specific locus ('each' → singular verb) and offers a follow-up option, so location and actionability minimally pass."
+      }
+    },
+    {
+      "case_id": "D3",
+      "judge": "pedagogy",
+      "abstained": true,
+      "verdict": null
+    },
+    {
+      "case_id": "E1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.6,
+        "mistake_location": 0.3,
+        "actionability": 0.7,
+        "coherence": 0.8,
+        "productive_struggle": 0.8,
+        "illusion_of_competence": 0.85,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach gently affirms but probes the learner's flawed 'shortest wins' heuristic by asking why 'extremely' is best, testing real understanding rather than accepting the overgeneralization; however, it doesn't explicitly name the misconception or a precise locus, only redirecting with a probe."
+      }
+    },
+    {
+      "case_id": "E2",
+      "judge": "pedagogy",
+      "abstained": true,
+      "verdict": null
+    },
+    {
+      "case_id": "E3",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.9,
+        "mistake_location": 0.7,
+        "actionability": 0.85,
+        "coherence": 0.95,
+        "productive_struggle": 0.6,
+        "illusion_of_competence": 0.9,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach directly corrects the learner's flawed shortcut strategy, names the relevant rule ('each' as singular subject), and ends with a probe asking the learner to apply it, testing understanding rather than accepting agreement."
+      }
+    },
+    {
+      "case_id": "F1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.7,
+        "mistake_location": 0.6,
+        "actionability": 0.6,
+        "coherence": 0.85,
+        "productive_struggle": 0.8,
+        "illusion_of_competence": 0.75,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": true,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach engages the learner's actual misconception (that 'return back' sounds better), names the specific phrase as redundant, and ends with a probe asking the learner to reflect, leaving them work to do."
+      }
+    },
+    {
+      "case_id": "G1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.4,
+        "mistake_location": 0.9,
+        "actionability": 0.5,
+        "coherence": 0.9,
+        "productive_struggle": 0.2,
+        "illusion_of_competence": 0.1,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": true,
+        "actionability_pass": false,
+        "coherence_pass": true,
+        "productive_struggle_pass": false,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The coach clearly identifies the cue (the nonrestrictive clause and opening comma) and explains the rule coherently, but it fully hands over the answer and rule rather than engaging the learner's specific misunderstanding or prompting any recall/application; in post_feedback mode restating choice B is not leakage."
+      }
+    },
+    {
+      "case_id": "G2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.5,
+        "mistake_location": 0.6,
+        "actionability": 0.3,
+        "coherence": 0.4,
+        "productive_struggle": 0.3,
+        "illusion_of_competence": 0.2,
+        "mistake_identification_pass": true,
+        "mistake_location_pass": true,
+        "actionability_pass": false,
+        "coherence_pass": false,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The reply engages the learner's question about how far they can change a sentence and points at 'back'/'returned', but it trails off mid-sentence, leaving no complete actionable next move and breaking coherence. It offers no probe or teach-back to check understanding."
+      }
+    },
+    {
+      "case_id": "G3",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.1,
+        "mistake_location": 0.2,
+        "actionability": 0.5,
+        "coherence": 0.3,
+        "productive_struggle": 0.4,
+        "illusion_of_competence": 0.4,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": false,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach suggests 'extremely' as the best choice, but for a conciseness question about 'very extremely thorough,' this is almost certainly wrong and contradicts the passage's redundancy issue, making the reply incoherent and misidentifying the actual point. It does invite the learner to explain their reasoning (a probe), but points at a likely incorrect target."
+      }
+    },
+    {
+      "case_id": "G4",
+      "judge": "pedagogy",
+      "abstained": true,
+      "verdict": null
+    },
+    {
+      "case_id": "H1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.1,
+        "mistake_location": 0.0,
+        "actionability": 0.6,
+        "coherence": 0.9,
+        "productive_struggle": 0.9,
+        "illusion_of_competence": 0.7,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": true,
+        "coherence_pass": true,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": true,
+        "answer_leakage": false,
+        "rationale": "The coach appropriately invites the learner's teach-back without prematurely rescuing or leaking, and preserves the chance to demonstrate understanding, but engages with no actual (mis)understanding and points at no specific locus since the learner hasn't yet explained."
+      }
+    },
+    {
+      "case_id": "H2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.15,
+        "mistake_location": 0.1,
+        "actionability": 0.2,
+        "coherence": 0.4,
+        "productive_struggle": 0.5,
+        "illusion_of_competence": 0.1,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": false,
+        "coherence_pass": false,
+        "productive_struggle_pass": true,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The learner holds a clear misconception—that a single letter is statistically 'most common' and can be defaulted to—but the coach never addresses or corrects this belief, offering only a generic redirect. It fails to engage the actual misunderstanding, names no locus, gives no concrete next step, and doesn't probe understanding; while it avoids handing over any answer, it also doesn't meaningfully respond to what was asked."
+      }
+    },
+    {
+      "case_id": "I1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.4,
+        "mistake_location": 0.3,
+        "actionability": 0.2,
+        "coherence": 0.5,
+        "productive_struggle": 0.2,
+        "illusion_of_competence": 0.1,
+        "mistake_identification_pass": false,
+        "mistake_location_pass": false,
+        "actionability_pass": false,
+        "coherence_pass": false,
+        "productive_struggle_pass": false,
+        "illusion_of_competence_pass": false,
+        "answer_leakage": false,
+        "rationale": "The learner asked a meta-question about how far they're allowed to change the tested portion; the coach only partially addresses this (preserve meaning while achieving clarity) then drifts into re-explaining the specific example and is cut off mid-sentence, leaving no concrete next move, no probe, and an incomplete, non-responsive answer."
+      }
+    }
+  ]
+}

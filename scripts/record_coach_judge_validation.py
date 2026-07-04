@@ -57,7 +57,21 @@ async def record_verdicts(
     """
     rows: list[dict[str, Any]] = []
     for cid, case in cases.items():
-        verdict = await pedagogy_judge.evaluate(
+        # Route on the optional per-case ``judge`` axis (default pedagogy). A case
+        # marked ``judge: "grader"`` MUST reach ``grader_judge`` — the spec (3.5d
+        # '+ GraderJudge for content-axis cases') reserves the param for this.
+        # Fail loud rather than silently rescoring a grader case as pedagogy.
+        axis = case.get("judge", "pedagogy")
+        if axis == "grader":
+            if grader_judge is None:
+                raise ValueError(
+                    f"case {cid!r} declares judge='grader' but no grader_judge "
+                    "was supplied — refusing to rescore it as pedagogy"
+                )
+            judge = grader_judge
+        else:
+            judge = pedagogy_judge
+        verdict = await judge.evaluate(
             learner_utterance=case["learner_prompt"],
             coach_reply=case["coach_reply"],
             mode=case["mode"],
@@ -66,7 +80,7 @@ async def record_verdicts(
         rows.append(
             {
                 "case_id": cid,
-                "judge": "pedagogy",
+                "judge": axis,
                 "abstained": verdict is None,
                 "verdict": verdict.model_dump() if verdict is not None else None,
             }
@@ -91,20 +105,43 @@ def build_live_judges() -> tuple[Any, Any, str]:  # pragma: no cover - live only
     Imported lazily inside ``main`` so the module imports with no provider/env.
     Never called by any test — the offline smoke test injects a stub judge.
     """
+    import os
+
     from components.subject_coach_judges import GraderJudge, PedagogyJudge
-    from services.llm_service import LLMService  # noqa: PLC0415
+    from services.base_config import AgentConfig  # noqa: PLC0415
+    from services.llm_config import (  # noqa: PLC0415
+        DEFAULT_MODEL_PROFILE_SET,
+        LLMService,
+        build_model_registry,
+    )
     from services.prompt_service import PromptService  # noqa: PLC0415
-    from services.subject_coach_judge_runtime_config import (  # noqa: PLC0415
-        SubjectCoachJudgeConfigReader,
+
+    # Build the full catalog (H2-canonical entry point), honoring MODEL_PROFILE_SET.
+    profile_set = os.environ.get("MODEL_PROFILE_SET", DEFAULT_MODEL_PROFILE_SET)
+    models, _default = build_model_registry(profile_set)
+
+    # A leakage judge benefits from a stronger tier; default capable. Override via
+    # COACH_JUDGE_TIER={fast|capable|reasoning} — reasoning is best for catching
+    # the subtle indirect-leak channels the capable judge missed (0/5).
+    _VALID_TIERS = {"fast", "capable", "reasoning"}
+    want_tier = os.environ.get("COACH_JUDGE_TIER", "").strip().lower()
+    if want_tier not in _VALID_TIERS:
+        want_tier = "capable"
+    profile = next(
+        (m for m in models if getattr(m, "tier", None) == want_tier),
+        # fall back to the strongest available tier, then the first profile
+        next(
+            (m for m in models if getattr(m, "tier", None) == "reasoning"),
+            models[0],
+        ),
     )
 
+    agent_config = AgentConfig(default_model=profile.name, models=models)
+    llm_service = LLMService(agent_config)
     prompt_service = PromptService()
-    llm_service = LLMService()
-    resolved = SubjectCoachJudgeConfigReader().get()
-    profile = resolved.judge_profile
     pedagogy = PedagogyJudge(llm_service, prompt_service, profile, name="PedagogyJudge")
     grader = GraderJudge(llm_service, prompt_service, profile, name="GraderJudge")
-    return pedagogy, grader, getattr(profile, "name", "")
+    return pedagogy, grader, profile.name
 
 
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - live only

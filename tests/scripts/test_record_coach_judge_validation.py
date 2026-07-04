@@ -105,3 +105,61 @@ def test_recorded_output_replays_through_scorer(tmp_path):
     # A1 is leak-true; stub says leakage=false → a false negative (surfaced, not hidden)
     assert rep.counts.fn == 1
     assert rep.control_regressions == []
+
+
+# ── grader_judge routing: the spec-mandated content-axis wiring (3.5d) ──────
+
+
+class _RecordingJudge:
+    """Records that it was invoked, returns None (abstain) so no schema needed."""
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.seen: list[str] = []
+
+    async def evaluate(self, *, learner_utterance, coach_reply, mode, question):  # noqa: ANN001
+        self.seen.append(coach_reply)
+        return None
+
+
+def test_grader_case_routes_to_grader_judge():
+    """A case marked ``judge: grader`` MUST go to ``grader_judge``, not pedagogy —
+    the forward-wiring the spec (3.5d '+ GraderJudge for content-axis cases')
+    reserves the param for. Pedagogy must not silently swallow it."""
+    ped = _RecordingJudge("pedagogy")
+    grd = _RecordingJudge("grader")
+    cases = {
+        "P1": {
+            "learner_prompt": "p",
+            "coach_reply": "ped-reply",
+            "mode": "post_submit",
+        },
+        "C1": {
+            "learner_prompt": "c",
+            "coach_reply": "grader-reply",
+            "mode": "post_submit",
+            "judge": "grader",
+        },
+    }
+    payload = asyncio.run(record_verdicts(cases, pedagogy_judge=ped, grader_judge=grd))
+    assert ped.seen == ["ped-reply"]
+    assert grd.seen == ["grader-reply"]
+    judges = {r["case_id"]: r["judge"] for r in payload["verdicts"]}
+    assert judges == {"P1": "pedagogy", "C1": "grader"}
+
+
+def test_grader_case_without_grader_judge_fails_loud():
+    """A grader-axis case with no ``grader_judge`` supplied must raise, never be
+    silently rescored as pedagogy (fail-closed, mirrors the scorer's ScorerError)."""
+    import pytest
+
+    cases = {
+        "C1": {
+            "learner_prompt": "c",
+            "coach_reply": "r",
+            "mode": "post_submit",
+            "judge": "grader",
+        }
+    }
+    with pytest.raises(ValueError, match="grader"):
+        asyncio.run(record_verdicts(cases, pedagogy_judge=_RecordingJudge("ped")))

@@ -71,6 +71,9 @@ class CoachValidationReport:
     control_regressions: list[str] = field(default_factory=list)
     determinism_ok: bool = True
     determinism_divergence: str | None = None
+    # True iff H1/C2 differ ONLY in free-text ``rationale`` (prose noise at
+    # temp>0), not in any decision-bearing field — reported, never a failure.
+    determinism_prose_only: bool = False
     # per case_id → {axis: "match"|"mismatch"} for the axes the case constrains
     per_axis_results: dict[str, dict[str, str]] = field(default_factory=dict)
 
@@ -176,7 +179,7 @@ def score(
     counts = ConfusionCounts(tp=tp, fp=fp, fn=fn, tn=tn)
     rates = judge_rates(counts)
 
-    determinism_ok, divergence = _check_determinism(verdicts)
+    determinism_ok, divergence, prose_only = _check_determinism(verdicts)
 
     return CoachValidationReport(
         counts=counts,
@@ -186,6 +189,7 @@ def score(
         control_regressions=control_regressions,
         determinism_ok=determinism_ok,
         determinism_divergence=divergence,
+        determinism_prose_only=prose_only,
         per_axis_results=per_axis_results,
     )
 
@@ -208,19 +212,38 @@ def _axis_agreement(
     return result
 
 
+# Free-text fields that legitimately vary between byte-identical inputs at
+# temperature > 0 — a divergence here is prose noise, NOT a decision change.
+_NON_DECISION_FIELDS = frozenset({"rationale"})
+
+
 def _check_determinism(
     verdicts: dict[str, dict[str, Any]],
-) -> tuple[bool, str | None]:
-    """FR-4: the byte-identical-input pair must carry identical verdicts."""
+) -> tuple[bool, str | None, bool]:
+    """FR-4 (refined): the byte-identical-input pair must agree on every
+    *decision-bearing* field (scored axes, ``*_pass``, ``answer_leakage``).
+
+    A divergence in a decision field fails determinism. A divergence ONLY in a
+    free-text field (``rationale``) is prose noise: determinism still holds and
+    ``prose_only`` is reported True — so a re-record at temp>0 is not falsely
+    failed by rationale wording.
+
+    Returns ``(ok, divergence_message_or_None, prose_only)``.
+    """
     a, b = DETERMINISM_PAIR
     if a not in verdicts or b not in verdicts:
-        return True, None  # pair not present in this slice → nothing to check
+        return True, None, False  # pair not in this slice → nothing to check
     va = verdicts[a].get("verdict")
     vb = verdicts[b].get("verdict")
     if va == vb:
-        return True, None
-    fields = _diverging_fields(va, vb)
-    return False, f"{a} vs {b} diverge on: {fields}"
+        return True, None, False
+
+    all_diverging = _diverging_fields(va, vb)
+    decision_diverging = [f for f in all_diverging if f not in _NON_DECISION_FIELDS]
+    if not decision_diverging:
+        # differs only in non-decision prose → determinism holds, flag prose-only.
+        return True, None, True
+    return False, f"{a} vs {b} diverge on: {decision_diverging}", False
 
 
 def _diverging_fields(va: Any, vb: Any) -> list[str]:
