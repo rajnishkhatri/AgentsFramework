@@ -392,3 +392,141 @@ class TestReasoningModelBlockListContent:
         verdict = await _grade(judge)
         assert verdict is not None
         assert verdict.correctness_pass is False
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Task 3.6a — leak_channel schema field (Stage A). Failure-mode FIRST
+# (TAP-4): the soft-coerce (3.6a-3) is the case that would otherwise VOID
+# a correct answer_leakage=true on the 5/5 acceptance run (ADR-0017 F1).
+# ─────────────────────────────────────────────────────────────────────
+
+
+def _render_pedagogy_prompt() -> str:
+    """The real rubric prose, rendered — the drift-sensor's source of truth."""
+    return PromptService().render_prompt(
+        "subject_coach_pedagogy_judge",
+        mode="pre_submit",
+        question="Which sentence uses the semicolon correctly?",
+        learner_utterance="why is B right?",
+        coach_reply="What does each clause need to stand alone?",
+    )
+
+
+class TestLeakChannelSchema:
+    """FR-8 + FR-7 + FR-12: leak_channel is optional/best-effort telemetry;
+    answer_leakage stays required; unknown channels coerce (never raise)."""
+
+    def test_leak_channel_coerces_unknown_to_none(self):
+        """ADR-0017 F1 (the substantive fix, failure-mode FIRST): a cosmetic
+        near-miss channel value coerces to None and the verdict is KEPT — it
+        must NEVER raise a ValidationError that voids the whole verdict (the
+        judge is fail-closed: a ValidationError → None, subject_coach_judges.py
+        :106). Without this, a channel typo would erase a correct leak catch."""
+        raw = json.loads(_pedagogy_response(answer_leakage=True))
+        for near_miss in ("socratic_clothing", "rule naming", "RULE-NAMING", ""):
+            raw["leak_channel"] = near_miss
+            verdict = PedagogyVerdict.model_validate(raw)
+            assert verdict.answer_leakage is True  # verdict survives
+            assert verdict.leak_channel is None  # unknown → None
+
+    def test_leak_channel_optional_defaults_none(self):
+        """FR-8: a verdict WITHOUT the field validates (backward-compatible;
+        every prior baseline verdict lacks it)."""
+        raw = json.loads(_pedagogy_response())
+        raw.pop("leak_channel", None)
+        verdict = PedagogyVerdict.model_validate(raw)
+        assert verdict.leak_channel is None
+
+    def test_pedagogy_verdict_accepts_leak_channel(self):
+        """FR-8: each of the 5 valid channel values round-trips."""
+        for channel in (
+            "rule-naming",
+            "socratic-clothing",
+            "strong-implication",
+            "criterion-then-verdict",
+            "cross-question",
+        ):
+            raw = json.loads(_pedagogy_response(answer_leakage=True))
+            raw["leak_channel"] = channel
+            verdict = PedagogyVerdict.model_validate(raw)
+            assert verdict.leak_channel == channel
+
+    def test_pedagogy_still_requires_answer_leakage(self):
+        """FR-7: the required-field contract is UNCHANGED by the new optional
+        field — a verdict missing answer_leakage is still a ValidationError,
+        never repaired to False (guard against accidental relaxation)."""
+        from pydantic import ValidationError
+
+        raw = json.loads(_pedagogy_response())
+        del raw["answer_leakage"]
+        with pytest.raises(ValidationError):
+            PedagogyVerdict.model_validate(raw)
+
+    def test_leak_channel_values_mirrored_in_pedagogy_prompt(self):
+        """FR-12 (ADR-0017 F2): each LeakChannel enum value appears verbatim in
+        the pedagogy .j2 — a code↔prose drift sensor, turning FR-11's
+        review-time discipline into a partial gate."""
+        from components.schemas import LeakChannel
+
+        prompt = _render_pedagogy_prompt()
+        channels = LeakChannel.__args__  # the Literal's 5 values
+        assert len(channels) == 5
+        for channel in channels:
+            assert channel in prompt, f"{channel!r} missing from pedagogy rubric"
+
+
+class TestGraderRefusalAware:
+    """FR-9 (3.6c): the grader rubric gains a refusal-aware criterion — a
+    decline sentence carries no axis credit; grade the content after it."""
+
+    def test_grader_prompt_states_refusal_carries_no_credit(self):
+        """The refusal-aware rule is present in the rendered prose (a refusal
+        sentence gets no axis credit; grade the payload after it)."""
+        prompt = PromptService().render_prompt(
+            "subject_coach_grader_judge",
+            question="Which sentence uses the semicolon correctly?",
+            coach_content="A semicolon joins two independent clauses.",
+            evidence=[],
+        )
+        lowered = prompt.lower()
+        assert "refusal" in lowered
+        assert "no credit" in lowered
+
+    @pytest.mark.asyncio
+    async def test_grader_scores_refuse_then_thin_content_low(self):
+        """Stub: a judge that returns a low-on-content-axes verdict for a
+        refuse-then-thin-content turn round-trips as low (the prose asks the
+        real judge for this; here we assert the schema carries the signal)."""
+        judge, _ = _grader(
+            _grader_response(
+                faithfulness=0.2,
+                justification=0.1,
+                actionability=0.2,
+                faithfulness_pass=False,
+                justification_pass=False,
+                actionability_pass=False,
+            )
+        )
+        verdict = await judge.evaluate(
+            question="Which sentence uses the semicolon correctly?",
+            coach_content="I can't just give you the answer — keep trying!",
+        )
+        assert verdict is not None
+        assert verdict.justification_pass is False
+        assert verdict.actionability_pass is False
+
+
+class TestRubricHeadersRevised:
+    """FR-10: both rubric headers flip PROVISIONAL → REVISED."""
+
+    def test_rubric_headers_marked_revised(self):
+        from pathlib import Path
+
+        prompts_dir = Path(__file__).resolve().parents[2] / "prompts"
+        for name in (
+            "subject_coach_pedagogy_judge.j2",
+            "subject_coach_grader_judge.j2",
+        ):
+            text = (prompts_dir / name).read_text(encoding="utf-8")
+            assert "REVISED" in text, f"{name} not marked REVISED"
+            assert "PROVISIONAL" not in text, f"{name} still PROVISIONAL"

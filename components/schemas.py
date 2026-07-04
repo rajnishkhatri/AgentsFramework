@@ -254,6 +254,19 @@ class GraderVerdict(BaseModel):
     rationale: str = ""
 
 
+# The five INDIRECT leak channels the 200-trace human coding found (0/200 were
+# direct answer-statements). Named in the REVISED pedagogy rubric prose and
+# mirrored verbatim here (drift-sensed by the FR-12 L1 test). This is telemetry
+# naming, NOT a gate — see the soft-coerce validator below (ADR-0017 F1).
+LeakChannel = Literal[
+    "rule-naming",
+    "socratic-clothing",
+    "strong-implication",
+    "criterion-then-verdict",
+    "cross-question",
+]
+
+
 class PedagogyVerdict(BaseModel):
     """Grades a coaching TURN as teaching (FR-15/16, Subject-Coach design §7.1).
 
@@ -264,6 +277,17 @@ class PedagogyVerdict(BaseModel):
     schema deliberately offers no aggregate field to average into). It stays
     telemetry-only until the §7.4 floor (TNR ≥ 0.95, TPR ≥ 0.90, κ ≥ 0.75)
     certifies it, exactly the ``GoalVerdict.failure_mode`` precedent.
+
+    ``leak_channel`` (ADR-0017) names WHICH indirect channel a leak used, when
+    one is found. It is OPTIONAL, best-effort telemetry — directly comparable to
+    the fixture's ``expected.leak_channel``. Critically it is **soft-coerced**:
+    an unrecognised value maps to ``None`` and the verdict SURVIVES. It must
+    NEVER raise a ``ValidationError``, because the judge is fail-closed (any
+    ``ValidationError`` in ``model_validate`` → the whole verdict is ``None``,
+    the PedagogyJudge parse contract) and a cosmetic channel typo must not be
+    able to erase an otherwise-correct ``answer_leakage=true`` (ADR-0017 F1).
+    Mirrors the ``GoalVerdict.failure_mode`` validator — but permissive, not
+    strict, because the channel is telemetry the judge is not scored on.
     """
 
     mistake_identification: float = Field(ge=0.0, le=1.0)
@@ -279,7 +303,36 @@ class PedagogyVerdict(BaseModel):
     productive_struggle_pass: bool
     illusion_of_competence_pass: bool
     answer_leakage: bool
+    leak_channel: LeakChannel | None = None
     rationale: str = ""
+
+    @field_validator("leak_channel", mode="before")
+    @classmethod
+    def _coerce_leak_channel(cls, value: object) -> str | None:
+        """Soft-coerce an unrecognised channel to ``None`` (ADR-0017 F1).
+
+        Unlike ``GoalVerdict.failure_mode`` (which REJECTS an unknown code), this
+        MUST NOT raise: the coach judge is fail-closed, so a ``ValidationError``
+        here would void the whole verdict — a cosmetic channel typo
+        (``"socratic_clothing"``) could then erase a correct
+        ``answer_leakage=true``. The channel is best-effort telemetry, so an
+        absent, blank, or unknown value degrades to ``None`` and the verdict is
+        kept. A recognised value passes through untouched.
+        """
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped in _LEAK_CHANNELS:
+                return stripped
+            return None  # unknown / blank / near-miss → drop, never raise
+        return None
+
+
+# The runtime membership set for the soft-coerce above — kept in sync with the
+# ``LeakChannel`` Literal (a single source; the L1 drift sensor guards the prose
+# mirror, and this asserts the two stay coupled in code).
+_LEAK_CHANNELS: frozenset[str] = frozenset(LeakChannel.__args__)
 
 
 # Answer-grading backstop criterion. This checks the FINAL ANSWER ("is it

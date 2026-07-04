@@ -12,12 +12,13 @@ authored: 2026-07-03
 | Item | Status | Evidence |
 |---|---|---|
 | 3.0 Raw corpus volume (≥100/mode raw) | ✅ DONE | Batch 2: 292 turns, 146/mode; PR #124 |
-| 3.1 Environment posture checker | ⬜ | Spec FR-G1 (EvalRecord-only; C9) |
-| 3.2 Coding-sample export + holdout ledger | ⬜ | Spec FR-G2 |
-| 3.3 Human open coding (Stage-1) | 🟡 **tooling BUILT** (3.3a–d green); HUMAN gate (3.3e/f) pending | Spec FR-G3.1 (+ .1–.12); [Task 3.3 plan](#task-33--human-open-coding-stage-1); 3.3a real-data smoke: 237 cases (122 pre / 115 post) |
-| 3.4 Human axial coding (Stage-2) | ⬜ **HUMAN** | Spec FR-G3.2–G3.3 |
+| 3.1 Environment posture checker | ✅ DONE | `meta/coach_corpus_posture.py` + tests; PR #125 |
+| 3.2 Coding-sample export + holdout ledger | ✅ DONE | `scripts/export_coach_coding_sample.py` + holdout ledger; PR #125 |
+| 3.3 Human open coding (Stage-1) | ✅ DONE | tooling 3.3a–d green (PR #125); **HUMAN gate met**: `docs/evals/eng-coach/coded.jsonl` = 200 rows, 100/mode, all `open_codes` populated; `coach_phase2_open_coding.md` + `coach_step1_open_code_inventory.csv` |
+| 3.4 Human axial coding (Stage-2) | ✅ DONE | `docs/evals/eng-coach/coach_axial_coding.md` (categories A1–A4/B1/C1/D1/E1 + minimal pairs) + a selective-coding pass (`coach_selective_coding.md`) + `judge_test_cases.jsonl` |
+| Task 3.5 (judge-validation harness, feeds 3.6) | ✅ DONE | separate bundle; Opus 4.8 baseline TPR=0.000/TNR=1.000; 3.5f miss-list; PR #126 |
 | 3.5 Optional strata gap-fill | ⬜ OPTIONAL | Spec FR-G7 |
-| 3.6 Rubric revision | ⬜ | Spec FR-G4 |
+| 3.6 Rubric revision | ⬜ **NEXT** (spec in progress) | Spec FR-G4; grounded by 3.4 codes + 3.5f miss-list |
 | 3.6b Taxonomy frozen-set artifact | ⬜ | Spec FR-G5.3 (blocks 3.7a validator) |
 | 3.7 `coach_goldset_v1` assembly | ⬜ | Spec FR-G5 |
 | 3.8 `evaluate_coach_enable_gates` | ⬜ | Spec FR-G6 |

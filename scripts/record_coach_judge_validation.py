@@ -75,7 +75,12 @@ async def record_verdicts(
             learner_utterance=case["learner_prompt"],
             coach_reply=case["coach_reply"],
             mode=case["mode"],
-            question=case.get("question_id", ""),
+            # The judge needs the ITEM (passage/stem/choices) to run the
+            # "is >1 option still live?" leak test — the bare question_id
+            # ("q-gram-1") makes it undecidable (ADR-0017). ``question`` is the
+            # rendered block from scripts.enrich_coach_judge_cases; fall back to
+            # question_id only if a case predates enrichment.
+            question=case.get("question") or case.get("question_id", ""),
         )
         rows.append(
             {

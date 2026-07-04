@@ -12,6 +12,12 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-04 — **Coach judge goldset: `cases.jsonl` is derived, kept in lockstep
+  with source `judge_test_cases.jsonl`.** Task 3.6 replan corrected 3 mislabeled
+  positives (A1/A2/B1) in BOTH files (FR-14). Rejected: treating `cases.jsonl` as
+  canonical and letting the source drift — the source is the human-coded origin and
+  a future re-enrich would reintroduce the mislabels. Why: the enrich script reads
+  `question_id` from cases; a stale source silently re-poisons any regenerate.
 - 2026-07-03 — **D0 elapsed timing: page wiring is typechecked, not RTL-asserted**
   (review "not checked" gap, JUSTIFY). `QuizPage.onSubmit` computes
   `elapsedMsFrom(state.presentedAt, performance.now())` and forwards it to `submit`;
