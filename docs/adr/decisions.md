@@ -12,6 +12,16 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-04 — **`CoachGoldsetItem.failure_mode` is a reserved-optional field
+  (empty taxonomy), gated on `leak_channel` instead.** The coach axial taxonomy
+  (`coach_axial_v1`) defines pedagogy categories A1–A4 + the B1/A3 leakage bridge —
+  it has NO separate agent failure-mode code set (unlike GoalJudge's
+  `GOAL_FAILURE_MODES`), and no `cases.jsonl` row carries `failure_mode`. Decision:
+  `COACH_FAILURE_MODES = frozenset()` (any non-null value hard-rejects, FR-3); the
+  real taxonomy gate binds on the 5 `leak_channel` values. Rejected: copying
+  GoalJudge's failure-mode enum (wrong axis — those are goal-completion codes, not
+  coaching-leak codes). `failure_mode` stays for forward-compat with the enable-policy
+  manifest shape.
 - 2026-07-04 — **Coach judge goldset: `cases.jsonl` is derived, kept in lockstep
   with source `judge_test_cases.jsonl`.** Task 3.6 replan corrected 3 mislabeled
   positives (A1/A2/B1) in BOTH files (FR-14). Rejected: treating `cases.jsonl` as
