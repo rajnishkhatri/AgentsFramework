@@ -1,0 +1,7 @@
+{"expectations":[
+ {"text":"Every distinct code is assigned exactly one axis","passed":true,"evidence":"inventory.csv: 19 agent-behavior, 1 environment-confound (truncated-reply by cause), 0 judge; memo-only flags carry no axis"},
+ {"text":"axial_checker.py gate run and passed before counts","passed":true,"evidence":"NOTES: gate exit 0 before matrix run"},
+ {"text":"Each category has a testable binary check","passed":true,"evidence":"categories.csv has binary_check column; 6 categories each with pass/fail"},
+ {"text":"truncated-reply excluded / treated as confound","passed":true,"evidence":"partitioned as environment-confound; matrix confound_only_excluded=0 correctly explained (all 3 also carry agent codes)"},
+ {"text":"At least one minimal pair surfaced","passed":true,"evidence":"3 gold pairs + 1 noise correctly filtered; refusal-theater must-catch found"}
+]}

@@ -1,0 +1,12 @@
+{
+  "agent_denominator": 30,
+  "category_counts": {
+    "C1-leakage-channel": 20,
+    "C2-answer-boundary": 8,
+    "C3-uptake": 11,
+    "C4-scaffold-calibration": 29,
+    "C5-verification": 15,
+    "C6-register-policy": 4
+  },
+  "confound_only_excluded": 0
+}

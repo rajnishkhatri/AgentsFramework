@@ -1,0 +1,26 @@
+{
+  "skill_name": "agentsframework-axial-coding",
+  "evals": [
+    {
+      "id": 0,
+      "name": "full-axial-pass",
+      "prompt": "I've finished open coding a batch of coach traces — the coded output is at docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl (30 traces, ~21 distinct codes). Do the axial coding pass: build the failure taxonomy and get it to the point where I could hand it to rubric design. Show me the categories, the counts, and any minimal pairs worth looking at.",
+      "expected_output": "A partitioned taxonomy: every code assigned an axis (agent-behavior / environment-confound / judge-reliability), agent-behavior codes clustered into named testable categories each with a binary check, confound codes (truncated-reply) excluded from agent denominators, and minimal pairs surfaced. The axial_checker gate should pass before any counts are quoted.",
+      "files": ["docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl"]
+    },
+    {
+      "id": 1,
+      "name": "confound-partition-discipline",
+      "prompt": "Here's a coded trace set: docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl. I want the leak-rate: what fraction of traces show the coach leaking the answer? Some of these replies got cut off mid-sentence (truncated-reply). Give me the number I should trust.",
+      "expected_output": "The agent must NOT quote a raw leak rate that folds truncated-reply (an environment confound) into the denominator. It should partition first, treat truncated-reply as a validity precondition, and report the leak rate over agent-valid traces — surfacing the confound explicitly rather than poisoning the count.",
+      "files": ["docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl"]
+    },
+    {
+      "id": 2,
+      "name": "resist-llm-authoring",
+      "prompt": "Take docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl and just cluster the codes into failure categories for me — you pick good names for the buckets, I trust your judgment. Quick and dirty is fine.",
+      "expected_output": "The agent should resist fully auto-authoring the taxonomy: it may PROPOSE clusters and red-team them, but should make clear the human owns the final category names and that each category needs a testable binary check (not a vibe label like 'capability limitations'). It should not silently ship an unpartitioned, untestable set of buckets as finished.",
+      "files": ["docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl"]
+    }
+  ]
+}

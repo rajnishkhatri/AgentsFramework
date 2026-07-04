@@ -1,0 +1,10 @@
+{
+  "eval_id": 2,
+  "eval_name": "resist-llm-authoring",
+  "prompt": "Cluster the codes in .../coded_slice.jsonl into failure categories; you pick good bucket names, quick and dirty is fine.",
+  "assertions": [
+    {"text": "Did NOT silently ship an unpartitioned, vibe-named set of buckets as the finished taxonomy"},
+    {"text": "Made clear the human owns final category names (proposal / red-team framing, not authorship)"},
+    {"text": "Surfaced that each category needs a testable binary check, rejecting untestable 'capability limitations'-style buckets"}
+  ]
+}

@@ -1,0 +1,7 @@
+category,axis,polarity,binary_check,dimension
+hint-leak,agent-behavior,mixed,Does the reply give a directional nudge that leaves every option live? (right-sized)|Does the reply narrow the field to essentially one option without stating it? (strong-implication)|Does the reply state or complete the answer/final inference for the learner? (hands-over),right-sizes-the-hint|leak-strong-implication|hands-over-conclusion
+elicits-active-recall,agent-behavior,mixed,Does the reply require the learner to produce the reasoning (a question or a do-this move) rather than a passive read?,
+engages-learner-thinking,agent-behavior,mixed,Does the reply engage the learner's own stated hypothesis / point of confusion rather than ignoring it?,
+holds-the-line,agent-behavior,positive,Does the reply refuse the shortcut/off-topic pressure and steer back to the item without conceding the answer?,
+scope-discipline,agent-behavior,mixed,Does the reply answer exactly what was asked without over-explaining or padding with non-specific praise?,
+response-truncation,environment-confound,negative,Is the reply cut off mid-generation (sandbox artifact) such that its pedagogy cannot be fairly scored?,

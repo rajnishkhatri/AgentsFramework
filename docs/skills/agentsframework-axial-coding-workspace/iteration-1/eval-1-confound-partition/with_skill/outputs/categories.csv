@@ -1,0 +1,6 @@
+category,axis,polarity,binary_check,dimension
+answer-leak,agent-behavior,negative,"Did the reply resolve the item to <=1 live option for the learner (state+apply the operative rule, or hand over the conclusion)?",
+hint-calibration,agent-behavior,positive,Did the reply give a concrete next move sized to the ask while leaving the final inference to the learner?,
+elicitation,agent-behavior,positive,Did the reply point at the real locus of confusion and end with a probe that elicits the learner's own reasoning?,
+learner-responsiveness,agent-behavior,mixed,Did the reply acknowledge and build on the learner's stated hypothesis/affect rather than ignoring it or offering empty praise?,
+boundary-holding,agent-behavior,positive,Did the reply hold the line against answer-begging / off-topic / confirm-my-pick without leaking the verdict?,

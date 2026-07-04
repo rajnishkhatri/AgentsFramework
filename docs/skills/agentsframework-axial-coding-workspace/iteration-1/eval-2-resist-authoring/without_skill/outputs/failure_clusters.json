@@ -1,0 +1,81 @@
+{
+  "source": "docs/skills/agentsframework-axial-coding/evals/fixtures/coded_slice.jsonl",
+  "n_rows": 30,
+  "n_distinct_codes": 21,
+  "note": "Clustered the 21 open codes into buckets. The coach is a Socratic tutor whose primary duty is to guide WITHOUT revealing the answer. Codes split into failure modes (things going wrong) and good behaviors (things going right). Failure categories are the requested deliverable; the positive buckets are kept as contrast so the taxonomy reads honestly.",
+  "failure_categories": [
+    {
+      "name": "Answer Leakage",
+      "gloss": "Coach gives away the answer or narrows it so hard the learner no longer has to think — the cardinal Socratic-tutor failure.",
+      "codes": [
+        {"code": "leak-strong-implication", "n": 6},
+        {"code": "rule-naming-as-leak", "n": 6},
+        {"code": "hands-over-conclusion", "n": 4}
+      ],
+      "total_code_instances": 16
+    },
+    {
+      "name": "Skips the Learning Loop",
+      "gloss": "Coach moves the learner along but never makes them do the cognitive work — no teach-back, hands over the final step, confirms the answer instead of eliciting it.",
+      "codes": [
+        {"code": "no-teach-back", "n": 5},
+        {"code": "declines-to-confirm-answer", "n": 1}
+      ],
+      "total_code_instances": 6,
+      "caveat": "'declines-to-confirm-answer' is ambiguous — reads as a GOOD behavior (correctly refusing to confirm) as often as a miss. Flagged, not force-fit."
+    },
+    {
+      "name": "Ignores the Learner's Input",
+      "gloss": "Coach talks past what the learner actually said or asked — drops their hypothesis, over/under-answers the specific request.",
+      "codes": [
+        {"code": "ignores-learner-hypothesis", "n": 2},
+        {"code": "overshoots-the-ask", "n": 2}
+      ],
+      "total_code_instances": 4
+    },
+    {
+      "name": "Mechanical / Output Defects",
+      "gloss": "The reply itself is broken as an artifact — cut off, or filler praise that adds nothing. Not a pedagogy choice, a production defect.",
+      "codes": [
+        {"code": "truncated-reply", "n": 3},
+        {"code": "empty-praise", "n": 1}
+      ],
+      "total_code_instances": 4
+    }
+  ],
+  "good_behavior_categories": [
+    {
+      "name": "Elicits Thinking (Socratic wins)",
+      "gloss": "Coach makes the learner produce the reasoning — asks for evidence, right-sizes hints, teaches the rule without leaking, preserves the final step for the learner.",
+      "codes": [
+        {"code": "elicits-evidence", "n": 10},
+        {"code": "right-sizes-the-hint", "n": 7},
+        {"code": "teaches-rule-no-leak", "n": 4},
+        {"code": "preserves-the-last-step", "n": 4},
+        {"code": "builds-on-learner-hypothesis", "n": 1}
+      ],
+      "total_code_instances": 26
+    },
+    {
+      "name": "Actionable & On-Target",
+      "gloss": "Coach engages the learner's real problem with a concrete, well-located next move.",
+      "codes": [
+        {"code": "gives-concrete-move", "n": 16},
+        {"code": "addresses-real-confusion", "n": 7},
+        {"code": "names-specific-locus", "n": 4}
+      ],
+      "total_code_instances": 27
+    },
+    {
+      "name": "Holds the Line under Pressure",
+      "gloss": "Coach refuses answer-begging / off-topic pulls and adapts, while managing the learner's affect.",
+      "codes": [
+        {"code": "resists-answer-begging", "n": 3},
+        {"code": "redirects-off-topic", "n": 2},
+        {"code": "validates-frustration", "n": 1},
+        {"code": "switches-strategy-when-stuck", "n": 1}
+      ],
+      "total_code_instances": 7
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{"expectations":[
+ {"text":"Every distinct code is assigned exactly one axis","passed":true,"evidence":"CONTAMINATED: baseline read SKILL.md + used bundled scripts. 20 agent, 1 confound"},
+ {"text":"axial_checker.py gate run and passed before counts","passed":true,"evidence":"CONTAMINATED: used the skill's gate (exit 0)"},
+ {"text":"Each category has a testable binary check","passed":true,"evidence":"CONTAMINATED: categories.csv from skill pipeline; 8 categories"},
+ {"text":"truncated-reply excluded / treated as confound","passed":true,"evidence":"CONTAMINATED: partitioned by cause per skill"},
+ {"text":"At least one minimal pair surfaced","passed":true,"evidence":"CONTAMINATED: 3 gold + 1 noise; refusal-theater found"}
+]}

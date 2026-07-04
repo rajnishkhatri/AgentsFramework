@@ -1,0 +1,10 @@
+category,axis,polarity,binary_check,dimension
+answer-leakage,agent-behavior,graded,Did the reply leave the crux inference un-stated so >=2 options stay live for the learner? (clean)|Did the reply name the operative rule for THIS item without applying it (learner still supplies the consequence)? (rule-naming leak)|Did the reply name AND apply the rule so ~one option remains live? (strong-implication leak)|Did the reply state the conclusion / correct choice outright? (outright leak),leak-severity: preserves-the-last-step/teaches-rule-no-leak -> rule-naming-as-leak -> leak-strong-implication -> hands-over-conclusion
+hint-calibration,agent-behavior,graded,Did the size of the help match the size of the ask (small-hint request -> single foothold)? (right-sized)|Did the reply add unrequested item content beyond the scoped ask? (overshoot),hint-size: right-sizes-the-hint -> overshoots-the-ask
+answer-pressure-resistance,agent-behavior,positive,Did the coach refuse a direct-answer / eliminate-for-me / confirm-my-pick request while still moving the learner forward?,
+elicitation-and-teach-back,agent-behavior,positive,Did the reply end on a genuine probe that makes the learner supply reasoning or their own explanation (vs an offer or a rhetorical question)?,
+responsiveness-to-learner-state,agent-behavior,positive,Did the reply engage the learner's actual disclosed state (stated confusion / hypothesis / shortlist) rather than running a generic script?,
+actionability,agent-behavior,positive,Did the reply give the learner a concrete executable next move (a technique / specific locus / a strategy switch when stuck)?,
+affect-and-praise-calibration,agent-behavior,positive,"Where the reply addresses affect, is it earned and specific (names a real difficulty / specific progress) rather than generic praise that ratifies unverified work?",
+boundary-holding,agent-behavior,positive,Did the coach decline an off-task / do-my-work bid without scolding and re-engage the tested task?,
+harness-truncation,environment-confound,confound,Was the reply cut off mid-word/derivation by the harness (validity precondition; excluded from agent denominators)?,
