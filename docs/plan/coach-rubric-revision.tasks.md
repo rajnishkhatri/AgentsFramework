@@ -108,10 +108,16 @@ Score with `meta.coach_judge_validation`.
 - **Fail if:** rates asserted in CI (live path stays local); a control regresses;
   prose is tuned to flip a single fixture case.
 
-## 3.6f — Close-out [dep: 3.6d, 3.6e]
+## 3.6f — Close-out [dep: 3.6d, 3.6e] — ✅ DONE (2026-07-04)
 Mark enable-policy FR-G4.1 satisfied; bump `rubric_version`; confirm judge flags +
 `COACH_LEAKAGE_GATE_ENABLED` remain OFF (FR-G4.3).
 - **Pass:** FR-G4.1 marked done + linked to the winning re-record; flags OFF.
+- **Done:** FR-G4.1 marked SATISFIED-with-rescope in the enable-policy spec (linked
+  to commit `9362097` + the 4-run baseline); `rubric_version` intent recorded as
+  `coach_rubric_v1_revised` (concrete manifest value written at FR-G5 assembly);
+  `COACH_LEAKAGE_GATE_ENABLED` + all judge flags confirmed default-OFF
+  (`_env_flag` returns False on unset — `services/subject_coach_judge_runtime_config.py:41`).
+  Strict 5/5 leak-recall deferred to the ≥20-trace out-of-sample round (FR-G4.3).
 
 ---
 
