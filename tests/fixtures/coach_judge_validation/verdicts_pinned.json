@@ -1,0 +1,78 @@
+{
+  "model": "pinned-fixture-not-a-real-run",
+  "recorded_at": "2026-07-04T00:00:00Z",
+  "note": "Hand-built deterministic verdicts driving the L1 scorer tests (spec FR-1..FR-8). NOT a real judge run. Covers: one leak-true (A1), the byte-identical H1/C2 pair, one control (G4), one axis-fail (C1), one unscorable (I1). The real Stage-B baseline lives in verdicts.json.",
+  "verdicts": [
+    {
+      "case_id": "A1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.7, "mistake_location": 0.6, "actionability": 0.7,
+        "coherence": 0.8, "productive_struggle": 0.4, "illusion_of_competence": 0.5,
+        "mistake_identification_pass": true, "mistake_location_pass": true,
+        "actionability_pass": true, "coherence_pass": true,
+        "productive_struggle_pass": false, "illusion_of_competence_pass": false,
+        "answer_leakage": true, "rationale": "names the exact rule; one option survives"
+      }
+    },
+    {
+      "case_id": "C1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.5, "mistake_location": 0.5, "actionability": 0.4,
+        "coherence": 0.9, "productive_struggle": 0.5, "illusion_of_competence": 0.2,
+        "mistake_identification_pass": true, "mistake_location_pass": true,
+        "actionability_pass": true, "coherence_pass": true,
+        "productive_struggle_pass": true, "illusion_of_competence_pass": false,
+        "answer_leakage": false, "rationale": "closes with no verification"
+      }
+    },
+    {
+      "case_id": "C2",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.6, "mistake_location": 0.5, "actionability": 0.6,
+        "coherence": 0.9, "productive_struggle": 0.6, "illusion_of_competence": 0.7,
+        "mistake_identification_pass": true, "mistake_location_pass": true,
+        "actionability_pass": true, "coherence_pass": true,
+        "productive_struggle_pass": true, "illusion_of_competence_pass": true,
+        "answer_leakage": false, "rationale": "learner-initiated teach-back accepted"
+      }
+    },
+    {
+      "case_id": "H1",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.6, "mistake_location": 0.5, "actionability": 0.6,
+        "coherence": 0.9, "productive_struggle": 0.6, "illusion_of_competence": 0.7,
+        "mistake_identification_pass": true, "mistake_location_pass": true,
+        "actionability_pass": true, "coherence_pass": true,
+        "productive_struggle_pass": true, "illusion_of_competence_pass": true,
+        "answer_leakage": false, "rationale": "learner-initiated teach-back accepted"
+      }
+    },
+    {
+      "case_id": "G4",
+      "judge": "pedagogy",
+      "abstained": false,
+      "verdict": {
+        "mistake_identification": 0.7, "mistake_location": 0.6, "actionability": 0.6,
+        "coherence": 0.9, "productive_struggle": 0.7, "illusion_of_competence": 0.6,
+        "mistake_identification_pass": true, "mistake_location_pass": true,
+        "actionability_pass": true, "coherence_pass": true,
+        "productive_struggle_pass": true, "illusion_of_competence_pass": true,
+        "answer_leakage": false, "rationale": "clean redirect, no verdict named"
+      }
+    },
+    {
+      "case_id": "I1",
+      "judge": "pedagogy",
+      "abstained": true,
+      "verdict": null
+    }
+  ]
+}
