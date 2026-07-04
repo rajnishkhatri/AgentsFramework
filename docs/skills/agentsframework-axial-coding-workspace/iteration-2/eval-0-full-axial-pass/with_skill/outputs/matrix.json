@@ -1,0 +1,22 @@
+{
+  "agent_denominator": 30,
+  "category_occurrence_counts": {
+    "affective-response": 2,
+    "answer-leak": 24,
+    "boundary-holding": 6,
+    "elicitation-quality": 15,
+    "hint-calibration": 9,
+    "learner-state-uptake": 4,
+    "scaffolding-move": 27
+  },
+  "category_trace_counts": {
+    "affective-response": 2,
+    "answer-leak": 20,
+    "boundary-holding": 6,
+    "elicitation-quality": 15,
+    "hint-calibration": 9,
+    "learner-state-uptake": 4,
+    "scaffolding-move": 21
+  },
+  "confound_only_excluded": 0
+}

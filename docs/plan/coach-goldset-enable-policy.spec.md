@@ -197,7 +197,12 @@ Failure paths first within each family (TAP-4).
   `prompts/subject_coach_grader_judge.j2` and `prompts/subject_coach_pedagogy_judge.j2`
   from grounded codes — including **refusal-aware** grader criteria and an explicit
   **`rule-naming-as-leak`** binarized check — and SHALL mark prompt headers **REVISED**
-  (no longer PROVISIONAL).
+  (no longer PROVISIONAL). **Acceptance criteria** for this revision are the baseline
+  judge failures recorded in
+  [coach-judge-validation-3.5f-handoff.md](coach-judge-validation-3.5f-handoff.md)
+  (Task 3.5f): both `gpt-4o` and `claude-opus-4-8` score TPR=0.000 on the 5 indirect
+  leaks — the revision passes only when a re-recorded baseline flips those to catches
+  while holding controls (TNR=1.000).
 - **FR-G4.2** IF a rubric criterion cannot be mapped to a taxonomy category THEN THE
   SYSTEM SHALL NOT ship it (orphan criteria are a spec violation).
 - **FR-G4.3** WHILE rubrics are REVISED but cert is incomplete THE SYSTEM SHALL keep

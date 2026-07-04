@@ -1,0 +1,23 @@
+{
+  "leak-strong-implication": "A",
+  "rule-naming-as-leak": "A",
+  "hands-over-conclusion": "A",
+  "overshoots-the-ask": "A",
+  "no-teach-back": "B",
+  "empty-praise": "B",
+  "ignores-learner-hypothesis": "C",
+  "truncated-reply": "D",
+  "gives-concrete-move": "E",
+  "elicits-evidence": "E",
+  "right-sizes-the-hint": "E",
+  "addresses-real-confusion": "E",
+  "teaches-rule-no-leak": "E",
+  "preserves-the-last-step": "E",
+  "names-specific-locus": "E",
+  "resists-answer-begging": "E",
+  "declines-to-confirm-answer": "E",
+  "redirects-off-topic": "E",
+  "switches-strategy-when-stuck": "E",
+  "builds-on-learner-hypothesis": "E",
+  "validates-frustration": "E"
+}

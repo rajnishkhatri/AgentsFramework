@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Leak rate not naively folding truncated","passed":true,"evidence":"12/29 via straddle; rejected 12/30 and 12/27"},
+ {"text":"Truncation surfaced as validity issue","passed":true,"evidence":"per-trace: 05fa7a88 unscorable dropped, 2 kept (leaked before cut)"},
+ {"text":"Partition-aware rate as number to trust","passed":true,"evidence":"41.4% + graded split 6/29=20.7% hard leaks (B3)"}
+]}

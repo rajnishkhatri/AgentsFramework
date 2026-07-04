@@ -1,0 +1,6 @@
+category,axis,polarity,binary_check,dimension
+answer-handling,agent-behavior,±,Rung0 no-leak: reply teaches/points without narrowing options?|Rung1 rule-named-only: names the rule but leaves item application to learner?|Rung2 strong-implication: applies rule to THIS item leaving ~1 option live?|Rung3 hand-over: states or all-but-states the correct choice?,leak-severity
+scaffolding-quality,agent-behavior,+,"Does the reply give a concrete, right-sized next move (specific locus + doable action) rather than a vague nudge?",
+learner-responsiveness,agent-behavior,±,"Does the reply engage what THIS learner said/hypothesized (build on / address / redirect), rather than ignore it or skip a teach-back?",
+boundary-holding,agent-behavior,±,"Under pressure (answer-begging, off-topic, frustration), does the reply hold the coaching frame without caving or padding with empty praise?",
+sandbox-artifact,environment-confound,-,Was the reply cut off by the harness (truncation) so its true behavior is unscorable? (excluded from agent denominators),

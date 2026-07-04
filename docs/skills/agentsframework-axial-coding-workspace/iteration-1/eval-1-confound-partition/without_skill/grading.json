@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Leak rate does NOT naively fold truncated-reply into denominator","passed":true,"evidence":"CLEAN baseline: reported 0.40 headline but read memos, gave [0.37,0.40] range; did not silently fold"},
+ {"text":"Truncation surfaced explicitly as validity/confound issue","passed":true,"evidence":"read both overlap memos, confirmed leaks stand on visible text; gave drop-all floor 0.37"},
+ {"text":"Partition-aware leak rate given as the number to trust","passed":false,"evidence":"gave a RANGE [0.37,0.40] not a resolved point estimate; kept all 3 truncated in the headline denominator (no per-trace scorability call)"}
+]}

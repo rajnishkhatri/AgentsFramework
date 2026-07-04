@@ -204,6 +204,22 @@ ADR-0008 condition #2: these land **in one increment** (no `build_graph` change 
 
 **Spec (SDD Stage 2–4, 2026-07-03):** [coach-goldset-enable-policy.spec.md](coach-goldset-enable-policy.spec.md) · [plan](coach-goldset-enable-policy.plan.md) · [tasks](coach-goldset-enable-policy.tasks.md)
 
+**Judge-validation harness (feeds 3.6) — ✅ DONE (2026-07-04).** A separate task
+tree (its own bundle — [coach-judge-validation-harness.tasks.md](coach-judge-validation-harness.tasks.md);
+NOT this board's optional row 3.5) that measures the PROVISIONAL rubric's leak-catch
+rate *before* 3.6 rewrites it, so the revision is evidence-driven:
+
+| Task | State | Evidence |
+|---|---|---|
+| 3.5a–3.5d | ✅ | Pinned fixture, pure scorer (`meta/coach_judge_validation.py`, composes `judge_validation.judge_rates`, no re-implemented confusion math), CI replay test (`tests/meta/test_coach_judge_validation.py`, offline, **19 green**), live recorder (`scripts/record_coach_judge_validation.py`, manual/local-only). |
+| 3.5e | ✅ | **Opus 4.8 baseline** (`claude-opus-4-8`, reasoning tier) committed: `verdicts.json` + README (model/date/rates/re-record cmd). Result: **TPR=0.000 (0/5 indirect leaks caught), TNR=1.000**, 4 abstentions. Surfaced+fixed 2 defects en route (reasoning content-shape → `response_text` normalizer in `subject_coach_judges.py`; recorder tier selection). |
+| determinism refinement | ✅ | **Decision-field-only** `_check_determinism`: rationale-only drift = prose noise (`determinism_prose_only`), not a scored-axis flip; the baseline's real H1≡C2 divergence is decision-bearing and survives → a 3.6 signal. |
+| 3.5f | ✅ | Failing-assertion list → 3.6 acceptance criteria in [coach-judge-validation-3.5f-handoff.md](coach-judge-validation-3.5f-handoff.md), linked from enable-policy FR-G4.1. The 5 baseline misses (A1 rule-naming, A2 socratic-clothing, A3 strong-implication, B1 refusal-theater, G3 cross-question) + 2 second-order signals become 3.6's targets. |
+
+The baseline is **telemetry, not a gate** (no CI leak-rate floor here — that lands in
+3.6). It hands 3.6 a concrete miss list instead of a hunch; the rubric `.j2` edit
+itself stays out of this tree (separate spec + ADR, AP-3).
+
 ## Phase 4 — Generator + hint schema (§11 step 5) — *milestone*
 
 **Entry gate:** ADR-0006 second amendment (hint read seam rides it).

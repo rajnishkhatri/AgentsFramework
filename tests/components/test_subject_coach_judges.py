@@ -62,6 +62,30 @@ class ErrorLLMService:
         raise RuntimeError("simulated provider outage")
 
 
+class BlockListLLMService:
+    """Reasoning-model stub: ``.content`` is a DeepSeek-V4-style block list.
+
+    The answer JSON lives in ``text`` blocks; ``thinking`` blocks are scratchpad
+    that must be dropped. ``str(content)`` would repr the whole list and break
+    the parser — the judge must normalize via ``response_text`` (services H2
+    boundary), exactly like every other call site.
+    """
+
+    def __init__(self, answer_json: str) -> None:
+        self._answer_json = answer_json
+        self.calls: list[tuple[ModelProfile, list[dict]]] = []
+
+    async def invoke(self, profile, messages, **kwargs):
+        self.calls.append((profile, messages))
+        content = [
+            "",
+            {"type": "thinking", "thinking": "The learner has not answered yet."},
+            {"type": "thinking", "thinking": " Consider the rubric."},
+            {"type": "text", "text": self._answer_json},
+        ]
+        return _FakeResponse(content)  # type: ignore[arg-type]
+
+
 def _profile() -> ModelProfile:
     return ModelProfile(
         name="gpt-4o-mini",
@@ -338,3 +362,33 @@ class TestFR17GeneralGoalJudgeUnchanged:
 
         assert not issubclass(GraderJudge, GoalJudge)
         assert not issubclass(PedagogyJudge, GoalJudge)
+
+
+class TestReasoningModelBlockListContent:
+    """A reasoning model (DeepSeek V4) returns ``.content`` as a block list; the
+    answer JSON is in the ``text`` block. The judge must normalize it, not choke
+    on ``str(list)`` (regression: gpt-4o passed as str, DeepSeek-pro did not)."""
+
+    @pytest.mark.asyncio
+    async def test_pedagogy_parses_json_from_text_block(self):
+        llm = BlockListLLMService(_pedagogy_response(answer_leakage=True))
+        judge = PedagogyJudge(
+            llm_service=llm,  # type: ignore[arg-type]
+            prompt_service=PromptService(),
+            judge_profile=_profile(),
+        )
+        verdict = await _judge_turn(judge)
+        assert verdict is not None
+        assert verdict.answer_leakage is True
+
+    @pytest.mark.asyncio
+    async def test_grader_parses_json_from_text_block(self):
+        llm = BlockListLLMService(_grader_response(correctness_pass=False))
+        judge = GraderJudge(
+            llm_service=llm,  # type: ignore[arg-type]
+            prompt_service=PromptService(),
+            judge_profile=_profile(),
+        )
+        verdict = await _grade(judge)
+        assert verdict is not None
+        assert verdict.correctness_pass is False

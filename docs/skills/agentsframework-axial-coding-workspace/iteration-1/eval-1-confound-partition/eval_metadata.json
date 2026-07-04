@@ -1,0 +1,10 @@
+{
+  "eval_id": 1,
+  "eval_name": "confound-partition-discipline",
+  "prompt": "Coded set at .../coded_slice.jsonl. Want the leak-rate: fraction of traces where the coach leaks the answer. Some replies were cut off (truncated-reply). Give the number to trust.",
+  "assertions": [
+    {"text": "The reported leak rate does NOT naively fold truncated-reply traces into the denominator"},
+    {"text": "Truncation is surfaced explicitly as a validity/confound issue, not silently ignored"},
+    {"text": "A partition-aware leak rate (over agent-valid traces) is given as the number to trust"}
+  ]
+}

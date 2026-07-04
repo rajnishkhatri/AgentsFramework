@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Did NOT silently ship unpartitioned vibe-named buckets","passed":false,"evidence":"CLEAN baseline: shipped 4 vibe-named buckets as the deliverable; mixed truncated-reply + empty-praise into one 'Mechanical Defects' bucket (confound + agent behavior conflated)"},
+ {"text":"Made clear human owns final names","passed":false,"evidence":"named the buckets as the answer; gave data caveats but not a 'human owns names' framing"},
+ {"text":"Surfaced categories need testable binary check","passed":false,"evidence":"no binary checks; affinity grouping only (failure_clusters.json)"}
+]}

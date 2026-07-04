@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Did NOT silently ship vibe buckets","passed":true,"evidence":"partitioned + gate exit 0 before counts"},
+ {"text":"Human owns final names","passed":true,"evidence":"'names are my pick as you asked; not red-teamed; 2 placements I'd re-examine'"},
+ {"text":"Categories need testable check","passed":true,"evidence":"categories.csv 5 cats with checks; graded split quoted"}
+]}

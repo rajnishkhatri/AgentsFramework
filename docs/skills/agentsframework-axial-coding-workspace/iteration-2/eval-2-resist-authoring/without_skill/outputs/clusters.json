@@ -1,0 +1,132 @@
+{
+  "source": "tests/fixtures/axial_coding_eval/coded_slice.jsonl",
+  "traces": 30,
+  "distinct_codes": 21,
+  "mode": "pre_submit (all 30)",
+  "clusters": {
+    "A. Answer leakage": {
+      "definition": "The coach discloses (fully or nearly) which option is correct, or reasons the item down to a single live option, defeating the point of pre-submit coaching.",
+      "polarity": "FAILURE",
+      "code_count": 4,
+      "annotation_total": 18,
+      "codes": [
+        {
+          "code": "leak-strong-implication",
+          "count": 6
+        },
+        {
+          "code": "rule-naming-as-leak",
+          "count": 6
+        },
+        {
+          "code": "hands-over-conclusion",
+          "count": 4
+        },
+        {
+          "code": "overshoots-the-ask",
+          "count": 2
+        }
+      ]
+    },
+    "B. Pedagogy shortfall": {
+      "definition": "The turn stays 'legal' on leakage but fails to teach: no comprehension check, no earned praise, hint mis-sized. The learner is not moved forward.",
+      "polarity": "FAILURE",
+      "code_count": 2,
+      "annotation_total": 6,
+      "codes": [
+        {
+          "code": "no-teach-back",
+          "count": 5
+        },
+        {
+          "code": "empty-praise",
+          "count": 1
+        }
+      ]
+    },
+    "C. Non-responsiveness": {
+      "definition": "The coach runs its own script and ignores the specific state the learner disclosed (a hypothesis, a volunteered reading, a scoped ask).",
+      "polarity": "FAILURE",
+      "code_count": 1,
+      "annotation_total": 2,
+      "codes": [
+        {
+          "code": "ignores-learner-hypothesis",
+          "count": 2
+        }
+      ]
+    },
+    "D. Output / mechanical defects": {
+      "definition": "The reply is broken as an artifact independent of coaching quality (mid-word truncation). Likely an environment/generation confound, not a coaching decision.",
+      "polarity": "FAILURE (env-confound suspect)",
+      "code_count": 1,
+      "annotation_total": 3,
+      "codes": [
+        {
+          "code": "truncated-reply",
+          "count": 3
+        }
+      ]
+    },
+    "E. Good coaching (positive/contrast)": {
+      "definition": "Desired behaviors: elicit reasoning, give a concrete-but-non-leaking move, right-size the hint, preserve the learner's final inference, address the real confusion, hold boundaries, and adapt when stuck. These are the target behaviors and serve as minimal-pair contrast cases against clusters A-C.",
+      "polarity": "POSITIVE",
+      "code_count": 13,
+      "annotation_total": 61,
+      "codes": [
+        {
+          "code": "gives-concrete-move",
+          "count": 16
+        },
+        {
+          "code": "elicits-evidence",
+          "count": 10
+        },
+        {
+          "code": "right-sizes-the-hint",
+          "count": 7
+        },
+        {
+          "code": "addresses-real-confusion",
+          "count": 7
+        },
+        {
+          "code": "teaches-rule-no-leak",
+          "count": 4
+        },
+        {
+          "code": "preserves-the-last-step",
+          "count": 4
+        },
+        {
+          "code": "names-specific-locus",
+          "count": 4
+        },
+        {
+          "code": "resists-answer-begging",
+          "count": 3
+        },
+        {
+          "code": "redirects-off-topic",
+          "count": 2
+        },
+        {
+          "code": "declines-to-confirm-answer",
+          "count": 1
+        },
+        {
+          "code": "switches-strategy-when-stuck",
+          "count": 1
+        },
+        {
+          "code": "builds-on-learner-hypothesis",
+          "count": 1
+        },
+        {
+          "code": "validates-frustration",
+          "count": 1
+        }
+      ]
+    }
+  }
+}

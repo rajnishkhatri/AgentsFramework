@@ -3,6 +3,7 @@
 OKF bundle of repo skills. Each entry is a `type: skill` Concept (a `SKILL.md`).
 See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
+- [agentsframework-axial-coding](agentsframework-axial-coding/SKILL.md) — grounded-theory Stage 2 (axial coding): partition open codes onto three axes (agent-behavior / environment-confound / judge-reliability), cluster into named testable categories, surface minimal pairs + gradients, and emit gated rubric/judge-case candidates. Operational companion to `llm-eval-grounded-theory` Stage 2, sibling of `agentsframework-open-coding` (Stage 1).
 - [agentsframework-eval-probe](agentsframework-eval-probe/SKILL.md) — add and operate a continuous-evaluation PROBE on any LLM-call seam in this repo (open coding → taxonomy → rubric → judge → registered probe + drift loop).
 - [code-review](code-review/SKILL.md) — run the unified, context-routed code reviewer (v3) over the current branch's changed files: routes each path to its folder's `REVIEW.md`, runs the deterministic AST/TS validators first (D1/D4/D5 + TAP-2/TAP-4 + ADR.1 + FD2/FD3), then the v3 LLM reviewer with the routed `REVIEW.md` injected.
 - [agentsframework-open-coding](agentsframework-open-coding/SKILL.md) — run a hands-on open-coding session over agent traces: local HTML coder → JSONL → Langfuse dataset for human review.

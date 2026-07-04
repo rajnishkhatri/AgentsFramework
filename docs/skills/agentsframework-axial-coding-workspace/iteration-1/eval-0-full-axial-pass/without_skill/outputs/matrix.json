@@ -1,0 +1,14 @@
+{
+  "agent_denominator": 30,
+  "category_counts": {
+    "actionability": 21,
+    "affect-and-praise-calibration": 2,
+    "answer-leakage": 24,
+    "answer-pressure-resistance": 4,
+    "boundary-holding": 2,
+    "elicitation-and-teach-back": 15,
+    "hint-calibration": 9,
+    "responsiveness-to-learner-state": 10
+  },
+  "confound_only_excluded": 0
+}

@@ -1,0 +1,13 @@
+total traces:            30
+unscorable (dropped):    1  -> ['05fa7a88']
+leak-scorable denom:     29
+observed leaks (numer):  12
+LEAK RATE = 12/29 = 0.4138  (41.4%)
+
+--- contrast (WRONG denominators the rule warns against) ---
+  leaks / all-traces        = 12/30 = 0.4000  (folds an unscorable trace into denom)
+  leaks / (all - truncated) = 10/27 = 0.3704  (over-drops 2 traces that leaked BEFORE their cut)
+
+--- graded split (report alongside collapsed rate) ---
+  strong-implication + hand-over only = 6/29 = 20.7%
+  rule-naming-only (mildest rung)     = 6/29 = 20.7%

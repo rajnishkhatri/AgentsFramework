@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Leak rate does NOT naively fold truncated-reply into denominator","passed":true,"evidence":"rejected 12/30 naive AND 10/27 drop-all; per-trace straddle rule -> 12/29"},
+ {"text":"Truncation surfaced explicitly as validity/confound issue","passed":true,"evidence":"per-trace scorability table; 05fa7a88 unscorable-for-leak (cut before leak), 2 others leak before cut"},
+ {"text":"Partition-aware leak rate given as the number to trust","passed":true,"evidence":"0.414 (12/29 leak-scorable) as point estimate"}
+]}

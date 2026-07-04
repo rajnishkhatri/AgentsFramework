@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Did NOT silently ship unpartitioned vibe-named buckets","passed":true,"evidence":"partitioned every code onto an axis before counting; ran checker gate (exit 0)"},
+ {"text":"Made clear human owns final names","passed":true,"evidence":"'names are mine, not ratified - skill forbids LLM authoring; treat as draft'"},
+ {"text":"Surfaced categories need testable binary check","passed":true,"evidence":"categories.csv: 6 categories each with a binary_check; flagged gradient"}
+]}

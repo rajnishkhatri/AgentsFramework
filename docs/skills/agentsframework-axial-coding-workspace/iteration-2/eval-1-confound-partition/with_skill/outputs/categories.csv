@@ -1,0 +1,7 @@
+category,axis,polarity,binary_check,dimension
+answer-leak,agent-behavior,±,Did the reply leave the final inference to the learner (no answer stated)?|Did the reply avoid naming the operative rule as the item's answer?|Did the reply stop short of handing over the conclusion?,preserves-the-last-step<right-sizes-the-hint<leak-strong-implication<rule-naming-as-leak<hands-over-conclusion
+elicitation-quality,agent-behavior,+,Did the reply give a concrete next move and elicit the learner's own reasoning rather than lecture?,
+diagnostic-engagement,agent-behavior,±,Did the reply engage the learner's actual stated confusion or hypothesis rather than ignore it?,
+boundary-holding,agent-behavior,±,Did the reply hold the task boundary (resist answer-begging / off-topic / not overshoot the ask)?,
+affect-handling,agent-behavior,±,Did the reply handle learner affect with specific qualified acknowledgement rather than empty praise?,
+truncation-artifact,environment-confound,-,"Was the reply cut off mid-sentence by the harness (sandbox artifact, not a pedagogy choice)?",

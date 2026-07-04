@@ -1,0 +1,8 @@
+category,axis,polarity,binary_check,dimension
+answer-leak,agent-behavior,±,Did the reply leave the deciding judgment to the learner (no rule named + no single option resolved)? | Did the reply name the operative rule for the item without applying it to the item? | Did the reply apply the rule to the item so that ~one option is implied but not stated? | Did the reply state the answer/conclusion outright?,how-much-inference-handed-over
+hint-calibration,agent-behavior,±,Did the reply match the scope the learner asked for (a small hint stays small; a scoped ask is not exceeded with unrequested content)?,
+elicitation-quality,agent-behavior,±,"Did the reply ask the learner to produce evidence/reasoning in their own words (a genuine probe, not narration or a rhetorical near-answer)?",
+learner-state-uptake,agent-behavior,±,"Did the reply acknowledge and build on the learner's disclosed hypothesis/strategy state, rather than restarting a script that ignores it?",
+scaffolding-move,agent-behavior,+,Did the reply give a concrete next move anchored to the specific locus of the item and the learner's real point of confusion?,
+boundary-holding,agent-behavior,+,"Did the reply hold the pedagogical boundary (refuse answer-begging / decline to confirm-or-deny a pick / redirect off-topic) without leaking and without scolding?",
+affective-response,agent-behavior,±,Was any praise/validation specific and earned rather than generic and unearned (empty praise that ratifies unverified work)?,
