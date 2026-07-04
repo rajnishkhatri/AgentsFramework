@@ -1,7 +1,7 @@
 ---
 type: spec
 title: 'Coach learning-analytics event plane (D1) — behavior + episode capture'
-status: 'Draft rev-2 — 2026-07-03 (clarify CLOSED; review B1–B3/H1–H5/M1–M6/L1–L3 applied; spec→plan gate pending)'
+status: 'Draft rev-3 — 2026-07-04 (rev-2 + §10 task-design map folded in; ADR-0016 drafted; spec→plan+plan→tasks gates CLOSED; tasks→implement gate pending)'
 authored: 2026-07-03
 ---
 
@@ -26,7 +26,15 @@ authored: 2026-07-03
 > `episode_id` minting authority + coach-only boundaries (H2); added a per-episode
 > `step_index` for replay ordering (H3); named the authoritative hint-usage source (H4);
 > the test-page write vs its isolation header is now an explicit ADR-0016 argument (H1);
-> plus M1/M3/M4/M5 and the C1 DoD-correction.
+> plus M1/M3/M4/M5 and the C1 DoD-correction. **Stage-4 grounding pass (2026-07-03):**
+> verified every file/API the spec references exists (`deriveCoachMode`/`CoachMode` at
+> `coach_context_sanitizer.ts:20,28`; `EnginePortBag`/`buildEngineAdapters` at
+> `composition_engine.ts:55,95`; 12th-port count via ADR-0006 amendment chain; `misses()`
+> precedent; `session_repo.ts:33–47`; `langgraph_runtime.py:191–196`; `ag_ui_events.ts:55`;
+> `test/page.tsx:7–11`). **One grounding correction:** the SSE wire carries no `mode` field
+> — FR-2.4 was amended so the client derives `mode` locally via the `deriveCoachMode` rule
+> (no `wire/` change, no W2 baseline-drift cost). Architecture baseline: `.venv/bin/python
+> -m pytest tests/architecture/ -q` → **157 passed, 4 skipped** (green).
 
 ---
 
@@ -147,10 +155,18 @@ Failure paths first within each family (TAP-4). Numbers are this spec's identiti
   the boolean. D5 derives rung-level usage from events, never from `used_hint` (review H4).
 - **FR-2.4** WHEN a coach turn's response is shown to the learner THE SYSTEM SHALL emit
   `coach_turn_shown` with `run_ref = trace_id` (read from the SSE event's
-  `raw_event.trace_id`), `question_id`, and the derived coach `mode` — where `mode ∈
-  {pre_submit, post_feedback}`, the two `CoachMode` values the BFF derives
-  (`coach_context_sanitizer.ts` `deriveCoachMode`; M3) — so the learner's subsequent
-  answer is attributable to the coach action offline (C1).
+  `raw_event.trace_id`), `question_id`, and the coach `mode` (`pre_submit` | `post_feedback`)
+  so the learner's subsequent answer is attributable to the coach action offline (C1).
+  **Grounding note (Stage-4):** the derived `mode` is NOT on the SSE wire — `deriveCoachMode`
+  (`coach_context_sanitizer.ts:28`) runs server-side in the BFF
+  (`app/api/coach/run/stream/route.ts:79`) to strip context *before* forwarding, and the AG-UI
+  wire events (`ag_ui_events.ts` `RunStarted`/`TextMessage*`) carry only `trace_id`/`run_id`/
+  `thread_id`/`message_id` — no `mode`. So the client SHALL derive `mode` locally with the
+  **same rule** as `deriveCoachMode`: `hasSubmittedMarker ? "post_feedback" : "pre_submit"`.
+  The client owns that signal directly — `use_quiz` triggers the marker write
+  (`quiz_submit_notifier.ts`) — so no wire/schema change is needed and no W2 baseline-drift
+  cost is incurred. (D5 may later reconcile against the server's fail-closed derivation; for
+  analytics the client's submit *intent* is the correct signal and matches the monotonic rule.)
 - **FR-2.5** WHEN a question is served to the learner THE SYSTEM SHALL emit `item_served`
   (`question_id`, `episode_id`); WHEN the learner changes a selection before submit THE
   SYSTEM SHALL emit `answer_changed` carrying the `from`/`to` letters in its typed payload.
@@ -235,7 +251,7 @@ every other engine entity is a typed Zod object per W1, so `payload` must be too
 | `item_served` | `{}` (question_id/episode_id are columns) |
 | `hint_shown` | `{ rung: 1\|2\|3 }` |
 | `answer_changed` | `{ from: string, to: string }` (choice letters) |
-| `coach_turn_shown` | `{ mode: "pre_submit" \| "post_feedback" }` (run_ref is a column) |
+| `coach_turn_shown` | `{ mode: "pre_submit" \| "post_feedback" }` (client-derived via the `deriveCoachMode` rule — NOT read from the SSE wire, which carries no `mode`; run_ref is a column) |
 | `episode_start` | `{ origin: "quiz" \| "test" \| "coach" }` |
 | `episode_end` | `{ reason: "completed" \| "abandoned" }` |
 
@@ -332,7 +348,7 @@ Failure-path tests first. All rows run in `make check` / `pnpm test`.
 | FR-2.1 | three-call-site test: quiz/test/coach each emit via the port; test-page emit imports no `sessionRepo`/`scheduler` (isolation lock — H1) | L2 | yes (vitest) |
 | FR-2.2 | `::append_rejection_does_not_block_submit` (throwing repo → learner action still completes) — failure path | L2 | yes (vitest) |
 | FR-2.3 | `::hint_shown_carries_rung` (rung 1/2/3 in typed payload, not `used_hint`); `::used_hint_still_written_for_scheduling` (H4 — not deprecated) | L1 | yes (vitest) |
-| FR-2.4 | `::coach_turn_shown_run_ref_is_trace_id` (run_ref = SSE `raw_event.trace_id`); `::coach_turn_mode_is_pre_or_post` (M3 enum) | L1 | yes (vitest) |
+| FR-2.4 | `::coach_turn_shown_run_ref_is_trace_id` (run_ref = SSE `raw_event.trace_id`); `::coach_turn_mode_client_derived_not_wire` (mode derived via the `deriveCoachMode` rule from the client's submitted-marker state, NOT read from the SSE event — grounds the Stage-4 finding that the wire carries no `mode`; M3) | L1 | yes (vitest) |
 | FR-2.5 | `::item_served_emitted`; `::answer_changed_carries_from_to_letters` | L1 | yes (vitest) |
 | FR-3.1 | `::quiz_episode_id_is_session_id` | L1 | yes (vitest) |
 | FR-3.2 | `::test_mode_mints_uuid_and_emits_start_end` (no `quiz_session` dependency; reducer is minting authority) | L1 | yes (vitest) |
@@ -371,4 +387,18 @@ Failure-path tests first. All rows run in `make check` / `pnpm test`.
       like `AttemptRepo`"; brainstorm P5 "9 tables" corrected to 11 (M6).
 - [ ] D5 sibling spec (`coach-learning-analytics-derive.spec.md`) stub created and linked;
       it consumes the FR-4.1 crosswalk source.
+- [ ] **Stage-4 grounding closed:** FR-2.4 `mode` is client-derived (the
+      `deriveCoachMode` rule), not read from the SSE wire (which carries no `mode` —
+      verified against `ag_ui_events.ts` `RunStarted`/`TextMessage*`); no `wire/` schema
+      change or W2 baseline-drift cost incurred.
 - [ ] Actual command output pasted (not summarized) for the verification claims.
+
+## 10. Task design (separate doc)
+
+The *design of the tasks* — the FR → realizing-structure → task-group map that binds each
+acceptance criterion to the concrete engine-plane structure and the task group that builds
+it — lives in its own doc: [`coach-learning-analytics.design.md`](coach-learning-analytics.design.md).
+It is the join between this spec (the `what`), the [plan](coach-learning-analytics.plan.md)
+(architecture, T1–T16), and the [tasks](coach-learning-analytics.tasks.md) (atomic RED→GREEN,
+Groups A–J), and asserts every automated FR has a named structure + task group (no
+zero-coverage criterion — the Stage-3 checklist gate).

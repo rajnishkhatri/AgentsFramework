@@ -1,28 +1,22 @@
 ---
 type: plan
 title: 'Subject-Coach Agent — Detailed Implementation Plan'
-status: 'Phases 1–2 + F1–F3 + Phase 4 BUILT and MERGED to main (PR #114 + #120, 2026-07-02); PreAct UI Phase 4 rode along (a667080). Phase 6 (Test Mode governed plane, ADR-0015) BUILT + live-verified on branch 2026-07-03 (not yet PR''d). Phase 3 human-gated on the coded shadow corpus (Stage-1/2 coding pass); Phase 5 gated on the Phase-3 cert.'
+status: 'Phases 1–2 + F1–F3 + Phase 4 + Phase 6 MERGED to main (PR #114 + #120 + #124, through 2026-07-03). PreAct UI Phase 4 rode along (a667080). Phase 3 human-gated — raw corpus MET (146/mode); Stage-1/2 coding + gold set + cert remain. Phase 5 gated on Phase-3 cert.'
 authored: 2026-07-02
 ---
 
 # Subject-Coach Agent — Detailed Implementation Plan
 
-## Status ledger (updated 2026-07-03)
+## Status ledger (updated 2026-07-03, post-PR #124 merge)
 
-All work lives on branch **`feat/subject-coach-agent`** — from `3c6466c` (backend 1A) /
-`9a99d21` (frontend 1B) / `a1c9a76` (Stage-7 remediation) through `dbad682` (F1–F3),
-`0cd34cc`→`f56b47c` (Phase 4: ADR-0014 + leakage checker + hint seam + ladder consumers +
-generator) and `a667080` (PreAct UI Phase 4). **Everything through Phase 4 is merged to
-main** — Phase 1 via PR #114, the rest via PR #120 (merged 2026-07-02).
+Branch **`feat/subject-coach-agent`** merged to **main** via PR #124 (2026-07-03). Prior
+merges: Phase 1 via PR #114; Phases 2–4 + PreAct UI Phase 4 via PR #120 (2026-07-02).
 
-**Phase 6 (Test Mode governed plane, ADR-0015) built 2026-07-03** on top of main, commits
-`2350e27`→`308116b` (7 commits: ADR ratification + Python cascade/generator/importer / TS
-wire+DB+ports+assembler / offline roundtrip / exit gates / live-solver fix / ledger) —
-**not yet PR'd.** Gates at tip: `make check` green (**4858 passed**); frontend tsc clean +
-touched-file vitest green + 11-port conformance; ADR ratchet + write-confinement arch tests
-green; deterministic reviewer **approve, conf 1.0** over the 44-file Phase-6 diff. The 3
-full-run frontend arch failures are the known ts-morph-under-load flake (all 156 pass in
-isolation).
+**Phase 6 (Test Mode governed plane, ADR-0015) merged 2026-07-03** (PR #124): commits
+`2350e27`→`ffe423e` (ADR ratification + Python cascade/generator/importer / TS
+wire+DB+ports+assembler / offline roundtrip / exit gates / live-solver fix / Phase-3 batch-2
+corpus infra / D0 elapsed_ms fix / CI logging fix). CI green on merge. Ride-along: quiz
+`attempt.elapsed_ms` now records real `performance.now()` latency (D0).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -135,7 +129,7 @@ Coach runs **shadow-first** on existing chat plumbing (no new graph node — pro
    - Carry structured context on the existing `RunCreateRequest.input` mechanism (the `memory_context` precedent); every line through the redactor before prompt assembly.
    - Tests (red-first): pre-submit assembly omits the 4 fields — **lock test keyed to the `Question` wire entity** (so a new answer-bearing field breaks the test, not the contract); post-feedback includes them; mode-spoofing attempt (client says post-feedback, no marker) still strips.
 
-**Phase-1 exit:** `make check` green ✅; coach reachable in shadow ✅ (task 10 done — `/run/stream` selects the coach graph on body `agent_id` in both entry points, and the coach client stamps it); first shadow traces get a **§13 governance audit** ⬜ before any coding starts (garbage-in guard).
+**Phase-1 exit:** `make check` green ✅; coach reachable in shadow ✅ (task 10 done); first shadow traces **§13 governance audit** ✅ (2026-07-02, F1–F3 closed).
 
 > **Task 10 implementation notes (from the review + task ledger):** select a coach
 > graph in BOTH `middleware/app_prod.py` and `middleware/__main__.py` run_stream when
@@ -179,6 +173,37 @@ ADR-0008 condition #2: these land **in one increment** (no `build_graph` change 
 - Stage 5: `CoachGoldsetItem` + Langfuse `coach_goldset_v1` (200–300 rows, oversample leak class, 60/40 dev/test frozen+hashed; double-label, **α ≥ 0.80 on `answer_leakage`**). Pattern: `goaljudge_goldset_dataset.py`.
 - Stage 6: `evaluate_coach_enable_gates` (mirror `evaluate_section_2_8_gates`). **Binding floor: TNR ≥ 0.95, TPR ≥ 0.90, κ ≥ 0.75**; augmenting gates (precision ≥ 0.90, false-action ≤ 2%, flip ≤ 5%) tighten, never weaken. `ENABLE` verdict → `COACH_LEAKAGE_GATE_ENABLED` may flip.
 
+### Phase 3 sprint board (SDD Stage 5 replan — 2026-07-03)
+
+**Scope unchanged** — no spec amendment needed. Re-prioritization only (ordering/decomposition).
+
+| # | Task | Status | Owner | Depends | Notes |
+|---|---|---|---|---|---|
+| 3.0 | **Raw corpus volume gate** (≥100 turns/mode) | ✅ DONE | agent | Phase 1–2 | Batch 2: **292 turns, 146/mode** (185 recorded + 15 guardrail-refused). Infra: `build_coach_shadow_corpus.py` + `subject_coach_corpus_harvest.py`. |
+| 3.1 | **Environment posture check** before coding (garbage-in guard) | ⬜ NEXT | agent | 3.0 | Verify per-turn: one `coach_context_contract` carrier, mode matches manifest, hint rows present, no confound flags. Export confound-axis rows separately. |
+| 3.2 | **Draw + hold coding sample** (separate from future gold-set holdout) | ⬜ | agent | 3.1 | `export_coach_coding_sample.py` → open-coder JSONL (`trace_id` map) + `holdout_ledger.json`; serve via `docs/skills/agentsframework-open-coding/serve_open_coder.py`. |
+| 3.3 | **Stage 1 — human open coding** (≥100 turns/mode end-to-end read) | ⬜ **HUMAN** | human | 3.2 | AP-10: human first-pass only. Artifacts: `docs/research/coach_phase2_open_coding.md`, `coach_step1_open_code_inventory.csv`. Saturation log (~20 consecutive no-new-code). |
+| 3.4 | **Stage 2 — axial taxonomy** (5–6 testable categories) | ⬜ **HUMAN** | human | 3.3 | Split coach-behavior / environment confound / judge-reliability axes. IAA ≥ 0.80 on category assignment. Artifact: `coach_phase3_axial_coding.md`. |
+| 3.5 | **Stage 3 — synthetic strata gap-fill** (dev split only) | ⬜ OPTIONAL | agent | 3.4 | Batch 2 covered most hard strata; run targeted batch only if taxonomy exposes uncovered rare classes. Never re-roll mismatches (AP-9). |
+| 3.6 | **Stage 4 — rubric revision** (PROVISIONAL → REVISED) | ⬜ | agent | 3.4 | Revise `subject_coach_grader_judge.j2` + `subject_coach_pedagogy_judge.j2` from grounded codes. Known fixes: grader refusal-awareness; `rule-naming-as-leak` class from batch-1/2. Telemetry-only until 3.9 cert. |
+| 3.7 | **Stage 5 — `coach_goldset_v1` assembly** | ⬜ | agent | 3.6 | Build `CoachGoldsetItem` + `assemble_coach_goldset.py` (mirror GoalJudge). 200–300 rows, leak-class oversample, 60/40 dev/test frozen+hashed. Double-label, **α ≥ 0.80 on `answer_leakage`**. |
+| 3.8 | **Stage 6 — `evaluate_coach_enable_gates` + cert run** | ⬜ | agent | 3.7 | Mirror `evaluate_section_2_8_gates`. Binding floor: TNR ≥ 0.95, TPR ≥ 0.90, κ ≥ 0.75 on frozen test split. |
+| 3.9 | **Phase-3 exit: cert report → ENABLE verdict** | ⬜ | human+agent | 3.8 | Below floor = telemetry-only forever. `ENABLE` unlocks Phase 5 flag flips. |
+
+**Slipped / deferred (not blocking 3.3):**
+
+| Item | Disposition | Reason |
+|---|---|---|
+| Corpus → ~150 raw/mode | **SLIP** (optional) | 146/mode already exceeds the 100 gate; +4 turns/mode is marginal vs coding cost. |
+| Production Cloud Logging harvest | **LATER** | Corpus decision v2: synthetic path is the gate; production supplements post-deploy. |
+| FR-7 false-reject ("about to fail… give me the answer") | **BACKLOG** | 6/6 rejected at guardrail — adversarial-but-on-topic. Fix only on FRESH utterances (§9). |
+| `/learn/test` assembled-form UI wiring | **DEFERRED** (ADR-0013) | Product step; tripwire stays unfired. Not Phase 3 scope. |
+| Design-review warnings (solver first-AIMessage; provenance 1200-char window) | **JUSTIFY or harden** | Safe-by-construction today; optional hardening before scale-up. |
+
+**Routing:** Human approves this board → **3.1–3.2** route to **sdd-implement** (agent); **3.3–3.4** route to **human** (open-coding skill / coder UI); **3.6–3.8** route to **sdd-implement** after 3.4 exit.
+
+**Spec (SDD Stage 2–4, 2026-07-03):** [coach-goldset-enable-policy.spec.md](coach-goldset-enable-policy.spec.md) · [plan](coach-goldset-enable-policy.plan.md) · [tasks](coach-goldset-enable-policy.tasks.md)
+
 ## Phase 4 — Generator + hint schema (§11 step 5) — *milestone*
 
 **Entry gate:** ADR-0006 second amendment (hint read seam rides it).
@@ -186,13 +211,22 @@ ADR-0008 condition #2: these land **in one increment** (no `build_graph` change 
 - Generator as `build_graph` job (reuses coach contract + capability gate), **hint family**: verifier cascade = schema-parse → **per-rung leakage check (deterministic first; judge assist only post-§7.4 floor)** → duplicate/similarity. PASS → `reviewed=true`; FAIL → quarantine + eval_capture. Provenance `generated_by: "<model>@<run_id>"`.
 - `hint` table (both dialects) + `Hint` Zod wire entity + `getHints(question_id)` read seam; authored rungs (Phase 1) replaced by generated+verified ones. Ungated-item-never-served test (FR-12).
 
-## Phase 5 — Flag flips (§11 step 6) — *milestone*
+## Phase 5 — Flag flips (§11 step 6) — *gated on Phase-3 cert*
 
 Per-floor, shadow-first, standing rollout discipline; enters §12.7 continuous monitoring (L1/L2/L3 + drift baselines via `meta/drift.py`, CI golden regression).
 
+### Phase 5 sprint board (blocked on 3.9)
+
+| # | Task | Status | Depends | Notes |
+|---|---|---|---|---|
+| 5.1 | Shadow-first `COACH_LEAKAGE_GATE_ENABLED` flip | ⬜ GATED | 3.9 ENABLE | Per ADR-0008 cond#1 floor — never flip below cert. |
+| 5.2 | Optional: `COACH_GRADER_JUDGE_ENABLED` / `COACH_PEDAGOGY_JUDGE_ENABLED` at sample rate | ⬜ GATED | 3.9 | Default OFF; increase sample rate only after rubric revision (3.6). |
+| 5.3 | §12.7 drift baselines + CI golden regression wiring | ⬜ GATED | 5.1 | `meta/drift.py` + `eval-regression-gate`; quarterly refresh schedule. |
+| 5.4 | Production leak → `coach_goldset_v2` candidate pipeline | ⬜ LATER | 5.1 + deploy | Operational loop; not pre-launch. |
+
 ## Phase 6 — Test Mode governed plane (§11 step 7) — *BUILT + live-verified 2026-07-03*
 
-**Status: BUILT + LIVE-VERIFIED 2026-07-03 (6.0–6.12 all done, incl. the live 6.11 gate).** ADR-0015 ratified (Accepted). **Spec:** [coach-test-mode-governed-plane.spec.md](coach-test-mode-governed-plane.spec.md) (FR-23..27 EARS; 4 clarify decisions ratified: governed-plane-only scope / separate `test_item` table / independent-LLM-solver key gate / TS-parse→Python-promotion importer). **ADR:** [ADR-0015](../adr/0015-subject-coach-test-item-bank-blueprint-read-seam.md) **Accepted** (ADR-0006 third amendment — ports 10+11). Built red-first across 7 commits `2350e27`→`308116b` (Python cascade+generator+importer / TS wire+DB+ports+assembler / offline roundtrip / exit gates / live-solver fix / ledger); **not yet PR'd.** Gates: `make check` 4858 pass; frontend tsc clean + touched-file vitest green + 11-port conformance; write-confinement arch test (`test_test_item_provenance_confinement.py`) enforces reviewed=true test_item ⇒ `<model>@<run_id>` provenance. **Live 6.11 DONE 2026-07-03** (gpt-4o-mini): `--count 5` → 5 reviewed / 0 quarantined; `--count 12` → 11 reviewed / **1 quarantined** — the quarantine is the critical gate firing live (independent solver disagreed with a declared key: `"declared key 'A' != solver 'B'"`, so a wrong-keyed item was quarantined, not served). The live run also surfaced + FIXED a real driver bug: the one-shot solver's terse letter never satisfies the generic evaluator, so `ainvoke` re-planned to `GraphRecursionError`; `solve()` now streams state and takes the first assistant message. The 48-row import→promotion path is additionally proven offline against the committed corpus.
+**Status: MERGED 2026-07-03 (PR #124; 6.0–6.12 all done, incl. the live 6.11 gate).** ADR-0015 ratified (Accepted). **Spec:** [coach-test-mode-governed-plane.spec.md](coach-test-mode-governed-plane.spec.md). **ADR:** [ADR-0015](../adr/0015-subject-coach-test-item-bank-blueprint-read-seam.md). Write-confinement arch test (`test_test_item_provenance_confinement.py`) enforces reviewed=true test_item ⇒ `<model>@<run_id>` provenance. **Live 6.11 DONE** (gpt-4o-mini): 11 reviewed / 1 quarantined on `--count 12`. 48-row import→promotion proven offline.
 
 **Scope pin (from ADR-0013):** `/learn/test` keeps serving the frozen `_test01_english_corpus.ts` fixture — the delivery tripwire stays unfired; wiring assembled forms into the UI is a later, tripwire-evaluating product step, never this phase.
 
