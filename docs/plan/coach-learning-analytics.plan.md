@@ -9,7 +9,8 @@ authored: 2026-07-03
 
 **Status:** Draft — 2026-07-03
 **Owner:** Rajnish Khatri
-**Derives:** [`coach-learning-analytics.spec.md`](coach-learning-analytics.spec.md) rev-2 (FR-1..FR-4)
+**Derives:** [`coach-learning-analytics.spec.md`](coach-learning-analytics.spec.md) rev-3 (FR-1..FR-4)
+**Task design map:** [`coach-learning-analytics.design.md`](coach-learning-analytics.design.md) (FR → structure → task-group)
 **Raises:** **ADR-0016** (12th engine port `LearningEventRepo` + `learning_event` table; append+scoped-read)
 **Precedent mirrored end-to-end:** the `AttemptRepo` vertical slice (ADR-0006 #3) — the
 only engine port that is *append + scoped-read*, the exact posture this needs.

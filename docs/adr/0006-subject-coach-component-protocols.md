@@ -21,6 +21,12 @@ below are unchanged). **Amended by [ADR-0014](0014-subject-coach-hint-repo-read-
 `TestItemRepo.listReviewed(subject)` (the test-item content family: `test_item` +
 `test_blueprint` tables both dialects + `TestItem`/`TestBlueprint` wire entities; the window
 ADR-0013 §Consequences committed the `test_blueprint` schema to).
+**Amended by [ADR-0016](0016-subject-coach-learning-event-append-plane.md)**
+(2026-07-04) — adds a **twelfth** port, `LearningEventRepo` (**append + `meta/`-scoped read** —
+the first amendment to *apply* the #3 `AttemptRepo` append+scoped-read posture, not add a
+read-only seam): `append(event)` + `listForReplay(subject, userId, since?)` over a new
+`learning_event` table both dialects (the learner-behavior/episode analytics plane; D1). See
+the 12th row in the port table below.
 **Related:** [data & protocols design doc](../Architectures/SUBJECT_COACH_ENGINE_DATA_AND_PROTOCOLS.md) · [ADR-0005 engine home](0005-subject-coach-engine-home-and-substrate.md) · [ADR-0011 learner read port](0011-subject-coach-engine-learner-read-port.md) · [Frontend ports deep dive](../Architectures/FRONTEND_PORTS_AND_ADAPTERS_DEEP_DIVE.md) · [UI spec](../plan/preact-english-coach-ui.spec.md)
 **Audience:** anyone implementing or changing an engine port signature, the `Verdict` shape, or the coach stream contract.
 
@@ -60,7 +66,13 @@ plus one **client-side renderer registry** (not a port). The ports:
 | 5 | `Scheduler` (FSRS) | `next(subject, learner): {skillId, questionId}` · `review(attempt): SkillState` | **only writer of `skill_state`**; subject-agnostic algorithm |
 | 6 | `Grader` | `grade(question, answer): Verdict` | **pure**, deterministic, canonicalizing; no I/O |
 | 7 | `ContentRepo` | `text(subject, key, locale): string` · `bundle(subject, locale)` | objective-plane UI strings; no business logic |
+| 12 | `LearningEventRepo` (ADR-0016) | `append(event): LearningEvent` · `listForReplay(subject, learner, since?): LearningEvent[]` | **append + `meta/`-scoped read** (applies #3's posture): write behavior/episode events; read for offline replay only — `listForReplay` not reachable from serving code |
 | + | `CoachAgentClient` | `subscribe(ctx): AsyncStream<CoachToken>` over the BFF SSE | the one online port; reuses the AG-UI transport, **not** a new stream stack |
+
+> Ports 8–11 (`LearnerReadRepo`, `HintRepo`, `TestBlueprintRepo`, `TestItemRepo`) are the
+> read-only amendments recorded in the header pointers above; #12 `LearningEventRepo`
+> (ADR-0016) is the first amendment carrying a *write* surface, applying #3's append+scoped-read
+> posture.
 
 `Verdict` (the grading contract — generic enough for Math without being abstract now):
 ```

@@ -14,7 +14,8 @@ authored: 2026-07-03
 | 3.0 Raw corpus volume (≥100/mode raw) | ✅ DONE | Batch 2: 292 turns, 146/mode; PR #124 |
 | 3.1 Environment posture checker | ⬜ | Spec FR-G1 (EvalRecord-only; C9) |
 | 3.2 Coding-sample export + holdout ledger | ⬜ | Spec FR-G2 |
-| 3.3–3.4 Human open + axial coding | ⬜ **HUMAN** | Spec FR-G3 |
+| 3.3 Human open coding (Stage-1) | 🟡 **tooling BUILT** (3.3a–d green); HUMAN gate (3.3e/f) pending | Spec FR-G3.1 (+ .1–.12); [Task 3.3 plan](#task-33--human-open-coding-stage-1); 3.3a real-data smoke: 237 cases (122 pre / 115 post) |
+| 3.4 Human axial coding (Stage-2) | ⬜ **HUMAN** | Spec FR-G3.2–G3.3 |
 | 3.5 Optional strata gap-fill | ⬜ OPTIONAL | Spec FR-G7 |
 | 3.6 Rubric revision | ⬜ | Spec FR-G4 |
 | 3.6b Taxonomy frozen-set artifact | ⬜ | Spec FR-G5.3 (blocks 3.7a validator) |
@@ -98,6 +99,51 @@ sibling modules in `services/governance/`).
 | Augmenting gates | L1 | precision / false-action / flip evaluated individually (FR-G6.3) |
 | κ<0.6 unreliable | L1 | non-gating axis below 0.6 marked unreliable telemetry (FR-G6.7) |
 | Human coding | L3 | saturation + IAA worksheet (not CI) |
+
+---
+
+## Task 3.3 — Human open coding (Stage-1)
+
+Executable expansion of FR-G3.1 (folded into the spec 2026-07-03). Turns the merged
+coding-eligible pool into a served coding surface, captures **human** first-pass codes,
+and emits the Stage-1 artifacts 3.4 consumes.
+
+### File-level touchpoints
+
+| File | New/Reuse | Role | Spec FR |
+|---|---|---|---|
+| `scripts/build_coach_open_coding_cases.py` | **new (thin adapter)** | **Reuse `export_coach_coding_sample.build_coder_rows`** (already does posture-filter → `coding_eligible` + manifest full-text join + C11 field map `trace_id←task_id, prompt←learner_utterance, final_answer←coach_reply`) over the **merged** EvalRecords; then seed-select ≥100/mode, order mode-contiguous, and emit the skill's `cases.json` array. Fail-closed on sub-floor mode. **Do NOT re-derive the join** (Stage-4: `outcomes.jsonl` has no `trace_id`/answer; the answer lives in `logs/evals.log` EvalRecords, which `build_coder_rows` already reads). | G3.1.1–.3, .5–.7 |
+| `scripts/verify_coded_open_codes.py` | **new** | Read `coded.jsonl`; report per-mode uncoded (`open_codes==[]`) count + `trace_id`s. | G3.1.4 |
+| `scripts/build_coach_open_code_inventory.py` | **new** | Roll `coded.jsonl` → `coach_step1_open_code_inventory.csv` (GoalJudge columns). | G3.1.9 |
+| `scripts/export_coach_open_coding_to_dataset.py` | **new (thin)** | Coach-specific arg wrapper over the skill's `export_coded_to_dataset.py`; dataset `coach-phase3-open-coding`, dry-run default. | G3.1.11–.12 |
+| `.claude/skills/agentsframework-open-coding/scripts/serve_open_coder.py` | **reuse** | Serve coder over http (Step 2). | — |
+| `.claude/skills/agentsframework-open-coding/scripts/export_coded_to_dataset.py` | **reuse** | Underlying idempotent Langfuse upsert. | G3.1.11 |
+| `.claude/skills/agentsframework-open-coding/assets/coder.html` | **reuse (copy)** | Coding surface into `$WORK`. | — |
+| `scripts/export_coach_coding_sample.py` | **reuse** | `build_coder_rows` (posture-filter + manifest join + C11 map) — the join engine 3.3a wraps, not rebuilds. | G3.1.1–.3, .5 |
+| `meta/coach_corpus_posture.py` | **reuse (transitive)** | `coding_eligible`/`confound` classification, via `build_coder_rows` (no re-derive). | G3.1.1 |
+| `docs/research/coach_phase2_open_coding.md` | **new (human)** | Method + per-mode saturation log + freq table + insights. | G3.1.8, .10 |
+| `docs/research/coach_step1_open_code_inventory.csv` | **new (generated)** | Distinct-code inventory. | G3.1.9 |
+| `tests/scripts/test_build_coach_open_coding_cases.py` | **new** | Failure-first: sub-floor, unjoined, confound-excluded, min/keys, contiguous, seed. | G3.1.1–.7 |
+| `tests/scripts/test_verify_coded_open_codes.py` | **new** | Failure-first: empty-`open_codes` flagged. | G3.1.4 |
+| `tests/scripts/test_build_coach_open_code_inventory.py` | **new** | CSV columns = GoalJudge parity. | G3.1.9 |
+| `tests/scripts/test_export_open_coding_dataset.py` | **new** | Item shape + `uuid5` idempotency + dry-run-default (no network). | G3.1.11–.12 |
+
+### Build order (dependency-ordered)
+
+1. `build_coach_open_coding_cases.py` + tests (red→green) — failure paths first (G3.1.2/.3/.1).
+2. `verify_coded_open_codes.py` + test.
+3. `build_coach_open_code_inventory.py` + test.
+4. `export_coach_open_coding_to_dataset.py` + test (dry-run unit-tested; no live Langfuse).
+5. **Serve + human codes** (HUMAN): copy coder into `$WORK=cache/open_coding/coach-phase3-3.3`, run `cases.json` builder, serve, code ≥100/mode, declare saturation.
+6. Generate inventory CSV; author `coach_phase2_open_coding.md` (with saturation log).
+7. Langfuse dry-run → eyeball → `--write`.
+8. `make check`; thread `index.md` + `log.md`; Stage-7 code review over the 3.3 diff.
+
+### Invariant / ADR check (Stage-4 local)
+
+- **Invariant #8** — the four new scripts live in `scripts/` and import `meta.coach_corpus_posture` (which is meta, not orchestration) + stdlib + the skill exporter; none import `orchestration`/`langgraph`/`langchain`. Held.
+- **No ADR trigger** — build/verify scripts of the same class as the dozen existing `build_coach_*`/`build_goaljudge_*` scripts; coder + exporter + `langfuse_dataset_client.py` pre-exist; **no new pyproject dep, no service, no node, no abstraction.**
+- **No live LLM in CI** — all four scripts operate on harvested `outcomes.jsonl`; the exporter's only network path is the `--write` Langfuse upsert, off the CI hot path and dry-run by default; tests offline.
 
 ---
 

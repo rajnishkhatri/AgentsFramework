@@ -1,6 +1,6 @@
 # Spec — Coach gold set + enable-policy cert (Phase 3: §12.1–12.6)
 
-**Status:** Revised — 2026-07-03 (critical review pass; clarify C9–C12 added; Stage-4 cross-check fixes applied — 6 missing tests added, 3.7b test file + 3.2b dependency)
+**Status:** Revised — 2026-07-03 (critical review pass; clarify C9–C12 added; Stage-4 cross-check fixes applied — 6 missing tests added, 3.7b test file + 3.2b dependency; **Task-3.3 executable expansion folded into FR-G3.1** — FR-G3.1.1–.12 + §8 tests, from the 3.3 SDD spec pass; Stage-4 caught the `outcomes.jsonl`-has-no-answer join defect → reuse `build_coder_rows`)
 **Owner:** Rajnish Khatri
 **Related:**
 - [subject-coach-agent.plan.md](subject-coach-agent.plan.md) (Phase 3 sprint board 3.0–3.9; Phase 5 gated on 3.9)
@@ -131,6 +131,57 @@ Failure paths first within each family (TAP-4).
 - **FR-G3.1** WHEN Stage-1 open coding runs THE **human coder** SHALL read ≥100 coach
   turns end-to-end **per mode** before saturation is declared (~20 consecutive traces
   adding no new code — AP-10: LLM assist only at clustering, never first-pass coding).
+
+  > **Task 3.3 executable expansion** (folded in from the 3.3 clarify pass, 2026-07-03).
+  > Decisions: code the **merged coding-eligible** pool (`merged_batch2_2b_manifest.json`
+  > joined to `batch2{,b}/outcomes.jsonl`, ~122 pre / ~115 post) — **not** the 169-row
+  > `batch2b_coding_sample.jsonl`, which under-fills both modes; saturation is attested by a
+  > **per-mode saturation log** (checkable, not prose); coded cases are additionally upserted
+  > to a Langfuse review dataset. The coder + exporter are **reused** from the open-coding
+  > skill (no new service/node/abstraction/dependency → no ADR trigger). Failure paths first
+  > (TAP-4):
+  >
+  > - **FR-G3.1.1** IF the cases builder is asked to include a turn the posture checker
+  >   classifies as `confound` or refused THEN THE SYSTEM SHALL exclude it from `cases.json`
+  >   (only `coding_eligible` + `partial_context`; parity with FR-G1.x/FR-G2.5).
+  > - **FR-G3.1.2** IF either mode's eligible pool yields fewer than **100** rows THEN THE
+  >   builder SHALL exit non-zero naming the short mode (fail-closed against a silent
+  >   sub-floor session — the exact defect the 169-row sample would introduce).
+  > - **FR-G3.1.3** IF a coding-eligible EvalRecord cannot be resolved to full learner/coach
+  >   text (the manifest join in the reused `build_coder_rows` yields no answer) THEN the
+  >   builder SHALL surface it as an error and exclude it — no blank-answer cards (AP-6 — no
+  >   fabricated placeholder). *(Stage-4: the answer/text lives in `logs/evals.log`
+  >   EvalRecords + batch `manifest.json`, NOT `outcomes.jsonl` — reuse the export's join,
+  >   don't re-derive one.)*
+  > - **FR-G3.1.4** IF the coded JSONL contains a row whose `open_codes` is empty THEN THE
+  >   verification step SHALL report that row's `trace_id` and the per-mode uncoded count
+  >   (the memo-not-a-code trap; skill Step-4 guard).
+  > - **FR-G3.1.5** WHEN the cases builder runs THE SYSTEM SHALL write `cases.json` with ≥100
+  >   rows per mode, each carrying `trace_id, mode, stratum, question_id, prompt,
+  >   final_answer` (+ extra manifest keys, which survive round-trip into dataset metadata).
+  >   *(A `--cap-per-mode` bound is supported — deterministic prefix of the seeded sort — to
+  >   cap the human reading load AT the floor; a cap below `min_per_mode` is rejected. 3.3e
+  >   caps at 100/mode → 200 cards.)*
+  > - **FR-G3.1.6** WHEN the cases builder runs THE SYSTEM SHALL order rows so each mode is a
+  >   contiguous block (saturation is judged per mode → the human reads one mode as one run).
+  > - **FR-G3.1.7** WHEN the builder selects rows under a fixed seed THE SYSTEM SHALL be
+  >   deterministic (same seed → same `cases.json` row set and order).
+  > - **FR-G3.1.8** WHEN the human declares saturation THE SYSTEM SHALL record, per mode in
+  >   `coach_phase2_open_coding.md`, the trace index of the last-new-code and the length of
+  >   the trailing no-new-code run (≈20) — saturation independently checkable, not asserted.
+  > - **FR-G3.1.9** THE SYSTEM SHALL persist `coach_step1_open_code_inventory.csv` with the
+  >   GoalJudge inventory columns (`code, short_definition, source_doc, first_seen_case,
+  >   alias_note, example, example_ref`), one row per distinct code.
+  > - **FR-G3.1.10** THE SYSTEM SHALL persist `coach_phase2_open_coding.md` with: method (incl.
+  >   the AP-10 human-first statement), the per-mode saturation log (FR-G3.1.8), the
+  >   code-frequency table, and downstream insights for axial coding — mirroring
+  >   `goaljudge_phase2_open_coding.md`.
+  > - **FR-G3.1.11** WHERE Langfuse persistence is enabled THE SYSTEM SHALL upsert the coded
+  >   cases to dataset `coach-phase3-open-coding` idempotently (item id = `uuid5(trace_id)`),
+  >   with `input={prompt, mode, question_id}`, `expected_output=final_answer`,
+  >   `metadata={open_codes, memo, stratum, …}`, and a `source_trace_id` back-link.
+  > - **FR-G3.1.12** THE Langfuse export SHALL default to a **dry run**; it SHALL write only
+  >   when `--write` is passed after the dry run is eyeballed.
 - **FR-G3.2** WHEN Stage-2 axial coding completes THE **human coder** SHALL produce 5–6
   **testable** coach-behavior categories with environment confound and judge-reliability
   axes split out; **IAA ≥ 0.80** on category assignment.
@@ -281,7 +332,18 @@ Failure paths first within each family (TAP-4).
 | FR-G2.3 | `…::test_coder_jsonl_trace_id_field_map` | L1 | yes |
 | FR-G2.4 | `…::test_confound_excluded_from_export` | L1 | yes |
 | FR-G2.5 | `…::test_posture_shortfall_when_under_gate` | L1 | yes |
-| FR-G3 | Manual gate — artifacts exist + IAA worksheet | L3 | no (human) |
+| FR-G3.1.2 | `tests/scripts/test_build_coach_open_coding_cases.py::test_rejects_submfloor_mode` | L1 | yes |
+| FR-G3.1.3 | `…::test_rejects_unjoined_trace_id` | L1 | yes |
+| FR-G3.1.1 | `…::test_excludes_confound_and_refused` | L1 | yes |
+| FR-G3.1.5 | `…::test_cases_have_min_100_per_mode_and_required_keys` | L1 | yes |
+| FR-G3.1.6 | `…::test_modes_are_contiguous_blocks` | L1 | yes |
+| FR-G3.1.7 | `…::test_deterministic_for_fixed_seed` | L1 | yes |
+| FR-G3.1.4 | `tests/scripts/test_verify_coded_open_codes.py::test_flags_empty_open_codes_rows` | L1 | yes |
+| FR-G3.1.9 | `tests/scripts/test_build_coach_open_code_inventory.py::test_csv_has_goaljudge_columns` | L1 | yes |
+| FR-G3.1.11 | `tests/scripts/test_export_open_coding_dataset.py::test_item_shape_and_idempotent_id` (dry-run, no network) | L1 | yes |
+| FR-G3.1.12 | `…::test_defaults_to_dry_run_no_write` | L1 | yes |
+| FR-G3.1.8, .10 | Manual gate — per-mode saturation log + phase2 doc + inventory CSV exist | L3 | no (human) |
+| FR-G3.2, G3.3 | Manual gate — axial artifacts exist + IAA worksheet (Task 3.4) | L3 | no (human) |
 | FR-G4.1 | `tests/components/test_subject_coach_judge_prompts.py::test_rubric_headers_revised` | L1 | yes |
 | FR-G4.2 | `…::test_no_orphan_rubric_criteria` | L1 | yes |
 | FR-G4.3 | `…::test_judge_flags_default_off_until_enable` | L1 | yes |
