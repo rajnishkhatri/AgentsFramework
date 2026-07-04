@@ -97,6 +97,19 @@ class TestFailurePaths:
         problems = checker.check(inv, cat)
         assert any("axis mismatch" in p for p in problems)
 
+    def test_invalid_polarity_value_blocks(self, tmp_path: Path) -> None:
+        # A2 fix: polarity must be one of + / - / +/- ; the ad-hoc "positive"
+        # / "graded" / "confound" values the review flagged are rejected so
+        # a category's polarity can't silently mislabel its member codes.
+        inv = _csv(tmp_path / "inv.csv", INV_H, [["c1", "agent-behavior", "cat-a"]])
+        cat = _csv(
+            tmp_path / "cat.csv",
+            CAT_H,
+            [["cat-a", "agent-behavior", "positive", "check?", ""]],
+        )
+        problems = checker.check(inv, cat)
+        assert any("polarity" in p for p in problems)
+
     def test_gradient_needs_two_boundary_checks(self, tmp_path: Path) -> None:
         # FR-4a: dimension declared but only one pole in binary_check.
         inv = _csv(tmp_path / "inv.csv", INV_H, [["c1", "agent-behavior", "hint-size"]])
@@ -109,13 +122,79 @@ class TestFailurePaths:
         assert any("boundary checks" in p for p in problems)
 
 
+class TestGradientMembership:
+    """A4 (iteration-2 feedback): every code in a gradient category must appear
+    in that category's dimension ordering — else the emitted count silently
+    diverges from the declared rungs (the 6-vs-7 strong-leak bug)."""
+
+    def test_gradient_member_missing_from_ordering_blocks(self, tmp_path: Path) -> None:
+        # overshoots-the-ask is a member of the leak category but absent from the
+        # dimension ordering -> the exact defect the review caught.
+        inv = _csv(
+            tmp_path / "inv.csv",
+            INV_H,
+            [
+                ["rule-naming-as-leak", "agent-behavior", "leak"],
+                ["hands-over-conclusion", "agent-behavior", "leak"],
+                ["overshoots-the-ask", "agent-behavior", "leak"],
+            ],
+        )
+        cat = _csv(
+            tmp_path / "cat.csv",
+            CAT_H,
+            [
+                [
+                    "leak",
+                    "agent-behavior",
+                    "±",
+                    "mild: names the rule? | severe: hands it over?",
+                    "rule-naming-as-leak -> hands-over-conclusion",
+                ]
+            ],
+        )
+        problems = checker.check(inv, cat)
+        assert any("overshoots-the-ask" in p and "ordering" in p for p in problems)
+
+    def test_all_gradient_members_in_ordering_ok(self, tmp_path: Path) -> None:
+        inv = _csv(
+            tmp_path / "inv.csv",
+            INV_H,
+            [
+                ["rule-naming-as-leak", "agent-behavior", "leak"],
+                ["hands-over-conclusion", "agent-behavior", "leak"],
+            ],
+        )
+        cat = _csv(
+            tmp_path / "cat.csv",
+            CAT_H,
+            [
+                [
+                    "leak",
+                    "agent-behavior",
+                    "±",
+                    "mild: names the rule? | severe: hands it over?",
+                    "rule-naming-as-leak -> hands-over-conclusion",
+                ]
+            ],
+        )
+        assert checker.check(inv, cat) == []
+
+
 class TestPasses:
     def test_clean_partition_allows_emit(self, tmp_path: Path) -> None:
         inv, cat = _clean(tmp_path)
         assert checker.check(inv, cat) == []
 
     def test_gradient_with_boundary_poles_ok(self, tmp_path: Path) -> None:
-        inv = _csv(tmp_path / "inv.csv", INV_H, [["c1", "agent-behavior", "hint-size"]])
+        # Member codes must appear in the dimension ordering (A4).
+        inv = _csv(
+            tmp_path / "inv.csv",
+            INV_H,
+            [
+                ["under-scaffold", "agent-behavior", "hint-size"],
+                ["over-scaffold", "agent-behavior", "hint-size"],
+            ],
+        )
         cat = _csv(
             tmp_path / "cat.csv",
             CAT_H,

@@ -86,4 +86,27 @@ class TestCounts:
             ],
         )
         result = matrix.build_matrix(coded, inv)
-        assert result["category_counts"] == {"answer-boundary": 2, "scaffold": 1}
+        assert result["category_occurrence_counts"] == {
+            "answer-boundary": 2,
+            "scaffold": 1,
+        }
+
+    def test_trace_vs_occurrence_counts_diverge_on_cooccurrence(
+        self, tmp_path: Path
+    ) -> None:
+        # A1 fix: two codes in the SAME category co-occurring on ONE trace must
+        # count as 2 occurrences but 1 trace — the mislabel the reviewer caught.
+        coded = _coded(
+            tmp_path / "c.jsonl",
+            [{"trace_id": "a", "open_codes": ["gives-concrete-move", "right-sizes"]}],
+        )
+        inv = _inv(
+            tmp_path / "i.csv",
+            [
+                ["gives-concrete-move", "agent-behavior", "scaffold"],
+                ["right-sizes", "agent-behavior", "scaffold"],
+            ],
+        )
+        result = matrix.build_matrix(coded, inv)
+        assert result["category_occurrence_counts"] == {"scaffold": 2}
+        assert result["category_trace_counts"] == {"scaffold": 1}

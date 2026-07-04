@@ -1,0 +1,22 @@
+{
+  "agent_denominator": 30,
+  "category_occurrence_counts": {
+    "answer-begging-resistance": 4,
+    "answer-leak": 33,
+    "boundary-holding": 2,
+    "confusion-and-move-uptake": 27,
+    "elicitation-and-teachback": 15,
+    "learner-state-uptake": 5,
+    "praise-calibration": 1
+  },
+  "category_trace_counts": {
+    "answer-begging-resistance": 4,
+    "answer-leak": 21,
+    "boundary-holding": 2,
+    "confusion-and-move-uptake": 21,
+    "elicitation-and-teachback": 15,
+    "learner-state-uptake": 5,
+    "praise-calibration": 1
+  },
+  "confound_only_excluded": 0
+}

@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Did NOT silently ship vibe buckets","passed":false,"evidence":"CLEAN-ish (no pipeline; path-leaked skill framing). Shipped 5 vibe buckets; but DID flag truncated-reply as env-confound to exclude - partial"},
+ {"text":"Human owns final names","passed":false,"evidence":"named buckets as deliverable; noted 'did not do full axial pass' but framed names as answer"},
+ {"text":"Categories need testable check","passed":false,"evidence":"definitions not binary checks; labeled counts correctly as annotation-counts"}
+]}

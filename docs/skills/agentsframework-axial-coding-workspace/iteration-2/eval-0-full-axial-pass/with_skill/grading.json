@@ -1,0 +1,8 @@
+{"expectations":[
+ {"text":"Every code assigned one axis","passed":true,"evidence":"20 agent, 1 confound, 0 judge"},
+ {"text":"Partition/gate before counts","passed":true,"evidence":"checker exit 0 before matrix"},
+ {"text":"Each category has testable binary check","passed":true,"evidence":"7 categories, categories.csv with checks"},
+ {"text":"truncated-reply as confound excluded","passed":true,"evidence":"confound by cause; straddle applied to denominator -> 12/29"},
+ {"text":"Minimal pair surfaced","passed":true,"evidence":"3 gold pairs + Pair D noise excluded"},
+ {"text":"Counts correct unit (traces vs occ) [C2]","passed":true,"evidence":"'answer-leak 24 occ / 20 traces; quoted trace counts to avoid overstating' - the iter-1 bug is FIXED"}
+]}

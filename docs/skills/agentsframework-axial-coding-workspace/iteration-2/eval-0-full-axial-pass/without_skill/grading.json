@@ -1,0 +1,8 @@
+{"expectations":[
+ {"text":"Every code assigned one axis","passed":true,"evidence":"CONTAMINATED: ran skill pipeline (inventory.csv+categories.csv)"},
+ {"text":"Partition/gate before counts","passed":true,"evidence":"CONTAMINATED"},
+ {"text":"Each category has testable binary check","passed":true,"evidence":"CONTAMINATED"},
+ {"text":"truncated-reply as confound excluded","passed":true,"evidence":"CONTAMINATED"},
+ {"text":"Minimal pair surfaced","passed":true,"evidence":"CONTAMINATED"},
+ {"text":"Counts correct unit [C2]","passed":true,"evidence":"CONTAMINATED"}
+]}

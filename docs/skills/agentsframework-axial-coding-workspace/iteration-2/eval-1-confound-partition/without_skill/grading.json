@@ -1,0 +1,5 @@
+{"expectations":[
+ {"text":"Leak rate not naively folding truncated","passed":true,"evidence":"CONTAMINATED: ran skill pipeline + straddle rule -> 12/29 (same as with_skill)"},
+ {"text":"Truncation surfaced as validity issue","passed":true,"evidence":"CONTAMINATED"},
+ {"text":"Partition-aware rate as number to trust","passed":true,"evidence":"CONTAMINATED: even reported the graded split"}
+]}

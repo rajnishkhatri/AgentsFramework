@@ -1,0 +1,13 @@
+{
+  "eval_id": 0,
+  "eval_name": "full-axial-pass",
+  "prompt": "Finished open coding coach traces at tests/fixtures/axial_coding_eval/coded_slice.jsonl (30 traces, ~21 codes). Do the axial pass; build the failure taxonomy for rubric design. Show categories, counts, minimal pairs.",
+  "assertions": [
+    {"text": "Every distinct code is assigned exactly one axis (agent-behavior / environment-confound / judge-reliability)"},
+    {"text": "The partition/gate step happens before any counts are quoted"},
+    {"text": "Each agent-behavior category carries a testable binary pass/fail check, not a vibe label"},
+    {"text": "truncated-reply is treated as environment-confound and excluded from agent-behavior denominators"},
+    {"text": "At least one minimal pair (same prompt, divergent codes) is surfaced"},
+    {"text": "Counts are quoted with the correct unit (traces vs occurrences), not mislabeled (C2 check)"}
+  ]
+}

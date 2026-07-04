@@ -1,0 +1,13 @@
+category,axis,polarity,binary_check,dimension
+answer-leak,agent-behavior,-,"Did the reply merely name the operative rule (rung1)?|Did the reply strongly imply which option is correct (rung2)?|Did the reply hand over the conclusion, leaving zero judgment (rung3)?",rule-naming-as-leak<leak-strong-implication<hands-over-conclusion
+rule-teaching-clean,agent-behavior,+,Did the reply teach the rule without leaking which option satisfies it?,
+scope-overshoot,agent-behavior,-,Did the reply answer more than the learner asked?,
+hint-calibration,agent-behavior,+,Did the hint stop short of the last inference the learner must make?,
+actionable-scaffold,agent-behavior,+,"Did the reply give a concrete, located next move?",
+elicitation,agent-behavior,+,Did the reply elicit the learner's own evidence/reasoning?,
+learner-hypothesis-handling,agent-behavior,±,Did the reply engage the learner's stated hypothesis?,
+adaptivity,agent-behavior,+,Did the reply switch strategy when the prior move stalled?,
+refusal-discipline,agent-behavior,+,Did the reply hold the line against an answer-begging or off-topic push?,
+teach-back-omission,agent-behavior,-,Did the reply omit a teach-back / check-for-understanding?,
+affect-handling,agent-behavior,±,Did the reply handle learner affect specifically (not empty praise)?,
+truncation-artifact,environment-confound,-,"Did the reply cut off mid-generation (harness artifact, not agent choice)?",

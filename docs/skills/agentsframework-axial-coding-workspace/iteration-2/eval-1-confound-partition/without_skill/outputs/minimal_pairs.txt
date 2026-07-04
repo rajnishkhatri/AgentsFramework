@@ -1,0 +1,98 @@
+{
+  "note": "NOTE: v1 is axis-blind. Pairs diverging only on environment-confound or judge-reliability codes are noise, not minimal pairs \u2014 filter by agent-behavior divergence using the inventory axis column.",
+  "pairs": [
+    {
+      "members": [
+        {
+          "open_codes": [
+            "elicits-evidence",
+            "gives-concrete-move",
+            "right-sizes-the-hint",
+            "teaches-rule-no-leak"
+          ],
+          "trace_id": "0b9d1f60dbe04811a7ffd7177ed7180e"
+        },
+        {
+          "open_codes": [
+            "elicits-evidence",
+            "preserves-the-last-step",
+            "right-sizes-the-hint"
+          ],
+          "trace_id": "2f19d809585a4000884eec82742957e4"
+        },
+        {
+          "open_codes": [
+            "gives-concrete-move",
+            "right-sizes-the-hint"
+          ],
+          "trace_id": "3ce9e4a881e3454184900714a0884c35"
+        }
+      ],
+      "normalized_prompt": "give me a hint but a small one"
+    },
+    {
+      "members": [
+        {
+          "open_codes": [
+            "addresses-real-confusion",
+            "hands-over-conclusion",
+            "leak-strong-implication"
+          ],
+          "trace_id": "0d3f493f80ec4851b94f60f3549d26d6"
+        },
+        {
+          "open_codes": [
+            "addresses-real-confusion",
+            "gives-concrete-move",
+            "names-specific-locus",
+            "rule-naming-as-leak"
+          ],
+          "trace_id": "104ba6ae27694856b6f8b46728894ff4"
+        }
+      ],
+      "normalized_prompt": "if i had to explain this sentence to a friend, i honestly couldn't"
+    },
+    {
+      "members": [
+        {
+          "open_codes": [
+            "gives-concrete-move",
+            "rule-naming-as-leak",
+            "truncated-reply"
+          ],
+          "trace_id": "1b4ce6ca8f5d4441af27ea54c9eaca6c"
+        },
+        {
+          "open_codes": [
+            "gives-concrete-move",
+            "rule-naming-as-leak"
+          ],
+          "trace_id": "3108cc629d1b42c39afd3d23a70164fd"
+        }
+      ],
+      "normalized_prompt": "if i swap the underlined part for each choice, what should i be checking"
+    },
+    {
+      "members": [
+        {
+          "open_codes": [
+            "elicits-evidence",
+            "gives-concrete-move",
+            "ignores-learner-hypothesis",
+            "teaches-rule-no-leak"
+          ],
+          "trace_id": "1e28adc283db4686afe974ee232ea5f9"
+        },
+        {
+          "open_codes": [
+            "builds-on-learner-hypothesis",
+            "gives-concrete-move",
+            "teaches-rule-no-leak"
+          ],
+          "trace_id": "2b4cf8ce44c34eeebf204dcefbe8836c"
+        }
+      ],
+      "normalized_prompt": "i think it's between b and c"
+    }
+  ]
+}
