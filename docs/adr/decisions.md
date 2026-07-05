@@ -226,3 +226,55 @@ title: 'Lightweight decision log (intent debt, long tail)'
   shared `services.governance.iaa.krippendorff_alpha_nominal` (NaN→None). No `meta/`
   import (services↛meta). Kept the tally trivially correct so the duplication
   carries no logic risk.
+- 2026-07-04 — Task 3.7c (coach gold-set human IAA) mirrors the GoalJudge Stage-5
+  instrument shape (`docs/IAA/coach/goldset/`: README protocol + two blind
+  annotator sheets + combined skeleton) rather than inventing a new one. Why: the
+  house double-label pattern is proven; α is scored on the single gated axis
+  `answer_leakage` (not the six pedagogy pass-axes, which the judge scores).
+  `scripts/compute_coach_goldset_alpha.py` reuses
+  `iaa.krippendorff_alpha_nominal` (NaN→None, never a fake 0.0) — no forked math.
+- 2026-07-04 — Task 3.8b (`scripts/run_coach_calibration.py`) does NOT pre-guard
+  the provisional manifest; it passes the labels straight to
+  `evaluate_coach_enable_gates` and lets the evaluator's `_is_v1_freeze` own the
+  `REFUSE_PROVISIONAL` short-circuit. Why: keep the fail-closed rule in ONE place
+  (the L1 evaluator), so the harness can't drift from it. `cert_payload` builds
+  the JSON dict field-by-field instead of `dataclasses.asdict` — `asdict`
+  deep-copies the decision's frozen `mappingproxy` gate/diagnostic views and
+  raises `TypeError: cannot pickle 'mappingproxy'`. Regression-tested.
+- 2026-07-05 — Coach corpus-expansion FR-5 amended mid-implement (sdd-replan): the
+  292-turn shadow corpus carries **no leak label** (leakage is a property of the
+  coach_reply, revealed only by E4 human labeling), so `sample_coach_dev_rows.py`
+  cannot target a *measured* leak share. It oversamples by a **bait-signal proxy**
+  on the learner utterance ("just tell me the answer", "which concept to look up",
+  "definitely wrong") — raising the leak prior — and the actual `leak_class_share`
+  is measured post-labeling and reported in the manifest. Alternative (label a
+  bigger pool then sample to hit 0.20–0.25 exactly) was rejected: it inflates the
+  labeling burden past the ~210 min-burden decision. The test batch (E2) carries
+  the guaranteed channel coverage instead.
+- 2026-07-05 — Coach E4 (round-2 double-label) uses **two independent human
+  raters** + an adjudicator (not human-vs-judge, not one-person-two-passes). Why:
+  α must measure genuine inter-annotator agreement; a judge-as-rater is partly
+  circular (the judge is what the cert tests) and a single-person double-pass
+  measures intra-rater consistency, which overstates trust. The α-fail recovery is
+  **bounded to 2 revise-relabel rounds**, then STOP + escalate — prevents
+  over-fitting the walkthrough guideline to these specific rows / endless
+  re-labeling. Playbook: `docs/plan/coach-goldset-e2e4-human-playbook.{spec,plan}.md`.
+- 2026-07-05 — Coach E6 (non-provisional re-freeze) treats the **adjudicated IAA
+  combined sheet as the single source of truth** for the freeze, not a re-merge of
+  the dev sample + test batch + labels from three files. Why: the combined sheet is
+  what E4 actually blessed — it already carries the join (dev synthetic + test
+  fresh-authored), item context, and the gold `adjudicated_answer_leakage`; a
+  parallel re-assembly path could silently drift from the labeled artifact.
+  `rows_from_combined_sheet` **fails closed on a blank adjudicated cell** (never
+  defaults a missing adjudication to a label — that would invent gold), and
+  `build_rows` runs `assert_dev_test_disjoint` so a contaminated freeze can't be
+  written. `leak_channel` stays **null** on every gold row: raters labeled only the
+  binary `answer_leakage` (the sole gated axis), so a per-row channel would be a
+  fabricated attribution (AP-6); the firewall permits a null channel on a leak row.
+  The three pre-E6 tests that asserted the *fixture* was provisional were repointed
+  (G8-aware) at a synthetic provisional artifact so the `REFUSE_PROVISIONAL`
+  contract stays covered while the committed fixture legitimately advances to the
+  246-row non-provisional v1 (α=0.834, test split 116 / 29-leak). Rejected keeping
+  those tests on the shared fixture (they'd assert a now-false fact) and rejected
+  deleting them (loses fail-closed coverage). E7 (live cert) reads it.
+  `scripts/assemble_coach_goldset.py --combined-sheet`.

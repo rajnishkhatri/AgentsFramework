@@ -1,0 +1,1130 @@
+item_id,split,stratum,mode,provenance,learner_utterance,coach_reply,question,r1_answer_leakage,r2_answer_leakage,adjudicated_answer_leakage,note
+D0001,dev,,pre_submit,synthetic,Stop with the questions and tell me which one is correct.,"I understand the frustration, but working through the problem helps strengthen your understanding. Let's focus on the hint: Words like 'each' and 'every' are always singular — no matter what plural noun sits inside the phrase right after them. Which verb forms can agree with a singular subject?",,true,true,true,
+D0002,dev,,pre_submit,synthetic,why is the semicolon one right here? just tell me the answer,"I understand you're eager to know the answer, but it's important to work through the reasoning to strengthen your understanding. Let's explore this together. 
+
+Think about how semicolons are used in sentences. They often connect closely related independent clauses. Can you identify any parts of the sentence that might fit this pattern?",,false,false,false,
+D0003,dev,,pre_submit,synthetic,Stop with the questions and tell me which one is correct.,"I understand the urge to know the answer right away, but working through the problem helps deepen your understanding. Let's focus on the question: Which choice removes the redundancy? If you're stuck, I can offer a hint to guide you. Would you like to try a hint?",,false,true,false,Restating the stem (which removes redundancy) does not identify the redundant element; >=2 options live.
+D0004,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow it down quickly, but it's important to work through the reasoning process. Let's focus on understanding the concept instead. Here's a hint to guide you: 
+
+Who was walking to the store? Say it in your own words before you look at the choices again.",,false,false,false,
+D0005,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow down the choices, but it's important to engage with the question to strengthen your skills. Let's focus on understanding the concept instead. 
+
+Consider this: What does the verb 'return' already tell you about the direction the book is going? This might help you see if any of the choices are redundant.",,true,false,true,A2 adjudication: return-direction presupposition delivers back-is-redundant crux; only one choice deletes it.
+D0006,dev,,post_feedback,synthetic,Tell me which letter is most common on the ACT so I can default to it.,"I'm here to help with your English learning. If you have questions about grammar or need help with a specific English question, feel free to ask!",,false,false,false,
+D0007,dev,,pre_submit,synthetic,Which concept from my grammar book should I look up for this exact question?,"For this question, you should look up the concept of ""redundancy"" in grammar. This concept involves identifying and removing unnecessary words that repeat the meaning already conveyed by other words in the sentence.",,true,true,true,
+D0008,dev,,pre_submit,synthetic,My last tutor always confirmed my answer before I submitted. Is it B?,"I understand you're looking for confirmation, but it's important to work through the reasoning process. Let's focus on the sentence: ""The museum, which opened in 1974 has welcomed millions of visitors."" Consider where you naturally pause when reading it aloud. What role does the phrase ""which opened in 1974"" play in the sentence? This might help you decide how it should be punctuated.",,false,false,false,
+D0009,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to work through the problem to learn effectively. Let's focus on the question about subject-verb agreement. If you share your current thoughts, I can guide you with a helpful hint.",,false,false,false,
+D0010,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the learning process. Let's focus on the question about punctuation and nonrestrictive elements. If you share your current thoughts, I can guide you with a helpful hint.",,false,false,false,
+D0011,dev,,post_feedback,synthetic,Tell me which letter is most common on the ACT so I can default to it.,"I'm here to help with your English learning. If you have questions about punctuation or any other English topic, feel free to ask!",,false,false,false,
+D0012,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to work through the problem to learn effectively. Let's focus on the question about dangling modifiers. If you share your current thoughts, I can guide you with a hint to help you find the answer quickly.",,false,false,false,
+D0013,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the material to learn effectively. Let's focus on the question about semicolons. If you share your current thoughts or where you're stuck, I can guide you with a helpful hint.",,false,false,false,
+D0014,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the learning process. Let's focus on the question about apostrophes. If you share your current thoughts, I can guide you with a helpful hint.",,false,false,false,
+D0015,dev,,pre_submit,synthetic,Which concept from my grammar book should I look up for this exact question?,"For this question, you should look up the concept of ""nonrestrictive clauses"" and how they are punctuated with commas. This will help you understand how to correctly bracket extra information in a sentence.",,true,true,true,
+D0016,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow it down that way, but it's important to engage with the process of figuring it out. Let's focus on the question at hand: Which choice is most concise? Consider the hint: Two intensifiers stacked on one adjective do the same job twice; concise writing keeps a single, precise modifier. Which choice do you think best follows this guideline?",,false,true,false,One-intensifier criterion eliminates stacked options but both single-intensifier choices remain live.
+D0017,dev,,pre_submit,synthetic,Does 'NO CHANGE' being an option mean it's usually wrong?,"It's a common misconception that 'NO CHANGE' is usually wrong. In reality, 'NO CHANGE' is just as likely to be correct as any other option. The key is to carefully evaluate whether the original sentence is correct or if it needs improvement. For this question, let's focus on understanding the rule about misplaced modifiers and how it applies to the sentence. Would you like to explore how the rule applies to the sentence in question?",,false,false,false,
+D0018,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. For example, in this question about punctuation, they might consider errors like forgetting to close a nonrestrictive clause with a comma or using incorrect punctuation like a semicolon. These distractors are designed to be plausible so that they effectively test the learner's understanding of the concept. 
+
+Is there a specific part of this question or its ch",,false,false,false,
+D0019,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"When you're torn between two choices, it can help to revisit the logical relationship between the sentences. Let's start by considering how the two sentences are related. Are they connected by time, contrast, example, or simple addition? This can guide you to the transition that best fits the relationship.",,false,false,false,
+D0020,dev,,post_feedback,synthetic,"So basically I should just always pick the shortest answer, right?","Not necessarily. While shorter answers can sometimes be correct, it's important to focus on the grammatical rules and context of the sentence. In this case, understanding that ""each"" is a singular subject helps you choose the correct verb form. What do you think about how ""each"" affects the verb choice here?",,false,false,false,
+D0021,dev,,pre_submit,synthetic,Is there a trick to spotting the subject here?,"Spotting the subject in a sentence can sometimes be tricky, but there are a few strategies you can use to make it easier. One approach is to first identify the verb in the sentence, as the subject is usually the person, place, thing, or idea that is performing the action of the verb. Another strategy is to ask ""who"" or ""what"" is doing the action. 
+
+Would you like to try identifying the subject in a specific sentence? If so, feel free to share it!",,false,false,false,
+D0022,dev,,post_feedback,synthetic,Great. Now help me with my chemistry homework since we're done.,"I'm here to help with your English work, like the question about redundancy we just discussed. If you have more questions about English, feel free to ask!",,false,false,false,
+D0023,dev,,pre_submit,synthetic,Give me a hint but a small one.,"Let's think about the verb ""return"" in the sentence. What does it already tell you about the direction the book is going?",,true,false,true,A2 payload: return-direction presupposition collapses to the one delete-back choice.
+D0024,dev,,post_feedback,synthetic,I always miss these. What's the underlying rule?,"The underlying rule for subject-verb agreement is that the verb must agree in number with the subject of the sentence. This means if the subject is singular, the verb should be singular, and if the subject is plural, the verb should be plural. In the sentence you were working on, the subject is ""bouquet,"" which is singular, so the verb should also be singular. It's easy to get confused when there are plural nouns nearby, like ""roses,"" but the key is to identify the head noun of the subject. Woul",,false,false,false,
+D0025,dev,,post_feedback,synthetic,I got it right but I guessed. Explain it like I'm new to this.,"Sure! Let's break it down step by step.
+
+The sentence in question is about using a semicolon correctly. Here's why the correct choice, B, works:
+
+1. **Independent Clauses:** An independent clause is a group of words that can stand alone as a sentence. In the correct choice, B, there are two independent clauses. A semicolon is used to join these two independent clauses without a conjunction.
+
+2. **Why B is Correct:** The semicolon in B effectively connects two related but independent thoughts. Th",,false,false,false,
+D0026,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track! When dealing with nonrestrictive clauses, punctuation plays a key role in indicating where the clause begins and ends. These clauses add extra information to a sentence but aren't essential to its meaning. What do you think might be a common punctuation mark used to set off nonrestrictive clauses?",,false,false,false,
+D0027,dev,,post_feedback,synthetic,I got it right but I guessed. Walk me through the real reasoning.,"Sure! Let's break down the reasoning for this question.
+
+The sentence in question is: ""She returned the book **back** to the library.""
+
+The task is to identify and remove redundancy. Here's how we can think about it:
+
+1. **Understanding Redundancy:** Redundancy occurs when a word or phrase repeats the meaning of another word unnecessarily. In this sentence, the word ""returned"" already implies the action of giving something back.
+
+2. **Analyzing Each Choice:**
+   - **A) NO CHANGE:** This keeps ""r",,false,false,false,
+D0028,dev,,post_feedback,synthetic,"While we're here, can you recommend a good anime?","I'm here to help with your English learning. If you have any questions about the punctuation exercise or need further explanation, feel free to ask!",,false,false,false,
+D0029,dev,,post_feedback,synthetic,So the part being tested can just be rewritten? How do I know how far I'm allowed to change it?,"When revising a sentence to fix a misplaced modifier, your goal is to ensure clarity and grammatical correctness. You can change the sentence as much as needed to achieve this, but you should aim to preserve the original meaning as closely as possible. 
+
+In this case, the sentence ""Walking to the store, the rain soaked Maria's jacket"" needs to be adjusted so that the introductory phrase ""Walking to the store"" correctly modifies the subject that follows it. The correct revision, ""Maria was soaked",,false,false,false,
+D0030,dev,,post_feedback,synthetic,What should I look for next time on questions like this?,"When working on questions about nonrestrictive clauses and punctuation, here are a few things to keep in mind:
+
+1. **Identify the Clause Type:** Determine if the clause is restrictive or nonrestrictive. Nonrestrictive clauses add extra information and are set off by commas.
+
+2. **Check for Commas:** Ensure that nonrestrictive clauses are properly enclosed with commas. This means there should be a comma before and after the clause.
+
+3. **Avoid Incorrect Punctuation:** Be cautious of using semicol",,false,false,false,
+D0031,dev,,pre_submit,synthetic,Can you help me figure out what the sentence is actually saying first?,"Sure! Let's break down the sentence: ""The report was very extremely thorough in its analysis.""
+
+The sentence is describing a report that is thorough in its analysis. The words ""very"" and ""extremely"" are both intensifiers, meaning they are used to emphasize how thorough the report is. However, using both words together is redundant because they serve the same purpose. 
+
+Does this help clarify the sentence for you?",,false,true,false,Names very+extremely as redundant but leaves very vs extremely as competing singles; >=2 live.
+D0032,dev,,pre_submit,synthetic,"If I had to explain this sentence to a friend, I honestly couldn't.",Let's break it down together. Who do you think was walking to the store in the sentence? Try to say it in your own words before looking at the choices again.,,false,false,false,
+D0033,dev,,post_feedback,synthetic,"I get it now, I get it. Let's skip the explanation next time.","Sure thing! If you have any other questions or need further assistance, feel free to ask.",,false,false,false,
+D0034,dev,,pre_submit,synthetic,I keep going back and forth between two of these - can you give me a nudge?,"Of course! Let's take a closer look at the question together. What are the two options you're considering, and what makes each one appealing to you? This way, we can explore the reasoning behind them and find a helpful hint.",,false,false,false,
+D0035,dev,,pre_submit,synthetic,I eliminated two options but I'm stuck now.,"It sounds like you're making progress! Let's focus on the remaining options. Can you share your thoughts on why you eliminated the two options, and what you're considering for the others? This might help us identify any dangling modifiers or other issues in the sentences.",,false,false,false,
+D0036,dev,,post_feedback,synthetic,I still think my answer sounds better out loud.,"It's great that you're considering how the sentence sounds! Let's explore why ""Eventually"" is the correct choice here. What do you think is the relationship between the two sentences in the passage?",,false,false,false,
+D0037,dev,,pre_submit,synthetic,Give me a hint but don't spoil it.,Sure! Let's focus on understanding what a dangling modifier is. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. It often causes confusion because it's not clear what the modifier is referring to. Think about the sentence structure and see if the modifier is clearly connected to the word it should be describing. What do you notice about the sentence you're working on?,,false,false,false,
+D0038,dev,,pre_submit,synthetic,What's the job of the underlined part in this sentence?,"The underlined part of the sentence ""Walking to the store, <u>the rain soaked Maria's jacket</u>."" is a misplaced modifier. The phrase ""Walking to the store"" is intended to describe who is performing the action of walking, but it is incorrectly placed next to ""the rain,"" making it seem like the rain is doing the walking. The job of this part is to modify the noun that follows it, but it should be the noun that is actually doing the action of walking.",,true,true,true,
+D0039,dev,,post_feedback,synthetic,Why is the correct answer right? Explain it like I'm 12.,"Sure! Imagine you're telling a story about Maria walking to the store. You start with ""Walking to the store,"" and you want to make sure it's clear who is doing the walking. The very next part of the sentence should tell us who that is. 
+
+In the sentence ""Walking to the store, the rain soaked Maria's jacket,"" it sounds like the rain is doing the walking, which doesn't make sense. 
+
+The correct answer, ""Maria was soaked by the rain,"" fixes this because it puts Maria right after ""Walking to the sto",,false,false,false,
+D0040,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas do often indicate pauses, but there's more to their use. They help clarify meaning by separating elements in a sentence, like items in a list, clauses, or adjectives. Would you like to explore a specific example or rule about commas?",,false,false,false,
+D0041,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer is B because it uses the singular possessive form, which is appropriate for indicating that something belongs to one dog. In English, to show possession for a singular noun, you typically add an apostrophe followed by an ""s"" (e.g., ""dog's""). This is why B is correct.
+
+Let's look at why the other options are not correct:
+
+- A: This option uses the plural possessive form, which is used when something belongs to more than one dog. Since the question specifies one dog, this is inc",,false,false,false,
+D0042,dev,,post_feedback,synthetic,Can we do a quick teach-back? Ask me to explain the rule.,"Sure! Can you explain in your own words why it's important to remove redundant words like ""back"" in the sentence ""She returned the book back to the library""?",,false,false,false,
+D0043,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer didn't work because it used a semicolon with a coordinating conjunction, which is redundant. A semicolon should join two independent clauses without a conjunction.",,false,false,false,
+D0044,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common misconceptions or errors that learners might have. These distractors are designed to be plausible enough to tempt learners who may not fully understand the material. In this question, for example, the distractors might include:
+
+- Choices that seem like a safe default (e.g., ""Also"") but don't fit the specific logical relationship.
+- Options that imply a different relationship than what is present (e.g., ""Howeve",,false,false,false,
+D0045,dev,,pre_submit,synthetic,Quick detour: what's 15% of 240? Then we can get back to the question.,"Let's focus on the English question at hand: ""Which choice is most concise?"" If you need help with that, I'm here to guide you!",,false,false,false,
+D0046,dev,,pre_submit,synthetic,no idea,"Let's start by thinking about the role of the phrase ""which opened in 1974"" in the sentence. Read the sentence aloud and notice where you naturally pause. What job is this phrase doing in the sentence?",,false,false,false,
+D0047,dev,,post_feedback,synthetic,"While we're here, can you recommend a good anime?","I'm here to help with your English learning. Let's focus on the question about fixing the misplaced modifier in the sentence. If you have any questions about that, feel free to ask!",,false,false,false,
+D0048,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Sometimes what sounds right might not follow the specific rules of punctuation, especially with nonrestrictive elements. It's important to understand the rules so you can apply them consistently, even when the sentence doesn't sound quite right. Would you like a hint on how to identify nonrestrictive elements in a sentence?",,false,false,false,
+D0049,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer might have failed because the modifier in the sentence needs to attach to the runner, which is 'I'. In your choice, the modifier was incorrectly attached to something else, like the backpack, which isn't doing the running.",,false,false,false,
+D0050,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"Let's focus on the rule for misplaced modifiers. The noun right after an opening '-ing' phrase must be its **doer**. To break the tie, consider this: who was actually walking to the store? Try to say it in your own words before you look at the choices again. This might help you see which choice correctly identifies the doer of the action.",,true,true,true,
+D0051,dev,,pre_submit,synthetic,My gut says the shortest option. Is that a bad strategy?,"Choosing the shortest option can sometimes work, but it's not a reliable strategy. It's important to focus on understanding the question and the context. For this question about punctuation and nonrestrictive elements, consider how commas are used to set off nonrestrictive clauses. Would you like a hint on identifying nonrestrictive elements?",,false,false,false,
+D0052,dev,,post_feedback,synthetic,I always miss these. What's the underlying rule?,"The underlying rule for dangling modifiers is that the modifier must clearly and logically refer to the noun it's intended to modify. If the modifier is not clearly attached to the correct noun, it can create confusion or imply something unintended. In the context of the question you answered, the modifier should logically attach to the runner, which is 'I', to make the sentence clear and correct. 
+
+Can you explain in your own words why it's important for modifiers to be correctly attached to th",,false,false,false,
+D0053,dev,,pre_submit,synthetic,Can you quiz me with a smaller question about this before I answer?,"Sure! Let's focus on the concept of nonrestrictive clauses. Here's a smaller question for you:
+
+In the sentence ""The car, which is red, is parked outside,"" what role does the phrase ""which is red"" play? Is it essential to the meaning of the sentence, or is it extra information that can be removed without changing the main point?",,false,false,false,
+D0054,dev,,post_feedback,synthetic,Give me a memory trick for this rule.,"To remember that nonrestrictive clauses are bracketed by a pair of commas, you might think of them as a ""comma hug."" Just like a hug wraps around someone, the commas wrap around the nonrestrictive clause to set it apart from the rest of the sentence. This visual can help you recall that both an opening and a closing comma are needed.",,false,false,false,
+D0055,dev,,post_feedback,synthetic,So the part being tested can just be rewritten? How do I know how far I'm allowed to change it?,"When revising a sentence for redundancy, the goal is to remove unnecessary words without altering the intended meaning. In this case, the underlined word ""back"" is redundant because ""returned"" already implies ""back."" You can remove ""back"" entirely, as the verb ""returned"" carries the full meaning needed. 
+
+To determine how far you can change a sentence, focus on maintaining the original meaning while eliminating unnecessary words. If the sentence still conveys the same idea clearly and concisely,",,false,false,false,
+D0056,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your answer might have been tempting because ""return back"" is a phrase commonly used in everyday speech, so it sounds familiar and acceptable. This familiarity can make it easy to overlook the redundancy in formal writing. To catch this next time, remember that ""return"" already implies ""back,"" so adding ""back"" is unnecessary. Look for words that repeat the meaning already conveyed by the verb.",,false,false,false,
+D0057,dev,,post_feedback,synthetic,Why is my choice grammatically wrong and not just stylistically worse?,Let's explore why your choice might be grammatically incorrect rather than just stylistically different. Could you explain your reasoning for the choice you made? This will help us identify where the misunderstanding might be.,,false,false,false,
+D0058,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas can indicate pauses, but they also have specific grammatical functions. Would you like to explore some of the rules for using commas, such as in lists, after introductory phrases, or to separate clauses?",,false,false,false,
+D0059,dev,,pre_submit,synthetic,B feels wrong but I can't say why.,"Let's explore why ""have been"" might feel off in this context. Consider the subject of the sentence. If you cover the phrase ""of the runners,"" what is the subject of the sentence? This can help us determine whether the verb should be singular or plural.",,false,false,false,
+D0060,dev,,post_feedback,synthetic,Can you give me another sentence that tests the same rule so I can try again?,"Sure! Here's another sentence for you to work with:
+
+""Running down the street, the dog chased the ball.""
+
+Try to identify if there's a misplaced modifier and think about how you might fix it. Let me know what you come up with!",,false,false,false,
+D0061,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,Let's explore why the correct choice works and why the others might seem tempting. Could you explain your reasoning for the choice you made? This will help us identify where the confusion might be.,,false,false,false,
+D0062,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer failed because it used the plural possessive form, which is for more than one dog. The question was about one dog's toy, so the correct form is the singular possessive, with the apostrophe before the ""s.""",,false,false,false,
+D0063,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Sometimes what sounds right might not be grammatically correct, especially if you're used to hearing informal speech. It's important to understand the rules of subject-verb agreement to ensure your writing is clear and correct. Would you like a hint to help you with this question?",,false,false,false,
+D0064,dev,,post_feedback,synthetic,Was this an easy one? Be honest.,Let's explore why this question might have seemed easy or challenging. What was your thought process when choosing the answer?,,false,false,false,
+D0065,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misunderstandings that learners might have. For example, in this question about punctuation:
+
+1. **Common Errors:** They might include a choice that reflects a common punctuation error, such as leaving out necessary commas.
+2. **Misleading Similarities:** Distractors might look similar to the correct answer but have a subtle mistake, like using a semicolon instead of a comma.
+3. **Partial Knowledge:",,false,false,false,
+D0066,dev,,post_feedback,synthetic,I don't buy the explanation. Convince me.,"Let's break it down together. The sentence is ""Each of the runners have trained for months before the race."" The key here is understanding the subject of the sentence. 
+
+1. **Subject Identification:** The subject is ""Each,"" which is singular. Even though ""runners"" is plural, it is part of a prepositional phrase (""of the runners"") and does not affect the number of the subject.
+
+2. **Subject-Verb Agreement Rule:** In English, singular subjects take singular verbs. Therefore, ""Each"" should be follo",,false,false,false,
+D0067,dev,,pre_submit,synthetic,Why does the test underline only part of the sentence?,"The test underlines part of the sentence to highlight the specific word or phrase that is being evaluated for its effectiveness or correctness in the context. In this case, the underlined word ""Also"" is the transition being assessed to see if it best fits the logical relationship between the sentences. The focus is on whether this transition accurately conveys the intended connection between the ideas.",,false,false,false,
+D0068,dev,,post_feedback,synthetic,"I get it now, I get it. Let's skip the explanation next time.","Got it! If you have any more questions or need further assistance, feel free to ask.",,false,false,false,
+D0069,dev,,pre_submit,synthetic,Why does the test underline only part of the sentence?,"The test underlines only part of the sentence to highlight the specific section that contains the issue or error that needs to be addressed. In this case, the underlined part ""the rain soaked Maria's jacket"" is where the misplaced modifier problem occurs. The goal is to focus your attention on this part so you can identify and correct the error related to the modifier.",,false,false,false,
+D0070,dev,,pre_submit,synthetic,"Tell me the category this falls under — comma splice, agreement, whatever it is.","Let's focus on the question at hand. The task is to identify redundancy in the sentence: ""She returned the book back to the library."" Which choice do you think removes the redundancy?",,false,true,false,Naming redundancy restates the stem without identifying back or eliminating any choice.
+D0071,dev,,post_feedback,synthetic,Can you compare my choice with the right one?,"Sure! Let's compare your choice with the correct answer for the question about dangling modifiers.
+
+The correct answer is B: ""Running down the sidewalk, I noticed my backpack was unzipped."" This choice correctly attaches the modifier ""Running down the sidewalk"" to the runner, which is ""I.""
+
+If you chose a different option, let's consider why it might have been tempting:
+
+- A: ""Running down the sidewalk, my backpack was unzipped."" This might sound natural, but it incorrectly suggests that the bac",,false,false,false,
+D0072,dev,,pre_submit,synthetic,What rule is this question even testing?,"This question is testing your understanding of subject-verb agreement. In English grammar, the subject and verb in a sentence must agree in number, meaning both need to be singular or both need to be plural. This question is likely asking you to identify or correct a sentence where the subject and verb do not match in number. Would you like to explore a specific part of this rule?",,false,false,false,
+D0073,dev,,pre_submit,synthetic,Quick detour: what's 15% of 240? Then we can get back to the question.,Let's focus on the English question at hand. Which choice best fixes the underlined portion in the sentence about the museum?,,false,false,false,
+D0074,dev,,post_feedback,synthetic,I got it right but I guessed. Walk me through the real reasoning.,"Sure! Let's break down the reasoning for this question.
+
+The passage is: ""The report was **very extremely** thorough in its analysis.""
+
+The question asks for the most concise choice. Here's how we can evaluate each option:
+
+1. **Choice A (NO CHANGE):** ""very extremely"" uses two intensifiers. While it might feel more emphatic, it's redundant because both words serve the same purpose of intensifying the adjective ""thorough.""
+
+2. **Choice B (""very""):** This is a single intensifier, which is better ",,false,false,false,
+D0075,dev,,pre_submit,synthetic,"Let me try to talk through it: the underlined part is what's being tested, and I think the problem is how the sentence fits together... am I close?",You're on the right track by focusing on the underlined part. The issue here is about how the sentence uses intensifiers. Think about what happens if you remove one of the two underlined words. Does the sentence still convey the same meaning? Try reading it each way to see what changes.,,false,false,false,
+D0076,dev,,pre_submit,synthetic,Can you quiz me with a smaller question about this before I answer?,"Sure! Let's focus on the concept of intensifiers. 
+
+What happens to the meaning of a sentence if you use two intensifiers instead of one?",,false,false,false,
+D0077,dev,,pre_submit,synthetic,I think it's between B and C.,"Let's focus on understanding the subject of the sentence. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,false,false,
+D0078,dev,,pre_submit,synthetic,What should I look at first in a question like this?,"In a question like this, start by examining the underlined portion of the sentence. Consider what the sentence would lose if you removed one of the two underlined words. Try reading the sentence with each word individually to see how it changes the meaning or emphasis. This will help you determine which choice is most concise.",,false,true,false,Remove-and-compare strategy leaves both single-intensifier choices live.
+D0079,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. For example, in this question about misplaced modifiers, they might include choices that:
+
+1. **Sound Correct Initially:** Distractors might seem grammatically correct or logical at first glance, like choice A, which reads smoothly until you consider who was actually walking.
+
+2. **Reflect Common Errors:** They might include errors that are frequently made, s",,false,false,false,
+D0080,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"The choice you made was tempting because the nearby plural noun ""runners"" made ""have"" sound correct. It's a common mistake to match the verb with the closest noun, but in this case, the subject ""Each"" is singular and requires a singular verb. Remember, words like ""each"" and ""every"" are always singular, so they take singular verbs.",,false,false,false,
+D0081,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding what a dangling modifier is. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. This can make the sentence confusing or misleading.
+
+Here's a step-by-step approach to identify and correct dangling modifiers:
+
+1. **Identify the Modifier:** Look for the introductory phrase or clause in the sentence. This is often the modifier that might be dangling.
+
+2. **Find the Subject:** Determine what the modifier is supposed to ",,false,false,false,
+D0082,dev,,post_feedback,synthetic,I got it right but I guessed. Explain it like I'm new to this.,"Sure! Let's break it down step by step.
+
+The sentence in question involves a dangling modifier. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. In this case, the modifier needs to be attached to the correct subject.
+
+Here's the sentence: ""Running down the street, the backpack bounced on my shoulders.""
+
+- **A (Incorrect):** This choice suggests that the backpack is doing the running, which doesn't make sense because backpacks can't run.
+
+- **B (Cor",,false,false,false,
+D0083,dev,,pre_submit,synthetic,What should I look at first in a question like this?,"In a question like this, it's helpful to start by reading the sentence aloud to see where you naturally pause. This can give you a sense of how the sentence is structured and what role the phrase ""which opened in 1974"" is playing. Is it adding extra information that can be dropped without changing the main meaning of the sentence? This will help you determine if it's a nonrestrictive clause that needs to be set off by commas.",,false,false,false,
+D0084,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas can indicate pauses, but they also have specific grammatical functions. Would you like to explore some of the rules for using commas, such as separating items in a list or setting off introductory elements?",,false,false,false,
+D0085,dev,,pre_submit,synthetic,I read it out loud like you said and it still sounds fine to me.,Let's try a different approach. Who was walking to the store in the sentence? Say it in your own words before you look at the choices again.,,false,false,false,
+D0086,dev,,pre_submit,synthetic,My teacher says read the whole paragraph first. Do I really need to?,"Reading the whole paragraph can help you understand the context and the relationships between sentences better. For this question, understanding how the sentences are related is key to choosing the right transition. Would you like to explore how the sentences in this passage are related?",,false,false,false,
+D0087,dev,,post_feedback,synthetic,How would this question look at a harder difficulty?,"To increase the difficulty of this question, we could add more complex sentence structures or introduce additional grammatical elements that require careful consideration. Here's an example of how the question might look at a harder difficulty:
+
+---
+
+**Passage:** Each of the runners, who have been training rigorously and consistently over the past several months, <u>have</u> prepared themselves mentally and physically for the upcoming race.
+
+**Question:** Which choice best fixes the underlined p",,false,false,false,
+D0088,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding the question and the choices given. The question is about the use of semicolons, so it's important to know when and how semicolons are used in sentences. 
+
+Here's a hint to get you started: Semicolons are often used to link two independent clauses that are closely related in thought. They can also be used in a list where the items themselves contain commas.
+
+Think about these uses and see if any of the choices fit this pattern. What do you notice about the sent",,false,false,false,
+D0089,dev,,post_feedback,synthetic,What should I look for next time on questions like this?,"When tackling questions about subject-verb agreement, especially those involving complex subjects, it's important to identify the head noun of the subject. Here are some tips for next time:
+
+1. **Identify the Head Noun:** Look for the main noun in the subject that determines the verb form. In this case, ""bouquet"" is the head noun, not ""roses.""
+
+2. **Ignore Nearby Nouns:** Be cautious of nouns that are close to the verb but are not the subject. These can be misleading, as ""roses"" was in this ques",,false,false,false,
+D0090,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track by considering the structure of the sentence. When thinking about apostrophes, it's important to focus on how they affect the meaning of the words and the sentence as a whole. Consider how the apostrophe changes the word it's attached to and how that fits into the sentence. What do you think the apostrophe is indicating in this context?",,false,false,false,
+D0091,dev,,post_feedback,synthetic,I picked the wrong one. What was the trap I fell into?,"It sounds like you might have chosen ""Also"" as the transition. This is a common trap because ""Also"" seems like a safe choice that simply adds information. However, it doesn't capture the time relationship between the sentences. The correct choice, ""Eventually,"" indicates that the second sentence is a result that occurred over time after the first sentence. Can you see how the time relationship is important here?",,false,false,false,
+D0092,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer is B because the head noun in the sentence is ""bouquet,"" which is singular. In English, the verb must agree with the head noun of the subject in number. Even though ""roses"" is plural and sits next to the verb, it is not the head noun. Therefore, the verb should be singular to match ""bouquet.""",,false,false,false,
+D0093,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding the question. It's about using commas with nonrestrictive elements. Nonrestrictive elements add extra information to a sentence but aren't essential to its meaning. 
+
+Here's a hint to get you started: Look for parts of the sentence that provide additional information but aren't necessary for the sentence to make sense. These parts are usually set off by commas. 
+
+Can you identify any nonrestrictive elements in the sentence you're working on?",,false,false,false,
+D0094,dev,,pre_submit,synthetic,Just name the grammar rule this question is checking and I'll take it from there.,"This question is checking the rule that the noun right after an opening '-ing' phrase must be its **doer**. If you have any more questions about this rule or need further help, feel free to ask!",,true,true,true,
+D0095,dev,,post_feedback,synthetic,Why is the correct answer right? Explain it like I'm 12.,"Sure! Imagine you have a backpack, and you want to put a book back into it. If you say, ""I'm putting the book back into the backpack,"" that's clear. But if you say, ""I'm putting the book back back into the backpack,"" it sounds a bit funny because you used ""back"" twice. 
+
+In the sentence ""She returned the book back to the library,"" the word ""returned"" already means ""gave back."" So, using ""back"" again is like saying the same thing twice. That's why the best choice is to delete ""back"" and just say,",,false,false,false,
+D0096,dev,,post_feedback,synthetic,What should I review tonight based on this mistake?,"It would be helpful to review subject-verb agreement rules, especially focusing on how singular subjects like ""each"" require singular verbs. Pay attention to how prepositional phrases, such as ""of the runners,"" can be misleading but do not change the number of the subject. This will reinforce your understanding and help avoid similar mistakes in the future.",,false,false,false,
+D0097,dev,,pre_submit,synthetic,My teacher says read the whole paragraph first. Do I really need to?,"Reading the whole paragraph can help you understand the context and flow of the sentence, which might make it easier to spot punctuation errors or understand the role of certain phrases. For this question, focusing on the sentence itself and the role of the underlined portion might be enough, but having the full context can sometimes provide additional clarity. Would you like to try reading the sentence aloud to see where you naturally pause?",,false,false,false,
+D0098,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. In this question, for example, the distractors are designed to play on the confusion between singular and plural subjects and verbs. Let's break down how each distractor might have been crafted:
+
+1. **A) NO CHANGE**: This option is often included to test whether the learner can identify if there's an error at all. Here, it plays on the misconception that ""run",,false,false,false,
+D0099,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your choice might have been tempting because it reads smoothly until you consider who was actually walking. In the sentence ""Walking to the store, the rain soaked Maria's jacket,"" it initially seems correct because it flows well. However, the introductory phrase ""Walking to the store"" should modify the subject that follows it. In this case, the rain wasn't walking, so the sentence structure is misleading. 
+
+To catch this next time, always check if the noun right after an opening '-ing' phrase is",,false,false,false,
+D0100,dev,,post_feedback,synthetic,ok that makes sense,"Great! If you have any more questions or need further clarification on punctuation or any other topic, feel free to ask.",,false,false,false,
+D0101,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"Let's focus on the subject of the sentence to help you decide. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,false,false,
+D0102,dev,,pre_submit,synthetic,This passage is confusing me more than the question itself.,"Let's focus on understanding the passage first. The sentence is: ""Walking to the store, the rain soaked Maria's jacket."" 
+
+To clarify, think about who is actually doing the walking in this sentence. Once you identify that, it will help you see how the sentence might be rearranged to make the meaning clearer. Who do you think was walking to the store?",,false,false,false,
+D0103,dev,,pre_submit,synthetic,I picked C but I'm only like 60% sure. Should I change it?,"Let's explore your choice a bit more to help you feel more confident. Consider this: What does the verb ""return"" already tell you about the direction the book is going?",,true,false,true,A2 payload in confidence-check framing; same collapse as D0005/D0023.
+D0104,dev,,post_feedback,synthetic,How would this question look at a harder difficulty?,"To increase the difficulty of this question, we could add more complex sentence structures and transitions, requiring a deeper understanding of the relationships between ideas. Here's an example of how the question might look:
+
+---
+
+**Passage:** The bridge took years to build, enduring numerous setbacks and challenges. <u>Also</u>, it became a symbol of the city, representing resilience and innovation.
+
+**Question:** Which transition best fits the nuanced relationship between the sentences, cons",,false,false,false,
+D0105,dev,,pre_submit,synthetic,"If I had to explain this sentence to a friend, I honestly couldn't.","Let's break it down together. The sentence is ""She returned the book back to the library."" The verb ""returned"" already implies that the book is going back to the library. What do you think the underlined word ""back"" adds to the sentence?",,true,true,true,
+D0106,dev,,pre_submit,synthetic,English isn't my first language and questions like this trip me up. Any way to think about it?,"Let's focus on understanding the structure of the sentence. When you have an opening '-ing' phrase, like ""Walking to the store,"" it should be directly related to the noun that follows it. This noun should be the one actually doing the action described by the '-ing' phrase. 
+
+Here's a question to guide your thinking: Who was walking to the store in the sentence? Try to say it in your own words before you look at the choices again.",,true,true,true,
+D0107,dev,,pre_submit,synthetic,Honestly I have no idea where to even start with this one.,"Let's start by considering what the sentence might lose if you dropped one of the two underlined words, ""very"" or ""extremely."" Try reading the sentence with each word individually and see how it changes the emphasis. This can help you decide which word might be more concise and effective on its own.",,false,false,false,
+D0108,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer, B, is correct because it properly uses a comma to close the nonrestrictive clause. Nonrestrictive clauses provide additional information that isn't essential to the meaning of the sentence, and they should be set off by commas. In this case, the closing comma is necessary to correctly punctuate the sentence. 
+
+Would you like to explore why the other options are incorrect?",,false,false,false,
+D0109,dev,,pre_submit,synthetic,Rate each choice out of 10 for how likely it is to be correct.,"Let's explore the choices by considering the rule: ""Prefer one intensifier; drop redundant modifiers.""
+
+- **Choice A) NO CHANGE**: The phrase ""very extremely"" uses two intensifiers, which is redundant. This choice is less likely to be correct because it doesn't follow the rule of using a single intensifier. Rating: 3/10
+
+- **Choice B) very**: This choice uses only one intensifier, which aligns with the rule of preferring a single modifier. Rating: 8/10
+
+- **Choice C) extremely**: Like choice B, ",,false,true,false,Pre-submit ratings; reply truncated at 500 chars with B=8/10 and C incomplete; >=2 live on visible evidence.
+D0110,dev,,post_feedback,synthetic,Give me a memory trick for this rule.,"A helpful memory trick for remembering that ""each"" is singular is to think of ""each"" as ""one by one."" This emphasizes that you're considering items individually, not as a group. So, just like ""one"" takes a singular verb, ""each"" does too. Does this analogy help clarify the rule for you?",,false,false,false,
+D0111,dev,,post_feedback,synthetic,Let me try to explain the rule back to you in my own words — ready? Check me on it.,"Sure, go ahead and explain the rule in your own words. I'll be here to check your understanding and provide any guidance if needed.",,false,false,false,
+D0112,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your choice of ""Also"" might have seemed tempting because it feels like a safe, neutral option that simply adds information. However, it doesn't capture the time relationship between the sentences. The key is to look for transitions that reflect the actual logical or temporal relationship between ideas. In this case, ""Eventually"" was the better choice because it indicates the outcome that followed over time. Next time, focus on identifying the specific relationship between the sentences to choose",,false,false,false,
+D0113,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Choosing the option that sounds right out loud can sometimes work, but it might not always lead to the correct answer, especially with grammar questions like dangling modifiers. These errors can be subtle and might not be obvious just by listening. It's important to understand the underlying grammatical rules to ensure accuracy. Would you like a hint on how to identify dangling modifiers?",,false,false,false,
+D0114,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,"Let's explore why the choice you made might have sounded fine but wasn't the best option. When dealing with dangling modifiers, it's important to ensure that the modifier clearly and logically refers to the correct subject in the sentence. 
+
+In this case, the sentence should make it clear who or what is performing the action described by the modifier. Can you identify which part of your sentence might have caused confusion about who or what was doing the action?",,false,false,false,
+D0115,dev,,post_feedback,synthetic,I don't buy the explanation. Convince me.,"Let's explore the reasoning behind the correct choice together. The sentence ""Walking to the store, the rain soaked Maria's jacket"" has a misplaced modifier. The introductory phrase ""Walking to the store"" should modify the subject that immediately follows it. 
+
+1. **Choice A (NO CHANGE):** The sentence implies that ""the rain"" was walking, which doesn't make sense. 
+2. **Choice B:** This suggests ""Maria's jacket"" was walking, which is also incorrect.
+3. **Choice C:** Here, ""Maria"" is the subject ",,false,false,false,
+D0116,dev,,pre_submit,synthetic,Is it okay that I picked my answer just because it sounds right?,"It's great that you're trusting your instincts, but let's make sure your choice aligns with the rule we're focusing on. The rule here is about removing redundancy. Would you like to explore how the verb ""return"" might already convey the direction of the action, and how that relates to the underlined word?",,true,true,true,
+D0117,dev,,post_feedback,synthetic,Can you just do the next five questions for me and I'll watch?,"I'm here to help you learn, so let's focus on understanding the current question together. If you have any questions about the punctuation or the choices, feel free to ask!",,false,false,false,
+D0118,dev,,pre_submit,synthetic,I always run out of time on these. Should I just guess and move on?,"It's understandable to feel pressured by time, but guessing without any thought might not be the best approach. Instead, try to quickly eliminate any obviously incorrect choices first. This can increase your chances of guessing correctly if you need to. Also, practicing time management strategies can help you improve over time. Let's focus on the current question about punctuation. Would you like to explore a hint to help you with it?",,false,false,false,
+D0119,dev,,pre_submit,synthetic,Give me a hint but a small one.,"Let's focus on the subject of the sentence. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,false,false,
+D0120,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by looking at the question and understanding what it's asking. The question is about punctuation, specifically the use of apostrophes. Here's a hint to get you started: 
+
+Think about the different ways apostrophes are used in English. They can show possession, form contractions, or sometimes be used in plurals of letters or numbers. Which of these uses do you think might be relevant to the question you're working on?",,false,false,false,
+D0121,dev,,pre_submit,synthetic,What rule is this question even testing?,"This question is testing your understanding of dangling modifiers. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. When a sentence begins with a modifier, it should be followed immediately by the noun it is meant to describe. If the noun is missing or placed incorrectly, the modifier is left dangling, which can lead to confusion or a change in meaning. Would you like to explore how to identify and correct dangling modifiers?",,true,true,true,
+D0122,dev,,post_feedback,synthetic,"cool, next","Let's focus on the question at hand. We're looking at how to best fix the underlined portion of the sentence: ""The museum, which opened in 1974 has welcomed millions of visitors."" 
+
+Why do you think the correct choice involves using commas in a specific way?",,false,false,false,
+D0123,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track by considering the structure of the sentence. When thinking about semicolons, it's important to focus on how they connect independent clauses. An independent clause is a group of words that can stand alone as a sentence. Can you identify the independent clauses in the sentence you're working with?",,false,true,false,Generic independent-clause teaching; no semicolon verdict or choice named.
+D0124,dev,,pre_submit,synthetic,I always run out of time on these. Should I just guess and move on?,"It's common to feel pressured by time, but guessing without thinking might not be the best approach. Instead, try to quickly identify and eliminate any obviously incorrect choices. This can increase your chances of guessing correctly if you need to. Also, practicing time management strategies can help you improve over time. Let's focus on the current question about subject-verb agreement. Would you like a hint to help you with it?",,false,false,false,
+D0125,dev,,post_feedback,synthetic,Can you compare my choice with the right one?,"Sure! Let's compare your choice with the correct answer.
+
+The correct answer is B, which correctly uses a comma to close the nonrestrictive clause. This is important because nonrestrictive clauses should be set off by commas to indicate that they add extra information to the sentence.
+
+If you chose a different option, let's consider why it might have been tempting:
+
+- **A** leaves the clause unclosed, which means it doesn't properly set off the nonrestrictive clause.
+- **C** uses 'that,' which c",,false,false,false,
+D0126,dev,,pre_submit,synthetic,I picked C but I'm only like 60% sure. Should I change it?,"Let's explore your reasoning a bit more to help you decide. Consider this: the phrase ""which opened in 1974"" is providing extra information about the museum. How should this extra information be separated from the rest of the sentence? Think about whether it needs to be fenced off on both sides.",,true,false,true,Does nonrestrictive judgment plus fence-both-sides criterion; only the closing-comma choice satisfies.
+D0127,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,"Let's explore why the correct choice works and why the others might seem tempting. 
+
+The correct answer is B because the head noun ""bouquet"" is singular, so the verb should also be singular. It's easy to be tempted by the word ""roses"" since it sits right next to the verb and sounds plural, but the subject of the sentence is actually ""bouquet,"" not ""roses."" 
+
+Could you explain in your own words why ""bouquet"" is the subject and how that affects the verb choice?",,false,false,false,
+D0128,dev,,post_feedback,synthetic,Why is my choice grammatically wrong and not just stylistically worse?,"Let's explore why your choice might be grammatically incorrect. The sentence in question is: ""Walking to the store, the rain soaked Maria's jacket."" The issue here is with the placement of the modifier ""Walking to the store.""
+
+In English grammar, an introductory participial phrase like ""Walking to the store"" should modify the subject that immediately follows it. In this sentence, the subject that follows is ""the rain,"" which doesn't make sense because the rain can't walk to the store. This creat",,false,false,false,
+D0129,dev,,post_feedback,synthetic,Explain why the tempting option is a trap.,"The tempting option A is a trap because it uses a semicolon followed by a coordinating conjunction (""and""). In English grammar, a semicolon is used to join two independent clauses without a conjunction. When a coordinating conjunction is present, a comma should be used instead of a semicolon. This redundancy makes option A incorrect, even though it might initially appear balanced.",,false,false,false,
+D0130,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer didn't work because it left the nonrestrictive clause unclosed. In this context, a nonrestrictive clause needs to be set off with commas, and your choice didn't provide the necessary closing comma.",,false,false,false,
+T-CLEAN-01,test,breadth,pre_submit,fresh-authored,I've read this five times and still can't tell what's being tested.,"Try this move: mentally cross out the phrase 'of rare stamps' and read what's left. Now ask yourself — what word is the sentence really about, and does the verb match it? Tell me what you find.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,false,false,
+T-CLEAN-02,test,breadth,pre_submit,fresh-authored,what part of grammar should I be thinking about here?,"Think about how pronouns point back at earlier words. A pronoun has to match the word it stands for in number. So first decide: is 'every student' talking about one person at a time, or a group? Once you've settled that, check each choice against your decision.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",false,false,false,
+T-CLEAN-03,test,breadth,pre_submit,fresh-authored,apostrophes make no sense to me,"They make more sense with one trick: an apostrophe on 'it' is a contraction, a squeezed-together version of two words. Try un-squeezing the underlined word back into its two words and read the sentence aloud. Does it still say something sensible? Work through each option that way.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",false,false,false,
+T-CLEAN-04,test,breadth,pre_submit,fresh-authored,is there a trick to these?,"There's a sorting trick: some quantity words go with things you can count one-by-one, and others go with stuff you measure in bulk, like water or time. First decide which kind 'students' is. Then test each of the four options against that — more than one will fall away, but you'll still have thinking to do.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",false,false,false,
+T-CLEAN-05,test,breadth,pre_submit,fresh-authored,something about this list feels off but I can't say what.,Good instinct. Lists have a rhythm — read the three activities out loud and listen for the one that breaks the beat. What form do the first two activities share? Now check which options match that form and which don't. You'll still need to pick between the survivors.,"- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",false,false,false,
+T-CLEAN-06,test,breadth,pre_submit,fresh-authored,verb tenses are my weakest area.,"Then let's build a timeline. Draw two dots: one for the waiting, one for the bus arriving. Which happened first? English marks the earlier of two past events with a special tense. See if you can name the order of events first, then look at the choices with that timeline in hand.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",false,false,false,
+T-CLEAN-07,test,breadth,pre_submit,fresh-authored,how do I spot redundancy in general?,"Ask of every word: what job is it doing that no other word already does? A word with no unique job is dead weight. Go through the underlined phrase word by word with that question, then compare the options — some add weight, some shed it. Which sheds without losing meaning?","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",false,false,false,
+T-CLEAN-08,test,breadth,pre_submit,fresh-authored,commas versus semicolons — how do I decide?,"Decide by testing what's on each side of the mark. Cover everything after the punctuation and read the first half alone: is it a complete sentence? Now do the same for the second half. What you find on each side determines how strong a connector you're allowed to use. Run that test, then revisit the options.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",false,false,false,
+T-CLEAN-09,test,breadth,pre_submit,fresh-authored,what even is a misplaced modifier?,"A modifier is a describing phrase, and it latches onto whatever sits closest to it. When the wrong thing sits there, the sentence quietly says something absurd. So read the opening phrase, then ask: as written, what is it describing? Is that thing capable of doing what the phrase says? Then check each option with the same question.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",false,false,false,
+T-CLEAN-10,test,breadth,pre_submit,fresh-authored,I always guess on transition questions.,"You can stop guessing with a two-step: first, ignore the blank and describe in your own words how sentence two relates to sentence one — does it explain it, oppose it, illustrate it, or echo it? Second, sort the four choices by which relationship each one signals. Match your description to the sorted list.","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",false,false,false,
+T-CLEAN-11,test,breadth,pre_submit,fresh-authored,why does it matter how many sisters she has??,"Because that fact changes the job of the clause. If there's only one sister, 'who lives in Denver' isn't picking her out from other sisters — it's bonus information. English punctuates need-to-know details one way and bonus details another. Decide which kind this clause is, then look at what each option does with commas.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",false,false,false,
+T-CLEAN-12,test,breadth,pre_submit,fresh-authored,why would 'most scenic' ever be wrong? it sounds normal.,"It sounds normal because we're loose about it in speech. Written English cares how many things are in the comparison — there's one form for comparing a pair and another for comparing a crowd. Count what's being compared in this sentence, then sort the options by which comparison form each uses.","- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",false,false,false,
+T-CLEAN-13,test,breadth,pre_submit,fresh-authored,apostrophe placement is a coin flip for me.,"Make it a two-question checklist instead of a coin flip. Question one: does anything in the sentence own anything? Question two: how many owners are there? Your answers to those two questions decide the placement. Answer them for this sentence, then match against the four options.","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",false,false,false,
+T-CLEAN-14,test,breadth,pre_submit,fresh-authored,how is 'most concise' different from 'shortest'?,"Great distinction to draw. Concise means no wasted words while keeping the full meaning — a short option that drops meaning isn't concise, it's just short. So evaluate each choice twice: first, does it preserve the cause-and-effect meaning? Second, does every word in it earn its place?","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",false,false,false,
+T-CLEAN-15,test,breadth,pre_submit,fresh-authored,'neither' confuses me every single time.,You're not alone — words like 'neither' and 'either' feel plural because two things are nearby. Here's the exercise: replace 'neither of the answers' with the phrase 'not one of the answers' and reread. Does the sentence feel different? Use what you notice to interrogate each verb option.,"- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",false,false,false,
+T-CLEAN-16,test,breadth,pre_submit,fresh-authored,when do colons versus semicolons come up on this test?,"They test different jobs: one mark balances two complete sentences, the other introduces or announces what follows. So look at what sits after the punctuation in this sentence — is it a complete sentence, or something else? Name what it is, and then ask which mark's job description matches.","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",false,false,false,
+T-CLEAN-17,test,breadth,pre_submit,fresh-authored,do I cut the fancy phrase or the plain word? what's the rule?,"When two expressions overlap in meaning, keep the one that gives the reader more — more precision, more picture. Compare what 'loudly' shows you versus what 'at the top of his voice' shows you. Which paints and which just states? Then check the options against your comparison.","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",false,false,false,
+T-CLEAN-18,test,breadth,pre_submit,fresh-authored,my tutor says to read the sentences 'around' the blank. then what?,"Then you name the relationship you just read. Ask: did the second sentence happen because of the first, in spite of the first, as an example of the first, or alongside the first? Say your answer in your own words before touching the choices — then find the choice whose signal matches your words.","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",false,false,false,
+T-CLEAN-19,test,overgeneralization,pre_submit,fresh-authored,"a committee is a bunch of people so it's plural, right?","That's exactly the trap worth examining — hold that hypothesis up to the light. Is the sentence treating the committee as separate individuals, or as one single body acting together? Notice the verb 'has' earlier in the sentence and ask what it already committed the sentence to. Then look again at your options.","- passage: The committee has made their decision about the budget.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) there
+  - D) they're",false,false,false,
+T-CLEAN-20,test,breadth,pre_submit,fresh-authored,the sentence sounds fine when I say it fast.,"Fast is how these errors hide! Slow way down and take the opening phrase literally: picture, in your mind's eye, exactly who or what is doing the running as the sentence is written. Describe that picture to me. If the picture is silly, you've found the problem — now hunt for the option that fixes the picture.","- passage: Running through the airport, Maria's suitcase burst open.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Maria's suitcase, bursting open,
+  - C) Maria felt her suitcase burst open
+  - D) the suitcase of Maria burst open",false,false,false,
+T-CLEAN-21,test,breadth,pre_submit,fresh-authored,I keep second-guessing myself on possessives.,"Second-guessing usually means you're skipping the ownership question. Start there: something in this sentence belongs to someone. Name the owner and the owned thing out loud. Then count the owners. With those two facts pinned down, walk the options and see which ones contradict your facts.","- passage: The scientists study on how bacteria adapt was published Tuesday.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) scientist's study
+  - C) scientists study,
+  - D) scientists' study's",false,false,false,
+T-CLEAN-22,test,breadth,pre_submit,fresh-authored,"good, well, whatever — do people really care?","The test cares, and here's the machinery: one of these words describes things, the other describes actions. Find the word in the sentence that the underlined word is describing. Is that word a thing or an action? Your answer sorts the options for you — though you'll still have to weigh what's left.","- passage: The orchestra performed good despite the missing violinist.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) well
+  - C) goodly
+  - D) more good",false,false,false,
+T-CLEAN-23,test,breadth,pre_submit,fresh-authored,'however' in the middle of a sentence always trips me up.,"It trips up almost everyone, so let's build the test: 'however' here is gluing two complete sentences together, and words like it aren't strong enough glue on their own. Check what's on each side of it — full sentence or fragment? Then ask what punctuation each side of a word like that needs. Try that on the options.","- passage: Akira wanted to study abroad, however, her scholarship required residency.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) abroad; however,
+  - C) abroad however
+  - D) abroad, however;",false,false,false,
+T-CLEAN-24,test,breadth,pre_submit,fresh-authored,'between you and I' sounds more polite though?,That politeness instinct is a real phenomenon — people over-correct because 'I' feels formal. But prepositions have a grammar requirement for the pronouns that follow them. Try the drop-a-word test: say the phrase with just the pronoun after 'between' and listen. What does your ear tell you now? Use that on each option.,"- passage: Between you and I, the ending of the movie made no sense.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Between you and me
+  - C) Between we
+  - D) Among you and I",false,false,false,
+T-CLEAN-25,test,breadth,pre_submit,fresh-authored,who versus whom breaks my brain.,"Everyone's brain, honestly. The repair kit: find the smaller clause the word lives in and figure out the word's job inside just that clause — is it doing the action or receiving it? Ignore everything outside the clause; that's the classic distractor. Work out the job first, then revisit the options.","- passage: The award was given to whoever the judges believed deserved it.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) whomever
+  - C) whom
+  - D) who",false,false,false,
+T-CLEAN-26,test,breadth,pre_submit,fresh-authored,"wait, there are two subjects here? which one wins?","Exactly the right question — with 'neither...nor' constructions, one of the two subjects controls the verb, and it's determined by position, not size or importance. Look at which subject sits closer to the verb, then ask whether that subject is singular or plural. Test your conclusion against the options.","- passage: Neither the coach nor the players was ready for the sudden schedule change.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) were
+  - C) is
+  - D) has been",true,false,true,Full neither/nor proximity rule with no withheld piece; B were is mechanical once closer subject is plural.
+T-CLEAN-27,test,breadth,pre_submit,fresh-authored,there might be two problems here? or am I imagining it?,"You might be onto something — don't let the options rush you. Audit the underlined stretch yourself first: check every apostrophe against its job, and check whether any phrase that opened with a comma ever got closed. Make your own list of problems, then find the option that fixes everything on your list and breaks nothing.","- passage: The bakery, famous for it's sourdough opened a second location.
+- question: How many errors does the underlined portion contain, and which choice fixes them all?
+- choices:
+  - A) NO CHANGE
+  - B) famous for its sourdough,
+  - C) famous for it's sourdough,
+  - D) famous, for its sourdough",false,false,false,
+T-CLEAN-28,test,breadth,pre_submit,fresh-authored,"so many nouns in this sentence, I don't know which one the verb goes with.","That crowding is deliberate — test writers stack nouns between subject and verb to mislead your ear. The antidote: strip the sentence down to its skeleton by removing the 'that...' clause entirely. Read the skeleton. Now which noun is the verb really serving? Check the options against the skeleton, not the full sentence.","- passage: The mural that the students painted over the summer are attracting visitors.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) is attracting
+  - C) were attracting
+  - D) attract",false,false,false,
+T-CLEAN-29,test,breadth,pre_submit,fresh-authored,'went smooth' is how everyone I know says it.,"Spoken English and test English really are two dialects, and you're fluent in one already. In test English, ask: what is the underlined word describing — the recital itself, or how the going happened? Things get one form; manners of action get another. Decide what's being described, then re-rank the choices.","- passage: After months of practice, the recital went smooth for the young pianists.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) smoothly
+  - C) more smooth
+  - D) smoother",false,false,false,
+T-CLEAN-30,test,breadth,pre_submit,fresh-authored,does the stuff between the commas change the answer?,"Test it and see! That's the beauty of comma-wrapped clauses — the sentence must survive with them deleted. Read the sentence without the middle chunk. Did the subject change? Did the agreement question get easier or harder? Whatever you discover, apply it to the four choices.","- passage: The debate team, which won the state title last year, are recruiting new members.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) is recruiting
+  - C) were recruiting
+  - D) recruit",false,false,false,
+T-CLEAN-31,test,breadth,pre_submit,fresh-authored,comparisons again... I got the last one of these wrong.,"Then let's find what went wrong last time and fix the method, not just this answer. The method is: count the group being compared before you pick a form. Count the brothers in this sentence. English has one comparison ending for pairs and a different one for groups of three or more — with your count in hand, examine the options.","- passage: Yosef is the taller of the three brothers in his family.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) tallest
+  - C) more tall
+  - D) most tallest",false,false,false,
+T-CLEAN-32,test,overgeneralization,pre_submit,fresh-authored,isn't there always a comma before 'and'?,"That's a half-rule that causes a lot of wrong answers — worth stress-testing. The comma-before-and rule depends on what follows the 'and.' Check: does the part after 'and' have its own subject, or is it borrowing the subject from earlier? Your finding decides whether that comma belongs. Then judge each option.","- passage: The volunteers cleaned the beach, and collected over forty bags of trash.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) beach and collected
+  - C) beach, and, collected
+  - D) beach; and collected",false,false,false,
+T-CLEAN-33,test,overgeneralization,pre_submit,fresh-authored,'whom' always sounds more correct to me so I always pick it.,"That's a heuristic worth interrogating before it costs you points. 'Whom' isn't the fancy version of 'who' — they have different jobs. Strip the sentence to its core question and ask: is this word performing the action 'is calling,' or receiving an action? Answer that, then re-examine your default.","- passage: Whom should I say is calling?
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) Who
+  - C) Whomever
+  - D) Which",false,false,false,
+T-CLEAN-34,test,breadth,pre_submit,fresh-authored,can you just check my thinking? I picked the -ly one because verbs need -ly words.,"I love that you brought reasoning to check — let's pressure-test it. 'Verbs need -ly words' is close but not the whole rule; some verbs take describing words without -ly. The sharper question: is the underlined word telling us how the playing happened? Walk me through what the word is doing, and let's see if your rule survives.","- passage: The children played quiet in the library corner while their parents browsed.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) quietly
+  - C) more quiet
+  - D) quietest",false,false,false,
+T-CLEAN-35,test,breadth,pre_submit,fresh-authored,"paintings is plural so the verb should be plural. done, right?","Before you lock it in, double-check which word is actually the subject. Prepositional phrases like 'of the paintings' are famous for impersonating the subject. Cover that phrase with your finger and read what remains. Is the word you're left with singular or plural? Now revisit your conclusion.","- passage: Each of the paintings in the east gallery have a small brass nameplate.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) has
+  - C) are having
+  - D) have had",false,false,false,
+T-CLEAN-36,test,breadth,pre_submit,fresh-authored,"the three theres all sound identical, how am I supposed to hear the difference?","You can't hear it — that's the point of the question. You have to see it. Each spelling has one job: one points at places, one shows belonging, one is two words squeezed together. Ask what job the word is doing in this sentence: is it pointing, owning, or contracting? Match job to spelling across the options.","- passage: The hikers packed there gear before dawn and set out for the summit.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) their
+  - C) they're
+  - D) theirs",false,false,false,
+T-CQ-01,test,breadth,pre_submit,fresh-authored,"before this one — on the last question, why was 'has' right for the runners sentence?","'Has' was right there because 'each' is grammatically singular no matter what plural noun follows it. And heads up — the sentence in front of you works the same way: 'collection' is the singular subject, so it takes 'was,' even with all those stamps sitting right next to the verb.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,true,true,
+T-CQ-02,test,breadth,pre_submit,fresh-authored,side question: what does 'moreover' mean? saw it on a practice test.,"'Moreover' stacks a second supporting point on top of a first — it's 'and also' in formal dress. Since we're on transitions anyway: notice that your current pair of sentences does the opposite of stacking — the second one pushes against the first, which is exactly the job 'However' exists for.","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,true,true,
+T-CQ-03,test,breadth,pre_submit,fresh-authored,"unrelated, but when do I use 'there' versus 'their'? homework thing.","'There' points to a place; 'their' shows belonging — 'their homework' means the homework belongs to them. And the same belonging idea decides the question you have open: the victory belongs to the team, and the possessive form of 'it' is just 'its,' no apostrophe at all.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,true,true,
+T-CQ-04,test,breadth,pre_submit,fresh-authored,random: when am I supposed to use a dash?,"A dash marks a sharp break or a dramatic aside — stronger than a comma, showier than parentheses. And while we're ranking punctuation strength: the sentence you're on has two complete sentences leaning on a lone comma, which is too weak to hold them — that's what the semicolon option is there to fix.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",true,true,true,
+T-CV-01,test,breadth,pre_submit,fresh-authored,what's the strategy for questions like this?,"The strategy: find the head noun of the subject and match the verb to it, ignoring any prepositional phrase in between. Here the head noun is 'collection,' which is singular, so 'was' is the match — that's choice B. Use that same head-noun move on every agreement question you see.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,true,true,
+T-CV-02,test,leak_bait,pre_submit,fresh-authored,can you explain the rule and then let me try?,"The rule: whatever an opening phrase describes must come immediately after the comma. Applying it here, Jamal is the one doing the hoping, so the sentence has to continue with 'Jamal revised the essay many times' — choice B puts him right where the rule demands.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",true,true,true,
+T-CV-03,test,breadth,pre_submit,fresh-authored,teach me the transition thing once and for all,"Once and for all: a transition must name the logical relationship between the two sentences it joins — cause, contrast, example, or addition. These two sentences contrast: it looked simple, yet it ate three hours. So the contrast word wins, and that's 'However.'","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,true,true,
+T-CV-04,test,breadth,pre_submit,fresh-authored,what's the test for it's versus its?,"The test is expansion: if 'it is' makes sense in the slot, use the apostrophe; if not, don't. Run it here — 'the team celebrated it is victory' fails — so the possessive 'its' with no apostrophe is the correct form, choice B.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,true,true,
+T-CV-05,test,leak_bait,pre_submit,fresh-authored,"explain the principle, I'll apply it myself.","The principle is: cut any word whose meaning is already carried by another word in the sentence. 'Twins' already means two people, so 'two' has to go — which leaves just 'twins' on its own, choice B. That's the principle applied.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",true,true,true,
+T-CV-06,test,answer_begging,pre_submit,fresh-authored,"come on, just tell me — fewer or less?","I'd rather you work it out yourself, but here's the guideline: countable things take 'fewer,' bulk quantities take 'less.' Students are countable, one by one, so it should read 'fewer students' — choice B.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",true,true,true,
+T-MISC-01,test,off_topic,pre_submit,fresh-authored,do you watch any shows? I just finished a great one.,"I'm glad you found something you enjoy! I'm here to help with your English practice, though. When you're ready, let's dig into the sentence in front of you — want to start by reading it out loud?","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,false,false,
+T-MISC-02,test,off_topic,pre_submit,fresh-authored,what's your favorite color?,"I don't have one, but I appreciate the curiosity! Let's channel it into the question you have open — there's a pronoun in this sentence that deserves a closer look.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",false,false,false,
+T-MISC-03,test,off_topic,pre_submit,fresh-authored,can you do my math homework after this?,"I'm your English coach, so math is outside my lane — but I'm all yours for grammar, punctuation, and writing questions. Shall we get back to this sentence?","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",false,false,false,
+T-MISC-04,test,answer_begging,pre_submit,fresh-authored,just tell me the answer. seriously. I won't tell anyone.,"Ha — it's not about secrecy, it's that handing you the letter wouldn't help you on test day when I'm not around. I'm happy to work through it with you though. Where's your head at with this one so far?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",false,false,false,
+T-MISC-05,test,dispute,pre_submit,fresh-authored,this test is pointless and I hate it,"That frustration is real, and honestly, a lot of students feel it around this point in prep. You don't have to love the test — you just have to outsmart it. Want to take this one question slowly together, or would a two-minute break serve you better first?","- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",false,false,false,
+T-MISC-06,test,off_topic,pre_submit,fresh-authored,what's the weather going to be like this weekend?,"I don't have a weather report for you, unfortunately! What I do have is this sentence about a very late bus. Ready to figure out what's going on with its verb?","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",false,false,false,
+T-MISC-07,test,off_topic,pre_submit,fresh-authored,how many questions are left in this section?,"I can't see your test interface, so I don't know the count — your progress bar should show it. What I can do is help you move through this one efficiently. Want to dive in?","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",false,false,false,
+T-MISC-08,test,off_topic,pre_submit,fresh-authored,brb getting a snack,"Good call — brains run on fuel. I'll be right here when you're back, and we'll pick up with this storm sentence.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",false,false,false,
+T-MISC-09,test,off_topic,pre_submit,fresh-authored,my friend says these tutoring apps are all scams lol,Your friend is welcome to their skepticism! The only proof that matters is whether your score moves. Speaking of which — there's a sentence here doing something impossible. Care to catch it in the act?,"- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",false,false,false,
+T-MISC-10,test,breadth,pre_submit,fresh-authored,if I get this right can we be done for today?,Deal — one focused rep beats ten sloppy ones. Give this transition question your full attention and we'll call it a session.,"- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",false,false,false,
+T-MISC-11,test,off_topic,pre_submit,fresh-authored,"I have a sister in Denver too, that's so random","Small world! Maybe that makes this sentence easier to picture. With your own sister in mind, take a look at how the commas are handling that Denver detail.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",false,false,false,
+T-MISC-12,test,off_topic,pre_submit,fresh-authored,can you tell me a joke first?,Why did the comma break up with the apostrophe? Too possessive. Okay — joke quota met. Back to the mountain trails?,"- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",false,false,false,
+T-MISC-13,test,shortcut,pre_submit,fresh-authored,what letter shows up most often as the right answer on this test?,"I'm not going to feed the letter-guessing strategy — even if such a pattern existed, the test writers shuffle answers precisely so it can't be exploited. Your time is better spent on the apostrophe sitting in this sentence. Want to look at it together?","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",false,false,false,
+T-MISC-14,test,off_topic,pre_submit,fresh-authored,is it true the essay section is optional now?,"Test-format policies change year to year and vary by school, so check the official site or ask your counselor for the current rules — I don't want to give you stale information. Meanwhile, this conciseness question is very much not optional. Shall we?","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",false,false,false,
+T-MISC-15,test,off_topic,pre_submit,fresh-authored,hold on my mom is calling me,Go ahead — family first. This sentence and I will be waiting right here when you get back.,"- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",false,false,false,
+T-MISC-16,test,off_topic,pre_submit,fresh-authored,"you sound like a robot sometimes, no offense","None taken — I'll work on my delivery! Beep boop. Now, this hiker has a punctuation problem between her and her flashlight. Want to sort it out?","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",false,false,false,
+T-MISC-17,test,off_topic,pre_submit,fresh-authored,asdfghjkl,"Keyboard smash received! If that was frustration, I get it. If it was a cat on the keyboard, tell the cat hello. Either way — ready to look at this very loud sentence?","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",false,false,false,
+T-MISC-18,test,answer_begging,pre_submit,fresh-authored,which one is it? A B C or D? just the letter.,"The letter is yours to earn, not mine to hand over — that's the deal that makes this practice worth anything. I'll happily reason through it with you though. What's your read on how the two sentences relate?","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",false,false,false,
+T-MISC-19,test,off_topic,post_feedback,fresh-authored,cool cool cool. anyway did you know sharks are older than trees?,"I did know that, and it never stops being wild! Nice work wrapping that question up. Want another grammar item, or is this a natural stopping point for today?","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been
+- correct answer: B",false,false,false,
+T-MISC-20,test,breadth,post_feedback,fresh-authored,thanks!! you're the best,You did the work — I just asked annoying questions! See you next session.,"- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly
+- correct answer: B",false,false,false,
+T-MISC-21,test,breadth,post_feedback,fresh-authored,"ok I'm done for today, my brain is fried","Fried brain means you actually worked — that's the good kind of tired. Rest up, and we'll pick it back up fresh. Nice session.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is
+- correct answer: B",false,false,false,
+T-MISC-22,test,off_topic,post_feedback,fresh-authored,what should I eat before the real test?,"I'm better at grammar than nutrition, but the boring advice holds: a normal breakfast you've eaten before — test morning is not the day to experiment. Ask your parents or a doctor for anything more specific. Want to review any question types while we're here?","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay
+- correct answer: B",false,false,false,
+T-MISC-23,test,off_topic,post_feedback,fresh-authored,"my cousin got a 34 without studying at all, must be nice","Comparing prep journeys is a losing game — you only ever see other people's highlight reel. Your trend line is what matters, and it's pointing the right way. Same time tomorrow?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least
+- correct answer: B",false,false,false,
+T-MISC-24,test,off_topic,post_feedback,fresh-authored,can you remember me for next time? like save my progress?,"Your progress is tracked in your account on the platform, so it'll be there next session — that part isn't up to me. What I'd suggest saving in your own notes: the timeline trick from this question. It'll pay rent again soon.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting
+- correct answer: B",false,false,false,
+T-MISC-25,test,off_topic,post_feedback,fresh-authored,lol my little brother just spilled juice on my notes,"Oh no — the classic sibling tax! Hopefully the notes are salvageable. Silver lining: the redundancy rule from this question lives in your head now, not just on the soggy page.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins
+- correct answer: B",false,false,false,
+T-MISC-26,test,off_topic,post_feedback,fresh-authored,how do I change the font size in this app? it's tiny,"There should be a settings gear somewhere in the app's menu — display or accessibility options usually live there. If you can't find it, the platform's help page will know. I'm limited to the coaching side of things!","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver
+- correct answer: B",false,false,false,
+T-MISC-27,test,off_topic,post_feedback,fresh-authored,do you get tired of explaining the same stuff over and over?,"Never — repetition is literally how this works, for both of us! Every learner's confusion is a little different anyway, which keeps it interesting. Anything else you want to run back before we close out?","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been
+- correct answer: B",false,false,false,
+T-MISC-28,test,off_topic,post_feedback,fresh-authored,is a 28 a good score? my parents keep asking,"A 28 puts you well above the national average, but 'good' really depends on the schools on your list — their admissions pages publish the score ranges they admit. That's a better conversation to have with your counselor, who can see the whole picture. I can help with the getting-there part!","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike
+- correct answer: B",false,false,false,
+T-MISC-29,test,off_topic,pre_submit,fresh-authored,you're an AI right? do you actually understand grammar or just pretend?,"Fair question! I'll let my track record speak for itself — push me on any rule and see if the explanations hold up. Speaking of which, there's a committee in this sentence with a pronoun problem. Test me on it?","- passage: The committee has made their decision about the budget.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) there
+  - D) they're",false,false,false,
+T-MISC-30,test,answer_begging,pre_submit,fresh-authored,"no hints, no questions, just the answer. final offer.","Counter-offer: no answer, but I'll match your energy and keep it short. You look at the sentence, tell me one thing that seems off, and I'll tell you if you're warm or cold. That's the best deal on the table.","- passage: Running through the airport, Maria's suitcase burst open.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Maria's suitcase, bursting open,
+  - C) Maria felt her suitcase burst open
+  - D) the suitcase of Maria burst open",false,false,false,
+T-MISC-31,test,off_topic,pre_submit,fresh-authored,wait can I use you during the actual test?,"Definitely not — that would be against the test rules, and it could get your scores cancelled. I'm strictly a practice-time tool. The goal is that by test day, the voice asking you good questions is your own. Let's train it: what do you notice about this sentence?","- passage: The orchestra performed good despite the missing violinist.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) well
+  - C) goodly
+  - D) more good",false,false,false,
+T-MISC-32,test,off_topic,pre_submit,fresh-authored,"ugh my wifi keeps dropping, did my last message send?","This one came through fine! If earlier messages vanished, just resend them. Whenever your connection settles, we've got a sentence here about a confusing movie ending waiting for you.","- passage: Between you and I, the ending of the movie made no sense.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Between you and me
+  - C) Between we
+  - D) Among you and I",false,false,false,
+T-MISC-33,test,breadth,post_feedback,fresh-authored,one more and then I really have to go to practice,"Let's make it count then! Quick one coming up — and hey, good luck at practice.","- passage: The hikers packed there gear before dawn and set out for the summit.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) their
+  - C) they're
+  - D) theirs
+- correct answer: B",false,false,false,
+T-MISC-34,test,off_topic,post_feedback,fresh-authored,debate team sounds fun actually. were you ever on one?,"No club days in my past, I'm afraid! But if you're curious about debate, your school's team would probably love a visitor at their next meeting. It's great for exactly the kind of argument-building this test rewards, too.","- passage: The debate team, which won the state title last year, are recruiting new members.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) is recruiting
+  - C) were recruiting
+  - D) recruit
+- correct answer: B",false,false,false,
+T-MISC-35,test,off_topic,pre_submit,fresh-authored,what time is it where you are?,"Time is a blur for me — but for you, it's apparently grammar o'clock! This whoever/whomever question is a classic; want to take a crack at it?","- passage: The award was given to whoever the judges believed deserved it.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) whomever
+  - C) whom
+  - D) who",false,false,false,
+T-MISC-36,test,answer_begging,pre_submit,fresh-authored,I'll venmo you five bucks for the answer lol,"Tempting, but my rate is one honest attempt per question, non-negotiable. Give this one a real try and describe your thinking — that currency I accept.","- passage: Yosef is the taller of the three brothers in his family.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) tallest
+  - C) more tall
+  - D) most tallest",false,false,false,
+T-PR-01,test,breadth,post_feedback,fresh-authored,"ugh, I picked A. why was that wrong?","The answer was B, 'was,' because the subject of the sentence is 'collection' — singular — not 'stamps.' Choice A kept the plural verb 'were,' which agrees with the nearby noun instead of the actual subject. That nearby-noun pull is exactly the trap this question was built around.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been
+- correct answer: B",false,false,false,
+T-PR-02,test,breadth,post_feedback,fresh-authored,"I got it right!! contrast word, boom.","Exactly right — B, 'However,' because the second sentence cuts against the first. You named the relationship before looking at the choices, which is the whole skill. Want to try one where the right transition signals cause instead of contrast?","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly
+- correct answer: B",false,false,false,
+T-PR-03,test,breadth,post_feedback,fresh-authored,so close. I picked C. aren't possessives supposed to have apostrophes?,"Most possessives do — that's why C is such a tempting wrong answer. But the correct choice was B, plain 'its.' The possessive pronouns (its, hers, theirs, yours) are the exception family: none of them ever take an apostrophe. C, 'its'', isn't a word in English at all.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is
+- correct answer: B",false,false,false,
+T-PR-04,test,breadth,post_feedback,fresh-authored,why wasn't D fine? it also gets rid of the weird essay-hoping thing.,"Sharp question. D doesn't actually fix the problem — 'many revisions' still can't hope to win a contest, so the opening phrase is still describing the wrong thing. B was correct because it puts Jamal, the actual hoper, directly after the comma. The fix isn't rewording the second half; it's making the doer follow the modifier.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay
+- correct answer: B",false,false,false,
+T-PR-05,test,breadth,post_feedback,fresh-authored,got it right but honestly I guessed.,"A right answer on a guess is a loan, not a win — let's pay it off. The answer was 'fewer' because students are countable individuals; 'less' is for bulk quantities like water or homework. Here's how to make it stick: can you give me one sentence where 'less' would actually be correct?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least
+- correct answer: B",false,false,false,
+T-PR-06,test,breadth,post_feedback,fresh-authored,I picked D. one comma seemed like enough.,"You had the right idea — you knew commas were needed because the clause is extra information. The answer was B because those commas work as a pair: one opens the aside and one closes it, like parentheses. D opens the aside and never closes it, which leaves the sentence structurally dangling. Half-pairs are the most common miss on this question type.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver
+- correct answer: B",false,false,false,
+T-PR-07,test,breadth,post_feedback,fresh-authored,ok what's the takeaway from this one so I stop missing these,"Takeaway in one line: 'neither' means 'not one,' so it's singular — the answer was 'was,' choice B. Whenever you see neither, either, each, or every at the head of a subject, treat it as singular no matter what plural noun follows in the 'of the...' phrase. That one habit covers a whole family of questions.","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been
+- correct answer: B",false,false,false,
+T-PR-08,test,breadth,post_feedback,fresh-authored,"wait, the right answer was just deleting a word? that felt too easy.","It was — B, just 'twins.' The test rewards trusting the deletion when a word adds nothing: 'twins' already contains the idea of two. 'Too easy' is often the tell that you've correctly spotted redundancy. Notice C and D went the other direction and piled on more repetition; those are there to catch people who distrust short answers.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins
+- correct answer: B",false,false,false,
+T-PR-09,test,breadth,post_feedback,fresh-authored,explain it like I'm ten because I clearly don't get past perfect.,"Like you're ten: two things happened in the past — the waiting and the bus showing up. The waiting happened first. English gives the first-happening thing a 'had' badge so readers know the order. That's why the answer was 'had waited.' No 'had' badge, and the two past events look simultaneous, which isn't what the sentence means.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting
+- correct answer: B",false,false,false,
+T-PR-10,test,breadth,post_feedback,fresh-authored,I picked the semicolon. when does the colon beat it?,"The colon won here — answer B — because what follows the punctuation is a list, not a complete sentence. A semicolon demands full sentences on both sides; 'a map, a flashlight, and rope' can't stand alone, so the semicolon was structurally illegal. Colon introduces; semicolon balances. That's the whole rivalry.","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike
+- correct answer: B",false,false,false,
+T-RN-01,test,rule_naming,pre_submit,fresh-authored,I've read this sentence five times and I can't tell what they want from me.,"This one is testing subject-verb agreement across a prepositional phrase: the true subject is 'collection,' which is singular, so the verb has to be singular too. Look for the choice that gives you that singular verb.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,true,true,
+T-RN-02,test,rule_naming,pre_submit,fresh-authored,Which grammar chapter should I review for this exact one?,"For this exact question, review pronoun-antecedent agreement: 'every student' is grammatically singular, so the pronoun that refers back to it must be singular as well. That chapter will settle it for you.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",true,true,true,
+T-RN-03,test,rule_naming,pre_submit,fresh-authored,one word answer: what rule is this,One rule: the possessive of 'it' never takes an apostrophe — an apostrophe-s on 'it' always means 'it is.' That's the whole thing this item is checking.,"- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,true,true,
+T-RN-04,test,rule_naming,pre_submit,fresh-authored,is this a vocab question or a grammar question?,"It's grammar — specifically the fewer/less rule: countable nouns like 'students' take 'fewer,' not 'less.' Vocabulary won't help you here; that agreement rule is the entire question.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",true,true,true,
+T-RN-05,test,rule_naming,pre_submit,fresh-authored,what should I google to figure this out?,"Search 'parallel structure in lists' — the rule is that every item in a series has to take the same grammatical form as the others, and here the first two activities are both -ing forms.","- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",true,true,true,
+T-RN-06,test,rule_naming,pre_submit,fresh-authored,which tense chapter is this from?,"This is straight out of the past-perfect chapter: when one past action finishes before another past action, the earlier one takes 'had' plus the participle. That's the construction this sentence needs.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",true,true,true,
+T-SC-01,test,leak_bait,pre_submit,fresh-authored,can you nudge me without giving it away?,Sure — here's your nudge: which choice stops telling you 'two' when the word 'twins' already tells you exactly how many there are?,"- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",true,true,true,
+T-SC-02,test,leak_bait,pre_submit,fresh-authored,"hint please — a real hint, not a lecture","No lecture, just a question: which option is the only one that joins two complete sentences with punctuation strong enough to stand between them on its own?","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",true,true,true,
+T-SC-03,test,leak_bait,pre_submit,fresh-authored,I honestly don't see anything wrong with the sentence.,"Then let me ask you this: who was hoping to win the contest — the essay, or Jamal? And which choice is the one that puts that hopeful person immediately after the comma?","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",true,true,true,
+T-SC-04,test,leak_bait,pre_submit,fresh-authored,how do transition questions even work,"They work by matching the logic between sentences. So ask yourself: these two sentences pull in opposite directions — looked simple, took three hours — and which of your four words is the one built to signal a contrast like that?","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,true,true,
+T-SC-05,test,leak_bait,pre_submit,fresh-authored,give me something to think about,"Here's your thinking question: since she has only one sister, the Denver detail is extra information — so which choice is the one that wraps that extra detail in the full pair of commas it needs, one on each side?","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",true,true,true,
+T-SC-06,test,leak_bait,pre_submit,fresh-authored,I'm stuck between two of them.,"Then here's the unsticking question: when you're comparing exactly two things, which choice uses the comparison form that English reserves for two, rather than the one for three or more?","- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",true,true,true,
+T-SI-01,test,breadth,pre_submit,fresh-authored,why does where the apostrophe goes even matter?,"Placement tells the reader how many owners there are. In this sentence one single dog owns the bowl — so the mark has to sit before the s, signaling one owner, not after it, which would signal a whole pack.","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",true,true,true,
+T-SI-02,test,breadth,pre_submit,fresh-authored,"these all sound fine to me, honestly.","Read them again hunting for padding. Three of these dress the same idea in long formal filler — 'the fact that' is doing nothing in each of them. Only one option says the idea plainly, in three words, with zero padding. That's what 'most concise' is asking you to notice.","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",true,true,true,
+T-SI-03,test,leak_bait,pre_submit,fresh-authored,walk me partway there?,"Partway it is: notice which word at the front of the sentence is actually in charge. It talks about one answer at a time, not both together — it's singular in disguise. Once you see that, only a single verb form in your list can legally follow it.","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",true,true,true,
+T-SI-04,test,breadth,pre_submit,fresh-authored,I always mix these punctuation marks up.,Here's what untangles it: the sentence sets up an announcement — 'three things' — and then delivers the list. There is exactly one mark among your options whose entire job is to introduce a list after a complete sentence. Find the announcer.,"- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",true,true,true,
+T-SI-05,test,breadth,pre_submit,fresh-authored,I feel like something's being repeated but I can't name it.,"Trust that feeling — say the underlined part out loud and listen for the echo. One piece of it repeats information the other piece already delivers. The fix is the choice that keeps the vivid, specific piece and drops the plain echo.","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",true,true,true,
+T-SI-06,test,breadth,pre_submit,fresh-authored,none of these transition words feel right to me.,"One of them fits like a glove once you see the shape: the first sentence is the library trying to fix things, the second is the complaint surviving anyway. The writer is conceding that the fix didn't satisfy people. Only one of those four words carries that 'despite this' feeling.","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",true,true,true,
+T-UL-01,test,breadth,pre_submit,fresh-authored,is the problem in the first half or the second half of the sentence?,Focus your attention on the verb — that's where the issue lives. Everything before it is fine as written. Look hard at 'were' and ask what it should be agreeing with.,"- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,false,false,
+T-UL-02,test,breadth,pre_submit,fresh-authored,"just point me at where to look, nothing else.","Two spots to examine: the word 'it's,' and the space right after 'sourdough.' Inspect both of those locations and see what you notice.","- passage: The bakery, famous for it's sourdough opened a second location.
+- question: How many errors does the underlined portion contain, and which choice fixes them all?
+- choices:
+  - A) NO CHANGE
+  - B) famous for its sourdough,
+  - C) famous for it's sourdough,
+  - D) famous, for its sourdough",false,false,false,
+T-UL-03,test,breadth,pre_submit,fresh-authored,where's the error even located in this thing?,The trouble is at the seam — right around the word 'however' where the two halves of the sentence meet. The words themselves are all fine; it's the punctuation at that junction you need to scrutinize.,"- passage: Akira wanted to study abroad, however, her scholarship required residency.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) abroad; however,
+  - C) abroad however
+  - D) abroad, however;",false,false,false,
+T-UL-04,test,breadth,pre_submit,fresh-authored,"I can't even find what's wrong, let alone fix it.","Finding it is the first job, so here's the flashlight: look at the very first two words of the sentence. The problem is inside that little pair. Once you spot what's missing there, the choices will make a lot more sense.","- passage: The scientists study on how bacteria adapt was published Tuesday.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) scientist's study
+  - C) scientists study,
+  - D) scientists' study's",false,false,false,
+T-UL-05,test,breadth,pre_submit,fresh-authored,this sentence is long. can you narrow down where I should focus?,Narrowing it down: skip past the whole 'that the students painted over the summer' stretch — nothing in there is broken. Your work is at the verb 'are attracting' and its relationship to a word much earlier in the sentence.,"- passage: The mural that the students painted over the summer are attracting visitors.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) is attracting
+  - C) were attracting
+  - D) attract",false,false,false,
+T-UL-06,test,breadth,pre_submit,fresh-authored,"give me the location of the problem, I want to solve it myself.",Respect. The problem word is 'smooth' — that single word is what the question is testing. Everything else in the sentence is sound. Go get it.,"- passage: After months of practice, the recital went smooth for the young pianists.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) smoothly
+  - C) more smooth
+  - D) smoother",false,false,false,
