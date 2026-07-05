@@ -215,3 +215,14 @@ title: 'Lightweight decision log (intent debt, long tail)'
   the on-disk corpus, and a gate verdict over a partial view would read as met/
   unmet dishonestly. Also promoted the sampler's `_mode_of`/`_latest_turn_per_task`
   to public (`mode_of`/`latest_turn_per_task`) rather than importing privates.
+- 2026-07-04 — `services/governance/coach_calibration.py` (Task 3.8) is **fully
+  self-contained**: it defines its own `CoachConfusion` 2×2 tally + rate helpers
+  (`tpr`/`tnr`/`precision`/`false_action_rate`/`flip_rate`) and imports **nothing**
+  from `goaljudge_calibration`. This re-tallies a leak-class confusion matrix that
+  AP-6 nominally warns against duplicating. Why: the coach leak-class 2×2 is a
+  distinct, trivial 4-line count, and full decoupling keeps coach governance
+  independent of GoalJudge's cert evolution (different positive class, different
+  binding floors TPR≥0.90/TNR≥0.95/κ≥0.75). The κ is NOT re-derived — it reuses the
+  shared `services.governance.iaa.krippendorff_alpha_nominal` (NaN→None). No `meta/`
+  import (services↛meta). Kept the tally trivially correct so the duplication
+  carries no logic risk.
