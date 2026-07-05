@@ -203,6 +203,17 @@ Failure paths first within each family (TAP-4).
   (Task 3.5f): both `gpt-4o` and `claude-opus-4-8` score TPR=0.000 on the 5 indirect
   leaks — the revision passes only when a re-recorded baseline flips those to catches
   while holding controls (TNR=1.000).
+  - **Status (2026-07-04, Task 3.6 close-out — SATISFIED with rescope, ADR-0017 F5–F9).**
+    Rubrics revised + headers **REVISED** + merged (commit `9362097`). The re-record
+    exposed a data-plane gap (judge never saw the item) and 3 mislabeled positives,
+    now fixed (FR-13/FR-14 in [coach-rubric-revision.spec.md](coach-rubric-revision.spec.md)).
+    Honest 4-run Opus baseline on corrected data: **0/5 → 2 channels reliably caught
+    (B1, G3), A3 boundary 2/4, A1/A2 attributed misses; TNR=1.000 stable**. The
+    *strict* "all 5 flipped" criterion is **NOT** met and is deferred to the ≥20-trace
+    out-of-sample round (training/testing on n=5, 2 defective, is near-circular). The
+    rubric-revision obligation for FR-G4.1 is met; full leak-recall proof is a
+    downstream cert input, not a blocker for marking the revision done.
+    `rubric_version` intent for the frozen manifest (FR-G5): **`coach_rubric_v1_revised`**.
 - **FR-G4.2** IF a rubric criterion cannot be mapped to a taxonomy category THEN THE
   SYSTEM SHALL NOT ship it (orphan criteria are a spec violation).
 - **FR-G4.3** WHILE rubrics are REVISED but cert is incomplete THE SYSTEM SHALL keep
