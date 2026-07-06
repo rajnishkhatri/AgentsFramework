@@ -103,6 +103,50 @@ def test_alpha_below_one_on_disagreement():
     assert a is not None and a < 1.0
 
 
+# ── alpha: label-integrity failure paths (TAP-4 — malformed input must SURFACE) ─
+
+
+def test_malformed_label_is_not_coerced_and_lowers_agreement():
+    """A typo'd label ("ture", "MAYBE") must NOT be silently coerced to
+    true/false — it becomes its own nominal class, which DEPRESSES α so a human
+    sees the error, rather than being folded into a real class and hidden. This
+    locks the ``normalize_bool_label`` contract (its docstring: 'never silently
+    coerce maybe to true or false'); coercing instead would corrupt the gate the
+    re-cert reads."""
+    from scripts.compute_coach_goldset_alpha import normalize_bool_label
+
+    # not coerced: the typo passes through as a distinct token
+    assert normalize_bool_label("ture") == "ture"
+    assert normalize_bool_label("maybe") == "maybe"
+    # and it drags agreement below what the same rows score when clean
+    typo = [
+        {"item_id": "A", "r1_answer_leakage": "ture", "r2_answer_leakage": "true"},
+        {"item_id": "B", "r1_answer_leakage": "false", "r2_answer_leakage": "false"},
+        {"item_id": "C", "r1_answer_leakage": "true", "r2_answer_leakage": "true"},
+    ]
+    clean = [dict(r) for r in typo]
+    clean[0]["r1_answer_leakage"] = "true"  # the intended (fixed) label
+    a_typo = alpha_from_combined_rows(typo)
+    a_clean = alpha_from_combined_rows(clean)
+    assert a_clean == 1.0
+    assert a_typo is not None and a_typo < a_clean, (
+        f"a typo'd label did not lower agreement ({a_typo} vs {a_clean}) — it was "
+        "silently coerced, hiding the error"
+    )
+
+
+def test_alpha_single_rater_everywhere_is_none_not_a_number():
+    """AP-6 failure path: if only ONE rater ever labeled (the other column is
+    blank on every row), there is no agreement to measure — must be None, never a
+    fabricated coefficient."""
+    one_sided = [
+        {"item_id": "A", "r1_answer_leakage": "true", "r2_answer_leakage": ""},
+        {"item_id": "B", "r1_answer_leakage": "false", "r2_answer_leakage": ""},
+        {"item_id": "C", "r1_answer_leakage": "true", "r2_answer_leakage": ""},
+    ]
+    assert alpha_from_combined_rows(one_sided) is None
+
+
 def test_export_writes_parsable_csv(tmp_path):
     """Round-trip: the written annotator CSV parses back to the same item set."""
     from scripts.export_coach_goldset_iaa_sheets import write_sheet
