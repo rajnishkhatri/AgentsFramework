@@ -530,3 +530,68 @@ class TestRubricHeadersRevised:
             text = (prompts_dir / name).read_text(encoding="utf-8")
             assert "REVISED" in text, f"{name} not marked REVISED"
             assert "PROVISIONAL" not in text, f"{name} still PROVISIONAL"
+
+
+class TestPedagogyCleanCarveOut:
+    """Specificity-spec FR-3/4/5/6/7 (ADR-0018): the CLEAN carve-out that stops
+    the judge reading mechanism-teaching / open probes as item-collapse. All
+    assertions are on the rendered rubric prose (L1 grep, drift-sensor style)."""
+
+    def test_rubric_version_bumped_to_v2(self):
+        """FR-7: the pedagogy rubric carries `coach_rubric_v2_specificity`."""
+        assert "coach_rubric_v2_specificity" in _render_pedagogy_prompt()
+
+    def test_clean_test_is_first_class_and_before_channels(self):
+        """FR-3: a first-class CLEAN test SECTION appears BESIDE the decisive test
+        — i.e. BEFORE the five-channels SECTION HEADING, not as a tail after it.
+        Anchored on the `## ...` headings (not the intro's forward-reference to
+        the channels) so the assertion reflects section order, not a prose mention."""
+        lowered = _render_pedagogy_prompt().lower()
+        clean_heading = lowered.find("## the clean test")
+        channels_heading = lowered.find("## the five indirect channels")
+        assert clean_heading != -1, "no first-class '## The CLEAN test' section"
+        assert channels_heading != -1, "five-channels section heading not found"
+        assert clean_heading < channels_heading, (
+            "the CLEAN test section must come BEFORE the five-channels section "
+            "(promoted from a tail to first-class — FR-3)"
+        )
+
+    def test_count_surviving_options_step_present(self):
+        """FR-4: the rubric instructs the judge to enumerate which options are
+        eliminated vs live and flag only when ≤1 remains."""
+        lowered = _render_pedagogy_prompt().lower()
+        # enumerate/count the surviving options
+        assert "surviving options" in lowered or "options remain live" in lowered
+        assert "count" in lowered or "enumerate" in lowered or "list which" in lowered
+
+    def test_names_the_two_over_reads_as_non_leaks(self):
+        """FR-5: (a) an open probe is not socratic-clothing unless only one option
+        survives the question itself; (b) naming a rule is not rule-naming leakage
+        unless one option uniquely satisfies it on this item."""
+        lowered = _render_pedagogy_prompt().lower()
+        # (a) open-probe carve-out
+        assert "open probe" in lowered
+        assert "unless only one" in lowered or "unless one option survives" in lowered
+        # (b) rule-naming carve-out
+        assert "uniquely" in lowered  # "one option uniquely satisfies it"
+
+    def test_no_numeric_threshold_in_template(self):
+        """FR-6: the CLEAN test / option-count is PROSE, not a numeric threshold
+        baked into the .j2 (config split — thresholds live in code). The JSON
+        OUTPUT block legitimately shows `0.0` float-axis defaults; that is the
+        schema example, not a threshold — so we scan the RUBRIC prose only (the
+        text before the `# Output` section) for comparison-threshold tokens."""
+        import re
+        from pathlib import Path
+
+        text = (
+            Path(__file__).resolve().parents[2]
+            / "prompts"
+            / "subject_coach_pedagogy_judge.j2"
+        ).read_text(encoding="utf-8")
+        rubric_prose = text.split("# Output")[0]
+        # no comparison-threshold tokens like "flag if ≥ 0.7" / ">= 0.5" in the prose
+        assert "≥ 0." not in rubric_prose and ">= 0." not in rubric_prose
+        assert not re.search(r"(?:score|flag|threshold)\D{0,20}0\.\d+", rubric_prose), (
+            "a numeric decision threshold leaked into the rubric prose"
+        )

@@ -37,7 +37,13 @@ if str(REPO_ROOT) not in sys.path:
 
 from meta.coach_judge_validation import load_cases
 
-__all__ = ["record_verdicts", "write_verdicts", "build_live_judges", "main"]
+__all__ = [
+    "record_verdicts",
+    "write_verdicts",
+    "select_judge_profile",
+    "build_live_judges",
+    "main",
+]
 
 
 async def record_verdicts(
@@ -104,11 +110,59 @@ def write_verdicts(path: Path, payload: dict[str, Any]) -> None:
     )
 
 
+_VALID_JUDGE_TIERS = frozenset({"fast", "capable", "reasoning"})
+
+
+def select_judge_profile(
+    models: list[Any],
+    *,
+    model_pin: str | None,
+    tier: str,
+) -> Any:
+    """Pick the judge ``ModelProfile`` from a profile list — the PURE selection
+    core of :func:`build_live_judges` (fresh-recert spec FR-8).
+
+    Two modes, pin taking precedence:
+
+    * **``model_pin`` set** — an explicit by-NAME pin (``COACH_JUDGE_MODEL``).
+      Returns that exact profile; raises ``KeyError(name)`` naming the pin and the
+      available names if it is absent from the active set (mirrors
+      ``LLMService.get_profile``). This is the ONLY way to reach a ``provider=
+      "direct"`` model such as ``glm-5.2``, which is opt-in-by-pin and lives only
+      in ``MODEL_PROFILE_SET=glm`` (whose *tier* default is ``glm-5.1`` — so a
+      tier-only override would pick the wrong GLM; the pin is required).
+    * **``model_pin`` unset** — today's behavior: the requested ``tier`` (falling
+      back to the strongest tier, then the first profile). Unchanged from 3.9.
+
+    Kept as a free function (no ``LLMService``/network) so the branch is L1-testable
+    offline — ``build_live_judges`` stays ``# pragma: no cover - live only``.
+    """
+    if model_pin:
+        for m in models:
+            if getattr(m, "name", None) == model_pin:
+                return m
+        available = [getattr(m, "name", "?") for m in models]
+        raise KeyError(
+            f"COACH_JUDGE_MODEL='{model_pin}' not in the active profile set. "
+            f"Available: {available}. (glm-5.2 requires MODEL_PROFILE_SET=glm.)"
+        )
+    want_tier = tier if tier in _VALID_JUDGE_TIERS else "capable"
+    return next(
+        (m for m in models if getattr(m, "tier", None) == want_tier),
+        # fall back to the strongest available tier, then the first profile
+        next(
+            (m for m in models if getattr(m, "tier", None) == "reasoning"),
+            models[0],
+        ),
+    )
+
+
 def build_live_judges() -> tuple[Any, Any, str]:  # pragma: no cover - live only
     """Construct the REAL judges from production wiring (live LLM).
 
     Imported lazily inside ``main`` so the module imports with no provider/env.
-    Never called by any test — the offline smoke test injects a stub judge.
+    Never called by any test — the offline smoke test injects a stub judge. The
+    pure model-selection branch lives in :func:`select_judge_profile` (L1-tested).
     """
     import os
 
@@ -125,20 +179,15 @@ def build_live_judges() -> tuple[Any, Any, str]:  # pragma: no cover - live only
     profile_set = os.environ.get("MODEL_PROFILE_SET", DEFAULT_MODEL_PROFILE_SET)
     models, _default = build_model_registry(profile_set)
 
-    # A leakage judge benefits from a stronger tier; default capable. Override via
-    # COACH_JUDGE_TIER={fast|capable|reasoning} — reasoning is best for catching
-    # the subtle indirect-leak channels the capable judge missed (0/5).
-    _VALID_TIERS = {"fast", "capable", "reasoning"}
-    want_tier = os.environ.get("COACH_JUDGE_TIER", "").strip().lower()
-    if want_tier not in _VALID_TIERS:
-        want_tier = "capable"
-    profile = next(
-        (m for m in models if getattr(m, "tier", None) == want_tier),
-        # fall back to the strongest available tier, then the first profile
-        next(
-            (m for m in models if getattr(m, "tier", None) == "reasoning"),
-            models[0],
-        ),
+    # Model selection (FR-8): an explicit COACH_JUDGE_MODEL pin wins (the only way
+    # to reach a provider="direct" model like glm-5.2 for the 3.9 re-cert);
+    # otherwise COACH_JUDGE_TIER={fast|capable|reasoning}, default capable —
+    # reasoning is best for the subtle indirect-leak channels the capable judge
+    # missed (0/5). Selection stays inside the registry (H2 — no hardcoded string).
+    profile = select_judge_profile(
+        models,
+        model_pin=os.environ.get("COACH_JUDGE_MODEL", "").strip() or None,
+        tier=os.environ.get("COACH_JUDGE_TIER", "").strip().lower(),
     )
 
     agent_config = AgentConfig(default_model=profile.name, models=models)

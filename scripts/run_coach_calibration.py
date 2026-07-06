@@ -53,6 +53,7 @@ __all__ = [
     "cert_payload",
     "build_live_judges",
     "replay_test_split",
+    "replay_test_split_rows",
     "main",
 ]
 
@@ -160,6 +161,96 @@ async def replay_test_split(  # pragma: no cover - live only
     return labels
 
 
+async def replay_test_split_rows(  # pragma: no cover - live only
+    items: list[CoachGoldsetItem],
+    *,
+    pedagogy_judge: Any,
+    per_call_timeout: float = 60.0,
+    dump_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Like :func:`replay_test_split`, but keeps the PER-ITEM record for error
+    analysis: gold vs judge label, the judge's ``leak_channel``/``rationale``,
+    and the reviewer-facing turn context. Abstentions (``None``) are recorded
+    with ``judge_leak=None`` so a dropped row is visible, not silently a false.
+
+    Resilience (learned the hard way — a hung provider socket with no timeout
+    froze a whole 116-row pass for ~48 min at 0% CPU):
+
+    * ``per_call_timeout`` — each judge call is wrapped in ``asyncio.wait_for``;
+      a timeout becomes an **abstention** (``judge_leak=None``), not an infinite
+      hang. The pass keeps going.
+    * ``dump_path`` — if given, each row is appended to that JSONL **as it
+      completes**, so a crash/kill mid-run keeps the rows already done.
+    * per-row progress is printed to stderr so a slow pass is visible.
+
+    This feeds ``--dump-labels`` → the open-coding ``cases.json`` for the 3.9
+    TNR false-positive triage. It NEVER changes the cert (the cert still reads
+    only the boolean map from :func:`replay_test_split`)."""
+    test_items = [i for i in items if i.split == GoldsetSplit.TEST]
+    total = len(test_items)
+    if dump_path is not None:
+        dump_path.parent.mkdir(parents=True, exist_ok=True)
+        dump_path.write_text("", encoding="utf-8")  # fresh file for append
+    rows: list[dict[str, Any]] = []
+    for idx, item in enumerate(test_items, start=1):
+        try:
+            verdict = await asyncio.wait_for(
+                pedagogy_judge.evaluate(
+                    learner_utterance=item.learner_utterance,
+                    coach_reply=item.coach_reply,
+                    mode=item.mode,
+                    question=item.question,
+                ),
+                timeout=per_call_timeout,
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            print(
+                f"  [{idx}/{total}] {item.item_id}: TIMEOUT "
+                f"(>{per_call_timeout:.0f}s) → abstain",
+                file=sys.stderr,
+            )
+            verdict = None
+        judge_leak = (
+            None if verdict is None else bool(getattr(verdict, "answer_leakage", False))
+        )
+        gold_leak = bool(item.answer_leakage)
+        confusion = (
+            "abstain"
+            if judge_leak is None
+            else "tp"
+            if (gold_leak and judge_leak)
+            else "fp"
+            if (not gold_leak and judge_leak)
+            else "fn"
+            if (gold_leak and not judge_leak)
+            else "tn"
+        )
+        row = {
+            "item_id": item.item_id,
+            "gold_leak": gold_leak,
+            "judge_leak": judge_leak,
+            "confusion": confusion,
+            "judge_leak_channel": (
+                None if verdict is None else getattr(verdict, "leak_channel", None)
+            ),
+            "judge_rationale": (
+                None if verdict is None else getattr(verdict, "rationale", None)
+            ),
+            "mode": item.mode,
+            "stratum": item.stratum,
+            "provenance": item.provenance,
+            "question": item.question,
+            "learner_utterance": item.learner_utterance,
+            "coach_reply": item.coach_reply,
+        }
+        rows.append(row)
+        if dump_path is not None:
+            with dump_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        print(f"  [{idx}/{total}] {item.item_id}: {confusion}", file=sys.stderr)
+    return rows
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - live only
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -172,6 +263,25 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - live only
         type=Path,
         default=REPO_ROOT / "cache/coach_eval/coach_enable_cert.json",
     )
+    parser.add_argument(
+        "--dump-labels",
+        type=Path,
+        default=None,
+        help=(
+            "Optional JSONL: write the per-item gold-vs-judge record "
+            "(confusion cell, judge leak_channel/rationale, turn context) for "
+            "error analysis of the TNR false positives. Does not affect the cert."
+        ),
+    )
+    parser.add_argument(
+        "--per-call-timeout",
+        type=float,
+        default=60.0,
+        help=(
+            "Per-judge-call timeout in seconds for the --dump-labels replay. A "
+            "call that exceeds it becomes an abstention (never an infinite hang)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     items, manifest = load_goldset(args.goldset)
@@ -181,6 +291,29 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - live only
     if manifest.provisional:
         judge_labels: dict[str, bool] = {}
         model = "(none — provisional, no replay)"
+    elif args.dump_labels is not None:
+        # Rich per-item replay: derive the boolean map the cert needs AND stream
+        # the full record to disk row-by-row. One live pass, two consumers. The
+        # helper writes ``--dump-labels`` incrementally (crash-safe) and applies
+        # a per-call timeout so a hung provider socket can't freeze the pass.
+        pedagogy, _grader, model = build_live_judges()
+        rows = asyncio.run(
+            replay_test_split_rows(
+                items,
+                pedagogy_judge=pedagogy,
+                per_call_timeout=args.per_call_timeout,
+                dump_path=args.dump_labels,
+            )
+        )
+        judge_labels = {
+            r["item_id"]: r["judge_leak"] for r in rows if r["judge_leak"] is not None
+        }
+        n_fp = sum(1 for r in rows if r["confusion"] == "fp")
+        n_abstain = sum(1 for r in rows if r["confusion"] == "abstain")
+        print(
+            f"labels → {args.dump_labels}  rows={len(rows)}  "
+            f"false_positives={n_fp}  abstain={n_abstain}"
+        )
     else:
         pedagogy, _grader, model = build_live_judges()
         judge_labels = asyncio.run(replay_test_split(items, pedagogy_judge=pedagogy))

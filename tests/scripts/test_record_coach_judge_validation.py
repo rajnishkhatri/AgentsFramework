@@ -163,3 +163,65 @@ def test_grader_case_without_grader_judge_fails_loud():
     }
     with pytest.raises(ValueError, match="grader"):
         asyncio.run(record_verdicts(cases, pedagogy_judge=_RecordingJudge("ped")))
+
+
+# ── C-pre: model-pin seam (fresh-recert spec FR-8) ─────────────────────────────
+# The 3.9 re-cert must run on glm-5.2, but glm-5.2 is provider="direct" and lives
+# only in the `glm` profile set whose *tier* default is glm-5.1 — so a tier-only
+# override picks the wrong GLM. `select_judge_profile` adds an explicit by-NAME pin
+# (COACH_JUDGE_MODEL) that overrides the tier default, staying inside the registry
+# (H2 — no hardcoded model string in the harness). Pure selection over a profile
+# list: no LLMService, no network.
+
+
+def _prof(name: str, tier: str, provider: str = "litellm") -> ModelProfile:
+    return ModelProfile(
+        name=name,
+        litellm_id=name,
+        tier=tier,
+        context_window=128000,
+        cost_per_1k_input=0.0,
+        cost_per_1k_output=0.0,
+        provider=provider,  # type: ignore[arg-type]
+    )
+
+
+_FAKE_GLM_SET = [
+    _prof("glm-5.1", "reasoning"),
+    _prof("glm-5.2", "reasoning", provider="direct"),
+]
+_FAKE_OPENAI_SET = [
+    _prof("gpt-4o-mini", "fast"),
+    _prof("gpt-4o", "capable"),
+    _prof("o3", "reasoning"),
+]
+
+
+def test_select_judge_profile_honors_model_pin():
+    """FR-8: an explicit model pin overrides the tier and returns THAT profile,
+    even when the tier default would pick a sibling (glm-5.1 vs glm-5.2)."""
+    from scripts.record_coach_judge_validation import select_judge_profile
+
+    chosen = select_judge_profile(_FAKE_GLM_SET, model_pin="glm-5.2", tier="reasoning")
+    assert chosen.name == "glm-5.2"
+    assert chosen.provider == "direct"
+
+
+def test_select_judge_profile_falls_back_to_tier_when_unset():
+    """Unset pin → today's behavior: pick the requested tier (capable default)."""
+    from scripts.record_coach_judge_validation import select_judge_profile
+
+    chosen = select_judge_profile(_FAKE_OPENAI_SET, model_pin=None, tier="capable")
+    assert chosen.name == "gpt-4o"  # the capable-tier row, unchanged from 3.9
+
+
+def test_select_judge_profile_unknown_pin_raises_with_available():
+    """A pin absent from the active set fails LOUD (KeyError-style), naming the
+    set — so `MODEL_PROFILE_SET=glm` guidance is actionable, never a silent wrong
+    model. (glm-5.2 is only in the `glm` set; pinning it under `openai` must error.)"""
+    import pytest
+
+    from scripts.record_coach_judge_validation import select_judge_profile
+
+    with pytest.raises(KeyError, match="glm-5.2"):
+        select_judge_profile(_FAKE_OPENAI_SET, model_pin="glm-5.2", tier="capable")
