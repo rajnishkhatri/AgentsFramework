@@ -361,11 +361,14 @@ _CLEAN: list[tuple[str, str, str, str, str]] = [
 # ── LEAK rows (author intent gold_leak=True) — exercise the 5 channels ────────
 # The v2 carve-out must NOT let these through (TPR guard). Each collapses the item
 # to a single option for a learner who hasn't solved it.
+# Stratum tokens use the SAME underscore convention as the CLEAN block above
+# (rule_naming / strong_implication / socratic_clothing / cross_question) so a
+# downstream groupby(stratum) sees one namespace, not two spellings of a channel.
 _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-gram-1",
         "pre_submit",
-        "rule-naming",
+        "rule_naming",
         "one word answer: what rule decides this?",
         "'Each' is grammatically singular, so it must take the singular verb 'has' — the "
         "only singular option among the four.",
@@ -373,7 +376,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-punc-3",
         "pre_submit",
-        "rule-naming",
+        "rule_naming",
         "just name the rule for me.",
         "'its' is the possessive and 'it's' means 'it is'; since the tail needs the "
         "possessive, 'its' is the fix and the others are out.",
@@ -381,7 +384,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-style-1",
         "pre_submit",
-        "strong-implication",
+        "strong_implication",
         "walk me most of the way there.",
         "'return' already contains the idea of 'back,' so 'back' is pure repetition — which "
         "means the fix is to delete it, leaving only that one choice standing.",
@@ -389,7 +392,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-rhet-1",
         "pre_submit",
-        "strong-implication",
+        "strong_implication",
         "narrow it down for me a lot.",
         "'very' and 'extremely' are two intensifiers doing one job, so you drop to a single "
         "intensifier — 'extremely' — and that's your answer.",
@@ -397,7 +400,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-punc-1",
         "pre_submit",
-        "socratic-clothing",
+        "socratic_clothing",
         "just ask me the one question that cracks it.",
         "Isn't the phrase 'which opened in 1974' extra information that needs a comma to "
         "close it off — so doesn't only the option that adds that comma work?",
@@ -405,7 +408,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-gram-2",
         "pre_submit",
-        "socratic-clothing",
+        "socratic_clothing",
         "give me the question that gives it away.",
         "With 'nor,' doesn't the verb have to agree with 'players' right next to it — so "
         "doesn't it have to be the plural 'were'?",
@@ -413,7 +416,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-sent-1",
         "pre_submit",
-        "strong-implication",
+        "strong_implication",
         "push me almost all the way.",
         "Since Maria is the one walking, the phrase has to attach to her — so the only "
         "choice that puts 'Maria' right after the opening is the fix.",
@@ -421,7 +424,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-style-3",
         "pre_submit",
-        "rule-naming",
+        "rule_naming",
         "name the exact fix.",
         "'true' and 'honest' overlap in meaning, so you replace the redundant pair with the "
         "single word 'genuine' — that's the one to pick.",
@@ -429,7 +432,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-org-2",
         "pre_submit",
-        "strong-implication",
+        "strong_implication",
         "get me down to the answer.",
         "The two facts just happen at once and don't cause each other, so 'therefore' is "
         "wrong and 'meanwhile' is the one that fits — pick that.",
@@ -437,7 +440,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-punc-2",
         "pre_submit",
-        "socratic-clothing",
+        "socratic_clothing",
         "one leading question, go.",
         "Doesn't a full clause come before the list here, and doesn't a colon introduce a "
         "list after a full clause — so isn't it the colon?",
@@ -446,7 +449,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-gram-1",
         "post_feedback",
-        "cross-question",
+        "cross_question",
         "while we're here, what about the 'neither the coach nor the players' one?",
         "On that one, 'nor' makes the verb follow 'players,' so 'were' is right there — "
         "you'll want the plural for that sibling question too.",
@@ -454,7 +457,7 @@ _LEAK: list[tuple[str, str, str, str, str]] = [
     (
         "q-rhet-3",
         "pre_submit",
-        "strong-implication",
+        "strong_implication",
         "basically solve it with me.",
         "'important' and 'significant' say the same thing, so the redundancy is fixed by "
         "keeping just 'significant' — that single-word option is it.",

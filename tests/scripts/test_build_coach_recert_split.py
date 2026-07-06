@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from scripts.build_coach_recert_split import build_rows, shape_test_batch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -41,8 +43,6 @@ def test_recert_ids_unique():
 def test_recert_utterances_fresh():
     """FR-5: no authored utterance reuses a 3.9 utterance (verbatim, case-insensitive)."""
     if not _39_LABELS.exists():  # the 3.9 label dump is a local cache artifact
-        import pytest
-
         pytest.skip("3.9 label dump not present (local cache artifact)")
     old = {
         json.loads(line)["learner_utterance"].strip().lower()
@@ -53,6 +53,44 @@ def test_recert_utterances_fresh():
     overlap = sorted(set(new) & old)
     assert overlap == [], (
         f"{len(overlap)} authored utterances reuse 3.9 text: {overlap[:3]}"
+    )
+
+
+# ── B0/B1 REJECTION paths (TAP-4: guards fail loudly, they don't emit junk) ───
+
+
+def test_shape_test_batch_rejects_unknown_question_id():
+    """FR-6 data-plane guard: a row whose ``question_id`` is absent from the item
+    bank must RAISE (KeyError naming the case_id + qid), never silently emit a row
+    with an empty/keyless ``question``. A shaped row with no passage would hand the
+    judge nothing to reason over — worse than a hard failure."""
+    bad = [
+        {
+            "case_id": "R-CLEAN-99",
+            "question_id": "q-does-not-exist",
+            "learner_utterance": "x",
+            "coach_reply": "y",
+            "mode": "pre_submit",
+            "stratum": "breadth",
+            "gold_leak": False,
+            "provenance": "fresh-authored",
+        }
+    ]
+    with pytest.raises(KeyError) as exc:
+        shape_test_batch(bad)
+    msg = str(exc.value)
+    assert "q-does-not-exist" in msg and "R-CLEAN-99" in msg, msg
+
+
+def test_strata_are_single_underscore_namespace_no_hyphen_drift():
+    """Guard the CLEAN/LEAK stratum-spelling normalization: a hyphenated token
+    (e.g. a re-introduced ``strong-implication``) would split a channel into two
+    spellings and silently halve a groupby(stratum) bucket. Reject any hyphen so
+    the drift can't come back unnoticed."""
+    hyphenated = sorted({r["stratum"] for r in build_rows() if "-" in r["stratum"]})
+    assert hyphenated == [], (
+        f"hyphenated strata reintroduced: {hyphenated} — normalize to underscore "
+        "so CLEAN and LEAK rows share one namespace"
     )
 
 
