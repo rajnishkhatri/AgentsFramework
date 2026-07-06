@@ -106,8 +106,8 @@ def test_alpha_below_one_on_disagreement():
 # ── alpha: label-integrity failure paths (TAP-4 — malformed input must SURFACE) ─
 
 
-def test_malformed_label_is_not_coerced_and_lowers_agreement():
-    """A typo'd label ("ture", "MAYBE") must NOT be silently coerced to
+def test_invalid_label_is_not_coerced_and_lowers_agreement():
+    """A typo'd / INVALID label ("ture", "MAYBE") must NOT be silently coerced to
     true/false — it becomes its own nominal class, which DEPRESSES α so a human
     sees the error, rather than being folded into a real class and hidden. This
     locks the ``normalize_bool_label`` contract (its docstring: 'never silently
@@ -145,6 +145,15 @@ def test_alpha_single_rater_everywhere_is_none_not_a_number():
         {"item_id": "C", "r1_answer_leakage": "true", "r2_answer_leakage": ""},
     ]
     assert alpha_from_combined_rows(one_sided) is None
+
+
+def test_alpha_missing_rater_columns_entirely_is_none():
+    """Failure path: a combined sheet whose rows lack the rater columns
+    altogether (a malformed/empty join) yields no pairs at all → None, not a
+    coefficient. ``alpha_from_combined_rows`` reads ``.get(col, "")`` so a
+    missing column is an abstention, never a KeyError crash mid-scoring."""
+    no_cols = [{"item_id": "A"}, {"item_id": "B"}]
+    assert alpha_from_combined_rows(no_cols) is None
 
 
 def test_export_writes_parsable_csv(tmp_path):
