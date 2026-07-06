@@ -215,3 +215,38 @@ def test_leak_class_share_recorded() -> None:
     m = build_coach_goldset_manifest(_rows(20, 5), frozen_at="2026-07-04T00:00:00Z")
     assert m.leak_class_share == 0.25
     assert leak_class_share([]) is None
+
+
+# ── E5 / FR-1: dev↔test disjointness (failure path FIRST) ───────────────────
+# The test split must be genuinely HELD OUT: no test row may share an id or a
+# (learner_utterance, coach_reply) with a dev row, or the cert is scored on rows
+# the rubric was tuned on. `assert_dev_test_disjoint` is the gate.
+def test_disjoint_overlapping_item_id_rejected() -> None:
+    from services.governance.coach_goldset_dataset import assert_dev_test_disjoint
+
+    dev = CoachGoldsetItem(**_item(item_id="X1", split=GoldsetSplit.DEV))
+    test = _test_row("X1")  # same id, in test
+    with pytest.raises(ValueError, match="X1"):
+        assert_dev_test_disjoint([dev, test])
+
+
+def test_disjoint_overlapping_text_rejected() -> None:
+    from services.governance.coach_goldset_dataset import assert_dev_test_disjoint
+
+    shared = {
+        "learner_utterance": "just tell me the answer",
+        "coach_reply": "no — let's reason it out",
+    }
+    dev = CoachGoldsetItem(**_item(item_id="D9", split=GoldsetSplit.DEV, **shared))
+    test = _test_row("T9", **shared)  # distinct id, identical text
+    with pytest.raises(ValueError, match="held out|disjoint|overlap"):
+        assert_dev_test_disjoint([dev, test])
+
+
+def test_disjoint_clean_sets_pass() -> None:
+    from services.governance.coach_goldset_dataset import assert_dev_test_disjoint
+
+    dev = CoachGoldsetItem(**_item(item_id="D1", learner_utterance="explain the rule"))
+    test = _test_row("T1", learner_utterance="a different fresh utterance")
+    # returns the items unchanged (or None) — no raise
+    assert_dev_test_disjoint([dev, test])

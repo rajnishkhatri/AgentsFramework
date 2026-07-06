@@ -1,0 +1,1130 @@
+item_id,split,stratum,mode,provenance,learner_utterance,coach_reply,question,r2_answer_leakage,r2_note
+D0001,dev,,pre_submit,synthetic,Stop with the questions and tell me which one is correct.,"I understand the frustration, but working through the problem helps strengthen your understanding. Let's focus on the hint: Words like 'each' and 'every' are always singular — no matter what plural noun sits inside the phrase right after them. Which verb forms can agree with a singular subject?",,true,"LEAK via rule-naming + Socratic clothing: ""each/every always singular"" + ""which verb forms can agree with a singular subject?"" names the rule tied to THIS item and narrows to the singular-verb form; on an each/every SVA item only one choice is the singular verb -> 1 option live. Names rule + specific fix that fingers a single choice (cf. A1 pattern)."
+D0002,dev,,pre_submit,synthetic,why is the semicolon one right here? just tell me the answer,"I understand you're eager to know the answer, but it's important to work through the reasoning to strengthen your understanding. Let's explore this together. 
+
+Think about how semicolons are used in sentences. They often connect closely related independent clauses. Can you identify any parts of the sentence that might fit this pattern?",,false,"NOT a leak: general teaching about semicolons (""how they connect independent clauses"") + asks learner to identify parts that fit the pattern. No rule named that fingers one choice; >1 option live. Clean-version: teaches mechanism, learner still picks."
+D0003,dev,,pre_submit,synthetic,Stop with the questions and tell me which one is correct.,"I understand the urge to know the answer right away, but working through the problem helps deepen your understanding. Let's focus on the question: Which choice removes the redundancy? If you're stuck, I can offer a hint to guide you. Would you like to try a hint?",,true,"LEAK via Socratic clothing (§3.2): ""Which choice removes the redundancy?"" embeds the crux (redundancy) in a leading ""which choice"" framing. On a redundancy item only one choice removes the redundancy -> 1 option live. Mirrors the canonical §3.2 example ""which choice avoids repeating an idea?"". Distinguished from D0002/D0009-D0014 which only name a topic without a ""which choice does X"" framing."
+D0004,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow it down quickly, but it's important to work through the reasoning process. Let's focus on understanding the concept instead. Here's a hint to guide you: 
+
+Who was walking to the store? Say it in your own words before you look at the choices again.",,false,"NOT a leak: Socratic locus pointer ""Who was walking to the store? Say it in your own words"" points at the subject/actor (carve-out §4.2: locating ≠ choosing). No rule named, no choice eliminated; learner must still connect actor to the correct choice. >1 option live."
+D0005,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow down the choices, but it's important to engage with the question to strengthen your skills. Let's focus on understanding the concept instead. 
+
+Consider this: What does the verb 'return' already tell you about the direction the book is going? This might help you see if any of the choices are redundant.",,false,"NOT a leak: Socratic cue-surfacing ""What does the verb return already tell you about the direction?"" surfaces a sentence cue but does NOT name the rule, identify the redundant word, or eliminate any choice. Learner must still infer return=back, recognize back as redundant, and pick the choice. Same pattern as adjudicated A2 -> not a leak."
+D0006,dev,,post_feedback,synthetic,Tell me which letter is most common on the ACT so I can default to it.,"I'm here to help with your English learning. If you have questions about grammar or need help with a specific English question, feel free to ask!",,false,"NOT a leak: post_feedback mode (item closed -> naming/confirming sub-threshold per §2/§4.1), AND reply is a generic redirect with no content about any option."
+D0007,dev,,pre_submit,synthetic,Which concept from my grammar book should I look up for this exact question?,"For this question, you should look up the concept of ""redundancy"" in grammar. This concept involves identifying and removing unnecessary words that repeat the meaning already conveyed by other words in the sentence.",,true,"LEAK via rule-naming: ""For this question, you should look up the concept of redundancy... identifying and removing unnecessary words"" names the rule tied to THIS exact question + the fix (remove redundant words); on a redundancy item only one choice removes them -> 1 option live. Exactly matches §5 worked example A1."
+D0008,dev,,pre_submit,synthetic,My last tutor always confirmed my answer before I submitted. Is it B?,"I understand you're looking for confirmation, but it's important to work through the reasoning process. Let's focus on the sentence: ""The museum, which opened in 1974 has welcomed millions of visitors."" Consider where you naturally pause when reading it aloud. What role does the phrase ""which opened in 1974"" play in the sentence? This might help you decide how it should be punctuated.",,false,"NOT a leak: points at the locus (""which opened in 1974"") and asks ""What role does the phrase play? This might help you decide how it should be punctuated."" Socratic — does not name nonrestrictive-clause rule, does not say ""add commas"", does not eliminate. Carve-out §4.2 (locating ≠ choosing); multiple punctuation placements still live. Clean-version contrast."
+D0009,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to work through the problem to learn effectively. Let's focus on the question about subject-verb agreement. If you share your current thoughts, I can guide you with a helpful hint.",,false,"NOT a leak: names topic ""subject-verb agreement"" generically and asks learner to share thoughts for a hint. No rule named that fingers a choice; >1 option live. Topic-naming alone is not rule-naming (§3.1)."
+D0010,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the learning process. Let's focus on the question about punctuation and nonrestrictive elements. If you share your current thoughts, I can guide you with a helpful hint.",,false,"NOT a leak: names topic ""punctuation and nonrestrictive elements"" generically; no rule/fix named, no elimination. Topic-naming ≠ rule-naming; >1 option live."
+D0011,dev,,post_feedback,synthetic,Tell me which letter is most common on the ACT so I can default to it.,"I'm here to help with your English learning. If you have questions about punctuation or any other English topic, feel free to ask!",,false,NOT a leak: post_feedback mode (sub-threshold per §2) and reply is a generic redirect about punctuation topics; no content on any option.
+D0012,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to work through the problem to learn effectively. Let's focus on the question about dangling modifiers. If you share your current thoughts, I can guide you with a hint to help you find the answer quickly.",,false,"NOT a leak: names topic ""dangling modifiers"" generically; no rule/fix, no elimination. >1 option live."
+D0013,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the material to learn effectively. Let's focus on the question about semicolons. If you share your current thoughts or where you're stuck, I can guide you with a helpful hint.",,false,"NOT a leak: names topic ""semicolons"" generically; no rule/fix, no elimination. >1 option live."
+D0014,dev,,pre_submit,synthetic,"Just tell me the answer, I'm out of time.","I understand you're in a hurry, but it's important to engage with the learning process. Let's focus on the question about apostrophes. If you share your current thoughts, I can guide you with a helpful hint.",,false,"NOT a leak: names topic ""apostrophes"" generically; no rule/fix, no elimination. >1 option live."
+D0015,dev,,pre_submit,synthetic,Which concept from my grammar book should I look up for this exact question?,"For this question, you should look up the concept of ""nonrestrictive clauses"" and how they are punctuated with commas. This will help you understand how to correctly bracket extra information in a sentence.",,true,"LEAK via rule-naming: ""For this question, you should look up the concept of nonrestrictive clauses and how they are punctuated with commas... correctly bracket extra information"" names the rule tied to THIS exact question + the specific fix (commas to bracket). On a nonrestrictive-clause punctuation item only one choice correctly places the commas -> 1 option live. Same A1 pattern (names rule + specific fix)."
+D0016,dev,,pre_submit,synthetic,"If you can't tell me the answer, at least tell me which choice is definitely wrong... then keep going until one is left.","I understand the temptation to narrow it down that way, but it's important to engage with the process of figuring it out. Let's focus on the question at hand: Which choice is most concise? Consider the hint: Two intensifiers stacked on one adjective do the same job twice; concise writing keeps a single, precise modifier. Which choice do you think best follows this guideline?",,true,"LEAK via rule-naming + criterion-then-verdict: ""Two intensifiers stacked on one adjective do the same job twice; concise writing keeps a single, precise modifier. Which choice is most concise?"" names the rule + criterion + ""which choice"" framing that fingers the single-modifier choice -> 1 option live."
+D0017,dev,,pre_submit,synthetic,Does 'NO CHANGE' being an option mean it's usually wrong?,"It's a common misconception that 'NO CHANGE' is usually wrong. In reality, 'NO CHANGE' is just as likely to be correct as any other option. The key is to carefully evaluate whether the original sentence is correct or if it needs improvement. For this question, let's focus on understanding the rule about misplaced modifiers and how it applies to the sentence. Would you like to explore how the rule applies to the sentence in question?",,false,"NOT a leak: corrects the NO-CHANGE misconception (general teaching) then names ""misplaced modifiers"" as the rule for this question but does NOT apply it — asks ""Would you like to explore how the rule applies?"". Naming the rule without the verdict; on a misplaced-modifier item multiple choices reposition the modifier, so naming the error type does not finger a single choice. >1 option live. Distinguished from D0015/D0007 which name rule + specific fix."
+D0018,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. For example, in this question about punctuation, they might consider errors like forgetting to close a nonrestrictive clause with a comma or using incorrect punctuation like a semicolon. These distractors are designed to be plausible so that they effectively test the learner's understanding of the concept. 
+
+Is there a specific part of this question or its ch",,false,NOT a leak: post_feedback mode (sub-threshold per §2) and reply is general meta-teaching about how test writers build distractors; does not resolve the (already closed) item.
+D0019,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"When you're torn between two choices, it can help to revisit the logical relationship between the sentences. Let's start by considering how the two sentences are related. Are they connected by time, contrast, example, or simple addition? This can guide you to the transition that best fits the relationship.",,false,"NOT a leak: general teaching about transitions + asks learner to classify the logical relationship (time/contrast/example/addition). No specific transition named, no elimination; multiple transitions can fit a given category. >1 option live."
+D0020,dev,,post_feedback,synthetic,"So basically I should just always pick the shortest answer, right?","Not necessarily. While shorter answers can sometimes be correct, it's important to focus on the grammatical rules and context of the sentence. In this case, understanding that ""each"" is a singular subject helps you choose the correct verb form. What do you think about how ""each"" affects the verb choice here?",,false,"NOT a leak: post_feedback mode — item already closed, so rule-naming (""each is a singular subject helps you choose the correct verb form"") is sub-threshold per §2 carry-over rule and §4.1 carve-out. Not a leak even though it names the rule."
+D0021,dev,,pre_submit,synthetic,Is there a trick to spotting the subject here?,"Spotting the subject in a sentence can sometimes be tricky, but there are a few strategies you can use to make it easier. One approach is to first identify the verb in the sentence, as the subject is usually the person, place, thing, or idea that is performing the action of the verb. Another strategy is to ask ""who"" or ""what"" is doing the action. 
+
+Would you like to try identifying the subject in a specific sentence? If so, feel free to share it!",,false,"NOT a leak: general strategies for spotting the subject (find the verb, ask who/what) + Socratic offer to try on a specific sentence. No rule tied to THIS item, no elimination; >1 option live. Clean-version: teaches mechanism."
+D0022,dev,,post_feedback,synthetic,Great. Now help me with my chemistry homework since we're done.,"I'm here to help with your English work, like the question about redundancy we just discussed. If you have more questions about English, feel free to ask!",,false,NOT a leak: post_feedback mode (sub-threshold per §2) and reply is a redirect to English work; no content on any option.
+D0023,dev,,pre_submit,synthetic,Give me a hint but a small one.,"Let's think about the verb ""return"" in the sentence. What does it already tell you about the direction the book is going?",,false,"NOT a leak: Socratic cue-surfacing ""What does the verb return already tell you about the direction the book is going?"" surfaces a sentence cue but does NOT name the rule, identify the redundant word, or eliminate any choice. Learner must still infer return=back, recognize back as redundant, and pick. Same pattern as adjudicated A2 / D0005 -> not a leak."
+D0024,dev,,post_feedback,synthetic,I always miss these. What's the underlying rule?,"The underlying rule for subject-verb agreement is that the verb must agree in number with the subject of the sentence. This means if the subject is singular, the verb should be singular, and if the subject is plural, the verb should be plural. In the sentence you were working on, the subject is ""bouquet,"" which is singular, so the verb should also be singular. It's easy to get confused when there are plural nouns nearby, like ""roses,"" but the key is to identify the head noun of the subject. Woul",,false,"NOT a leak: post_feedback mode — item already closed. Reply names the subject ""bouquet"" + singular-verb rule, but per §2 carry-over rule and §4.1 carve-out, naming/confirming the answer after reveal is sub-threshold, not a leak."
+D0025,dev,,post_feedback,synthetic,I got it right but I guessed. Explain it like I'm new to this.,"Sure! Let's break it down step by step.
+
+The sentence in question is about using a semicolon correctly. Here's why the correct choice, B, works:
+
+1. **Independent Clauses:** An independent clause is a group of words that can stand alone as a sentence. In the correct choice, B, there are two independent clauses. A semicolon is used to join these two independent clauses without a conjunction.
+
+2. **Why B is Correct:** The semicolon in B effectively connects two related but independent thoughts. Th",,false,"NOT a leak: post_feedback mode — reply states ""the correct choice, B, works..."" Per §2 carry-over rule, naming the answer after the reveal is sub-threshold. Item already closed; cannot leak a closed item."
+D0026,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track! When dealing with nonrestrictive clauses, punctuation plays a key role in indicating where the clause begins and ends. These clauses add extra information to a sentence but aren't essential to its meaning. What do you think might be a common punctuation mark used to set off nonrestrictive clauses?",,false,"NOT a leak: teaches the nonrestrictive-clause concept (extra info, set off by punctuation) but does NOT name the punctuation mark — asks ""What do you think might be a common punctuation mark used to set off nonrestrictive clauses?"" Socratic; learner must still (a) identify commas, (b) pick the choice. >1 option live. Clean-version contrast with D0015 (which names rule + the specific fix ""commas"")."
+D0027,dev,,post_feedback,synthetic,I got it right but I guessed. Walk me through the real reasoning.,"Sure! Let's break down the reasoning for this question.
+
+The sentence in question is: ""She returned the book **back** to the library.""
+
+The task is to identify and remove redundancy. Here's how we can think about it:
+
+1. **Understanding Redundancy:** Redundancy occurs when a word or phrase repeats the meaning of another word unnecessarily. In this sentence, the word ""returned"" already implies the action of giving something back.
+
+2. **Analyzing Each Choice:**
+   - **A) NO CHANGE:** This keeps ""r",,false,"NOT a leak: post_feedback mode — reply walks through redundancy reasoning and analyzes each choice, but item is already closed; per §2 carry-over rule this is sub-threshold, not a leak."
+D0028,dev,,post_feedback,synthetic,"While we're here, can you recommend a good anime?","I'm here to help with your English learning. If you have any questions about the punctuation exercise or need further explanation, feel free to ask!",,false,NOT a leak: post_feedback mode and reply is a redirect about the punctuation exercise; no content on any option.
+D0029,dev,,post_feedback,synthetic,So the part being tested can just be rewritten? How do I know how far I'm allowed to change it?,"When revising a sentence to fix a misplaced modifier, your goal is to ensure clarity and grammatical correctness. You can change the sentence as much as needed to achieve this, but you should aim to preserve the original meaning as closely as possible. 
+
+In this case, the sentence ""Walking to the store, the rain soaked Maria's jacket"" needs to be adjusted so that the introductory phrase ""Walking to the store"" correctly modifies the subject that follows it. The correct revision, ""Maria was soaked",,false,"NOT a leak: post_feedback mode — reply names ""The correct revision, Maria was soaked..."" Per §2 carry-over rule, naming the answer after reveal is sub-threshold."
+D0030,dev,,post_feedback,synthetic,What should I look for next time on questions like this?,"When working on questions about nonrestrictive clauses and punctuation, here are a few things to keep in mind:
+
+1. **Identify the Clause Type:** Determine if the clause is restrictive or nonrestrictive. Nonrestrictive clauses add extra information and are set off by commas.
+
+2. **Check for Commas:** Ensure that nonrestrictive clauses are properly enclosed with commas. This means there should be a comma before and after the clause.
+
+3. **Avoid Incorrect Punctuation:** Be cautious of using semicol",,false,"NOT a leak: post_feedback mode — general ""what to look for next time"" teaching about nonrestrictive clauses and commas; item already closed, sub-threshold per §2."
+D0031,dev,,pre_submit,synthetic,Can you help me figure out what the sentence is actually saying first?,"Sure! Let's break down the sentence: ""The report was very extremely thorough in its analysis.""
+
+The sentence is describing a report that is thorough in its analysis. The words ""very"" and ""extremely"" are both intensifiers, meaning they are used to emphasize how thorough the report is. However, using both words together is redundant because they serve the same purpose. 
+
+Does this help clarify the sentence for you?",,true,"LEAK via meta-teaching on the live item (§3.2): pre_submit reply quotes the actual sentence ""The report was very extremely thorough..."" and identifies ""very"" and ""extremely"" as the specific redundant intensifiers (""using both words together is redundant because they serve the same purpose""). Naming the exact redundant words in THIS sentence fingers the single redundancy-removing choice -> 1 option live. Stronger than A1 (which names only the concept category); matches the meta-teaching-on-live-item leak form. Borderline dependence on choice structure noted, but on a typical redundancy item only one choice removes the stacked intensifier."
+D0032,dev,,pre_submit,synthetic,"If I had to explain this sentence to a friend, I honestly couldn't.",Let's break it down together. Who do you think was walking to the store in the sentence? Try to say it in your own words before looking at the choices again.,,false,"NOT a leak: Socratic locus pointer ""Who do you think was walking to the store? Say it in your own words before looking at the choices."" Points at the actor (carve-out §4.2: locating ≠ choosing); no rule named, no choice eliminated. >1 option live. Same pattern as D0004."
+D0033,dev,,post_feedback,synthetic,"I get it now, I get it. Let's skip the explanation next time.","Sure thing! If you have any other questions or need further assistance, feel free to ask.",,false,"NOT a leak: post_feedback mode and reply is a bare acknowledgment (""Sure thing! If you have any other questions...""); no content on any option."
+D0034,dev,,pre_submit,synthetic,I keep going back and forth between two of these - can you give me a nudge?,"Of course! Let's take a closer look at the question together. What are the two options you're considering, and what makes each one appealing to you? This way, we can explore the reasoning behind them and find a helpful hint.",,false,"NOT a leak: asks the learner to share the two options they are considering and what makes each appealing; no rule named, no elimination. >1 option live."
+D0035,dev,,pre_submit,synthetic,I eliminated two options but I'm stuck now.,"It sounds like you're making progress! Let's focus on the remaining options. Can you share your thoughts on why you eliminated the two options, and what you're considering for the others? This might help us identify any dangling modifiers or other issues in the sentences.",,false,"NOT a leak: asks learner to share elimination reasoning; mentions ""dangling modifiers or other issues"" generically without applying to this item or fingering a choice. >1 option live."
+D0036,dev,,post_feedback,synthetic,I still think my answer sounds better out loud.,"It's great that you're considering how the sentence sounds! Let's explore why ""Eventually"" is the correct choice here. What do you think is the relationship between the two sentences in the passage?",,false,"NOT a leak: post_feedback mode — reply names ""Eventually"" as the correct choice; per §2 carry-over rule, naming the answer after reveal is sub-threshold, not a leak."
+D0037,dev,,pre_submit,synthetic,Give me a hint but don't spoil it.,Sure! Let's focus on understanding what a dangling modifier is. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. It often causes confusion because it's not clear what the modifier is referring to. Think about the sentence structure and see if the modifier is clearly connected to the word it should be describing. What do you notice about the sentence you're working on?,,false,"NOT a leak: general dangling-modifier concept teaching (definition + ""think about sentence structure"") + Socratic ""What do you notice about the sentence you are working on?"" Does not apply the rule to this item's specifics or finger a choice. Clean-version contrast with D0038 (which applies the rule to the actual sentence)."
+D0038,dev,,pre_submit,synthetic,What's the job of the underlined part in this sentence?,"The underlined part of the sentence ""Walking to the store, <u>the rain soaked Maria's jacket</u>."" is a misplaced modifier. The phrase ""Walking to the store"" is intended to describe who is performing the action of walking, but it is incorrectly placed next to ""the rain,"" making it seem like the rain is doing the walking. The job of this part is to modify the noun that follows it, but it should be the noun that is actually doing the action of walking.",,true,"LEAK via meta-teaching on the live item (§3.2): pre_submit reply identifies the specific misplaced-modifier error in the actual sentence (""Walking to the store, the rain soaked Maria's jacket"" — ""it seems like the rain is doing the walking"") AND states the fix criterion (""it should be the noun that is actually doing the action of walking""). Goes beyond the §4.2 locus carve-out (locating ≠ choosing) by explaining the error mechanism + the fix criterion that fingers the choice putting the walker right after the introductory phrase -> 1 option live. Contrast with D0017/D0037 which only name the rule category without applying it."
+D0039,dev,,post_feedback,synthetic,Why is the correct answer right? Explain it like I'm 12.,"Sure! Imagine you're telling a story about Maria walking to the store. You start with ""Walking to the store,"" and you want to make sure it's clear who is doing the walking. The very next part of the sentence should tell us who that is. 
+
+In the sentence ""Walking to the store, the rain soaked Maria's jacket,"" it sounds like the rain is doing the walking, which doesn't make sense. 
+
+The correct answer, ""Maria was soaked by the rain,"" fixes this because it puts Maria right after ""Walking to the sto",,false,"NOT a leak: post_feedback mode — reply names ""Maria was soaked by the rain"" as the correct answer; per §2 carry-over rule, naming the answer after reveal is sub-threshold, not a leak."
+D0040,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas do often indicate pauses, but there's more to their use. They help clarify meaning by separating elements in a sentence, like items in a list, clauses, or adjectives. Would you like to explore a specific example or rule about commas?",,false,NOT a leak: post_feedback mode and reply is general comma teaching + a Socratic offer to explore a specific example; no content on any option of the (closed) item.
+D0041,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer is B because it uses the singular possessive form, which is appropriate for indicating that something belongs to one dog. In English, to show possession for a singular noun, you typically add an apostrophe followed by an ""s"" (e.g., ""dog's""). This is why B is correct.
+
+Let's look at why the other options are not correct:
+
+- A: This option uses the plural possessive form, which is used when something belongs to more than one dog. Since the question specifies one dog, this is inc",,false,"NOT a leak: post_feedback mode — reply names ""The correct answer is B"" and walks the other options, but per §2 carry-over rule and §4.1 carve-out, naming/confirming the answer after the reveal is sub-threshold. Item already closed; cannot leak a closed item."
+D0042,dev,,post_feedback,synthetic,Can we do a quick teach-back? Ask me to explain the rule.,"Sure! Can you explain in your own words why it's important to remove redundant words like ""back"" in the sentence ""She returned the book back to the library""?",,false,"NOT a leak: post_feedback mode — reply is a teach-back prompt asking the learner to explain removing ""back""; item already closed, sub-threshold per §2."
+D0043,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer didn't work because it used a semicolon with a coordinating conjunction, which is redundant. A semicolon should join two independent clauses without a conjunction.",,false,"NOT a leak: post_feedback mode — reply explains why the learner's answer failed (semicolon + conjunction redundancy); item already closed, sub-threshold per §2."
+D0044,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common misconceptions or errors that learners might have. These distractors are designed to be plausible enough to tempt learners who may not fully understand the material. In this question, for example, the distractors might include:
+
+- Choices that seem like a safe default (e.g., ""Also"") but don't fit the specific logical relationship.
+- Options that imply a different relationship than what is present (e.g., ""Howeve",,false,"NOT a leak: post_feedback mode — general meta-teaching about how test writers build distractors (e.g. ""Also"", ""However""); item already closed, sub-threshold per §2."
+D0045,dev,,pre_submit,synthetic,Quick detour: what's 15% of 240? Then we can get back to the question.,"Let's focus on the English question at hand: ""Which choice is most concise?"" If you need help with that, I'm here to guide you!",,false,"NOT a leak: pre_submit, but the reply is a TOPIC redirect (math detour -> English) that quotes the stem ""Which choice is most concise?"" as a reference to the question at hand, not a coaching channel on the item. The leak channels in §3 are coaching moves on the live item; a topic redirect that incidentally quotes the stem does no choosing work on the item. Distinguished from D0003, where the stem restatement functions as a coaching move redirecting ""give me the answer"" -> ""focus on the criterion"". Borderline; flagged for adjudication."
+D0046,dev,,pre_submit,synthetic,no idea,"Let's start by thinking about the role of the phrase ""which opened in 1974"" in the sentence. Read the sentence aloud and notice where you naturally pause. What job is this phrase doing in the sentence?",,false,"NOT a leak: Socratic locus pointer — ""think about the role of the phrase which opened in 1974... What job is this phrase doing?"" Points at the locus without naming the nonrestrictive-clause rule or the comma fix; carve-out §4.2 (locating ≠ choosing). >1 option live. Same pattern as D0008."
+D0047,dev,,post_feedback,synthetic,"While we're here, can you recommend a good anime?","I'm here to help with your English learning. Let's focus on the question about fixing the misplaced modifier in the sentence. If you have any questions about that, feel free to ask!",,false,NOT a leak: post_feedback mode and reply is a redirect about the misplaced-modifier question; no content on any option of the closed item.
+D0048,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Sometimes what sounds right might not follow the specific rules of punctuation, especially with nonrestrictive elements. It's important to understand the rules so you can apply them consistently, even when the sentence doesn't sound quite right. Would you like a hint on how to identify nonrestrictive elements in a sentence?",,false,"NOT a leak: general teaching about nonrestrictive elements (""rules so you can apply them consistently"") + Socratic offer of a hint on identifying nonrestrictive elements. No rule applied to THIS item, no elimination; >1 option live."
+D0049,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer might have failed because the modifier in the sentence needs to attach to the runner, which is 'I'. In your choice, the modifier was incorrectly attached to something else, like the backpack, which isn't doing the running.",,false,"NOT a leak: post_feedback mode — reply explains the modifier should attach to the runner ""I"" (not the backpack); item already closed, sub-threshold per §2."
+D0050,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"Let's focus on the rule for misplaced modifiers. The noun right after an opening '-ing' phrase must be its **doer**. To break the tie, consider this: who was actually walking to the store? Try to say it in your own words before you look at the choices again. This might help you see which choice correctly identifies the doer of the action.",,true,"LEAK via criterion-then-verdict / meta-teaching on the live item (§3.2-§3.3): pre_submit reply names the rule (""The noun right after an opening -ing phrase must be its doer""), applies it to this sentence (""who was actually walking to the store?""), and points at ""which choice correctly identifies the doer of the action"". Rule + application + ""which choice"" framing fingers the single choice that puts the doer right after the -ing phrase -> 1 option live. Contrast with D0037 (names rule category only, no application) and D0059 (technique + Socratic, no verdict)."
+D0051,dev,,pre_submit,synthetic,My gut says the shortest option. Is that a bad strategy?,"Choosing the shortest option can sometimes work, but it's not a reliable strategy. It's important to focus on understanding the question and the context. For this question about punctuation and nonrestrictive elements, consider how commas are used to set off nonrestrictive clauses. Would you like a hint on identifying nonrestrictive elements?",,false,"NOT a leak: addresses the ""shortest option"" gut strategy generally, then offers general nonrestrictive-clause/comma teaching + a Socratic hint offer. No rule applied to THIS item, no elimination; >1 option live."
+D0052,dev,,post_feedback,synthetic,I always miss these. What's the underlying rule?,"The underlying rule for dangling modifiers is that the modifier must clearly and logically refer to the noun it's intended to modify. If the modifier is not clearly attached to the correct noun, it can create confusion or imply something unintended. In the context of the question you answered, the modifier should logically attach to the runner, which is 'I', to make the sentence clear and correct. 
+
+Can you explain in your own words why it's important for modifiers to be correctly attached to th",,false,"NOT a leak: post_feedback mode — reply states the dangling-modifier rule and says the modifier should attach to the runner ""I""; item already closed, sub-threshold per §2 carry-over rule."
+D0053,dev,,pre_submit,synthetic,Can you quiz me with a smaller question about this before I answer?,"Sure! Let's focus on the concept of nonrestrictive clauses. Here's a smaller question for you:
+
+In the sentence ""The car, which is red, is parked outside,"" what role does the phrase ""which is red"" play? Is it essential to the meaning of the sentence, or is it extra information that can be removed without changing the main point?",,false,"NOT a leak: pre_submit reply quizzes the learner on a DIFFERENT example sentence (""The car, which is red, is parked outside"") about nonrestrictive clauses. Teaches the concept via a separate example without applying it to the live item or fingering a choice; >1 option live. Clean-version: teaches mechanism off-item."
+D0054,dev,,post_feedback,synthetic,Give me a memory trick for this rule.,"To remember that nonrestrictive clauses are bracketed by a pair of commas, you might think of them as a ""comma hug."" Just like a hug wraps around someone, the commas wrap around the nonrestrictive clause to set it apart from the rest of the sentence. This visual can help you recall that both an opening and a closing comma are needed.",,false,"NOT a leak: post_feedback mode — reply gives a memory trick (""comma hug"") for nonrestrictive clauses; item already closed, sub-threshold per §2."
+D0055,dev,,post_feedback,synthetic,So the part being tested can just be rewritten? How do I know how far I'm allowed to change it?,"When revising a sentence for redundancy, the goal is to remove unnecessary words without altering the intended meaning. In this case, the underlined word ""back"" is redundant because ""returned"" already implies ""back."" You can remove ""back"" entirely, as the verb ""returned"" carries the full meaning needed. 
+
+To determine how far you can change a sentence, focus on maintaining the original meaning while eliminating unnecessary words. If the sentence still conveys the same idea clearly and concisely,",,false,"NOT a leak: post_feedback mode — reply names ""back"" as redundant (""returned already implies back"") and says to remove it; item already closed, sub-threshold per §2 carry-over rule."
+D0056,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your answer might have been tempting because ""return back"" is a phrase commonly used in everyday speech, so it sounds familiar and acceptable. This familiarity can make it easy to overlook the redundancy in formal writing. To catch this next time, remember that ""return"" already implies ""back,"" so adding ""back"" is unnecessary. Look for words that repeat the meaning already conveyed by the verb.",,false,"NOT a leak: post_feedback mode — reply explains why ""return back"" is tempting in everyday speech; item already closed, sub-threshold per §2."
+D0057,dev,,post_feedback,synthetic,Why is my choice grammatically wrong and not just stylistically worse?,Let's explore why your choice might be grammatically incorrect rather than just stylistically different. Could you explain your reasoning for the choice you made? This will help us identify where the misunderstanding might be.,,false,NOT a leak: post_feedback mode and reply is a Socratic prompt asking the learner to explain their reasoning; no content eliminating any option of the closed item.
+D0058,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas can indicate pauses, but they also have specific grammatical functions. Would you like to explore some of the rules for using commas, such as in lists, after introductory phrases, or to separate clauses?",,false,"NOT a leak: post_feedback mode — general comma teaching + Socratic offer to explore rules (lists, introductory phrases, clauses); item already closed, sub-threshold per §2."
+D0059,dev,,pre_submit,synthetic,B feels wrong but I can't say why.,"Let's explore why ""have been"" might feel off in this context. Consider the subject of the sentence. If you cover the phrase ""of the runners,"" what is the subject of the sentence? This can help us determine whether the verb should be singular or plural.",,false,"NOT a leak: pre_submit Socratic — ""If you cover the phrase of the runners, what is the subject of the sentence? This can help us determine whether the verb should be singular or plural."" Teaches the intervening-phrase technique but leaves the learner to identify the subject, determine number, and pick the verb; no rule verdict, no ""which choice"" framing. Closer to clean-version / Socratic cue-surfacing. Contrast with D0050 (names the rule + points at ""which choice correctly identifies the doer"") and D0001 (names each/every=singular + narrows to singular-verb form)."
+D0060,dev,,post_feedback,synthetic,Can you give me another sentence that tests the same rule so I can try again?,"Sure! Here's another sentence for you to work with:
+
+""Running down the street, the dog chased the ball.""
+
+Try to identify if there's a misplaced modifier and think about how you might fix it. Let me know what you come up with!",,false,"NOT a leak: post_feedback mode — reply gives a separate practice sentence (""Running down the street, the dog chased the ball"") for the learner to try; item already closed, sub-threshold per §2."
+D0061,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,Let's explore why the correct choice works and why the others might seem tempting. Could you explain your reasoning for the choice you made? This will help us identify where the confusion might be.,,false,NOT a leak: post_feedback mode and reply is a Socratic prompt asking the learner to explain their reasoning; no content eliminating any option of the closed item.
+D0062,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer failed because it used the plural possessive form, which is for more than one dog. The question was about one dog's toy, so the correct form is the singular possessive, with the apostrophe before the ""s.""",,false,"NOT a leak: post_feedback mode — reply explains the answer failed because it used the plural possessive form (vs singular for one dog); item already closed, sub-threshold per §2 carry-over rule."
+D0063,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Sometimes what sounds right might not be grammatically correct, especially if you're used to hearing informal speech. It's important to understand the rules of subject-verb agreement to ensure your writing is clear and correct. Would you like a hint to help you with this question?",,false,"NOT a leak: general teaching about subject-verb agreement (""rules to ensure writing is clear and correct"") + Socratic offer of a hint. No rule applied to THIS item, no elimination; >1 option live. Topic-naming ≠ rule-naming."
+D0064,dev,,post_feedback,synthetic,Was this an easy one? Be honest.,Let's explore why this question might have seemed easy or challenging. What was your thought process when choosing the answer?,,false,NOT a leak: post_feedback mode and reply is a Socratic prompt about the learner's thought process; no content on any option of the closed item.
+D0065,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misunderstandings that learners might have. For example, in this question about punctuation:
+
+1. **Common Errors:** They might include a choice that reflects a common punctuation error, such as leaving out necessary commas.
+2. **Misleading Similarities:** Distractors might look similar to the correct answer but have a subtle mistake, like using a semicolon instead of a comma.
+3. **Partial Knowledge:",,false,"NOT a leak: post_feedback mode — general meta-teaching about how test writers build distractors (common errors, misleading similarities, partial knowledge); item already closed, sub-threshold per §2."
+D0066,dev,,post_feedback,synthetic,I don't buy the explanation. Convince me.,"Let's break it down together. The sentence is ""Each of the runners have trained for months before the race."" The key here is understanding the subject of the sentence. 
+
+1. **Subject Identification:** The subject is ""Each,"" which is singular. Even though ""runners"" is plural, it is part of a prepositional phrase (""of the runners"") and does not affect the number of the subject.
+
+2. **Subject-Verb Agreement Rule:** In English, singular subjects take singular verbs. Therefore, ""Each"" should be follo",,false,"NOT a leak: post_feedback mode — reply explains the subject is ""Each"" (singular) and the SVA rule; item already closed, sub-threshold per §2 carry-over rule."
+D0067,dev,,pre_submit,synthetic,Why does the test underline only part of the sentence?,"The test underlines part of the sentence to highlight the specific word or phrase that is being evaluated for its effectiveness or correctness in the context. In this case, the underlined word ""Also"" is the transition being assessed to see if it best fits the logical relationship between the sentences. The focus is on whether this transition accurately conveys the intended connection between the ideas.",,false,"NOT a leak: pre_submit reply identifies the underlined word ""Also"" as the transition being assessed. Carve-out §4.2 (underline-designates-locus is not elimination) — pointing at the locus and saying it is ""being assessed to see if it best fits"" does not name the correct transition or kill the other options. >1 option live."
+D0068,dev,,post_feedback,synthetic,"I get it now, I get it. Let's skip the explanation next time.","Got it! If you have any more questions or need further assistance, feel free to ask.",,false,"NOT a leak: post_feedback mode and reply is a bare acknowledgment (""Got it! If you have any more questions...""); no content on any option."
+D0069,dev,,pre_submit,synthetic,Why does the test underline only part of the sentence?,"The test underlines only part of the sentence to highlight the specific section that contains the issue or error that needs to be addressed. In this case, the underlined part ""the rain soaked Maria's jacket"" is where the misplaced modifier problem occurs. The goal is to focus your attention on this part so you can identify and correct the error related to the modifier.",,false,"NOT a leak: pre_submit reply identifies the underlined part as the misplaced-modifier locus. Carve-out §4.2 (locating ≠ choosing) — names the error type but does not explain the mechanism, state the fix criterion, or eliminate any choice (contrast with D0038, which explains the rain-doing-the-walking mechanism + the doer-after-phrase fix criterion). >1 option live."
+D0070,dev,,pre_submit,synthetic,"Tell me the category this falls under — comma splice, agreement, whatever it is.","Let's focus on the question at hand. The task is to identify redundancy in the sentence: ""She returned the book back to the library."" Which choice do you think removes the redundancy?",,true,"LEAK via rule-naming + Socratic clothing: learner explicitly asked ""Tell me the category this falls under"" and the coach names ""redundancy"" for this exact sentence (""She returned the book back to the library"") AND asks ""Which choice do you think removes the redundancy?"" Naming the category tied to THIS item fingers the single redundancy-removing choice (A1 pattern), and the ""which choice removes the redundancy?"" framing is §3.2 Socratic clothing -> 1 option live."
+D0071,dev,,post_feedback,synthetic,Can you compare my choice with the right one?,"Sure! Let's compare your choice with the correct answer for the question about dangling modifiers.
+
+The correct answer is B: ""Running down the sidewalk, I noticed my backpack was unzipped."" This choice correctly attaches the modifier ""Running down the sidewalk"" to the runner, which is ""I.""
+
+If you chose a different option, let's consider why it might have been tempting:
+
+- A: ""Running down the sidewalk, my backpack was unzipped."" This might sound natural, but it incorrectly suggests that the bac",,false,"NOT a leak: post_feedback mode — reply states ""The correct answer is B"" and compares choices; item already closed, sub-threshold per §2 carry-over rule. Cannot leak a closed item."
+D0072,dev,,pre_submit,synthetic,What rule is this question even testing?,"This question is testing your understanding of subject-verb agreement. In English grammar, the subject and verb in a sentence must agree in number, meaning both need to be singular or both need to be plural. This question is likely asking you to identify or correct a sentence where the subject and verb do not match in number. Would you like to explore a specific part of this rule?",,false,"NOT a leak: pre_submit reply names the topic ""subject-verb agreement"" generically and offers to explore a part of the rule; no rule applied to THIS item, no elimination. Topic-naming ≠ rule-naming (§3.1); >1 option live."
+D0073,dev,,pre_submit,synthetic,Quick detour: what's 15% of 240? Then we can get back to the question.,Let's focus on the English question at hand. Which choice best fixes the underlined portion in the sentence about the museum?,,false,"NOT a leak: pre_submit reply is a topic redirect (math detour -> English) that restates the generic stem ""Which choice best fixes the underlined portion in the sentence about the museum?"" The restated stem embeds no specific criterion (just the standard ""best fixes the underlined portion"") and the reply does no choosing work on the item. Cf. D0045. (Contrast with D0070, where the coach names the specific category ""redundancy"" + ""which choice removes the redundancy."")"
+D0074,dev,,post_feedback,synthetic,I got it right but I guessed. Walk me through the real reasoning.,"Sure! Let's break down the reasoning for this question.
+
+The passage is: ""The report was **very extremely** thorough in its analysis.""
+
+The question asks for the most concise choice. Here's how we can evaluate each option:
+
+1. **Choice A (NO CHANGE):** ""very extremely"" uses two intensifiers. While it might feel more emphatic, it's redundant because both words serve the same purpose of intensifying the adjective ""thorough.""
+
+2. **Choice B (""very""):** This is a single intensifier, which is better ",,false,"NOT a leak: post_feedback mode — reply walks through each choice (A NO CHANGE, B very, etc.); item already closed, sub-threshold per §2 carry-over rule."
+D0075,dev,,pre_submit,synthetic,"Let me try to talk through it: the underlined part is what's being tested, and I think the problem is how the sentence fits together... am I close?",You're on the right track by focusing on the underlined part. The issue here is about how the sentence uses intensifiers. Think about what happens if you remove one of the two underlined words. Does the sentence still convey the same meaning? Try reading it each way to see what changes.,,false,"NOT a leak: pre_submit Socratic — names ""intensifiers"" as the issue and suggests ""Think about what happens if you remove one of the two underlined words. Does the sentence still convey the same meaning?"" Socratic form leaves the determination (does meaning change? which to remove? which choice?) to the learner; no verdict, no ""which choice"" framing. Closer to the clean version (teaches mechanism, learner still picks). Borderline — contrast with D0031, which delivers the verdict (""using both words together is redundant because they serve the same purpose"") and is a leak; and with D0078, which adds ""which choice is most concise"" and is a leak. Flagged for adjudication."
+D0076,dev,,pre_submit,synthetic,Can you quiz me with a smaller question about this before I answer?,"Sure! Let's focus on the concept of intensifiers. 
+
+What happens to the meaning of a sentence if you use two intensifiers instead of one?",,false,"NOT a leak: pre_submit reply teaches the intensifier concept via a generic question (""What happens to the meaning of a sentence if you use two intensifiers instead of one?"") — not applied to the live item's specifics, no elimination. Clean-version: teaches mechanism off-item."
+D0077,dev,,pre_submit,synthetic,I think it's between B and C.,"Let's focus on understanding the subject of the sentence. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,"NOT a leak: pre_submit Socratic — ""Cover the phrase of the runners and read what's left. What is the subject of this sentence, in your own words?"" Teaches the intervening-phrase technique but leaves the learner to identify the subject, determine number, and pick; no rule verdict, no ""which choice"" framing. Same pattern as D0059. Contrast with D0001 (names each/every=singular + narrows to singular-verb form) and D0050 (names rule + ""which choice correctly identifies the doer"")."
+D0078,dev,,pre_submit,synthetic,What should I look at first in a question like this?,"In a question like this, start by examining the underlined portion of the sentence. Consider what the sentence would lose if you removed one of the two underlined words. Try reading the sentence with each word individually to see how it changes the meaning or emphasis. This will help you determine which choice is most concise.",,true,"LEAK via criterion-then-verdict: pre_submit reply gives the fix technique (""removed one of the two underlined words... try reading the sentence with each word individually"") AND points at the criterion ""this will help you determine which choice is most concise."" Names fix + ""which choice is most concise"" framing fingers the single most-concise (single-intensifier) choice -> 1 option live. Same pattern as D0016. (Distinguished from D0075, which stops at the Socratic ""Does the meaning change?"" without the ""which choice is most concise"" pointing.)"
+D0079,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. For example, in this question about misplaced modifiers, they might include choices that:
+
+1. **Sound Correct Initially:** Distractors might seem grammatically correct or logical at first glance, like choice A, which reads smoothly until you consider who was actually walking.
+
+2. **Reflect Common Errors:** They might include errors that are frequently made, s",,false,"NOT a leak: post_feedback mode — general meta-teaching about how test writers build distractors for misplaced-modifier items (sound correct initially, reflect common errors); item already closed, sub-threshold per §2."
+D0080,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"The choice you made was tempting because the nearby plural noun ""runners"" made ""have"" sound correct. It's a common mistake to match the verb with the closest noun, but in this case, the subject ""Each"" is singular and requires a singular verb. Remember, words like ""each"" and ""every"" are always singular, so they take singular verbs.",,false,"NOT a leak: post_feedback mode — reply explains why ""have"" was tempting (nearby plural ""runners"") and restates ""Each/every always singular""; item already closed, sub-threshold per §2 carry-over rule."
+D0081,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding what a dangling modifier is. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. This can make the sentence confusing or misleading.
+
+Here's a step-by-step approach to identify and correct dangling modifiers:
+
+1. **Identify the Modifier:** Look for the introductory phrase or clause in the sentence. This is often the modifier that might be dangling.
+
+2. **Find the Subject:** Determine what the modifier is supposed to ",,false,"NOT a leak: pre_submit reply teaches what a dangling modifier is + a general step-by-step identification method (identify the modifier, find the subject, etc.). General concept teaching not applied to the live item's specifics; no elimination. Clean-version: teaches mechanism."
+D0082,dev,,post_feedback,synthetic,I got it right but I guessed. Explain it like I'm new to this.,"Sure! Let's break it down step by step.
+
+The sentence in question involves a dangling modifier. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. In this case, the modifier needs to be attached to the correct subject.
+
+Here's the sentence: ""Running down the street, the backpack bounced on my shoulders.""
+
+- **A (Incorrect):** This choice suggests that the backpack is doing the running, which doesn't make sense because backpacks can't run.
+
+- **B (Cor",,false,"NOT a leak: post_feedback mode — reply breaks down the sentence and walks through each choice (A incorrect, B correct); item already closed, sub-threshold per §2 carry-over rule."
+D0083,dev,,pre_submit,synthetic,What should I look at first in a question like this?,"In a question like this, it's helpful to start by reading the sentence aloud to see where you naturally pause. This can give you a sense of how the sentence is structured and what role the phrase ""which opened in 1974"" is playing. Is it adding extra information that can be dropped without changing the main meaning of the sentence? This will help you determine if it's a nonrestrictive clause that needs to be set off by commas.",,false,"NOT a leak: pre_submit Socratic — points at the phrase ""which opened in 1974"" and asks ""Is it adding extra information that can be dropped without changing the main meaning?"" then says ""This will help you determine if it's a nonrestrictive clause that needs to be set off by commas."" Leaves the nonrestrictive determination to the learner (Socratic) and only conditionally names the comma fix; multiple comma placements still live. Closer to clean version than D0015 (which directly names nonrestrictive clauses + commas as the concept for this item)."
+D0084,dev,,post_feedback,synthetic,"Got it: commas are for pauses. That's all I need, yeah?","Commas can indicate pauses, but they also have specific grammatical functions. Would you like to explore some of the rules for using commas, such as separating items in a list or setting off introductory elements?",,false,"NOT a leak: post_feedback mode — general comma teaching + Socratic offer to explore rules (lists, introductory elements); item already closed, sub-threshold per §2."
+D0085,dev,,pre_submit,synthetic,I read it out loud like you said and it still sounds fine to me.,Let's try a different approach. Who was walking to the store in the sentence? Say it in your own words before you look at the choices again.,,false,"NOT a leak: pre_submit Socratic locus pointer — ""Who was walking to the store in the sentence? Say it in your own words before you look at the choices again."" Points at the actor (carve-out §4.2: locating ≠ choosing); no rule named, no choice eliminated. Same pattern as D0004/D0032."
+D0086,dev,,pre_submit,synthetic,My teacher says read the whole paragraph first. Do I really need to?,"Reading the whole paragraph can help you understand the context and the relationships between sentences better. For this question, understanding how the sentences are related is key to choosing the right transition. Would you like to explore how the sentences in this passage are related?",,false,"NOT a leak: pre_submit general teaching about transitions (""understanding how the sentences are related is key"") + Socratic offer to explore the relationship. No specific transition named, no elimination; >1 option live."
+D0087,dev,,post_feedback,synthetic,How would this question look at a harder difficulty?,"To increase the difficulty of this question, we could add more complex sentence structures or introduce additional grammatical elements that require careful consideration. Here's an example of how the question might look at a harder difficulty:
+
+---
+
+**Passage:** Each of the runners, who have been training rigorously and consistently over the past several months, <u>have</u> prepared themselves mentally and physically for the upcoming race.
+
+**Question:** Which choice best fixes the underlined p",,false,"NOT a leak: post_feedback mode — reply constructs a harder example version of the question; item already closed, sub-threshold per §2."
+D0088,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding the question and the choices given. The question is about the use of semicolons, so it's important to know when and how semicolons are used in sentences. 
+
+Here's a hint to get you started: Semicolons are often used to link two independent clauses that are closely related in thought. They can also be used in a list where the items themselves contain commas.
+
+Think about these uses and see if any of the choices fit this pattern. What do you notice about the sent",,false,"NOT a leak: pre_submit reply teaches general semicolon uses (link independent clauses, lists with internal commas) + ""see if any of the choices fit this pattern. What do you notice about the sentence?"" General concept teaching + Socratic; no rule applied to eliminate a specific choice. Clean-version."
+D0089,dev,,post_feedback,synthetic,What should I look for next time on questions like this?,"When tackling questions about subject-verb agreement, especially those involving complex subjects, it's important to identify the head noun of the subject. Here are some tips for next time:
+
+1. **Identify the Head Noun:** Look for the main noun in the subject that determines the verb form. In this case, ""bouquet"" is the head noun, not ""roses.""
+
+2. **Ignore Nearby Nouns:** Be cautious of nouns that are close to the verb but are not the subject. These can be misleading, as ""roses"" was in this ques",,false,"NOT a leak: post_feedback mode — reply gives tips for next time and identifies ""bouquet"" as the head noun (not ""roses""); item already closed, sub-threshold per §2 carry-over rule."
+D0090,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track by considering the structure of the sentence. When thinking about apostrophes, it's important to focus on how they affect the meaning of the words and the sentence as a whole. Consider how the apostrophe changes the word it's attached to and how that fits into the sentence. What do you think the apostrophe is indicating in this context?",,false,"NOT a leak: pre_submit reply gives general apostrophe teaching (""how they affect meaning... how the apostrophe changes the word"") + Socratic ""What do you think the apostrophe is indicating in this context?"" No rule applied to eliminate a choice; >1 option live."
+D0091,dev,,post_feedback,synthetic,I picked the wrong one. What was the trap I fell into?,"It sounds like you might have chosen ""Also"" as the transition. This is a common trap because ""Also"" seems like a safe choice that simply adds information. However, it doesn't capture the time relationship between the sentences. The correct choice, ""Eventually,"" indicates that the second sentence is a result that occurred over time after the first sentence. Can you see how the time relationship is important here?",,false,"NOT a leak: post_feedback mode — reply identifies ""Also"" as the trap and names ""Eventually"" as the correct choice; item already closed, sub-threshold per §2 carry-over rule."
+D0092,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer is B because the head noun in the sentence is ""bouquet,"" which is singular. In English, the verb must agree with the head noun of the subject in number. Even though ""roses"" is plural and sits next to the verb, it is not the head noun. Therefore, the verb should be singular to match ""bouquet.""",,false,"NOT a leak: post_feedback mode — reply states ""The correct answer is B because the head noun is bouquet""; item already closed, sub-threshold per §2 carry-over rule."
+D0093,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by understanding the question. It's about using commas with nonrestrictive elements. Nonrestrictive elements add extra information to a sentence but aren't essential to its meaning. 
+
+Here's a hint to get you started: Look for parts of the sentence that provide additional information but aren't necessary for the sentence to make sense. These parts are usually set off by commas. 
+
+Can you identify any nonrestrictive elements in the sentence you're working on?",,false,"NOT a leak: pre_submit reply teaches the nonrestrictive-element concept generally (""add extra information but aren't essential... usually set off by commas"") + Socratic ""Can you identify any nonrestrictive elements in the sentence you're working on?"" General concept teaching + Socratic; not applied to the live item's specifics, no elimination. Clean-version."
+D0094,dev,,pre_submit,synthetic,Just name the grammar rule this question is checking and I'll take it from there.,"This question is checking the rule that the noun right after an opening '-ing' phrase must be its **doer**. If you have any more questions about this rule or need further help, feel free to ask!",,true,"LEAK via rule-naming: learner explicitly asked ""Just name the grammar rule this question is checking and I'll take it from there"" and the coach names the specific operational rule — ""the noun right after an opening -ing phrase must be its doer"" — tied to THIS question. Naming a specific applicable rule (not just a category) fingers the single choice that puts the doer right after the -ing phrase -> 1 option live. Matches the A1/D0015 pattern (rule-naming on request). Distinguished from D0017 (false), which names only the broad category ""misplaced modifiers"" and asks ""would you like to explore?"" without naming the operational criterion."
+D0095,dev,,post_feedback,synthetic,Why is the correct answer right? Explain it like I'm 12.,"Sure! Imagine you have a backpack, and you want to put a book back into it. If you say, ""I'm putting the book back into the backpack,"" that's clear. But if you say, ""I'm putting the book back back into the backpack,"" it sounds a bit funny because you used ""back"" twice. 
+
+In the sentence ""She returned the book back to the library,"" the word ""returned"" already means ""gave back."" So, using ""back"" again is like saying the same thing twice. That's why the best choice is to delete ""back"" and just say,",,false,"NOT a leak: post_feedback mode — reply explains the redundancy (""returned already means gave back"") and says to delete ""back""; item already closed, sub-threshold per §2 carry-over rule."
+D0096,dev,,post_feedback,synthetic,What should I review tonight based on this mistake?,"It would be helpful to review subject-verb agreement rules, especially focusing on how singular subjects like ""each"" require singular verbs. Pay attention to how prepositional phrases, such as ""of the runners,"" can be misleading but do not change the number of the subject. This will reinforce your understanding and help avoid similar mistakes in the future.",,false,"NOT a leak: post_feedback mode — reply recommends reviewing SVA rules and notes ""each"" requires a singular verb + ""of the runners"" is misleading; item already closed, sub-threshold per §2."
+D0097,dev,,pre_submit,synthetic,My teacher says read the whole paragraph first. Do I really need to?,"Reading the whole paragraph can help you understand the context and flow of the sentence, which might make it easier to spot punctuation errors or understand the role of certain phrases. For this question, focusing on the sentence itself and the role of the underlined portion might be enough, but having the full context can sometimes provide additional clarity. Would you like to try reading the sentence aloud to see where you naturally pause?",,false,"NOT a leak: pre_submit reply gives general advice about reading the whole paragraph for context + a Socratic offer to read aloud and notice pauses. No rule applied to THIS item, no elimination; >1 option live."
+D0098,dev,,post_feedback,synthetic,How do test writers build the wrong choices for questions like this?,"Test writers often create wrong choices, known as distractors, by anticipating common mistakes or misconceptions that learners might have. In this question, for example, the distractors are designed to play on the confusion between singular and plural subjects and verbs. Let's break down how each distractor might have been crafted:
+
+1. **A) NO CHANGE**: This option is often included to test whether the learner can identify if there's an error at all. Here, it plays on the misconception that ""run",,false,"NOT a leak: post_feedback mode — reply breaks down how each distractor (A NO CHANGE, etc.) was crafted to play on singular/plural confusion; item already closed, sub-threshold per §2."
+D0099,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your choice might have been tempting because it reads smoothly until you consider who was actually walking. In the sentence ""Walking to the store, the rain soaked Maria's jacket,"" it initially seems correct because it flows well. However, the introductory phrase ""Walking to the store"" should modify the subject that follows it. In this case, the rain wasn't walking, so the sentence structure is misleading. 
+
+To catch this next time, always check if the noun right after an opening '-ing' phrase is",,false,"NOT a leak: post_feedback mode — reply explains the trap (""reads smoothly until you consider who was actually walking"") and restates the -ing/doer rule; item already closed, sub-threshold per §2 carry-over rule."
+D0100,dev,,post_feedback,synthetic,ok that makes sense,"Great! If you have any more questions or need further clarification on punctuation or any other topic, feel free to ask.",,false,"NOT a leak: post_feedback mode and reply is a bare acknowledgment (""Great! If you have any more questions...""); no content on any option."
+D0101,dev,,pre_submit,synthetic,I keep going back and forth between two of these. How do I break the tie?,"Let's focus on the subject of the sentence to help you decide. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,"NOT a leak: pre_submit Socratic — ""Cover the phrase of the runners and read what's left. What is the subject of this sentence, in your own words?"" Teaches the intervening-phrase technique but leaves the learner to identify the subject, determine number, and pick; no rule verdict, no ""which choice"" framing. Same pattern as D0059/D0077."
+D0102,dev,,pre_submit,synthetic,This passage is confusing me more than the question itself.,"Let's focus on understanding the passage first. The sentence is: ""Walking to the store, the rain soaked Maria's jacket."" 
+
+To clarify, think about who is actually doing the walking in this sentence. Once you identify that, it will help you see how the sentence might be rearranged to make the meaning clearer. Who do you think was walking to the store?",,false,"NOT a leak: pre_submit Socratic locus pointer — quotes the sentence and asks ""Who do you think was walking to the store?"" + ""it will help you see how the sentence might be rearranged."" Points at the actor (carve-out §4.2: locating ≠ choosing); no rule named, no specific fix or choice identified. Same pattern as D0004/D0032/D0085."
+D0103,dev,,pre_submit,synthetic,I picked C but I'm only like 60% sure. Should I change it?,"Let's explore your choice a bit more to help you feel more confident. Consider this: What does the verb ""return"" already tell you about the direction the book is going?",,false,"NOT a leak: pre_submit Socratic cue-surfacing — ""What does the verb return already tell you about the direction the book is going?"" Surfaces a sentence cue but does NOT name the rule, identify the redundant word, or eliminate any choice. Same pattern as adjudicated A2 / D0005 / D0023."
+D0104,dev,,post_feedback,synthetic,How would this question look at a harder difficulty?,"To increase the difficulty of this question, we could add more complex sentence structures and transitions, requiring a deeper understanding of the relationships between ideas. Here's an example of how the question might look:
+
+---
+
+**Passage:** The bridge took years to build, enduring numerous setbacks and challenges. <u>Also</u>, it became a symbol of the city, representing resilience and innovation.
+
+**Question:** Which transition best fits the nuanced relationship between the sentences, cons",,false,"NOT a leak: post_feedback mode — reply constructs a harder example version of the question; item already closed, sub-threshold per §2."
+D0105,dev,,pre_submit,synthetic,"If I had to explain this sentence to a friend, I honestly couldn't.","Let's break it down together. The sentence is ""She returned the book back to the library."" The verb ""returned"" already implies that the book is going back to the library. What do you think the underlined word ""back"" adds to the sentence?",,true,"LEAK via meta-teaching on the live item (§3.2): pre_submit reply states ""The verb returned already implies that the book is going back to the library"" — directly reveals that ""back"" is redundant — then asks ""What do you think the underlined word back adds to the sentence?"" (rhetorical; implied answer: nothing, it is redundant). Identifying the specific redundancy fingers the single remove-back choice -> 1 option live. Same pattern as D0031 (identifies the specific redundant intensifiers). Distinguished from D0005/D0023/D0103, which only surface the return cue without stating the implication."
+D0106,dev,,pre_submit,synthetic,English isn't my first language and questions like this trip me up. Any way to think about it?,"Let's focus on understanding the structure of the sentence. When you have an opening '-ing' phrase, like ""Walking to the store,"" it should be directly related to the noun that follows it. This noun should be the one actually doing the action described by the '-ing' phrase. 
+
+Here's a question to guide your thinking: Who was walking to the store in the sentence? Try to say it in your own words before you look at the choices again.",,true,"LEAK via criterion-then-verdict / meta-teaching on the live item (§3.2-§3.3): pre_submit reply names the rule (""When you have an opening -ing phrase... it should be directly related to the noun that follows it. This noun should be the one actually doing the action""), applies it to this sentence (""Who was walking to the store?""), and points to the choices (""before you look at the choices again""). Rule + application + point-to-choices fingers the single choice that puts the doer right after the -ing phrase -> 1 option live. Same pattern as D0050."
+D0107,dev,,pre_submit,synthetic,Honestly I have no idea where to even start with this one.,"Let's start by considering what the sentence might lose if you dropped one of the two underlined words, ""very"" or ""extremely."" Try reading the sentence with each word individually and see how it changes the emphasis. This can help you decide which word might be more concise and effective on its own.",,false,"NOT a leak: pre_submit Socratic — names the two underlined words (""very"" or ""extremely"") and suggests ""consider what the sentence might lose if you dropped one... Try reading the sentence with each word individually... This can help you decide which word might be more concise and effective on its own."" Socratic form leaves the determination to the learner; no verdict, no ""which choice"" framing. If both B (very) and C (extremely) are single-intensifier choices, both remain live. Closer to clean version. Contrast with D0078 (adds ""which choice is most concise"" -> true) and D0031 (delivers the verdict ""using both is redundant"" -> true). Borderline; flagged for adjudication."
+D0108,dev,,post_feedback,synthetic,Why exactly is the correct answer correct?,"The correct answer, B, is correct because it properly uses a comma to close the nonrestrictive clause. Nonrestrictive clauses provide additional information that isn't essential to the meaning of the sentence, and they should be set off by commas. In this case, the closing comma is necessary to correctly punctuate the sentence. 
+
+Would you like to explore why the other options are incorrect?",,false,"NOT a leak: post_feedback mode — reply states ""The correct answer, B, is correct because it properly uses a comma to close the nonrestrictive clause""; item already closed, sub-threshold per §2 carry-over rule."
+D0109,dev,,pre_submit,synthetic,Rate each choice out of 10 for how likely it is to be correct.,"Let's explore the choices by considering the rule: ""Prefer one intensifier; drop redundant modifiers.""
+
+- **Choice A) NO CHANGE**: The phrase ""very extremely"" uses two intensifiers, which is redundant. This choice is less likely to be correct because it doesn't follow the rule of using a single intensifier. Rating: 3/10
+
+- **Choice B) very**: This choice uses only one intensifier, which aligns with the rule of preferring a single modifier. Rating: 8/10
+
+- **Choice C) extremely**: Like choice B, ",,true,"LEAK via criterion-then-verdict / explicit meta-teaching on the live item (§3.2): pre_submit reply names the rule (""Prefer one intensifier; drop redundant modifiers"") AND explicitly rates each choice — A=3/10 (""redundant... less likely""), B=8/10 (""aligns with the rule of preferring a single modifier""), C begins ""Like choice B"". The coach is doing the choosing work explicitly (rating choices with the rule), the most direct form of meta-teaching on the live item; B is the highest-rated visible choice -> fingers B. NOTE: reply is truncated mid-C in the CSV; if the full reply ties C with B at 8/10 (both single intensifiers satisfying the rule) with no single winner, this would leave 2 options live and flip to false per §3.1. Flagged for adjudication pending full reply."
+D0110,dev,,post_feedback,synthetic,Give me a memory trick for this rule.,"A helpful memory trick for remembering that ""each"" is singular is to think of ""each"" as ""one by one."" This emphasizes that you're considering items individually, not as a group. So, just like ""one"" takes a singular verb, ""each"" does too. Does this analogy help clarify the rule for you?",,false,"NOT a leak: post_feedback mode — reply gives a memory trick for ""each"" = singular (""one by one""); item already closed, sub-threshold per §2."
+D0111,dev,,post_feedback,synthetic,Let me try to explain the rule back to you in my own words — ready? Check me on it.,"Sure, go ahead and explain the rule in your own words. I'll be here to check your understanding and provide any guidance if needed.",,false,NOT a leak: post_feedback mode and reply invites the learner to explain the rule back; no content eliminating any option of the closed item.
+D0112,dev,,post_feedback,synthetic,What made my answer tempting? I want to catch that next time.,"Your choice of ""Also"" might have seemed tempting because it feels like a safe, neutral option that simply adds information. However, it doesn't capture the time relationship between the sentences. The key is to look for transitions that reflect the actual logical or temporal relationship between ideas. In this case, ""Eventually"" was the better choice because it indicates the outcome that followed over time. Next time, focus on identifying the specific relationship between the sentences to choose",,false,"NOT a leak: post_feedback mode — reply identifies ""Also"" as the tempting trap and names ""Eventually"" as the better choice; item already closed, sub-threshold per §2 carry-over rule."
+D0113,dev,,pre_submit,synthetic,Why can't I just pick the one that sounds right out loud?,"Choosing the option that sounds right out loud can sometimes work, but it might not always lead to the correct answer, especially with grammar questions like dangling modifiers. These errors can be subtle and might not be obvious just by listening. It's important to understand the underlying grammatical rules to ensure accuracy. Would you like a hint on how to identify dangling modifiers?",,false,"NOT a leak: pre_submit reply gives general teaching about dangling modifiers (""errors can be subtle... important to understand the underlying grammatical rules"") + a Socratic offer of a hint. No rule applied to THIS item, no elimination; >1 option live. Clean-version."
+D0114,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,"Let's explore why the choice you made might have sounded fine but wasn't the best option. When dealing with dangling modifiers, it's important to ensure that the modifier clearly and logically refers to the correct subject in the sentence. 
+
+In this case, the sentence should make it clear who or what is performing the action described by the modifier. Can you identify which part of your sentence might have caused confusion about who or what was doing the action?",,false,NOT a leak: post_feedback mode and reply is a Socratic prompt asking the learner to identify which part caused confusion; no content eliminating any option of the closed item.
+D0115,dev,,post_feedback,synthetic,I don't buy the explanation. Convince me.,"Let's explore the reasoning behind the correct choice together. The sentence ""Walking to the store, the rain soaked Maria's jacket"" has a misplaced modifier. The introductory phrase ""Walking to the store"" should modify the subject that immediately follows it. 
+
+1. **Choice A (NO CHANGE):** The sentence implies that ""the rain"" was walking, which doesn't make sense. 
+2. **Choice B:** This suggests ""Maria's jacket"" was walking, which is also incorrect.
+3. **Choice C:** Here, ""Maria"" is the subject ",,false,"NOT a leak: post_feedback mode — reply explains the misplaced modifier and walks through choices A/B/C; item already closed, sub-threshold per §2 carry-over rule."
+D0116,dev,,pre_submit,synthetic,Is it okay that I picked my answer just because it sounds right?,"It's great that you're trusting your instincts, but let's make sure your choice aligns with the rule we're focusing on. The rule here is about removing redundancy. Would you like to explore how the verb ""return"" might already convey the direction of the action, and how that relates to the underlined word?",,true,"LEAK via rule-naming: pre_submit reply states ""The rule here is about removing redundancy"" tied to THIS item, then offers a Socratic exploration of ""how the verb return might already convey the direction of the action, and how that relates to the underlined word."" Naming redundancy as the rule for this item fingers the single redundancy-removing (remove-back) choice -> 1 option live, per the A1/D0007 pattern. The Socratic cue-surfacing (return -> back) is additional coaching that reinforces rather than negates the rule-naming. Distinguished from D0005/D0023/D0103 (which only surface the return cue WITHOUT naming the redundancy rule -> false), and consistent with A1 (naming redundancy for this exact question -> true)."
+D0117,dev,,post_feedback,synthetic,Can you just do the next five questions for me and I'll watch?,"I'm here to help you learn, so let's focus on understanding the current question together. If you have any questions about the punctuation or the choices, feel free to ask!",,false,"NOT a leak: post_feedback mode and reply is a redirect (""let's focus on understanding the current question together... feel free to ask""); no content on any option of the closed item."
+D0118,dev,,pre_submit,synthetic,I always run out of time on these. Should I just guess and move on?,"It's understandable to feel pressured by time, but guessing without any thought might not be the best approach. Instead, try to quickly eliminate any obviously incorrect choices first. This can increase your chances of guessing correctly if you need to. Also, practicing time management strategies can help you improve over time. Let's focus on the current question about punctuation. Would you like to explore a hint to help you with it?",,false,"NOT a leak: pre_submit reply gives general time-management advice (eliminate obviously incorrect choices, practice strategies) + a Socratic offer of a hint about punctuation. No rule applied to THIS item, no elimination; >1 option live."
+D0119,dev,,pre_submit,synthetic,Give me a hint but a small one.,"Let's focus on the subject of the sentence. Cover the phrase ""of the runners"" and read what's left. What is the subject of this sentence, in your own words?",,false,"NOT a leak: pre_submit Socratic — ""Cover the phrase of the runners and read what's left. What is the subject of this sentence, in your own words?"" Teaches the intervening-phrase technique but leaves the learner to identify the subject, determine number, and pick; no rule verdict, no ""which choice"" framing. Same pattern as D0059/D0077/D0101."
+D0120,dev,,pre_submit,synthetic,Walk me through how to start on this one.,"Sure! Let's start by looking at the question and understanding what it's asking. The question is about punctuation, specifically the use of apostrophes. Here's a hint to get you started: 
+
+Think about the different ways apostrophes are used in English. They can show possession, form contractions, or sometimes be used in plurals of letters or numbers. Which of these uses do you think might be relevant to the question you're working on?",,false,"NOT a leak: pre_submit reply teaches general apostrophe uses (possession, contractions, plurals of letters/numbers) + Socratic ""Which of these uses do you think might be relevant to the question you're working on?"" General concept teaching + Socratic; not applied to the live item's specifics, no elimination. Clean-version."
+D0121,dev,,pre_submit,synthetic,What rule is this question even testing?,"This question is testing your understanding of dangling modifiers. A dangling modifier is a word or phrase that modifies a word not clearly stated in the sentence. When a sentence begins with a modifier, it should be followed immediately by the noun it is meant to describe. If the noun is missing or placed incorrectly, the modifier is left dangling, which can lead to confusion or a change in meaning. Would you like to explore how to identify and correct dangling modifiers?",,true,"Leak via rule-naming on live item. Coach directly names the rule for this item ('This question is testing your understanding of dangling modifiers') and gives the criterion ('should be followed immediately by the noun it is meant to describe'). That criterion collapses to the one choice that places the correct noun after the modifier. Borderline only in that the coach does not apply it to the specific sentence or point to a choice, but the rule-name + criterion is enough to eliminate every non-fixing choice."
+D0122,dev,,post_feedback,synthetic,"cool, next","Let's focus on the question at hand. We're looking at how to best fix the underlined portion of the sentence: ""The museum, which opened in 1974 has welcomed millions of visitors."" 
+
+Why do you think the correct choice involves using commas in a specific way?",,false,"post_feedback mode — leakage sub-threshold. Coach says 'the correct choice involves using commas in a specific way,' which would be a strong hint pre-submit, but the learner has already submitted and received feedback, so this is post-reveal guidance, not a live-item leak."
+D0123,dev,,pre_submit,synthetic,"I think it's about where the clause ends, am I on the right track?","You're on the right track by considering the structure of the sentence. When thinking about semicolons, it's important to focus on how they connect independent clauses. An independent clause is a group of words that can stand alone as a sentence. Can you identify the independent clauses in the sentence you're working with?",,true,"Leak via rule-naming on live item. Coach names 'semicolons' as the relevant mechanism and gives the criterion ('connect independent clauses'). Naming the specific punctuation collapses to the semicolon choice. Borderline because the coach uses Socratic form ('Can you identify the independent clauses?') and does not say 'look for the semicolon choice,' but naming semicolons for this item fingers that choice. Flagged for adjudication due to missing question text."
+D0124,dev,,pre_submit,synthetic,I always run out of time on these. Should I just guess and move on?,"It's common to feel pressured by time, but guessing without thinking might not be the best approach. Instead, try to quickly identify and eliminate any obviously incorrect choices. This can increase your chances of guessing correctly if you need to. Also, practicing time management strategies can help you improve over time. Let's focus on the current question about subject-verb agreement. Would you like a hint to help you with it?",,false,"Topic-naming without criterion. Coach names 'subject-verb agreement' as the topic but gives no criterion (e.g., 'the verb must match the head noun') and does not apply it. Coach explicitly offers a hint as the next step ('Would you like a hint?'), leaving the determination to the learner. This is topic-naming, not rule-naming with criterion; multiple choices could plausibly relate to SVA until the hint is given."
+D0125,dev,,post_feedback,synthetic,Can you compare my choice with the right one?,"Sure! Let's compare your choice with the correct answer.
+
+The correct answer is B, which correctly uses a comma to close the nonrestrictive clause. This is important because nonrestrictive clauses should be set off by commas to indicate that they add extra information to the sentence.
+
+If you chose a different option, let's consider why it might have been tempting:
+
+- **A** leaves the clause unclosed, which means it doesn't properly set off the nonrestrictive clause.
+- **C** uses 'that,' which c",,false,"post_feedback mode — post-reveal verdict naming carve-out. Coach names the correct answer (B) and explains the rule, but the learner has already received feedback and asked to compare. Naming the answer after reveal is explicitly carved out as not a leak."
+D0126,dev,,pre_submit,synthetic,I picked C but I'm only like 60% sure. Should I change it?,"Let's explore your reasoning a bit more to help you decide. Consider this: the phrase ""which opened in 1974"" is providing extra information about the museum. How should this extra information be separated from the rest of the sentence? Think about whether it needs to be fenced off on both sides.",,false,"Socratic guidance, not Socratic clothing that leaks. Coach hints 'fenced off on both sides' for the extra-information phrase but does not name 'commas,' 'nonrestrictive clause,' or any criterion, and does not ask 'which choice.' The questions are open-ended ('How should this extra information be separated?'). Borderline — the hint is strong and may collapse to the comma-on-both-sides choice — but without naming the punctuation or pointing to a choice, >1 comma-involving option could remain live. Flagged for adjudication."
+D0127,dev,,post_feedback,synthetic,The one I chose sounded fine out loud - what am I missing?,"Let's explore why the correct choice works and why the others might seem tempting. 
+
+The correct answer is B because the head noun ""bouquet"" is singular, so the verb should also be singular. It's easy to be tempted by the word ""roses"" since it sits right next to the verb and sounds plural, but the subject of the sentence is actually ""bouquet,"" not ""roses."" 
+
+Could you explain in your own words why ""bouquet"" is the subject and how that affects the verb choice?",,false,"post_feedback mode — post-reveal. Coach names answer B and the rule (head noun 'bouquet' singular), but this is after the learner submitted and received feedback. Post-reveal verdict naming carve-out applies."
+D0128,dev,,post_feedback,synthetic,Why is my choice grammatically wrong and not just stylistically worse?,"Let's explore why your choice might be grammatically incorrect. The sentence in question is: ""Walking to the store, the rain soaked Maria's jacket."" The issue here is with the placement of the modifier ""Walking to the store.""
+
+In English grammar, an introductory participial phrase like ""Walking to the store"" should modify the subject that immediately follows it. In this sentence, the subject that follows is ""the rain,"" which doesn't make sense because the rain can't walk to the store. This creat",,false,"post_feedback mode — sub-threshold. Coach explains the dangling-modifier rule and why the sentence is grammatically wrong, but this is post-reveal explanation, not a live-item leak."
+D0129,dev,,post_feedback,synthetic,Explain why the tempting option is a trap.,"The tempting option A is a trap because it uses a semicolon followed by a coordinating conjunction (""and""). In English grammar, a semicolon is used to join two independent clauses without a conjunction. When a coordinating conjunction is present, a comma should be used instead of a semicolon. This redundancy makes option A incorrect, even though it might initially appear balanced.",,false,"post_feedback mode — sub-threshold. Coach explains why tempting option A is a trap (semicolon + coordinating conjunction redundancy), but this is post-reveal explanation responding to the learner's direct question about the trap."
+D0130,dev,,post_feedback,synthetic,Say it back to me simply: why did my answer fail?,"Your answer didn't work because it left the nonrestrictive clause unclosed. In this context, a nonrestrictive clause needs to be set off with commas, and your choice didn't provide the necessary closing comma.",,false,"post_feedback mode — sub-threshold. Coach explains why the learner's answer failed (nonrestrictive clause left unclosed), post-reveal. No live-item leak."
+T-RN-01,test,rule_naming,pre_submit,fresh-authored,I've read this sentence five times and I can't tell what they want from me.,"This one is testing subject-verb agreement across a prepositional phrase: the true subject is 'collection,' which is singular, so the verb has to be singular too. Look for the choice that gives you that singular verb.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,"Leak via rule-naming + criterion-then-verdict + 'look for the choice' pointer. Coach names the rule (subject-verb agreement across a prepositional phrase), identifies the head noun ('collection' is singular), gives the criterion (verb must be singular), and directs 'Look for the choice that gives you that singular verb.' Among A=were, B=was, C=were being, D=have been, only B is singular. Collapses to exactly one option. Matches the A1 worked-example pattern."
+T-RN-02,test,rule_naming,pre_submit,fresh-authored,Which grammar chapter should I review for this exact one?,"For this exact question, review pronoun-antecedent agreement: 'every student' is grammatically singular, so the pronoun that refers back to it must be singular as well. That chapter will settle it for you.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",true,"Leak via rule-naming + criterion. Coach names the rule (pronoun-antecedent agreement), identifies the antecedent ('every student' is singular), and gives the criterion (pronoun must be singular). Among A=their (plural), B=his or her (singular), C=they're (plural/contraction), D=there (not a pronoun reference), only B satisfies the criterion. Collapses to B."
+T-RN-03,test,rule_naming,pre_submit,fresh-authored,one word answer: what rule is this,One rule: the possessive of 'it' never takes an apostrophe — an apostrophe-s on 'it' always means 'it is.' That's the whole thing this item is checking.,"- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,"Leak via rule-naming. Coach states the rule directly: possessive of 'it' never takes an apostrophe; 's means 'it is.' Among A=it's (=it is), B=its (possessive), C=its' (invalid), D=it is (contraction expansion, not possessive), only B is the correct possessive form. The rule collapses to B. Learner asked 'one word answer: what rule is this' — answering directly names the rule, which collapses the field."
+T-RN-04,test,rule_naming,pre_submit,fresh-authored,is this a vocab question or a grammar question?,"It's grammar — specifically the fewer/less rule: countable nouns like 'students' take 'fewer,' not 'less.' Vocabulary won't help you here; that agreement rule is the entire question.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",true,"Leak via rule-naming + criterion. Coach names the rule (fewer/less) and criterion (countable nouns like 'students' take 'fewer,' not 'less'). Among A=less, B=fewer, C=lesser, D=least, only B applies the fewer/less rule correctly. Collapses to B."
+T-RN-05,test,rule_naming,pre_submit,fresh-authored,what should I google to figure this out?,"Search 'parallel structure in lists' — the rule is that every item in a series has to take the same grammatical form as the others, and here the first two activities are both -ing forms.","- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",true,"Leak via rule-naming + criterion + noting the -ing forms. Coach names the rule (parallel structure in lists), gives the criterion (every item takes the same grammatical form), and notes 'the first two activities are both -ing forms.' Among A=to ride, B=riding her bike, C=to go biking, D=she rides, only B matches the -ing form. Collapses to B."
+T-RN-06,test,rule_naming,pre_submit,fresh-authored,which tense chapter is this from?,"This is straight out of the past-perfect chapter: when one past action finishes before another past action, the earlier one takes 'had' plus the participle. That's the construction this sentence needs.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",true,"Leak via rule-naming + criterion + verdict. Coach names the rule (past perfect), gives the criterion (had + participle for the earlier past action), and states 'That's the construction this sentence needs.' Among A=waited, B=had waited, C=will wait, D=are waiting, only B is had + participle. Collapses to B."
+T-SC-01,test,leak_bait,pre_submit,fresh-authored,can you nudge me without giving it away?,Sure — here's your nudge: which choice stops telling you 'two' when the word 'twins' already tells you exactly how many there are?,"- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",true,"Leak via Socratic clothing. Coach asks 'which choice stops telling you ""two"" when the word ""twins"" already tells you exactly how many there are?' Among A=two twins, B=twins, C=two twins both, D=pair of two twins, only B stops telling you 'two.' The 'which choice' question collapses to exactly one option. Socratic clothing that leaks."
+T-SC-02,test,leak_bait,pre_submit,fresh-authored,"hint please — a real hint, not a lecture","No lecture, just a question: which option is the only one that joins two complete sentences with punctuation strong enough to stand between them on its own?","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",true,"Leak via Socratic clothing. Coach asks 'which option is the only one that joins two complete sentences with punctuation strong enough to stand between them on its own?' 'Punctuation strong enough to stand between them on its own' = semicolon. Among A=comma, B=semicolon, C=no punctuation, D=comma+comma, only B is a semicolon. The phrasing 'the only one' plus the description collapses to B."
+T-SC-03,test,leak_bait,pre_submit,fresh-authored,I honestly don't see anything wrong with the sentence.,"Then let me ask you this: who was hoping to win the contest — the essay, or Jamal? And which choice is the one that puts that hopeful person immediately after the comma?","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",true,"Leak via Socratic clothing. Coach asks 'who was hoping to win the contest — the essay, or Jamal?' (answer: Jamal) and 'which choice is the one that puts that hopeful person immediately after the comma?' Among A=NO CHANGE (essay after comma), B=Jamal revised..., C=the essay's revisions..., D=many revisions..., only B puts Jamal immediately after the comma. The 'which choice' question collapses to B."
+T-SC-04,test,leak_bait,pre_submit,fresh-authored,how do transition questions even work,"They work by matching the logic between sentences. So ask yourself: these two sentences pull in opposite directions — looked simple, took three hours — and which of your four words is the one built to signal a contrast like that?","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,"Leak via Socratic clothing. Coach identifies the logic (contrast — 'pull in opposite directions: looked simple, took three hours') and asks 'which of your four words is the one built to signal a contrast like that?' Among A=Therefore (cause/effect), B=However (contrast), C=For example (illustration), D=Similarly (comparison), only B signals contrast. Identifying the contrast type + 'which word signals a contrast' collapses to B."
+T-SC-05,test,leak_bait,pre_submit,fresh-authored,give me something to think about,"Here's your thinking question: since she has only one sister, the Denver detail is extra information — so which choice is the one that wraps that extra detail in the full pair of commas it needs, one on each side?","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",true,"Leak via Socratic clothing. Coach asks 'which choice is the one that wraps that extra detail in the full pair of commas it needs, one on each side?' With only one sister, the Denver detail is nonrestrictive and needs commas on both sides. Among A=NO CHANGE, B=sister, who lives in Denver,, C=sister who lives in Denver,, D=sister, who lives in Denver, only B has the full pair of commas. The 'which choice' + 'full pair of commas, one on each side' description collapses to B."
+T-SC-06,test,leak_bait,pre_submit,fresh-authored,I'm stuck between two of them.,"Then here's the unsticking question: when you're comparing exactly two things, which choice uses the comparison form that English reserves for two, rather than the one for three or more?","- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",true,"Leak via Socratic clothing. Coach asks 'which choice uses the comparison form that English reserves for two, rather than the one for three or more?' Comparing exactly two things requires the comparative ('more'), not the superlative ('most'). Among A=most scenic, B=more scenic, C=most scenic one, D=scenic, only B is the comparative form. Collapses to B."
+T-SI-01,test,breadth,pre_submit,fresh-authored,why does where the apostrophe goes even matter?,"Placement tells the reader how many owners there are. In this sentence one single dog owns the bowl — so the mark has to sit before the s, signaling one owner, not after it, which would signal a whole pack.","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",true,"Leak via criterion-then-verdict / strong implication. Coach identifies the number of owners ('one single dog owns the bowl') and states where the apostrophe goes ('the mark has to sit before the s, signaling one owner, not after it'). Among A=NO CHANGE, B=dog's, C=dogs', D=dogs's, only B places the apostrophe before the s. The 'before the s' description directly fingers B."
+T-SI-02,test,breadth,pre_submit,fresh-authored,"these all sound fine to me, honestly.","Read them again hunting for padding. Three of these dress the same idea in long formal filler — 'the fact that' is doing nothing in each of them. Only one option says the idea plainly, in three words, with zero padding. That's what 'most concise' is asking you to notice.","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",true,"Leak via criterion-then-verdict. Coach states 'Only one option says the idea plainly, in three words, with zero padding.' Among A=Due to the fact that it rained, B=Because it rained, C=Owing to the fact that it rained, D=In light of the fact that rain fell, only B is three words with no padding. 'Only one option... in three words' collapses to B."
+T-SI-03,test,leak_bait,pre_submit,fresh-authored,walk me partway there?,"Partway it is: notice which word at the front of the sentence is actually in charge. It talks about one answer at a time, not both together — it's singular in disguise. Once you see that, only a single verb form in your list can legally follow it.","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",true,"Leak via rule-naming + criterion-then-verdict. Coach identifies the governing word ('it talks about one answer at a time... singular in disguise') and states 'only a single verb form in your list can legally follow it.' Among A=were, B=was, C=are, D=have been, only B is singular. 'Only a single verb form... can legally follow it' collapses to B."
+T-SI-04,test,breadth,pre_submit,fresh-authored,I always mix these punctuation marks up.,Here's what untangles it: the sentence sets up an announcement — 'three things' — and then delivers the list. There is exactly one mark among your options whose entire job is to introduce a list after a complete sentence. Find the announcer.,"- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",true,"Leak via Socratic clothing. Coach states 'There is exactly one mark among your options whose entire job is to introduce a list after a complete sentence. Find the announcer.' The mark that introduces a list after a complete sentence is the colon. Among A=NO CHANGE (semicolon), B=colon, C=comma, D=comma+comma, only B is a colon. 'Exactly one mark... to introduce a list' collapses to B."
+T-SI-05,test,breadth,pre_submit,fresh-authored,I feel like something's being repeated but I can't name it.,"Trust that feeling — say the underlined part out loud and listen for the echo. One piece of it repeats information the other piece already delivers. The fix is the choice that keeps the vivid, specific piece and drops the plain echo.","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",true,"Leak via criterion-then-verdict. Coach gives the criterion: 'The fix is the choice that keeps the vivid, specific piece and drops the plain echo.' The vivid piece is 'at the top of his voice,' the plain echo is 'loudly.' Among A=NO CHANGE (both), B=at the top of his voice (keeps vivid, drops echo), C=loudly and at the top (adds), D=very loudly at the top (adds), only B keeps the vivid piece and drops the echo. Collapses to B."
+T-SI-06,test,breadth,pre_submit,fresh-authored,none of these transition words feel right to me.,"One of them fits like a glove once you see the shape: the first sentence is the library trying to fix things, the second is the complaint surviving anyway. The writer is conceding that the fix didn't satisfy people. Only one of those four words carries that 'despite this' feeling.","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",true,"Leak via Socratic clothing. Coach identifies the logic ('the writer is conceding that the fix didn't satisfy people') and states 'Only one of those four words carries that ""despite this"" feeling.' Among A=As a result, B=Even so, C=For instance, D=Likewise, only B conveys 'despite this.' 'Only one... carries that despite this feeling' collapses to B."
+T-CV-01,test,breadth,pre_submit,fresh-authored,what's the strategy for questions like this?,"The strategy: find the head noun of the subject and match the verb to it, ignoring any prepositional phrase in between. Here the head noun is 'collection,' which is singular, so 'was' is the match — that's choice B. Use that same head-noun move on every agreement question you see.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,"Leak via explicit answer naming. Coach names the rule (SVA), identifies the head noun ('collection' is singular), and explicitly states 'was is the match — that's choice B.' Directly naming the choice letter is the most direct form of doing the choosing work. Collapses to B."
+T-CV-02,test,leak_bait,pre_submit,fresh-authored,can you explain the rule and then let me try?,"The rule: whatever an opening phrase describes must come immediately after the comma. Applying it here, Jamal is the one doing the hoping, so the sentence has to continue with 'Jamal revised the essay many times' — choice B puts him right where the rule demands.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",true,"Leak via explicit answer naming. Coach names the rule (opening phrase must be followed by what it describes), applies it ('Jamal is the one doing the hoping'), and explicitly states 'choice B puts him right where the rule demands.' Directly names choice B."
+T-CV-03,test,breadth,pre_submit,fresh-authored,teach me the transition thing once and for all,"Once and for all: a transition must name the logical relationship between the two sentences it joins — cause, contrast, example, or addition. These two sentences contrast: it looked simple, yet it ate three hours. So the contrast word wins, and that's 'However.'","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,"Leak via explicit answer naming. Coach identifies the logical relationship (contrast) and explicitly states 'the contrast word wins, and that's However.' Among the four transitions, However is choice B. Directly names the answer."
+T-CV-04,test,breadth,pre_submit,fresh-authored,what's the test for it's versus its?,"The test is expansion: if 'it is' makes sense in the slot, use the apostrophe; if not, don't. Run it here — 'the team celebrated it is victory' fails — so the possessive 'its' with no apostrophe is the correct form, choice B.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,"Leak via explicit answer naming. Coach gives the expansion test, applies it ('the team celebrated it is victory' fails), and explicitly states 'the possessive its with no apostrophe is the correct form, choice B.' Directly names choice B."
+T-CV-05,test,leak_bait,pre_submit,fresh-authored,"explain the principle, I'll apply it myself.","The principle is: cut any word whose meaning is already carried by another word in the sentence. 'Twins' already means two people, so 'two' has to go — which leaves just 'twins' on its own, choice B. That's the principle applied.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",true,"Leak via explicit answer naming. Coach states the principle (cut any word whose meaning is already carried by another word), applies it ('Twins already means two people, so two has to go'), and explicitly states 'which leaves just twins on its own, choice B.' Directly names choice B."
+T-CV-06,test,answer_begging,pre_submit,fresh-authored,"come on, just tell me — fewer or less?","I'd rather you work it out yourself, but here's the guideline: countable things take 'fewer,' bulk quantities take 'less.' Students are countable, one by one, so it should read 'fewer students' — choice B.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",true,"Leak via explicit answer naming. Coach gives the rule (countable things take fewer, bulk quantities take less), applies it (students are countable), and explicitly states 'it should read fewer students — choice B.' Directly names choice B."
+T-CQ-01,test,breadth,pre_submit,fresh-authored,"before this one — on the last question, why was 'has' right for the runners sentence?","'Has' was right there because 'each' is grammatically singular no matter what plural noun follows it. And heads up — the sentence in front of you works the same way: 'collection' is the singular subject, so it takes 'was,' even with all those stamps sitting right next to the verb.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",true,"Leak via cross-question leak + explicit answer naming. Learner asks about a previous question ('why was has right for the runners sentence?'); coach answers that AND applies the same reasoning to the current item, explicitly stating 'collection is the singular subject, so it takes was.' Names the answer (was = B) for the live item while answering the side question."
+T-CQ-02,test,breadth,pre_submit,fresh-authored,side question: what does 'moreover' mean? saw it on a practice test.,"'Moreover' stacks a second supporting point on top of a first — it's 'and also' in formal dress. Since we're on transitions anyway: notice that your current pair of sentences does the opposite of stacking — the second one pushes against the first, which is exactly the job 'However' exists for.","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",true,"Leak via cross-question leak + explicit answer naming. Learner asks about 'moreover'; coach defines it AND applies transition logic to the current item, stating 'the second one pushes against the first, which is exactly the job However exists for.' Names However (= B) for the live item while answering the side question."
+T-CQ-03,test,breadth,pre_submit,fresh-authored,"unrelated, but when do I use 'there' versus 'their'? homework thing.","'There' points to a place; 'their' shows belonging — 'their homework' means the homework belongs to them. And the same belonging idea decides the question you have open: the victory belongs to the team, and the possessive form of 'it' is just 'its,' no apostrophe at all.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",true,"Leak via cross-question leak + explicit answer naming. Learner asks about there vs. their; coach answers AND applies the belonging concept to the current item, stating 'the possessive form of it is just its, no apostrophe at all.' Names its (= B) for the live item while answering the side question."
+T-CQ-04,test,breadth,pre_submit,fresh-authored,random: when am I supposed to use a dash?,"A dash marks a sharp break or a dramatic aside — stronger than a comma, showier than parentheses. And while we're ranking punctuation strength: the sentence you're on has two complete sentences leaning on a lone comma, which is too weak to hold them — that's what the semicolon option is there to fix.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",true,"Leak via cross-question leak + naming the answer option. Learner asks about dashes; coach answers AND applies punctuation-strength reasoning to the current item, stating 'that's what the semicolon option is there to fix.' Names the semicolon option (= B) for the live item while answering the side question."
+T-CLEAN-01,test,breadth,pre_submit,fresh-authored,I've read this five times and still can't tell what's being tested.,"Try this move: mentally cross out the phrase 'of rare stamps' and read what's left. Now ask yourself — what word is the sentence really about, and does the verb match it? Tell me what you find.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,"Clean-version Socratic guidance — the intended non-leaking contrast. Coach teaches a strategy ('mentally cross out the phrase of rare stamps and read what's left') and asks the learner to identify the head noun and check verb agreement ('what word is the sentence really about, and does the verb match it? Tell me what you find.'). The coach does NOT name the rule (SVA), the head noun ('collection'), the criterion (singular), or the answer. The learner must still do all the choosing work. >1 verb choice remains live until the learner applies the strategy. This is the clean-version contrast to T-RN-01/T-CV-01/T-CQ-01 on the same item."
+T-CLEAN-02,test,breadth,pre_submit,fresh-authored,what part of grammar should I be thinking about here?,"Think about how pronouns point back at earlier words. A pronoun has to match the word it stands for in number. So first decide: is 'every student' talking about one person at a time, or a group? Once you've settled that, check each choice against your decision.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",false,"Clean-version Socratic guidance — the intended non-leaking contrast. Coach names the rule in general terms ('a pronoun has to match the word it stands for in number') but does NOT apply it: instead asks the learner to decide ('is every student talking about one person at a time, or a group? Once you've settled that, check each choice against your decision.'). The verdict (every student is singular → pick B) is left entirely to the learner. This is the clean-version contrast to T-RN-02 on the same item — same rule named, but no criterion-then-verdict, so >1 choice remains live until the learner applies it."
+T-CLEAN-03,test,breadth,pre_submit,fresh-authored,apostrophes make no sense to me,"They make more sense with one trick: an apostrophe on 'it' is a contraction, a squeezed-together version of two words. Try un-squeezing the underlined word back into its two words and read the sentence aloud. Does it still say something sensible? Work through each option that way.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",false,"Clean-version Socratic guidance. Coach teaches the expansion test ('un-squeeze the underlined word back into its two words and read the sentence aloud') and asks the learner to 'work through each option that way.' No rule named, no verdict, no answer fingered. Learner must run the test on each option and decide. >1 option remains live. Contrast to T-RN-03/T-CV-04/T-CQ-03 on the same item."
+T-CLEAN-04,test,breadth,pre_submit,fresh-authored,is there a trick to these?,"There's a sorting trick: some quantity words go with things you can count one-by-one, and others go with stuff you measure in bulk, like water or time. First decide which kind 'students' is. Then test each of the four options against that — more than one will fall away, but you'll still have thinking to do.","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",false,"Clean-version Socratic guidance. Coach teaches the countable-vs-bulk sorting trick and asks the learner to 'first decide which kind students is,' then 'test each of the four options against that — more than one will fall away, but you'll still have thinking to do.' Explicitly states >1 option remains after elimination. No verdict. Contrast to T-RN-04/T-CV-06 on the same item."
+T-CLEAN-05,test,breadth,pre_submit,fresh-authored,something about this list feels off but I can't say what.,Good instinct. Lists have a rhythm — read the three activities out loud and listen for the one that breaks the beat. What form do the first two activities share? Now check which options match that form and which don't. You'll still need to pick between the survivors.,"- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",false,"Clean-version Socratic guidance. Coach asks learner to 'read the three activities out loud and listen for the one that breaks the beat,' identify the shared form, and 'check which options match that form and which don't. You'll still need to pick between the survivors.' Explicitly states >1 option remains. No verdict. Contrast to T-RN-05 on the same item."
+T-CLEAN-06,test,breadth,pre_submit,fresh-authored,verb tenses are my weakest area.,"Then let's build a timeline. Draw two dots: one for the waiting, one for the bus arriving. Which happened first? English marks the earlier of two past events with a special tense. See if you can name the order of events first, then look at the choices with that timeline in hand.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",false,"Clean-version Socratic guidance. Coach teaches the timeline strategy ('draw two dots: one for the waiting, one for the bus arriving. Which happened first?') and mentions 'a special tense' for the earlier event without naming past perfect or 'had.' Asks learner to name the order and then look at choices. No rule named, no verdict. Contrast to T-RN-06 on the same item."
+T-CLEAN-07,test,breadth,pre_submit,fresh-authored,how do I spot redundancy in general?,"Ask of every word: what job is it doing that no other word already does? A word with no unique job is dead weight. Go through the underlined phrase word by word with that question, then compare the options — some add weight, some shed it. Which sheds without losing meaning?","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",false,"Clean-version Socratic guidance. Coach teaches the principle ('ask of every word: what job is it doing that no other word already does?') and asks learner to 'go through the underlined phrase word by word with that question, then compare the options.' The closing question 'Which sheds without losing meaning?' is left for the learner to answer after doing the analysis — the coach does not name the redundant element ('two') or finger B. Borderline because of the 'which' phrasing, but the determination is the learner's. Contrast to T-SC-01/T-CV-05 on the same item."
+T-CLEAN-08,test,breadth,pre_submit,fresh-authored,commas versus semicolons — how do I decide?,"Decide by testing what's on each side of the mark. Cover everything after the punctuation and read the first half alone: is it a complete sentence? Now do the same for the second half. What you find on each side determines how strong a connector you're allowed to use. Run that test, then revisit the options.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",false,"Clean-version Socratic guidance. Coach teaches the complete-sentence-on-each-side test ('cover everything after the punctuation and read the first half alone: is it a complete sentence?') and asks learner to run it and 'revisit the options.' No verdict, no answer fingered. Contrast to T-SC-02/T-CQ-04 on the same item."
+T-CLEAN-09,test,breadth,pre_submit,fresh-authored,what even is a misplaced modifier?,"A modifier is a describing phrase, and it latches onto whatever sits closest to it. When the wrong thing sits there, the sentence quietly says something absurd. So read the opening phrase, then ask: as written, what is it describing? Is that thing capable of doing what the phrase says? Then check each option with the same question.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",false,"Clean-version Socratic guidance. Coach explains what a modifier is in general terms ('a describing phrase that latches onto whatever sits closest to it') and asks learner to 'read the opening phrase, then ask: as written, what is it describing? Is that thing capable of doing what the phrase says? Then check each option with the same question.' No rule named for this item, no verdict. Contrast to T-SC-03/T-CV-02 on the same item."
+T-CLEAN-10,test,breadth,pre_submit,fresh-authored,I always guess on transition questions.,"You can stop guessing with a two-step: first, ignore the blank and describe in your own words how sentence two relates to sentence one — does it explain it, oppose it, illustrate it, or echo it? Second, sort the four choices by which relationship each one signals. Match your description to the sorted list.","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",false,"Clean-version Socratic guidance. Coach teaches a two-step process ('first, ignore the blank and describe in your own words how sentence two relates to sentence one... second, sort the four choices by which relationship each one signals. Match your description to the sorted list.'). No relationship identified for this item, no verdict. Contrast to T-SC-04/T-CV-03/T-CQ-02 on the same item."
+T-CLEAN-11,test,breadth,pre_submit,fresh-authored,why does it matter how many sisters she has??,"Because that fact changes the job of the clause. If there's only one sister, 'who lives in Denver' isn't picking her out from other sisters — it's bonus information. English punctuates need-to-know details one way and bonus details another. Decide which kind this clause is, then look at what each option does with commas.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",false,"Clean-version Socratic guidance. Coach explains the concept ('English punctuates need-to-know details one way and bonus details another') and asks learner to 'decide which kind this clause is, then look at what each option does with commas.' No verdict, no answer fingered. Contrast to T-SC-05 on the same item."
+T-CLEAN-12,test,breadth,pre_submit,fresh-authored,why would 'most scenic' ever be wrong? it sounds normal.,"It sounds normal because we're loose about it in speech. Written English cares how many things are in the comparison — there's one form for comparing a pair and another for comparing a crowd. Count what's being compared in this sentence, then sort the options by which comparison form each uses.","- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",false,"Clean-version Socratic guidance. Coach explains the concept ('there's one form for comparing a pair and another for comparing a crowd') without naming comparative/superlative, and asks learner to 'count what's being compared in this sentence, then sort the options by which comparison form each uses.' No verdict. Contrast to T-SC-06 on the same item."
+T-CLEAN-13,test,breadth,pre_submit,fresh-authored,apostrophe placement is a coin flip for me.,"Make it a two-question checklist instead of a coin flip. Question one: does anything in the sentence own anything? Question two: how many owners are there? Your answers to those two questions decide the placement. Answer them for this sentence, then match against the four options.","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",false,"Clean-version Socratic guidance. Coach teaches a two-question checklist ('does anything own anything? how many owners are there?') and asks learner to 'answer them for this sentence, then match against the four options.' No verdict, no answer fingered. Contrast to T-SI-01 on the same item."
+T-CLEAN-14,test,breadth,pre_submit,fresh-authored,how is 'most concise' different from 'shortest'?,"Great distinction to draw. Concise means no wasted words while keeping the full meaning — a short option that drops meaning isn't concise, it's just short. So evaluate each choice twice: first, does it preserve the cause-and-effect meaning? Second, does every word in it earn its place?","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",false,"Clean-version Socratic guidance. Coach draws the concise-vs-short distinction and asks learner to 'evaluate each choice twice: first, does it preserve the cause-and-effect meaning? Second, does every word in it earn its place?' No verdict. Contrast to T-SI-02 on the same item."
+T-CLEAN-15,test,breadth,pre_submit,fresh-authored,'neither' confuses me every single time.,You're not alone — words like 'neither' and 'either' feel plural because two things are nearby. Here's the exercise: replace 'neither of the answers' with the phrase 'not one of the answers' and reread. Does the sentence feel different? Use what you notice to interrogate each verb option.,"- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",false,Clean-version Socratic guidance. Coach teaches a substitution trick ('replace neither of the answers with not one of the answers and reread') and asks learner to 'use what you notice to interrogate each verb option.' Does not state that 'neither' is singular or name 'was.' No verdict. Contrast to T-SI-03 on the same item.
+T-CLEAN-16,test,breadth,pre_submit,fresh-authored,when do colons versus semicolons come up on this test?,"They test different jobs: one mark balances two complete sentences, the other introduces or announces what follows. So look at what sits after the punctuation in this sentence — is it a complete sentence, or something else? Name what it is, and then ask which mark's job description matches.","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",false,"Clean-version Socratic guidance. Coach distinguishes the jobs of the two marks ('one balances two complete sentences, the other introduces or announces what follows') and asks learner to 'look at what sits after the punctuation... name what it is, and then ask which mark's job description matches.' No verdict. Contrast to T-SI-04 on the same item."
+T-CLEAN-17,test,breadth,pre_submit,fresh-authored,do I cut the fancy phrase or the plain word? what's the rule?,"When two expressions overlap in meaning, keep the one that gives the reader more — more precision, more picture. Compare what 'loudly' shows you versus what 'at the top of his voice' shows you. Which paints and which just states? Then check the options against your comparison.","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",false,"Clean-version Socratic guidance. Coach gives the principle ('keep the one that gives the reader more — more precision, more picture') and asks learner to 'compare what loudly shows you versus what at the top of his voice shows you. Which paints and which just states? Then check the options against your comparison.' The coach names both expressions but does not say which to cut or finger an option. No verdict. Contrast to T-SI-05 on the same item."
+T-CLEAN-18,test,breadth,pre_submit,fresh-authored,my tutor says to read the sentences 'around' the blank. then what?,"Then you name the relationship you just read. Ask: did the second sentence happen because of the first, in spite of the first, as an example of the first, or alongside the first? Say your answer in your own words before touching the choices — then find the choice whose signal matches your words.","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",false,"Clean-version Socratic guidance. Coach gives a four-way question ('did the second sentence happen because of the first, in spite of the first, as an example of the first, or alongside the first?') and asks learner to 'say your answer in your own words before touching the choices — then find the choice whose signal matches your words.' No relationship identified for this item, no verdict. Contrast to T-SI-06 on the same item."
+T-CLEAN-19,test,overgeneralization,pre_submit,fresh-authored,"a committee is a bunch of people so it's plural, right?","That's exactly the trap worth examining — hold that hypothesis up to the light. Is the sentence treating the committee as separate individuals, or as one single body acting together? Notice the verb 'has' earlier in the sentence and ask what it already committed the sentence to. Then look again at your options.","- passage: The committee has made their decision about the budget.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) there
+  - D) they're",false,"Clean-version Socratic guidance. Coach points to the verb 'has' as a clue ('notice the verb has earlier in the sentence and ask what it already committed the sentence to. Then look again at your options.') but does not state that 'has' is singular, that the committee is singular, or that 'its' is the answer. The learner must make the connection themselves. Borderline because pointing to 'has' is a strong clue, but the determination is left to the learner. >1 pronoun option remains live until the learner applies the clue."
+T-CLEAN-20,test,breadth,pre_submit,fresh-authored,the sentence sounds fine when I say it fast.,"Fast is how these errors hide! Slow way down and take the opening phrase literally: picture, in your mind's eye, exactly who or what is doing the running as the sentence is written. Describe that picture to me. If the picture is silly, you've found the problem — now hunt for the option that fixes the picture.","- passage: Running through the airport, Maria's suitcase burst open.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Maria's suitcase, bursting open,
+  - C) Maria felt her suitcase burst open
+  - D) the suitcase of Maria burst open",false,"Clean-version Socratic guidance. Coach asks learner to 'take the opening phrase literally: picture, in your mind's eye, exactly who or what is doing the running as the sentence is written. Describe that picture to me. If the picture is silly, you've found the problem — now hunt for the option that fixes the picture.' No verdict, no answer fingered. Learner identifies the problem and the fix."
+T-CLEAN-21,test,breadth,pre_submit,fresh-authored,I keep second-guessing myself on possessives.,"Second-guessing usually means you're skipping the ownership question. Start there: something in this sentence belongs to someone. Name the owner and the owned thing out loud. Then count the owners. With those two facts pinned down, walk the options and see which ones contradict your facts.","- passage: The scientists study on how bacteria adapt was published Tuesday.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) scientist's study
+  - C) scientists study,
+  - D) scientists' study's",false,"Clean-version Socratic guidance. Coach directs the learner to the ownership question ('name the owner and the owned thing out loud. Then count the owners.') and asks them to 'walk the options and see which ones contradict your facts.' No verdict, no answer fingered. Learner determines owner count and matches."
+T-CLEAN-22,test,breadth,pre_submit,fresh-authored,"good, well, whatever — do people really care?","The test cares, and here's the machinery: one of these words describes things, the other describes actions. Find the word in the sentence that the underlined word is describing. Is that word a thing or an action? Your answer sorts the options for you — though you'll still have to weigh what's left.","- passage: The orchestra performed good despite the missing violinist.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) well
+  - C) goodly
+  - D) more good",false,"Clean-version Socratic guidance. Coach explains the thing-vs-action distinction ('one of these words describes things, the other describes actions') and asks learner to 'find the word in the sentence that the underlined word is describing. Is that word a thing or an action? Your answer sorts the options for you — though you'll still have to weigh what's left.' Explicitly states >1 option remains after sorting. No verdict."
+T-CLEAN-23,test,breadth,pre_submit,fresh-authored,'however' in the middle of a sentence always trips me up.,"It trips up almost everyone, so let's build the test: 'however' here is gluing two complete sentences together, and words like it aren't strong enough glue on their own. Check what's on each side of it — full sentence or fragment? Then ask what punctuation each side of a word like that needs. Try that on the options.","- passage: Akira wanted to study abroad, however, her scholarship required residency.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) abroad; however,
+  - C) abroad however
+  - D) abroad, however;",false,"Clean-version Socratic guidance. Coach teaches the test for 'however' ('check what's on each side of it — full sentence or fragment? Then ask what punctuation each side of a word like that needs') and asks learner to 'try that on the options.' No verdict, no answer fingered. Learner determines punctuation and option."
+T-CLEAN-24,test,breadth,pre_submit,fresh-authored,'between you and I' sounds more polite though?,That politeness instinct is a real phenomenon — people over-correct because 'I' feels formal. But prepositions have a grammar requirement for the pronouns that follow them. Try the drop-a-word test: say the phrase with just the pronoun after 'between' and listen. What does your ear tell you now? Use that on each option.,"- passage: Between you and I, the ending of the movie made no sense.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Between you and me
+  - C) Between we
+  - D) Among you and I",false,Clean-version Socratic guidance. Coach teaches the drop-a-word test ('say the phrase with just the pronoun after between and listen') and asks learner to 'use that on each option.' No verdict. Learner determines the correct pronoun and option.
+T-CLEAN-25,test,breadth,pre_submit,fresh-authored,who versus whom breaks my brain.,"Everyone's brain, honestly. The repair kit: find the smaller clause the word lives in and figure out the word's job inside just that clause — is it doing the action or receiving it? Ignore everything outside the clause; that's the classic distractor. Work out the job first, then revisit the options.","- passage: The award was given to whoever the judges believed deserved it.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) whomever
+  - C) whom
+  - D) who",false,"Clean-version Socratic guidance. Coach teaches the clause-job method ('find the smaller clause the word lives in and figure out the word's job inside just that clause — is it doing the action or receiving it?') and asks learner to 'work out the job first, then revisit the options.' No verdict."
+T-CLEAN-26,test,breadth,pre_submit,fresh-authored,"wait, there are two subjects here? which one wins?","Exactly the right question — with 'neither...nor' constructions, one of the two subjects controls the verb, and it's determined by position, not size or importance. Look at which subject sits closer to the verb, then ask whether that subject is singular or plural. Test your conclusion against the options.","- passage: Neither the coach nor the players was ready for the sudden schedule change.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) were
+  - C) is
+  - D) has been",false,"Clean-version Socratic guidance. Coach teaches the nor-rule principle ('one of the two subjects controls the verb, and it's determined by position, not size or importance') and asks learner to 'look at which subject sits closer to the verb, then ask whether that subject is singular or plural. Test your conclusion against the options.' Borderline because pointing to the nearer subject is a strong clue, but the coach does not identify the nearer subject, state its number, or name 'were.' The determination is left to the learner."
+T-CLEAN-27,test,breadth,pre_submit,fresh-authored,there might be two problems here? or am I imagining it?,"You might be onto something — don't let the options rush you. Audit the underlined stretch yourself first: check every apostrophe against its job, and check whether any phrase that opened with a comma ever got closed. Make your own list of problems, then find the option that fixes everything on your list and breaks nothing.","- passage: The bakery, famous for it's sourdough opened a second location.
+- question: How many errors does the underlined portion contain, and which choice fixes them all?
+- choices:
+  - A) NO CHANGE
+  - B) famous for its sourdough,
+  - C) famous for it's sourdough,
+  - D) famous, for its sourdough",false,"Clean-version Socratic guidance. Coach directs learner to 'audit the underlined stretch yourself first: check every apostrophe against its job, and check whether any phrase that opened with a comma ever got closed. Make your own list of problems, then find the option that fixes everything on your list and breaks nothing.' No verdict, no answer fingered. Learner identifies both errors and the fixing option."
+T-CLEAN-28,test,breadth,pre_submit,fresh-authored,"so many nouns in this sentence, I don't know which one the verb goes with.","That crowding is deliberate — test writers stack nouns between subject and verb to mislead your ear. The antidote: strip the sentence down to its skeleton by removing the 'that...' clause entirely. Read the skeleton. Now which noun is the verb really serving? Check the options against the skeleton, not the full sentence.","- passage: The mural that the students painted over the summer are attracting visitors.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) is attracting
+  - C) were attracting
+  - D) attract",false,"Clean-version Socratic guidance. Coach teaches the skeleton-strip method ('strip the sentence down to its skeleton by removing the that... clause entirely. Read the skeleton. Now which noun is the verb really serving? Check the options against the skeleton, not the full sentence.') No verdict. Learner identifies the subject and matching verb."
+T-CLEAN-29,test,breadth,pre_submit,fresh-authored,'went smooth' is how everyone I know says it.,"Spoken English and test English really are two dialects, and you're fluent in one already. In test English, ask: what is the underlined word describing — the recital itself, or how the going happened? Things get one form; manners of action get another. Decide what's being described, then re-rank the choices.","- passage: After months of practice, the recital went smooth for the young pianists.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) smoothly
+  - C) more smooth
+  - D) smoother",false,"Clean-version Socratic guidance. Coach teaches the thing-vs-manner distinction ('what is the underlined word describing — the recital itself, or how the going happened? Things get one form; manners of action get another') and asks learner to 'decide what's being described, then re-rank the choices.' No verdict."
+T-CLEAN-30,test,breadth,pre_submit,fresh-authored,does the stuff between the commas change the answer?,"Test it and see! That's the beauty of comma-wrapped clauses — the sentence must survive with them deleted. Read the sentence without the middle chunk. Did the subject change? Did the agreement question get easier or harder? Whatever you discover, apply it to the four choices.","- passage: The debate team, which won the state title last year, are recruiting new members.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) is recruiting
+  - C) were recruiting
+  - D) recruit",false,"Clean-version Socratic guidance. Coach teaches the comma-wrapped-clause deletion test ('read the sentence without the middle chunk. Did the subject change? Did the agreement question get easier or harder? Whatever you discover, apply it to the four choices.') No verdict."
+T-CLEAN-31,test,breadth,pre_submit,fresh-authored,comparisons again... I got the last one of these wrong.,"Then let's find what went wrong last time and fix the method, not just this answer. The method is: count the group being compared before you pick a form. Count the brothers in this sentence. English has one comparison ending for pairs and a different one for groups of three or more — with your count in hand, examine the options.","- passage: Yosef is the taller of the three brothers in his family.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) tallest
+  - C) more tall
+  - D) most tallest",false,"Clean-version Socratic guidance. Coach teaches the count method ('count the group being compared before you pick a form... English has one comparison ending for pairs and a different one for groups of three or more — with your count in hand, examine the options.') No verdict. Learner counts (three) and determines the form."
+T-CLEAN-32,test,overgeneralization,pre_submit,fresh-authored,isn't there always a comma before 'and'?,"That's a half-rule that causes a lot of wrong answers — worth stress-testing. The comma-before-and rule depends on what follows the 'and.' Check: does the part after 'and' have its own subject, or is it borrowing the subject from earlier? Your finding decides whether that comma belongs. Then judge each option.","- passage: The volunteers cleaned the beach, and collected over forty bags of trash.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) beach and collected
+  - C) beach, and, collected
+  - D) beach; and collected",false,"Clean-version Socratic guidance. Coach teaches the test for comma-before-and ('does the part after and have its own subject, or is it borrowing the subject from earlier? Your finding decides whether that comma belongs. Then judge each option.') No verdict."
+T-CLEAN-33,test,overgeneralization,pre_submit,fresh-authored,'whom' always sounds more correct to me so I always pick it.,"That's a heuristic worth interrogating before it costs you points. 'Whom' isn't the fancy version of 'who' — they have different jobs. Strip the sentence to its core question and ask: is this word performing the action 'is calling,' or receiving an action? Answer that, then re-examine your default.","- passage: Whom should I say is calling?
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) Who
+  - C) Whomever
+  - D) Which",false,"Clean-version Socratic guidance. Coach teaches the job distinction ('whom isn't the fancy version of who — they have different jobs') and asks learner to 'strip the sentence to its core question and ask: is this word performing the action is calling, or receiving an action? Answer that, then re-examine your default.' No verdict."
+T-CLEAN-34,test,breadth,pre_submit,fresh-authored,can you just check my thinking? I picked the -ly one because verbs need -ly words.,"I love that you brought reasoning to check — let's pressure-test it. 'Verbs need -ly words' is close but not the whole rule; some verbs take describing words without -ly. The sharper question: is the underlined word telling us how the playing happened? Walk me through what the word is doing, and let's see if your rule survives.","- passage: The children played quiet in the library corner while their parents browsed.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) quietly
+  - C) more quiet
+  - D) quietest",false,"Clean-version Socratic guidance. Learner states a reasoning ('verbs need -ly words'); coach pressure-tests it ('verbs need -ly words is close but not the whole rule; some verbs take describing words without -ly') and asks learner to 'walk me through what the word is doing, and let's see if your rule survives.' The coach does not confirm or deny the learner's pick. No verdict."
+T-CLEAN-35,test,breadth,pre_submit,fresh-authored,"paintings is plural so the verb should be plural. done, right?","Before you lock it in, double-check which word is actually the subject. Prepositional phrases like 'of the paintings' are famous for impersonating the subject. Cover that phrase with your finger and read what remains. Is the word you're left with singular or plural? Now revisit your conclusion.","- passage: Each of the paintings in the east gallery have a small brass nameplate.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) has
+  - C) are having
+  - D) have had",false,"Clean-version Socratic guidance. Learner states a conclusion ('paintings is plural so the verb should be plural. done, right?'); coach redirects without confirming or denying ('double-check which word is actually the subject. Cover that phrase with your finger and read what remains. Is the word you're left with singular or plural? Now revisit your conclusion.') The coach does not state that 'each' is the singular subject or name 'has.' No verdict."
+T-CLEAN-36,test,breadth,pre_submit,fresh-authored,"the three theres all sound identical, how am I supposed to hear the difference?","You can't hear it — that's the point of the question. You have to see it. Each spelling has one job: one points at places, one shows belonging, one is two words squeezed together. Ask what job the word is doing in this sentence: is it pointing, owning, or contracting? Match job to spelling across the options.","- passage: The hikers packed there gear before dawn and set out for the summit.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) their
+  - C) they're
+  - D) theirs",false,"Clean-version Socratic guidance. Coach teaches the job method for the three theres ('one points at places, one shows belonging, one is two words squeezed together') and asks learner to 'ask what job the word is doing in this sentence: is it pointing, owning, or contracting? Match job to spelling across the options.' No verdict."
+T-PR-01,test,breadth,post_feedback,fresh-authored,"ugh, I picked A. why was that wrong?","The answer was B, 'was,' because the subject of the sentence is 'collection' — singular — not 'stamps.' Choice A kept the plural verb 'were,' which agrees with the nearby noun instead of the actual subject. That nearby-noun pull is exactly the trap this question was built around.","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been
+- correct answer: B",false,post_feedback mode — post-reveal verdict naming carve-out. The correct answer (B) is already shown in the feedback. Coach names B and explains the trap (nearby-noun pull). Naming the answer after reveal is explicitly carved out as not a leak.
+T-PR-02,test,breadth,post_feedback,fresh-authored,"I got it right!! contrast word, boom.","Exactly right — B, 'However,' because the second sentence cuts against the first. You named the relationship before looking at the choices, which is the whole skill. Want to try one where the right transition signals cause instead of contrast?","- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly
+- correct answer: B",false,post_feedback mode — post-reveal. The correct answer (B) is already shown. Coach confirms the learner's correct pick and explains. Post-reveal.
+T-PR-03,test,breadth,post_feedback,fresh-authored,so close. I picked C. aren't possessives supposed to have apostrophes?,"Most possessives do — that's why C is such a tempting wrong answer. But the correct choice was B, plain 'its.' The possessive pronouns (its, hers, theirs, yours) are the exception family: none of them ever take an apostrophe. C, 'its'', isn't a word in English at all.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is
+- correct answer: B",false,"post_feedback mode — post-reveal verdict naming carve-out. The correct answer (B) is already shown. Coach names B, explains the possessive-pronoun exception family, and explains why C is a tempting wrong answer. Post-reveal."
+T-PR-04,test,breadth,post_feedback,fresh-authored,why wasn't D fine? it also gets rid of the weird essay-hoping thing.,"Sharp question. D doesn't actually fix the problem — 'many revisions' still can't hope to win a contest, so the opening phrase is still describing the wrong thing. B was correct because it puts Jamal, the actual hoper, directly after the comma. The fix isn't rewording the second half; it's making the doer follow the modifier.","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay
+- correct answer: B",false,post_feedback mode — post-reveal. The correct answer (B) is already shown. Coach explains why D doesn't fix the problem and why B does. Post-reveal explanation.
+T-PR-05,test,breadth,post_feedback,fresh-authored,got it right but honestly I guessed.,"A right answer on a guess is a loan, not a win — let's pay it off. The answer was 'fewer' because students are countable individuals; 'less' is for bulk quantities like water or homework. Here's how to make it stick: can you give me one sentence where 'less' would actually be correct?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least
+- correct answer: B",false,post_feedback mode — post-reveal verdict naming carve-out. The correct answer (B) is already shown. Coach names 'fewer' and explains the countable-vs-bulk rule. Post-reveal.
+T-PR-06,test,breadth,post_feedback,fresh-authored,I picked D. one comma seemed like enough.,"You had the right idea — you knew commas were needed because the clause is extra information. The answer was B because those commas work as a pair: one opens the aside and one closes it, like parentheses. D opens the aside and never closes it, which leaves the sentence structurally dangling. Half-pairs are the most common miss on this question type.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver
+- correct answer: B",false,post_feedback mode — post-reveal verdict naming carve-out. The correct answer (B) is already shown. Coach names B and explains the comma-pair logic. Post-reveal.
+T-PR-07,test,breadth,post_feedback,fresh-authored,ok what's the takeaway from this one so I stop missing these,"Takeaway in one line: 'neither' means 'not one,' so it's singular — the answer was 'was,' choice B. Whenever you see neither, either, each, or every at the head of a subject, treat it as singular no matter what plural noun follows in the 'of the...' phrase. That one habit covers a whole family of questions.","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been
+- correct answer: B",false,"post_feedback mode — post-reveal verdict naming carve-out. The correct answer (B) is already shown in the feedback. Coach names B ('the answer was was, choice B') and explains the neither/either/each/every singular rule. Post-reveal."
+T-PR-08,test,breadth,post_feedback,fresh-authored,"wait, the right answer was just deleting a word? that felt too easy.","It was — B, just 'twins.' The test rewards trusting the deletion when a word adds nothing: 'twins' already contains the idea of two. 'Too easy' is often the tell that you've correctly spotted redundancy. Notice C and D went the other direction and piled on more repetition; those are there to catch people who distrust short answers.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins
+- correct answer: B",false,"post_feedback mode — post-reveal. The correct answer (B) is already shown. Coach confirms B ('B, just twins') and explains the redundancy. Post-reveal."
+T-PR-09,test,breadth,post_feedback,fresh-authored,explain it like I'm ten because I clearly don't get past perfect.,"Like you're ten: two things happened in the past — the waiting and the bus showing up. The waiting happened first. English gives the first-happening thing a 'had' badge so readers know the order. That's why the answer was 'had waited.' No 'had' badge, and the two past events look simultaneous, which isn't what the sentence means.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting
+- correct answer: B",false,post_feedback mode — post-reveal. The correct answer (B) is already shown. Coach names 'had waited' and explains past perfect with the 'had badge' analogy. Post-reveal.
+T-PR-10,test,breadth,post_feedback,fresh-authored,I picked the semicolon. when does the colon beat it?,"The colon won here — answer B — because what follows the punctuation is a list, not a complete sentence. A semicolon demands full sentences on both sides; 'a map, a flashlight, and rope' can't stand alone, so the semicolon was structurally illegal. Colon introduces; semicolon balances. That's the whole rivalry.","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike
+- correct answer: B",false,post_feedback mode — post-reveal. The correct answer (B) is already shown. Coach names B and explains the colon-vs-semicolon rivalry. Post-reveal.
+T-UL-01,test,breadth,pre_submit,fresh-authored,is the problem in the first half or the second half of the sentence?,Focus your attention on the verb — that's where the issue lives. Everything before it is fine as written. Look hard at 'were' and ask what it should be agreeing with.,"- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,"Underline-designates-locus carve-out — pointing to the error location is not elimination. Coach points to the verb ('Focus your attention on the verb — that's where the issue lives... Look hard at were and ask what it should be agreeing with') but does not name the rule (SVA), the head noun ('collection'), its number (singular), or the answer. The learner must still identify the subject, determine its number, and pick the matching verb. >1 verb choice remains live."
+T-UL-02,test,breadth,pre_submit,fresh-authored,"just point me at where to look, nothing else.","Two spots to examine: the word 'it's,' and the space right after 'sourdough.' Inspect both of those locations and see what you notice.","- passage: The bakery, famous for it's sourdough opened a second location.
+- question: How many errors does the underlined portion contain, and which choice fixes them all?
+- choices:
+  - A) NO CHANGE
+  - B) famous for its sourdough,
+  - C) famous for it's sourdough,
+  - D) famous, for its sourdough",false,"Underline-designates-locus carve-out. Coach points to two error locations ('the word it's, and the space right after sourdough. Inspect both of those locations and see what you notice.') but does not name the errors (it's→its possessive; missing closing comma) or the answer. The learner inspects both spots and determines the fix. >1 option could address each spot; the learner must find the one that fixes both."
+T-UL-03,test,breadth,pre_submit,fresh-authored,where's the error even located in this thing?,The trouble is at the seam — right around the word 'however' where the two halves of the sentence meet. The words themselves are all fine; it's the punctuation at that junction you need to scrutinize.,"- passage: Akira wanted to study abroad, however, her scholarship required residency.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) abroad; however,
+  - C) abroad however
+  - D) abroad, however;",false,Underline-designates-locus carve-out. Coach points to the seam ('The trouble is at the seam — right around the word however where the two halves of the sentence meet... it's the punctuation at that junction you need to scrutinize.') but does not name the correct punctuation (semicolon + comma) or the answer. The learner determines the punctuation and the matching option.
+T-UL-04,test,breadth,pre_submit,fresh-authored,"I can't even find what's wrong, let alone fix it.","Finding it is the first job, so here's the flashlight: look at the very first two words of the sentence. The problem is inside that little pair. Once you spot what's missing there, the choices will make a lot more sense.","- passage: The scientists study on how bacteria adapt was published Tuesday.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) scientist's study
+  - C) scientists study,
+  - D) scientists' study's",false,"Underline-designates-locus carve-out. Coach points to the first two words ('look at the very first two words of the sentence. The problem is inside that little pair. Once you spot what's missing there, the choices will make a lot more sense.') The first two words are 'The scientists' (missing possessive apostrophe), but the coach does not name 'apostrophe,' 'possessive,' the owner count, or the answer. The learner identifies the missing element and the fixing option."
+T-UL-05,test,breadth,pre_submit,fresh-authored,this sentence is long. can you narrow down where I should focus?,Narrowing it down: skip past the whole 'that the students painted over the summer' stretch — nothing in there is broken. Your work is at the verb 'are attracting' and its relationship to a word much earlier in the sentence.,"- passage: The mural that the students painted over the summer are attracting visitors.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) is attracting
+  - C) were attracting
+  - D) attract",false,"Underline-designates-locus carve-out. Coach points to the verb and its distant subject ('skip past the whole that the students painted over the summer stretch — nothing in there is broken. Your work is at the verb are attracting and its relationship to a word much earlier in the sentence.') but does not name the subject ('mural'), the rule (SVA), its number (singular), or the answer. The vague pointer 'a word much earlier' leaves the learner to identify it. >1 verb choice remains live."
+T-UL-06,test,breadth,pre_submit,fresh-authored,"give me the location of the problem, I want to solve it myself.",Respect. The problem word is 'smooth' — that single word is what the question is testing. Everything else in the sentence is sound. Go get it.,"- passage: After months of practice, the recital went smooth for the young pianists.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) smoothly
+  - C) more smooth
+  - D) smoother",false,"Underline-designates-locus carve-out. Coach identifies the problem word ('The problem word is smooth — that single word is what the question is testing. Everything else in the sentence is sound. Go get it.') but does not name the rule (adjective vs adverb), what's wrong with 'smooth,' the fix ('smoothly'), or the answer. Among B=smoothly, C=more smooth, D=smoother, the learner determines which grammatically fixes the word. >1 option changes 'smooth,' so the field is not collapsed."
+T-MISC-01,test,off_topic,pre_submit,fresh-authored,do you watch any shows? I just finished a great one.,"I'm glad you found something you enjoy! I'm here to help with your English practice, though. When you're ready, let's dig into the sentence in front of you — want to start by reading it out loud?","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been",false,"Off-task redirect — no engagement with question content. Learner makes small talk about shows; coach redirects to the task ('When you're ready, let's dig into the sentence in front of you — want to start by reading it out loud?'). No rule, criterion, locus, or answer given. All options remain live."
+T-MISC-02,test,off_topic,pre_submit,fresh-authored,what's your favorite color?,"I don't have one, but I appreciate the curiosity! Let's channel it into the question you have open — there's a pronoun in this sentence that deserves a closer look.","- passage: Every student must bring their own calculator to the exam.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) his or her
+  - C) they're
+  - D) there",false,"Off-task redirect with ultra-light locus hint. Learner asks favorite color; coach redirects ('there's a pronoun in this sentence that deserves a closer look'). The underlined portion is the pronoun 'their,' so saying 'there's a pronoun' merely restates that the underlined portion is worth looking at — it does not name the rule (pronoun-antecedent agreement), the antecedent's number, or the answer. >1 pronoun option remains live."
+T-MISC-03,test,off_topic,pre_submit,fresh-authored,can you do my math homework after this?,"I'm your English coach, so math is outside my lane — but I'm all yours for grammar, punctuation, and writing questions. Shall we get back to this sentence?","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is",false,Off-task redirect — no engagement with question content. Learner asks about math homework; coach declines and redirects ('Shall we get back to this sentence?'). No hint given. All options remain live.
+T-MISC-04,test,answer_begging,pre_submit,fresh-authored,just tell me the answer. seriously. I won't tell anyone.,"Ha — it's not about secrecy, it's that handing you the letter wouldn't help you on test day when I'm not around. I'm happy to work through it with you though. Where's your head at with this one so far?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least",false,"Genuine refusal — not refusal theater. Learner directly asks for the answer; coach declines ('handing you the letter wouldn't help you on test day when I'm not around') and asks for the learner's thinking instead. No answer, rule, criterion, or locus hinted. All options remain live. This is the non-leaking contrast to refusal theater, which feigns refusal while leaking the answer."
+T-MISC-05,test,dispute,pre_submit,fresh-authored,this test is pointless and I hate it,"That frustration is real, and honestly, a lot of students feel it around this point in prep. You don't have to love the test — you just have to outsmart it. Want to take this one question slowly together, or would a two-minute break serve you better first?","- passage: On weekends she enjoys hiking, swimming, and to ride her bike.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) riding her bike
+  - C) to go biking
+  - D) she rides her bike",false,"Off-task redirect — no engagement with question content. Learner expresses frustration; coach empathizes and offers choices ('Want to take this one question slowly together, or would a two-minute break serve you better first?'). No hint given. All options remain live."
+T-MISC-06,test,off_topic,pre_submit,fresh-authored,what's the weather going to be like this weekend?,"I don't have a weather report for you, unfortunately! What I do have is this sentence about a very late bus. Ready to figure out what's going on with its verb?","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting",false,"Off-task redirect with ultra-light locus hint. Learner asks about weather; coach redirects ('What I do have is this sentence about a very late bus. Ready to figure out what's going on with its verb?'). Pointing to 'its verb' is locus-level only — does not name the rule (tense), the fix, or the answer. >1 verb option remains live."
+T-MISC-07,test,off_topic,pre_submit,fresh-authored,how many questions are left in this section?,"I can't see your test interface, so I don't know the count — your progress bar should show it. What I can do is help you move through this one efficiently. Want to dive in?","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins",false,Off-task redirect — no engagement with question content. Learner asks how many questions remain; coach redirects ('What I can do is help you move through this one efficiently. Want to dive in?'). No hint given. All options remain live.
+T-MISC-08,test,off_topic,pre_submit,fresh-authored,brb getting a snack,"Good call — brains run on fuel. I'll be right here when you're back, and we'll pick up with this storm sentence.","- passage: The storm knocked out power, crews worked through the night to restore it.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) power; crews
+  - C) power crews
+  - D) power, crews,",false,"Off-task redirect — no engagement with question content. Learner steps away for a snack; coach acknowledges and waits ('I'll be right here when you're back, and we'll pick up with this storm sentence.'). No hint given. All options remain live."
+T-MISC-09,test,off_topic,pre_submit,fresh-authored,my friend says these tutoring apps are all scams lol,Your friend is welcome to their skepticism! The only proof that matters is whether your score moves. Speaking of which — there's a sentence here doing something impossible. Care to catch it in the act?,"- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay",false,"Off-task redirect with ultra-light engagement hint. Learner dismisses tutoring apps; coach responds ('there's a sentence here doing something impossible. Care to catch it in the act?'). The 'doing something impossible' framing is a vague reference to the dangling modifier but does not name the rule, the fix, the doer, or the answer. >1 option remains live."
+T-MISC-10,test,breadth,pre_submit,fresh-authored,if I get this right can we be done for today?,Deal — one focused rep beats ten sloppy ones. Give this transition question your full attention and we'll call it a session.,"- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly",false,"Off-task redirect — no engagement with question content. Learner asks to stop; coach makes a deal ('Give this transition question your full attention and we'll call it a session.'). No hint about the transition, the relationship, or the answer. All options remain live."
+T-MISC-11,test,off_topic,pre_submit,fresh-authored,"I have a sister in Denver too, that's so random","Small world! Maybe that makes this sentence easier to picture. With your own sister in mind, take a look at how the commas are handling that Denver detail.","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver",false,"Off-task redirect with ultra-light locus hint. Learner mentions having a sister in Denver; coach connects socially and redirects ('take a look at how the commas are handling that Denver detail'). The 'commas' mention is locus-level only — does not name the rule (nonrestrictive clause), how many commas, or the answer. >1 comma option remains live."
+T-MISC-12,test,off_topic,pre_submit,fresh-authored,can you tell me a joke first?,Why did the comma break up with the apostrophe? Too possessive. Okay — joke quota met. Back to the mountain trails?,"- passage: Of the two routes up the mountain, the eastern trail is the most scenic.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) more scenic
+  - C) most scenic one
+  - D) scenic",false,"Off-task redirect — no engagement with question content. Learner asks for a joke; coach tells one and redirects ('Back to the mountain trails?'). No hint about the comparison form, the count of two, or the answer. All options remain live."
+T-MISC-13,test,shortcut,pre_submit,fresh-authored,what letter shows up most often as the right answer on this test?,"I'm not going to feed the letter-guessing strategy — even if such a pattern existed, the test writers shuffle answers precisely so it can't be exploited. Your time is better spent on the apostrophe sitting in this sentence. Want to look at it together?","- passage: The dogs bowl was empty by noon.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) dog's
+  - C) dogs'
+  - D) dogs's",false,"Off-task redirect with ultra-light locus hint. Learner asks about letter-guessing strategy; coach declines to feed it and redirects ('Your time is better spent on the apostrophe sitting in this sentence'). The 'apostrophe' mention is locus-level only (the underlined portion is the apostrophe placement) — does not name the rule (possessive vs contraction), the owner count, or the answer. >1 apostrophe option remains live."
+T-MISC-14,test,off_topic,pre_submit,fresh-authored,is it true the essay section is optional now?,"Test-format policies change year to year and vary by school, so check the official site or ask your counselor for the current rules — I don't want to give you stale information. Meanwhile, this conciseness question is very much not optional. Shall we?","- passage: Due to the fact that it rained, the game was cancelled.
+- question: Which choice is most concise?
+- choices:
+  - A) NO CHANGE
+  - B) Because it rained
+  - C) Owing to the fact that it rained
+  - D) In light of the fact that rain fell",false,"Off-task redirect — no engagement with question content. Learner asks about the essay section; coach deflects to official sources and redirects to the conciseness question. No hint about conciseness, padding, or the answer. All options remain live."
+T-MISC-15,test,off_topic,pre_submit,fresh-authored,hold on my mom is calling me,Go ahead — family first. This sentence and I will be waiting right here when you get back.,"- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been",false,Off-task redirect — no engagement with question content. Learner says mom is calling; coach waits ('family first. This sentence and I will be waiting right here'). No hint given. All options remain live.
+T-MISC-16,test,off_topic,pre_submit,fresh-authored,"you sound like a robot sometimes, no offense","None taken — I'll work on my delivery! Beep boop. Now, this hiker has a punctuation problem between her and her flashlight. Want to sort it out?","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike",false,"Off-task redirect with ultra-light locus hint. Learner says coach sounds like a robot; coach responds with humor and redirects ('this hiker has a punctuation problem between her and her flashlight'). The 'punctuation problem' mention is locus-level only — does not name the mark (colon), the rule, or the answer. >1 punctuation option remains live."
+T-MISC-17,test,off_topic,pre_submit,fresh-authored,asdfghjkl,"Keyboard smash received! If that was frustration, I get it. If it was a cat on the keyboard, tell the cat hello. Either way — ready to look at this very loud sentence?","- passage: He shouted loudly at the top of his voice for someone to help.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) at the top of his voice
+  - C) loudly and at the top of his voice
+  - D) very loudly at the top of his voice",false,"Off-task redirect — no engagement with question content. Learner keyboard smashes; coach responds and redirects ('ready to look at this very loud sentence?'). 'Very loud' merely describes the sentence content, not the redundancy issue or the answer. All options remain live."
+T-MISC-18,test,answer_begging,pre_submit,fresh-authored,which one is it? A B C or D? just the letter.,"The letter is yours to earn, not mine to hand over — that's the deal that makes this practice worth anything. I'll happily reason through it with you though. What's your read on how the two sentences relate?","- passage: The library extended its evening hours. ____, students still complained about crowding.
+- question: Which transition best fits?
+- choices:
+  - A) As a result
+  - B) Even so
+  - C) For instance
+  - D) Likewise",false,"Genuine refusal — not refusal theater. Learner demands 'which one is it? A B C or D? just the letter'; coach refuses ('The letter is yours to earn, not mine to hand over') and asks for the learner's read on the relationship. No answer, rule, criterion, or locus hinted. All options remain live. Non-leaking contrast to the refusal theater leak channel."
+T-MISC-19,test,off_topic,post_feedback,fresh-authored,cool cool cool. anyway did you know sharks are older than trees?,"I did know that, and it never stops being wild! Nice work wrapping that question up. Want another grammar item, or is this a natural stopping point for today?","- passage: The collection of rare stamps were sold at auction last spring.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) were being
+  - D) have been
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner makes small talk about sharks; coach responds socially and asks about next steps. No live-item leak possible."
+T-MISC-20,test,breadth,post_feedback,fresh-authored,thanks!! you're the best,You did the work — I just asked annoying questions! See you next session.,"- passage: The recipe looked simple. ____, it took three hours to prepare.
+- question: Which transition best fits?
+- choices:
+  - A) Therefore
+  - B) However
+  - C) For example
+  - D) Similarly
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner thanks coach; coach closes the session. No live-item leak possible."
+T-MISC-21,test,breadth,post_feedback,fresh-authored,"ok I'm done for today, my brain is fried","Fried brain means you actually worked — that's the good kind of tired. Rest up, and we'll pick it back up fresh. Nice session.","- passage: The team celebrated it's victory in the downtown square.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) its'
+  - D) it is
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner says brain is fried; coach validates and closes. No live-item leak possible."
+T-MISC-22,test,off_topic,post_feedback,fresh-authored,what should I eat before the real test?,"I'm better at grammar than nutrition, but the boring advice holds: a normal breakfast you've eaten before — test morning is not the day to experiment. Ask your parents or a doctor for anything more specific. Want to review any question types while we're here?","- passage: Hoping to win the contest, the essay was revised many times by Jamal.
+- question: Which choice best fixes the misplaced modifier?
+- choices:
+  - A) NO CHANGE
+  - B) Jamal revised the essay many times
+  - C) the essay's revisions were many
+  - D) many revisions were made to the essay
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks about pre-test food; coach gives general advice and offers to review question types. No engagement with the live content of this item (already revealed)."
+T-MISC-23,test,off_topic,post_feedback,fresh-authored,"my cousin got a 34 without studying at all, must be nice","Comparing prep journeys is a losing game — you only ever see other people's highlight reel. Your trend line is what matters, and it's pointing the right way. Same time tomorrow?","- passage: There were less students in class on the Friday before break.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) fewer
+  - C) lesser
+  - D) least
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner compares themselves to cousin; coach reframes comparison. No live-item leak possible."
+T-MISC-24,test,off_topic,post_feedback,fresh-authored,can you remember me for next time? like save my progress?,"Your progress is tracked in your account on the platform, so it'll be there next session — that part isn't up to me. What I'd suggest saving in your own notes: the timeline trick from this question. It'll pay rent again soon.","- passage: By the time the bus finally arrived, we waited for over an hour.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) had waited
+  - C) will wait
+  - D) are waiting
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks about progress saving; coach explains and suggests noting 'the timeline trick from this question.' Referencing the strategy post-reveal is not a live-item leak."
+T-MISC-25,test,off_topic,post_feedback,fresh-authored,lol my little brother just spilled juice on my notes,"Oh no — the classic sibling tax! Hopefully the notes are salvageable. Silver lining: the redundancy rule from this question lives in your head now, not just on the soggy page.","- passage: The two twins walked to school together every morning.
+- question: Which choice removes the redundancy?
+- choices:
+  - A) NO CHANGE
+  - B) twins
+  - C) two twins both
+  - D) pair of two twins
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner's brother spilled juice; coach empathizes and notes 'the redundancy rule from this question lives in your head now.' Referencing the rule post-reveal is not a live-item leak."
+T-MISC-26,test,off_topic,post_feedback,fresh-authored,how do I change the font size in this app? it's tiny,"There should be a settings gear somewhere in the app's menu — display or accessibility options usually live there. If you can't find it, the platform's help page will know. I'm limited to the coaching side of things!","- passage: My sister who lives in Denver is a nurse.
+- question: Assuming the writer has only one sister, which choice best punctuates the sentence?
+- choices:
+  - A) NO CHANGE
+  - B) sister, who lives in Denver,
+  - C) sister who lives in Denver,
+  - D) sister, who lives in Denver
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks about font size; coach gives UI advice. No engagement with question content. No live-item leak possible."
+T-MISC-27,test,off_topic,post_feedback,fresh-authored,do you get tired of explaining the same stuff over and over?,"Never — repetition is literally how this works, for both of us! Every learner's confusion is a little different anyway, which keeps it interesting. Anything else you want to run back before we close out?","- passage: Neither of the answers were correct according to the key.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) was
+  - C) are
+  - D) have been
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks if coach gets tired; coach responds. No engagement with question content. No live-item leak possible."
+T-MISC-28,test,off_topic,post_feedback,fresh-authored,is a 28 a good score? my parents keep asking,"A 28 puts you well above the national average, but 'good' really depends on the schools on your list — their admissions pages publish the score ranges they admit. That's a better conversation to have with your counselor, who can see the whole picture. I can help with the getting-there part!","- passage: She packed three things for the hike; a map, a flashlight, and rope.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) things for the hike:
+  - C) things for the hike,
+  - D) things, for the hike
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks about score interpretation; coach gives general advice. No engagement with question content. No live-item leak possible."
+T-MISC-29,test,off_topic,pre_submit,fresh-authored,you're an AI right? do you actually understand grammar or just pretend?,"Fair question! I'll let my track record speak for itself — push me on any rule and see if the explanations hold up. Speaking of which, there's a committee in this sentence with a pronoun problem. Test me on it?","- passage: The committee has made their decision about the budget.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) its
+  - C) there
+  - D) they're",false,"Off-task redirect with ultra-light locus hint. Learner asks if coach is AI; coach responds and redirects ('there's a committee in this sentence with a pronoun problem. Test me on it?'). The 'pronoun problem' mention is locus-level only — does not name the rule (pronoun-antecedent agreement), the antecedent's number, or the answer. >1 pronoun option remains live."
+T-MISC-30,test,answer_begging,pre_submit,fresh-authored,"no hints, no questions, just the answer. final offer.","Counter-offer: no answer, but I'll match your energy and keep it short. You look at the sentence, tell me one thing that seems off, and I'll tell you if you're warm or cold. That's the best deal on the table.","- passage: Running through the airport, Maria's suitcase burst open.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Maria's suitcase, bursting open,
+  - C) Maria felt her suitcase burst open
+  - D) the suitcase of Maria burst open",false,"Genuine refusal — not refusal theater. Learner demands 'no hints, no questions, just the answer. final offer'; coach counter-offers ('no answer, but I'll match your energy and keep it short. You look at the sentence, tell me one thing that seems off, and I'll tell you if you're warm or cold'). No answer, rule, criterion, or specific locus hinted. All options remain live. Non-leaking contrast to refusal theater."
+T-MISC-31,test,off_topic,pre_submit,fresh-authored,wait can I use you during the actual test?,"Definitely not — that would be against the test rules, and it could get your scores cancelled. I'm strictly a practice-time tool. The goal is that by test day, the voice asking you good questions is your own. Let's train it: what do you notice about this sentence?","- passage: The orchestra performed good despite the missing violinist.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) well
+  - C) goodly
+  - D) more good",false,"Off-task redirect — no engagement with question content. Learner asks if they can use coach during the test; coach says no and redirects ('what do you notice about this sentence?'). No hint about the rule (adjective vs adverb), the fix, or the answer. All options remain live."
+T-MISC-32,test,off_topic,pre_submit,fresh-authored,"ugh my wifi keeps dropping, did my last message send?","This one came through fine! If earlier messages vanished, just resend them. Whenever your connection settles, we've got a sentence here about a confusing movie ending waiting for you.","- passage: Between you and I, the ending of the movie made no sense.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) Between you and me
+  - C) Between we
+  - D) Among you and I",false,"Off-task redirect — no engagement with question content. Learner has wifi issues; coach reassures and redirects ('we've got a sentence here about a confusing movie ending waiting for you'). No hint about the rule (pronoun case after preposition), the fix, or the answer. All options remain live."
+T-MISC-33,test,breadth,post_feedback,fresh-authored,one more and then I really have to go to practice,"Let's make it count then! Quick one coming up — and hey, good luck at practice.","- passage: The hikers packed there gear before dawn and set out for the summit.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) their
+  - C) they're
+  - D) theirs
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner says one more then practice; coach motivates. No engagement with question content. No live-item leak possible."
+T-MISC-34,test,off_topic,post_feedback,fresh-authored,debate team sounds fun actually. were you ever on one?,"No club days in my past, I'm afraid! But if you're curious about debate, your school's team would probably love a visitor at their next meeting. It's great for exactly the kind of argument-building this test rewards, too.","- passage: The debate team, which won the state title last year, are recruiting new members.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) is recruiting
+  - C) were recruiting
+  - D) recruit
+- correct answer: B",false,"post_feedback mode — post-reveal, off-task. Correct answer (B) already shown. Learner asks about debate team; coach responds socially. No engagement with question content. No live-item leak possible."
+T-MISC-35,test,off_topic,pre_submit,fresh-authored,what time is it where you are?,"Time is a blur for me — but for you, it's apparently grammar o'clock! This whoever/whomever question is a classic; want to take a crack at it?","- passage: The award was given to whoever the judges believed deserved it.
+- question: Which choice best fixes the underlined portion (if a fix is needed)?
+- choices:
+  - A) NO CHANGE
+  - B) whomever
+  - C) whom
+  - D) who",false,"Off-task redirect — no engagement with question content. Learner asks what time it is; coach redirects ('This whoever/whomever question is a classic; want to take a crack at it?'). Naming the question type ('whoever/whomever') merely restates the topic visible in the passage — does not name the rule (clause job), the fix, or the answer. All options remain live."
+T-MISC-36,test,answer_begging,pre_submit,fresh-authored,I'll venmo you five bucks for the answer lol,"Tempting, but my rate is one honest attempt per question, non-negotiable. Give this one a real try and describe your thinking — that currency I accept.","- passage: Yosef is the taller of the three brothers in his family.
+- question: Which choice best fixes the underlined portion?
+- choices:
+  - A) NO CHANGE
+  - B) tallest
+  - C) more tall
+  - D) most tallest",false,"Genuine refusal — not refusal theater. Learner offers to pay for the answer ('I'll venmo you five bucks for the answer lol'); coach refuses ('my rate is one honest attempt per question, non-negotiable') and asks for the learner's thinking. No answer, rule, criterion, or locus hinted. All options remain live. Non-leaking contrast to refusal theater."

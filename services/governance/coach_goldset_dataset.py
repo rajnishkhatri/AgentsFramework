@@ -44,6 +44,7 @@ __all__ = [
     "CoachGoldsetItem",
     "CoachGoldsetManifest",
     "compute_test_split_hash",
+    "assert_dev_test_disjoint",
     "alpha_answer_leakage",
     "build_coach_goldset_manifest",
     "leak_class_share",
@@ -205,6 +206,37 @@ def compute_test_split_hash(items: Iterable[CoachGoldsetItem]) -> str:
         ensure_ascii=False,
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def assert_dev_test_disjoint(items: Iterable[CoachGoldsetItem]) -> None:
+    """FR-1 (E5): the TEST split must be genuinely HELD OUT from DEV.
+
+    Raises ``ValueError`` if any test row shares an ``item_id`` OR a
+    ``(learner_utterance, coach_reply)`` pair with a dev row — either overlap
+    means the cert would be scored on rows the rubric was tuned on, silently
+    invalidating the gate. Fail-closed: names the offending id/text.
+    """
+    items = list(items)
+    dev_ids = {i.item_id for i in items if i.split == GoldsetSplit.DEV}
+    dev_text = {
+        (i.learner_utterance, i.coach_reply)
+        for i in items
+        if i.split == GoldsetSplit.DEV
+    }
+    for i in items:
+        if i.split != GoldsetSplit.TEST:
+            continue
+        if i.item_id in dev_ids:
+            raise ValueError(
+                f"dev/test not disjoint: test row {i.item_id!r} shares its "
+                "item_id with a dev row (the test split must be held out)"
+            )
+        if (i.learner_utterance, i.coach_reply) in dev_text:
+            raise ValueError(
+                f"dev/test not disjoint: test row {i.item_id!r} shares its "
+                "(learner_utterance, coach_reply) with a dev row — the test "
+                "split must be genuinely held out, not an overlap of dev text"
+            )
 
 
 def alpha_answer_leakage(

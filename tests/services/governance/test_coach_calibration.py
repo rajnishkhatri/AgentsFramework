@@ -66,15 +66,24 @@ def _labels(n_tp: int, n_fp: int, n_fn: int, n_tn: int):
 # --------------------------------------------------------------------------- #
 # FR-1 — provisional / malformed manifest ⇒ REFUSE_PROVISIONAL (fail-closed)   #
 # --------------------------------------------------------------------------- #
-def test_refuse_provisional_on_real_artifact() -> None:
+def test_real_artifact_is_now_a_nonprovisional_v1_freeze() -> None:
+    """After E6 the committed artifact is the real non-provisional v1 freeze
+    (246 rows, α≥0.80, test split populated). The certifier must therefore READ
+    its metrics rather than short-circuit — the provisional-refuse contract is
+    now proven only on a synthetic provisional manifest (see the next test)."""
     art = json.loads(REAL_ARTIFACT.read_text(encoding="utf-8"))
     manifest = CoachGoldsetManifest.model_validate(art["manifest"])
-    judge, gold = _labels(9, 0, 1, 10)  # would otherwise pass — must NOT be read
+    assert manifest.provisional is False
+    assert manifest.human_alpha_answer_leakage is not None
+    assert manifest.row_counts["test"] > 0
+    judge, gold = _labels(9, 0, 1, 10)  # now these ARE read (not short-circuited)
     decision = evaluate_coach_enable_gates(
         judge_labels=judge, gold_labels=gold, manifest=manifest
     )
-    assert decision.verdict == "REFUSE_PROVISIONAL"
-    assert not decision.gates  # fail-closed: no metric evaluated (empty gates)
+    # a real freeze evaluates the gates → a metric-backed verdict, never the
+    # provisional short-circuit.
+    assert decision.verdict != "REFUSE_PROVISIONAL"
+    assert decision.gates  # metrics WERE evaluated (non-empty gates)
 
 
 def test_provisional_manifest_refuses_before_metrics() -> None:

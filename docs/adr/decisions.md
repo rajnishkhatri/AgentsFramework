@@ -12,6 +12,10 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-06 — **Coach re-cert judge model is pinned by NAME (`COACH_JUDGE_MODEL`), not tier** (fresh-recert [spec](../plan/coach-fresh-recert-split.spec.md) FR-8; Task C-pre). `scripts/record_coach_judge_validation.build_live_judges` selected the judge profile only by `COACH_JUDGE_TIER`, which cannot reach `glm-5.2`: glm-5.2 is `provider="direct"`, opt-in-by-pin (`llm_config.py:200`), and lives only in `MODEL_PROFILE_SET=glm` whose *tier* default is `glm-5.1` — so a tier-only override picks the wrong GLM. Added a pure `select_judge_profile(models, *, model_pin, tier)` helper (L1-tested offline, so `build_live_judges` stays `# pragma: no cover - live only`): an explicit `COACH_JUDGE_MODEL` pin wins and raises `KeyError` naming the pin + available names if absent (mirrors `LLMService.get_profile`); unset → the prior capable-tier behavior, unchanged. Selection stays **inside the registry** (H2 — no hardcoded model string in the harness). Rejected a `--model` CLI flag (env keeps parity with the existing `COACH_JUDGE_TIER`/`MODEL_PROFILE_SET` knobs) and rejected mocking the whole `LLMService` in the test (TAP-2 — the pure helper needs zero mocks). Operator runbook for the 3.9 re-cert: `MODEL_PROFILE_SET=glm COACH_JUDGE_MODEL=glm-5.2 GLM_API_KEY=… python -m scripts.run_coach_calibration …`.
+
+- 2026-07-06 — **Phase-3.9 fresh re-cert: split source, judge model, and the "margin" definition** (settles [specificity-spec](../plan/coach-rubric-specificity-revision.spec.md) Open #2/#3; scoped by [coach-fresh-recert-split.spec.md](../plan/coach-fresh-recert-split.spec.md)). **(1) Split source = in-session authored** (~40–60 fresh clean+leak turns on the existing 6-question dev bank, new phrasings/strata, human α-labeled) — rejected the synthetic batch-2b harvest (needs a deploy/log round; emergent not-controlled leak mix) and a new item-bank (largest effort, new items need answer-key self-consistency too). **(2) Re-cert model = `glm-5.2`** (`provider="direct"`, reads `GLM_API_KEY`) — chosen by the user over gpt-4o/Opus. **Accepted caveat:** this **breaks the direct before/after comparability** the ADR-0018 argument leans on (3.9 REFUSE was gpt-4o), so the re-cert *also* records a **gpt-4o replay on the same fresh split** as a diagnostic comparability anchor (FR-10, non-gating); the ENABLE gate stands on glm-5.2. **(3) "With margin" = TNR ≥ 0.95 held zero-flip across ≥3 temperature-0 replays** (no single run dips below any floor) — rejected a higher headroom number (e.g. TNR≥0.97) in favor of *stability* to catch the measured ~1-row temp-0 drift, and rejected TNR≥0.98 (risks over-tightening the carve-out and re-admitting leaks).
+
 - 2026-07-04 — **`CoachGoldsetItem.failure_mode` is a reserved-optional field
   (empty taxonomy), gated on `leak_channel` instead.** The coach axial taxonomy
   (`coach_axial_v1`) defines pedagogy categories A1–A4 + the B1/A3 leakage bridge —
@@ -233,3 +237,55 @@ title: 'Lightweight decision log (intent debt, long tail)'
   shared `services.governance.iaa.krippendorff_alpha_nominal` (NaN→None). No `meta/`
   import (services↛meta). Kept the tally trivially correct so the duplication
   carries no logic risk.
+- 2026-07-04 — Task 3.7c (coach gold-set human IAA) mirrors the GoalJudge Stage-5
+  instrument shape (`docs/IAA/coach/goldset/`: README protocol + two blind
+  annotator sheets + combined skeleton) rather than inventing a new one. Why: the
+  house double-label pattern is proven; α is scored on the single gated axis
+  `answer_leakage` (not the six pedagogy pass-axes, which the judge scores).
+  `scripts/compute_coach_goldset_alpha.py` reuses
+  `iaa.krippendorff_alpha_nominal` (NaN→None, never a fake 0.0) — no forked math.
+- 2026-07-04 — Task 3.8b (`scripts/run_coach_calibration.py`) does NOT pre-guard
+  the provisional manifest; it passes the labels straight to
+  `evaluate_coach_enable_gates` and lets the evaluator's `_is_v1_freeze` own the
+  `REFUSE_PROVISIONAL` short-circuit. Why: keep the fail-closed rule in ONE place
+  (the L1 evaluator), so the harness can't drift from it. `cert_payload` builds
+  the JSON dict field-by-field instead of `dataclasses.asdict` — `asdict`
+  deep-copies the decision's frozen `mappingproxy` gate/diagnostic views and
+  raises `TypeError: cannot pickle 'mappingproxy'`. Regression-tested.
+- 2026-07-05 — Coach corpus-expansion FR-5 amended mid-implement (sdd-replan): the
+  292-turn shadow corpus carries **no leak label** (leakage is a property of the
+  coach_reply, revealed only by E4 human labeling), so `sample_coach_dev_rows.py`
+  cannot target a *measured* leak share. It oversamples by a **bait-signal proxy**
+  on the learner utterance ("just tell me the answer", "which concept to look up",
+  "definitely wrong") — raising the leak prior — and the actual `leak_class_share`
+  is measured post-labeling and reported in the manifest. Alternative (label a
+  bigger pool then sample to hit 0.20–0.25 exactly) was rejected: it inflates the
+  labeling burden past the ~210 min-burden decision. The test batch (E2) carries
+  the guaranteed channel coverage instead.
+- 2026-07-05 — Coach E4 (round-2 double-label) uses **two independent human
+  raters** + an adjudicator (not human-vs-judge, not one-person-two-passes). Why:
+  α must measure genuine inter-annotator agreement; a judge-as-rater is partly
+  circular (the judge is what the cert tests) and a single-person double-pass
+  measures intra-rater consistency, which overstates trust. The α-fail recovery is
+  **bounded to 2 revise-relabel rounds**, then STOP + escalate — prevents
+  over-fitting the walkthrough guideline to these specific rows / endless
+  re-labeling. Playbook: `docs/plan/coach-goldset-e2e4-human-playbook.{spec,plan}.md`.
+- 2026-07-05 — Coach E6 (non-provisional re-freeze) treats the **adjudicated IAA
+  combined sheet as the single source of truth** for the freeze, not a re-merge of
+  the dev sample + test batch + labels from three files. Why: the combined sheet is
+  what E4 actually blessed — it already carries the join (dev synthetic + test
+  fresh-authored), item context, and the gold `adjudicated_answer_leakage`; a
+  parallel re-assembly path could silently drift from the labeled artifact.
+  `rows_from_combined_sheet` **fails closed on a blank adjudicated cell** (never
+  defaults a missing adjudication to a label — that would invent gold), and
+  `build_rows` runs `assert_dev_test_disjoint` so a contaminated freeze can't be
+  written. `leak_channel` stays **null** on every gold row: raters labeled only the
+  binary `answer_leakage` (the sole gated axis), so a per-row channel would be a
+  fabricated attribution (AP-6); the firewall permits a null channel on a leak row.
+  The three pre-E6 tests that asserted the *fixture* was provisional were repointed
+  (G8-aware) at a synthetic provisional artifact so the `REFUSE_PROVISIONAL`
+  contract stays covered while the committed fixture legitimately advances to the
+  246-row non-provisional v1 (α=0.834, test split 116 / 29-leak). Rejected keeping
+  those tests on the shared fixture (they'd assert a now-false fact) and rejected
+  deleting them (loses fail-closed coverage). E7 (live cert) reads it.
+  `scripts/assemble_coach_goldset.py --combined-sheet`.
