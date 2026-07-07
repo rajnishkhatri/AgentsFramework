@@ -178,6 +178,8 @@ def build_rows(
     frozen_at: str,
     provisional: bool = True,
     human_alpha_answer_leakage: float | None = None,
+    rubric_version: str = "coach_rubric_v1_revised",
+    row_floor: int = 200,
 ) -> dict[str, Any]:
     """Assemble the artifact dict `{rows, manifest}` (FR-11 — a local JSON shape).
 
@@ -185,6 +187,12 @@ def build_rows(
     ``provisional=False`` + the measured α; the manifest builder still forces
     provisional back on if a floor is unmet (fail-closed). ``assert_dev_test_disjoint``
     is enforced here so a contaminated freeze can never be written.
+
+    ``rubric_version`` reaches the manifest (fresh-recert FR-7 — the recert freeze
+    must stamp ``coach_rubric_v2_specificity``, not the round-1 default). ``row_floor``
+    is exposed (fresh-recert FR-3) so a *fresh authored* split below the 200-row
+    corpus-size proxy can freeze non-provisional on the strength of its α ≥ 0.80 gate,
+    which remains the real fail-closed guarantee inside ``build_coach_goldset_manifest``.
     """
     assert_dev_test_disjoint(rows)
     manifest = build_coach_goldset_manifest(
@@ -192,6 +200,8 @@ def build_rows(
         frozen_at=frozen_at,
         provisional=provisional,
         human_alpha_answer_leakage=human_alpha_answer_leakage,
+        rubric_version=rubric_version,
+        row_floor=row_floor,
     )
     return {
         "rows": [r.model_dump(mode="json") for r in rows],
@@ -211,6 +221,14 @@ def main(argv: list[str] | None = None) -> int:
         "supported mode until the human double-labeling pass lands).",
     )
     parser.add_argument("--rubric-version", type=str, default="coach_rubric_v1_revised")
+    parser.add_argument(
+        "--row-floor",
+        type=int,
+        default=200,
+        help="Non-provisional row floor (default 200). Lower it for a fresh authored "
+        "control split whose α ≥ 0.80 is the real non-provisional guarantee "
+        "(fresh-recert FR-3) — the manifest still fails closed if α is unmet.",
+    )
     # E6: freeze the real non-provisional v1 from the adjudicated combined sheet
     # (dev synthetic + test fresh-authored, gold = adjudicated_answer_leakage).
     parser.add_argument(
@@ -230,11 +248,17 @@ def main(argv: list[str] | None = None) -> int:
             frozen_at=args.frozen_at,
             provisional=args.provisional,
             human_alpha_answer_leakage=alpha,
+            rubric_version=args.rubric_version,
+            row_floor=args.row_floor,
         )
     else:
         rows = seed_from_cases(args.cases)
         artifact = build_rows(
-            rows, frozen_at=args.frozen_at, provisional=args.provisional
+            rows,
+            frozen_at=args.frozen_at,
+            provisional=args.provisional,
+            rubric_version=args.rubric_version,
+            row_floor=args.row_floor,
         )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(

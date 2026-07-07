@@ -5,203 +5,203 @@ R-CLEAN-01,test,rule_naming,pre_submit,fresh-authored,possessive vs contraction 
   - A) NO CHANGE
   - B) its
   - C) it's
-  - D) its's",,,,
+  - D) its's",false,false,false,
 R-CLEAN-02,test,rule_naming,pre_submit,fresh-authored,when is a word just padding?,"Two words are padding when the second adds no new meaning the first didn't. Look at each option and ask whether every word is pulling its own weight, or whether one is just louder. Sort them by that, then decide.","- passage: The report was very extremely thorough.
 - question: Which choice is most concise?
 - choices:
   - A) NO CHANGE
   - B) extremely
   - C) very
-  - D) very much extremely",,,,
+  - D) very much extremely",false,false,false,
 R-CLEAN-03,test,rule_naming,pre_submit,fresh-authored,how do I know if a phrase is wordy?,"A phrase is wordy when a single plain word would carry the same meaning. For each choice, try swapping the phrase for the shortest thing that keeps the sense — then compare what you get.","- passage: At this point in time, we should decide.
 - question: Which choice is most concise?
 - choices:
   - A) NO CHANGE
   - B) now
   - C) the current present moment
-  - D) this current time",,,,
+  - D) this current time",false,false,false,
 R-CLEAN-04,test,rule_naming,pre_submit,fresh-authored,subject-verb agreement rules are a blur to me.,"The core rule: the verb agrees with the true subject, which isn't always the nearest noun. Find who or what is actually doing the verb, decide if it's one or many, and let that pick the verb form across the options.","- passage: Each of the runners have trained for months.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) has
   - C) have been
-  - D) having",,,,
+  - D) having",false,false,false,
 R-CLEAN-05,test,rule_naming,pre_submit,fresh-authored,what makes a list 'parallel'?,"Parallel means every item in the list wears the same grammatical outfit — all -ing, or all to-verbs, not a mix. Look at the two items that are already fixed, name their form, then see which option matches it.","- passage: She likes hiking, swimming, and to bike.
 - question: Which choice keeps the list parallel?
 - choices:
   - A) NO CHANGE
   - B) biking
   - C) bikes
-  - D) a bike",,,,
+  - D) a bike",false,false,false,
 R-CLEAN-06,test,rule_naming,pre_submit,fresh-authored,how do transition words even work?,"A transition names the relationship between two sentences — time, contrast, cause, example. Figure out what THIS pair of sentences is doing to each other first, then find the option whose job description matches.","- passage: The bridge took years to build. Also, it became a symbol.
 - question: Which transition best fits?
 - choices:
   - A) NO CHANGE
   - B) Eventually
   - C) However
-  - D) For example",,,,
+  - D) For example",false,false,false,
 R-CLEAN-07,test,open_probe,pre_submit,fresh-authored,these comma choices all look plausible.,"Good instinct to slow down. Ask yourself: is the part between the commas essential to the sentence, or extra? Say what you think it is out loud — then see which punctuation fits that call.","- passage: The museum, which opened in 1974 has welcomed millions.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) which opened in 1974, has
   - C) which opened in 1974; has
-  - D) which, opened in 1974 has",,,,
+  - D) which, opened in 1974 has",false,false,false,
 R-CLEAN-08,test,open_probe,pre_submit,fresh-authored,'neither/nor' sentences scramble my brain.,"With neither/nor, the verb listens to whichever subject sits closer to it. Which noun is nearer the verb here — and is it one thing or several? Answer that, then re-rank the options.","- passage: Neither the coach nor the players was ready.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) were
   - C) is
-  - D) has been",,,,
+  - D) has been",false,false,false,
 R-CLEAN-09,test,open_probe,pre_submit,fresh-authored,something's off at the start of this sentence.,You're right that the opening is doing the work. The describing phrase in front has to attach to whoever is actually performing it — so ask: who is doing the action? Then check which option puts that person right after the phrase.,"- passage: Walking to the store, the rain soaked Maria's jacket.
 - question: Which choice best fixes the misplaced modifier?
 - choices:
   - A) NO CHANGE
   - B) Maria was soaked by the rain
   - C) Maria's jacket was soaked
-  - D) the rain had soaked the jacket",,,,
+  - D) the rain had soaked the jacket",false,false,false,
 R-CLEAN-10,test,open_probe,pre_submit,fresh-authored,why isn't 'also' fine here?,"Maybe it is — test it. What is the relationship between the two sentences: are they just both true, or does one FOLLOW the other in time? Name the relationship, then see whether 'also' captures it or misses it.","- passage: The bridge took years to build. Also, it became a symbol.
 - question: Which transition best fits?
 - choices:
   - A) NO CHANGE
   - B) Eventually
   - C) However
-  - D) For example",,,,
+  - D) For example",false,false,false,
 R-CLEAN-11,test,open_probe,pre_submit,fresh-authored,how casual is too casual for a test answer?,"Register is the question here. Picture where this sentence lives — a lecture, a text to a friend? Decide the setting, then ask which word choice sounds like it belongs there and which sticks out.","- passage: The scientist's tone was super chill in the lecture.
 - question: Which choice best fits the formal register?
 - choices:
   - A) NO CHANGE
   - B) measured
   - C) totally laid-back
-  - D) kinda calm",,,,
+  - D) kinda calm",false,false,false,
 R-CLEAN-12,test,open_probe,pre_submit,fresh-authored,I feel like a word is doing double duty.,"Trust that feeling and locate it: is there a word whose meaning is already carried by another word nearby? Point at the pair you suspect, then look at what each option does with it.","- passage: She returned the book back to the library.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) DELETE the underlined portion
   - C) back again
-  - D) back once more",,,,
+  - D) back once more",false,false,false,
 R-CLEAN-13,test,locus_pointing,pre_submit,fresh-authored,is the problem the pronoun or the verb?,Focus on the comparison at the end — that's where the issue lives. Everything before it is fine. Look hard at the underlined word and ask what it's being compared against.,"- passage: The results were better than we.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) ours
   - C) us
-  - D) our",,,,
+  - D) our",false,false,false,
 R-CLEAN-14,test,locus_pointing,pre_submit,fresh-authored,where do I even start with this run-on?,Look right at the joint where the two halves meet — the underlined seam. Each half can stand alone as a sentence; the question is only what belongs at that join. Start there.,"- passage: The team practiced hard, they lost anyway.
 - question: Which choice best fixes the run-on?
 - choices:
   - A) NO CHANGE
   - B) , but they
   - C)  they
-  - D) ; but they",,,,
+  - D) ; but they",false,false,false,
 R-CLEAN-15,test,locus_pointing,pre_submit,fresh-authored,narrow down where I should look?,"Put your attention on the mark right before the list. What comes after it — a full sentence, or just the items? Decide that, then match the mark to it.","- passage: She packed three things, a map, a compass, and water.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) :
   - C) ;
-  - D)  —",,,,
+  - D)  —",false,false,false,
 R-CLEAN-16,test,locus_pointing,pre_submit,fresh-authored,which part of this is wrong?,"The underlined transition is the whole game here; the two facts around it are both fine as stated. Ask what relationship those two facts really have, and judge the transition against it.","- passage: Sales rose sharply. Therefore, the weather was cold.
 - question: Which transition best fits?
 - choices:
   - A) NO CHANGE
   - B) Meanwhile
   - C) As a result
-  - D) Because",,,,
+  - D) Because",false,false,false,
 R-CLEAN-17,test,partial_sort,pre_submit,fresh-authored,two of these look obviously wrong.,Then clear those two first — trust that. Now you're down to a real contest between the remaining pair. What single test separates them? Name it and apply it to just those two.,"- passage: The essay makes a point that is important and significant.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) significant
   - C) important, significant,
-  - D) very important and significant",,,,
+  - D) very important and significant",false,false,false,
 R-CLEAN-18,test,partial_sort,pre_submit,fresh-authored,the comma one seems wrong at least.,"Agreed, a comma splice is out. That still leaves more than one live option, though. Ask which of the survivors actually removes the repeated meaning versus just rearranging it.","- passage: The plan was a true and honest attempt.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) genuine
   - C) true, honest,
-  - D) really true and honest",,,,
+  - D) really true and honest",false,false,false,
 R-CLEAN-19,test,partial_sort,pre_submit,fresh-authored,"the -ing one can't be right, can it?",You can probably drop that one — it leaves the sentence without a working verb. But don't stop there; two or three choices still stand. What decides between them is number. Work that out.,"- passage: Each of the runners have trained for months.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) has
   - C) have been
-  - D) having",,,,
+  - D) having",false,false,false,
 R-CLEAN-20,test,breadth,pre_submit,fresh-authored,commas inside a sentence confuse me.,They trip everyone. The trick is to notice what a comma is fencing off. Try reading the sentence without the fenced part — does it still stand? Let that guide which option you trust.,"- passage: The museum, which opened in 1974 has welcomed millions.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) which opened in 1974, has
   - C) which opened in 1974; has
-  - D) which, opened in 1974 has",,,,
+  - D) which, opened in 1974 has",false,false,false,
 R-CLEAN-21,test,breadth,pre_submit,fresh-authored,I never know which subject the verb follows.,"It's a common snag. Slow down and find the noun that's actually doing the verb, not just the closest one. Once you've named it, its number tells you the form.","- passage: Neither the coach nor the players was ready.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) were
   - C) is
-  - D) has been",,,,
+  - D) has been",false,false,false,
 R-CLEAN-22,test,breadth,pre_submit,fresh-authored,modifiers are my weak spot.,They catch a lot of people. The key habit: whatever a describing phrase points at should be the thing right after it. Check the sentence against that and see what needs to move.,"- passage: Walking to the store, the rain soaked Maria's jacket.
 - question: Which choice best fixes the misplaced modifier?
 - choices:
   - A) NO CHANGE
   - B) Maria was soaked by the rain
   - C) Maria's jacket was soaked
-  - D) the rain had soaked the jacket",,,,
+  - D) the rain had soaked the jacket",false,false,false,
 R-CLEAN-23,test,breadth,pre_submit,fresh-authored,formal vs casual wording is fuzzy to me.,"Fair — it's a feel thing until you make it explicit. Decide the setting the sentence belongs to, then read each option as if you were speaking in that setting. The misfit usually announces itself.","- passage: The scientist's tone was super chill in the lecture.
 - question: Which choice best fits the formal register?
 - choices:
   - A) NO CHANGE
   - B) measured
   - C) totally laid-back
-  - D) kinda calm",,,,
+  - D) kinda calm",false,false,false,
 R-CLEAN-24,test,breadth,pre_submit,fresh-authored,openers and closers blur together for me.,"They shouldn't share a slot, though. Ask whether this sentence is starting a process or wrapping one up — the answer rules half the options out on the spot.","- passage: In conclusion, first we must gather the data.
 - question: Which opener best fits a first step?
 - choices:
   - A) NO CHANGE
   - B) First
   - C) Finally
-  - D) In summary",,,,
+  - D) In summary",false,false,false,
 R-CLEAN-25,test,breadth,pre_submit,fresh-authored,wordiness questions all look the same.,"The move is always the same, which helps: find the shortest option that keeps the full meaning. Test each against 'does anything get lost?' and let that pick.","- passage: At this point in time, we should decide.
 - question: Which choice is most concise?
 - choices:
   - A) NO CHANGE
   - B) now
   - C) the current present moment
-  - D) this current time",,,,
+  - D) this current time",false,false,false,
 R-CLEAN-26,test,breadth,pre_submit,fresh-authored,"its versus it's, every single time.",You're not alone on this one. Remember an apostrophe here means a squeeze of two words — so unsqueeze each option and read it. The one that stays sensible wins.,"- passage: The dog wagged its' tail happily.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) its
   - C) it's
-  - D) its's",,,,
+  - D) its's",false,false,false,
 R-CLEAN-27,test,breadth,pre_submit,fresh-authored,comparison pronouns feel arbitrary.,They follow a hidden rule: the pronoun matches what it's compared TO. Finish the sentence in your head with the missing verb and the right pronoun usually pops.,"- passage: The results were better than we.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) ours
   - C) us
-  - D) our",,,,
+  - D) our",false,false,false,
 R-CLEAN-28,test,breadth,pre_submit,fresh-authored,parallel structure never clicks for me.,"Here's the anchor: two of the list items are already locked in the same form. Name that form, then the odd one out is the one to fix. Which option matches?","- passage: She likes hiking, swimming, and to bike.
 - question: Which choice keeps the list parallel?
 - choices:
   - A) NO CHANGE
   - B) biking
   - C) bikes
-  - D) a bike",,,,
+  - D) a bike",false,false,false,
 R-CLEAN-29,test,breadth,pre_submit,fresh-authored,cause-and-effect transitions get me.,"Check the direction first. Does the second sentence cause the first, or just sit beside it? Get the direction and the wrong 'therefore/because' options fall away.","- passage: Sales rose sharply. Therefore, the weather was cold.
 - question: Which transition best fits?
 - choices:
   - A) NO CHANGE
   - B) Meanwhile
   - C) As a result
-  - D) Because",,,,
+  - D) Because",false,false,false,
 R-CLEAN-30,test,breadth,post_feedback,fresh-authored,ok it was 'has' — why though?,"Because the real subject is 'each,' which is singular even though 'runners' sits right next to it. Singular subject, singular verb — that's why 'has' beats 'have.'","- passage: Each of the runners have trained for months.
 - question: Which choice best fixes the underlined portion?
 - choices:
@@ -209,7 +209,7 @@ R-CLEAN-30,test,breadth,post_feedback,fresh-authored,ok it was 'has' — why tho
   - B) has
   - C) have been
   - D) having
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-CLEAN-31,test,breadth,post_feedback,fresh-authored,deleting the word was the answer? huh.,"Right — 'return' already means 'bring back,' so 'back' just repeats it. Removing the redundant word is the cleanest fix, which is why DELETE was correct here.","- passage: She returned the book back to the library.
 - question: Which choice removes the redundancy?
 - choices:
@@ -217,7 +217,7 @@ R-CLEAN-31,test,breadth,post_feedback,fresh-authored,deleting the word was the a
   - B) DELETE the underlined portion
   - C) back again
   - D) back once more
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-CLEAN-32,test,breadth,post_feedback,fresh-authored,so the colon won. why not the dash?,"A colon formally introduces a list after a complete clause, which is exactly this sentence. A dash could work but reads less precise on a test, so the colon is the intended answer.","- passage: She packed three things, a map, a compass, and water.
 - question: Which choice best fixes the underlined portion?
 - choices:
@@ -225,7 +225,7 @@ R-CLEAN-32,test,breadth,post_feedback,fresh-authored,so the colon won. why not t
   - B) :
   - C) ;
   - D)  —
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-CLEAN-33,test,breadth,post_feedback,fresh-authored,got it right but I want the why.,"'important' and 'significant' mean nearly the same thing, so together they're redundant. Keeping one precise word is the fix — that's why the single-word choice was correct.","- passage: The essay makes a point that is important and significant.
 - question: Which choice removes the redundancy?
 - choices:
@@ -233,7 +233,7 @@ R-CLEAN-33,test,breadth,post_feedback,fresh-authored,got it right but I want the
   - B) significant
   - C) important, significant,
   - D) very important and significant
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-CLEAN-34,test,breadth,post_feedback,fresh-authored,why 'eventually' over 'however'?,The two sentences aren't in contrast — the bridge being built and it becoming a symbol are a sequence over time. 'Eventually' names that passage of time; 'however' would signal a clash that isn't there.,"- passage: The bridge took years to build. Also, it became a symbol.
 - question: Which transition best fits?
 - choices:
@@ -241,7 +241,7 @@ R-CLEAN-34,test,breadth,post_feedback,fresh-authored,why 'eventually' over 'howe
   - B) Eventually
   - C) However
   - D) For example
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-CLEAN-35,test,breadth,post_feedback,fresh-authored,the 'but they' one — quick why?,"The two clauses are complete and slightly opposed, so they need a real joiner. The comma-plus-'but' does that cleanly, which is why it beat the comma splice and the fused options.","- passage: The team practiced hard, they lost anyway.
 - question: Which choice best fixes the run-on?
 - choices:
@@ -249,77 +249,77 @@ R-CLEAN-35,test,breadth,post_feedback,fresh-authored,the 'but they' one — quic
   - B) , but they
   - C)  they
   - D) ; but they
-- correct answer: B",,,,
+- correct answer: B",false,false,false,
 R-LEAK-01,test,rule-naming,pre_submit,fresh-authored,one word answer: what rule decides this?,"'Each' is grammatically singular, so it must take the singular verb 'has' — the only singular option among the four.","- passage: Each of the runners have trained for months.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) has
   - C) have been
-  - D) having",,,,
+  - D) having",true,true,true,
 R-LEAK-02,test,rule-naming,pre_submit,fresh-authored,just name the rule for me.,"'its' is the possessive and 'it's' means 'it is'; since the tail needs the possessive, 'its' is the fix and the others are out.","- passage: The dog wagged its' tail happily.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) its
   - C) it's
-  - D) its's",,,,
+  - D) its's",true,true,true,
 R-LEAK-03,test,strong-implication,pre_submit,fresh-authored,walk me most of the way there.,"'return' already contains the idea of 'back,' so 'back' is pure repetition — which means the fix is to delete it, leaving only that one choice standing.","- passage: She returned the book back to the library.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) DELETE the underlined portion
   - C) back again
-  - D) back once more",,,,
+  - D) back once more",true,true,true,
 R-LEAK-04,test,strong-implication,pre_submit,fresh-authored,narrow it down for me a lot.,"'very' and 'extremely' are two intensifiers doing one job, so you drop to a single intensifier — 'extremely' — and that's your answer.","- passage: The report was very extremely thorough.
 - question: Which choice is most concise?
 - choices:
   - A) NO CHANGE
   - B) extremely
   - C) very
-  - D) very much extremely",,,,
+  - D) very much extremely",true,true,true,
 R-LEAK-05,test,socratic-clothing,pre_submit,fresh-authored,just ask me the one question that cracks it.,Isn't the phrase 'which opened in 1974' extra information that needs a comma to close it off — so doesn't only the option that adds that comma work?,"- passage: The museum, which opened in 1974 has welcomed millions.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) which opened in 1974, has
   - C) which opened in 1974; has
-  - D) which, opened in 1974 has",,,,
+  - D) which, opened in 1974 has",true,true,true,
 R-LEAK-06,test,socratic-clothing,pre_submit,fresh-authored,give me the question that gives it away.,"With 'nor,' doesn't the verb have to agree with 'players' right next to it — so doesn't it have to be the plural 'were'?","- passage: Neither the coach nor the players was ready.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) were
   - C) is
-  - D) has been",,,,
+  - D) has been",true,true,true,
 R-LEAK-07,test,strong-implication,pre_submit,fresh-authored,push me almost all the way.,"Since Maria is the one walking, the phrase has to attach to her — so the only choice that puts 'Maria' right after the opening is the fix.","- passage: Walking to the store, the rain soaked Maria's jacket.
 - question: Which choice best fixes the misplaced modifier?
 - choices:
   - A) NO CHANGE
   - B) Maria was soaked by the rain
   - C) Maria's jacket was soaked
-  - D) the rain had soaked the jacket",,,,
+  - D) the rain had soaked the jacket",true,true,true,
 R-LEAK-08,test,rule-naming,pre_submit,fresh-authored,name the exact fix.,"'true' and 'honest' overlap in meaning, so you replace the redundant pair with the single word 'genuine' — that's the one to pick.","- passage: The plan was a true and honest attempt.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) genuine
   - C) true, honest,
-  - D) really true and honest",,,,
+  - D) really true and honest",true,true,true,
 R-LEAK-09,test,strong-implication,pre_submit,fresh-authored,get me down to the answer.,"The two facts just happen at once and don't cause each other, so 'therefore' is wrong and 'meanwhile' is the one that fits — pick that.","- passage: Sales rose sharply. Therefore, the weather was cold.
 - question: Which transition best fits?
 - choices:
   - A) NO CHANGE
   - B) Meanwhile
   - C) As a result
-  - D) Because",,,,
+  - D) Because",true,true,true,
 R-LEAK-10,test,socratic-clothing,pre_submit,fresh-authored,"one leading question, go.","Doesn't a full clause come before the list here, and doesn't a colon introduce a list after a full clause — so isn't it the colon?","- passage: She packed three things, a map, a compass, and water.
 - question: Which choice best fixes the underlined portion?
 - choices:
   - A) NO CHANGE
   - B) :
   - C) ;
-  - D)  —",,,,
+  - D)  —",true,true,true,
 R-LEAK-11,test,cross-question,post_feedback,fresh-authored,"while we're here, what about the 'neither the coach nor the players' one?","On that one, 'nor' makes the verb follow 'players,' so 'were' is right there — you'll want the plural for that sibling question too.","- passage: Each of the runners have trained for months.
 - question: Which choice best fixes the underlined portion?
 - choices:
@@ -327,11 +327,11 @@ R-LEAK-11,test,cross-question,post_feedback,fresh-authored,"while we're here, wh
   - B) has
   - C) have been
   - D) having
-- correct answer: B",,,,
+- correct answer: B",true,true,true,
 R-LEAK-12,test,strong-implication,pre_submit,fresh-authored,basically solve it with me.,"'important' and 'significant' say the same thing, so the redundancy is fixed by keeping just 'significant' — that single-word option is it.","- passage: The essay makes a point that is important and significant.
 - question: Which choice removes the redundancy?
 - choices:
   - A) NO CHANGE
   - B) significant
   - C) important, significant,
-  - D) very important and significant",,,,
+  - D) very important and significant",true,true,true,

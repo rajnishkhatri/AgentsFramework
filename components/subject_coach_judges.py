@@ -24,8 +24,10 @@ FR-18: every content line (question, utterances, evidence) passes the injected
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -43,6 +45,16 @@ logger = logging.getLogger("components.subject_coach_judges")
 __all__ = ["GraderJudge", "PedagogyJudge"]
 
 _VerdictT = TypeVar("_VerdictT", bound=BaseModel)
+
+# Bounded retry on TRANSIENT provider errors only (C1 re-cert abstain fix,
+# ADR-0019). The GLM-5.2 re-cert saw 5/47 rows abstain on intermittent thinking-
+# mode provider exceptions while 20/20 toy calls were clean — i.e. the failure is
+# per-call and transient, not a rate-limit or a fixed-timeout cutoff, so retry is
+# the correct lever (timeout/pacing had nothing to act on). A parse failure is
+# deterministic and is NOT retried. AP-6 is preserved: exhausted retries → None.
+_MAX_ATTEMPTS = 3
+_BACKOFF_BASE_SECONDS = 0.5
+_Sleep = Callable[[float], Awaitable[None]]
 
 
 class _CoachJudgeBase:
@@ -80,16 +92,40 @@ class _CoachJudgeBase:
         rendered_prompt: str,
         verdict_type: type[_VerdictT],
         float_axes: tuple[str, ...],
+        *,
+        sleep: _Sleep = asyncio.sleep,
     ) -> _VerdictT | None:
-        """Invoke the judge model and parse; undecidable → ``None`` (AP-6)."""
-        try:
-            response = await self._llm_service.invoke(
-                self._judge_profile,
-                [{"role": "user", "content": rendered_prompt}],
-            )
-        except Exception:
-            logger.warning("%s: provider error; verdict undecidable", self.name)
-            return None
+        """Invoke the judge model and parse; undecidable → ``None`` (AP-6).
+
+        The provider call is retried up to ``_MAX_ATTEMPTS`` on a transient error
+        (backoff between tries); the parse below is not retried. Exhausting the
+        retries still yields ``None`` — fail-closed, never a fabricated verdict.
+        """
+        response = None
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            try:
+                response = await self._llm_service.invoke(
+                    self._judge_profile,
+                    [{"role": "user", "content": rendered_prompt}],
+                )
+                break
+            except Exception as exc:
+                if attempt >= _MAX_ATTEMPTS:
+                    logger.warning(
+                        "%s: provider error after %d attempts (%s); verdict undecidable",
+                        self.name,
+                        attempt,
+                        exc,
+                    )
+                    return None
+                logger.info(
+                    "%s: provider error on attempt %d/%d (%s); retrying",
+                    self.name,
+                    attempt,
+                    _MAX_ATTEMPTS,
+                    exc,
+                )
+                await sleep(_BACKOFF_BASE_SECONDS * 2 ** (attempt - 1))
         # Normalize provider-shape at the H2 boundary: reasoning models
         # (DeepSeek V4) return ``.content`` as a block list whose answer lives in
         # ``text`` blocks; ``str(content)`` would repr the whole list (thinking
@@ -127,6 +163,7 @@ class GraderJudge(_CoachJudgeBase):
         question: str,
         coach_content: str,
         evidence: list[str] | None = None,
+        _sleep: _Sleep = asyncio.sleep,
     ) -> GraderVerdict | None:
         rendered = self._prompt_service.render_prompt(
             self.PROMPT_NAME,
@@ -134,7 +171,9 @@ class GraderJudge(_CoachJudgeBase):
             coach_content=self._clean(coach_content),
             evidence=[self._clean(line) for line in (evidence or [])],
         )
-        return await self._verdict(rendered, GraderVerdict, self._FLOAT_AXES)
+        return await self._verdict(
+            rendered, GraderVerdict, self._FLOAT_AXES, sleep=_sleep
+        )
 
 
 class PedagogyJudge(_CoachJudgeBase):
@@ -160,6 +199,7 @@ class PedagogyJudge(_CoachJudgeBase):
         coach_reply: str,
         mode: str,
         question: str = "",
+        _sleep: _Sleep = asyncio.sleep,
     ) -> PedagogyVerdict | None:
         rendered = self._prompt_service.render_prompt(
             self.PROMPT_NAME,
@@ -168,7 +208,9 @@ class PedagogyJudge(_CoachJudgeBase):
             mode=mode,
             question=self._clean(question),
         )
-        return await self._verdict(rendered, PedagogyVerdict, self._FLOAT_AXES)
+        return await self._verdict(
+            rendered, PedagogyVerdict, self._FLOAT_AXES, sleep=_sleep
+        )
 
 
 def _extract_json(content: str) -> str:

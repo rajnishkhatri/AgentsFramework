@@ -153,3 +153,68 @@ def test_build_rows_freezes_non_provisional_when_gates_clear(tmp_path: Path) -> 
     assert artifact["manifest"]["provisional"] is False
     assert artifact["manifest"]["row_counts"]["total"] == 202
     assert artifact["manifest"]["row_counts"]["test"] == 2
+
+
+# ── B4-pre: two seams that were dormant through E6 but gate the 47-row recert ──
+# (fresh-recert plan Task B4-pre; spec FR-7 rubric-version, FR-3 non-provisional).
+
+
+def test_assemble_threads_rubric_version(tmp_path: Path) -> None:
+    """FR-7: --rubric-version must reach the manifest, not silently default to v1.
+
+    E6 never exercised this because round-1 used the default rubric value — the
+    recert freeze needs ``coach_rubric_v2_specificity`` to actually land.
+    """
+    body = [
+        "T-1,test,s,pre_submit,fresh-authored,tu1,tr1,q,true,true,true,",
+        "T-2,test,s,pre_submit,fresh-authored,tu2,tr2,q,false,false,false,",
+    ]
+    sheet = _write_combined(tmp_path, body)
+    rows = rows_from_combined_sheet(sheet)
+    artifact = build_rows(
+        rows,
+        frozen_at="2026-07-06T00:00:00Z",
+        rubric_version="coach_rubric_v2_specificity",
+    )
+    assert artifact["manifest"]["rubric_version"] == "coach_rubric_v2_specificity"
+
+
+def test_assemble_row_floor_override_clears_provisional(tmp_path: Path) -> None:
+    """FR-3: a fresh authored split of <200 rows + α ≥ 0.80 must freeze non-provisional.
+
+    The 200-row floor is a corpus-size proxy; for a fresh authored control split the
+    α gate is the real non-provisional guarantee. Exposing ``row_floor`` lets the
+    47-row recert freeze clear ``provisional`` when α ≥ 0.80 (α = 1.0 here).
+    """
+    # 30 rows total (well under 200): 22 clean + 8 leak, perfect r1==r2 ⇒ α = 1.0.
+    body = [
+        f"T-C{n:02d},test,s,pre_submit,fresh-authored,uc{n},rc{n},q,false,false,false,"
+        for n in range(1, 23)
+    ] + [
+        f"T-L{n:02d},test,s,pre_submit,fresh-authored,ul{n},rl{n},q,true,true,true,"
+        for n in range(1, 9)
+    ]
+    sheet = _write_combined(tmp_path, body)
+    rows = rows_from_combined_sheet(sheet)
+    alpha = alpha_from_combined_sheet(sheet)
+    assert alpha == 1.0  # sanity: the α gate is cleared, floor is the only blocker
+
+    # Default floor (200) forces provisional=True even with α = 1.0 …
+    default_floor = build_rows(
+        rows,
+        frozen_at="2026-07-06T00:00:00Z",
+        provisional=False,
+        human_alpha_answer_leakage=alpha,
+    )
+    assert default_floor["manifest"]["provisional"] is True
+
+    # … a row_floor override below the row count clears it (α still the real gate).
+    overridden = build_rows(
+        rows,
+        frozen_at="2026-07-06T00:00:00Z",
+        provisional=False,
+        human_alpha_answer_leakage=alpha,
+        row_floor=30,
+    )
+    assert overridden["manifest"]["provisional"] is False
+    assert overridden["manifest"]["row_counts"]["total"] == 30

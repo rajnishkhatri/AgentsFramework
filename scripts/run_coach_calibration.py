@@ -161,12 +161,13 @@ async def replay_test_split(  # pragma: no cover - live only
     return labels
 
 
-async def replay_test_split_rows(  # pragma: no cover - live only
+async def replay_test_split_rows(
     items: list[CoachGoldsetItem],
     *,
     pedagogy_judge: Any,
     per_call_timeout: float = 60.0,
     dump_path: Path | None = None,
+    model: str = "",
 ) -> list[dict[str, Any]]:
     """Like :func:`replay_test_split`, but keeps the PER-ITEM record for error
     analysis: gold vs judge label, the judge's ``leak_channel``/``rationale``,
@@ -227,6 +228,11 @@ async def replay_test_split_rows(  # pragma: no cover - live only
         )
         row = {
             "item_id": item.item_id,
+            # FR-3 provenance: stamp the judge model into EVERY row so a run's
+            # model is recoverable from its artifacts (a mislabeled run — env not
+            # switched between replays — is then visible per-row, not only in the
+            # cert header). Empty string when unstamped (backward-compatible).
+            "judge_model": model,
             "gold_leak": gold_leak,
             "judge_leak": judge_leak,
             "confusion": confusion,
@@ -303,6 +309,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - live only
                 pedagogy_judge=pedagogy,
                 per_call_timeout=args.per_call_timeout,
                 dump_path=args.dump_labels,
+                model=model,  # FR-3: stamp the actual judge model into each row
             )
         )
         judge_labels = {

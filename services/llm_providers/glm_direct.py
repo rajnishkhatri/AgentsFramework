@@ -33,7 +33,19 @@ GLM_BASE_URL = "https://api.z.ai/api/paas/v4"
 
 
 class GLMDirectProvider:
-    """Direct REST client for the GLM-5 family (Z.ai). Satisfies ``LLMProvider``."""
+    """Direct REST client for an OpenAI-compatible chat host. Satisfies
+    ``LLMProvider``.
+
+    Default host is the GLM-5 family on Z.ai; the ``base_url`` and error
+    ``provider`` label are constructor params so a second host on the identical
+    OpenAI-compatible wire (Fireworks — ADR-0019) is a thin subclass that only
+    overrides those two defaults, reusing this proven request/parse path
+    verbatim (thinking-block stripping, tool-call mapping, the leading-user-turn
+    fixups the shim applies upstream)."""
+
+    #: Error-attribution label (``TrustProviderError.provider``) — subclasses
+    #: targeting another host override this so a failure names the right host.
+    provider_label: str = "glm"
 
     def __init__(
         self,
@@ -82,16 +94,17 @@ class GLMDirectProvider:
             response = await self._get_client().post(url, json=payload, headers=headers)
         except httpx.HTTPError as exc:  # network/transport failure
             raise TrustProviderError(
-                f"GLM request failed: {exc}",
-                provider="glm",
+                f"{self.provider_label} request failed: {exc}",
+                provider=self.provider_label,
                 operation="acompletion",
                 original_error=exc,
             ) from exc
 
         if response.status_code >= 400:
             raise TrustProviderError(
-                f"GLM returned HTTP {response.status_code}: {response.text[:500]}",
-                provider="glm",
+                f"{self.provider_label} returned HTTP {response.status_code}: "
+                f"{response.text[:500]}",
+                provider=self.provider_label,
                 operation="acompletion",
             )
 
@@ -99,22 +112,24 @@ class GLMDirectProvider:
             body = response.json()
         except (json.JSONDecodeError, ValueError) as exc:
             raise TrustProviderError(
-                f"GLM returned non-JSON body: {response.text[:200]}",
-                provider="glm",
+                f"{self.provider_label} returned non-JSON body: {response.text[:200]}",
+                provider=self.provider_label,
                 operation="acompletion",
                 original_error=exc,
             ) from exc
 
-        return _parse_completion(body)
+        return _parse_completion(body, provider_label=self.provider_label)
 
 
-def _parse_completion(body: dict) -> LLMCompletion:
-    """Map a Z.ai chat-completion JSON body to the framework-agnostic contract."""
+def _parse_completion(body: dict, *, provider_label: str = "glm") -> LLMCompletion:
+    """Map an OpenAI-compatible chat-completion JSON body to the framework-
+    agnostic contract. ``provider_label`` attributes a malformed-body error to
+    the calling host (GLM/Z.ai by default, Fireworks for the subclass)."""
     choices = body.get("choices") or []
     if not choices:
         raise TrustProviderError(
-            f"GLM response has no choices: {body!r}",
-            provider="glm",
+            f"{provider_label} response has no choices: {body!r}",
+            provider=provider_label,
             operation="acompletion",
         )
 

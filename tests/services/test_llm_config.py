@@ -288,6 +288,52 @@ class TestModelRegistry:
         assert by_name["claude-opus-4-8"].litellm_id.startswith("anthropic/")
         assert by_name["gpt-4o"].litellm_id.startswith("openai/")
 
+    # ── Fireworks host set (ADR-0019) ────────────────────────────────────
+    def test_fireworks_set_default_and_lead_profile(self):
+        """The ``fireworks`` set exists, defaults to the GLM-5.2 lead, and the
+        lead is a direct-provider profile carrying the Fireworks wire model id
+        (FR-5/FR-6: the pin reaches a Fireworks-host profile, no string-munging
+        in the caller)."""
+        models, default_model = build_model_registry("fireworks")
+        assert default_model == "glm-5.2-fireworks"
+        by_name = {m.name: m for m in models}
+        lead = by_name["glm-5.2-fireworks"]
+        assert lead.provider == "direct"
+        # Fireworks encodes the version dot as ``p``: glm-5.2 → glm-5p2 (the bare
+        # ``glm-5.2`` slug 404s — confirmed live 2026-07-06).
+        assert lead.litellm_id == "accounts/fireworks/models/glm-5p2"
+
+    def test_fireworks_set_carries_cross_family_candidates(self):
+        """FR-7: the set offers the cross-family reasoning candidates to screen —
+        each a direct profile with a Fireworks wire id. These are the models the
+        account's serverless catalog actually serves (confirmed 2026-07-06); the
+        originally-guessed deepseek-r1 / qwen3 / nemotron are dedicated-only."""
+        models, _ = build_model_registry("fireworks")
+        by_name = {m.name: m for m in models}
+        for cand in (
+            "deepseek-v4-pro-fireworks",
+            "kimi-k2.6-fireworks",
+            "gpt-oss-120b-fireworks",
+        ):
+            assert cand in by_name, f"missing screening candidate {cand}"
+            assert by_name[cand].provider == "direct"
+            assert by_name[cand].litellm_id.startswith("accounts/fireworks/models/")
+
+    def test_fireworks_profiles_route_to_fireworks_not_zai(self, monkeypatch):
+        """Every ``-fireworks`` profile in the set dispatches to the Fireworks
+        adapter (the ordering guard, exercised through the real registry)."""
+        from services.llm_providers import get_direct_provider
+        from services.llm_providers.fireworks_direct import FireworksDirectProvider
+
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-k")
+        models, _ = build_model_registry("fireworks")
+        for m in models:
+            if m.name.endswith("-fireworks"):
+                provider = get_direct_provider(m)
+                assert isinstance(provider, FireworksDirectProvider), (
+                    f"{m.name} did not route to Fireworks"
+                )
+
     # ── Acceptance: the DeepSeek V4 stack (Flash fast+capable / Pro reasoning) ──
     def test_deepseek_set_order_contract(self):
         """Flash fills fast AND capable (same litellm_id, distinct name); Pro is
@@ -376,12 +422,17 @@ class TestModelRegistry:
         assert by_name["glm-5.1"].litellm_id == "zai/glm-5.1"
 
     def test_all_other_models_default_to_litellm_provider(self):
-        """The new field is additive: every non-direct profile stays "litellm",
-        so flag-off / existing behavior is byte-identical."""
+        """The ``provider="direct"`` field is opt-in for KNOWN direct hosts only:
+        the Z.ai ``glm-5.2`` row and the Fireworks ``-fireworks`` rows (ADR-0019).
+        Every other profile stays "litellm", so flag-off / existing behavior is
+        byte-identical. (The exclusion list is explicit — a NEW model silently
+        defaulting to "direct" would fail here, which is the guard's point.)"""
         for set_name in ("openai", "anthropic", "deepseek", "all"):
             models, _ = build_model_registry(set_name)
             for m in models:
-                if m.name == "glm-5.2":
+                # Known direct-host profiles are legitimately provider="direct".
+                if m.name == "glm-5.2" or m.name.endswith("-fireworks"):
+                    assert m.provider == "direct", f"{set_name}:{m.name} lost direct"
                     continue
                 assert m.provider == "litellm", f"{set_name}:{m.name}"
 
