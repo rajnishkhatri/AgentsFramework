@@ -90,6 +90,18 @@ describe("FR-C2 engine_browser_accessor", () => {
     expect(a).toBe(b);
   });
 
+  it("dev-default singleton serves the bank hint ladders (FR-C1)", async () => {
+    // coach-bank-hints: the dev preview must seed the generated hint bank
+    // next to the item bank, or the CoachPanel's two-tier nudge falls back to
+    // the generic Socratic line on every bank item.
+    const { TEST_ITEM_BANK } = await import("./adapters/engine/_test_item_bank");
+    const first = TEST_ITEM_BANK[0];
+    if (!first) throw new Error("committed item bank is empty");
+    const bag = browserEngineAdapters();
+    const rungs = await bag.hintRepo.list("act-english", first.id);
+    expect(rungs.map((r) => r.rung)).toEqual([1, 2, 3]);
+  });
+
   it("wires the grader so an exact-letter match grades correct", () => {
     // Happy path: the grader is pure + offline + SYNC (ExactLetterGrader, P5
     // exception), so it is exercisable with no DB — proof the bag is really

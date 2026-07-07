@@ -112,6 +112,18 @@ serving-time policy logic.
 - *Two serving planes (frontend table, backend Python asset) can drift* → the seed is
   generated FROM the Python asset (single source), and the Phase-4 cascade re-verifies
   every row on import; a parity test compares the seed to the asset.
+
+  > **Amendment (2026-07-07, coach-bank-hints).** The source direction above is
+  > INVERTED for generated bank ladders: the canonical source is now the
+  > cascade-earned corpus `docs/plan/coach-bank-hints.seed.json`, from which
+  > `scripts/emit_hint_bank.py` deterministically emits BOTH serving planes —
+  > `frontend/lib/adapters/engine/_hint_bank.ts` and
+  > `components/subject_coach_bank_hints.py` (parity-pinned to the JSON on each
+  > side). The hand-authored `AUTHORED_RUNGS` stay in place (their `q-*` ids are
+  > inert since ADR-0021 removed the dev questions); `rungs_for_question` serves
+  > AUTHORED + BANK. The two-plane drift risk is closed by construction (one
+  > source, two generated artifacts) rather than by the retired parity pin.
+  > See [coach-bank-hints spec](../plan/coach-bank-hints.spec.md) FR-B1..B3/D1.
 - *`generated_by` free-text* → format pinned by the wire entity's regex-free string but
   asserted in the cascade ("authored" | "model@run_id"); tighten to a union if a third
   producer appears.

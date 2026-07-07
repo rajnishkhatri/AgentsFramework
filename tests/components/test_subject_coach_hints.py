@@ -112,6 +112,36 @@ class TestAuthoredAsset:
             assert rung.reviewed is True
             assert rung.authored_by == "human"
 
+
+class TestBankPlane:
+    """FR-D1 (coach-bank-hints): the DEFAULT serving path must include the
+    generated bank ladders — the ADR-0021 bank swapped the quiz to `ti-gen-*`
+    ids, and an empty ladder makes the persona free-generate (the Stage-0
+    rule-naming leak class the react_loop comment warns about)."""
+
+    def test_every_bank_item_serves_a_full_ladder_by_default(self):
+        from components.subject_coach_bank_hints import BANK_RUNGS
+
+        bank_ids = sorted({r.question_id for r in BANK_RUNGS})
+        assert bank_ids, "generated bank asset must not be empty"
+        for qid in bank_ids:
+            served = rungs_for_question(qid)
+            assert [r.rung for r in served] == [1, 2, 3], (
+                f"{qid}: default rungs_for_question must serve the bank "
+                f"ladder (got rungs {[r.rung for r in served]})"
+            )
+
+    def test_bank_rungs_carry_cascade_provenance(self):
+        from components.subject_coach_bank_hints import BANK_RUNGS
+
+        served = rungs_for_question(BANK_RUNGS[0].question_id)
+        assert served and all("@" in r.authored_by for r in served)
+
+    def test_unknown_id_still_serves_empty_never_fabricated(self):
+        assert rungs_for_question("ti-gen-does-not-exist") == []
+
+
+class TestAuthoredLeakLint:
     def test_no_rung_asserts_the_answer(self):
         """Deterministic leakage lint (the generator cascade's per-rung check,
         applied to the authored interim asset): no rung states the answer."""
