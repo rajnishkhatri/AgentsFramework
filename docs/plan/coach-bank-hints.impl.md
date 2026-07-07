@@ -111,3 +111,47 @@ emitted …/frontend/lib/adapters/engine/_hint_bank.ts and …/components/subjec
 
 `from components.subject_coach_bank_hints import BANK_RUNGS` → `24 rungs`.
 `HINT_BANK_WAIVERS = []` (FR-A3 table empty — no waivers needed).
+
+## Phase E — guards (TE.1–TE.3)
+
+```
+tests/architecture/test_hint_provenance_confinement.py
+tests/components/test_hint_bank_leakage.py
+tests/components/test_subject_coach_bank_hints.py
+→ 9 passed in 0.19s
+frontend _hint_bank.test.ts → 1 file / 8 tests passed (parity, ratchet incl.
+  synthetic-gap red anchor, provenance format, reviewed-only serving)
+```
+
+## Phase D — backend plane (TD.1 red → TD.2 green)
+
+Red (before the source merge):
+
+```
+FAILED tests/components/test_subject_coach_hints.py::TestBankPlane::test_every_bank_item_serves_a_full_ladder_by_default
+FAILED tests/components/test_subject_coach_hints.py::TestBankPlane::test_bank_rungs_carry_cascade_provenance
+2 failed, 13 passed in 0.61s        # rungs_for_question returned [] for ti-gen-*
+```
+
+Green after `AUTHORED_RUNGS + BANK_RUNGS` (lazy import): `18 passed in 0.17s`;
+`make typecheck` → `0 errors`. `react_loop.py` untouched.
+
+## Phase C — frontend serving (TC.1 red → green; TC.2 preview)
+
+TC.1 red: `AssertionError: expected [] to deeply equal [ 1, 2, 3 ]`
+(`composition_engine_browser.test.ts`, dev-default singleton). Green after the
+one-line `seedHintBank(db)` wire: `5 passed`.
+
+TC.2 dev-preview (localhost:3000, `/learn/quiz`, bank item
+`ti-gen-eb8028a2b674681d`):
+
+- Item card **Get a hint** → *"What do you think is the purpose of the
+  punctuation in this sentence?"* — the corpus rung 1 VERBATIM (the generic
+  `socraticHint` fallback would read "Before you pick: what is the sentence
+  actually asking? …").
+- iPad viewport (768×1024) → CoachPanel mounts (`coach-panel` testid);
+  **One more nudge** ×1 → `panel-nudge-2` = *"Consider the rule about using
+  punctuation to introduce lists."* (corpus rung 2); ×2 → `panel-nudge-3` =
+  *"Look closely at the clause before the list; does it form a complete
+  thought?"* (corpus rung 3). Screenshot captured in-session; zero console
+  errors (`preview_console_logs level=error` → "No console logs").

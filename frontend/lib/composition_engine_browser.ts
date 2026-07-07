@@ -51,6 +51,7 @@ import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_b
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
 import { seedDevCorpus } from "./adapters/engine/_dev_seed";
+import { seedHintBank } from "./adapters/engine/_hint_bank";
 import { seedTestItemBank } from "./adapters/engine/_test_item_bank";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
@@ -161,6 +162,9 @@ export function browserEngineAdapters(): EnginePortBag {
       } else {
         seedDevCorpus(db);
         seedTestItemBank(db);
+        // Generated hint ladders for the bank items (coach-bank-hints FR-C1):
+        // without them every bank item degrades to the generic nudge.
+        seedHintBank(db);
         singleton = buildBrowserEngineAdapters({
           engineDb: db,
           questionSource: "bank",
