@@ -236,6 +236,36 @@ operational runbook (spec §9) — explicitly NOT in this task.
 
 ---
 
+## T9 — Step 0 composition wire (cert attestation) ✅ DONE *(Dep: T7, T8)* — FR-10, Recipe 9 §Step 0
+
+**File:** `middleware/composition.py` ·
+**Test:** `tests/middleware/test_coach_shadow_wiring.py::TestCoachLeakageCertAttestation` (new)
+
+**Context:** T8 shipped the gate `off`, but `build_runtime_graph` did not pass
+`coach_goldset_certified`, so `arm()` pinned the gate `off` in prod *regardless of
+config* — shadow/enforce were unreachable. Recipe 9 flagged this as the open Step-0
+prerequisite. This closes it.
+
+**Do (red-first):**
+- add `coach_leakage_cert_attested: bool = False` to `AgentRuntimeSettings`
+  (env `COACH_LEAKAGE_CERT_ATTESTED`, default OFF — never arm a gate by default).
+- `build_runtime_graph` forwards `coach_goldset_certified=bool(settings
+  .coach_leakage_cert_attested)` into `build_graph`. Off ⇒ `arm` keeps `off`.
+- update Recipe 9 Step 0 (attestation is now an env var, not a pending code wire).
+
+**Pass/fail (failure first):**
+- unattested/default settings → `build_graph` receives `coach_goldset_certified=False`
+  (fail-safe — gate pinned off regardless of mode).
+- attested settings → `coach_goldset_certified=True`.
+- `AgentRuntimeSettings()` default is `False`.
+- `make check` green (**5159 passed**); `scripts/okf_lint.py` 0 failures.
+
+**NOT in this task:** flipping `COACH_LEAKAGE_CERT_ATTESTED=true` on a real deployment
+(that's the operator's arming act, Recipe 9 Steps 1–2), and the shadow-observation
+window before enforce. This only makes arming *reachable*.
+
+---
+
 ## FR ↔ task coverage matrix (Stage-4 pre-check)
 
 | FR | Covered by |

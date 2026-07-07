@@ -483,6 +483,17 @@ class AgentRuntimeSettings(BaseSettings):
     memory_autocapture_cert: str = Field(
         default="", validation_alias="MEMORY_AUTOCAPTURE_CERT"
     )
+    # Coach answer-leakage gate cert attestation (ADR-0020 / Recipe 9 Step 0).
+    # The gate's mode lives in the coach-judge runtime config; ``arm()`` refuses to
+    # honour shadow/enforce unless the runtime is also told the judge is certified
+    # (ADR-0019: glm-5.2-fireworks, TNR 1.0). This flag is that attestation — an
+    # explicit operator act (default OFF): set it ONLY on a deployment whose leakage
+    # judge is the certified model. Off ⇒ ``build_graph`` gets
+    # ``coach_goldset_certified=False`` ⇒ the gate is pinned ``off`` regardless of
+    # config (fail-safe; a config typo can never arm an uncertified judge).
+    coach_leakage_cert_attested: bool = Field(
+        default=False, validation_alias="COACH_LEAKAGE_CERT_ATTESTED"
+    )
     # Hermes / memory-os adoption A2: relevance floor on recall injection.
     # Default 0.0 = no floor (byte-identical to today); a scoring backend (Mem0)
     # on a tagged revision sets it to drop weakly-related recalls. Calibrate
@@ -1074,6 +1085,12 @@ def build_runtime_graph(
         goal_judge_config_reader=components.goal_judge_config_reader,
         memory_service=components.memory_service,
         bound_capabilities=bound_capabilities,
+        # Step 0 (ADR-0020 / Recipe 9): forward the coach leakage-gate cert
+        # attestation. ``arm()`` pins the gate ``off`` unless this is True, so the
+        # gate stays inert on any un-attested deployment (fail-safe).
+        coach_goldset_certified=bool(
+            getattr(components.settings, "coach_leakage_cert_attested", False)
+        ),
     )
 
 

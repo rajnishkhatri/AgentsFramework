@@ -308,3 +308,20 @@ title: 'Lightweight decision log (intent debt, long tail)'
   are graph-clean, so they stand. New gating task P0.5 ships the ADR + narrowed test
   together (ratchet + G8 no-test-weakening require it).
   Bundle: `docs/plan/coach-leakage-gate-rollout.{spec,plan,tasks}.md`.
+- 2026-07-06 — Coach Phase-5 **post-review polish + Step 0** (no new ADR — both are
+  changes *within* the already-ADR'd ADR-0020 seam, not a new one). **M1/M2** (design
+  review): the regen directive moved from a hardcoded `_COACH_NO_LEAK_DIRECTIVE`
+  constant to `prompts/coach_regenerate_no_leak.j2` rendered via `PromptService`
+  (AP-3); the `evaluate_node` call-site deduped the double `get_profile` call and the
+  `judge`/`regenerate` params tightened from `Any` → `LeakageJudge` /
+  `Callable[..., Awaitable[str]]`. **Step 0**: `build_runtime_graph` now forwards
+  `coach_goldset_certified` from a new `COACH_LEAKAGE_CERT_ATTESTED` setting (default
+  OFF) — the composition wire Recipe 9 flagged, so `arm()` can honour shadow/enforce
+  on an attested deployment (fail-safe: un-attested ⇒ pinned off). Why no ADR: the
+  inline binding, the enforcement policy, and the graph contract are all unchanged —
+  ADR-0020 already governs them; these only refactor the act and thread an existing
+  `build_graph` param through composition. The `stop_adr_reminder` hook re-fires on
+  the dirty `react_loop.py` but the merge-time `test_adr_ratchet.py` passes (nothing
+  un-ADR'd in range). Also: a pre-existing G8 blocker on the branch
+  (`ed029b6`'s arch-test rename lacked per-test `# G8-OK:` waivers) was cleared with
+  two named waiver comments.

@@ -14,8 +14,10 @@ observable before it acts, and never below the cert floor.
 
 **Status:** The gate is BUILT and ships `off` (commit `ed029b6`, [ADR-0020](../../adr/0020-coach-leakage-gate-rollout.md)).
 This runbook is the operational procedure the [Phase-5 spec §9](../../plan/coach-leakage-gate-rollout.spec.md)
-deferred as out-of-scope for code. **Step 0 (a code wire) is an open prerequisite —
-the gate is pinned `off` in prod until it lands.**
+deferred as out-of-scope for code. **Step 0 (the composition wire) has LANDED** —
+`build_runtime_graph` now forwards `coach_goldset_certified` from the
+`COACH_LEAKAGE_CERT_ATTESTED` setting (default off), so arming is now an operator
+act (attest the cert + push the mode), no longer a pending code change.
 
 **Prerequisites:**
 - Phase 3.9 CERTIFIED — the judge is ENABLE-worthy ([ADR-0019](../../adr/0019-fireworks-host-adapter.md): TNR 1.0/TPR 1.0, 0 FP).
@@ -52,34 +54,36 @@ Every mode above `off` emits a `coach_leakage_gate` governance carrier
 
 ---
 
-## Step 0 — Wire the cert flag (CODE — do this first, it's the blocker)
+## Step 0 — Attest the cert (the arming switch — do this first)
 
-**Today the gate is pinned `off` in prod regardless of config**, because
-`middleware/composition.py` (the `build_graph(...)` call at ~line 1064) does **not**
-pass `coach_goldset_certified=True` (nor `coach_leakage_config_reader`), so `arm()`
-forces `off`.
+The composition wire has landed: `build_runtime_graph`
+(`middleware/composition.py`) forwards `coach_goldset_certified` into `build_graph`,
+derived from the `coach_leakage_cert_attested` setting
+(`AgentRuntimeSettings`, env **`COACH_LEAKAGE_CERT_ATTESTED`**, **default `False`**).
+`arm()` pins the gate `off` unless this is `True`, so **an un-attested deployment
+keeps the gate inert regardless of the config mode** (fail-safe).
 
-Land a small wire in `middleware/composition.py`'s `build_graph(...)` call:
+To arm, set the env var on the coach runtime deployment:
 
-```python
-return build_graph(
-    ...,
-    coach_goldset_certified=True,   # ADR-0019 cert is met; arm() may honor shadow/enforce
-    coach_leakage_config_reader=components.coach_leakage_config_reader,  # if a shared reader is desired
-)
+```bash
+COACH_LEAKAGE_CERT_ATTESTED=true
 ```
 
-`coach_goldset_certified=True` asserts the ADR-0008 cond#1 floor is met (it is —
-ADR-0019). Passing an explicit reader is optional; absent one, `build_graph`
-constructs a `SubjectCoachJudgeConfigReader()` that reads `COACH_JUDGE_CONFIG_URI`.
+This is the **code-level cert attestation** — it asserts the deployed leakage judge
+is the ADR-0019-certified `glm-5.2-fireworks` (ADR-0008 cond#1 floor met). The config
+`coach_leakage_gate_mode` is the **operational lever**. Both must agree for the gate
+to act: attestation off ⇒ `arm` forces `off` even if the config says `enforce`;
+attestation on + config `off` ⇒ still inert (the default).
 
-**Do not** set this to `True` for any deployment whose judge is not the certified
-`glm-5.2-fireworks`. This flag is the code-level cert attestation; the config mode is
-the operational lever. Both must agree for the gate to act.
+**Do not** set `COACH_LEAKAGE_CERT_ATTESTED=true` on any deployment whose leakage
+judge is not the certified `glm-5.2-fireworks` — the attestation is the one place the
+runtime trusts the operator that the cert applies.
 
-**Verify Step 0:** with `coach_goldset_certified=True` and a config carrying
+**Verify Step 0:** with `COACH_LEAKAGE_CERT_ATTESTED=true` and a config carrying
 `coach_leakage_gate_mode: "shadow"`, a coach turn emits a `coach_leakage_gate`
-carrier with `mode: "shadow"`. Until then, no carrier appears (armed `off`).
+carrier with `mode: "shadow"`. With the attestation absent/false, no carrier appears
+(armed `off`) — proven by
+`tests/middleware/test_coach_shadow_wiring.py::TestCoachLeakageCertAttestation`.
 
 ---
 
