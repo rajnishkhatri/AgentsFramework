@@ -89,7 +89,7 @@ revision-item class, hence the template rule 5, not an item-specific hack.
 (rungs 1/3 leakage again; rung 2 near-duplicate of the already-earned rung 2 —
 the dup gate doing its job).
 
-**Attempt 3** (after rule 5): 
+**Attempt 3** (after rule 5):
 
 ```
 ti-gen-9fb6fd5eaae7fdf9: 3 reviewed rung(s), 0 quarantined
@@ -155,3 +155,38 @@ TC.2 dev-preview (localhost:3000, `/learn/quiz`, bank item
   *"Look closely at the clause before the list; does it form a complete
   thought?"* (corpus rung 3). Screenshot captured in-session; zero console
   errors (`preview_console_logs level=error` → "No console logs").
+
+## Phase G — governance docs (TG.1)
+
+ADR-0014 §Consequences amendment (source direction inverted for bank ladders)
++ `docs/adr/decisions.md` entry (canonical-JSON shape, kept-authored, waiver
+bar, template rule 5). Commit `2d70a62` carries an `ADR-OK:` waiver line.
+
+## Phase V — full gates (TV.1)
+
+One converter follow-up surfaced by the gate itself: `format-check` rejected
+the generated Python module (repr's single quotes vs ruff's double-quote
+style) → `_py_str()` now emits ruff-format-style literals, module re-emitted,
+`ruff format --check` → `1 file already formatted`. The hygiene hooks also
+added the seed JSON's final newline (one-time fix, committed).
+
+```
+make check → 5201 passed, 51 skipped, 72 deselected, 3 warnings in 160.07s (exit 0)
+pnpm vitest run → Test Files 133 passed (133) · Tests 1401 passed (1401)
+pytest tests/architecture/ -q → 166 passed, 3 skipped, 1 warning in 34.34s
+```
+
+(Baseline was 5183 / 132 files·1392 / 162 — the deltas are this increment's
+new tests, nothing skipped away.)
+
+## Definition-of-Done cross-check (spec §9, TV.2)
+
+- [x] All FRs implemented; red-first where constructible — TB.1
+      (ModuleNotFoundError), TD.1 (`2 failed` on `[]`), TC.1 (`expected [] to
+      deeply equal [1,2,3]`), TE.1/TE.2 red anchors are in-suite synthetic
+      cases. FR-A* are run-evidence (above).
+- [x] `make check` + vitest + `tests/architecture/` green — outputs above.
+- [x] Live run evidence verbatim (Phase A section; per-item counts, 3-attempt
+      bound, quarantine records, 0 waivers).
+- [x] ADR-0014 amendment + decisions.md entry (Phase G).
+- [x] CoachPanel verified in the dev preview on a bank item (Phase C, TC.2).

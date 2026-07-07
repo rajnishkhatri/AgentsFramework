@@ -152,14 +152,23 @@ export function seedHintBank(db: InMemoryEngineDb): void {{
 """
 
 
+def _py_str(s: str) -> str:
+    """A Python string literal in ruff-format style: double quotes, single
+    only when that avoids escaping — the emitted module must pass the repo's
+    ``format-check`` gate byte-identically (no post-format drift)."""
+    if '"' in s and "'" not in s:
+        return f"'{s}'"
+    return json.dumps(s, ensure_ascii=False)
+
+
 def _render_py(rows: list[dict[str, Any]]) -> str:
     entries = "\n".join(
         f"    HintRung(\n"
-        f"        question_id={row['question_id']!r},\n"
+        f"        question_id={_py_str(row['question_id'])},\n"
         f"        rung={int(row['rung'])},\n"
-        f"        body_md={row['body_md']!r},\n"
+        f"        body_md={_py_str(row['body_md'])},\n"
         f"        reviewed=True,\n"
-        f"        authored_by={row['generated_by']!r},\n"
+        f"        authored_by={_py_str(row['generated_by'])},\n"
         f"    ),"
         for row in rows
     )
