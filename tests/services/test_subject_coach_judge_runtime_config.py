@@ -38,6 +38,7 @@ _ALL_ENV = (
     "COACH_PEDAGOGY_JUDGE_ENABLED",
     "COACH_JUDGE_SAMPLE_RATE",
     "COACH_LEAKAGE_GATE_ENABLED",
+    "COACH_LEAKAGE_GATE_MODE",
 )
 
 
@@ -222,3 +223,91 @@ class TestReaderAcceptance:
         assert posture["pedagogy_judge_enabled"] is True
         assert posture["sample_rate"] == pytest.approx(0.25)
         assert posture["leakage_gate_enabled"] is False
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Phase 5 (T3): coach_leakage_gate_mode + bool-derivation (FR-2, FR-4).
+# Failure paths first: malformed → off, invalid mode string → off.
+# ─────────────────────────────────────────────────────────────────────
+
+
+class TestLeakageGateMode:
+    def test_malformed_config_resolves_mode_off(self, tmp_path):
+        # FR-2: unreadable/malformed config → no enforcement (fail DARK).
+        bad = tmp_path / "bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        resolved = SubjectCoachJudgeConfigReader(uri=f"file://{bad}").get()
+        assert resolved.coach_leakage_gate_mode == "off"
+
+    def test_invalid_mode_string_fails_dark(self, tmp_path):
+        # A typo'd mode ("enfroce") must be rejected by the Literal → fail DARK,
+        # never silently enforce on an unparseable posture.
+        cfg = dict(_VALID_JSON, coach_leakage_gate_mode="enfroce")
+        f = tmp_path / "coach.json"
+        f.write_text(json.dumps(cfg), encoding="utf-8")
+        resolved = SubjectCoachJudgeConfigReader(uri=f"file://{f}").get()
+        assert resolved.coach_leakage_gate_mode == "off"
+
+    def test_bool_only_config_derives_enforce(self, tmp_path):
+        # FR-4: a legacy doc carrying only the deprecated bool (no mode field)
+        # derives true → enforce. extra="forbid" must still parse it.
+        cfg = {
+            "schema_version": 1,
+            "coach_leakage_gate_enabled": True,
+        }
+        f = tmp_path / "coach.json"
+        f.write_text(json.dumps(cfg), encoding="utf-8")
+        resolved = SubjectCoachJudgeConfigReader(uri=f"file://{f}").get()
+        assert resolved.coach_leakage_gate_mode == "enforce"
+
+    def test_bool_only_false_derives_off(self, tmp_path):
+        cfg = {"schema_version": 1, "coach_leakage_gate_enabled": False}
+        f = tmp_path / "coach.json"
+        f.write_text(json.dumps(cfg), encoding="utf-8")
+        resolved = SubjectCoachJudgeConfigReader(uri=f"file://{f}").get()
+        assert resolved.coach_leakage_gate_mode == "off"
+
+    def test_explicit_mode_wins_over_bool(self, tmp_path):
+        # Both fields present → the explicit mode is authoritative.
+        cfg = {
+            "schema_version": 1,
+            "coach_leakage_gate_enabled": False,
+            "coach_leakage_gate_mode": "shadow",
+        }
+        f = tmp_path / "coach.json"
+        f.write_text(json.dumps(cfg), encoding="utf-8")
+        resolved = SubjectCoachJudgeConfigReader(uri=f"file://{f}").get()
+        assert resolved.coach_leakage_gate_mode == "shadow"
+
+    def test_no_uri_defaults_mode_off(self):
+        resolved = SubjectCoachJudgeConfigReader(uri=None).get()
+        assert resolved.coach_leakage_gate_mode == "off"
+
+    def test_env_mode_fallback(self, monkeypatch):
+        monkeypatch.setenv("COACH_LEAKAGE_GATE_MODE", "shadow")
+        resolved = SubjectCoachJudgeConfigReader(uri=None).get()
+        assert resolved.coach_leakage_gate_mode == "shadow"
+
+    def test_env_invalid_mode_fallback_off(self, monkeypatch):
+        monkeypatch.setenv("COACH_LEAKAGE_GATE_MODE", "bogus")
+        resolved = SubjectCoachJudgeConfigReader(uri=None).get()
+        assert resolved.coach_leakage_gate_mode == "off"
+
+    def test_env_bool_derives_mode_when_no_mode_env(self, monkeypatch):
+        # FR-4 via env: only COACH_LEAKAGE_GATE_ENABLED set → enforce.
+        monkeypatch.setenv("COACH_LEAKAGE_GATE_ENABLED", "true")
+        resolved = SubjectCoachJudgeConfigReader(uri=None).get()
+        assert resolved.coach_leakage_gate_mode == "enforce"
+
+    def test_posture_echoes_mode(self, tmp_path):
+        cfg = dict(_VALID_JSON, coach_leakage_gate_mode="shadow")
+        f = tmp_path / "coach.json"
+        f.write_text(json.dumps(cfg), encoding="utf-8")
+        reader = SubjectCoachJudgeConfigReader(uri=f"file://{f}", ttl_s=30)
+        reader.get()
+        assert reader.health_posture()["leakage_gate_mode"] == "shadow"
+
+    def test_in_memory_reader_carries_mode(self):
+        r = InMemorySubjectCoachJudgeConfigReader(coach_leakage_gate_mode="enforce")
+        assert r.get().coach_leakage_gate_mode == "enforce"
+        assert r.health_posture()["leakage_gate_mode"] == "enforce"

@@ -288,3 +288,23 @@ title: 'Lightweight decision log (intent debt, long tail)'
   those tests on the shared fixture (they'd assert a now-false fact) and rejected
   deleting them (loses fail-closed coverage). E7 (live cert) reads it.
   `scripts/assemble_coach_goldset.py --combined-sheet`.
+- 2026-07-06 — Coach Phase-5 leakage-gate **replan**: the enforce design puts the
+  certified answer-leakage judge **inline** in `orchestration/evaluate_node`, which
+  `tests/architecture/test_coach_judges_never_inline.py` forbids (it enforces
+  **ADR-0009** — coach judges are OFF-GRAPH / `meta/`-sampler-only). Decision:
+  **ADR-0020 supersedes ADR-0009 *with conditions*** rather than delete the gate.
+  Why a supersede, not a test edit: ADR-0009 is Accepted, names answer-leakage as a
+  risk of inline *Reflexion* (convergence toward the answer), and defines a reversal
+  trigger. A leak-**safety** gate is the opposite intent, and all three ADR-0009
+  reversal preconditions are met — (a) `reflections` cross-turn leak fixed
+  (ADR-0005); (b) a coach-specific leak-aware judge, not the task-failure critique;
+  (c) the judge is certified TNR 1.0/TPR 1.0 on the frozen split (ADR-0019). The
+  OFF-GRAPH rule is **narrowed, not deleted**: the Reflexion/GoalJudge/sampler inline
+  path stays forbidden; the leakage gate gets ONE named, declared binding (spec
+  FR-12/FR-13). Rejected alternatives: delete-the-arch-test (loses the Reflexion
+  guard), middleware-enforce (same arch test forbids middleware, same ADR cost),
+  shadow-only-defer-enforce (defensible, smaller — but drops the enforce goal the
+  cert was for). T1–T3 (pure decision + config mode) landed before the blocker and
+  are graph-clean, so they stand. New gating task P0.5 ships the ADR + narrowed test
+  together (ratchet + G8 no-test-weakening require it).
+  Bundle: `docs/plan/coach-leakage-gate-rollout.{spec,plan,tasks}.md`.

@@ -236,7 +236,7 @@ Per-floor, shadow-first, standing rollout discipline; enters §12.7 continuous m
 
 | # | Task | Status | Depends | Notes |
 |---|---|---|---|---|
-| 5.1 | Shadow-first `COACH_LEAKAGE_GATE_ENABLED` flip | ⬜ GATED | 3.9 ENABLE | Per ADR-0008 cond#1 floor — never flip below cert. |
+| 5.1 | Inline leakage gate (off/shadow/enforce) | ✅ BUILT (config OFF) | 3.9 ENABLE ✅ | Phase-5 bundle `coach-leakage-gate-rollout.{spec,plan,tasks}.md` + **ADR-0020** (supersedes ADR-0009 with conditions — the certified judge goes inline as ONE declared binding). `coach_leakage_gate_mode ∈ {off,shadow,enforce}` replaces the boolean; enforce judges each coach reply pre-emit → regenerate once → suppress→fallback; judge outage fails open (loud carrier); `arm()` refuses live mode below cert. Pure `decide_leakage_enforcement` in `components/`, thin act in `evaluate_node`. `make check` green (5156). **Ships `off` in all envs** — arming is a separate ops runbook after a shadow window. |
 | 5.2 | Optional: `COACH_GRADER_JUDGE_ENABLED` / `COACH_PEDAGOGY_JUDGE_ENABLED` at sample rate | ⬜ GATED | 3.9 | Default OFF; increase sample rate only after rubric revision (3.6). |
 | 5.3 | §12.7 drift baselines + CI golden regression wiring | ⬜ GATED | 5.1 | `meta/drift.py` + `eval-regression-gate`; quarterly refresh schedule. |
 | 5.4 | Production leak → `coach_goldset_v2` candidate pipeline | ⬜ LATER | 5.1 + deploy | Operational loop; not pre-launch. |

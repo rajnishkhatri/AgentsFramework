@@ -22,10 +22,12 @@ from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+LeakageGateMode = Literal["off", "shadow", "enforce"]
 
 if TYPE_CHECKING:
     from google.cloud.storage import Client as StorageClient
@@ -40,6 +42,20 @@ _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="coach-judge-co
 
 def _env_flag(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in ("1", "true", "yes")
+
+
+def _env_leakage_mode() -> LeakageGateMode:
+    """Resolve the gate mode from env (FR-2/FR-4): an explicit valid
+    ``COACH_LEAKAGE_GATE_MODE`` wins; else derive from the deprecated bool; an
+    invalid mode string fails DARK to ``off`` (never enforce on garbage)."""
+    raw = os.environ.get("COACH_LEAKAGE_GATE_MODE", "").strip().lower()
+    if raw in ("off", "shadow", "enforce"):
+        return raw  # type: ignore[return-value]
+    if raw:
+        # a set-but-invalid mode is a misconfiguration → fail dark, not enforce.
+        return "off"
+    # no explicit mode → derive from the deprecated boolean (FR-4).
+    return "enforce" if _env_flag("COACH_LEAKAGE_GATE_ENABLED") else "off"
 
 
 def _env_sample_rate() -> float:
@@ -62,9 +78,33 @@ class SubjectCoachJudgeRuntimeConfig(BaseModel):
     coach_grader_judge_enabled: bool = False
     coach_pedagogy_judge_enabled: bool = False
     coach_judge_sample_rate: float = Field(default=DEFAULT_SAMPLE_RATE, ge=0.0, le=1.0)
+    # DEPRECATED (Phase 5): the boolean is retained for backward compatibility; the
+    # gate is now driven by ``coach_leakage_gate_mode``. A legacy doc carrying only
+    # the bool derives its mode below (FR-4).
     coach_leakage_gate_enabled: bool = False
+    coach_leakage_gate_mode: LeakageGateMode = "off"
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_by: str = "unknown"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _derive_mode_from_deprecated_bool(cls, data: Any) -> Any:
+        """FR-4: when a doc carries the deprecated bool but no explicit mode,
+        derive ``true → enforce`` / ``false → off``. An explicit mode always wins.
+
+        Runs only for dict input (JSON/config docs); leaves model instances alone.
+        """
+        if not isinstance(data, dict):
+            return data
+        if (
+            "coach_leakage_gate_mode" not in data
+            and "coach_leakage_gate_enabled" in data
+        ):
+            data = dict(data)
+            data["coach_leakage_gate_mode"] = (
+                "enforce" if data["coach_leakage_gate_enabled"] else "off"
+            )
+        return data
 
 
 @dataclass(frozen=True)
@@ -75,6 +115,7 @@ class ResolvedSubjectCoachJudgeConfig:
     coach_pedagogy_judge_enabled: bool
     coach_judge_sample_rate: float
     coach_leakage_gate_enabled: bool
+    coach_leakage_gate_mode: LeakageGateMode
     source: str
     schema_version: int | None = None
     updated_at: datetime | None = None
@@ -87,6 +128,7 @@ def _posture_dict(resolved: ResolvedSubjectCoachJudgeConfig) -> dict[str, Any]:
         "pedagogy_judge_enabled": resolved.coach_pedagogy_judge_enabled,
         "sample_rate": resolved.coach_judge_sample_rate,
         "leakage_gate_enabled": resolved.coach_leakage_gate_enabled,
+        "leakage_gate_mode": resolved.coach_leakage_gate_mode,
         "source": resolved.source,
         "schema_version": resolved.schema_version,
         "updated_at": resolved.updated_at.isoformat() if resolved.updated_at else None,
@@ -104,6 +146,7 @@ class InMemorySubjectCoachJudgeConfigReader:
         coach_pedagogy_judge_enabled: bool = False,
         coach_judge_sample_rate: float = DEFAULT_SAMPLE_RATE,
         coach_leakage_gate_enabled: bool = False,
+        coach_leakage_gate_mode: LeakageGateMode = "off",
         source: str = "test",
     ) -> None:
         self._resolved = ResolvedSubjectCoachJudgeConfig(
@@ -111,6 +154,7 @@ class InMemorySubjectCoachJudgeConfigReader:
             coach_pedagogy_judge_enabled=coach_pedagogy_judge_enabled,
             coach_judge_sample_rate=coach_judge_sample_rate,
             coach_leakage_gate_enabled=coach_leakage_gate_enabled,
+            coach_leakage_gate_mode=coach_leakage_gate_mode,
             source=source,
             schema_version=1,
             updated_by="test",
@@ -193,6 +237,7 @@ class SubjectCoachJudgeConfigReader:
                 coach_pedagogy_judge_enabled=parsed.coach_pedagogy_judge_enabled,
                 coach_judge_sample_rate=parsed.coach_judge_sample_rate,
                 coach_leakage_gate_enabled=parsed.coach_leakage_gate_enabled,
+                coach_leakage_gate_mode=parsed.coach_leakage_gate_mode,
                 source=self._source_tag(),
                 schema_version=parsed.schema_version,
                 updated_at=parsed.updated_at,
@@ -214,6 +259,7 @@ class SubjectCoachJudgeConfigReader:
                         coach_pedagogy_judge_enabled=self._last_good.coach_pedagogy_judge_enabled,
                         coach_judge_sample_rate=self._last_good.coach_judge_sample_rate,
                         coach_leakage_gate_enabled=self._last_good.coach_leakage_gate_enabled,
+                        coach_leakage_gate_mode=self._last_good.coach_leakage_gate_mode,
                         source="stale",
                         schema_version=self._last_good.schema_version,
                         updated_at=self._last_good.updated_at,
@@ -230,6 +276,7 @@ class SubjectCoachJudgeConfigReader:
             "COACH_PEDAGOGY_JUDGE_ENABLED",
             "COACH_JUDGE_SAMPLE_RATE",
             "COACH_LEAKAGE_GATE_ENABLED",
+            "COACH_LEAKAGE_GATE_MODE",
         )
         env_explicit = any(name in os.environ for name in env_names)
         return ResolvedSubjectCoachJudgeConfig(
@@ -237,6 +284,7 @@ class SubjectCoachJudgeConfigReader:
             coach_pedagogy_judge_enabled=_env_flag("COACH_PEDAGOGY_JUDGE_ENABLED"),
             coach_judge_sample_rate=_env_sample_rate(),
             coach_leakage_gate_enabled=_env_flag("COACH_LEAKAGE_GATE_ENABLED"),
+            coach_leakage_gate_mode=_env_leakage_mode(),
             source=source or ("env" if env_explicit else "default"),
         )
 
