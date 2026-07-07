@@ -111,9 +111,18 @@ function toTestItem(r: Record<string, unknown>): TestItem {
     subject: String(r.subject),
     skill_id: String(r.skill_id),
     difficulty: Number(r.difficulty ?? 3),
+    context_html: String(r.context_html ?? ""),
     stem_md: String(r.stem_md ?? ""),
     choices: (r.choices as TestItem["choices"]) ?? [],
     answer_letter: String(r.answer_letter),
+    // Teaching fields (ADR-0021): required for the practice-serving path —
+    // the Feedback screen renders per_choice_rationale + rule_md.
+    per_choice_rationale:
+      (r.per_choice_rationale as TestItem["per_choice_rationale"]) ?? {},
+    why_correct_md: String(r.why_correct_md ?? ""),
+    why_tempted_md: String(r.why_tempted_md ?? ""),
+    rule_md: String(r.rule_md ?? ""),
+    item_type: String(r.item_type ?? ""),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };

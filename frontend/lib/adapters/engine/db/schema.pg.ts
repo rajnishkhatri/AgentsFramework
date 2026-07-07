@@ -141,9 +141,17 @@ export const testItem = pgTable("test_item", {
     .notNull()
     .references(() => skill.id, { onDelete: "cascade" }),
   difficulty: integer("difficulty").notNull().default(3), // 1..5
+  context_html: text("context_html").notNull().default(""),
   stem_md: text("stem_md").notNull(),
   choices: jsonb("choices").notNull().default([]),
   answer_letter: text("answer_letter").notNull(),
+  // Teaching fields (ADR-0021 — amends the ADR-0015 minimal exam shape): the
+  // bank also serves the practice quiz, whose Feedback renders these.
+  per_choice_rationale: jsonb("per_choice_rationale").notNull().default({}),
+  why_correct_md: text("why_correct_md").notNull().default(""),
+  why_tempted_md: text("why_tempted_md").notNull().default(""),
+  rule_md: text("rule_md").notNull().default(""),
+  item_type: text("item_type").notNull().default(""),
   reviewed: boolean("reviewed").notNull().default(false),
   generated_by: text("generated_by").notNull().default(""),
 });

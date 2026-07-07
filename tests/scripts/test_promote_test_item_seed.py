@@ -16,7 +16,8 @@ import json
 from scripts.promote_test_item_seed import demote_seed_row, promote_seed
 
 _SEED_ITEM = {
-    "stem_md": "Neither of the twins were ready for the exam.",
+    "stem_md": "Which choice best fixes the underlined portion?",
+    "context_html": "Neither of the twins <u>were ready for the</u> exam.",
     "answer_letter": "C",
     "choices": [
         {"letter": "A", "label": "NO CHANGE"},
@@ -24,6 +25,18 @@ _SEED_ITEM = {
         {"letter": "C", "label": "was ready for the"},
         {"letter": "D", "label": "was ready for their"},
     ],
+    # Teaching payload (ADR-0021 / FR-C2): required by the cascade schema stage
+    # — a seed row without it quarantines instead of promoting.
+    "per_choice_rationale": {
+        "A": "'Neither' is singular, so the plural verb clashes.",
+        "B": "Keeps the plural verb and swaps the article needlessly.",
+        "C": "'Neither … was' — the singular subject agrees.",
+        "D": "Fixes the verb but changes 'the' to 'their' without cause.",
+    },
+    "why_correct_md": "**Neither** is always singular.",
+    "why_tempted_md": "The nearby plural 'twins' makes 'were' sound right.",
+    "rule_md": "Neither/either are singular; ignore the prepositional phrase.",
+    "item_type": "underlined-span-mc",
     "skill_id": "s-gram",
     "difficulty": 3,
     # The converter self-stamps these — they must be retroactively unearned.

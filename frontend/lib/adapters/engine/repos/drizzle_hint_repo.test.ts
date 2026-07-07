@@ -98,24 +98,10 @@ describe("DrizzleHintRepo (against InMemoryEngineDb)", () => {
   });
 });
 
-describe("dev seed ladder", () => {
-  it("seeds one full reviewed ladder (rungs 1..3) per dev question", async () => {
-    const { InMemoryEngineDb: Db } = await import("../db/in_memory_engine_db");
-    const { seedDevCorpus } = await import("../_dev_seed");
-    const db = new Db();
-    seedDevCorpus(db);
-    const repo = new DrizzleHintRepo(db);
-    for (const qid of [
-      "q-punc-1",
-      "q-gram-1",
-      "q-sent-1",
-      "q-rhet-1",
-      "q-org-1",
-      "q-style-1",
-    ]) {
-      const ladder = await repo.list(SUBJECT, qid);
-      expect(ladder.map((h) => h.rung)).toEqual([1, 2, 3]);
-      expect(ladder.every((h) => h.generated_by === "authored")).toBe(true);
-    }
-  });
-});
+// G8-OK: the "dev seed ladder" describe (one reviewed 1..3 ladder per dev
+// question) was removed with DEV_HINTS itself (ADR-0021 / spec FR-B2a — the
+// quiz serves the governed bank; the backend persona asset
+// components/subject_coach_hints.py::AUTHORED_RUNGS is now the SOLE hint
+// source, shape-covered by tests/components/test_subject_coach_hints.py).
+// No repo behavior was lost: the reviewed gate, ordering, scoping, and
+// duplicate-rung assertions above are the surviving, fixture-local coverage.

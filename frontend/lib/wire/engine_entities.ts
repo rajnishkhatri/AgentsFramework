@@ -122,15 +122,30 @@ export type Hint = z.infer<typeof Hint>;
  * serves reviewed rows only. `generated_by` is `"<model>@<run_id>"` on a
  * reviewed row (never `"test01-import"` — that lives only on unpromoted seed
  * rows). `reviewed` is earned by the Python cascade, never self-asserted.
+ *
+ * TEACHING FIELDS (ADR-0021 schema extension, spec FR-C1 — amends the minimal
+ * exam shape). The bank now also serves the PRACTICE quiz via the
+ * `TestItemQuestionRepo` adapter, and the Feedback screen renders
+ * `per_choice_rationale` + `rule_md` (`feedback_vm.ts`), so a bank row must
+ * carry the full teaching payload — required and non-empty at parse, making
+ * the `TestItem→Question` mapping lossless. `stem_md` maps to `Question.stem`;
+ * `context_html` is the passage with the underlined span.
  */
 export const TestItem = z.object({
   id: z.string(),
   subject: z.string(),
   skill_id: z.string(),
   difficulty: z.number().int(), // 1..5
+  context_html: z.string().min(1),
   stem_md: z.string().min(1),
   choices: z.array(Choice).min(4),
   answer_letter: z.string(),
+  // { A: "...", B: "...", ... } per-choice rationale keyed by letter (FR-E3).
+  per_choice_rationale: z.record(z.string(), z.string()),
+  why_correct_md: z.string().min(1),
+  why_tempted_md: z.string().min(1),
+  rule_md: z.string().min(1),
+  item_type: z.string().min(1),
   reviewed: z.boolean(),
   generated_by: z.string(),
 });

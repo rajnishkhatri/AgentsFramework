@@ -48,8 +48,11 @@ import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
 import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
+import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
 import { seedDevCorpus } from "./adapters/engine/_dev_seed";
+import { seedTestItemBank } from "./adapters/engine/_test_item_bank";
+import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
 export interface BuildBrowserEngineAdaptersOptions {
   /**
@@ -58,6 +61,17 @@ export interface BuildBrowserEngineAdaptersOptions {
    * `InMemoryEngineDb` — the browser-safe substrate (never `pgEngineDb`).
    */
   readonly engineDb?: EngineDb;
+  /**
+   * Which store feeds the practice quiz (ADR-0021). `"bank"` binds BOTH the
+   * bag's `questionRepo` AND the FsrsScheduler to the governed `test_item`
+   * bank via the read-only `TestItemQuestionRepo` (openQuizItem resolves the
+   * scheduled id through `ports.questionRepo.get`, so the two must agree).
+   * `"practice"` (default) keeps the `question`-table wiring — existing tests
+   * and the e2e seed-override path (specs inject `questions` fixtures) are
+   * unchanged. The two sources never mix: an exam-item leak into the practice
+   * repo stays structurally unrepresentable (ADR-0015 clause 1).
+   */
+  readonly questionSource?: "practice" | "bank";
 }
 
 /**
@@ -71,7 +85,15 @@ export function buildBrowserEngineAdapters(
 ): EnginePortBag {
   const db = options.engineDb ?? new InMemoryEngineDb();
 
-  const questionRepo = new DrizzleQuestionRepo(db);
+  const testItemRepo = new DrizzleTestItemRepo(db);
+  // ADR-0021: the bank path serves practice items from the governed test_item
+  // bank through the read-only adapter; the SAME FsrsScheduler code (the sole
+  // skill_state writer) is reused — only its bound QuestionRepo changes. The
+  // practice DrizzleQuestionRepo and the question table are untouched.
+  const questionRepo =
+    options.questionSource === "bank"
+      ? new TestItemQuestionRepo(testItemRepo, DEFAULT_SUBJECT)
+      : new DrizzleQuestionRepo(db);
 
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
@@ -88,7 +110,7 @@ export function buildBrowserEngineAdapters(
     // Read-only reviewed hint ladder (ADR-0014): no write surface on the port.
     hintRepo: new DrizzleHintRepo(db),
     // Read-only governed test plane (ADR-0015): reviewed items + blueprint.
-    testItemRepo: new DrizzleTestItemRepo(db),
+    testItemRepo,
     testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
     // ADR-0012 Amendment (FR-19): browser→BFF fire-and-forget marker write on
     // quiz submit, flipping the coach's derived mode to post_feedback.
@@ -107,8 +129,10 @@ let singleton: EnginePortBag | null = null;
  * DEV SEED (why the guard). A fresh `InMemoryEngineDb` is empty, which makes the
  * live `/learn` surface unusable in a dev preview (0% dashboard; the Quiz route
  * throws `no reviewed question` from `openQuizItem`). Outside production we load
- * the small hand-authored "Maya" corpus (`_dev_seed.ts`) so the Dashboard → Quiz
- * → Summary loop is exercisable in the browser. The guard keeps it off the
+ * the "Maya" skills/mastery spread (`_dev_seed.ts`) plus the cascade-promoted
+ * item bank (`_test_item_bank.ts`, ADR-0021) so the Dashboard → Quiz → Summary
+ * loop is exercisable in the browser — the QUIZ now serves the governed bank,
+ * not hand-authored dev questions (spec FR-B2/B2a). The guard keeps it off the
  * production path, where the on-device SQLite substrate (ADR-0005/0010) is
  * expected to supply real data. Tests never reach this branch: they inject their
  * own seeded bag via `buildBrowserEngineAdapters({ engineDb })` / the
@@ -120,9 +144,11 @@ export function browserEngineAdapters(): EnginePortBag {
       const db = new InMemoryEngineDb();
       // E2E override (non-prod only): a Playwright spec may inject a larger
       // deterministic corpus on `window` via `page.addInitScript` before the
-      // provider mounts. When present it REPLACES the hand-authored dev corpus,
-      // so specs drive their own byte-stable fixtures without touching prod seed
-      // content. Absent → the normal "Maya" dev corpus (the preview default).
+      // provider mounts. When present it REPLACES the dev seed entirely — specs
+      // drive their own byte-stable QUESTION fixtures, so the override keeps
+      // the practice-table wiring (their oracles predate the bank; migrating
+      // them is a separate task). Absent → the dev preview default: Maya
+      // skills/states + the governed bank, quiz wired to the bank (ADR-0021).
       const injected = readE2ESeedOverride();
       if (injected) {
         db.seedSkills([...injected.skills]);
@@ -131,10 +157,15 @@ export function browserEngineAdapters(): EnginePortBag {
         // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
         // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
         if (injected.hints) db.seedHints([...injected.hints]);
+        singleton = buildBrowserEngineAdapters({ engineDb: db });
       } else {
         seedDevCorpus(db);
+        seedTestItemBank(db);
+        singleton = buildBrowserEngineAdapters({
+          engineDb: db,
+          questionSource: "bank",
+        });
       }
-      singleton = buildBrowserEngineAdapters({ engineDb: db });
     } else {
       // Production: an EMPTY substrate. The on-device SQLite EngineDb
       // (ADR-0005/0010) supplies real data here; the dev corpus must not ship,
