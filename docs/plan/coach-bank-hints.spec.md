@@ -5,7 +5,7 @@
 > and the ADRs it consumes; the ADR-0014 source-direction inversion is captured
 > as an amendment note (§5).
 
-**Status:** Approved — 2026-07-07 (spec gate passed)
+**Status:** Implemented — 2026-07-07 (evidence: [coach-bank-hints.impl.md](coach-bank-hints.impl.md))
 **Owner:** Rajnish Khatri
 **Related:** [brainstorm](coach-bank-hints.brainstorm.md) ·
 [ADR-0021 bank-backed practice scheduler](../adr/0021-bank-backed-practice-scheduler.md) ·
