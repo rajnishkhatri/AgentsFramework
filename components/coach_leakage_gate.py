@@ -141,15 +141,13 @@ async def judge_leakage(
 # orchestration. The node calls these factories; the arch gate permits the judge
 # import only in this components adapter + the sanctioned scripts/sampler.
 
-_COACH_NO_LEAK_DIRECTIVE = (
-    "Your previous reply revealed or strongly implied the answer, which is not "
-    "allowed for a learner who has not solved the problem yet. Re-answer as a "
-    "Socratic coach: point at the kind of mistake and ask a question that keeps "
-    "more than one option live. Do NOT state, spell, or eliminate-to-one the "
-    "answer. Reply with the coaching turn only."
-)
+# The regeneration directive is coach-facing model instruction text, so it is a
+# rendered ``.j2`` template (AP-3 — no hardcoded prompt prose), not a constant.
+_COACH_NO_LEAK_PROMPT = "coach_regenerate_no_leak"
 
 # A safe Socratic fallback substituted when a regenerated reply still leaks (FR-3).
+# This is fixed UI copy shown verbatim to the learner (not model input), so a
+# constant is correct here — it is not a prompt template.
 COACH_LEAKAGE_FALLBACK = (
     "Let's slow down — what part of this are you least sure about? "
     "Walk me through your reasoning and we'll find the next step together."
@@ -171,14 +169,26 @@ def build_leakage_judge(profile: Any) -> LeakageJudge:  # pragma: no cover - liv
     return PedagogyJudge(llm_service, prompt_service, profile, name="PedagogyJudge")
 
 
-def make_regenerate(llm_service: Any, profile: Any, *, learner_utterance: str):
+def make_regenerate(
+    llm_service: Any,
+    profile: Any,
+    *,
+    learner_utterance: str,
+    prompt_service: Any = None,
+):
     """Return an async ``regenerate(coach_reply=...) -> str`` bound to ``llm_service``
-    (FR-7). One plain LLM call with the no-leak directive; the node injects this so
-    the gate helper stays testable with a stub."""
+    (FR-7). One plain LLM call with the no-leak directive rendered from
+    ``coach_regenerate_no_leak.j2`` (AP-3 — no hardcoded prompt prose); the node
+    injects this so the gate helper stays testable with a stub. The directive is
+    rendered once at factory-build time (it is static)."""
+    from services.prompt_service import PromptService
+
+    prompt_service = prompt_service or PromptService()
+    directive = prompt_service.render_prompt(_COACH_NO_LEAK_PROMPT)
 
     async def _regenerate(*, coach_reply: str) -> str:
         messages = [
-            {"role": "system", "content": _COACH_NO_LEAK_DIRECTIVE},
+            {"role": "system", "content": directive},
             {"role": "user", "content": f"Learner: {learner_utterance}"},
         ]
         resp = await llm_service.invoke(profile, messages)

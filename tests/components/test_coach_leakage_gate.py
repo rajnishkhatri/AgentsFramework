@@ -149,3 +149,43 @@ async def test_judge_none_answer_leakage_maps_to_unavailable() -> None:
     # A verdict object whose answer_leakage is itself None (un-decided) is not a
     # definite clean/leak — treat as unavailable, never fabricate a False.
     assert await _call(_StubJudge(answer_leakage=None)) == "unavailable"
+
+
+# ── M1: the regenerate directive is a rendered .j2 (AP-3), not a hardcoded string ──
+
+
+class _StubLLMService:
+    """Records the messages make_regenerate builds — no live LLM (FR-11)."""
+
+    def __init__(self):
+        self.messages = None
+
+    async def invoke(self, profile, messages):
+        self.messages = messages
+
+        class _Resp:
+            content = "regenerated coaching turn"
+
+        return _Resp()
+
+
+@pytest.mark.asyncio
+async def test_make_regenerate_renders_no_leak_directive_from_template() -> None:
+    # AP-3: the system directive comes from coach_regenerate_no_leak.j2 via
+    # PromptService, not a module constant. A missing/renamed template fails HERE
+    # (in CI) instead of only at live-regeneration time.
+    from components.coach_leakage_gate import make_regenerate
+
+    llm = _StubLLMService()
+    regenerate = make_regenerate(llm, object(), learner_utterance="why is it B?")
+    out = await regenerate(coach_reply="The answer is B.")
+
+    assert out == "regenerated coaching turn"
+    system_msg = next(m for m in llm.messages if m["role"] == "system")
+    # The rendered directive carries the no-leak intent (guards a stale template).
+    assert "answer" in system_msg["content"].lower()
+    assert "socratic" in system_msg["content"].lower()
+    assert (
+        "why is it B?"
+        in next(m for m in llm.messages if m["role"] == "user")["content"]
+    )

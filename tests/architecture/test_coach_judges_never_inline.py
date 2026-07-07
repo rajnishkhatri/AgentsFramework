@@ -26,6 +26,13 @@ from pathlib import Path
 
 import pytest
 
+# G8-OK: test_live_graph_layers_never_import_the_coach_judges was narrowed and
+#   renamed to test_sampler_never_reachable_from_live_graph +
+#   test_only_the_declared_leakage_gate_binds_the_judge_inline (ADR-0020 §7.3).
+# G8-OK: test_the_sampler_is_the_only_judge_consumer_outside_tests was renamed to
+#   test_the_sampler_is_the_only_judge_consumer_outside_the_gate — same assertion,
+#   now allowing components/coach_leakage_gate.py as the declared gate binding.
+
 _REPO = Path(__file__).resolve().parent.parent.parent
 _LIVE_GRAPH_DIRS = ("orchestration", "middleware")
 

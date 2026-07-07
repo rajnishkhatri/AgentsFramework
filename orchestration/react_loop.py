@@ -13,7 +13,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -52,6 +52,7 @@ from components.coach_context import coach_context_contract, render_coach_contex
 from components.coach_leakage_gate import (
     COACH_LEAKAGE_FALLBACK,
     LeakageGateMode,
+    LeakageJudge,
     arm,
     build_leakage_judge,
     decide_leakage_enforcement,
@@ -338,8 +339,8 @@ async def _run_coach_leakage_gate(
     *,
     content: str,
     mode: LeakageGateMode,
-    judge: Any,
-    regenerate: Any,
+    judge: LeakageJudge,
+    regenerate: Callable[..., Awaitable[str]],
     learner_utterance: str,
     question: str,
     black_box: Any,
@@ -2591,18 +2592,20 @@ def build_graph(
                     goldset_certified=coach_goldset_certified,
                 )
                 if gate_mode != "off":
+                    clg_profile = llm_service.get_profile(
+                        state.get("selected_model", "")
+                    )
+                    clg_learner = state.get("task_input", "")
                     content = await _run_coach_leakage_gate(
                         content=content,
                         mode=gate_mode,
-                        judge=build_leakage_judge(
-                            llm_service.get_profile(state.get("selected_model", ""))
-                        ),
+                        judge=build_leakage_judge(clg_profile),
                         regenerate=make_regenerate(
                             llm_service,
-                            llm_service.get_profile(state.get("selected_model", "")),
-                            learner_utterance=state.get("task_input", ""),
+                            clg_profile,
+                            learner_utterance=clg_learner,
                         ),
-                        learner_utterance=state.get("task_input", ""),
+                        learner_utterance=clg_learner,
                         question=coach_context.get("question", "")
                         if isinstance(coach_context, dict)
                         else "",
