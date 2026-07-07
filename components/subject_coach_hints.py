@@ -58,8 +58,20 @@ def rungs_for_question(
 
     The gate: unreviewed rungs are filtered here, so an ungated row can never
     reach a learner regardless of how it entered ``source``.
+
+    Default source = the authored asset PLUS the generated bank ladders
+    (coach-bank-hints FR-D1): the ADR-0021 bank serves ``ti-gen-*`` ids the
+    authored rows never match, and an empty ladder makes the persona
+    free-generate (the Stage-0 leak class). Imported lazily so the generated
+    data asset — which imports ``HintRung`` from THIS module — stays a
+    one-way import at load time.
     """
-    rows = AUTHORED_RUNGS if source is None else source
+    if source is None:
+        from components.subject_coach_bank_hints import BANK_RUNGS
+
+        rows: list[HintRung] = [*AUTHORED_RUNGS, *BANK_RUNGS]
+    else:
+        rows = source
     served = [r for r in rows if r.question_id == question_id and r.reviewed]
     return sorted(served, key=lambda r: r.rung)
 
