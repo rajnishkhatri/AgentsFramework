@@ -89,7 +89,14 @@ def _quarantine(stage: str, raw: Any, violations: list[str]) -> dict[str, Any]:
 
 def _schema_violations(item: Any) -> list[str]:
     """Structural checks only (FR-23.1). A plausible-but-WRONG declared key is
-    NOT caught here — that is the solver stage's job (FR-23.3)."""
+    NOT caught here — that is the solver stage's job (FR-23.3).
+
+    TEACHING FIELDS (ADR-0021 / spec FR-C2): the bank also serves the practice
+    quiz, whose Feedback renders ``per_choice_rationale`` + ``rule_md`` — a row
+    missing the teaching payload would render BLANK feedback, so it quarantines
+    here (fail-closed), and every choice letter must carry a rationale (FR-E3
+    renders the CHOSEN distractor's rationale specifically).
+    """
     problems: list[str] = []
     if not isinstance(item, Mapping):
         return ["item is not a JSON object"]
@@ -123,6 +130,29 @@ def _schema_violations(item: Any) -> list[str]:
     if not isinstance(skill, str) or not skill.strip():
         problems.append("skill_id must be a non-empty string")
 
+    # -- teaching payload (ADR-0021 / FR-C2) --
+    for field_name in (
+        "context_html",
+        "why_correct_md",
+        "why_tempted_md",
+        "rule_md",
+        "item_type",
+    ):
+        value = item.get(field_name)
+        if not isinstance(value, str) or not value.strip():
+            problems.append(f"{field_name} must be a non-empty string")
+
+    rationale = item.get("per_choice_rationale")
+    if not isinstance(rationale, Mapping):
+        problems.append("per_choice_rationale must be an object keyed by letter")
+    else:
+        for letter in letters:
+            body = rationale.get(letter)
+            if not isinstance(body, str) or not body.strip():
+                problems.append(
+                    f"per_choice_rationale must cover choice {letter} (non-empty)"
+                )
+
     return problems
 
 
@@ -147,10 +177,17 @@ def _is_near_duplicate(stem: str, existing: Sequence[str]) -> bool:
 
 
 def _solver_view(item: Mapping[str, Any]) -> dict[str, Any]:
-    """The item as the independent solver sees it: stem + choices only. The
-    declared ``answer_letter`` (and any rationale) is WITHHELD so the solver's
-    letter is an independent verdict, not an echo (FR-23.3)."""
+    """The item as the independent solver sees it: passage + stem + choices.
+    The declared ``answer_letter`` AND the teaching payload (rationale/why/
+    rule — all answer-bearing prose) are WITHHELD so the solver's letter is an
+    independent verdict, not an echo (FR-23.3 / spec FR-C3).
+
+    ``context_html`` is INCLUDED: it is the question's passage, not the answer
+    — a solver without it is answer-guessing blind (caught live in the TA3
+    run 1: passage-dependent items quarantined 7/7 while choices-only-solvable
+    items passed 5/5)."""
     return {
+        "context_html": item["context_html"],
         "stem_md": item["stem_md"],
         "choices": [
             {"letter": c["letter"], "label": c["label"]} for c in item["choices"]
@@ -178,11 +215,19 @@ def _reviewed_row(
         "subject": subject,
         "skill_id": item["skill_id"],
         "difficulty": item.get("difficulty"),
+        "context_html": item["context_html"],
         "stem_md": item["stem_md"].strip(),
         "choices": [
             {"letter": c["letter"], "label": c["label"]} for c in item["choices"]
         ],
         "answer_letter": item["answer_letter"],
+        # Teaching payload (ADR-0021 / FR-C2): carried through, else promotion
+        # would silently strip what the practice Feedback screen renders.
+        "per_choice_rationale": dict(item["per_choice_rationale"]),
+        "why_correct_md": item["why_correct_md"],
+        "why_tempted_md": item["why_tempted_md"],
+        "rule_md": item["rule_md"],
+        "item_type": item["item_type"],
         # Earned by the cascade — the generator never asserts it.
         "reviewed": True,
         "generated_by": generated_by,

@@ -23,8 +23,11 @@ from components.test_item_generation import (
 )
 
 # A well-formed candidate: ACT-English underlined-span MC, key = "B".
+# Carries the full teaching payload (ADR-0021 / spec FR-C2): the bank serves
+# the practice quiz, whose Feedback renders per_choice_rationale + rule_md.
 _CANDIDATE = {
-    "stem_md": "The committee were unanimous in their decision.",
+    "stem_md": "Which choice best fixes the underlined portion?",
+    "context_html": "The committee <u>were unanimous in their</u> decision.",
     "answer_letter": "B",
     "choices": [
         {"letter": "A", "label": "NO CHANGE"},
@@ -32,6 +35,16 @@ _CANDIDATE = {
         {"letter": "C", "label": "were unanimous in its"},
         {"letter": "D", "label": "was unanimous in their"},
     ],
+    "per_choice_rationale": {
+        "A": "'Committee' acts as one unit — the plural verb and pronoun clash.",
+        "B": "Singular 'was' and 'its' both agree with the collective noun.",
+        "C": "Fixes the pronoun but keeps the plural verb.",
+        "D": "Fixes the verb but keeps the plural pronoun.",
+    },
+    "why_correct_md": "A collective noun acting as one unit is **singular**.",
+    "why_tempted_md": "The people inside the committee make 'were' sound right.",
+    "rule_md": "Collective noun as a unit → singular verb AND singular pronoun.",
+    "item_type": "underlined-span-mc",
     "skill_id": "s-gram",
     "difficulty": 3,
 }
@@ -113,6 +126,99 @@ class TestSchemaStage:
         )
         assert verdict.passed == []
         assert verdict.quarantined[0]["stage"] == "schema"
+
+
+class TestTeachingFieldsGate:
+    """ADR-0021 / spec FR-C2 — the schema stage requires the teaching payload.
+
+    The bank serves the practice quiz; a row missing rationale/rule renders
+    BLANK Feedback, so a candidate without them quarantines at 'schema'
+    (fail-closed), and a passing row carries them through to the promoted row
+    (else promotion silently strips them — the FR-C2 `_reviewed_row` clause).
+    """
+
+    async def _solver_must_not_run(self):
+        async def solve(item: dict) -> str:
+            raise AssertionError("solver reached on a schema-stage failure")
+
+        return solve
+
+    async def test_missing_teaching_field_quarantines_schema(self):
+        for field in (
+            "context_html",
+            "per_choice_rationale",
+            "why_correct_md",
+            "why_tempted_md",
+            "rule_md",
+            "item_type",
+        ):
+            bad = {k: v for k, v in _CANDIDATE.items() if k != field}
+            verdict = await _run(
+                json.dumps({"items": [bad]}), solver=await self._solver_must_not_run()
+            )
+            assert verdict.passed == [], f"{field}: passed despite missing field"
+            assert verdict.quarantined[0]["stage"] == "schema", field
+
+    async def test_empty_rule_md_quarantines_schema(self):
+        bad = {**_CANDIDATE, "rule_md": "   "}
+        verdict = await _run(
+            json.dumps({"items": [bad]}), solver=await self._solver_must_not_run()
+        )
+        assert verdict.passed == []
+        assert verdict.quarantined[0]["stage"] == "schema"
+
+    async def test_rationale_missing_a_choice_letter_quarantines_schema(self):
+        # FR-E3 renders the CHOSEN distractor's rationale — every letter needs one.
+        partial = {
+            k: v for k, v in _CANDIDATE["per_choice_rationale"].items() if k != "C"
+        }
+        bad = {**_CANDIDATE, "per_choice_rationale": partial}
+        verdict = await _run(
+            json.dumps({"items": [bad]}), solver=await self._solver_must_not_run()
+        )
+        assert verdict.passed == []
+        assert verdict.quarantined[0]["stage"] == "schema"
+
+    async def test_promoted_row_carries_teaching_fields(self):
+        # FR-C2: promotion must NOT strip the payload the Feedback screen needs.
+        verdict = await _run(
+            json.dumps({"items": [_CANDIDATE]}), solver=_solver_returning("B")
+        )
+        row = verdict.passed[0]
+        assert row["context_html"] == _CANDIDATE["context_html"]
+        assert row["per_choice_rationale"] == _CANDIDATE["per_choice_rationale"]
+        assert row["why_correct_md"] == _CANDIDATE["why_correct_md"]
+        assert row["why_tempted_md"] == _CANDIDATE["why_tempted_md"]
+        assert row["rule_md"] == _CANDIDATE["rule_md"]
+        assert row["item_type"] == _CANDIDATE["item_type"]
+
+    async def test_solver_view_includes_the_passage(self):
+        # DEFECT caught live (TA3 run 1): after ADR-0021 split the item into
+        # context_html (passage) + stem_md (prompt), a solver shown only the
+        # stem was answer-guessing blind — passage-dependent items quarantined
+        # 7/7 while choices-only-solvable items passed 5/5. The passage is part
+        # of the QUESTION (not answer-bearing) and must reach the solver.
+        solver = _solver_returning("B")
+        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
+        assert solver.calls, "solver was never reached"
+        seen = solver.calls[0]
+        assert seen.get("context_html") == _CANDIDATE["context_html"]
+
+    async def test_solver_view_withholds_rationale(self):
+        # FR-C3: the rationale carries the answer in prose — withheld from the
+        # solver exactly as the declared key is, or the gate self-defeats.
+        solver = _solver_returning("B")
+        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
+        assert solver.calls, "solver was never reached"
+        seen = solver.calls[0]
+        for leaky in (
+            "answer_letter",
+            "per_choice_rationale",
+            "why_correct_md",
+            "why_tempted_md",
+            "rule_md",
+        ):
+            assert leaky not in seen, f"solver view leaked {leaky}"
 
 
 class TestExtractSolverLetter:

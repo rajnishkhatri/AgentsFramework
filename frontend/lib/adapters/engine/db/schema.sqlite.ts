@@ -101,9 +101,19 @@ export const testItem = sqliteTable("test_item", {
     .notNull()
     .references(() => skill.id, { onDelete: "cascade" }),
   difficulty: integer("difficulty").notNull().default(3), // 1..5
+  context_html: text("context_html").notNull().default(""),
   stem_md: text("stem_md").notNull(),
   choices: text("choices", { mode: "json" }).notNull().default([]),
   answer_letter: text("answer_letter").notNull(),
+  // Teaching fields (ADR-0021 — amends the ADR-0015 minimal exam shape): the
+  // bank also serves the practice quiz, whose Feedback renders these.
+  per_choice_rationale: text("per_choice_rationale", { mode: "json" })
+    .notNull()
+    .default({}),
+  why_correct_md: text("why_correct_md").notNull().default(""),
+  why_tempted_md: text("why_tempted_md").notNull().default(""),
+  rule_md: text("rule_md").notNull().default(""),
+  item_type: text("item_type").notNull().default(""),
   reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),
   generated_by: text("generated_by").notNull().default(""),
 });

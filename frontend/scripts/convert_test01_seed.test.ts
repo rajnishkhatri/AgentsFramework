@@ -70,4 +70,15 @@ describe("toTestItemSeed — shape", () => {
     expect(row.choices.map((c) => c.letter)).toEqual(["A", "B", "C", "D"]);
     expect(row.skill_id).toBe("s-gram");
   });
+
+  it("carries the teaching payload losslessly (ADR-0021 — no longer dropped)", () => {
+    const seed = toTestItemSeed([question()]);
+    const row = seed[0]!;
+    expect(row.context_html).toBe("The team <u>have</u> decided.");
+    expect(row.per_choice_rationale).toEqual({ A: "…", B: "…" });
+    expect(row.why_correct_md).toBe("…");
+    expect(row.why_tempted_md).toBe("…");
+    expect(row.rule_md).toBe("…");
+    expect(row.item_type).toBe("underlined-span-mc");
+  });
 });

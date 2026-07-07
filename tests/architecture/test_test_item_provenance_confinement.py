@@ -29,7 +29,10 @@ _SEED_DIR = _REPO / "frontend" / "lib" / "adapters" / "engine"
 _CASCADE_PROVENANCE = re.compile(r"^[^@\s]+@[^@\s]+$")
 
 # The seed files the frontend composition inserts at build time.
-_SEED_FILES = ("_dev_seed.ts", "_test01_english_corpus.ts")
+# _test_item_bank.ts (ADR-0021) is the committed cascade-promoted bank — the
+# first seed that actually SHIPS reviewed test_item rows, so it is exactly the
+# file this gate exists for.
+_SEED_FILES = ("_dev_seed.ts", "_test01_english_corpus.ts", "_test_item_bank.ts")
 
 
 def _reviewed_test_item_provenances(source: str) -> list[str]:
@@ -43,9 +46,13 @@ def _reviewed_test_item_provenances(source: str) -> list[str]:
     """
     provenances: list[str] = []
     # Split on object boundaries is brittle; instead find each stem_md-bearing
-    # block and inspect a window around it.
+    # block and inspect a window around it. Window sized for the ADR-0021
+    # extended row (teaching payload pushes reviewed/generated_by ~1.5k chars
+    # past stem_md; measured max 1466 in the committed bank — 4000 leaves
+    # headroom, and first-match semantics keep the window row-safe since a
+    # row's own reviewed/generated_by precede the next row's).
     for m in re.finditer(r'"stem_md"\s*:', source):
-        window = source[m.start() : m.start() + 1200]
+        window = source[m.start() : m.start() + 4000]
         reviewed = re.search(r'"reviewed"\s*:\s*true', window)
         gen = re.search(r'"generated_by"\s*:\s*"([^"]*)"', window)
         if reviewed and gen:
@@ -77,3 +84,19 @@ def test_detector_flags_a_self_stamped_reviewed_test_item() -> None:
     provs = _reviewed_test_item_provenances(sneaky)
     assert provs == ["test01-import"]
     assert not _CASCADE_PROVENANCE.match(provs[0])
+
+
+def test_committed_bank_rows_are_actually_scanned() -> None:
+    """ADR-0021: `_test_item_bank.ts` is the first committed reviewed seed.
+    Guard the guard — the detector must EXTRACT its rows (a format drift that
+    blinds the textual scan would otherwise pass vacuously), and every one
+    must carry cascade provenance."""
+    bank = _SEED_DIR / "_test_item_bank.ts"
+    assert bank.exists(), "committed bank seed missing (_test_item_bank.ts)"
+    provs = _reviewed_test_item_provenances(bank.read_text(encoding="utf-8"))
+    assert len(provs) >= 6, (
+        f"expected the committed bank's reviewed rows to be visible to the "
+        f"detector (got {len(provs)}) — did the seed format drift from "
+        f"JSON-quoted keys?"
+    )
+    assert all(_CASCADE_PROVENANCE.match(p) for p in provs), provs

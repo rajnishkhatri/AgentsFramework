@@ -19,7 +19,8 @@ function item(over: Partial<TestItem> = {}): TestItem {
     subject: "act-english",
     skill_id: "s-gram",
     difficulty: 3,
-    stem_md: "The team were ready.",
+    context_html: "The team <u>were</u> ready.",
+    stem_md: "Which choice best fixes the underlined portion?",
     choices: [
       { letter: "A", label: "NO CHANGE", is_no_change: true },
       { letter: "B", label: "was ready", is_no_change: false },
@@ -27,6 +28,16 @@ function item(over: Partial<TestItem> = {}): TestItem {
       { letter: "D", label: "was readied", is_no_change: false },
     ],
     answer_letter: "B",
+    per_choice_rationale: {
+      A: "'Team' acts as one unit — plural clashes.",
+      B: "Singular 'was' agrees with the collective 'team'.",
+      C: "Still plural, and changes the meaning.",
+      D: "'readied' changes the meaning.",
+    },
+    why_correct_md: "Collective nouns acting as one unit take a singular verb.",
+    why_tempted_md: "The people inside the team make 'were' sound right.",
+    rule_md: "Collective noun as a unit → singular verb.",
+    item_type: "underlined-span-mc",
     reviewed: true,
     generated_by: "gpt-4o-mini@run-1",
     ...over,
@@ -77,6 +88,17 @@ describe("DrizzleTestItemRepo — reviewed gate first (FR-27.1)", () => {
     ]);
     const rows = await repo.listReviewed("act-english");
     expect(rows.map((r) => r.id)).toEqual(["ti-eng"]);
+  });
+
+  it("round-trips the teaching fields (ADR-0021 / FR-C1)", async () => {
+    db.seedTestItems([item({ id: "ti-teach" })]);
+    const [row] = await repo.listReviewed("act-english");
+    expect(row!.context_html).toContain("<u>");
+    expect(row!.per_choice_rationale["B"]).toContain("agrees");
+    expect(row!.why_correct_md.length).toBeGreaterThan(0);
+    expect(row!.why_tempted_md.length).toBeGreaterThan(0);
+    expect(row!.rule_md).toContain("singular");
+    expect(row!.item_type).toBe("underlined-span-mc");
   });
 });
 

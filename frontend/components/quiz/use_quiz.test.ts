@@ -78,6 +78,32 @@ function skillState(over: Partial<SkillState> = {}): SkillState {
   };
 }
 
+function bankItem(over: Partial<import("@/lib/wire/engine_entities").TestItem> = {}) {
+  return {
+    id: "ti-gen-bank0000item0001",
+    subject: SUBJECT,
+    skill_id: "s-punc",
+    difficulty: 2,
+    context_html: "The recipe calls for three <u>ingredients flour</u>, sugar, and butter.",
+    stem_md: "Which choice correctly punctuates the introduction of the list?",
+    choices: [
+      { letter: "A", label: "NO CHANGE", is_no_change: true },
+      { letter: "B", label: "ingredients: flour", is_no_change: false },
+      { letter: "C", label: "ingredients; flour", is_no_change: false },
+      { letter: "D", label: "ingredients', flour", is_no_change: false },
+    ],
+    answer_letter: "B",
+    per_choice_rationale: { A: "a…", B: "b…", C: "c…", D: "d…" },
+    why_correct_md: "A colon introduces the list.",
+    why_tempted_md: "Reads smoothly aloud.",
+    rule_md: "Colon after a complete clause introduces a list.",
+    item_type: "underlined-span-mc",
+    reviewed: true,
+    generated_by: "gpt-4o-mini@run-1",
+    ...over,
+  };
+}
+
 let db: InMemoryEngineDb;
 let ports: EnginePortBag;
 
@@ -86,6 +112,71 @@ beforeEach(() => {
   db.seedSkills([skill()]);
   db.seedQuestions([question()]);
   ports = buildBrowserEngineAdapters({ engineDb: db });
+});
+
+describe("bank-backed quiz (ADR-0021 — questionSource: 'bank')", () => {
+  let bankDb: InMemoryEngineDb;
+  let bankPorts: EnginePortBag;
+
+  beforeEach(() => {
+    bankDb = new InMemoryEngineDb();
+    bankDb.seedSkills([skill()]);
+    // NO question rows — the bank is the sole quiz source (FR-B2/B2a).
+    bankDb.seedTestItems([bankItem()]);
+    bankPorts = buildBrowserEngineAdapters({
+      engineDb: bankDb,
+      questionSource: "bank",
+    });
+  });
+
+  it("openQuizItem serves a reviewed bank item, not a question row (FR-B2)", async () => {
+    const item = await openQuizItem(bankPorts, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+    });
+    expect(item.question.id).toBe("ti-gen-bank0000item0001");
+    // Lossless mapping: the Feedback payload is present (FR-C4).
+    expect(item.question.per_choice_rationale["B"]).toBeTruthy();
+    expect(item.question.rule_md).toContain("Colon");
+    // No authored hints for bank items this increment → generic-nudge fallback.
+    expect(item.hintLadder).toEqual([]);
+  });
+
+  it("runQuizSubmit grades + FSRS-reviews an attempt on a bank id (FR-B6)", async () => {
+    const { session } = await openQuizSession(bankPorts, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+    const { question: served } = await openQuizItem(bankPorts, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+    });
+    const result = await runQuizSubmit(bankPorts, {
+      session,
+      question: served,
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 1200,
+      usedHint: false,
+    });
+    expect(result.verdict?.correct).toBe(true);
+    expect(result.attempt?.question_id).toBe("ti-gen-bank0000item0001");
+    // The FSRS review resolved the bank item's skill through the bank adapter.
+    expect(result.skillState?.skill_id).toBe("s-punc");
+  });
+
+  it("fails closed when the scheduled skill has no bank item (FR-B4)", async () => {
+    const emptyDb = new InMemoryEngineDb();
+    emptyDb.seedSkills([skill()]); // skill exists; bank has nothing for it
+    const emptyPorts = buildBrowserEngineAdapters({
+      engineDb: emptyDb,
+      questionSource: "bank",
+    });
+    await expect(
+      openQuizItem(emptyPorts, { subject: SUBJECT, learnerId: LEARNER }),
+    ).rejects.toThrow(/no reviewed question/);
+  });
 });
 
 describe("runQuizSubmit — no selection (failure path first, FR-D2a/D4)", () => {

@@ -1,0 +1,302 @@
+[
+  {
+    "skill_id": "s-punc",
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The recipe calls for three <u>ingredients flour</u>, sugar, and butter.",
+    "stem_md": "Which choice correctly punctuates the introduction of the list?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "ingredients: flour" },
+      { "letter": "C", "label": "ingredients; flour" },
+      { "letter": "D", "label": "ingredients', flour" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "With no punctuation, the list runs into the noun it names — readers can't tell where 'ingredients' ends and the list begins.",
+      "B": "A colon after a complete statement introduces the list it promises: three ingredients — then names them.",
+      "C": "A semicolon separates two independent clauses; it cannot introduce a list.",
+      "D": "'ingredients'' adds a possessive apostrophe nothing in the sentence calls for."
+    },
+    "why_correct_md": "A **colon** follows a complete statement to introduce the list it announces.",
+    "why_tempted_md": "The sentence reads smoothly aloud, so the missing punctuation is easy to skate past.",
+    "rule_md": "Use a colon — never a semicolon — after a complete clause to introduce a list.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Rex pulled hard, and the <u>dogs'</u> leash slipped from Maya's hand.",
+    "stem_md": "Which choice makes the possessive correct?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "dog's" },
+      { "letter": "C", "label": "dogs" },
+      { "letter": "D", "label": "dogss'" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The apostrophe after the s marks a plural possessive, but only one dog — Rex — is in the sentence.",
+      "B": "One dog owns the leash, so the singular possessive 'dog's' is correct.",
+      "C": "Without an apostrophe there is no possessive at all — the leash must belong to the dog.",
+      "D": "'dogss'' is not a word form in English."
+    },
+    "why_correct_md": "One owner → apostrophe **before** the s: *dog's*.",
+    "why_tempted_md": "Plural and possessive forms sound identical aloud, so the written apostrophe placement is easy to miss.",
+    "rule_md": "Singular owner → 's; plural owners ending in s → s'.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "By the time the bus finally arrived, Maria <u>waits</u> at the corner for over an hour.",
+    "stem_md": "Which verb form best completes the sentence?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "had been waiting" },
+      { "letter": "C", "label": "is waiting" },
+      { "letter": "D", "label": "will wait" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Present-tense 'waits' clashes with the past-tense 'arrived' that anchors the sentence.",
+      "B": "'Had been waiting' places the hour of waiting BEFORE the past arrival — exactly the sequence the sentence describes.",
+      "C": "'Is waiting' is present tense; the arrival already happened.",
+      "D": "'Will wait' pushes the waiting into the future, after the bus arrived — backwards."
+    },
+    "why_correct_md": "An action ongoing **before** a past event takes the past perfect (progressive): *had been waiting*.",
+    "why_tempted_md": "Each verb form sounds fine alone; only checking it against 'arrived' exposes the clash.",
+    "rule_md": "Match verb tense to the sentence's time anchors; 'by the time X happened' demands past perfect.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The results were consistent <u>to</u> the team's hypothesis.",
+    "stem_md": "Which choice completes the idiom correctly?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "with" },
+      { "letter": "C", "label": "for" },
+      { "letter": "D", "label": "about" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "English pairs 'consistent' with 'with', never 'to'.",
+      "B": "'Consistent with' is the standard idiom.",
+      "C": "'Consistent for' is not an English idiom.",
+      "D": "'Consistent about' describes a person's habits, not agreement between findings and a hypothesis."
+    },
+    "why_correct_md": "Idioms are fixed pairings: **consistent with** is the only standard form here.",
+    "why_tempted_md": "'To' feels connective, and many adjectives do take 'to' (similar to, equal to).",
+    "rule_md": "Learn preposition pairings as fixed units — 'consistent with', 'capable of', 'preoccupied with'.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Although the museum stayed open late<u>. Visitors</u> still missed the final exhibit.",
+    "stem_md": "Which choice repairs the sentence boundary?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": ", visitors" },
+      { "letter": "C", "label": "; visitors" },
+      { "letter": "D", "label": ", and visitors" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The period strands 'Although the museum stayed open late' as a fragment — a subordinate clause cannot stand alone.",
+      "B": "A comma joins the introductory 'although' clause to the main clause it modifies.",
+      "C": "A semicolon needs an independent clause on BOTH sides; the 'although' clause is dependent.",
+      "D": "'Although' already subordinates the first clause — adding 'and' doubles up the connectors."
+    },
+    "why_correct_md": "A subordinate ('although') clause attaches to its main clause with a **comma**, not a period.",
+    "why_tempted_md": "Reading aloud, the pause after 'late' feels like a full stop.",
+    "rule_md": "A clause starting with although/because/while cannot stand alone — join it with a comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The coach praised the team for practicing daily, playing fairly, and <u>that they communicated</u> clearly.",
+    "stem_md": "Which choice keeps the series parallel?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "communicating" },
+      { "letter": "C", "label": "to communicate" },
+      { "letter": "D", "label": "they communicated" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'That they communicated' breaks the -ing pattern set by 'practicing' and 'playing'.",
+      "B": "'Communicating' matches the two -ing verbs, keeping the series parallel.",
+      "C": "The infinitive 'to communicate' mismatches the -ing forms.",
+      "D": "'They communicated' inserts a full clause where the series expects a single -ing verb."
+    },
+    "why_correct_md": "Items in a series must share one grammatical form — here the **-ing** form.",
+    "why_tempted_md": "Each option is grammatical in isolation; only the series pattern exposes the mismatch.",
+    "rule_md": "Match every item in a list to the form the first items establish (parallel structure).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The committee reached a <u>consensus of opinion</u> after two hours of debate.",
+    "stem_md": "Which choice is the most concise without losing meaning?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "consensus" },
+      { "letter": "C", "label": "consensus of shared opinion" },
+      { "letter": "D", "label": "unanimous consensus of opinion" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A consensus IS an agreement of opinion — 'of opinion' repeats what the word already says.",
+      "B": "'Consensus' alone carries the full meaning.",
+      "C": "'Shared' stacks a third redundancy onto the phrase.",
+      "D": "'Unanimous' adds yet another layer of the same idea."
+    },
+    "why_correct_md": "The ACT rewards the **shortest** option that preserves the meaning — 'consensus' says it all.",
+    "why_tempted_md": "Longer phrases feel more formal and thorough.",
+    "rule_md": "Cut words that restate what another word already contains.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "In the lab report's discussion section, the experiment's results were <u>super weird</u>, prompting a full review of the method.",
+    "stem_md": "Which choice best matches the passage's formal tone?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "unexpected" },
+      { "letter": "C", "label": "totally bizarre" },
+      { "letter": "D", "label": "kind of strange" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Super weird' is casual slang — jarring inside a formal lab report.",
+      "B": "'Unexpected' states the same fact in the register a lab report uses.",
+      "C": "'Totally bizarre' swaps one informality for another.",
+      "D": "'Kind of strange' keeps the conversational hedge the context forbids."
+    },
+    "why_correct_md": "Word choice must match the **register** of the surrounding passage — formal here.",
+    "why_tempted_md": "The informal options are vivid and natural in speech.",
+    "rule_md": "Check the passage's tone before judging a word: formal context → formal diction.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Ella trained all winter for the marathon. <u>In contrast</u>, she finished in her best time ever.",
+    "stem_md": "Which transition names the actual relationship between the sentences?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "As a result" },
+      { "letter": "C", "label": "For instance" },
+      { "letter": "D", "label": "On the other hand" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'In contrast' promises opposition, but the best-ever finish FOLLOWS FROM the training.",
+      "B": "The record finish is the outcome of the winter of training — cause and effect.",
+      "C": "'For instance' promises an example, not an outcome.",
+      "D": "'On the other hand' signals the same false contrast as 'In contrast'."
+    },
+    "why_correct_md": "The second sentence is the **result** of the first — the transition must say so.",
+    "why_tempted_md": "Any transition reads smoothly if you don't test the logic it claims.",
+    "rule_md": "Name the real relationship (cause, example, contrast, time) before picking a transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The library's archive holds thousands of rare maps. <u>Therefore</u>, its oldest map dates to 1502.",
+    "stem_md": "Which transition best fits what the second sentence does?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "For example" },
+      { "letter": "C", "label": "However" },
+      { "letter": "D", "label": "In conclusion" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Therefore' claims the 1502 map is a logical consequence of the archive's size — it isn't.",
+      "B": "The 1502 map is a specific illustration of the archive's rare holdings — an example.",
+      "C": "'However' promises a contrast the sentences don't make.",
+      "D": "'In conclusion' signals a summary, but the sentence adds a new detail."
+    },
+    "why_correct_md": "A concrete instance supporting a general claim is introduced with **for example**.",
+    "why_tempted_md": "'Therefore' sounds authoritative, masking that nothing is actually being deduced.",
+    "rule_md": "General claim followed by a specific instance → an example transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Each morning, she would <u>rise up</u> at dawn to water the garden.",
+    "stem_md": "Which choice removes the redundant word?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "rise" },
+      { "letter": "C", "label": "rise upward" },
+      { "letter": "D", "label": "get up to rise" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Rise' already means to move up — 'up' repeats it.",
+      "B": "'Rise' alone carries the full meaning.",
+      "C": "'Upward' is the same redundancy in a longer word.",
+      "D": "'Get up to rise' says the same thing twice in two ways."
+    },
+    "why_correct_md": "The direction is **inside the verb**: rising is upward by definition.",
+    "why_tempted_md": "'Rise up' is common in speech and song, so it sounds idiomatic.",
+    "rule_md": "Drop particles that repeat the verb's built-in direction (rise up, descend down, return back).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>Due to the fact that</u> the bridge was icy, the road crew closed it overnight.",
+    "stem_md": "Which choice trims the wordy opener?",
+    "choices": [
+      { "letter": "A", "label": "NO CHANGE" },
+      { "letter": "B", "label": "Because" },
+      { "letter": "C", "label": "In light of the fact that" },
+      { "letter": "D", "label": "Being that" }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Due to the fact that' spends five words doing one word's job.",
+      "B": "'Because' states the cause directly.",
+      "C": "'In light of the fact that' is even wordier than the original.",
+      "D": "'Being that' is both nonstandard and no shorter in spirit."
+    },
+    "why_correct_md": "**Because** replaces the five-word scaffold with the one word it means.",
+    "why_tempted_md": "The long phrase sounds official, which reads as 'more correct'.",
+    "rule_md": "Swap wordy connectors for their one-word equivalents (due to the fact that → because).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  }
+]

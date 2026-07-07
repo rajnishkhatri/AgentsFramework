@@ -45,11 +45,20 @@ import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
 import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
+import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
+import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
 export interface BuildEngineAdaptersOptions {
   readonly env: Readonly<Record<string, string | undefined>>;
   /** Test seam: inject an EngineDb (e.g. a seeded InMemoryEngineDb) directly. */
   readonly engineDb?: EngineDb;
+  /**
+   * Which store feeds the practice quiz (ADR-0021) — mirrors the browser root
+   * (Rule F3 parity). `"bank"` binds the bag's `questionRepo` + the scheduler
+   * to the governed `test_item` bank via the read-only `TestItemQuestionRepo`;
+   * `"practice"` (default) keeps the `question`-table wiring.
+   */
+  readonly questionSource?: "practice" | "bank";
 }
 
 export interface EnginePortBag {
@@ -97,7 +106,14 @@ export function buildEngineAdapters(
 ): EnginePortBag {
   const db = options.engineDb ?? selectEngineDb(options.env);
 
-  const questionRepo = new DrizzleQuestionRepo(db);
+  const testItemRepo = new DrizzleTestItemRepo(db);
+  // ADR-0021 parity with the browser root: the bank path reuses the identical
+  // FsrsScheduler bound to the read-only bank adapter; the practice repo and
+  // question table stay untouched (leak unrepresentable, ADR-0015 clause 1).
+  const questionRepo =
+    options.questionSource === "bank"
+      ? new TestItemQuestionRepo(testItemRepo, DEFAULT_SUBJECT)
+      : new DrizzleQuestionRepo(db);
 
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
@@ -116,7 +132,7 @@ export function buildEngineAdapters(
     hintRepo: new DrizzleHintRepo(db),
     // Read-only governed test plane (ADR-0015): reviewed items + blueprint,
     // no write surface — serving code can never flip the gate.
-    testItemRepo: new DrizzleTestItemRepo(db),
+    testItemRepo,
     testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
   };
 }

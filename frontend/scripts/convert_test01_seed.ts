@@ -12,9 +12,12 @@
  * which re-stamps `generated_by="<model>@<run_id>"` on promotion — so
  * "test01-import" never rides a reviewed=true row.
  *
- * The `Question` shape carries answer-bearing rationale fields; `TestItem` does
- * NOT (a bank item is stem + choices + key). The rationale is dropped here — it
- * is not part of the exam-item contract and would be dead weight in the bank.
+ * TEACHING FIELDS CARRIED THROUGH (ADR-0021 — reverses the original "dead
+ * weight" drop). The bank now also serves the PRACTICE quiz via the
+ * `TestItemQuestionRepo` adapter, and the Feedback screen renders
+ * `per_choice_rationale` + `rule_md` — so the parsed `Question`'s teaching
+ * payload maps into the seed row losslessly. Without this the seed would
+ * quarantine at the cascade's schema stage (fail-closed).
  *
  * Pure: `(Question[]) -> TestItem[]`, no I/O.
  */
@@ -29,9 +32,17 @@ export function toTestItemSeed(questions: readonly Question[]): TestItem[] {
     subject: q.subject,
     skill_id: q.skill_id,
     difficulty: q.difficulty,
+    context_html: q.context_html,
     stem_md: q.stem,
     choices: q.choices,
     answer_letter: q.answer_letter,
+    // Teaching payload (ADR-0021): lossless into the bank — the practice
+    // Feedback screen renders these on bank-served items.
+    per_choice_rationale: q.per_choice_rationale,
+    why_correct_md: q.why_correct_md,
+    why_tempted_md: q.why_tempted_md,
+    rule_md: q.rule_md,
+    item_type: q.item_type,
     // Demotion (FR-25.1): the converter's self-stamp is unearned; the cascade
     // is the sole reviewer for imported items just as for generated ones.
     reviewed: false,
