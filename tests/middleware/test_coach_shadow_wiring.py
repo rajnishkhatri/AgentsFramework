@@ -115,6 +115,48 @@ class TestBuildRuntimeGraphCapabilityPassthrough:
         assert spy.call_args.kwargs["bound_capabilities"] == SUBJECT_COACH_CAPABILITIES
 
 
+class TestCoachLeakageCertAttestation:
+    """Step 0 (ADR-0020 / Recipe 9): the composition root forwards the coach
+    leakage-gate cert attestation into ``build_graph`` as ``coach_goldset_certified``.
+
+    Without it, ``arm()`` pins the gate ``off`` in prod regardless of the config
+    mode — the gate can never reach shadow/enforce. The attestation is an explicit
+    operator act (``COACH_LEAKAGE_CERT_ATTESTED``, default off): it asserts the
+    deployed judge is the ADR-0019-certified ``glm-5.2-fireworks``. Fail-safe: an
+    un-attested (or default) deployment forwards ``False`` so ``arm`` stays ``off``.
+    """
+
+    def _bag_with_attestation(self, attested: bool):
+        bag = _components_bag(_base_agent_config())
+        # settings is a MagicMock (truthy by default) — pin the exact flag so the
+        # test asserts the wire reads THIS field, not incidental MagicMock truthiness.
+        bag.settings.coach_leakage_cert_attested = attested
+        return bag
+
+    def test_unattested_forwards_certified_false_fail_safe(self) -> None:
+        # FAILURE PATH FIRST: a deployment that has NOT attested the certified judge
+        # must forward coach_goldset_certified=False — arm() then pins the gate off.
+        from middleware.composition import build_runtime_graph
+
+        spy = MagicMock(name="build_graph")
+        build_runtime_graph(self._bag_with_attestation(False), spy)
+        assert spy.call_args.kwargs["coach_goldset_certified"] is False
+
+    def test_attested_forwards_certified_true(self) -> None:
+        from middleware.composition import build_runtime_graph
+
+        spy = MagicMock(name="build_graph")
+        build_runtime_graph(self._bag_with_attestation(True), spy)
+        assert spy.call_args.kwargs["coach_goldset_certified"] is True
+
+    def test_settings_default_is_unattested(self) -> None:
+        # The real settings default must be off (never arm a gate by default).
+        from middleware.composition import AgentRuntimeSettings
+
+        settings = AgentRuntimeSettings()
+        assert settings.coach_leakage_cert_attested is False
+
+
 # ─────────────────────────────────────────────────────────────────────
 # build_coach_components — the coach AgentConfig derivation
 # ─────────────────────────────────────────────────────────────────────

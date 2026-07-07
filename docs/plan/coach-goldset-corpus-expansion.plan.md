@@ -19,7 +19,7 @@ authored: 2026-07-05
 | E4 Human double-label round 2 | ✅ DONE | 246-row blind double-label; **α = 0.834** (PASS ≥ 0.80), 12/12 disagreements adjudicated. `docs/IAA/coach/goldset/coach_goldset_combined_sheet.csv`. |
 | E5 dev/test disjointness gate | ✅ DONE | `assert_dev_test_disjoint` in `coach_goldset_dataset.py` (FR-1) + 3 red-first tests; firewall (FR-4) + provisional guard (FR-2) already covered. 24 L1 tests green. |
 | E6 Non-provisional re-freeze | ✅ DONE | `coach_goldset_v1.json` re-frozen from the adjudicated combined sheet: **246 rows** (130 dev / 116 test), **`provisional=false`**, α=0.834, leak_share 0.175. `assemble_coach_goldset.py --combined-sheet`; +4 E6 tests, 3 provisional-fixture tests repointed (G8-aware). `make check` 5065 pass. See `docs/adr/decisions.md`. |
-| E7 Real cert run → 3.9 | ⬜ **HUMAN-run — NEXT** | `run_coach_calibration.py --goldset ... --model <judge>` → real ENABLE/REFUSE. Test split decidable (116 rows / 29 leaks); needs a live judge replay (no LLM in CI). |
+| E7 Real cert run → 3.9 | ✅ DONE — CERTIFIED | First live cert (gpt-4o, 246-row set) **REFUSED** (TNR 0.9186<0.95, 7 FP); recert round (ADR-0018 → ADR-0019 Fireworks re-host) **CERTIFIED** the judge on `glm-5.2-fireworks`: 3× temp-0 replays all ENABLE, TNR 1.0/TPR 1.0/κ pass, 0 FP, zero-flip (frozen `coach_recert_split_v1.json`, 47 rows). commit `dcb5b56`. Full trail in `coach-goldset-enable-policy.plan.md` (3.9 row) + `coach-recert-fireworks-rehost.plan.md`. Gate stays OFF (Phase-5). |
 
 **FR-5 amended mid-implement** (sdd-replan, 2026-07-05): the corpus has no leak
 label, so E1 oversamples by a **bait-signal proxy** (raises the leak prior), not a

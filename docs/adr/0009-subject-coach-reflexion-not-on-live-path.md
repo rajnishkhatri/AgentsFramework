@@ -11,7 +11,12 @@ tags: [decision-record]
 
 # ADR-0009: Reflexion loop is offline-only for the Subject-Coach (not on the live conversational path)
 
-**Status:** Accepted — 2026-07-01 (was Proposed — 2026-06-30). Ratified in the
+**Status:** Accepted — 2026-07-01 (was Proposed — 2026-06-30); **superseded in
+part by [ADR-0020](0020-coach-leakage-gate-rollout.md) — 2026-07-06**: the OFF-GRAPH
+ban survives for the Reflexion / GoalJudge / coach-judge-sampler inline path, but
+the certified answer-leakage gate (ADR-0019) gets ONE declared inline binding on the
+coach turn. The reversal preconditions this ADR named are met (reflections leak
+fixed / coach-specific leak-aware judge / certified TNR 1.0). Ratified in the
 detailed-component-design adjudication
 ([SUBJECT_COACH_DETAILED_COMPONENT_DESIGN.md](../Architectures/SUBJECT_COACH_DETAILED_COMPONENT_DESIGN.md) §7);
 the one hard prerequisite (the `reflections` cross-turn leak) was satisfied ahead of

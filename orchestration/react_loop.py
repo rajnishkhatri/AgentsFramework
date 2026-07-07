@@ -13,7 +13,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -49,6 +49,16 @@ from components.reflexion import (
     reflections_for_task,
 )
 from components.coach_context import coach_context_contract, render_coach_context_block
+from components.coach_leakage_gate import (
+    COACH_LEAKAGE_FALLBACK,
+    LeakageGateMode,
+    LeakageJudge,
+    arm,
+    build_leakage_judge,
+    decide_leakage_enforcement,
+    judge_leakage,
+    make_regenerate,
+)
 from components.goal_judge import GoalJudge, _summarize_evidence, summarize_tool_calls
 from components.memory_context import (
     build_store_payload,
@@ -287,6 +297,114 @@ def _shadow_check_phase_carriers(
     record_enforcement(black_box, workflow_id, decision, step=step)
     if decision.action == "raise":
         raise CarrierGateViolation(gap)
+
+
+def _record_leakage_gate_carrier(
+    black_box: Any,
+    workflow_id: str,
+    *,
+    mode: str,
+    verdict: str,
+    action: str,
+    trace_id: str,
+    step: int,
+) -> None:
+    """Emit the ``coach_leakage_gate`` governance carrier (FR-8) — never silent.
+
+    Mirrors the OUTPUT_VALIDATION ``output_scan`` emit + the carrier-gate
+    always-record discipline: every gated path (shadow record, enforce
+    allow/regenerate/suppress, fail_open) leaves one auditable carrier.
+    """
+    black_box.record(
+        TraceEvent(
+            event_id=str(uuid.uuid4()),
+            workflow_id=workflow_id,
+            event_type=EventType.GUARDRAIL_CHECKED,
+            timestamp=datetime.now(UTC),
+            step=step,
+            details={
+                "stage": "output",
+                "guardrail": "coach_leakage_gate",
+                "mode": mode,
+                "verdict": verdict,
+                "action": action,
+                "trace_id": trace_id,
+                "checked": True,
+            },
+        )
+    )
+
+
+async def _run_coach_leakage_gate(
+    *,
+    content: str,
+    mode: LeakageGateMode,
+    judge: LeakageJudge,
+    regenerate: Callable[..., Awaitable[str]],
+    learner_utterance: str,
+    question: str,
+    black_box: Any,
+    workflow_id: str,
+    step: int,
+    trace_id: str,
+    fallback: str,
+) -> str:
+    """Inline coach answer-leakage gate (ADR-0020; FR-1/3/5/6/7/8).
+
+    Thin orchestration act (AP-4/AP-5): the mode→action policy is the pure
+    ``decide_leakage_enforcement``; this only performs the act + records the
+    carrier. Returns the (possibly substituted) reply text.
+
+    - ``off``     → caller does not invoke this (zero cost).
+    - ``shadow``  → judge, record the verdict, return ``content`` unchanged.
+    - ``enforce`` → a flagged reply is regenerated once; if the retry still leaks,
+      suppress to ``fallback``; a judge outage returns ``content`` (fail-open).
+    """
+    verdict = await judge_leakage(
+        judge,
+        learner_utterance=learner_utterance,
+        coach_reply=content,
+        mode="pre_submit",
+        question=question,
+    )
+    action = decide_leakage_enforcement(mode, verdict)
+
+    result = content
+    recorded_action = action
+    if action == "regenerate":
+        # The gate DID regenerate; the carrier records ``regenerate`` even when the
+        # retry clears (auditable: a regeneration happened), and ``suppress`` only
+        # when the retry still leaked and the fallback was substituted.
+        regenerated = await regenerate(coach_reply=content)
+        retry_verdict = await judge_leakage(
+            judge,
+            learner_utterance=learner_utterance,
+            coach_reply=regenerated,
+            mode="pre_submit",
+            question=question,
+        )
+        retry_action = decide_leakage_enforcement(
+            mode, "leak", retry_verdict=retry_verdict
+        )
+        if retry_action == "suppress":
+            result = fallback
+            recorded_action = "suppress"
+        else:  # allow — the regeneration cleared the leak; keep ``regenerate``
+            result = regenerated
+    elif action == "suppress":
+        result = fallback
+    # allow / shadow_record / fail_open leave ``content`` unchanged.
+
+    _record_leakage_gate_carrier(
+        black_box,
+        workflow_id,
+        mode=mode,
+        verdict=verdict,
+        action=recorded_action,
+        trace_id=trace_id,
+        step=step,
+    )
+    return result
 
 
 def _ensure_checkpoint_saver_instance(checkpointer: Any) -> None:
@@ -973,6 +1091,8 @@ def build_graph(
     | None = None,
     memory_service: LongTermMemoryService | None = None,
     bound_capabilities: list[str] | None = None,
+    coach_leakage_config_reader: Any | None = None,
+    coach_goldset_certified: bool = False,
 ) -> Any:
     """Build and compile the ReAct StateGraph.
 
@@ -1122,6 +1242,15 @@ def build_graph(
         defaults_enabled=agent_config.goal_judge_enabled,
         defaults_downgrade=agent_config.goal_judge_downgrade_enabled,
     )
+
+    # ADR-0020: the coach answer-leakage gate reads its off/shadow/enforce mode
+    # here (the ONE declared inline judge binding). Defaults to a URI/env-backed
+    # reader that resolves ``off`` when nothing is configured (fail-dark).
+    from services.subject_coach_judge_runtime_config import (
+        SubjectCoachJudgeConfigReader,
+    )
+
+    clg_reader = coach_leakage_config_reader or SubjectCoachJudgeConfigReader()
 
     # task_understanding plan §4.5: plan-time intent restatement + checklist,
     # same CAPABLE eval_profile as the judge (H2) — eval-quality work. Cheap to
@@ -2451,6 +2580,41 @@ def build_graph(
             if scan.blocked:
                 tool_calls = []
             content = scan.sanitized_content
+
+            # ADR-0020: the coach answer-leakage gate — the ONE declared inline
+            # judge binding. Coach-only + armed only above the cert floor; ``off``
+            # (the default in every env) adds zero cost. Thin act — all policy is
+            # the pure decide_leakage_enforcement in components/coach_leakage_gate.
+            coach_context = state.get("coach_context")
+            if coach_context is not None and content:
+                gate_mode = arm(
+                    clg_reader.get().coach_leakage_gate_mode,
+                    goldset_certified=coach_goldset_certified,
+                )
+                if gate_mode != "off":
+                    clg_profile = llm_service.get_profile(
+                        state.get("selected_model", "")
+                    )
+                    clg_learner = state.get("task_input", "")
+                    content = await _run_coach_leakage_gate(
+                        content=content,
+                        mode=gate_mode,
+                        judge=build_leakage_judge(clg_profile),
+                        regenerate=make_regenerate(
+                            llm_service,
+                            clg_profile,
+                            learner_utterance=clg_learner,
+                        ),
+                        learner_utterance=clg_learner,
+                        question=coach_context.get("question", "")
+                        if isinstance(coach_context, dict)
+                        else "",
+                        black_box=black_box,
+                        workflow_id=workflow_id,
+                        step=step_count,
+                        trace_id=state.get("trace_id", ""),
+                        fallback=COACH_LEAKAGE_FALLBACK,
+                    )
 
             ai_msg = AIMessage(content=content, tool_calls=tool_calls)
 
