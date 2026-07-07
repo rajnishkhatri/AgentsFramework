@@ -11,11 +11,13 @@ The ladder has EXACTLY three rungs — the schema is the enforcement (FR-20
    NEVER asserts or uniquely identifies the answer.
 
 Pre-submit mode serves hints ONLY from ``reviewed=True`` rungs
-(``rungs_for_question`` is the serving gate). This module carries the
-hand-authored interim asset (agent design §11 step 2) keyed to the dev-seed
-questions; Phase 4's generator + ``hint`` table replace it (ADR-0006 second
-amendment), at which point ``authored_by`` becomes ``generated_by``
-provenance.
+(``rungs_for_question`` is the serving gate). Two data assets feed it:
+``AUTHORED_RUNGS`` here (hand-authored for the retired dev-seed questions —
+their ``q-*`` ids are HISTORICAL and inert since ADR-0021 removed those
+questions) and the generated ``BANK_RUNGS``
+(``components/subject_coach_bank_hints.py``, cascade-earned ladders for the
+live ``ti-gen-*`` bank items — the coach-bank-hints increment; ADR-0014
+amendment note has the source-direction story).
 
 Framework-agnostic (Invariant #3): stdlib + Pydantic only.
 """
@@ -86,10 +88,11 @@ def _rung(question_id: str, rung: Literal[1, 2, 3], body_md: str) -> HintRung:
     )
 
 
-# Interim authored asset — dev-seed corpus (frontend/lib/adapters/engine/
-# _dev_seed.ts). One full ladder per question. Leak discipline: rung 3 may
-# narrow ("check X", "eliminate Y-shaped choices") but never names a letter
-# or uniquely identifies the correct choice.
+# Hand-authored ladders for the RETIRED dev-seed questions (ADR-0021 removed
+# them; these q-* ids match no served item and are kept as inert history —
+# the live bank ladders are BANK_RUNGS). One full ladder per question. Leak
+# discipline: rung 3 may narrow ("check X", "eliminate Y-shaped choices") but
+# never names a letter or uniquely identifies the correct choice.
 AUTHORED_RUNGS: Final[list[HintRung]] = [
     # q-punc-1 — nonrestrictive clause commas
     _rung(
