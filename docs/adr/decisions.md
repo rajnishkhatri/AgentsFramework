@@ -336,3 +336,19 @@ title: 'Lightweight decision log (intent debt, long tail)'
   un-ADR'd in range). Also: a pre-existing G8 blocker on the branch
   (`ed029b6`'s arch-test rename lacked per-test `# G8-OK:` waivers) was cleared with
   two named waiver comments.
+- 2026-07-07 — **Bank hint ladders (coach-bank-hints; no new ADR — reuses the
+  ADR-0014 seam, amendment note added there).** The 8 ADR-0021 bank items got
+  cascade-earned 3-rung ladders (24 rows, 0 waivers). Shape decisions: the
+  canonical artifact is the frozen corpus JSON (`coach-bank-hints.seed.json`);
+  `scripts/emit_hint_bank.py` emits BOTH serving modules from it (TS seed +
+  Python data asset) so the two planes cannot drift — rejected alternatives:
+  TS-as-source (awkward cross-language dependency) and JSON-read-at-import in
+  components/ (breaks the literal-data-asset purity posture). `AUTHORED_RUNGS`
+  kept + `BANK_RUNGS` appended (deletion = G8 surface for zero benefit; the
+  q-* ids are inert). Full-ladder bar with an explicit waiver table as the
+  escape hatch (`HINT_BANK_WAIVERS`, empty this increment); coverage ratchet
+  (vitest) + hint-provenance confinement (arch test — the stem_md scan is
+  blind to hint rows) + deterministic leakage re-verification in make check.
+  `prompts/hint_generator.j2` gained the passage line (context_html blindness,
+  the item-bank solver-fix twin) and discipline rule 5 (never quote the
+  underlined phrase — "consensus" ⊂ "consensus of opinion" leak class).
