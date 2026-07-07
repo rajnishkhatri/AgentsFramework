@@ -62,6 +62,11 @@ class ErrorLLMService:
         raise RuntimeError("simulated provider outage")
 
 
+async def _no_sleep(_seconds: float) -> None:
+    """Injected in place of ``asyncio.sleep`` so retry tests don't actually wait."""
+    return None
+
+
 class BlockListLLMService:
     """Reasoning-model stub: ``.content`` is a DeepSeek-V4-style block list.
 
@@ -195,6 +200,91 @@ class TestProviderErrorPaths:
             judge_profile=_profile(),
         )
         assert await _judge_turn(judge) is None
+
+
+class _FlakyLLMService:
+    """Raises on the first ``fail_times`` invokes, then replays a good response.
+
+    Models the intermittent GLM thinking-mode provider exception the C1 re-cert
+    hit (5/47 rows abstained on transient errors while toy calls were 20/20 clean).
+    """
+
+    def __init__(self, response_content: str, *, fail_times: int) -> None:
+        self._response_content = response_content
+        self._fail_times = fail_times
+        self.attempts = 0
+
+    async def invoke(self, profile, messages, **kwargs):
+        self.attempts += 1
+        if self.attempts <= self._fail_times:
+            raise RuntimeError(f"simulated transient error {self.attempts}")
+        return _FakeResponse(self._response_content)
+
+
+class TestProviderRetry:
+    """Bounded retry on transient provider errors (C1 re-cert abstain fix).
+
+    Retry wraps ONLY the provider call — a transient exception is recoverable; a
+    malformed verdict is deterministic and must NOT be retried. AP-6 still holds:
+    exhausted retries yield ``None``, never a fabricated verdict.
+    """
+
+    @pytest.mark.asyncio
+    async def test_retry_recovers_after_transient_error(self):
+        """One transient failure then success ⇒ a real verdict, not an abstain."""
+        llm = _FlakyLLMService(_pedagogy_response(), fail_times=1)
+        judge = PedagogyJudge(
+            llm_service=llm,  # type: ignore[arg-type]
+            prompt_service=PromptService(),
+            judge_profile=_profile(),
+        )
+        verdict = await judge.evaluate(
+            learner_utterance="why is B right?",
+            coach_reply="What does each clause need to stand alone?",
+            mode="pre_submit",
+            question="Which sentence uses the semicolon correctly?",
+            _sleep=_no_sleep,
+        )
+        assert verdict is not None  # recovered, not abstained
+        assert llm.attempts == 2  # 1 failure + 1 success
+
+    @pytest.mark.asyncio
+    async def test_retry_exhausted_yields_none_ap6(self):
+        """Every attempt fails ⇒ still ``None`` (AP-6), and it tried >1 time."""
+        llm = _FlakyLLMService(_pedagogy_response(), fail_times=99)  # never succeeds
+        judge = PedagogyJudge(
+            llm_service=llm,  # type: ignore[arg-type]
+            prompt_service=PromptService(),
+            judge_profile=_profile(),
+        )
+        verdict = await judge.evaluate(
+            learner_utterance="why is B right?",
+            coach_reply="What does each clause need to stand alone?",
+            mode="pre_submit",
+            question="Which sentence uses the semicolon correctly?",
+            _sleep=_no_sleep,
+        )
+        assert verdict is None  # fail-closed, never fabricated
+        assert llm.attempts >= 2  # retried, didn't give up after the first error
+
+    @pytest.mark.asyncio
+    async def test_malformed_verdict_is_not_retried(self):
+        """A deterministic parse failure must NOT burn retries — exactly 1 call."""
+        llm = FakeLLMService("the hint seemed fine, ~7/10")  # unparseable, always
+        judge = PedagogyJudge(
+            llm_service=llm,  # type: ignore[arg-type]
+            prompt_service=PromptService(),
+            judge_profile=_profile(),
+        )
+        verdict = await judge.evaluate(
+            learner_utterance="why is B right?",
+            coach_reply="What does each clause need to stand alone?",
+            mode="pre_submit",
+            question="Which sentence uses the semicolon correctly?",
+            _sleep=_no_sleep,
+        )
+        assert verdict is None
+        assert len(llm.calls) == 1  # parse failures are not retried
 
 
 class TestMalformedVerdictPaths:

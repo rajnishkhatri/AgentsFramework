@@ -227,6 +227,67 @@ _GLM_PROFILES: list[ModelProfile] = [
 ]
 
 
+# Fireworks-hosted profiles (ADR-0019). Same open weights as the Z.ai GLM path,
+# re-hosted on a reliable inference host because Z.ai's serving stalls break the
+# coach judge's FR-9 temp-0 zero-flip. ``provider="direct"`` routes through the
+# Fireworks adapter (services/llm_providers/), keyed by the ``-fireworks`` name
+# suffix (checked BEFORE the glm branch — glm-5.2-fireworks matches both). The
+# ``litellm_id`` carries the Fireworks WIRE id (``accounts/fireworks/models/<m>``),
+# selected by profile, never munged in a caller (H2).
+#
+# Wire ids CONFIRMED against the account's serverless catalog (2026-07-06, the
+# FR-7 "confirm the slug at screening time" step). Fireworks encodes a version
+# DOT as ``p`` — GLM-5.2 is ``glm-5p2`` (NOT ``glm-5.2``; that 404s). The three
+# cross-family candidates originally guessed (deepseek-r1 / qwen3-235b /
+# llama-nemotron-ultra) are NOT serverless on this account (deepseek-r1 is
+# "Serverless: Not supported"); replaced with the strong reasoning models that
+# ARE served: DeepSeek-V4-Pro, Kimi-K2.6, GPT-OSS-120B. The lead is glm-5p2
+# (open-weight, cleared quality on Z.ai); the others are screened alongside it.
+_FIREWORKS_PROFILES: list[ModelProfile] = [
+    ModelProfile(
+        name="glm-5.2-fireworks",
+        litellm_id="accounts/fireworks/models/glm-5p2",
+        tier="reasoning",
+        context_window=200000,
+        cost_per_1k_input=0.0012,
+        cost_per_1k_output=0.0041,
+        max_output_tokens=8192,
+        provider="direct",
+    ),
+    ModelProfile(
+        name="deepseek-v4-pro-fireworks",
+        litellm_id="accounts/fireworks/models/deepseek-v4-pro",
+        tier="reasoning",
+        context_window=163840,
+        cost_per_1k_input=0.003,
+        cost_per_1k_output=0.008,
+        max_output_tokens=8192,
+        provider="direct",
+    ),
+    ModelProfile(
+        name="kimi-k2.6-fireworks",
+        litellm_id="accounts/fireworks/models/kimi-k2p6",
+        tier="reasoning",
+        context_window=128000,
+        cost_per_1k_input=0.0009,
+        cost_per_1k_output=0.0009,
+        max_output_tokens=8192,
+        provider="direct",
+    ),
+    ModelProfile(
+        name="gpt-oss-120b-fireworks",
+        litellm_id="accounts/fireworks/models/gpt-oss-120b",
+        tier="reasoning",
+        context_window=128000,
+        cost_per_1k_input=0.0009,
+        cost_per_1k_output=0.0009,
+        max_output_tokens=8192,
+        provider="direct",
+    ),
+    *_OPENAI_PROFILES,
+]
+
+
 def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
     """First-wins dedupe by ``name`` (LLMService._profiles keys by name, so a
     duplicate name would silently collapse; we keep the first to make the order
@@ -247,7 +308,13 @@ def _dedupe_by_name(profiles: list[ModelProfile]) -> list[ModelProfile]:
 # this set stays cheap/predictable (first fast == gpt-4o-mini), but the intent
 # is that callers PIN a concrete model, never route Auto here.
 _ALL_PROFILES: list[ModelProfile] = _dedupe_by_name(
-    [*_OPENAI_PROFILES, *_ANTHROPIC_PROFILES, *_DEEPSEEK_PROFILES, *_GLM_PROFILES]
+    [
+        *_OPENAI_PROFILES,
+        *_ANTHROPIC_PROFILES,
+        *_DEEPSEEK_PROFILES,
+        *_GLM_PROFILES,
+        *_FIREWORKS_PROFILES,
+    ]
 )
 
 # Each entry: (ordered profile list, default_model name). The default is the
@@ -257,6 +324,10 @@ _MODEL_PROFILE_SETS: dict[str, tuple[list[ModelProfile], str]] = {
     "anthropic": (_ANTHROPIC_PROFILES, "claude-haiku-4-5"),
     "deepseek": (_DEEPSEEK_PROFILES, "deepseek-v4-flash"),
     "glm": (_GLM_PROFILES, "glm-5.1"),
+    # ADR-0019: the coach re-cert set. Pin-driven (like ``all``) — the cert pins
+    # ``COACH_JUDGE_MODEL=glm-5.2-fireworks`` (or a screened candidate); the
+    # default names the GLM-5.2 lead so a bare Auto run is the intended judge.
+    "fireworks": (_FIREWORKS_PROFILES, "glm-5.2-fireworks"),
     "all": (_ALL_PROFILES, "gpt-4o-mini"),
 }
 

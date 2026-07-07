@@ -41,6 +41,7 @@ __all__ = [
     "record_verdicts",
     "write_verdicts",
     "select_judge_profile",
+    "build_judges_for_profile",
     "build_live_judges",
     "main",
 ]
@@ -157,23 +158,43 @@ def select_judge_profile(
     )
 
 
+def build_judges_for_profile(  # pragma: no cover - live only
+    profile: Any, models: list[Any] | None = None
+) -> tuple[Any, Any]:
+    """Construct the REAL judges (pedagogy, grader) for an EXPLICIT profile.
+
+    The profile-agnostic half of :func:`build_live_judges` — no env read, no
+    selection. The Fireworks screening harness (ADR-0019) reuses this to build a
+    judge per candidate profile it iterates. ``models`` defaults to a
+    single-profile catalog (the judge only needs its own profile registered).
+    """
+    from components.subject_coach_judges import GraderJudge, PedagogyJudge
+    from services.base_config import AgentConfig  # noqa: PLC0415
+    from services.llm_config import LLMService  # noqa: PLC0415
+    from services.prompt_service import PromptService  # noqa: PLC0415
+
+    agent_config = AgentConfig(default_model=profile.name, models=models or [profile])
+    llm_service = LLMService(agent_config)
+    prompt_service = PromptService()
+    pedagogy = PedagogyJudge(llm_service, prompt_service, profile, name="PedagogyJudge")
+    grader = GraderJudge(llm_service, prompt_service, profile, name="GraderJudge")
+    return pedagogy, grader
+
+
 def build_live_judges() -> tuple[Any, Any, str]:  # pragma: no cover - live only
     """Construct the REAL judges from production wiring (live LLM).
 
     Imported lazily inside ``main`` so the module imports with no provider/env.
     Never called by any test — the offline smoke test injects a stub judge. The
-    pure model-selection branch lives in :func:`select_judge_profile` (L1-tested).
+    pure model-selection branch lives in :func:`select_judge_profile` (L1-tested);
+    the profile-agnostic construction in :func:`build_judges_for_profile`.
     """
     import os
 
-    from components.subject_coach_judges import GraderJudge, PedagogyJudge
-    from services.base_config import AgentConfig  # noqa: PLC0415
     from services.llm_config import (  # noqa: PLC0415
         DEFAULT_MODEL_PROFILE_SET,
-        LLMService,
         build_model_registry,
     )
-    from services.prompt_service import PromptService  # noqa: PLC0415
 
     # Build the full catalog (H2-canonical entry point), honoring MODEL_PROFILE_SET.
     profile_set = os.environ.get("MODEL_PROFILE_SET", DEFAULT_MODEL_PROFILE_SET)
@@ -189,12 +210,7 @@ def build_live_judges() -> tuple[Any, Any, str]:  # pragma: no cover - live only
         model_pin=os.environ.get("COACH_JUDGE_MODEL", "").strip() or None,
         tier=os.environ.get("COACH_JUDGE_TIER", "").strip().lower(),
     )
-
-    agent_config = AgentConfig(default_model=profile.name, models=models)
-    llm_service = LLMService(agent_config)
-    prompt_service = PromptService()
-    pedagogy = PedagogyJudge(llm_service, prompt_service, profile, name="PedagogyJudge")
-    grader = GraderJudge(llm_service, prompt_service, profile, name="GraderJudge")
+    pedagogy, grader = build_judges_for_profile(profile, models)
     return pedagogy, grader, profile.name
 
 

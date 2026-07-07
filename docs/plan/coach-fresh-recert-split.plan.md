@@ -103,14 +103,52 @@ deterministic test in `make check`, seen-to-fail-first · **L4** = live/local, o
 >   attaches only to the new recert split via B4's explicit `--rubric-version` flag (49 v1
 >   tests still green). ruff clean (the `.j2` "849 errors" is ruff mis-parsing Jinja as
 >   Python — not real). Architecture: only the pre-existing G8.
-> - **NEXT — human bottleneck (B3):** two blind annotators read
->   [`coach_recert_labeling_walkthrough.md`](../IAA/coach/recert/coach_recert_labeling_walkthrough.md),
->   fill `coach_goldset_annotator{1,2}_sheet.csv` → `combined_sheet.csv`;
->   `compute_coach_goldset_alpha.py` scores α (≥0.80). THEN B4 (assemble
->   `coach_recert_split_v1.json --rubric-version coach_rubric_v2_specificity`) → B5 (L1 gate
->   tests) → C0/C1/C2 (live glm-5.2 re-cert, creds-gated). **Both hard prerequisites for C1
->   (the v2 `.j2` AND the model-pin) are now built; only the human-labeled fresh split
->   remains before the re-cert can run.**
+> - ✅ **B3 DONE (2026-07-06)** — both blind sheets labeled + adjudicated: 47/47, **zero
+>   r1≠r2 rows**, 35 `false` / 12 `true` (matches the `R-CLEAN-*`/`R-LEAK-*` design). α
+>   **re-verified mechanically this session**: `compute_coach_goldset_alpha.py
+>   docs/IAA/coach/recert/coach_goldset_combined_sheet.csv` → **α = 1.0000 PASS**;
+>   disagreement diff written (header-only). Diagnostic sidecars beyond plan
+>   ([findings](../IAA/coach/recert/coach_recert_findings.md)): a rubric-naive r3 probe
+>   scored TPR 1.0 / **TNR 0.9429 < 0.95** — reproducing the round-1 over-flag shape on two
+>   open-probe rows, i.e. the carve-out is load-bearing; **C1 FP watch-list:
+>   {R-CLEAN-24, R-CLEAN-26, R-CLEAN-29}**; caveat for the cert record: α = 1.0 measures
+>   rubric *operability*, not independent judgment (both raters shared the walkthrough;
+>   r2/r3 shared a labeler).
+> - **STAGE-4 RE-GROUND (2026-07-06) — two latent defects in
+>   `scripts/assemble_coach_goldset.py` gate B4:** (1) `--rubric-version` is parsed but
+>   **never threaded** into `build_coach_goldset_manifest` — the recert freeze would
+>   silently stamp `coach_rubric_v1_revised` (FR-7 fail; invisible in E6 because round-1
+>   used the default value); (2) **no `row_floor` exposure** — `build_coach_goldset_manifest`
+>   defaults `row_floor=200`, so the 47-row split freezes `provisional=true` (FR-3 fail →
+>   the cert short-circuits `REFUSE_PROVISIONAL`). → **new Task B4-pre**. Also corrected:
+>   the analyze-checklist G8 blocker is **stale** (`test_no_test_weakening.py` now → `1
+>   skipped`, 0 failed); findings §5's "`run_coach_calibration.py` not present" is wrong
+>   (it exists — creds are the only Track-C gate); findings §1's "Frozen:" line is ahead of
+>   reality — **no `coach_recert_split_v1` artifact exists on disk yet** (B4 never ran).
+> - ✅ **B4-pre DONE (2026-07-06, sdd-implement)** — both `assemble_coach_goldset.py` seams
+>   closed: `rubric_version` + `row_floor` threaded through `build_rows →
+>   build_coach_goldset_manifest`; `--row-floor` CLI arg added. 2 L1 tests red→green
+>   (`test_assemble_threads_rubric_version`, `test_assemble_row_floor_override_clears_provisional`);
+>   full assemble file 10 passed (E6 default-v1 test still green — no regression). ruff clean;
+>   `decisions.md` line added.
+> - ✅ **B4 DONE** — froze
+>   [`tests/fixtures/coach_goldset/coach_recert_split_v1.json`](../../tests/fixtures/coach_goldset/coach_recert_split_v1.json)
+>   (47 rows, `provisional=false`, `rubric_version=coach_rubric_v2_specificity`, α=1.0,
+>   `leak_share=0.255`, 12 leak / 35 clean, `test_split_hash` stamped). Corrected
+>   `coach_recert_findings.md` §1 (real path + assemble provenance) and §5 (creds-gated, not
+>   "not present"; added the run command + FP watch-list).
+> - ✅ **B5 DONE** — new `tests/scripts/test_recert_split_frozen.py`: 7 L1 gates on the
+>   **frozen artifact** — FR-7 rubric, FR-12 hash, FR-3 provisional/α/total, FR-2 disjoint
+>   (item_id ∩ the 116 3.9 test ids + 7 coded-FP ids + `T-CLEAN-20`, empty), FR-4 balance,
+>   FR-5 fresh-text (real assertion — 3.9 dump present), FR-11 abstention-drop (drives the
+>   `cert_from_labels` path — an abstaining clean row yields 0 FPs, never scored `false`).
+>   Each gate proven non-vacuous (bites on tamper/collision/v1/provisional). **`make check`
+>   green (5093 passed, 0 fail); `tests/architecture/` 157 passed, 0 fail — the earlier G8
+>   blocker is confirmed cleared.**
+> - **NEXT — Track C (creds-gated, only remaining gate):** C0 5-row glm-5.2 abstention smoke
+>   → C1 (≥3 temp-0 replays, zero-flip ENABLE) → C2 (gpt-4o anchor) → C3/C4. Operator env:
+>   `GLM_API_KEY`, `MODEL_PROFILE_SET=glm`, `COACH_JUDGE_MODEL=glm-5.2`. Run command +
+>   FP watch-list {R-CLEAN-24, R-CLEAN-26, R-CLEAN-29} in the findings doc §5.
 
 ### Track A — prose carve-out (reconcile with sibling spec)
 
@@ -149,23 +187,63 @@ deterministic test in `make check`, seen-to-fail-first · **L4** = live/local, o
   `test_recert_split_alpha_ge_080` reads the combined sheet → α ≥ 0.80; if α < 0.80,
   resolve disagreements / add rows before proceeding (spec §6). `[dep: B2]` *(human-in-loop)*
 
-- **B4 — Assemble the non-provisional split (FR-3/7/12).** `assemble_coach_goldset.py
-  --combined-sheet docs/IAA/coach/recert/combined.csv --rubric-version
-  coach_rubric_v2_specificity --frozen-at <ISO> --out
-  tests/fixtures/coach_goldset/coach_recert_split_v1.json`. Manifest stamps
-  `provisional=false` (α≥0.80), `rubric_version=coach_rubric_v2_specificity`, and the
-  `compute_test_split_hash` SHA-256. *Pass/fail:* **L1** `test_recert_rubric_version`
-  (manifest carries v2), `test_recert_split_hash` (hash matches rows),
-  `manifest.provisional is False`. `[dep: B3]`
+- **B4-pre — Close two assemble-script seams that silently defeat FR-7/FR-3 (STAGE-4
+  RE-GROUND, 2026-07-06).** `scripts/assemble_coach_goldset.py` was validated on round-1
+  (E6), where both defects are *invisible* because round-1 used the default rubric and
+  cleared the 200-row floor. Neither holds for a 47-row v2 freeze:
+  1. **`--rubric-version` is parsed but dropped.** `build_rows()` (line 174) takes no
+     `rubric_version` param and never forwards it to `build_coach_goldset_manifest`
+     (`coach_goldset_dataset.py:274`, default `coach_rubric_v1_revised`). Thread it
+     through `main → build_rows → build_coach_goldset_manifest` so the CLI flag reaches
+     the manifest. *Pass/fail:* **L1** `test_assemble_threads_rubric_version` — assemble
+     with `--rubric-version coach_rubric_v2_specificity` → `manifest.rubric_version ==
+     "coach_rubric_v2_specificity"` (red-first: today it stamps v1).
+  2. **`row_floor=200` is not exposed**, so a 47-row split is forced `provisional=true`
+     (`coach_goldset_dataset.py:278,297` — `below_floor` OR's into `is_provisional`),
+     which makes the cert short-circuit `REFUSE_PROVISIONAL` (FR-3 fail-closed). Add a
+     `--row-floor` CLI arg threaded to `build_coach_goldset_manifest(row_floor=…)`; the
+     recert freeze passes `--row-floor 30` (below 47, above the ≥10-leak/≥20-clean FR-4
+     mins). Keep the α≥0.80 gate as the real fail-closed guard (α=1.0 here clears it).
+     *Pass/fail:* **L1** `test_assemble_row_floor_override_clears_provisional` — 47 rows +
+     α=1.0 + `--row-floor 30` → `manifest.provisional is False` (red-first: default floor
+     forces `true`). Add a `decisions.md` line (why a per-freeze row_floor is safe here:
+     the α gate, not the 200-row heuristic, is the non-provisional guarantee for a
+     *fresh authored* split). `[dep: none]` ∥ B3
 
-- **B5 — Disjointness + balance + fresh-text L1 gates (FR-2/4/5).** Add the deterministic
-  tests: `test_recert_split_disjoint_from_3_9` (empty ∩ vs the 116 test ids + the 7 FP ids
-  `T-CLEAN-03/12/16/17/19/29`,`T-UL-01` + `T-CLEAN-20`); `test_recert_split_balance`
-  (`leak_class_share ∈ [0.20,0.40]`, ≥20 clean, ≥10 leak via `leak_class_share`/
-  `leak_class_counts`); `test_recert_utterances_fresh` (no 3.9 utterance-text overlap).
-  Also `test_recert_abstention_dropped` (FR-11 — an abstaining row excluded from confusion,
-  never `false`). *Pass/fail:* all four **L1** green (each seen red first);
-  `make check` green. `[dep: B4]`
+- **B4 — Assemble the non-provisional split (FR-3/7/12).**
+  `.venv/bin/python scripts/assemble_coach_goldset.py --combined-sheet
+  docs/IAA/coach/recert/coach_goldset_combined_sheet.csv --rubric-version
+  coach_rubric_v2_specificity --row-floor 30 --frozen-at <ISO8601> --out
+  tests/fixtures/coach_goldset/coach_recert_split_v1.json`. α is auto-computed from the
+  sheet (=1.0), manifest stamps `provisional=false`,
+  `rubric_version=coach_rubric_v2_specificity`, and the `compute_test_split_hash` SHA-256.
+  **Then correct the findings doc:** `coach_recert_findings.md` §1 ("Frozen:") + §5
+  ("`run_coach_calibration.py` not present") are ahead of / wrong about reality — §1's
+  frozen filename is `coach_recert_split_v1.json` under `tests/fixtures/coach_goldset/`
+  (not the `coach/coach_recert_split_v1.jsonl` the doc names), and the artifact does not
+  exist until this task runs; §5 should read "creds-gated" not "not present." *Pass/fail:*
+  **L1** `test_recert_rubric_version` (manifest v2), `test_recert_split_hash` (hash matches
+  rows), `manifest.provisional is False`, `manifest.total_rows == 47`. `[dep: B3, B4-pre]`
+
+- **B5 — Disjointness + balance + fresh-text L1 gates (FR-2/4/5/11).** Add the deterministic
+  tests **against the frozen `coach_recert_split_v1.json`** (B0's `test_recert_split_balance`
+  covers the *authored* rows; B5 re-asserts on the *frozen* artifact):
+  - `test_recert_split_disjoint_from_3_9` — empty `item_id` ∩ vs the 116 `coach_goldset_v1`
+    test ids **and** the 7 coded FP ids (`T-CLEAN-03/12/16/17/19/29`, `T-UL-01`) **and**
+    `T-CLEAN-20`. **Grounded correction:** intersect on **`item_id`** (both the 3.9 dump
+    `cache/open_coding/coach-phase39-tnr-fps/test_labels.jsonl` and `coach_goldset_v1.json`
+    key on `item_id`; the spec/earlier-plan said `trace_id`, which no artifact carries).
+    The recert `R-CLEAN-*`/`R-LEAK-*` namespace is prefix-disjoint from the 3.9
+    `T-CLEAN-*`/`T-UL-*`, so this should pass on freeze — the test guards a *future* id
+    collision, and is cheap insurance.
+  - `test_recert_split_balance` — `leak_class_share ∈ [0.20,0.40]` (0.255 measured), ≥20
+    clean (35), ≥10 leak (12) via the frozen manifest's `leak_class_share`/`leak_class_counts`.
+  - `test_recert_utterances_fresh` — no 3.9 utterance-text overlap on the frozen rows
+    (the 3.9 dump exists locally → real assertion, not a skip).
+  - `test_recert_abstention_dropped` (FR-11) — an abstaining row is excluded from the
+    confusion, never scored `false` (reuse the `run_coach_calibration` pure-core path).
+
+  *Pass/fail:* all four **L1** green (each seen red first); `make check` green. `[dep: B4]`
 
 ### Track C — recertification (hard-blocked: A1 landed AND B5 frozen)
 
@@ -217,20 +295,26 @@ deterministic test in `make check`, seen-to-fail-first · **L4** = live/local, o
 ## Ordering (the one thing not to get wrong)
 
 ```
-A1 ────────────────────┐
-C-pre ──────────────┐   │
-                    ├───┼──► C0 (smoke) ──► C1 (gate) ──► C3 ──► C4
-B0►B1►B2►B3►B4►B5 ──┘   │                    C2 (anchor) ─┘
-                        └── (A1 also gates C0/C1: v2 rubric)
+A1 ✅ ───────────────────────────┐
+C-pre ✅ ─────────────────────┐   │
+                              ├───┼──► C0 (smoke) ──► C1 (gate) ──► C3 ──► C4
+B0✅►B1✅►B2✅►B3✅►B4-pre►B4►B5 ─┘   │                    C2 (anchor) ─┘
+                                  └── (A1 also gates C0/C1: v2 rubric)
 ```
 
-- **A1, C-pre, and B0…B5 all start immediately** — three independent fronts. C-pre (the
-  harness model-pin) has no deps and unblocks any glm-5.2 call.
-- **C0 (smoke)** needs A1 (v2 rubric) **and** C-pre (glm-5.2 pin); only 5 rows, so it can
-  precede B5.
-- **C1 is the gate**, hard-blocked on **A1 landed AND B5 frozen AND C-pre merged**. Running
-  C1 before A1 measures the old rubric (FR-7 rejects it); before B5 there's no frozen unseen
-  surface; before C-pre it can't reach glm-5.2 at all.
+**Current position (2026-07-06):** A1, C-pre, B0–B3 all ✅ done (fresh split authored +
+enriched + blind-labeled + adjudicated, α=1.0). The chain now runs **B4-pre → B4 → B5**
+(all offline/L1, no creds) to produce and gate-lock the frozen artifact, then **C0/C1/C2**
+(creds-gated live glm-5.2 + gpt-4o). The remaining offline work is small and unblocked;
+the only external dependency is `GLM_API_KEY` for Track C.
+
+- **B4-pre** (the two assemble-script seams) is the immediate next task — pure offline,
+  no deps, gates B4.
+- **C0 (smoke)** needs A1 (v2 rubric ✅) **and** C-pre (glm-5.2 pin ✅) — both built; only
+  `GLM_API_KEY` + 5 rows remain, so it can precede B5.
+- **C1 is the gate**, hard-blocked on **B5 frozen** (A1 + C-pre already landed). Before B5
+  there's no frozen unseen surface; before B4-pre the freeze is silently `provisional=true`
+  / v1-stamped (FR-3/FR-7 fail).
 
 ## Verification mapping (EARS → task → test)
 
@@ -243,7 +327,8 @@ B0►B1►B2►B3►B4►B5 ──┘   │                    C2 (anchor) ─�
 | FR-4 | B5 | `test_recert_split_balance` | L1 |
 | FR-5 | B0/B5 | `test_recert_utterances_fresh` | L1 |
 | FR-6 | B1 | `test_recert_cases_item_enriched` | L1 |
-| FR-7 | A1/B4 | `test_recert_rubric_version` | L1 |
+| FR-7 | A1✅/B4-pre/B4 | `test_assemble_threads_rubric_version` + `test_recert_rubric_version` | L1 |
+| FR-3 (non-prov) | B4-pre/B4 | `test_assemble_row_floor_override_clears_provisional` + `provisional is False` | L1 |
 | FR-8 | C1 | (posture) no live judge in `make check` — existing guard | L1 |
 | FR-9 | C1 | zero-flip ENABLE across ≥3 temp-0 replays | L4 |
 | FR-10 | C2 | gpt-4o anchor recorded (presence) | L4 |
@@ -260,13 +345,22 @@ B0►B1►B2►B3►B4►B5 ──┘   │                    C2 (anchor) ─�
       Confirmed `COACH_JUDGE_MODEL` is genuinely unbuilt (grep-clean).
 - [x] no new `pyproject.toml` dependency — glm-5.2 rides the existing
       `services/llm_providers/glm_direct.py` direct adapter; no new dep, no ⚠️ Ask-first.
-- [ ] **PRE-EXISTING BLOCKER (not introduced here, but gates `make check`):**
-      `tests/architecture/test_no_test_weakening.py` (G8) fails vs `main` — commit `3ea6a90`
-      removed `test_refuse_provisional_on_real_artifact` when the fixture went
-      non-provisional. Per `decisions.md`, the intent was to move that coverage onto a
-      **synthetic provisional artifact** (so `REFUSE_PROVISIONAL` stays covered), not to drop
-      it. **Resolve before/with implementation:** either re-add the synthetic-artifact test
-      **or** add a `# G8-OK: <reason>` waiver. This is a genuine gate, surfaced honestly —
-      the rest of the tree (159 passed) + the ADR ratchet are green.
-- [x] baseline captured: `pytest tests/architecture/ -q` → **159 passed, 1 skipped, 1
-      failed** (the G8 item above). ADR ratchet green (docs-only, no code seam).
+- [x] **RE-GROUND (2026-07-06, post-B3) — two latent `assemble_coach_goldset.py` defects
+      that were dormant through E6 now gate the freeze → added Task B4-pre:** (1)
+      `--rubric-version` parsed but never threaded into `build_coach_goldset_manifest`
+      (would stamp `coach_rubric_v1_revised` → FR-7 fail); (2) `row_floor=200` unexposed →
+      a 47-row freeze forced `provisional=true` → cert `REFUSE_PROVISIONAL` (FR-3 fail).
+      Both confirmed by reading `build_rows`/`build_coach_goldset_manifest` this session.
+      The α gate (=1.0) remains the real non-provisional guarantee; the 200-row heuristic is
+      a corpus-size proxy that doesn't fit a fresh authored control split.
+- [x] **STALE-BLOCKER CLEARED:** the earlier "G8 fails vs `main`" item is **no longer
+      true** — `tests/architecture/test_no_test_weakening.py` → **1 skipped, 0 failed** this
+      session (the synthetic-provisional coverage was restored in the TAP-4 commits
+      `19caad4`/`f350bd7` after this checklist was first written). No waiver needed.
+- [x] baseline re-captured: `test_no_test_weakening.py` green (1 skipped); α script
+      re-run → **α=1.0000 PASS**. ADR ratchet green (docs+data+cert change, no code seam —
+      B4-pre touches `scripts/` which is outside the ADR-trigger paths).
+- [x] **findings-doc drift logged (fix in B4):** `coach_recert_findings.md` §1 "Frozen:"
+      names a not-yet-existing `coach/coach_recert_split_v1.jsonl` (wrong path + premature —
+      B4 hasn't run); §5 says `run_coach_calibration.py` is "not present" (it exists; creds
+      are the only Track-C gate). Corrected as part of B4.

@@ -473,3 +473,173 @@ class TestGetDirectProvider:
         )
         with pytest.raises(TrustProviderError):
             get_direct_provider(profile)
+
+
+# ── Fireworks host (ADR-0019) ────────────────────────────────────────────────
+
+
+class TestResolveFireworksApiKey:
+    """FR-1 (half): the Fireworks key resolver — env-only, mirrors the GLM one."""
+
+    def test_reads_fireworks_api_key(self, monkeypatch):
+        from services.llm_providers.config import resolve_fireworks_api_key
+
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-123")
+        assert resolve_fireworks_api_key() == "fw-123"
+
+    def test_returns_none_when_unset(self, monkeypatch):
+        from services.llm_providers.config import resolve_fireworks_api_key
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+        assert resolve_fireworks_api_key() is None
+
+
+def _fireworks_with_transport(handler):
+    """A FireworksDirectProvider whose AsyncClient uses a MockTransport."""
+    from services.llm_providers.fireworks_direct import FireworksDirectProvider
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    return FireworksDirectProvider(api_key="fw-key", client=client)
+
+
+class TestFireworksDirectProvider:
+    """FR-4/FR-5: the Fireworks adapter conforms to the LLMProvider port exactly
+    as GLMDirectProvider does — OpenAI-compatible POST to the Fireworks base URL,
+    Bearer FIREWORKS_API_KEY, response → LLMCompletion — and sends the wire model
+    id from the profile verbatim (no munging in the adapter)."""
+
+    async def test_satisfies_llm_provider_port(self):
+        provider = _fireworks_with_transport(
+            lambda req: httpx.Response(
+                200, json={"choices": [{"message": {"content": "x"}}]}
+            )
+        )
+        assert isinstance(provider, LLMProvider)
+
+    async def test_posts_openai_shape_to_fireworks_base_url(self):
+        captured: dict = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            import json
+
+            captured["url"] = str(request.url)
+            captured["auth"] = request.headers.get("authorization")
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "choices": [{"message": {"content": "4"}}],
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 1},
+                },
+            )
+
+        provider = _fireworks_with_transport(handler)
+        result = await provider.acompletion(
+            model="accounts/fireworks/models/glm-5.2", messages=MULTI_TURN_MESSAGES
+        )
+        # POSTs the Fireworks OpenAI-compatible endpoint, Bearer the FW key.
+        assert captured["url"] == (
+            "https://api.fireworks.ai/inference/v1/chat/completions"
+        )
+        assert captured["auth"] == "Bearer fw-key"
+        assert captured["body"]["messages"] == MULTI_TURN_MESSAGES
+        # FR-5: the wire model id is the Fireworks form, passed verbatim.
+        assert captured["body"]["model"] == "accounts/fireworks/models/glm-5.2"
+        # Response maps onto the framework-agnostic contract.
+        assert isinstance(result, LLMCompletion)
+        assert result.content == "4"
+        assert result.usage == {"input_tokens": 3, "output_tokens": 1}
+
+    async def test_non_2xx_raises_typed_error_labelled_fireworks(self):
+        provider = _fireworks_with_transport(
+            lambda req: httpx.Response(401, json={"error": {"message": "bad key"}})
+        )
+        with pytest.raises(TrustProviderError) as exc:
+            await provider.acompletion(
+                model="accounts/fireworks/models/glm-5.2",
+                messages=MULTI_TURN_MESSAGES,
+            )
+        # The error is attributable to Fireworks, not "glm" (so logs name the
+        # right host on a Fireworks failure).
+        assert exc.value.provider == "fireworks"
+        assert exc.value.operation == "acompletion"
+
+
+def _fireworks_profile():
+    from services.base_config import ModelProfile
+
+    return ModelProfile(
+        name="glm-5.2-fireworks",
+        litellm_id="accounts/fireworks/models/glm-5.2",
+        tier="reasoning",
+        context_window=200000,
+        cost_per_1k_input=0.0012,
+        cost_per_1k_output=0.0041,
+        provider="direct",
+        max_output_tokens=8192,
+    )
+
+
+class TestGetDirectProviderFireworks:
+    """FR-1/FR-2: the factory routes a ``-fireworks`` profile to Fireworks and
+    fails closed on a missing key, WITHOUT disturbing the Z.ai path."""
+
+    def test_returns_fireworks_provider_for_fireworks_profile(self, monkeypatch):
+        from services.llm_providers.fireworks_direct import FireworksDirectProvider
+
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-k")
+        provider = get_direct_provider(_fireworks_profile())
+        assert isinstance(provider, LLMProvider)
+        assert isinstance(provider, FireworksDirectProvider)
+
+    def test_fireworks_profile_takes_priority_over_glm_branch(self, monkeypatch):
+        """ORDERING GUARD: ``glm-5.2-fireworks`` matches BOTH ``startswith('glm')``
+        (the Z.ai branch) and the ``-fireworks`` suffix. The Fireworks branch must
+        win — else the judge silently runs on Z.ai (the host we're moving OFF)."""
+        from services.llm_providers.fireworks_direct import FireworksDirectProvider
+        from services.llm_providers.glm_direct import GLMDirectProvider
+
+        # Both keys present, so the choice is dispatch-order, not key-availability.
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-k")
+        monkeypatch.setenv("GLM_API_KEY", "glm-k")
+        provider = get_direct_provider(_fireworks_profile())
+        assert isinstance(provider, FireworksDirectProvider)
+        # Belt-and-braces: the Z.ai adapter is a *superclass*, so assert the base
+        # URL is Fireworks', not Z.ai's — proves it isn't a plain GLM provider.
+        assert isinstance(provider, GLMDirectProvider)  # (subclass) sanity
+        assert "fireworks.ai" in provider._base_url
+        assert "z.ai" not in provider._base_url
+
+    def test_missing_fireworks_key_fails_closed(self, monkeypatch):
+        """FR-1: no FIREWORKS_API_KEY ⇒ a typed ConfigurationError naming the var —
+        NEVER a silent fallback to Z.ai or another host."""
+        from trust.exceptions import ConfigurationError
+
+        monkeypatch.delenv("FIREWORKS_API_KEY", raising=False)
+        # Even with a GLM key present, a Fireworks profile must NOT borrow it.
+        monkeypatch.setenv("GLM_API_KEY", "glm-k")
+        with pytest.raises(ConfigurationError) as exc:
+            get_direct_provider(_fireworks_profile())
+        assert "FIREWORKS_API_KEY" in str(exc.value)
+
+    def test_zai_glm_path_unchanged_by_fireworks(self, monkeypatch):
+        """FR-2: the Z.ai glm-5.2 profile still resolves the GLM key + Z.ai base
+        URL, unperturbed by the Fireworks branch's existence."""
+        from services.base_config import ModelProfile
+        from services.llm_providers.fireworks_direct import FireworksDirectProvider
+
+        monkeypatch.setenv("GLM_API_KEY", "glm-k")
+        monkeypatch.setenv("FIREWORKS_API_KEY", "fw-k")
+        zai = ModelProfile(
+            name="glm-5.2",
+            litellm_id="glm-5.2",
+            tier="reasoning",
+            context_window=200000,
+            cost_per_1k_input=0.0012,
+            cost_per_1k_output=0.0041,
+            provider="direct",
+        )
+        provider = get_direct_provider(zai)
+        assert isinstance(provider, GLMDirectProvider)
+        assert not isinstance(provider, FireworksDirectProvider)
+        assert "z.ai" in provider._base_url

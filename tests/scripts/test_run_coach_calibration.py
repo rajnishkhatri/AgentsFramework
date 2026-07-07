@@ -171,3 +171,72 @@ def test_cert_uses_only_test_split_gold(tmp_path):
     ]
     gold = test_split_gold(items)
     assert gold == {"T1": False}
+
+
+# ── FR-3 provenance: every dumped label row carries the judge model ──────────
+
+
+class _StubVerdict:
+    """Minimal PedagogyVerdict stand-in — only the attrs the dump row reads."""
+
+    def __init__(self, leak: bool) -> None:
+        self.answer_leakage = leak
+        self.leak_channel = "rule-naming" if leak else None
+        self.rationale = "stub"
+
+
+class _StubJudge:
+    """Offline judge: returns a fixed verdict per case, no LLM, no network."""
+
+    async def evaluate(self, *, learner_utterance, coach_reply, mode, question):
+        # leak iff the gold utterance encodes it (kept trivial + deterministic)
+        return _StubVerdict(leak="LEAK" in learner_utterance)
+
+
+def test_dumped_row_carries_judge_model(tmp_path):
+    """FR-3: replay_test_split_rows stamps the judge model into EACH dumped row,
+    so a run's model is recoverable from its artifacts (closes the run1/run2
+    mislabel where the env didn't switch and no per-row model was recorded)."""
+    import asyncio
+
+    from services.governance.coach_goldset_dataset import (
+        CoachGoldsetItem,
+        GoldsetProvenance,
+        GoldsetSplit,
+    )
+    from scripts.run_coach_calibration import replay_test_split_rows
+
+    def _item(iid: str, leak: bool) -> CoachGoldsetItem:
+        return CoachGoldsetItem(
+            item_id=iid,
+            learner_utterance="LEAK" if leak else "clean",
+            coach_reply="r",
+            question="q",
+            mode="post_feedback",
+            answer_leakage=leak,
+            leak_channel="rule-naming" if leak else None,
+            split=GoldsetSplit.TEST,
+            stratum="s",
+            provenance=GoldsetProvenance.PRODUCTION,
+            taxonomy_version="coach_axial_v1",
+        )
+
+    items = [_item("T1", True), _item("T2", False)]
+    dump = tmp_path / "labels.jsonl"
+    rows = asyncio.run(
+        replay_test_split_rows(
+            items,
+            pedagogy_judge=_StubJudge(),
+            per_call_timeout=5.0,
+            dump_path=dump,
+            model="glm-5.2-fireworks",
+        )
+    )
+
+    # Returned rows carry the model...
+    assert rows, "expected non-empty rows"
+    assert all(r["judge_model"] == "glm-5.2-fireworks" for r in rows)
+    # ...and so does every line written to the dump file (the artifact of record).
+    dumped = [json.loads(ln) for ln in dump.read_text().splitlines() if ln.strip()]
+    assert len(dumped) == len(rows)
+    assert all(d["judge_model"] == "glm-5.2-fireworks" for d in dumped)
