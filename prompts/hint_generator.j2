@@ -8,7 +8,9 @@ deterministic leakage gate quarantines any rung that does.
 ### The question
 
 - id: {{ question.get('id') }}
-- stem: {{ question.get('stem_md') or question.get('stem') }}
+{% if question.get('context_html') %}- passage (the sentence being tested; `<u>…</u>` marks the underlined span your
+  rungs scaffold toward): {{ question.get('context_html') }}
+{% endif %}- stem: {{ question.get('stem_md') or question.get('stem') }}
 {% if question.get('choices') %}- choices:
 {% for c in question.get('choices') %}  - {{ c.get('letter') }}) {{ c.get('label') }}
 {% endfor %}{% endif %}- correct answer: {{ question.get('answer_letter') }}
@@ -26,6 +28,10 @@ deterministic leakage gate quarantines any rung that does.
    assertively, quote the correct choice's wording, recite the why-correct
    rationale, or eliminate every wrong choice.
 4. There is NO rung 4. Never state or uniquely imply the answer.
+5. **Never quote the underlined/tested phrase verbatim** — for revision items
+   the correct choice's wording is often a piece of it, so quoting the phrase
+   leaks the key. Refer to it indirectly: "the underlined phrase", "the tested
+   wording", "the two words that share a meaning".
 
 ### Output
 
