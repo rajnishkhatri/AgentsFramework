@@ -39,6 +39,44 @@
   },
   {
     "skill_id": "s-gram",
+    "standard_id": 3,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "The council debated <u>weather</u> to repave Main Street before winter.",
+    "stem_md": "Which choice is the correct word for the underlined portion?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "wether"
+      },
+      {
+        "letter": "C",
+        "label": "whether"
+      },
+      {
+        "letter": "D",
+        "label": "wheather"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Weather' means atmospheric conditions, not a choice between options.",
+      "B": "'Wether' is a castrated ram — a real word, but not this one.",
+      "C": "'Whether' introduces the choice the council is weighing.",
+      "D": "'Wheather' is not a word; it misspells 'whether'."
+    },
+    "why_correct_md": "**'Whether'** introduces alternatives ('whether X or Y'); 'weather' is the sky.",
+    "why_tempted_md": "'Weather' and 'whether' sound identical, so the everyday spelling slips in.",
+    "rule_md": "Match the homophone to its meaning: whether = if/choice, weather = climate.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
     "standard_id": 7,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
@@ -72,6 +110,44 @@
     "why_correct_md": "Correlative conjunctions come in **fixed pairs**: not only ... but also.",
     "why_tempted_md": "'But' alone carries most of the meaning, so the missing 'also' is easy to drop.",
     "rule_md": "Complete the pair: either/or, neither/nor, both/and, not only/but also.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 7,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The scholarship covers neither the lab fees <u>or</u> the cost of textbooks.",
+    "stem_md": "Which choice completes the underlined paired conjunction correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "and"
+      },
+      {
+        "letter": "C",
+        "label": "nor"
+      },
+      {
+        "letter": "D",
+        "label": "but"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Neither' pairs with 'nor', never with 'or'.",
+      "B": "'And' breaks the negative pairing 'neither … nor' entirely.",
+      "C": "'Nor' is the required partner for 'neither'.",
+      "D": "'But' is a contrast conjunction, not the partner 'neither' needs."
+    },
+    "why_correct_md": "The fixed pair is **'neither … nor'** — 'or' cannot complete it.",
+    "why_tempted_md": "'Or' pairs with 'either', so it feels close enough after 'neither'.",
+    "rule_md": "Keep correlative pairs intact: either/or, neither/nor, both/and, not only/but also.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -528,6 +604,44 @@
     "why_correct_md": "Describe a verb with an **adverb**: performed well.",
     "why_tempted_md": "'Did good' is everywhere in casual speech.",
     "rule_md": "Good describes nouns; well describes verbs (except health: 'I feel well').",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 16,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The engine ran <u>quiet</u> after the mechanic replaced the worn belt.",
+    "stem_md": "Which choice correctly modifies how the engine ran?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "quietly"
+      },
+      {
+        "letter": "C",
+        "label": "quieter"
+      },
+      {
+        "letter": "D",
+        "label": "most quiet"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Quiet' is an adjective; it can't describe the verb 'ran'.",
+      "B": "'Quietly' is the adverb that correctly modifies how the engine ran.",
+      "C": "'Quieter' is a comparative with nothing being compared here.",
+      "D": "'Most quiet' is a superlative, also uncalled for and still adjectival."
+    },
+    "why_correct_md": "An action is described by an **adverb** — 'ran quietly', not 'ran quiet'.",
+    "why_tempted_md": "In casual speech 'ran quiet' is common, so the adjective sounds acceptable.",
+    "rule_md": "Use an adverb (usually -ly) to modify a verb; save the adjective for a noun.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1326,6 +1440,44 @@
     "why_correct_md": "Pick a person — 'one' or 'you' — and **stay in it**.",
     "why_tempted_md": "'One' and 'you' both speak generally, so they feel interchangeable mid-sentence.",
     "rule_md": "Don't shift person (one → you → they) inside a sentence or passage.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 27,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "By the time the credits rolled, we <u>watch</u> the entire trilogy in one sitting.",
+    "stem_md": "Which choice places the underlined action correctly in time?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "watches"
+      },
+      {
+        "letter": "C",
+        "label": "will watch"
+      },
+      {
+        "letter": "D",
+        "label": "had watched"
+      }
+    ],
+    "answer_letter": "D",
+    "per_choice_rationale": {
+      "A": "'Watch' is present tense, clashing with the past-time frame 'by the time the credits rolled'.",
+      "B": "'Watches' is present tense too, and doesn't agree with 'we'.",
+      "C": "'Will watch' points to the future, but the viewing already finished.",
+      "D": "'Had watched' correctly marks an action completed before another past moment."
+    },
+    "why_correct_md": "An action finished **before** another past event takes the past perfect ('had watched').",
+    "why_tempted_md": "The present 'watch' feels immediate, but the sentence's time markers are all past.",
+    "rule_md": "'By the time X happened, Y had happened' — the earlier past action takes 'had'.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },

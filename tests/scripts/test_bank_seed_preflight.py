@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections import Counter
 
-import pytest
 
 from components.test_item_generation import _schema_violations
 from scripts.bank_seed_preflight import (
@@ -210,16 +209,15 @@ _MATRIX: dict[str, dict[int, int]] = {
 
 
 class TestSeedMatrixConformance:
-    """FR-8 / FR-9 — the finished corpus satisfies the §10 matrix."""
+    """FR-8 / FR-9 — the finished corpus satisfies the §10 matrix.
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "G8-OK: red-by-design until Phase B T6 lands the authored tranche "
-            "(spec §12 T2: 'RED until authoring lands'); strict=True forces "
-            "this marker's removal in the same change that turns it green"
-        ),
-    )
+    Now a LIVE gate: the xfail(strict=True) marker that held this red through
+    Phase B authoring came off in the change that turned it green (T5b brought
+    the seed to 192 rows: per-cell floors met, all 32 standards covered, the
+    >=192 FR-8 floor cleared). It stays green from here — a future edit that
+    drops the seed below any floor fails outright.
+    """
+
     def test_seed_satisfies_the_phase_b_allocation_matrix(self):
         rows = load_seed_rows()
         assert len(rows) >= 192, f"seed has {len(rows)} rows; FR-8 wants >= 192"
