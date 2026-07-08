@@ -1220,8 +1220,8 @@
     "standard_id": 1,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
-    "context_html": "We spread the blanket and unpacked the sandwiches. <u>Because of this,</u> a sudden downpour sent us running for the car.",
-    "stem_md": "Which transition correctly signals that the second sentence interrupts the first?",
+    "context_html": "The clause 'because the road was closed' already tells us why. <u>Because of this,</u> we took the long way around the lake.",
+    "stem_md": "Which choice avoids repeating a cause the sentence has already stated?",
     "choices": [
       {
         "letter": "A",
@@ -1229,27 +1229,27 @@
       },
       {
         "letter": "B",
-        "label": "Then,"
+        "label": "So"
       },
       {
         "letter": "C",
-        "label": "As a result,"
+        "label": "As a result of this"
       },
       {
         "letter": "D",
-        "label": "For example,"
+        "label": "Due to this fact,"
       }
     ],
     "answer_letter": "B",
     "per_choice_rationale": {
-      "A": "The downpour is not caused by unpacking lunch, so 'because of this' misstates the link.",
-      "B": "'Then' marks the next event in time, which is exactly what happened.",
-      "C": "'As a result' also claims a cause-effect tie the sentences don't have.",
-      "D": "'For example' would need the second sentence to illustrate the first; it doesn't."
+      "A": "'Because of this' restates a cause the opening clause ('because the road was closed') has already given — the reason is signaled twice.",
+      "B": "'So' carries the result forward once, without re-announcing the cause the clause already supplied.",
+      "C": "'As a result of this' is just a longer way of repeating the same cause signal.",
+      "D": "'Due to this fact' doubles the cause AND pads it with the empty phrase 'this fact'."
     },
-    "why_correct_md": "The events are **sequential in time**, so a time transition ('then') fits.",
-    "why_tempted_md": "Two sentences side by side tempt you to assume the second was caused by the first.",
-    "rule_md": "Name the real relationship (time, cause, example, contrast) before choosing a transition.",
+    "why_correct_md": "When the sentence already states the cause, the transition should move the **result** forward, not repeat the cause — 'so' does that cleanly.",
+    "why_tempted_md": "'Because of this' feels logical because the relationship really is causal — but the cause was already named.",
+    "rule_md": "If a connector would repeat a relationship the sentence already carries, choose the leaner transition (or none).",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1258,8 +1258,8 @@
     "standard_id": 1,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
-    "context_html": "Lena rehearsed her lines for weeks. <u>Similarly</u>, she froze the moment the curtain rose.",
-    "stem_md": "Which transition correctly signals the contrast?",
+    "context_html": "The museum added a rooftop cafe last spring. <u>Also,</u> it now stays open until nine on Fridays, and it has doubled its evening attendance.",
+    "stem_md": "Which choice best introduces the sentence as another item in a running list of the museum's additions?",
     "choices": [
       {
         "letter": "A",
@@ -1267,27 +1267,27 @@
       },
       {
         "letter": "B",
-        "label": "However"
+        "label": "In addition,"
       },
       {
         "letter": "C",
-        "label": "Likewise"
+        "label": "Instead,"
       },
       {
         "letter": "D",
-        "label": "Therefore"
+        "label": "For example,"
       }
     ],
     "answer_letter": "B",
     "per_choice_rationale": {
-      "A": "'Similarly' promises more of the same, but freezing on stage contradicts weeks of rehearsal.",
-      "B": "'However' names the real relationship: the outcome defied the preparation.",
-      "C": "'Likewise' makes the same false promise as 'Similarly'.",
-      "D": "'Therefore' claims freezing FOLLOWED LOGICALLY from rehearsing — backwards."
+      "A": "'Also' signals addition but is abrupt and informal at the head of a sentence opening a formal list.",
+      "B": "'In addition' opens the sentence as the next entry in the list of additions, matching the passage's register.",
+      "C": "'Instead' signals replacement, but the late hours are added to the cafe, not a substitute for it.",
+      "D": "'For example' promises an instance of the cafe, but longer hours are a separate addition, not an example."
     },
-    "why_correct_md": "The second sentence **contradicts** the expectation the first sets up — that's 'However'.",
-    "why_tempted_md": "Any transition reads smoothly if you don't test the logical claim it makes.",
-    "rule_md": "Name the actual relationship (contrast, cause, example, addition) before choosing a transition.",
+    "why_correct_md": "For the next item in a list, use a full **additive** opener ('in addition') rather than the abrupt sentence-initial 'also'.",
+    "why_tempted_md": "'Also' does mean addition, so it seems right until you weigh how it reads opening a listed sentence.",
+    "rule_md": "Match the transition to its POSITION and register: a sentence that adds a list item takes a full additive opener, not a bare 'also'.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
