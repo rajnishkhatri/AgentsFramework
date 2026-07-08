@@ -385,7 +385,7 @@
     "difficulty": 1,
     "item_type": "underlined-span-mc",
     "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle <u>teached</u> me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
-    "stem_md": "Which choice uses the correct past-tense verb form for the underlined word?",
+    "stem_md": "Which choice corrects the underlined verb's past-tense form?",
     "choices": [
       {
         "letter": "A",
@@ -422,8 +422,8 @@
     "standard_id": 12,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
-    "context_html": "Yesterday the choir <u>sung</u> the national anthem before the game.",
-    "stem_md": "Which verb form is correct in this sentence?",
+    "context_html": "Yesterday the choir <u>sung</u> the national anthem, and the whole stadium rose to its feet.",
+    "stem_md": "Which choice fits the time the sentence describes?",
     "choices": [
       {
         "letter": "A",
@@ -802,8 +802,8 @@
     "standard_id": 17,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
-    "context_html": "Each of the drones <u>carry</u> a spare battery clipped beneath its frame.",
-    "stem_md": "Which verb agrees with the subject of the sentence?",
+    "context_html": "Each of the drones <u>carry</u> a spare battery, while the pilots on the ground track them all at once.",
+    "stem_md": "Which choice matches the true subject of the sentence?",
     "choices": [
       {
         "letter": "A",
@@ -1828,8 +1828,8 @@
     "standard_id": 1,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
-    "context_html": "Ella trained all winter for the marathon. <u>In contrast</u>, she finished in her best time ever.",
-    "stem_md": "Which transition names the actual relationship between the sentences?",
+    "context_html": "Ella trained all winter for the marathon. <u>In contrast</u>, she finished in her best time ever. Her coach had predicted exactly this payoff.",
+    "stem_md": "Which transition fits the logic connecting the two sentences?",
     "choices": [
       {
         "letter": "A",
