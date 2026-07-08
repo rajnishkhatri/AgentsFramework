@@ -1220,6 +1220,44 @@
     "standard_id": 1,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
+    "context_html": "We spread the blanket and unpacked the sandwiches. <u>Because of this,</u> a sudden downpour sent us running for the car.",
+    "stem_md": "Which transition correctly signals that the second sentence interrupts the first?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Then,"
+      },
+      {
+        "letter": "C",
+        "label": "As a result,"
+      },
+      {
+        "letter": "D",
+        "label": "For example,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The downpour is not caused by unpacking lunch, so 'because of this' misstates the link.",
+      "B": "'Then' marks the next event in time, which is exactly what happened.",
+      "C": "'As a result' also claims a cause-effect tie the sentences don't have.",
+      "D": "'For example' would need the second sentence to illustrate the first; it doesn't."
+    },
+    "why_correct_md": "The events are **sequential in time**, so a time transition ('then') fits.",
+    "why_tempted_md": "Two sentences side by side tempt you to assume the second was caused by the first.",
+    "rule_md": "Name the real relationship (time, cause, example, contrast) before choosing a transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
     "context_html": "Lena rehearsed her lines for weeks. <u>Similarly</u>, she froze the moment the curtain rose.",
     "stem_md": "Which transition correctly signals the contrast?",
     "choices": [
@@ -1250,6 +1288,82 @@
     "why_correct_md": "The second sentence **contradicts** the expectation the first sets up — that's 'However'.",
     "why_tempted_md": "Any transition reads smoothly if you don't test the logical claim it makes.",
     "rule_md": "Name the actual relationship (contrast, cause, example, addition) before choosing a transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The recipe requires no oven and only five ingredients. <u>Nevertheless,</u> even a beginner can finish it in ten minutes.",
+    "stem_md": "Which transition best fits the relationship between the two sentences?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "So"
+      },
+      {
+        "letter": "C",
+        "label": "In contrast"
+      },
+      {
+        "letter": "D",
+        "label": "However"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Nevertheless' signals a contrast, but the second sentence agrees with and follows from the first.",
+      "B": "'So' shows the easy recipe leads naturally to a fast, beginner-friendly result.",
+      "C": "'In contrast' wrongly frames the sentences as opposites.",
+      "D": "'However' also implies a reversal that isn't there."
+    },
+    "why_correct_md": "The simplicity **causes** the speed, so a cause-effect transition ('so') is right.",
+    "why_tempted_md": "'Nevertheless' sounds sophisticated, so it's easy to drop in without checking the logic.",
+    "rule_md": "Don't reach for a contrast word when the second idea actually results from the first.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The science fair had three rounds. First came the written proposal, and next the judges toured each booth. <u>First,</u> the finalists presented to the whole auditorium.",
+    "stem_md": "Which transition correctly marks the final round in the sequence?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Finally,"
+      },
+      {
+        "letter": "C",
+        "label": "For instance,"
+      },
+      {
+        "letter": "D",
+        "label": "In contrast,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'First' can't introduce the third and last round; it contradicts the sequence.",
+      "B": "'Finally' correctly signals the last step after 'first' and 'next'.",
+      "C": "'For instance' would introduce an example, not the closing step.",
+      "D": "'In contrast' signals opposition, which the sequence doesn't call for."
+    },
+    "why_correct_md": "In a step sequence, the last item takes a **closing transition** like 'finally'.",
+    "why_tempted_md": "Repeating 'first' echoes the paragraph's opening word, which can feel intentional.",
+    "rule_md": "Sequence transitions must track order: first → next → finally, never two 'firsts'.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1334,6 +1448,120 @@
     "standard_id": 1,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
+    "context_html": "The paragraph argues that city parks improve public health. <u>Downtown rents have risen sharply over the past decade.</u> Studies link green space to lower stress and more daily exercise.",
+    "stem_md": "The writer wants every sentence to support the paragraph's point about parks and health. The underlined sentence should be:",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "KEPT, because it mentions the downtown area near the parks"
+      },
+      {
+        "letter": "B",
+        "label": "KEPT, because rising rents prove parks are valuable"
+      },
+      {
+        "letter": "C",
+        "label": "DELETED, because it introduces an unrelated point about rents"
+      },
+      {
+        "letter": "D",
+        "label": "DELETED, because it repeats the previous sentence"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "A shared location doesn't make rent relevant to a health argument.",
+      "B": "Rising rents don't establish anything about health benefits; the link is invented.",
+      "C": "The sentence about rents is off the paragraph's topic (parks and health) and should go.",
+      "D": "It isn't a repeat — it's a new, unrelated claim."
+    },
+    "why_correct_md": "Every sentence must serve the paragraph's point; the rent sentence **strays off-topic**, so delete it.",
+    "why_tempted_md": "'Downtown' overlaps with where parks are, making the sentence feel connected.",
+    "rule_md": "Test each sentence against the paragraph's main claim; cut whatever doesn't advance it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The club spent the fall repairing trail signs and clearing brush. By spring, hikers reported the easiest navigation in years. <u>Trail mix is a popular snack among hikers.</u>",
+    "stem_md": "Which choice best concludes the paragraph by tying its details together?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "The club's steady work had clearly paid off."
+      },
+      {
+        "letter": "C",
+        "label": "Some hikers prefer to explore without any map at all."
+      },
+      {
+        "letter": "D",
+        "label": "Brush can grow back quickly in a wet season."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Trail mix has nothing to do with the club's trail work — it's irrelevant.",
+      "B": "It sums up the cause (the work) and the effect (easier navigation), closing the paragraph.",
+      "C": "Map-free hiking introduces a new, unrelated idea instead of concluding.",
+      "D": "This undercuts the paragraph's point rather than wrapping it up."
+    },
+    "why_correct_md": "A conclusion should **draw the paragraph's details to a close**, which 'paid off' does.",
+    "why_tempted_md": "Trail mix mentions hikers, the paragraph's subject, so it feels loosely on-topic.",
+    "rule_md": "A concluding sentence gathers what came before — reject choices that add new or off-topic ideas.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>Volcanic soil is rich in minerals.</u> Farmers on the island's slopes harvest three crops a year, and their coffee sells at a premium overseas. Even the roadside wildflowers grow thick and bright.",
+    "stem_md": "Which choice is the most effective topic sentence for the paragraph?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Coffee is the island's most valuable export."
+      },
+      {
+        "letter": "C",
+        "label": "The island's volcanic soil makes it remarkably fertile."
+      },
+      {
+        "letter": "D",
+        "label": "Volcanoes can be dangerous to nearby communities."
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Rich in minerals' is true but narrower than the paragraph, which is about overall fertility.",
+      "B": "Coffee is only one detail; a topic sentence can't hinge on a single example.",
+      "C": "'Remarkably fertile' covers crops, coffee, and wildflowers alike — the whole paragraph.",
+      "D": "Danger is never mentioned in the body; this choice is off-topic."
+    },
+    "why_correct_md": "A topic sentence must **cover every detail** that follows — here, fertility does.",
+    "why_tempted_md": "The mineral fact (A) opens the same subject, so it feels like a natural lead — but it's too narrow.",
+    "rule_md": "Read the body first; the best topic sentence is the umbrella the details already argue for.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
     "context_html": "The trail was steep and poorly marked. <u>In fact</u>, the view from the summit repaid every step.",
     "stem_md": "Which transition acknowledges the concession the passage makes?",
     "choices": [
@@ -1372,6 +1600,82 @@
     "standard_id": 1,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
+    "context_html": "The vote passed by a wide margin. <u>Similarly,</u> a small group of residents has already filed an appeal.",
+    "stem_md": "Which transition best captures the relationship between the two sentences?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Still,"
+      },
+      {
+        "letter": "C",
+        "label": "Likewise,"
+      },
+      {
+        "letter": "D",
+        "label": "Therefore,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Similarly' claims the appeal resembles the wide-margin vote; it actually opposes it.",
+      "B": "'Still' concedes that, despite the wide margin, opposition remains — the true relationship.",
+      "C": "'Likewise' also signals similarity, the wrong direction.",
+      "D": "'Therefore' implies the appeal results from the margin, which it doesn't."
+    },
+    "why_correct_md": "The second sentence **pushes against** the first, so a concessive transition ('still') fits.",
+    "why_tempted_md": "Both sentences describe reactions to the vote, so 'similarly' feels plausible.",
+    "rule_md": "Decide whether sentence two agrees, opposes, or results — then match the transition to that.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Our town's farmers' market started with four vendors in a parking lot. <u>In conclusion,</u> it now fills two blocks every Saturday with more than sixty stalls.",
+    "stem_md": "Which transition best fits the contrast between the market's past and present?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Today,"
+      },
+      {
+        "letter": "C",
+        "label": "For example,"
+      },
+      {
+        "letter": "D",
+        "label": "Because of this,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'In conclusion' signals a summary, but this sentence contrasts then with now.",
+      "B": "'Today' cleanly marks the shift from the market's origins to its current size.",
+      "C": "'For example' would need the second sentence to illustrate the first, not update it.",
+      "D": "'Because of this' invents a cause-effect tie between the four vendors and the sixty stalls."
+    },
+    "why_correct_md": "The sentences contrast **past and present**, so a time-shift transition ('today') is right.",
+    "why_tempted_md": "The sentence sits at a paragraph's end, so 'in conclusion' feels structurally natural.",
+    "rule_md": "Position doesn't dictate the transition — the logical relationship does.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
     "context_html": "The library's archive holds thousands of rare maps. <u>Therefore</u>, its oldest map dates to 1502.",
     "stem_md": "Which transition best fits what the second sentence does?",
     "choices": [
@@ -1402,6 +1706,196 @@
     "why_correct_md": "A concrete instance supporting a general claim is introduced with **for example**.",
     "why_tempted_md": "'Therefore' sounds authoritative, masking that nothing is actually being deduced.",
     "rule_md": "General claim followed by a specific instance → an example transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The report opens by describing the drought's toll on the reservoir. It then details the new conservation rules. <u>Rainfall totals vary widely from year to year.</u>",
+    "stem_md": "Which choice best concludes the report by reinforcing its purpose?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "With these measures in place, the town hopes to weather the next dry spell."
+      },
+      {
+        "letter": "C",
+        "label": "The reservoir was built more than fifty years ago."
+      },
+      {
+        "letter": "D",
+        "label": "Many households own more than one car."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A generic fact about rainfall variability doesn't close the report's argument.",
+      "B": "It ties the conservation rules to the goal of surviving future droughts, fulfilling the report's purpose.",
+      "C": "The reservoir's age is a stray detail unrelated to the conclusion.",
+      "D": "Car ownership has nothing to do with drought conservation."
+    },
+    "why_correct_md": "A purposeful conclusion **links the body's content to the document's goal** — surviving drought.",
+    "why_tempted_md": "Rainfall variability is on-theme with drought, so it feels like a fitting close.",
+    "rule_md": "A conclusion should advance the piece's purpose, not merely mention its subject.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The article traces the comeback of the peregrine falcon: a pesticide ban in the 1970s, captive-breeding programs in the 1980s, and <u>the invention of the modern telescope.</u>",
+    "stem_md": "Which choice best continues the article's line of argument about the falcon's recovery?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "the protection of nesting sites on city skyscrapers."
+      },
+      {
+        "letter": "C",
+        "label": "the popularity of birdwatching as a hobby."
+      },
+      {
+        "letter": "D",
+        "label": "the history of falconry in medieval Europe."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Telescopes have no bearing on why falcon populations recovered.",
+      "B": "Protecting nesting sites is a genuine recovery cause, continuing the article's chain of factors.",
+      "C": "Birdwatching's popularity is a side effect, not a cause of the comeback.",
+      "D": "Medieval falconry is unrelated to the modern recovery being traced."
+    },
+    "why_correct_md": "Argument-tracing requires the next item to be **another cause in the same chain** — nesting-site protection is.",
+    "why_tempted_md": "Options C and D both mention birds, so they feel connected to the falcon topic.",
+    "rule_md": "When a passage builds a causal list, each addition must belong to that same causal thread.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The essay claims that public libraries remain essential in the digital age. A strong body paragraph would most likely develop this claim by <u>listing the founding dates of several famous libraries.</u>",
+    "stem_md": "Which choice best develops the essay's claim about libraries' ongoing importance?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "describing the free internet access and job-search help libraries now provide."
+      },
+      {
+        "letter": "C",
+        "label": "explaining how printing presses worked in the fifteenth century."
+      },
+      {
+        "letter": "D",
+        "label": "recounting the architecture of a famous reading room."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Founding dates speak to history, not present-day essentialness.",
+      "B": "Modern services like internet access and job help directly show why libraries still matter.",
+      "C": "Fifteenth-century printing is unrelated to the digital-age argument.",
+      "D": "Architecture is decorative detail that doesn't support the claim of essentialness."
+    },
+    "why_correct_md": "Development must **advance the specific claim** — here, current relevance, which modern services demonstrate.",
+    "why_tempted_md": "History and famous rooms feel 'library-related', so they seem supportive.",
+    "rule_md": "Choose supporting detail that proves the exact point being argued, not merely the general topic.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Paragraph 2 explains how the tide pools form at low water. Paragraph 3 lists the animals that shelter there. <u>Meanwhile,</u> the guide leads visitors from the parking lot down to the rocks.",
+    "stem_md": "Which choice best opens a sentence that should logically come between paragraphs 2 and 3?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Once the water recedes, a whole community of creatures emerges."
+      },
+      {
+        "letter": "C",
+        "label": "The parking lot fills quickly on summer weekends."
+      },
+      {
+        "letter": "D",
+        "label": "Tides are caused by the pull of the moon and sun."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Meanwhile' plus a parking-lot detail doesn't bridge how pools form to which animals live there.",
+      "B": "It links the low-tide formation (para 2) to the sheltering animals (para 3) — a true bridge.",
+      "C": "The parking lot is unrelated to the pools-to-animals transition.",
+      "D": "Restating what causes tides steps backward instead of moving toward the animals."
+    },
+    "why_correct_md": "A bridging sentence must **connect the idea before it to the idea after it** — formation to inhabitants.",
+    "why_tempted_md": "'Meanwhile' signals a transition, so option A looks structurally correct at a glance.",
+    "rule_md": "A transition sentence should echo the prior paragraph and point toward the next one.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>The bakery on Fifth Street sells excellent bread.</u> This essay will argue that small local businesses deserve tax incentives because they anchor neighborhoods, create jobs, and keep profits circulating in the community.",
+    "stem_md": "Which choice is the strongest thesis statement for the essay?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Small local businesses deserve tax incentives because they strengthen neighborhoods, employ residents, and reinvest their earnings locally."
+      },
+      {
+        "letter": "C",
+        "label": "There are many small businesses in our town."
+      },
+      {
+        "letter": "D",
+        "label": "Tax policy is a complicated and often controversial subject."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "One bakery's bread is a narrow anecdote, not a thesis the essay can defend.",
+      "B": "It states a clear claim (incentives) plus the three reasons the essay will develop.",
+      "C": "A bare fact about quantity takes no position and previews no argument.",
+      "D": "Calling the topic 'complicated' announces no stance at all."
+    },
+    "why_correct_md": "A thesis makes an **arguable claim and previews the support** — B names the claim and its three reasons.",
+    "why_tempted_md": "The bakery sentence is concrete and vivid, which can masquerade as a strong opening.",
+    "rule_md": "A thesis states a debatable position and maps the essay's reasons — not a fact or a vague topic label.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1478,6 +1972,158 @@
     "why_correct_md": "A framing conclusion must **revisit the opening image** — dark tower then, lit beacon now.",
     "why_tempted_md": "Factually true closers feel legitimate even when they ignore the stated goal.",
     "rule_md": "When the stem names the writer's goal, eliminate every choice that doesn't perform it — truth alone doesn't qualify.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The op-ed argues that the city should fund after-school programs. It cites falling test scores, rising afternoon crime, and working parents' scheduling struggles. <u>The stadium's new scoreboard cost eight million dollars.</u>",
+    "stem_md": "The writer wants each piece of evidence to support the case for after-school funding. The underlined sentence should be:",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "KEPT, because it shows the city has money to spend"
+      },
+      {
+        "letter": "B",
+        "label": "KEPT, because stadiums are popular with students"
+      },
+      {
+        "letter": "C",
+        "label": "DELETED, because it does not support the case for after-school programs"
+      },
+      {
+        "letter": "D",
+        "label": "DELETED, because it belongs in the introduction instead"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "The scoreboard's cost is a budgeting aside; it doesn't argue that after-school programs are needed.",
+      "B": "Stadium popularity says nothing about the need for after-school programs.",
+      "C": "The sentence drifts from the op-ed's evidence chain (scores, crime, schedules) and should be cut.",
+      "D": "Moving an irrelevant sentence to the introduction doesn't make it relevant."
+    },
+    "why_correct_md": "Evidence must **support the specific claim**; the scoreboard cost doesn't, so delete it.",
+    "why_tempted_md": "'The city has money' feels like a supporting point, but it's a separate spending debate.",
+    "rule_md": "Keep only evidence that advances the exact argument; cut tangents even if loosely budget-related.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Sentence 1: The renovation preserved the theater's original plaster ceiling. Sentence 2: Crews reinforced it with hidden steel before the reopening gala. The writer wants to add: 'The ornate medallions had survived a century of leaks.' <u>This sentence would best be placed after sentence 2.</u>",
+    "stem_md": "Where should the new sentence about the surviving medallions be placed?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Before sentence 1"
+      },
+      {
+        "letter": "C",
+        "label": "Between sentences 1 and 2"
+      },
+      {
+        "letter": "D",
+        "label": "The sentence should not be added at all."
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "After sentence 2, the medallion detail interrupts the jump from reinforcement to the gala.",
+      "B": "Before sentence 1, the medallions are mentioned before the ceiling they belong to is introduced.",
+      "C": "Between 1 and 2, the medallion detail elaborates the just-named ceiling before crews reinforce it.",
+      "D": "The detail is relevant and vivid, so it should be added, not dropped."
+    },
+    "why_correct_md": "A supporting detail belongs **right after the idea it elaborates** — the ceiling in sentence 1.",
+    "why_tempted_md": "Placing new information last feels safe, but here it breaks the ceiling-to-reinforcement flow.",
+    "rule_md": "Insert a detail next to the sentence it develops, keeping the paragraph's logical order intact.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The essay's introduction promises to explain 'why the bridge failed and how the city rebuilt trust.' The first body paragraph covers the engineering flaw. <u>The mayor enjoys sailing on weekends.</u>",
+    "stem_md": "Which choice best begins the second body paragraph so it fulfills the introduction's promise?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "To restore public confidence, the city held open hearings and published every inspection report."
+      },
+      {
+        "letter": "C",
+        "label": "The bridge's steel came from three different suppliers."
+      },
+      {
+        "letter": "D",
+        "label": "Engineering degrees take four years to complete."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The mayor's hobby is irrelevant to both halves of the essay's promise.",
+      "B": "Rebuilding trust through hearings and transparency delivers the second promised topic.",
+      "C": "Steel suppliers extend the engineering-flaw topic, not the trust half.",
+      "D": "How long degrees take is unrelated to either promised subject."
+    },
+    "why_correct_md": "The introduction promised two topics; body two must cover the **second one — rebuilding trust**.",
+    "why_tempted_md": "Option C stays on bridges, so it feels on-topic even though it repeats paragraph one's theme.",
+    "rule_md": "Track the essay's stated plan; each paragraph must deliver the part it's responsible for.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Throughout the memoir, the author returns to the image of her mother's hands kneading dough. The final chapter should, the writer decides, close on that same image. <u>The author later moved to a different city for work.</u>",
+    "stem_md": "Which choice best ends the memoir by returning to its central image?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Now, flouring her own counter at dawn, she feels her mother's hands guiding hers."
+      },
+      {
+        "letter": "C",
+        "label": "Her mother had always wanted her to attend college."
+      },
+      {
+        "letter": "D",
+        "label": "The old family recipes were written on index cards."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Moving cities for work drops the kneading-hands image entirely.",
+      "B": "It revisits the mother's hands and the dough, closing the memoir on its recurring image.",
+      "C": "College is a new topic, not a return to the central image.",
+      "D": "Index cards touch on recipes but abandon the hands-kneading-dough motif."
+    },
+    "why_correct_md": "When the goal is to **return to a central image**, choose the option that revives it — the hands and dough.",
+    "why_tempted_md": "Recipe cards (D) sit near the cooking theme, so they feel like a callback.",
+    "rule_md": "A callback conclusion must reawaken the specific image named, not merely the general subject.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
