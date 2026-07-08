@@ -2892,6 +2892,44 @@
     "standard_id": 10,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
+    "context_html": "Snow fell all night <u>the plows worked</u> until dawn to clear the pass.",
+    "stem_md": "Which choice best fixes the run-on?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "night; the plows worked"
+      },
+      {
+        "letter": "C",
+        "label": "night the plows, worked"
+      },
+      {
+        "letter": "D",
+        "label": "night, the plows worked"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two complete sentences are shoved together with no punctuation at all.",
+      "B": "A semicolon links two closely related complete thoughts without a conjunction.",
+      "C": "A comma between the subject 'plows' and its verb 'worked' breaks the clause instead of the run-on.",
+      "D": "A comma alone between two complete thoughts is a splice."
+    },
+    "why_correct_md": "A **semicolon** joins two independent clauses that belong together.",
+    "why_tempted_md": "The events are so connected that leaving them fused feels natural.",
+    "rule_md": "Independent + independent → semicolon, period, or comma + conjunction — never nothing, never a lone comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 10,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
     "context_html": "The rain finally <u>stopped the players</u> returned to the field.",
     "stem_md": "Which choice corrects the fused sentence?",
     "choices": [
@@ -2922,6 +2960,82 @@
     "why_correct_md": "Two independent clauses need a real boundary — here, a **period**.",
     "why_tempted_md": "Read quickly, 'the rain stopped the players' parses as one clause, hiding the seam.",
     "rule_md": "Find where one complete thought ends and the next begins; mark that seam with a period, semicolon, or comma + conjunction.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 10,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "The recipe looked simple <u>it took</u> three tries to get right.",
+    "stem_md": "Which choice repairs the fused sentence best?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "simple, but it took"
+      },
+      {
+        "letter": "C",
+        "label": "simple it, took"
+      },
+      {
+        "letter": "D",
+        "label": "simple, it took"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'The recipe looked simple' and 'it took three tries' are each complete — fused with no punctuation.",
+      "B": "The two thoughts contrast, so comma + 'but' both separates and signals the reversal.",
+      "C": "The comma lands between the subject 'it' and its verb 'took', splitting the wrong pair.",
+      "D": "A comma with no conjunction leaves a splice."
+    },
+    "why_correct_md": "Comma + a **coordinating conjunction** (here 'but') joins the clauses and shows the contrast.",
+    "why_tempted_md": "The sentence reads smoothly, hiding that two full sentences have collided.",
+    "rule_md": "Locate where one complete thought ends; mark that seam — a lone comma or nothing won't hold two clauses.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 10,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "The ferry horn sounded <u>twice the deckhands</u> untied the last rope.",
+    "stem_md": "Which choice separates the two complete thoughts?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "twice, and the deckhands"
+      },
+      {
+        "letter": "C",
+        "label": "twice, the deckhands"
+      },
+      {
+        "letter": "D",
+        "label": "twice the deckhands,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'The ferry horn sounded twice' and 'the deckhands untied the last rope' are both complete — run together they fuse.",
+      "B": "A comma plus 'and' joins two complete thoughts cleanly.",
+      "C": "A comma alone between two complete thoughts is a splice, not a fix.",
+      "D": "Moving the comma after 'deckhands' leaves the two thoughts fused and cuts the subject off from its verb."
+    },
+    "why_correct_md": "Two independent clauses join with a **comma plus a coordinating conjunction** (and, but, so…).",
+    "why_tempted_md": "Spoken aloud the sentence flows, so no break feels necessary.",
+    "rule_md": "Two complete thoughts cannot simply touch — join them with a period, a semicolon, or a comma + FANBOYS.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -2966,6 +3080,44 @@
   {
     "skill_id": "s-sent",
     "standard_id": 15,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The power flickered during the storm<u>, the</u> projector shut off mid-scene.",
+    "stem_md": "Which choice corrects the run-on between the two statements?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": " and the"
+      },
+      {
+        "letter": "C",
+        "label": ", and the"
+      },
+      {
+        "letter": "D",
+        "label": " the"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "A comma alone splices 'the power flickered' to 'the projector shut off'.",
+      "B": "Dropping the comma before 'and' between two full clauses leaves them under-punctuated.",
+      "C": "Comma + 'and' correctly joins the two independent clauses.",
+      "D": "Removing all punctuation fuses the two complete thoughts."
+    },
+    "why_correct_md": "Two independent clauses take a **comma before the coordinating conjunction**.",
+    "why_tempted_md": "A single comma looks like enough because a natural pause falls there.",
+    "rule_md": "Comma-splice repair: add a conjunction after the comma, or upgrade the comma to a semicolon or period.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "Although the museum stayed open late<u>. Visitors</u> still missed the final exhibit.",
@@ -2998,6 +3150,234 @@
     "why_correct_md": "A subordinate ('although') clause attaches to its main clause with a **comma**, not a period.",
     "why_tempted_md": "Reading aloud, the pause after 'late' feels like a full stop.",
     "rule_md": "A clause starting with although/because/while cannot stand alone — join it with a comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>Racing to catch the train and forgetting her umbrella on the platform bench.</u>",
+    "stem_md": "Which choice turns the fragment into a complete sentence?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "She raced to catch the train, forgetting her umbrella on the platform bench."
+      },
+      {
+        "letter": "C",
+        "label": "Racing to catch the train, and forgetting her umbrella on the platform bench."
+      },
+      {
+        "letter": "D",
+        "label": "Racing to catch the train; forgetting her umbrella on the platform bench."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two '-ing' phrases with no subject and no main verb never form a sentence.",
+      "B": "Adding the subject 'She' and the verb 'raced' supplies a complete main clause.",
+      "C": "Inserting a comma and 'and' still leaves the string subjectless and verbless.",
+      "D": "A semicolon needs a complete clause on each side; both sides here are still fragments."
+    },
+    "why_correct_md": "A sentence needs a **subject and a finite verb** — an '-ing' phrase alone supplies neither.",
+    "why_tempted_md": "The phrase is long and detailed, so it feels like a full sentence.",
+    "rule_md": "If the word group has no subject doing a real (finite) verb, it is a fragment — give it one.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The negotiations dragged on for hours<u>, however, both</u> sides finally signed the agreement.",
+    "stem_md": "Which choice correctly punctuates the transition between the two clauses?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "; however, both"
+      },
+      {
+        "letter": "C",
+        "label": " however both"
+      },
+      {
+        "letter": "D",
+        "label": ", however both"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'However' is a conjunctive adverb, not a conjunction; a comma before it splices the two complete clauses.",
+      "B": "A semicolon before 'however' and a comma after it correctly links the independent clauses.",
+      "C": "With no punctuation the two complete thoughts fuse.",
+      "D": "A comma before 'however' still leaves a splice — 'however' cannot join clauses the way 'but' can."
+    },
+    "why_correct_md": "A conjunctive adverb joining two clauses takes a **semicolon before and a comma after**.",
+    "why_tempted_md": "'However' feels like 'but', so a comma before it seems to work — but it can't glue clauses.",
+    "rule_md": "however / therefore / moreover between two complete clauses ⇒ ; before, , after.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 20,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Covered in dust and cobwebs, <u>Maya discovered the old bicycle</u> in the back of the shed.",
+    "stem_md": "Which choice makes the opening description modify the right noun?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "the old bicycle appeared to Maya"
+      },
+      {
+        "letter": "C",
+        "label": "Maya found that the old bicycle was"
+      },
+      {
+        "letter": "D",
+        "label": "the old bicycle was discovered by Maya"
+      }
+    ],
+    "answer_letter": "D",
+    "per_choice_rationale": {
+      "A": "The opening phrase lands on 'Maya', saying she was covered in dust and cobwebs.",
+      "B": "'Appeared to Maya' is vague and changes the action from discovering to seeming.",
+      "C": "This buries 'bicycle' in a that-clause, so the phrase still points at Maya.",
+      "D": "Making 'the old bicycle' the subject right after the comma lets the dusty description land on it."
+    },
+    "why_correct_md": "The noun an opening modifier describes must be the **subject that follows the comma** — the bicycle, not Maya.",
+    "why_tempted_md": "We know the bicycle was dusty, so the sentence 'sounds' fine despite the misattachment.",
+    "rule_md": "After an opening descriptive phrase, the very next noun must be the thing it describes.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 20,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The waiter served a steak to the guest <u>that was cooked medium-rare.</u>",
+    "stem_md": "Which choice places the description next to the word it modifies?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "that was cooked medium-rare to the guest."
+      },
+      {
+        "letter": "C",
+        "label": "to the guest, medium-rare being how it was cooked."
+      },
+      {
+        "letter": "D",
+        "label": "to the guest which had been medium-rare."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Placed after 'guest', the clause claims the guest was cooked medium-rare.",
+      "B": "Moving the clause beside 'steak' correctly says the steak was cooked medium-rare.",
+      "C": "The dangling absolute phrase is wordy and still sits away from 'steak'.",
+      "D": "'Which' after 'guest' keeps the description attached to the wrong noun."
+    },
+    "why_correct_md": "A modifier attaches to the **nearest noun** — put it beside the word it truly describes.",
+    "why_tempted_md": "The sentence's meaning is obvious to a human, so the misplacement slips by.",
+    "rule_md": "Move a misplaced modifier so it sits directly next to the noun it modifies.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 20,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "She <u>almost</u> drove her friends to every practice that season.",
+    "stem_md": "Which placement of the modifier fits the sentence's likely meaning?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "drove her friends to almost every practice"
+      },
+      {
+        "letter": "C",
+        "label": "drove almost her friends to every practice"
+      },
+      {
+        "letter": "D",
+        "label": "drove her friends almost to every practice"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Almost drove' means she nearly drove but didn't — not the intended sense.",
+      "B": "'Almost every practice' limits how many practices, which is what the sentence means.",
+      "C": "'Almost her friends' nonsensically modifies who the friends were.",
+      "D": "'Almost to every practice' suggests she never quite arrived."
+    },
+    "why_correct_md": "Place a limiting word like *almost* **directly before the word it limits** — here, 'every practice'.",
+    "why_tempted_md": "'Almost' drifts to the front in speech, even when it belongs deeper in the sentence.",
+    "rule_md": "only / almost / just / even modify whatever immediately follows them — position them there.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 21,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>After studying all weekend, the exam felt easy to Priya.</u>",
+    "stem_md": "Which choice corrects the dangling modifier?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "After studying all weekend, Priya found the exam easy."
+      },
+      {
+        "letter": "C",
+        "label": "After studying all weekend, the exam was easy for Priya."
+      },
+      {
+        "letter": "D",
+        "label": "The exam, after studying all weekend, felt easy to Priya."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The exam did not study all weekend — the phrase dangles.",
+      "B": "'Priya' both studied and found the exam easy, so the modifier attaches correctly.",
+      "C": "'The exam was easy' still leaves the exam as the one who studied.",
+      "D": "Relocating the phrase keeps 'the exam' as the studier."
+    },
+    "why_correct_md": "The doer of 'studying' (Priya) must be the **subject right after the comma**.",
+    "why_tempted_md": "Everyone knows Priya studied, so the sentence feels acceptable as written.",
+    "rule_md": "An introductory -ing/-ed phrase modifies the noun that immediately follows it — make that noun the actor.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -3036,6 +3416,158 @@
     "why_correct_md": "A modifier must attach to the noun that actually performs it — give 'walking' its walker, **Jordan**.",
     "why_tempted_md": "Every option reads smoothly until you ask WHO is walking.",
     "rule_md": "Ask who performs the opening modifier's action; that noun must come immediately after the comma (or be given its own clause).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 21,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>Hoping to beat the heat, the hike started before sunrise.</u>",
+    "stem_md": "Which revision gives the opening phrase a subject that can perform its action?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Hoping to beat the heat, we started the hike before sunrise."
+      },
+      {
+        "letter": "C",
+        "label": "Hoping to beat the heat, the hike was started before sunrise."
+      },
+      {
+        "letter": "D",
+        "label": "The hike, hoping to beat the heat, started before sunrise."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A hike cannot hope — the dangling phrase has no one to attach to.",
+      "B": "'We' hoped and 'we' started, so the phrase finally has a doer.",
+      "C": "The passive keeps 'the hike' as subject, so the hike is still doing the hoping.",
+      "D": "Tucking the phrase mid-sentence still attaches 'hoping' to 'the hike'."
+    },
+    "why_correct_md": "A dangling modifier needs a **subject capable of the action** placed right after it — a person can hope; a hike cannot.",
+    "why_tempted_md": "The intended meaning is clear, so the impossible attachment is easy to miss.",
+    "rule_md": "Ask who performs the opening phrase's action; make that noun the subject that follows the comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 21,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>While reviewing the applications, several errors were noticed by the committee.</u>",
+    "stem_md": "Which choice fixes the dangling modifier without shifting the meaning?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "While reviewing the applications, the committee noticed several errors."
+      },
+      {
+        "letter": "C",
+        "label": "While reviewing the applications, several errors got noticed by the committee."
+      },
+      {
+        "letter": "D",
+        "label": "Several errors were noticed by the committee while reviewing the applications."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Several errors' were not reviewing the applications; the committee was.",
+      "B": "The committee both reviews and notices, so the opening phrase attaches to the right subject.",
+      "C": "Swapping 'were' for 'got' keeps 'errors' as the subject doing the reviewing.",
+      "D": "Moving the phrase to the end still leaves 'reviewing' pointing at 'errors'."
+    },
+    "why_correct_md": "The reviewer (the committee) must be the **subject the opening phrase modifies**.",
+    "why_tempted_md": "The passive 'were noticed by the committee' names the committee, so it seems attached — but grammatically it isn't the subject.",
+    "rule_md": "A 'While + -ing' opener modifies the sentence's subject; make the actor that subject, not a later 'by' phrase.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 21,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>To qualify for the finals, a clean routine must be landed by every gymnast.</u>",
+    "stem_md": "Which revision attaches the infinitive phrase to the ones who must act?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "To qualify for the finals, every gymnast must land a clean routine."
+      },
+      {
+        "letter": "C",
+        "label": "To qualify for the finals, a clean routine is what every gymnast must land."
+      },
+      {
+        "letter": "D",
+        "label": "A clean routine, to qualify for the finals, must be landed by every gymnast."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A 'clean routine' cannot qualify for the finals; the gymnasts do.",
+      "B": "Making 'every gymnast' the subject lets the opening 'to qualify' phrase attach to the ones who act.",
+      "C": "The cleft still leaves 'a clean routine' as the grammatical subject the phrase modifies.",
+      "D": "The passive keeps 'a clean routine' as subject, so the phrase still misattaches."
+    },
+    "why_correct_md": "An opening infinitive of purpose ('to qualify…') modifies the **subject that follows** — it must be the one qualifying.",
+    "why_tempted_md": "The passive voice sounds formal and 'test-like', masking the misattachment.",
+    "rule_md": "After an opening 'to + verb' purpose phrase, name the actor as the subject; avoid a passive that hides them.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 25,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "A good tour guide is patient, knowledgeable, and <u>speaks with enthusiasm</u>.",
+    "stem_md": "Which choice keeps the list of qualities parallel?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "enthusiastic"
+      },
+      {
+        "letter": "C",
+        "label": "has enthusiasm"
+      },
+      {
+        "letter": "D",
+        "label": "speaks enthusiastically"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Patient' and 'knowledgeable' are adjectives; 'speaks with enthusiasm' is a verb phrase, breaking the pattern.",
+      "B": "'Enthusiastic' is an adjective, matching the first two items.",
+      "C": "'Has enthusiasm' is a verb phrase, not an adjective.",
+      "D": "'Speaks enthusiastically' is still a verb phrase, out of step with the adjectives."
+    },
+    "why_correct_md": "Every item in a series must share the **same grammatical form** — three adjectives here.",
+    "why_tempted_md": "The verb phrase carries the same idea, so it feels interchangeable with an adjective.",
+    "rule_md": "Match each list item to the form the first items set — adjective with adjectives, noun with nouns, verb with verbs.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -3117,6 +3649,82 @@
   },
   {
     "skill_id": "s-sent",
+    "standard_id": 25,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The report explains not only what the drought destroyed <u>but also how communities rebuilt afterward, being resilient.</u>",
+    "stem_md": "Which choice makes the two halves of the 'not only … but also' pair parallel?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "but also how communities rebuilt afterward."
+      },
+      {
+        "letter": "C",
+        "label": "but communities rebuilding afterward with resilience."
+      },
+      {
+        "letter": "D",
+        "label": "but also the resilient rebuilding done by communities afterward."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'What the drought destroyed' is a clause; tacking on 'being resilient' unbalances the paired halves.",
+      "B": "'How communities rebuilt' mirrors 'what the drought destroyed' — clause matched to clause.",
+      "C": "Dropping 'also' breaks the fixed 'not only … but also' pair and switches to a phrase.",
+      "D": "The noun phrase 'the resilient rebuilding' no longer matches the 'what …' clause on the other side."
+    },
+    "why_correct_md": "In 'not only X but also Y', **X and Y must be the same structure** — here, two 'wh-' clauses.",
+    "why_tempted_md": "The extra 'being resilient' adds a nice idea, so it's tempting to keep despite breaking the balance.",
+    "rule_md": "Correlative pairs (not only/but also, either/or) demand identical grammatical forms on both sides.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 32,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The new turbines generate more electricity than <u>the old plant</u>, and they do it with half the fuel.",
+    "stem_md": "Which choice completes the comparison so like is compared with like?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "the old plant did"
+      },
+      {
+        "letter": "C",
+        "label": "that of the old plant"
+      },
+      {
+        "letter": "D",
+        "label": "the old plant's electricity generation was"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "As written, the turbines' electricity is compared to 'the old plant' itself, not to what it generated.",
+      "B": "'Did' supplies the missing verb, comparing how much the turbines generate to how much the plant generated.",
+      "C": "'That of the old plant' compares electricity to electricity but reads awkwardly after 'generate more electricity than'.",
+      "D": "This is grammatical but bloated, and the tense 'was' clashes with the active 'generate'."
+    },
+    "why_correct_md": "Finish the comparison with the **parallel verb** ('did') so 'generate' is measured against 'generated'.",
+    "why_tempted_md": "'Than the old plant' sounds complete, hiding that a turbine's output is being set against a building.",
+    "rule_md": "Complete a comparison so both sides name the same kind of thing — often by adding the echoing verb (did, does, is).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
     "standard_id": 32,
     "difficulty": 5,
     "item_type": "underlined-span-mc",
@@ -3150,6 +3758,82 @@
     "why_correct_md": "Comparisons must pair like with like: technique vs **that of** the others.",
     "why_tempted_md": "The shorthand comparison is how people actually talk, so the mismatch hides.",
     "rule_md": "When comparing possessions or attributes, add 'that of' / 'those of' so both sides match.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 32,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Critics agreed that the sequel's soundtrack was far more inventive than <u>the original film</u>.",
+    "stem_md": "Which choice makes the comparison logically consistent?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "in the original film"
+      },
+      {
+        "letter": "C",
+        "label": "that of the original film"
+      },
+      {
+        "letter": "D",
+        "label": "the original film was inventive"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "This compares a soundtrack to an entire film, not to the film's soundtrack.",
+      "B": "'In the original film' compares the soundtrack to a location, still not to another soundtrack.",
+      "C": "'That of the original film' stands in for 'the soundtrack of the original film', matching soundtrack to soundtrack.",
+      "D": "Adding 'was inventive' repeats the adjective and produces a lopsided, redundant clause."
+    },
+    "why_correct_md": "Use **'that of'** so the sequel's soundtrack is compared with the original's soundtrack, not the film.",
+    "why_tempted_md": "'Than the original film' is idiomatic-sounding, masking the soundtrack-to-film mismatch.",
+    "rule_md": "When comparing an attribute, insert 'that of' / 'those of' so both sides name the same attribute.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 32,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Unlike most of the region's rivers, which flood every spring, <u>the drought left the Verde nearly dry by June.</u>",
+    "stem_md": "Which choice makes the opening comparison match its subject?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "the Verde was left nearly dry by the drought by June."
+      },
+      {
+        "letter": "C",
+        "label": "the Verde ran nearly dry from the drought by June."
+      },
+      {
+        "letter": "D",
+        "label": "June saw the drought leave the Verde nearly dry."
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Unlike most of the region's rivers' should be followed by another river, but the subject is 'the drought'.",
+      "B": "The passive still makes 'the Verde' the grammatical subject only after 'was left' — but the sentence opens by naming the drought's effect, keeping the mismatch and adding a clumsy double 'by'.",
+      "C": "Making 'the Verde' the subject that acts ('ran nearly dry') lets 'unlike … rivers' compare river to river.",
+      "D": "Starting with 'June' leaves 'the drought' as what follows the comparison, so a river is compared to a drought."
+    },
+    "why_correct_md": "'Unlike + [rivers]' must be followed by the **thing being contrasted with them** — another river (the Verde), not the drought.",
+    "why_tempted_md": "The sentence's meaning is clear, so the river-vs-drought comparison slips past.",
+    "rule_md": "After 'unlike X' or 'like X', the very next noun must be the item logically compared with X.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
