@@ -572,6 +572,120 @@
   {
     "skill_id": "s-punc",
     "standard_id": 14,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "The camping checklist included a tent<u> a lantern matches</u> and a first-aid kit.",
+    "stem_md": "Which choice punctuates the items in the series correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", a lantern, matches,"
+      },
+      {
+        "letter": "C",
+        "label": ", a lantern matches,"
+      },
+      {
+        "letter": "D",
+        "label": "; a lantern; matches;"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "With no commas, four separate supplies blur into one unreadable run.",
+      "B": "Commas separate each item in the series of four supplies.",
+      "C": "This leaves 'a lantern matches' fused into one item — a lantern isn't a kind of match.",
+      "D": "Semicolons separate series items only when the items already contain commas."
+    },
+    "why_correct_md": "Commas separate **every item** in a simple series.",
+    "why_tempted_md": "Short items read fast aloud, so the missing commas are easy to skate past.",
+    "rule_md": "In a series of three or more, put a comma after each item except the last.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "My grandparents moved to Tucson<u> Arizona on March 4 1998</u> after the bakery closed.",
+    "stem_md": "Which choice punctuates the place and date correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", Arizona, on March 4, 1998,"
+      },
+      {
+        "letter": "C",
+        "label": ", Arizona on March 4, 1998"
+      },
+      {
+        "letter": "D",
+        "label": ", Arizona, on March 4 1998,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "City-state pairs and day-year pairs both need commas to stay readable.",
+      "B": "Commas set off the state and the year on both sides — the full convention.",
+      "C": "The state needs a comma on BOTH sides, and the year needs its closing comma too.",
+      "D": "The state is handled, but the day and year are left fused."
+    },
+    "why_correct_md": "State names and years act like interrupters: **commas on both sides**.",
+    "why_tempted_md": "The single comma before 'Arizona' looks like it is already doing the job.",
+    "rule_md": "City, State, ... and Month Day, Year, ... — the state and the year each take a closing comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The tide was coming in fast<u> so</u> we dragged the kayaks up past the dune grass.",
+    "stem_md": "Which choice correctly joins the two halves of the sentence?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", so"
+      },
+      {
+        "letter": "C",
+        "label": "; so,"
+      },
+      {
+        "letter": "D",
+        "label": ", so,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two complete thoughts joined by 'so' need a comma before the conjunction.",
+      "B": "Comma + coordinating conjunction is the standard join for two independent clauses.",
+      "C": "A semicolon replaces the conjunction — using both, plus a stray comma, doubles the connector.",
+      "D": "No comma follows a coordinating conjunction; the pause belongs before it."
+    },
+    "why_correct_md": "Independent clause + **comma + FANBOYS** + independent clause.",
+    "why_tempted_md": "'So' feels small enough to glue the halves together without help.",
+    "rule_md": "Put the comma BEFORE a coordinating conjunction that joins two complete thoughts — never after it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
     "context_html": "Because the storm had knocked out power across the valley<u> the</u> town meeting moved to the fire hall.",
@@ -610,6 +724,82 @@
   {
     "skill_id": "s-punc",
     "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "After three straight weekends of tryouts and scrimmages<u> the</u> coach finally posted the roster.",
+    "stem_md": "Which choice punctuates the sentence's opening correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", the"
+      },
+      {
+        "letter": "C",
+        "label": "; the"
+      },
+      {
+        "letter": "D",
+        "label": ": the"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A long opening phrase runs straight into the main clause without a marked boundary.",
+      "B": "A comma after the long introductory phrase shows where the main clause begins.",
+      "C": "A semicolon needs a complete clause on its left — the opener has no verb.",
+      "D": "A colon needs a complete statement before it, and the opener isn't one."
+    },
+    "why_correct_md": "A **long introductory phrase** takes a comma before the main clause begins.",
+    "why_tempted_md": "Openers without verbs feel too small to deserve punctuation.",
+    "rule_md": "After a long opening phrase (four-plus words), set the main clause off with a comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "She pulled on a <u>warm wool</u> sweater and stepped into the sleet.",
+    "stem_md": "Which choice handles the adjectives before 'sweater' correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "warm, wool"
+      },
+      {
+        "letter": "C",
+        "label": "warm, wool,"
+      },
+      {
+        "letter": "D",
+        "label": "warm and wool"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "'Warm' describes the wool sweater as a unit — stacked (cumulative) adjectives take no comma.",
+      "B": "The swap test fails ('wool warm sweater'?) — these adjectives aren't coordinate, so no comma.",
+      "C": "A comma between the last adjective and its noun is never correct.",
+      "D": "'And' only joins adjectives that could trade places — these can't."
+    },
+    "why_correct_md": "These adjectives **stack**: 'warm' modifies 'wool sweater' as a whole, so no comma.",
+    "why_tempted_md": "Two adjectives in a row look like the comma-separated kind at a glance.",
+    "rule_md": "Comma only between adjectives that pass the swap/'and' test; cumulative adjectives take none.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "Our biology teacher<u>, Mr. Alvarez,</u> keeps a terrarium of hissing cockroaches behind his desk.",
@@ -642,6 +832,120 @@
     "why_correct_md": "A renaming appositive is set off by a **pair of commas** — both sides or neither.",
     "why_tempted_md": "Only one pause is easy to hear aloud, so a single comma feels sufficient.",
     "rule_md": "A nonrestrictive appositive takes commas on BOTH sides; drop both only when the name truly restricts.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The lighthouse<u> built in 1902 by a crew of eleven</u> still guides boats through the narrows.",
+    "stem_md": "Which choice sets off the phrase about the lighthouse's construction correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", built in 1902 by a crew of eleven,"
+      },
+      {
+        "letter": "C",
+        "label": ", built in 1902 by a crew of eleven"
+      },
+      {
+        "letter": "D",
+        "label": " that was built in 1902 by a crew of eleven,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Extra history about an already-identified lighthouse needs to be set off.",
+      "B": "Paired commas mark the phrase as droppable background detail.",
+      "C": "The interrupter opens with a comma but never closes.",
+      "D": "'That' frames the detail as restrictive — and still leaves one stray comma."
+    },
+    "why_correct_md": "The phrase adds droppable background about one specific lighthouse → **paired commas**.",
+    "why_tempted_md": "The phrase sits so close to its noun that it feels built in.",
+    "rule_md": "Nonrestrictive (extra) modifiers take commas on both sides; restrictive ones take none.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "It was the current<u> not the wind</u> that pushed the raft off course.",
+    "stem_md": "Which choice punctuates the contrast correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", not the wind,"
+      },
+      {
+        "letter": "C",
+        "label": ", not the wind"
+      },
+      {
+        "letter": "D",
+        "label": "— not the wind"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The 'not X' contrast is an interrupter and can't run bare into the sentence.",
+      "B": "Antithetical phrases are set off by commas on BOTH sides.",
+      "C": "Dropping the closing comma splices the contrast into 'that'.",
+      "D": "An opening dash with no closing partner leaves the frame unmatched."
+    },
+    "why_correct_md": "An antithetical phrase ('not the wind') is set off by a **pair of commas**.",
+    "why_tempted_md": "The sentence reads smoothly with only the first comma's pause.",
+    "rule_md": "Contrastive 'not X' interrupters take commas before AND after.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The robotics club renamed <u>it's</u> entry an hour before the qualifying round.",
+    "stem_md": "Which choice is correct before 'entry'?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "its"
+      },
+      {
+        "letter": "C",
+        "label": "its'"
+      },
+      {
+        "letter": "D",
+        "label": "it is"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'It's' means 'it is' — and 'renamed it is entry' collapses.",
+      "B": "'Its' is the possessive form, written with no apostrophe.",
+      "C": "'Its'' is not a word in any position.",
+      "D": "Expanding the contraction proves it wrong: 'renamed it is entry'."
+    },
+    "why_correct_md": "Possessive 'its' takes **no apostrophe** — the apostrophe version always means 'it is'.",
+    "why_tempted_md": "Most possessives DO take apostrophes, so 'it's' looks right.",
+    "rule_md": "Test by expanding: if 'it is' fails in the slot, write 'its'.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -718,6 +1022,196 @@
     "why_correct_md": "One owner → apostrophe **before** the s: *cat's*.",
     "why_tempted_md": "Plural 'cats' and possessive 'cat's' sound identical aloud, so the missing apostrophe is easy to overlook.",
     "rule_md": "Singular owner → 's; plural owners ending in s → s'.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Both <u>coach's</u> agreed the schedule left too little time for warm-ups.",
+    "stem_md": "Which choice writes the word for two coaches correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "coaches"
+      },
+      {
+        "letter": "C",
+        "label": "coaches'"
+      },
+      {
+        "letter": "D",
+        "label": "coachs"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Apostrophe-s builds a possessive, but nothing in the sentence is owned.",
+      "B": "A plain plural takes -es and no apostrophe.",
+      "C": "The plural possessive still needs something possessed — there's nothing here.",
+      "D": "Nouns ending in -ch form their plurals with -es."
+    },
+    "why_correct_md": "'Both' just means two of them — a **plural**, no apostrophe.",
+    "why_tempted_md": "Apostrophes creep in whenever a noun ends in an s-sound.",
+    "rule_md": "Apostrophes mark possession or contraction — never a plain plural.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "<u>Maya and Jonah's</u> podcast about minor-league mascots just passed a hundred episodes.",
+    "stem_md": "Which choice is correct for the podcast the two friends share?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Maya's and Jonah's"
+      },
+      {
+        "letter": "C",
+        "label": "Maya's and Jonah"
+      },
+      {
+        "letter": "D",
+        "label": "Maya and Jonahs'"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "One shared podcast → the apostrophe hangs on the LAST owner only.",
+      "B": "Separate apostrophes would signal two separate podcasts.",
+      "C": "This marks the first owner and strands the second entirely.",
+      "D": "'Jonahs'' treats the name as a plural that doesn't exist."
+    },
+    "why_correct_md": "Joint ownership hangs ONE apostrophe on the **final owner**.",
+    "why_tempted_md": "Two owners feel like they deserve two apostrophes.",
+    "rule_md": "Shared thing → apostrophe on the last name; separate things → apostrophe on each name.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The <u>dancers costumes</u> hung along the mirror wall, each tagged with a scene number.",
+    "stem_md": "Which choice shows that the costumes belong to the dancers?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "dancers' costumes"
+      },
+      {
+        "letter": "C",
+        "label": "dancer's costumes"
+      },
+      {
+        "letter": "D",
+        "label": "dancers's costumes"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two plain nouns in a row leave the ownership unmarked.",
+      "B": "A plural owner ending in s takes its apostrophe after the s.",
+      "C": "This puts every costume in the hands of a single dancer.",
+      "D": "Adding 's after a plural s ('dancers's') is never correct."
+    },
+    "why_correct_md": "Plural owners that already end in s add **just the apostrophe**.",
+    "why_tempted_md": "The singular 's pattern is so common it gets pasted onto plurals.",
+    "rule_md": "Singular owner → 's; plural owners ending in s → s' (apostrophe alone).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The judges compared <u>Priya and Marcus's</u> essays before choosing a winner.",
+    "stem_md": "Which choice is correct for essays each student wrote separately?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Priya's and Marcus's"
+      },
+      {
+        "letter": "C",
+        "label": "Priya and Marcus'"
+      },
+      {
+        "letter": "D",
+        "label": "Priya's and Marcus"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A single apostrophe on the last name claims one co-written set of essays.",
+      "B": "Separately owned essays give EACH owner an apostrophe.",
+      "C": "Still one owner marked — and 'Marcus'' drops the s his singular name needs.",
+      "D": "The second owner is left with no possessive at all."
+    },
+    "why_correct_md": "Separately owned things give **each owner** an apostrophe.",
+    "why_tempted_md": "The joint-ownership pattern (last name only) gets over-applied to every pair.",
+    "rule_md": "Ask shared-or-separate: shared → last owner only; separate → every owner marked.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The <u>childrens'</u> mural stretches down the hallway outside the art room.",
+    "stem_md": "Which choice is the correct possessive for the young artists?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "children's"
+      },
+      {
+        "letter": "C",
+        "label": "childrens"
+      },
+      {
+        "letter": "D",
+        "label": "children"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Childrens' isn't a word — the apostrophe lands after a fake plural.",
+      "B": "Irregular plurals form possessives with 's, just like singulars.",
+      "C": "No apostrophe means no possession, and the fake plural remains.",
+      "D": "The bare plural drops the ownership the sentence asserts."
+    },
+    "why_correct_md": "Irregular plurals (children, women, mice) form possessives with **'s**, not s'.",
+    "why_tempted_md": "The plural-ends-in-s rule (s') gets forced onto plurals that never end in s.",
+    "rule_md": "If the plural doesn't end in s, add 's: children's, women's, geese's.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -800,6 +1294,196 @@
   {
     "skill_id": "s-punc",
     "standard_id": 29,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Rehearsal ran long<u>, however,</u> nobody left before the final scene was blocked.",
+    "stem_md": "Which choice punctuates 'however' between the two statements correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "; however,"
+      },
+      {
+        "letter": "C",
+        "label": "; however"
+      },
+      {
+        "letter": "D",
+        "label": ", however;"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'However' between commas can't hold two clauses together — that's still a splice.",
+      "B": "Semicolon before and comma after is how 'however' bridges two clauses.",
+      "C": "The comma 'however' takes after itself is missing.",
+      "D": "The marks are reversed — the heavy mark goes before the bridge word."
+    },
+    "why_correct_md": "Clause **; however,** clause — semicolon before, comma after.",
+    "why_tempted_md": "'However' feels like 'but', which really does take just a comma.",
+    "rule_md": "Conjunctive adverbs (however, therefore, meanwhile) joining clauses take ';' before and ',' after.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The storm knocked out the scoreboard<u>, the</u> referees kept score on a clipboard.",
+    "stem_md": "Which choice repairs the join between the two statements?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "; the"
+      },
+      {
+        "letter": "C",
+        "label": " the"
+      },
+      {
+        "letter": "D",
+        "label": " so the"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A comma alone can't hold two complete thoughts together.",
+      "B": "A semicolon joins the two closely related independent clauses.",
+      "C": "Removing the comma fuses the sentences outright.",
+      "D": "'So' would need a comma before it; bare, it just smears the join."
+    },
+    "why_correct_md": "Two independent clauses with no conjunction take a **semicolon**.",
+    "why_tempted_md": "The clauses are so tightly related that a comma feels sufficient.",
+    "rule_md": "Comma-splice fixes: semicolon, period, or comma + FANBOYS — never a comma alone.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Every camper packs the same three essentials<u>;</u> water, sun protection, and a whistle.",
+    "stem_md": "Which punctuation mark belongs before the list of essentials?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ":"
+      },
+      {
+        "letter": "C",
+        "label": ","
+      },
+      {
+        "letter": "D",
+        "label": "."
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A semicolon needs a complete clause on each side — a list isn't one.",
+      "B": "The complete statement hands off to its promised list with a colon.",
+      "C": "A comma tangles the list into the clause that announces it.",
+      "D": "A period strands the list as a fragment."
+    },
+    "why_correct_md": "Complete statement + list → **colon** delivers the items the sentence promised.",
+    "why_tempted_md": "Semicolons and colons blur together as 'formal marks before lists'.",
+    "rule_md": "A colon introduces a list only after a complete statement; a semicolon never introduces a list.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "After the blackout, the theater made one change<u>; battery-powered</u> exit signs in every stairwell.",
+    "stem_md": "Which choice correctly introduces what the change was?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ": battery-powered"
+      },
+      {
+        "letter": "C",
+        "label": ", it added battery-powered"
+      },
+      {
+        "letter": "D",
+        "label": " battery-powered"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A semicolon requires an independent clause on both sides — the right side is a phrase.",
+      "B": "The colon presents the change the clause just promised.",
+      "C": "'It added ...' after only a comma splices two clauses.",
+      "D": "Fusing leaves 'change battery-powered exit signs' unreadable."
+    },
+    "why_correct_md": "A complete clause announcing something hands off with a **colon** — even to a phrase.",
+    "why_tempted_md": "Semicolon and colon look interchangeable at the pivot of a sentence.",
+    "rule_md": "Colon: complete clause before, anything after. Semicolon: complete clauses on BOTH sides.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The debate team traveled to Austin<u>, Texas, Portland,</u> Oregon, and Boise, Idaho for the spring circuit.",
+    "stem_md": "Which choice keeps the three city-state pairs distinct?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", Texas; Portland,"
+      },
+      {
+        "letter": "C",
+        "label": "; Texas, Portland;"
+      },
+      {
+        "letter": "D",
+        "label": ", Texas: Portland,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "All-commas makes 'Texas' and 'Portland' read as two separate stops.",
+      "B": "Semicolons separate series items that already contain commas.",
+      "C": "This splits a city from its own state.",
+      "D": "A colon can't separate items in a series."
+    },
+    "why_correct_md": "When series items contain commas, **semicolons** separate the items.",
+    "why_tempted_md": "Plain commas are the series habit even after the items grow internal commas.",
+    "rule_md": "Upgrade series separators to semicolons once any item has an internal comma.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
     "difficulty": 5,
     "item_type": "underlined-span-mc",
     "context_html": "The judges announced that the three finalists <u>are: a baker from Reno, a chef from Tulsa,</u> and a caterer from Boise.",
@@ -832,6 +1516,272 @@
     "why_correct_md": "'Are' already introduces the list — **no punctuation** sits between a verb and its complement.",
     "why_tempted_md": "Colons DO introduce lists — just not when the words before the colon can't stand alone.",
     "rule_md": "Use a colon only after a COMPLETE statement; never right after 'are', 'include', or 'such as'.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 29,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Two of the printers jammed before first period<u>,</u> the third ran out of toner by lunch.",
+    "stem_md": "Which mark correctly separates the two printer problems?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ";"
+      },
+      {
+        "letter": "C",
+        "label": ":"
+      },
+      {
+        "letter": "D",
+        "label": ", moreover"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "A comma alone splices two complete statements.",
+      "B": "A semicolon pairs the two related, parallel failures.",
+      "C": "A colon promises that the second clause explains the first — it only adds a parallel mishap.",
+      "D": "'Moreover' after a comma is still a splice; it would need a semicolon in front."
+    },
+    "why_correct_md": "Related complete statements joined without a conjunction take a **semicolon**.",
+    "why_tempted_md": "The clauses are short and parallel, so the comma feels light and quick.",
+    "rule_md": "Semicolon = related independent clauses, no conjunction; colon = only when the second part explains the first.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 30,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Mr. Okafor<u>, he is the school's athletic trainer,</u> keeps a scrapbook of every season since 1998.",
+    "stem_md": "Which choice correctly folds the trainer detail into the sentence?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", the school's athletic trainer,"
+      },
+      {
+        "letter": "C",
+        "label": " the school's athletic trainer"
+      },
+      {
+        "letter": "D",
+        "label": ", he, the school's athletic trainer,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Mr. Okafor, he is ...' jams a whole clause where an appositive belongs.",
+      "B": "The bare noun phrase renames him cleanly between commas.",
+      "C": "Without commas, the phrase collides with the name it renames.",
+      "D": "Doubling the subject doubles the clutter."
+    },
+    "why_correct_md": "To tuck a fact inside a sentence, use an **appositive phrase**, not a full clause.",
+    "why_tempted_md": "The original clause is perfectly grammatical — just not inside another sentence.",
+    "rule_md": "Rename with a comma-wrapped phrase; save 'he is' for a separate sentence.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 30,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The trail's last water source <u>(a spring that runs dry by August</u> sits two miles below the summit.",
+    "stem_md": "Which choice handles the parenthetical about the spring correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "(a spring that runs dry by August)"
+      },
+      {
+        "letter": "C",
+        "label": "a spring that runs dry by August)"
+      },
+      {
+        "letter": "D",
+        "label": "(a spring that runs dry by August,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The opening parenthesis never closes.",
+      "B": "Parentheses close what they open — the aside is sealed on both ends.",
+      "C": "This closes an aside that never opened.",
+      "D": "A comma can't stand in for the closing parenthesis."
+    },
+    "why_correct_md": "**Parentheses travel in pairs** — every opener needs its closer.",
+    "why_tempted_md": "By the end of a long aside it's easy to forget the bracket is still open.",
+    "rule_md": "Whatever opens an aside (comma, dash, parenthesis) must be matched at its close.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 30,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The final stretch of the relay<u> the part everyone dreads </u>is a hill with no shade.",
+    "stem_md": "Which choice sets off the aside about the relay correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": " — the part everyone dreads — "
+      },
+      {
+        "letter": "C",
+        "label": " — the part everyone dreads, "
+      },
+      {
+        "letter": "D",
+        "label": ", the part everyone dreads — "
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The aside needs marks to lift it out of the main sentence.",
+      "B": "Matched dashes frame the interruption on both sides.",
+      "C": "A dash that opens can't be closed by a comma.",
+      "D": "A comma that opens can't be closed by a dash."
+    },
+    "why_correct_md": "An abrupt aside takes **matched dashes** — the same mark on both sides.",
+    "why_tempted_md": "One dash feels dramatic enough, and the closing partner gets forgotten.",
+    "rule_md": "Interrupters pair their marks: two commas, two dashes, or two parentheses — never a mix.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 31,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Seeds<u>, that</u> sprout in the cold frame get moved to the garden after the last frost.",
+    "stem_md": "Which choice is correct for the seeds being singled out?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": " that"
+      },
+      {
+        "letter": "C",
+        "label": ", which"
+      },
+      {
+        "letter": "D",
+        "label": " which,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The comma + 'that' contradicts itself — 'that' clauses are never set off.",
+      "B": "Restrictive 'that' with no comma picks out WHICH seeds get moved.",
+      "C": "', which' makes the detail optional — then ALL seeds get moved, changing the claim.",
+      "D": "'Which' with a stray trailing comma is neither restrictive nor properly nonrestrictive."
+    },
+    "why_correct_md": "The clause **restricts** — only the cold-frame sprouters move — so: 'that', no comma.",
+    "why_tempted_md": "'Which' sounds more formal, and commas feel polite around any clause.",
+    "rule_md": "Restrictive → 'that', no commas. Nonrestrictive → ', which ..., ' with commas.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 31,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "My cousin Leah<u> who taught herself to juggle during a rain delay</u> now performs between innings.",
+    "stem_md": "Which choice punctuates the detail about Leah correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": ", who taught herself to juggle during a rain delay,"
+      },
+      {
+        "letter": "C",
+        "label": ", who taught herself to juggle during a rain delay"
+      },
+      {
+        "letter": "D",
+        "label": " that taught herself to juggle during a rain delay"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Leah is already identified by name — the extra story needs setting off.",
+      "B": "Paired commas mark the clause as droppable detail about a named person.",
+      "C": "The aside opens but never closes.",
+      "D": "'That' for a person, and restrictive framing for someone already named — wrong twice."
+    },
+    "why_correct_md": "A clause adding detail about a **named person** is nonrestrictive: commas on both sides.",
+    "why_tempted_md": "Read quickly, nothing looks broken without the commas.",
+    "rule_md": "If the noun is already fully identified, the clause is extra — set it off with commas.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 31,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passengers<u>, who checked bags,</u> should proceed to carousel four.",
+    "stem_md": "Which choice tells only the right passengers to go to carousel four?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": " who checked bags"
+      },
+      {
+        "letter": "C",
+        "label": ", which checked bags,"
+      },
+      {
+        "letter": "D",
+        "label": " checking bags,"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The commas make the clause apply to ALL passengers — everyone gets sent to the carousel.",
+      "B": "The restrictive clause limits the instruction to passengers who checked bags.",
+      "C": "'Which' can't refer to people, and the commas still over-include.",
+      "D": "The half-converted participle drags a stray comma with it."
+    },
+    "why_correct_md": "Dropping the commas makes the clause **restrictive** — only those passengers.",
+    "why_tempted_md": "Commas feel harmless, but here they change who is being addressed.",
+    "rule_md": "Commas around the clause = applies to all; no commas = only those. Punctuate the MEANING.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
