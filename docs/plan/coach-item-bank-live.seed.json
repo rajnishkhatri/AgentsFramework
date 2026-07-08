@@ -727,7 +727,7 @@
     "difficulty": 2,
     "item_type": "underlined-span-mc",
     "context_html": "Passage V — A Brief Note on Commas (usage-focused) — Many writers struggle with commas , they are among the trickiest marks of punctuation. A comma can separate items in a list, set off an introductory phrase, or join two clauses with a conjunction. Misusing them, however can confuse a reader. Consider the difference between \"Let's eat, Grandma\" and \"Let's eat Grandma.\" The first <u>invites</u> Grandma to dinner; the second is alarming. Such examples remind us that punctuation, though small, carries real meaning.",
-    "stem_md": "Which choice makes the underlined verb agree with its plural subject?",
+    "stem_md": "Which choice makes the underlined verb agree with its subject?",
     "choices": [
       {
         "letter": "A",
@@ -743,19 +743,19 @@
       },
       {
         "letter": "D",
-        "label": "invites to"
+        "label": "have invited"
       }
     ],
     "answer_letter": "A",
     "per_choice_rationale": {
-      "A": "\"The first invites\" — singular subject.",
-      "B": "This option leaves or introduces an error under the tested rule.",
-      "C": "This option leaves or introduces an error under the tested rule.",
-      "D": "This option leaves or introduces an error under the tested rule."
+      "A": "The subject 'The first' is singular, so the singular 'invites' agrees.",
+      "B": "'Invite' is plural; it clashes with the singular subject 'The first'.",
+      "C": "'Inviting' is a participle, not a finite verb — it leaves no main verb.",
+      "D": "'Have invited' is plural and shifts the tense away from the present contrast."
     },
-    "why_correct_md": "\"The first invites\" — singular subject.",
-    "why_tempted_md": "The original can read smoothly until you apply the rule.",
-    "rule_md": "Rule focus: Conventions (agreement)..",
+    "why_correct_md": "The subject **'The first'** is singular, so it takes the singular verb 'invites'.",
+    "why_tempted_md": "The nearby noun 'Grandma' can pull the ear toward a plural verb.",
+    "rule_md": "Match the verb to its true subject's number, not to an adjacent noun.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1385,7 +1385,7 @@
       },
       {
         "letter": "C",
-        "label": "collected by"
+        "label": "collects from"
       },
       {
         "letter": "D",
@@ -1394,13 +1394,13 @@
     ],
     "answer_letter": "A",
     "per_choice_rationale": {
-      "A": "\"measurements collected from ships\" — past participle correct.",
-      "B": "This option leaves or introduces an error under the tested rule.",
-      "C": "This option leaves or introduces an error under the tested rule.",
-      "D": "This option leaves or introduces an error under the tested rule."
+      "A": "'collected from ships' is a past participle modifying 'measurements' — consistent with the passage's past narration.",
+      "B": "'collecting from' is a present participle, wrongly making the measurements do the collecting.",
+      "C": "'collects from' is present tense, clashing with the passage's past-tense story.",
+      "D": "'which collected from' turns the phrase into a clause whose subject illogically collects."
     },
-    "why_correct_md": "\"measurements collected from ships\" — past participle correct.",
-    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "why_correct_md": "The past participle **'collected from'** modifies 'measurements' and matches the past-tense narration.",
+    "why_tempted_md": "Each alternative changes the verb form just enough to sound plausible in isolation.",
     "rule_md": "Rule focus: Conventions (verb form)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
@@ -1714,7 +1714,7 @@
     "standard_id": 1,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
-    "context_html": "The recipe requires no oven and only five ingredients. <u>Nevertheless,</u> even a beginner can finish it in ten minutes.",
+    "context_html": "The recipe requires no oven and only five ingredients. <u>Nevertheless,</u> a beginner can finish it in ten minutes.",
     "stem_md": "Which transition best fits the relationship between the two sentences?",
     "choices": [
       {
@@ -1736,12 +1736,12 @@
     ],
     "answer_letter": "B",
     "per_choice_rationale": {
-      "A": "'Nevertheless' signals a contrast, but the second sentence agrees with and follows from the first.",
+      "A": "'Nevertheless' signals contrast, but the second sentence follows from the first.",
       "B": "'So' shows the easy recipe leads naturally to a fast, beginner-friendly result.",
       "C": "'In contrast' wrongly frames the sentences as opposites.",
       "D": "'However' also implies a reversal that isn't there."
     },
-    "why_correct_md": "The simplicity **causes** the speed, so a cause-effect transition ('so') is right.",
+    "why_correct_md": "The recipe's simplicity **causes** the quick, beginner-friendly result, so a cause-effect 'so' fits.",
     "why_tempted_md": "'Nevertheless' sounds sophisticated, so it's easy to drop in without checking the logic.",
     "rule_md": "Don't reach for a contrast word when the second idea actually results from the first.",
     "reviewed": false,
@@ -2939,7 +2939,7 @@
       },
       {
         "letter": "B",
-        "label": "Misusing them however,"
+        "label": "Misusing them, however,"
       },
       {
         "letter": "C",
@@ -2950,15 +2950,15 @@
         "label": "Misusing them; however"
       }
     ],
-    "answer_letter": "A",
+    "answer_letter": "B",
     "per_choice_rationale": {
-      "A": "\"Misusing them, however, can confuse\" needs commas around \"however.\"",
-      "B": "This option leaves or introduces an error under the tested rule.",
-      "C": "This option leaves or introduces an error under the tested rule.",
-      "D": "This option leaves or introduces an error under the tested rule."
+      "A": "NO CHANGE has only the leading comma; 'however' needs one on each side.",
+      "B": "Commas on both sides correctly set off the interrupting 'however'.",
+      "C": "No commas at all leaves the conjunctive adverb unpunctuated.",
+      "D": "A semicolon wrongly breaks a single clause that has no second independent clause."
     },
-    "why_correct_md": "\"Misusing them, however, can confuse\" needs commas around \"however.\"",
-    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "why_correct_md": "A mid-clause **'however'** is an interrupter — commas on **both** sides: 'Misusing them, however, can confuse.'",
+    "why_tempted_md": "The single leading comma looks finished, so the missing second comma is easy to miss.",
     "rule_md": "Rule focus: Conventions (interrupter punctuation)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
@@ -3885,30 +3885,30 @@
     "choices": [
       {
         "letter": "A",
-        "label": "This discovery — which supported the then-controversial theory of continental drift —"
+        "label": "This discovery, which supported the then-controversial theory of continental drift,"
       },
       {
         "letter": "B",
-        "label": "This discovery, supporting the then-controversial theory of continental drift,"
+        "label": "This discovery which supported the then-controversial theory of continental drift"
       },
       {
         "letter": "C",
-        "label": "This discovery that supported the then-controversial theory of continental drift,"
+        "label": "This discovery, which supported the then-controversial theory of continental drift"
       },
       {
         "letter": "D",
-        "label": "This discovery supported the then-controversial theory of continental drift, and it"
+        "label": "This discovery; which supported the then-controversial theory of continental drift,"
       }
     ],
-    "answer_letter": "D",
+    "answer_letter": "A",
     "per_choice_rationale": {
-      "A": "This option leaves or introduces an error under the tested rule.",
-      "B": "This option leaves or introduces an error under the tested rule.",
-      "C": "This option leaves or introduces an error under the tested rule.",
-      "D": "J creates a comma splice / changes meaning; F, G, H all preserve the modifier acceptably."
+      "A": "The nonrestrictive clause is correctly set off by a comma on BOTH sides.",
+      "B": "With no commas at all, the added detail runs into the sentence unpunctuated.",
+      "C": "A leading comma with no closing comma leaves the interrupter half-punctuated.",
+      "D": "A semicolon can't attach a dependent 'which' clause; it needs an independent clause."
     },
-    "why_correct_md": "J creates a comma splice / changes meaning; F, G, H all preserve the modifier acceptably.",
-    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "why_correct_md": "A nonrestrictive **'which'** clause is an interrupter — a comma on each side: '..., which supported ..., was ...'.",
+    "why_tempted_md": "The single leading comma looks like enough, so the missing closing comma slips by.",
     "rule_md": "Rule focus: Knowledge of Language (NOT-acceptable)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
@@ -6135,7 +6135,7 @@
       },
       {
         "letter": "C",
-        "label": "that of the old plant"
+        "label": "that of the old plants"
       },
       {
         "letter": "D",
@@ -6145,8 +6145,8 @@
     "answer_letter": "B",
     "per_choice_rationale": {
       "A": "As written, the turbines' electricity is compared to 'the old plant' itself, not to what it generated.",
-      "B": "'Did' supplies the missing verb, comparing how much the turbines generate to how much the plant generated.",
-      "C": "'That of the old plant' compares electricity to electricity but reads awkwardly after 'generate more electricity than'.",
+      "B": "'did' supplies the missing verb, comparing how much the turbines generate to how much the plant generated.",
+      "C": "'that of the old plants' is plural and disagrees with the single old plant the sentence names.",
       "D": "This is grammatical but bloated, and the tense 'was' clashes with the active 'generate'."
     },
     "why_correct_md": "Finish the comparison with the **parallel verb** ('did') so 'generate' is measured against 'generated'.",
