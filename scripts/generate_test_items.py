@@ -42,7 +42,7 @@ setup_logging(_REPO / "logging.json")
 
 from langgraph.errors import GraphRecursionError
 
-from components.test_item_generation import run_test_item_cascade
+from components.test_item_generation import _solver_view, run_test_item_cascade
 from services import eval_capture
 from services.base_config import default_capable_profile, default_fast_profile
 from services.governance.subject_coach_identity import (
@@ -101,11 +101,16 @@ def _build_graph(cfg):
 
 
 def _make_solver(graph, prompts: PromptService):
-    """An injected solver closure over the governed graph: renders the solver
-    prompt (key already withheld by ``_solver_view``) and returns the reply.
-    One LLM call per candidate item (FR-23.3)."""
+    """An injected solver closure over the governed graph: projects the item to
+    its answer-blind view and renders the solver prompt from THAT. One LLM call
+    per candidate item (FR-23.3). The cascade hands this closure the full item
+    (difficulty intact, so the tiered wrapper can route — Phase B FR-10); the
+    ``_solver_view`` projection here is what actually withholds the key."""
 
     async def solve(item) -> str:
+        # Withhold the key + rationale from the model: render from the projected
+        # view, never the raw item (the raw item carries answer_letter/why_*).
+        view = _solver_view(item)
         # The solver is a ONE-SHOT classification, not a ReAct task: it names a
         # letter and stops. The general success-conditions evaluator does not
         # recognize a bare "B" as task-complete, so the graph would re-plan the
@@ -113,7 +118,7 @@ def _make_solver(graph, prompts: PromptService):
         # (`last_final_answer` is set on every evaluate), so bound recursion and
         # read the first answer — treating a recursion trip as "answer captured".
         task_input = prompts.render_prompt(
-            "test_item_solver", subject=SUBJECT, item=item
+            "test_item_solver", subject=SUBJECT, item=view
         )
         run_id = uuid.uuid4().hex
         payload = {

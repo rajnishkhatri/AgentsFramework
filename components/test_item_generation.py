@@ -31,10 +31,15 @@ from typing import Any
 __all__ = [
     "Solver",
     "TestItemCascadeVerdict",
+    "_solver_view",
     "extract_solver_letter",
     "run_test_item_cascade",
 ]
 
+# A ``Solver`` receives the FULL candidate item (so a caller can route by
+# non-answer-bearing metadata such as ``difficulty`` — Phase B FR-10 tiering),
+# and is itself responsible for applying ``_solver_view`` before the item
+# reaches a model: answer-blindness is the projection's job, not the cascade's.
 Solver = Callable[[Mapping[str, Any]], Awaitable[str]]
 
 _MIN_CHOICES = 4
@@ -276,10 +281,12 @@ async def run_test_item_cascade(
             continue
 
         # ── Stage 2: answer-key consistency (critical gate) ──────────────
-        # The declared key is withheld — the solver sees stem + choices only
-        # (FR-23.3) and must independently arrive at the same letter.
+        # The solver receives the full item so it can route by difficulty
+        # (Phase B FR-10 tiering); it applies ``_solver_view`` itself before the
+        # model sees anything, so the declared key + rationale stay withheld
+        # (FR-23.3) and its letter is an independent verdict, not an echo.
         letters = {c["letter"] for c in raw_item["choices"]}
-        solver_reply = await solver(_solver_view(raw_item))
+        solver_reply = await solver(raw_item)
         solved = extract_solver_letter(solver_reply, letters)
         if solved is None:
             verdict.quarantined.append(
