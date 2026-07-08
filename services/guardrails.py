@@ -471,14 +471,31 @@ class InputGuardrail:
             # UNCERTAIN → defer to the narrow judge.
 
         judged = await self._call_judge(prompt)
-        return judged.strip().lower() == "accept", "judge"
+        verdict = judged.strip().lower()
+        if verdict not in ("accept", "reject"):
+            # Protocol capture (Phase A test-item bank, 2026-07-07): an
+            # output-format instruction EMBEDDED in the input ("reply with
+            # ONLY the single letter") captured the judge, which answered the
+            # inner question instead of the verdict protocol — and the old
+            # ``== "accept"`` parse silently converted that into a reject.
+            # Retry once with the reinforced template close; a still-malformed
+            # reply fails closed under its OWN stage so telemetry can tell
+            # capture from a genuine reject.
+            judged = await self._call_judge(prompt, reinforce=True)
+            verdict = judged.strip().lower()
+            if verdict not in ("accept", "reject"):
+                return False, "judge:protocol_failure"
+            return verdict == "accept", "judge:reinforced"
+        return verdict == "accept", "judge"
 
-    async def _call_judge(self, prompt: str) -> str:
-        """Call LLM-as-judge with injected services."""
+    async def _call_judge(self, prompt: str, *, reinforce: bool = False) -> str:
+        """Call LLM-as-judge with injected services. ``reinforce`` renders the
+        template's post-input format reminder (the protocol-capture retry)."""
         rendered = self._prompt_service.render_prompt(
             "input_guardrail",
             accept_condition=self._accept_condition,
             user_input=prompt,
+            reinforce=reinforce,
         )
 
         response = await self._llm_service.invoke(

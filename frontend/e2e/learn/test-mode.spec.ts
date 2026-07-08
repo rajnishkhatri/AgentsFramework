@@ -18,10 +18,10 @@
  */
 
 import { test, expect, type Page } from "@playwright/test";
-import {
-  TEST01_ENGLISH_QUESTIONS,
-  TEST01_ENGLISH_ANSWER_KEY,
-} from "../../lib/adapters/engine/_test01_english_corpus";
+import { TEST01_ENGLISH_ANSWER_KEY } from "../../lib/adapters/engine/_test01_english_corpus";
+// D2 split: the timed test serves ONLY the manifest's test_only subset — the
+// walk below must mirror exactly what the page serves.
+import { TEST01_SERVED_QUESTIONS } from "../../lib/adapters/engine/_test01_split";
 
 /**
  * A deterministic scripted decision per corpus question, in corpus order: answer
@@ -33,7 +33,7 @@ import {
 const CORRECT_COUNT = 10;
 const WRONG_COUNT = 5;
 const EXPECTED_RAW = CORRECT_COUNT;
-const TOTAL = TEST01_ENGLISH_QUESTIONS.length; // 48
+const TOTAL = TEST01_SERVED_QUESTIONS.length; // 24 after the D2 split
 
 /** A wrong letter for a question: the first A–D letter that isn't its answer. */
 function wrongLetterFor(questionId: string): string {
@@ -57,18 +57,18 @@ test.describe("PreAct Test Mode (timed fixed section)", () => {
     await page.locator("[data-testid='test-start']").click();
 
     // The countdown is visible and running. Read it twice and assert it decreased
-    // (35:00 → less), proving a live tick rather than a static label.
+    // (18:00 → less), proving a live tick rather than a static label.
     const timer = page.locator("[data-testid='test-timer']");
     await expect(timer).toBeVisible();
     const first = (await timer.textContent())?.trim() ?? "";
     await page.waitForTimeout(1_500);
     const second = (await timer.textContent())?.trim() ?? "";
     expect(second <= first).toBe(true); // mm:ss strings compare lexicographically while same width
-    expect(second).not.toBe("35:00"); // it moved off the start
+    expect(second).not.toBe("18:00"); // it moved off the start
 
     // Walk the section applying the scripted decision to each item.
     for (let i = 0; i < TOTAL; i++) {
-      const q = TEST01_ENGLISH_QUESTIONS[i]!;
+      const q = TEST01_SERVED_QUESTIONS[i]!;
       if (i < CORRECT_COUNT) {
         await answerCurrent(page, TEST01_ENGLISH_ANSWER_KEY[q.id]!);
       } else if (i < CORRECT_COUNT + WRONG_COUNT) {
@@ -94,7 +94,7 @@ test.describe("PreAct Test Mode (timed fixed section)", () => {
     await page.locator("[data-testid='test-start']").click();
 
     // Answer just the first item so the score isn't trivially structural.
-    const q0 = TEST01_ENGLISH_QUESTIONS[0]!;
+    const q0 = TEST01_SERVED_QUESTIONS[0]!;
     await answerCurrent(page, TEST01_ENGLISH_ANSWER_KEY[q0.id]!);
 
     // Without any submit tap, the expiring countdown forces the results screen.

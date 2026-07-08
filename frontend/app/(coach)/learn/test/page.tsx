@@ -25,18 +25,18 @@ import { useCountdown } from "@/components/test/use_countdown";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { COACH_BASE } from "@/components/shell/nav_model";
 import {
-  TEST01_ENGLISH_QUESTIONS,
-  TEST01_ENGLISH_MINUTES,
-} from "@/lib/adapters/engine/_test01_english_corpus";
+  TEST01_SERVED_MINUTES,
+  TEST01_SERVED_QUESTIONS,
+} from "@/lib/adapters/engine/_test01_split";
 
 const SECTION_LABEL = "English";
-const FULL_DURATION_MS = TEST01_ENGLISH_MINUTES * 60_000;
+const FULL_DURATION_MS = TEST01_SERVED_MINUTES * 60_000;
 
 /**
  * Non-prod `?dur=<ms>` override so an e2e spec can drive the countdown to zero in
- * milliseconds (auto-submit) instead of waiting 35 minutes. Ignored in prod, and
- * clamped to a sane floor so a stray query can't zero the clock instantly for a
- * real learner in dev. Falls back to the full section duration.
+ * milliseconds (auto-submit) instead of waiting out the section clock. Ignored in
+ * prod, and clamped to a sane floor so a stray query can't zero the clock
+ * instantly for a real learner in dev. Falls back to the full section duration.
  */
 function resolveDurationMs(param: string | null): number {
   if (process.env.NODE_ENV === "production") return FULL_DURATION_MS;
@@ -56,7 +56,7 @@ export default function TestModePage(): React.JSX.Element {
 
   const [state, dispatch] = React.useReducer(
     testRunnerReducer,
-    TEST01_ENGLISH_QUESTIONS,
+    TEST01_SERVED_QUESTIONS,
     initialTestRunner,
   );
 
@@ -85,7 +85,7 @@ export default function TestModePage(): React.JSX.Element {
       >
         <h1 className="text-xl font-semibold">Timed {SECTION_LABEL} section</h1>
         <p className="text-muted">
-          {TEST01_ENGLISH_QUESTIONS.length} questions · {TEST01_ENGLISH_MINUTES} minutes.
+          {TEST01_SERVED_QUESTIONS.length} questions · {TEST01_SERVED_MINUTES} minutes.
           The clock starts when you begin and submits automatically at zero. You can
           revisit and change answers until you submit.
         </p>

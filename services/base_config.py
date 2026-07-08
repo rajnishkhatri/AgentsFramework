@@ -325,3 +325,30 @@ def default_fast_profile() -> ModelProfile:
         cost_per_1k_input=0.00015,
         cost_per_1k_output=0.0006,
     )
+
+
+def default_capable_profile() -> ModelProfile:
+    """Canonical capable-tier profile — ``default_fast_profile``'s sibling.
+
+    Same contract: first capable-tier profile of the active registry set
+    (order-is-a-safety-contract first-match), deep-copied; function-local
+    import for the same circularity reason. Added for the Phase B tiered
+    solver bar (act-english-bank-phase-b spec FR-10: d4–5 items are verified
+    capable-tier); callers pick the TIER, never a model name (H2).
+    """
+    from services.llm_config import build_model_registry
+
+    models, _ = build_model_registry()
+    for profile in models:
+        if profile.tier == "capable":
+            return profile.model_copy(deep=True)
+    # Unreachable for a well-formed registry (every shipped set carries a
+    # capable tier); defensive literal mirrors default_fast_profile's.
+    return ModelProfile(
+        name="gpt-4o",
+        litellm_id="openai/gpt-4o",
+        tier="capable",
+        context_window=128000,
+        cost_per_1k_input=0.005,
+        cost_per_1k_output=0.015,
+    )

@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 
 from components.test_item_generation import (
+    _solver_view,
     extract_solver_letter,
     run_test_item_cascade,
 )
@@ -197,20 +198,21 @@ class TestTeachingFieldsGate:
         # context_html (passage) + stem_md (prompt), a solver shown only the
         # stem was answer-guessing blind — passage-dependent items quarantined
         # 7/7 while choices-only-solvable items passed 5/5. The passage is part
-        # of the QUESTION (not answer-bearing) and must reach the solver.
-        solver = _solver_returning("B")
-        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
-        assert solver.calls, "solver was never reached"
-        seen = solver.calls[0]
-        assert seen.get("context_html") == _CANDIDATE["context_html"]
+        # of the QUESTION (not answer-bearing) and must reach the LLM. The
+        # answer-blindness contract lives in `_solver_view` (the projection
+        # every real solver applies before rendering), so assert it there — a
+        # boundary that holds no matter what the cascade passes the callable.
+        view = _solver_view(_CANDIDATE)
+        assert view.get("context_html") == _CANDIDATE["context_html"]
+        assert view.get("stem_md") == _CANDIDATE["stem_md"]
 
     async def test_solver_view_withholds_rationale(self):
         # FR-C3: the rationale carries the answer in prose — withheld from the
-        # solver exactly as the declared key is, or the gate self-defeats.
-        solver = _solver_returning("B")
-        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
-        assert solver.calls, "solver was never reached"
-        seen = solver.calls[0]
+        # LLM exactly as the declared key is, or the gate self-defeats. Pinned
+        # on `_solver_view` directly (stronger than inspecting an incidental
+        # call argument): whatever the cascade hands the solver callable, the
+        # object that reaches the model is this projection.
+        view = _solver_view(_CANDIDATE)
         for leaky in (
             "answer_letter",
             "per_choice_rationale",
@@ -218,7 +220,25 @@ class TestTeachingFieldsGate:
             "why_tempted_md",
             "rule_md",
         ):
-            assert leaky not in seen, f"solver view leaked {leaky}"
+            assert leaky not in view, f"solver view leaked {leaky}"
+
+    async def test_cascade_hands_solver_the_full_item_for_tier_routing(self):
+        # Phase B FR-10 routing defect (T7 run 1: 0 capable-tier calls across 82
+        # d>=4 items): the tiered solver decides fast-vs-capable from the item's
+        # `difficulty`, but the cascade used to hand it `_solver_view(...)`,
+        # which STRIPS difficulty — so every item routed fast and the capable
+        # tier was dead code. The cascade must hand the solver callable the FULL
+        # item (difficulty intact) and let the solver apply `_solver_view` before
+        # the model sees it. Answer-blindness is unaffected: the two tests above
+        # pin `_solver_view` as the actual model boundary.
+        solver = _solver_returning("B")
+        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
+        assert solver.calls, "solver was never reached"
+        seen = solver.calls[0]
+        assert seen.get("difficulty") == _CANDIDATE["difficulty"], (
+            "solver did not receive difficulty — tier router is blind, "
+            "capable tier can never fire"
+        )
 
 
 class TestExtractSolverLetter:
@@ -292,16 +312,16 @@ class TestSolverKeyGate:
         assert verdict.passed[0]["reviewed"] is True
 
     async def test_solver_never_sees_the_declared_key(self):
-        # FR-23.3: the item handed to the solver must carry stem + choices but
-        # NOT answer_letter (a solver that sees the key can't independently
-        # confirm it).
-        solver = _solver_returning("B")
-        await _run(json.dumps({"items": [_CANDIDATE]}), solver=solver)
-        assert solver.calls, "solver was never reached"
-        seen = solver.calls[0]
-        assert "answer_letter" not in seen
-        assert seen["stem_md"] == _CANDIDATE["stem_md"]
-        assert [c["letter"] for c in seen["choices"]] == ["A", "B", "C", "D"]
+        # FR-23.3: the model must see stem + choices but NOT answer_letter (a
+        # solver that sees the key can't independently confirm it). Pinned on
+        # `_solver_view` — the projection each real solver applies before
+        # rendering — because the cascade now hands the solver CALLABLE the full
+        # item (difficulty intact for tier routing, Phase B FR-10); the key is
+        # withheld at the projection, which is the actual model boundary.
+        view = _solver_view(_CANDIDATE)
+        assert "answer_letter" not in view
+        assert view["stem_md"] == _CANDIDATE["stem_md"]
+        assert [c["letter"] for c in view["choices"]] == ["A", "B", "C", "D"]
 
 
 class TestDuplicateStage:
@@ -361,3 +381,21 @@ class TestReviewedProvenanceAndIdempotency:
             )
             ids.append(verdict.passed[0]["id"])
         assert len(set(ids)) == 1  # deterministic content hash
+
+
+class TestStandardIdCarriage:
+    """D3 spec FR-5 — the seed's syllabus tag rides promotion VERBATIM; the
+    cascade never invents or defaults one (untagged in → untagged out)."""
+
+    async def test_promoted_row_carries_standard_id_verbatim(self):
+        tagged = {**_CANDIDATE, "standard_id": 17}
+        verdict = await _run(
+            json.dumps({"items": [tagged]}), solver=_solver_returning("B")
+        )
+        assert verdict.passed[0]["standard_id"] == 17
+
+    async def test_promotion_never_invents_a_tag(self):
+        verdict = await _run(
+            json.dumps({"items": [_CANDIDATE]}), solver=_solver_returning("B")
+        )
+        assert "standard_id" not in verdict.passed[0]
