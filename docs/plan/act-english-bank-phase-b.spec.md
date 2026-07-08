@@ -4,7 +4,7 @@
 > Failure paths first. Spec = the *what*; the *why* trail lives in
 > `docs/adr/decisions.md` (2026-07-07 entries) + ADR-0013/0014/0015/0021.
 
-**Status:** Draft — 2026-07-07
+**Status:** Implemented — 2026-07-08 (evidence: [act-english-bank-phase-b.impl.md](act-english-bank-phase-b.impl.md); bank serves 171 items, 513 hint rungs, all gates green)
 **Owner:** Rajnish Khatri
 **Related:** `docs/plan/act-english-full-bank.brainstorm.md` (gate outcome
 D3→D1→D2+D4; Phase B realizes the D1-adjacent authored path),
