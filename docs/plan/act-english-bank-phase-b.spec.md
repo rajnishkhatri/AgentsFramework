@@ -202,16 +202,26 @@ Failure-path tests (FR-1/2/3/4/5) precede happy-path work in the task order.
 
 ## 9. Definition of Done
 
-- [ ] P0: rail sandwich fix (uncommitted `services/guardrails.py` +
-      `prompts/input_guardrail.j2` + tests + decisions entry) committed first.
-- [ ] All FRs implemented; each new test seen to fail first (red→green).
-- [ ] `make check` + `pytest tests/architecture/ -q` green; frontend vitest
-      green (ratchet satisfied, zero new waivers or reasons given).
-- [ ] Promotion + hint run outputs pasted (not summarized) into
+All boxes verified 2026-07-08 (evidence:
+[act-english-bank-phase-b.impl.md](act-english-bank-phase-b.impl.md); the emitter
+and tier-knob DoD lines were superseded in-flight — see the note below each).
+
+- [x] P0: rail sandwich fix (uncommitted `services/guardrails.py` +
+      `prompts/input_guardrail.j2` + tests + decisions entry) committed first
+      (`4ddd7fe`).
+- [x] All FRs implemented; each new test seen to fail first (red→green).
+- [x] `make check` + `pytest tests/architecture/ -q` green; frontend vitest
+      green (ratchet satisfied, **zero waivers** — target met, no reasons needed).
+- [x] Promotion + hint run outputs pasted (not summarized) into
       `docs/plan/act-english-bank-phase-b.impl.md`.
-- [ ] `decisions.md` entries: test-item emitter (ADR-0014 seam reuse) +
-      tiered solver review bar. No ⚠️ Ask-first trigger fired → no new ADR.
-- [ ] Bank serves ≥170 items; every topic ≥1 item (matrix test green).
+- [x] `decisions.md` entries — **three** landed (newest-first, 2026-07-08): the
+      T3 tier-routing defect fix, the T7 floor-recovery method, and T8
+      reword-not-waive. The emitter (ADR-0014 seam reuse, `3e36bb7`) and tiered
+      solver review bar (`f21e226`) shipped earlier in T4/T3; the three
+      2026-07-08 entries capture the deviations found during the live T7/T8 runs.
+      No ⚠️ Ask-first trigger fired → no new ADR.
+- [x] Bank serves **171** items (≥170); every topic ≥1 item (32/32, matrix test
+      green).
 
 ## 10. Authoring allocation matrix (FR-9 contract)
 
