@@ -2740,6 +2740,44 @@
     "standard_id": 2,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
+    "context_html": "The abandoned pier stretched into the fog, its planks <u>old</u> and silvered by decades of salt spray.",
+    "stem_md": "The writer wants a word that reinforces the eerie, weathered mood. Which choice best does so?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "used"
+      },
+      {
+        "letter": "C",
+        "label": "weather-beaten"
+      },
+      {
+        "letter": "D",
+        "label": "aged"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Old' states age plainly without any atmosphere.",
+      "B": "'Used' suggests wear from handling, not weathering, and adds no mood.",
+      "C": "'Weather-beaten' evokes exposure to the elements, deepening the eerie, storm-worn image.",
+      "D": "'Aged' is a small step up from 'old' but still neutral about mood."
+    },
+    "why_correct_md": "The goal is **mood**, and 'weather-beaten' carries the imagery of long exposure to sea and storm.",
+    "why_tempted_md": "'Aged' feels more descriptive than 'old', so it seems like enough of an upgrade.",
+    "rule_md": "When the stem asks for a mood or image, pick the word whose connotation paints that picture.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
     "context_html": "The lifeguard <u>swam</u> toward the struggling swimmer.",
     "stem_md": "The writer wants to emphasize the speed of the rescue. Which choice best accomplishes that goal?",
     "choices": [
@@ -2770,6 +2808,234 @@
     "why_correct_md": "When the stem states the writer's goal, pick the choice that **delivers that goal** most strongly.",
     "why_tempted_md": "Accurate-but-bland options like 'swam' feel safe because nothing is wrong with them grammatically.",
     "rule_md": "Goal questions are not grammar questions — grade each choice against the stated purpose alone.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "After the flood, neighbors <u>helped</u> one another haul ruined furniture to the curb for weeks.",
+    "stem_md": "The writer wants to stress how tirelessly the neighbors worked. Which choice best achieves that?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "labored alongside"
+      },
+      {
+        "letter": "C",
+        "label": "were there for"
+      },
+      {
+        "letter": "D",
+        "label": "assisted"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Helped' is accurate but flat — it conveys nothing about effort or endurance.",
+      "B": "'Labored alongside' foregrounds sustained, physical effort, exactly the tirelessness the stem asks for.",
+      "C": "'Were there for' emphasizes emotional support, not hard work.",
+      "D": "'Assisted' is even more neutral and formal than 'helped'."
+    },
+    "why_correct_md": "The goal is to convey **effort**, and 'labored' names hard, sustained work directly.",
+    "why_tempted_md": "Every option is grammatically fine, so the flat synonym 'assisted' looks safe.",
+    "rule_md": "For a goal question, grade each choice only against the stated purpose — grammar alone never decides it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The coach told the rookies that a missed free throw was <u>a bad thing</u> only if they refused to learn from it.",
+    "stem_md": "Which choice best fits the coach's encouraging, mentor-like tone?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "a disaster"
+      },
+      {
+        "letter": "C",
+        "label": "a setback"
+      },
+      {
+        "letter": "D",
+        "label": "a catastrophe"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'A bad thing' is vague and childish, undercutting the mentor's measured tone.",
+      "B": "'Disaster' overstates a single miss and clashes with the reassuring message.",
+      "C": "'Setback' frames the miss as temporary and surmountable — the encouraging note the coach wants.",
+      "D": "'Catastrophe' is hyperbolic, the opposite of the calm reassurance intended."
+    },
+    "why_correct_md": "The tone is **encouraging**, and 'setback' names a problem while implying it can be overcome.",
+    "why_tempted_md": "'Disaster' and 'catastrophe' feel vivid, but their intensity fights the sentence's reassurance.",
+    "rule_md": "Match the word's emotional weight to the speaker's intent — don't reach for the most dramatic option.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The nature documentary's narrator called the eagle's dive <u>fast</u>, a plunge that ends in a blur the eye can barely track.",
+    "stem_md": "The writer wants to emphasize how astonishing the dive's speed is. Which choice works best?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "quick"
+      },
+      {
+        "letter": "C",
+        "label": "breathtaking"
+      },
+      {
+        "letter": "D",
+        "label": "rapid"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Fast' is plain and does nothing to convey astonishment.",
+      "B": "'Quick' is if anything weaker than 'fast'.",
+      "C": "'Breathtaking' pairs speed with wonder, matching 'a blur the eye can barely track'.",
+      "D": "'Rapid' is a formal synonym for fast but still emotionally flat."
+    },
+    "why_correct_md": "The goal is **astonishment**, and 'breathtaking' fuses the speed with awe.",
+    "why_tempted_md": "'Rapid' sounds more sophisticated than 'fast', so it feels like the intended upgrade.",
+    "rule_md": "When the aim is to impress or awe, choose the word that adds feeling, not just a fancier synonym.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "To persuade the school board, the petition stressed that <u>some people think</u> the crossing is dangerous.",
+    "stem_md": "Which choice best strengthens the petition's persuasive appeal?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "three documented accidents this year show"
+      },
+      {
+        "letter": "C",
+        "label": "it kind of seems like"
+      },
+      {
+        "letter": "D",
+        "label": "a lot of folks feel"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Some people think' is vague opinion that gives the board little reason to act.",
+      "B": "Concrete evidence — 'three documented accidents this year' — makes the strongest case.",
+      "C": "'It kind of seems like' is tentative and undercuts persuasion.",
+      "D": "'A lot of folks feel' is still unsupported opinion, just more casual."
+    },
+    "why_correct_md": "Persuasion is strongest with **specific evidence** (logos), not vague opinion.",
+    "why_tempted_md": "The opinion phrasings feel safe and inoffensive, but they don't move a decision-maker.",
+    "rule_md": "To persuade, prefer verifiable facts and figures over hedged 'some people think' claims.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Writing for an audience of first-time gardeners, the author explained that <u>photosynthetic efficiency governs</u> how fast a seedling grows.",
+    "stem_md": "Which choice best suits the beginner audience the passage addresses?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "the plant's ability to turn sunlight into food controls"
+      },
+      {
+        "letter": "C",
+        "label": "chlorophyll-mediated carbon fixation determines"
+      },
+      {
+        "letter": "D",
+        "label": "the rate of photosynthate accumulation dictates"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Photosynthetic efficiency governs' is jargon that first-time gardeners won't follow.",
+      "B": "Plain phrasing — 'turn sunlight into food' — explains the idea in terms a beginner grasps.",
+      "C": "'Chlorophyll-mediated carbon fixation' is even more technical than the original.",
+      "D": "'Photosynthate accumulation' is specialist vocabulary, wrong for novices."
+    },
+    "why_correct_md": "The stem names a **beginner audience**, so the plainest accurate wording wins.",
+    "why_tempted_md": "The technical options sound authoritative, which can seem 'more correct' on a test.",
+    "rule_md": "Fit the diction to the stated audience — for novices, prefer clarity over technical precision.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The senator's memoir describes her rivals as <u>determined</u> operators who would say anything to win.",
+    "stem_md": "Which word best conveys the memoir's clearly critical view of the rivals?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "scheming"
+      },
+      {
+        "letter": "C",
+        "label": "dedicated"
+      },
+      {
+        "letter": "D",
+        "label": "spirited"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Determined' is neutral-to-positive and doesn't match 'say anything to win'.",
+      "B": "'Scheming' carries a distinctly negative charge that fits the critical portrait.",
+      "C": "'Dedicated' is admiring, the wrong direction entirely.",
+      "D": "'Spirited' is lively and positive, clashing with the disapproving context."
+    },
+    "why_correct_md": "The stem signals **criticism**, so choose the word whose connotation is negative — 'scheming'.",
+    "why_tempted_md": "'Determined' pairs with 'operators' naturally, hiding that it praises rather than criticizes.",
+    "rule_md": "Read the surrounding clues for the writer's stance, then match the word's charge (positive/negative) to it.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -2808,6 +3074,272 @@
     "why_correct_md": "Denotation is 'famous'; the needed **connotation** is positive → *renowned*.",
     "why_tempted_md": "'Notorious' sounds impressive and vaguely means 'well-known'.",
     "rule_md": "Check a word's emotional charge, not just its dictionary meaning, against the sentence's intent.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The travel essay lingered on the market at dawn, where vendors <u>put out</u> pyramids of saffron, mint, and blood oranges under striped awnings.",
+    "stem_md": "The writer wants a verb that makes the vendors' display feel vivid and deliberate. Which choice is best?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "arranged"
+      },
+      {
+        "letter": "C",
+        "label": "had"
+      },
+      {
+        "letter": "D",
+        "label": "set down"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Put out' is bland and suggests no care or artistry.",
+      "B": "'Arranged' implies deliberate, artful placement, matching the vivid pyramids of produce.",
+      "C": "'Had' is the flattest possible verb and conveys nothing about the display.",
+      "D": "'Set down' suggests dropping items casually, the opposite of a careful display."
+    },
+    "why_correct_md": "The goal is a sense of **deliberate artistry**, and 'arranged' names purposeful placement.",
+    "why_tempted_md": "'Set down' is more specific than 'put out', so it looks like the vivid choice — but it implies carelessness.",
+    "rule_md": "Pick the verb whose connotation supplies the exact impression the stem requests.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The scholarship essay closed by describing the applicant's grandmother, whose nightly lessons at the kitchen table were <u>helpful</u> in ways no classroom could match.",
+    "stem_md": "The writer wants to convey deep, lasting influence. Which choice best accomplishes that?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "formative"
+      },
+      {
+        "letter": "C",
+        "label": "nice"
+      },
+      {
+        "letter": "D",
+        "label": "useful"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Helpful' is generic and understates a life-shaping influence.",
+      "B": "'Formative' names an experience that shaped who the applicant became — exactly the lasting influence intended.",
+      "C": "'Nice' is weak and vague, conveying no depth.",
+      "D": "'Useful' suggests mere practicality, not deep influence."
+    },
+    "why_correct_md": "The goal is **lasting influence**, and 'formative' means shaping a person's development.",
+    "why_tempted_md": "'Useful' feels concrete, but it reduces a profound relationship to convenience.",
+    "rule_md": "Choose the word that captures the depth the stem names, not a safe general-purpose synonym.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The editorial warned that ignoring the levee's cracks was <u>not a good idea</u>, a gamble the city could not afford after two near-floods.",
+    "stem_md": "Which choice best conveys the editorial's urgent, cautionary stance?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "reckless"
+      },
+      {
+        "letter": "C",
+        "label": "less than ideal"
+      },
+      {
+        "letter": "D",
+        "label": "unwise"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Not a good idea' is mild and conversational, far too weak for a warning.",
+      "B": "'Reckless' conveys real danger and blame, matching the urgent 'gamble the city could not afford'.",
+      "C": "'Less than ideal' understates the risk almost comically.",
+      "D": "'Unwise' is a step up but still restrained for the alarm the passage sounds."
+    },
+    "why_correct_md": "The stance is **urgent warning**, and 'reckless' carries the force of real, blameworthy danger.",
+    "why_tempted_md": "'Unwise' sounds more formal than the original, so it feels sufficient — but it lacks the alarm.",
+    "rule_md": "Calibrate intensity to the writer's stance; a cautionary editorial needs a word that signals genuine risk.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The obituary honored the volunteer firefighter, noting that for thirty years he had <u>done stuff</u> for a town that never once had to ask.",
+    "stem_md": "Which choice best matches the dignified, respectful tone the passage calls for?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "given of himself"
+      },
+      {
+        "letter": "C",
+        "label": "pitched in"
+      },
+      {
+        "letter": "D",
+        "label": "lent a hand"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Done stuff' is casual to the point of disrespect in an obituary.",
+      "B": "'Given of himself' is elevated and reverent, fitting a tribute to decades of service.",
+      "C": "'Pitched in' is warm but too colloquial for the solemn register.",
+      "D": "'Lent a hand' is friendly and informal, again below the required dignity."
+    },
+    "why_correct_md": "The context is an **obituary**, whose reverent register demands elevated diction like 'given of himself'.",
+    "why_tempted_md": "'Pitched in' and 'lent a hand' are positive, so they feel appropriate until you weigh the solemn setting.",
+    "rule_md": "Let the genre set the register — a tribute or eulogy calls for formal, dignified wording.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "In her thank-you note to the scholarship committee, Dana wrote that their support had <u>meant a ton</u> to her family.",
+    "stem_md": "Which choice best fits the sincere yet respectful tone of a thank-you note?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "meant a great deal"
+      },
+      {
+        "letter": "C",
+        "label": "been a big deal"
+      },
+      {
+        "letter": "D",
+        "label": "meant loads"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Meant a ton' is casual and a touch flippant for a formal thank-you.",
+      "B": "'Meant a great deal' is warm and appropriately respectful.",
+      "C": "'Been a big deal' is conversational and slightly slangy.",
+      "D": "'Meant loads' is informal and better suited to a text than a note to a committee."
+    },
+    "why_correct_md": "A thank-you note to a committee wants **respectful warmth**, which 'meant a great deal' delivers.",
+    "why_tempted_md": "'Meant a ton' sounds heartfelt, but its casualness undercuts the formal courtesy.",
+    "rule_md": "Match the phrasing to both the emotion and the formality the situation calls for.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The grant application stated that the clinic's waiting room was <u>super cramped</u> and needed expansion.",
+    "stem_md": "Which choice best matches the formal register of a grant application?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "way too small"
+      },
+      {
+        "letter": "C",
+        "label": "overcrowded"
+      },
+      {
+        "letter": "D",
+        "label": "a total squeeze"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Super cramped' is casual slang, out of place in a formal application.",
+      "B": "'Way too small' is equally colloquial.",
+      "C": "'Overcrowded' is precise and formal, fitting the document's register.",
+      "D": "'A total squeeze' is idiomatic and informal."
+    },
+    "why_correct_md": "A grant application requires **formal diction**, and 'overcrowded' is the neutral, professional term.",
+    "why_tempted_md": "The casual options feel expressive, but expressiveness isn't what a formal document rewards.",
+    "rule_md": "Name the passage's register first, then choose the word that belongs to it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The children's picture book explained that when winter comes, the little bear <u>enters a state of dormancy</u> until spring.",
+    "stem_md": "Which choice best matches the picture book's audience of young children?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "undergoes seasonal torpor"
+      },
+      {
+        "letter": "C",
+        "label": "curls up and sleeps"
+      },
+      {
+        "letter": "D",
+        "label": "reduces its metabolic rate"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Enters a state of dormancy' is technical language a small child won't understand.",
+      "B": "'Undergoes seasonal torpor' is even more clinical.",
+      "C": "'Curls up and sleeps' is simple, warm, and perfect for young readers.",
+      "D": "'Reduces its metabolic rate' is scientific jargon, wrong for the audience."
+    },
+    "why_correct_md": "A picture book for children needs **simple, concrete language** like 'curls up and sleeps'.",
+    "why_tempted_md": "The precise scientific phrasings seem 'more correct', but they miss the young audience entirely.",
+    "rule_md": "Register follows audience — for children, choose plain, vivid words over technical accuracy.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -2854,6 +3386,120 @@
     "standard_id": 4,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
+    "context_html": "The poem describes the harvest moon as <u>a large orange circle</u> resting on the shoulders of the hills.",
+    "stem_md": "The writer wants a vivid figure of speech consistent with the poem's imagery. Which choice is best?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "a brass coin"
+      },
+      {
+        "letter": "C",
+        "label": "a big round shape"
+      },
+      {
+        "letter": "D",
+        "label": "an orange-colored sphere"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'A large orange circle' is literal and flat — no figurative image.",
+      "B": "'A brass coin' is a metaphor whose color and sheen match a harvest moon, extending the poem's imagery.",
+      "C": "'A big round shape' is vaguer than the original, not more vivid.",
+      "D": "'An orange-colored sphere' is merely a scientific restatement, not a figure of speech."
+    },
+    "why_correct_md": "The stem asks for a **figure of speech**, and the metaphor 'a brass coin' paints the moon vividly.",
+    "why_tempted_md": "'Orange-colored sphere' sounds precise, but precision isn't imagery.",
+    "rule_md": "When the goal is figurative vividness, choose the metaphor or simile, not a literal description.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The history textbook noted that the treaty's terms were <u>a real slap in the face</u> to the smaller nations at the table.",
+    "stem_md": "Which choice best fits the neutral, expository tone of a textbook?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "a bum deal for"
+      },
+      {
+        "letter": "C",
+        "label": "deeply unfavorable to"
+      },
+      {
+        "letter": "D",
+        "label": "a raw deal for"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'A real slap in the face' is a heated idiom that breaks the textbook's neutral tone.",
+      "B": "'A bum deal for' is slangy and dismissive.",
+      "C": "'Deeply unfavorable to' is measured and expository, matching the register.",
+      "D": "'A raw deal for' is idiomatic and informal."
+    },
+    "why_correct_md": "A textbook aims for **neutral exposition**, so 'deeply unfavorable to' fits where idioms don't.",
+    "why_tempted_md": "The idioms convey the unfairness forcefully, but force isn't the textbook's job.",
+    "rule_md": "Expository writing stays neutral — replace charged idioms with plain descriptive phrasing.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The company's press release announced that after the merger, some employees would <u>get the axe</u> before the end of the quarter.",
+    "stem_md": "Which choice best matches the measured, professional tone of a press release?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "be shown the door"
+      },
+      {
+        "letter": "C",
+        "label": "be let go"
+      },
+      {
+        "letter": "D",
+        "label": "get canned"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Get the axe' is a harsh idiom unsuited to an official statement.",
+      "B": "'Be shown the door' is equally colloquial and blunt.",
+      "C": "'Be let go' is the standard, tactful, professional phrasing.",
+      "D": "'Get canned' is slang, the least formal option."
+    },
+    "why_correct_md": "A press release keeps a **professional, tactful register**, which 'be let go' provides.",
+    "why_tempted_md": "The idioms are vivid, but vividness reads as unprofessional in a corporate statement.",
+    "rule_md": "For official communications, choose the neutral, diplomatic wording over colorful idioms.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
     "context_html": "In the lab report's discussion section, the experiment's results were <u>super weird</u>, prompting a full review of the method.",
     "stem_md": "Which choice best matches the passage's formal tone?",
     "choices": [
@@ -2884,6 +3530,158 @@
     "why_correct_md": "Word choice must match the **register** of the surrounding passage — formal here.",
     "why_tempted_md": "The informal options are vivid and natural in speech.",
     "rule_md": "Check the passage's tone before judging a word: formal context → formal diction.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The peer-reviewed study reported that the treatment group <u>did way better than</u> the control group across every measure.",
+    "stem_md": "Which choice best suits the objective tone of a scientific study?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "outperformed"
+      },
+      {
+        "letter": "C",
+        "label": "totally crushed"
+      },
+      {
+        "letter": "D",
+        "label": "beat out"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Did way better than' is casual and imprecise for a research report.",
+      "B": "'Outperformed' is precise, neutral, and appropriately formal.",
+      "C": "'Totally crushed' is slangy and injects unwanted emotion.",
+      "D": "'Beat out' is conversational and less exact than 'outperformed'."
+    },
+    "why_correct_md": "A scientific study favors **objective, precise diction**, and 'outperformed' states the result cleanly.",
+    "why_tempted_md": "'Beat out' is shorter and idiomatic, so it can pass as neutral until you weigh the register.",
+    "rule_md": "In objective/academic writing, pick the exact, unemotional verb.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The eulogy remembered how, in a crowded room, her laughter had always been <u>loud</u>, the first sound anyone noticed and the last they forgot.",
+    "stem_md": "The writer wants a description that is affectionate rather than critical. Which choice is best?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "unmistakable"
+      },
+      {
+        "letter": "C",
+        "label": "blaring"
+      },
+      {
+        "letter": "D",
+        "label": "noisy"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Loud' is neutral-to-negative and can read as a complaint in a tribute.",
+      "B": "'Unmistakable' turns the volume into something distinctive and cherished — affectionate, as intended.",
+      "C": "'Blaring' is harshly negative, the opposite of affection.",
+      "D": "'Noisy' carries an annoyed connotation."
+    },
+    "why_correct_md": "The goal is **affection**, and 'unmistakable' recasts the loudness as a beloved, singular trait.",
+    "why_tempted_md": "'Loud' is literally accurate, so it seems safe — but in a eulogy it risks sounding like criticism.",
+    "rule_md": "Match connotation to the intended feeling; in a tribute, choose the warmly positive word.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Compared with the first draft's plain claim that the city was busy, the final essay called downtown <u>a place with a lot going on</u>, drums of traffic and voices layered like a live recording.",
+    "stem_md": "The writer wants figurative language that outshines the plain first-draft phrasing. Which choice best does that?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "an active area"
+      },
+      {
+        "letter": "C",
+        "label": "a restless orchestra"
+      },
+      {
+        "letter": "D",
+        "label": "a very lively spot"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'A place with a lot going on' is as plain as the first draft it's meant to surpass.",
+      "B": "'An active area' is flat, generic, and less vivid, not more.",
+      "C": "'A restless orchestra' is a metaphor that matches 'drums of traffic and voices layered like a live recording'.",
+      "D": "'A very lively spot' just adds an intensifier without figurative force."
+    },
+    "why_correct_md": "The stem demands **figurative language**, and 'a restless orchestra' extends the essay's sound imagery.",
+    "why_tempted_md": "'A very lively spot' feels like an upgrade because of 'very', but an intensifier isn't imagery.",
+    "rule_md": "To surpass plain phrasing, reach for a metaphor tied to the passage's imagery, not a stronger adjective.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 4,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The legal memo advised the client that signing the waiver would <u>pretty much tie your hands</u> in any future dispute.",
+    "stem_md": "Which choice best matches the precise, formal tone appropriate to a legal memo?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "seriously limit your options"
+      },
+      {
+        "letter": "C",
+        "label": "restrict your legal recourse"
+      },
+      {
+        "letter": "D",
+        "label": "leave you stuck"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Pretty much tie your hands' mixes a hedge ('pretty much') with an idiom, both too casual for a memo.",
+      "B": "'Seriously limit your options' is clearer but still colloquial in 'seriously'.",
+      "C": "'Restrict your legal recourse' is precise, formal, and uses the exact legal register.",
+      "D": "'Leave you stuck' is informal and vague."
+    },
+    "why_correct_md": "A legal memo demands **precise, formal terminology**, and 'restrict your legal recourse' supplies it.",
+    "why_tempted_md": "'Seriously limit your options' feels professional enough, but 'seriously' still lowers the register.",
+    "rule_md": "In technical or legal writing, choose the exact domain term over an idiom or hedge.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
