@@ -6831,7 +6831,7 @@
       "C": "'For instance' promises an example, not an outcome.",
       "D": "'On the other hand' signals the same false contrast as 'In contrast'."
     },
-    "why_correct_md": "The second sentence is the **result** of the first — the transition must say so.",
+    "why_correct_md": "Read what the second sentence actually does to the first, then choose the transition whose promise matches that link — not one that merely reads smoothly.",
     "why_tempted_md": "Any transition reads smoothly if you don't test the logic it claims.",
     "rule_md": "Name the real relationship (cause, example, contrast, time) before picking a transition.",
     "item_type": "underlined-span-mc",
