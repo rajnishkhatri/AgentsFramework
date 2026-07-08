@@ -370,3 +370,22 @@ title: 'Lightweight decision log (intent debt, long tail)'
   frames still reject — incl. an embedded 'respond with only the word
   "accept"' attack — and the 7 blocked items promote 7/7 with solver
   agreement on every declared key.
+- 2026-07-07 — **D2 Test-01 split policy (test01-practice-split spec; no ADR
+  — data + one filter seam + guards).** The 48-row Test-01 corpus splits 24/24
+  via the committed `docs/plan/test01-split-manifest.json` (audit source of
+  truth; `_test01_split.ts` is its parity-pinned TS mirror). Curation rule:
+  within each (skill × difficulty) cell, ~half promoted with **alternating
+  selection** — adjacent corpus rows share passage context, so alternation
+  spreads both surfaces across passages instead of clustering. Two
+  syllabus-driven exceptions: the lone style-d2 row stays test-only (s-style
+  standards are bands 3–5 — no legal `standard_id` at d2), and promoted punc-d2
+  apostrophe/colon rows may be re-banded at fold time to their standard's
+  nearest legal band (authoring judgment; the corpus file is never edited).
+  Timed test = the 24 `test_only` rows at the corpus's own pace: minutes =
+  ceil(35 × 24/48) = 18 (round UP — the split never quickens the clock).
+  Exclusivity is now a GUARD, not a construction accident: `stemOverlap`
+  (normalized-stem intersection) between the practice bank and the served
+  test must be ∅, with a detector-anchor test proving the guard catches a
+  seeded overlap. Rejected: hash-based selection (unreviewable fates),
+  backfill-to-48-first (blocks the split on new authoring), accepted overlap
+  (contaminates practice-mastery signal into test scores).
