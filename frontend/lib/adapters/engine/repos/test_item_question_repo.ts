@@ -41,9 +41,18 @@ export class TestItemQuestionRepo implements QuestionRepo {
     private readonly subject: string,
   ) {}
 
-  async nextReviewed(subject: string, skillId: string): Promise<Question | null> {
+  async nextReviewed(
+    subject: string,
+    skillId: string,
+    excludeIds?: readonly string[],
+  ): Promise<Question | null> {
+    // S3 served-set (FR-9): skip already-served bank ids. Pre-filter on top of
+    // the (doubly-enforced) reviewed gate; all-excluded → null (FR-11).
+    const excluded = new Set(excludeIds ?? []);
     const rows = await this.reviewedRows(subject);
-    const candidates = rows.filter((r) => r.skill_id === skillId);
+    const candidates = rows.filter(
+      (r) => r.skill_id === skillId && !excluded.has(r.id),
+    );
     candidates.sort(
       (a, b) => a.difficulty - b.difficulty || a.id.localeCompare(b.id),
     );

@@ -146,6 +146,9 @@ export const quizSession = sqliteTable("quiz_session", {
   ended_at: integer("ended_at", { mode: "timestamp" }),
   score_correct: integer("score_correct").notNull().default(0),
   score_total: integer("score_total").notNull().default(0),
+  // Bounded-session length (S3) — parity twin of schema.pg.ts. Nullable, no
+  // default: NULL = endless; a pre-S3 row reads NULL → `target_count: null`.
+  target_count: integer("target_count"),
 });
 
 /** attempt — append-only; `used_hint` never changes correctness. */

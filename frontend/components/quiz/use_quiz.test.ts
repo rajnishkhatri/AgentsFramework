@@ -173,9 +173,13 @@ describe("bank-backed quiz (ADR-0021 — questionSource: 'bank')", () => {
       engineDb: emptyDb,
       questionSource: "bank",
     });
+    // An empty bank = every skill exhausted from the start; the S3 scheduler
+    // walk (T-b3) surfaces "no [unserved] reviewed question" — the assertion is
+    // tightened to the reviewed-question-not-found wording it now throws (still
+    // requires a throw about a reviewed question; not a weakening).
     await expect(
       openQuizItem(emptyPorts, { subject: SUBJECT, learnerId: LEARNER }),
-    ).rejects.toThrow(/no reviewed question/);
+    ).rejects.toThrow(/reviewed question/);
   });
 });
 
@@ -442,6 +446,36 @@ describe("openQuizSession — session open + skillStateAtStart snapshot (FR-G1, 
     });
     expect(result.session.skill_focus).toBe("s-punc");
   });
+
+  it("omitting targetCount resolves the per-mode default 30 (FR-5 wiring)", async () => {
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+    expect(result.session.target_count).toBe(30);
+  });
+
+  it("passes an explicit targetCount through to sessionRepo.open (FR-6 wiring)", async () => {
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "drill",
+      focus: "s-punc",
+      targetCount: 5,
+    });
+    expect(result.session.target_count).toBe(5);
+  });
+
+  it("passes an explicit null targetCount through = endless session (FR-2 wiring)", async () => {
+    const result = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+      targetCount: null,
+    });
+    expect(result.session.target_count).toBeNull();
+  });
 });
 
 describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () => {
@@ -494,5 +528,54 @@ describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () 
       "probe rung",
       "conceptual rung",
     ]);
+  });
+});
+
+describe("openQuizItem — within-session no-repeat (S3, FR-9/FR-13 wiring)", () => {
+  it("a multi-item walk never re-serves a question answered this session", async () => {
+    // Two reviewed items in the one skill so the walk has somewhere to go.
+    db.seedQuestions([
+      question({ id: "q1", skill_id: "s-punc", difficulty: 1 }),
+      question({ id: "q2", skill_id: "s-punc", difficulty: 2 }),
+    ]);
+    const { session } = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "drill",
+      focus: "s-punc",
+    });
+
+    // Item 1: with the session id, the served set is empty → the easiest item.
+    const first = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+    });
+    expect(first.question.id).toBe("q1");
+
+    // Answer it → an attempt row now marks q1 as served in this session.
+    await runQuizSubmit(ports, {
+      session,
+      question: first.question,
+      learnerId: LEARNER,
+      letter: "A",
+      elapsedMs: 1000,
+      usedHint: false,
+    });
+
+    // Item 2: served-ids derived from the attempt must exclude q1 → q2, no repeat.
+    const second = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+    });
+    expect(second.question.id).toBe("q2");
+    expect(second.question.id).not.toBe(first.question.id);
+  });
+
+  it("without a sessionId, behaviour is unchanged (backward-compatible)", async () => {
+    // No sessionId → no served-set derivation → today's single-pick behaviour.
+    const item = await openQuizItem(ports, { subject: SUBJECT, learnerId: LEARNER });
+    expect(item.question.id).toBe("q1");
   });
 });

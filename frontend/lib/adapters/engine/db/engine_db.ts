@@ -67,8 +67,17 @@ export interface EngineDb extends ReadableEngineDb {
   listSkillIds(subject: string): Promise<string[]>;
 
   // --- question (reviewed gate lives in the repo, but the filter is pushed down) ---
-  /** Next reviewed question for a skill (reviewed=true ONLY), or null. */
-  nextReviewedQuestion(subject: string, skillId: string): Promise<Question | null>;
+  /**
+   * Next reviewed question for a skill (reviewed=true ONLY), or null.
+   * `excludeIds` skips already-served ids (S3, FR-9); the reviewed gate is
+   * unchanged and all-excluded → null (FR-11/FR-12). Omitted/empty → today's
+   * behaviour.
+   */
+  nextReviewedQuestion(
+    subject: string,
+    skillId: string,
+    excludeIds?: readonly string[],
+  ): Promise<Question | null>;
   getQuestion(id: string): Promise<Question | null>;
   insertQuestion(q: Question): Promise<void>;
 
@@ -96,6 +105,12 @@ export interface EngineDb extends ReadableEngineDb {
   insertAttempt(a: Attempt): Promise<void>;
   /** Incorrect attempts for a learner, newest-first (FR-D4). */
   listMisses(subject: string, learnerId: string): Promise<Attempt[]>;
+  /**
+   * The `question_id`s answered in one session (any correctness) — the S3
+   * served-set projection (FR-13). A `question_id`-only read scoped by
+   * `session_id`; order is not significant (the caller uses it as a set).
+   */
+  listSessionQuestionIds(sessionId: string): Promise<string[]>;
 
   // --- skill_state (Scheduler is the only writer; repos read for adaptivity) ---
   // `listSkillState` is inherited from ReadableEngineDb (the ADR-0011 read seam).

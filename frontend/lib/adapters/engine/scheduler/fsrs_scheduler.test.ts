@@ -122,6 +122,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
       ended_at: null,
       score_correct: 0,
       score_total: 0,
+      target_count: null,
     });
 
     const attempt: Attempt = {
@@ -169,6 +170,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
       ended_at: null,
       score_correct: 0,
       score_total: 0,
+      target_count: null,
     });
     const attempt = (createdAt: Date): Attempt => ({
       id: "a",
@@ -223,6 +225,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
         ended_at: null,
         score_correct: 0,
         score_total: 0,
+        target_count: null,
       });
       return scheduler;
     };
@@ -240,5 +243,96 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
     const correct = await mk().review({ ...base, correct: true });
     const wrong = await mk().review({ ...base, correct: false });
     expect(Date.parse(wrong.due_at)).toBeLessThan(Date.parse(correct.due_at));
+  });
+});
+
+// --- S3: within-session no-repeat via servedIds (FR-9/10/11/13) ---
+
+/** A default skill_state row so a learner is pre-seeded (no seeding upsert). */
+function seededState(over: Partial<import("../../../wire/engine_entities").SkillState> = {}) {
+  return {
+    subject: "act-english",
+    skill_id: "s1",
+    learner_id: "alice",
+    mastery: 0.1,
+    last_seen: null,
+    fsrs_stability: 0,
+    fsrs_difficulty: 0,
+    due_at: NOW.toISOString(), // due now → in the pool
+    fsrs_card: null,
+    ...over,
+  };
+}
+
+describe("FsrsScheduler — servedIds no-repeat (FR-9/10/11/13)", () => {
+  it("next never returns a served question id (FR-9)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" })]);
+    db.seedSkillStates([seededState({ skill_id: "s1" })]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q1", skill_id: "s1", difficulty: 1 }),
+      reviewedQuestion({ id: "q2", skill_id: "s1", difficulty: 2 }),
+    ]);
+    const pick = await scheduler.next("act-english", "alice", ["q1"]);
+    expect(pick.question_id).toBe("q2"); // q1 served → the next item for the skill
+  });
+
+  it("when the weakest skill is exhausted, falls through to the next-weakest (FR-10)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" }), skill({ id: "s2", key: "rhetoric" })]);
+    // s1 is weaker (lower mastery) so it is chosen first; its only item is served.
+    db.seedSkillStates([
+      seededState({ skill_id: "s1", mastery: 0.1 }),
+      seededState({ skill_id: "s2", mastery: 0.5 }),
+    ]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q-s1", skill_id: "s1" }),
+      reviewedQuestion({ id: "q-s2", skill_id: "s2" }),
+    ]);
+    const pick = await scheduler.next("act-english", "alice", ["q-s1"]);
+    // s1 exhausted (its only item served) → fall through to s2, not a repeat/throw.
+    expect(pick.skill_id).toBe("s2");
+    expect(pick.question_id).toBe("q-s2");
+  });
+
+  it("throws EngineNotFoundError when every skill's items are all served (FR-11)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" }), skill({ id: "s2", key: "rhetoric" })]);
+    db.seedSkillStates([
+      seededState({ skill_id: "s1", mastery: 0.1 }),
+      seededState({ skill_id: "s2", mastery: 0.5 }),
+    ]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q-s1", skill_id: "s1" }),
+      reviewedQuestion({ id: "q-s2", skill_id: "s2" }),
+    ]);
+    // Both (the whole bank for this learner) already served → end early, no repeat.
+    await expect(
+      scheduler.next("act-english", "alice", ["q-s1", "q-s2"]),
+    ).rejects.toBeInstanceOf(EngineNotFoundError);
+  });
+
+  it("next(servedIds) performs NO skill_state write — the served set is read-only (FR-13)", async () => {
+    const { db } = setup();
+    db.seedSkills([skill({ id: "s1" })]);
+    db.seedSkillStates([seededState({ skill_id: "s1" })]); // pre-seeded → no seeding upsert
+    db.seedQuestions([
+      reviewedQuestion({ id: "q1", skill_id: "s1", difficulty: 1 }),
+      reviewedQuestion({ id: "q2", skill_id: "s1", difficulty: 2 }),
+    ]);
+    // Count upserts through a pass-through spy on the fake.
+    let upserts = 0;
+    const original = db.upsertSkillState.bind(db);
+    db.upsertSkillState = async (s) => {
+      upserts += 1;
+      return original(s);
+    };
+    const scheduler = new FsrsScheduler({
+      db,
+      questions: new DrizzleQuestionRepo(db),
+      now: () => NOW,
+    });
+    await scheduler.next("act-english", "alice", ["q1"]);
+    expect(upserts).toBe(0); // exclusion is a pure read path; review() is the sole writer
   });
 });

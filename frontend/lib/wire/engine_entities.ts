@@ -206,6 +206,11 @@ export const QuizSession = z.object({
   ended_at: z.string().nullable(),
   score_correct: z.number().int(),
   score_total: z.number().int(),
+  // Bounded-session length (S3, `preact-quiz-target-count.spec.md`): how many
+  // items this session serves. `null` = endless (backward-compatible; a legacy
+  // row with no column maps to null). A positive int is the target; the value
+  // is stored at open, never recomputed on close (FR-1/2/3/4/7).
+  target_count: z.number().int().positive().nullable(),
 });
 export type QuizSession = z.infer<typeof QuizSession>;
 

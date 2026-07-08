@@ -24,6 +24,7 @@ function session(over: Partial<QuizSession> = {}): QuizSession {
     ended_at: "2026-06-30T10:12:00.000Z", // 12 min
     score_correct: 7,
     score_total: 10,
+    target_count: null, // S3: this VM ignores length; null keeps the fixture endless
     ...over,
   };
 }

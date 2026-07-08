@@ -27,7 +27,7 @@
  * path.
  */
 
-import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as pg from "./schema.pg";
@@ -156,6 +156,9 @@ function toSession(r: Record<string, unknown>): QuizSession {
     ended_at: isoOrNull(r.ended_at),
     score_correct: Number(r.score_correct ?? 0),
     score_total: Number(r.score_total ?? 0),
+    // S3 bounded length: a legacy row (added before the column) has no
+    // `target_count` → maps to null = endless (FR-3). Otherwise carry the int.
+    target_count: r.target_count == null ? null : Number(r.target_count),
   };
 }
 
@@ -272,19 +275,24 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) => String((r as { id: unknown }).id));
     },
-    async nextReviewedQuestion(subject, skillId) {
+    async nextReviewedQuestion(subject, skillId, excludeIds) {
+      // S3 served-set (FR-9): a NOT IN predicate on top of the reviewed gate.
+      // Added only when non-empty — an empty `NOT IN ()` is invalid SQL and
+      // would change today's behaviour, so omitted/empty is a no-op (FR-12).
+      const predicates = [
+        eq(pg.question.subject, subject),
+        eq(pg.question.skill_id, skillId),
+        eq(pg.question.reviewed, true), // HARD GATE (FR-B*)
+      ];
+      if (excludeIds && excludeIds.length > 0) {
+        predicates.push(notInArray(pg.question.id, [...excludeIds]));
+      }
       const rows = await wrap(
         "nextReviewedQuestion",
         db
           .select()
           .from(pg.question)
-          .where(
-            and(
-              eq(pg.question.subject, subject),
-              eq(pg.question.skill_id, skillId),
-              eq(pg.question.reviewed, true), // HARD GATE (FR-B*)
-            ),
-          )
+          .where(and(...predicates))
           .orderBy(asc(pg.question.difficulty), asc(pg.question.id))
           .limit(1),
       );
@@ -418,6 +426,19 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       return rows.map((r) =>
         toAttempt((r as { attempt: Record<string, unknown> }).attempt),
       );
+    },
+    async listSessionQuestionIds(sessionId) {
+      // The served set (FR-13): every question_id answered in this session, any
+      // correctness. A question_id-only projection scoped by session_id — no
+      // join (the session id is enough; order is not significant).
+      const rows = await wrap(
+        "listSessionQuestionIds",
+        db
+          .select({ question_id: pg.attempt.question_id })
+          .from(pg.attempt)
+          .where(eq(pg.attempt.session_id, sessionId)),
+      );
+      return rows.map((r) => String((r as { question_id: unknown }).question_id));
     },
     async listSkillState(subject, learnerId) {
       const rows = await wrap(

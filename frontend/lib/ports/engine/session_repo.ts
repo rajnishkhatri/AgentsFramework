@@ -21,6 +21,12 @@ export type SessionScore = {
  *   2. `open()` creates a `quiz_session` row (FR-D1) with `started_at` set and
  *      `ended_at = null`, `score_* = 0`. `focus` is the skill id for a drill
  *      session (FR-A5) or null for adaptive/review.
+ *   2a. `targetCount` sets the bounded-session length (S3, FR-5/6). It
+ *      distinguishes three cases: OMITTED (arg not passed) → resolve the
+ *      per-mode default from the `content_string` policy (flat 30) and persist
+ *      it; an explicit positive int → persist that value, no override (FR-6);
+ *      an explicit `null` → an endless session. The value is stored, never
+ *      recomputed on close (FR-7).
  *   3. `close()` sets `ended_at` and the score tally (`score_correct` /
  *      `score_total`) from the supplied tally — the UI Summary derives from
  *      these STORED values, never a recompute (FR-D3). Idempotent: closing an
@@ -31,12 +37,17 @@ export type SessionScore = {
  * @throws EngineRepoError on persistence failure.
  */
 export interface SessionRepo {
-  /** Open a session; `focus` = skill id for a drill, null otherwise. */
+  /**
+   * Open a session; `focus` = skill id for a drill, null otherwise.
+   * `targetCount`: omit → per-mode default (30) from `content_string`; a
+   * positive int → that length; `null` → endless (FR-5/6).
+   */
   open(
     subject: string,
     learnerId: string,
     mode: SessionMode,
     focus?: string | null,
+    targetCount?: number | null,
   ): Promise<QuizSession>;
 
   /** Close a session: set `ended_at` + the stored score tally. Idempotent. */

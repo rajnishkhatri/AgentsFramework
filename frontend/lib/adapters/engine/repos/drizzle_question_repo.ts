@@ -17,9 +17,13 @@ import type { EngineDb } from "../db/engine_db";
 export class DrizzleQuestionRepo implements QuestionRepo {
   constructor(private readonly db: EngineDb) {}
 
-  async nextReviewed(subject: string, skillId: string): Promise<Question | null> {
+  async nextReviewed(
+    subject: string,
+    skillId: string,
+    excludeIds?: readonly string[],
+  ): Promise<Question | null> {
     try {
-      const q = await this.db.nextReviewedQuestion(subject, skillId);
+      const q = await this.db.nextReviewedQuestion(subject, skillId, excludeIds);
       // Defense in depth: the gate is enforced in the store, but a repo must
       // never hand a learner an unreviewed item even if a seam regressed.
       if (q && q.reviewed !== true) return null;

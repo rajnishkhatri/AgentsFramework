@@ -113,7 +113,9 @@ export default function QuizPage(): React.JSX.Element {
   React.useEffect(() => {
     if (session == null || state.phase !== "loading") return;
     let cancelled = false;
-    openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID })
+    // S3: pass the session id so openItem derives this session's served-ids and
+    // never re-serves a question already answered this session (FR-9/FR-13).
+    openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID, sessionId: session.id })
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.

@@ -49,6 +49,13 @@ export interface OpenSessionArgs {
   readonly mode: SessionMode;
   /** Skill id for a drill session (FR-A5); omit/null for adaptive/review. */
   readonly focus?: string | null;
+  /**
+   * Bounded-session length (S3, FR-5/6). Omit → the repo resolves the per-mode
+   * default (30) from the `content_string` policy; a positive int → that many
+   * items; `null` → an endless session. The distinction between "omitted" and
+   * explicit `null` is preserved end-to-end (undefined ≠ null).
+   */
+  readonly targetCount?: number | null;
 }
 
 export interface QuizSessionResult {
@@ -81,6 +88,9 @@ export async function openQuizSession(
     args.learnerId,
     args.mode,
     args.focus ?? null,
+    // Forward verbatim (no coalescing): `undefined` = omitted → repo resolves
+    // the default; explicit `null` = endless; a value = that length (FR-5/6).
+    args.targetCount,
   );
   const rows = await ports.learnerRead.listSkillState(args.subject, args.learnerId);
   const skillStateAtStart = new Map(rows.map((s) => [s.skill_id, s]));
@@ -100,12 +110,24 @@ export async function listQuizSkillIds(
   return skills.map((s) => s.id);
 }
 
-/** Pick the next (skill, question) for the learner and load the reviewed item. */
+/**
+ * Pick the next (skill, question) for the learner and load the reviewed item.
+ *
+ * `sessionId` (S3, FR-9/FR-13): when present, the play loop derives this
+ * session's already-served question ids from its `attempt` rows and passes them
+ * to `scheduler.next` so a session never repeats a question. The served set is
+ * ephemeral + caller-owned (derived here, never persisted on `skill_state`);
+ * omitting `sessionId` keeps today's single-pick behaviour (backward-compatible).
+ */
 export async function openQuizItem(
   ports: EnginePortBag,
-  args: { subject: string; learnerId: string },
+  args: { subject: string; learnerId: string; sessionId?: string },
 ): Promise<QuizItemResult> {
-  const next = await ports.scheduler.next(args.subject, args.learnerId);
+  const servedIds =
+    args.sessionId != null
+      ? await ports.attemptRepo.servedQuestionIds(args.sessionId)
+      : undefined;
+  const next = await ports.scheduler.next(args.subject, args.learnerId, servedIds);
   const question = await ports.questionRepo.get(next.question_id);
   if (question == null) {
     // The scheduler picked an id the repo can't resolve — a seam defect, surfaced
@@ -209,7 +231,11 @@ export async function closeQuizSession(
  */
 export function useQuiz(): {
   openSession: (args: OpenSessionArgs) => Promise<QuizSessionResult>;
-  openItem: (args: { subject: string; learnerId: string }) => Promise<QuizItemResult>;
+  openItem: (args: {
+    subject: string;
+    learnerId: string;
+    sessionId?: string;
+  }) => Promise<QuizItemResult>;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
@@ -218,7 +244,7 @@ export function useQuiz(): {
   return React.useMemo(
     () => ({
       openSession: (args: OpenSessionArgs) => openQuizSession(ports, args),
-      openItem: (args: { subject: string; learnerId: string }) =>
+      openItem: (args: { subject: string; learnerId: string; sessionId?: string }) =>
         openQuizItem(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),

@@ -96,16 +96,20 @@ export function buildBrowserEngineAdapters(
       ? new TestItemQuestionRepo(testItemRepo, DEFAULT_SUBJECT)
       : new DrizzleQuestionRepo(db);
 
+  // One shared ContentRepo: the objective-plane port AND SessionRepo's source
+  // for the per-mode target_count default (FR-5).
+  const contentRepo = new DrizzleContentRepo(db);
+
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
     questionRepo,
     attemptRepo: new DrizzleAttemptRepo({ db }),
-    sessionRepo: new DrizzleSessionRepo({ db }),
+    sessionRepo: new DrizzleSessionRepo({ db, contentRepo }),
     // The Scheduler needs QuestionRepo to resolve a chosen skill → a reviewed
     // question (FR-A1); it is the sole writer of skill_state (FR-A2).
     scheduler: new FsrsScheduler({ db, questions: questionRepo }),
     grader: new ExactLetterGrader(),
-    contentRepo: new DrizzleContentRepo(db),
+    contentRepo,
     // Read-only skill_state view (ADR-0011); ReadableEngineDb → no write reachable.
     learnerRead: new DrizzleLearnerReadRepo(db),
     // Read-only reviewed hint ladder (ADR-0014): no write surface on the port.
