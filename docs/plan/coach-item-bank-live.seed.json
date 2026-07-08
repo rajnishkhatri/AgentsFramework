@@ -1,6 +1,196 @@
 [
   {
     "skill_id": "s-gram",
+    "standard_id": 3,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "We <u>could of</u> caught the earlier bus if the drills had ended on time.",
+    "stem_md": "Which choice is the correct form of the verb phrase?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "could have"
+      },
+      {
+        "letter": "C",
+        "label": "could off"
+      },
+      {
+        "letter": "D",
+        "label": "could"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Of' is a preposition — it can't help a verb.",
+      "B": "The helper is 'have': could have caught.",
+      "C": "'Off' makes it worse, not better.",
+      "D": "Dropping the helper changes the meaning from missed chance to plain ability."
+    },
+    "why_correct_md": "The contraction 'could've' spells out as **could have** — never 'could of'.",
+    "why_tempted_md": "'Could've' SOUNDS exactly like 'could of'.",
+    "rule_md": "Would/could/should pair with HAVE; the '-of' spelling is always an ear-spelling error.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 7,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The mural committee wanted a design that was not only colorful <u>but</u> durable enough for the north wall.",
+    "stem_md": "Which choice completes the paired conjunction correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "but also"
+      },
+      {
+        "letter": "C",
+        "label": "and also"
+      },
+      {
+        "letter": "D",
+        "label": "yet"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Not only' promises its full partner — bare 'but' breaks the pair.",
+      "B": "'Not only ... but also' is the complete correlative pair.",
+      "C": "'And also' isn't the partner 'not only' takes.",
+      "D": "'Yet' signals contrast, and the pair still goes unfinished."
+    },
+    "why_correct_md": "Correlative conjunctions come in **fixed pairs**: not only ... but also.",
+    "why_tempted_md": "'But' alone carries most of the meaning, so the missing 'also' is easy to drop.",
+    "rule_md": "Complete the pair: either/or, neither/nor, both/and, not only/but also.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 7,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "You can <u>either submit the form online or</u> mail it to the district office.",
+    "stem_md": "Which choice places the paired conjunction so the options match?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "submit the form either online or"
+      },
+      {
+        "letter": "C",
+        "label": "either submit the form online, or"
+      },
+      {
+        "letter": "D",
+        "label": "submit either the form online or"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Either' sits before the verb but 'or' introduces only a place — the halves don't match.",
+      "B": "'Either online or [by] mail' — both arms of the pair now offer the same kind of thing.",
+      "C": "The mismatch stays, and the comma adds nothing.",
+      "D": "'Either the form' pairs a noun with a place — still lopsided."
+    },
+    "why_correct_md": "Place correlatives so the words after each arm are **grammatically parallel**.",
+    "why_tempted_md": "The sentence sounds fine aloud because the meaning is guessable.",
+    "rule_md": "Whatever follows 'either' must mirror what follows 'or' — noun/noun, verb/verb, place/place.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 11,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "Last night the power flickered twice, and the smoke alarm <u>chirps</u> until Dad changed its battery.",
+    "stem_md": "Which choice keeps the sentence in one time frame?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "chirped"
+      },
+      {
+        "letter": "C",
+        "label": "chirping"
+      },
+      {
+        "letter": "D",
+        "label": "will chirp"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Last night' and 'changed' set the past — present 'chirps' jumps the track.",
+      "B": "Past 'chirped' matches 'flickered' and 'changed'.",
+      "C": "'Chirping' leaves the clause without a real verb.",
+      "D": "Future tense contradicts a finished story."
+    },
+    "why_correct_md": "Stay in the tense the sentence establishes — here, the **past**.",
+    "why_tempted_md": "The alarm's chirping is easy to picture as happening 'now'.",
+    "rule_md": "Match every verb to the sentence's time markers unless the meaning truly changes time.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 11,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Every morning the ferry leaves at six, crosses the sound in forty minutes, and <u>docked</u> beside the fish market.",
+    "stem_md": "Which choice keeps the daily routine consistent?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "docks"
+      },
+      {
+        "letter": "C",
+        "label": "was docking"
+      },
+      {
+        "letter": "D",
+        "label": "had docked"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Docked' drops one leg of a present-tense routine into the past.",
+      "B": "Present 'docks' matches 'leaves' and 'crosses' — a habit, not a memory.",
+      "C": "'Was docking' shifts to a past scene mid-list.",
+      "D": "'Had docked' reaches even further back than the plain past."
+    },
+    "why_correct_md": "A routine described in present tense keeps **every verb present**.",
+    "why_tempted_md": "Any single leg of the trip can be remembered as a past event.",
+    "rule_md": "Verbs in a series share the sentence's time frame — don't shift without a reason.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
     "standard_id": 11,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
@@ -34,6 +224,82 @@
     "why_correct_md": "An action ongoing **before** a past event takes the past perfect (progressive): *had been waiting*.",
     "why_tempted_md": "Each verb form sounds fine alone; only checking it against 'arrived' exposes the clash.",
     "rule_md": "Match verb tense to the sentence's time anchors; 'by the time X happened' demands past perfect.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 12,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "By the time we reached the trailhead, the sun had already <u>rose</u> over the ridge.",
+    "stem_md": "Which choice is the correct form after 'had'?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "risen"
+      },
+      {
+        "letter": "C",
+        "label": "rised"
+      },
+      {
+        "letter": "D",
+        "label": "raised"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Rose' is the simple past — 'had' needs the past participle.",
+      "B": "'Had risen' pairs the helper with the participle.",
+      "C": "'Rised' isn't a form of this irregular verb.",
+      "D": "'Raised' comes from 'raise' (to lift something) — the sun rises on its own."
+    },
+    "why_correct_md": "After 'had', irregular verbs use their **past participle**: had risen.",
+    "why_tempted_md": "The simple past 'rose' is the form we say most often.",
+    "rule_md": "Rise-rose-risen; raise-raised-raised. Helpers (have/had) take the third form.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 12,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "I <u>seen</u> the meteor shower from the roof of the parking garage.",
+    "stem_md": "Which choice is the correct past form of the verb?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "saw"
+      },
+      {
+        "letter": "C",
+        "label": "have saw"
+      },
+      {
+        "letter": "D",
+        "label": "seed"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Seen' is a participle — it can't stand alone without 'have' or 'had'.",
+      "B": "'Saw' is the simple past and needs no helper.",
+      "C": "'Have saw' pairs the helper with the wrong form.",
+      "D": "'Seed' isn't a verb form at all here."
+    },
+    "why_correct_md": "Alone, the past of 'see' is **saw**; 'seen' only works with a helper.",
+    "why_tempted_md": "'I seen it' is common in casual speech.",
+    "rule_md": "See-saw-seen: 'saw' stands alone; 'seen' rides with have/has/had.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -78,6 +344,44 @@
   {
     "skill_id": "s-gram",
     "standard_id": 13,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
+    "context_html": "The second week of practice went <u>more smooth</u> than the first.",
+    "stem_md": "Which choice compares the two weeks correctly?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "more smoothly"
+      },
+      {
+        "letter": "C",
+        "label": "smoother"
+      },
+      {
+        "letter": "D",
+        "label": "most smoothly"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Went' needs an adverb — 'smooth' is the adjective.",
+      "B": "'More smoothly' is the comparative ADVERB the verb needs.",
+      "C": "'Smoother' compares two nouns, but here we're describing how practice WENT.",
+      "D": "'Most' is the superlative — there are only two weeks."
+    },
+    "why_correct_md": "Comparing how something happened takes a **comparative adverb**: more smoothly.",
+    "why_tempted_md": "'Smooth' and 'smoother' sound fine because the adjective is so familiar.",
+    "rule_md": "Modify a verb with an adverb; compare two with 'more + adverb', not the bare adjective.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 13,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "Of the two routes up the mountain, the eastern trail is the <u>most</u> challenging.",
@@ -110,6 +414,120 @@
     "why_correct_md": "Two items → **comparative** ('more'); three or more → superlative ('most').",
     "why_tempted_md": "Superlatives are so common in speech that 'most challenging' sounds natural even for a pair.",
     "rule_md": "With exactly two things, use -er/'more'; save -est/'most' for three or more.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 13,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Switching to the aluminum bat made Dev's swing <u>more faster</u> through the strike zone.",
+    "stem_md": "Which choice states the comparison without doubling it?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "faster"
+      },
+      {
+        "letter": "C",
+        "label": "more fast"
+      },
+      {
+        "letter": "D",
+        "label": "fastest"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'More faster' marks the comparison twice — once with 'more', once with '-er'.",
+      "B": "'Faster' carries the whole comparison in one form.",
+      "C": "'More fast' uses the wrong marker for a one-syllable adjective.",
+      "D": "'Fastest' is the superlative — only two swings are being compared."
+    },
+    "why_correct_md": "Use **one** comparative marker: -er OR 'more', never both.",
+    "why_tempted_md": "Doubling the marker feels like extra emphasis.",
+    "rule_md": "Short adjectives take -er/-est; longer ones take more/most; never stack the two.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 16,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The understudy performed so <u>good</u> on opening night that the director rewrote the schedule.",
+    "stem_md": "Which choice correctly describes how the understudy performed?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "well"
+      },
+      {
+        "letter": "C",
+        "label": "goodly"
+      },
+      {
+        "letter": "D",
+        "label": "great"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Good' is an adjective; 'performed' needs an adverb.",
+      "B": "'Well' is the adverb that tells HOW she performed.",
+      "C": "'Goodly' is archaic and means 'sizable', not 'skillfully'.",
+      "D": "'Great' is another adjective in an adverb's slot."
+    },
+    "why_correct_md": "Describe a verb with an **adverb**: performed well.",
+    "why_tempted_md": "'Did good' is everywhere in casual speech.",
+    "rule_md": "Good describes nouns; well describes verbs (except health: 'I feel well').",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 17,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Peanut butter and jelly <u>makes</u> a decent trail lunch when the cooler ice runs out.",
+    "stem_md": "Which choice agrees with the compound subject?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "make"
+      },
+      {
+        "letter": "C",
+        "label": "is making"
+      },
+      {
+        "letter": "D",
+        "label": "has made"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two foods joined by 'and' form a plural subject — 'makes' is singular.",
+      "B": "'And' builds a plural subject, and 'make' agrees with it.",
+      "C": "'Is making' is still singular and adds a progressive the sentence doesn't need.",
+      "D": "'Has made' is singular and shifts the general claim into a finished past."
+    },
+    "why_correct_md": "Subjects joined by **'and' are plural** — they take a plural verb.",
+    "why_tempted_md": "The pair feels like one sandwich, so a singular verb sounds natural.",
+    "rule_md": "X and Y → plural verb, unless the pair names a single fixed unit (macaroni and cheese IS).",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -153,6 +571,196 @@
   },
   {
     "skill_id": "s-gram",
+    "standard_id": 17,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Each of the drones <u>carry</u> a spare battery clipped beneath its frame.",
+    "stem_md": "Which verb agrees with the subject of the sentence?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "carries"
+      },
+      {
+        "letter": "C",
+        "label": "are carrying"
+      },
+      {
+        "letter": "D",
+        "label": "have carried"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The subject is 'each', not 'drones' — and 'each' is singular.",
+      "B": "'Each' takes a singular verb no matter what plural follows 'of'.",
+      "C": "'Are carrying' agrees with the nearby plural, not the actual subject.",
+      "D": "'Have carried' is plural and abandons the present-tense description."
+    },
+    "why_correct_md": "**'Each' is singular** — the 'of the drones' phrase can't change that.",
+    "why_tempted_md": "The plural noun sits right next to the verb and pulls it plural.",
+    "rule_md": "Indefinite pronouns each/either/neither/everyone are singular; ignore the 'of the ___' phrase.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 17,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Neither the captain nor the deckhands <u>was</u> willing to predict when the fog would lift.",
+    "stem_md": "Which verb is correct after the 'neither ... nor' pair?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "were"
+      },
+      {
+        "letter": "C",
+        "label": "is"
+      },
+      {
+        "letter": "D",
+        "label": "has been"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "With 'nor', the verb agrees with the CLOSER subject — plural 'deckhands'.",
+      "B": "The nearer subject is plural, so the verb goes plural: 'the deckhands were'.",
+      "C": "'Is' is singular and drifts into present tense besides.",
+      "D": "'Has been' agrees with the farther subject and changes the time frame."
+    },
+    "why_correct_md": "In either/or and neither/nor pairs, the verb agrees with the **nearer subject**.",
+    "why_tempted_md": "'Neither' sounds singular, so a singular verb feels automatic.",
+    "rule_md": "Or/nor: match the verb to whichever subject sits closest to it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 18,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "The library extended <u>their</u> weekend hours during exam season.",
+    "stem_md": "Which pronoun agrees with 'the library'?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "its"
+      },
+      {
+        "letter": "C",
+        "label": "it's"
+      },
+      {
+        "letter": "D",
+        "label": "there"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Their' is plural, but 'the library' is one thing.",
+      "B": "Singular, non-person antecedent → 'its'.",
+      "C": "'It's' means 'it is' — not a possessive.",
+      "D": "'There' points to a place; it can't possess hours."
+    },
+    "why_correct_md": "A singular thing takes the singular possessive **'its'**.",
+    "why_tempted_md": "Organizations feel like the people inside them, so 'their' slips in.",
+    "rule_md": "Match the pronoun to the antecedent's number: one library → its.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 18,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Each kayak in the rental fleet has <u>their</u> own numbered paddle.",
+    "stem_md": "Which pronoun matches the word it stands for?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "its"
+      },
+      {
+        "letter": "C",
+        "label": "his"
+      },
+      {
+        "letter": "D",
+        "label": "there"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Each kayak' is singular; 'their' is plural.",
+      "B": "One kayak at a time → 'its' paddle.",
+      "C": "A kayak isn't a person.",
+      "D": "'There' is a place word, not a possessive."
+    },
+    "why_correct_md": "'Each' keeps the antecedent **singular** — one kayak, its paddle.",
+    "why_tempted_md": "The plural 'fleet' nearby pulls the pronoun plural.",
+    "rule_md": "Each/every + noun stays singular no matter what plural stands nearby.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 19,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Tighten the strap so the helmet doesn't come <u>lose</u> on the downhill.",
+    "stem_md": "Which choice is the right word for the strap's problem?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "loose"
+      },
+      {
+        "letter": "C",
+        "label": "loosen"
+      },
+      {
+        "letter": "D",
+        "label": "lost"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Lose' is a verb (to misplace); the sentence needs a describing word.",
+      "B": "'Loose' (rhymes with 'goose') means not tight.",
+      "C": "'Loosen' is an action, and 'come loosen' isn't English.",
+      "D": "'Come lost' garbles the idiom 'come loose'."
+    },
+    "why_correct_md": "**Loose** = not tight; **lose** = to misplace or be defeated.",
+    "why_tempted_md": "One letter apart and pronounced almost alike, the pair swaps constantly.",
+    "rule_md": "Loose rhymes with goose (adjective); lose rhymes with snooze (verb).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
     "standard_id": 19,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
@@ -186,6 +794,158 @@
     "why_correct_md": "To influence something = **affect** (verb); the sentence already uses it correctly.",
     "why_tempted_md": "The affect/effect pair is so notorious that a correct 'affect' invites second-guessing.",
     "rule_md": "Affect = verb (to influence); effect = noun (a result) — and check before you 'fix' what isn't broken.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 19,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "From the coach's silence after tryouts, the players <u>implied</u> that the roster would shrink.",
+    "stem_md": "Which choice is the right verb for what the players did?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "inferred"
+      },
+      {
+        "letter": "C",
+        "label": "implicated"
+      },
+      {
+        "letter": "D",
+        "label": "applied"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Speakers imply; listeners infer. The players were on the receiving end.",
+      "B": "Drawing a conclusion from evidence is 'inferring'.",
+      "C": "'Implicated' means shown to be involved in wrongdoing.",
+      "D": "'Applied' belongs to forms and ointments, not conclusions."
+    },
+    "why_correct_md": "The sender **implies**; the receiver **infers**.",
+    "why_tempted_md": "The two verbs describe the same conversation from opposite ends.",
+    "rule_md": "Imply = hint outward; infer = conclude inward. Ask which direction the meaning travels.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 22,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The volunteer <u>which</u> organized the coat drive spoke at Friday's assembly.",
+    "stem_md": "Which choice correctly refers to the volunteer?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "who"
+      },
+      {
+        "letter": "C",
+        "label": "whom"
+      },
+      {
+        "letter": "D",
+        "label": "what"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Which' refers to things, not people.",
+      "B": "'Who' refers to a person doing the action of the clause.",
+      "C": "'Whom' is the object form — but the volunteer is the one organizing.",
+      "D": "'What' can't introduce a clause about a person."
+    },
+    "why_correct_md": "People take **who/whom**; things take which/that.",
+    "why_tempted_md": "'Which' feels formal enough to fit anywhere.",
+    "rule_md": "Person → who (subject) / whom (object); thing → which/that.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 22,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The mentor <u>who</u> Amara credits for her scholarship still teaches night classes.",
+    "stem_md": "Which choice is correct for the person Amara credits?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "whom"
+      },
+      {
+        "letter": "C",
+        "label": "which"
+      },
+      {
+        "letter": "D",
+        "label": "whose"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Inside the clause, Amara credits HIM — an object, so 'who' is the wrong case.",
+      "B": "'Whom' is the object of 'credits': Amara credits whom.",
+      "C": "'Which' can't refer to a person.",
+      "D": "'Whose' is possessive — nothing is owned here."
+    },
+    "why_correct_md": "Test with him/her: 'Amara credits HIM' → **whom**.",
+    "why_tempted_md": "'Who' sounds natural at the head of any clause about a person.",
+    "rule_md": "He/she fits → who; him/her fits → whom.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 23,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Riders are prohibited <u>to bring</u> glass bottles onto the pool deck.",
+    "stem_md": "Which choice completes the expression idiomatically?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "from bringing"
+      },
+      {
+        "letter": "C",
+        "label": "of bringing"
+      },
+      {
+        "letter": "D",
+        "label": "against bring"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Prohibited to bring' crosses idioms — 'forbidden TO' but 'prohibited FROM'.",
+      "B": "'Prohibited from + -ing' is the fixed pairing.",
+      "C": "'Prohibited of' isn't an English pattern.",
+      "D": "'Against bring' mangles both the preposition and the verb form."
+    },
+    "why_correct_md": "The idiom is **prohibited from doing**, not 'prohibited to do'.",
+    "why_tempted_md": "The parallel idiom 'forbidden to do' bleeds into this one.",
+    "rule_md": "Learn preposition idioms as units: prohibited from, forbidden to, capable of, insist on.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -229,6 +989,158 @@
   },
   {
     "skill_id": "s-gram",
+    "standard_id": 26,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The docent led us through the fossil hall, pointed out the juvenile triceratops, and <u>explains</u> how the dig team dated the site.",
+    "stem_md": "Which choice keeps the tour's verbs consistent?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "explained"
+      },
+      {
+        "letter": "C",
+        "label": "explaining"
+      },
+      {
+        "letter": "D",
+        "label": "will explain"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Two past verbs then a present one — the last leg jumps time frames.",
+      "B": "'Explained' completes the past-tense series 'led ... pointed ... explained'.",
+      "C": "'Explaining' breaks the parallel finite-verb series.",
+      "D": "Future tense contradicts a tour already being narrated."
+    },
+    "why_correct_md": "Verbs in one narrated sequence stay in **one tense**.",
+    "why_tempted_md": "The explanation feels ongoing, so present tense sneaks in.",
+    "rule_md": "Series of actions by one subject: keep every verb in the frame the first verbs set.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 26,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "When one trains at altitude for a few weeks, <u>you</u> notice the difference at sea level immediately.",
+    "stem_md": "Which choice keeps the sentence's point of view consistent?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "one notices"
+      },
+      {
+        "letter": "C",
+        "label": "they notice"
+      },
+      {
+        "letter": "D",
+        "label": "we noticed"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "The sentence opens with 'one' and then swerves to 'you'.",
+      "B": "'One ... one notices' holds a single point of view.",
+      "C": "'They' invents a third party the sentence never introduced.",
+      "D": "'We noticed' changes both person and tense."
+    },
+    "why_correct_md": "Pick a person — 'one' or 'you' — and **stay in it**.",
+    "why_tempted_md": "'One' and 'you' both speak generally, so they feel interchangeable mid-sentence.",
+    "rule_md": "Don't shift person (one → you → they) inside a sentence or passage.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 27,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "By the time the judges reached our booth, the glue <u>dried</u> and the bridge model held its full load.",
+    "stem_md": "Which choice shows the drying happened before the judges arrived?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "had dried"
+      },
+      {
+        "letter": "C",
+        "label": "has dried"
+      },
+      {
+        "letter": "D",
+        "label": "was drying"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "Plain past puts the drying and the arrival at the same moment.",
+      "B": "Past perfect 'had dried' sets the drying BEFORE the past arrival.",
+      "C": "'Has dried' ties the drying to the present, not to that past moment.",
+      "D": "'Was drying' means the glue was still wet — the opposite of the point."
+    },
+    "why_correct_md": "**Past perfect** ('had' + participle) marks the earlier of two past events.",
+    "why_tempted_md": "Simple past feels sufficient because both events are over.",
+    "rule_md": "'By the time X happened, Y HAD happened' — the earlier past takes 'had'.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 28,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Jordan texted Marcus every day while <u>he</u> was at wilderness camp.",
+    "stem_md": "Which choice makes clear who was away at camp?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Marcus"
+      },
+      {
+        "letter": "C",
+        "label": "him"
+      },
+      {
+        "letter": "D",
+        "label": "himself"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'He' could be Jordan or Marcus — the reader can't tell who left.",
+      "B": "Repeating the name removes the ambiguity.",
+      "C": "'Him' is the wrong case for a subject and no clearer.",
+      "D": "'Himself' needs a matching subject in its own clause."
+    },
+    "why_correct_md": "When a pronoun could point at **either person**, use the name.",
+    "why_tempted_md": "The writer knows who went to camp, so the pronoun feels clear.",
+    "rule_md": "A pronoun must have exactly ONE possible antecedent — otherwise name the person.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
     "standard_id": 28,
     "difficulty": 4,
     "item_type": "underlined-span-mc",
@@ -262,6 +1174,44 @@
     "why_correct_md": "Subject of the verb → **who**; object of a verb or preposition → whom.",
     "why_tempted_md": "'Whom' sounds more formal, so it gets sprinkled in where 'who' belongs.",
     "rule_md": "Test with he/him: 'HE organized the drive' → who; 'the drive was organized by HIM' → whom.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 28,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Any questions about the field trip should go to Ms. Rivera or <u>myself</u> before Friday.",
+    "stem_md": "Which choice is correct for the second contact person?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "me"
+      },
+      {
+        "letter": "C",
+        "label": "I"
+      },
+      {
+        "letter": "D",
+        "label": "mine"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Myself' is reflexive — it needs 'I' earlier in the clause to reflect.",
+      "B": "Questions go TO someone: the object form 'me'.",
+      "C": "'I' is the subject form in an object slot.",
+      "D": "'Mine' shows possession, which nothing here calls for."
+    },
+    "why_correct_md": "No earlier 'I' to reflect → plain **me**, not 'myself'.",
+    "why_tempted_md": "'Myself' sounds extra polite in requests and announcements.",
+    "rule_md": "Reflexives (-self) only echo a subject already in the clause: 'I hurt myself', never 'contact myself'.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
