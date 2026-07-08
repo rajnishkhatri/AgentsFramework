@@ -308,6 +308,44 @@
     "standard_id": 12,
     "difficulty": 1,
     "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle <u>teached</u> me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which choice uses the correct past-tense verb form for the underlined word?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "taught"
+      },
+      {
+        "letter": "C",
+        "label": "teaches"
+      },
+      {
+        "letter": "D",
+        "label": "had teached"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "Past tense of \"teach\" is \"taught.\"",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Past tense of \"teach\" is \"taught.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (irregular verb)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 12,
+    "difficulty": 1,
+    "item_type": "underlined-span-mc",
     "context_html": "Yesterday the choir <u>sung</u> the national anthem before the game.",
     "stem_md": "Which verb form is correct in this sentence?",
     "choices": [
@@ -528,6 +566,82 @@
     "why_correct_md": "Subjects joined by **'and' are plural** — they take a plural verb.",
     "why_tempted_md": "The pair feels like one sandwich, so a singular verb sounds natural.",
     "rule_md": "X and Y → plural verb, unless the pair names a single fixed unit (macaroni and cheese IS).",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 17,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough <u>rises</u> using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which choice makes the underlined present-tense verb agree with its subject?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "rise"
+      },
+      {
+        "letter": "C",
+        "label": "rising"
+      },
+      {
+        "letter": "D",
+        "label": "has rose"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Singular \"sourdough rises.\"",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Singular \"sourdough rises.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (agreement)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 17,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage V — A Brief Note on Commas (usage-focused) — Many writers struggle with commas , they are among the trickiest marks of punctuation. A comma can separate items in a list, set off an introductory phrase, or join two clauses with a conjunction. Misusing them, however can confuse a reader. Consider the difference between \"Let's eat, Grandma\" and \"Let's eat Grandma.\" The first <u>invites</u> Grandma to dinner; the second is alarming. Such examples remind us that punctuation, though small, carries real meaning.",
+    "stem_md": "Which choice makes the underlined verb agree with its plural subject?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "invite"
+      },
+      {
+        "letter": "C",
+        "label": "inviting"
+      },
+      {
+        "letter": "D",
+        "label": "invites to"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"The first invites\" — singular subject.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"The first invites\" — singular subject.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (agreement)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -764,6 +878,44 @@
     "standard_id": 19,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
+    "context_html": "Passage IV — Night Shift at the Observatory — My first night as a volunteer at the observatory, I expected glamour. Instead, I found cold floors, humming machines, and a long checklist. The astronomer on duty, Dr. Okafor, greeted me warmly but immediately put me to work. <u>Their</u> were dozens of small tasks: calibrating instruments, logging temperatures, and to check the dome's rotation. None of it looked like the dramatic discoveries I had imagined. Yet as the hours passed, I began to understand that this quiet, careful labor was the real work of science. Around 2 a.m., Dr. Okafor called me over. On the screen was a faint smudge of light — a distant galaxy. \"It isn't much to look at,\" she said, \"but light from there left before humans existed.\" In that moment, the cold floors and checklists seemed worth it.",
+    "stem_md": "Which choice uses the correct word for the underlined homophone?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "There"
+      },
+      {
+        "letter": "C",
+        "label": "They're"
+      },
+      {
+        "letter": "D",
+        "label": "There're"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "\"There were dozens\" — \"There,\" not \"Their/They're.\"",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"There were dozens\" — \"There,\" not \"Their/They're.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (homophone)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 19,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
     "context_html": "The new policy will <u>affect</u> how employees request time off.",
     "stem_md": "Which choice uses the right word for the sentence's meaning?",
     "choices": [
@@ -989,6 +1141,82 @@
   },
   {
     "skill_id": "s-gram",
+    "standard_id": 23,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. <u>Because of these</u> reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which choice gives the idiomatic form of the underlined connective phrase?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Because, of these"
+      },
+      {
+        "letter": "C",
+        "label": "Because these"
+      },
+      {
+        "letter": "D",
+        "label": "Being of these"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "\"Because these reactions…\" — \"Because of these\" needs a noun, but the sentence has a clause → \"Because these.\"",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"Because these reactions…\" — \"Because of these\" needs a noun, but the sentence has a clause → \"Because these.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (idiom/structure)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 23,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle teached me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind <u>by watching</u> the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which choice gives the idiomatic phrasing of the underlined verb-plus-preposition?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "by watch"
+      },
+      {
+        "letter": "C",
+        "label": "for watching"
+      },
+      {
+        "letter": "D",
+        "label": "to watching"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"read the wind by watching\" — correct gerund form.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"read the wind by watching\" — correct gerund form.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (idiom)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
     "standard_id": 26,
     "difficulty": 4,
     "item_type": "underlined-span-mc",
@@ -1022,6 +1250,44 @@
     "why_correct_md": "Verbs in one narrated sequence stay in **one tense**.",
     "why_tempted_md": "The explanation feels ongoing, so present tense sneaks in.",
     "rule_md": "Series of actions by one subject: keep every verb in the frame the first verbs set.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-gram",
+    "standard_id": 26,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage III — The Mapmaker's Daughter — Marie Tharp was a geologist who helped change how we see the ocean floor. In the 1950s, working alongside her colleague Bruce Heezen, she plotted thousands of depth measurements <u>collected from</u> ships crossing the Atlantic. At the time, many scientists believed the ocean floor was mostly flat. Tharp's maps revealed something remarkable, a vast underwater mountain range running down the middle of the Atlantic. This discovery, which supported the then-controversial theory of continental drift, was at first dismissed by Heezen as \"girl talk.\" Eventually, the evidence became impossible to ignore. Tharp's careful work helped establish the theory of plate tectonics. Today, her once-doubted maps are considered landmarks of earth science.",
+    "stem_md": "Which choice keeps the underlined verb consistent with the sentence's other verbs?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "collecting from"
+      },
+      {
+        "letter": "C",
+        "label": "collected by"
+      },
+      {
+        "letter": "D",
+        "label": "which collected from"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"measurements collected from ships\" — past participle correct.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"measurements collected from ships\" — past participle correct.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (verb form)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -1446,6 +1712,44 @@
   {
     "skill_id": "s-org",
     "standard_id": 1,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle teached me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. <u>However,</u> by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which transition, in the underlined spot, best fits the shift from calm to a stiff breeze?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Therefore,"
+      },
+      {
+        "letter": "C",
+        "label": "For example,"
+      },
+      {
+        "letter": "D",
+        "label": "Similarly,"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Contrast: calm morning vs. breeze by noon → \"However.\"",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Contrast: calm morning vs. breeze by noon → \"However.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Knowledge of Language (transition)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "The paragraph argues that city parks improve public health. <u>Downtown rents have risen sharply over the past decade.</u> Studies link green space to lower stress and more daily exercise.",
@@ -1706,6 +2010,44 @@
     "why_correct_md": "A concrete instance supporting a general claim is introduced with **for example**.",
     "why_tempted_md": "'Therefore' sounds authoritative, masking that nothing is actually being deduced.",
     "rule_md": "General claim followed by a specific instance → an example transition.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-org",
+    "standard_id": 1,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Should the sentence about San Francisco and Paris be kept or deleted, and why?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "Kept, because it gives a concrete example illustrating the preceding claim."
+      },
+      {
+        "letter": "B",
+        "label": "Kept, because it explains the chemistry of fermentation."
+      },
+      {
+        "letter": "C",
+        "label": "Deleted, because it repeats the essay's opening."
+      },
+      {
+        "letter": "D",
+        "label": "Deleted, because it introduces an unrelated topic."
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "The example illustrates the claim → keep.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "The example illustrates the claim → keep.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (keep/delete w/ reasoning)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -2246,6 +2588,44 @@
     "standard_id": 14,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. <u>The starter, it ferments</u> over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which choice best repairs the underlined clause boundary?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "The starter ferments"
+      },
+      {
+        "letter": "C",
+        "label": "The starter, ferments"
+      },
+      {
+        "letter": "D",
+        "label": "The starter; it ferments"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "\"The starter ferments\" removes the comma-splice \"it.\"",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"The starter ferments\" removes the comma-splice \"it.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (no comma splice/redundant pronoun)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
     "context_html": "The tide was coming in fast<u> so</u> we dragged the kayaks up past the dune grass.",
     "stem_md": "Which choice correctly joins the two halves of the sentence?",
     "choices": [
@@ -2314,6 +2694,196 @@
     "why_correct_md": "An introductory dependent clause is set off from the main clause with a **comma**.",
     "why_tempted_md": "Read quickly aloud, the sentence seems to flow fine without any pause.",
     "rule_md": "A dependent clause that OPENS the sentence takes a comma before the main clause — 'Because X happened, Y followed.'",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is <u>true,</u> sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which choice correctly punctuates the end of the underlined introductory clause?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "true;"
+      },
+      {
+        "letter": "C",
+        "label": "true"
+      },
+      {
+        "letter": "D",
+        "label": "true:"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"Whether or not that is true, sourdough…\" — intro clause + comma is correct.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"Whether or not that is true, sourdough…\" — intro clause + comma is correct.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (comma usage)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle teached me to sail. His old wooden boat, <u>named the</u> <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which choice correctly punctuates the underlined appositive naming the boat?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "named, the"
+      },
+      {
+        "letter": "C",
+        "label": "named the,"
+      },
+      {
+        "letter": "D",
+        "label": "which named the"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"named the *Osprey*\" needs no extra comma.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"named the *Osprey*\" needs no extra comma.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (appositive punctuation)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage V — A Brief Note on Commas (usage-focused) — Many writers struggle with commas , they are among the trickiest marks of punctuation. A comma can separate items in a list, set off an introductory phrase, or join two clauses with a conjunction. <u>Misusing them, however</u> can confuse a reader. Consider the difference between \"Let's eat, Grandma\" and \"Let's eat Grandma.\" The first invites Grandma to dinner; the second is alarming. Such examples remind us that punctuation, though small, carries real meaning.",
+    "stem_md": "Which choice correctly punctuates the underlined conjunctive adverb?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Misusing them however,"
+      },
+      {
+        "letter": "C",
+        "label": "Misusing them however"
+      },
+      {
+        "letter": "D",
+        "label": "Misusing them; however"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"Misusing them, however, can confuse\" needs commas around \"however.\"",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"Misusing them, however, can confuse\" needs commas around \"however.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (interrupter punctuation)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage III — The Mapmaker's Daughter — Marie Tharp was a geologist who helped change how we see the ocean floor. In the 1950s, working alongside her colleague Bruce Heezen, she plotted thousands of depth measurements collected from ships crossing the Atlantic. At the time, many scientists believed the ocean floor was mostly flat. Tharp's maps revealed something remarkable, a vast underwater mountain range running down the middle of the Atlantic. This discovery, which supported the then-controversial theory of continental drift, was at first dismissed by Heezen as \"girl talk.\" <u>Eventually,</u> the evidence became impossible to ignore. Tharp's careful work helped establish the theory of plate tectonics. Today, her once-doubted maps are considered landmarks of earth science.",
+    "stem_md": "Which choice correctly punctuates the underlined introductory word?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "Eventually"
+      },
+      {
+        "letter": "C",
+        "label": "Eventually;"
+      },
+      {
+        "letter": "D",
+        "label": "Eventually but"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "\"Eventually\" as a one-word intro takes a comma only if needed; here \"Eventually the evidence…\" is acceptable without — but B (no semicolon, no comma error) is cleanest.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"Eventually\" as a one-word intro takes a comma only if needed; here \"Eventually the evidence…\" is acceptable without — but B (no semicolon, no comma error) is cleanest.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (transition punctuation)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 14,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage IV — Night Shift at the Observatory — My first night as a volunteer at the observatory, I expected glamour. Instead, I found cold floors, humming machines, and a long checklist. The astronomer on duty, Dr. Okafor, greeted me warmly but immediately put me to work. Their were dozens of small tasks: calibrating instruments, logging temperatures, and to check the dome's rotation. None of it looked like the dramatic discoveries I had imagined. Yet as the hours passed, I began to understand that this quiet, careful labor was the real work of science. Around 2 a.m., Dr. Okafor called me over. On the screen was a faint smudge of light — a distant galaxy. <u>\"It isn't much to look at,\"</u> she said, \"but light from there left before humans existed.\" In that moment, the cold floors and checklists seemed worth it.",
+    "stem_md": "Which choice correctly punctuates the underlined quotation?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "\"It isn't much to look at\""
+      },
+      {
+        "letter": "C",
+        "label": "\"It isnt much to look at,\""
+      },
+      {
+        "letter": "D",
+        "label": "\"It is'nt much to look at,\""
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"It isn't much to look at,\" — correct comma inside quote, correct contraction.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"It isn't much to look at,\" — correct comma inside quote, correct contraction.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (quotation + apostrophe)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -3158,6 +3728,44 @@
     "standard_id": 30,
     "difficulty": 4,
     "item_type": "underlined-span-mc",
+    "context_html": "Passage III — The Mapmaker's Daughter — Marie Tharp was a geologist who helped change how we see the ocean floor. In the 1950s, working alongside her colleague Bruce Heezen, she plotted thousands of depth measurements collected from ships crossing the Atlantic. At the time, many scientists believed the ocean floor was mostly flat. Tharp's maps revealed something remarkable, a vast underwater mountain range running down the middle of the Atlantic. <u>This discovery, which supported the then-controversial theory of continental drift,</u> was at first dismissed by Heezen as \"girl talk.\" Eventually, the evidence became impossible to ignore. Tharp's careful work helped establish the theory of plate tectonics. Today, her once-doubted maps are considered landmarks of earth science.",
+    "stem_md": "Which choice best handles the underlined parenthetical about the discovery?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "This discovery — which supported the then-controversial theory of continental drift —"
+      },
+      {
+        "letter": "B",
+        "label": "This discovery, supporting the then-controversial theory of continental drift,"
+      },
+      {
+        "letter": "C",
+        "label": "This discovery that supported the then-controversial theory of continental drift,"
+      },
+      {
+        "letter": "D",
+        "label": "This discovery supported the then-controversial theory of continental drift, and it"
+      }
+    ],
+    "answer_letter": "D",
+    "per_choice_rationale": {
+      "A": "This option leaves or introduces an error under the tested rule.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "J creates a comma splice / changes meaning; F, G, H all preserve the modifier acceptably."
+    },
+    "why_correct_md": "J creates a comma splice / changes meaning; F, G, H all preserve the modifier acceptably.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Knowledge of Language (NOT-acceptable)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 30,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
     "context_html": "Mr. Okafor<u>, he is the school's athletic trainer,</u> keeps a scrapbook of every season since 1998.",
     "stem_md": "Which choice correctly folds the trainer detail into the sentence?",
     "choices": [
@@ -3536,6 +4144,44 @@
   {
     "skill_id": "s-rhet",
     "standard_id": 2,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, but sourdough is surprisingly complex. Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" <u>a mixture of flour and water that they feed regularly.</u> The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which underlined choice conveys the definition most clearly for a general reader?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "a mixture, of flour and water, that they feed on a regular and repeating basis."
+      },
+      {
+        "letter": "C",
+        "label": "a mixture made of both flour and also water, fed regularly by them."
+      },
+      {
+        "letter": "D",
+        "label": "a mixture of flour and water, which is something they feed regularly and often."
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Original is the most concise; others are wordy/redundant.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Original is the most concise; others are wordy/redundant.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Knowledge of Language (concision)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "The nature documentary's narrator called the eagle's dive <u>fast</u>, a plunge that ends in a blur the eye can barely track.",
@@ -3872,6 +4518,82 @@
     "why_correct_md": "The context is an **obituary**, whose reverent register demands elevated diction like 'given of himself'.",
     "why_tempted_md": "'Pitched in' and 'lent a hand' are positive, so they feel appropriate until you weigh the solemn setting.",
     "rule_md": "Let the genre set the register — a tribute or eulogy calls for formal, dignified wording.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, <u>but sourdough is surprisingly complex.</u> Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which underlined choice best concludes the essay by returning to its opening idea?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE (sourdough remains a small marvel of biology and patience.)"
+      },
+      {
+        "letter": "B",
+        "label": "sourdough is sold in stores."
+      },
+      {
+        "letter": "C",
+        "label": "people have made bread for centuries."
+      },
+      {
+        "letter": "D",
+        "label": "flour is a common ingredient."
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Only A echoes \"may seem simple\" with the \"small marvel\" idea.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Only A echoes \"may seem simple\" with the \"small marvel\" idea.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (conclusion tie-back)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-rhet",
+    "standard_id": 2,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle teached me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, <u>\"and you must be ready.\"</u> At first I was nervous, gripping the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which underlined choice best supports the uncle's warning about sudden gusts?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "\"and the ocean is very large.\""
+      },
+      {
+        "letter": "C",
+        "label": "\"and sailing is a popular hobby.\""
+      },
+      {
+        "letter": "D",
+        "label": "\"and boats are made of wood.\""
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Original keeps the practical, instructive voice; others are off-topic. (Form-805 tone item.)",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Original keeps the practical, instructive voice; others are off-topic. (Form-805 tone item.)",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (tone/style)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -4526,6 +5248,82 @@
     "standard_id": 15,
     "difficulty": 2,
     "item_type": "underlined-span-mc",
+    "context_html": "Passage III — The Mapmaker's Daughter — Marie Tharp was a geologist who helped change how we see the ocean floor. In the 1950s, working alongside her colleague Bruce Heezen, she plotted thousands of depth measurements collected from ships crossing the Atlantic. At the time, many scientists believed the ocean floor was mostly flat. Tharp's maps revealed something remarkable, a vast underwater mountain range running down the middle of the Atlantic. This discovery, which supported the then-controversial theory of continental drift, was at first dismissed by Heezen as \"girl talk.\" Eventually, the evidence became impossible to ignore. Tharp's careful work helped establish the theory of plate tectonics. Today, <u>her once-doubted</u> maps are considered landmarks of earth science.",
+    "stem_md": "Which choice correctly forms and punctuates the underlined compound modifier?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "her once doubted"
+      },
+      {
+        "letter": "C",
+        "label": "her once-doubted,"
+      },
+      {
+        "letter": "D",
+        "label": "hers once-doubted"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"once-doubted maps\" correctly hyphenated; no trailing comma.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"once-doubted maps\" correctly hyphenated; no trailing comma.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (hyphenated modifier)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage IV — Night Shift at the Observatory — My first night as a volunteer at the observatory, I expected glamour. Instead, I found cold floors, humming machines, and a long checklist. The astronomer on duty, Dr. Okafor, greeted me warmly but immediately put me to work. Their were dozens of small tasks: calibrating instruments, logging temperatures, and to check the dome's rotation. None of it looked like the dramatic discoveries I had imagined. Yet as the hours passed, I began to understand <u>that this quiet, careful labor</u> was the real work of science. Around 2 a.m., Dr. Okafor called me over. On the screen was a faint smudge of light — a distant galaxy. \"It isn't much to look at,\" she said, \"but light from there left before humans existed.\" In that moment, the cold floors and checklists seemed worth it.",
+    "stem_md": "Which choice correctly places commas in the underlined string of modifiers?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "that this quiet careful labor"
+      },
+      {
+        "letter": "C",
+        "label": "that this, quiet careful labor,"
+      },
+      {
+        "letter": "D",
+        "label": "that this quiet, careful, labor"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"this quiet, careful labor\" — comma between coordinate adjectives, none before \"labor.\"",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"this quiet, careful labor\" — comma between coordinate adjectives, none before \"labor.\"",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (coordinate adjectives)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
     "context_html": "The power flickered during the storm<u>, the</u> projector shut off mid-scene.",
     "stem_md": "Which choice corrects the run-on between the two statements?",
     "choices": [
@@ -4556,6 +5354,44 @@
     "why_correct_md": "Two independent clauses take a **comma before the coordinating conjunction**.",
     "why_tempted_md": "A single comma looks like enough because a natural pause falls there.",
     "rule_md": "Comma-splice repair: add a conjunction after the comma, or upgrade the comma to a semicolon or period.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-sent",
+    "standard_id": 15,
+    "difficulty": 2,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage I — Learning to Sail — The summer I turned fourteen, my uncle teached me to sail. His old wooden boat, named the <em>Osprey</em>, had belonged to my grandfather. On our first morning out, the wind was calm, and we drifted lazily across the bay. However, by noon a stiff breeze had risen, and the <em>Osprey</em> leaned hard against it. My uncle showed me how to read the wind by watching the surface of the water. \"Dark patches mean gusts,\" he said, \"and you must be ready.\" At first I was nervous, <u>gripping</u> the lines too tightly. But after an hour, I begun to relax. By the end of the day, I could steer the boat myself. Although I still had much to learn, I felt a new confidence. Sailing, I realized, was not about controlling the wind but about working with it.",
+    "stem_md": "Which choice makes the underlined portion a grammatically complete continuation?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "I gripped"
+      },
+      {
+        "letter": "C",
+        "label": "to grip"
+      },
+      {
+        "letter": "D",
+        "label": "gripping of"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "\"nervous, gripping…\" correctly uses a participial phrase.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "\"nervous, gripping…\" correctly uses a participial phrase.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Conventions (parallel/participle)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -5962,6 +6798,82 @@
     "why_correct_md": "'Unstable' names the **specific technical failure**, unlike the vague hedges.",
     "why_tempted_md": "'Not very good at' sounds appropriately cautious, but caution isn't precision.",
     "rule_md": "In technical description, choose the exact term for the failure over a vague qualifier.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage IV — Night Shift at the Observatory — My first night as a volunteer at the observatory, I expected glamour. Instead, I found cold floors, humming machines, and a long checklist. The astronomer on duty, Dr. Okafor, <u>greeted me warmly but immediately put me to work.</u> Their were dozens of small tasks: calibrating instruments, logging temperatures, and to check the dome's rotation. None of it looked like the dramatic discoveries I had imagined. Yet as the hours passed, I began to understand that this quiet, careful labor was the real work of science. Around 2 a.m., Dr. Okafor called me over. On the screen was a faint smudge of light — a distant galaxy. \"It isn't much to look at,\" she said, \"but light from there left before humans existed.\" In that moment, the cold floors and checklists seemed worth it.",
+    "stem_md": "Which underlined choice adds the most relevant detail about the mentor at this point?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "was a tall person with glasses."
+      },
+      {
+        "letter": "C",
+        "label": "had worked there for many years."
+      },
+      {
+        "letter": "D",
+        "label": "liked to drink coffee at night."
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Original best contrasts expectation vs. reality.",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Original best contrasts expectation vs. reality.",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (emphasis/contrast)..",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "Passage II — The Science of Sourdough — Bread may seem simple, <u>but sourdough is surprisingly complex.</u> Unlike breads made with packaged yeast, sourdough rises using wild yeast and bacteria captured from the air. Bakers maintain a \"starter,\" a mixture of flour and water that they feed regularly. The starter, it ferments over several days. During fermentation, the microbes produce carbon dioxide, which makes the dough rise. They also produce acids, giving sourdough its tangy flavor. Because of these reactions, no two starters taste exactly alike. Some bakers, claim that a starter's flavor reflects the place where it was made. A San Francisco starter, for instance, may taste different from one in Paris. Whether or not that is true, sourdough remains a small marvel of biology and patience.",
+    "stem_md": "Which underlined choice most precisely completes the contrast the sentence sets up?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "but many people enjoy eating it."
+      },
+      {
+        "letter": "C",
+        "label": "but it can be expensive to buy."
+      },
+      {
+        "letter": "D",
+        "label": "but bakeries are common."
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "Only A previews the biological process. (Form-805 intro item.)",
+      "B": "This option leaves or introduces an error under the tested rule.",
+      "C": "This option leaves or introduces an error under the tested rule.",
+      "D": "This option leaves or introduces an error under the tested rule."
+    },
+    "why_correct_md": "Only A previews the biological process. (Form-805 intro item.)",
+    "why_tempted_md": "The original can read smoothly until you apply the rule.",
+    "rule_md": "Rule focus: Production (introduction)..",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
