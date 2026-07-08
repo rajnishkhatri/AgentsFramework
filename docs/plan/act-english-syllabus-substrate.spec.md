@@ -4,7 +4,8 @@
 > requires (G1 new abstraction: canonical syllabus corpus + coverage ratchet)
 > carries the *why*.
 
-**Status:** Draft — 2026-07-07
+**Status:** Implemented — 2026-07-07 (ADR-0022; all FRs red→green same day;
+baseline floors `{}` pre-Phase-B, T7 raises them)
 **Owner:** Rajnish Khatri
 **Related:** `docs/plan/act-english-full-bank.brainstorm.md` (D3 direction +
 32-topic extraction table), `docs/plan/act-english-bank-phase-b.spec.md`

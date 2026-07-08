@@ -76,13 +76,16 @@ Failure paths first.
 - **FR-8 (canonical corpus).** THE authored corpus SHALL be the single seed
   `docs/plan/coach-item-bank-live.seed.json`, grown to **192 rows** (12 base +
   30 Phase A with its 4 disagreement items rewritten in place + 150 new), every
-  row `reviewed=false` with the full teaching payload and a seed-only `topic`
-  field (1–32) that promotion strips (the `_reviewed_row` field allowlist
-  already guarantees this).
-  *Amendments (2026-07-07):* D3 renames `topic` → `standard_id` and carries it
-  through promotion (`act-english-syllabus-substrate.spec.md` FR-5/FR-8,
-  sequenced before T7); D2 folds ~24 promoted Test-01 rows → **~216 rows
-  total** (`test01-practice-split.spec.md` FR-5).
+  row `reviewed=false` with the full teaching payload and a `standard_id`
+  field (1–32) that promotion carries verbatim (D3's `_reviewed_row`
+  allowlist addition; the pre-flight validates it against the canonical
+  syllabus, fail-closed).
+  *Amendments (2026-07-07):* the field was born `topic`/promotion-stripped in
+  the gated draft; D3 renamed it `standard_id` + carried-through BEFORE any
+  seed row existed, so no dual-field era ever shipped
+  (`act-english-syllabus-substrate.spec.md` FR-5/FR-8, sequenced before T7);
+  D2 folds ~24 promoted Test-01 rows → **~216 rows total**
+  (`test01-practice-split.spec.md` FR-5).
 - **FR-9 (topic coverage).** WHEN Phase B authoring completes THE seed SHALL
   satisfy the §10 allocation matrix: every syllabus topic ≥1 item, per-bucket
   totals 25 new items each, bands drawn from each topic's syllabus bands.
@@ -113,9 +116,11 @@ Failure paths first.
 
 ## 4. Data model / contracts
 
-- **Seed row (authoring input, `reviewed=false`):** existing shape + optional
-  `topic: int` (1–32, seed-only; stripped at promotion by the
-  `_reviewed_row` allowlist — no wire/schema change, D4 untouched).
+- **Seed row (authoring input, `reviewed=false`):** existing shape +
+  `standard_id: int` (1–32; carried verbatim at promotion by the D3
+  `_reviewed_row` allowlist addition; validated against the canonical
+  syllabus by the pre-flight — no wire/schema change, the emitted TS bank
+  does not expose it until D4 declares it).
 - **Frozen promoted corpus (new artifact):**
   `docs/plan/coach-item-bank-live.promoted.json` = the cascade's `passed`
   list verbatim (`_reviewed_row` shape: id, subject, skill_id, difficulty,
@@ -138,8 +143,8 @@ Failure paths first.
 - **Prompt discipline (H1/AP-3):** no new prompt strings in Python; both
   emitters are stdlib-deterministic; solver/hint templates unchanged.
 - **Provenance boundary:** `generated_by` re-stamped by the cascade on every
-  promoted row (ADR-0015 clause 6); the seed-only `topic` field never reaches
-  a serving plane.
+  promoted row (ADR-0015 clause 6); `standard_id` stays corpus-side — the
+  Zod wire kernel default-strips it from served rows until D4 declares it.
 
 ## 6. Edge cases
 
@@ -185,8 +190,8 @@ Failure paths first.
 | FR-5 | existing `tests/components/test_hint_bank_leakage.py` | L1 | yes |
 | FR-6 | NEW `tests/scripts/test_emit_test_item_bank.py::test_emit_idempotent` (+ hints emitter already covered) | L1 | yes |
 | FR-7 | NEW `...::test_row_ids_stable_across_reruns` (pure `_row_id` property) | L1 | yes |
-| FR-8 | NEW seed pre-flight test: every seed row passes `_schema_violations`, topic ∈ 1–32, 192 rows | L1 | yes |
-| FR-9 | NEW matrix test: seed topic/bucket/band counts == §10 matrix | L1 | yes |
+| FR-8 | NEW seed pre-flight test: every seed row passes `_schema_violations`, `standard_id` valid per D3 tag sections, 192 rows | L1 | yes |
+| FR-9 | NEW matrix test: seed standard/bucket/band counts == §10 matrix | L1 | yes |
 | FR-10 | NEW `tests/scripts/test_generate_test_items_config.py::test_capable_tier_routing` (mocked profiles; difficulty→tier) | L2 | yes |
 | FR-11 | live hint run outputs + regenerated planes diff (impl doc) | L3 | no |
 | FR-12 | NEW emitter unit tests (golden small corpus → TS module parses, seedTestItemBank present) | L1 | yes |

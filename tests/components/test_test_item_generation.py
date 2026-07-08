@@ -361,3 +361,21 @@ class TestReviewedProvenanceAndIdempotency:
             )
             ids.append(verdict.passed[0]["id"])
         assert len(set(ids)) == 1  # deterministic content hash
+
+
+class TestStandardIdCarriage:
+    """D3 spec FR-5 — the seed's syllabus tag rides promotion VERBATIM; the
+    cascade never invents or defaults one (untagged in → untagged out)."""
+
+    async def test_promoted_row_carries_standard_id_verbatim(self):
+        tagged = {**_CANDIDATE, "standard_id": 17}
+        verdict = await _run(
+            json.dumps({"items": [tagged]}), solver=_solver_returning("B")
+        )
+        assert verdict.passed[0]["standard_id"] == 17
+
+    async def test_promotion_never_invents_a_tag(self):
+        verdict = await _run(
+            json.dumps({"items": [_CANDIDATE]}), solver=_solver_returning("B")
+        )
+        assert "standard_id" not in verdict.passed[0]

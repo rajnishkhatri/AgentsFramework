@@ -210,7 +210,7 @@ def _reviewed_row(
     """A passed candidate, stamped ``reviewed=True`` by the cascade (never
     self-asserted). Carries the Question-shaped fields the ``test_item`` table
     stores (ADR-0015 clause 1)."""
-    return {
+    row: dict[str, Any] = {
         "id": _row_id(subject, item["stem_md"], item["answer_letter"]),
         "subject": subject,
         "skill_id": item["skill_id"],
@@ -232,6 +232,11 @@ def _reviewed_row(
         "reviewed": True,
         "generated_by": generated_by,
     }
+    if "standard_id" in item:
+        # D3 syllabus substrate (FR-5): the seed's tag rides promotion
+        # VERBATIM; the cascade never invents or defaults one.
+        row["standard_id"] = item["standard_id"]
+    return row
 
 
 async def run_test_item_cascade(
