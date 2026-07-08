@@ -89,6 +89,25 @@ class TestCapableTierRouting:
         await solve({"difficulty": 5})
         assert calls == [("fast", 5)]
 
+    async def test_boundary_below_threshold_rejects_escalation(self):
+        """Off-by-one guard: threshold is d >= N, so d == N-1 must stay fast.
+        A `>` -> `>=` slip here would silently route d3 to the costly capable
+        tier on every run."""
+        fast, capable, calls = _stub_solvers()
+        solve = _make_tiered_solver(fast, capable, 4)
+        await solve({"difficulty": 3})
+        assert ("capable", 3) not in calls
+        assert calls == [("fast", 3)]
+
+    async def test_invalid_negative_difficulty_never_escalates(self):
+        """A malformed negative difficulty is not >= threshold and must fail
+        safe onto the fast tier rather than escalating on a sign error."""
+        fast, capable, calls = _stub_solvers()
+        solve = _make_tiered_solver(fast, capable, 4)
+        await solve({"difficulty": -4})
+        assert ("capable", -4) not in calls
+        assert calls == [("fast", -4)]
+
     def test_build_generator_config_binds_the_given_profile(self):
         profile = default_capable_profile()
         cfg = build_generator_config(profile)
