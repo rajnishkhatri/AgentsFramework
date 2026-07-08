@@ -2550,6 +2550,44 @@
     "standard_id": 24,
     "difficulty": 3,
     "item_type": "underlined-span-mc",
+    "context_html": "Both <u>coach's</u> agreed the schedule left too little time for warm-ups.",
+    "stem_md": "Which choice is the correct plural form for more than one of them?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "coachs"
+      },
+      {
+        "letter": "C",
+        "label": "coaches'"
+      },
+      {
+        "letter": "D",
+        "label": "coaches"
+      }
+    ],
+    "answer_letter": "D",
+    "per_choice_rationale": {
+      "A": "Apostrophe-s builds a possessive, but nothing in the sentence is owned.",
+      "B": "Nouns ending in -ch form their plurals with -es.",
+      "C": "The plural possessive still needs something possessed — there's nothing here.",
+      "D": "A plain plural takes -es and no apostrophe."
+    },
+    "why_correct_md": "'Both' just means two of them — a **plural**, no apostrophe.",
+    "why_tempted_md": "Apostrophes creep in whenever a noun ends in an s-sound.",
+    "rule_md": "Apostrophes mark possession or contraction — never a plain plural.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-punc",
+    "standard_id": 24,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
     "context_html": "Rex pulled hard, and the <u>dogs'</u> leash slipped from Maya's hand.",
     "stem_md": "Which choice makes the possessive correct?",
     "choices": [
@@ -2618,44 +2656,6 @@
     "why_correct_md": "One owner → apostrophe **before** the s: *cat's*.",
     "why_tempted_md": "Plural 'cats' and possessive 'cat's' sound identical aloud, so the missing apostrophe is easy to overlook.",
     "rule_md": "Singular owner → 's; plural owners ending in s → s'.",
-    "reviewed": false,
-    "generated_by": "claude-session-authored"
-  },
-  {
-    "skill_id": "s-punc",
-    "standard_id": 24,
-    "difficulty": 3,
-    "item_type": "underlined-span-mc",
-    "context_html": "Both <u>coach's</u> agreed the schedule left too little time for warm-ups.",
-    "stem_md": "Which choice writes the word for two coaches correctly?",
-    "choices": [
-      {
-        "letter": "A",
-        "label": "NO CHANGE"
-      },
-      {
-        "letter": "B",
-        "label": "coachs"
-      },
-      {
-        "letter": "C",
-        "label": "coaches'"
-      },
-      {
-        "letter": "D",
-        "label": "coaches"
-      }
-    ],
-    "answer_letter": "D",
-    "per_choice_rationale": {
-      "A": "Apostrophe-s builds a possessive, but nothing in the sentence is owned.",
-      "B": "Nouns ending in -ch form their plurals with -es.",
-      "C": "The plural possessive still needs something possessed — there's nothing here.",
-      "D": "A plain plural takes -es and no apostrophe."
-    },
-    "why_correct_md": "'Both' just means two of them — a **plural**, no apostrophe.",
-    "why_tempted_md": "Apostrophes creep in whenever a noun ends in an s-sound.",
-    "rule_md": "Apostrophes mark possession or contraction — never a plain plural.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },
@@ -5629,7 +5629,7 @@
     "difficulty": 3,
     "item_type": "underlined-span-mc",
     "context_html": "The museum's new wing was designed to <u>respect</u> the traditions of the surrounding historic district.",
-    "stem_md": "Which word best expresses honoring those traditions through the design itself?",
+    "stem_md": "Which word best expresses paying active tribute to those traditions through the design itself?",
     "choices": [
       {
         "letter": "A",
@@ -5818,44 +5818,6 @@
     "standard_id": 8,
     "difficulty": 4,
     "item_type": "underlined-span-mc",
-    "context_html": "The surgeon's report noted that the incision had to be <u>very exact</u> to avoid the nerve running beside the joint.",
-    "stem_md": "Which choice is the most precise single word for the required accuracy?",
-    "choices": [
-      {
-        "letter": "A",
-        "label": "NO CHANGE"
-      },
-      {
-        "letter": "B",
-        "label": "precise"
-      },
-      {
-        "letter": "C",
-        "label": "careful"
-      },
-      {
-        "letter": "D",
-        "label": "neat"
-      }
-    ],
-    "answer_letter": "B",
-    "per_choice_rationale": {
-      "A": "'Very exact' pads an already strong word with a vague intensifier.",
-      "B": "'Precise' says exactly what's needed — accurate to a fine tolerance — in one word.",
-      "C": "'Careful' describes attitude, not the geometric accuracy of the cut.",
-      "D": "'Neat' refers to tidiness, not surgical accuracy."
-    },
-    "why_correct_md": "'Precise' captures **fine-tolerance accuracy** in a single exact word.",
-    "why_tempted_md": "'Very exact' feels emphatic, but the intensifier adds no meaning 'precise' lacks.",
-    "rule_md": "Prefer the one word that names the exact quality over an intensifier-plus-adjective.",
-    "reviewed": false,
-    "generated_by": "claude-session-authored"
-  },
-  {
-    "skill_id": "s-style",
-    "standard_id": 8,
-    "difficulty": 4,
-    "item_type": "underlined-span-mc",
     "context_html": "The biographer wrote that the composer <u>made</u> more than forty symphonies before his fortieth birthday.",
     "stem_md": "Which choice is the most precise verb for producing musical works?",
     "choices": [
@@ -5886,6 +5848,44 @@
     "why_correct_md": "'Composed' is the **domain-precise verb** for creating musical works.",
     "why_tempted_md": "'Made' is technically true, so it passes unless you reach for the exact term.",
     "rule_md": "Choose the specific verb the field uses over a general-purpose one.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The surgeon's report noted that the incision had to be <u>very exact</u> to avoid the nerve running beside the joint.",
+    "stem_md": "Which choice is the single exact word for the required accuracy?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "precise"
+      },
+      {
+        "letter": "C",
+        "label": "careful"
+      },
+      {
+        "letter": "D",
+        "label": "neat"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Very exact' pads an already strong word with a vague intensifier.",
+      "B": "'Precise' says exactly what's needed — accurate to a fine tolerance — in one word.",
+      "C": "'Careful' describes attitude, not the geometric accuracy of the cut.",
+      "D": "'Neat' refers to tidiness, not surgical accuracy."
+    },
+    "why_correct_md": "'Precise' captures **fine-tolerance accuracy** in a single exact word.",
+    "why_tempted_md": "'Very exact' feels emphatic, but the intensifier adds no meaning 'precise' lacks.",
+    "rule_md": "Prefer the one word that names the exact quality over an intensifier-plus-adjective.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   },

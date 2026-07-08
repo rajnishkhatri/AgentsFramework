@@ -123,6 +123,41 @@ class TestSeedSchemaSection:
             assert key not in seen, f"rows {seen[key]} and {index} share a stem"
             seen[key] = index
 
+    def test_stem_does_not_reveal_the_answer(self):
+        """ADR-0012 pedagogy rule: the item must not hand the learner its own
+        answer BEFORE they reason. A stem that quotes the correct choice's label
+        (or asserts its letter) is a pre-reveal — the same leak class the coach's
+        deterministic per-rung check (`components.hint_leakage`) forbids for
+        hints, applied to the stem itself. Two nets: (1) the repo's own leak
+        predicate over the stem, (2) a lexical scan for the correct label
+        appearing verbatim in the stem (catches reveals outside the predicate's
+        keyword window, e.g. a stem asking to 'express honoring' when the key is
+        'honor')."""
+        from components.hint_leakage import check_rung_leakage
+
+        def _norm(s: object) -> str:
+            return " ".join(str(s).lower().split())
+
+        offenders: list[str] = []
+        for index, row in enumerate(load_seed_rows()):
+            labels = {c["letter"]: c["label"] for c in row.get("choices", [])}
+            ans = row.get("answer_letter")
+            stem = str(row.get("stem_md", ""))
+            tag = f"row {index} [{row.get('skill_id')}/std{row.get('standard_id')}]"
+
+            if isinstance(ans, str) and ans in labels:
+                leak = [
+                    v
+                    for v in check_rung_leakage(stem, row)
+                    if "unverifiable" not in v and "empty rung" not in v
+                ]
+                if leak:
+                    offenders.append(f"{tag}: predicate {leak}")
+                key = _norm(labels[ans])
+                if key != "no change" and len(key) >= 4 and key in _norm(stem):
+                    offenders.append(f"{tag}: stem contains the key label {key!r}")
+        assert offenders == [], f"stems that reveal their answer: {offenders}"
+
     def test_answer_key_is_not_position_biased(self):
         """A lopsided key column both teaches test-takers a false meta-strategy
         ('when unsure, guess B') and lets a positional prior inflate the T7
