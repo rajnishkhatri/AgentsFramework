@@ -10,7 +10,12 @@ is called (invariant: no live LLM in CI).
 
 from __future__ import annotations
 
-from scripts.generate_test_items import build_generator_config, TEST_ITEM_TARGET
+from scripts.generate_test_items import (
+    TEST_ITEM_TARGET,
+    _make_tiered_solver,
+    build_generator_config,
+)
+from services.base_config import default_capable_profile
 
 
 class TestGeneratorConfig:
@@ -34,3 +39,58 @@ class TestGeneratorConfig:
         cfg = build_generator_config()
         assert cfg.agent_name == "subject-coach-english"
         assert cfg.capability_gating_enabled is True
+
+
+def _stub_solvers() -> tuple:
+    """Two recording stub solvers — no graphs, no LLM (L2)."""
+    calls: list[tuple[str, object]] = []
+
+    async def fast(item) -> str:
+        calls.append(("fast", item.get("difficulty")))
+        return "A"
+
+    async def capable(item) -> str:
+        calls.append(("capable", item.get("difficulty")))
+        return "A"
+
+    return fast, capable, calls
+
+
+class TestCapableTierRouting:
+    """Phase B FR-10 — d >= threshold verifies on the capable tier, the rest
+    stay fast, and the knob is OFF by default (None routes nothing up)."""
+
+    def test_default_capable_profile_is_capable_tier(self):
+        profile = default_capable_profile()
+        assert profile.tier == "capable"
+
+    def test_capable_profile_is_distinct_from_fast(self):
+        from services.base_config import default_fast_profile
+
+        assert default_capable_profile().name != default_fast_profile().name
+
+    async def test_items_route_by_difficulty_threshold(self):
+        fast, capable, calls = _stub_solvers()
+        solve = _make_tiered_solver(fast, capable, 4)
+        for difficulty in (1, 3, 4, 5):
+            assert await solve({"difficulty": difficulty}) == "A"
+        assert calls == [("fast", 1), ("fast", 3), ("capable", 4), ("capable", 5)]
+
+    async def test_missing_or_bad_difficulty_stays_fast(self):
+        fast, capable, calls = _stub_solvers()
+        solve = _make_tiered_solver(fast, capable, 4)
+        await solve({})
+        await solve({"difficulty": "5"})  # junk difficulty never escalates
+        assert calls == [("fast", None), ("fast", "5")]
+
+    async def test_off_by_default_routes_everything_fast(self):
+        fast, capable, calls = _stub_solvers()
+        solve = _make_tiered_solver(fast, capable, None)
+        await solve({"difficulty": 5})
+        assert calls == [("fast", 5)]
+
+    def test_build_generator_config_binds_the_given_profile(self):
+        profile = default_capable_profile()
+        cfg = build_generator_config(profile)
+        assert cfg.default_model == profile.name
+        assert [m.name for m in cfg.models] == [profile.name]
