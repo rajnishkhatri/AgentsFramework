@@ -123,6 +123,28 @@ class TestSeedSchemaSection:
             assert key not in seen, f"rows {seen[key]} and {index} share a stem"
             seen[key] = index
 
+    def test_answer_key_is_not_position_biased(self):
+        """A lopsided key column both teaches test-takers a false meta-strategy
+        ('when unsure, guess B') and lets a positional prior inflate the T7
+        independent-solver's apparent agreement — contaminating promotion.
+
+        'A' is exempt: it is 'NO CHANGE' by ACT convention (its rate reflects how
+        often the original is correct, not a placement choice). Among the freely
+        placeable slots B/C/D, no single letter may exceed 45% of the non-A keys
+        (even placement is ~33% each; 45% tolerates variance, catches the skew)."""
+        from collections import Counter
+
+        rows = load_seed_rows()
+        keys = Counter(str(r["answer_letter"]) for r in rows)
+        non_a = sum(v for k, v in keys.items() if k != "A")
+        assert non_a, "no non-'NO CHANGE' keys to balance"
+        offenders = {
+            letter: f"{keys.get(letter, 0)}/{non_a} = {100 * keys.get(letter, 0) // non_a}%"
+            for letter in ("B", "C", "D")
+            if keys.get(letter, 0) / non_a > 0.45
+        }
+        assert offenders == {}, f"answer-key position bias among B/C/D: {offenders}"
+
 
 # The §10 allocation matrix: per bucket, standard_id -> minimum item count
 # for the 150 NEW Phase B items. Base/fold rows only ADD to cells, so the

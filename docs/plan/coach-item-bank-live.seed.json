@@ -13,7 +13,7 @@
       },
       {
         "letter": "B",
-        "label": "could have"
+        "label": "could"
       },
       {
         "letter": "C",
@@ -21,15 +21,15 @@
       },
       {
         "letter": "D",
-        "label": "could"
+        "label": "could have"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Of' is a preposition — it can't help a verb.",
-      "B": "The helper is 'have': could have caught.",
+      "B": "Dropping the helper changes the meaning from missed chance to plain ability.",
       "C": "'Off' makes it worse, not better.",
-      "D": "Dropping the helper changes the meaning from missed chance to plain ability."
+      "D": "The helper is 'have': could have caught."
     },
     "why_correct_md": "The contraction 'could've' spells out as **could have** — never 'could of'.",
     "why_tempted_md": "'Could've' SOUNDS exactly like 'could of'.",
@@ -51,7 +51,7 @@
       },
       {
         "letter": "B",
-        "label": "but also"
+        "label": "yet"
       },
       {
         "letter": "C",
@@ -59,15 +59,15 @@
       },
       {
         "letter": "D",
-        "label": "yet"
+        "label": "but also"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Not only' promises its full partner — bare 'but' breaks the pair.",
-      "B": "'Not only ... but also' is the complete correlative pair.",
+      "B": "'Yet' signals contrast, and the pair still goes unfinished.",
       "C": "'And also' isn't the partner 'not only' takes.",
-      "D": "'Yet' signals contrast, and the pair still goes unfinished."
+      "D": "'Not only ... but also' is the complete correlative pair."
     },
     "why_correct_md": "Correlative conjunctions come in **fixed pairs**: not only ... but also.",
     "why_tempted_md": "'But' alone carries most of the meaning, so the missing 'also' is easy to drop.",
@@ -89,7 +89,7 @@
       },
       {
         "letter": "B",
-        "label": "submit the form either online or"
+        "label": "submit either the form online or"
       },
       {
         "letter": "C",
@@ -97,15 +97,15 @@
       },
       {
         "letter": "D",
-        "label": "submit either the form online or"
+        "label": "submit the form either online or"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Either' sits before the verb but 'or' introduces only a place — the halves don't match.",
-      "B": "'Either online or [by] mail' — both arms of the pair now offer the same kind of thing.",
+      "B": "'Either the form' pairs a noun with a place — still lopsided.",
       "C": "The mismatch stays, and the comma adds nothing.",
-      "D": "'Either the form' pairs a noun with a place — still lopsided."
+      "D": "'Either online or [by] mail' — both arms of the pair now offer the same kind of thing."
     },
     "why_correct_md": "Place correlatives so the words after each arm are **grammatically parallel**.",
     "why_tempted_md": "The sentence sounds fine aloud because the meaning is guessable.",
@@ -203,7 +203,7 @@
       },
       {
         "letter": "B",
-        "label": "had been waiting"
+        "label": "will wait"
       },
       {
         "letter": "C",
@@ -211,15 +211,15 @@
       },
       {
         "letter": "D",
-        "label": "will wait"
+        "label": "had been waiting"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Present-tense 'waits' clashes with the past-tense 'arrived' that anchors the sentence.",
-      "B": "'Had been waiting' places the hour of waiting BEFORE the past arrival — exactly the sequence the sentence describes.",
+      "B": "'Will wait' pushes the waiting into the future, after the bus arrived — backwards.",
       "C": "'Is waiting' is present tense; the arrival already happened.",
-      "D": "'Will wait' pushes the waiting into the future, after the bus arrived — backwards."
+      "D": "'Had been waiting' places the hour of waiting BEFORE the past arrival — exactly the sequence the sentence describes."
     },
     "why_correct_md": "An action ongoing **before** a past event takes the past perfect (progressive): *had been waiting*.",
     "why_tempted_md": "Each verb form sounds fine alone; only checking it against 'arrived' exposes the clash.",
@@ -241,7 +241,7 @@
       },
       {
         "letter": "B",
-        "label": "risen"
+        "label": "raised"
       },
       {
         "letter": "C",
@@ -249,15 +249,15 @@
       },
       {
         "letter": "D",
-        "label": "raised"
+        "label": "risen"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Rose' is the simple past — 'had' needs the past participle.",
-      "B": "'Had risen' pairs the helper with the participle.",
+      "B": "'Raised' comes from 'raise' (to lift something) — the sun rises on its own.",
       "C": "'Rised' isn't a form of this irregular verb.",
-      "D": "'Raised' comes from 'raise' (to lift something) — the sun rises on its own."
+      "D": "'Had risen' pairs the helper with the participle."
     },
     "why_correct_md": "After 'had', irregular verbs use their **past participle**: had risen.",
     "why_tempted_md": "The simple past 'rose' is the form we say most often.",
@@ -317,22 +317,22 @@
       },
       {
         "letter": "B",
-        "label": "sang"
+        "label": "singed"
       },
       {
         "letter": "C",
-        "label": "singed"
+        "label": "sang"
       },
       {
         "letter": "D",
         "label": "sings"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Sung' is the past participle and needs a helping verb ('had sung'); alone it cannot serve as the simple past.",
-      "B": "'Sang' is the simple past of 'sing' — exactly what 'Yesterday' calls for.",
-      "C": "'Singed' means lightly burned; it is not a form of 'sing'.",
+      "B": "'Singed' means lightly burned; it is not a form of 'sing'.",
+      "C": "'Sang' is the simple past of 'sing' — exactly what 'Yesterday' calls for.",
       "D": "'Sings' is present tense, clashing with 'Yesterday'."
     },
     "why_correct_md": "Irregular verb: sing → **sang** (simple past) → sung (participle, needs a helper).",
@@ -393,7 +393,7 @@
       },
       {
         "letter": "B",
-        "label": "more"
+        "label": "very"
       },
       {
         "letter": "C",
@@ -401,15 +401,15 @@
       },
       {
         "letter": "D",
-        "label": "very"
+        "label": "more"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Most' is the superlative — it needs three or more routes to pick from.",
-      "B": "Exactly two things compare with the comparative: the eastern trail is the MORE challenging of the two.",
+      "B": "'Very challenging' drops the comparison the sentence explicitly sets up.",
       "C": "'The much challenging' is not idiomatic before a bare adjective.",
-      "D": "'Very challenging' drops the comparison the sentence explicitly sets up."
+      "D": "Exactly two things compare with the comparative: the eastern trail is the MORE challenging of the two."
     },
     "why_correct_md": "Two items → **comparative** ('more'); three or more → superlative ('most').",
     "why_tempted_md": "Superlatives are so common in speech that 'most challenging' sounds natural even for a pair.",
@@ -431,22 +431,22 @@
       },
       {
         "letter": "B",
-        "label": "faster"
+        "label": "more fast"
       },
       {
         "letter": "C",
-        "label": "more fast"
+        "label": "faster"
       },
       {
         "letter": "D",
         "label": "fastest"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'More faster' marks the comparison twice — once with 'more', once with '-er'.",
-      "B": "'Faster' carries the whole comparison in one form.",
-      "C": "'More fast' uses the wrong marker for a one-syllable adjective.",
+      "B": "'More fast' uses the wrong marker for a one-syllable adjective.",
+      "C": "'Faster' carries the whole comparison in one form.",
       "D": "'Fastest' is the superlative — only two swings are being compared."
     },
     "why_correct_md": "Use **one** comparative marker: -er OR 'more', never both.",
@@ -507,7 +507,7 @@
       },
       {
         "letter": "B",
-        "label": "make"
+        "label": "has made"
       },
       {
         "letter": "C",
@@ -515,15 +515,15 @@
       },
       {
         "letter": "D",
-        "label": "has made"
+        "label": "make"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Two foods joined by 'and' form a plural subject — 'makes' is singular.",
-      "B": "'And' builds a plural subject, and 'make' agrees with it.",
+      "B": "'Has made' is singular and shifts the general claim into a finished past.",
       "C": "'Is making' is still singular and adds a progressive the sentence doesn't need.",
-      "D": "'Has made' is singular and shifts the general claim into a finished past."
+      "D": "'And' builds a plural subject, and 'make' agrees with it."
     },
     "why_correct_md": "Subjects joined by **'and' are plural** — they take a plural verb.",
     "why_tempted_md": "The pair feels like one sandwich, so a singular verb sounds natural.",
@@ -659,22 +659,22 @@
       },
       {
         "letter": "B",
-        "label": "its"
+        "label": "it's"
       },
       {
         "letter": "C",
-        "label": "it's"
+        "label": "its"
       },
       {
         "letter": "D",
         "label": "there"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Their' is plural, but 'the library' is one thing.",
-      "B": "Singular, non-person antecedent → 'its'.",
-      "C": "'It's' means 'it is' — not a possessive.",
+      "B": "'It's' means 'it is' — not a possessive.",
+      "C": "Singular, non-person antecedent → 'its'.",
       "D": "'There' points to a place; it can't possess hours."
     },
     "why_correct_md": "A singular thing takes the singular possessive **'its'**.",
@@ -697,7 +697,7 @@
       },
       {
         "letter": "B",
-        "label": "its"
+        "label": "there"
       },
       {
         "letter": "C",
@@ -705,15 +705,15 @@
       },
       {
         "letter": "D",
-        "label": "there"
+        "label": "its"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Each kayak' is singular; 'their' is plural.",
-      "B": "One kayak at a time → 'its' paddle.",
+      "B": "'There' is a place word, not a possessive.",
       "C": "A kayak isn't a person.",
-      "D": "'There' is a place word, not a possessive."
+      "D": "One kayak at a time → 'its' paddle."
     },
     "why_correct_md": "'Each' keeps the antecedent **singular** — one kayak, its paddle.",
     "why_tempted_md": "The plural 'fleet' nearby pulls the pronoun plural.",
@@ -811,7 +811,7 @@
       },
       {
         "letter": "B",
-        "label": "inferred"
+        "label": "applied"
       },
       {
         "letter": "C",
@@ -819,15 +819,15 @@
       },
       {
         "letter": "D",
-        "label": "applied"
+        "label": "inferred"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Speakers imply; listeners infer. The players were on the receiving end.",
-      "B": "Drawing a conclusion from evidence is 'inferring'.",
+      "B": "'Applied' belongs to forms and ointments, not conclusions.",
       "C": "'Implicated' means shown to be involved in wrongdoing.",
-      "D": "'Applied' belongs to forms and ointments, not conclusions."
+      "D": "Drawing a conclusion from evidence is 'inferring'."
     },
     "why_correct_md": "The sender **implies**; the receiver **infers**.",
     "why_tempted_md": "The two verbs describe the same conversation from opposite ends.",
@@ -849,7 +849,7 @@
       },
       {
         "letter": "B",
-        "label": "who"
+        "label": "what"
       },
       {
         "letter": "C",
@@ -857,15 +857,15 @@
       },
       {
         "letter": "D",
-        "label": "what"
+        "label": "who"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Which' refers to things, not people.",
-      "B": "'Who' refers to a person doing the action of the clause.",
+      "B": "'What' can't introduce a clause about a person.",
       "C": "'Whom' is the object form — but the volunteer is the one organizing.",
-      "D": "'What' can't introduce a clause about a person."
+      "D": "'Who' refers to a person doing the action of the clause."
     },
     "why_correct_md": "People take **who/whom**; things take which/that.",
     "why_tempted_md": "'Which' feels formal enough to fit anywhere.",
@@ -887,7 +887,7 @@
       },
       {
         "letter": "B",
-        "label": "whom"
+        "label": "whose"
       },
       {
         "letter": "C",
@@ -895,15 +895,15 @@
       },
       {
         "letter": "D",
-        "label": "whose"
+        "label": "whom"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Inside the clause, Amara credits HIM — an object, so 'who' is the wrong case.",
-      "B": "'Whom' is the object of 'credits': Amara credits whom.",
+      "B": "'Whose' is possessive — nothing is owned here.",
       "C": "'Which' can't refer to a person.",
-      "D": "'Whose' is possessive — nothing is owned here."
+      "D": "'Whom' is the object of 'credits': Amara credits whom."
     },
     "why_correct_md": "Test with him/her: 'Amara credits HIM' → **whom**.",
     "why_tempted_md": "'Who' sounds natural at the head of any clause about a person.",
@@ -925,22 +925,22 @@
       },
       {
         "letter": "B",
-        "label": "from bringing"
+        "label": "of bringing"
       },
       {
         "letter": "C",
-        "label": "of bringing"
+        "label": "from bringing"
       },
       {
         "letter": "D",
         "label": "against bring"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Prohibited to bring' crosses idioms — 'forbidden TO' but 'prohibited FROM'.",
-      "B": "'Prohibited from + -ing' is the fixed pairing.",
-      "C": "'Prohibited of' isn't an English pattern.",
+      "B": "'Prohibited of' isn't an English pattern.",
+      "C": "'Prohibited from + -ing' is the fixed pairing.",
       "D": "'Against bring' mangles both the preposition and the verb form."
     },
     "why_correct_md": "The idiom is **prohibited from doing**, not 'prohibited to do'.",
@@ -1001,22 +1001,22 @@
       },
       {
         "letter": "B",
-        "label": "explained"
+        "label": "explaining"
       },
       {
         "letter": "C",
-        "label": "explaining"
+        "label": "explained"
       },
       {
         "letter": "D",
         "label": "will explain"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Two past verbs then a present one — the last leg jumps time frames.",
-      "B": "'Explained' completes the past-tense series 'led ... pointed ... explained'.",
-      "C": "'Explaining' breaks the parallel finite-verb series.",
+      "B": "'Explaining' breaks the parallel finite-verb series.",
+      "C": "'Explained' completes the past-tense series 'led ... pointed ... explained'.",
       "D": "Future tense contradicts a tour already being narrated."
     },
     "why_correct_md": "Verbs in one narrated sequence stay in **one tense**.",
@@ -1115,22 +1115,22 @@
       },
       {
         "letter": "B",
-        "label": "Marcus"
+        "label": "him"
       },
       {
         "letter": "C",
-        "label": "him"
+        "label": "Marcus"
       },
       {
         "letter": "D",
         "label": "himself"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'He' could be Jordan or Marcus — the reader can't tell who left.",
-      "B": "Repeating the name removes the ambiguity.",
-      "C": "'Him' is the wrong case for a subject and no clearer.",
+      "B": "'Him' is the wrong case for a subject and no clearer.",
+      "C": "Repeating the name removes the ambiguity.",
       "D": "'Himself' needs a matching subject in its own clause."
     },
     "why_correct_md": "When a pronoun could point at **either person**, use the name.",
@@ -1191,22 +1191,22 @@
       },
       {
         "letter": "B",
-        "label": "me"
+        "label": "I"
       },
       {
         "letter": "C",
-        "label": "I"
+        "label": "me"
       },
       {
         "letter": "D",
         "label": "mine"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Myself' is reflexive — it needs 'I' earlier in the clause to reflect.",
-      "B": "Questions go TO someone: the object form 'me'.",
-      "C": "'I' is the subject form in an object slot.",
+      "B": "'I' is the subject form in an object slot.",
+      "C": "Questions go TO someone: the object form 'me'.",
       "D": "'Mine' shows possession, which nothing here calls for."
     },
     "why_correct_md": "No earlier 'I' to reflect → plain **me**, not 'myself'.",
@@ -1229,7 +1229,7 @@
       },
       {
         "letter": "B",
-        "label": "So"
+        "label": "Due to this fact,"
       },
       {
         "letter": "C",
@@ -1237,15 +1237,15 @@
       },
       {
         "letter": "D",
-        "label": "Due to this fact,"
+        "label": "So"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Because of this' restates a cause the opening clause ('because the road was closed') has already given — the reason is signaled twice.",
-      "B": "'So' carries the result forward once, without re-announcing the cause the clause already supplied.",
+      "B": "'Due to this fact' doubles the cause AND pads it with the empty phrase 'this fact'.",
       "C": "'As a result of this' is just a longer way of repeating the same cause signal.",
-      "D": "'Due to this fact' doubles the cause AND pads it with the empty phrase 'this fact'."
+      "D": "'So' carries the result forward once, without re-announcing the cause the clause already supplied."
     },
     "why_correct_md": "When the sentence already states the cause, the transition should move the **result** forward, not repeat the cause — 'so' does that cleanly.",
     "why_tempted_md": "'Because of this' feels logical because the relationship really is causal — but the cause was already named.",
@@ -1495,22 +1495,22 @@
       },
       {
         "letter": "B",
-        "label": "The club's steady work had clearly paid off."
+        "label": "Some hikers prefer to explore without any map at all."
       },
       {
         "letter": "C",
-        "label": "Some hikers prefer to explore without any map at all."
+        "label": "The club's steady work had clearly paid off."
       },
       {
         "letter": "D",
         "label": "Brush can grow back quickly in a wet season."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Trail mix has nothing to do with the club's trail work — it's irrelevant.",
-      "B": "It sums up the cause (the work) and the effect (easier navigation), closing the paragraph.",
-      "C": "Map-free hiking introduces a new, unrelated idea instead of concluding.",
+      "B": "Map-free hiking introduces a new, unrelated idea instead of concluding.",
+      "C": "It sums up the cause (the work) and the effect (easier navigation), closing the paragraph.",
       "D": "This undercuts the paragraph's point rather than wrapping it up."
     },
     "why_correct_md": "A conclusion should **draw the paragraph's details to a close**, which 'paid off' does.",
@@ -1571,7 +1571,7 @@
       },
       {
         "letter": "B",
-        "label": "Even so"
+        "label": "For example"
       },
       {
         "letter": "C",
@@ -1579,15 +1579,15 @@
       },
       {
         "letter": "D",
-        "label": "For example"
+        "label": "Even so"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'In fact' intensifies what came before; the second sentence pivots away from the complaint instead.",
-      "B": "'Even so' concedes the hard climb, then asserts the reward despite it — exactly the move the passage makes.",
+      "B": "'For example' promises an instance of steepness; a rewarding view isn't one.",
       "C": "'As a result' claims the great view was CAUSED by bad trail markings.",
-      "D": "'For example' promises an instance of steepness; a rewarding view isn't one."
+      "D": "'Even so' concedes the hard climb, then asserts the reward despite it — exactly the move the passage makes."
     },
     "why_correct_md": "Hardship conceded, reward asserted anyway → a **concession** transition ('even so', 'nevertheless').",
     "why_tempted_md": "'In fact' is a common intensifier, and the sentence pair reads fine until the logic is tested.",
@@ -1609,7 +1609,7 @@
       },
       {
         "letter": "B",
-        "label": "Still,"
+        "label": "Therefore,"
       },
       {
         "letter": "C",
@@ -1617,15 +1617,15 @@
       },
       {
         "letter": "D",
-        "label": "Therefore,"
+        "label": "Still,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Similarly' claims the appeal resembles the wide-margin vote; it actually opposes it.",
-      "B": "'Still' concedes that, despite the wide margin, opposition remains — the true relationship.",
+      "B": "'Therefore' implies the appeal results from the margin, which it doesn't.",
       "C": "'Likewise' also signals similarity, the wrong direction.",
-      "D": "'Therefore' implies the appeal results from the margin, which it doesn't."
+      "D": "'Still' concedes that, despite the wide margin, opposition remains — the true relationship."
     },
     "why_correct_md": "The second sentence **pushes against** the first, so a concessive transition ('still') fits.",
     "why_tempted_md": "Both sentences describe reactions to the vote, so 'similarly' feels plausible.",
@@ -1647,7 +1647,7 @@
       },
       {
         "letter": "B",
-        "label": "Today,"
+        "label": "Because of this,"
       },
       {
         "letter": "C",
@@ -1655,15 +1655,15 @@
       },
       {
         "letter": "D",
-        "label": "Because of this,"
+        "label": "Today,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'In conclusion' signals a summary, but this sentence contrasts then with now.",
-      "B": "'Today' cleanly marks the shift from the market's origins to its current size.",
+      "B": "'Because of this' invents a cause-effect tie between the four vendors and the sixty stalls.",
       "C": "'For example' would need the second sentence to illustrate the first, not update it.",
-      "D": "'Because of this' invents a cause-effect tie between the four vendors and the sixty stalls."
+      "D": "'Today' cleanly marks the shift from the market's origins to its current size."
     },
     "why_correct_md": "The sentences contrast **past and present**, so a time-shift transition ('today') is right.",
     "why_tempted_md": "The sentence sits at a paragraph's end, so 'in conclusion' feels structurally natural.",
@@ -1685,22 +1685,22 @@
       },
       {
         "letter": "B",
-        "label": "For example"
+        "label": "However"
       },
       {
         "letter": "C",
-        "label": "However"
+        "label": "For example"
       },
       {
         "letter": "D",
         "label": "In conclusion"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Therefore' claims the 1502 map is a logical consequence of the archive's size — it isn't.",
-      "B": "The 1502 map is a specific illustration of the archive's rare holdings — an example.",
-      "C": "'However' promises a contrast the sentences don't make.",
+      "B": "'However' promises a contrast the sentences don't make.",
+      "C": "The 1502 map is a specific illustration of the archive's rare holdings — an example.",
       "D": "'In conclusion' signals a summary, but the sentence adds a new detail."
     },
     "why_correct_md": "A concrete instance supporting a general claim is introduced with **for example**.",
@@ -1799,22 +1799,22 @@
       },
       {
         "letter": "B",
-        "label": "describing the free internet access and job-search help libraries now provide."
+        "label": "explaining how printing presses worked in the fifteenth century."
       },
       {
         "letter": "C",
-        "label": "explaining how printing presses worked in the fifteenth century."
+        "label": "describing the free internet access and job-search help libraries now provide."
       },
       {
         "letter": "D",
         "label": "recounting the architecture of a famous reading room."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Founding dates speak to history, not present-day essentialness.",
-      "B": "Modern services like internet access and job help directly show why libraries still matter.",
-      "C": "Fifteenth-century printing is unrelated to the digital-age argument.",
+      "B": "Fifteenth-century printing is unrelated to the digital-age argument.",
+      "C": "Modern services like internet access and job help directly show why libraries still matter.",
       "D": "Architecture is decorative detail that doesn't support the claim of essentialness."
     },
     "why_correct_md": "Development must **advance the specific claim** — here, current relevance, which modern services demonstrate.",
@@ -1875,7 +1875,7 @@
       },
       {
         "letter": "B",
-        "label": "Small local businesses deserve tax incentives because they strengthen neighborhoods, employ residents, and reinvest their earnings locally."
+        "label": "Tax policy is a complicated and often controversial subject."
       },
       {
         "letter": "C",
@@ -1883,15 +1883,15 @@
       },
       {
         "letter": "D",
-        "label": "Tax policy is a complicated and often controversial subject."
+        "label": "Small local businesses deserve tax incentives because they strengthen neighborhoods, employ residents, and reinvest their earnings locally."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "One bakery's bread is a narrow anecdote, not a thesis the essay can defend.",
-      "B": "It states a clear claim (incentives) plus the three reasons the essay will develop.",
+      "B": "Calling the topic 'complicated' announces no stance at all.",
       "C": "A bare fact about quantity takes no position and previews no argument.",
-      "D": "Calling the topic 'complicated' announces no stance at all."
+      "D": "It states a clear claim (incentives) plus the three reasons the essay will develop."
     },
     "why_correct_md": "A thesis makes an **arguable claim and previews the support** — B names the claim and its three reasons.",
     "why_tempted_md": "The bakery sentence is concrete and vivid, which can masquerade as a strong opening.",
@@ -1951,22 +1951,22 @@
       },
       {
         "letter": "B",
-        "label": "Today the restored beacon sweeps the bay each night, just as it did in 1902."
+        "label": "Many coastal towns face similar budget shortfalls."
       },
       {
         "letter": "C",
-        "label": "Many coastal towns face similar budget shortfalls."
+        "label": "Today the restored beacon sweeps the bay each night, just as it did in 1902."
       },
       {
         "letter": "D",
         "label": "The preservation committee will meet again next spring."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "A fundraising date is administrative housekeeping — it never looks back at the lighthouse.",
-      "B": "The lit beacon sweeping the bay answers the opening's dark, boarded-up tower — the frame closes.",
-      "C": "Other towns' budgets point AWAY from this essay's subject entirely.",
+      "B": "Other towns' budgets point AWAY from this essay's subject entirely.",
+      "C": "The lit beacon sweeping the bay answers the opening's dark, boarded-up tower — the frame closes.",
       "D": "A future meeting is logistics, not imagery."
     },
     "why_correct_md": "A framing conclusion must **revisit the opening image** — dark tower then, lit beacon now.",
@@ -2103,22 +2103,22 @@
       },
       {
         "letter": "B",
-        "label": "Now, flouring her own counter at dawn, she feels her mother's hands guiding hers."
+        "label": "Her mother had always wanted her to attend college."
       },
       {
         "letter": "C",
-        "label": "Her mother had always wanted her to attend college."
+        "label": "Now, flouring her own counter at dawn, she feels her mother's hands guiding hers."
       },
       {
         "letter": "D",
         "label": "The old family recipes were written on index cards."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Moving cities for work drops the kneading-hands image entirely.",
-      "B": "It revisits the mother's hands and the dough, closing the memoir on its recurring image.",
-      "C": "College is a new topic, not a return to the central image.",
+      "B": "College is a new topic, not a return to the central image.",
+      "C": "It revisits the mother's hands and the dough, closing the memoir on its recurring image.",
       "D": "Index cards touch on recipes but abandon the hands-kneading-dough motif."
     },
     "why_correct_md": "When the goal is to **return to a central image**, choose the option that revives it — the hands and dough.",
@@ -2179,7 +2179,7 @@
       },
       {
         "letter": "B",
-        "label": ", a lantern, matches,"
+        "label": "; a lantern; matches;"
       },
       {
         "letter": "C",
@@ -2187,15 +2187,15 @@
       },
       {
         "letter": "D",
-        "label": "; a lantern; matches;"
+        "label": ", a lantern, matches,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "With no commas, four separate supplies blur into one unreadable run.",
-      "B": "Commas separate each item in the series of four supplies.",
+      "B": "Semicolons separate series items only when the items already contain commas.",
       "C": "This leaves 'a lantern matches' fused into one item — a lantern isn't a kind of match.",
-      "D": "Semicolons separate series items only when the items already contain commas."
+      "D": "Commas separate each item in the series of four supplies."
     },
     "why_correct_md": "Commas separate **every item** in a simple series.",
     "why_tempted_md": "Short items read fast aloud, so the missing commas are easy to skate past.",
@@ -2255,7 +2255,7 @@
       },
       {
         "letter": "B",
-        "label": ", so"
+        "label": ", so,"
       },
       {
         "letter": "C",
@@ -2263,15 +2263,15 @@
       },
       {
         "letter": "D",
-        "label": ", so,"
+        "label": ", so"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Two complete thoughts joined by 'so' need a comma before the conjunction.",
-      "B": "Comma + coordinating conjunction is the standard join for two independent clauses.",
+      "B": "No comma follows a coordinating conjunction; the pause belongs before it.",
       "C": "A semicolon replaces the conjunction — using both, plus a stray comma, doubles the connector.",
-      "D": "No comma follows a coordinating conjunction; the pause belongs before it."
+      "D": "Comma + coordinating conjunction is the standard join for two independent clauses."
     },
     "why_correct_md": "Independent clause + **comma + FANBOYS** + independent clause.",
     "why_tempted_md": "'So' feels small enough to glue the halves together without help.",
@@ -2331,7 +2331,7 @@
       },
       {
         "letter": "B",
-        "label": ", the"
+        "label": ": the"
       },
       {
         "letter": "C",
@@ -2339,15 +2339,15 @@
       },
       {
         "letter": "D",
-        "label": ": the"
+        "label": ", the"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A long opening phrase runs straight into the main clause without a marked boundary.",
-      "B": "A comma after the long introductory phrase shows where the main clause begins.",
+      "B": "A colon needs a complete statement before it, and the opener isn't one.",
       "C": "A semicolon needs a complete clause on its left — the opener has no verb.",
-      "D": "A colon needs a complete statement before it, and the opener isn't one."
+      "D": "A comma after the long introductory phrase shows where the main clause begins."
     },
     "why_correct_md": "A **long introductory phrase** takes a comma before the main clause begins.",
     "why_tempted_md": "Openers without verbs feel too small to deserve punctuation.",
@@ -2445,22 +2445,22 @@
       },
       {
         "letter": "B",
-        "label": ", built in 1902 by a crew of eleven,"
+        "label": ", built in 1902 by a crew of eleven"
       },
       {
         "letter": "C",
-        "label": ", built in 1902 by a crew of eleven"
+        "label": ", built in 1902 by a crew of eleven,"
       },
       {
         "letter": "D",
         "label": " that was built in 1902 by a crew of eleven,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Extra history about an already-identified lighthouse needs to be set off.",
-      "B": "Paired commas mark the phrase as droppable background detail.",
-      "C": "The interrupter opens with a comma but never closes.",
+      "B": "The interrupter opens with a comma but never closes.",
+      "C": "Paired commas mark the phrase as droppable background detail.",
       "D": "'That' frames the detail as restrictive — and still leaves one stray comma."
     },
     "why_correct_md": "The phrase adds droppable background about one specific lighthouse → **paired commas**.",
@@ -2521,7 +2521,7 @@
       },
       {
         "letter": "B",
-        "label": "its"
+        "label": "it is"
       },
       {
         "letter": "C",
@@ -2529,15 +2529,15 @@
       },
       {
         "letter": "D",
-        "label": "it is"
+        "label": "its"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'It's' means 'it is' — and 'renamed it is entry' collapses.",
-      "B": "'Its' is the possessive form, written with no apostrophe.",
+      "B": "Expanding the contraction proves it wrong: 'renamed it is entry'.",
       "C": "'Its'' is not a word in any position.",
-      "D": "Expanding the contraction proves it wrong: 'renamed it is entry'."
+      "D": "'Its' is the possessive form, written with no apostrophe."
     },
     "why_correct_md": "Possessive 'its' takes **no apostrophe** — the apostrophe version always means 'it is'.",
     "why_tempted_md": "Most possessives DO take apostrophes, so 'it's' looks right.",
@@ -2635,7 +2635,7 @@
       },
       {
         "letter": "B",
-        "label": "coaches"
+        "label": "coachs"
       },
       {
         "letter": "C",
@@ -2643,15 +2643,15 @@
       },
       {
         "letter": "D",
-        "label": "coachs"
+        "label": "coaches"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Apostrophe-s builds a possessive, but nothing in the sentence is owned.",
-      "B": "A plain plural takes -es and no apostrophe.",
+      "B": "Nouns ending in -ch form their plurals with -es.",
       "C": "The plural possessive still needs something possessed — there's nothing here.",
-      "D": "Nouns ending in -ch form their plurals with -es."
+      "D": "A plain plural takes -es and no apostrophe."
     },
     "why_correct_md": "'Both' just means two of them — a **plural**, no apostrophe.",
     "why_tempted_md": "Apostrophes creep in whenever a noun ends in an s-sound.",
@@ -2787,7 +2787,7 @@
       },
       {
         "letter": "B",
-        "label": "children's"
+        "label": "children"
       },
       {
         "letter": "C",
@@ -2795,15 +2795,15 @@
       },
       {
         "letter": "D",
-        "label": "children"
+        "label": "children's"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Childrens' isn't a word — the apostrophe lands after a fake plural.",
-      "B": "Irregular plurals form possessives with 's, just like singulars.",
+      "B": "The bare plural drops the ownership the sentence asserts.",
       "C": "No apostrophe means no possession, and the fake plural remains.",
-      "D": "The bare plural drops the ownership the sentence asserts."
+      "D": "Irregular plurals form possessives with 's, just like singulars."
     },
     "why_correct_md": "Irregular plurals (children, women, mice) form possessives with **'s**, not s'.",
     "why_tempted_md": "The plural-ends-in-s rule (s') gets forced onto plurals that never end in s.",
@@ -2863,22 +2863,22 @@
       },
       {
         "letter": "B",
-        "label": "ingredients: flour"
+        "label": "ingredients; flour"
       },
       {
         "letter": "C",
-        "label": "ingredients; flour"
+        "label": "ingredients: flour"
       },
       {
         "letter": "D",
         "label": "ingredients', flour"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "With no punctuation, the list runs into the noun it names — readers can't tell where 'ingredients' ends and the list begins.",
-      "B": "A colon after a complete statement introduces the list it promises: three ingredients — then names them.",
-      "C": "A semicolon separates two independent clauses; it cannot introduce a list.",
+      "B": "A semicolon separates two independent clauses; it cannot introduce a list.",
+      "C": "A colon after a complete statement introduces the list it promises: three ingredients — then names them.",
       "D": "'ingredients'' adds a possessive apostrophe nothing in the sentence calls for."
     },
     "why_correct_md": "A **colon** follows a complete statement to introduce the list it announces.",
@@ -2939,7 +2939,7 @@
       },
       {
         "letter": "B",
-        "label": "; the"
+        "label": " so the"
       },
       {
         "letter": "C",
@@ -2947,15 +2947,15 @@
       },
       {
         "letter": "D",
-        "label": " so the"
+        "label": "; the"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A comma alone can't hold two complete thoughts together.",
-      "B": "A semicolon joins the two closely related independent clauses.",
+      "B": "'So' would need a comma before it; bare, it just smears the join.",
       "C": "Removing the comma fuses the sentences outright.",
-      "D": "'So' would need a comma before it; bare, it just smears the join."
+      "D": "A semicolon joins the two closely related independent clauses."
     },
     "why_correct_md": "Two independent clauses with no conjunction take a **semicolon**.",
     "why_tempted_md": "The clauses are so tightly related that a comma feels sufficient.",
@@ -2977,7 +2977,7 @@
       },
       {
         "letter": "B",
-        "label": ":"
+        "label": "."
       },
       {
         "letter": "C",
@@ -2985,15 +2985,15 @@
       },
       {
         "letter": "D",
-        "label": "."
+        "label": ":"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A semicolon needs a complete clause on each side — a list isn't one.",
-      "B": "The complete statement hands off to its promised list with a colon.",
+      "B": "A period strands the list as a fragment.",
       "C": "A comma tangles the list into the clause that announces it.",
-      "D": "A period strands the list as a fragment."
+      "D": "The complete statement hands off to its promised list with a colon."
     },
     "why_correct_md": "Complete statement + list → **colon** delivers the items the sentence promised.",
     "why_tempted_md": "Semicolons and colons blur together as 'formal marks before lists'.",
@@ -3053,7 +3053,7 @@
       },
       {
         "letter": "B",
-        "label": ", Texas; Portland,"
+        "label": ", Texas: Portland,"
       },
       {
         "letter": "C",
@@ -3061,15 +3061,15 @@
       },
       {
         "letter": "D",
-        "label": ", Texas: Portland,"
+        "label": ", Texas; Portland,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "All-commas makes 'Texas' and 'Portland' read as two separate stops.",
-      "B": "Semicolons separate series items that already contain commas.",
+      "B": "A colon can't separate items in a series.",
       "C": "This splits a city from its own state.",
-      "D": "A colon can't separate items in a series."
+      "D": "Semicolons separate series items that already contain commas."
     },
     "why_correct_md": "When series items contain commas, **semicolons** separate the items.",
     "why_tempted_md": "Plain commas are the series habit even after the items grow internal commas.",
@@ -3129,7 +3129,7 @@
       },
       {
         "letter": "B",
-        "label": ";"
+        "label": ", moreover"
       },
       {
         "letter": "C",
@@ -3137,15 +3137,15 @@
       },
       {
         "letter": "D",
-        "label": ", moreover"
+        "label": ";"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A comma alone splices two complete statements.",
-      "B": "A semicolon pairs the two related, parallel failures.",
+      "B": "'Moreover' after a comma is still a splice; it would need a semicolon in front.",
       "C": "A colon promises that the second clause explains the first — it only adds a parallel mishap.",
-      "D": "'Moreover' after a comma is still a splice; it would need a semicolon in front."
+      "D": "A semicolon pairs the two related, parallel failures."
     },
     "why_correct_md": "Related complete statements joined without a conjunction take a **semicolon**.",
     "why_tempted_md": "The clauses are short and parallel, so the comma feels light and quick.",
@@ -3243,7 +3243,7 @@
       },
       {
         "letter": "B",
-        "label": " — the part everyone dreads — "
+        "label": ", the part everyone dreads — "
       },
       {
         "letter": "C",
@@ -3251,15 +3251,15 @@
       },
       {
         "letter": "D",
-        "label": ", the part everyone dreads — "
+        "label": " — the part everyone dreads — "
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "The aside needs marks to lift it out of the main sentence.",
-      "B": "Matched dashes frame the interruption on both sides.",
+      "B": "A comma that opens can't be closed by a dash.",
       "C": "A dash that opens can't be closed by a comma.",
-      "D": "A comma that opens can't be closed by a dash."
+      "D": "Matched dashes frame the interruption on both sides."
     },
     "why_correct_md": "An abrupt aside takes **matched dashes** — the same mark on both sides.",
     "why_tempted_md": "One dash feels dramatic enough, and the closing partner gets forgotten.",
@@ -3319,7 +3319,7 @@
       },
       {
         "letter": "B",
-        "label": ", who taught herself to juggle during a rain delay,"
+        "label": " that taught herself to juggle during a rain delay"
       },
       {
         "letter": "C",
@@ -3327,15 +3327,15 @@
       },
       {
         "letter": "D",
-        "label": " that taught herself to juggle during a rain delay"
+        "label": ", who taught herself to juggle during a rain delay,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "Leah is already identified by name — the extra story needs setting off.",
-      "B": "Paired commas mark the clause as droppable detail about a named person.",
+      "B": "'That' for a person, and restrictive framing for someone already named — wrong twice.",
       "C": "The aside opens but never closes.",
-      "D": "'That' for a person, and restrictive framing for someone already named — wrong twice."
+      "D": "Paired commas mark the clause as droppable detail about a named person."
     },
     "why_correct_md": "A clause adding detail about a **named person** is nonrestrictive: commas on both sides.",
     "why_tempted_md": "Read quickly, nothing looks broken without the commas.",
@@ -3357,22 +3357,22 @@
       },
       {
         "letter": "B",
-        "label": " who checked bags"
+        "label": ", which checked bags,"
       },
       {
         "letter": "C",
-        "label": ", which checked bags,"
+        "label": " who checked bags"
       },
       {
         "letter": "D",
         "label": " checking bags,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "The commas make the clause apply to ALL passengers — everyone gets sent to the carousel.",
-      "B": "The restrictive clause limits the instruction to passengers who checked bags.",
-      "C": "'Which' can't refer to people, and the commas still over-include.",
+      "B": "'Which' can't refer to people, and the commas still over-include.",
+      "C": "The restrictive clause limits the instruction to passengers who checked bags.",
       "D": "The half-converted participle drags a stray comma with it."
     },
     "why_correct_md": "Dropping the commas makes the clause **restrictive** — only those passengers.",
@@ -3471,7 +3471,7 @@
       },
       {
         "letter": "B",
-        "label": "labored alongside"
+        "label": "assisted"
       },
       {
         "letter": "C",
@@ -3479,15 +3479,15 @@
       },
       {
         "letter": "D",
-        "label": "assisted"
+        "label": "labored alongside"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Helped' is accurate but flat — it conveys nothing about effort or endurance.",
-      "B": "'Labored alongside' foregrounds sustained, physical effort, exactly the tirelessness the stem asks for.",
+      "B": "'Assisted' is even more neutral and formal than 'helped'.",
       "C": "'Were there for' emphasizes emotional support, not hard work.",
-      "D": "'Assisted' is even more neutral and formal than 'helped'."
+      "D": "'Labored alongside' foregrounds sustained, physical effort, exactly the tirelessness the stem asks for."
     },
     "why_correct_md": "The goal is to convey **effort**, and 'labored' names hard, sustained work directly.",
     "why_tempted_md": "Every option is grammatically fine, so the flat synonym 'assisted' looks safe.",
@@ -3661,22 +3661,22 @@
       },
       {
         "letter": "B",
-        "label": "scheming"
+        "label": "dedicated"
       },
       {
         "letter": "C",
-        "label": "dedicated"
+        "label": "scheming"
       },
       {
         "letter": "D",
         "label": "spirited"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Determined' is neutral-to-positive and doesn't match 'say anything to win'.",
-      "B": "'Scheming' carries a distinctly negative charge that fits the critical portrait.",
-      "C": "'Dedicated' is admiring, the wrong direction entirely.",
+      "B": "'Dedicated' is admiring, the wrong direction entirely.",
+      "C": "'Scheming' carries a distinctly negative charge that fits the critical portrait.",
       "D": "'Spirited' is lively and positive, clashing with the disapproving context."
     },
     "why_correct_md": "The stem signals **criticism**, so choose the word whose connotation is negative — 'scheming'.",
@@ -3775,7 +3775,7 @@
       },
       {
         "letter": "B",
-        "label": "formative"
+        "label": "useful"
       },
       {
         "letter": "C",
@@ -3783,15 +3783,15 @@
       },
       {
         "letter": "D",
-        "label": "useful"
+        "label": "formative"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Helpful' is generic and understates a life-shaping influence.",
-      "B": "'Formative' names an experience that shaped who the applicant became — exactly the lasting influence intended.",
+      "B": "'Useful' suggests mere practicality, not deep influence.",
       "C": "'Nice' is weak and vague, conveying no depth.",
-      "D": "'Useful' suggests mere practicality, not deep influence."
+      "D": "'Formative' names an experience that shaped who the applicant became — exactly the lasting influence intended."
     },
     "why_correct_md": "The goal is **lasting influence**, and 'formative' means shaping a person's development.",
     "why_tempted_md": "'Useful' feels concrete, but it reduces a profound relationship to convenience.",
@@ -3889,7 +3889,7 @@
       },
       {
         "letter": "B",
-        "label": "meant a great deal"
+        "label": "meant loads"
       },
       {
         "letter": "C",
@@ -3897,15 +3897,15 @@
       },
       {
         "letter": "D",
-        "label": "meant loads"
+        "label": "meant a great deal"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Meant a ton' is casual and a touch flippant for a formal thank-you.",
-      "B": "'Meant a great deal' is warm and appropriately respectful.",
+      "B": "'Meant loads' is informal and better suited to a text than a note to a committee.",
       "C": "'Been a big deal' is conversational and slightly slangy.",
-      "D": "'Meant loads' is informal and better suited to a text than a note to a committee."
+      "D": "'Meant a great deal' is warm and appropriately respectful."
     },
     "why_correct_md": "A thank-you note to a committee wants **respectful warmth**, which 'meant a great deal' delivers.",
     "why_tempted_md": "'Meant a ton' sounds heartfelt, but its casualness undercuts the formal courtesy.",
@@ -4041,7 +4041,7 @@
       },
       {
         "letter": "B",
-        "label": "a brass coin"
+        "label": "an orange-colored sphere"
       },
       {
         "letter": "C",
@@ -4049,15 +4049,15 @@
       },
       {
         "letter": "D",
-        "label": "an orange-colored sphere"
+        "label": "a brass coin"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'A large orange circle' is literal and flat — no figurative image.",
-      "B": "'A brass coin' is a metaphor whose color and sheen match a harvest moon, extending the poem's imagery.",
+      "B": "'An orange-colored sphere' is merely a scientific restatement, not a figure of speech.",
       "C": "'A big round shape' is vaguer than the original, not more vivid.",
-      "D": "'An orange-colored sphere' is merely a scientific restatement, not a figure of speech."
+      "D": "'A brass coin' is a metaphor whose color and sheen match a harvest moon, extending the poem's imagery."
     },
     "why_correct_md": "The stem asks for a **figure of speech**, and the metaphor 'a brass coin' paints the moon vividly.",
     "why_tempted_md": "'Orange-colored sphere' sounds precise, but precision isn't imagery.",
@@ -4231,22 +4231,22 @@
       },
       {
         "letter": "B",
-        "label": "unmistakable"
+        "label": "blaring"
       },
       {
         "letter": "C",
-        "label": "blaring"
+        "label": "unmistakable"
       },
       {
         "letter": "D",
         "label": "noisy"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Loud' is neutral-to-negative and can read as a complaint in a tribute.",
-      "B": "'Unmistakable' turns the volume into something distinctive and cherished — affectionate, as intended.",
-      "C": "'Blaring' is harshly negative, the opposite of affection.",
+      "B": "'Blaring' is harshly negative, the opposite of affection.",
+      "C": "'Unmistakable' turns the volume into something distinctive and cherished — affectionate, as intended.",
       "D": "'Noisy' carries an annoyed connotation."
     },
     "why_correct_md": "The goal is **affection**, and 'unmistakable' recasts the loudness as a beloved, singular trait.",
@@ -4345,22 +4345,22 @@
       },
       {
         "letter": "B",
-        "label": "night; the plows worked"
+        "label": "night the plows, worked"
       },
       {
         "letter": "C",
-        "label": "night the plows, worked"
+        "label": "night; the plows worked"
       },
       {
         "letter": "D",
         "label": "night, the plows worked"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Two complete sentences are shoved together with no punctuation at all.",
-      "B": "A semicolon links two closely related complete thoughts without a conjunction.",
-      "C": "A comma between the subject 'plows' and its verb 'worked' breaks the clause instead of the run-on.",
+      "B": "A comma between the subject 'plows' and its verb 'worked' breaks the clause instead of the run-on.",
+      "C": "A semicolon links two closely related complete thoughts without a conjunction.",
       "D": "A comma alone between two complete thoughts is a splice."
     },
     "why_correct_md": "A **semicolon** joins two independent clauses that belong together.",
@@ -4421,7 +4421,7 @@
       },
       {
         "letter": "B",
-        "label": "simple, but it took"
+        "label": "simple, it took"
       },
       {
         "letter": "C",
@@ -4429,15 +4429,15 @@
       },
       {
         "letter": "D",
-        "label": "simple, it took"
+        "label": "simple, but it took"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'The recipe looked simple' and 'it took three tries' are each complete — fused with no punctuation.",
-      "B": "The two thoughts contrast, so comma + 'but' both separates and signals the reversal.",
+      "B": "A comma with no conjunction leaves a splice.",
       "C": "The comma lands between the subject 'it' and its verb 'took', splitting the wrong pair.",
-      "D": "A comma with no conjunction leaves a splice."
+      "D": "The two thoughts contrast, so comma + 'but' both separates and signals the reversal."
     },
     "why_correct_md": "Comma + a **coordinating conjunction** (here 'but') joins the clauses and shows the contrast.",
     "why_tempted_md": "The sentence reads smoothly, hiding that two full sentences have collided.",
@@ -4459,22 +4459,22 @@
       },
       {
         "letter": "B",
-        "label": "twice, and the deckhands"
+        "label": "twice, the deckhands"
       },
       {
         "letter": "C",
-        "label": "twice, the deckhands"
+        "label": "twice, and the deckhands"
       },
       {
         "letter": "D",
         "label": "twice the deckhands,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'The ferry horn sounded twice' and 'the deckhands untied the last rope' are both complete — run together they fuse.",
-      "B": "A comma plus 'and' joins two complete thoughts cleanly.",
-      "C": "A comma alone between two complete thoughts is a splice, not a fix.",
+      "B": "A comma alone between two complete thoughts is a splice, not a fix.",
+      "C": "A comma plus 'and' joins two complete thoughts cleanly.",
       "D": "Moving the comma after 'deckhands' leaves the two thoughts fused and cuts the subject off from its verb."
     },
     "why_correct_md": "Two independent clauses join with a **comma plus a coordinating conjunction** (and, but, so…).",
@@ -4497,7 +4497,7 @@
       },
       {
         "letter": "B",
-        "label": ", so we"
+        "label": ", however we"
       },
       {
         "letter": "C",
@@ -4505,15 +4505,15 @@
       },
       {
         "letter": "D",
-        "label": ", however we"
+        "label": ", so we"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A comma alone cannot join two independent clauses — this is a comma splice.",
-      "B": "Comma + the coordinating conjunction 'so' legally joins the clauses AND names the cause-effect link.",
+      "B": "'However' is not a coordinating conjunction; it would need a semicolon before it.",
       "C": "Deleting the comma fuses the clauses — no boundary at all.",
-      "D": "'However' is not a coordinating conjunction; it would need a semicolon before it."
+      "D": "Comma + the coordinating conjunction 'so' legally joins the clauses AND names the cause-effect link."
     },
     "why_correct_md": "Comma + **coordinating conjunction** (for, and, nor, but, or, yet, so) is a legal clause joiner.",
     "why_tempted_md": "'However' feels like a conjunction, but it's an adverb — the classic splice non-fix.",
@@ -4611,22 +4611,22 @@
       },
       {
         "letter": "B",
-        "label": "She raced to catch the train, forgetting her umbrella on the platform bench."
+        "label": "Racing to catch the train, and forgetting her umbrella on the platform bench."
       },
       {
         "letter": "C",
-        "label": "Racing to catch the train, and forgetting her umbrella on the platform bench."
+        "label": "She raced to catch the train, forgetting her umbrella on the platform bench."
       },
       {
         "letter": "D",
         "label": "Racing to catch the train; forgetting her umbrella on the platform bench."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Two '-ing' phrases with no subject and no main verb never form a sentence.",
-      "B": "Adding the subject 'She' and the verb 'raced' supplies a complete main clause.",
-      "C": "Inserting a comma and 'and' still leaves the string subjectless and verbless.",
+      "B": "Inserting a comma and 'and' still leaves the string subjectless and verbless.",
+      "C": "Adding the subject 'She' and the verb 'raced' supplies a complete main clause.",
       "D": "A semicolon needs a complete clause on each side; both sides here are still fragments."
     },
     "why_correct_md": "A sentence needs a **subject and a finite verb** — an '-ing' phrase alone supplies neither.",
@@ -4649,7 +4649,7 @@
       },
       {
         "letter": "B",
-        "label": "; however, both"
+        "label": ", however both"
       },
       {
         "letter": "C",
@@ -4657,15 +4657,15 @@
       },
       {
         "letter": "D",
-        "label": ", however both"
+        "label": "; however, both"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'However' is a conjunctive adverb, not a conjunction; a comma before it splices the two complete clauses.",
-      "B": "A semicolon before 'however' and a comma after it correctly links the independent clauses.",
+      "B": "A comma before 'however' still leaves a splice — 'however' cannot join clauses the way 'but' can.",
       "C": "With no punctuation the two complete thoughts fuse.",
-      "D": "A comma before 'however' still leaves a splice — 'however' cannot join clauses the way 'but' can."
+      "D": "A semicolon before 'however' and a comma after it correctly links the independent clauses."
     },
     "why_correct_md": "A conjunctive adverb joining two clauses takes a **semicolon before and a comma after**.",
     "why_tempted_md": "'However' feels like 'but', so a comma before it seems to work — but it can't glue clauses.",
@@ -4725,22 +4725,22 @@
       },
       {
         "letter": "B",
-        "label": "that was cooked medium-rare to the guest."
+        "label": "to the guest, medium-rare being how it was cooked."
       },
       {
         "letter": "C",
-        "label": "to the guest, medium-rare being how it was cooked."
+        "label": "that was cooked medium-rare to the guest."
       },
       {
         "letter": "D",
         "label": "to the guest which had been medium-rare."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "Placed after 'guest', the clause claims the guest was cooked medium-rare.",
-      "B": "Moving the clause beside 'steak' correctly says the steak was cooked medium-rare.",
-      "C": "The dangling absolute phrase is wordy and still sits away from 'steak'.",
+      "B": "The dangling absolute phrase is wordy and still sits away from 'steak'.",
+      "C": "Moving the clause beside 'steak' correctly says the steak was cooked medium-rare.",
       "D": "'Which' after 'guest' keeps the description attached to the wrong noun."
     },
     "why_correct_md": "A modifier attaches to the **nearest noun** — put it beside the word it truly describes.",
@@ -4763,7 +4763,7 @@
       },
       {
         "letter": "B",
-        "label": "drove her friends to almost every practice"
+        "label": "drove her friends almost to every practice"
       },
       {
         "letter": "C",
@@ -4771,15 +4771,15 @@
       },
       {
         "letter": "D",
-        "label": "drove her friends almost to every practice"
+        "label": "drove her friends to almost every practice"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Almost drove' means she nearly drove but didn't — not the intended sense.",
-      "B": "'Almost every practice' limits how many practices, which is what the sentence means.",
+      "B": "'Almost to every practice' suggests she never quite arrived.",
       "C": "'Almost her friends' nonsensically modifies who the friends were.",
-      "D": "'Almost to every practice' suggests she never quite arrived."
+      "D": "'Almost every practice' limits how many practices, which is what the sentence means."
     },
     "why_correct_md": "Place a limiting word like *almost* **directly before the word it limits** — here, 'every practice'.",
     "why_tempted_md": "'Almost' drifts to the front in speech, even when it belongs deeper in the sentence.",
@@ -4801,7 +4801,7 @@
       },
       {
         "letter": "B",
-        "label": "After studying all weekend, Priya found the exam easy."
+        "label": "The exam, after studying all weekend, felt easy to Priya."
       },
       {
         "letter": "C",
@@ -4809,15 +4809,15 @@
       },
       {
         "letter": "D",
-        "label": "The exam, after studying all weekend, felt easy to Priya."
+        "label": "After studying all weekend, Priya found the exam easy."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "The exam did not study all weekend — the phrase dangles.",
-      "B": "'Priya' both studied and found the exam easy, so the modifier attaches correctly.",
+      "B": "Relocating the phrase keeps 'the exam' as the studier.",
       "C": "'The exam was easy' still leaves the exam as the one who studied.",
-      "D": "Relocating the phrase keeps 'the exam' as the studier."
+      "D": "'Priya' both studied and found the exam easy, so the modifier attaches correctly."
     },
     "why_correct_md": "The doer of 'studying' (Priya) must be the **subject right after the comma**.",
     "why_tempted_md": "Everyone knows Priya studied, so the sentence feels acceptable as written.",
@@ -4915,7 +4915,7 @@
       },
       {
         "letter": "B",
-        "label": "While reviewing the applications, the committee noticed several errors."
+        "label": "Several errors were noticed by the committee while reviewing the applications."
       },
       {
         "letter": "C",
@@ -4923,15 +4923,15 @@
       },
       {
         "letter": "D",
-        "label": "Several errors were noticed by the committee while reviewing the applications."
+        "label": "While reviewing the applications, the committee noticed several errors."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Several errors' were not reviewing the applications; the committee was.",
-      "B": "The committee both reviews and notices, so the opening phrase attaches to the right subject.",
+      "B": "Moving the phrase to the end still leaves 'reviewing' pointing at 'errors'.",
       "C": "Swapping 'were' for 'got' keeps 'errors' as the subject doing the reviewing.",
-      "D": "Moving the phrase to the end still leaves 'reviewing' pointing at 'errors'."
+      "D": "The committee both reviews and notices, so the opening phrase attaches to the right subject."
     },
     "why_correct_md": "The reviewer (the committee) must be the **subject the opening phrase modifies**.",
     "why_tempted_md": "The passive 'were noticed by the committee' names the committee, so it seems attached — but grammatically it isn't the subject.",
@@ -4953,7 +4953,7 @@
       },
       {
         "letter": "B",
-        "label": "To qualify for the finals, every gymnast must land a clean routine."
+        "label": "A clean routine, to qualify for the finals, must be landed by every gymnast."
       },
       {
         "letter": "C",
@@ -4961,15 +4961,15 @@
       },
       {
         "letter": "D",
-        "label": "A clean routine, to qualify for the finals, must be landed by every gymnast."
+        "label": "To qualify for the finals, every gymnast must land a clean routine."
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "A 'clean routine' cannot qualify for the finals; the gymnasts do.",
-      "B": "Making 'every gymnast' the subject lets the opening 'to qualify' phrase attach to the ones who act.",
+      "B": "The passive keeps 'a clean routine' as subject, so the phrase still misattaches.",
       "C": "The cleft still leaves 'a clean routine' as the grammatical subject the phrase modifies.",
-      "D": "The passive keeps 'a clean routine' as subject, so the phrase still misattaches."
+      "D": "Making 'every gymnast' the subject lets the opening 'to qualify' phrase attach to the ones who act."
     },
     "why_correct_md": "An opening infinitive of purpose ('to qualify…') modifies the **subject that follows** — it must be the one qualifying.",
     "why_tempted_md": "The passive voice sounds formal and 'test-like', masking the misattachment.",
@@ -5029,22 +5029,22 @@
       },
       {
         "letter": "B",
-        "label": "communicating"
+        "label": "to communicate"
       },
       {
         "letter": "C",
-        "label": "to communicate"
+        "label": "communicating"
       },
       {
         "letter": "D",
         "label": "they communicated"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'That they communicated' breaks the -ing pattern set by 'practicing' and 'playing'.",
-      "B": "'Communicating' matches the two -ing verbs, keeping the series parallel.",
-      "C": "The infinitive 'to communicate' mismatches the -ing forms.",
+      "B": "The infinitive 'to communicate' mismatches the -ing forms.",
+      "C": "'Communicating' matches the two -ing verbs, keeping the series parallel.",
       "D": "'They communicated' inserts a full clause where the series expects a single -ing verb."
     },
     "why_correct_md": "Items in a series must share one grammatical form — here the **-ing** form.",
@@ -5447,7 +5447,7 @@
       },
       {
         "letter": "B",
-        "label": "rise"
+        "label": "get up to rise"
       },
       {
         "letter": "C",
@@ -5455,15 +5455,15 @@
       },
       {
         "letter": "D",
-        "label": "get up to rise"
+        "label": "rise"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Rise' already means to move up — 'up' repeats it.",
-      "B": "'Rise' alone carries the full meaning.",
+      "B": "'Get up to rise' says the same thing twice in two ways.",
       "C": "'Upward' is the same redundancy in a longer word.",
-      "D": "'Get up to rise' says the same thing twice in two ways."
+      "D": "'Rise' alone carries the full meaning."
     },
     "why_correct_md": "The direction is **inside the verb**: rising is upward by definition.",
     "why_tempted_md": "'Rise up' is common in speech and song, so it sounds idiomatic.",
@@ -5485,22 +5485,22 @@
       },
       {
         "letter": "B",
-        "label": "Because"
+        "label": "In light of the fact that"
       },
       {
         "letter": "C",
-        "label": "In light of the fact that"
+        "label": "Because"
       },
       {
         "letter": "D",
         "label": "Being that"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Due to the fact that' spends five words doing one word's job.",
-      "B": "'Because' states the cause directly.",
-      "C": "'In light of the fact that' is even wordier than the original.",
+      "B": "'In light of the fact that' is even wordier than the original.",
+      "C": "'Because' states the cause directly.",
       "D": "'Being that' is both nonstandard and no shorter in spirit."
     },
     "why_correct_md": "**Because** replaces the five-word scaffold with the one word it means.",
@@ -5561,7 +5561,7 @@
       },
       {
         "letter": "B",
-        "label": "childlike"
+        "label": "juvenile"
       },
       {
         "letter": "C",
@@ -5569,15 +5569,15 @@
       },
       {
         "letter": "D",
-        "label": "juvenile"
+        "label": "childlike"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Childish' is an insult, implying petty or silly — wrong for praise.",
-      "B": "'Childlike' admiringly means innocent and openhearted, matching 'praised' and 'wonder'.",
+      "B": "'Juvenile' also disparages, suggesting silliness.",
       "C": "'Immature' is negative, the opposite of admiration.",
-      "D": "'Juvenile' also disparages, suggesting silliness."
+      "D": "'Childlike' admiringly means innocent and openhearted, matching 'praised' and 'wonder'."
     },
     "why_correct_md": "'Childlike' and 'childish' share a root but differ in charge: only **'childlike' is positive**.",
     "why_tempted_md": "The words look almost identical, so the negative one slips in unnoticed.",
@@ -5599,7 +5599,7 @@
       },
       {
         "letter": "B",
-        "label": "suspicious"
+        "label": "interested"
       },
       {
         "letter": "C",
@@ -5607,15 +5607,15 @@
       },
       {
         "letter": "D",
-        "label": "interested"
+        "label": "suspicious"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Curious' is mild interest, missing the alarm of a car that keeps returning.",
-      "B": "'Suspicious' captures the wary, something-is-wrong reaction the repetition provokes.",
+      "B": "'Interested' is even flatter than 'curious'.",
       "C": "'Nosy' implies prying into others' business, the wrong flavor for a detective on alert.",
-      "D": "'Interested' is even flatter than 'curious'."
+      "D": "'Suspicious' captures the wary, something-is-wrong reaction the repetition provokes."
     },
     "why_correct_md": "The repeated sedan warrants **wariness**, and only 'suspicious' carries that shade.",
     "why_tempted_md": "'Curious' and 'interested' are true in a loose sense, so they seem adequate.",
@@ -5713,7 +5713,7 @@
       },
       {
         "letter": "B",
-        "label": "denied"
+        "label": "declined"
       },
       {
         "letter": "C",
@@ -5721,15 +5721,15 @@
       },
       {
         "letter": "D",
-        "label": "declined"
+        "label": "denied"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Refused the proposal a second reading' is idiomatically off; you refuse a request, not grant something a reading.",
-      "B": "'Denied the proposal a second reading' is the exact idiom for withholding a procedural step.",
+      "B": "'Declined' is too soft and doesn't take this 'X a Y' object pattern naturally.",
       "C": "'Rejected' means throwing out the proposal itself, not withholding its reading.",
-      "D": "'Declined' is too soft and doesn't take this 'X a Y' object pattern naturally."
+      "D": "'Denied the proposal a second reading' is the exact idiom for withholding a procedural step."
     },
     "why_correct_md": "You **deny someone something** — the idiom fits 'denied the proposal a second reading'.",
     "why_tempted_md": "'Refused' and 'rejected' feel interchangeable with 'denied' until you test the exact phrasing.",
@@ -5751,22 +5751,22 @@
       },
       {
         "letter": "B",
-        "label": "DELETE the underlined portion"
+        "label": ", which is located at the book's end,"
       },
       {
         "letter": "C",
-        "label": ", which is located at the book's end,"
+        "label": "DELETE the underlined portion"
       },
       {
         "letter": "D",
         "label": ", coming at the end of the book's final pages,"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "A 'final chapter' by definition comes at the end — the clause adds nothing.",
-      "B": "Deleting the clause leaves 'The novel's final chapter resolves the mystery' — complete and tighter.",
-      "C": "Rewording the redundancy doesn't remove it.",
+      "B": "Rewording the redundancy doesn't remove it.",
+      "C": "Deleting the clause leaves 'The novel's final chapter resolves the mystery' — complete and tighter.",
       "D": "'End of the book's final pages' doubles the redundancy it was meant to fix."
     },
     "why_correct_md": "When a clause restates what 'final' already means, the fix is **deletion**, not rephrasing.",
@@ -5789,22 +5789,22 @@
       },
       {
         "letter": "B",
-        "label": "spans"
+        "label": "sits over"
       },
       {
         "letter": "C",
-        "label": "sits over"
+        "label": "spans"
       },
       {
         "letter": "D",
         "label": "happens across"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "C",
     "per_choice_rationale": {
       "A": "'Goes over' is vague — people go over bridges; bridges do something more specific.",
-      "B": "'Spans' is the precise verb for a structure stretching across a gap.",
-      "C": "'Sits over' suggests resting on top of something, not stretching across it.",
+      "B": "'Sits over' suggests resting on top of something, not stretching across it.",
+      "C": "'Spans' is the precise verb for a structure stretching across a gap.",
       "D": "'Happens across' means to encounter by chance — bridges don't do that."
     },
     "why_correct_md": "Precision means the verb built for the job: a bridge **spans** a gorge.",
@@ -5865,7 +5865,7 @@
       },
       {
         "letter": "B",
-        "label": "composed"
+        "label": "built"
       },
       {
         "letter": "C",
@@ -5873,15 +5873,15 @@
       },
       {
         "letter": "D",
-        "label": "built"
+        "label": "composed"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Made' is generic and undersells the craft of writing symphonies.",
-      "B": "'Composed' is the exact verb for creating music.",
+      "B": "'Built' suits structures, not symphonies.",
       "C": "'Did' is even vaguer than 'made'.",
-      "D": "'Built' suits structures, not symphonies."
+      "D": "'Composed' is the exact verb for creating music."
     },
     "why_correct_md": "'Composed' is the **domain-precise verb** for creating musical works.",
     "why_tempted_md": "'Made' is technically true, so it passes unless you reach for the exact term.",
@@ -5903,7 +5903,7 @@
       },
       {
         "letter": "B",
-        "label": "championed"
+        "label": "were nice about"
       },
       {
         "letter": "C",
@@ -5911,15 +5911,15 @@
       },
       {
         "letter": "D",
-        "label": "were nice about"
+        "label": "championed"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Said good things about' is wordy and weak for mentors who backed her against the crowd.",
-      "B": "'Championed' precisely means actively advocated for, matching 'when no one else would'.",
+      "B": "'Were nice about' is vague and casual, understating real advocacy.",
       "C": "'Liked' names a private feeling, not public support.",
-      "D": "'Were nice about' is vague and casual, understating real advocacy."
+      "D": "'Championed' precisely means actively advocated for, matching 'when no one else would'."
     },
     "why_correct_md": "'Championed' packs **active advocacy** into one precise word.",
     "why_tempted_md": "The phrase 'said good things about' sounds specific because it's long, but it's imprecise.",
@@ -6017,7 +6017,7 @@
       },
       {
         "letter": "B",
-        "label": "traditionalists"
+        "label": "mavericks"
       },
       {
         "letter": "C",
@@ -6025,15 +6025,15 @@
       },
       {
         "letter": "D",
-        "label": "mavericks"
+        "label": "traditionalists"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Enfants terribles' means shocking rule-breakers, contradicting founders who followed every norm.",
-      "B": "'Traditionalists' matches people who quietly observe industry norms.",
+      "B": "'Mavericks' means independent nonconformists, contradicting 'followed every industry norm'.",
       "C": "'Provocateurs' means those who deliberately provoke, again the opposite of quiet conformists.",
-      "D": "'Mavericks' means independent nonconformists, contradicting 'followed every industry norm'."
+      "D": "'Traditionalists' matches people who quietly observe industry norms."
     },
     "why_correct_md": "The founders **followed every norm**, so 'traditionalists' fits where the rebel phrase can't.",
     "why_tempted_md": "'Enfants terribles' sounds worldly and startup-flavored, masking that it means the reverse.",
@@ -6055,7 +6055,7 @@
       },
       {
         "letter": "B",
-        "label": "pastiche"
+        "label": "faux pas"
       },
       {
         "letter": "C",
@@ -6063,15 +6063,15 @@
       },
       {
         "letter": "D",
-        "label": "faux pas"
+        "label": "pastiche"
       }
     ],
-    "answer_letter": "B",
+    "answer_letter": "D",
     "per_choice_rationale": {
       "A": "'Fait accompli' means a done deal, which doesn't describe a film full of clichés.",
-      "B": "'Pastiche' means a derivative work stitched from borrowed parts — exactly a predictable cliché-collage.",
+      "B": "'Faux pas' means a social blunder, not a derivative artwork.",
       "C": "'Renaissance' means a revival, the opposite of a stale sequel.",
-      "D": "'Faux pas' means a social blunder, not a derivative artwork."
+      "D": "'Pastiche' means a derivative work stitched from borrowed parts — exactly a predictable cliché-collage."
     },
     "why_correct_md": "'Pastiche' correctly names a **work built from borrowed, familiar parts**, unlike 'fait accompli'.",
     "why_tempted_md": "Both are French borrowings, so one can seem as fitting as the other to an unsure reader.",
