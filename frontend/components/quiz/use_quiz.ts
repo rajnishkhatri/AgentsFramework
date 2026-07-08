@@ -87,6 +87,19 @@ export async function openQuizSession(
   return { session, skillStateAtStart };
 }
 
+/**
+ * List the subject's known skill ids (`Skill.id`) — the set FR-6 validates a
+ * `?focus=` param against before opening a drill. Read-only taxonomy access; no
+ * mastery, no write path (SkillTaxonomy contract #1).
+ */
+export async function listQuizSkillIds(
+  ports: EnginePortBag,
+  subject: string,
+): Promise<string[]> {
+  const skills = await ports.skillTaxonomy.list(subject);
+  return skills.map((s) => s.id);
+}
+
 /** Pick the next (skill, question) for the learner and load the reviewed item. */
 export async function openQuizItem(
   ports: EnginePortBag,
@@ -199,6 +212,7 @@ export function useQuiz(): {
   openItem: (args: { subject: string; learnerId: string }) => Promise<QuizItemResult>;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
+  listSkillIds: (subject: string) => Promise<string[]>;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -208,6 +222,7 @@ export function useQuiz(): {
         openQuizItem(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
+      listSkillIds: (subject: string) => listQuizSkillIds(ports, subject),
     }),
     [ports],
   );

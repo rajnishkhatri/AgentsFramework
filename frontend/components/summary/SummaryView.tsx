@@ -32,6 +32,12 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
   const { summary, masteryDeltaKnown } = props.vm;
   const quizRoute = screen("quiz").route; // /learn/quiz
   const deltaValue = masteryDeltaKnown ? summary.masteryDeltaTile : "—";
+  // S2 (FR-4): the recommended-skill name deep-links into a FOCUSED drill on
+  // that skill (`?focus=<skillId>`), honored by the Quiz page (FR-6). The
+  // prototype opens Skill detail on a skill click; that screen is comingSoon
+  // (nav_model), so the interim target is the quiz-focus route — never the
+  // dead /learn/skill route (FR-2). Re-points to Skill detail when S9 lands.
+  const focusHref = `${quizRoute}?focus=${summary.recommended.skillId}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -60,12 +66,23 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
           <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             Recommended next
           </p>
-          <p className="text-lg font-semibold">{summary.recommended.skillName}</p>
+          <Link
+            href={focusHref}
+            data-testid="summary-skill-link"
+            className="text-lg font-semibold underline-offset-2 hover:underline"
+          >
+            {summary.recommended.skillName}
+          </Link>
         </div>
         <Link
           href={quizRoute}
           data-testid="summary-start-next"
-          className="inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-on-accent"
+          // FR-1/FR-3: fill with the BRAND accent (`--color-accent`), not the
+          // card-scoped per-bucket `--accent` above. The per-bucket fill + white
+          // text drops below WCAG-AA on the pale/mid buckets (~3.6:1, measured);
+          // the bucket-independent brand pair (`bg-accent`/`text-on-accent`)
+          // clears AA (~6.5:1). The card keeps `--accent` for its border/tint.
+          className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
         >
           Practice this next
         </Link>

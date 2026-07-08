@@ -399,3 +399,12 @@ title: 'Lightweight decision log (intent debt, long tail)'
   seeded overlap. Rejected: hash-based selection (unreviewable fates),
   backfill-to-48-first (blocks the split on new authoring), accepted overlap
   (contaminates practice-mastery signal into test scores).
+- 2026-07-08 — **S2 skill/bucket link interim target (preact-summary-cta-and-skill-links
+  spec; no ADR — UI routing only, no engine/wire change).** The prototype opens **Skill
+  detail** on a bucket/skill click (all 3 device specs), but the Skill screen is
+  `comingSoon` (`nav_model.ts:75`, deferred to sprint S9). Until then the recommended-skill
+  name (Summary) and the six Dashboard bucket cards link to a **focused drill**
+  (`/learn/quiz?focus=<skillId>`), reusing the engine's existing `OpenSessionArgs.focus`
+  (`use_quiz.ts:51`) with `mode:"drill"`. Re-point to `/learn/skill` when S9 lands. Rejected:
+  link-only to plain `/learn/quiz` (label would duplicate the CTA, less faithful to the
+  prototype's bucket→drill intent); blocking S2 on S9 (defeats the ship-early sprint plan).

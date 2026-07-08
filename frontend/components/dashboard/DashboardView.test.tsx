@@ -68,6 +68,35 @@ describe("DashboardView — FR-A8 due state is never color-only", () => {
   });
 });
 
+describe("DashboardView — FR-5/FR-2/FR-7 bucket card is a focus link", () => {
+  it("makes each bucket card a link to the focused quiz (/learn/quiz?focus=<skillId>)", () => {
+    const doc = dom(<DashboardView vm={vm()} />);
+    const card = doc.querySelector('[data-testid="bucket-s-punc"]');
+    expect(card, "bucket card must render").not.toBeNull();
+    // The prototype opens a skill/quiz on a bucket click — the card is an <a>,
+    // not an inert <article> (the documented-but-unimplemented FR-C4 behavior).
+    expect(card!.tagName.toLowerCase()).toBe("a");
+    expect(card!.getAttribute("href")).toBe("/learn/quiz?focus=s-punc");
+    // FR-7: the accessible name includes the bucket name.
+    expect(card!.textContent).toContain("Punctuation");
+  });
+
+  it("keeps the card's testid/due/progressbar while being a link", () => {
+    const doc = dom(<DashboardView vm={vm()} />);
+    const card = doc.querySelector('[data-testid="bucket-s-punc"]')!;
+    expect(card.getAttribute("data-due")).toBe("true"); // due state preserved
+    // The bucket-colored progressbar still renders inside the card.
+    expect(card.querySelector('[role="progressbar"]')).not.toBeNull();
+  });
+
+  it("never links to the coming-soon Skill route (FR-2 no dead end)", () => {
+    const doc = dom(<DashboardView vm={vm()} />);
+    const card = doc.querySelector('[data-testid="bucket-s-gram"]')!;
+    expect(card.getAttribute("href")).toBe("/learn/quiz?focus=s-gram");
+    expect(card.getAttribute("href")).not.toContain("/learn/skill");
+  });
+});
+
 describe("DashboardView — FR-C3 mastery grid", () => {
   it("renders one card per bucket showing name, mastery %, and share %", () => {
     const doc = dom(<DashboardView vm={vm()} />);

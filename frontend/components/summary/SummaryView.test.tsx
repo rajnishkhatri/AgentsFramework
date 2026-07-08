@@ -74,3 +74,52 @@ describe("SummaryView — FR-G2 recommended-next re-opens Quiz", () => {
     expect(cta?.getAttribute("href")).toContain("/quiz");
   });
 });
+
+describe("SummaryView — FR-3 CTA uses the brand accent, not the per-bucket accent", () => {
+  it("fills the CTA with the bucket-independent brand accent (bg-accent)", () => {
+    // The card's <section> rebinds `--accent` to a per-bucket color; palest
+    // buckets + white text drop below WCAG-AA (measured ~3.6:1). The CTA must
+    // NOT inherit that per-bucket fill — it uses the brand accent utility, whose
+    // token (`--color-accent`) is bucket-independent and clears AA (~6.5:1).
+    const doc = dom(<SummaryView vm={vm()} />);
+    const cta = doc.querySelector('[data-testid="summary-start-next"]')!;
+    const cls = cta.getAttribute("class") ?? "";
+    expect(cls).toContain("bg-accent");
+    // The regression under fix: the CTA must not read the card-scoped --accent.
+    expect(cls).not.toContain("bg-[var(--accent)]");
+    // On-accent text is retained so the pairing is the AA-verified brand pair.
+    expect(cls).toContain("text-on-accent");
+  });
+});
+
+describe("SummaryView — FR-4/FR-2/FR-7 recommended-skill name is a focus link", () => {
+  it("makes the skill name a link to the focused quiz (/learn/quiz?focus=<skillId>)", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    // The skill name must be an <a> (not an inert <p>) — the prototype opens a
+    // skill/quiz on a skill click. Match the link by its focus href.
+    const link = doc.querySelector('a[data-testid="summary-skill-link"]');
+    expect(link, "skill name must be a link").not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("/learn/quiz?focus=s-conc");
+    // FR-7: the accessible name includes the skill name.
+    expect(link!.textContent).toContain("Conciseness");
+  });
+
+  it("never links to the coming-soon Skill route (FR-2 no dead end)", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const link = doc.querySelector('a[data-testid="summary-skill-link"]')!;
+    expect(link.getAttribute("href")).not.toContain("/learn/skill");
+  });
+});
+
+describe("SummaryView — FR-8 non-regression (label, route, stat tiles unchanged)", () => {
+  it("keeps the CTA label, its /quiz route, and the three stat tiles intact", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const cta = doc.querySelector('[data-testid="summary-start-next"]')!;
+    expect(cta.textContent).toContain("Practice this next");
+    expect(cta.getAttribute("href")).toContain("/quiz");
+    // The three stat tiles still render (FR-G1 unchanged).
+    expect(doc.querySelector('[data-testid="summary-score"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="summary-delta"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="summary-time"]')).not.toBeNull();
+  });
+});
