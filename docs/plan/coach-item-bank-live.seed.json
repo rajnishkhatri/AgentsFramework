@@ -5511,6 +5511,234 @@
   },
   {
     "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The referee's <u>firm</u> decision to stop the match drew boos, but replays proved she was right.",
+    "stem_md": "Which word best captures a decision that would not be changed?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "hard"
+      },
+      {
+        "letter": "C",
+        "label": "solid"
+      },
+      {
+        "letter": "D",
+        "label": "stiff"
+      }
+    ],
+    "answer_letter": "A",
+    "per_choice_rationale": {
+      "A": "'Firm' means resolute and unwavering — precisely a decision that holds.",
+      "B": "'Hard' suggests difficulty or harshness, not resolve.",
+      "C": "'Solid' describes reliability of a thing, an awkward fit for 'decision'.",
+      "D": "'Stiff' implies rigidity or awkwardness, wrong for a judgment call."
+    },
+    "why_correct_md": "'Firm' carries the shade of **resolute and final**, which the sentence needs — and it's already correct.",
+    "why_tempted_md": "'Hard', 'solid', and 'stiff' all touch firmness physically, so one seems swappable for 'firm'.",
+    "rule_md": "Check whether the underlined word already carries the right shade before replacing it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The novelist was praised for her <u>childish</u> sense of wonder at the natural world.",
+    "stem_md": "Which word best conveys the admiring meaning the sentence intends?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "childlike"
+      },
+      {
+        "letter": "C",
+        "label": "immature"
+      },
+      {
+        "letter": "D",
+        "label": "juvenile"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Childish' is an insult, implying petty or silly — wrong for praise.",
+      "B": "'Childlike' admiringly means innocent and openhearted, matching 'praised' and 'wonder'.",
+      "C": "'Immature' is negative, the opposite of admiration.",
+      "D": "'Juvenile' also disparages, suggesting silliness."
+    },
+    "why_correct_md": "'Childlike' and 'childish' share a root but differ in charge: only **'childlike' is positive**.",
+    "why_tempted_md": "The words look almost identical, so the negative one slips in unnoticed.",
+    "rule_md": "Related words can carry opposite connotations — match the emotional charge to the context.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The detective grew <u>curious</u> when the same gray sedan appeared outside the shop for the third day.",
+    "stem_md": "Which word best conveys the wary interest the situation calls for?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "suspicious"
+      },
+      {
+        "letter": "C",
+        "label": "nosy"
+      },
+      {
+        "letter": "D",
+        "label": "interested"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Curious' is mild interest, missing the alarm of a car that keeps returning.",
+      "B": "'Suspicious' captures the wary, something-is-wrong reaction the repetition provokes.",
+      "C": "'Nosy' implies prying into others' business, the wrong flavor for a detective on alert.",
+      "D": "'Interested' is even flatter than 'curious'."
+    },
+    "why_correct_md": "The repeated sedan warrants **wariness**, and only 'suspicious' carries that shade.",
+    "why_tempted_md": "'Curious' and 'interested' are true in a loose sense, so they seem adequate.",
+    "rule_md": "Pick the related word whose precise connotation fits the situation's emotional cue.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The museum's new wing was designed to <u>respect</u> the traditions of the surrounding historic district.",
+    "stem_md": "Which word best expresses honoring those traditions through the design itself?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "notice"
+      },
+      {
+        "letter": "C",
+        "label": "honor"
+      },
+      {
+        "letter": "D",
+        "label": "admire"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Respect the traditions' is acceptable but abstract; a building 'honors' traditions more precisely through form.",
+      "B": "'Notice' merely means to observe, far too weak.",
+      "C": "'Honor' means to embody and pay tribute to, exactly what a sympathetic design does.",
+      "D": "'Admire' describes an inward feeling, which a building cannot literally do."
+    },
+    "why_correct_md": "'Honor' carries the shade of **actively paying tribute**, which a design can do; the others fall short.",
+    "why_tempted_md": "'Respect' is a common near-synonym, so leaving it feels safe.",
+    "rule_md": "When several related words fit loosely, choose the one whose exact shade the sentence rewards.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "After the long climb, the hikers were <u>skinny</u> and ready to collapse in the shade.",
+    "stem_md": "Which word best fits the meaning the sentence intends?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "thin"
+      },
+      {
+        "letter": "C",
+        "label": "spent"
+      },
+      {
+        "letter": "D",
+        "label": "slim"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Skinny' describes body shape, not the exhaustion the sentence is about.",
+      "B": "'Thin' is also about size, missing 'ready to collapse'.",
+      "C": "'Spent' means used up and exhausted, which matches collapsing in the shade.",
+      "D": "'Slim' likewise refers to being narrow, not tired."
+    },
+    "why_correct_md": "The context signals **exhaustion**, and among these near-synonyms only 'spent' means worn out.",
+    "why_tempted_md": "'Skinny', 'thin', and 'slim' are close cousins, so it's easy to swap one for another.",
+    "rule_md": "Related words differ in meaning — pick the one whose sense the sentence actually needs.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 6,
+    "difficulty": 3,
+    "item_type": "underlined-span-mc",
+    "context_html": "The committee <u>refused</u> the proposal a second reading, sending it back to the drafting stage.",
+    "stem_md": "Which word most precisely fits the committee's formal action?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "denied"
+      },
+      {
+        "letter": "C",
+        "label": "rejected"
+      },
+      {
+        "letter": "D",
+        "label": "declined"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Refused the proposal a second reading' is idiomatically off; you refuse a request, not grant something a reading.",
+      "B": "'Denied the proposal a second reading' is the exact idiom for withholding a procedural step.",
+      "C": "'Rejected' means throwing out the proposal itself, not withholding its reading.",
+      "D": "'Declined' is too soft and doesn't take this 'X a Y' object pattern naturally."
+    },
+    "why_correct_md": "You **deny someone something** — the idiom fits 'denied the proposal a second reading'.",
+    "why_tempted_md": "'Refused' and 'rejected' feel interchangeable with 'denied' until you test the exact phrasing.",
+    "rule_md": "Among related words, choose the one whose idiom and shade match the sentence's structure.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
     "standard_id": 8,
     "difficulty": 4,
     "item_type": "underlined-span-mc",
@@ -5587,6 +5815,310 @@
   },
   {
     "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The surgeon's report noted that the incision had to be <u>very exact</u> to avoid the nerve running beside the joint.",
+    "stem_md": "Which choice is the most precise single word for the required accuracy?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "precise"
+      },
+      {
+        "letter": "C",
+        "label": "careful"
+      },
+      {
+        "letter": "D",
+        "label": "neat"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Very exact' pads an already strong word with a vague intensifier.",
+      "B": "'Precise' says exactly what's needed — accurate to a fine tolerance — in one word.",
+      "C": "'Careful' describes attitude, not the geometric accuracy of the cut.",
+      "D": "'Neat' refers to tidiness, not surgical accuracy."
+    },
+    "why_correct_md": "'Precise' captures **fine-tolerance accuracy** in a single exact word.",
+    "why_tempted_md": "'Very exact' feels emphatic, but the intensifier adds no meaning 'precise' lacks.",
+    "rule_md": "Prefer the one word that names the exact quality over an intensifier-plus-adjective.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The biographer wrote that the composer <u>made</u> more than forty symphonies before his fortieth birthday.",
+    "stem_md": "Which choice is the most precise verb for producing musical works?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "composed"
+      },
+      {
+        "letter": "C",
+        "label": "did"
+      },
+      {
+        "letter": "D",
+        "label": "built"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Made' is generic and undersells the craft of writing symphonies.",
+      "B": "'Composed' is the exact verb for creating music.",
+      "C": "'Did' is even vaguer than 'made'.",
+      "D": "'Built' suits structures, not symphonies."
+    },
+    "why_correct_md": "'Composed' is the **domain-precise verb** for creating musical works.",
+    "why_tempted_md": "'Made' is technically true, so it passes unless you reach for the exact term.",
+    "rule_md": "Choose the specific verb the field uses over a general-purpose one.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "In her acceptance speech she thanked the mentors who had <u>said good things about</u> her work when no one else would.",
+    "stem_md": "Which choice most precisely and concisely expresses their support?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "championed"
+      },
+      {
+        "letter": "C",
+        "label": "liked"
+      },
+      {
+        "letter": "D",
+        "label": "were nice about"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Said good things about' is wordy and weak for mentors who backed her against the crowd.",
+      "B": "'Championed' precisely means actively advocated for, matching 'when no one else would'.",
+      "C": "'Liked' names a private feeling, not public support.",
+      "D": "'Were nice about' is vague and casual, understating real advocacy."
+    },
+    "why_correct_md": "'Championed' packs **active advocacy** into one precise word.",
+    "why_tempted_md": "The phrase 'said good things about' sounds specific because it's long, but it's imprecise.",
+    "rule_md": "Replace a vague multi-word phrase with the single verb that names the exact action.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 8,
+    "difficulty": 4,
+    "item_type": "underlined-span-mc",
+    "context_html": "The engineer explained that the older bridge design was <u>not very good at</u> handling sudden gusts across the span.",
+    "stem_md": "Which choice states the design's shortcoming most precisely?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "unstable in"
+      },
+      {
+        "letter": "C",
+        "label": "bad with"
+      },
+      {
+        "letter": "D",
+        "label": "not the best for"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Not very good at' is colloquial and vague about the actual failure mode.",
+      "B": "'Unstable in' names the precise engineering problem — instability under wind load.",
+      "C": "'Bad with' is casual and imprecise.",
+      "D": "'Not the best for' is a soft understatement that hides the real flaw."
+    },
+    "why_correct_md": "'Unstable' names the **specific technical failure**, unlike the vague hedges.",
+    "why_tempted_md": "'Not very good at' sounds appropriately cautious, but caution isn't precision.",
+    "rule_md": "In technical description, choose the exact term for the failure over a vague qualifier.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "Her memoir revisits, <u>ad nauseam</u>, the single summer that changed everything — each chapter circling back with fresh tenderness.",
+    "stem_md": "Which choice best fits the appreciative tone the sentence establishes?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "time and again"
+      },
+      {
+        "letter": "C",
+        "label": "in perpetuity"
+      },
+      {
+        "letter": "D",
+        "label": "willy-nilly"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Ad nauseam' means to a sickening excess, clashing with 'fresh tenderness'.",
+      "B": "'Time and again' neutrally conveys repeated return, matching the fond, appreciative tone.",
+      "C": "'In perpetuity' means forever, a legalistic phrase that doesn't fit revisiting a summer.",
+      "D": "'Willy-nilly' means haphazardly, contradicting the deliberate circling back."
+    },
+    "why_correct_md": "The tone is **affectionate**, so 'time and again' fits where the negative 'ad nauseam' can't.",
+    "why_tempted_md": "'Ad nauseam' is a familiar Latin tag for repetition, so it seems apt on the surface.",
+    "rule_md": "Weigh a borrowed phrase's connotation against the sentence's tone, not just its literal sense.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The startup's founders were, in the reporter's words, <u>enfants terribles</u> who quietly followed every industry norm and rarely spoke to the press.",
+    "stem_md": "Which choice corrects the expression so it fits the founders described?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "traditionalists"
+      },
+      {
+        "letter": "C",
+        "label": "provocateurs"
+      },
+      {
+        "letter": "D",
+        "label": "mavericks"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Enfants terribles' means shocking rule-breakers, contradicting founders who followed every norm.",
+      "B": "'Traditionalists' matches people who quietly observe industry norms.",
+      "C": "'Provocateurs' means those who deliberately provoke, again the opposite of quiet conformists.",
+      "D": "'Mavericks' means independent nonconformists, contradicting 'followed every industry norm'."
+    },
+    "why_correct_md": "The founders **followed every norm**, so 'traditionalists' fits where the rebel phrase can't.",
+    "why_tempted_md": "'Enfants terribles' sounds worldly and startup-flavored, masking that it means the reverse.",
+    "rule_md": "Confirm a borrowed phrase's meaning agrees with the surrounding facts before keeping it.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The critic dismissed the sequel as a <u>fait accompli</u> of clichés, every twist visible from the opening scene.",
+    "stem_md": "Which choice corrects the misused expression?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "pastiche"
+      },
+      {
+        "letter": "C",
+        "label": "renaissance"
+      },
+      {
+        "letter": "D",
+        "label": "faux pas"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Fait accompli' means a done deal, which doesn't describe a film full of clichés.",
+      "B": "'Pastiche' means a derivative work stitched from borrowed parts — exactly a predictable cliché-collage.",
+      "C": "'Renaissance' means a revival, the opposite of a stale sequel.",
+      "D": "'Faux pas' means a social blunder, not a derivative artwork."
+    },
+    "why_correct_md": "'Pastiche' correctly names a **work built from borrowed, familiar parts**, unlike 'fait accompli'.",
+    "why_tempted_md": "Both are French borrowings, so one can seem as fitting as the other to an unsure reader.",
+    "rule_md": "Match a borrowed expression to its true meaning; sophistication doesn't excuse a misfit.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The article called the mayor's abrupt reversal a complete <u>180 degree turn</u> from the position she had defended for years.",
+    "stem_md": "Which choice corrects the redundant expression?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "about-face"
+      },
+      {
+        "letter": "C",
+        "label": "complete 180"
+      },
+      {
+        "letter": "D",
+        "label": "360 degree turn"
+      }
+    ],
+    "answer_letter": "B",
+    "per_choice_rationale": {
+      "A": "'Complete 180 degree turn' is redundant — a 180 is already a complete reversal, and 'complete' repeats it.",
+      "B": "'About-face' names a total reversal in one clean term with no redundancy.",
+      "C": "'Complete 180' still pairs 'complete' with a figure that already means a full reversal.",
+      "D": "A '360 degree turn' returns to the starting point — the opposite of a reversal."
+    },
+    "why_correct_md": "'About-face' states a **full reversal** without the doubled 'complete' or the mismatched figure.",
+    "why_tempted_md": "'180 degree turn' is a familiar way to say reversal, so its built-in redundancy hides.",
+    "rule_md": "Cut redundancy in stock phrases, and check that any figure of speech points the right direction.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
     "standard_id": 9,
     "difficulty": 5,
     "item_type": "underlined-span-mc",
@@ -5620,6 +6152,82 @@
     "why_correct_md": "After 'the reason is', use **that** — 'because' would smuggle in a second 'reason'.",
     "why_tempted_md": "'The reason is because' is extremely common in speech and sounds natural.",
     "rule_md": "Pair 'the reason' with 'that'; pair 'because' with a plain clause — never both.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The chef described the tasting menu as her <u>magnum opus</u>, though she admitted it was just a rough first attempt she might scrap by morning.",
+    "stem_md": "Which choice fits the tentative, unfinished nature the sentence describes?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "pièce de résistance"
+      },
+      {
+        "letter": "C",
+        "label": "trial run"
+      },
+      {
+        "letter": "D",
+        "label": "tour de force"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Magnum opus' means a crowning masterpiece, contradicting 'rough first attempt'.",
+      "B": "'Pièce de résistance' means the standout highlight, again too grand for a draft.",
+      "C": "'Trial run' plainly fits a tentative first attempt she might scrap.",
+      "D": "'Tour de force' means a feat of brilliance, the opposite of an unfinished experiment."
+    },
+    "why_correct_md": "The dish is a **tentative draft**, so plain 'trial run' fits where the grand phrases fail.",
+    "why_tempted_md": "The elevated phrases sound impressive on a menu, tempting you past their meaning.",
+    "rule_md": "When a borrowed superlative clashes with the facts, a plain accurate phrase is the correct fix.",
+    "reviewed": false,
+    "generated_by": "claude-session-authored"
+  },
+  {
+    "skill_id": "s-style",
+    "standard_id": 9,
+    "difficulty": 5,
+    "item_type": "underlined-span-mc",
+    "context_html": "The gallery placard noted that the sketches were, so to speak, the artist's <u>day in the sun</u> — quick studies never meant for display.",
+    "stem_md": "Which choice replaces the misused idiom with wording that fits the intended meaning?",
+    "choices": [
+      {
+        "letter": "A",
+        "label": "NO CHANGE"
+      },
+      {
+        "letter": "B",
+        "label": "raison d'être"
+      },
+      {
+        "letter": "C",
+        "label": "rough drafts"
+      },
+      {
+        "letter": "D",
+        "label": "swan song"
+      }
+    ],
+    "answer_letter": "C",
+    "per_choice_rationale": {
+      "A": "'Day in the sun' means a moment of glory, contradicting 'never meant for display'.",
+      "B": "'Raison d'être' means reason for existing, which quick throwaway studies were not.",
+      "C": "'Rough drafts' plainly and correctly describes preliminary studies never meant to be shown.",
+      "D": "'Swan song' means a final performance, unrelated to preliminary sketches."
+    },
+    "why_correct_md": "The sketches were **preliminary**, so 'rough drafts' fits where the glory idiom fails.",
+    "why_tempted_md": "A fancy foreign phrase like 'raison d'être' can feel sophisticated enough to be right.",
+    "rule_md": "Test an idiom or borrowed phrase against the literal meaning; replace it if the senses clash.",
     "reviewed": false,
     "generated_by": "claude-session-authored"
   }
