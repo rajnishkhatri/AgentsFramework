@@ -283,6 +283,105 @@ class TestInputGuardrailDecide:
         decide.assert_awaited_once()
 
 
+class TestJudgeProtocolCapture:
+    """Judge protocol capture (Phase A test-item bank, 2026-07-07): input that
+    itself CONTAINS an output-format instruction ("Reply with ONLY the single
+    letter") captured the judge's reply — it answered the embedded question
+    ("C") instead of the accept/reject verdict, and the old
+    ``== "accept"`` parse silently converted that into a reject (7/30
+    first-party solver prompts, deterministic across runs). The fix: a
+    malformed verdict retries once with the reinforced template close, and a
+    still-malformed reply fails closed under its OWN stage so telemetry can
+    tell capture from a genuine reject. Failure paths first.
+    """
+
+    @pytest.mark.asyncio
+    async def test_double_capture_fails_closed_with_protocol_stage(self):
+        guard = _make_guardrail()
+        with patch.object(
+            guard, "_call_judge", new_callable=AsyncMock, side_effect=["C", "D"]
+        ) as judge:
+            accepted, stage = await guard.decide(S6_PII)
+        assert accepted is False
+        assert stage == "judge:protocol_failure"
+        assert judge.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_captured_reply_retries_reinforced_then_rejects(self):
+        guard = _make_guardrail()
+        with patch.object(
+            guard, "_call_judge", new_callable=AsyncMock, side_effect=["B", "reject"]
+        ) as judge:
+            accepted, stage = await guard.decide(S6_PII)
+        assert accepted is False
+        assert stage == "judge:reinforced"
+        assert judge.await_count == 2
+        # The retry must ask for the reinforced template close.
+        assert judge.await_args_list[1].kwargs.get("reinforce") is True
+
+    @pytest.mark.asyncio
+    async def test_captured_reply_retries_reinforced_then_accepts(self):
+        guard = _make_guardrail()
+        with patch.object(
+            guard, "_call_judge", new_callable=AsyncMock, side_effect=["C", "accept"]
+        ) as judge:
+            accepted, stage = await guard.decide(S6_PII)
+        assert accepted is True
+        assert stage == "judge:reinforced"
+        assert judge.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_clean_verdict_still_single_call(self):
+        # Regression guard: a well-formed first reply never pays the retry.
+        guard = _make_guardrail()
+        with patch.object(
+            guard, "_call_judge", new_callable=AsyncMock, return_value="accept"
+        ) as judge:
+            accepted, stage = await guard.decide(S6_PII)
+        assert accepted is True
+        assert stage == "judge"
+        judge.assert_awaited_once()
+
+
+class TestInputGuardrailTemplateSandwich:
+    """The template half of the capture fix: ``input_guardrail.j2`` must
+    delimit ``user_input`` as data and place the verdict instruction AFTER it
+    (recency wins), else instructions embedded in the input own the close.
+    Deterministic renders — real PromptService, no LLM.
+    """
+
+    def test_verdict_instruction_comes_after_the_user_input(self):
+        rendered = PromptService().render_prompt(
+            "input_guardrail",
+            accept_condition="",
+            user_input="INPUT_SENTINEL_XYZ",
+        )
+        assert rendered.rindex(
+            'Respond with ONLY "accept" or "reject"'
+        ) > rendered.index("INPUT_SENTINEL_XYZ")
+
+    def test_user_input_is_marked_as_data(self):
+        rendered = PromptService().render_prompt(
+            "input_guardrail",
+            accept_condition="",
+            user_input="INPUT_SENTINEL_XYZ",
+        )
+        before = rendered.split("INPUT_SENTINEL_XYZ")[0]
+        assert "BEGIN INPUT" in before
+        assert "END INPUT" in rendered.split("INPUT_SENTINEL_XYZ")[1]
+
+    def test_reinforce_flag_defaults_off_and_adds_reminder(self):
+        svc = PromptService()
+        plain = svc.render_prompt(
+            "input_guardrail", accept_condition="", user_input="x"
+        )
+        reinforced = svc.render_prompt(
+            "input_guardrail", accept_condition="", user_input="x", reinforce=True
+        )
+        assert "REMINDER" not in plain
+        assert "REMINDER" in reinforced
+
+
 class TestPreCheckDeterminism:
     """G3: identical benign prompts must yield identical pre-check verdicts.
 
