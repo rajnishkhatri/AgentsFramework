@@ -428,3 +428,16 @@ title: 'Lightweight decision log (intent debt, long tail)'
   `isSessionComplete` helper (duplicates the two inputs at a second call site; fragments the count
   spine S4 built); new reducer `done`-at-target phase (unnecessary — the reviewing phase already
   carries the tally; `done` stays finish-only); a `t()` import (would invent a non-existent API).
+- 2026-07-09 — **S5 button relabel REVERTED to target-gated (supersedes the same-day
+  unconditional-relabel entry above).** User decision: keep the ORIGINAL labels
+  ("Next question →" / "Finish & see summary") on every PRE-target review, and flip to
+  "Keep practising" / "See summary" ONLY at/after the target — in lock-step with the
+  milestone banner, gated on `progressVm.complete` (`app/(coach)/learn/quiz/page.tsx`
+  reviewing branch: `{progressVm.complete ? "Keep practising" : "Next question →"}` and
+  the finish twin). `data-testid`s + handlers unchanged, so FR-10 still holds. Rationale:
+  the review/next affordance should read normally during the session; the relabel is a
+  DONE-STATE signal, so it belongs with the done-state, not before it. E2E updated:
+  `quiz-done-state.spec.ts` pre-target test now asserts the original labels + a boundary
+  label-flip; `validate_s5_done_state.spec.ts` matches. Rejected (the prior entry):
+  unconditional relabel (made the buttons read "Keep practising" 29 questions before there
+  was anything to keep practising past — semantically premature).

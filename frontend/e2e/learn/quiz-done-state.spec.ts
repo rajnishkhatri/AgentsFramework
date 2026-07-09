@@ -61,7 +61,7 @@ async function answerAndAdvance(page: Page): Promise<void> {
 }
 
 test.describe("Quiz done-state — milestone + retake (S5)", () => {
-  test("relabelled actions show on a pre-target screen (Gate-2 unconditional)", async ({
+  test("pre-target screens keep the ORIGINAL labels (relabel gated on the target)", async ({
     page,
   }) => {
     await page.goto("/learn/quiz", { waitUntil: "networkidle" });
@@ -70,10 +70,13 @@ test.describe("Quiz done-state — milestone + retake (S5)", () => {
     // Answer item 1 and stop on feedback — WELL before the target.
     await answerToFeedback(page);
 
-    // Gate-2 (unconditional relabel): the buttons read the S5 labels already, and
-    // the done-state banner is NOT shown this early (FR-4: only at/after target).
-    await expect(page.locator("[data-testid='quiz-next']")).toHaveText(/Keep practising/);
-    await expect(page.locator("[data-testid='quiz-finish']")).toHaveText(/See summary/);
+    // Reverted 2026-07-09 (user): the buttons keep their ORIGINAL labels
+    // ("Next question" / "Finish & see summary") until the target is reached; the
+    // S5 labels ("Keep practising" / "See summary") appear ONLY at/after the target,
+    // alongside the milestone banner. So this early the banner is absent AND the
+    // labels are the originals.
+    await expect(page.locator("[data-testid='quiz-next']")).toHaveText(/Next question/);
+    await expect(page.locator("[data-testid='quiz-finish']")).toHaveText(/Finish & see summary/);
     await expect(page.locator("[data-testid='quiz-done-banner']")).toHaveCount(0);
   });
 
@@ -103,6 +106,11 @@ test.describe("Quiz done-state — milestone + retake (S5)", () => {
     await expect(banner).toBeVisible();
     await expect(banner).toContainText(String(TARGET)); // "…your 30-question session!"
     await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible();
+
+    // The labels now FLIP to the S5 versions at the target (reverted 2026-07-09:
+    // gated on `complete`, not unconditional) — same testids, new text.
+    await expect(page.locator("[data-testid='quiz-next']")).toHaveText(/Keep practising/);
+    await expect(page.locator("[data-testid='quiz-finish']")).toHaveText(/See summary/);
 
     // FR-5 placement: banner precedes the feedback in DOM order (rendered above it).
     const order = await page.evaluate(() => {

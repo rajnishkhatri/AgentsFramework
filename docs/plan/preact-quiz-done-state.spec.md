@@ -180,8 +180,11 @@ like S4 (pure helper unit test + a Playwright walk).
       RED evidence: VM `complete` → `expected undefined to be true` (7 failed); banner →
       `Failed to resolve import "./QuizDoneBanner"`. Both then GREEN (below).
 - [x] Clarify §2.2 decisions filled and reflected in the FRs before plan. Gate-2 OQ-1
-      resolved = **unconditional relabel** (buttons read "Keep practising"/"See summary"
-      on every reviewing screen).
+      first resolved = unconditional relabel, then **REVERTED 2026-07-09 (user)** to
+      **target-gated relabel**: buttons keep the ORIGINAL labels ("Next question →" /
+      "Finish & see summary") pre-target and flip to "Keep practising" / "See summary"
+      only at/after the target (gated on `progressVm.complete`, in lock-step with the
+      banner). See `docs/adr/decisions.md` (2026-07-09 revert entry).
 - [x] Frontend gate green (actual output pasted):
 - [x] Playwright `e2e/learn/quiz-done-state.spec.ts` passes against the bypass-auth dev server.
 - [x] Invariants in §5 unbroken (F-R1: threshold in translator; F-R9/FR-13: read-only, no
@@ -196,7 +199,8 @@ like S4 (pure helper unit test + a Playwright walk).
 
 **Files:** `lib/translators/quiz_progress_vm.ts` (+`complete`), `.test.ts` (+7 cases),
 `components/quiz/QuizDoneBanner.tsx` (new), `.test.tsx` (new), `app/(coach)/learn/quiz/page.tsx`
-(banner sibling + unconditional relabel; `progressVm` hoisted above the phase branch so the banner
+(banner sibling + target-gated relabel — original labels pre-target, S5 labels at/after target,
+gated on `progressVm.complete`; `progressVm` hoisted above the phase branch so the banner
 shares it), `components/quiz/QuizProgress.test.tsx` (7 VM literals + `complete`),
 `e2e/learn/quiz-done-state.spec.ts` (new, 4 tests).
 
@@ -214,7 +218,7 @@ shares it), `components/quiz/QuizProgress.test.tsx` (7 VM literals + `complete`)
 **S5 E2E (`quiz-done-state.spec.ts`, bypass-auth dev server, port 3000):**
 ```
 Running 4 tests using 1 worker
-  ✓ 1 relabelled actions show on a pre-target screen (Gate-2 unconditional) (2.0s)
+  ✓ 1 pre-target screens keep the ORIGINAL labels (relabel gated on the target) (2.1s)
   ✓ 2 reaching the target shows the milestone and does NOT auto-navigate (FR-3/FR-4/FR-5) (5.4s)
   ✓ 3 'Keep practising' continues the same session into over-run (FR-2/FR-7) (3.8s)
   ✓ 4 'See summary' closes the session and routes to the Summary (FR-6) (7.3s)

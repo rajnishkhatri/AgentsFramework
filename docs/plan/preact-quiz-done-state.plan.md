@@ -222,11 +222,15 @@ after Gate 2.
 - **`make check` / arch baseline:** `cd frontend && ./node_modules/.bin/tsc --noEmit -p tsconfig.json`
   + the frontend layering arch test must be green before implement (Stage 4).
 
-**OQ-1 — RESOLVED at Gate 2 (2026-07-09): UNCONDITIONAL relabel.** The two buttons read
-"Keep practising" / "See summary" on **every** reviewing screen (before and after target); the
-milestone banner is the sole "you've arrived" signal. No `complete`-gated label branch — labels are
-static text. This is the plan's §4.5 default; no change to the touchpoints. (Consequence for tests:
-the E2E asserts the labels are present on a pre-target screen too, not only at the boundary.)
+**OQ-1 — resolved at Gate 2 (2026-07-09) as unconditional relabel, then REVERTED
+(2026-07-09, post-implementation, user) to TARGET-GATED relabel.** The two buttons keep their
+ORIGINAL labels ("Next question →" / "Finish & see summary") on every PRE-target reviewing screen,
+and flip to "Keep practising" / "See summary" ONLY at/after the target — gated on
+`progressVm.complete`, in lock-step with the milestone banner. So the label branch IS
+`complete`-gated (not static text). `data-testid`s + handlers unchanged → FR-10 holds. Tests: the
+E2E pre-target test asserts the ORIGINAL labels + a boundary flip-check. See
+`docs/adr/decisions.md` (2026-07-09 revert entry). Rationale: the review/next affordance should read
+normally during the session; the relabel is a done-state signal and belongs with the done-state.
 
 ---
 
