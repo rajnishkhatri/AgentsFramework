@@ -34,6 +34,15 @@ export interface QuizProgressVM {
   readonly fraction: number;
   /** targetCount != null — determinate vs indeterminate bar. */
   readonly bounded: boolean;
+  /**
+   * S5 done-state: the bounded session's graded tally has REACHED the target
+   * (`>=`, so a resumed already-past-target session still reads true — FR-4).
+   * `false` for an endless session (FR-1). Keyed on the RAW gradedTotal, NOT the
+   * display `position` (which is gradedTotal+1 while answering), so it never
+   * false-fires one question early — the done-state milestone shows only on the
+   * `reviewing` screen, where position == gradedTotal anyway (FR-8).
+   */
+  readonly complete: boolean;
 }
 
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n));
@@ -55,6 +64,9 @@ export function toQuizProgressVM(
   // FR-1/FR-2/§2.2 Q4: show the denominator only while at/under the target; drop
   // it when endless or over-run (the fixed target stops being meaningful past M).
   const total = bounded && position <= targetCount ? targetCount : null;
+  // S5 FR-4/FR-8: reached the target? Keyed on the raw graded tally (>=), NOT the
+  // display position — endless is never complete (bounded gate → FR-1).
+  const complete = bounded && gradedTotal >= targetCount;
 
-  return { position, total, fraction, bounded };
+  return { position, total, fraction, bounded, complete };
 }

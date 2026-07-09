@@ -1,5 +1,6 @@
 /**
  * S4 — quiz_progress_vm (FR-1..FR-6/FR-8, L1 pure, TAP-2 table-driven).
+ * S5 — extends with `complete` (done-state reached?): FR-1/FR-4/FR-8 + edges.
  *
  * Pure map: (gradedTotal, phase, targetCount) → QuizProgressVM. Drives the
  * "Question N of M" top bar (ADR: none — in-pattern VM+component). No mocks.
@@ -20,6 +21,7 @@ describe("toQuizProgressVM — failure/edge first", () => {
       total: null,
       bounded: false,
       fraction: 0,
+      complete: false, // S5 FR-1: endless is never "reached"
     });
   });
 
@@ -65,6 +67,39 @@ describe("toQuizProgressVM — happy path", () => {
       total: 30,
       bounded: true,
       fraction: 0.5,
+      complete: false, // S5: 14 graded < 30 target → not reached
     });
+  });
+});
+
+describe("toQuizProgressVM — S5 done-state (`complete`), failure/edge first", () => {
+  it("FR-1 endless (target null): never complete, even at a high tally", () => {
+    expect(toQuizProgressVM(99, "reviewing", null).complete).toBe(false);
+  });
+
+  it("FR-4 boundary: gradedTotal == target → complete; == target-1 → not", () => {
+    expect(toQuizProgressVM(30, "reviewing", 30).complete).toBe(true);
+    expect(toQuizProgressVM(29, "reviewing", 30).complete).toBe(false);
+  });
+
+  it("edge over-run: gradedTotal > target → still complete (>=, not ==)", () => {
+    expect(toQuizProgressVM(31, "reviewing", 30).complete).toBe(true);
+  });
+
+  it("edge target==1: gradedTotal 1 → complete; 0 → not (no off-by-one)", () => {
+    expect(toQuizProgressVM(1, "reviewing", 1).complete).toBe(true);
+    expect(toQuizProgressVM(0, "reviewing", 1).complete).toBe(false);
+  });
+
+  it("FR-8 purity/offset: complete keys on raw gradedTotal, NOT display position", () => {
+    // Same gradedTotal, different phase — `position` differs (answering = +1),
+    // but `complete` must be identical (it uses gradedTotal, not position), so the
+    // banner never false-fires one question early during the answering phase.
+    expect(toQuizProgressVM(30, "answering", 30).complete).toBe(true);
+    expect(toQuizProgressVM(30, "reviewing", 30).complete).toBe(true);
+    // And it does NOT fire early: 29 graded while answering (position shows 30)
+    // is still NOT complete — proves position-independence in the risky direction.
+    expect(toQuizProgressVM(29, "answering", 30).position).toBe(30);
+    expect(toQuizProgressVM(29, "answering", 30).complete).toBe(false);
   });
 });
