@@ -336,3 +336,137 @@ describe("FsrsScheduler — servedIds no-repeat (FR-9/10/11/13)", () => {
     expect(upserts).toBe(0); // exclusion is a pure read path; review() is the sole writer
   });
 });
+
+// --- S3.1: strict round-robin skill rotation (FR-1/2/3/4/6/7) — ADR-0024 ---
+
+/**
+ * Three skills, all due, DISTINCT masteries (mirroring the dev seed where the
+ * always-sentence-completion bug appears). Each skill has ≥2 reviewed items so a
+ * skill is not exhausted after one serve.
+ */
+function seedThreeDistinctSkills(db: InMemoryEngineDb) {
+  db.seedSkills([
+    skill({ id: "s-weak", key: "punctuation" }),
+    skill({ id: "s-mid", key: "grammar" }),
+    skill({ id: "s-strong", key: "rhetoric" }),
+  ]);
+  db.seedSkillStates([
+    seededState({ skill_id: "s-weak", mastery: 0.2 }), // weakest → today always first
+    seededState({ skill_id: "s-mid", mastery: 0.5 }),
+    seededState({ skill_id: "s-strong", mastery: 0.8 }),
+  ]);
+  db.seedQuestions([
+    reviewedQuestion({ id: "qw1", skill_id: "s-weak", difficulty: 1 }),
+    reviewedQuestion({ id: "qw2", skill_id: "s-weak", difficulty: 2 }),
+    reviewedQuestion({ id: "qm1", skill_id: "s-mid", difficulty: 1 }),
+    reviewedQuestion({ id: "qm2", skill_id: "s-mid", difficulty: 2 }),
+    reviewedQuestion({ id: "qs1", skill_id: "s-strong", difficulty: 1 }),
+    reviewedQuestion({ id: "qs2", skill_id: "s-strong", difficulty: 2 }),
+  ]);
+}
+
+describe("FsrsScheduler — strict round-robin rotation (FR-1/2/3/4/6/7)", () => {
+  it("FR-1: omitting servedSkillIds keeps today's weakest-first order (backward-compatible)", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // No servedSkillIds → weakest (s-weak, mastery 0.2) is picked, exactly as before.
+    const pick = await scheduler.next("act-english", "alice");
+    expect(pick.skill_id).toBe("s-weak");
+  });
+
+  it("FR-3: the just-served weakest skill is NOT served again while others are eligible", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // s-weak was just served (its item qw1 in servedIds; s-weak at head of the
+    // newest-first served-skill list). Today's weakest-first would return s-weak
+    // again (it's still the lowest mastery, frozen). Strict rotation must NOT.
+    const pick = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qw1"], // served question
+      ["s-weak"], // served skill (newest-first)
+    );
+    expect(pick.skill_id).not.toBe("s-weak");
+    // The next-weakest *unserved* skill wins the rotation → s-mid.
+    expect(pick.skill_id).toBe("s-mid");
+  });
+
+  it("FR-4: never-served skill sorts ahead of served; among served, oldest-most-recent first", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // Served history newest-first: s-mid (most recent), then s-weak. s-strong is
+    // UNSERVED → it must sort first (ahead of both served skills) despite being
+    // the strongest (highest mastery).
+    const pick1 = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qm1", "qw1"],
+      ["s-mid", "s-weak"], // s-mid most-recent, s-weak older
+    );
+    expect(pick1.skill_id).toBe("s-strong"); // unserved wins
+
+    // Now all three served; newest-first [s-strong, s-mid, s-weak]. The
+    // oldest-most-recent-serve (s-weak, tail) rotates to the front.
+    const pick2 = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qs1", "qm1", "qw1"],
+      ["s-strong", "s-mid", "s-weak"],
+    );
+    expect(pick2.skill_id).toBe("s-weak");
+  });
+
+  it("FR-2/FR-3: a full walk rotates across skills — never the same skill twice in a row", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    const servedQ: string[] = [];
+    const servedSkill: string[] = []; // newest-first
+    const order: string[] = [];
+    // Walk 6 picks (2 per skill exist). Record + feed back the served history.
+    for (let i = 0; i < 6; i++) {
+      const pick = await scheduler.next(
+        "act-english",
+        "alice",
+        servedQ,
+        servedSkill,
+      );
+      order.push(pick.skill_id);
+      servedQ.push(pick.question_id);
+      servedSkill.unshift(pick.skill_id); // newest at head
+    }
+    // No skill served twice consecutively.
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i]).not.toBe(order[i - 1]);
+    }
+    // All three skills appear (true rotation across buckets, not parked on one).
+    expect(new Set(order).size).toBe(3);
+  });
+
+  it("FR-6: rotation never re-serves a question and still throws when all are exhausted", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // Every question served → exhaustion throw is unchanged by rotation.
+    const allQ = ["qw1", "qw2", "qm1", "qm2", "qs1", "qs2"];
+    await expect(
+      scheduler.next("act-english", "alice", allQ, ["s-strong", "s-mid", "s-weak"]),
+    ).rejects.toBeInstanceOf(EngineNotFoundError);
+  });
+
+  it("FR-7: next(servedSkillIds) performs NO skill_state write (read-only rotation)", async () => {
+    const { db } = setup();
+    seedThreeDistinctSkills(db);
+    let upserts = 0;
+    const original = db.upsertSkillState.bind(db);
+    db.upsertSkillState = async (s) => {
+      upserts += 1;
+      return original(s);
+    };
+    const scheduler = new FsrsScheduler({
+      db,
+      questions: new DrizzleQuestionRepo(db),
+      now: () => NOW,
+    });
+    await scheduler.next("act-english", "alice", ["qw1"], ["s-weak"]);
+    expect(upserts).toBe(0);
+  });
+});

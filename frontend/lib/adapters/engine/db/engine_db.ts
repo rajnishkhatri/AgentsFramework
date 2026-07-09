@@ -111,6 +111,16 @@ export interface EngineDb extends ReadableEngineDb {
    * `session_id`; order is not significant (the caller uses it as a set).
    */
   listSessionQuestionIds(sessionId: string): Promise<string[]>;
+  /**
+   * The distinct skills served in one session, **newest-first** (S3.1, FR-5) —
+   * the round-robin rotation projection (ADR-0024). Joins the session's
+   * append-only `attempt` rows to their questions (`attempt.question_id →
+   * question.skill_id`), orders by attempt `created_at` descending, and de-dups
+   * keeping each skill's newest occurrence. Like `listSessionQuestionIds` this
+   * is derived from `attempt` only — NEVER `skill_state` (FR-13 purity). `[]`
+   * when the session has no attempts.
+   */
+  listSessionSkillIds(sessionId: string): Promise<string[]>;
 
   // --- skill_state (Scheduler is the only writer; repos read for adaptivity) ---
   // `listSkillState` is inherited from ReadableEngineDb (the ADR-0011 read seam).

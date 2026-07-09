@@ -74,6 +74,7 @@ export class FsrsScheduler implements Scheduler {
     subject: string,
     learnerId: string,
     servedIds?: readonly string[],
+    servedSkillIds?: readonly string[],
   ): Promise<NextItem> {
     let states: SkillState[];
     try {
@@ -98,13 +99,37 @@ export class FsrsScheduler implements Scheduler {
     // Copy before sorting: `states` may be a reference an EngineDb impl shares
     // (and `filter` aliases nothing when due is empty), so sort a fresh array.
     const pool = [...(due.length > 0 ? due : states)];
+
+    // S3.1 strict round-robin rotation (FR-1/2/3/4, ADR-0024): when the caller
+    // supplies this session's served skills (newest-first), least-recently-served
+    // is the PRIMARY sort key so a just-finished skill rotates to the back and the
+    // session spreads across buckets. `recencyRank` ranks each skill so that a
+    // LOWER rank sorts FIRST: never-served = 0 (highest priority); a served skill =
+    // 1 + its index in the newest-first list, so the most-recently-served (index 0
+    // → rank 1) sorts LAST among served, and older serves sort ahead. A finite
+    // rank (not ±∞) keeps the comparator NaN-free when several skills are
+    // never-served (the common first-pick case). Ties fall through to the existing
+    // weakest-mastery → due_at → skill_id chain. Omitted/empty `servedSkillIds`
+    // makes every rank 0 → today's weakest-first order exactly (FR-1). Pure read
+    // reorder: no `skill_state` write (FR-7/FR-13 — `review()` is the sole writer).
+    const recencyRank = (skillId: string): number => {
+      if (servedSkillIds == null || servedSkillIds.length === 0) return 0;
+      const i = servedSkillIds.indexOf(skillId);
+      // Never-served (0) beats every served skill; among served, most-recent
+      // (i=0 → 1) is largest so it sorts last, older serves (larger i) smaller.
+      return i === -1 ? 0 : servedSkillIds.length - i;
+    };
     pool.sort(
       (a, b) =>
+        // Rotation first (ascending rank): never-served (0) ahead of served;
+        // among served, oldest-most-recent-serve (smaller rank) ahead of newest.
+        recencyRank(a.skill_id) - recencyRank(b.skill_id) ||
         a.mastery - b.mastery ||
         Date.parse(a.due_at) - Date.parse(b.due_at) ||
-        // Final deterministic tie-break: identical mastery + due_at (e.g. a
-        // freshly seeded learner) must resolve to a stable skill regardless of
-        // store row order (the pg seam's listSkillIds has no ORDER BY).
+        // Final deterministic tie-break: identical rank + mastery + due_at (e.g. a
+        // freshly seeded learner with no served history) must resolve to a stable
+        // skill regardless of store row order (the pg seam's listSkillIds has no
+        // ORDER BY).
         a.skill_id.localeCompare(b.skill_id),
     );
 

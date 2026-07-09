@@ -115,7 +115,9 @@ export async function listQuizSkillIds(
  *
  * `sessionId` (S3, FR-9/FR-13): when present, the play loop derives this
  * session's already-served question ids from its `attempt` rows and passes them
- * to `scheduler.next` so a session never repeats a question. The served set is
+ * to `scheduler.next` so a session never repeats a question. It also derives the
+ * served *skills* newest-first (S3.1, FR-3/ADR-0024) so the scheduler rotates to
+ * a different bucket instead of parking on the same weakest skill. Both sets are
  * ephemeral + caller-owned (derived here, never persisted on `skill_state`);
  * omitting `sessionId` keeps today's single-pick behaviour (backward-compatible).
  */
@@ -127,7 +129,16 @@ export async function openQuizItem(
     args.sessionId != null
       ? await ports.attemptRepo.servedQuestionIds(args.sessionId)
       : undefined;
-  const next = await ports.scheduler.next(args.subject, args.learnerId, servedIds);
+  const servedSkillIds =
+    args.sessionId != null
+      ? await ports.attemptRepo.servedSkillIds(args.sessionId)
+      : undefined;
+  const next = await ports.scheduler.next(
+    args.subject,
+    args.learnerId,
+    servedIds,
+    servedSkillIds,
+  );
   const question = await ports.questionRepo.get(next.question_id);
   if (question == null) {
     // The scheduler picked an id the repo can't resolve — a seam defect, surfaced

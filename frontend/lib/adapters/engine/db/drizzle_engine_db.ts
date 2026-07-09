@@ -440,6 +440,42 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       return rows.map((r) => String((r as { question_id: unknown }).question_id));
     },
+    async listSessionSkillIds(sessionId) {
+      // The session's served skills newest-first (S3.1 FR-5): resolve each
+      // attempt's question_id → skill_id, order by attempt.created_at desc, then
+      // de-dup in JS keeping each skill's newest occurrence. An attempt's
+      // question_id may be a `question` id (dev/practice) OR a `test_item` id
+      // (the ADR-0021 bank path), so LEFT JOIN both tables and COALESCE the skill
+      // — an INNER JOIN on `question` alone would drop every bank attempt and make
+      // rotation silently no-op on the live quiz. Each id matches ≤1 row per
+      // table, so the left joins yield one row per attempt. Derived from `attempt`
+      // only (FR-13).
+      const rows = await wrap(
+        "listSessionSkillIds",
+        db
+          .select({
+            skill_id: sql<
+              string | null
+            >`coalesce(${pg.question.skill_id}, ${pg.testItem.skill_id})`,
+          })
+          .from(pg.attempt)
+          .leftJoin(pg.question, eq(pg.attempt.question_id, pg.question.id))
+          .leftJoin(pg.testItem, eq(pg.attempt.question_id, pg.testItem.id))
+          .where(eq(pg.attempt.session_id, sessionId))
+          .orderBy(desc(pg.attempt.created_at)),
+      );
+      const seen = new Set<string>();
+      const skills: string[] = [];
+      for (const r of rows) {
+        const raw = (r as { skill_id: unknown }).skill_id;
+        if (raw == null) continue; // id in neither table — skip (defensive)
+        const id = String(raw);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        skills.push(id);
+      }
+      return skills;
+    },
     async listSkillState(subject, learnerId) {
       const rows = await wrap(
         "listSkillState",

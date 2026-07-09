@@ -23,6 +23,12 @@ import type { Attempt, AttemptInput } from "../../wire/engine_entities";
  *      `Scheduler.next(…, servedIds)` so a session never repeats a question.
  *      This history is NEVER written to `skill_state` (FR-A2 purity). Returns
  *      `[]` (not throw) for a session with no attempts.
+ *   6. `servedSkillIds()` returns the DISTINCT skills served in one session,
+ *      NEWEST-FIRST (S3.1, FR-5) — the round-robin rotation signal (ADR-0024).
+ *      Same provenance as `servedQuestionIds` (derived from `attempt`, joined to
+ *      each question's `skill_id`; NEVER `skill_state`), passed to
+ *      `Scheduler.next(…, servedSkillIds)` so a finished skill rotates to the
+ *      back. Returns `[]` for a session with no attempts.
  *
  * @throws EngineRepoError on persistence failure.
  */
@@ -39,4 +45,11 @@ export interface AttemptRepo {
    * derived from `attempt`, never persisted on `skill_state`.
    */
   servedQuestionIds(sessionId: string): Promise<readonly string[]>;
+
+  /**
+   * The distinct skills served in `sessionId`, newest-first, for round-robin
+   * rotation (S3.1 FR-5). Ephemeral + caller-owned; derived from `attempt`
+   * joined to each question's skill, never persisted on `skill_state`.
+   */
+  servedSkillIds(sessionId: string): Promise<readonly string[]>;
 }

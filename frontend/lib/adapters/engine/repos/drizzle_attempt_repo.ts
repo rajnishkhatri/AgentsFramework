@@ -64,6 +64,14 @@ export class DrizzleAttemptRepo implements AttemptRepo {
       throw translate("servedQuestionIds", err);
     }
   }
+
+  async servedSkillIds(sessionId: string): Promise<readonly string[]> {
+    try {
+      return await this.db.listSessionSkillIds(sessionId);
+    } catch (err) {
+      throw translate("servedSkillIds", err);
+    }
+  }
 }
 
 function translate(op: string, err: unknown): EngineRepoError {

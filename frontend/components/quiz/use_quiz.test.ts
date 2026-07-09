@@ -579,3 +579,53 @@ describe("openQuizItem — within-session no-repeat (S3, FR-9/FR-13 wiring)", ()
     expect(item.question.id).toBe("q1");
   });
 });
+
+describe("openQuizItem — round-robin skill rotation (S3.1, FR-3 wiring)", () => {
+  it("an adaptive walk rotates across skills — never the same skill twice in a row", async () => {
+    // Three skills, two reviewed items each. The learner is auto-seeded (all
+    // masteries 0, due now), so rotation is the load-bearing differentiator.
+    db.seedSkills([
+      skill({ id: "s-punc", key: "punctuation" }),
+      skill({ id: "s-gram", key: "grammar" }),
+      skill({ id: "s-rhet", key: "rhetoric" }),
+    ]);
+    db.seedQuestions([
+      question({ id: "p1", skill_id: "s-punc", difficulty: 1 }),
+      question({ id: "p2", skill_id: "s-punc", difficulty: 2 }),
+      question({ id: "g1", skill_id: "s-gram", difficulty: 1 }),
+      question({ id: "g2", skill_id: "s-gram", difficulty: 2 }),
+      question({ id: "r1", skill_id: "s-rhet", difficulty: 1 }),
+      question({ id: "r2", skill_id: "s-rhet", difficulty: 2 }),
+    ]);
+    const { session } = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "adaptive",
+    });
+
+    const skillsSeen: string[] = [];
+    // Walk all six items, answering each so the served history feeds the next pick.
+    for (let i = 0; i < 6; i++) {
+      const item = await openQuizItem(ports, {
+        subject: SUBJECT,
+        learnerId: LEARNER,
+        sessionId: session.id,
+      });
+      skillsSeen.push(item.skillId);
+      await runQuizSubmit(ports, {
+        session,
+        question: item.question,
+        learnerId: LEARNER,
+        letter: "A",
+        elapsedMs: 1000,
+        usedHint: false,
+      });
+    }
+    // No skill served twice consecutively (the "always sentence-completion" fix).
+    for (let i = 1; i < skillsSeen.length; i++) {
+      expect(skillsSeen[i]).not.toBe(skillsSeen[i - 1]);
+    }
+    // All three buckets appear — true rotation, not parked on one skill.
+    expect(new Set(skillsSeen).size).toBe(3);
+  });
+});

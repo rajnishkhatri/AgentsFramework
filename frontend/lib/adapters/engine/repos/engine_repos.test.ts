@@ -298,6 +298,101 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
     expect(await repo.servedQuestionIds("sess-empty")).toEqual([]);
   });
+
+  // --- S3.1: session-scoped served-SKILL read (FR-5) — round-robin rotation ---
+
+  it("servedSkillIds returns this session's skills newest-first, distinct (FR-5)", async () => {
+    const db = new InMemoryEngineDb();
+    // Three questions across two skills; served punc, then gram, then punc again.
+    db.seedQuestions([
+      question({ id: "qp1", skill_id: "s-punc" }),
+      question({ id: "qg1", skill_id: "s-gram" }),
+      question({ id: "qp2", skill_id: "s-punc" }),
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    const at = (n: number) => `2026-07-08T00:00:0${n}Z`;
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sess1", question_id: "qp1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false, created_at: at(1),
+    });
+    await db.insertAttempt({
+      id: "a2", subject: "act-english", session_id: "sess1", question_id: "qg1",
+      chosen_letter: "A", correct: false, elapsed_ms: 1, used_hint: false, created_at: at(2),
+    });
+    await db.insertAttempt({
+      id: "a3", subject: "act-english", session_id: "sess1", question_id: "qp2",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false, created_at: at(3),
+    });
+    // newest-first by attempt time: qp2(s-punc,3) → qg1(s-gram,2) → qp1(s-punc,1),
+    // de-duped keeping the newest occurrence's position → [s-punc, s-gram].
+    const skills = await repo.servedSkillIds("sess1");
+    expect([...skills]).toEqual(["s-punc", "s-gram"]);
+  });
+
+  it("servedSkillIds does not leak another session's skills (FR-5)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([
+      question({ id: "qp1", skill_id: "s-punc" }),
+      question({ id: "qr1", skill_id: "s-rhet" }),
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sess1", question_id: "qp1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "b1", subject: "act-english", session_id: "sess2", question_id: "qr1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:02Z",
+    });
+    const skills = await repo.servedSkillIds("sess1");
+    expect([...skills]).toEqual(["s-punc"]);
+    expect(skills).not.toContain("s-rhet");
+  });
+
+  it("servedSkillIds returns [] for a session with no attempts (FR-5)", async () => {
+    const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
+    expect(await repo.servedSkillIds("sess-empty")).toEqual([]);
+  });
+
+  it("servedSkillIds resolves BANK items too (attempt.question_id may be a test_item id) (FR-5)", async () => {
+    // The bank quiz (ADR-0021) serves test_item ids, NOT question ids, so the
+    // served-skill read must resolve skill from test_item as well as question —
+    // otherwise rotation silently no-ops on the live /learn surface.
+    const db = new InMemoryEngineDb();
+    db.seedTestItems([
+      {
+        id: "ti-punc",
+        subject: "act-english",
+        skill_id: "s-punc",
+        difficulty: 2,
+        context_html: "<p>c</p>",
+        stem_md: "Which choice is best?",
+        choices: [
+          { letter: "A", label: "NO CHANGE", is_no_change: true },
+          { letter: "B", label: "b", is_no_change: false },
+          { letter: "C", label: "c", is_no_change: false },
+          { letter: "D", label: "d", is_no_change: false },
+        ],
+        answer_letter: "A",
+        per_choice_rationale: { A: "correct" },
+        why_correct_md: "because",
+        why_tempted_md: "tempting",
+        rule_md: "the rule",
+        item_type: "underlined-span-mc",
+        reviewed: true,
+        generated_by: "test@run1",
+      },
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sessB", question_id: "ti-punc",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    expect([...(await repo.servedSkillIds("sessB"))]).toEqual(["s-punc"]);
+  });
 });
 
 // --- SessionRepo ---------------------------------------------------------
