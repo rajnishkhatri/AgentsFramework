@@ -1,8 +1,10 @@
 # Tasks — S5: `/learn` quiz done-state + retake
 
-**Status:** **ALL TASKS DONE — IMPLEMENTED 2026-07-09** (Stage 6). T-s0…T-sg green; evidence in spec §9.
+**Status:** **ALL TASKS DONE — IMPLEMENTED 2026-07-09** (Stage 6); **SHIPPED + REVERT MERGED TO `main`**.
+T-s0…T-sg green; evidence in spec §9. S5 core = PR [#138](https://github.com/rajnishkhatri/AgentsFramework/pull/138) (MERGED, commit `9253bf6`, merge `f02c332`);
+button-relabel **REVERTED to target-gated** = PR [#139](https://github.com/rajnishkhatri/AgentsFramework/pull/139) (MERGED, commit `1f8ac07`, merge `37eade4`). Target-gated relabel is LIVE on `main`.
 **Spec:** [preact-quiz-done-state.spec.md](preact-quiz-done-state.spec.md) (Gate 1 ✓)
-**Plan:** [preact-quiz-done-state.plan.md](preact-quiz-done-state.plan.md) (Gate 2 ✓, OQ-1 = unconditional relabel)
+**Plan:** [preact-quiz-done-state.plan.md](preact-quiz-done-state.plan.md) (Gate 2 ✓; **OQ-1 = target-gated relabel**, revised 2026-07-09 — was unconditional, reverted per user)
 
 ---
 
@@ -76,11 +78,14 @@ Every implementation task pastes **failing output first, then passing** (root `A
 - Import `QuizDoneBanner`.
 - In the reviewing `content` (`:225–247`), **above** `<FeedbackView>` (`:227`):
   `{progressVm.complete ? <QuizDoneBanner targetCount={session?.target_count ?? 0} /> : null}`.
-- Relabel **label text only** (unconditional, Gate-2 OQ-1): `quiz-next` `Next question →` →
-  `Keep practising`; `quiz-finish` `Finish &amp; see summary` → `See summary`. **`data-testid`s +
-  `onClick` handlers + structure unchanged.**
+- Relabel **label text only**, **gated on `progressVm.complete`** (revised OQ-1 —
+  target-gated, was unconditional): pre-target the buttons keep their ORIGINAL text; at/after
+  the target they flip in lock-step with the banner —
+  `quiz-next`: `{progressVm.complete ? "Keep practising" : "Next question →"}`;
+  `quiz-finish`: `{progressVm.complete ? "See summary" : "Finish & see summary"}`.
+  **`data-testid`s + `onClick` handlers + structure unchanged.**
 - **Pass/fail:** `tsc --noEmit` clean; existing S4 spec `quiz-progress.spec.ts` still green
-  (selectors intact); manual/preview smoke shows banner at target.
+  (selectors intact); manual/preview smoke shows banner + label flip at target, originals before.
 
 ### T-s5 — E2E done-state walk (RED→GREEN) · `e2e/learn/quiz-done-state.spec.ts` (new) · [seq:T-s4]
 - **Covers:** FR-2, FR-3, FR-6, FR-7, FR-5(sibling placement), edge(double-tap), edge(no re-arm).
@@ -88,9 +93,10 @@ Every implementation task pastes **failing output first, then passing** (root `A
   NOT session `target_count` — no short-target shortcut exists; the S4 `quiz-progress.spec.ts` already
   walks the real bank at the 30 floor, reuse that pattern). Set a generous `test.setTimeout`.
   Assertions:
-  1. Pre-target reviewing screen: buttons already read "Keep practising"/"See summary" (unconditional).
+  1. Pre-target reviewing screen: buttons keep their ORIGINAL labels "Next question →" / "Finish &
+     see summary" and NO banner (revised OQ-1 — target-gated relabel).
   2. At boundary: `quiz-done-banner` visible AND positioned **above** the feedback banner (DOM order);
-     URL still `/learn/quiz` (**no auto-nav**, FR-3).
+     buttons FLIP to "Keep practising" / "See summary"; URL still `/learn/quiz` (**no auto-nav**, FR-3).
   3. "Keep practising" → still answering, same session; progress bar in over-run (true position, no
      `of M` — reuses S4 assertion) (FR-2, FR-7).
   4. On a subsequent over-run reviewing screen, "See summary" still present (edge: no re-arm needed;
