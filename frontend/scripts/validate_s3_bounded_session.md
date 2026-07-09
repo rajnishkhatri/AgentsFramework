@@ -130,17 +130,17 @@ to S4) — Part 1 is the authority there.
 ### 2B — Round-robin skill rotation (S3.1, FR-3 — ADR-0024)
 
 - [ ] **2B.1** Answer several items and **watch the skill/topic of each**. The session
-  **rotates across the due skills** (punctuation → organization → grammar → …) — it
-  does **not** keep serving the same skill (in particular, it is **no longer always
+  **rotates across skills** (punctuation → organization → grammar → …) — it does
+  **not** keep serving the same skill (in particular, it is **no longer always
   sentence-completion** after you finish one).
 - [ ] **2B.2** ✅ **EXPECT:** consecutive items are from **different** skills, and over
-  ~10 items you see **3 distinct** skills cycle. *(This is the "always sentence-
+  ~8 items you see the skills **cycle** (verified live on `424d8cc`: all six —
+  `s-punc → s-org → s-gram → s-sent → s-rhet → s-style` — then wrapping back to
+  `s-punc`, with **no skill twice in a row**). *(This is the "always sentence-
   completion" fix, FR-3.)*
 
-> Why not all six skills? Rotation cycles the **due** skills (Maya's `s-punc`/`s-org`/
-> `s-gram` are due; `s-sent`/`s-rhet`/`s-style` are future-due, so they stay out of the
-> pool until reviewed — correct adaptivity). The point is that **no single skill parks
-> the "next" slot** anymore.
+> For the S3.1-specific walkthrough with the full seed table and the deterministic
+> `data-skill` check, see [`validate_s3_1_rotation_ui.md`](validate_s3_1_rotation_ui.md).
 
 ### 2C — Exhaustion ends the session (FR-11) — optional, long
 
@@ -150,12 +150,18 @@ to S4) — Part 1 is the authority there.
   question") rather than repeating an item. *(This is FR-11 — the raw serving signal.
   S5 will render this as a clean "you're done" screen.)*
 
-### 2D — Focus-mode deep link (drill on one skill)
+### 2D — Focus-mode deep link (opens a drill session)
 
-- [ ] **2D.1** Open **`/learn/quiz?focus=s-gram`** → the session opens as a **drill on
-  grammar**.
-- [ ] **2D.2** ✅ **EXPECT:** the same no-repeat guarantee holds **within that skill's
-  items** — walk several and confirm none repeat.
+- [ ] **2D.1** Open **`/learn/quiz?focus=s-gram`** → the session opens in **drill
+  mode** (the mode is stored on the session).
+- [ ] **2D.2** ✅ **EXPECT:** the no-repeat guarantee still holds — walk several items
+  and confirm none repeat.
+
+> ⚠️ **Honest scope note:** `?focus=` opens a drill-**mode** session, but the
+> scheduler's `next()` has **never** taken a skill filter, so it still schedules
+> across the **whole** taxonomy — the drill **does not pin the quiz to one skill**,
+> and rotation applies. This is a pre-existing gap (not an S3.1 regression); see
+> Part 3 of [`validate_s3_1_rotation_ui.md`](validate_s3_1_rotation_ui.md).
 
 ### 2E — No console errors
 
