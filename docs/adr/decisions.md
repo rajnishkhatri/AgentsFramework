@@ -410,3 +410,21 @@ title: 'Lightweight decision log (intent debt, long tail)'
   (`use_quiz.ts:51`) with `mode:"drill"`. Re-point to `/learn/skill` when S9 lands. Rejected:
   link-only to plain `/learn/quiz` (label would duplicate the CTA, less faithful to the
   prototype's bucket→drill intent); blocking S2 on S9 (defeats the ship-early sprint plan).
+- 2026-07-09 — **S5 done-state = additive VM flag + presentational banner (preact-quiz-done-state
+  spec; no ADR — Frontend-Ring presentational + pure translator field, no engine/wire/reducer
+  change).** The "reached the target?" signal is an additive `complete: boolean` on the existing
+  `quiz_progress_vm` (`complete = bounded && gradedTotal >= targetCount`) — NOT a standalone helper:
+  the page already calls `toQuizProgressVM(state.score.total, state.phase, session?.target_count ??
+  null)`, so the flag rides the one VM the page already reads, keeping all count math in one
+  translator (F-R1). Keyed on raw `gradedTotal` (not display `position`, which is `+1` while
+  answering) so the milestone never false-fires one question early. The milestone `QuizDoneBanner`
+  is presentational-only (mirrors `QuizProgress`), rendered as a SIBLING above `FeedbackView` in the
+  page's reviewing branch (FeedbackView has no children slot — left untouched). `progressVm` is
+  hoisted above the phase branch so the banner and the S4 bar share one VM instance. Buttons relabel
+  UNCONDITIONALLY (Gate-2): "Keep practising"/"See summary" on every reviewing screen — label text
+  only, `data-testid`s + handlers unchanged, so S3/S4 selectors and loop behaviour are untouched
+  (FR-10). Copy is an inline literal, NOT `t()` — the repo has no i18n helper (`lib/i18n.ts` absent;
+  `QuizProgress.tsx:15` documents the inline-literal convention). Rejected: standalone
+  `isSessionComplete` helper (duplicates the two inputs at a second call site; fragments the count
+  spine S4 built); new reducer `done`-at-target phase (unnecessary — the reviewing phase already
+  carries the tally; `done` stays finish-only); a `t()` import (would invent a non-existent API).

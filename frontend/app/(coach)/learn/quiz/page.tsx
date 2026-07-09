@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
 import { QuizView } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
+import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachPanel } from "@/components/coach/CoachPanel";
 import { useSurface } from "@/components/shell/use_surface";
@@ -192,6 +193,18 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
+  // S4/S5: the progress VM (position + "reached the target?") derived from the
+  // reducer tally + the open session's target_count. Computed BEFORE the phase
+  // branch so the reviewing branch can read `progressVm.complete` for the S5
+  // milestone banner (the threshold math stays in the translator — F-R1). Read-
+  // only, no engine call (FR-9). `session` is non-null here (loading/done returned
+  // above); `state.score`/`session` are not mutated between here and the render.
+  const progressVm = toQuizProgressVM(
+    state.score.total,
+    state.phase,
+    session?.target_count ?? null,
+  );
+
   let item: QuizItemResult;
   let content: React.JSX.Element;
   if (state.phase === "answering") {
@@ -224,15 +237,28 @@ export default function QuizPage(): React.JSX.Element {
     );
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        {/* S5 done-state (FR-4/FR-5): once the graded tally reaches the target,
+            the milestone shows ABOVE the item's feedback (which stays visible —
+            the learner still sees #30's answer). `complete` is the translator's
+            call; endless/over-run handled there. */}
+        {progressVm.complete ? (
+          <QuizDoneBanner targetCount={session?.target_count ?? 0} />
+        ) : null}
         {feedback.present ? <FeedbackView vm={feedback.vm} /> : null}
         <div className="flex items-center justify-between gap-3">
+          {/* S5 (FR-6/FR-7, Gate-2: unconditional relabel): the two actions read
+              "Keep practising" / "See summary" on every reviewing screen. Only the
+              label text changed — testids + handlers are unchanged, so S3/S4
+              selectors and the loop behaviour are untouched (FR-10). "Keep
+              practising" continues the SAME session (over-run, tally kept);
+              "See summary" closes + routes (Summary never re-tallies). */}
           <button
             type="button"
             data-testid="quiz-next"
             onClick={() => dispatch({ type: "next" })}
             className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
           >
-            Next question →
+            Keep practising
           </button>
           <button
             type="button"
@@ -240,23 +266,16 @@ export default function QuizPage(): React.JSX.Element {
             onClick={onFinish}
             className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
           >
-            Finish &amp; see summary
+            See summary
           </button>
         </div>
       </div>
     );
   }
 
-  // S4: the "Question N of M" progress bar, above the item in BOTH phases. Pure
-  // VM from the existing signals — the reducer tally (served-so-far) + the open
-  // session's target_count (§14 note: read-only, no engine call, FR-9). The math
-  // is the translator's; this page is thin glue (F-R1). `session` is non-null here
-  // (the loading/done early return above guards it).
-  const progressVm = toQuizProgressVM(
-    state.score.total,
-    state.phase,
-    session?.target_count ?? null,
-  );
+  // S4: the "Question N of M" progress bar, above the item in BOTH phases. Reuses
+  // `progressVm` (computed above the phase branch so the S5 done-state banner can
+  // share it) — read-only, no engine call, FR-9; math is the translator's (F-R1).
   const framed = (
     <div className="flex flex-col gap-5">
       <QuizProgress vm={progressVm} />

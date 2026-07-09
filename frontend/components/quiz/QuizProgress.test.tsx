@@ -27,7 +27,7 @@ function render(vm: QuizProgressVM): Document {
 
 describe("QuizProgress — endless / over-run (edge first)", () => {
   it("FR-1 endless (total null): shows position, no ' of ' denominator", () => {
-    const doc = render({ position: 7, total: null, bounded: false, fraction: 0 });
+    const doc = render({ position: 7, total: null, bounded: false, fraction: 0, complete: false });
     const el = doc.querySelector('[data-testid="quiz-progress"]');
     expect(el).not.toBeNull();
     expect(el?.textContent).toContain("Question 7");
@@ -35,7 +35,7 @@ describe("QuizProgress — endless / over-run (edge first)", () => {
   });
 
   it("FR-2 over-run: true position, denominator dropped, bar clamped full", () => {
-    const doc = render({ position: 32, total: null, bounded: true, fraction: 1 });
+    const doc = render({ position: 32, total: null, bounded: true, fraction: 1, complete: true });
     const el = doc.querySelector('[data-testid="quiz-progress"]');
     expect(el?.textContent).toContain("Question 32");
     expect(el?.textContent).not.toContain(" of ");
@@ -48,8 +48,8 @@ describe("QuizProgress — endless / over-run (edge first)", () => {
     // total null) must not announce a measured value; omitting the attrs is how AT
     // reports "indeterminate" instead of a misleading "0%"/"100%".
     for (const vm of [
-      { position: 7, total: null, bounded: false, fraction: 0 }, // endless
-      { position: 32, total: null, bounded: true, fraction: 1 }, // over-run
+      { position: 7, total: null, bounded: false, fraction: 0, complete: false }, // endless
+      { position: 32, total: null, bounded: true, fraction: 1, complete: true }, // over-run
     ] as const) {
       const bar = render(vm).querySelector('[role="progressbar"]');
       expect(bar).not.toBeNull();
@@ -63,7 +63,7 @@ describe("QuizProgress — endless / over-run (edge first)", () => {
 
 describe("QuizProgress — bounded a11y + fill", () => {
   it("FR-7 exposes a progressbar with aria-valuenow/min/max", () => {
-    const doc = render({ position: 15, total: 30, bounded: true, fraction: 0.5 });
+    const doc = render({ position: 15, total: 30, bounded: true, fraction: 0.5, complete: false });
     const bar = doc.querySelector('[role="progressbar"]');
     expect(bar).not.toBeNull();
     expect(bar?.getAttribute("aria-valuemin")).toBe("0");
@@ -72,13 +72,13 @@ describe("QuizProgress — bounded a11y + fill", () => {
   });
 
   it("FR-5 bar fill width matches the fraction", () => {
-    const doc = render({ position: 15, total: 30, bounded: true, fraction: 0.5 });
+    const doc = render({ position: 15, total: 30, bounded: true, fraction: 0.5, complete: false });
     const fill = doc.querySelector('[data-testid="quiz-progress-fill"]') as HTMLElement | null;
     expect(fill?.style.width).toBe("50%");
   });
 
   it("bounded counter shows 'Question N of M'", () => {
-    const doc = render({ position: 3, total: 30, bounded: true, fraction: 0.1 });
+    const doc = render({ position: 3, total: 30, bounded: true, fraction: 0.1, complete: false });
     expect(
       doc.querySelector('[data-testid="quiz-progress"]')?.textContent,
     ).toContain("Question 3 of 30");
