@@ -78,6 +78,33 @@ describe("TestItemQuestionRepo — failure paths first", () => {
     expect(await repo.nextReviewed("act-english", "s-punc")).toBeNull();
   });
 
+  // --- S3: excludeIds forwarded through the bank adapter (FR-9/FR-11) ---
+
+  it("nextReviewed skips an excluded bank id and serves the next (FR-9)", async () => {
+    const repo = new TestItemQuestionRepo(
+      fakeRepo([
+        bankItem({ id: "ti-a", skill_id: "s-gram", difficulty: 1 }),
+        bankItem({ id: "ti-b", skill_id: "s-gram", difficulty: 2 }),
+      ]),
+      "act-english",
+    );
+    const q = await repo.nextReviewed("act-english", "s-gram", ["ti-a"]);
+    expect(q?.id).toBe("ti-b"); // ti-a excluded → next-easiest reviewed bank item
+  });
+
+  it("nextReviewed returns null when all bank items for the skill are excluded (FR-11)", async () => {
+    const repo = new TestItemQuestionRepo(
+      fakeRepo([
+        bankItem({ id: "ti-a", skill_id: "s-gram" }),
+        bankItem({ id: "ti-b", skill_id: "s-gram" }),
+      ]),
+      "act-english",
+    );
+    expect(
+      await repo.nextReviewed("act-english", "s-gram", ["ti-a", "ti-b"]),
+    ).toBeNull();
+  });
+
   it("get returns null for an unknown id", async () => {
     const repo = new TestItemQuestionRepo(fakeRepo([bankItem()]), "act-english");
     expect(await repo.get("nope")).toBeNull();

@@ -122,6 +122,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
       ended_at: null,
       score_correct: 0,
       score_total: 0,
+      target_count: null,
     });
 
     const attempt: Attempt = {
@@ -169,6 +170,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
       ended_at: null,
       score_correct: 0,
       score_total: 0,
+      target_count: null,
     });
     const attempt = (createdAt: Date): Attempt => ({
       id: "a",
@@ -223,6 +225,7 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
         ended_at: null,
         score_correct: 0,
         score_total: 0,
+        target_count: null,
       });
       return scheduler;
     };
@@ -240,5 +243,230 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
     const correct = await mk().review({ ...base, correct: true });
     const wrong = await mk().review({ ...base, correct: false });
     expect(Date.parse(wrong.due_at)).toBeLessThan(Date.parse(correct.due_at));
+  });
+});
+
+// --- S3: within-session no-repeat via servedIds (FR-9/10/11/13) ---
+
+/** A default skill_state row so a learner is pre-seeded (no seeding upsert). */
+function seededState(over: Partial<import("../../../wire/engine_entities").SkillState> = {}) {
+  return {
+    subject: "act-english",
+    skill_id: "s1",
+    learner_id: "alice",
+    mastery: 0.1,
+    last_seen: null,
+    fsrs_stability: 0,
+    fsrs_difficulty: 0,
+    due_at: NOW.toISOString(), // due now → in the pool
+    fsrs_card: null,
+    ...over,
+  };
+}
+
+describe("FsrsScheduler — servedIds no-repeat (FR-9/10/11/13)", () => {
+  it("next never returns a served question id (FR-9)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" })]);
+    db.seedSkillStates([seededState({ skill_id: "s1" })]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q1", skill_id: "s1", difficulty: 1 }),
+      reviewedQuestion({ id: "q2", skill_id: "s1", difficulty: 2 }),
+    ]);
+    const pick = await scheduler.next("act-english", "alice", ["q1"]);
+    expect(pick.question_id).toBe("q2"); // q1 served → the next item for the skill
+  });
+
+  it("when the weakest skill is exhausted, falls through to the next-weakest (FR-10)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" }), skill({ id: "s2", key: "rhetoric" })]);
+    // s1 is weaker (lower mastery) so it is chosen first; its only item is served.
+    db.seedSkillStates([
+      seededState({ skill_id: "s1", mastery: 0.1 }),
+      seededState({ skill_id: "s2", mastery: 0.5 }),
+    ]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q-s1", skill_id: "s1" }),
+      reviewedQuestion({ id: "q-s2", skill_id: "s2" }),
+    ]);
+    const pick = await scheduler.next("act-english", "alice", ["q-s1"]);
+    // s1 exhausted (its only item served) → fall through to s2, not a repeat/throw.
+    expect(pick.skill_id).toBe("s2");
+    expect(pick.question_id).toBe("q-s2");
+  });
+
+  it("throws EngineNotFoundError when every skill's items are all served (FR-11)", async () => {
+    const { db, scheduler } = setup();
+    db.seedSkills([skill({ id: "s1" }), skill({ id: "s2", key: "rhetoric" })]);
+    db.seedSkillStates([
+      seededState({ skill_id: "s1", mastery: 0.1 }),
+      seededState({ skill_id: "s2", mastery: 0.5 }),
+    ]);
+    db.seedQuestions([
+      reviewedQuestion({ id: "q-s1", skill_id: "s1" }),
+      reviewedQuestion({ id: "q-s2", skill_id: "s2" }),
+    ]);
+    // Both (the whole bank for this learner) already served → end early, no repeat.
+    await expect(
+      scheduler.next("act-english", "alice", ["q-s1", "q-s2"]),
+    ).rejects.toBeInstanceOf(EngineNotFoundError);
+  });
+
+  it("next(servedIds) performs NO skill_state write — the served set is read-only (FR-13)", async () => {
+    const { db } = setup();
+    db.seedSkills([skill({ id: "s1" })]);
+    db.seedSkillStates([seededState({ skill_id: "s1" })]); // pre-seeded → no seeding upsert
+    db.seedQuestions([
+      reviewedQuestion({ id: "q1", skill_id: "s1", difficulty: 1 }),
+      reviewedQuestion({ id: "q2", skill_id: "s1", difficulty: 2 }),
+    ]);
+    // Count upserts through a pass-through spy on the fake.
+    let upserts = 0;
+    const original = db.upsertSkillState.bind(db);
+    db.upsertSkillState = async (s) => {
+      upserts += 1;
+      return original(s);
+    };
+    const scheduler = new FsrsScheduler({
+      db,
+      questions: new DrizzleQuestionRepo(db),
+      now: () => NOW,
+    });
+    await scheduler.next("act-english", "alice", ["q1"]);
+    expect(upserts).toBe(0); // exclusion is a pure read path; review() is the sole writer
+  });
+});
+
+// --- S3.1: strict round-robin skill rotation (FR-1/2/3/4/6/7) — ADR-0024 ---
+
+/**
+ * Three skills, all due, DISTINCT masteries (mirroring the dev seed where the
+ * always-sentence-completion bug appears). Each skill has ≥2 reviewed items so a
+ * skill is not exhausted after one serve.
+ */
+function seedThreeDistinctSkills(db: InMemoryEngineDb) {
+  db.seedSkills([
+    skill({ id: "s-weak", key: "punctuation" }),
+    skill({ id: "s-mid", key: "grammar" }),
+    skill({ id: "s-strong", key: "rhetoric" }),
+  ]);
+  db.seedSkillStates([
+    seededState({ skill_id: "s-weak", mastery: 0.2 }), // weakest → today always first
+    seededState({ skill_id: "s-mid", mastery: 0.5 }),
+    seededState({ skill_id: "s-strong", mastery: 0.8 }),
+  ]);
+  db.seedQuestions([
+    reviewedQuestion({ id: "qw1", skill_id: "s-weak", difficulty: 1 }),
+    reviewedQuestion({ id: "qw2", skill_id: "s-weak", difficulty: 2 }),
+    reviewedQuestion({ id: "qm1", skill_id: "s-mid", difficulty: 1 }),
+    reviewedQuestion({ id: "qm2", skill_id: "s-mid", difficulty: 2 }),
+    reviewedQuestion({ id: "qs1", skill_id: "s-strong", difficulty: 1 }),
+    reviewedQuestion({ id: "qs2", skill_id: "s-strong", difficulty: 2 }),
+  ]);
+}
+
+describe("FsrsScheduler — strict round-robin rotation (FR-1/2/3/4/6/7)", () => {
+  it("FR-1: omitting servedSkillIds keeps today's weakest-first order (backward-compatible)", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // No servedSkillIds → weakest (s-weak, mastery 0.2) is picked, exactly as before.
+    const pick = await scheduler.next("act-english", "alice");
+    expect(pick.skill_id).toBe("s-weak");
+  });
+
+  it("FR-3: the just-served weakest skill is NOT served again while others are eligible", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // s-weak was just served (its item qw1 in servedIds; s-weak at head of the
+    // newest-first served-skill list). Today's weakest-first would return s-weak
+    // again (it's still the lowest mastery, frozen). Strict rotation must NOT.
+    const pick = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qw1"], // served question
+      ["s-weak"], // served skill (newest-first)
+    );
+    expect(pick.skill_id).not.toBe("s-weak");
+    // The next-weakest *unserved* skill wins the rotation → s-mid.
+    expect(pick.skill_id).toBe("s-mid");
+  });
+
+  it("FR-4: never-served skill sorts ahead of served; among served, oldest-most-recent first", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // Served history newest-first: s-mid (most recent), then s-weak. s-strong is
+    // UNSERVED → it must sort first (ahead of both served skills) despite being
+    // the strongest (highest mastery).
+    const pick1 = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qm1", "qw1"],
+      ["s-mid", "s-weak"], // s-mid most-recent, s-weak older
+    );
+    expect(pick1.skill_id).toBe("s-strong"); // unserved wins
+
+    // Now all three served; newest-first [s-strong, s-mid, s-weak]. The
+    // oldest-most-recent-serve (s-weak, tail) rotates to the front.
+    const pick2 = await scheduler.next(
+      "act-english",
+      "alice",
+      ["qs1", "qm1", "qw1"],
+      ["s-strong", "s-mid", "s-weak"],
+    );
+    expect(pick2.skill_id).toBe("s-weak");
+  });
+
+  it("FR-2/FR-3: a full walk rotates across skills — never the same skill twice in a row", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    const servedQ: string[] = [];
+    const servedSkill: string[] = []; // newest-first
+    const order: string[] = [];
+    // Walk 6 picks (2 per skill exist). Record + feed back the served history.
+    for (let i = 0; i < 6; i++) {
+      const pick = await scheduler.next(
+        "act-english",
+        "alice",
+        servedQ,
+        servedSkill,
+      );
+      order.push(pick.skill_id);
+      servedQ.push(pick.question_id);
+      servedSkill.unshift(pick.skill_id); // newest at head
+    }
+    // No skill served twice consecutively.
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i]).not.toBe(order[i - 1]);
+    }
+    // All three skills appear (true rotation across buckets, not parked on one).
+    expect(new Set(order).size).toBe(3);
+  });
+
+  it("FR-6: rotation never re-serves a question and still throws when all are exhausted", async () => {
+    const { db, scheduler } = setup();
+    seedThreeDistinctSkills(db);
+    // Every question served → exhaustion throw is unchanged by rotation.
+    const allQ = ["qw1", "qw2", "qm1", "qm2", "qs1", "qs2"];
+    await expect(
+      scheduler.next("act-english", "alice", allQ, ["s-strong", "s-mid", "s-weak"]),
+    ).rejects.toBeInstanceOf(EngineNotFoundError);
+  });
+
+  it("FR-7: next(servedSkillIds) performs NO skill_state write (read-only rotation)", async () => {
+    const { db } = setup();
+    seedThreeDistinctSkills(db);
+    let upserts = 0;
+    const original = db.upsertSkillState.bind(db);
+    db.upsertSkillState = async (s) => {
+      upserts += 1;
+      return original(s);
+    };
+    const scheduler = new FsrsScheduler({
+      db,
+      questions: new DrizzleQuestionRepo(db),
+      now: () => NOW,
+    });
+    await scheduler.next("act-english", "alice", ["qw1"], ["s-weak"]);
+    expect(upserts).toBe(0);
   });
 });

@@ -13,13 +13,14 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
 import { QuizView } from "@/components/quiz/QuizView";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachPanel } from "@/components/coach/CoachPanel";
 import { useSurface } from "@/components/shell/use_surface";
 import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
+import { resolveFocusMode } from "@/components/quiz/resolve_focus_mode";
 import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
@@ -45,8 +46,13 @@ function socraticHint(stem: string): string {
 }
 
 export default function QuizPage(): React.JSX.Element {
-  const { openSession, openItem, submit, closeSession } = useQuiz();
+  const { openSession, openItem, submit, closeSession, listSkillIds } = useQuiz();
   const router = useRouter();
+  // FR-A5 / S2 (FR-6): a `?focus=<skillId>` deep-link (from the Summary skill
+  // name or a Dashboard bucket card) opens the session as a DRILL on that skill.
+  // The value is validated against the known skill ids before use; an
+  // absent/unknown param falls back to adaptive (resolve_focus_mode).
+  const focusParam = useSearchParams().get("focus");
   // FR-J3: on the iPad surface the Quiz renders as a SPLIT — item on the left,
   // the persistent live coach panel on the right, feeding the SAME coach
   // thread as the Coach screen. The coach-pointed runtime is built only when
@@ -74,9 +80,21 @@ export default function QuizPage(): React.JSX.Element {
   // once the session exists.
   React.useEffect(() => {
     let cancelled = false;
-    openSession({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID, mode: "adaptive" })
-      .then((opened) => {
+    // FR-6: resolve the `?focus=` param against the known skills, then open a
+    // drill (valid focus) or adaptive (absent/unknown). listSkillIds is
+    // read-only taxonomy; the decision itself is the pure resolveFocusMode.
+    listSkillIds(DEFAULT_SUBJECT)
+      .then((skillIds) => {
         if (cancelled) return;
+        const focusMode = resolveFocusMode(focusParam, skillIds);
+        return openSession({
+          subject: DEFAULT_SUBJECT,
+          learnerId: LEARNER_ID,
+          ...focusMode,
+        });
+      })
+      .then((opened) => {
+        if (cancelled || opened == null) return;
         stashQuizSession(opened.session.id, opened.skillStateAtStart);
         setSession(opened.session);
       })
@@ -88,14 +106,16 @@ export default function QuizPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [openSession]);
+  }, [openSession, listSkillIds, focusParam]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
   // exists, fetch the next scheduled item and fold it into the phase machine.
   React.useEffect(() => {
     if (session == null || state.phase !== "loading") return;
     let cancelled = false;
-    openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID })
+    // S3: pass the session id so openItem derives this session's served-ids and
+    // never re-serves a question already answered this session (FR-9/FR-13).
+    openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID, sessionId: session.id })
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.

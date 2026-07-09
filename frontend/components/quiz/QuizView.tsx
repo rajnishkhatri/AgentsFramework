@@ -40,7 +40,14 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
   const submittable = canSubmit(selectedLetter);
 
   return (
-    <section aria-label="Quiz question" className="mx-auto flex max-w-[760px] flex-col gap-5">
+    <section
+      aria-label="Quiz question"
+      // Stable e2e hook for the served skill (S3.1 rotation, ADR-0024). Not
+      // visible UI — the skill is not rendered until S4; this only lets the
+      // rotation Playwright spec read the served skill deterministically.
+      data-skill={vm.skillId}
+      className="mx-auto flex max-w-[760px] flex-col gap-5"
+    >
       {/* FR-A6: reviewed engine-authored context carrying the underlined span. */}
       <p
         data-testid="quiz-context"

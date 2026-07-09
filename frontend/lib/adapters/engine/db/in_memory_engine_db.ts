@@ -109,12 +109,18 @@ export class InMemoryEngineDb implements EngineDb {
   async nextReviewedQuestion(
     subject: string,
     skillId: string,
+    excludeIds?: readonly string[],
   ): Promise<Question | null> {
+    // The served set (FR-9): skip these ids. A Set for O(1) membership; the
+    // filter is a PRE-FILTER on top of the reviewed gate — an excluded id and
+    // an unreviewed row are both simply not candidates (FR-12 gate untouched).
+    const excluded = new Set(excludeIds ?? []);
     const candidates = [...this.questions.values()].filter(
       (q) =>
         q.subject === subject &&
         q.skill_id === skillId &&
-        q.reviewed === true, // HARD GATE
+        q.reviewed === true && // HARD GATE
+        !excluded.has(q.id),
     );
     // Deterministic: lowest difficulty first, then id.
     candidates.sort((a, b) => a.difficulty - b.difficulty || a.id.localeCompare(b.id));
@@ -217,6 +223,35 @@ export class InMemoryEngineDb implements EngineDb {
       )
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) // newest-first
       .map((a) => ({ ...a }));
+  }
+  async listSessionQuestionIds(sessionId: string): Promise<string[]> {
+    // Every question answered in this session (any correctness) — the served
+    // set (FR-13). Filter by session_id → project question_id.
+    return this.attempts
+      .filter((a) => a.session_id === sessionId)
+      .map((a) => a.question_id);
+  }
+  async listSessionSkillIds(sessionId: string): Promise<string[]> {
+    // The session's served skills newest-first, distinct (S3.1 FR-5). Resolve
+    // each attempt's question_id → skill_id, order by created_at desc, de-dup
+    // keeping the newest occurrence. An attempt's question_id may be a `question`
+    // id (dev/practice path) OR a `test_item` id (the ADR-0021 bank path), so we
+    // resolve against BOTH id-spaces — resolving only `question` would make
+    // rotation silently no-op on the live bank-backed quiz. Derived from
+    // `attempt` only (FR-13); an id in neither table is skipped.
+    const seen = new Set<string>();
+    const skills: string[] = [];
+    for (const a of [...this.attempts]
+      .filter((a) => a.session_id === sessionId)
+      .sort((x, y) => (x.created_at < y.created_at ? 1 : -1))) {
+      const skillId =
+        this.questions.get(a.question_id)?.skill_id ??
+        this.testItems.get(a.question_id)?.skill_id;
+      if (skillId == null || seen.has(skillId)) continue;
+      seen.add(skillId);
+      skills.push(skillId);
+    }
+    return skills;
   }
 
   // --- skill_state ---

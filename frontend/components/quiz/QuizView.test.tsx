@@ -81,6 +81,13 @@ describe("QuizView — no selection (edge first, FR-D4)", () => {
   it("carries the underlined-span context html (FR-A6)", () => {
     expect(doc.querySelector('[data-testid="quiz-context"]')?.innerHTML).toContain('class="u"');
   });
+
+  it("exposes the served skill via data-skill (S3.1 rotation e2e hook)", () => {
+    // The skill isn't rendered as visible UI (that's S4), but a stable data-skill
+    // on the item root lets the rotation Playwright spec read the served skill
+    // deterministically instead of guessing from prose (ADR-0024).
+    expect(doc.querySelector('[data-skill="s-punc"]')).not.toBeNull();
+  });
 });
 
 describe("QuizView — a choice selected (FR-D3)", () => {

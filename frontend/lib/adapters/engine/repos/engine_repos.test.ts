@@ -128,6 +128,47 @@ describe("DrizzleQuestionRepo — the reviewed gate (FR-B*)", () => {
     const got = await repo.get("u1");
     expect(got!.reviewed).toBe(false);
   });
+
+  // --- S3: excludeIds served-set filter (FR-9/FR-11/FR-12) ---
+
+  it("nextReviewed skips an excluded id and returns the next candidate (FR-9)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([
+      question({ id: "q1", reviewed: true, difficulty: 1 }), // would win by difficulty
+      question({ id: "q2", reviewed: true, difficulty: 2 }),
+    ]);
+    const repo = new DrizzleQuestionRepo(db);
+    const got = await repo.nextReviewed("act-english", "s-punct", ["q1"]);
+    expect(got!.id).toBe("q2"); // q1 excluded → next-easiest reviewed item
+  });
+
+  it("nextReviewed returns null when every reviewed item is excluded (FR-11 exhaustion)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([
+      question({ id: "q1", reviewed: true }),
+      question({ id: "q2", reviewed: true }),
+    ]);
+    const repo = new DrizzleQuestionRepo(db);
+    expect(await repo.nextReviewed("act-english", "s-punct", ["q1", "q2"])).toBeNull();
+  });
+
+  it("excludeIds never surfaces a reviewed=false item (FR-12 gate intact)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([
+      question({ id: "r1", reviewed: true, difficulty: 5 }),
+      question({ id: "u1", reviewed: false, difficulty: 1 }), // unreviewed, easiest
+    ]);
+    const repo = new DrizzleQuestionRepo(db);
+    // Exclude the only reviewed item; the unreviewed easy one must NOT surface.
+    expect(await repo.nextReviewed("act-english", "s-punct", ["r1"])).toBeNull();
+  });
+
+  it("empty excludeIds is identical to today's behaviour (backward-compat)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([question({ id: "q1", reviewed: true, difficulty: 1 })]);
+    const repo = new DrizzleQuestionRepo(db);
+    expect((await repo.nextReviewed("act-english", "s-punct", []))!.id).toBe("q1");
+  });
 });
 
 // --- AttemptRepo ---------------------------------------------------------
@@ -168,6 +209,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
       ended_at: null,
       score_correct: 0,
       score_total: 0,
+      target_count: null,
     });
     const repo = new DrizzleAttemptRepo({ db });
     await db.insertAttempt({
@@ -205,6 +247,151 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     });
     const misses = await repo.misses("act-english", "alice");
     expect(misses.map((m) => m.id)).toEqual(["m2", "m1"]); // newest-first, correct excluded
+  });
+
+  // --- S3: session-scoped served-ids (FR-13; no session-scoped read existed) ---
+
+  it("servedQuestionIds returns exactly the session's answered question ids (served, not misses)", async () => {
+    const db = new InMemoryEngineDb();
+    const repo = new DrizzleAttemptRepo({ db });
+    // sess1: two attempts (one CORRECT, one incorrect) — both are "served".
+    await db.insertAttempt({
+      id: "a1",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q1",
+      chosen_letter: "B",
+      correct: true, // served regardless of correctness (unlike misses)
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "a2",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q2",
+      chosen_letter: "C",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-07-08T00:00:02Z",
+    });
+    // A DIFFERENT session's attempt must not leak into sess1's served set.
+    await db.insertAttempt({
+      id: "b1",
+      subject: "act-english",
+      session_id: "sess2",
+      question_id: "q9",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-07-08T00:00:03Z",
+    });
+    const served = await repo.servedQuestionIds("sess1");
+    expect([...served].sort()).toEqual(["q1", "q2"]);
+    expect(served).not.toContain("q9");
+  });
+
+  it("servedQuestionIds returns [] for a session with no attempts", async () => {
+    const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
+    expect(await repo.servedQuestionIds("sess-empty")).toEqual([]);
+  });
+
+  // --- S3.1: session-scoped served-SKILL read (FR-5) — round-robin rotation ---
+
+  it("servedSkillIds returns this session's skills newest-first, distinct (FR-5)", async () => {
+    const db = new InMemoryEngineDb();
+    // Three questions across two skills; served punc, then gram, then punc again.
+    db.seedQuestions([
+      question({ id: "qp1", skill_id: "s-punc" }),
+      question({ id: "qg1", skill_id: "s-gram" }),
+      question({ id: "qp2", skill_id: "s-punc" }),
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    const at = (n: number) => `2026-07-08T00:00:0${n}Z`;
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sess1", question_id: "qp1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false, created_at: at(1),
+    });
+    await db.insertAttempt({
+      id: "a2", subject: "act-english", session_id: "sess1", question_id: "qg1",
+      chosen_letter: "A", correct: false, elapsed_ms: 1, used_hint: false, created_at: at(2),
+    });
+    await db.insertAttempt({
+      id: "a3", subject: "act-english", session_id: "sess1", question_id: "qp2",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false, created_at: at(3),
+    });
+    // newest-first by attempt time: qp2(s-punc,3) → qg1(s-gram,2) → qp1(s-punc,1),
+    // de-duped keeping the newest occurrence's position → [s-punc, s-gram].
+    const skills = await repo.servedSkillIds("sess1");
+    expect([...skills]).toEqual(["s-punc", "s-gram"]);
+  });
+
+  it("servedSkillIds does not leak another session's skills (FR-5)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([
+      question({ id: "qp1", skill_id: "s-punc" }),
+      question({ id: "qr1", skill_id: "s-rhet" }),
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sess1", question_id: "qp1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "b1", subject: "act-english", session_id: "sess2", question_id: "qr1",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:02Z",
+    });
+    const skills = await repo.servedSkillIds("sess1");
+    expect([...skills]).toEqual(["s-punc"]);
+    expect(skills).not.toContain("s-rhet");
+  });
+
+  it("servedSkillIds returns [] for a session with no attempts (FR-5)", async () => {
+    const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
+    expect(await repo.servedSkillIds("sess-empty")).toEqual([]);
+  });
+
+  it("servedSkillIds resolves BANK items too (attempt.question_id may be a test_item id) (FR-5)", async () => {
+    // The bank quiz (ADR-0021) serves test_item ids, NOT question ids, so the
+    // served-skill read must resolve skill from test_item as well as question —
+    // otherwise rotation silently no-ops on the live /learn surface.
+    const db = new InMemoryEngineDb();
+    db.seedTestItems([
+      {
+        id: "ti-punc",
+        subject: "act-english",
+        skill_id: "s-punc",
+        difficulty: 2,
+        context_html: "<p>c</p>",
+        stem_md: "Which choice is best?",
+        choices: [
+          { letter: "A", label: "NO CHANGE", is_no_change: true },
+          { letter: "B", label: "b", is_no_change: false },
+          { letter: "C", label: "c", is_no_change: false },
+          { letter: "D", label: "d", is_no_change: false },
+        ],
+        answer_letter: "A",
+        per_choice_rationale: { A: "correct" },
+        why_correct_md: "because",
+        why_tempted_md: "tempting",
+        rule_md: "the rule",
+        item_type: "underlined-span-mc",
+        reviewed: true,
+        generated_by: "test@run1",
+      },
+    ]);
+    const repo = new DrizzleAttemptRepo({ db });
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sessB", question_id: "ti-punc",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    expect([...(await repo.servedSkillIds("sessB"))]).toEqual(["s-punc"]);
   });
 });
 
@@ -255,6 +442,63 @@ describe("DrizzleSessionRepo — lifecycle + scoring", () => {
     await expect(
       repo.close("nope", { score_correct: 0, score_total: 0 }),
     ).rejects.toBeInstanceOf(EngineNotFoundError);
+  });
+
+  // --- S3: bounded-session target_count (FR-5/6/7) ---
+
+  function sessionRepoWithContent(
+    content: Record<string, string> = {},
+  ): { db: InMemoryEngineDb; repo: DrizzleSessionRepo } {
+    const db = new InMemoryEngineDb();
+    if (Object.keys(content).length) db.seedContent("act-english", "en", content);
+    const repo = new DrizzleSessionRepo({
+      db,
+      contentRepo: new DrizzleContentRepo(db),
+      newId: () => "sess-tc",
+      now: () => new Date(2026, 6, 8, 0, 0, 0),
+    });
+    return { db, repo };
+  }
+
+  it("open without a target resolves the per-mode default 30 from content_string (FR-5)", async () => {
+    const { repo } = sessionRepoWithContent({
+      "session.target_count.drill": "30",
+    });
+    const opened = await repo.open("act-english", "alice", "drill", "s-punct");
+    expect(opened.target_count).toBe(30);
+  });
+
+  it("open without a target falls back to 30 when no content_string row exists (FR-5)", async () => {
+    // Missing policy row → ContentRepo echoes the key; the repo must still land
+    // on the flat-30 default, never persist a NaN/key-string as the length.
+    const { repo } = sessionRepoWithContent();
+    const opened = await repo.open("act-english", "alice", "adaptive");
+    expect(opened.target_count).toBe(30);
+  });
+
+  it("open with an explicit target persists that value, not the default (FR-6)", async () => {
+    const { repo } = sessionRepoWithContent({
+      "session.target_count.drill": "30",
+    });
+    const opened = await repo.open("act-english", "alice", "drill", "s-punct", 12);
+    expect(opened.target_count).toBe(12);
+  });
+
+  it("open with an explicit null = endless session, distinct from omitted (FR-2/FR-6)", async () => {
+    const { repo } = sessionRepoWithContent({
+      "session.target_count.drill": "30",
+    });
+    const opened = await repo.open("act-english", "alice", "drill", "s-punct", null);
+    expect(opened.target_count).toBeNull();
+  });
+
+  it("close leaves target_count untouched — stored, not recomputed (FR-7)", async () => {
+    const { repo } = sessionRepoWithContent({
+      "session.target_count.drill": "30",
+    });
+    await repo.open("act-english", "alice", "drill", "s-punct");
+    const closed = await repo.close("sess-tc", { score_correct: 5, score_total: 8 });
+    expect(closed.target_count).toBe(30);
   });
 });
 

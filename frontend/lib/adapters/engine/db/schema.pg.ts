@@ -196,6 +196,10 @@ export const quizSession = pgTable("quiz_session", {
   ended_at: timestamp("ended_at", { withTimezone: true }),
   score_correct: integer("score_correct").notNull().default(0),
   score_total: integer("score_total").notNull().default(0),
+  // Bounded-session length (S3). Nullable, no default: NULL = endless, and a
+  // pre-S3 row (added before this column) reads NULL → `target_count: null`
+  // (FR-2/FR-3). Set once at open, never recomputed on close (FR-7).
+  target_count: integer("target_count"),
 });
 
 /**
