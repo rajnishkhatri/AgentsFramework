@@ -16,6 +16,7 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
 import { QuizView } from "@/components/quiz/QuizView";
+import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachPanel } from "@/components/coach/CoachPanel";
 import { useSurface } from "@/components/shell/use_surface";
@@ -29,6 +30,7 @@ import {
 } from "@/components/quiz/quiz_screen_reducer";
 import { stashQuizSession } from "@/components/quiz/quiz_session_store";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
+import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { screen } from "@/components/shell/nav_model";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { QuizSession } from "@/lib/wire/engine_entities";
@@ -245,13 +247,30 @@ export default function QuizPage(): React.JSX.Element {
     );
   }
 
+  // S4: the "Question N of M" progress bar, above the item in BOTH phases. Pure
+  // VM from the existing signals — the reducer tally (served-so-far) + the open
+  // session's target_count (§14 note: read-only, no engine call, FR-9). The math
+  // is the translator's; this page is thin glue (F-R1). `session` is non-null here
+  // (the loading/done early return above guards it).
+  const progressVm = toQuizProgressVM(
+    state.score.total,
+    state.phase,
+    session?.target_count ?? null,
+  );
+  const framed = (
+    <div className="flex flex-col gap-5">
+      <QuizProgress vm={progressVm} />
+      {content}
+    </div>
+  );
+
   // iPad split (FR-J3): item on the left, the persistent live coach panel on
   // the right. Keyed by question id so the panel's nudge tier resets per item
   // (FR-J3a); the coach THREAD itself lives in coach_thread_store and survives.
   if (coachRuntime != null) {
     return (
       <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1">{content}</div>
+        <div className="min-w-0 flex-1">{framed}</div>
         <CoachPanel
           key={item.question.id}
           runtime={coachRuntime}
@@ -260,5 +279,5 @@ export default function QuizPage(): React.JSX.Element {
       </div>
     );
   }
-  return content;
+  return framed;
 }
