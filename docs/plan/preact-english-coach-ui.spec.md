@@ -174,7 +174,12 @@ path. Each FR maps to ≥1 test in §8.
   card containing a Socratic guiding question, flip its label to "Hide hint", and SHALL
   NOT reveal the correct answer.
 - **FR-D6.** THE SYSTEM SHALL render "Reveal answer" as a visually distinct,
-  low-emphasis (ghost) control separate from "Get a hint".
+  low-emphasis (ghost) control separate from "Get a hint". (Prototype interaction
+  table: low-emphasis path to the answered/feedback state — not an in-place letter
+  reveal on the Quiz screen.)
+- **FR-D6a.** WHEN "Reveal answer" is activated AND a choice is selected THE SYSTEM
+  SHALL follow the same path as "Submit answer" (route to Feedback with the selected
+  letter). WHILE no choice is selected THE SYSTEM SHALL keep Reveal non-actionable.
 - **FR-D7.** WHEN "Submit answer" is activated (a choice being selected) THE SYSTEM
   SHALL route to Feedback with the selected letter carried as context.
 - **FR-D8.** WHEN the timer dismiss control is activated THE SYSTEM SHALL hide the clock

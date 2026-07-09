@@ -1,5 +1,12 @@
 # PreAct English Coach — Prototype ↔ App Parity Gap Matrix
 
+> ⚠️ **SUPERSEDED (2026-07-09).** This Stage-1 matrix predates the S3/S4/S5 merges (PR #136–#139),
+> so its `🔴 missing` rows for the progress bar, bounded session, done-state, clickable bucket card,
+> and CTA contrast are **stale — those all shipped.** The current, canonical, screenshot-verified
+> 7-screen audit (with spec + E2E coverage checklist) is
+> **[preact-ui-prototype-parity-VISUAL-gap-report.md](preact-ui-prototype-parity-VISUAL-gap-report.md)**.
+> Keep this file for historical/provenance value only; use the visual report going forward.
+
 **Stage:** SDD Stage 1 (brainstorm) evidence artifact · **Date:** 2026-07-08
 **Method:** Hybrid — prototype Playwright specs (`eng-coach-ui-design/tests/e2e/*.spec.js`) as
 the behavior oracle, mapped to shipped code (`frontend/app/(coach)/learn/` + `frontend/components/*`),
