@@ -440,4 +440,7 @@ title: 'Lightweight decision log (intent debt, long tail)'
   `quiz-done-state.spec.ts` pre-target test now asserts the original labels + a boundary
   label-flip; `validate_s5_done_state.spec.ts` matches. Rejected (the prior entry):
   unconditional relabel (made the buttons read "Keep practising" 29 questions before there
-  was anything to keep practising past — semantically premature).
+  was anything to keep practising past — semantically premature). **LANDED ON `main`:**
+  revert commit `1f8ac07` via PR #139 (merge `37eade4`) — the target-gated behaviour is
+  live on `main`, superseding the unconditional relabel that reached `main` via PR #138
+  (`f02c332`) an hour earlier.
