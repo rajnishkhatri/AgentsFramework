@@ -246,19 +246,24 @@ export default function QuizPage(): React.JSX.Element {
         ) : null}
         {feedback.present ? <FeedbackView vm={feedback.vm} /> : null}
         <div className="flex items-center justify-between gap-3">
-          {/* S5 (FR-6/FR-7, Gate-2: unconditional relabel): the two actions read
-              "Keep practising" / "See summary" on every reviewing screen. Only the
-              label text changed — testids + handlers are unchanged, so S3/S4
-              selectors and the loop behaviour are untouched (FR-10). "Keep
-              practising" continues the SAME session (over-run, tally kept);
-              "See summary" closes + routes (Summary never re-tallies). */}
+          {/* S5 (FR-6/FR-7): the two actions keep their ORIGINAL labels
+              ("Next question" / "Finish & see summary") for every pre-target
+              review, and FLIP to "Keep practising" / "See summary" only once the
+              target is reached (gated on `progressVm.complete`, in lock-step with
+              the milestone banner — reverted 2026-07-09 from the unconditional
+              relabel). Label text is the ONLY thing that changes — testids +
+              handlers are unchanged, so S3/S4 selectors and the loop behaviour are
+              untouched (FR-10). "Next question"/"Keep practising" both dispatch the
+              same `next` (continuing the SAME session; past the target that is
+              over-run, tally kept); the finish control closes + routes either way
+              (Summary never re-tallies). */}
           <button
             type="button"
             data-testid="quiz-next"
             onClick={() => dispatch({ type: "next" })}
             className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
           >
-            Keep practising
+            {progressVm.complete ? "Keep practising" : "Next question →"}
           </button>
           <button
             type="button"
@@ -266,7 +271,7 @@ export default function QuizPage(): React.JSX.Element {
             onClick={onFinish}
             className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
           >
-            See summary
+            {progressVm.complete ? "See summary" : "Finish & see summary"}
           </button>
         </div>
       </div>
