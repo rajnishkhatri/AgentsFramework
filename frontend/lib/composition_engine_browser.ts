@@ -34,6 +34,7 @@ import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
 import type {
   Hint,
   Question,
+  QuizSession,
   Skill,
   SkillState,
 } from "./wire/engine_entities";
@@ -162,6 +163,11 @@ export function browserEngineAdapters(): EnginePortBag {
         // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
         // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
         if (injected.hints) db.seedHints([...injected.hints]);
+        if (injected.sessions) {
+          for (const s of injected.sessions) {
+            void db.insertSession({ ...s });
+          }
+        }
         singleton = buildBrowserEngineAdapters({ engineDb: db });
       } else {
         seedDevCorpus(db);
@@ -193,6 +199,8 @@ interface InjectedSeedCorpus {
   readonly skillStates: readonly SkillState[];
   /** Optional reviewed hint ladders (ADR-0014); absent in older specs. */
   readonly hints?: readonly Hint[];
+  /** Optional closed sessions for Dashboard rail e2e (C1 / ADR-0026). */
+  readonly sessions?: readonly QuizSession[];
 }
 
 /**
@@ -220,5 +228,6 @@ function readE2ESeedOverride(): InjectedSeedCorpus | null {
     questions: c.questions,
     skillStates: c.skillStates,
     ...(Array.isArray(c.hints) ? { hints: c.hints } : {}),
+    ...(Array.isArray(c.sessions) ? { sessions: c.sessions } : {}),
   };
 }

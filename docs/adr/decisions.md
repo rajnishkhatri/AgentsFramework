@@ -460,3 +460,22 @@ title: 'Lightweight decision log (intent debt, long tail)'
   revert commit `1f8ac07` via PR #139 (merge `37eade4`) — the target-gated behaviour is
   live on `main`, superseding the unconditional relabel that reached `main` via PR #138
   (`f02c332`) an hour earlier.
+- 2026-07-10 — **C1 Dashboard rail: H6 weekly target = 3 sessions / ISO Monday-start week.**
+  Weekly tile counts closed sessions in `[Monday-00:00-local .. nowISO]`; label display-caps
+  at 3 (`"K / 3 sessions"`) while `count` stays unclamped. The 7-dot session strip from the
+  prototype is deferred with the score-goal tile to Epic F. Rejected: locale-dependent week
+  start (ISO Monday is universal).
+- 2026-07-10 — **C1 Dashboard `sinceISO = nowISO − 30d` (caller policy, not port policy).**
+  `SessionRepo.listByLearner` stays window-agnostic; Dashboard passes a 30-day lower bound so
+  the rail read stays cheap as history grows (ADR-0026 option F). Epic F Progress may pass a
+  longer window without a port change.
+- 2026-07-10 — **C1 defers score-goal + coach-note tiles to Epic F** (alongside `projectedScore`).
+  No honest engine source today (brainstorm P9/P11 refuted); rendering placeholders would
+  violate C-4. FR-14 locks the negative assertion.
+- 2026-07-10 — **C1 responsive layout = Tailwind v4 `@container` (not `useSurface`).** Rail
+  flips from below-header row → right `<aside>` via `@lg:` container queries on
+  `data-testid="dashboard-root"`. `useSurface` stays for behavioral branches (touch / iPad
+  CoachPanel); wrong tool for hydration-safe layout here (FR-5).
+- 2026-07-10 — **C1 streak floor = 1 day for the first closed session today (Q4).**
+  `toStreakVM` celebrates day-1 (`present: true, days: 1`) rather than gating until day-2 —
+  matches the trust-relationship epic tone.

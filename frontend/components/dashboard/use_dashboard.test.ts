@@ -208,3 +208,99 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
     expect(vm.reviewMissesCount).toBe(1);
   });
 });
+
+describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {
+  it("rail_unavailable_on_listByLearner_reject", async () => {
+    const rejecting = {
+      ...ports,
+      sessionRepo: {
+        ...ports.sessionRepo,
+        listByLearner: async () => {
+          throw new Error("ECONNRESET");
+        },
+      },
+    };
+    const vm = await loadDashboard(rejecting, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.greeting.headline).toMatch(/Maya/);
+    expect(vm.buckets.length).toBeGreaterThan(0);
+    expect(vm.rail.status).toBe("unavailable");
+    expect(vm.rail.weekly.label).toBe("—");
+  });
+
+  it("rail_read_fires_concurrently", async () => {
+    const started: string[] = [];
+    const release: Array<() => void> = [];
+    const gate = () =>
+      new Promise<void>((resolve) => {
+        release.push(resolve);
+      });
+
+    const slow = {
+      ...ports,
+      skillTaxonomy: {
+        ...ports.skillTaxonomy,
+        list: async (subject: string) => {
+          started.push("skills");
+          await gate();
+          return ports.skillTaxonomy.list(subject);
+        },
+      },
+      learnerRead: {
+        ...ports.learnerRead,
+        listSkillState: async (subject: string, learnerId: string) => {
+          started.push("states");
+          await gate();
+          return ports.learnerRead.listSkillState(subject, learnerId);
+        },
+      },
+      attemptRepo: {
+        ...ports.attemptRepo,
+        misses: async (subject: string, learnerId: string) => {
+          started.push("misses");
+          await gate();
+          return ports.attemptRepo.misses(subject, learnerId);
+        },
+      },
+      sessionRepo: {
+        ...ports.sessionRepo,
+        listByLearner: async (
+          subject: string,
+          learnerId: string,
+          options?: { sinceISO?: string },
+        ) => {
+          started.push("rail");
+          await gate();
+          return ports.sessionRepo.listByLearner(subject, learnerId, options);
+        },
+      },
+    };
+
+    const pending = loadDashboard(slow, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    // All four must have started before any resolve (single Promise.all).
+    await new Promise((r) => setTimeout(r, 10));
+    expect(started.sort()).toEqual(["misses", "rail", "skills", "states"]);
+    for (const r of release) r();
+    await pending;
+  });
+
+  it("cold_start_returns_zero_and_present_false", async () => {
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(vm.rail.status).toBe("ok");
+    expect(vm.rail.streak.present).toBe(false);
+    expect(vm.rail.streak.days).toBe(0);
+    expect(vm.rail.weekly.count).toBe(0);
+    expect(vm.rail.weekly.label).toBe("0 / 3 sessions");
+  });
+});

@@ -134,6 +134,18 @@ export class DrizzleSessionRepo implements SessionRepo {
       throw translate("get", err);
     }
   }
+
+  async listByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]> {
+    try {
+      return await this.db.listClosedSessionsByLearner(subject, learnerId, options);
+    } catch (err) {
+      throw translate("listByLearner", err);
+    }
+  }
 }
 
 function translate(op: string, err: unknown): EngineRepoError {

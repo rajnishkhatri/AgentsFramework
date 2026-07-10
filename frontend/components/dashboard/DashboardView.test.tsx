@@ -43,6 +43,15 @@ function vm(over: Partial<DashboardVM> = {}): DashboardVM {
       ctaLabel: "Start adaptive session",
     },
     reviewMissesCount: 3,
+    greeting: {
+      headline: "Good afternoon, Maya",
+      subline: "Friday, July 10",
+    },
+    rail: {
+      status: "ok",
+      streak: { present: true, days: 3 },
+      weekly: { count: 2, target: 3, label: "2 / 3 sessions" },
+    },
     ...over,
   };
 }
@@ -132,5 +141,44 @@ describe("DashboardView — FR-C5 review-my-misses", () => {
     const misses = doc.querySelector('[data-testid="review-misses"]');
     expect(misses, "misses control must render").not.toBeNull();
     expect(misses!.textContent).toContain("3");
+  });
+});
+
+describe("DashboardView — C1 rail + greeting (FR-1/FR-5/FR-14)", () => {
+  it("rail_classes_include_container_query_variants", () => {
+    const markup = renderToStaticMarkup(<DashboardView vm={vm()} />);
+    expect(markup).toContain("@container");
+    expect(markup).toContain("@lg:");
+  });
+
+  it("no_goal_or_note_tile_rendered", () => {
+    const doc = dom(<DashboardView vm={vm()} />);
+    const text = (doc.body.textContent ?? "").toLowerCase();
+    expect(text).not.toMatch(/score\s*goal/);
+    expect(text).not.toMatch(/coach\s*note/);
+    expect(text).not.toContain("goal tile");
+  });
+
+  it("unavailable_state_renders_retry_button", () => {
+    const doc = dom(
+      <DashboardView
+        vm={vm({
+          rail: {
+            status: "unavailable",
+            streak: { present: false, days: 0 },
+            weekly: { count: 0, target: 3, label: "—" },
+          },
+        })}
+      />,
+    );
+    expect(doc.querySelector('[data-testid="rail-retry"]')?.textContent).toBe(
+      "Retry",
+    );
+    expect(doc.body.textContent).toContain("Trust rail unavailable");
+    expect(doc.querySelector('[data-testid="streak-tile"]')).toBeNull();
+    expect(doc.querySelector('[data-testid="weekly-tile"]')).toBeNull();
+    // Header + mastery still present (FR-1).
+    expect(doc.querySelector("header")?.textContent).toContain("Good afternoon, Maya");
+    expect(doc.querySelector('[aria-label="Skill mastery"]')).not.toBeNull();
   });
 });

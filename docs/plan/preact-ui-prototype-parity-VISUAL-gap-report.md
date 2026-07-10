@@ -106,13 +106,13 @@ personalized greeting, and a rich right rail** — roughly a third more surface.
 
 | # | Prototype affordance | App status | Sev | Fix pointer |
 |---|---|---|---|---|
-| D-1 | Greeting **"Let's get you to 28, Maya."** + "Tuesday · Good afternoon" | 🔴 absent | 🟧 Major | `DashboardView.tsx` header; needs name + score-goal in `use_dashboard` VM |
+| D-1 | Greeting **"Let's get you to 28, Maya."** + "Tuesday · Good afternoon" | 🟩 shipped (C1) | ✅ | `greeting_vm.ts` + `DashboardView.tsx` `<header>` — time-of-day + title-cased learner id + Intl subline (score-goal copy deferred with D-5-goal) |
 | D-2 | Today's Focus banner + "Start adaptive session" CTA | 🟩 present | 🟩 | — |
 | D-2b | Today's Focus **body copy**: "Your weakest bucket at 49%. 10 adaptive items, ~12 min. The coach will watch for the comma pattern you keep missing." | 🟡 thinner | 🟨 Minor | app shows bare skill name ("Punctuation") only; add supporting line to `TodayFocusBanner.tsx` |
 | D-3 | 6-bucket mastery grid (%, share, bar, Due) | 🟩 present | 🟩 | — |
 | D-3b | Bucket **names** use ACT-standard labels: **Rhetoric / Usage / Conciseness** + colored dot per bucket | 🟡 diverges | 🟨 Minor | app uses "Rhetorical Skills / Grammar & Usage / Style", no per-bucket color dot |
 | D-4 | Bucket card click → skill drill | ✅ **now clickable** | 🟩 | `BucketCard.tsx` renders `<Link href="/learn/quiz?focus=s-…">` (was inert `<article>` in the matrix — **fixed**). ⚠️ caveat: `?focus=` does not actually pin the scheduler (separate pre-existing gap). |
-| D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🔴 absent | 🟧 Major | whole rail missing; needs VM fields (streak, weekly, score-goal, coach-note text) |
+| D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🟨 partial (C1) | 🟧 Major | streak + weekly shipped (`streak_vm` / `weekly_sessions_vm` + rail aside); score-goal + coach-note still open → Epic F |
 | D-6 | Left rail identity: "English Coach" brand + **"Maya / PreACT prep"** user block | 🔴 absent | 🟨 Minor | app sidebar has nav only, no brand/user footer |
 | D-7 | Secondary actions "Drill a skill" / "Review my misses (N)" | 🟡 partial | 🟨 Minor | both `→ /learn/quiz` (matrix D-6); count is real; "Review misses" not a distinct destination |
 | D-8 | Sidebar nav: Dashboard / Practice / **Skills** / Progress / Coach (5) | 🟡 partial | 🟨 Minor | app nav = Home / Practice / Coach / Progress (4) — **no "Skills"** entry; Progress greyed (`comingSoon`) |

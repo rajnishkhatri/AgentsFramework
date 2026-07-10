@@ -64,7 +64,7 @@ export interface SendCoachAskOptions {
   readonly mode?: CoachMode;
   readonly ports?: Pick<
     EnginePortBag,
-    "questionRepo" | "attemptRepo" | "learnerReadRepo"
+    "questionRepo" | "attemptRepo" | "learnerRead"
   >;
   readonly learnerId?: string;
   readonly subject?: string;
@@ -114,10 +114,10 @@ export async function sendCoachAsk(
         skillId: pin.skillId,
       });
       let skillStates = null as Awaited<
-        ReturnType<EnginePortBag["learnerReadRepo"]["listSkillState"]>
+        ReturnType<EnginePortBag["learnerRead"]["listSkillState"]>
       > | null;
       try {
-        skillStates = await opts.ports.learnerReadRepo.listSkillState(
+        skillStates = await opts.ports.learnerRead.listSkillState(
           subject,
           learnerId,
         );
@@ -190,7 +190,7 @@ export function useCoach(
       ports: {
         questionRepo: ports.questionRepo,
         attemptRepo: ports.attemptRepo,
-        learnerReadRepo: ports.learnerReadRepo,
+        learnerRead: ports.learnerRead,
       },
       learnerId: LEARNER_ID,
       subject: DEFAULT_SUBJECT,
