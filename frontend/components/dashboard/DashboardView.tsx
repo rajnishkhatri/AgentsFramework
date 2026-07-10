@@ -31,10 +31,8 @@ export function DashboardView(props: {
   const testRoute = screen("test").route;
 
   return (
-    <div
-      data-testid="dashboard-root"
-      className="@container flex flex-col gap-6 @lg:grid @lg:grid-cols-[1fr_320px] @lg:items-start"
-    >
+    <div data-testid="dashboard-root" className="@container w-full">
+      <div className="flex flex-col gap-6 @lg:grid @lg:grid-cols-[1fr_320px] @lg:items-start">
       <header className="@lg:col-span-2">
         <h1
           data-testid="dashboard-greeting"
@@ -49,7 +47,7 @@ export function DashboardView(props: {
         aria-label="Trust rail"
         aria-live="polite"
         data-testid="trust-rail"
-        className="order-2 flex gap-3 overflow-x-auto @lg:order-none @lg:col-start-2 @lg:row-span-3 @lg:flex-col"
+        className="order-3 flex gap-3 overflow-x-auto @lg:order-none @lg:col-start-2 @lg:row-span-3 @lg:flex-col"
       >
         {/* Single content shell — landmark identity stable across status (FR-7). */}
         <div className="flex gap-3 @lg:flex-col">
@@ -74,7 +72,7 @@ export function DashboardView(props: {
         </div>
       </aside>
 
-      <div className="order-3 flex flex-col gap-6 @lg:order-none @lg:col-start-1">
+      <div className="order-2 flex flex-col gap-6 @lg:order-none @lg:col-start-1">
         {vm.todayFocus.present ? (
           <TodayFocusBanner
             skillName={vm.todayFocus.skillName}
@@ -114,6 +112,7 @@ export function DashboardView(props: {
             Take a timed test
           </Link>
         </section>
+      </div>
       </div>
     </div>
   );

@@ -130,9 +130,11 @@ export function buildBrowserEngineAdapters(
 
 /**
  * C1-fix FR-2: when `NEXT_PUBLIC_PREACT_E2E_HOOKS=1`, wrap
- * `sessionRepo.listByLearner` so the first call rejects (rail unavailable →
- * Retry path). Subsequent calls delegate. Module-scoped flag resets on full
- * page reload (new bag). Composition-root only — zero domain-code branch.
+ * `sessionRepo.listByLearner` so the first call rejects when the page was
+ * opened with `?e2e_rail_fail=1` (rail unavailable → Retry path). Subsequent
+ * calls delegate. Module-scoped flag resets on full page reload (new bag).
+ * Composition-root only — zero domain-code branch. The query-param opt-in
+ * keeps other `/learn` e2e rows from consuming the fail-once on every load.
  */
 let hasFailedOnce = false;
 
@@ -144,7 +146,11 @@ function maybeFailOnceSessionRepo(
   return {
     ...sessionRepo,
     listByLearner: async (subject, learnerId, options) => {
-      if (!hasFailedOnce) {
+      if (
+        !hasFailedOnce &&
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("e2e_rail_fail") === "1"
+      ) {
         hasFailedOnce = true;
         throw new Error("e2e forced rail failure");
       }
