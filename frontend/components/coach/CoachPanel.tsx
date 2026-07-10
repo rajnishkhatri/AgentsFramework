@@ -1,44 +1,110 @@
 /**
  * CoachPanel — the iPad quiz split's persistent live coach panel (FR-J3/J3a).
  *
- * Rendered beside the quiz item on the iPad surface. Two contracts:
+ * Rendered beside the quiz item on the iPad surface. Contracts:
  *
- *  - ONE thread (FR-J3): the transcript is the SHARED coach thread
- *    (`coach_thread_store` via `useCoach`) — a message typed here appears in
- *    the full Coach screen's thread, because they are two views of one store.
- *    The composer copy is item-scoped ("Ask about this item…").
+ *  - ONE thread (FR-J3): shared `coach_thread_store` via `useCoach`.
+ *  - Two-tier hint (FR-J3a × FR-D5): "One more nudge" reveals deeper reviewed
+ *    ladder rungs; exhausted → disabled (FR-B5).
+ *  - B1 chrome (D1+D6): shared `CoachChrome` above the nudge ladder, driven by
+ *    host-supplied pin + derived mode + skill-scoped misses (ADR-0025).
  *
- *  - Two-tier hint (FR-J3a × FR-D5): "One more nudge" reveals the next
- *    REVIEWED ladder rung IN THE PANEL — rung 2 (conceptual) then rung 3
- *    (directive) — distinct from the item card's own Get-a-hint (rung 1).
- *    The rungs come from the ADR-0014 read seam, whose verifier cascade is
- *    the non-reveal guarantee; there is NO rung 4, so an exhausted ladder
- *    disables the control (FR-B5: disabled, never dead).
- *
- * Per F-R1 the panel owns no run logic (useCoach) and no hint logic (the
- * ladder arrives as props from the quiz page's already-loaded item). Callers
- * should key the panel by question id so nudge state resets per item.
+ * Per F-R1 the panel owns no run logic (useCoach) and no hint logic (ladder
+ * arrives as props). Callers should key the panel by question id so nudge
+ * state resets per item.
  */
 
-// B1: 'use client' required — nudge disclosure state + the useCoach store view.
 "use client";
 
 import * as React from "react";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
 import type { Hint } from "@/lib/wire/engine_entities";
+import type { CoachMode } from "@/lib/translators/coach_context_sanitizer";
+import {
+  COACH_CHIP_SEEDS,
+  toCoachSurfaceVM,
+  type CoachSurfacePin,
+  type CoachSurfaceVM,
+} from "@/lib/translators/coach_surface_vm";
+import { honestCoachOpener } from "@/lib/translators/honest_coach_opener";
+import { CoachChrome, CoachChips } from "./CoachChrome";
 import { CoachView } from "./CoachView";
 import { useCoach } from "./use_coach";
+import { useCoachSurface } from "./use_coach_surface";
+import { setCoachPin } from "./coach_thread_store";
+import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
+
+const LEARNER_ID = "maya";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
   /** The current item's reviewed ladder (rung-ascending, ADR-0014). */
   hintLadder: ReadonlyArray<Hint>;
+  /** Derived coach mode from quiz phase (display-only; ADR-0012). */
+  mode?: CoachMode;
+  /** Pinned item for C-3 / skill-scoped C-4; omit → honest absent. */
+  pin?: CoachSurfacePin | null;
+  /** Optional skill display name for the history line. */
+  skillLabel?: string | null;
 }): React.JSX.Element {
-  const { runtime, hintLadder } = props;
-  const { turns, busy, ask, retry } = useCoach(runtime);
+  const {
+    runtime,
+    hintLadder,
+    mode = "pre_submit",
+    pin = null,
+    skillLabel = null,
+  } = props;
+  const { turns, busy, ask, retry } = useCoach(runtime, { mode });
+  const { countMissesOnSkill } = useCoachSurface();
 
-  // Tier 1 (the probe rung) belongs to the item card's Get-a-hint; the panel's
-  // deeper tiers are the rungs above it.
+  const [missesOnSkill, setMissesOnSkill] = React.useState<number | null>(null);
+
+  // C1: keep the shared store pin + advisory mode in sync with the live quiz
+  // item so standalone `/learn/coach` shows honest chrome after panel → coach.
+  React.useEffect(() => {
+    setCoachPin(pin, mode);
+  }, [pin, mode]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    if (pin?.skillId == null) {
+      setMissesOnSkill(null);
+      return;
+    }
+    void countMissesOnSkill({
+      subject: DEFAULT_SUBJECT,
+      learnerId: LEARNER_ID,
+      skillId: pin.skillId,
+    }).then((n) => {
+      if (!cancelled) setMissesOnSkill(n);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pin?.skillId, countMissesOnSkill]);
+
+  const surfaceVm: CoachSurfaceVM = React.useMemo(
+    () =>
+      toCoachSurfaceVM({
+        mode,
+        pin,
+        missesOnSkill,
+        skillLabel,
+        chipSeeds: COACH_CHIP_SEEDS,
+      }),
+    [mode, pin, missesOnSkill, skillLabel],
+  );
+
+  const openerMarkdown = React.useMemo(
+    () =>
+      honestCoachOpener({
+        pin,
+        missesOnSkill,
+        transcriptEmpty: turns.length === 0,
+      }),
+    [pin, missesOnSkill, turns.length],
+  );
+
   const deeperRungs = React.useMemo(
     () => hintLadder.filter((h) => h.rung > 1),
     [hintLadder],
@@ -52,6 +118,14 @@ export function CoachPanel(props: {
       aria-label="Live coach panel"
       className="flex w-80 shrink-0 flex-col gap-3 rounded-[16px] border border-border bg-surface p-4"
     >
+      <CoachChrome
+        vm={surfaceVm}
+        busy={busy}
+        onAsk={ask}
+        layout="stacked"
+        showChips={false}
+      />
+
       <header className="flex flex-col gap-0.5">
         <p className="text-sm font-semibold">Socratic mode · watching this item</p>
         <p className="text-xs text-muted">
@@ -85,14 +159,21 @@ export function CoachPanel(props: {
         </button>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <CoachView
-          turns={turns}
-          busy={busy}
-          onAsk={ask}
-          onRetry={retry}
-          placeholder="Ask about this item…"
-        />
+      <div
+        data-testid="coach-panel-composer"
+        className="flex min-h-0 flex-1 flex-col gap-3"
+      >
+        <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
+        <div className="min-h-0 flex-1">
+          <CoachView
+            turns={turns}
+            busy={busy}
+            onAsk={ask}
+            onRetry={retry}
+            placeholder="Ask about this item…"
+            openerMarkdown={openerMarkdown}
+          />
+        </div>
       </div>
     </aside>
   );

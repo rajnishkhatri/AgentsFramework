@@ -82,8 +82,12 @@ function ReviewedChoiceRow(props: {
   );
 }
 
-export function FeedbackView(props: { vm: FeedbackVM }): React.JSX.Element {
-  const { vm } = props;
+export function FeedbackView(props: {
+  vm: FeedbackVM;
+  /** Optional Ask-the-coach action (desktop Feedback bridge, FR-E5 / FR-5). */
+  onAskCoach?: () => void;
+}): React.JSX.Element {
+  const { vm, onAskCoach } = props;
   return (
     <section aria-label="Answer feedback" className="flex flex-col gap-5">
       <div
@@ -104,6 +108,27 @@ export function FeedbackView(props: { vm: FeedbackVM }): React.JSX.Element {
         )}
         {BANNER_TEXT[vm.banner]}
       </div>
+
+      {/* FR-A7 / C5: reviewed context_html with <u> restyled to success; plain otherwise. */}
+      {vm.recapHasUnderline ? (
+        <p
+          data-testid="feedback-recap"
+          data-has-underline="true"
+          className={cn(
+            "text-[1.15rem] leading-[1.7]",
+            "[&_u]:text-success [&_u]:underline [&_u]:decoration-success [&_u]:underline-offset-2",
+          )}
+          dangerouslySetInnerHTML={{ __html: vm.recapHtml }}
+        />
+      ) : (
+        <p
+          data-testid="feedback-recap"
+          data-has-underline="false"
+          className="text-[1.15rem] leading-[1.7]"
+        >
+          {vm.recapHtml}
+        </p>
+      )}
 
       <ul className="flex flex-col gap-2">
         {vm.reviewedChoices.map((c) => (
@@ -136,6 +161,17 @@ export function FeedbackView(props: { vm: FeedbackVM }): React.JSX.Element {
           {vm.ruleMd}
         </p>
       </div>
+
+      {onAskCoach ? (
+        <button
+          type="button"
+          data-testid="feedback-ask-coach"
+          onClick={onAskCoach}
+          className="w-fit rounded-full border border-accent px-5 py-2.5 text-sm font-medium text-accent hover:bg-accent-light"
+        >
+          Ask the coach
+        </button>
+      ) : null}
     </section>
   );
 }

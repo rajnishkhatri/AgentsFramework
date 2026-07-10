@@ -61,7 +61,7 @@ old matrix and they are genuinely done — verified live, not just in tests.
 What remains is a **depth-of-screen** gap, concentrated in three places:
 
 1. 🟥 **Coach screen** — the prototype ships a fully-realized coaching surface (context rail,
-   "sees your history N of M", coach-mode switcher, seeded Socratic conversation, quick-reply
+   honest history trust line, derived-mode display (not free switcher), seeded Socratic conversation, quick-reply
    chips). The live `/learn/coach` is an **empty shell**: title + composer, nothing else. This is
    the single largest screen-level gap.
 2. 🟧 **Dashboard right rail** — the prototype's score-goal / streak / weekly-sessions / coach-note
@@ -191,8 +191,8 @@ the app's `/learn/coach` is a **title + composer** with an empty conversation ar
 | C-1 | Header: "Coach" + "← Back" + **"Wrap up session →"** | 🟡 partial | 🟨 Minor | app has title + subtitle only; no Back / Wrap-up |
 | C-2 | **Context rail**: "Your Coach / Adaptive · always on" (status dot) | 🔴 absent | 🟧 Major | no left rail on the standalone screen |
 | C-3 | Context: **"Current item: Q4 · Commas, non-essential"** | 🔴 absent | 🟧 Major | needs current-item wiring into the coach view |
-| C-4 | **"Sees your history: 3 of last 5 comma items missed"** | 🔴 absent | 🟧 Major | the trust-signal line; matrix C-2 |
-| C-5 | **COACH MODES** switcher (In-drill Socratic hint / Post-answer deep-dive / Misconception summary) | 🔴 absent | 🟧 Major | derived mode exists in code but no visible switcher |
+| C-4 | **"Sees your history…" trust line** (prototype demo copy used "3 of last 5") | 🔴 absent | 🟧 Major | **B0/B1:** real `AttemptRepo.misses()` skill-scoped aggregate **or honestly absent** — never placeholder counts (AP-6) |
+| C-5 | **COACH MODES** labels (In-drill Socratic / Post-answer deep-dive / Misconception summary) | 🔴 absent | 🟧 Major | **B0/B1 D5a:** display-only map onto 2 marker-derived modes — **not** a free learner switcher (ADR-0012) |
 | C-6 | **Seeded conversation** (assistant opener + user turn + Socratic reply) | 🔴 empty | 🟥 Blocker | app conversation area is blank without a live agent; no offline/seeded state |
 | C-7 | **Quick-reply chips**: "Explain the rule simply / Give me a similar item / Show my comma pattern" | 🔴 absent | 🟧 Major | composer present but no chips; matrix C-4 |
 | C-8 | Composer: input + send + model picker | 🟩 present | 🟩 | "Ask the coach…" + "+ Auto ▾" + send |
@@ -339,7 +339,7 @@ Ordered by *user-visible impact per unit effort*. Sprint IDs continue the matrix
 |---|---|---|---|---|---|
 | 1 | **Fix `Reveal answer` dead button** (wire or remove) | Quiz | 🟥 | XS | Trust bug — a labeled control that does nothing. |
 | 2 | **Fix Summary "0 min"** — thread `elapsed_ms` into the summary VM | Summary | 🟥 | S | Data-plumbing; the tile already exists. |
-| 3 | **Coach screen build-out** — context rail + "sees your history N/M" + mode switcher + quick-reply chips (C-2…C-7) | Coach | 🟧 | L | Largest *within-screen* gap; own spec. Backend-dependent for the stream, but the chrome is buildable now. |
+| 3 | **Coach screen build-out** — context rail + honest history trust line + derived-mode display + quick-reply chips (C-2…C-7) | Coach | 🟧 | L | Largest *within-screen* gap; Epic B board. Stream exists; chrome is B1; `coach_context` is B3 (slip-capable). |
 | 4 | **Dashboard right rail** (D-5) — score-goal, streak, weekly, coach-note + greeting (D-1) | Dashboard | 🟧 | M | Needs VM fields; matrix S6. |
 | 5 | **Summary misconception write-up** (S-3) + misconception-framed title (S-1) | Summary | 🟧 | M | Needs misconception text source; matrix S7. |
 | 6 | **Feedback "Ask the coach"** on desktop (F-6) + green-span recap (F-4) | Feedback | 🟨 | M | Bridges Feedback→Coach on desktop. |

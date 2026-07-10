@@ -16,6 +16,9 @@
 import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { EngineProvider } from "@/app/engine-provider";
+import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
+import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import { SUBJECT_COACH_AGENT_ID, useCoach } from "./use_coach";
 import { useAgentRun } from "@/components/chat/use_agent_run";
 import type {
@@ -24,6 +27,10 @@ import type {
 } from "@/lib/ports/agent_runtime_client";
 import type { RunCreateRequest } from "@/lib/wire/agent_protocol";
 import type { UIRuntimeEvent } from "@/lib/wire/ui_runtime_events";
+
+const engineBag = buildBrowserEngineAdapters({
+  engineDb: new InMemoryEngineDb(),
+});
 
 function scriptedRuntime(): {
   runtime: AgentRuntimeClient;
@@ -111,7 +118,13 @@ describe("coach agent_id stamping — failure path first", () => {
 
   it("a coach ask carries agent_id=subject-coach-english on the run body", async () => {
     const { runtime, streamReqs } = scriptedRuntime();
-    root.render(React.createElement(CoachProbe, { runtime }));
+    root.render(
+      React.createElement(
+        EngineProvider,
+        { bag: engineBag },
+        React.createElement(CoachProbe, { runtime }),
+      ),
+    );
     await clickProbe();
     await until(() => streamReqs.length === 1, "coach streamRun call");
     expect(streamReqs[0]?.agent_id).toBe(SUBJECT_COACH_AGENT_ID);

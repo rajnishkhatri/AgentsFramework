@@ -1,5 +1,5 @@
 /**
- * useCoach — the Coach surfaces' seam onto the CHAT runtime (FR-F, FR-J3).
+ * useCoach — the Coach surfaces' seam onto the CHAT runtime (FR-F, FR-J3, BP-3).
  *
  * The coach is NOT an engine port (plan OD-3 / design §7 divergence #1): there
  * is no `CoachAgentClient`. The coach is a *consumer of the chat runtime port*
@@ -16,15 +16,23 @@
  * terminal-state safety for free: a dropped stream surfaces as a synthetic
  * `run_error` → `toCoachMessage` maps it to `error + canRetry` (FR-F4: retry,
  * never an infinite spinner).
+ *
+ * BP-3: when the store holds a pin and engine ports are supplied, the ask
+ * attaches assembled `input.coach_context` (advisory mode — BFF overwrites).
  */
 
 "use client";
 
 import * as React from "react";
 import type { AgentRuntimeClient } from "@/lib/ports/agent_runtime_client";
+import type { EnginePortBag } from "@/lib/composition_engine";
+import { useEngine } from "@/app/engine-provider";
 import { consumeRunStream, type ChatTurn } from "@/components/chat/use_agent_run";
 import { uiInputToAgentRequest } from "@/lib/translators/ui_input_to_agent_request";
+import { assembleCoachContext } from "@/lib/translators/assemble_coach_context";
+import type { CoachMode } from "@/lib/translators/coach_context_sanitizer";
 import { toCoachMessage, type CoachMessage } from "@/lib/translators/coach_message_vm";
+import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import {
   applyCoachEvent,
   beginCoachTurn,
@@ -32,6 +40,7 @@ import {
   endCoachTurn,
   subscribeCoachThread,
 } from "./coach_thread_store";
+import { countMissesOnSkill } from "./use_coach_surface";
 
 /**
  * The coach's AgentFacts id (services/governance/subject_coach_identity.py).
@@ -41,11 +50,24 @@ import {
  */
 export const SUBJECT_COACH_AGENT_ID = "subject-coach-english";
 
+const LEARNER_ID = "maya";
+
 /** One coach exchange: the learner's ask + the coach's (streaming) reply. */
 export interface CoachTurn {
   readonly id: string;
   readonly user: string;
   readonly coach: CoachMessage;
+}
+
+export interface SendCoachAskOptions {
+  /** Advisory mode only — BFF overwrites (FR-11 / ADR-0012). */
+  readonly mode?: CoachMode;
+  readonly ports?: Pick<
+    EnginePortBag,
+    "questionRepo" | "attemptRepo" | "learnerReadRepo"
+  >;
+  readonly learnerId?: string;
+  readonly subject?: string;
 }
 
 /**
@@ -67,17 +89,55 @@ export function coachTurnsFromChat(
  * call it (panel or Coach screen); the turn appears in every subscriber. The
  * middleware keys checkpoint state by `thread_id`, so consecutive asks — from
  * either mount — continue one server-side conversation (FR-J3).
+ *
+ * When `opts.ports` + store pin are present, attaches honest `coach_context`
+ * (FR-10); otherwise messages-only (FR-9).
  */
 export async function sendCoachAsk(
   runtime: AgentRuntimeClient,
   body: string,
+  opts: SendCoachAskOptions = {},
 ): Promise<void> {
   const { threadId, turnId } = beginCoachTurn(body);
   try {
+    const pin = coachThreadSnapshot().pin;
+    const mode = opts.mode ?? coachThreadSnapshot().mode;
+    let coach_context = null as ReturnType<typeof assembleCoachContext>;
+
+    if (pin != null && opts.ports != null) {
+      const subject = opts.subject ?? DEFAULT_SUBJECT;
+      const learnerId = opts.learnerId ?? LEARNER_ID;
+      const question = await opts.ports.questionRepo.get(pin.questionId);
+      const missesOnSkill = await countMissesOnSkill(opts.ports, {
+        subject,
+        learnerId,
+        skillId: pin.skillId,
+      });
+      let skillStates = null as Awaited<
+        ReturnType<EnginePortBag["learnerReadRepo"]["listSkillState"]>
+      > | null;
+      try {
+        skillStates = await opts.ports.learnerReadRepo.listSkillState(
+          subject,
+          learnerId,
+        );
+      } catch {
+        skillStates = null;
+      }
+      coach_context = assembleCoachContext({
+        pin,
+        question,
+        mode,
+        missesOnSkill,
+        skillStates,
+      });
+    }
+
     const req = uiInputToAgentRequest({
       thread_id: threadId,
       body,
       agent_id: SUBJECT_COACH_AGENT_ID,
+      coach_context,
     });
     await consumeRunStream(runtime.streamRun(req), (evt) =>
       applyCoachEvent(turnId, evt),
@@ -103,12 +163,17 @@ export async function sendCoachAsk(
  * hold no run logic. `retry` re-sends the last user ask (FR-F4) — same thread
  * id, so the resend continues the same coach conversation server-side.
  */
-export function useCoach(runtime: AgentRuntimeClient): {
+export function useCoach(
+  runtime: AgentRuntimeClient,
+  options: { mode?: CoachMode } = {},
+): {
   turns: ReadonlyArray<CoachTurn>;
   busy: boolean;
   ask: (body: string) => Promise<void>;
   retry: () => Promise<void>;
 } {
+  const ports = useEngine();
+  const mode = options.mode ?? "pre_submit";
   const snap = React.useSyncExternalStore(
     subscribeCoachThread,
     coachThreadSnapshot,
@@ -119,9 +184,23 @@ export function useCoach(runtime: AgentRuntimeClient): {
     [snap.turns],
   );
 
+  const askOpts = React.useMemo(
+    (): SendCoachAskOptions => ({
+      mode,
+      ports: {
+        questionRepo: ports.questionRepo,
+        attemptRepo: ports.attemptRepo,
+        learnerReadRepo: ports.learnerReadRepo,
+      },
+      learnerId: LEARNER_ID,
+      subject: DEFAULT_SUBJECT,
+    }),
+    [mode, ports],
+  );
+
   const ask = React.useCallback(
-    (body: string) => sendCoachAsk(runtime, body),
-    [runtime],
+    (body: string) => sendCoachAsk(runtime, body, askOpts),
+    [runtime, askOpts],
   );
 
   const retry = React.useCallback((): Promise<void> => {
@@ -129,8 +208,8 @@ export function useCoach(runtime: AgentRuntimeClient): {
     // Only a terminal error is retryable; a resend of the last ask continues
     // the same thread (FR-F4). Nothing to retry on an empty/streaming transcript.
     if (last == null || last.assistant.status !== "error") return Promise.resolve();
-    return sendCoachAsk(runtime, last.user);
-  }, [snap.turns, runtime]);
+    return sendCoachAsk(runtime, last.user, askOpts);
+  }, [snap.turns, runtime, askOpts]);
 
   return { turns: coachTurns, busy: snap.busy, ask, retry };
 }

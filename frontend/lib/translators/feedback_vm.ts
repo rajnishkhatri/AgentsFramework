@@ -39,6 +39,13 @@ export interface FeedbackVM {
   readonly correctRationale: string;
   readonly reviewedChoices: ReadonlyArray<ReviewedChoiceVM>;
   readonly ruleMd: string;
+  /**
+   * Sentence recap HTML (FR-E1 / FR-A7 / C5): `context_html` when it contains
+   * `<u>` (view restyles to success); otherwise plain stem/context text with
+   * no invented underline.
+   */
+  readonly recapHtml: string;
+  readonly recapHasUnderline: boolean;
 }
 
 function stateFor(
@@ -51,6 +58,26 @@ function stateFor(
   return "other";
 }
 
+function stripHtmlTags(html: string): string {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
+/** Pure: build recap from context_html / stem without inventing a highlight. */
+export function buildFeedbackRecap(question: Question): {
+  readonly recapHtml: string;
+  readonly recapHasUnderline: boolean;
+} {
+  const html = question.context_html ?? "";
+  if (/<u[\s>]/i.test(html)) {
+    return { recapHtml: html, recapHasUnderline: true };
+  }
+  const stem = question.stem?.trim() ?? "";
+  if (stem.length > 0) {
+    return { recapHtml: stem, recapHasUnderline: false };
+  }
+  return { recapHtml: stripHtmlTags(html), recapHasUnderline: false };
+}
+
 export function toFeedbackVM(
   question: Question,
   verdict: Verdict,
@@ -59,6 +86,7 @@ export function toFeedbackVM(
   const chosenLetter = answer.letter;
   const correctLetter = verdict.correct_letter ?? question.answer_letter;
   const rationale = question.per_choice_rationale;
+  const recap = buildFeedbackRecap(question);
 
   return {
     correct: verdict.correct,
@@ -75,5 +103,7 @@ export function toFeedbackVM(
       state: stateFor(c.letter, correctLetter, chosenLetter),
     })),
     ruleMd: question.rule_md,
+    recapHtml: recap.recapHtml,
+    recapHasUnderline: recap.recapHasUnderline,
   };
 }

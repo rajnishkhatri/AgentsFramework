@@ -56,8 +56,20 @@ export function CoachView(props: {
   /** Composer placeholder override — the iPad panel scopes it to the item
    *  ("Ask about this item…", FR-J3); default is the full-screen copy. */
   placeholder?: string;
+  /**
+   * Optional honest opener (FR-12 / C4) — coach-only bubble when transcript
+   * is empty and pin+misses exist. Hosts compute via `honestCoachOpener`.
+   */
+  openerMarkdown?: string | null;
 }): React.JSX.Element {
-  const { turns, busy, onAsk, onRetry, placeholder = "Ask the coach…" } = props;
+  const {
+    turns,
+    busy,
+    onAsk,
+    onRetry,
+    placeholder = "Ask the coach…",
+    openerMarkdown = null,
+  } = props;
   return (
     <div className="flex h-full flex-col gap-4">
       <section
@@ -67,6 +79,14 @@ export function CoachView(props: {
         aria-label="Coach conversation"
         className="flex flex-1 flex-col gap-4 overflow-y-auto"
       >
+        {openerMarkdown && turns.length === 0 ? (
+          <div
+            data-testid="coach-opener"
+            className="flex flex-col gap-1 rounded-2xl border border-border p-3"
+          >
+            <StreamingMarkdown text={openerMarkdown} />
+          </div>
+        ) : null}
         {turns.map((t) => (
           <CoachBubble key={t.id} turn={t} onRetry={onRetry} />
         ))}

@@ -89,3 +89,61 @@ describe("FeedbackView — correct pick (FR-E2)", () => {
     expect(doc.querySelector('[data-testid="feedback-banner"]')?.getAttribute("data-banner")).toBe("celebrate");
   });
 });
+
+describe("FeedbackView — green-span recap (BP-2c / FR-7)", () => {
+  it("renders feedback-recap with underlined span from context_html", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const recap = doc.querySelector('[data-testid="feedback-recap"]');
+    expect(recap).not.toBeNull();
+    expect(recap?.getAttribute("data-has-underline")).toBe("true");
+    expect(recap?.querySelector("u")?.textContent).toBe("have");
+  });
+
+  it("renders plain recap without inventing u when context has none", () => {
+    const vm = toFeedbackVM(
+      question({
+        context_html: "Plain sentence with no underline.",
+        stem: "Which is best?",
+      }),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    const recap = doc.querySelector('[data-testid="feedback-recap"]');
+    expect(recap?.getAttribute("data-has-underline")).toBe("false");
+    expect(recap?.querySelector("u")).toBeNull();
+    expect(recap?.textContent).toContain("Which is best?");
+  });
+});
+
+describe("FeedbackView — Ask the coach (BP-2d / FR-5)", () => {
+  it("omits ask-coach control when onAskCoach is absent", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(doc.querySelector('[data-testid="feedback-ask-coach"]')).toBeNull();
+  });
+
+  it("renders ask-coach when onAskCoach is provided", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm, onAskCoach: () => {} }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(doc.querySelector('[data-testid="feedback-ask-coach"]')?.textContent)
+      .toContain("Ask the coach");
+  });
+});

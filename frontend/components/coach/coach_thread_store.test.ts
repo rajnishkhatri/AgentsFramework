@@ -18,6 +18,7 @@ import {
   coachThreadSnapshot,
   endCoachTurn,
   resetCoachThread,
+  setCoachPin,
   subscribeCoachThread,
 } from "./coach_thread_store";
 
@@ -104,5 +105,76 @@ describe("coach_thread_store — one shared thread (FR-J3)", () => {
     expect(coachThreadSnapshot().busy).toBe(true);
     endCoachTurn();
     expect(coachThreadSnapshot().busy).toBe(false);
+  });
+});
+
+describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
+  it("cold open has pin null (honest absent)", () => {
+    expect(coachThreadSnapshot().pin).toBeNull();
+  });
+
+  it("setCoachPin writes the pin; reset clears pin with the thread", () => {
+    setCoachPin({
+      questionId: "q1",
+      skillId: "s-punc",
+      label: "Q4 · Commas",
+    });
+    expect(coachThreadSnapshot().pin).toEqual({
+      questionId: "q1",
+      skillId: "s-punc",
+      label: "Q4 · Commas",
+    });
+    beginCoachTurn("ask");
+    resetCoachThread();
+    expect(coachThreadSnapshot().pin).toBeNull();
+    expect(coachThreadSnapshot().mode).toBe("pre_submit");
+    expect(coachThreadSnapshot().turns).toEqual([]);
+  });
+
+  it("setCoachPin(null) clears pin without dropping the transcript", () => {
+    setCoachPin({
+      questionId: "q1",
+      skillId: "s-punc",
+      label: "Q4 · Commas",
+    });
+    beginCoachTurn("ask");
+    endCoachTurn();
+    setCoachPin(null);
+    expect(coachThreadSnapshot().pin).toBeNull();
+    expect(coachThreadSnapshot().mode).toBe("pre_submit");
+    expect(coachThreadSnapshot().turns).toHaveLength(1);
+  });
+
+  it("stores advisory mode with the pin (Feedback→Coach post_feedback)", () => {
+    setCoachPin(
+      {
+        questionId: "q1",
+        skillId: "s-punc",
+        label: "Q4 · Commas",
+      },
+      "post_feedback",
+    );
+    expect(coachThreadSnapshot().mode).toBe("post_feedback");
+    setCoachPin(
+      {
+        questionId: "q1",
+        skillId: "s-punc",
+        label: "Q4 · Commas",
+      },
+      "pre_submit",
+    );
+    expect(coachThreadSnapshot().mode).toBe("pre_submit");
+  });
+
+  it("notifies subscribers when the pin changes", () => {
+    let saw = 0;
+    const un = subscribeCoachThread(() => (saw += 1));
+    setCoachPin({
+      questionId: "q2",
+      skillId: "s-agr",
+      label: "Q2 · Agreement",
+    });
+    expect(saw).toBe(1);
+    un();
   });
 });

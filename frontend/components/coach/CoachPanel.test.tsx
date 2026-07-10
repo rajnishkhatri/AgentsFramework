@@ -15,6 +15,9 @@
 import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { EngineProvider } from "@/app/engine-provider";
+import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
+import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import { CoachPanel } from "./CoachPanel";
 import { resetCoachThread, coachThreadSnapshot } from "./coach_thread_store";
 import type { AgentRuntimeClient, StreamRunOptions } from "@/lib/ports/agent_runtime_client";
@@ -57,6 +60,10 @@ const LADDER: readonly Hint[] = [
   rung(3, "Find where the clause ends and check that exact spot."),
 ];
 
+const engineBag = buildBrowserEngineAdapters({
+  engineDb: new InMemoryEngineDb(),
+});
+
 let container: HTMLDivElement;
 let root: Root;
 
@@ -75,7 +82,9 @@ afterEach(() => {
 const tick = (ms = 15): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 function render(node: React.ReactElement): Promise<void> {
-  root.render(node);
+  root.render(
+    <EngineProvider bag={engineBag}>{node}</EngineProvider>,
+  );
   return tick();
 }
 
@@ -110,6 +119,71 @@ describe("CoachPanel — FR-J3 presence + shared thread", () => {
     );
     expect(input, "panel composer input").not.toBeNull();
     expect(input!.getAttribute("placeholder")).toBe("Ask about this item…");
+  });
+});
+
+describe("CoachPanel — B1 shared chrome (FR-5, FR-9)", () => {
+  it("renders coach-chrome; shows current-item when pin is supplied", async () => {
+    await render(
+      <CoachPanel
+        runtime={scriptedRuntime()}
+        hintLadder={LADDER}
+        mode="pre_submit"
+        pin={{
+          questionId: "q1",
+          skillId: "s-punc",
+          label: "Q4 · Commas, non-essential",
+        }}
+      />,
+    );
+    expect(container.querySelector("[data-testid='coach-chrome']")).not.toBeNull();
+    expect(
+      container.querySelector("[data-testid='coach-current-item']")?.textContent,
+    ).toContain("Q4 · Commas, non-essential");
+  });
+
+  it("omits current-item when pin is absent (honest absent)", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    expect(container.querySelector("[data-testid='coach-chrome']")).not.toBeNull();
+    expect(container.querySelector("[data-testid='coach-current-item']")).toBeNull();
+  });
+});
+
+describe("CoachPanel — BP-1.5c stacked + chips by composer (FR-1)", () => {
+  it("uses stacked chrome without left-rail class; chips sit with composer", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    const chrome = container.querySelector("[data-testid='coach-chrome']");
+    expect(chrome?.getAttribute("data-layout")).toBe("stacked");
+    expect(chrome?.className ?? "").not.toMatch(/coach-layout-rail/);
+    expect(
+      chrome?.querySelectorAll("[data-testid='coach-chip']").length ?? 0,
+    ).toBe(0);
+    expect(
+      container.querySelectorAll(
+        "[data-testid='coach-panel-composer'] [data-testid='coach-chip']",
+      ).length,
+    ).toBe(3);
+  });
+});
+
+describe("CoachPanel — BP-2b store pin sync (FR-6)", () => {
+  it("writes the live item pin into coach_thread_store", async () => {
+    await render(
+      <CoachPanel
+        runtime={scriptedRuntime()}
+        hintLadder={LADDER}
+        pin={{
+          questionId: "q1",
+          skillId: "s-punc",
+          label: "Q4 · Commas, non-essential",
+        }}
+      />,
+    );
+    expect(coachThreadSnapshot().pin).toEqual({
+      questionId: "q1",
+      skillId: "s-punc",
+      label: "Q4 · Commas, non-essential",
+    });
   });
 });
 
