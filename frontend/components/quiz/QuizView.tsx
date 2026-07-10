@@ -101,11 +101,17 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         >
           {hintOpen ? "Hide hint" : "Get a hint"}
         </button>
-        {/* FR-D6: Reveal answer is a low-emphasis ghost control, separate from the hint. */}
+        {/* UI FR-D6 / FR-D6a: ghost control; gated submit alias (Sprint A1). No answer letter here. */}
         <button
           type="button"
           data-testid="quiz-reveal"
-          className="min-h-11 rounded-full px-4 py-2 text-sm text-muted"
+          disabled={!submittable}
+          onClick={onSubmit}
+          data-enabled={submittable ? "true" : "false"}
+          className={cn(
+            "min-h-11 rounded-full px-4 py-2 text-sm text-muted",
+            "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
+          )}
         >
           Reveal answer
         </button>

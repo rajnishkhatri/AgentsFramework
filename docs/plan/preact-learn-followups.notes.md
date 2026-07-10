@@ -126,12 +126,21 @@ small spec since it crosses content + view.
 
 ---
 
-## F4 (🟡 UX / = S5) — After the target, tell the learner the quiz is over
+## F4 (✅ SHIPPED — S5) — After the target, tell the learner the quiz is over
 
 > *"After target of 30 questions, show an appropriate message: quiz is over.
 > However you can continue if you like."*
 
-**This is exactly S5, the unbuilt half of the "infinite loop" gap** (S4 shipped the
+**DONE 2026-07-09 as S5.** Shipped the milestone banner (`QuizDoneBanner`, "🎉 You've
+completed your N-question session!") above the feedback at the target, plus target-gated
+button relabels ("Keep practising" / "See summary" at/after the target; originals before).
+Non-blocking, over-run continues, routes to Summary/retake. PR
+[#138](https://github.com/rajnishkhatri/AgentsFramework/pull/138) (MERGED) + relabel revert PR
+[#139](https://github.com/rajnishkhatri/AgentsFramework/pull/139) (MERGED) — both on `main`. Spec/plan/tasks:
+`docs/plan/preact-quiz-done-state.*`. **No longer a backlog item.** (Original analysis kept below
+for provenance.)
+
+**This was exactly S5, the (then-)unbuilt half of the "infinite loop" gap** (S4 shipped the
 progress bar; S5 is the done-state + retake). Today, past the target the session just
 keeps serving: the progress bar goes into **over-run** — the counter shows the true
 position and **drops the `of M` denominator**, bar clamped full

@@ -10,9 +10,10 @@
  * when shown, must NOT contain the answer letter (FR-D5).
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 import * as React from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QuizView } from "./QuizView";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
@@ -116,5 +117,86 @@ describe("QuizView — hint never reveals the answer (FR-D5)", () => {
   it("hint is hidden when closed", () => {
     const doc = render({ selectedLetter: null, hintOpen: false });
     expect(doc.querySelector('[data-testid="quiz-hint"]')).toBeNull();
+  });
+});
+
+/**
+ * UI FR-D6 / FR-D6a — Reveal is a gated submit alias (Sprint A1).
+ * SSR asserts the gate attributes; createRoot asserts the click → onSubmit path
+ * (repo has no @testing-library/react).
+ */
+describe("QuizView — Reveal answer (UI FR-D6 / FR-D6a)", () => {
+  it("keeps Reveal non-actionable while nothing is selected (FR-1)", () => {
+    const doc = render({ selectedLetter: null });
+    const reveal = doc.querySelector('[data-testid="quiz-reveal"]');
+    expect(reveal?.hasAttribute("disabled")).toBe(true);
+    expect(reveal?.getAttribute("data-enabled")).toBe("false");
+  });
+
+  it("renders Reveal as a distinct ghost control (FR-4)", () => {
+    const doc = render({ selectedLetter: null });
+    const reveal = doc.querySelector('[data-testid="quiz-reveal"]');
+    expect(reveal).not.toBeNull();
+    expect(reveal?.textContent).toContain("Reveal answer");
+    expect(reveal?.className).toMatch(/text-muted/);
+  });
+
+  describe("click → onSubmit (client)", () => {
+    let container: HTMLDivElement;
+    let root: Root;
+    const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+    beforeEach(() => {
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+    });
+
+    afterEach(() => {
+      root.unmount();
+      container.remove();
+    });
+
+    async function mount(selectedLetter: string | null, onSubmit: () => void) {
+      const vm = toQuizItemVM(question());
+      root.render(
+        React.createElement(QuizView, {
+          vm,
+          selectedLetter,
+          onSelect: () => {},
+          onSubmit,
+          hintOpen: false,
+          hint: "What does 'committee' act as here — one body or many?",
+          onToggleHint: () => {},
+        }),
+      );
+      await flush();
+    }
+
+    function clickReveal(): void {
+      const el = container.querySelector(
+        '[data-testid="quiz-reveal"]',
+      ) as HTMLElement | null;
+      el?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    }
+
+    it("does not call onSubmit when Reveal is clicked with no selection (FR-1)", async () => {
+      const onSubmit = vi.fn();
+      await mount(null, onSubmit);
+      clickReveal();
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it("calls onSubmit once when Reveal is clicked with a selection (FR-3)", async () => {
+      const onSubmit = vi.fn();
+      await mount("B", onSubmit);
+      const reveal = container.querySelector('[data-testid="quiz-reveal"]');
+      expect(reveal?.hasAttribute("disabled")).toBe(false);
+      expect(reveal?.getAttribute("data-enabled")).toBe("true");
+      clickReveal();
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
   });
 });

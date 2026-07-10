@@ -6,6 +6,7 @@
  */
 
 import type { RunCreateRequest } from "../wire/agent_protocol";
+import type { WireCoachContext } from "./assemble_coach_context";
 
 const MAX_USER_BODY_BYTES = 64 * 1024; // 64 KiB per turn
 
@@ -24,6 +25,11 @@ export interface UIComposerInput {
    * branch (components/router.py).
    */
   readonly selectedModel?: string;
+  /**
+   * Optional subject-coach context (BP-3 / ADR-0012). Omitted when null/undefined
+   * so plain chat / unpinned coach asks stay messages-only (FR-9/FR-10).
+   */
+  readonly coach_context?: WireCoachContext | null;
 }
 
 export function uiInputToAgentRequest(input: UIComposerInput): RunCreateRequest {
@@ -51,11 +57,15 @@ export function uiInputToAgentRequest(input: UIComposerInput): RunCreateRequest 
       ? input.selectedModel
       : undefined;
 
+  const coachContext =
+    input.coach_context != null ? input.coach_context : undefined;
+
   const req: RunCreateRequest = {
     thread_id: input.thread_id,
     input: {
       messages: [{ role: "user", content: input.body }],
       ...(pinned !== undefined ? { pinned_model: pinned } : {}),
+      ...(coachContext !== undefined ? { coach_context: coachContext } : {}),
     },
     ...(input.agent_id !== undefined ? { agent_id: input.agent_id } : {}),
   };

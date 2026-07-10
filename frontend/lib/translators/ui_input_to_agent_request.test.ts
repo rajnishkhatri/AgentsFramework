@@ -90,4 +90,42 @@ describe("uiInputToAgentRequest [T1 pure / T3 zero-or-many]", () => {
     const none = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
     expect(auto).toEqual(none);
   });
+
+  // ── Coach context (BP-3a / FR-9, FR-10) ───────────────────────────────
+  it("omits coach_context when not provided (messages-only)", () => {
+    const req = uiInputToAgentRequest({ thread_id: "t1", body: "hi" });
+    expect(req.input).not.toHaveProperty("coach_context");
+  });
+
+  it("omits coach_context when explicitly null", () => {
+    const req = uiInputToAgentRequest({
+      thread_id: "t1",
+      body: "hi",
+      coach_context: null,
+    });
+    expect(req.input).not.toHaveProperty("coach_context");
+  });
+
+  it("rides coach_context inside input when assembled", () => {
+    const coach_context = {
+      mode: "post_feedback" as const,
+      question_id: "q1",
+      skill_id: "s-punc",
+      question: { id: "q1" } as never,
+      misses_aggregate: { skill_id: "s-punc", missed: 2 },
+    };
+    const req = uiInputToAgentRequest({
+      thread_id: "t1",
+      body: "why B?",
+      coach_context,
+    });
+    expect(req.input).toMatchObject({
+      messages: [{ role: "user", content: "why B?" }],
+      coach_context,
+    });
+    expect(
+      (req.input as { coach_context: { misses_aggregate: object } })
+        .coach_context.misses_aggregate,
+    ).not.toHaveProperty("window");
+  });
 });

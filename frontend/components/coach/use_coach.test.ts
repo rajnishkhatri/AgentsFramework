@@ -14,7 +14,11 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 import { coachTurnsFromChat, sendCoachAsk, SUBJECT_COACH_AGENT_ID } from "./use_coach";
-import { coachThreadSnapshot, resetCoachThread } from "./coach_thread_store";
+import {
+  coachThreadSnapshot,
+  resetCoachThread,
+  setCoachPin,
+} from "./coach_thread_store";
 import type { ChatTurn } from "@/components/chat/use_agent_run";
 import type { AssistantRunView } from "@/lib/translators/run_view_reducer";
 import type {
@@ -168,5 +172,114 @@ describe("sendCoachAsk — the store-backed send (FR-J3 shared thread)", () => {
     const snap = coachThreadSnapshot();
     expect(snap.busy).toBe(false);
     expect(snap.turns[0]!.assistant.status).toBe("error");
+  });
+});
+
+describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
+  afterEach(() => {
+    resetCoachThread();
+  });
+
+  it("omits coach_context when pin is null (messages-only)", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    await sendCoachAsk(runtime, "plain ask");
+    expect(streamReqs[0]!.input).not.toHaveProperty("coach_context");
+  });
+
+  it("attaches assembled coach_context when pin + ports load a question", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    setCoachPin(
+      {
+        questionId: "q1",
+        skillId: "s-punc",
+        label: "Q4 · Commas",
+      },
+      "post_feedback",
+    );
+    const question = {
+      id: "q1",
+      subject: "act-english",
+      skill_id: "s-punc",
+      difficulty: 3,
+      context_html: "x",
+      stem: "stem",
+      choices: [{ letter: "A", label: "a", is_no_change: false }],
+      answer_letter: "A",
+      per_choice_rationale: { A: "ok" },
+      why_correct_md: "",
+      why_tempted_md: "",
+      rule_md: "rule",
+      item_type: "underlined-span-mc" as const,
+      reviewed: true,
+      generated_by: "test",
+    };
+    const ports = {
+      questionRepo: {
+        async get(id: string) {
+          return id === "q1" ? question : null;
+        },
+      },
+      attemptRepo: {
+        async misses() {
+          return [
+            {
+              id: "a1",
+              subject: "act-english",
+              session_id: "s1",
+              question_id: "q1",
+              chosen_letter: "B",
+              correct: false,
+              elapsed_ms: 1000,
+              used_hint: false,
+              created_at: "2026-01-01T00:00:00Z",
+            },
+          ];
+        },
+      },
+      learnerReadRepo: {
+        async listSkillState() {
+          return [
+            {
+              subject: "act-english",
+              skill_id: "s-punc",
+              learner_id: "maya",
+              mastery: 0.5,
+              last_seen: null,
+              fsrs_stability: 0,
+              fsrs_difficulty: 0,
+              due_at: "2026-01-01T00:00:00Z",
+              fsrs_card: null,
+            },
+          ];
+        },
+      },
+    };
+
+    await sendCoachAsk(runtime, "why B?", {
+      ports: ports as never,
+      learnerId: "maya",
+      subject: "act-english",
+    });
+
+    const input = streamReqs[0]!.input as {
+      coach_context?: {
+        question_id: string;
+        skill_id: string;
+        mode: string;
+        misses_aggregate?: { missed: number; window?: number };
+        mastery_snapshot?: Record<string, number>;
+      };
+    };
+    expect(input.coach_context).toMatchObject({
+      question_id: "q1",
+      skill_id: "s-punc",
+      mode: "post_feedback",
+    });
+    expect(input.coach_context!.misses_aggregate).toEqual({
+      skill_id: "s-punc",
+      missed: 1,
+    });
+    expect(input.coach_context!.misses_aggregate).not.toHaveProperty("window");
+    expect(input.coach_context!.mastery_snapshot).toEqual({ "s-punc": 50 });
   });
 });
