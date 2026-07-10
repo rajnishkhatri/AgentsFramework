@@ -62,6 +62,12 @@ export interface LoadDashboardArgs {
   readonly displayName?: string;
   /** Injected clock (T1 purity): "due" is computed against this, not Date.now(). */
   readonly nowISO: string;
+  /**
+   * When true, skip `listByLearner` (FR-8 page split): Effect A loads base VM
+   * while Effect B owns the rail via `loadRail`. Avoids double-consuming the
+   * composition-root fail-once seam.
+   */
+  readonly skipRail?: boolean;
 }
 
 /** Hook-local rail read result (FR-6 / Rule W3). Not a wire contract. */
@@ -128,7 +134,7 @@ export async function loadDashboard(
   ports: EnginePortBag,
   args: LoadDashboardArgs,
 ): Promise<DashboardVM> {
-  const { subject, learnerId, displayName, nowISO } = args;
+  const { subject, learnerId, displayName, nowISO, skipRail } = args;
   const sinceISO = computeSinceISO(nowISO, RAIL_LOOKBACK_DAYS);
 
   const [skills, states, misses, railResult, speculativeQuestion] =
@@ -136,12 +142,14 @@ export async function loadDashboard(
       ports.skillTaxonomy.list(subject),
       ports.learnerRead.listSkillState(subject, learnerId),
       ports.attemptRepo.misses(subject, learnerId),
-      ports.sessionRepo
-        .listByLearner(subject, learnerId, { sinceISO })
-        .then(
-          (sessions): RailResult => ({ ok: true, sessions }),
-          (): RailResult => ({ ok: false }),
-        ),
+      skipRail
+        ? Promise.resolve({ ok: false } satisfies RailResult)
+        : ports.sessionRepo
+            .listByLearner(subject, learnerId, { sinceISO })
+            .then(
+              (sessions): RailResult => ({ ok: true, sessions }),
+              (): RailResult => ({ ok: false }),
+            ),
       // Speculative prefetch — invoked synchronously so it starts with the
       // other four (FR-4/FR-5). Reconcile below if pick differs.
       ports.questionRepo.nextReviewed(subject, SPECULATIVE_FOCUS_SKILL_ID),
