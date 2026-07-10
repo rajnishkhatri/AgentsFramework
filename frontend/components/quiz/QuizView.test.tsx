@@ -141,6 +141,15 @@ describe("QuizView — Reveal answer (UI FR-D6 / FR-D6a)", () => {
     expect(reveal?.className).toMatch(/text-muted/);
   });
 
+  it("uses foreground text when Reveal is enabled (FR-8 polish)", () => {
+    const doc = render({ selectedLetter: "A" });
+    const reveal = doc.querySelector('[data-testid="quiz-reveal"]');
+    expect(reveal?.getAttribute("data-enabled")).toBe("true");
+    // Style via data-* (STYLE_GUIDE §13), not a className ternary.
+    expect(reveal?.className).toMatch(/data-\[enabled=true\]:text-fg/);
+    expect(reveal?.className).toMatch(/text-muted/);
+  });
+
   describe("click → onSubmit (client)", () => {
     let container: HTMLDivElement;
     let root: Root;

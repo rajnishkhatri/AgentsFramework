@@ -157,11 +157,10 @@ to S4) — Part 1 is the authority there.
 - [ ] **2D.2** ✅ **EXPECT:** the no-repeat guarantee still holds — walk several items
   and confirm none repeat.
 
-> ⚠️ **Honest scope note:** `?focus=` opens a drill-**mode** session, but the
-> scheduler's `next()` has **never** taken a skill filter, so it still schedules
-> across the **whole** taxonomy — the drill **does not pin the quiz to one skill**,
-> and rotation applies. This is a pre-existing gap (not an S3.1 regression); see
-> Part 3 of [`validate_s3_1_rotation_ui.md`](validate_s3_1_rotation_ui.md).
+> ✅ **2026-07-10:** `?focus=` drill now pins item draw to that skill (FR-A5) via
+> `QuestionRepo.nextReviewed` — no longer adaptive across the whole taxonomy.
+> Re-check: after missing on skill A, a skill-B bucket drill serves only B items;
+> Home **Review my misses** includes wrongs from both skills.
 
 ### 2E — No console errors
 

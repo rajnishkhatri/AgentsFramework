@@ -106,6 +106,21 @@ export type QuizScreenAction =
   // and never reads a clock itself (deterministic, node-testable). Optional so the
   // transition-only tests that don't care about timing can omit it (defaults to 0).
   | { type: "item_loaded"; item: QuizItemResult; presentedAt?: number }
+  // FLAG-4 resume: restore a stashed item + running tally without openSession /
+  // a fresh item_loaded (FR-3). Score is required so resume never fabricates 0/0.
+  // When `feedback` is set, restore reviewing (left from Feedback) so progress
+  // stays on Question N and the learner can tap Next themselves.
+  | {
+      type: "resume_item";
+      item: QuizItemResult;
+      score: SessionTally;
+      presentedAt?: number;
+      feedback?: {
+        verdict: Verdict;
+        answeredLetter: string;
+        usedHint: boolean;
+      };
+    }
   | { type: "select"; letter: string }
   | { type: "toggle_hint" }
   | { type: "submitted"; verdict: Verdict | null; letter: string | null }
@@ -142,6 +157,30 @@ export function quizScreenReducer(
         usedHint: false,
         presentedAt: action.presentedAt ?? Number.NaN,
         score: state.score,
+      };
+
+    case "resume_item":
+      // Coach ← Back remount: restore the left item + stashed tally.
+      // Left from Feedback → reviewing (same N, Next available; no re-submit).
+      // Left from answering → clean answering slate.
+      if (action.feedback != null) {
+        return {
+          phase: "reviewing",
+          item: action.item,
+          verdict: action.feedback.verdict,
+          answeredLetter: action.feedback.answeredLetter,
+          usedHint: action.feedback.usedHint,
+          score: action.score,
+        };
+      }
+      return {
+        phase: "answering",
+        item: action.item,
+        selectedLetter: null,
+        hintOpen: false,
+        usedHint: false,
+        presentedAt: action.presentedAt ?? Number.NaN,
+        score: action.score,
       };
 
     case "select":

@@ -133,4 +133,10 @@ describe("DashboardView — FR-C5 review-my-misses", () => {
     expect(misses, "misses control must render").not.toBeNull();
     expect(misses!.textContent).toContain("3");
   });
+
+  it("links to a review-mode quiz (?mode=review), not plain adaptive", () => {
+    const doc = dom(<DashboardView vm={vm({ reviewMissesCount: 11 })} />);
+    const misses = doc.querySelector('[data-testid="review-misses"]');
+    expect(misses!.getAttribute("href")).toBe("/learn/quiz?mode=review");
+  });
 });

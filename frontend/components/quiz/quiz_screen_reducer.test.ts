@@ -243,3 +243,64 @@ describe("quiz_screen_reducer — running score tally (FR-D3 close)", () => {
     expect(s.score).toEqual({ correct: 1, total: 2 });
   });
 });
+
+describe("quiz_screen_reducer — resume_item (FLAG-4 / FR-3)", () => {
+  const item2 = {
+    skillId: "s-punc",
+    question: question({ id: "q2", stem: "Which choice fixes the comma splice?" }),
+    hintLadder: [],
+  };
+
+  it("resume_item restores answering with the stashed item and score (not 0/0)", () => {
+    const s = quizScreenReducer(initialQuizScreen, {
+      type: "resume_item",
+      item: item2,
+      score: { correct: 1, total: 1 },
+      presentedAt: 42,
+    });
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.item.question.id).toBe("q2");
+    expect(s.phase === "answering" && s.item.question.stem).toBe(
+      "Which choice fixes the comma splice?",
+    );
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+    expect(s.phase === "answering" && s.selectedLetter).toBeNull();
+    expect(s.phase === "answering" && s.hintOpen).toBe(false);
+    expect(s.phase === "answering" && s.usedHint).toBe(false);
+    expect(s.phase === "answering" && s.presentedAt).toBe(42);
+  });
+
+  it("resume_item with feedback restores reviewing at the same score (not answering N+1)", () => {
+    const s = quizScreenReducer(initialQuizScreen, {
+      type: "resume_item",
+      item: item2,
+      score: { correct: 1, total: 2 },
+      feedback: {
+        verdict: verdict(false),
+        answeredLetter: "A",
+        usedHint: true,
+      },
+    });
+    expect(s.phase).toBe("reviewing");
+    expect(s.phase === "reviewing" && s.item.question.id).toBe("q2");
+    expect(s.score).toEqual({ correct: 1, total: 2 });
+    expect(s.phase === "reviewing" && s.answeredLetter).toBe("A");
+    expect(s.phase === "reviewing" && s.verdict.correct).toBe(false);
+    expect(s.phase === "reviewing" && s.usedHint).toBe(true);
+  });
+
+  it("resume_item from a mid-walk loading state still restores the stashed tally", () => {
+    let s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, { type: "next" });
+    expect(s.phase).toBe("loading");
+    s = quizScreenReducer(s, {
+      type: "resume_item",
+      item: item2,
+      score: { correct: 1, total: 1 },
+    });
+    expect(s.phase).toBe("answering");
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+});

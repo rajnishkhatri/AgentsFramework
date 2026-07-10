@@ -47,7 +47,7 @@ export function DashboardView(props: { vm: DashboardVM }): React.JSX.Element {
           Drill a skill
         </Link>
         <Link
-          href={quizRoute}
+          href={`${quizRoute}?mode=review`}
           data-testid="review-misses"
           className="inline-flex items-center rounded-md border border-border px-3 py-2 text-sm font-medium hover:bg-selected"
         >

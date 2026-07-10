@@ -28,13 +28,18 @@ import type { SkillState } from "@/lib/wire/engine_entities";
 import { toBucketCardVM, type BucketCardVM } from "@/lib/translators/bucket_card_vm";
 import { toTodayFocusVM, type TodayFocusVM } from "@/lib/translators/today_focus_vm";
 import { pickFocusSkillId } from "@/lib/translators/focus_pick";
+import { uniqueMissQuestionIds } from "@/lib/miss_pool";
 
 export interface DashboardVM {
   /** One card per bucket (FR-C3), in skill `order` — six for English. */
   readonly buckets: readonly BucketCardVM[];
   /** The weakest+due focus banner (FR-C2); `present:false` on a cold start. */
   readonly todayFocus: TodayFocusVM;
-  /** "Review my misses (N)" count (FR-C5); 0 for a learner with no misses. */
+  /**
+   * "Review my misses (N)" count (FR-C5) — unique missed question ids, matching
+   * the review-session pool / target_count (FR-A6). Duplicate misses of the same
+   * item count once.
+   */
   readonly reviewMissesCount: number;
 }
 
@@ -76,7 +81,11 @@ export async function loadDashboard(
     nowISO,
   });
 
-  return { buckets, todayFocus, reviewMissesCount: misses.length };
+  return {
+    buckets,
+    todayFocus,
+    reviewMissesCount: uniqueMissQuestionIds(misses).length,
+  };
 }
 
 async function buildTodayFocus(

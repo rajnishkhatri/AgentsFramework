@@ -167,9 +167,12 @@ maps to ≥1 test in §8.
 - **FR-D3.** WHEN a session is closed THE SYSTEM SHALL set `ended_at` and the
   score tally (`score_correct`/`score_total`) via `SessionRepo.close(id, score)` so the
   UI's Summary stats (UI spec FR-G1) derive from stored values, not re-computation.
-- **FR-D4.** THE SYSTEM SHALL expose the learner's missed attempts via
+- **FR-D4.** THE SYSTEM SHALL expose the learner's **outstanding** missed attempts via
   `AttemptRepo.misses(subject, learner)` to back the "Review my misses (N)" surface
-  (UI spec FR-C5) and the review-session pool (FR-A6).
+  (UI spec FR-C5) and the review-session pool (FR-A6). Outstanding means: for each
+  `question_id`, the learner's latest attempt is incorrect. WHEN the learner later
+  answers that question correctly THE SYSTEM SHALL exclude it from `misses` (append-only
+  history is preserved; the read is a projection).
 - **FR-D5.** IF a hint was used on an attempt THEN THE SYSTEM SHALL persist `used_hint =
   true` on that attempt (hint use is auditable and may inform future scheduling), while
   the hint itself never changes the recorded correctness.

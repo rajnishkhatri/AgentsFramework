@@ -3,8 +3,9 @@
  *
  * Append-only. `record()` assigns `id` + `created_at` (the engine-owned fields)
  * and inserts; it never updates correctness, and `used_hint` is persisted as-is
- * without affecting `correct` (FR-D5). `misses()` returns incorrect attempts
- * newest-first (FR-D4). Rejections → `EngineRepoError` (A5).
+ * without affecting `correct` (FR-D5). `misses()` returns outstanding misses
+ * (latest attempt per question is incorrect), newest-first (FR-D4). Rejections
+ * → `EngineRepoError` (A5).
  *
  * Id + clock: this adapter owns both (an attempt is a persisted event, so a
  * non-deterministic id/timestamp is correct here — unlike the pure Grader). They
