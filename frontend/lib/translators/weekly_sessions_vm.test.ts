@@ -65,4 +65,72 @@ describe("toWeeklySessionsVM — failure / edge (FR-2/8)", () => {
       label: "1 / 3 sessions",
     });
   });
+
+  // FR-12: target clamp when count > target (explicit named row; sibling of
+  // count_greater_than_target above).
+  it("target_clamp_when_count_gt_target", () => {
+    const now = localISO(2026, 6, 10, 18);
+    const sessions = [1, 2, 3, 4, 5].map((n) =>
+      session(localISO(2026, 6, 6 + (n % 5), 10), `s${n}`),
+    );
+    const vm = toWeeklySessionsVM(sessions, now);
+    expect(vm.count).toBe(5);
+    expect(vm.label).toBe("3 / 3 sessions");
+  });
+
+  // FR-12: Sunday 23:59 is still this week; Monday 00:00 starts the next.
+  it("sunday_2359_vs_monday_0000", () => {
+    const sunday = localISO(2026, 6, 12, 23, 59); // Sun Jul 12
+    const monday = localISO(2026, 6, 13, 0, 0); // Mon Jul 13
+    const inWeek = session(localISO(2026, 6, 10, 12), "fri"); // Fri Jul 10
+    expect(toWeeklySessionsVM([inWeek], sunday).count).toBe(1);
+    expect(toWeeklySessionsVM([inWeek], monday).count).toBe(0);
+  });
+});
+
+describe("toWeeklySessionsVM — DST-safe Monday (FR-10)", () => {
+  /** Expected Monday 00:00 local via noon-of-day construction (streak_vm style). */
+  function expectedMondayMs(nowISO: string): number {
+    const now = new Date(nowISO);
+    const day = now.getDay();
+    const daysFromMonday = day === 0 ? 6 : day - 1;
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const d = now.getDate() - daysFromMonday;
+    // Noon construct, then set to local midnight — DST-safe.
+    const noon = new Date(y, m, d, 12, 0, 0, 0);
+    noon.setHours(0, 0, 0, 0);
+    return noon.getTime();
+  }
+
+  it("dst_spring_forward_monday_stable", () => {
+    // US Pacific spring-forward Sunday 2026-03-08 (2am → 3am).
+    const nowISO = "2026-03-08T19:00:00.000Z"; // noon PDT-ish / -08:00 wall
+    const mondaySession = new Date(2026, 2, 2, 0, 0, 0, 0).toISOString();
+    const beforeMonday = new Date(2026, 2, 1, 23, 0, 0, 0).toISOString();
+    const vm = toWeeklySessionsVM(
+      [session(mondaySession, "mon"), session(beforeMonday, "sun")],
+      nowISO,
+    );
+    expect(vm.count).toBe(1);
+    // Monday start must match noon-safe construction (not drift across DST).
+    const mondayStart = expectedMondayMs(nowISO);
+    expect(new Date(mondaySession).getTime()).toBeGreaterThanOrEqual(mondayStart);
+    expect(new Date(beforeMonday).getTime()).toBeLessThan(mondayStart);
+  });
+
+  it("dst_fall_back_monday_stable", () => {
+    // US Pacific fall-back Sunday 2026-11-01 (2am → 1am).
+    const nowISO = "2026-11-01T20:00:00.000Z"; // noon PST-ish
+    const mondaySession = new Date(2026, 9, 26, 0, 0, 0, 0).toISOString();
+    const beforeMonday = new Date(2026, 9, 25, 23, 0, 0, 0).toISOString();
+    const vm = toWeeklySessionsVM(
+      [session(mondaySession, "mon"), session(beforeMonday, "sun")],
+      nowISO,
+    );
+    expect(vm.count).toBe(1);
+    const mondayStart = expectedMondayMs(nowISO);
+    expect(new Date(mondaySession).getTime()).toBeGreaterThanOrEqual(mondayStart);
+    expect(new Date(beforeMonday).getTime()).toBeLessThan(mondayStart);
+  });
 });

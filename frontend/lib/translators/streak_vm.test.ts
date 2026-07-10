@@ -94,4 +94,17 @@ describe("toStreakVM — consecutive days (FR-7)", () => {
     ];
     expect(toStreakVM(sessions, now)).toEqual({ present: true, days: 1 });
   });
+
+  // FR-9 (C1-fix): one gap resets streak beyond the gap — Jul 10+9 consecutive,
+  // Jul 8 missing, Jul 7 present → days=2 (not 3, not 1).
+  it("one_gap_resets_streak_beyond_gap", () => {
+    const now = localISO(2026, 6, 10, 18);
+    const sessions = [
+      session(localISO(2026, 6, 10, 9), "d0"),
+      session(localISO(2026, 6, 9, 9), "d1"),
+      // gap on Jul 8
+      session(localISO(2026, 6, 7, 9), "d3"),
+    ];
+    expect(toStreakVM(sessions, now)).toEqual({ present: true, days: 2 });
+  });
 });
