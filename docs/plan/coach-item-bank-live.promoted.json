@@ -37,7 +37,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 3
+    "standard_id": 3,
+    "misconception": "hearing 'could've' as 'could of'"
   },
   {
     "id": "ti-gen-61a600f134c0969a",
@@ -77,7 +78,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 3
+    "standard_id": 3,
+    "misconception": "confusing weather/whether by sound"
   },
   {
     "id": "ti-gen-ea7b624cd42ec31e",
@@ -117,7 +119,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 7
+    "standard_id": 7,
+    "misconception": null
   },
   {
     "id": "ti-gen-9b3b4144fc30cdf2",
@@ -157,7 +160,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 7
+    "standard_id": 7,
+    "misconception": "the sentence sounds fine aloud because the meaning is guessable"
   },
   {
     "id": "ti-gen-e8caf2efaea6d18c",
@@ -197,7 +201,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 11
+    "standard_id": 11,
+    "misconception": "the alarm's chirping is easy to picture as happening 'now'"
   },
   {
     "id": "ti-gen-36ee7811583ee9f3",
@@ -237,7 +242,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 11
+    "standard_id": 11,
+    "misconception": null
   },
   {
     "id": "ti-gen-2347e23051258ddd",
@@ -277,7 +283,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 11
+    "standard_id": 11,
+    "misconception": "each verb form sounds fine alone; only checking it against 'arrived'…"
   },
   {
     "id": "ti-gen-0ef8644e50886b15",
@@ -317,7 +324,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 12
+    "standard_id": 12,
+    "misconception": null
   },
   {
     "id": "ti-gen-115a1f54729c0934",
@@ -357,7 +365,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 12
+    "standard_id": 12,
+    "misconception": "using casual 'seen' for the past participle"
   },
   {
     "id": "ti-gen-689be41bb9faba70",
@@ -397,7 +406,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 13
+    "standard_id": 13,
+    "misconception": null
   },
   {
     "id": "ti-gen-45cb88c727550efa",
@@ -437,7 +447,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 13
+    "standard_id": 13,
+    "misconception": "reaching for a superlative when a comparative fits"
   },
   {
     "id": "ti-gen-01bcf552622af4e7",
@@ -477,7 +488,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 13
+    "standard_id": 13,
+    "misconception": "doubling a tense/aspect marker for emphasis"
   },
   {
     "id": "ti-gen-6d1b683baf09e036",
@@ -517,7 +529,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 16
+    "standard_id": 16,
+    "misconception": "using 'good' where an adverb is required"
   },
   {
     "id": "ti-gen-fb64033d78c6ae8e",
@@ -557,7 +570,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 16
+    "standard_id": 16,
+    "misconception": "using an adjective where an adverb is required"
   },
   {
     "id": "ti-gen-0dcd672f1f8d3b8a",
@@ -597,7 +611,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 17
+    "standard_id": 17,
+    "misconception": "treating a compound subject as singular"
   },
   {
     "id": "ti-gen-2b9ae16d270c28ea",
@@ -637,7 +652,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 17
+    "standard_id": 17,
+    "misconception": null
   },
   {
     "id": "ti-gen-293cc0b3217916e9",
@@ -677,7 +693,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 18
+    "standard_id": 18,
+    "misconception": "treating an organization as plural 'their'"
   },
   {
     "id": "ti-gen-029593c1fe5291ac",
@@ -717,7 +734,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 18
+    "standard_id": 18,
+    "misconception": "letting a nearby plural noun pull agreement"
   },
   {
     "id": "ti-gen-b71faa75b88c9e90",
@@ -757,7 +775,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 19
+    "standard_id": 19,
+    "misconception": null
   },
   {
     "id": "ti-gen-5c506f2cebb6e381",
@@ -797,7 +816,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 19
+    "standard_id": 19,
+    "misconception": null
   },
   {
     "id": "ti-gen-eeedf6557d108a36",
@@ -837,7 +857,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 19
+    "standard_id": 19,
+    "misconception": "second-guessing affect/effect"
   },
   {
     "id": "ti-gen-725c2513c059a420",
@@ -877,7 +898,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 19
+    "standard_id": 19,
+    "misconception": null
   },
   {
     "id": "ti-gen-12bb79b0de650b29",
@@ -917,7 +939,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 22
+    "standard_id": 22,
+    "misconception": null
   },
   {
     "id": "ti-gen-7ac43692a538ced7",
@@ -957,7 +980,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 22
+    "standard_id": 22,
+    "misconception": "'Who' sounds natural at the head of any clause about a person"
   },
   {
     "id": "ti-gen-ccb0cbb911db934d",
@@ -997,7 +1021,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 23
+    "standard_id": 23,
+    "misconception": null
   },
   {
     "id": "ti-gen-2fddf2bbbfb1b061",
@@ -1037,7 +1062,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 23
+    "standard_id": 23,
+    "misconception": "picking 'to' because it feels connective"
   },
   {
     "id": "ti-gen-42a0f73fda4c2917",
@@ -1077,7 +1103,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 23
+    "standard_id": 23,
+    "misconception": null
   },
   {
     "id": "ti-gen-81857f7ae5f6aa04",
@@ -1117,7 +1144,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 23
+    "standard_id": 23,
+    "misconception": null
   },
   {
     "id": "ti-gen-0c1789eb6711c6f2",
@@ -1157,7 +1185,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 26
+    "standard_id": 26,
+    "misconception": null
   },
   {
     "id": "ti-gen-ba5da13ef71e6085",
@@ -1197,7 +1226,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 26
+    "standard_id": 26,
+    "misconception": null
   },
   {
     "id": "ti-gen-dcfcdb4223eef909",
@@ -1237,7 +1267,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 26
+    "standard_id": 26,
+    "misconception": null
   },
   {
     "id": "ti-gen-fef10b2484a7f035",
@@ -1277,7 +1308,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 27
+    "standard_id": 27,
+    "misconception": null
   },
   {
     "id": "ti-gen-50b4dfc045bf65f3",
@@ -1317,7 +1349,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 27
+    "standard_id": 27,
+    "misconception": null
   },
   {
     "id": "ti-gen-49ef91abd4738e50",
@@ -1357,7 +1390,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 28
+    "standard_id": 28,
+    "misconception": null
   },
   {
     "id": "ti-gen-f1be4f7a34c291a1",
@@ -1397,7 +1431,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 28
+    "standard_id": 28,
+    "misconception": "'Whom' sounds more formal, so it gets sprinkled in where 'who' belongs"
   },
   {
     "id": "ti-gen-a5c4bc79eb059ac0",
@@ -1437,7 +1472,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 28
+    "standard_id": 28,
+    "misconception": "'Myself' sounds extra polite in requests and announcements"
   },
   {
     "id": "ti-gen-518721c8b8fb1534",
@@ -1477,7 +1513,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-5b62aae3d773b227",
@@ -1517,7 +1554,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-08dfeed4155da2ed",
@@ -1557,7 +1595,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-71d01781ee685ec2",
@@ -1597,7 +1636,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-b149168609a7069d",
@@ -1637,7 +1677,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-ab12f0a5a507e9ac",
@@ -1677,7 +1718,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-d5cf1d16bc41eae4",
@@ -1717,7 +1759,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": "the mineral fact (A) opens the same subject, so it feels like a natur…"
   },
   {
     "id": "ti-gen-bd8de98582eeb065",
@@ -1757,7 +1800,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-93dab2fe84ba3929",
@@ -1797,7 +1841,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-84bd26e843217d93",
@@ -1837,7 +1882,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-8f419a733dbba475",
@@ -1877,7 +1923,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-26b65ee2ba3d6de6",
@@ -1917,7 +1964,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": "rainfall variability is on-theme with drought, so it feels like a fit…"
   },
   {
     "id": "ti-gen-4026afc5e8d79eba",
@@ -1957,7 +2005,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-0547a2126a9a3834",
@@ -1997,7 +2046,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-af530f347820d781",
@@ -2037,7 +2087,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-130d46cb6e004cef",
@@ -2077,7 +2128,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-545e646d68ef68ad",
@@ -2117,7 +2169,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-993e51faa7a5ba14",
@@ -2157,7 +2210,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-9f104eddac2ff7ae",
@@ -2197,7 +2251,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": "'The city has money' feels like a supporting point, but it's a separa…"
   },
   {
     "id": "ti-gen-cbd3325cb0fd4832",
@@ -2237,7 +2292,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-1e22163f8445836f",
@@ -2277,7 +2333,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   },
   {
     "id": "ti-gen-9ecce8513dec92cc",
@@ -2317,7 +2374,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": "recipe cards (D) sit near the cooking theme, so they feel like a call…"
   },
   {
     "id": "ti-gen-0ec8f45b9028b6c6",
@@ -2357,7 +2415,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": "'Consequently' sounds authoritative, and both sentences do describe r…"
   },
   {
     "id": "ti-gen-34265d79953a3867",
@@ -2397,7 +2456,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-48ea13424888c8b4",
@@ -2437,7 +2497,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-df0fe0c126bbe20c",
@@ -2477,7 +2538,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-94e1f8044bd59460",
@@ -2517,7 +2579,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-6f9c0becf3f197f0",
@@ -2557,7 +2620,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-85e2987f63fb5449",
@@ -2597,7 +2661,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-3a1b53fce3a96f39",
@@ -2637,7 +2702,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-ef7c83c59dea8738",
@@ -2677,7 +2743,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-a37fbfd95df2caef",
@@ -2717,7 +2784,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-49679201bbbf2fb9",
@@ -2757,7 +2825,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-587deb3bbea41fa8",
@@ -2797,7 +2866,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 14
+    "standard_id": 14,
+    "misconception": null
   },
   {
     "id": "ti-gen-eeb2b7c4a9e39f80",
@@ -2837,7 +2907,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-c86b66726f6339df",
@@ -2877,7 +2948,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-48ebd8c087d04821",
@@ -2917,7 +2989,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-926e040affb783e5",
@@ -2957,7 +3030,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": "two owners feel like they deserve two apostrophes"
   },
   {
     "id": "ti-gen-f353d63071548ccf",
@@ -2997,7 +3071,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-a8faee19068a0769",
@@ -3037,7 +3112,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-b848acac3943750d",
@@ -3077,7 +3153,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 24
+    "standard_id": 24,
+    "misconception": null
   },
   {
     "id": "ti-gen-0871498e14f92745",
@@ -3117,7 +3194,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-581a7c98b2ac9090",
@@ -3157,7 +3235,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-24344ba26513cfcf",
@@ -3197,7 +3276,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": "'However' feels like 'but', which really does take just a comma"
   },
   {
     "id": "ti-gen-3f067badd58987d9",
@@ -3237,7 +3317,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-ec2124e42f09a80c",
@@ -3277,7 +3358,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-a9fe78e59aae3959",
@@ -3317,7 +3399,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-293a6839500a18f6",
@@ -3357,7 +3440,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-88873e730bb625d7",
@@ -3397,7 +3481,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 29
+    "standard_id": 29,
+    "misconception": null
   },
   {
     "id": "ti-gen-a519014ae187ac76",
@@ -3437,7 +3522,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 30
+    "standard_id": 30,
+    "misconception": null
   },
   {
     "id": "ti-gen-7e0b194c1e8733c7",
@@ -3477,7 +3563,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 30
+    "standard_id": 30,
+    "misconception": null
   },
   {
     "id": "ti-gen-31665b0a1bd7961d",
@@ -3517,7 +3604,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 30
+    "standard_id": 30,
+    "misconception": null
   },
   {
     "id": "ti-gen-af86c1bda07ec259",
@@ -3557,7 +3645,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 30
+    "standard_id": 30,
+    "misconception": null
   },
   {
     "id": "ti-gen-00d5603f1e869633",
@@ -3597,7 +3686,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 31
+    "standard_id": 31,
+    "misconception": null
   },
   {
     "id": "ti-gen-3b087ff10d6b4c60",
@@ -3637,7 +3727,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-dfd75410d01e1797",
@@ -3677,7 +3768,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-48ed4ba18f05609d",
@@ -3717,7 +3809,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-bf29386cecb39137",
@@ -3757,7 +3850,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-4b220c8ea4c43178",
@@ -3797,7 +3891,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-6320e41e5627b12e",
@@ -3837,7 +3932,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": "'Rapid' sounds more sophisticated than 'fast', so it feels like the i…"
   },
   {
     "id": "ti-gen-1d1287067e8530e5",
@@ -3877,7 +3973,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-8f7f2bbc3fc8fffc",
@@ -3917,7 +4014,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-f42903f54fb3d4b9",
@@ -3957,7 +4055,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-882e189eb5d38d67",
@@ -3997,7 +4096,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": "'Notorious' sounds impressive and vaguely means 'well-known'"
   },
   {
     "id": "ti-gen-4b2651a209bf761f",
@@ -4037,7 +4137,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-fbd84e33e8d1095c",
@@ -4077,7 +4178,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-9879e8c22aac3eca",
@@ -4117,7 +4219,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": "'Unwise' sounds more formal than the original, so it feels sufficient…"
   },
   {
     "id": "ti-gen-64359f35eb3a32c2",
@@ -4157,7 +4260,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-225a988bdbe48711",
@@ -4197,7 +4301,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-66ffedcdd57fec1a",
@@ -4237,7 +4342,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 2
+    "standard_id": 2,
+    "misconception": null
   },
   {
     "id": "ti-gen-6fee13e7f68d08ea",
@@ -4277,7 +4383,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": "'Meant a ton' sounds heartfelt, but its casualness undercuts the form…"
   },
   {
     "id": "ti-gen-f5935917bf02bf12",
@@ -4317,7 +4424,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-ea7d2862984dd53c",
@@ -4357,7 +4465,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-630536b6545d348a",
@@ -4397,7 +4506,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-c42986d0102d9d7d",
@@ -4437,7 +4547,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": "'Orange-colored sphere' sounds precise, but precision isn't imagery"
   },
   {
     "id": "ti-gen-dd0e929d10c612be",
@@ -4477,7 +4588,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-0965ed6ac4c30558",
@@ -4517,7 +4629,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-949378b918123353",
@@ -4557,7 +4670,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-8b41ed68ca64cc04",
@@ -4597,7 +4711,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-49ef4a599004b6c4",
@@ -4637,7 +4752,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-04b3df88a3e00997",
@@ -4677,7 +4793,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": "'A very lively spot' feels like an upgrade because of 'very', but an…"
   },
   {
     "id": "ti-gen-2ec3664d2b4e817b",
@@ -4717,7 +4834,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 4
+    "standard_id": 4,
+    "misconception": null
   },
   {
     "id": "ti-gen-f93b402b9faaa78b",
@@ -4757,7 +4875,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 10
+    "standard_id": 10,
+    "misconception": null
   },
   {
     "id": "ti-gen-38b5fe785ba95a5a",
@@ -4797,7 +4916,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 10
+    "standard_id": 10,
+    "misconception": null
   },
   {
     "id": "ti-gen-ca301b7240c9a794",
@@ -4837,7 +4957,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 10
+    "standard_id": 10,
+    "misconception": null
   },
   {
     "id": "ti-gen-9a237b9f8b5ba000",
@@ -4877,7 +4998,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 15
+    "standard_id": 15,
+    "misconception": "'However' feels like a conjunction, but it's an adverb — the classic…"
   },
   {
     "id": "ti-gen-75ffdc935d7018d9",
@@ -4917,7 +5039,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 15
+    "standard_id": 15,
+    "misconception": null
   },
   {
     "id": "ti-gen-25b1576fd5f783b9",
@@ -4957,7 +5080,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 15
+    "standard_id": 15,
+    "misconception": null
   },
   {
     "id": "ti-gen-18702ebe60cf2373",
@@ -4997,7 +5121,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 15
+    "standard_id": 15,
+    "misconception": "the phrase is long and detailed, so it feels like a full sentence"
   },
   {
     "id": "ti-gen-cc4452d8304c2c1b",
@@ -5037,7 +5162,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 15
+    "standard_id": 15,
+    "misconception": "'However' feels like 'but', so a comma before it seems to work — but…"
   },
   {
     "id": "ti-gen-60d11553962fd438",
@@ -5077,7 +5203,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 20
+    "standard_id": 20,
+    "misconception": "we know the bicycle was dusty, so the sentence 'sounds' fine despite…"
   },
   {
     "id": "ti-gen-010cbb92a190e0e6",
@@ -5117,7 +5244,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 20
+    "standard_id": 20,
+    "misconception": null
   },
   {
     "id": "ti-gen-9b824ee4a3f416d0",
@@ -5157,7 +5285,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 20
+    "standard_id": 20,
+    "misconception": null
   },
   {
     "id": "ti-gen-f1a9bd02d9424a66",
@@ -5197,7 +5326,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 21
+    "standard_id": 21,
+    "misconception": null
   },
   {
     "id": "ti-gen-36eb52579d0ef14b",
@@ -5237,7 +5367,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 21
+    "standard_id": 21,
+    "misconception": null
   },
   {
     "id": "ti-gen-d695906ab0114f7f",
@@ -5277,7 +5408,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 21
+    "standard_id": 21,
+    "misconception": null
   },
   {
     "id": "ti-gen-c460b9d55b0b2362",
@@ -5317,7 +5449,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 21
+    "standard_id": 21,
+    "misconception": null
   },
   {
     "id": "ti-gen-65e9643edd0781d7",
@@ -5357,7 +5490,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 21
+    "standard_id": 21,
+    "misconception": "the passive voice sounds formal and 'test-like', masking the misattac…"
   },
   {
     "id": "ti-gen-31e0a62ecc0b5a4f",
@@ -5397,7 +5531,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 25
+    "standard_id": 25,
+    "misconception": null
   },
   {
     "id": "ti-gen-6cb24370d8242f1b",
@@ -5437,7 +5572,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 25
+    "standard_id": 25,
+    "misconception": null
   },
   {
     "id": "ti-gen-edd247e2ef9ff76d",
@@ -5477,7 +5613,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 25
+    "standard_id": 25,
+    "misconception": null
   },
   {
     "id": "ti-gen-e837d1c29c445707",
@@ -5517,7 +5654,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 25
+    "standard_id": 25,
+    "misconception": null
   },
   {
     "id": "ti-gen-6ff15380f6fcd522",
@@ -5557,7 +5695,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 32
+    "standard_id": 32,
+    "misconception": "'Than the old plant' sounds complete, hiding that a turbine's output…"
   },
   {
     "id": "ti-gen-888139978be5073c",
@@ -5597,7 +5736,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 32
+    "standard_id": 32,
+    "misconception": null
   },
   {
     "id": "ti-gen-8af409b05a85324e",
@@ -5637,7 +5777,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 32
+    "standard_id": 32,
+    "misconception": null
   },
   {
     "id": "ti-gen-74185039391e8c26",
@@ -5677,7 +5818,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": null
   },
   {
     "id": "ti-gen-d177ac4c09a673d3",
@@ -5717,7 +5859,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": null
   },
   {
     "id": "ti-gen-17fdb4a4ee295f8d",
@@ -5757,7 +5900,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": "the longer relative clause sounds more formal and 'complete'"
   },
   {
     "id": "ti-gen-9fb6fd5eaae7fdf9",
@@ -5797,7 +5941,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": null
   },
   {
     "id": "ti-gen-0104d697f908031f",
@@ -5837,7 +5982,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": "'Rise up' is common in speech and song, so it sounds idiomatic"
   },
   {
     "id": "ti-gen-670a5cc4945b3eb0",
@@ -5877,7 +6023,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 5
+    "standard_id": 5,
+    "misconception": "the long phrase sounds official, which reads as 'more correct'"
   },
   {
     "id": "ti-gen-87320507356d0f55",
@@ -5917,7 +6064,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 6
+    "standard_id": 6,
+    "misconception": null
   },
   {
     "id": "ti-gen-9e8e72b34bcb715d",
@@ -5957,7 +6105,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 6
+    "standard_id": 6,
+    "misconception": "the words look almost identical, so the negative one slips in unnoticed"
   },
   {
     "id": "ti-gen-473761e950feceac",
@@ -5997,7 +6146,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 6
+    "standard_id": 6,
+    "misconception": null
   },
   {
     "id": "ti-gen-97cf1d12c90d64ab",
@@ -6037,7 +6187,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 6
+    "standard_id": 6,
+    "misconception": null
   },
   {
     "id": "ti-gen-6f0cd0d7341e719c",
@@ -6077,7 +6228,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 6
+    "standard_id": 6,
+    "misconception": "'Skinny', 'thin', and 'slim' are close cousins, so it's easy to swap…"
   },
   {
     "id": "ti-gen-bdbcbe226d86801b",
@@ -6117,7 +6269,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-742799c550a58e1a",
@@ -6157,7 +6310,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-89c7ff6378446caf",
@@ -6197,7 +6351,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-2e3eda6d9075d574",
@@ -6237,7 +6392,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-60df6286c7916681",
@@ -6277,7 +6433,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": "the phrase 'said good things about' sounds specific because it's long…"
   },
   {
     "id": "ti-gen-2e0a772869e0c812",
@@ -6317,7 +6474,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": "'Not very good at' sounds appropriately cautious, but caution isn't p…"
   },
   {
     "id": "ti-gen-760a68005523b0ff",
@@ -6357,7 +6515,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-d895b6e62645c3d6",
@@ -6397,7 +6556,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 8
+    "standard_id": 8,
+    "misconception": null
   },
   {
     "id": "ti-gen-c53704861efec902",
@@ -6437,7 +6597,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": null
   },
   {
     "id": "ti-gen-f19724b908798592",
@@ -6477,7 +6638,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": "'Enfants terribles' sounds worldly and startup-flavored, masking that…"
   },
   {
     "id": "ti-gen-ffcac62995b325e2",
@@ -6517,7 +6679,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": null
   },
   {
     "id": "ti-gen-3d16a3afd16b2422",
@@ -6557,7 +6720,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": null
   },
   {
     "id": "ti-gen-e68996d993ddbf5a",
@@ -6597,7 +6761,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": "'The reason is because' is extremely common in speech and sounds natural"
   },
   {
     "id": "ti-gen-10f0b02354ecfdf4",
@@ -6637,7 +6802,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": null
   },
   {
     "id": "ti-gen-0a9808afaaedc6d9",
@@ -6677,7 +6843,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c",
-    "standard_id": 9
+    "standard_id": 9,
+    "misconception": null
   },
   {
     "id": "ti-gen-b21cca2fbc4a3c98",
@@ -6717,7 +6884,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@2e145cb2f5514579b1cae251b777cff0",
-    "standard_id": 12
+    "standard_id": 12,
+    "misconception": null
   },
   {
     "id": "ti-gen-4ae6a4ffb48ec23d",
@@ -6757,7 +6925,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7",
-    "standard_id": 12
+    "standard_id": 12,
+    "misconception": "swapping sang/sung after a helper"
   },
   {
     "id": "ti-gen-03e8dc4d409295fc",
@@ -6797,7 +6966,8 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7",
-    "standard_id": 17
+    "standard_id": 17,
+    "misconception": null
   },
   {
     "id": "ti-gen-b21513cab961e3f7",
@@ -6837,6 +7007,7 @@
     "item_type": "underlined-span-mc",
     "reviewed": true,
     "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7",
-    "standard_id": 1
+    "standard_id": 1,
+    "misconception": null
   }
 ]

@@ -1,12 +1,16 @@
 /**
  * useSummary — the Session-Summary screen's read-only seam onto the engine
- * ports (FR-G1..G3).
+ * ports (FR-G1..G3 + C2 FR-1/FR-2/FR-12/FR-14).
  *
  * Per F-R1 the Summary component owns NO domain logic. Reading the STORED
  * session score (never a re-tally, FR-G1), computing the mastery delta from the
  * session-start snapshot vs. a fresh read (ADR-0011 §4), and picking the
  * recommended-next skill (FR-G1/G2) live here, as React-free async functions
  * exercised in node against a seeded InMemoryEngineDb.
+ *
+ * C2: misconception + self-correction + score-ratio are derived from existing
+ * AttemptRepo.misses + servedQuestionIds + QuestionRepo.get — no new port
+ * (ADR-0027 / G1).
  *
  * READ-ONLY (FR-A2): Summary is a *view*. It reads via `sessionRepo.get` +
  * `learnerRead.listSkillState`; it never calls `scheduler.next()` (which would
@@ -23,8 +27,13 @@
 import * as React from "react";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import { useEngine } from "@/app/engine-provider";
-import type { RecommendedNext, SkillState } from "@/lib/wire/engine_entities";
+import type {
+  Attempt,
+  RecommendedNext,
+  SkillState,
+} from "@/lib/wire/engine_entities";
 import {
+  SUMMARY_FRAMED_TITLE_RATIO,
   toSessionSummaryVM,
   type SessionSummaryVM,
 } from "@/lib/translators/session_summary_vm";
@@ -56,6 +65,63 @@ export interface LoadSummaryArgs {
   readonly nowISO: string;
 }
 
+function normalizeMisconception(value: string | null | undefined): string | null {
+  if (value == null || value === "") return null;
+  return value;
+}
+
+function deriveScoreRatioMet(scoreCorrect: number, scoreTotal: number): boolean {
+  return (
+    scoreTotal > 0 && scoreCorrect / scoreTotal >= SUMMARY_FRAMED_TITLE_RATIO
+  );
+}
+
+/**
+ * FR-12: newest session-scoped miss on the recommended skill → its misconception.
+ * Misses are already newest-first from AttemptRepo; filter to served ids.
+ */
+async function deriveMisconception(
+  ports: EnginePortBag,
+  sessionScopedMisses: readonly Attempt[],
+  recommendedSkillId: string,
+): Promise<string | null> {
+  for (const miss of sessionScopedMisses) {
+    const q = await ports.questionRepo.get(miss.question_id);
+    if (q != null && q.skill_id === recommendedSkillId) {
+      return normalizeMisconception(q.misconception);
+    }
+  }
+  return null;
+}
+
+/**
+ * FR-14: attempt-index half-split on session attempts for the recommended skill.
+ * served order ≈ session attempt order (in-memory insertion order; live seam
+ * treats served as a set — half-split is best-effort without a new port).
+ */
+async function deriveSelfCorrection(
+  ports: EnginePortBag,
+  servedIds: readonly string[],
+  sessionMissIds: ReadonlySet<string>,
+  recommendedSkillId: string,
+): Promise<boolean> {
+  const onSkill: { correct: boolean }[] = [];
+  for (const qid of servedIds) {
+    const q = await ports.questionRepo.get(qid);
+    if (q == null || q.skill_id !== recommendedSkillId) continue;
+    onSkill.push({ correct: !sessionMissIds.has(qid) });
+  }
+  const n = onSkill.length;
+  if (n === 0) return false;
+  const mid = Math.floor(n / 2);
+  const first = onSkill.slice(0, mid);
+  const second = onSkill.slice(mid);
+  const firstHasMiss = first.some((a) => !a.correct);
+  const secondHasCorrect = second.some((a) => a.correct);
+  const secondHasMiss = second.some((a) => !a.correct);
+  return firstHasMiss && secondHasCorrect && !secondHasMiss;
+}
+
 /**
  * Read-only gather of everything the Summary renders. Reads the stored session
  * + a fresh skill_state snapshot concurrently, computes the focus-skill delta
@@ -67,11 +133,14 @@ export async function loadSummary(
 ): Promise<SummaryVM> {
   const { subject, learnerId, sessionId, skillStateAtStart, nowISO } = args;
 
-  const [session, currentStates, skills] = await Promise.all([
-    ports.sessionRepo.get(sessionId),
-    ports.learnerRead.listSkillState(subject, learnerId),
-    ports.skillTaxonomy.list(subject),
-  ]);
+  const [session, currentStates, skills, allMisses, servedIds] =
+    await Promise.all([
+      ports.sessionRepo.get(sessionId),
+      ports.learnerRead.listSkillState(subject, learnerId),
+      ports.skillTaxonomy.list(subject),
+      ports.attemptRepo.misses(subject, learnerId),
+      ports.attemptRepo.servedQuestionIds(sessionId),
+    ]);
 
   if (session == null) {
     // The caller handed a session id the repo can't resolve — a seam defect,
@@ -114,7 +183,38 @@ export async function loadSummary(
     ? (currentRow!.mastery - startRow!.mastery) * 100
     : 0;
 
-  const summary = toSessionSummaryVM(session, recommended, nextSkill, masteryDeltaPct);
+  const servedSet = new Set(servedIds);
+  // Newest-first order from misses is preserved after the session filter (FR-12).
+  const sessionScopedMisses = allMisses.filter((m) =>
+    servedSet.has(m.question_id),
+  );
+  const sessionMissIds = new Set(sessionScopedMisses.map((m) => m.question_id));
+
+  const misconception = await deriveMisconception(
+    ports,
+    sessionScopedMisses,
+    recommendedSkillId,
+  );
+  const selfCorrected = await deriveSelfCorrection(
+    ports,
+    servedIds,
+    sessionMissIds,
+    recommendedSkillId,
+  );
+  const scoreRatioMet = deriveScoreRatioMet(
+    session.score_correct,
+    session.score_total,
+  );
+
+  const summary = toSessionSummaryVM(
+    session,
+    recommended,
+    nextSkill,
+    masteryDeltaPct,
+    misconception,
+    selfCorrected,
+    scoreRatioMet,
+  );
   return { summary, masteryDeltaKnown };
 }
 

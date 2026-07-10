@@ -55,6 +55,7 @@ _ROW_FIELDS = (
     "why_tempted_md",
     "rule_md",
     "item_type",
+    "misconception",  # C2 / ADR-0027 — nullable authored one-liner
     "reviewed",
     "generated_by",
 )
@@ -187,6 +188,14 @@ def emit_test_item_bank(corpus_path: Path, ts_out: Path) -> None:
         return  # unreachable; keeps the type-checker happy
     if not isinstance(rows, list):
         _die("corpus must be a JSON array of promoted rows")
+    # C2 / ADR-0027: every serving row carries misconception (string | null).
+    for row in rows:
+        if not isinstance(row, dict):
+            _die("corpus rows must be objects")
+        if "misconception" not in row:
+            row["misconception"] = None
+        elif row["misconception"] == "":
+            row["misconception"] = None
     _validate(rows)
     ts_out.write_text(_render_ts(_sorted_rows(rows)), encoding="utf-8")
 

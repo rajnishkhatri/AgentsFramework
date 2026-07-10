@@ -21,6 +21,7 @@ const teaching = {
   why_tempted_md: "tempted",
   rule_md: "rule",
   item_type: "underlined-span-mc",
+  misconception: null,
 } as const;
 
 const choices = [

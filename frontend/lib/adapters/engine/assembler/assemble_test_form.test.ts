@@ -34,6 +34,7 @@ function item(id: string, over: Partial<TestItem> = {}): TestItem {
     why_tempted_md: "why-tempted",
     rule_md: "rule",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "gpt-4o-mini@run-1",
     ...over,

@@ -1,6 +1,7 @@
 /**
- * session_summary_vm — (QuizSession, RecommendedNext, Skill, masteryDeltaPct)
- * → SessionSummaryVM (FR-G1..G3).
+ * session_summary_vm — (QuizSession, RecommendedNext, Skill, masteryDeltaPct,
+ * misconception, selfCorrected, scoreRatioMet) → SessionSummaryVM (FR-G1..G3 +
+ * C2 FR-7/FR-8/FR-11/FR-13).
  *
  * Pure T1 map for Screen 5. FR-G1: the score tile reads the STORED session
  * score (`score_correct`/`score_total`) — the VM never re-tallies attempts. The
@@ -9,8 +10,9 @@
  * from the stored ISO timestamps (whole minutes). The recommended-next card
  * (FR-G1) carries the skill + mode so its CTA re-opens Quiz (FR-G2).
  *
- * The misconception write-up itself (FR-G3) is generated content shown in the
- * coach card; it is passed through by the hook, not synthesized here.
+ * C2 payoff: misconception / selfCorrected / scoreRatioMet are passed by the
+ * hook (never synthesized here). Framed title flips at
+ * SUMMARY_FRAMED_TITLE_RATIO; drillTitle is deterministic from target_count.
  *
  * Imports `wire/` only. No I/O, no React, no SDK.
  */
@@ -21,11 +23,15 @@ import type {
   Skill,
 } from "../wire/engine_entities";
 
+/** Score ratio at which the Summary title flips to framed "Nice work" copy. */
+export const SUMMARY_FRAMED_TITLE_RATIO = 0.6;
+
 export interface RecommendedNextVM {
   readonly skillId: string;
   readonly skillName: string;
   readonly mode: RecommendedNext["mode"];
   readonly accentVar: string;
+  readonly drillTitle: string;
 }
 
 export interface SessionSummaryVM {
@@ -35,6 +41,11 @@ export interface SessionSummaryVM {
   readonly masteryDeltaTile: string; // "+8%" / "-3%"
   readonly timeTile: string; // "12 min" or "—"
   readonly recommended: RecommendedNextVM;
+  readonly title: string;
+  readonly body: string;
+  readonly misconception: string | null;
+  readonly selfCorrected: boolean;
+  readonly showFramedTitle: boolean;
 }
 
 function signedPct(delta: number): string {
@@ -53,12 +64,45 @@ function timeTile(session: QuizSession): string {
   return `${Math.round(ms / 60000)} min`;
 }
 
+function drillTitle(session: QuizSession, skillName: string): string {
+  if (session.target_count == null) return `Drill: ${skillName}`;
+  return `${session.target_count}-item drill: ${skillName}`;
+}
+
+function titleAndBody(
+  skillName: string,
+  misconception: string | null,
+  selfCorrected: boolean,
+  scoreRatioMet: boolean,
+): { title: string; body: string } {
+  if (!scoreRatioMet) {
+    return {
+      title: "Session summary",
+      body: "Here's how this session went.",
+    };
+  }
+  const title = "Nice work — you found the pattern.";
+  if (selfCorrected && misconception != null) {
+    return { title, body: `The pattern: ${misconception}.` };
+  }
+  return { title, body: `You cleared the ${skillName} bar.` };
+}
+
 export function toSessionSummaryVM(
   session: QuizSession,
   recommended: RecommendedNext,
   nextSkill: Skill,
   masteryDeltaPct: number,
+  misconception: string | null,
+  selfCorrected: boolean,
+  scoreRatioMet: boolean,
 ): SessionSummaryVM {
+  const { title, body } = titleAndBody(
+    nextSkill.name,
+    misconception,
+    selfCorrected,
+    scoreRatioMet,
+  );
   return {
     scoreCorrect: session.score_correct,
     scoreTotal: session.score_total,
@@ -70,6 +114,12 @@ export function toSessionSummaryVM(
       skillName: nextSkill.name,
       mode: recommended.mode,
       accentVar: nextSkill.accent_var,
+      drillTitle: drillTitle(session, nextSkill.name),
     },
+    title,
+    body,
+    misconception,
+    selfCorrected,
+    showFramedTitle: scoreRatioMet,
   };
 }

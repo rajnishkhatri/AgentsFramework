@@ -58,6 +58,7 @@ function q(over: Partial<Question> & Pick<Question, "id" | "skill_id" | "difficu
     why_tempted_md: "The original reads smoothly until you apply the rule.",
     rule_md: "Apply the skill's rule, not what merely *sounds* right.",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "e2e-corpus",
     ...over,

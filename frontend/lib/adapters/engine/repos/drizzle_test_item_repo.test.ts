@@ -38,6 +38,7 @@ function item(over: Partial<TestItem> = {}): TestItem {
     why_tempted_md: "The people inside the team make 'were' sound right.",
     rule_md: "Collective noun as a unit → singular verb.",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "gpt-4o-mini@run-1",
     ...over,
@@ -99,6 +100,22 @@ describe("DrizzleTestItemRepo — reviewed gate first (FR-27.1)", () => {
     expect(row!.why_tempted_md.length).toBeGreaterThan(0);
     expect(row!.rule_md).toContain("singular");
     expect(row!.item_type).toBe("underlined-span-mc");
+  });
+
+  it("round-trips misconception null and string (C2 FR-10)", async () => {
+    db.seedTestItems([
+      item({ id: "ti-mis-null", misconception: null }),
+      item({
+        id: "ti-mis-str",
+        misconception: "confusing simple past with past participle",
+      }),
+    ]);
+    const rows = await repo.listReviewed("act-english");
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+    expect(byId["ti-mis-null"]!.misconception).toBeNull();
+    expect(byId["ti-mis-str"]!.misconception).toBe(
+      "confusing simple past with past participle",
+    );
   });
 });
 
