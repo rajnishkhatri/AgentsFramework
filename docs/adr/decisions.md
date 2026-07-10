@@ -479,3 +479,7 @@ title: 'Lightweight decision log (intent debt, long tail)'
 - 2026-07-10 — **C1 streak floor = 1 day for the first closed session today (Q4).**
   `toStreakVM` celebrates day-1 (`present: true, days: 1`) rather than gating until day-2 —
   matches the trust-relationship epic tone.
+
+- 2026-07-10 — **C1-fix devDep add: @axe-core/playwright (Q4).**
+  Testing-only; prescribed by frontend style guide §20. Not an ADR
+  trigger. Already present at `^4.11.2` in frontend/package.json.
