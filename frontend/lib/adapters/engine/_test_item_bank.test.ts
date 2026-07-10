@@ -43,4 +43,15 @@ describe("TEST_ITEM_BANK (FR-B1)", () => {
     const rows = await db.listReviewedTestItems("act-english");
     expect(rows).toHaveLength(TEST_ITEM_BANK.length);
   });
+
+  it("emits_misconception_key_even_when_null", () => {
+    for (const row of TEST_ITEM_BANK) {
+      expect(Object.prototype.hasOwnProperty.call(row, "misconception")).toBe(
+        true,
+      );
+      expect(
+        row.misconception === null || typeof row.misconception === "string",
+      ).toBe(true);
+    }
+  });
 });

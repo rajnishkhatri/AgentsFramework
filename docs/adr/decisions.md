@@ -12,6 +12,16 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-10 — **C2 misconception field lives on the `Question` wire (D4 direction).** Not on `Skill`, not on `Attempt`, not derived at render. Rejects D5 (Coach-runtime marker) and any Summary-time LLM synthesis. Authored on the `test_item` bank row; mapped through `TestItemQuestionRepo`. ADR-0027. Spec: [preact-parity-C2-summary-payoff.spec.md](../plan/preact-parity-C2-summary-payoff.spec.md).
+
+- 2026-07-10 — **C2 misconception seed-count = probe-based (K = 47).** Content pass authored 47 rows where existing `why_tempted_md` already implied a one-line misconception; remaining bank rows emit `misconception: null`. Spec §12 Q2 / §13 #4.
+
+- 2026-07-10 — **C2 FLAG-5 wire deferred until continuity-fixes lands `readActiveQuiz`.** Substrate export count was 0 at implement; no interim shim; `coach/page.tsx` untouched; no `validate_epic_ab.spec.ts` edit. Soft-gate arch test locks the absent-import posture. Spec §12 Q1 / §13 #3.
+
+- 2026-07-10 — **C2 self-correction signal = attempt-index half-split.** First-half incorrect + second-half correct + no second-half incorrect on the recommended skill. Derived from `misses` ∩ `servedQuestionIds` + `served \ misses` (no new port). Spec §12 Q4 / §13 #2.
+
+- 2026-07-10 — **C2 framed-title threshold = 0.6.** Score ratio at which the neutral title flips to "Nice work — you found the pattern." Hardcoded `SUMMARY_FRAMED_TITLE_RATIO` in `session_summary_vm.ts`. Prototype §5.5 uses 7/10 (0.7); 0.6 is a deliberate undercut to avoid over-praise. Spec §12 Q3 / §13 #1.
+
 - 2026-07-09 — **Coach-pass C4/C5: honest opener + green-span from `<u>`.** C4 option A — one opener only when pin + real misses + empty transcript (cite `N`, never “of last 5”); else empty until ask. C5 option A — Feedback recap = `context_html` with `<u>` → success color (FR-A7); no `<u>` → plain sentence, no invented highlight. Spec: [preact-parity-B-coach-pass.spec.md](../plan/preact-parity-B-coach-pass.spec.md).
 
 - 2026-07-09 — **Coach-pass C3 layout = prototype surface variants (desktop rail ≠ iPad).** Spec §5.4/§9 + iPad flow: desktop `/learn/coach` = left context rail + right chat/chips/composer; iPad standalone Coach = **header-strip** context (no left rail), centered ≤600px; iPad Quiz = existing **split** right `CoachPanel` (stacked chrome + nudges + composer, same thread). Chips stay with composer. **Rejected:** one stacked layout everywhere; forcing desktop two-column onto the quiz panel. Spec: [preact-parity-B-coach-pass.spec.md](../plan/preact-parity-B-coach-pass.spec.md); prototype: [PreACT-English-Coach-Spec.md](../../Eng-coach-ui-design/PreACT-English-Coach-Spec.md).

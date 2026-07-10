@@ -76,6 +76,7 @@ describe("buildEngineAdapters — full bag + end-to-end loop", () => {
       why_tempted_md: "",
       rule_md: "",
       item_type: "underlined-span-mc",
+      misconception: null,
       reviewed: true,
       generated_by: "test",
     };

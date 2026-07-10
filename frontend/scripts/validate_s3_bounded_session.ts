@@ -325,6 +325,7 @@ async function validateUniquenessGroup(): Promise<void> {
       why_tempted_md: "",
       rule_md: "",
       item_type: "underlined-span-mc",
+      misconception: null,
       reviewed: true,
       generated_by: "test",
       ...over,

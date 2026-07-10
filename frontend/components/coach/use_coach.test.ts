@@ -210,6 +210,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
       why_tempted_md: "",
       rule_md: "rule",
       item_type: "underlined-span-mc" as const,
+      misconception: null,
       reviewed: true,
       generated_by: "test",
     };

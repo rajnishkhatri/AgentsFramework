@@ -178,3 +178,158 @@ describe("loadSummary — read-only (FR-A2): renders without writing skill_state
     expect(rows).toHaveLength(0);
   });
 });
+
+function question(over: Partial<import("@/lib/wire/engine_entities").Question> = {}) {
+  return {
+    id: "q1",
+    subject: SUBJECT,
+    skill_id: "s-punc",
+    difficulty: 2,
+    context_html: "x",
+    stem: "y",
+    choices: [{ letter: "A", label: "NO CHANGE", is_no_change: true }],
+    answer_letter: "A",
+    per_choice_rationale: {},
+    why_correct_md: "",
+    why_tempted_md: "",
+    rule_md: "",
+    item_type: "underlined-span-mc",
+    misconception: null as string | null,
+    reviewed: true,
+    generated_by: "test",
+    ...over,
+  };
+}
+
+async function recordAttempt(
+  sessionId: string,
+  questionId: string,
+  correct: boolean,
+): Promise<void> {
+  await ports.attemptRepo.record({
+    subject: SUBJECT,
+    session_id: sessionId,
+    question_id: questionId,
+    chosen_letter: correct ? "A" : "B",
+    correct,
+    elapsed_ms: 1000,
+    used_hint: false,
+  });
+}
+
+describe("loadSummary — C2 misconception + self-correction (FR-1/FR-2/FR-12/FR-14)", () => {
+  it("renders_no_misconception_card_when_question_misconception_null", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([question({ id: "q-null", misconception: null })]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q-null", false);
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.misconception).toBeNull();
+  });
+
+  it("renders_no_misconception_when_no_misses_on_recommended_skill", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q-gram", skill_id: "s-gram", misconception: "wrong skill miss" }),
+      question({ id: "q-punc-ok", skill_id: "s-punc", misconception: "should not show" }),
+    ]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q-gram", false); // miss on other skill
+    await recordAttempt(session.id, "q-punc-ok", true); // correct on recommended
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.misconception).toBeNull();
+  });
+
+  it("derives_misconception_from_last_incorrect_attempt_on_recommended_skill", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q-old", misconception: "older miss" }),
+      question({ id: "q-new", misconception: "newest miss on skill" }),
+    ]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q-old", false);
+    await recordAttempt(session.id, "q-new", false);
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.misconception).toBe("newest miss on skill");
+  });
+
+  it("self_correction_signal_true_when_first_half_miss_second_half_clean", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q1", misconception: "pattern" }),
+      question({ id: "q2" }),
+      question({ id: "q3" }),
+      question({ id: "q4" }),
+    ]);
+    const session = await openClosedSession();
+    // 4 attempts on recommended skill: miss, miss | correct, correct
+    await recordAttempt(session.id, "q1", false);
+    await recordAttempt(session.id, "q2", false);
+    await recordAttempt(session.id, "q3", true);
+    await recordAttempt(session.id, "q4", true);
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.selfCorrected).toBe(true);
+  });
+
+  it("self_correction_signal_false_when_second_half_still_missing", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q1", misconception: "pattern" }),
+      question({ id: "q2" }),
+      question({ id: "q3" }),
+      question({ id: "q4" }),
+    ]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q1", false);
+    await recordAttempt(session.id, "q2", true);
+    await recordAttempt(session.id, "q3", false); // miss in second half
+    await recordAttempt(session.id, "q4", true);
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.selfCorrected).toBe(false);
+  });
+
+  it("normalizes_empty_string_misconception_to_null", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([question({ id: "q-empty", misconception: "" })]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q-empty", false);
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.misconception).toBeNull();
+  });
+});
