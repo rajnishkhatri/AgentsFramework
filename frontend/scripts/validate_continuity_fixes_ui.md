@@ -1,13 +1,13 @@
 # Manual UI walkthrough — Epic A/B continuity fixes
 
-**Status: VALIDATED — 2026-07-10**  
+**Status: VALIDATED — 2026-07-10**
 Manual Steps 1–6 complete · `pnpm test:e2e:continuity` **4 passed** · open note: FLAG-6 mastery *value* honesty (label ✅).
 
 **Audience:** you, validating FLAG-1 / FLAG-4 / FLAG-6 / Reveal polish on localhost
 after the continuity-fix implementation. Tick each row; screenshot any ❌.
 
-**Spec:** [`docs/plan/epic-ab-continuity-fixes.spec.md`](../../docs/plan/epic-ab-continuity-fixes.spec.md)  
-**Automated companion:** [`e2e/learn/validate_continuity_fixes.spec.ts`](../e2e/learn/validate_continuity_fixes.spec.ts)  
+**Spec:** [`docs/plan/epic-ab-continuity-fixes.spec.md`](../../docs/plan/epic-ab-continuity-fixes.spec.md)
+**Automated companion:** [`e2e/learn/validate_continuity_fixes.spec.ts`](../e2e/learn/validate_continuity_fixes.spec.ts)
 **Prior Epic A/B walk (unchanged):** [`validate_epic_ab_ui.md`](./validate_epic_ab_ui.md)
 
 | Fix | FR | Pass looks like | Result |
