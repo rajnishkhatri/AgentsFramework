@@ -20,6 +20,7 @@ import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachPanel } from "@/components/coach/CoachPanel";
+import { setCoachPin } from "@/components/coach/coach_thread_store";
 import { useSurface } from "@/components/shell/use_surface";
 import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
 import { resolveFocusMode } from "@/components/quiz/resolve_focus_mode";
@@ -235,6 +236,22 @@ export default function QuizPage(): React.JSX.Element {
       state.verdict,
       { letter: state.answeredLetter },
     );
+    // FR-5 / F-6: desktop Ask-the-coach writes store pin + navigates; iPad
+    // already has the live CoachPanel (FR-8 — do not duplicate the bridge).
+    const onAskCoach =
+      surface !== "ipad" && feedback.present
+        ? () => {
+            setCoachPin(
+              {
+                questionId: feedback.askCoachContext.questionId,
+                skillId: feedback.askCoachContext.skillId,
+                label: `Q${progressVm.position} · ${state.item.question.skill_id}`,
+              },
+              "post_feedback",
+            );
+            router.push(screen("coach").route);
+          }
+        : undefined;
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
         {/* S5 done-state (FR-4/FR-5): once the graded tally reaches the target,
@@ -244,7 +261,9 @@ export default function QuizPage(): React.JSX.Element {
         {progressVm.complete ? (
           <QuizDoneBanner targetCount={session?.target_count ?? 0} />
         ) : null}
-        {feedback.present ? <FeedbackView vm={feedback.vm} /> : null}
+        {feedback.present ? (
+          <FeedbackView vm={feedback.vm} onAskCoach={onAskCoach} />
+        ) : null}
         <div className="flex items-center justify-between gap-3">
           {/* S5 (FR-6/FR-7): the two actions keep their ORIGINAL labels
               ("Next question" / "Finish & see summary") for every pre-target
@@ -299,6 +318,12 @@ export default function QuizPage(): React.JSX.Element {
           key={item.question.id}
           runtime={coachRuntime}
           hintLadder={item.hintLadder}
+          mode={state.phase === "reviewing" ? "post_feedback" : "pre_submit"}
+          pin={{
+            questionId: item.question.id,
+            skillId: item.question.skill_id,
+            label: `Q${progressVm.position} · ${item.question.skill_id}`,
+          }}
         />
       </div>
     );

@@ -106,3 +106,37 @@ describe("toFeedbackVM — per-choice review states (FR-E4) + rule (FR-E1)", () 
     expect(a?.state).toBe("correct");
   });
 });
+
+describe("toFeedbackVM — green-span recap (BP-2c / FR-7 / C5)", () => {
+  it("keeps <u> in recapHtml when context_html has an underlined span", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(vm.recapHtml).toContain("<u>");
+    expect(vm.recapHtml).toContain("have");
+    expect(vm.recapHasUnderline).toBe(true);
+  });
+
+  it("falls back to plain stem without inventing <u> when context has none", () => {
+    const vm = toFeedbackVM(
+      question({ context_html: "Plain sentence with no underline.", stem: "Which is best?" }),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(vm.recapHtml).toBe("Which is best?");
+    expect(vm.recapHtml).not.toContain("<u>");
+    expect(vm.recapHasUnderline).toBe(false);
+  });
+
+  it("falls back to context text when no <u> and stem is empty", () => {
+    const vm = toFeedbackVM(
+      question({ context_html: "Just a sentence.", stem: "" }),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(vm.recapHtml).toBe("Just a sentence.");
+    expect(vm.recapHasUnderline).toBe(false);
+  });
+});

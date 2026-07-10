@@ -82,4 +82,28 @@ describe("CoachView — U4 streaming region + FR-F1 turns", () => {
     expect(doc.querySelectorAll('[data-testid^="coach-turn-"]')).toHaveLength(0);
     expect(doc.querySelector('[data-testid="coach-retry"]')).toBeNull();
   });
+
+  it("renders honest opener when provided and transcript is empty (FR-12)", () => {
+    const doc = dom(
+      <CoachView
+        turns={[]}
+        busy={false}
+        openerMarkdown="I see 3 misses on Commas. Want to unpack what keeps tripping you up?"
+      />,
+    );
+    expect(doc.querySelector('[data-testid="coach-opener"]')?.textContent).toContain(
+      "3 misses",
+    );
+  });
+
+  it("hides opener once turns exist (never re-seed)", () => {
+    const doc = dom(
+      <CoachView
+        turns={[turn()]}
+        busy={false}
+        openerMarkdown="I see 3 misses on Commas."
+      />,
+    );
+    expect(doc.querySelector('[data-testid="coach-opener"]')).toBeNull();
+  });
 });

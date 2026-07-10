@@ -115,40 +115,45 @@ The FR-D5/FR-D6 resolution + the A2 triage outcome are `docs/adr/decisions.md` e
 
 ## Epic B — Coach surface build-out  🟥/🟧  *(flagship within-screen parity)*
 
+> **Board authored** ([preact-parity-sprint-board-B.md](preact-parity-sprint-board-B.md)) —
+> Stage-1 CLOSED ([brainstorm](preact-parity-epic-B.brainstorm.md)): **D1+D6** shared chrome ·
+> **D5a** display-only 3→2 modes · **D2** Feedback bridge+recap · **D3** slip-capable stream ·
+> chips = `onAsk` seeds · ladder **B0 → B1 → B2 → B3**. Scout revised `C-5`/`C-4`/`C-6` framing
+> (folded in below).
+
 **Goal.** Turn `/learn/coach` from a title+composer **empty shell** into the prototype's
-**coaching workspace**: a context rail, the trust-signal "sees your history N of M" line, a
-coach-mode switcher, quick-reply chips, and the Feedback→Coach bridge on desktop.
+**coaching workspace**: a context rail, an honest history trust line (real skill-scoped misses
+or absent — never placeholder "N of M"), a **derived-mode display** (not a free switcher),
+quick-reply chips, and the Feedback→Coach bridge on desktop.
 
 **In scope (report findings):**
 
-| ID | Finding | Notes |
-|----|---------|-------|
-| `C-2` | Context rail ("Your Coach / Adaptive · always on", status dot) | left rail absent on standalone |
-| `C-3` | Current-item context ("Current item: Q4 · Commas, non-essential") | needs current-item wiring |
-| `C-4` | **"Sees your history: 3 of last 5 comma items missed"** | the trust-signal line |
-| `C-5` | **COACH MODES** switcher (Socratic hint / deep-dive / misconception) | derived mode exists in code; no visible switcher |
-| `C-6` | Seeded conversation / reply logic | blank without live agent — see caveat |
-| `C-7` | Quick-reply chips ("Explain the rule simply", …) | composer present, no chips |
-| `F-6` | **"Ask the coach"** on desktop Feedback | today iPad-split only — bridges Feedback→Coach |
-| `F-4` | Green-span sentence recap on Feedback | pairs naturally with the coach bridge work |
+| ID | Finding | Fix shape (post-brainstorm) |
+|----|---------|-----------|
+| `C-2` | Context rail ("Your Coach / Adaptive · always on", status dot) | Shared chrome leaf (standalone + iPad panel) |
+| `C-3` | Current-item context ("Current item: Q4 · Commas, non-essential") | Pin when present; honest absent otherwise |
+| `C-4` | **"Sees your history: 3 of last 5 comma items missed"** | Real `AttemptRepo.misses()` aggregate **or honestly absent** — never placeholder |
+| `C-5` | **COACH MODES** (prototype: 3 labels) | **D5a** — display-only map onto 2 marker-derived modes (`pre_submit` / `post_feedback`); no learner override (ADR-0012) |
+| `C-6` | Seeded conversation / reply logic | Stream route **already exists**; B3 = `coach_context` + optional seed — **slip-capable** |
+| `C-7` | Quick-reply chips ("Explain the rule simply", …) | Composer-fill / `onAsk` seeds only (no local canned coach) |
+| `F-6` | **"Ask the coach"** on desktop Feedback | Consume existing `askCoachContext`; desktop action (today iPad-only) |
+| `F-4` | Green-span sentence recap on Feedback | **FR-E1** gap — ships with F-6 in B2 |
 
-**Release criteria.** `/learn/coach` renders the context rail + history line + mode switcher +
-chips as real components; "Ask the coach" reaches the coach from desktop Feedback. The *live
-reply stream* (`C-6` conversation, backend-dependent) may be gated behind a separate sprint if
-the agent backend isn't stood up — the **chrome** ships first and is testable without it.
+**Release criteria.** `/learn/coach` (and iPad panel) render shared chrome for rail + history
+line + mode display + chips; "Ask the coach" reaches the coach from desktop Feedback; green-span
+recap on Feedback. The *context/seed depth* (`C-6` / B3) may be deferred — chrome + bridge ship
+and are testable without it.
 
-**Independence / releasability.** The chrome (rail/line/switcher/chips + the Feedback bridge)
-is buildable and testable now with no backend. The live-stream sprint depends on
-`/api/coach/run/stream` being reachable — flagged so it can slip without blocking the rest.
+**Independence / releasability.** B0 docs, B1 chrome, and B2 Feedback bridge are each mergeable
+alone (B1 before B2 preferred for current-item pin). B3 may slip without failing B1/B2.
 
-**Likely sprint split:** `B1` coach chrome (rail + history line + mode switcher + chips),
-`B2` Feedback→Coach desktop bridge + green-span recap (`F-6`/`F-4`), `B3` live seeded
-conversation (backend-dependent, may defer). Each is its own releasable slice.
+**Sprint split (now decided — see board):** **B0** mode taxonomy + honesty docs · **B1** shared
+coach chrome (`C-2…C-5`, `C-7`) · **B2** Feedback bridge + recap (`F-6`/`F-4`) · **B3** live
+context (slip-capable). Each independently testable + releasable.
 
-**Gates.** **Likely an ADR** — introduces a coach view-model / mode surface and possibly a new
-adapter seam for the coach stream (Frontend Ring: SDK imports stay in `lib/adapters/`). Coach
-history line is a **trust signal** → keep it honest (no fabricated counts; cf. AP-6). Confirm
-at spec time.
+**Gates.** **Likely an ADR at B1** — coach surface VM (G1). D5a itself is `decisions.md` (no new
+derived mode). History line is a **trust signal** → real or absent (AP-6). Confirm ADR at B1
+spec time.
 
 ---
 
