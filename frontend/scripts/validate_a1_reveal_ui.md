@@ -126,9 +126,9 @@ head -20 docs/adr/decisions.md
 # expect: 2026-07-09 Sprint A1 … gated submit alias
 ```
 
-- [ ] **A.2** vitest 12 passed  
-- [ ] **A.3** Playwright walk 1 passed  
-- [ ] **A.5** FR-D6a + decisions.md entry present  
+- [ ] **A.2** vitest 12 passed
+- [ ] **A.3** Playwright walk 1 passed
+- [ ] **A.5** FR-D6a + decisions.md entry present
 
 ---
 
