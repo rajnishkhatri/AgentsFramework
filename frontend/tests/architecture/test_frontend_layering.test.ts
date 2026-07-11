@@ -382,3 +382,40 @@ describe("Pattern 7 self-validation (the test catches violations)", () => {
     expect(translatorHit, "expected adapters/ -> translators/ violation to be flagged").toBeTruthy();
   });
 });
+
+// ── C1-fix FR-3: no e2e backdoor outside the composition root ─────────
+
+describe("forbids_e2e_backdoor_outside_composition_root (FR-3)", () => {
+  it("no __PREACT_E2E_ in components/ or lib/ outside composition_engine_browser.ts", () => {
+    const allow = path.normalize(
+      path.join(FRONTEND_ROOT, "lib/composition_engine_browser.ts"),
+    );
+    const roots = [
+      path.join(FRONTEND_ROOT, "components"),
+      path.join(FRONTEND_ROOT, "lib"),
+    ];
+    const offenders: string[] = [];
+    for (const root of roots) {
+      if (!fs.existsSync(root)) continue;
+      const walk = (dir: string): void => {
+        for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, ent.name);
+          if (ent.isDirectory()) {
+            walk(full);
+            continue;
+          }
+          if (!/\.(ts|tsx)$/.test(ent.name)) continue;
+          // Test files may mention the forbidden token in assertions.
+          if (/\.test\.(ts|tsx)$/.test(ent.name)) continue;
+          if (path.normalize(full) === allow) continue;
+          const src = fs.readFileSync(full, "utf8");
+          if (src.includes("__PREACT_E2E_")) {
+            offenders.push(path.relative(FRONTEND_ROOT, full));
+          }
+        }
+      };
+      walk(root);
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
+  });
+});

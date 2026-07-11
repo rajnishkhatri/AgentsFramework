@@ -33,6 +33,8 @@ export type SessionScore = {
  *      already-closed session re-applies the same tally without error.
  *   4. `get()` returns `null` (not throw) for an unknown session id.
  *   5. All returned values are `wire/engine_entities` shapes (Rule A4).
+ *   6. `listByLearner()` returns closed sessions only (newest-first) for
+ *      derived trust signals (streak / weekly) — ADR-0026.
  *
  * @throws EngineRepoError on persistence failure.
  */
@@ -55,4 +57,29 @@ export interface SessionRepo {
 
   /** Read a session by id, or null if unknown. */
   get(id: string): Promise<QuizSession | null>;
+
+  /**
+   * Closed sessions for a learner, newest-first (by `ended_at DESC`), for
+   * derived signals like streak and weekly-session counts (FR-C1 rail).
+   *
+   * Behavioral contract:
+   *   1. RETURNS CLOSED SESSIONS ONLY (`ended_at != null`). In-flight sessions
+   *      are excluded — the caller reasons over completed work, not intent.
+   *   2. `sinceISO` (optional) — inclusive lower bound on `ended_at`. Omitted
+   *      → no lower bound (all closed sessions). Callers pass the earliest
+   *      timestamp they need so the read stays bounded (e.g. 8 days back for
+   *      "this week + a 1-day streak-continuity check").
+   *   3. Ordering is deterministic (`ended_at DESC`, then `id ASC` as a
+   *      tiebreaker for same-instant ends).
+   *   4. Empty result → `[]`, never `null`, never throw.
+   *   5. Returned rows are `wire/engine_entities.QuizSession` shapes (Rule A4
+   *      / F-R8: no vendor type escapes the adapter).
+   *
+   * @throws EngineRepoError on persistence failure.
+   */
+  listByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]>;
 }
