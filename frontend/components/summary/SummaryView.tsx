@@ -69,7 +69,7 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
 
       <dl className="grid grid-cols-3 gap-3">
         <StatTile label="Score" value={summary.scoreTile} testId="summary-score" />
-        <StatTile label="Mastery" value={deltaValue} testId="summary-delta" />
+        <StatTile label="Mastery change" value={deltaValue} testId="summary-delta" />
         <StatTile label="Time" value={summary.timeTile} testId="summary-time" />
       </dl>
 

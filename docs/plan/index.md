@@ -2,6 +2,14 @@
 
 OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
+## PreACT UI parity (Epic A + B)
+
+- [Epic A + B post-merge review](epic-a-b-post-merge-review.md) — FR inventory + validation matrix for PR #140 / #141.
+- [Epic A + B manual UI validation report](epic-a-b-manual-validation-report.md) — 2026-07-10 Steps 1–15 walkthrough results, A0 gap, FLAG-1/4/5/6.
+- [Epic A/B continuity fixes spec](epic-ab-continuity-fixes.spec.md) — FLAG-1/4/6 + Reveal polish (FLAG-5 → Epic C0).
+- [Epic A/B continuity fixes plan](epic-ab-continuity-fixes.plan.md) — Approved 2026-07-10.
+- [Epic A/B continuity fixes tasks](epic-ab-continuity-fixes.tasks.md) — Stage 6 implement (P1–P9 / Groups A–E).
+
 ## Roadmap documents
 
 - [ReAct Agent with Dynamic Model Selection](PLAN.md) — The system is organized as a three-layer grid following the composable layering architecture.

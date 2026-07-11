@@ -106,11 +106,28 @@ export type QuizScreenAction =
   // and never reads a clock itself (deterministic, node-testable). Optional so the
   // transition-only tests that don't care about timing can omit it (defaults to 0).
   | { type: "item_loaded"; item: QuizItemResult; presentedAt?: number }
+  // FLAG-4 resume: restore a stashed item + running tally without openSession /
+  // a fresh item_loaded (FR-3). Score is required so resume never fabricates 0/0.
+  // When `feedback` is set, restore reviewing (left from Feedback) so progress
+  // stays on Question N and the learner can tap Next themselves.
+  | {
+      type: "resume_item";
+      item: QuizItemResult;
+      score: SessionTally;
+      presentedAt?: number;
+      feedback?: {
+        verdict: Verdict;
+        answeredLetter: string;
+        usedHint: boolean;
+      };
+    }
   | { type: "select"; letter: string }
   | { type: "toggle_hint" }
   | { type: "submitted"; verdict: Verdict | null; letter: string | null }
   | { type: "next" }
-  | { type: "finish" };
+  | { type: "finish" }
+  /** Q-8: End session — distinct from `finish` (FR-Q8-6); page routes to /learn. */
+  | { type: "end_session" };
 
 const ZERO_TALLY: SessionTally = { correct: 0, total: 0 };
 
@@ -142,6 +159,30 @@ export function quizScreenReducer(
         usedHint: false,
         presentedAt: action.presentedAt ?? Number.NaN,
         score: state.score,
+      };
+
+    case "resume_item":
+      // Coach ← Back remount: restore the left item + stashed tally.
+      // Left from Feedback → reviewing (same N, Next available; no re-submit).
+      // Left from answering → clean answering slate.
+      if (action.feedback != null) {
+        return {
+          phase: "reviewing",
+          item: action.item,
+          verdict: action.feedback.verdict,
+          answeredLetter: action.feedback.answeredLetter,
+          usedHint: action.feedback.usedHint,
+          score: action.score,
+        };
+      }
+      return {
+        phase: "answering",
+        item: action.item,
+        selectedLetter: null,
+        hintOpen: false,
+        usedHint: false,
+        presentedAt: action.presentedAt ?? Number.NaN,
+        score: action.score,
       };
 
     case "select":
@@ -182,6 +223,15 @@ export function quizScreenReducer(
     case "finish":
       if (state.phase !== "reviewing") return state;
       // The final tally rides to `done` so the page closes the session with it.
+      return { phase: "done", score: state.score };
+
+    case "end_session":
+      // Q-8: actionable from answering OR reviewing (FR-Q8-3); no-op from
+      // loading/done (FR-Q8-1/2). Converges on `done` like finish — the page
+      // callback owns the route target (/learn vs /learn/summary).
+      if (state.phase !== "answering" && state.phase !== "reviewing") {
+        return state;
+      }
       return { phase: "done", score: state.score };
 
     default:

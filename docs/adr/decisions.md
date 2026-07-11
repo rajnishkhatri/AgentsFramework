@@ -16,6 +16,18 @@ title: 'Lightweight decision log (intent debt, long tail)'
 
 - Q-1b (2026-07-11): DEFAULT_TARGET_COUNT stays at 30. Rationale: ADR-0023 locked 30 as the adaptive-loop mastery signal; PreAct/UI-Design/design-spec.md:143's "Session = 10 items" is a sample-session narrative, not an acceptance criterion; FR-11 end-early-on-exhaustion already keeps thin-skill drills correct. Rejected alternative: move to 10 (prototype fidelity + full drills on today's thin bank without S3-pre). Docs-only — no code, no ADR-0023 amend. Framing: [preact-parity-D3-session-length.impl.md](../plan/preact-parity-D3-session-length.impl.md). Spec: [preact-parity-D3-session-length.spec.md](../plan/preact-parity-D3-session-length.spec.md).
 
+- 2026-07-10 — **Sprint D1: extend QuizItemVM instead of introducing QuizFrameVM.**
+  D1 (Quiz session-frame chrome, Q-7/Q-8/Q-9) extends `QuizItemVM` with two
+  nullable fields (`skillName`, `accentVar`) rather than introducing a new
+  `QuizFrameVM` translator + view slot. Why: two nullable fields is not a new
+  abstraction; the frame's only cross-cutting derived data (Q-7's skill join) is
+  per-item, so its home is the item VM. Q-8 (tally) and Q-9 (`started_at`) are
+  read directly from React state (page-owned), so they need no VM. No G1 gate;
+  this log is the correct weight (per root AGENTS.md). Rejected alternative: a
+  separate `QuizFrameVM` mirroring ADR-0025's coach surface VM — deferred until
+  the item VM crosses ~8 fields (would need its own G1 ADR at that point).
+  Spec/plan: [preact-parity-D1-quiz-frame.spec.md](../plan/preact-parity-D1-quiz-frame.spec.md).
+
 - 2026-07-10 — **Epic D — Stage-1 premise audit corrections (Sprint D0).** Five epics-doc / VISUAL-report framings were **refuted** against the working tree; D0 corrects the record (docs-only) before D1/D2/D3 enter `sdd-spec`. Spec/plan: [preact-parity-D0-correct-record.spec.md](../plan/preact-parity-D0-correct-record.spec.md); board: [preact-parity-sprint-board-D.md](../plan/preact-parity-sprint-board-D.md); audit: [preact-parity-epic-D.brainstorm.md](../plan/preact-parity-epic-D.brainstorm.md).
   - **P3 (Q-7):** not a view-only chip — wire `Question` has no `skill_name`/`accent_var` ([`engine_entities.ts:61-64`](../../frontend/lib/wire/engine_entities.ts:61)); those live on `Skill` ([`:34-44`](../../frontend/lib/wire/engine_entities.ts:34)). Fix = hook + translator + view.
   - **P8 (Q-9):** "dismissible timer" misleads — no clock renders today (`components/quiz/` timer/Clock/elapsed = 0 UI hits). Reframe = *collapsible / off-by-default*; `elapsed_ms` capture already correct ([`session_summary_vm.ts:60-65`](../../frontend/lib/translators/session_summary_vm.ts:60) / A2 triage).
@@ -34,6 +46,24 @@ title: 'Lightweight decision log (intent debt, long tail)'
 - 2026-07-10 — **C2 self-correction signal = attempt-index half-split.** First-half incorrect + second-half correct + no second-half incorrect on the recommended skill. Derived from `misses` ∩ `servedQuestionIds` + `served \ misses` (no new port). Spec §12 Q4 / §13 #2.
 
 - 2026-07-10 — **C2 framed-title threshold = 0.6.** Score ratio at which the neutral title flips to "Nice work — you found the pattern." Hardcoded `SUMMARY_FRAMED_TITLE_RATIO` in `session_summary_vm.ts`. Prototype §5.5 uses 7/10 (0.7); 0.6 is a deliberate undercut to avoid over-praise. Spec §12 Q3 / §13 #1.
+
+- 2026-07-10 — **Drill `?focus=` pins item draw to that skill (FR-A5).** Session stored `skill_focus` but `openQuizItem` still called adaptive `scheduler.next`, so after missing skill A, a skill-B bucket drill kept serving A — Home “misses” looked like only the first skill. **Decision:** drill mode draws via `QuestionRepo.nextReviewed(subject, skill_focus, servedIds)` only. **Rejected:** leave the documented “honest gap”; filter misses by last session skill.
+
+- 2026-07-10 — **Outstanding misses = latest attempt incorrect (clears on later correct).** After review 3/5 correct, Home still showed 5 — `misses()` returned every historical incorrect row. **Decision:** `listMisses` projects outstanding only (latest attempt per `question_id` is wrong); later correct clears from badge + review pool. Append-only history unchanged. **Rejected:** keep lifetime miss history on the badge.
+
+- 2026-07-10 — **Review complete: hide Keep practising (no miss-pool over-run).** After the last miss, Keep practising called `openQuizItem` and threw “no unserved missed questions”. **Decision:** when `mode=review` and `progressVm.complete`, hide quiz-next; promote See summary to the primary CTA. Adaptive/drill still over-run via Keep practising (S5 FR-7). **Rejected:** fall through to FSRS adaptive; route Home automatically.
+
+- 2026-07-10 — **Dashboard Review misses (N) = unique question ids (match review pool).** Badge used `misses.length` (raw attempts) while review `target_count` used unique ids → “Review my misses (4)” then “1 of 3”. **Decision:** `reviewMissesCount = uniqueMissQuestionIds(misses).length`. **Rejected:** inflate review target to raw attempt count (would re-serve the same item).
+
+- 2026-07-10 — **Review my misses → `?mode=review` miss pool (FR-A6/C5).** Dashboard linked to plain `/learn/quiz` (adaptive 30) while the count was real. **Decision:** link `/learn/quiz?mode=review`; `resolveQuizOpenMode`; `openQuizSession` sets `target_count` to unique miss count; `openQuizItem` draws from `AttemptRepo.misses` (not FSRS `next`) for review sessions. Deep-link clears resume pointer. **Rejected:** leave as known gap only.
+
+- 2026-07-10 — **Coach pin questionId change ⇒ fresh LangGraph thread + clear turns.** Manual walk: Ask on Q2 worked; after Next→Q3, chip “Give me a similar item” got a cold-start reply while chrome showed Q3 — same `thread_id` kept Q2 message history and the vague chip read as plain chat. **Decision:** `setCoachPin` when `questionId` changes resets `threadId`+`turns` (next ask mints a new server thread with current `coach_context`). Same-item pin/mode updates still keep the thread (FR-J3 panel↔screen). **Rejected:** keep one session-long thread with only a system-prompt preamble (history still dominates vague chips).
+
+- 2026-07-10 — **Desktop Quiz syncs coach pin on every item (sidebar Coach ≠ cold/stale).** Ask-the-coach already called `setCoachPin`; sidebar Coach did not, so first open was cold or stuck on Q1. **Decision:** desktop quiz page writes the same live-item pin/mode as iPad `CoachPanel` (via `toQuizCoachPin`) whenever answering/reviewing. Cold `/learn/coach` with no quiz still honest-absent. **Rejected:** hydrate only on coach mount from `readActiveQuiz` (pointer lacked skillId; quiz-side sync matches panel).
+
+- 2026-07-10 — **Epic A/B continuity: Back from Feedback resumes reviewing (same N), not answering.** Manual FLAG-4 walk: Ask-the-coach leaves Feedback with a post-grade tally; remounting into answering made progress `gradedTotal+1` (Q3→Q4) and risked re-submit. **Decision:** stash `verdict`+`answeredLetter` on the active pointer when `phase=feedback`; `resume_item` restores **reviewing** so Question N and Next stay. Answering-only leave still resumes answering. **Supersedes** same-day “always → answering” note. Spec: [epic-ab-continuity-fixes.spec.md](../plan/epic-ab-continuity-fixes.spec.md).
+
+- 2026-07-10 — **Epic A/B continuity: resume always → answering; stash score on active pointer.** FLAG-4 remount restores the left `questionId` into `answering` (not reviewing) so e2e/Back only need the stem. Active pointer also stores `{correct,total}` so resume never fabricates `0/0`. **Rejected:** resume into reviewing; URL `?session=` for Back (clarify C1 option B). Spec: [epic-ab-continuity-fixes.spec.md](../plan/epic-ab-continuity-fixes.spec.md). **Superseded** by feedback-resume decision above.
 
 - 2026-07-09 — **Coach-pass C4/C5: honest opener + green-span from `<u>`.** C4 option A — one opener only when pin + real misses + empty transcript (cite `N`, never “of last 5”); else empty until ask. C5 option A — Feedback recap = `context_html` with `<u>` → success color (FR-A7); no `<u>` → plain sentence, no invented highlight. Spec: [preact-parity-B-coach-pass.spec.md](../plan/preact-parity-B-coach-pass.spec.md).
 

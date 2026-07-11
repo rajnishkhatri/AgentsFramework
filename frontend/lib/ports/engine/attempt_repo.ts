@@ -11,9 +11,11 @@ import type { Attempt, AttemptInput } from "../../wire/engine_entities";
  *      not re-derive correctness (engine spec FR-D2).
  *   2. `used_hint` is persisted as-is and NEVER changes recorded correctness
  *      (FR-D5) — a hinted correct answer is still correct.
- *   3. `misses()` returns the learner's incorrect attempts (newest-first),
- *      feeding the "review my misses" pool (FR-D4 / FR-A6). Returns `[]` (not
- *      throw) when the learner has no misses.
+ *   3. `misses()` returns **outstanding** misses (newest-first): for each
+ *      `question_id`, the learner's latest attempt is included iff it is
+ *      incorrect. A later correct answer clears that item from the review pool
+ *      (FR-D4 / FR-A6 / FR-C5). Append-only history is unchanged — this is a
+ *      read projection. Returns `[]` (not throw) when none are outstanding.
  *   4. `record()` returns the persisted `Attempt` (with engine-assigned `id`
  *      and `created_at`) so the caller need not re-read.
  *   5. `servedQuestionIds()` returns the question ids ALREADY answered in one
@@ -36,7 +38,10 @@ export interface AttemptRepo {
   /** Append one attempt; returns the persisted row (id + created_at assigned). */
   record(attempt: AttemptInput): Promise<Attempt>;
 
-  /** The learner's incorrect attempts for a subject, newest-first. */
+  /**
+   * Outstanding misses for a subject, newest-first (latest attempt per question
+   * is incorrect). Cleared when the learner later answers that question correctly.
+   */
   misses(subject: string, learnerId: string): Promise<Attempt[]>;
 
   /**

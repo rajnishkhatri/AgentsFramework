@@ -140,11 +140,22 @@ No ADR (`decisions.md` is the right weight — no structural change).
 **Releasable alone:** ✅ — pure docs PR; unblocks D1/D2/D3 by removing their stale
 framings.
 
+**Validation (post-merge):** automated baseline + human walk —
+[`frontend/scripts/validate_d0_correct_record.md`](../../frontend/scripts/validate_d0_correct_record.md)
+· Playwright [`validate_d0_baseline.spec.ts`](../../frontend/e2e/learn/validate_d0_baseline.spec.ts)
+(`pnpm test:e2e:d0-baseline`).
+
 ---
 
-## Sprint D1 — Quiz session-frame chrome  🟧 *(one sprint, three sub-features)*
+## Sprint D1 — Quiz session-frame chrome  ✅ Implemented *(one sprint, three sub-features)*
 
 **Report findings:** `Q-7` skill chip · `Q-8` End session · `Q-9` collapsible timer.
+
+**Status:** **Implemented** — 2026-07-10. Spec:
+[preact-parity-D1-quiz-frame.spec.md](preact-parity-D1-quiz-frame.spec.md) ·
+Plan: [preact-parity-D1-quiz-frame.plan.md](preact-parity-D1-quiz-frame.plan.md) ·
+Playwright: [preact-parity-D1-quiz-frame-playwright.spec.md](preact-parity-D1-quiz-frame-playwright.spec.md)
+· L4 file: [`frontend/e2e/learn/quiz-frame.spec.ts`](../../frontend/e2e/learn/quiz-frame.spec.ts).
 
 **Direction:** **D1 (Stage-1 recommended lead)** — ship all three as one sprint. They
 share the Quiz header/frame surface + the same VM plumbing seam. Split into three
@@ -207,6 +218,28 @@ adapter boundary. `decisions.md` entry recording the `QuizFrameVM`-vs-extend-ite
 choice regardless.
 
 **Releasable alone:** ✅ — no dep on D2/D3/D4; ships even if the others slip.
+
+### § Implementation evidence (Stage 6 — 2026-07-10)
+
+**Shape call:** extend `QuizItemVM` (no ADR; `decisions.md` line). Timer =
+`setInterval(1000)`. Reducer: `end_session` converges on `done`; page callback
+owns `/learn` vs `/learn/summary`.
+
+**L1 (Vitest):** `quiz_item_vm` skill-join table · `quiz_frame_timer` format table ·
+`quiz_screen_reducer` `end_session` transitions · `QuizView` chip/End/timer SSR +
+jsdom · `listQuizSkills` — all green under
+`pnpm exec vitest run components/quiz/ lib/translators/`.
+
+**L4 (Playwright):** `e2e/learn/quiz-frame.spec.ts` — 12 tests (Q-7/Q-8/Q-9).
+Red-first against pre-D1 tree (8 failed on missing selectors; Finish→summary
+regression passed). Green after D1 code: **12 passed**. Continuity:
+`validate_d0_baseline.spec.ts` flipped to assert frame chrome present.
+A11y: progressbar gained `aria-label` (axe `aria-progressbar-name`). Report:
+`frontend/playwright-report/index.html` (video on via `learn-e2e`).
+
+**PR log:** D1 shipped Q-7 + Q-8 + Q-9 for Epic D. Inherited D0's corrected
+framings (P3, P8). Did NOT ship D2 (taxonomy) or D3 (Q-1b decision). No ADR
+(default posture — extend `QuizItemVM`; `decisions.md` line appended).
 
 ---
 

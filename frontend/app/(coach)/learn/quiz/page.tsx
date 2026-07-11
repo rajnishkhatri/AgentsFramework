@@ -15,7 +15,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
-import { QuizView } from "@/components/quiz/QuizView";
+import { QuizView, QuizFrameChrome } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
@@ -23,19 +23,25 @@ import { CoachPanel } from "@/components/coach/CoachPanel";
 import { setCoachPin } from "@/components/coach/coach_thread_store";
 import { useSurface } from "@/components/shell/use_surface";
 import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
-import { resolveFocusMode } from "@/components/quiz/resolve_focus_mode";
+import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
+import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
 import { buildFeedback } from "@/components/feedback/use_feedback";
 import {
   initialQuizScreen,
   quizScreenReducer,
   elapsedMsFrom,
 } from "@/components/quiz/quiz_screen_reducer";
-import { stashQuizSession } from "@/components/quiz/quiz_session_store";
+import {
+  clearActiveQuiz,
+  readActiveQuiz,
+  setActiveQuiz,
+  stashQuizSession,
+} from "@/components/quiz/quiz_session_store";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { screen } from "@/components/shell/nav_model";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
-import type { QuizSession } from "@/lib/wire/engine_entities";
+import type { QuizSession, Skill } from "@/lib/wire/engine_entities";
 
 // Phase-1 single-learner surface (the plan's "Maya"); see the dashboard page note.
 const LEARNER_ID = "maya";
@@ -50,13 +56,24 @@ function socraticHint(stem: string): string {
 }
 
 export default function QuizPage(): React.JSX.Element {
-  const { openSession, openItem, submit, closeSession, listSkillIds } = useQuiz();
+  const {
+    openSession,
+    openItem,
+    resumeSession,
+    submit,
+    closeSession,
+    listSkillIds,
+    listSkills,
+  } = useQuiz();
   const router = useRouter();
-  // FR-A5 / S2 (FR-6): a `?focus=<skillId>` deep-link (from the Summary skill
-  // name or a Dashboard bucket card) opens the session as a DRILL on that skill.
-  // The value is validated against the known skill ids before use; an
-  // absent/unknown param falls back to adaptive (resolve_focus_mode).
-  const focusParam = useSearchParams().get("focus");
+  const searchParams = useSearchParams();
+  // FR-A5 / S2 (FR-6): `?focus=<skillId>` → drill. FR-A6 / FR-C5: `?mode=review`
+  // → miss-pool session (Dashboard "Review my misses").
+  const focusParam = searchParams.get("focus");
+  const modeParam = searchParams.get("mode");
+  // Deep-link intent: open the requested mode, do not resume a prior adaptive walk.
+  const wantsFreshSession =
+    modeParam === "review" || (focusParam != null && focusParam.length > 0);
   // FR-J3: on the iPad surface the Quiz renders as a SPLIT — item on the left,
   // the persistent live coach panel on the right, feeding the SAME coach
   // thread as the Coach screen. The coach-pointed runtime is built only when
@@ -77,43 +94,98 @@ export default function QuizPage(): React.JSX.Element {
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // D1 Q-7: full Skill rows for the chip join (name + accent_var).
+  const [skillsById, setSkillsById] = React.useState<
+    ReadonlyMap<string, Skill>
+  >(new Map());
 
-  // Effect 1: open the session ONCE and snapshot skill_state at start (§14
-  // sanctioned useEffect — an external async data source). The snapshot is
-  // stashed for the Summary route; the first item load is triggered by effect 2
-  // once the session exists.
+  // Effect 1: resume an in-tab active pointer (FLAG-4) OR open a fresh session.
+  // Resume skips openSession so Coach ← Back restores the left item (FR-3).
+  // Stale pointer → clear + fresh open (FR-4). Snapshot stash only on fresh open
+  // (resume reuses the snapshot already keyed by sessionId).
+  // D1: listSkills warms the Q-7 chip join (resume + fresh paths).
   React.useEffect(() => {
     let cancelled = false;
-    // FR-6: resolve the `?focus=` param against the known skills, then open a
-    // drill (valid focus) or adaptive (absent/unknown). listSkillIds is
-    // read-only taxonomy; the decision itself is the pure resolveFocusMode.
-    listSkillIds(DEFAULT_SUBJECT)
-      .then((skillIds) => {
-        if (cancelled) return;
-        const focusMode = resolveFocusMode(focusParam, skillIds);
-        return openSession({
-          subject: DEFAULT_SUBJECT,
-          learnerId: LEARNER_ID,
-          ...focusMode,
-        });
-      })
-      .then((opened) => {
-        if (cancelled || opened == null) return;
-        stashQuizSession(opened.session.id, opened.skillStateAtStart);
-        setSession(opened.session);
-      })
-      .catch((err: unknown) => {
+
+    async function start(): Promise<void> {
+      void listSkills(DEFAULT_SUBJECT).then((skills) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to start the session");
+          setSkillsById(new Map(skills.map((s) => [s.id, s])));
         }
       });
+
+      const pointer = readActiveQuiz();
+      if (pointer != null && !wantsFreshSession) {
+        const resumed = await resumeSession({
+          sessionId: pointer.sessionId,
+          questionId: pointer.questionId,
+        });
+        if (cancelled) return;
+        if (resumed != null) {
+          setSession(resumed.session);
+          const feedback =
+            pointer.phase === "feedback" &&
+            pointer.verdict != null &&
+            pointer.answeredLetter != null
+              ? {
+                  verdict: pointer.verdict,
+                  answeredLetter: pointer.answeredLetter,
+                  usedHint: pointer.usedHint ?? false,
+                }
+              : undefined;
+          dispatch({
+            type: "resume_item",
+            item: resumed.item,
+            score: { correct: pointer.correct, total: pointer.total },
+            presentedAt: performance.now(),
+            feedback,
+          });
+          return;
+        }
+        // FR-4: session/question gone — honest recovery, never fabricate progress.
+        clearActiveQuiz();
+      }
+      if (wantsFreshSession) {
+        clearActiveQuiz();
+      }
+
+      const skillIds = await listSkillIds(DEFAULT_SUBJECT);
+      if (cancelled) return;
+      const openMode = resolveQuizOpenMode(
+        { mode: modeParam, focus: focusParam },
+        skillIds,
+      );
+      const opened = await openSession({
+        subject: DEFAULT_SUBJECT,
+        learnerId: LEARNER_ID,
+        ...openMode,
+      });
+      if (cancelled || opened == null) return;
+      stashQuizSession(opened.session.id, opened.skillStateAtStart);
+      setSession(opened.session);
+    }
+
+    start().catch((err: unknown) => {
+      if (!cancelled) {
+        setError(err instanceof Error ? err.message : "Failed to start the session");
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [openSession, listSkillIds, focusParam]);
+  }, [
+    openSession,
+    resumeSession,
+    listSkillIds,
+    listSkills,
+    focusParam,
+    modeParam,
+    wantsFreshSession,
+  ]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
   // exists, fetch the next scheduled item and fold it into the phase machine.
+  // Skipped on FLAG-4 resume (resume_item lands in answering, not loading).
   React.useEffect(() => {
     if (session == null || state.phase !== "loading") return;
     let cancelled = false;
@@ -134,6 +206,62 @@ export default function QuizPage(): React.JSX.Element {
       cancelled = true;
     };
   }, [session, state.phase, openItem]);
+
+  // Effect 3: keep the in-tab active pointer current while Quiz is live (FR-1).
+  // Retained across unmount so Coach ← Back can resume; cleared only on Finish.
+  // Feedback stash includes verdict + letter so remount restores reviewing (same N).
+  React.useEffect(() => {
+    if (session == null) return;
+    if (state.phase !== "answering" && state.phase !== "reviewing") return;
+    const progressVm = toQuizProgressVM(
+      state.score.total,
+      state.phase,
+      session.target_count ?? null,
+    );
+    if (state.phase === "reviewing") {
+      setActiveQuiz({
+        sessionId: session.id,
+        questionId: state.item.question.id,
+        position: progressVm.position,
+        correct: state.score.correct,
+        total: state.score.total,
+        phase: "feedback",
+        verdict: state.verdict,
+        answeredLetter: state.answeredLetter,
+        usedHint: state.usedHint,
+      });
+      return;
+    }
+    setActiveQuiz({
+      sessionId: session.id,
+      questionId: state.item.question.id,
+      position: progressVm.position,
+      correct: state.score.correct,
+      total: state.score.total,
+      phase: "answering",
+    });
+  }, [session, state]);
+
+  // Effect 4: desktop has no CoachPanel — keep coach_thread_store pin aligned
+  // with the live item so sidebar "Coach" matches Ask-the-coach (not cold/stale Q1).
+  // iPad CoachPanel already writes the same store; skip to avoid a duplicate path.
+  React.useEffect(() => {
+    if (coachRuntime != null) return;
+    if (session == null) return;
+    if (state.phase !== "answering" && state.phase !== "reviewing") return;
+    const progressVm = toQuizProgressVM(
+      state.score.total,
+      state.phase,
+      session.target_count ?? null,
+    );
+    const { pin, mode } = toQuizCoachPin({
+      questionId: state.item.question.id,
+      skillId: state.item.question.skill_id,
+      position: progressVm.position,
+      phase: state.phase,
+    });
+    setCoachPin(pin, mode);
+  }, [coachRuntime, session, state]);
 
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
@@ -170,11 +298,35 @@ export default function QuizPage(): React.JSX.Element {
     const { correct, total } = state.score;
     closeSession({ sessionId: session.id, scoreCorrect: correct, scoreTotal: total })
       .then(() => {
+        // FR-2: Finish clears the resume pointer; mastery snapshot stays for Summary.
+        clearActiveQuiz();
         // The snapshot is already in the store, so the delta renders live (not "—").
         router.push(`${screen("summary").route}?session=${session.id}`);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to close the session");
+      });
+  }, [session, state.score, closeSession, router]);
+
+  // D1 Q-8: End session — same close-with-tally as Finish, routes to dashboard
+  // (/learn) instead of Summary. Distinct reducer action so the two exits stay
+  // separable (FR-Q8-6).
+  const onEndSession = React.useCallback(() => {
+    if (session == null) return;
+    dispatch({ type: "end_session" });
+    const { correct, total } = state.score;
+    closeSession({
+      sessionId: session.id,
+      scoreCorrect: correct,
+      scoreTotal: total,
+    })
+      .then(() => {
+        router.push(screen("dashboard").route);
+      })
+      .catch((err: unknown) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to end the session",
+        );
       });
   }, [session, state.score, closeSession, router]);
 
@@ -206,13 +358,19 @@ export default function QuizPage(): React.JSX.Element {
     session?.target_count ?? null,
   );
 
+  const endSessionEnabled =
+    session != null &&
+    (state.phase === "answering" || state.phase === "reviewing");
+  const startedAtIso = session?.started_at ?? null;
+
   let item: QuizItemResult;
   let content: React.JSX.Element;
   if (state.phase === "answering") {
     item = state.item;
-    const vm = toQuizItemVM(state.item.question);
+    const vm = toQuizItemVM(state.item.question, skillsById);
     content = (
       <QuizView
+        key={state.item.question.id}
         vm={vm}
         selectedLetter={state.selectedLetter}
         onSelect={(letter) => dispatch({ type: "select", letter })}
@@ -225,12 +383,18 @@ export default function QuizPage(): React.JSX.Element {
           socraticHint(state.item.question.stem)
         }
         onToggleHint={() => dispatch({ type: "toggle_hint" })}
+        endSessionEnabled={endSessionEnabled}
+        onEndSession={onEndSession}
+        startedAtIso={startedAtIso}
       />
     );
   } else {
     // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
-    // post-answer actions (Next / Finish).
+    // post-answer actions (Next / Finish). D1 frame chrome sits ABOVE feedback
+    // so the chip / End / timer persist across answering→reviewing (FR-Q7-4,
+    // FR-Q8-3); keyed by question id so the timer reveal resets on Next (FR-Q9-7).
     item = state.item;
+    const itemVm = toQuizItemVM(state.item.question, skillsById);
     const feedback = buildFeedback(
       state.item.question,
       state.verdict,
@@ -241,19 +405,26 @@ export default function QuizPage(): React.JSX.Element {
     const onAskCoach =
       surface !== "ipad" && feedback.present
         ? () => {
-            setCoachPin(
-              {
-                questionId: feedback.askCoachContext.questionId,
-                skillId: feedback.askCoachContext.skillId,
-                label: `Q${progressVm.position} · ${state.item.question.skill_id}`,
-              },
-              "post_feedback",
-            );
+            const { pin, mode } = toQuizCoachPin({
+              questionId: feedback.askCoachContext.questionId,
+              skillId: feedback.askCoachContext.skillId,
+              position: progressVm.position,
+              phase: "reviewing",
+            });
+            setCoachPin(pin, mode);
             router.push(screen("coach").route);
           }
         : undefined;
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        <QuizFrameChrome
+          key={state.item.question.id}
+          skillName={itemVm.skillName}
+          accentVar={itemVm.accentVar}
+          endSessionEnabled={endSessionEnabled}
+          onEndSession={onEndSession}
+          startedAtIso={startedAtIso}
+        />
         {/* S5 done-state (FR-4/FR-5): once the graded tally reaches the target,
             the milestone shows ABOVE the item's feedback (which stays visible —
             the learner still sees #30's answer). `complete` is the translator's
@@ -278,20 +449,29 @@ export default function QuizPage(): React.JSX.Element {
               untouched (FR-10). "Next question"/"Keep practising" both dispatch the
               same `next` (continuing the SAME session; past the target that is
               over-run, tally kept); the finish control closes + routes either way
-              (Summary never re-tallies). */}
-          <button
-            type="button"
-            data-testid="quiz-next"
-            onClick={() => dispatch({ type: "next" })}
-            className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-          >
-            {progressVm.complete ? "Keep practising" : "Next question →"}
-          </button>
+              (Summary never re-tallies).
+              Review sessions (FR-A6): the miss pool is finite — once complete,
+              hide "Keep practising" (no over-run) so the learner only sees
+              "See summary" instead of an empty-pool error. */}
+          {!(session?.mode === "review" && progressVm.complete) ? (
+            <button
+              type="button"
+              data-testid="quiz-next"
+              onClick={() => dispatch({ type: "next" })}
+              className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+            >
+              {progressVm.complete ? "Keep practising" : "Next question →"}
+            </button>
+          ) : null}
           <button
             type="button"
             data-testid="quiz-finish"
             onClick={onFinish}
-            className="rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
+            className={
+              session?.mode === "review" && progressVm.complete
+                ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+                : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
+            }
           >
             {progressVm.complete ? "See summary" : "Finish & see summary"}
           </button>
@@ -314,6 +494,12 @@ export default function QuizPage(): React.JSX.Element {
   // the right. Keyed by question id so the panel's nudge tier resets per item
   // (FR-J3a); the coach THREAD itself lives in coach_thread_store and survives.
   if (coachRuntime != null) {
+    const coachPin = toQuizCoachPin({
+      questionId: item.question.id,
+      skillId: item.question.skill_id,
+      position: progressVm.position,
+      phase: state.phase === "reviewing" ? "reviewing" : "answering",
+    });
     return (
       <div className="flex items-start gap-6">
         <div className="min-w-0 flex-1">{framed}</div>
@@ -321,12 +507,8 @@ export default function QuizPage(): React.JSX.Element {
           key={item.question.id}
           runtime={coachRuntime}
           hintLadder={item.hintLadder}
-          mode={state.phase === "reviewing" ? "post_feedback" : "pre_submit"}
-          pin={{
-            questionId: item.question.id,
-            skillId: item.question.skill_id,
-            label: `Q${progressVm.position} · ${item.question.skill_id}`,
-          }}
+          mode={coachPin.mode}
+          pin={coachPin.pin}
         />
       </div>
     );

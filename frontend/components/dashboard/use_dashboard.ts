@@ -31,6 +31,7 @@ import {
   type WeeklySessionsVM,
 } from "@/lib/translators/weekly_sessions_vm";
 import { pickFocusSkillId } from "@/lib/translators/focus_pick";
+import { uniqueMissQuestionIds } from "@/lib/miss_pool";
 
 export interface RailVM {
   readonly status: "ok" | "unavailable";
@@ -174,7 +175,7 @@ export async function loadDashboard(
   return {
     buckets,
     todayFocus,
-    reviewMissesCount: misses.length,
+    reviewMissesCount: uniqueMissQuestionIds(misses).length,
     greeting: toGreetingVM(nowISO, displayName),
     rail: toRailVM(railResult, nowISO),
   };

@@ -41,6 +41,7 @@ export function QuizProgress(props: QuizProgressProps): React.JSX.Element {
       <p className="text-sm font-medium text-muted">{label}</p>
       <div
         role="progressbar"
+        aria-label={label}
         aria-valuemin={0}
         // FR-7 / WAI-ARIA: a DETERMINATE progressbar carries valuenow/valuemax
         // (position of the fixed target). An INDETERMINATE one — an endless session

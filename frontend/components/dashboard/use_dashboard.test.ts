@@ -208,6 +208,85 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
     });
     expect(vm.reviewMissesCount).toBe(1);
   });
+
+  it("dedupes the same missed question (matches review pool size)", async () => {
+    db.seedSkillStates([state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW })]);
+    db.seedQuestions([
+      question({ id: "q-a", skill_id: "s-punc", answer_letter: "B" }),
+      question({ id: "q-b", skill_id: "s-punc", answer_letter: "B" }),
+    ]);
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    for (const id of ["q-a", "q-b", "q-a", "q-a"]) {
+      await ports.attemptRepo.record({
+        subject: SUBJECT,
+        session_id: session.id,
+        question_id: id,
+        chosen_letter: "A",
+        correct: false,
+        elapsed_ms: 1000,
+        used_hint: false,
+      });
+    }
+    const vm = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    // 4 incorrect attempts, 2 unique question ids → badge shows 2
+    expect(vm.reviewMissesCount).toBe(2);
+  });
+
+  it("clears a miss from the badge after a later correct attempt", async () => {
+    db.seedSkillStates([state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW })]);
+    db.seedQuestions([
+      question({ id: "q-a", skill_id: "s-punc", answer_letter: "B" }),
+      question({ id: "q-b", skill_id: "s-punc", answer_letter: "B" }),
+    ]);
+    const prior = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    for (const id of ["q-a", "q-b"]) {
+      await ports.attemptRepo.record({
+        subject: SUBJECT,
+        session_id: prior.id,
+        question_id: id,
+        chosen_letter: "A",
+        correct: false,
+        elapsed_ms: 1000,
+        used_hint: false,
+      });
+    }
+    const before = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(before.reviewMissesCount).toBe(2);
+
+    const review = await ports.sessionRepo.open(SUBJECT, LEARNER, "review");
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: review.id,
+      question_id: "q-a",
+      chosen_letter: "B",
+      correct: true,
+      elapsed_ms: 1000,
+      used_hint: false,
+    });
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: review.id,
+      question_id: "q-b",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+    });
+    const after = await loadDashboard(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      nowISO: NOW,
+    });
+    expect(after.reviewMissesCount).toBe(1);
+  });
 });
 
 describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {

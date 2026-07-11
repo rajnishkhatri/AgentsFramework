@@ -104,6 +104,7 @@ export function DashboardView(props: {
           >
             Review my misses ({vm.reviewMissesCount})
           </Link>
+          {/* Test Mode entry — a timed, fixed section, distinct from adaptive practice. */}
           <Link
             href={testRoute}
             data-testid="take-timed-test"

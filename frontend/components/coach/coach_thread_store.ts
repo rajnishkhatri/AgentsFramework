@@ -17,6 +17,9 @@
  * ask time. Advisory `mode` is a sibling field (not on the pin schema) so
  * Feedback→Coach can show post_feedback chrome/wire without bloating C1a.
  * `resetCoachThread` clears pin + mode with the transcript.
+ * When the pinned `questionId` changes (Q2→Q3), transcript + LangGraph
+ * `threadId` reset so the next ask is not anchored on the prior item's chat
+ * (FR-J3 still holds for panel↔screen on the *same* item).
  *
  * Deliberately NOT an engine port and NOT persisted: a full page reload starts
  * a fresh thread (the durable-thread seam is the chat persistence plane, not
@@ -83,7 +86,12 @@ export function subscribeCoachThread(onChange: () => void): () => void {
 /**
  * Set or clear the UI pin (Feedback Ask-the-coach / quiz panel live item).
  * Optional `mode` is advisory for chrome + wire (default `pre_submit`);
- * clearing the pin resets mode. Does not touch transcript or thread id.
+ * clearing the pin resets mode.
+ *
+ * Same-item pin/mode updates leave transcript + threadId alone (FR-J3 panel↔
+ * screen). A different `questionId` starts a fresh server thread and clears
+ * turns so chips like "Give me a similar item" are not answered against the
+ * previous item's conversation.
  */
 export function setCoachPin(
   pin: CoachSurfacePin | null,
@@ -101,6 +109,23 @@ export function setCoachPin(
     return;
   }
   if (pin == null && state.pin == null && state.mode === nextMode) return;
+
+  const itemChanged =
+    pin != null &&
+    state.pin != null &&
+    pin.questionId !== state.pin.questionId;
+
+  if (itemChanged) {
+    emit({
+      threadId: null,
+      turns: [],
+      busy: false,
+      pin,
+      mode: nextMode,
+    });
+    return;
+  }
+
   emit({ ...state, pin, mode: nextMode });
 }
 

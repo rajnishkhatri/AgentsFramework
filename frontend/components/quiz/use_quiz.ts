@@ -28,10 +28,14 @@ import type {
   Question,
   QuizSession,
   SessionMode,
+  Skill,
   SkillState,
   Verdict,
 } from "@/lib/wire/engine_entities";
+import { EngineNotFoundError } from "@/lib/ports/engine/errors";
+import { uniqueMissQuestionIds } from "@/lib/miss_pool";
 
+export { uniqueMissQuestionIds } from "@/lib/miss_pool";
 export interface QuizItemResult {
   readonly skillId: string;
   readonly question: Question;
@@ -83,6 +87,13 @@ export async function openQuizSession(
   ports: EnginePortBag,
   args: OpenSessionArgs,
 ): Promise<QuizSessionResult> {
+  // Review sessions bound to the unique miss pool size (FR-A6 / FR-C5) unless
+  // the caller passed an explicit targetCount (including null = endless).
+  let targetCount = args.targetCount;
+  if (args.mode === "review" && targetCount === undefined) {
+    const misses = await ports.attemptRepo.misses(args.subject, args.learnerId);
+    targetCount = uniqueMissQuestionIds(misses).length;
+  }
   const session = await ports.sessionRepo.open(
     args.subject,
     args.learnerId,
@@ -90,7 +101,7 @@ export async function openQuizSession(
     args.focus ?? null,
     // Forward verbatim (no coalescing): `undefined` = omitted → repo resolves
     // the default; explicit `null` = endless; a value = that length (FR-5/6).
-    args.targetCount,
+    targetCount,
   );
   const rows = await ports.learnerRead.listSkillState(args.subject, args.learnerId);
   const skillStateAtStart = new Map(rows.map((s) => [s.skill_id, s]));
@@ -111,6 +122,19 @@ export async function listQuizSkillIds(
 }
 
 /**
+ * List the subject's full `Skill` rows (D1 Q-7). The page joins
+ * `Question.skill_id` against these to fill `QuizItemVM.skillName` /
+ * `accentVar`. Read-only taxonomy; keeps `listQuizSkillIds` for focus-param
+ * resolution (no regression).
+ */
+export async function listQuizSkills(
+  ports: EnginePortBag,
+  subject: string,
+): Promise<Skill[]> {
+  return ports.skillTaxonomy.list(subject);
+}
+
+/**
  * Pick the next (skill, question) for the learner and load the reviewed item.
  *
  * `sessionId` (S3, FR-9/FR-13): when present, the play loop derives this
@@ -120,6 +144,13 @@ export async function listQuizSkillIds(
  * a different bucket instead of parking on the same weakest skill. Both sets are
  * ephemeral + caller-owned (derived here, never persisted on `skill_state`);
  * omitting `sessionId` keeps today's single-pick behaviour (backward-compatible).
+ *
+ * Review sessions (FR-A6): draw from `AttemptRepo.misses` (unique ids,
+ * newest-incorrect first), skipping ids already served this session — not the
+ * adaptive FSRS scheduler.
+ *
+ * Drill sessions (FR-A5): draw only from `session.skill_focus` via
+ * `QuestionRepo.nextReviewed` — never cross-skill adaptive priority.
  */
 export async function openQuizItem(
   ports: EnginePortBag,
@@ -133,6 +164,25 @@ export async function openQuizItem(
     args.sessionId != null
       ? await ports.attemptRepo.servedSkillIds(args.sessionId)
       : undefined;
+
+  if (args.sessionId != null) {
+    const session = await ports.sessionRepo.get(args.sessionId);
+    if (session?.mode === "review") {
+      return openReviewQuizItem(ports, {
+        subject: args.subject,
+        learnerId: args.learnerId,
+        servedIds: servedIds ?? [],
+      });
+    }
+    if (session?.mode === "drill" && session.skill_focus != null) {
+      return openDrillQuizItem(ports, {
+        subject: args.subject,
+        skillId: session.skill_focus,
+        servedIds: servedIds ?? [],
+      });
+    }
+  }
+
   const next = await ports.scheduler.next(
     args.subject,
     args.learnerId,
@@ -149,6 +199,54 @@ export async function openQuizItem(
   // (ADR-0014); [] keeps the panel on the generic nudge fallback.
   const hintLadder = await ports.hintRepo.list(args.subject, question.id);
   return { skillId: next.skill_id, question, hintLadder };
+}
+
+/** FR-A5: next unserved reviewed item for the drill's focused skill only. */
+async function openDrillQuizItem(
+  ports: EnginePortBag,
+  args: {
+    subject: string;
+    skillId: string;
+    servedIds: readonly string[];
+  },
+): Promise<QuizItemResult> {
+  const question = await ports.questionRepo.nextReviewed(
+    args.subject,
+    args.skillId,
+    args.servedIds,
+  );
+  if (question == null) {
+    throw new EngineNotFoundError(
+      `no unserved reviewed question for drill skill '${args.skillId}' (subject '${args.subject}')`,
+    );
+  }
+  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  return { skillId: args.skillId, question, hintLadder };
+}
+
+/** FR-A6: next unserved unique miss, newest-incorrect first. */
+async function openReviewQuizItem(
+  ports: EnginePortBag,
+  args: {
+    subject: string;
+    learnerId: string;
+    servedIds: readonly string[];
+  },
+): Promise<QuizItemResult> {
+  const misses = await ports.attemptRepo.misses(args.subject, args.learnerId);
+  const pool = uniqueMissQuestionIds(misses);
+  const nextId = pool.find((id) => !args.servedIds.includes(id));
+  if (nextId == null) {
+    throw new EngineNotFoundError(
+      `no unserved missed questions for learner '${args.learnerId}' (subject '${args.subject}')`,
+    );
+  }
+  const question = await ports.questionRepo.get(nextId);
+  if (question == null) {
+    throw new Error(`missed question ${nextId} not found`);
+  }
+  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  return { skillId: question.skill_id, question, hintLadder };
 }
 
 export interface QuizSubmitArgs {
@@ -234,6 +332,28 @@ export async function closeQuizSession(
 }
 
 /**
+ * Resume a live Quiz session at a stashed question (FLAG-4 / FR-3 / FR-4).
+ *
+ * Loads the existing session + the specific question (not a fresh scheduler
+ * pick). Returns `null` when the session or question is gone — caller MUST
+ * clear the active pointer and open a fresh session (honest recovery, FR-4).
+ */
+export async function resumeQuizSession(
+  ports: EnginePortBag,
+  args: { sessionId: string; questionId: string },
+): Promise<{ session: QuizSession; item: QuizItemResult } | null> {
+  const session = await ports.sessionRepo.get(args.sessionId);
+  if (session == null) return null;
+  const question = await ports.questionRepo.get(args.questionId);
+  if (question == null) return null;
+  const hintLadder = await ports.hintRepo.list(session.subject, question.id);
+  return {
+    session,
+    item: { skillId: question.skill_id, question, hintLadder },
+  };
+}
+
+/**
  * Thin React wrapper: reads the engine bag from context (C3) and exposes the
  * orchestration bound to it. The component calls these; it holds no port logic.
  * Tests exercise `openQuizItem` / `runQuizSubmit` / `closeQuizSession` directly
@@ -247,9 +367,14 @@ export function useQuiz(): {
     learnerId: string;
     sessionId?: string;
   }) => Promise<QuizItemResult>;
+  resumeSession: (args: {
+    sessionId: string;
+    questionId: string;
+  }) => Promise<{ session: QuizSession; item: QuizItemResult } | null>;
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
+  listSkills: (subject: string) => Promise<Skill[]>;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -257,9 +382,12 @@ export function useQuiz(): {
       openSession: (args: OpenSessionArgs) => openQuizSession(ports, args),
       openItem: (args: { subject: string; learnerId: string; sessionId?: string }) =>
         openQuizItem(ports, args),
+      resumeSession: (args: { sessionId: string; questionId: string }) =>
+        resumeQuizSession(ports, args),
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
       listSkillIds: (subject: string) => listQuizSkillIds(ports, subject),
+      listSkills: (subject: string) => listQuizSkills(ports, subject),
     }),
     [ports],
   );

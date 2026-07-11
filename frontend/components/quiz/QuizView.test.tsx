@@ -16,7 +16,7 @@ import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QuizView } from "./QuizView";
-import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
+import { toQuizItemVM, type QuizItemVM } from "@/lib/translators/quiz_item_vm";
 import type { Question } from "@/lib/wire/engine_entities";
 
 function question(over: Partial<Question> = {}): Question {
@@ -46,12 +46,27 @@ function question(over: Partial<Question> = {}): Question {
   };
 }
 
+const skillsById = new Map([
+  [
+    "s-punc",
+    { name: "Punctuation", accent_var: "--color-bucket-punctuation" },
+  ],
+]);
+
+function baseVm(over: Partial<QuizItemVM> = {}): QuizItemVM {
+  return { ...toQuizItemVM(question(), skillsById), ...over };
+}
+
 function render(props: {
   selectedLetter?: string | null;
   hintOpen?: boolean;
   hint?: string;
+  vm?: QuizItemVM;
+  endSessionEnabled?: boolean;
+  onEndSession?: () => void;
+  startedAtIso?: string | null;
 }): Document {
-  const vm = toQuizItemVM(question());
+  const vm = props.vm ?? toQuizItemVM(question());
   const html = renderToStaticMarkup(
     React.createElement(QuizView, {
       vm,
@@ -61,6 +76,15 @@ function render(props: {
       hintOpen: props.hintOpen ?? false,
       hint: props.hint ?? "What does 'committee' act as here — one body or many?",
       onToggleHint: () => {},
+      ...(props.endSessionEnabled !== undefined
+        ? { endSessionEnabled: props.endSessionEnabled }
+        : {}),
+      ...(props.onEndSession !== undefined
+        ? { onEndSession: props.onEndSession }
+        : {}),
+      ...(props.startedAtIso !== undefined
+        ? { startedAtIso: props.startedAtIso }
+        : {}),
     }),
   );
   return new JSDOM(`<!doctype html><html><body>${html}</body></html>`).window
@@ -142,6 +166,15 @@ describe("QuizView — Reveal answer (UI FR-D6 / FR-D6a)", () => {
     expect(reveal?.className).toMatch(/text-muted/);
   });
 
+  it("uses foreground text when Reveal is enabled (FR-8 polish)", () => {
+    const doc = render({ selectedLetter: "A" });
+    const reveal = doc.querySelector('[data-testid="quiz-reveal"]');
+    expect(reveal?.getAttribute("data-enabled")).toBe("true");
+    // Style via data-* (STYLE_GUIDE §13), not a className ternary.
+    expect(reveal?.className).toMatch(/data-\[enabled=true\]:text-fg/);
+    expect(reveal?.className).toMatch(/text-muted/);
+  });
+
   describe("click → onSubmit (client)", () => {
     let container: HTMLDivElement;
     let root: Root;
@@ -198,6 +231,266 @@ describe("QuizView — Reveal answer (UI FR-D6 / FR-D6a)", () => {
       expect(reveal?.getAttribute("data-enabled")).toBe("true");
       clickReveal();
       expect(onSubmit).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe("QuizView — D1 skill chip (Q-7)", () => {
+  it("renders quiz-skill-chip with skill name and accent dot (FR-Q7-2)", () => {
+    const doc = render({
+      vm: baseVm(),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+    });
+    const chip = doc.querySelector('[data-testid="quiz-skill-chip"]');
+    expect(chip).not.toBeNull();
+    expect(chip?.textContent).toContain("Punctuation");
+    const dot = chip?.querySelector('[data-testid="bucket-dot"]') as
+      | HTMLElement
+      | null
+      | undefined;
+    expect(dot).not.toBeNull();
+    expect(dot?.style.backgroundColor).toContain(
+      "var(--color-bucket-punctuation)",
+    );
+  });
+
+  it("renders NO chip when skillName is null (FR-Q7-1)", () => {
+    const doc = render({
+      vm: baseVm({ skillName: null, accentVar: null }),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+    });
+    expect(doc.querySelector('[data-testid="quiz-skill-chip"]')).toBeNull();
+  });
+
+  it("chip is present whenever the VM carries a skillName (FR-Q7-4)", () => {
+    // Same VM in answering and reviewing — the page wraps both phases with the
+    // same frame chrome; the leaf just renders the VM fields blindly.
+    const doc = render({
+      vm: baseVm(),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+    });
+    expect(doc.querySelector('[data-testid="quiz-skill-chip"]')?.textContent).toContain(
+      "Punctuation",
+    );
+  });
+});
+
+describe("QuizView — D1 End session (Q-8)", () => {
+  it("renders quiz-end-session when enabled (FR-Q8-3)", () => {
+    const doc = render({
+      vm: baseVm(),
+      endSessionEnabled: true,
+      onEndSession: () => {},
+    });
+    const btn = doc.querySelector('[data-testid="quiz-end-session"]');
+    expect(btn).not.toBeNull();
+    expect(btn?.textContent).toContain("End session");
+    expect(btn?.hasAttribute("disabled")).toBe(false);
+  });
+
+  it("disables End session when endSessionEnabled is false (FR-Q8-1)", () => {
+    const doc = render({
+      vm: baseVm(),
+      endSessionEnabled: false,
+      onEndSession: () => {},
+    });
+    const btn = doc.querySelector('[data-testid="quiz-end-session"]');
+    expect(btn?.hasAttribute("disabled")).toBe(true);
+  });
+
+  describe("click → onEndSession (client)", () => {
+    let container: HTMLDivElement;
+    let root: Root;
+    const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+    beforeEach(() => {
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+    });
+
+    afterEach(() => {
+      root.unmount();
+      container.remove();
+    });
+
+    it("fires onEndSession when enabled (FR-Q8-4)", async () => {
+      const onEndSession = vi.fn();
+      root.render(
+        React.createElement(QuizView, {
+          vm: baseVm(),
+          selectedLetter: null,
+          onSelect: () => {},
+          onSubmit: () => {},
+          hintOpen: false,
+          hint: "…",
+          onToggleHint: () => {},
+          endSessionEnabled: true,
+          onEndSession,
+        }),
+      );
+      await flush();
+      const btn = container.querySelector(
+        '[data-testid="quiz-end-session"]',
+      ) as HTMLElement;
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      expect(onEndSession).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not fire when disabled (FR-Q8-1)", async () => {
+      const onEndSession = vi.fn();
+      root.render(
+        React.createElement(QuizView, {
+          vm: baseVm(),
+          selectedLetter: null,
+          onSelect: () => {},
+          onSubmit: () => {},
+          hintOpen: false,
+          hint: "…",
+          onToggleHint: () => {},
+          endSessionEnabled: false,
+          onEndSession,
+        }),
+      );
+      await flush();
+      const btn = container.querySelector(
+        '[data-testid="quiz-end-session"]',
+      ) as HTMLButtonElement;
+      expect(btn.disabled).toBe(true);
+      btn.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      expect(onEndSession).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe("QuizView — D1 collapsible timer (Q-9)", () => {
+  const STARTED = "2026-07-10T10:00:00.000Z";
+
+  it("timer reveal absent when startedAtIso is null (FR-Q9-1)", () => {
+    const doc = render({
+      vm: baseVm(),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+      startedAtIso: null,
+    });
+    expect(doc.querySelector('[data-testid="quiz-timer-reveal"]')).toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-timer"]')).toBeNull();
+  });
+
+  it("default is collapsed — reveal present, clock absent (FR-Q9-2)", () => {
+    const doc = render({
+      vm: baseVm(),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+      startedAtIso: STARTED,
+    });
+    expect(doc.querySelector('[data-testid="quiz-timer-reveal"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-timer"]')).toBeNull();
+  });
+
+  it("reveal is a button with accessible label (FR-Q9-8)", () => {
+    const doc = render({
+      vm: baseVm(),
+      onEndSession: () => {},
+      endSessionEnabled: true,
+      startedAtIso: STARTED,
+    });
+    const btn = doc.querySelector('[data-testid="quiz-timer-reveal"]');
+    expect(btn?.tagName.toLowerCase()).toBe("button");
+    expect(btn?.getAttribute("aria-label")).toBe("Show timer");
+  });
+
+  describe("reveal / collapse (client)", () => {
+    let container: HTMLDivElement;
+    let root: Root;
+    const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+    beforeEach(() => {
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+    });
+
+    afterEach(() => {
+      root.unmount();
+      container.remove();
+    });
+
+    async function mount(startedAtIso: string, key?: string) {
+      root.render(
+        React.createElement(QuizView, {
+          key: key ?? "quiz",
+          vm: baseVm(),
+          selectedLetter: null,
+          onSelect: () => {},
+          onSubmit: () => {},
+          hintOpen: false,
+          hint: "…",
+          onToggleHint: () => {},
+          endSessionEnabled: true,
+          onEndSession: () => {},
+          startedAtIso,
+        }),
+      );
+      await flush();
+    }
+
+    it("click reveal → quiz-timer renders (FR-Q9-3)", async () => {
+      await mount(STARTED);
+      const reveal = container.querySelector(
+        '[data-testid="quiz-timer-reveal"]',
+      ) as HTMLElement;
+      reveal.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      await flush();
+      expect(container.querySelector('[data-testid="quiz-timer"]')).not.toBeNull();
+      expect(
+        container.querySelector('[data-testid="quiz-timer"]')?.textContent,
+      ).toMatch(/^\d+:\d{2}$/);
+    });
+
+    it("click Hide → quiz-timer removed (FR-Q9-5)", async () => {
+      await mount(STARTED);
+      const reveal = container.querySelector(
+        '[data-testid="quiz-timer-reveal"]',
+      ) as HTMLElement;
+      reveal.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      await flush();
+      const hide = container.querySelector(
+        'button[aria-label="Hide timer"]',
+      ) as HTMLElement;
+      hide.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      await flush();
+      expect(container.querySelector('[data-testid="quiz-timer"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="quiz-timer-reveal"]'),
+      ).not.toBeNull();
+    });
+
+    it("remount with new key resets reveal to collapsed (FR-Q9-7)", async () => {
+      await mount(STARTED, "q1");
+      const reveal = container.querySelector(
+        '[data-testid="quiz-timer-reveal"]',
+      ) as HTMLElement;
+      reveal.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+      await flush();
+      expect(container.querySelector('[data-testid="quiz-timer"]')).not.toBeNull();
+
+      await mount(STARTED, "q2");
+      expect(container.querySelector('[data-testid="quiz-timer"]')).toBeNull();
+      expect(
+        container.querySelector('[data-testid="quiz-timer-reveal"]'),
+      ).not.toBeNull();
     });
   });
 });
