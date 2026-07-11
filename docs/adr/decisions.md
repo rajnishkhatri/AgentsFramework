@@ -12,6 +12,18 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-10 — **Sprint D1: extend QuizItemVM instead of introducing QuizFrameVM.**
+  D1 (Quiz session-frame chrome, Q-7/Q-8/Q-9) extends `QuizItemVM` with two
+  nullable fields (`skillName`, `accentVar`) rather than introducing a new
+  `QuizFrameVM` translator + view slot. Why: two nullable fields is not a new
+  abstraction; the frame's only cross-cutting derived data (Q-7's skill join) is
+  per-item, so its home is the item VM. Q-8 (tally) and Q-9 (`started_at`) are
+  read directly from React state (page-owned), so they need no VM. No G1 gate;
+  this log is the correct weight (per root AGENTS.md). Rejected alternative: a
+  separate `QuizFrameVM` mirroring ADR-0025's coach surface VM — deferred until
+  the item VM crosses ~8 fields (would need its own G1 ADR at that point).
+  Spec/plan: [preact-parity-D1-quiz-frame.spec.md](../plan/preact-parity-D1-quiz-frame.spec.md).
+
 - 2026-07-10 — **Epic D — Stage-1 premise audit corrections (Sprint D0).** Five epics-doc / VISUAL-report framings were **refuted** against the working tree; D0 corrects the record (docs-only) before D1/D2/D3 enter `sdd-spec`. Spec/plan: [preact-parity-D0-correct-record.spec.md](../plan/preact-parity-D0-correct-record.spec.md); board: [preact-parity-sprint-board-D.md](../plan/preact-parity-sprint-board-D.md); audit: [preact-parity-epic-D.brainstorm.md](../plan/preact-parity-epic-D.brainstorm.md).
   - **P3 (Q-7):** not a view-only chip — wire `Question` has no `skill_name`/`accent_var` ([`engine_entities.ts:61-64`](../../frontend/lib/wire/engine_entities.ts:61)); those live on `Skill` ([`:34-44`](../../frontend/lib/wire/engine_entities.ts:34)). Fix = hook + translator + view.
   - **P8 (Q-9):** "dismissible timer" misleads — no clock renders today (`components/quiz/` timer/Clock/elapsed = 0 UI hits). Reframe = *collapsible / off-by-default*; `elapsed_ms` capture already correct ([`session_summary_vm.ts:60-65`](../../frontend/lib/translators/session_summary_vm.ts:60) / A2 triage).

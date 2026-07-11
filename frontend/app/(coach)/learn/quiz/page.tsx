@@ -15,7 +15,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { buildBrowserRuntimeClient } from "@/lib/composition_browser";
-import { QuizView } from "@/components/quiz/QuizView";
+import { QuizView, QuizFrameChrome } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
@@ -35,7 +35,7 @@ import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { screen } from "@/components/shell/nav_model";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
-import type { QuizSession } from "@/lib/wire/engine_entities";
+import type { QuizSession, Skill } from "@/lib/wire/engine_entities";
 
 // Phase-1 single-learner surface (the plan's "Maya"); see the dashboard page note.
 const LEARNER_ID = "maya";
@@ -50,7 +50,8 @@ function socraticHint(stem: string): string {
 }
 
 export default function QuizPage(): React.JSX.Element {
-  const { openSession, openItem, submit, closeSession, listSkillIds } = useQuiz();
+  const { openSession, openItem, submit, closeSession, listSkillIds, listSkills } =
+    useQuiz();
   const router = useRouter();
   // FR-A5 / S2 (FR-6): a `?focus=<skillId>` deep-link (from the Summary skill
   // name or a Dashboard bucket card) opens the session as a DRILL on that skill.
@@ -77,19 +78,25 @@ export default function QuizPage(): React.JSX.Element {
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  // D1 Q-7: full Skill rows for the chip join (name + accent_var).
+  const [skillsById, setSkillsById] = React.useState<
+    ReadonlyMap<string, Skill>
+  >(new Map());
 
   // Effect 1: open the session ONCE and snapshot skill_state at start (§14
   // sanctioned useEffect — an external async data source). The snapshot is
   // stashed for the Summary route; the first item load is triggered by effect 2
-  // once the session exists.
+  // once the session exists. Also warms the skill taxonomy for the Q-7 chip.
   React.useEffect(() => {
     let cancelled = false;
     // FR-6: resolve the `?focus=` param against the known skills, then open a
     // drill (valid focus) or adaptive (absent/unknown). listSkillIds is
     // read-only taxonomy; the decision itself is the pure resolveFocusMode.
-    listSkillIds(DEFAULT_SUBJECT)
-      .then((skillIds) => {
+    // D1: listSkills runs in parallel so the chip join is warm before item 1.
+    Promise.all([listSkillIds(DEFAULT_SUBJECT), listSkills(DEFAULT_SUBJECT)])
+      .then(([skillIds, skills]) => {
         if (cancelled) return;
+        setSkillsById(new Map(skills.map((s) => [s.id, s])));
         const focusMode = resolveFocusMode(focusParam, skillIds);
         return openSession({
           subject: DEFAULT_SUBJECT,
@@ -110,7 +117,7 @@ export default function QuizPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [openSession, listSkillIds, focusParam]);
+  }, [openSession, listSkillIds, listSkills, focusParam]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
   // exists, fetch the next scheduled item and fold it into the phase machine.
@@ -178,6 +185,28 @@ export default function QuizPage(): React.JSX.Element {
       });
   }, [session, state.score, closeSession, router]);
 
+  // D1 Q-8: End session — same close-with-tally as Finish, routes to dashboard
+  // (/learn) instead of Summary. Distinct reducer action so the two exits stay
+  // separable (FR-Q8-6).
+  const onEndSession = React.useCallback(() => {
+    if (session == null) return;
+    dispatch({ type: "end_session" });
+    const { correct, total } = state.score;
+    closeSession({
+      sessionId: session.id,
+      scoreCorrect: correct,
+      scoreTotal: total,
+    })
+      .then(() => {
+        router.push(screen("dashboard").route);
+      })
+      .catch((err: unknown) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to end the session",
+        );
+      });
+  }, [session, state.score, closeSession, router]);
+
   if (error != null) {
     return (
       <p role="alert" className="text-danger">
@@ -206,13 +235,19 @@ export default function QuizPage(): React.JSX.Element {
     session?.target_count ?? null,
   );
 
+  const endSessionEnabled =
+    session != null &&
+    (state.phase === "answering" || state.phase === "reviewing");
+  const startedAtIso = session?.started_at ?? null;
+
   let item: QuizItemResult;
   let content: React.JSX.Element;
   if (state.phase === "answering") {
     item = state.item;
-    const vm = toQuizItemVM(state.item.question);
+    const vm = toQuizItemVM(state.item.question, skillsById);
     content = (
       <QuizView
+        key={state.item.question.id}
         vm={vm}
         selectedLetter={state.selectedLetter}
         onSelect={(letter) => dispatch({ type: "select", letter })}
@@ -225,12 +260,18 @@ export default function QuizPage(): React.JSX.Element {
           socraticHint(state.item.question.stem)
         }
         onToggleHint={() => dispatch({ type: "toggle_hint" })}
+        endSessionEnabled={endSessionEnabled}
+        onEndSession={onEndSession}
+        startedAtIso={startedAtIso}
       />
     );
   } else {
     // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
-    // post-answer actions (Next / Finish).
+    // post-answer actions (Next / Finish). D1 frame chrome sits ABOVE feedback
+    // so the chip / End / timer persist across answering→reviewing (FR-Q7-4,
+    // FR-Q8-3); keyed by question id so the timer reveal resets on Next (FR-Q9-7).
     item = state.item;
+    const itemVm = toQuizItemVM(state.item.question, skillsById);
     const feedback = buildFeedback(
       state.item.question,
       state.verdict,
@@ -254,6 +295,14 @@ export default function QuizPage(): React.JSX.Element {
         : undefined;
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        <QuizFrameChrome
+          key={state.item.question.id}
+          skillName={itemVm.skillName}
+          accentVar={itemVm.accentVar}
+          endSessionEnabled={endSessionEnabled}
+          onEndSession={onEndSession}
+          startedAtIso={startedAtIso}
+        />
         {/* S5 done-state (FR-4/FR-5): once the graded tally reaches the target,
             the milestone shows ABOVE the item's feedback (which stays visible —
             the learner still sees #30's answer). `complete` is the translator's

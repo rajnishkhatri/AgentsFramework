@@ -44,6 +44,7 @@
     "test:e2e:learn:full": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e full-session.spec.ts",
     "test:e2e:test-mode": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e test-mode.spec.ts",
     "test:e2e:a1-reveal": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e e2e/learn/validate_a1_reveal.spec.ts",
+    "test:e2e:d0-baseline": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e e2e/learn/validate_d0_baseline.spec.ts",
     "convert:test01": "tsx scripts/convert_test01_english.ts",
     "test:e2e:matrix": "playwright test e2e/cross-browser/",
     "test:e2e:visual": "playwright test e2e/visual/ --project=chromium-desktop",

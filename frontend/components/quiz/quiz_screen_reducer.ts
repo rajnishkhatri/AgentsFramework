@@ -110,7 +110,9 @@ export type QuizScreenAction =
   | { type: "toggle_hint" }
   | { type: "submitted"; verdict: Verdict | null; letter: string | null }
   | { type: "next" }
-  | { type: "finish" };
+  | { type: "finish" }
+  /** Q-8: End session — distinct from `finish` (FR-Q8-6); page routes to /learn. */
+  | { type: "end_session" };
 
 const ZERO_TALLY: SessionTally = { correct: 0, total: 0 };
 
@@ -182,6 +184,15 @@ export function quizScreenReducer(
     case "finish":
       if (state.phase !== "reviewing") return state;
       // The final tally rides to `done` so the page closes the session with it.
+      return { phase: "done", score: state.score };
+
+    case "end_session":
+      // Q-8: actionable from answering OR reviewing (FR-Q8-3); no-op from
+      // loading/done (FR-Q8-1/2). Converges on `done` like finish — the page
+      // callback owns the route target (/learn vs /learn/summary).
+      if (state.phase !== "answering" && state.phase !== "reviewing") {
+        return state;
+      }
       return { phase: "done", score: state.score };
 
     default:
