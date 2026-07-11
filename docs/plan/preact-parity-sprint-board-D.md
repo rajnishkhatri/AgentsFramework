@@ -243,7 +243,7 @@ framings (P3, P8). Did NOT ship D2 (taxonomy) or D3 (Q-1b decision). No ADR
 
 ---
 
-## Sprint D2 — Taxonomy + bucket dots  🟨 *(content + view)*
+## Sprint D2 — Taxonomy + bucket dots  ✅ *(Implemented — content + view)*
 
 **Report findings:** `D-3b` bucket names → ACT-standard + per-bucket color dot ·
 `X-4` bucket taxonomy mismatch **(merged — same finding cross-cut).**
@@ -297,16 +297,49 @@ the label list is the right weight.
 
 **Releasable alone:** ✅ — no dep on D1/D3/D4.
 
+### § Implementation evidence (Stage 6 — 2026-07-11)
+
+**Shape call:** rename display `name` only on 3 seed rows (`Usage` / `Rhetoric` /
+`Conciseness`); insert leading 11×11 `rounded` (4px) dot gated on `vm.accentVar`
+(prototype exact — overrides plan default 8px circle). No new CSS tokens, no VM
+change, no ADR (`decisions.md` line).
+
+**L1 (Vitest):** `_dev_seed.test.ts` (FR-3/6) · `preact_learn_corpus.test.ts`
+(FR-4) · `BucketCard.test.tsx` (FR-2/5) · arch `test_bucket_labels_no_old_strings`
+(FR-1) · `test_bucket_tokens_unchanged` (FR-7) — red-first then green. Trace:
+[`preact-parity-D2-taxonomy.impl.md`](preact-parity-D2-taxonomy.impl.md).
+
+**L4 (Playwright):** `dashboard-bucket-taxonomy.spec.ts` +
+`validate_d2_taxonomy.spec.ts` (learn-e2e). Manual runbook:
+[`validate_d2_taxonomy_ui.md`](../../frontend/scripts/validate_d2_taxonomy_ui.md).
+
+**PR log:** D2 closes D-3b + absorbs X-4. Dot size/shape locked to prototype
+(`English Coach - Prototype.dc.html:71`).
+
 ---
 
-## Sprint D3 — Session-length decision (Q-1b)  🟦 *(decision-first)*
+## Sprint D3 — Session-length decision (Q-1b)  ✅ Implemented *(decision-first, docs-only)*
 
 **Report finding:** `Q-1b` — app default `target_count = 30`, prototype = 10. Parity
-report explicitly leaves this open ("is 30 intended for adaptive?").
+report explicitly left this open ("is 30 intended for adaptive?").
+
+**Status:** **Implemented** — 2026-07-11. Outcome: **keep 30** (docs-only). Spec:
+[preact-parity-D3-session-length.spec.md](preact-parity-D3-session-length.spec.md) ·
+Plan: [preact-parity-D3-session-length.plan.md](preact-parity-D3-session-length.plan.md) ·
+Tasks: [preact-parity-D3-session-length.tasks.md](preact-parity-D3-session-length.tasks.md) ·
+Impl: [preact-parity-D3-session-length.impl.md](preact-parity-D3-session-length.impl.md) ·
+Decision: [`decisions.md` Q-1b line](../adr/decisions.md).
 
 **Direction:** **decision-first** — resolve as a product answer recorded in
 `decisions.md`. If "keep 30" → sprint closes docs-only. If "change to 10" → sprint
 upgrades to a code change (one const + ADR-0023 amend).
+
+### § Implementation evidence (Stage 6 — 2026-07-11)
+
+- **T-D1 answer (verbatim):** `keep 30` — ADR-0023 adaptive mastery signal; design-spec `:143` "10" is narrative-only; FR-11 covers thin-skill shortfall.
+- **Rejected:** move to 10 (prototype fidelity + thin-bank full drills without S3-pre).
+- **Code path:** not taken. `DEFAULT_TARGET_COUNT` remains 30; ADR-0023 not amended.
+- **Evidence:** [`decisions.md`](../adr/decisions.md) Q-1b line; parity report §Q-1b → Resolved.
 
 **Visual / seam anchors:**
 
@@ -405,9 +438,9 @@ may warrant an ADR. `decisions.md` entry for the "gated ship vs defer" choice re
 - [ ] **D2 shipped:** 6 bucket labels renamed to ACT-standard (verbatim from
       `PreAct/UI-Design/design-spec.md`); Dashboard renders bucket dots via `accent_var`;
       all consumers grep-audited; `decisions.md` records the canonical 6 labels.
-- [ ] **D3 resolved:** `Q-1b` closed with a `decisions.md` rationale; if the decision
+- [x] **D3 resolved:** `Q-1b` closed with a `decisions.md` rationale; if the decision
       changed `DEFAULT_TARGET_COUNT`, ADR-0023 amended + code TDD'd; either way `make
-      check` green.
+      check` green. **Outcome 2026-07-11: keep 30 (docs-only).**
 - [ ] **D4 (optional):** either explicitly deferred to Epic E (`decisions.md` note) or
       shipped as `comingSoon` — no dead nav item, either way.
 - [ ] Parity report §11 / §0 updated to reflect the corrected status of Q-7 / Q-8 / Q-9 /

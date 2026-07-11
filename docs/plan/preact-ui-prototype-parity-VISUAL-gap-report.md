@@ -110,7 +110,7 @@ personalized greeting, and a rich right rail** — roughly a third more surface.
 | D-2 | Today's Focus banner + "Start adaptive session" CTA | 🟩 present | 🟩 | — |
 | D-2b | Today's Focus **body copy**: "Your weakest bucket at 49%. 10 adaptive items, ~12 min. The coach will watch for the comma pattern you keep missing." | 🟡 thinner | 🟨 Minor | app shows bare skill name ("Punctuation") only; add supporting line to `TodayFocusBanner.tsx` |
 | D-3 | 6-bucket mastery grid (%, share, bar, Due) | 🟩 present | 🟩 | — |
-| D-3b | Bucket **names** use ACT-standard labels: **Rhetoric / Usage / Conciseness** + colored dot per bucket | 🟡 diverges | 🟨 Minor | app uses "Rhetorical Skills / Grammar & Usage / Style", no per-bucket color dot |
+| D-3b | Bucket **names** use ACT-standard labels: **Rhetoric / Usage / Conciseness** + colored dot per bucket | ✅ **Resolved (D2)** | 🟩 | Renamed in `_dev_seed.ts` + fixtures; `BucketCard` header dot via `--accent`. Spec: [preact-parity-D2-taxonomy.spec.md](preact-parity-D2-taxonomy.spec.md). |
 | D-4 | Bucket card click → skill drill | ✅ **now clickable** | 🟩 | `BucketCard.tsx` renders `<Link href="/learn/quiz?focus=s-…">` (was inert `<article>` in the matrix — **fixed**). ⚠️ caveat: `?focus=` does not actually pin the scheduler (separate pre-existing gap). |
 | D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🟨 partial (C1) | 🟧 Major | streak + weekly shipped (`streak_vm` / `weekly_sessions_vm` + rail aside); score-goal + coach-note still open → Epic F |
 | D-6 | Left rail identity: "English Coach" brand + **"Maya / PreACT prep"** user block | 🔴 absent | 🟨 Minor | app sidebar has nav only, no brand/user footer |
@@ -137,7 +137,7 @@ that the app doesn't render, and the app's session length is **30** vs the proto
 | # | Prototype affordance | App status | Sev | Fix pointer |
 |---|---|---|---|---|
 | Q-1 | Top progress: **"Question N / M" + bar** | ✅ **shipped (S4)** | 🟩 | `QuizProgress.tsx` — "Question 1 of 30" + `quiz-progress-fill`. **Was 🔴 in matrix.** |
-| Q-1b | Session length **M = 10** | 🟡 diverges | 🟨 Minor | app default `target_count = **30**` (`DEFAULT_TARGET_COUNT`); prototype = 10. Product decision: is 30 intended for adaptive? |
+| Q-1b | Session length **M = 10** | ✅ **Resolved** — keep 30 | 🟩 | Product answer 2026-07-11: keep `DEFAULT_TARGET_COUNT = 30` (ADR-0023 adaptive mastery signal). Prototype's 10 at `design-spec.md:143` is a sample-session narrative, not the product default. Cite: [`decisions.md` Q-1b line](../adr/decisions.md). |
 | Q-2 | Context sentence + **underlined non-essential span** | 🟩 present | 🟦 Cosmetic | app renders `contextHtml`; span-highlight treatment is lighter than prototype's outlined pill |
 | Q-3 | Stem + 4 choices (A = NO CHANGE) | 🟩 present | 🟩 | — |
 | Q-4 | Submit gated until a choice is selected | 🟩 present | 🟩 | `canSubmit()` |
@@ -297,7 +297,7 @@ progress bar clamps full, and the buttons relabel **"Keep practising" / "See sum
 | X-1 | Theme toggle light ↔ dark | 🟩 present | 🟩 | app dark verified (`09-dashboard-dark`); prototype has a "Dark" toggle too |
 | X-2 | Coming-soon plane: **Skill detail** + **Progress** screens | ⛔ unbuilt | 🟧 Major | now first-class [§6](#6-screen--skill-detail--tutorial--app-unbuilt) + [§7](#7-screen--progress--analytics--app-unbuilt); both 404. Backlog #11/#12. |
 | X-3 | Brand accent | 🟩 close | 🟦 Cosmetic | both use terracotta/sage; prototype accent is slightly more saturated |
-| X-4 | Bucket taxonomy mismatch | 🟡 diverges | 🟨 Minor | app 6 buckets ≠ prototype 6 buckets by name (see D-3b); **absorbed into D-3b's sprint (D2)** — same finding under a cross-cut framing, not a separate sprint |
+| X-4 | Bucket taxonomy mismatch | ✅ **Absorbed into D2** | 🟩 | Cross-cut duplicate of D-3b; closed by D2 rename + dots. Spec: [preact-parity-D2-taxonomy.spec.md](preact-parity-D2-taxonomy.spec.md). |
 
 ---
 
@@ -320,7 +320,7 @@ read as historical there:
 |---|---|---|
 | Q-6 | `Reveal answer` is a dead placeholder (testid, no onClick) — + FR-D5/FR-D6 spec contradiction to resolve | 🟥 latent |
 | S-2b | Summary "time" showed **0 min** — **downgraded** to capture artifact on code review (elapsed *is* threaded + tested); pending live-repro triage | 🟨 triage |
-| D-3b / X-4 | Bucket **names** diverge from ACT-standard labels + no per-bucket color dot | 🟨 |
+| D-3b / X-4 | Bucket **names** + color dots — **Resolved / Absorbed in D2** | 🟩 |
 | D-8 | Sidebar missing a **"Skills"** entry the prototype has — **gated on Epic E**; defer or ship `comingSoon` | 🟨 |
 
 ---
