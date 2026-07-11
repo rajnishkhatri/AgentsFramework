@@ -197,6 +197,13 @@ templated) → `decisions.md` at minimum, ADR if it introduces a new derivation 
 
 ## Epic D — Quiz session frame + taxonomy polish  🟨
 
+> **Board authored** ([preact-parity-sprint-board-D.md](preact-parity-sprint-board-D.md)) —
+> Stage-1 CLOSED-pending-human-gate ([brainstorm](preact-parity-epic-D.brainstorm.md)):
+> five premises refuted (Q-7 view-only, Q-9 "dismissible", Q-1b as code, D-8 as free
+> add, X-4 as separate); ladder **D0 → { D1, D2, D3 }** (parallel-independent) with **D4**
+> optional. `X-4` merged into `D-3b`. `D-8` **defaulted to defer** to Epic E's board
+> (dead-nav trust risk = Q-6 class).
+
 **Goal.** Round out the core loop's *session framing* — the affordances that wrap the quiz —
 and align the bucket taxonomy to ACT-standard labels. Individually minor; together they close
 the last visible deltas on the two most-used screens.
@@ -205,13 +212,13 @@ the last visible deltas on the two most-used screens.
 
 | ID | Finding | Surface |
 |----|---------|---------|
-| `Q-7` | **Skill chip** on the session frame ("● Punctuation") | Quiz |
+| `Q-7` | Skill chip on the session frame ("● Punctuation") — **wire→VM→view** seam: join `Skill.name` / `Skill.accent_var` at the hook + translator boundary onto the Quiz VM (`skillName` / `accentVar`); not a view-only chip render | Quiz |
 | `Q-8` | **"✕ End session"** (abandon → Dashboard) | Quiz |
-| `Q-9` | **Dismissible timer** (records `elapsed_ms`, renders no clock) | Quiz |
-| `Q-1b` | Session length **30 vs 10** — product decision | Quiz |
+| `Q-9` | **Collapsible / off-by-default** timer (starts collapsed; reveals `elapsed_ms` when expanded). Capture is already correct ([`session_summary_vm.ts:60-65`](../../frontend/lib/translators/session_summary_vm.ts:60) / A2 triage) — Q-9 is the UI affordance, not the plumbing | Quiz |
+| `Q-1b` | Session length **30 vs 10** — **decision-first sprint (D3)** recorded via [`decisions.md`](../adr/decisions.md); upgrades to code + ADR-0023 amend iff the decision changes `DEFAULT_TARGET_COUNT` (not a code sprint by default) | Quiz |
 | `D-3b` | Bucket **names** → ACT-standard labels + per-bucket color dot | Dashboard |
-| `D-8` | Sidebar missing a **"Skills"** entry | Nav |
-| `X-4` | Bucket taxonomy mismatch (app 6 ≠ prototype 6 by name) | Cross-cutting |
+| `D-8` | **"Skills" nav** — `screen("skill", …, comingSoon: true)` already exists at [`nav_model.ts:75`](../../frontend/components/shell/nav_model.ts:75) but is excluded from `NAV_MEMBERSHIP`; `/learn/skill` **404s today** (Epic E). Adding to membership before E lands = dead nav item (Q-6 class). **Default = defer to Epic E**; alternate = D4 `comingSoon`-gated add | Nav |
+| `X-4` | Bucket taxonomy mismatch (app 6 ≠ prototype 6 by name) — **absorbed into D2** (cross-cut duplicate of `D-3b`; not a separate sprint) | Cross-cutting |
 
 **Release criteria.** Quiz shows the skill chip + End-session + a dismissible timer; bucket
 labels/dots match the ACT-standard taxonomy; a "Skills" nav entry exists. `Q-1b` resolved as
