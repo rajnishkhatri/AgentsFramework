@@ -1,12 +1,13 @@
 /**
- * C1 Dashboard rail + greeting (FR-1/2/5/6/7/8).
+ * C1 Dashboard rail + greeting (FR-1/2/5/6/7/8 + C1-fix FR-1/2/8/13).
  *
- * T1: browser-seeded InMemoryEngineDb via `__PREACT_E2E_SEED__`. Optional
- * `sessions` on the corpus drive streak/weekly; `__PREACT_E2E_RAIL_FAIL_ONCE__`
- * forces the FR-1 unavailable path once for the Retry row.
+ * T1: browser-seeded InMemoryEngineDb via `__PREACT_E2E_SEED__`.
+ * Rail fail-once: `NEXT_PUBLIC_PREACT_E2E_HOOKS=1` (playwright webServer) +
+ * `?e2e_rail_fail=1` opt-in on the retry rows (composition-root decorator).
  */
 
 import { test, expect, type Page } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
 import {
   LEARN_SEED_CORPUS,
   LEARN_SEED_GLOBAL_KEY,
@@ -45,6 +46,14 @@ async function seedBrowser(
   );
 }
 
+/** FR-13: axe wcag2a/aa on the loaded dashboard. */
+async function expectNoAxeViolations(page: Page): Promise<void> {
+  const axe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(axe.violations).toEqual([]);
+}
+
 test.describe("C1 dashboard rail + greeting", () => {
   test("cold_start_renders_honest_empty_state", async ({ page }) => {
     await seedBrowser(page, []);
@@ -52,13 +61,13 @@ test.describe("C1 dashboard rail + greeting", () => {
     await expect(page.getByTestId("dashboard-root")).toBeVisible({
       timeout: 15_000,
     });
+    await expectNoAxeViolations(page);
     await expect(page.getByTestId("streak-tile")).toContainText("Start a streak");
     await expect(page.getByTestId("weekly-tile")).toContainText("0 / 3 sessions");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Maya");
+    await expect(page.getByTestId("dashboard-greeting")).toContainText("Maya");
   });
 
   test("returning_learner_shows_streak_and_weekly", async ({ page }) => {
-    // Freeze local clock so consecutive local-days are stable.
     const now = new Date(2026, 6, 10, 15, 0, 0, 0); // Fri Jul 10 2026 15:00 local
     await page.clock.install({ time: now });
     const sessions = [
@@ -71,13 +80,13 @@ test.describe("C1 dashboard rail + greeting", () => {
     await expect(page.getByTestId("streak-tile")).toContainText("3-day streak", {
       timeout: 15_000,
     });
+    await expectNoAxeViolations(page);
     await expect(page.getByTestId("weekly-tile")).toContainText("3 / 3 sessions");
   });
 
   test("injected_clock_midnight_determinism", async ({ page }) => {
     const justBeforeMidnight = new Date(2026, 6, 10, 23, 59, 59, 0);
     await page.clock.install({ time: justBeforeMidnight });
-    // One session earlier today — streak = 1 before and after midnight.
     const sessions = [
       closedSession("today", new Date(2026, 6, 10, 12, 0, 0, 0)),
     ];
@@ -86,11 +95,9 @@ test.describe("C1 dashboard rail + greeting", () => {
     await expect(page.getByTestId("streak-tile")).toContainText("1-day streak", {
       timeout: 15_000,
     });
+    await expectNoAxeViolations(page);
     await page.clock.fastForward("00:00:02"); // → 00:00:01 next day
-    await page.getByTestId("rail-retry").click({ trial: true }).catch(() => undefined);
-    // Reload so loadDashboard re-reads with the advanced clock.
     await page.reload();
-    // After midnight with no session on the new day → streak resets (FR-6/7).
     await expect(page.getByTestId("streak-tile")).toContainText("Start a streak", {
       timeout: 15_000,
     });
@@ -102,39 +109,73 @@ test.describe("C1 dashboard rail + greeting", () => {
     await page.goto("/learn");
     const root = page.getByTestId("dashboard-root");
     await expect(root).toBeVisible({ timeout: 15_000 });
+    await expectNoAxeViolations(page);
+
+    // FR-1: container-type must be present (falsifiable).
+    const containerType = await root.evaluate(
+      (el) => getComputedStyle(el).containerType,
+    );
+    expect(containerType).toBe("inline-size");
+
     const rail = page.getByTestId("trust-rail");
+    const buckets = page.getByLabel("Skill mastery");
 
     await root.evaluate((el) => {
       (el as HTMLElement).style.maxWidth = "380px";
     });
-    // Narrow container: rail sits in document order below header (order-2).
-    const narrowOrder = await rail.evaluate((el) => getComputedStyle(el).order);
-    expect(Number(narrowOrder)).toBeGreaterThan(0);
+    // Narrow: rail sits below the mastery grid (row layout).
+    const narrowRail = await rail.boundingBox();
+    const narrowBuckets = await buckets.boundingBox();
+    expect(narrowRail).toBeTruthy();
+    expect(narrowBuckets).toBeTruthy();
+    expect(narrowRail!.y).toBeGreaterThan(narrowBuckets!.y);
 
     await root.evaluate((el) => {
       (el as HTMLElement).style.maxWidth = "1280px";
     });
-    // Wide @lg: rail is a grid aside (order resets / column 2).
-    await expect(rail).toHaveAttribute("aria-label", "Trust rail");
-    const wideCols = await root.evaluate((el) => getComputedStyle(el).gridTemplateColumns);
-    expect(wideCols === "none" || wideCols.split(" ").length >= 2).toBe(true);
+    // Wide: rail sits to the right of the mastery grid (aside layout).
+    const wideRail = await rail.boundingBox();
+    const wideBuckets = await buckets.boundingBox();
+    expect(wideRail).toBeTruthy();
+    expect(wideBuckets).toBeTruthy();
+    expect(wideRail!.x).toBeGreaterThan(wideBuckets!.x);
   });
 
   test("retry_button_re_fires_read_after_transient_error", async ({ page }) => {
-    await page.addInitScript(() => {
-      (window as unknown as { __PREACT_E2E_RAIL_FAIL_ONCE__?: boolean })
-        .__PREACT_E2E_RAIL_FAIL_ONCE__ = true;
-    });
+    // Fail-once via composition-root decorator (env + ?e2e_rail_fail=1).
     await seedBrowser(page, []);
-    await page.goto("/learn");
+    await page.goto("/learn?e2e_rail_fail=1");
     await expect(page.getByText("Trust rail unavailable")).toBeVisible({
       timeout: 15_000,
     });
+    await expectNoAxeViolations(page);
     await expect(page.getByTestId("rail-retry")).toBeVisible();
     await page.getByTestId("rail-retry").click();
     await expect(page.getByTestId("streak-tile")).toContainText("Start a streak", {
       timeout: 15_000,
     });
     await expect(page.getByText("Trust rail unavailable")).toHaveCount(0);
+  });
+
+  test("retry_button_is_rail_scoped", async ({ page }) => {
+    await seedBrowser(page, []);
+    await page.goto("/learn?e2e_rail_fail=1");
+    await expect(page.getByText("Trust rail unavailable")).toBeVisible({
+      timeout: 15_000,
+    });
+    await expectNoAxeViolations(page);
+    const greeting = page.getByTestId("dashboard-greeting");
+    await expect(greeting).toBeVisible();
+    const greetingHandle = await greeting.elementHandle();
+    expect(greetingHandle).toBeTruthy();
+
+    await page.getByTestId("rail-retry").click();
+    await expect(page.getByTestId("streak-tile")).toBeVisible({
+      timeout: 15_000,
+    });
+
+    // FR-8: same greeting node stays connected across rail retry.
+    expect(await greetingHandle!.evaluate((el) => el.isConnected)).toBe(true);
+    await expect(greeting).toBeVisible();
   });
 });

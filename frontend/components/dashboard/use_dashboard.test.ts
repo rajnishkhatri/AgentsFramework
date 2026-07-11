@@ -223,6 +223,7 @@ describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {
     const vm = await loadDashboard(rejecting, {
       subject: SUBJECT,
       learnerId: LEARNER,
+      displayName: "Maya",
       nowISO: NOW,
     });
     expect(vm.greeting.headline).toMatch(/Maya/);
@@ -277,16 +278,34 @@ describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {
           return ports.sessionRepo.listByLearner(subject, learnerId, options);
         },
       },
+      questionRepo: {
+        ...ports.questionRepo,
+        nextReviewed: async (subject: string, skillId: string) => {
+          started.push("focus_question");
+          await gate();
+          return ports.questionRepo.nextReviewed(subject, skillId);
+        },
+      },
     };
+
+    // Seed a due skill so the speculative focus prefetch has a target.
+    db.seedSkillStates([state({ skill_id: "s-punc", mastery: 0.3, due_at: NOW })]);
+    db.seedQuestions([question({ id: "q-punc-1", skill_id: "s-punc" })]);
 
     const pending = loadDashboard(slow, {
       subject: SUBJECT,
       learnerId: LEARNER,
       nowISO: NOW,
     });
-    // All four must have started before any resolve (single Promise.all).
+    // All five must have started before any resolve (single Promise.all).
     await new Promise((r) => setTimeout(r, 10));
-    expect(started.sort()).toEqual(["misses", "rail", "skills", "states"]);
+    expect(started.sort()).toEqual([
+      "focus_question",
+      "misses",
+      "rail",
+      "skills",
+      "states",
+    ]);
     for (const r of release) r();
     await pending;
   });
@@ -302,5 +321,30 @@ describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {
     expect(vm.rail.streak.days).toBe(0);
     expect(vm.rail.weekly.count).toBe(0);
     expect(vm.rail.weekly.label).toBe("0 / 3 sessions");
+  });
+
+  // FR-2: production path must not read window.__PREACT_E2E_* (composition
+  // root owns the fail-once seam).
+  it("does_not_reference_e2e_globals", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(__dirname, "use_dashboard.ts"),
+      "utf8",
+    );
+    expect(src).not.toContain("__PREACT_E2E_");
+  });
+
+  // FR-6: rail result is a discriminated union — no `as QuizSession[]` cast.
+  it("rail_result_is_discriminated_union_not_sentinel", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(
+      path.join(__dirname, "use_dashboard.ts"),
+      "utf8",
+    );
+    expect(src).not.toMatch(/as\s+QuizSession\[\]/);
+    expect(src).not.toContain("RAIL_UNAVAILABLE");
+    expect(src).toMatch(/type\s+RailResult\s*=/);
   });
 });

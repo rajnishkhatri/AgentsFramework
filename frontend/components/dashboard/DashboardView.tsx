@@ -5,6 +5,11 @@
  * `loadDashboard`). No engine port, no I/O, no SDK — VM + wire/translator types
  * only. Greeting header + trust rail (streak/weekly) are additive C1 surfaces;
  * score-goal and coach-note tiles are intentionally absent (FR-14).
+ *
+ * C1-fix: `aria-live` lives on the `<aside>` landmark (FR-7); a single content
+ * shell swaps only inner children so landmark identity is stable across
+ * ok/unavailable. Greeting carries `data-testid="dashboard-greeting"` for
+ * rail-scoped retry assertions (FR-8).
  */
 
 import * as React from "react";
@@ -18,7 +23,7 @@ import { screen } from "@/components/shell/nav_model";
 
 export function DashboardView(props: {
   vm: DashboardVM;
-  /** Re-fires the dashboard load after a rail-scoped failure (FR-1). */
+  /** Re-fires the rail load after a rail-scoped failure (FR-1/FR-8). */
   onRetryRail?: () => void;
 }): React.JSX.Element {
   const { vm, onRetryRail } = props;
@@ -26,21 +31,26 @@ export function DashboardView(props: {
   const testRoute = screen("test").route;
 
   return (
-    <div
-      data-testid="dashboard-root"
-      className="@container flex flex-col gap-6 @lg:grid @lg:grid-cols-[1fr_320px] @lg:items-start"
-    >
+    <div data-testid="dashboard-root" className="@container w-full">
+      <div className="flex flex-col gap-6 @lg:grid @lg:grid-cols-[1fr_320px] @lg:items-start">
       <header className="@lg:col-span-2">
-        <h1 className="text-2xl font-semibold text-fg">{vm.greeting.headline}</h1>
+        <h1
+          data-testid="dashboard-greeting"
+          className="text-2xl font-semibold text-fg"
+        >
+          {vm.greeting.headline}
+        </h1>
         <p className="text-sm text-muted">{vm.greeting.subline}</p>
       </header>
 
       <aside
         aria-label="Trust rail"
+        aria-live="polite"
         data-testid="trust-rail"
-        className="order-2 flex gap-3 overflow-x-auto @lg:order-none @lg:col-start-2 @lg:row-span-3 @lg:flex-col"
+        className="order-3 flex gap-3 overflow-x-auto @lg:order-none @lg:col-start-2 @lg:row-span-3 @lg:flex-col"
       >
-        <div aria-live="polite" className="flex gap-3 @lg:flex-col">
+        {/* Single content shell — landmark identity stable across status (FR-7). */}
+        <div className="flex gap-3 @lg:flex-col">
           {vm.rail.status === "unavailable" ? (
             <>
               <span className="text-sm text-muted">Trust rail unavailable</span>
@@ -62,7 +72,7 @@ export function DashboardView(props: {
         </div>
       </aside>
 
-      <div className="order-3 flex flex-col gap-6 @lg:order-none @lg:col-start-1">
+      <div className="order-2 flex flex-col gap-6 @lg:order-none @lg:col-start-1">
         {vm.todayFocus.present ? (
           <TodayFocusBanner
             skillName={vm.todayFocus.skillName}
@@ -102,6 +112,7 @@ export function DashboardView(props: {
             Take a timed test
           </Link>
         </section>
+      </div>
       </div>
     </div>
   );

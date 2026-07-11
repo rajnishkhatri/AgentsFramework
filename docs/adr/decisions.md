@@ -479,3 +479,25 @@ title: 'Lightweight decision log (intent debt, long tail)'
 - 2026-07-10 — **C1 streak floor = 1 day for the first closed session today (Q4).**
   `toStreakVM` celebrates day-1 (`present: true, days: 1`) rather than gating until day-2 —
   matches the trust-relationship epic tone.
+
+- 2026-07-10 — **C1-fix devDep add: @axe-core/playwright (Q4).**
+  Testing-only; prescribed by frontend style guide §20. Not an ADR
+  trigger. Already present at `^4.11.2` in frontend/package.json.
+- 2026-07-10 — **C1-fix rail read result = discriminated union (Q2).**
+  Local `RailResult = {ok:true, sessions} | {ok:false}` inside
+  `use_dashboard.ts`; no export. Kills the `RAIL_UNAVAILABLE` sentinel +
+  `as QuizSession[]` cast. Rule W3 enforced at hook boundary.
+- 2026-07-10 — **C1-fix greeting sans name = bare "Good morning" (Q3).**
+  `toGreetingVM(nowISO, displayName?)`; missing name → no trailing
+  vocative. C-4 honesty preferred over a placeholder.
+- 2026-07-10 — **C1-fix DST-safe weekly Monday (FR-10).** Reuse the
+  noon-of-day construction from `streak_vm.ts`. Pure translator internal
+  change; no behavior delta on non-DST inputs.
+- 2026-07-10 — **C1-fix concurrency includes speculative focus read
+  (Q1).** `nextReviewed` for the tentative focus skill fans out with
+  the four base reads; reconcile after `pickFocusSkillId`.
+- 2026-07-10 — **C1-fix e2e rail-fail seam moves to composition root
+  (FR-2).** `NEXT_PUBLIC_PREACT_E2E_HOOKS=1` gates a
+  `failOnceDecorator` around `sessionRepo.listByLearner` in
+  `composition_engine_browser.ts`, opt-in via `?e2e_rail_fail=1`.
+  Zero test-hook code inside `use_dashboard.ts` (Rule F-R4 restored).
