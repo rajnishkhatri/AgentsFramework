@@ -145,21 +145,10 @@ The Summary/Dashboard can deep-link into the quiz with `?focus=<skillId>` (e.g.
 
 - [ ] **3.1** Open **http://localhost:3000/learn/quiz?focus=s-gram**.
 
-> ⚠️ **Honest limitation — the drill does NOT currently pin the quiz to one skill.**
-> The `?focus=` param opens a `drill`-**mode** session (the mode is stored), but the
-> FSRS scheduler's `next()` has **never** taken a focus/skill filter — not at S1/S2,
-> not at S3, not at S3.1 — so it still schedules across the **whole** taxonomy and
-> **rotation applies uniformly**. So `?focus=s-gram` will still rotate
-> `Punctuation → Organization → Grammar → …`, not serve only Grammar.
->
-> This is a **pre-existing gap, not an S3.1 regression** — S3.1 only reordered the
-> pool. If "drill actually restricts to one skill" is desired, that is a **separate,
-> unstarted** piece of work (the scheduler would need a focus filter on `next()`). It
-> is called out here so the walkthrough makes no claim the code does not back.
-
-- [ ] **3.2** ✅ **EXPECT (accurately):** the session opens and rotates across skills
-  (same as Part 1). It does **not** stay on Grammar. That is the current, known
-  behaviour.
+> ✅ **2026-07-10:** Drill now pins to `skill_focus` (FR-A5) in `openQuizItem` —
+> `?focus=s-gram` serves only Grammar items (no cross-skill rotation in drill).
+> Adaptive sessions still rotate (Parts 1–2). Re-check: 3.1 opens; items stay on
+> the focused skill.
 
 ---
 
@@ -169,7 +158,6 @@ The Summary/Dashboard can deep-link into the quiz with `?focus=<skillId>` (e.g.
   the test-only `data-skill` attribute; a rendered "12 of 30" progress bar and a
   visible skill name are **S4** (deferred). Verify rotation via the topic of each
   item or the `data-skill` read.
-- [ ] **Drill does not pin to one skill.** See Part 3 — pre-existing, separate work.
 - [ ] **The Drizzle store is not exercised.** The rotation read has a Drizzle
   (`listSessionSkillIds`) implementation, but `InMemoryEngineDb` is the only wired
   engine store today, so the browser walk exercises the in-memory path. (Deferred
@@ -184,7 +172,7 @@ The Summary/Dashboard can deep-link into the quiz with `?focus=<skillId>` (e.g.
 - [ ] **Part 2.1** — fresh reload still serves Punctuation first (FR-1 backward-compat).
 - [ ] **Part 2.2** — no repeated question stem across the walk (FR-9 intact).
 - [ ] **Part 2.3** — no console errors.
-- [ ] **Part 3** — `?focus=` opens; drill-does-not-pin limitation understood.
+- [ ] **Part 3** — `?focus=` opens; items stay on the focused skill (FR-A5).
 
 If Part 1 and Part 2 are ticked, the S3.1 rotation fix is validated in the live UI:
 the "always sentence-completion" behaviour is gone, replaced by a clean round-robin,

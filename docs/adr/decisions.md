@@ -43,6 +43,24 @@ title: 'Lightweight decision log (intent debt, long tail)'
 
 - 2026-07-10 — **C2 framed-title threshold = 0.6.** Score ratio at which the neutral title flips to "Nice work — you found the pattern." Hardcoded `SUMMARY_FRAMED_TITLE_RATIO` in `session_summary_vm.ts`. Prototype §5.5 uses 7/10 (0.7); 0.6 is a deliberate undercut to avoid over-praise. Spec §12 Q3 / §13 #1.
 
+- 2026-07-10 — **Drill `?focus=` pins item draw to that skill (FR-A5).** Session stored `skill_focus` but `openQuizItem` still called adaptive `scheduler.next`, so after missing skill A, a skill-B bucket drill kept serving A — Home “misses” looked like only the first skill. **Decision:** drill mode draws via `QuestionRepo.nextReviewed(subject, skill_focus, servedIds)` only. **Rejected:** leave the documented “honest gap”; filter misses by last session skill.
+
+- 2026-07-10 — **Outstanding misses = latest attempt incorrect (clears on later correct).** After review 3/5 correct, Home still showed 5 — `misses()` returned every historical incorrect row. **Decision:** `listMisses` projects outstanding only (latest attempt per `question_id` is wrong); later correct clears from badge + review pool. Append-only history unchanged. **Rejected:** keep lifetime miss history on the badge.
+
+- 2026-07-10 — **Review complete: hide Keep practising (no miss-pool over-run).** After the last miss, Keep practising called `openQuizItem` and threw “no unserved missed questions”. **Decision:** when `mode=review` and `progressVm.complete`, hide quiz-next; promote See summary to the primary CTA. Adaptive/drill still over-run via Keep practising (S5 FR-7). **Rejected:** fall through to FSRS adaptive; route Home automatically.
+
+- 2026-07-10 — **Dashboard Review misses (N) = unique question ids (match review pool).** Badge used `misses.length` (raw attempts) while review `target_count` used unique ids → “Review my misses (4)” then “1 of 3”. **Decision:** `reviewMissesCount = uniqueMissQuestionIds(misses).length`. **Rejected:** inflate review target to raw attempt count (would re-serve the same item).
+
+- 2026-07-10 — **Review my misses → `?mode=review` miss pool (FR-A6/C5).** Dashboard linked to plain `/learn/quiz` (adaptive 30) while the count was real. **Decision:** link `/learn/quiz?mode=review`; `resolveQuizOpenMode`; `openQuizSession` sets `target_count` to unique miss count; `openQuizItem` draws from `AttemptRepo.misses` (not FSRS `next`) for review sessions. Deep-link clears resume pointer. **Rejected:** leave as known gap only.
+
+- 2026-07-10 — **Coach pin questionId change ⇒ fresh LangGraph thread + clear turns.** Manual walk: Ask on Q2 worked; after Next→Q3, chip “Give me a similar item” got a cold-start reply while chrome showed Q3 — same `thread_id` kept Q2 message history and the vague chip read as plain chat. **Decision:** `setCoachPin` when `questionId` changes resets `threadId`+`turns` (next ask mints a new server thread with current `coach_context`). Same-item pin/mode updates still keep the thread (FR-J3 panel↔screen). **Rejected:** keep one session-long thread with only a system-prompt preamble (history still dominates vague chips).
+
+- 2026-07-10 — **Desktop Quiz syncs coach pin on every item (sidebar Coach ≠ cold/stale).** Ask-the-coach already called `setCoachPin`; sidebar Coach did not, so first open was cold or stuck on Q1. **Decision:** desktop quiz page writes the same live-item pin/mode as iPad `CoachPanel` (via `toQuizCoachPin`) whenever answering/reviewing. Cold `/learn/coach` with no quiz still honest-absent. **Rejected:** hydrate only on coach mount from `readActiveQuiz` (pointer lacked skillId; quiz-side sync matches panel).
+
+- 2026-07-10 — **Epic A/B continuity: Back from Feedback resumes reviewing (same N), not answering.** Manual FLAG-4 walk: Ask-the-coach leaves Feedback with a post-grade tally; remounting into answering made progress `gradedTotal+1` (Q3→Q4) and risked re-submit. **Decision:** stash `verdict`+`answeredLetter` on the active pointer when `phase=feedback`; `resume_item` restores **reviewing** so Question N and Next stay. Answering-only leave still resumes answering. **Supersedes** same-day “always → answering” note. Spec: [epic-ab-continuity-fixes.spec.md](../plan/epic-ab-continuity-fixes.spec.md).
+
+- 2026-07-10 — **Epic A/B continuity: resume always → answering; stash score on active pointer.** FLAG-4 remount restores the left `questionId` into `answering` (not reviewing) so e2e/Back only need the stem. Active pointer also stores `{correct,total}` so resume never fabricates `0/0`. **Rejected:** resume into reviewing; URL `?session=` for Back (clarify C1 option B). Spec: [epic-ab-continuity-fixes.spec.md](../plan/epic-ab-continuity-fixes.spec.md). **Superseded** by feedback-resume decision above.
+
 - 2026-07-09 — **Coach-pass C4/C5: honest opener + green-span from `<u>`.** C4 option A — one opener only when pin + real misses + empty transcript (cite `N`, never “of last 5”); else empty until ask. C5 option A — Feedback recap = `context_html` with `<u>` → success color (FR-A7); no `<u>` → plain sentence, no invented highlight. Spec: [preact-parity-B-coach-pass.spec.md](../plan/preact-parity-B-coach-pass.spec.md).
 
 - 2026-07-09 — **Coach-pass C3 layout = prototype surface variants (desktop rail ≠ iPad).** Spec §5.4/§9 + iPad flow: desktop `/learn/coach` = left context rail + right chat/chips/composer; iPad standalone Coach = **header-strip** context (no left rail), centered ≤600px; iPad Quiz = existing **split** right `CoachPanel` (stacked chrome + nudges + composer, same thread). Chips stay with composer. **Rejected:** one stacked layout everywhere; forcing desktop two-column onto the quiz panel. Spec: [preact-parity-B-coach-pass.spec.md](../plan/preact-parity-B-coach-pass.spec.md); prototype: [PreACT-English-Coach-Spec.md](../../Eng-coach-ui-design/PreACT-English-Coach-Spec.md).
@@ -491,3 +509,44 @@ title: 'Lightweight decision log (intent debt, long tail)'
   revert commit `1f8ac07` via PR #139 (merge `37eade4`) — the target-gated behaviour is
   live on `main`, superseding the unconditional relabel that reached `main` via PR #138
   (`f02c332`) an hour earlier.
+- 2026-07-10 — **C1 Dashboard rail: H6 weekly target = 3 sessions / ISO Monday-start week.**
+  Weekly tile counts closed sessions in `[Monday-00:00-local .. nowISO]`; label display-caps
+  at 3 (`"K / 3 sessions"`) while `count` stays unclamped. The 7-dot session strip from the
+  prototype is deferred with the score-goal tile to Epic F. Rejected: locale-dependent week
+  start (ISO Monday is universal).
+- 2026-07-10 — **C1 Dashboard `sinceISO = nowISO − 30d` (caller policy, not port policy).**
+  `SessionRepo.listByLearner` stays window-agnostic; Dashboard passes a 30-day lower bound so
+  the rail read stays cheap as history grows (ADR-0026 option F). Epic F Progress may pass a
+  longer window without a port change.
+- 2026-07-10 — **C1 defers score-goal + coach-note tiles to Epic F** (alongside `projectedScore`).
+  No honest engine source today (brainstorm P9/P11 refuted); rendering placeholders would
+  violate C-4. FR-14 locks the negative assertion.
+- 2026-07-10 — **C1 responsive layout = Tailwind v4 `@container` (not `useSurface`).** Rail
+  flips from below-header row → right `<aside>` via `@lg:` container queries on
+  `data-testid="dashboard-root"`. `useSurface` stays for behavioral branches (touch / iPad
+  CoachPanel); wrong tool for hydration-safe layout here (FR-5).
+- 2026-07-10 — **C1 streak floor = 1 day for the first closed session today (Q4).**
+  `toStreakVM` celebrates day-1 (`present: true, days: 1`) rather than gating until day-2 —
+  matches the trust-relationship epic tone.
+
+- 2026-07-10 — **C1-fix devDep add: @axe-core/playwright (Q4).**
+  Testing-only; prescribed by frontend style guide §20. Not an ADR
+  trigger. Already present at `^4.11.2` in frontend/package.json.
+- 2026-07-10 — **C1-fix rail read result = discriminated union (Q2).**
+  Local `RailResult = {ok:true, sessions} | {ok:false}` inside
+  `use_dashboard.ts`; no export. Kills the `RAIL_UNAVAILABLE` sentinel +
+  `as QuizSession[]` cast. Rule W3 enforced at hook boundary.
+- 2026-07-10 — **C1-fix greeting sans name = bare "Good morning" (Q3).**
+  `toGreetingVM(nowISO, displayName?)`; missing name → no trailing
+  vocative. C-4 honesty preferred over a placeholder.
+- 2026-07-10 — **C1-fix DST-safe weekly Monday (FR-10).** Reuse the
+  noon-of-day construction from `streak_vm.ts`. Pure translator internal
+  change; no behavior delta on non-DST inputs.
+- 2026-07-10 — **C1-fix concurrency includes speculative focus read
+  (Q1).** `nextReviewed` for the tentative focus skill fans out with
+  the four base reads; reconcile after `pickFocusSkillId`.
+- 2026-07-10 — **C1-fix e2e rail-fail seam moves to composition root
+  (FR-2).** `NEXT_PUBLIC_PREACT_E2E_HOOKS=1` gates a
+  `failOnceDecorator` around `sessionRepo.listByLearner` in
+  `composition_engine_browser.ts`, opt-in via `?e2e_rail_fail=1`.
+  Zero test-hook code inside `use_dashboard.ts` (Rule F-R4 restored).

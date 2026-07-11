@@ -51,6 +51,8 @@ if (!process.env.CI && isLocalBaseUrl(BASE_URL)) {
     env: {
       ...(USE_MOCK_MIDDLEWARE ? { MIDDLEWARE_URL: MOCK_MIDDLEWARE_URL } : {}),
       ...(BYPASS_AUTH ? { E2E_BYPASS_AUTH: "1" } : {}),
+      // C1-fix FR-2: composition-root fail-once for rail Retry e2e rows.
+      NEXT_PUBLIC_PREACT_E2E_HOOKS: "1",
     },
   });
 }

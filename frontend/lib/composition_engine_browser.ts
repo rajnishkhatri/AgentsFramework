@@ -34,6 +34,7 @@ import { InMemoryEngineDb } from "./adapters/engine/db/in_memory_engine_db";
 import type {
   Hint,
   Question,
+  QuizSession,
   Skill,
   SkillState,
 } from "./wire/engine_entities";
@@ -100,11 +101,15 @@ export function buildBrowserEngineAdapters(
   // for the per-mode target_count default (FR-5).
   const contentRepo = new DrizzleContentRepo(db);
 
+  const sessionRepo = maybeFailOnceSessionRepo(
+    new DrizzleSessionRepo({ db, contentRepo }),
+  );
+
   return {
     skillTaxonomy: new DrizzleSkillTaxonomy(db),
     questionRepo,
     attemptRepo: new DrizzleAttemptRepo({ db }),
-    sessionRepo: new DrizzleSessionRepo({ db, contentRepo }),
+    sessionRepo,
     // The Scheduler needs QuestionRepo to resolve a chosen skill → a reviewed
     // question (FR-A1); it is the sole writer of skill_state (FR-A2).
     scheduler: new FsrsScheduler({ db, questions: questionRepo }),
@@ -120,6 +125,42 @@ export function buildBrowserEngineAdapters(
     // ADR-0012 Amendment (FR-19): browser→BFF fire-and-forget marker write on
     // quiz submit, flipping the coach's derived mode to post_feedback.
     quizSubmitNotifier: new FetchQuizSubmitNotifier(),
+  };
+}
+
+/**
+ * C1-fix FR-2: when `NEXT_PUBLIC_PREACT_E2E_HOOKS=1`, wrap
+ * `sessionRepo.listByLearner` so the first call rejects when the page was
+ * opened with `?e2e_rail_fail=1` (rail unavailable → Retry path). Subsequent
+ * calls delegate. Module-scoped flag resets on full page reload (new bag).
+ * Composition-root only — zero domain-code branch. The query-param opt-in
+ * keeps other `/learn` e2e rows from consuming the fail-once on every load.
+ */
+let hasFailedOnce = false;
+
+function maybeFailOnceSessionRepo(
+  sessionRepo: EnginePortBag["sessionRepo"],
+): EnginePortBag["sessionRepo"] {
+  if (process.env.NEXT_PUBLIC_PREACT_E2E_HOOKS !== "1") return sessionRepo;
+  // Class-instance methods live on the prototype — object spread would drop
+  // open/close/get and break Quiz ("sessionRepo.open is not a function").
+  // Bind every port method explicitly; only listByLearner is intercepted.
+  const listByLearner = sessionRepo.listByLearner.bind(sessionRepo);
+  return {
+    open: sessionRepo.open.bind(sessionRepo),
+    close: sessionRepo.close.bind(sessionRepo),
+    get: sessionRepo.get.bind(sessionRepo),
+    listByLearner: async (subject, learnerId, options) => {
+      if (
+        !hasFailedOnce &&
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("e2e_rail_fail") === "1"
+      ) {
+        hasFailedOnce = true;
+        throw new Error("e2e forced rail failure");
+      }
+      return listByLearner(subject, learnerId, options);
+    },
   };
 }
 
@@ -162,6 +203,11 @@ export function browserEngineAdapters(): EnginePortBag {
         // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
         // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
         if (injected.hints) db.seedHints([...injected.hints]);
+        if (injected.sessions) {
+          for (const s of injected.sessions) {
+            void db.insertSession({ ...s });
+          }
+        }
         singleton = buildBrowserEngineAdapters({ engineDb: db });
       } else {
         seedDevCorpus(db);
@@ -193,6 +239,8 @@ interface InjectedSeedCorpus {
   readonly skillStates: readonly SkillState[];
   /** Optional reviewed hint ladders (ADR-0014); absent in older specs. */
   readonly hints?: readonly Hint[];
+  /** Optional closed sessions for Dashboard rail e2e (C1 / ADR-0026). */
+  readonly sessions?: readonly QuizSession[];
 }
 
 /**
@@ -220,5 +268,6 @@ function readE2ESeedOverride(): InjectedSeedCorpus | null {
     questions: c.questions,
     skillStates: c.skillStates,
     ...(Array.isArray(c.hints) ? { hints: c.hints } : {}),
+    ...(Array.isArray(c.sessions) ? { sessions: c.sessions } : {}),
   };
 }

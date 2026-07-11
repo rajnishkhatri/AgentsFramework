@@ -68,6 +68,12 @@ describe("SummaryView — FR-G1 stat tiles (stored values)", () => {
     expect(doc.querySelector('[data-testid="summary-score"]')!.textContent).toContain("7/10");
     expect(doc.querySelector('[data-testid="summary-time"]')!.textContent).toContain("12 min");
   });
+
+  it('labels the delta tile "Mastery change" (FLAG-6 / FR-7), not absolute "Mastery"', () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const tile = doc.querySelector('[data-testid="summary-delta"]');
+    expect(tile!.textContent).toContain("Mastery change");
+  });
 });
 
 describe("SummaryView — FR-G2 recommended-next re-opens Quiz", () => {

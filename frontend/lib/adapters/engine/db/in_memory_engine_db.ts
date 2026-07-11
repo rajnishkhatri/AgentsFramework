@@ -203,25 +203,62 @@ export class InMemoryEngineDb implements EngineDb {
     return { ...updated };
   }
 
+  async listClosedSessionsByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]> {
+    const sinceISO = options?.sinceISO;
+    const rows = [...this.sessions.values()].filter(
+      (s) =>
+        s.subject === subject &&
+        s.learner_id === learnerId &&
+        s.ended_at != null &&
+        (sinceISO == null || s.ended_at >= sinceISO),
+    );
+    rows.sort((a, b) => {
+      const endCmp = (b.ended_at ?? "").localeCompare(a.ended_at ?? "");
+      if (endCmp !== 0) return endCmp;
+      return a.id.localeCompare(b.id);
+    });
+    return rows.map((s) => ({ ...s }));
+  }
+
   // --- attempt ---
   async insertAttempt(a: Attempt): Promise<void> {
     this.attempts.push({ ...a });
   }
   async listMisses(subject: string, learnerId: string): Promise<Attempt[]> {
-    // The fake joins attempt → session for learner scoping (live seam does too).
+    // Outstanding misses only (FR-D4 / FR-C5): latest attempt per question_id
+    // for this learner+subject — include iff that latest row is incorrect. A
+    // later correct answer clears the item from the review pool (append-only
+    // history is preserved; this read is a projection).
     const learnerSessionIds = new Set(
       [...this.sessions.values()]
         .filter((s) => s.subject === subject && s.learner_id === learnerId)
         .map((s) => s.id),
     );
-    return this.attempts
+    const byNewest = (a: Attempt, b: Attempt): number => {
+      if (a.created_at !== b.created_at) {
+        return a.created_at < b.created_at ? 1 : -1;
+      }
+      // Stable tie-break when record() lands in the same ms.
+      return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+    };
+    const learnerAttempts = this.attempts
       .filter(
-        (a) =>
-          a.subject === subject &&
-          a.correct === false &&
-          learnerSessionIds.has(a.session_id),
+        (a) => a.subject === subject && learnerSessionIds.has(a.session_id),
       )
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)) // newest-first
+      .sort(byNewest);
+    const latestByQuestion = new Map<string, Attempt>();
+    for (const a of learnerAttempts) {
+      if (!latestByQuestion.has(a.question_id)) {
+        latestByQuestion.set(a.question_id, a);
+      }
+    }
+    return [...latestByQuestion.values()]
+      .filter((a) => a.correct === false)
+      .sort(byNewest)
       .map((a) => ({ ...a }));
   }
   async listSessionQuestionIds(sessionId: string): Promise<string[]> {

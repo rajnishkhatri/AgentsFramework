@@ -100,10 +100,23 @@ export interface EngineDb extends ReadableEngineDb {
   insertSession(s: QuizSession): Promise<void>;
   getSession(id: string): Promise<QuizSession | null>;
   patchSessionClose(id: string, patch: SessionClosePatch): Promise<QuizSession | null>;
+  /**
+   * Closed sessions for a learner, newest-first by ended_at; optional lower
+   * bound. Excludes rows where ended_at IS NULL (ADR-0026 / C1 rail).
+   */
+  listClosedSessionsByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]>;
 
   // --- attempt ---
   insertAttempt(a: Attempt): Promise<void>;
-  /** Incorrect attempts for a learner, newest-first (FR-D4). */
+  /**
+   * Outstanding misses for a learner, newest-first (FR-D4 / FR-C5): the latest
+   * attempt per `question_id` when that attempt is incorrect. A later correct
+   * answer clears the question from the review pool (history stays append-only).
+   */
   listMisses(subject: string, learnerId: string): Promise<Attempt[]>;
   /**
    * The `question_id`s answered in one session (any correctness) — the S3

@@ -254,6 +254,7 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
           data-enabled={submittable ? "true" : "false"}
           className={cn(
             "min-h-11 rounded-full px-4 py-2 text-sm text-muted",
+            "data-[enabled=true]:text-fg",
             "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
           )}
         >

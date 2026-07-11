@@ -27,7 +27,7 @@
  * path.
  */
 
-import { and, asc, desc, eq, lte, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as pg from "./schema.pg";
@@ -399,6 +399,25 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       const first = rows[0];
       return first ? toSession(first as Record<string, unknown>) : null;
     },
+    async listClosedSessionsByLearner(subject, learnerId, options) {
+      const predicates = [
+        eq(pg.quizSession.subject, subject),
+        eq(pg.quizSession.learner_id, learnerId),
+        isNotNull(pg.quizSession.ended_at),
+      ];
+      if (options?.sinceISO != null) {
+        predicates.push(gte(pg.quizSession.ended_at, new Date(options.sinceISO)));
+      }
+      const rows = await wrap(
+        "listClosedSessionsByLearner",
+        db
+          .select()
+          .from(pg.quizSession)
+          .where(and(...predicates))
+          .orderBy(desc(pg.quizSession.ended_at), asc(pg.quizSession.id)),
+      );
+      return rows.map((r) => toSession(r as Record<string, unknown>));
+    },
     async insertAttempt(a) {
       await wrap(
         "insertAttempt",
@@ -406,6 +425,10 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
     },
     async listMisses(subject, learnerId) {
+      // Outstanding misses (FR-D4): incorrect attempts that are still the
+      // learner's latest attempt for that question_id. A later correct clears
+      // the item from the review pool. NOT EXISTS is portable across PG+SQLite
+      // (unlike DISTINCT ON). Matches InMemoryEngineDb.listMisses.
       const rows = await wrap(
         "listMisses",
         db
@@ -421,6 +444,17 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
               // a learner's miss is scoped by BOTH the attempt's subject and its
               // session's subject, so cross-subject/mis-tagged rows can't leak in.
               eq(pg.quizSession.subject, subject),
+              sql`NOT EXISTS (
+                SELECT 1
+                FROM ${pg.attempt} AS later
+                INNER JOIN ${pg.quizSession} AS later_sess
+                  ON later.session_id = later_sess.id
+                WHERE later.question_id = ${pg.attempt.question_id}
+                  AND later.subject = ${subject}
+                  AND later_sess.learner_id = ${learnerId}
+                  AND later_sess.subject = ${subject}
+                  AND later.created_at > ${pg.attempt.created_at}
+              )`,
             ),
           )
           .orderBy(desc(pg.attempt.created_at)),
