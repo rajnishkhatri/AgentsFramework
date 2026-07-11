@@ -432,13 +432,16 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     async listSessionQuestionIds(sessionId) {
       // The served set (FR-13): every question_id answered in this session, any
       // correctness. A question_id-only projection scoped by session_id — no
-      // join (the session id is enough; order is not significant).
+      // join (the session id is enough). Ordered by attempt.created_at ASC
+      // (oldest-first) so downstream consumers (C2 FR-14 self-correction
+      // half-split in use_summary.ts) see a stable attempt sequence.
       const rows = await wrap(
         "listSessionQuestionIds",
         db
           .select({ question_id: pg.attempt.question_id })
           .from(pg.attempt)
-          .where(eq(pg.attempt.session_id, sessionId)),
+          .where(eq(pg.attempt.session_id, sessionId))
+          .orderBy(asc(pg.attempt.created_at)),
       );
       return rows.map((r) => String((r as { question_id: unknown }).question_id));
     },

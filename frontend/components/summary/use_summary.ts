@@ -96,8 +96,9 @@ async function deriveMisconception(
 
 /**
  * FR-14: attempt-index half-split on session attempts for the recommended skill.
- * served order ≈ session attempt order (in-memory insertion order; live seam
- * treats served as a set — half-split is best-effort without a new port).
+ * `servedQuestionIds` returns ids `created_at ASC` per the AttemptRepo port
+ * contract (attempt_repo.ts §5) — deterministic across in-memory and Drizzle,
+ * so the half-split is stable, not best-effort.
  */
 async function deriveSelfCorrection(
   ports: EnginePortBag,

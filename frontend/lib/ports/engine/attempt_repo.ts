@@ -21,6 +21,9 @@ import type { Attempt, AttemptInput } from "../../wire/engine_entities";
  *      derived from the append-only `attempt` rows (S3, FR-13). It is the
  *      caller-owned, ephemeral served-set the play loop passes to
  *      `Scheduler.next(…, servedIds)` so a session never repeats a question.
+ *      Order is `attempt.created_at ASC` (OLDEST-FIRST) so the C2 FR-14
+ *      self-correction half-split (`use_summary.ts`) reads a stable attempt
+ *      sequence across adapters; downstream consumers may depend on this order.
  *      This history is NEVER written to `skill_state` (FR-A2 purity). Returns
  *      `[]` (not throw) for a session with no attempts.
  *   6. `servedSkillIds()` returns the DISTINCT skills served in one session,
@@ -41,8 +44,10 @@ export interface AttemptRepo {
 
   /**
    * The question ids already answered in `sessionId` (any correctness), for the
-   * within-session no-repeat guarantee (FR-13). Ephemeral + caller-owned;
-   * derived from `attempt`, never persisted on `skill_state`.
+   * within-session no-repeat guarantee (FR-13). Ordered `created_at ASC`
+   * (oldest-first) — the FR-14 self-correction half-split reads this as an
+   * attempt sequence. Ephemeral + caller-owned; derived from `attempt`, never
+   * persisted on `skill_state`.
    */
   servedQuestionIds(sessionId: string): Promise<readonly string[]>;
 

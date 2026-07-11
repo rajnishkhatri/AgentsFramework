@@ -295,6 +295,39 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     expect(served).not.toContain("q9");
   });
 
+  it("servedQuestionIds returns ids oldest-first (created_at ASC) — FR-14 half-split determinism", async () => {
+    // The C2 FR-14 self-correction half-split (frontend/components/summary/use_summary.ts
+    // deriveSelfCorrection) reads this list as attempt order. Without an explicit order
+    // guarantee, drizzle's `SELECT question_id FROM attempt WHERE session_id=?` may return
+    // rows in any physical order under Postgres, and the half-split flips non-deterministically.
+    // This test pins the contract: OLDEST-FIRST (created_at ASC).
+    const db = new InMemoryEngineDb();
+    const repo = new DrizzleAttemptRepo({ db });
+    // Seed OUT OF chronological order to prove ordering isn't accidental insertion order.
+    await db.insertAttempt({
+      id: "a2", subject: "act-english", session_id: "sess-order", question_id: "q2",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:02Z",
+    });
+    await db.insertAttempt({
+      id: "a4", subject: "act-english", session_id: "sess-order", question_id: "q4",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:04Z",
+    });
+    await db.insertAttempt({
+      id: "a1", subject: "act-english", session_id: "sess-order", question_id: "q1",
+      chosen_letter: "A", correct: false, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "a3", subject: "act-english", session_id: "sess-order", question_id: "q3",
+      chosen_letter: "A", correct: true, elapsed_ms: 1, used_hint: false,
+      created_at: "2026-07-08T00:00:03Z",
+    });
+    const served = await repo.servedQuestionIds("sess-order");
+    expect(served).toEqual(["q1", "q2", "q3", "q4"]);
+  });
+
   it("servedQuestionIds returns [] for a session with no attempts", async () => {
     const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
     expect(await repo.servedQuestionIds("sess-empty")).toEqual([]);
