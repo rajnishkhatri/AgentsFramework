@@ -262,7 +262,10 @@ export default function QuizPage(): React.JSX.Element {
           <QuizDoneBanner targetCount={session?.target_count ?? 0} />
         ) : null}
         {feedback.present ? (
-          <FeedbackView vm={feedback.vm} onAskCoach={onAskCoach} />
+          <FeedbackView
+            vm={feedback.vm}
+            {...(onAskCoach !== undefined ? { onAskCoach } : {})}
+          />
         ) : null}
         <div className="flex items-center justify-between gap-3">
           {/* S5 (FR-6/FR-7): the two actions keep their ORIGINAL labels

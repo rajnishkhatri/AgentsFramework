@@ -305,3 +305,72 @@ block:
 
 No `[P]` marker exists across blocks — each block's evidence gates the
 next.
+
+---
+
+## Phase 1 — Convergence (2026-07-10, post-merge PR #145)
+
+PR [#145](https://github.com/rajnishkhatri/AgentsFramework/pull/145) merged
+to `main` at `95d9dc6`. Deterministic reviewer + architecture + pytest CI
+green. Stage 9 classification of remaining reds / DoD gaps:
+
+| ID | Finding | gap-type | source-ref | Route |
+|----|---------|----------|------------|-------|
+| G1 | CI `frontend-wire-baseline` / `tsc --noEmit` RED on `main` | `partial` (DoD T8.4 / spec §9 “make check + pnpm test… green”) | CI run `29130232617`; local repro identical | → sdd-implement |
+| G2 | `use_coach.ts` still keys `learnerReadRepo`; bag is `learnerRead` | `unrequested` vs C2 FRs (Epic B rename drift; predated C2 — present at `7c2ad26`) | `frontend/components/coach/use_coach.ts:67,117,120,193` + tests | → sdd-implement (same PR as G1; not a C2 FR miss) |
+| G3 | `quiz/page.tsx` `onAskCoach` exactOptionalPropertyTypes | `unrequested` (Epic B Feedback bridge; blame `8240052`) | `frontend/app/(coach)/learn/quiz/page.tsx:265` | → sdd-implement w/ G1 |
+| G4 | `coach_agent_id_flow.test.tsx` missing `children` on `EngineProvider` | `unrequested` (Epic B; blame `8240052`) | `frontend/components/coach/coach_agent_id_flow.test.tsx:124` | → sdd-implement w/ G1 |
+| G5 | Human manual UI validation of Summary payoff | `partial` (Stage-6 local stack ready; human walk not signed) | walkthrough 2026-07-10 | human gate — no code task |
+| G6 | FLAG-5 wire absent | **not a gap** — FR-5 / T7.1c deferral; substrate count 0 | ADR decisions.md + soft_c2_soft_gate | none |
+| G7 | Pre-existing QuizView Reveal + ts-morph arch timeouts | **not a gap** — documented T0.1 baseline; C2 untouched | spec §10 T0.1 | none / separate track |
+
+### Phase-1 fix tasks (append-only; do not rewrite Blocks 0–8)
+
+- **T9.1 [red]** `pnpm --dir frontend exec tsc --noEmit` fails on `main`
+  with the four errors in G1–G4. Watched red: paste the four TS error
+  lines. `source-ref:` G1–G4. `gap-type:` partial + unrequested (main
+  hygiene blocking C2 DoD paste).
+- **T9.2 [green]** Rename `learnerReadRepo` → `learnerRead` in
+  `use_coach.ts` + `use_coach.test.ts` (and any coach test doubles).
+  Typecheck errors on those lines gone.
+- **T9.3 [green]** Fix `onAskCoach` prop pass under
+  `exactOptionalPropertyTypes` in `quiz/page.tsx` (omit prop when
+  undefined, or widen FeedbackView prop to `| undefined`).
+- **T9.4 [green]** Pass `children` (or `null`) into `EngineProvider` in
+  `coach_agent_id_flow.test.tsx`.
+- **T9.5 [green]** `pnpm --dir frontend exec tsc --noEmit` exits 0; paste
+  into spec §10 Phase-1 evidence. Re-run C2 unit slice
+  (`components/summary`, `session_summary_vm`, `engine_entities`
+  misconception, `test_c2_soft_gate`) — expect still green (56/56 at
+  converge classify).
+- **T9.6 [P]** Human: complete Walk A/B/C from the C2 manual-validation
+  guide; check DoD boxes in spec §9 that are UI-visible (FR-15/16/13/1).
+  `source-ref:` G5.
+
+**Out of Phase-1 scope:** FLAG-5 wire (awaits continuity-fixes
+`readActiveQuiz`), QuizView Reveal flake, ts-morph arch timeouts.
+
+**Max iterations:** 1 more implement pass for T9.1–T9.5, then Stage-10
+sign-off. If typecheck still red after that pass → stop for human review.
+
+### Phase-1 implement evidence (2026-07-10, branch `fix/c2-phase1-typecheck-hygiene`)
+
+**T9.1 watched red** (`pnpm --dir frontend exec tsc --noEmit`):
+
+```
+app/(coach)/learn/quiz/page.tsx(265,12): error TS2375: … onAskCoach …
+components/coach/coach_agent_id_flow.test.tsx(124,9): error TS2769: … children …
+components/coach/use_coach.ts(67,5): error TS2344: … "learnerReadRepo" …
+components/coach/use_coach.ts(117,34): error TS2339: … learnerReadRepo …
+components/coach/use_coach.ts(120,29): error TS18046: …
+components/coach/use_coach.ts(193,32): error TS2551: … Did you mean 'learnerRead'?
+```
+
+**T9.2–T9.4 green:**
+- `learnerReadRepo` → `learnerRead` in `use_coach.ts` + `use_coach.test.ts`
+- `FeedbackView` gets conditional `onAskCoach` spread (exactOptionalPropertyTypes)
+- `EngineProvider` props include `children` (matches `engine-provider.test.tsx`)
+
+**T9.5:** `tsc --noEmit` exit 0; vitest slice 7 files / **68 passed**
+(`summary` + `session_summary_vm` + `engine_entities` + `test_c2_soft_gate`
++ `use_coach` + `coach_agent_id_flow`).
