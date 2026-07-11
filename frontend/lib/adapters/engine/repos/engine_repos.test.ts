@@ -197,7 +197,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     expect(saved.used_hint).toBe(true);
   });
 
-  it("misses returns the learner's incorrect attempts newest-first (FR-D4)", async () => {
+  it("misses returns outstanding incorrect attempts newest-first (FR-D4)", async () => {
     const db = new InMemoryEngineDb();
     // Two sessions for the learner; one attempt each.
     await db.insertSession({
@@ -248,6 +248,83 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     });
     const misses = await repo.misses("act-english", "alice");
     expect(misses.map((m) => m.id)).toEqual(["m2", "m1"]); // newest-first, correct excluded
+  });
+
+  it("misses drops a question after a later correct attempt (clears review pool)", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-06-30T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    await db.insertSession({
+      id: "sess-review",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "review",
+      skill_focus: null,
+      started_at: "2026-06-30T01:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    const repo = new DrizzleAttemptRepo({ db });
+    // Prior misses on q1 + q2
+    await db.insertAttempt({
+      id: "m1",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q1",
+      chosen_letter: "B",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "m2",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q2",
+      chosen_letter: "C",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:02Z",
+    });
+    // Review: clear q1, miss q2 again
+    await db.insertAttempt({
+      id: "ok1",
+      subject: "act-english",
+      session_id: "sess-review",
+      question_id: "q1",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-06-30T01:00:01Z",
+    });
+    await db.insertAttempt({
+      id: "m2b",
+      subject: "act-english",
+      session_id: "sess-review",
+      question_id: "q2",
+      chosen_letter: "D",
+      correct: false,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-06-30T01:00:02Z",
+    });
+    const misses = await repo.misses("act-english", "alice");
+    expect(misses.map((m) => m.id)).toEqual(["m2b"]); // q1 cleared; q2 still outstanding
   });
 
   // --- S3: session-scoped served-ids (FR-13; no session-scoped read existed) ---

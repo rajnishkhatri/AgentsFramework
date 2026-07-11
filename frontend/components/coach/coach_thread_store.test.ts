@@ -177,4 +177,52 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     expect(saw).toBe(1);
     un();
   });
+
+  it("questionId change clears transcript + threadId (new item = fresh coach thread)", () => {
+    setCoachPin({
+      questionId: "q2",
+      skillId: "s-org",
+      label: "Q2 · s-org",
+    });
+    const { threadId } = beginCoachTurn("Explain the rule simply");
+    endCoachTurn();
+    expect(coachThreadSnapshot().turns).toHaveLength(1);
+    expect(coachThreadSnapshot().threadId).toBe(threadId);
+
+    setCoachPin(
+      {
+        questionId: "q3",
+        skillId: "s-gram",
+        label: "Q3 · s-gram",
+      },
+      "post_feedback",
+    );
+    const snap = coachThreadSnapshot();
+    expect(snap.pin?.questionId).toBe("q3");
+    expect(snap.mode).toBe("post_feedback");
+    expect(snap.turns).toEqual([]);
+    expect(snap.threadId).toBeNull();
+    expect(snap.busy).toBe(false);
+  });
+
+  it("same questionId pin update keeps transcript and threadId (FR-J3)", () => {
+    setCoachPin({
+      questionId: "q2",
+      skillId: "s-org",
+      label: "Q2 · s-org",
+    });
+    const { threadId } = beginCoachTurn("why B?");
+    endCoachTurn();
+    setCoachPin(
+      {
+        questionId: "q2",
+        skillId: "s-org",
+        label: "Q2 · Organization",
+      },
+      "post_feedback",
+    );
+    expect(coachThreadSnapshot().threadId).toBe(threadId);
+    expect(coachThreadSnapshot().turns).toHaveLength(1);
+    expect(coachThreadSnapshot().pin?.label).toBe("Q2 · Organization");
+  });
 });

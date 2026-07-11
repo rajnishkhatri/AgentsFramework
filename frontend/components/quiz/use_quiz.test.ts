@@ -18,8 +18,14 @@ import {
   closeQuizSession,
   openQuizItem,
   openQuizSession,
+  resumeQuizSession,
   runQuizSubmit,
 } from "./use_quiz";
+import {
+  clearActiveQuiz,
+  readActiveQuiz,
+  setActiveQuiz,
+} from "./quiz_session_store";
 import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
@@ -387,6 +393,48 @@ describe("closeQuizSession — stores the tally the Summary reads (FR-D3/G1)", (
   });
 });
 
+describe("resumeQuizSession — FLAG-4 / FR-3 / FR-4", () => {
+  it("returns null for a stale session id (FR-4 honest recovery)", async () => {
+    setActiveQuiz({
+      sessionId: "gone",
+      questionId: "q1",
+      position: 1,
+      correct: 0,
+      total: 0,
+    });
+    const got = await resumeQuizSession(ports, {
+      sessionId: "gone",
+      questionId: "q1",
+    });
+    expect(got).toBeNull();
+    // Caller clears the stale pointer — store still holds it until clear.
+    expect(readActiveQuiz()?.sessionId).toBe("gone");
+    clearActiveQuiz();
+    expect(readActiveQuiz()).toBeNull();
+  });
+
+  it("returns null when the question id cannot be loaded (FR-4)", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const got = await resumeQuizSession(ports, {
+      sessionId: session.id,
+      questionId: "missing-q",
+    });
+    expect(got).toBeNull();
+  });
+
+  it("loads the existing session + stashed question (no new openSession)", async () => {
+    const session = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    const got = await resumeQuizSession(ports, {
+      sessionId: session.id,
+      questionId: "q1",
+    });
+    expect(got).not.toBeNull();
+    expect(got!.session.id).toBe(session.id);
+    expect(got!.item.question.id).toBe("q1");
+    expect(got!.item.skillId).toBe("s-punc");
+  });
+});
+
 describe("openQuizSession — session open + skillStateAtStart snapshot (FR-G1, ADR-0011 §4)", () => {
   it("brand-new learner: opens a session and captures an EMPTY snapshot (delta '—' path)", async () => {
     // Edge path first: a learner the scheduler has never seen has no skill_state
@@ -447,6 +495,44 @@ describe("openQuizSession — session open + skillStateAtStart snapshot (FR-G1, 
       focus: "s-punc",
     });
     expect(result.session.skill_focus).toBe("s-punc");
+  });
+
+  it("drill openItem serves only the focused skill — not the adaptive weakest (FR-A5)", async () => {
+    db.seedSkills([
+      skill({ id: "s-punc", key: "punctuation", name: "Punctuation", order: 1 }),
+      skill({ id: "s-gram", key: "grammar", name: "Grammar", order: 2 }),
+    ]);
+    db.seedQuestions([
+      question({ id: "q-punc", skill_id: "s-punc", stem: "Punc stem" }),
+      question({ id: "q-gram", skill_id: "s-gram", stem: "Gram stem" }),
+    ]);
+    // Make punctuation the weakest+due so adaptive would prefer it.
+    db.seedSkillStates([
+      skillState({
+        skill_id: "s-punc",
+        mastery: 0.1,
+        due_at: "2026-06-01T00:00:00.000Z",
+      }),
+      skillState({
+        skill_id: "s-gram",
+        mastery: 0.9,
+        due_at: "2026-06-01T00:00:00.000Z",
+      }),
+    ]);
+    const drill = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "drill",
+      focus: "s-gram",
+    });
+    const item = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: drill.session.id,
+    });
+    expect(item.skillId).toBe("s-gram");
+    expect(item.question.id).toBe("q-gram");
+    expect(item.question.id).not.toBe("q-punc");
   });
 
   it("omitting targetCount resolves the per-mode default 30 (FR-5 wiring)", async () => {
@@ -629,5 +715,144 @@ describe("openQuizItem — round-robin skill rotation (S3.1, FR-3 wiring)", () =
     }
     // All three buckets appear — true rotation, not parked on one skill.
     expect(new Set(skillsSeen).size).toBe(3);
+  });
+});
+
+describe("openQuizSession / openQuizItem — review misses (FR-A6 / FR-C5)", () => {
+  it("review open bounds target_count to unique miss count", async () => {
+    db.seedQuestions([
+      question({ id: "q1" }),
+      question({ id: "q2", stem: "Second miss stem" }),
+      question({ id: "q3", stem: "Third miss stem" }),
+    ]);
+    const prior = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    for (const id of ["q1", "q2", "q1"]) {
+      await ports.attemptRepo.record({
+        subject: SUBJECT,
+        session_id: prior.id,
+        question_id: id,
+        chosen_letter: "A",
+        correct: false,
+        elapsed_ms: 1000,
+        used_hint: false,
+      });
+    }
+    const opened = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "review",
+    });
+    // q1 duplicated in misses → unique pool size 2
+    expect(opened.session.mode).toBe("review");
+    expect(opened.session.target_count).toBe(2);
+  });
+
+  it("review openItem serves missed questions only, newest-unique first", async () => {
+    db.seedQuestions([
+      question({ id: "q-old", stem: "Older miss" }),
+      question({ id: "q-new", stem: "Newer miss" }),
+      question({ id: "q-ok", stem: "Never missed" }),
+    ]);
+    const prior = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    // Explicit timestamps — same-ms record() clocks can scramble newest-first.
+    await db.insertAttempt({
+      id: "a-old",
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-old",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:01.000Z",
+    });
+    await db.insertAttempt({
+      id: "a-ok",
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-ok",
+      chosen_letter: "B",
+      correct: true,
+      elapsed_ms: 1000,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:02.000Z",
+    });
+    await db.insertAttempt({
+      id: "a-new",
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-new",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:03.000Z",
+    });
+
+    const review = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "review",
+    });
+    const first = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: review.session.id,
+    });
+    expect(first.question.id).toBe("q-new");
+    await runQuizSubmit(ports, {
+      session: review.session,
+      question: first.question,
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 500,
+      usedHint: false,
+    });
+    const second = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: review.session.id,
+    });
+    expect(second.question.id).toBe("q-old");
+    expect(second.question.id).not.toBe("q-ok");
+  });
+
+  it("review openItem throws when the unique miss pool is exhausted", async () => {
+    db.seedQuestions([question({ id: "q-only", stem: "Only miss" })]);
+    const prior = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
+    await ports.attemptRepo.record({
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-only",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+    });
+    const review = await openQuizSession(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      mode: "review",
+    });
+    const only = await openQuizItem(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: review.session.id,
+    });
+    await runQuizSubmit(ports, {
+      session: review.session,
+      question: only.question,
+      learnerId: LEARNER,
+      letter: "B",
+      elapsedMs: 500,
+      usedHint: false,
+    });
+    await expect(
+      openQuizItem(ports, {
+        subject: SUBJECT,
+        learnerId: LEARNER,
+        sessionId: review.session.id,
+      }),
+    ).rejects.toThrow(/no unserved missed questions/);
   });
 });

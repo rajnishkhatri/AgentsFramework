@@ -10,6 +10,8 @@
  *   - A null, empty, or UNKNOWN `focus` falls back to ADAPTIVE with no focus —
  *     a bad/absent param never errors and never drills a nonexistent skill
  *     (spec §6 edge cases).
+ *   - `?mode=review` (Dashboard "Review my misses") opens a REVIEW session
+ *     (engine FR-A6) and wins over `?focus=` when both are present.
  */
 
 import type { SessionMode } from "@/lib/wire/engine_entities";
@@ -35,4 +37,18 @@ export function resolveFocusMode(
     return { mode: "drill", focus };
   }
   return { mode: "adaptive" };
+}
+
+/**
+ * Resolve Quiz open mode from URL search params (`?mode=` + `?focus=`).
+ * Review (FR-A6 / UI FR-C5) takes precedence over a skill focus drill.
+ */
+export function resolveQuizOpenMode(
+  args: { mode: string | null; focus: string | null },
+  skillIds: readonly string[],
+): FocusMode {
+  if (args.mode === "review") {
+    return { mode: "review" };
+  }
+  return resolveFocusMode(args.focus, skillIds);
 }

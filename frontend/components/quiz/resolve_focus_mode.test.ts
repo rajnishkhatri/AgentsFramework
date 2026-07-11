@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { resolveFocusMode } from "./resolve_focus_mode";
+import { resolveFocusMode, resolveQuizOpenMode } from "./resolve_focus_mode";
 
 const KNOWN = ["s-punc", "s-gram", "s-conc"];
 
@@ -40,7 +40,29 @@ describe("resolveFocusMode — FR-6 known skill opens a drill", () => {
       mode: "drill",
       focus: "s-only",
     });
-    // The same id is unknown when the set does not contain it.
     expect(resolveFocusMode("s-only", [])).toEqual({ mode: "adaptive" });
+  });
+});
+
+describe("resolveQuizOpenMode — review misses (FR-A6 / FR-C5)", () => {
+  it("mode=review → review session (no focus)", () => {
+    expect(resolveQuizOpenMode({ mode: "review", focus: null }, KNOWN)).toEqual({
+      mode: "review",
+    });
+  });
+
+  it("mode=review wins over a focus drill param", () => {
+    expect(
+      resolveQuizOpenMode({ mode: "review", focus: "s-punc" }, KNOWN),
+    ).toEqual({ mode: "review" });
+  });
+
+  it("unknown mode falls through to focus / adaptive", () => {
+    expect(resolveQuizOpenMode({ mode: "nope", focus: null }, KNOWN)).toEqual({
+      mode: "adaptive",
+    });
+    expect(
+      resolveQuizOpenMode({ mode: "nope", focus: "s-gram" }, KNOWN),
+    ).toEqual({ mode: "drill", focus: "s-gram" });
   });
 });

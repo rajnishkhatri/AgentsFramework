@@ -13,8 +13,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import type { SkillState } from "@/lib/wire/engine_entities";
 import {
+  clearActiveQuiz,
   clearQuizSession,
+  readActiveQuiz,
   readQuizSessionSnapshot,
+  setActiveQuiz,
   stashQuizSession,
 } from "./quiz_session_store";
 
@@ -37,6 +40,7 @@ afterEach(() => {
   // The store is a module-level singleton; keep tests isolated.
   clearQuizSession("s1");
   clearQuizSession("s2");
+  clearActiveQuiz();
 });
 
 describe("quiz_session_store — miss is null (edge first)", () => {
@@ -72,5 +76,86 @@ describe("quiz_session_store — round-trip", () => {
     const got = readQuizSessionSnapshot("s1");
     expect(got).not.toBeNull();
     expect(got!.size).toBe(0);
+  });
+});
+
+describe("quiz_session_store — active quiz pointer (FR-1/FR-2)", () => {
+  it("returns null when no active pointer is set", () => {
+    expect(readActiveQuiz()).toBeNull();
+  });
+
+  it("returns null after the active pointer is cleared", () => {
+    setActiveQuiz({
+      sessionId: "s1",
+      questionId: "q2",
+      position: 2,
+      correct: 1,
+      total: 1,
+    });
+    clearActiveQuiz();
+    expect(readActiveQuiz()).toBeNull();
+  });
+
+  it("reads back the pointer set for the live quiz (incl. stashed score)", () => {
+    setActiveQuiz({
+      sessionId: "s1",
+      questionId: "q2",
+      position: 2,
+      correct: 1,
+      total: 1,
+      phase: "answering",
+    });
+    expect(readActiveQuiz()).toEqual({
+      sessionId: "s1",
+      questionId: "q2",
+      position: 2,
+      correct: 1,
+      total: 1,
+      phase: "answering",
+    });
+  });
+
+  it("reads back a feedback-phase pointer with verdict + answeredLetter", () => {
+    setActiveQuiz({
+      sessionId: "s1",
+      questionId: "q3",
+      position: 3,
+      correct: 1,
+      total: 3,
+      phase: "feedback",
+      verdict: { correct: false, correct_letter: "D" },
+      answeredLetter: "A",
+      usedHint: false,
+    });
+    expect(readActiveQuiz()).toEqual({
+      sessionId: "s1",
+      questionId: "q3",
+      position: 3,
+      correct: 1,
+      total: 3,
+      phase: "feedback",
+      verdict: { correct: false, correct_letter: "D" },
+      answeredLetter: "A",
+      usedHint: false,
+    });
+  });
+
+  it("overwrites the previous pointer on a later set", () => {
+    setActiveQuiz({
+      sessionId: "s1",
+      questionId: "q1",
+      position: 1,
+      correct: 0,
+      total: 0,
+    });
+    setActiveQuiz({
+      sessionId: "s1",
+      questionId: "q2",
+      position: 2,
+      correct: 0,
+      total: 1,
+    });
+    expect(readActiveQuiz()?.questionId).toBe("q2");
+    expect(readActiveQuiz()?.total).toBe(1);
   });
 });
