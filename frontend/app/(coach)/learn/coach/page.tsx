@@ -15,6 +15,7 @@ import {
   coachThreadSnapshot,
   subscribeCoachThread,
 } from "@/components/coach/coach_thread_store";
+import { readActiveQuiz } from "@/components/quiz/quiz_session_store";
 import { useSurface } from "@/components/shell/use_surface";
 import { screen } from "@/components/shell/nav_model";
 import {
@@ -99,8 +100,11 @@ export default function CoachPage(): React.JSX.Element {
   }, [router]);
 
   const onWrapUp = React.useCallback(() => {
-    // C2: summary; session query appended in B2 when quiz session id is known.
-    router.push(screen("summary").route);
+    // C2 FR-18: append ?session=<id> when continuity-fixes substrate is present;
+    // FR-4 honest recovery — fall back to bare summary when readActiveQuiz null.
+    const sessionId = readActiveQuiz()?.sessionId;
+    const base = screen("summary").route;
+    router.push(sessionId ? `${base}?session=${sessionId}` : base);
   }, [router]);
 
   return (
