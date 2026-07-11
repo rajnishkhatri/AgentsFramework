@@ -54,7 +54,7 @@ visible deltas on the two most-used screens.
 | **D1** | Quiz session-frame chrome | `Q-7`, `Q-8`, `Q-9` | Hook + translator + view (one sprint) | ✅ yes | — |
 | **D2** | Taxonomy + bucket dots | `D-3b` (+ `X-4` merged) | Content + view | ✅ yes | — |
 | **D3** | Session-length decision | `Q-1b` | Decision-first (docs-only, may upgrade to code) | ✅ yes | — |
-| **D4 (opt.)** | Skills nav via `comingSoon` | `D-8` | Nav config + optional stub route | ✅ yes, if adopted | — |
+| **D4 (opt.)** | Skills nav via `comingSoon` | `D-8` | Nav config + optional stub route | ⬛ **Declined** 2026-07-11 — deferred to Epic E | — |
 
 **Independence rule (program §4):** each sprint may merge to `main` alone. Between D1, D2,
 D3 there is **no sequential dependency** — they touch different surfaces. D0 unblocks by
@@ -380,18 +380,24 @@ change.
 
 ---
 
-## Sprint D4 — Skills nav via `comingSoon`  🟨 *(OPTIONAL — human picks at Stage-1 §7-Q1)*
+## Sprint D4 — Skills nav via `comingSoon`  ⬛ **Declined** *(2026-07-11 — human stuck with default)*
 
 **Report finding:** `D-8` — Sidebar missing a Skills nav entry.
 
-**Direction:** **D4 (Stage-1 alternate)** — ship `D-8` behind a **`comingSoon` visual
-state**, reusing the pattern `nav_model.ts` already uses for `progress`. Only fire this
-sprint if the human declines the default posture ("defer D-8 to Epic E").
+**Outcome:** **Declined** at T-GATE (2026-07-11). Human chose the board default —
+defer D-8 to Epic E. No `NAV_MEMBERSHIP` change. Cite:
+[`docs/adr/decisions.md`](../adr/decisions.md) D-8 line; design lock preserved in
+[preact-parity-D4-skills-nav.impl.md](preact-parity-D4-skills-nav.impl.md) (T-DES-D4).
+Alternate spec/plan/tasks kept as authored-but-declined:
+[preact-parity-D4-skills-nav.spec.md](preact-parity-D4-skills-nav.spec.md).
 
-**Default posture:** ⚠️ **defer D-8 to Epic E's board.** Rationale: adding a nav entry
-whose target route 404s is the exact class of bug Epic A closed (`Q-6`). Epic E naturally
-lands the target route + the nav entry together, cleaner and cheaper. This sprint only
-exists as an alternate if the human explicitly picks it.
+**Direction (historical):** **D4 (Stage-1 alternate)** — ship `D-8` behind a
+**`comingSoon` visual state**, reusing the pattern `nav_model.ts` already uses for
+`progress`. Did not fire.
+
+**Default posture (accepted):** ⚠️ **defer D-8 to Epic E's board.** Rationale: adding a
+nav entry whose target route 404s is the exact class of bug Epic A closed (`Q-6`). Epic E
+naturally lands the target route + the nav entry together.
 
 **Visual / seam anchors (only relevant if adopted):**
 
@@ -441,8 +447,8 @@ may warrant an ADR. `decisions.md` entry for the "gated ship vs defer" choice re
 - [x] **D3 resolved:** `Q-1b` closed with a `decisions.md` rationale; if the decision
       changed `DEFAULT_TARGET_COUNT`, ADR-0023 amended + code TDD'd; either way `make
       check` green. **Outcome 2026-07-11: keep 30 (docs-only).**
-- [ ] **D4 (optional):** either explicitly deferred to Epic E (`decisions.md` note) or
-      shipped as `comingSoon` — no dead nav item, either way.
+- [x] **D4 (optional):** explicitly deferred to Epic E (`decisions.md` D-8 line,
+      2026-07-11) — no dead nav item.
 - [ ] Parity report §11 / §0 updated to reflect the corrected status of Q-7 / Q-8 / Q-9 /
       Q-1b / D-3b / X-4 / D-8. `X-4` marked as absorbed into D2.
 - [ ] **Gate to Epic E:** with D1+D2+D3 (+ D4 if adopted) on `main`, return to the

@@ -115,7 +115,7 @@ personalized greeting, and a rich right rail** — roughly a third more surface.
 | D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🟨 partial (C1) | 🟧 Major | streak + weekly shipped (`streak_vm` / `weekly_sessions_vm` + rail aside); score-goal + coach-note still open → Epic F |
 | D-6 | Left rail identity: "English Coach" brand + **"Maya / PreACT prep"** user block | 🔴 absent | 🟨 Minor | app sidebar has nav only, no brand/user footer |
 | D-7 | Secondary actions "Drill a skill" / "Review my misses (N)" | 🟡 partial | 🟨 Minor | both `→ /learn/quiz` (matrix D-6); count is real; "Review misses" not a distinct destination |
-| D-8 | Sidebar nav: Dashboard / Practice / **Skills** / Progress / Coach (5) | 🟡 partial | 🟨 Minor | app nav = Home / Practice / Coach / Progress (4) — **no "Skills"** entry; Progress greyed (`comingSoon`). **Gated on Epic E's `/learn/skill` route** — do not enable until E lands, or ship as `comingSoon` (adding to `NAV_MEMBERSHIP` before E = dead nav item, Q-6 class) |
+| D-8 | Sidebar nav: Dashboard / Practice / **Skills** / Progress / Coach (5) | 🟡 deferred to Epic E | 🟨 Minor | **Deferred to Epic E per D4 alternate declined (2026-07-11).** App nav stays Home / Practice / Coach / Progress (4); Progress greyed (`comingSoon`). `screen("skill")` remains catalogued; membership add waits for live `/learn/skill`. Cite: `decisions.md` D-8; [D4 impl](preact-parity-D4-skills-nav.impl.md). |
 | D-9 | Header flow-step pills (1–5 Dashboard…Summary) | 🔴 absent | 🟦 Cosmetic | prototype scaffolding (a demo navigator) — **do NOT port**; document only |
 | — | "Take a timed test" → `/learn/test` (Test Mode) | ➕ app-only | ➕ | keep; prototype has no timed-test concept |
 
@@ -321,7 +321,7 @@ read as historical there:
 | Q-6 | `Reveal answer` is a dead placeholder (testid, no onClick) — + FR-D5/FR-D6 spec contradiction to resolve | 🟥 latent |
 | S-2b | Summary "time" showed **0 min** — **downgraded** to capture artifact on code review (elapsed *is* threaded + tested); pending live-repro triage | 🟨 triage |
 | D-3b / X-4 | Bucket **names** + color dots — **Resolved / Absorbed in D2** | 🟩 |
-| D-8 | Sidebar missing a **"Skills"** entry the prototype has — **gated on Epic E**; defer or ship `comingSoon` | 🟨 |
+| D-8 | Sidebar missing **"Skills"** — **deferred to Epic E** (D4 alternate declined 2026-07-11); route + membership land together | 🟨 |
 
 ---
 
