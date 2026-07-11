@@ -119,11 +119,10 @@ describe("coach agent_id stamping — failure path first", () => {
   it("a coach ask carries agent_id=subject-coach-english on the run body", async () => {
     const { runtime, streamReqs } = scriptedRuntime();
     root.render(
-      React.createElement(
-        EngineProvider,
-        { bag: engineBag },
-        React.createElement(CoachProbe, { runtime }),
-      ),
+      React.createElement(EngineProvider, {
+        bag: engineBag,
+        children: React.createElement(CoachProbe, { runtime }),
+      }),
     );
     await clickProbe();
     await until(() => streamReqs.length === 1, "coach streamRun call");

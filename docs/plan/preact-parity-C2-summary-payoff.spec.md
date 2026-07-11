@@ -532,6 +532,24 @@ C2 does not touch quiz Reveal or those scanners. Re-check at T8.4.
 | 7 FLAG-5 | Substrate count **0** → deferred (T7.1c). `coach/page.tsx` untouched. |
 | 8 Soft-gate | `test_c2_soft_gate.test.ts` + five `decisions.md` lines appended. |
 
+### Phase-1 converge classify (2026-07-10, post-merge #145)
+
+- Merged: `95d9dc6` on `main`. C2 unit slice **56/56** green.
+- CI deterministic reviewer / architecture / pytest: **SUCCESS**.
+- CI `TS <-> Python wire schema parity` job: **FAILURE** on `tsc --noEmit`
+  (not wire-schema drift — typecheck). Errors are **pre-C2**
+  (`learnerReadRepo` vs `learnerRead`, `onAskCoach` exactOptional,
+  `EngineProvider` children) — see tasks **Phase 1 — Convergence** T9.1–T9.5.
+- FLAG-5: deferred by design (not a gap).
+- Manual UI walk: human gate open (T9.6).
+
+### Phase-1 implement (T9.1–T9.5) — 2026-07-10
+
+- Branch: `fix/c2-phase1-typecheck-hygiene`
+- Watched red: 6 `tsc` errors (learnerReadRepo / onAskCoach / EngineProvider children)
+- Green: `pnpm --dir frontend exec tsc --noEmit` → exit 0
+- Vitest: 68 passed (C2 slice + coach files touched)
+
 ## 11. Gates
 
 - **G1 (new-abstraction gate) fires.** New wire field + new corpus contract

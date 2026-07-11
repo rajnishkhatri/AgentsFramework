@@ -237,7 +237,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
           ];
         },
       },
-      learnerReadRepo: {
+      learnerRead: {
         async listSkillState() {
           return [
             {
