@@ -226,9 +226,14 @@ export class InMemoryEngineDb implements EngineDb {
   }
   async listSessionQuestionIds(sessionId: string): Promise<string[]> {
     // Every question answered in this session (any correctness) — the served
-    // set (FR-13). Filter by session_id → project question_id.
+    // set (FR-13). Filter by session_id → order by created_at ASC → project
+    // question_id. Oldest-first is the port contract (attempt_repo.ts §5) so the
+    // C2 FR-14 self-correction half-split in use_summary.ts reads a stable
+    // attempt sequence regardless of adapter.
     return this.attempts
       .filter((a) => a.session_id === sessionId)
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .map((a) => a.question_id);
   }
   async listSessionSkillIds(sessionId: string): Promise<string[]> {

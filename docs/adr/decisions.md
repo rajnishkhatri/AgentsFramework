@@ -12,6 +12,8 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-10 — **`AttemptRepo.servedQuestionIds` is oldest-first (`created_at ASC`), not unspecified.** Follow-up to PR #145 code review — the C2 FR-14 self-correction half-split (`use_summary.ts deriveSelfCorrection`) reads the list as attempt order. Drizzle `SELECT question_id FROM attempt WHERE session_id=?` returned unspecified order (contract said the same); the in-memory shim preserved insertion order by side-effect, masking the divergence. Added `.orderBy(asc(attempt.created_at))` on the drizzle path + `sort by created_at` on the in-memory shim + a conformance test that seeds out-of-chronological-order to pin the guarantee. Alternative (thread attempts through a new `sessionAttempts` port method) rejected: no second consumer, would trip G1. Port docstring + hook comment updated to cite the guarantee.
+
 - 2026-07-10 — **C2 misconception field lives on the `Question` wire (D4 direction).** Not on `Skill`, not on `Attempt`, not derived at render. Rejects D5 (Coach-runtime marker) and any Summary-time LLM synthesis. Authored on the `test_item` bank row; mapped through `TestItemQuestionRepo`. ADR-0027. Spec: [preact-parity-C2-summary-payoff.spec.md](../plan/preact-parity-C2-summary-payoff.spec.md).
 
 - 2026-07-10 — **C2 misconception seed-count = probe-based (K = 47).** Content pass authored 47 rows where existing `why_tempted_md` already implied a one-line misconception; remaining bank rows emit `misconception: null`. Spec §12 Q2 / §13 #4.
