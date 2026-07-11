@@ -137,7 +137,7 @@ that the app doesn't render, and the app's session length is **30** vs the proto
 | # | Prototype affordance | App status | Sev | Fix pointer |
 |---|---|---|---|---|
 | Q-1 | Top progress: **"Question N / M" + bar** | ✅ **shipped (S4)** | 🟩 | `QuizProgress.tsx` — "Question 1 of 30" + `quiz-progress-fill`. **Was 🔴 in matrix.** |
-| Q-1b | Session length **M = 10** | 🟡 diverges | 🟨 Minor | app default `target_count = **30**` (`DEFAULT_TARGET_COUNT`); prototype = 10. Product decision: is 30 intended for adaptive? |
+| Q-1b | Session length **M = 10** | ✅ **Resolved** — keep 30 | 🟩 | Product answer 2026-07-11: keep `DEFAULT_TARGET_COUNT = 30` (ADR-0023 adaptive mastery signal). Prototype's 10 at `design-spec.md:143` is a sample-session narrative, not the product default. Cite: [`decisions.md` Q-1b line](../adr/decisions.md). |
 | Q-2 | Context sentence + **underlined non-essential span** | 🟩 present | 🟦 Cosmetic | app renders `contextHtml`; span-highlight treatment is lighter than prototype's outlined pill |
 | Q-3 | Stem + 4 choices (A = NO CHANGE) | 🟩 present | 🟩 | — |
 | Q-4 | Submit gated until a choice is selected | 🟩 present | 🟩 | `canSubmit()` |
