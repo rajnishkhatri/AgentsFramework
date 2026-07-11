@@ -278,7 +278,7 @@ Tick when Parts 0–8 are green:
 | 7 No frontend code | [x] pass · [ ] fail |
 | 8 Q-6 negatives | [x] pass · [ ] fail — membership unchanged; no `skill/` route |
 
-**Sprint closed when all required parts pass.** ✅ Parts 0–8 passed 2026-07-11.  
+**Sprint closed when all required parts pass.** ✅ Parts 0–8 passed 2026-07-11.
 Next durable step: commit the three tracked docs + D4 plan bundle on
 `feat/preact-parity-d4-skills-nav` so parallel D3 checkouts stop displacing them.
 
