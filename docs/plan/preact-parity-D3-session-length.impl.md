@@ -66,4 +66,16 @@ See `frontend/scripts/validate_d3_session_length_ui.md` (Part docs only; T-VAL-D
 
 ## T-Z — Final gate
 
-See pasted `make check` + `pytest tests/architecture/ -q` output below after run.
+Docs verify (2026-07-11):
+```
+PASS: no DRAFT
+26:const DEFAULT_TARGET_COUNT = 30;
+PASS: no Q-1b amend
+```
+
+Architecture tests:
+```
+180 passed, 4 skipped in 38.57s
+```
+
+Phase 2 skipped (keep 30). `make check` not required beyond arch-tests for docs-only; no production code changed.
