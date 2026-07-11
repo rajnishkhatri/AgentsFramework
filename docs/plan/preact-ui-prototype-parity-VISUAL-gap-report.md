@@ -343,8 +343,8 @@ Ordered by *user-visible impact per unit effort*. Sprint IDs continue the matrix
 | 4 | **Dashboard right rail** (D-5) — score-goal, streak, weekly, coach-note + greeting (D-1) | Dashboard | 🟧 | M | Needs VM fields; matrix S6. |
 | 5 | **Summary misconception write-up** (S-3) + misconception-framed title (S-1) | Summary | 🟧 | M | Needs misconception text source; matrix S7. |
 | 6 | **Feedback "Ask the coach"** on desktop (F-6) + green-span recap (F-4) | Feedback | 🟨 | M | Bridges Feedback→Coach on desktop. |
-| 7 | **Quiz session frame** — End-session (Q-8), skill chip (Q-7), collapsible timer (Q-9) | Quiz | 🟨 | M | matrix S5/S7. |
-| 8 | **Bucket taxonomy + color dots** (D-3b) + **Skills nav entry** (D-8) | Dashboard | 🟨 | S | Align to ACT-standard labels. |
+| 7 | **Quiz session frame** — End-session (Q-8), skill chip via wire→VM→view (Q-7), collapsible / off-by-default timer (Q-9) | Quiz | 🟨 | M | matrix S5/S7. |
+| 8 | **Bucket taxonomy + color dots** (D-3b; X-4 absorbed) + **Skills nav entry** (D-8, gated on Epic E's `/learn/skill`) | Dashboard | 🟨 | S | Align to ACT-standard labels. |
 | 9 | **Make recommended skill tappable** (S-5) + 3 summary actions (S-6) | Summary | 🟨 | S | matrix S2/S7. |
 | 10 | **Session length review** — is 30 the intended adaptive target vs prototype's 10? | Quiz | 🟨 | XS | Product decision, not a code gap per se. |
 | 11 | **Skill-detail screen** (SD-1…6) — whole new route | Skill detail | 🟧 | XL | 404 today; own ADR + `getTutorial` engine read. matrix S9. |

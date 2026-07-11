@@ -280,43 +280,43 @@ window.** Hypotheses under this lead:
 
 - **H1 — Q-7/Q-8/Q-9 are one coherent sprint (D1):** they share the Quiz
   header/frame surface + the same VM plumbing seam. Splitting into three
-  sprints doubles ceremony without independence gain.  
+  sprints doubles ceremony without independence gain.
   **Validates:** [`QuizView.tsx`](../../frontend/components/quiz/QuizView.tsx) is a single ~145-line component; all three
   additions live in the frame region, above the item body. Confirmed by
   fully reading the file in the audit.
 - **H2 — Q-7 needs a translator change, not view-only:** wire `Question`
-  doesn't carry `skill_name` / `accent_var` — those live on `Skill`.  
+  doesn't carry `skill_name` / `accent_var` — those live on `Skill`.
   **Validates:** [`engine_entities.ts:34-44,61-64`](../../frontend/lib/wire/engine_entities.ts:34) — `Skill.name` +
   `Skill.accent_var` exist; `Question` has `skill_id` only. Hook must join.
 - **H3 — Q-9 "dismissible" is really "collapsible off-by-default":** no
-  clock renders today.  
+  clock renders today.
   **Validates:** grep on `frontend/components/quiz/` for "timer"/"Clock"/"elapsed"
   → 0 UI hits; only the reducer's internal timing logic. Reframe is honest.
-- **H4 — D-3b and X-4 are one finding:** parity report cross-refs X-4 → D-3b.  
+- **H4 — D-3b and X-4 are one finding:** parity report cross-refs X-4 → D-3b.
   **Validates:** VISUAL-gap-report §X-4 explicitly says "see D-3b". Merging
   is not scope-loss.
 - **H5 — D-3b's color mechanism already exists as `accent_var`:** we surface
-  it as a dot, don't invent tokens.  
+  it as a dot, don't invent tokens.
   **Validates:** [`_dev_seed.ts:57,67,87`](../../frontend/lib/adapters/engine/_dev_seed.ts:57) — `accent_var` on every skill;
   [`BucketCard.tsx:33`](../../frontend/components/dashboard/BucketCard.tsx:33) consumes it as `--accent`. New use = same
   variable, new selector.
 - **H6 — Q-1b is not a code sprint:** the parity report itself leaves the
   decision open, and the epics doc says "may be 'keep 30' — recorded in
-  `decisions.md`, not necessarily a code change."  
+  `decisions.md`, not necessarily a code change."
   **Validates:** [VISUAL-gap-report:140](preact-ui-prototype-parity-VISUAL-gap-report.md) — "is 30 intended for
   adaptive?" (open question, not a bug report). [`epics.md §Epic D`](preact-parity-epics.md) — the
   decisions.md path is called out explicitly.
 - **H7 — D-8 deferral is the trust-safe move:** adding a nav entry that
   points at a 404 is exactly the Epic-A class of bug. Two safe postures:
   (a) skip D-8 in this epic; (b) ship via `comingSoon` reusing the
-  `progress` pattern. Neither is a *fix* sprint that "unblocks" anything.  
+  `progress` pattern. Neither is a *fix* sprint that "unblocks" anything.
   **Validates:** [`nav_model.ts:75`](../../frontend/components/shell/nav_model.ts:75) — `screen("skill", .., comingSoon: true)`
   already exists in the catalog; adding it to `NAV_MEMBERSHIP` without a
   target route is the dead-control bug. Under P14 evidence.
 - **H8 — Under-used signal (bonus):** `elapsed_ms` is already recorded
   per-attempt and never surfaced anywhere in the UI beyond the Summary tile.
   Q-9's collapsible timer + a future "focus mode" (out of scope) could reuse
-  it — the signal is already there; the gap is presentation, not capture.  
+  it — the signal is already there; the gap is presentation, not capture.
   **Validates:** per audit — `Attempt.elapsed_ms` populated in the reducer
   path, but no UI consumer exists.
 
@@ -344,7 +344,7 @@ window.** Hypotheses under this lead:
                   ├──► D2 (taxonomy: D-3b + X-4)               ✅ releasable alone
                   │
                   └──► D3 (Q-1b decision — decisions.md)       ✅ releasable alone
-                  
+
   D-8 (Skills nav)  →  DEFERRED to Epic E's board — dead-nav trust risk
                         (or optional D-8-gated ship inside D, only if we adopt D4's
                          comingSoon posture; human picks)
