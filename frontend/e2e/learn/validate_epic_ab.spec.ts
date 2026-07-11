@@ -369,8 +369,9 @@ test.describe("Epic B — coach surface (PR #141)", () => {
 // EPIC A/B — regression guards for manual-walkthrough findings (FLAG-1/4/5)
 //
 // FLAG-1 and FLAG-4 are fixed by epic-ab-continuity-fixes (this sprint) — they
-// run as normal regression guards. FLAG-5 (Wrap-up `?session=`) stays inverted
-// with `test.fail()` until Epic C0. See docs/plan/epic-ab-continuity-fixes.spec.md.
+// run as normal regression guards. FLAG-5 (Wrap-up `?session=`) was inverted
+// until the C2 FR-18 wire landed; now runs as a normal guard.
+// See docs/plan/epic-ab-continuity-fixes.spec.md and preact-parity-C2-summary-payoff.spec.md.
 // ────────────────────────────────────────────────────────────────────────────
 
 test.describe("Epic A/B — manual-walkthrough regression guards", () => {
@@ -495,8 +496,8 @@ test.describe("Epic A/B — manual-walkthrough regression guards", () => {
   );
 
   // ── FLAG-5: Wrap-up → summary has no ?session=, shows error copy ──────────
-  // Owned by Epic C0 — keep inverted until that sprint lands.
-  test.fail(
+  // C2 FR-18: continuity-fixes substrate + this wire both landed; unwrapped.
+  test(
     'FLAG-5: Wrap-up from Coach navigates to a real summary (not "No session to summarize.")',
     async ({ page }, testInfo) => {
       test.setTimeout(60_000);
