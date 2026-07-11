@@ -142,9 +142,14 @@ function maybeFailOnceSessionRepo(
   sessionRepo: EnginePortBag["sessionRepo"],
 ): EnginePortBag["sessionRepo"] {
   if (process.env.NEXT_PUBLIC_PREACT_E2E_HOOKS !== "1") return sessionRepo;
-  const inner = sessionRepo.listByLearner.bind(sessionRepo);
+  // Class-instance methods live on the prototype — object spread would drop
+  // open/close/get and break Quiz ("sessionRepo.open is not a function").
+  // Bind every port method explicitly; only listByLearner is intercepted.
+  const listByLearner = sessionRepo.listByLearner.bind(sessionRepo);
   return {
-    ...sessionRepo,
+    open: sessionRepo.open.bind(sessionRepo),
+    close: sessionRepo.close.bind(sessionRepo),
+    get: sessionRepo.get.bind(sessionRepo),
     listByLearner: async (subject, learnerId, options) => {
       if (
         !hasFailedOnce &&
@@ -154,7 +159,7 @@ function maybeFailOnceSessionRepo(
         hasFailedOnce = true;
         throw new Error("e2e forced rail failure");
       }
-      return inner(subject, learnerId, options);
+      return listByLearner(subject, learnerId, options);
     },
   };
 }
