@@ -28,10 +28,30 @@ export interface QuizItemVM {
   readonly contextHtml: string;
   readonly stem: string;
   readonly choices: ReadonlyArray<ChoiceVM>;
+  /**
+   * Q-7: joined skill display name; `null` if the join failed (FR-Q7-1).
+   * Derived in this translator — the view renders blindly (F-R1).
+   */
+  readonly skillName: string | null;
+  /**
+   * Q-7: `Skill.accent_var` (a CSS custom-property name); `null` if the join
+   * failed (FR-Q7-1).
+   */
+  readonly accentVar: string | null;
   // NOTE: no answerLetter / rationale here — FR-D5 non-reveal (see file header).
 }
 
-export function toQuizItemVM(question: Question): QuizItemVM {
+/** Minimal skill row the Q-7 join needs (name + accent). */
+export type SkillChipSource = {
+  readonly name: string;
+  readonly accent_var: string;
+};
+
+export function toQuizItemVM(
+  question: Question,
+  skillsById?: ReadonlyMap<string, SkillChipSource>,
+): QuizItemVM {
+  const skill = skillsById?.get(question.skill_id);
   return {
     questionId: question.id,
     skillId: question.skill_id,
@@ -42,6 +62,8 @@ export function toQuizItemVM(question: Question): QuizItemVM {
       label: c.label,
       isNoChange: c.is_no_change,
     })),
+    skillName: skill?.name ?? null,
+    accentVar: skill?.accent_var ?? null,
   };
 }
 

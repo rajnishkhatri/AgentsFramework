@@ -75,3 +75,30 @@ describe("toQuizItemVM — happy path", () => {
     expect((vm as unknown as Record<string, unknown>).answerLetter).toBeUndefined();
   });
 });
+
+describe("toQuizItemVM — skill chip join (D1 Q-7)", () => {
+  const skillsById = new Map([
+    [
+      "s-punc",
+      { name: "Punctuation", accent_var: "--color-bucket-punctuation" },
+    ],
+  ]);
+
+  it("match populates skillName + accentVar from the skills map (FR-Q7-2/3)", () => {
+    const vm = toQuizItemVM(question({ skill_id: "s-punc" }), skillsById);
+    expect(vm.skillName).toBe("Punctuation");
+    expect(vm.accentVar).toBe("--color-bucket-punctuation");
+  });
+
+  it("no-match → skillName null, accentVar null (FR-Q7-1)", () => {
+    const vm = toQuizItemVM(question({ skill_id: "s-unknown" }), skillsById);
+    expect(vm.skillName).toBeNull();
+    expect(vm.accentVar).toBeNull();
+  });
+
+  it("omitted skillsById → both null (backward compat, FR-Q7-1)", () => {
+    const vm = toQuizItemVM(question());
+    expect(vm.skillName).toBeNull();
+    expect(vm.accentVar).toBeNull();
+  });
+});

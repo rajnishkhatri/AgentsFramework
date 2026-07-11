@@ -16,6 +16,7 @@ import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import {
   closeQuizSession,
+  listQuizSkills,
   openQuizItem,
   openQuizSession,
   resumeQuizSession,
@@ -120,6 +121,24 @@ beforeEach(() => {
   db.seedSkills([skill()]);
   db.seedQuestions([question()]);
   ports = buildBrowserEngineAdapters({ engineDb: db });
+});
+
+describe("listQuizSkills — D1 Q-7 taxonomy read", () => {
+  it("returns the seeded skills verbatim", async () => {
+    const skills = await listQuizSkills(ports, SUBJECT);
+    expect(skills).toHaveLength(1);
+    expect(skills[0]).toMatchObject({
+      id: "s-punc",
+      name: "Punctuation",
+      accent_var: "--color-bucket-punctuation",
+    });
+  });
+
+  it("returns [] when the subject has no skills", async () => {
+    const empty = new InMemoryEngineDb();
+    const emptyPorts = buildBrowserEngineAdapters({ engineDb: empty });
+    expect(await listQuizSkills(emptyPorts, SUBJECT)).toEqual([]);
+  });
 });
 
 describe("bank-backed quiz (ADR-0021 — questionSource: 'bank')", () => {

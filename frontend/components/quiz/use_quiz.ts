@@ -28,6 +28,7 @@ import type {
   Question,
   QuizSession,
   SessionMode,
+  Skill,
   SkillState,
   Verdict,
 } from "@/lib/wire/engine_entities";
@@ -118,6 +119,19 @@ export async function listQuizSkillIds(
 ): Promise<string[]> {
   const skills = await ports.skillTaxonomy.list(subject);
   return skills.map((s) => s.id);
+}
+
+/**
+ * List the subject's full `Skill` rows (D1 Q-7). The page joins
+ * `Question.skill_id` against these to fill `QuizItemVM.skillName` /
+ * `accentVar`. Read-only taxonomy; keeps `listQuizSkillIds` for focus-param
+ * resolution (no regression).
+ */
+export async function listQuizSkills(
+  ports: EnginePortBag,
+  subject: string,
+): Promise<Skill[]> {
+  return ports.skillTaxonomy.list(subject);
 }
 
 /**
@@ -360,6 +374,7 @@ export function useQuiz(): {
   submit: (args: QuizSubmitArgs) => Promise<QuizSubmitResult>;
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
+  listSkills: (subject: string) => Promise<Skill[]>;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -372,6 +387,7 @@ export function useQuiz(): {
       submit: (args: QuizSubmitArgs) => runQuizSubmit(ports, args),
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
       listSkillIds: (subject: string) => listQuizSkillIds(ports, subject),
+      listSkills: (subject: string) => listQuizSkills(ports, subject),
     }),
     [ports],
   );

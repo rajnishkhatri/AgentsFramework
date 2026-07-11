@@ -174,6 +174,7 @@ describe("lock — strip list keyed to the Question wire entity (FR-19 L1 lock)"
         "why_tempted_md",
         "rule_md",
         "item_type",
+        "misconception",
         "reviewed",
         "generated_by",
       ].sort(),

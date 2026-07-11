@@ -66,6 +66,7 @@ describe("QuizProgress — bounded a11y + fill", () => {
     const doc = render({ position: 15, total: 30, bounded: true, fraction: 0.5, complete: false });
     const bar = doc.querySelector('[role="progressbar"]');
     expect(bar).not.toBeNull();
+    expect(bar?.getAttribute("aria-label")).toBe("Question 15 of 30");
     expect(bar?.getAttribute("aria-valuemin")).toBe("0");
     expect(bar?.getAttribute("aria-valuemax")).toBe("30");
     expect(bar?.getAttribute("aria-valuenow")).toBe("15");

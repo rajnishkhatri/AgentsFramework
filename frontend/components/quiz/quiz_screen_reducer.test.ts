@@ -182,6 +182,46 @@ describe("quiz_screen_reducer — advance + finish (reviewing)", () => {
   });
 });
 
+describe("quiz_screen_reducer — end_session (D1 Q-8)", () => {
+  const answering: QuizScreenState = quizScreenReducer(initialQuizScreen, {
+    type: "item_loaded",
+    item,
+  });
+  const reviewing: QuizScreenState = quizScreenReducer(
+    quizScreenReducer(answering, { type: "select", letter: "B" }),
+    { type: "submitted", verdict: verdict(true), letter: "B" },
+  );
+
+  it("end_session from answering → done, score carries (FR-Q8-6)", () => {
+    const s = quizScreenReducer(answering, { type: "end_session" });
+    expect(s.phase).toBe("done");
+    expect(s.score).toEqual(answering.score);
+  });
+
+  it("end_session from reviewing → done, score carries (FR-Q8-6)", () => {
+    const s = quizScreenReducer(reviewing, { type: "end_session" });
+    expect(s.phase).toBe("done");
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+
+  it("end_session from loading is a no-op (FR-Q8-1)", () => {
+    const s = quizScreenReducer(initialQuizScreen, { type: "end_session" });
+    expect(s.phase).toBe("loading");
+  });
+
+  it("end_session from done is a no-op (FR-Q8-2)", () => {
+    const done = quizScreenReducer(reviewing, { type: "finish" });
+    const s = quizScreenReducer(done, { type: "end_session" });
+    expect(s).toBe(done);
+  });
+
+  it("finish still routes to done from reviewing (regression, FR-Q8-6)", () => {
+    const s = quizScreenReducer(reviewing, { type: "finish" });
+    expect(s.phase).toBe("done");
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+});
+
 describe("quiz_screen_reducer — running score tally (FR-D3 close)", () => {
   it("starts the tally at 0/0", () => {
     expect(initialQuizScreen.score).toEqual({ correct: 0, total: 0 });
