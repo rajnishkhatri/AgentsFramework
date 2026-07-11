@@ -32,11 +32,11 @@ const MAX_WALK = 120;
 
 const SKILL_LABEL: Record<string, string> = {
   "s-punc": "Punctuation",
-  "s-gram": "Grammar & Usage",
+  "s-gram": "Usage",
   "s-sent": "Sentence Structure",
-  "s-rhet": "Rhetorical Skills",
+  "s-rhet": "Rhetoric",
   "s-org": "Organization",
-  "s-style": "Style",
+  "s-style": "Conciseness",
 };
 
 interface Served {

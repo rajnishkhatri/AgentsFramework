@@ -109,7 +109,7 @@ describe("DashboardView — FR-5/FR-2/FR-7 bucket card is a focus link", () => {
 describe("DashboardView — FR-C3 mastery grid", () => {
   it("renders one card per bucket showing name, mastery %, and share %", () => {
     const doc = dom(<DashboardView vm={vm()} />);
-    const cards = doc.querySelectorAll("[data-testid^=bucket-]");
+    const cards = doc.querySelectorAll("[data-testid^='bucket-s-']");
     expect(cards).toHaveLength(2);
     const punc = doc.querySelector('[data-testid="bucket-s-punc"]')!;
     expect(punc.textContent).toContain("Punctuation");
@@ -217,7 +217,7 @@ describe("DashboardView — C1 rail + greeting (FR-1/FR-5/FR-14)", () => {
     const greetingSnap = okDoc.querySelector(
       '[data-testid="dashboard-greeting"]',
     )?.outerHTML;
-    const bucketSnap = okDoc.querySelector('[data-testid^="bucket-"]')?.outerHTML;
+    const bucketSnap = okDoc.querySelector("[data-testid^='bucket-s-']")?.outerHTML;
     expect(greetingSnap).toBeTruthy();
     expect(bucketSnap).toBeTruthy();
 
@@ -236,7 +236,7 @@ describe("DashboardView — C1 rail + greeting (FR-1/FR-5/FR-14)", () => {
       swapped.querySelector('[data-testid="dashboard-greeting"]')?.outerHTML,
     ).toBe(greetingSnap);
     expect(
-      swapped.querySelector('[data-testid^="bucket-"]')?.outerHTML,
+      swapped.querySelector("[data-testid^='bucket-s-']")?.outerHTML,
     ).toBe(bucketSnap);
   });
 });

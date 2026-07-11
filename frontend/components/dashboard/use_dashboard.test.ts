@@ -84,7 +84,7 @@ const SIX_SKILLS: Skill[] = [
   skill({ id: "s-sent", key: "sentence", name: "Sentence structure", order: 3 }),
   skill({ id: "s-rhet", key: "rhetoric", name: "Rhetoric", order: 4 }),
   skill({ id: "s-org", key: "organization", name: "Organization", order: 5 }),
-  skill({ id: "s-style", key: "style", name: "Style", order: 6 }),
+  skill({ id: "s-style", key: "style", name: "Conciseness", order: 6 }),
 ];
 
 let db: InMemoryEngineDb;

@@ -38,7 +38,16 @@ export function BucketCard(props: { vm: BucketCardVM }): React.JSX.Element {
       )}
     >
       <header className="flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold">{vm.name}</h3>
+        <div className="flex items-center gap-2">
+          {vm.accentVar ? (
+            <span
+              data-testid={`bucket-dot-${vm.skillId}`}
+              aria-hidden="true"
+              className="h-[11px] w-[11px] shrink-0 rounded bg-[var(--accent)]"
+            />
+          ) : null}
+          <h3 className="text-sm font-semibold">{vm.name}</h3>
+        </div>
         {vm.due ? (
           <span
             data-testid={`due-${vm.skillId}`}

@@ -210,7 +210,7 @@ choice regardless.
 
 ---
 
-## Sprint D2 — Taxonomy + bucket dots  🟨 *(content + view)*
+## Sprint D2 — Taxonomy + bucket dots  ✅ *(Implemented — content + view)*
 
 **Report findings:** `D-3b` bucket names → ACT-standard + per-bucket color dot ·
 `X-4` bucket taxonomy mismatch **(merged — same finding cross-cut).**
@@ -263,6 +263,25 @@ mergeable independently of D1/D3.
 the label list is the right weight.
 
 **Releasable alone:** ✅ — no dep on D1/D3/D4.
+
+### § Implementation evidence (Stage 6 — 2026-07-11)
+
+**Shape call:** rename display `name` only on 3 seed rows (`Usage` / `Rhetoric` /
+`Conciseness`); insert leading 11×11 `rounded` (4px) dot gated on `vm.accentVar`
+(prototype exact — overrides plan default 8px circle). No new CSS tokens, no VM
+change, no ADR (`decisions.md` line).
+
+**L1 (Vitest):** `_dev_seed.test.ts` (FR-3/6) · `preact_learn_corpus.test.ts`
+(FR-4) · `BucketCard.test.tsx` (FR-2/5) · arch `test_bucket_labels_no_old_strings`
+(FR-1) · `test_bucket_tokens_unchanged` (FR-7) — red-first then green. Trace:
+[`preact-parity-D2-taxonomy.impl.md`](preact-parity-D2-taxonomy.impl.md).
+
+**L4 (Playwright):** `dashboard-bucket-taxonomy.spec.ts` +
+`validate_d2_taxonomy.spec.ts` (learn-e2e). Manual runbook:
+[`validate_d2_taxonomy_ui.md`](../../frontend/scripts/validate_d2_taxonomy_ui.md).
+
+**PR log:** D2 closes D-3b + absorbs X-4. Dot size/shape locked to prototype
+(`English Coach - Prototype.dc.html:71`).
 
 ---
 
