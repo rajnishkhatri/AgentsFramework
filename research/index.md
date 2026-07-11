@@ -1,8 +1,13 @@
-# Research bundle index
+# Research prompts & source-of-truth notes — bundle index
 
-OKF bundle of agent-design research prompts. Each entry is a `type: research-prompt`
-Concept. See the convention in [CONVENTIONS_OKF.md](../docs/CONVENTIONS_OKF.md).
+OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../docs/CONVENTIONS_OKF.md).
 
-- [pyramid_react_system_prompt](pyramid_react_system_prompt.md) — system prompt that makes a ReAct agent produce Pyramid-Principle structured analysis (governing thought, issue tree, evidence, validation log).
-- [scqa_reframing_agent_prompt](scqa_reframing_agent_prompt.md) — agentic-pipeline prompt that reframes raw content into audience-optimized McKinsey SCR/SCQA narrative structures without changing facts or recommendation.
-- [tdd_agentic_systems_prompt](tdd_agentic_systems_prompt.md) — system prompt for an agent that turns Four-Layer-Architecture modules into test plans, skeletons, and failure-path coverage strategies.
+- [ACT English Question-Bank Authoring & QA Playbook (Enhanced ACT + PreACT)](act_english_authoring_qa_playbook.md) — Authoring and quality-assurance playbook for the ACT English bank — answer balancing, misconception distractors, no-leak hint ladders, and the validation pipeline. The QA discipline the tutorial-generation cascade (Epic E B2) mirrors.
+- [ACT / PreACT English — Official Weights & Bucket Coverage Research](act_english_bucket_weights_research.md) — Enhanced ACT (2025+) / PreACT (2026+) English blueprint — per-bucket weights and standard coverage that drive item-bank quotas and share-of-test percentages.
+- [ACT English Item-Bank Batch-Generation Prompt (v1)](act_english_item_generation_prompt.md) — Reusable item-writer prompt generating a batch of ACT English questions plus per-choice hint ladders, with answer-balance and no-leak constraints. The house-style template pattern for a tutorial_generator.j2 (Epic E B2).
+- [Ranking Hosted-API LLMs for Large-Scale ACT English Item-Bank Generation (July 2026)](act_english_llm_ranking_for_generation.md) — Comparison of hosted-API LLMs for generating ACT English bank content at scale — model choice input for the tutorial-generation cascade (Epic E B2 generator model selection).
+- [Teaching-Strategy Framework for the Subject-Coach Tutoring System](act_english_teaching_strategy_framework.md) — Runtime coaching pedagogy and item-bank design framework for the subject coach — how tutoring strategy and item structure connect (grounding for Epic E lesson generation).
+- [PreACT English Coach — v2 Implementation Specification (pedagogy)](eng_coach_v2_pedagogy_spec.md) — Normative instructional-design spec for the PreACT English Coach — misconception library, faded worked examples (Skill detail), Hattie & Timperley feedback, content-validation lint, and the deterministic autograder. Source of truth for Epic E lesson structure.
+- [Pyramid Principle ReACT Agent system prompt](pyramid_react_system_prompt.md) — System prompt that makes a ReAct agent produce Pyramid-Principle structured analysis (governing thought, issue tree, evidence, validation log).
+- [SCQA Content Reframing Agent prompt](scqa_reframing_agent_prompt.md) — Agentic-pipeline prompt that reframes raw content into audience-optimized McKinsey SCR/SCQA narrative structures without changing facts or recommendation.
+- [TDD Analysis Agent for Agentic Systems prompt](tdd_agentic_systems_prompt.md) — System prompt for an agent that turns Four-Layer-Architecture modules into test plans, skeletons, and failure-path coverage strategies.

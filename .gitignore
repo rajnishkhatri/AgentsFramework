@@ -42,6 +42,15 @@ cache/
 node_modules/
 **/node_modules/
 
+# Eng-coach design artifacts: keep the spec .md contracts in-repo, but the
+# visual mockups (self-contained HTML standalones + non-portable .dc.html
+# DC-runtime sources) are re-authored in React and stay local reference only.
+Eng-coach-ui-design/**/standalones/
+Eng-coach-ui-design/**/sources/
+Eng-coach-ui-design/**/*.dc.html
+Eng-coach-ui-design/**/support.js
+Eng-coach-ui-design/**/tests/
+
 # OS / editor
 .DS_Store
 Thumbs.db
