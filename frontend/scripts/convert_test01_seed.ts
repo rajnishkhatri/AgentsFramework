@@ -43,6 +43,7 @@ export function toTestItemSeed(questions: readonly Question[]): TestItem[] {
     why_tempted_md: q.why_tempted_md,
     rule_md: q.rule_md,
     item_type: q.item_type,
+    misconception: q.misconception ?? null,
     // Demotion (FR-25.1): the converter's self-stamp is unearned; the cascade
     // is the sole reviewer for imported items just as for generated ones.
     reviewed: false,

@@ -264,7 +264,7 @@ export default function QuizPage(): React.JSX.Element {
         {feedback.present ? (
           <FeedbackView
             vm={feedback.vm}
-            {...(onAskCoach ? { onAskCoach } : {})}
+            {...(onAskCoach !== undefined ? { onAskCoach } : {})}
           />
         ) : null}
         <div className="flex items-center justify-between gap-3">

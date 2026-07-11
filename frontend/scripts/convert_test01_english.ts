@@ -281,6 +281,7 @@ export function parseTest01English(md: string): Test01EnglishCorpus {
       why_tempted_md: "The original can read smoothly until you apply the rule.",
       rule_md: expl ? `Rule focus: ${expl.category}.` : "Apply the tested rule, not what merely sounds right.",
       item_type: "underlined-span-mc",
+      misconception: null,
       reviewed: true,
       generated_by: "test01-convert",
     };

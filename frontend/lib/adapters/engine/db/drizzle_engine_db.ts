@@ -88,6 +88,7 @@ function toQuestion(r: Record<string, unknown>): Question {
     why_tempted_md: String(r.why_tempted_md ?? ""),
     rule_md: String(r.rule_md ?? ""),
     item_type: String(r.item_type ?? "underlined-span-mc"),
+    misconception: r.misconception == null ? null : String(r.misconception),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };
@@ -123,6 +124,7 @@ function toTestItem(r: Record<string, unknown>): TestItem {
     why_tempted_md: String(r.why_tempted_md ?? ""),
     rule_md: String(r.rule_md ?? ""),
     item_type: String(r.item_type ?? ""),
+    misconception: r.misconception == null ? null : String(r.misconception),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };

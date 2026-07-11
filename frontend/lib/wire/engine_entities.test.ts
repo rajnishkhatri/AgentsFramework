@@ -9,10 +9,13 @@
  *   - null      → endless session (backward-compatible; FR-2/FR-3)
  *   - a value   → that many items this session (FR-4)
  *   - ≤0, non-int, NaN → rejected at parse (FR-1)
+ *
+ * Sprint C2 (`preact-parity-C2-summary-payoff.spec.md`): nullable
+ * `misconception` on `Question` / `TestItem` (FR-9 / FR-10, ADR-0027).
  */
 
 import { describe, expect, it } from "vitest";
-import { QuizSession } from "./engine_entities";
+import { Question, QuizSession, TestItem } from "./engine_entities";
 
 function session(over: Record<string, unknown> = {}) {
   return {
@@ -26,6 +29,58 @@ function session(over: Record<string, unknown> = {}) {
     score_correct: 0,
     score_total: 0,
     target_count: 30,
+    ...over,
+  };
+}
+
+function validQuestion(over: Record<string, unknown> = {}) {
+  return {
+    id: "q-1",
+    subject: "act-english",
+    skill_id: "s-gram",
+    difficulty: 3,
+    context_html: "<p>The committee <u>were</u> unanimous.</p>",
+    stem: "Which choice best fixes the underlined portion?",
+    choices: [
+      { letter: "A", label: "NO CHANGE", is_no_change: true },
+      { letter: "B", label: "was", is_no_change: false },
+      { letter: "C", label: "have been", is_no_change: false },
+      { letter: "D", label: "being", is_no_change: false },
+    ],
+    answer_letter: "B",
+    per_choice_rationale: { A: "a", B: "b", C: "c", D: "d" },
+    why_correct_md: "singular",
+    why_tempted_md: "plural people",
+    rule_md: "collective nouns",
+    item_type: "underlined-span-mc",
+    reviewed: true,
+    generated_by: "test@run1",
+    ...over,
+  };
+}
+
+function validTestItem(over: Record<string, unknown> = {}) {
+  return {
+    id: "ti-1",
+    subject: "act-english",
+    skill_id: "s-gram",
+    difficulty: 3,
+    context_html: "<p>The committee <u>were</u> unanimous.</p>",
+    stem_md: "Which choice best fixes the underlined portion?",
+    choices: [
+      { letter: "A", label: "NO CHANGE", is_no_change: true },
+      { letter: "B", label: "was", is_no_change: false },
+      { letter: "C", label: "have been", is_no_change: false },
+      { letter: "D", label: "being", is_no_change: false },
+    ],
+    answer_letter: "B",
+    per_choice_rationale: { A: "a", B: "b", C: "c", D: "d" },
+    why_correct_md: "singular",
+    why_tempted_md: "plural people",
+    rule_md: "collective nouns",
+    item_type: "underlined-span-mc",
+    reviewed: true,
+    generated_by: "test@run1",
     ...over,
   };
 }
@@ -57,5 +112,37 @@ describe("QuizSession.target_count — accepted shapes (FR-2/FR-4)", () => {
   it("accepts an explicit null = endless session (FR-2)", () => {
     const parsed = QuizSession.parse(session({ target_count: null }));
     expect(parsed.target_count).toBeNull();
+  });
+});
+
+describe("Question.misconception — C2 FR-9 (ADR-0027)", () => {
+  it("accepts misconception: null", () => {
+    expect(Question.safeParse(validQuestion({ misconception: null })).success).toBe(true);
+  });
+
+  it("accepts misconception: string", () => {
+    expect(
+      Question.safeParse(validQuestion({ misconception: "some string" })).success,
+    ).toBe(true);
+  });
+
+  it("rejects misconception: 42", () => {
+    expect(Question.safeParse(validQuestion({ misconception: 42 })).success).toBe(false);
+  });
+});
+
+describe("TestItem.misconception — C2 FR-10 (ADR-0027)", () => {
+  it("accepts misconception: null", () => {
+    expect(TestItem.safeParse(validTestItem({ misconception: null })).success).toBe(true);
+  });
+
+  it("accepts misconception: string", () => {
+    expect(
+      TestItem.safeParse(validTestItem({ misconception: "some string" })).success,
+    ).toBe(true);
+  });
+
+  it("rejects misconception: 42", () => {
+    expect(TestItem.safeParse(validTestItem({ misconception: 42 })).success).toBe(false);
   });
 });

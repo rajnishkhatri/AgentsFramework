@@ -42,6 +42,7 @@ function question(over: Partial<Question> = {}): Question {
     why_tempted_md: "'committee' sounds plural.",
     rule_md: "Collective nouns are singular.",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "test",
     ...over,

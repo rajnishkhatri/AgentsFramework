@@ -36,6 +36,7 @@ function question(over: Partial<Question> = {}): Question {
     why_tempted_md: "…",
     rule_md: "…",
     item_type: "underlined-span-mc",
+    misconception: null,
     // The converter self-stamps these — the seed must retroactively unearn them.
     reviewed: true,
     generated_by: "test01-convert",

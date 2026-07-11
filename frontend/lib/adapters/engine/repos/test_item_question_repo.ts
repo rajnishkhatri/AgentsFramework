@@ -110,6 +110,7 @@ function toQuestion(item: TestItem): Question {
     why_tempted_md: item.why_tempted_md,
     rule_md: item.rule_md,
     item_type: item.item_type,
+    misconception: item.misconception,
     reviewed: item.reviewed,
     generated_by: item.generated_by,
   };
