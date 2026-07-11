@@ -44,11 +44,11 @@ export const LEARN_LEARNER_ID = "maya";
 /** The six ACT-English taxonomy buckets (parity with the dashboard SIX_SKILLS). */
 export const LEARN_SKILLS: readonly Skill[] = [
   { id: "s-punc", subject: SUBJECT, key: "punctuation", name: "Punctuation", share_of_test_pct: 15, accent_var: "--color-bucket-punctuation", description: "Commas, semicolons, colons, dashes, apostrophes.", order: 1 },
-  { id: "s-gram", subject: SUBJECT, key: "grammar", name: "Grammar & Usage", share_of_test_pct: 20, accent_var: "--color-bucket-grammar", description: "Agreement, pronouns, verb tense, idioms.", order: 2 },
-  { id: "s-sent", subject: SUBJECT, key: "sentence", name: "Sentence Structure", share_of_test_pct: 20, accent_var: "--color-bucket-sentence", description: "Fragments, run-ons, modifiers, parallelism.", order: 3 },
+  { id: "s-gram", subject: SUBJECT, key: "grammar", name: "Grammar & Usage", share_of_test_pct: 20, accent_var: "--color-bucket-usage", description: "Agreement, pronouns, verb tense, idioms.", order: 2 },
+  { id: "s-sent", subject: SUBJECT, key: "sentence", name: "Sentence Structure", share_of_test_pct: 20, accent_var: "--color-bucket-sentence-structure", description: "Fragments, run-ons, modifiers, parallelism.", order: 3 },
   { id: "s-rhet", subject: SUBJECT, key: "rhetoric", name: "Rhetorical Skills", share_of_test_pct: 20, accent_var: "--color-bucket-rhetoric", description: "Word choice, tone, conciseness.", order: 4 },
   { id: "s-org", subject: SUBJECT, key: "organization", name: "Organization", share_of_test_pct: 15, accent_var: "--color-bucket-organization", description: "Transitions, sentence order.", order: 5 },
-  { id: "s-style", subject: SUBJECT, key: "style", name: "Style", share_of_test_pct: 10, accent_var: "--color-bucket-style", description: "Redundancy, wordiness, register.", order: 6 },
+  { id: "s-style", subject: SUBJECT, key: "style", name: "Style", share_of_test_pct: 10, accent_var: "--color-bucket-conciseness", description: "Redundancy, wordiness, register.", order: 6 },
 ];
 
 function q(over: Partial<Question> & Pick<Question, "id" | "skill_id" | "difficulty" | "context_html" | "stem" | "choices" | "answer_letter" | "per_choice_rationale">): Question {
@@ -58,6 +58,7 @@ function q(over: Partial<Question> & Pick<Question, "id" | "skill_id" | "difficu
     why_tempted_md: "The original reads smoothly until you apply the rule.",
     rule_md: "Apply the skill's rule, not what merely *sounds* right.",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "e2e-corpus",
     ...over,

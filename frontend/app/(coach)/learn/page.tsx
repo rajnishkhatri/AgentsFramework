@@ -1,42 +1,48 @@
 // B1: 'use client' required — the Dashboard reads the engine bag from
-// useEngine() context (the browser-safe InMemoryEngineDb substrate, ADR-0005
-// local-first) via useDashboard(), and loads the VM on mount. The domain logic
-// (gather + weakest-due pick + misses count) lives in loadDashboard (F-R1);
-// this page is thin glue that renders the loaded DashboardVM.
+// useEngine() context via useDashboard(), and loads the VM on mount. Domain
+// logic lives in loadDashboard / loadRail (F-R1); this page is thin glue.
 //
-// When the engine graduates to the server pg seam, this becomes an RSC page that
-// builds the VM server-side (plan §"Where the engine runs"); the DashboardView
-// and loadDashboard are unchanged by that swap.
+// C1-fix FR-8: Effect A loads greeting/buckets/focus/misses once per mount
+// (skipRail); Effect B loads the rail on mount + Retry. Rail retry does not
+// re-render the greeting or mastery grid.
 "use client";
 
 import * as React from "react";
 import { DashboardView } from "@/components/dashboard/DashboardView";
-import { useDashboard, type DashboardVM } from "@/components/dashboard/use_dashboard";
+import {
+  useDashboard,
+  type DashboardVM,
+  type RailVM,
+} from "@/components/dashboard/use_dashboard";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-// Phase-1 single-learner surface (the plan's "Maya"). A real identity seam
-// (WorkOS session → learner id) is a later wiring; hard-coding it here keeps the
-// dashboard renderable now without inventing an auth dependency.
 const LEARNER_ID = "maya";
+const LEARNER_DISPLAY_NAME = "Maya";
+
+type BaseVm = Omit<DashboardVM, "rail">;
 
 export default function DashboardPage(): React.JSX.Element {
-  const { load } = useDashboard();
-  const [vm, setVm] = React.useState<DashboardVM | null>(null);
+  const { load, loadRail } = useDashboard();
+  const [baseVm, setBaseVm] = React.useState<BaseVm | null>(null);
+  const [rail, setRail] = React.useState<RailVM | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [reloadToken, setReloadToken] = React.useState(0);
 
+  // Effect A — greeting / buckets / focus / misses (once per mount).
   React.useEffect(() => {
-    // Sync to the async engine read on mount (a sanctioned useEffect case §14:
-    // an external, non-React data source). `cancelled` guards a late resolve
-    // after unmount.
     let cancelled = false;
     setError(null);
     load({
       subject: DEFAULT_SUBJECT,
       learnerId: LEARNER_ID,
+      displayName: LEARNER_DISPLAY_NAME,
       nowISO: new Date().toISOString(),
+      skipRail: true,
     })
       .then((next) => {
-        if (!cancelled) setVm(next);
+        if (cancelled) return;
+        const { rail: _ignored, ...rest } = next;
+        setBaseVm(rest);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -48,6 +54,26 @@ export default function DashboardPage(): React.JSX.Element {
     };
   }, [load]);
 
+  // Effect B — rail only (mount + Retry). FR-8: does not touch baseVm.
+  React.useEffect(() => {
+    let cancelled = false;
+    loadRail({
+      subject: DEFAULT_SUBJECT,
+      learnerId: LEARNER_ID,
+      displayName: LEARNER_DISPLAY_NAME,
+      nowISO: new Date().toISOString(),
+    })
+      .then((next) => {
+        if (!cancelled) setRail(next);
+      })
+      .catch(() => {
+        // loadRail never rejects (maps errors to unavailable); keep baseVm.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loadRail, reloadToken]);
+
   if (error != null) {
     return (
       <p role="alert" className="text-danger">
@@ -55,12 +81,17 @@ export default function DashboardPage(): React.JSX.Element {
       </p>
     );
   }
-  if (vm == null) {
+  if (baseVm == null || rail == null) {
     return (
       <p role="status" className="text-muted">
         Loading your dashboard&hellip;
       </p>
     );
   }
-  return <DashboardView vm={vm} />;
+  return (
+    <DashboardView
+      vm={{ ...baseVm, rail }}
+      onRetryRail={() => setReloadToken((n) => n + 1)}
+    />
+  );
 }

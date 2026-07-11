@@ -73,6 +73,8 @@ export const Question = z.object({
   why_tempted_md: z.string(),
   rule_md: z.string(),
   item_type: z.string(),
+  // Author-captured one-line misconception (C2 / ADR-0027). Null = honest-absent.
+  misconception: z.string().nullable().default(null),
   reviewed: z.boolean(),
   generated_by: z.string(),
 });
@@ -146,6 +148,8 @@ export const TestItem = z.object({
   why_tempted_md: z.string().min(1),
   rule_md: z.string().min(1),
   item_type: z.string().min(1),
+  // Author-captured one-line misconception (C2 / ADR-0027). Null = honest-absent.
+  misconception: z.string().nullable().default(null),
   reviewed: z.boolean(),
   generated_by: z.string(),
 });

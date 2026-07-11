@@ -69,7 +69,7 @@ What remains is a **depth-of-screen** gap, concentrated in three places:
 3. 🟧 **Summary misconception write-up** — the prototype's accent "The misconception I spotted"
    narrative (the emotional payoff of the whole loop) has no counterpart in the app.
 
-Plus a scatter of 🟨 minors (session length **30 vs 10**, End-session affordance, dismissible timer,
+Plus a scatter of 🟨 minors (session length **30 vs 10**, End-session affordance, collapsible timer,
 skill chip on the quiz, ACT-standard bucket names, green-span recap, misconception-framed titles)
 and one 🟥 latent defect surfaced by this pass: **`Reveal answer` is a dead placeholder** in the app
 (has a `data-testid`, no `onClick`). A second suspected defect — **Summary "time" reads `0 min`** —
@@ -106,16 +106,16 @@ personalized greeting, and a rich right rail** — roughly a third more surface.
 
 | # | Prototype affordance | App status | Sev | Fix pointer |
 |---|---|---|---|---|
-| D-1 | Greeting **"Let's get you to 28, Maya."** + "Tuesday · Good afternoon" | 🔴 absent | 🟧 Major | `DashboardView.tsx` header; needs name + score-goal in `use_dashboard` VM |
+| D-1 | Greeting **"Let's get you to 28, Maya."** + "Tuesday · Good afternoon" | 🟩 shipped (C1) | ✅ | `greeting_vm.ts` + `DashboardView.tsx` `<header>` — time-of-day + title-cased learner id + Intl subline (score-goal copy deferred with D-5-goal) |
 | D-2 | Today's Focus banner + "Start adaptive session" CTA | 🟩 present | 🟩 | — |
 | D-2b | Today's Focus **body copy**: "Your weakest bucket at 49%. 10 adaptive items, ~12 min. The coach will watch for the comma pattern you keep missing." | 🟡 thinner | 🟨 Minor | app shows bare skill name ("Punctuation") only; add supporting line to `TodayFocusBanner.tsx` |
 | D-3 | 6-bucket mastery grid (%, share, bar, Due) | 🟩 present | 🟩 | — |
 | D-3b | Bucket **names** use ACT-standard labels: **Rhetoric / Usage / Conciseness** + colored dot per bucket | 🟡 diverges | 🟨 Minor | app uses "Rhetorical Skills / Grammar & Usage / Style", no per-bucket color dot |
 | D-4 | Bucket card click → skill drill | ✅ **now clickable** | 🟩 | `BucketCard.tsx` renders `<Link href="/learn/quiz?focus=s-…">` (was inert `<article>` in the matrix — **fixed**). ⚠️ caveat: `?focus=` does not actually pin the scheduler (separate pre-existing gap). |
-| D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🔴 absent | 🟧 Major | whole rail missing; needs VM fields (streak, weekly, score-goal, coach-note text) |
+| D-5 | **Right rail**: SCORE GOAL 26→28 (bar, start 24 / 28+), **9-day streak**, **3/3 sessions this wk** (session squares), **Coach note** | 🟨 partial (C1) | 🟧 Major | streak + weekly shipped (`streak_vm` / `weekly_sessions_vm` + rail aside); score-goal + coach-note still open → Epic F |
 | D-6 | Left rail identity: "English Coach" brand + **"Maya / PreACT prep"** user block | 🔴 absent | 🟨 Minor | app sidebar has nav only, no brand/user footer |
 | D-7 | Secondary actions "Drill a skill" / "Review my misses (N)" | 🟡 partial | 🟨 Minor | both `→ /learn/quiz` (matrix D-6); count is real; "Review misses" not a distinct destination |
-| D-8 | Sidebar nav: Dashboard / Practice / **Skills** / Progress / Coach (5) | 🟡 partial | 🟨 Minor | app nav = Home / Practice / Coach / Progress (4) — **no "Skills"** entry; Progress greyed (`comingSoon`) |
+| D-8 | Sidebar nav: Dashboard / Practice / **Skills** / Progress / Coach (5) | 🟡 partial | 🟨 Minor | app nav = Home / Practice / Coach / Progress (4) — **no "Skills"** entry; Progress greyed (`comingSoon`). **Gated on Epic E's `/learn/skill` route** — do not enable until E lands, or ship as `comingSoon` (adding to `NAV_MEMBERSHIP` before E = dead nav item, Q-6 class) |
 | D-9 | Header flow-step pills (1–5 Dashboard…Summary) | 🔴 absent | 🟦 Cosmetic | prototype scaffolding (a demo navigator) — **do NOT port**; document only |
 | — | "Take a timed test" → `/learn/test` (Test Mode) | ➕ app-only | ➕ | keep; prototype has no timed-test concept |
 
@@ -131,7 +131,7 @@ personalized greeting, and a rich right rail** — roughly a third more surface.
 
 **At a glance:** structurally very close now — both have the top progress counter + bar, context
 sentence with underlined span, stem, 4 lettered choices (A = NO CHANGE), hint/reveal/submit. The
-prototype wraps the quiz in a **session frame** (End-session control, skill chip, dismissible timer)
+prototype wraps the quiz in a **session frame** (End-session control, skill chip, collapsible / off-by-default timer)
 that the app doesn't render, and the app's session length is **30** vs the prototype's **10**.
 
 | # | Prototype affordance | App status | Sev | Fix pointer |
@@ -145,7 +145,7 @@ that the app doesn't render, and the app's session length is **30** vs the proto
 | Q-6 | **"Reveal answer"** as a real secondary affordance | 🐞 **dead** | 🟥 Blocker (latent) | `quiz-reveal` has the testid + label but **no `onClick`** — clicking does nothing. ⚠️ Not "just wire it": code carries a **FR-D5 (never reveal) vs FR-D6 (Reveal sanctioned) contradiction** + the VM omits the answer letter, so Reveal needs a *decision* first + a post-submit-gated VM field. See [Epic A board §A1](preact-parity-sprint-board-A.md). |
 | Q-7 | **Skill chip** on the session frame ("● Punctuation") | 🔴 absent | 🟨 Minor | app shows no per-question skill tag |
 | Q-8 | **"✕ End session"** (abandon → Dashboard) | 🔴 absent | 🟨 Minor | app has no mid-session abandon path (only Finish→Summary). Matrix Q-9. |
-| Q-9 | **Dismissible timer** "14:32 ⊘↔⏱" | 🔴 absent | 🟨 Minor | app records `elapsed_ms` internally but renders no visible/dismissible clock. Matrix Q-8, S7. |
+| Q-9 | **Collapsible / off-by-default timer** "14:32 ⊘↔⏱" | 🔴 absent | 🟨 Minor | `elapsed_ms` capture is already correct ([`session_summary_vm.ts:60-65`](../../frontend/lib/translators/session_summary_vm.ts:60) / A2 triage); app renders no visible clock today. Reframe: collapsible UI that starts collapsed — not a "dismissible" clock. Matrix Q-8, S7. |
 | Q-10 | Bounded session (a first & last question, terminal at target) | ✅ **shipped (S3+S5)** | 🟩 | `target_count` + done-state. **Was 🔴 "infinite by design" in matrix.** |
 
 ---
@@ -297,7 +297,7 @@ progress bar clamps full, and the buttons relabel **"Keep practising" / "See sum
 | X-1 | Theme toggle light ↔ dark | 🟩 present | 🟩 | app dark verified (`09-dashboard-dark`); prototype has a "Dark" toggle too |
 | X-2 | Coming-soon plane: **Skill detail** + **Progress** screens | ⛔ unbuilt | 🟧 Major | now first-class [§6](#6-screen--skill-detail--tutorial--app-unbuilt) + [§7](#7-screen--progress--analytics--app-unbuilt); both 404. Backlog #11/#12. |
 | X-3 | Brand accent | 🟩 close | 🟦 Cosmetic | both use terracotta/sage; prototype accent is slightly more saturated |
-| X-4 | Bucket taxonomy mismatch | 🟡 diverges | 🟨 Minor | app 6 buckets ≠ prototype 6 buckets by name (see D-3b); worth aligning to ACT-standard labels |
+| X-4 | Bucket taxonomy mismatch | 🟡 diverges | 🟨 Minor | app 6 buckets ≠ prototype 6 buckets by name (see D-3b); **absorbed into D-3b's sprint (D2)** — same finding under a cross-cut framing, not a separate sprint |
 
 ---
 
@@ -321,7 +321,7 @@ read as historical there:
 | Q-6 | `Reveal answer` is a dead placeholder (testid, no onClick) — + FR-D5/FR-D6 spec contradiction to resolve | 🟥 latent |
 | S-2b | Summary "time" showed **0 min** — **downgraded** to capture artifact on code review (elapsed *is* threaded + tested); pending live-repro triage | 🟨 triage |
 | D-3b / X-4 | Bucket **names** diverge from ACT-standard labels + no per-bucket color dot | 🟨 |
-| D-8 | Sidebar missing a **"Skills"** entry the prototype has | 🟨 |
+| D-8 | Sidebar missing a **"Skills"** entry the prototype has — **gated on Epic E**; defer or ship `comingSoon` | 🟨 |
 
 ---
 
@@ -343,8 +343,8 @@ Ordered by *user-visible impact per unit effort*. Sprint IDs continue the matrix
 | 4 | **Dashboard right rail** (D-5) — score-goal, streak, weekly, coach-note + greeting (D-1) | Dashboard | 🟧 | M | Needs VM fields; matrix S6. |
 | 5 | **Summary misconception write-up** (S-3) + misconception-framed title (S-1) | Summary | 🟧 | M | Needs misconception text source; matrix S7. |
 | 6 | **Feedback "Ask the coach"** on desktop (F-6) + green-span recap (F-4) | Feedback | 🟨 | M | Bridges Feedback→Coach on desktop. |
-| 7 | **Quiz session frame** — End-session (Q-8), skill chip (Q-7), dismissible timer (Q-9) | Quiz | 🟨 | M | matrix S5/S7. |
-| 8 | **Bucket taxonomy + color dots** (D-3b) + **Skills nav entry** (D-8) | Dashboard | 🟨 | S | Align to ACT-standard labels. |
+| 7 | **Quiz session frame** — End-session (Q-8), skill chip via wire→VM→view (Q-7), collapsible / off-by-default timer (Q-9) | Quiz | 🟨 | M | matrix S5/S7. |
+| 8 | **Bucket taxonomy + color dots** (D-3b; X-4 absorbed) + **Skills nav entry** (D-8, gated on Epic E's `/learn/skill`) | Dashboard | 🟨 | S | Align to ACT-standard labels. |
 | 9 | **Make recommended skill tappable** (S-5) + 3 summary actions (S-6) | Summary | 🟨 | S | matrix S2/S7. |
 | 10 | **Session length review** — is 30 the intended adaptive target vs prototype's 10? | Quiz | 🟨 | XS | Product decision, not a code gap per se. |
 | 11 | **Skill-detail screen** (SD-1…6) — whole new route | Skill detail | 🟧 | XL | 404 today; own ADR + `getTutorial` engine read. matrix S9. |
@@ -395,7 +395,7 @@ Every spec §6 component maps to a finding ID above. Grouped by status:
 | Get a hint (Socratic, not answer) | ✅ Q-5 | ✅ |
 | **Reveal answer** | ✅ Q-6 | 🐞 **dead (no onClick)** |
 | Submit → adaptive Feedback | ✅ F-1 | ✅ |
-| **Dismiss timer** | ✅ Q-9 | 🔴 no timer |
+| **Collapsible timer** | ✅ Q-9 | 🔴 no timer |
 | **Ask the coach** | ✅ F-6 | 🟡 iPad only |
 | Send message (chip / Enter → reply) | ✅ C-6/C-7 | 🔴 empty coach |
 | Coach reply logic (keyword-routed) | ✅ C-6 | 🔴 needs backend |
@@ -411,7 +411,7 @@ Every spec §6 component maps to a finding ID above. Grouped by status:
 | Theme toggle | light ↔ dark | §9 X-1 |
 | Submit gating | disabled until choice | §2 Q-4 |
 | Hint toggle | "Coach hint — not the answer" | §2 Q-5 |
-| Timer dismissible | 14:32 + hide toggle | §2 Q-9 |
+| Timer collapsible | 14:32 + hide toggle | §2 Q-9 |
 | End session → Dashboard | abandon path | §2 Q-8 |
 | Adaptive feedback A | "Exactly right." + Why A | §3 F-1 |
 | Adaptive feedback B | "Not quite…" + Why B tempted | §3 F-1/F-2 |

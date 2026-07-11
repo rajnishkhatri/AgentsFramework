@@ -37,6 +37,7 @@ function bankItem(over: Partial<TestItem> = {}): TestItem {
     why_tempted_md: "'To' feels connective.",
     rule_md: "Learn preposition pairings as units.",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "gpt-4o-mini@run-1",
     ...over,
@@ -130,6 +131,7 @@ describe("TestItemQuestionRepo — lossless mapping (FR-C4) + scheduling (FR-B6)
       why_tempted_md: item.why_tempted_md,
       rule_md: item.rule_md,
       item_type: item.item_type,
+      misconception: null,
       reviewed: true,
       generated_by: item.generated_by,
     });

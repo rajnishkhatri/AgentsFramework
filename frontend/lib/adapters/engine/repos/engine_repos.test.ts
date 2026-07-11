@@ -55,6 +55,7 @@ function question(over: Partial<Question> = {}): Question {
     why_tempted_md: "",
     rule_md: "",
     item_type: "underlined-span-mc",
+    misconception: null,
     reviewed: true,
     generated_by: "test",
     ...over,
@@ -458,6 +459,7 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
         why_tempted_md: "tempting",
         rule_md: "the rule",
         item_type: "underlined-span-mc",
+        misconception: null,
         reviewed: true,
         generated_by: "test@run1",
       },
@@ -576,6 +578,100 @@ describe("DrizzleSessionRepo — lifecycle + scoring", () => {
     await repo.open("act-english", "alice", "drill", "s-punct");
     const closed = await repo.close("sess-tc", { score_correct: 5, score_total: 8 });
     expect(closed.target_count).toBe(30);
+  });
+});
+
+describe("DrizzleSessionRepo — listByLearner (ADR-0026 / C1 rail)", () => {
+  function closedSession(over: {
+    id: string;
+    ended_at: string | null;
+    subject?: string;
+    learner_id?: string;
+  }) {
+    return {
+      id: over.id,
+      subject: over.subject ?? "act-english",
+      learner_id: over.learner_id ?? "maya",
+      mode: "adaptive" as const,
+      skill_focus: null,
+      started_at: "2026-07-01T00:00:00.000Z",
+      ended_at: over.ended_at,
+      score_correct: 1,
+      score_total: 1,
+      target_count: 30,
+    };
+  }
+
+  it("sessionRepo_listByLearner_rejects_translated_to_EngineRepoError", async () => {
+    const repo = new DrizzleSessionRepo({ db: rejectingDb() });
+    await expect(
+      repo.listByLearner("act-english", "maya"),
+    ).rejects.toBeInstanceOf(EngineRepoError);
+  });
+
+  it("sessionRepo_listByLearner_empty_returns_empty_array", async () => {
+    const repo = new DrizzleSessionRepo({ db: new InMemoryEngineDb() });
+    expect(await repo.listByLearner("act-english", "maya")).toEqual([]);
+  });
+
+  it("sessionRepo_listByLearner_excludes_inflight", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession(
+      closedSession({ id: "closed", ended_at: "2026-07-08T12:00:00.000Z" }),
+    );
+    await db.insertSession(closedSession({ id: "open", ended_at: null }));
+    const repo = new DrizzleSessionRepo({ db });
+    const out = await repo.listByLearner("act-english", "maya");
+    expect(out.map((s) => s.id)).toEqual(["closed"]);
+  });
+
+  it("sessionRepo_listByLearner_newest_first_with_id_tiebreak", async () => {
+    const db = new InMemoryEngineDb();
+    const sameEnd = "2026-07-08T12:00:00.000Z";
+    await db.insertSession(closedSession({ id: "c", ended_at: sameEnd }));
+    await db.insertSession(closedSession({ id: "a", ended_at: sameEnd }));
+    await db.insertSession(closedSession({ id: "b", ended_at: sameEnd }));
+    const repo = new DrizzleSessionRepo({ db });
+    const out = await repo.listByLearner("act-english", "maya");
+    expect(out.map((s) => s.id)).toEqual(["a", "b", "c"]);
+  });
+
+  it("sessionRepo_listByLearner_sinceISO_inclusive_lower_bound", async () => {
+    const db = new InMemoryEngineDb();
+    const bound = "2026-07-05T00:00:00.000Z";
+    await db.insertSession(
+      closedSession({ id: "before", ended_at: "2026-07-04T23:59:59.000Z" }),
+    );
+    await db.insertSession(closedSession({ id: "at", ended_at: bound }));
+    await db.insertSession(
+      closedSession({ id: "after", ended_at: "2026-07-06T00:00:00.000Z" }),
+    );
+    const repo = new DrizzleSessionRepo({ db });
+    const out = await repo.listByLearner("act-english", "maya", {
+      sinceISO: bound,
+    });
+    expect(out.map((s) => s.id).sort()).toEqual(["after", "at"]);
+  });
+
+  it("sessionRepo_listByLearner_subject_scoped", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertSession(
+      closedSession({
+        id: "eng",
+        ended_at: "2026-07-08T12:00:00.000Z",
+        subject: "act-english",
+      }),
+    );
+    await db.insertSession(
+      closedSession({
+        id: "alg",
+        ended_at: "2026-07-08T13:00:00.000Z",
+        subject: "algebra-i",
+      }),
+    );
+    const repo = new DrizzleSessionRepo({ db });
+    const out = await repo.listByLearner("act-english", "maya");
+    expect(out.map((s) => s.id)).toEqual(["eng"]);
   });
 });
 

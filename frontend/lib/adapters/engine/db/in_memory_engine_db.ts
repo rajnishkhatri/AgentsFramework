@@ -203,6 +203,27 @@ export class InMemoryEngineDb implements EngineDb {
     return { ...updated };
   }
 
+  async listClosedSessionsByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]> {
+    const sinceISO = options?.sinceISO;
+    const rows = [...this.sessions.values()].filter(
+      (s) =>
+        s.subject === subject &&
+        s.learner_id === learnerId &&
+        s.ended_at != null &&
+        (sinceISO == null || s.ended_at >= sinceISO),
+    );
+    rows.sort((a, b) => {
+      const endCmp = (b.ended_at ?? "").localeCompare(a.ended_at ?? "");
+      if (endCmp !== 0) return endCmp;
+      return a.id.localeCompare(b.id);
+    });
+    return rows.map((s) => ({ ...s }));
+  }
+
   // --- attempt ---
   async insertAttempt(a: Attempt): Promise<void> {
     this.attempts.push({ ...a });

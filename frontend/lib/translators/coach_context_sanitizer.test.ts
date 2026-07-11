@@ -33,6 +33,7 @@ const question = {
   why_tempted_md: "reads fine",
   rule_md: "pair of commas",
   item_type: "underlined-span-mc",
+  misconception: null,
   reviewed: true,
   generated_by: "dev-seed",
 };

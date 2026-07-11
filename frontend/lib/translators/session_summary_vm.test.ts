@@ -47,14 +47,22 @@ const rec: RecommendedNext = { skill_id: "s-conc", mode: "drill" };
 
 describe("toSessionSummaryVM — edge row first", () => {
   it("un-closed session (ended_at null) → time tile em-dash, no crash", () => {
-    const vm = toSessionSummaryVM(session({ ended_at: null }), rec, skill(), 8);
+    const vm = toSessionSummaryVM(
+      session({ ended_at: null }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
     expect(vm.timeTile).toBe("—");
     expect(vm.scoreTile).toBe("7/10"); // still reads stored score (FR-G1)
   });
 });
 
 describe("toSessionSummaryVM — happy path (FR-G1/G2)", () => {
-  const vm = toSessionSummaryVM(session(), rec, skill(), 8);
+  const vm = toSessionSummaryVM(session(), rec, skill(), 8, null, false, true);
 
   it("score tile reads the STORED score, not a recompute (FR-G1)", () => {
     expect(vm.scoreTile).toBe("7/10");
@@ -67,14 +75,14 @@ describe("toSessionSummaryVM — happy path (FR-G1/G2)", () => {
   });
 
   it("negative mastery delta keeps its sign", () => {
-    const down = toSessionSummaryVM(session(), rec, skill(), -3);
+    const down = toSessionSummaryVM(session(), rec, skill(), -3, null, false, true);
     expect(down.masteryDeltaTile).toBe("-3%");
   });
 
   it("a sub-half negative delta rounds to +0%, never -0%", () => {
     // -0.4 rounds to 0; the tile must read "+0%" (Math.round(-0.4) === -0, so
     // choosing the sign from the raw delta would print a nonsensical "-0%").
-    const flat = toSessionSummaryVM(session(), rec, skill(), -0.4);
+    const flat = toSessionSummaryVM(session(), rec, skill(), -0.4, null, false, true);
     expect(flat.masteryDeltaTile).toBe("+0%");
   });
 
@@ -87,5 +95,105 @@ describe("toSessionSummaryVM — happy path (FR-G1/G2)", () => {
     expect(vm.recommended.skillName).toBe("Conciseness");
     expect(vm.recommended.mode).toBe("drill");
     expect(vm.recommended.accentVar).toBe("--color-bucket-conciseness");
+  });
+});
+
+describe("toSessionSummaryVM — C2 payoff (FR-7/FR-8/FR-11/FR-13)", () => {
+  it("drill_title_uses_target_count_when_present", () => {
+    const vm = toSessionSummaryVM(
+      session({ target_count: 6 }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
+    expect(vm.recommended.drillTitle).toBe("6-item drill: Conciseness");
+  });
+
+  it("drill_title_falls_back_to_skill_name_when_target_count_null", () => {
+    const vm = toSessionSummaryVM(
+      session({ target_count: null }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
+    expect(vm.recommended.drillTitle).toBe("Drill: Conciseness");
+  });
+
+  it("keeps_neutral_title_when_score_ratio_below_threshold", () => {
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 5, score_total: 10 }),
+      rec,
+      skill(),
+      8,
+      "some misconception",
+      true,
+      false,
+    );
+    expect(vm.showFramedTitle).toBe(false);
+    expect(vm.title).toBe("Session summary");
+    expect(vm.body).toBe("Here's how this session went.");
+  });
+
+  it("flips_framed_title_at_ratio_gte_0_6", () => {
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 6, score_total: 10 }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      true,
+    );
+    expect(vm.showFramedTitle).toBe(true);
+    expect(vm.title).toBe("Nice work — you found the pattern.");
+  });
+
+  it("treats_score_total_zero_as_below_threshold", () => {
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 0, score_total: 0 }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
+    expect(vm.showFramedTitle).toBe(false);
+    expect(vm.title).toBe("Session summary");
+    expect(vm.body).toBe("Here's how this session went.");
+  });
+
+  it("framed_title_body_uses_neutral_copy_when_selfCorrected_false", () => {
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 7, score_total: 10 }),
+      rec,
+      skill(),
+      8,
+      "confusing past with participle",
+      false,
+      true,
+    );
+    expect(vm.body).toBe("You cleared the Conciseness bar.");
+  });
+
+  it("framed_title_body_references_misconception_when_selfCorrected_true", () => {
+    const vm = toSessionSummaryVM(
+      session({ score_correct: 7, score_total: 10 }),
+      rec,
+      skill(),
+      8,
+      "confusing past with participle",
+      true,
+      true,
+    );
+    expect(vm.body).toBe("The pattern: confusing past with participle.");
+    expect(vm.misconception).toBe("confusing past with participle");
+    expect(vm.selfCorrected).toBe(true);
   });
 });

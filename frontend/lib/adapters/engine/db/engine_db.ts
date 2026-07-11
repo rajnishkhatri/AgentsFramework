@@ -100,6 +100,15 @@ export interface EngineDb extends ReadableEngineDb {
   insertSession(s: QuizSession): Promise<void>;
   getSession(id: string): Promise<QuizSession | null>;
   patchSessionClose(id: string, patch: SessionClosePatch): Promise<QuizSession | null>;
+  /**
+   * Closed sessions for a learner, newest-first by ended_at; optional lower
+   * bound. Excludes rows where ended_at IS NULL (ADR-0026 / C1 rail).
+   */
+  listClosedSessionsByLearner(
+    subject: string,
+    learnerId: string,
+    options?: { sinceISO?: string },
+  ): Promise<QuizSession[]>;
 
   // --- attempt ---
   insertAttempt(a: Attempt): Promise<void>;

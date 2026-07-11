@@ -53,6 +53,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (irregular verb)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -96,6 +97,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (appositive punctuation)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -139,6 +141,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (agreement/tense)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -182,6 +185,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Knowledge of Language (transition)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -225,6 +229,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (idiom)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -268,6 +273,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (tone/style)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -311,6 +317,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (parallel/participle)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -354,6 +361,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (irregular verb + punctuation)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -397,6 +405,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (modal)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -440,6 +449,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Knowledge of Language (transition)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -483,6 +493,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (purpose/conclusion)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -526,6 +537,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (organization/placement)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -569,6 +581,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (introduction)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -612,6 +625,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (agreement)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -655,6 +669,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Knowledge of Language (concision)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -698,6 +713,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (no comma splice/redundant pronoun)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -741,6 +757,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (relative pronoun)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -784,6 +801,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (participle)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -827,6 +845,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (idiom/structure)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -870,6 +889,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (comma)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -913,6 +933,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (add sentence w/ reasoning)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -956,6 +977,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (comma usage)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -999,6 +1021,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (conclusion tie-back)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1042,6 +1065,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (keep/delete w/ reasoning)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1085,6 +1109,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (agreement)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1128,6 +1153,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (participial phrase)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1171,6 +1197,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (verb form)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1214,6 +1241,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (set-up sentence)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1257,6 +1285,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (colon)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1300,6 +1329,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Knowledge of Language (NOT-acceptable)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1343,6 +1373,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (transition punctuation)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1386,6 +1417,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (verb)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1429,6 +1461,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (hyphenated modifier)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1472,6 +1505,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (whole-essay goal)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1515,6 +1549,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (intro comma)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1558,6 +1593,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (emphasis/contrast)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1601,6 +1637,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (homophone)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1644,6 +1681,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (parallelism)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1687,6 +1725,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (coordinate adjectives)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1730,6 +1769,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (quotation + apostrophe)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1773,6 +1813,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (tense agreement)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1816,6 +1857,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (theme conclusion)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1859,6 +1901,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (comma splice fix)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1902,6 +1945,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Production (parallelism)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1945,6 +1989,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (interrupter punctuation)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -1988,6 +2033,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (quotation/period)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -2031,6 +2077,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (agreement)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   },
@@ -2074,6 +2121,7 @@ export const TEST01_ENGLISH_QUESTIONS: readonly Question[] = [
     "why_tempted_md": "The original can read smoothly until you apply the rule.",
     "rule_md": "Rule focus: Conventions (no comma)..",
     "item_type": "underlined-span-mc",
+    "misconception": null,
     "reviewed": true,
     "generated_by": "test01-convert"
   }

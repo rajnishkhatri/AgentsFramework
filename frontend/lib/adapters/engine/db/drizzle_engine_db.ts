@@ -27,7 +27,7 @@
  * path.
  */
 
-import { and, asc, desc, eq, lte, notInArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, lte, notInArray, sql } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as pg from "./schema.pg";
@@ -88,6 +88,7 @@ function toQuestion(r: Record<string, unknown>): Question {
     why_tempted_md: String(r.why_tempted_md ?? ""),
     rule_md: String(r.rule_md ?? ""),
     item_type: String(r.item_type ?? "underlined-span-mc"),
+    misconception: r.misconception == null ? null : String(r.misconception),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };
@@ -123,6 +124,7 @@ function toTestItem(r: Record<string, unknown>): TestItem {
     why_tempted_md: String(r.why_tempted_md ?? ""),
     rule_md: String(r.rule_md ?? ""),
     item_type: String(r.item_type ?? ""),
+    misconception: r.misconception == null ? null : String(r.misconception),
     reviewed: Boolean(r.reviewed),
     generated_by: String(r.generated_by ?? ""),
   };
@@ -396,6 +398,25 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       );
       const first = rows[0];
       return first ? toSession(first as Record<string, unknown>) : null;
+    },
+    async listClosedSessionsByLearner(subject, learnerId, options) {
+      const predicates = [
+        eq(pg.quizSession.subject, subject),
+        eq(pg.quizSession.learner_id, learnerId),
+        isNotNull(pg.quizSession.ended_at),
+      ];
+      if (options?.sinceISO != null) {
+        predicates.push(gte(pg.quizSession.ended_at, new Date(options.sinceISO)));
+      }
+      const rows = await wrap(
+        "listClosedSessionsByLearner",
+        db
+          .select()
+          .from(pg.quizSession)
+          .where(and(...predicates))
+          .orderBy(desc(pg.quizSession.ended_at), asc(pg.quizSession.id)),
+      );
+      return rows.map((r) => toSession(r as Record<string, unknown>));
     },
     async insertAttempt(a) {
       await wrap(

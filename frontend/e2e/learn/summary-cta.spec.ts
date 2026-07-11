@@ -9,7 +9,7 @@
  * recommended-next skill is a real bank skill, and the buckets are the six
  * ACT-English skills with Maya's mastery spread.
  *
- *   T2 (FR-1). The "Practice this next" CTA must clear WCAG-AA contrast. Before
+ *   T2 (FR-1). The "Start recommended drill" CTA must clear WCAG-AA contrast. Before
  *       the S1 fix it inherited the card's PER-BUCKET accent as its fill and,
  *       with white text over the mid/pale buckets, measured ~3.6:1 (FAIL). The
  *       fix fills with the bucket-independent BRAND accent (~6.5:1). We assert it
@@ -59,7 +59,7 @@ async function assertCtaContrast(page: Page, label: string): Promise<void> {
 }
 
 test.describe("Summary CTA contrast (S1 / FR-1) — real dev bank path", () => {
-  test("the 'Practice this next' CTA clears WCAG-AA contrast (light)", async ({
+  test("the 'Start recommended drill' CTA clears WCAG-AA contrast (light)", async ({
     page,
   }) => {
     await walkToSummary(page);

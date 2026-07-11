@@ -27,7 +27,13 @@ function summary(over: Partial<SessionSummaryVM> = {}): SessionSummaryVM {
       skillName: "Conciseness",
       mode: "drill",
       accentVar: "--color-bucket-conciseness",
+      drillTitle: "6-item drill: Conciseness",
     },
+    title: "Session summary",
+    body: "Here's how this session went.",
+    misconception: null,
+    selfCorrected: false,
+    showFramedTitle: false,
     ...over,
   };
 }
@@ -117,15 +123,98 @@ describe("SummaryView — FR-4/FR-2/FR-7 recommended-skill name is a focus link"
   });
 });
 
-describe("SummaryView — FR-8 non-regression (label, route, stat tiles unchanged)", () => {
-  it("keeps the CTA label, its /quiz route, and the three stat tiles intact", () => {
+describe("SummaryView — FR-8 non-regression (route + stat tiles unchanged)", () => {
+  it("keeps the primary CTA /quiz route and the three stat tiles intact", () => {
     const doc = dom(<SummaryView vm={vm()} />);
     const cta = doc.querySelector('[data-testid="summary-start-next"]')!;
-    expect(cta.textContent).toContain("Practice this next");
     expect(cta.getAttribute("href")).toContain("/quiz");
     // The three stat tiles still render (FR-G1 unchanged).
     expect(doc.querySelector('[data-testid="summary-score"]')).not.toBeNull();
     expect(doc.querySelector('[data-testid="summary-delta"]')).not.toBeNull();
     expect(doc.querySelector('[data-testid="summary-time"]')).not.toBeNull();
+  });
+});
+
+describe("SummaryView — C2 payoff (FR-3/FR-7/FR-13/FR-15/FR-16/FR-17)", () => {
+  it("renders_summary_misconception_section_when_vm_misconception_present", () => {
+    const doc = dom(
+      <SummaryView
+        vm={vm({
+          summary: summary({ misconception: "confusing past with participle" }),
+        })}
+      />,
+    );
+    const card = doc.querySelector('[data-testid="summary-misconception"]');
+    expect(card).not.toBeNull();
+    expect(card!.getAttribute("aria-label")).toBe("The misconception I spotted");
+    expect(card!.textContent).toContain("confusing past with participle");
+  });
+
+  it("omits_summary_misconception_section_when_vm_misconception_null", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    expect(doc.querySelector('[data-testid="summary-misconception"]')).toBeNull();
+  });
+
+  it("renders_three_actions_in_order_with_correct_hrefs", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const start = doc.querySelector('[data-testid="summary-start-next"]')!;
+    const lesson = doc.querySelector('[data-testid="summary-see-lesson"]')!;
+    const done = doc.querySelector('[data-testid="summary-done"]')!;
+    expect(start.getAttribute("href")).toBe("/learn/quiz?focus=s-conc");
+    expect(start.textContent).toContain("Start recommended drill");
+    expect(done.getAttribute("href")).toBe("/learn");
+    expect(done.textContent).toContain("Done for today");
+    // Order: start → lesson → done in document order.
+    const all = [start, lesson, done];
+    const positions = all.map((el) =>
+      Array.from(doc.body.querySelectorAll("*")).indexOf(el),
+    );
+    expect(positions[0]!).toBeLessThan(positions[1]!);
+    expect(positions[1]!).toBeLessThan(positions[2]!);
+  });
+
+  it("see_lesson_renders_disabled_when_screen_comingSoon", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const lesson = doc.querySelector('[data-testid="summary-see-lesson"]')!;
+    expect(lesson.tagName.toLowerCase()).toBe("button");
+    expect(lesson.hasAttribute("disabled")).toBe(true);
+    expect(lesson.getAttribute("aria-disabled")).toBe("true");
+    expect(lesson.getAttribute("data-disabled")).toBe("true");
+    expect(lesson.getAttribute("href")).toBeNull();
+  });
+
+  it("summary_skill_link_stays_present_and_focused", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    const link = doc.querySelector('a[data-testid="summary-skill-link"]');
+    expect(link).not.toBeNull();
+    expect(link!.getAttribute("href")).toBe("/learn/quiz?focus=s-conc");
+  });
+
+  it("renders_framed_title_when_vm_showFramedTitle_true", () => {
+    const doc = dom(
+      <SummaryView
+        vm={vm({
+          summary: summary({
+            showFramedTitle: true,
+            title: "Nice work — you found the pattern.",
+            body: "You cleared the Conciseness bar.",
+          }),
+        })}
+      />,
+    );
+    expect(doc.querySelector("h1")!.textContent).toBe(
+      "Nice work — you found the pattern.",
+    );
+    expect(doc.querySelector("header p")!.textContent).toContain(
+      "You cleared the Conciseness bar.",
+    );
+  });
+
+  it("renders_neutral_title_when_vm_showFramedTitle_false", () => {
+    const doc = dom(<SummaryView vm={vm()} />);
+    expect(doc.querySelector("h1")!.textContent).toBe("Session summary");
+    expect(doc.querySelector("header p")!.textContent).toContain(
+      "Here's how this session went.",
+    );
   });
 });

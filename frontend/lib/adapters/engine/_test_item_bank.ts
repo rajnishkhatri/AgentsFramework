@@ -64,6 +64,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The simple past 'rose' is the form we say most often.",
       "rule_md": "Rise-rose-risen; raise-raised-raised. Helpers (have/had) take the third form.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -107,6 +108,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'I seen it' is common in casual speech.",
       "rule_md": "See-saw-seen: 'saw' stands alone; 'seen' rides with have/has/had.",
       "item_type": "underlined-span-mc",
+      "misconception": "using casual 'seen' for the past participle",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -150,6 +152,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Could've' SOUNDS exactly like 'could of'.",
       "rule_md": "Would/could/should pair with HAVE; the '-of' spelling is always an ear-spelling error.",
       "item_type": "underlined-span-mc",
+      "misconception": "hearing 'could've' as 'could of'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -193,6 +196,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Sung' sounds vaguely past-tense, and the sung/sang pair is easy to swap.",
       "rule_md": "Use the simple past form alone; save the participle (sung, swum, begun) for perfect tenses with 'have/had'.",
       "item_type": "underlined-span-mc",
+      "misconception": "swapping sang/sung after a helper",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7"
   },
@@ -236,6 +240,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Weather' and 'whether' sound identical, so the everyday spelling slips in.",
       "rule_md": "Match the homophone to its meaning: whether = if/choice, weather = climate.",
       "item_type": "underlined-span-mc",
+      "misconception": "confusing weather/whether by sound",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -279,6 +284,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Smooth' and 'smoother' sound fine because the adjective is so familiar.",
       "rule_md": "Modify a verb with an adverb; compare two with 'more + adverb', not the bare adjective.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -322,6 +328,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (irregular verb)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@2e145cb2f5514579b1cae251b777cff0"
   },
@@ -365,6 +372,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The alarm's chirping is easy to picture as happening 'now'.",
       "rule_md": "Match every verb to the sentence's time markers unless the meaning truly changes time.",
       "item_type": "underlined-span-mc",
+      "misconception": "the alarm's chirping is easy to picture as happening 'now'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -408,6 +416,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The plural 'fleet' nearby pulls the pronoun plural.",
       "rule_md": "Each/every + noun stays singular no matter what plural stands nearby.",
       "item_type": "underlined-span-mc",
+      "misconception": "letting a nearby plural noun pull agreement",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -451,6 +460,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The pair feels like one sandwich, so a singular verb sounds natural.",
       "rule_md": "X and Y → plural verb, unless the pair names a single fixed unit (macaroni and cheese IS).",
       "item_type": "underlined-span-mc",
+      "misconception": "treating a compound subject as singular",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -494,6 +504,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Each verb form sounds fine alone; only checking it against 'arrived' exposes the clash.",
       "rule_md": "Match verb tense to the sentence's time anchors; 'by the time X happened' demands past perfect.",
       "item_type": "underlined-span-mc",
+      "misconception": "each verb form sounds fine alone; only checking it against 'arrived'…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -537,6 +548,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Organizations feel like the people inside them, so 'their' slips in.",
       "rule_md": "Match the pronoun to the antecedent's number: one library → its.",
       "item_type": "underlined-span-mc",
+      "misconception": "treating an organization as plural 'their'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -580,6 +592,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Any single leg of the trip can be remembered as a past event.",
       "rule_md": "Verbs in a series share the sentence's time frame — don't shift without a reason.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -623,6 +636,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (homophone)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -666,6 +680,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Did good' is everywhere in casual speech.",
       "rule_md": "Good describes nouns; well describes verbs (except health: 'I feel well').",
       "item_type": "underlined-span-mc",
+      "misconception": "using 'good' where an adverb is required",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -709,6 +724,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "One letter apart and pronounced almost alike, the pair swaps constantly.",
       "rule_md": "Loose rhymes with goose (adjective); lose rhymes with snooze (verb).",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -752,6 +768,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The affect/effect pair is so notorious that a correct 'affect' invites second-guessing.",
       "rule_md": "Affect = verb (to influence); effect = noun (a result) — and check before you 'fix' what isn't broken.",
       "item_type": "underlined-span-mc",
+      "misconception": "second-guessing affect/effect",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -795,6 +812,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "In casual speech 'ran quiet' is common, so the adjective sounds acceptable.",
       "rule_md": "Use an adverb (usually -ly) to modify a verb; save the adjective for a noun.",
       "item_type": "underlined-span-mc",
+      "misconception": "using an adjective where an adverb is required",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -838,6 +856,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Doubling the marker feels like extra emphasis.",
       "rule_md": "Short adjectives take -er/-est; longer ones take more/most; never stack the two.",
       "item_type": "underlined-span-mc",
+      "misconception": "doubling a tense/aspect marker for emphasis",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -881,6 +900,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The plural noun sits right next to the verb and pulls it plural.",
       "rule_md": "Indefinite pronouns each/either/neither/everyone are singular; ignore the 'of the ___' phrase.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7"
   },
@@ -924,6 +944,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Which' feels formal enough to fit anywhere.",
       "rule_md": "Person → who (subject) / whom (object); thing → which/that.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -967,6 +988,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The plural 'clothes' sits right next to the verb, luring the ear toward 'were'.",
       "rule_md": "Strip the prepositional phrase to find the true subject before choosing the verb.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1010,6 +1032,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'To' feels connective, and many adjectives do take 'to' (similar to, equal to).",
       "rule_md": "Learn preposition pairings as fixed units — 'consistent with', 'capable of', 'preoccupied with'.",
       "item_type": "underlined-span-mc",
+      "misconception": "picking 'to' because it feels connective",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1053,6 +1076,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (idiom/structure)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1096,6 +1120,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Superlatives are so common in speech that 'most challenging' sounds natural even for a pair.",
       "rule_md": "With exactly two things, use -er/'more'; save -est/'most' for three or more.",
       "item_type": "underlined-span-mc",
+      "misconception": "reaching for a superlative when a comparative fits",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1139,6 +1164,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (idiom)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1182,6 +1208,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The parallel idiom 'forbidden to do' bleeds into this one.",
       "rule_md": "Learn preposition idioms as units: prohibited from, forbidden to, capable of, insist on.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1225,6 +1252,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'But' alone carries most of the meaning, so the missing 'also' is easy to drop.",
       "rule_md": "Complete the pair: either/or, neither/nor, both/and, not only/but also.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1268,6 +1296,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The explanation feels ongoing, so present tense sneaks in.",
       "rule_md": "Series of actions by one subject: keep every verb in the frame the first verbs set.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1311,6 +1340,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The writer knows who went to camp, so the pronoun feels clear.",
       "rule_md": "A pronoun must have exactly ONE possible antecedent — otherwise name the person.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1354,6 +1384,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Simple past feels sufficient because both events are over.",
       "rule_md": "'By the time X happened, Y HAD happened' — the earlier past takes 'had'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1397,6 +1428,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence sounds fine aloud because the meaning is guessable.",
       "rule_md": "Whatever follows 'either' must mirror what follows 'or' — noun/noun, verb/verb, place/place.",
       "item_type": "underlined-span-mc",
+      "misconception": "the sentence sounds fine aloud because the meaning is guessable",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1440,6 +1472,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Each alternative changes the verb form just enough to sound plausible in isolation.",
       "rule_md": "Rule focus: Conventions (verb form)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1483,6 +1516,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Whom' sounds more formal, so it gets sprinkled in where 'who' belongs.",
       "rule_md": "Test with he/him: 'HE organized the drive' → who; 'the drive was organized by HIM' → whom.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Whom' sounds more formal, so it gets sprinkled in where 'who' belongs",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1526,6 +1560,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The present 'watch' feels immediate, but the sentence's time markers are all past.",
       "rule_md": "'By the time X happened, Y had happened' — the earlier past action takes 'had'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1569,6 +1604,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The two verbs describe the same conversation from opposite ends.",
       "rule_md": "Imply = hint outward; infer = conclude inward. Ask which direction the meaning travels.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1612,6 +1648,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Who' sounds natural at the head of any clause about a person.",
       "rule_md": "He/she fits → who; him/her fits → whom.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Who' sounds natural at the head of any clause about a person",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1655,6 +1692,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Myself' sounds extra polite in requests and announcements.",
       "rule_md": "Reflexives (-self) only echo a subject already in the clause: 'I hurt myself', never 'contact myself'.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Myself' sounds extra polite in requests and announcements",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1698,6 +1736,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'One' and 'you' both speak generally, so they feel interchangeable mid-sentence.",
       "rule_md": "Don't shift person (one → you → they) inside a sentence or passage.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1741,6 +1780,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Also' does mean addition, so it seems right until you weigh how it reads opening a listed sentence.",
       "rule_md": "Match the transition to its POSITION and register: a sentence that adds a list item takes a full additive opener, not a bare 'also'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1784,6 +1824,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Restatement transitions sound explanatory, which feels helpful in instructions.",
       "rule_md": "In a procedure, use sequence transitions (first, next, then, finally) between steps.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1827,6 +1868,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Repeating 'first' echoes the paragraph's opening word, which can feel intentional.",
       "rule_md": "Sequence transitions must track order: first → next → finally, never two 'firsts'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1870,6 +1912,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Knowledge of Language (transition)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1913,6 +1956,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Any transition reads smoothly if you don't test the logic it claims.",
       "rule_md": "Name the real relationship (cause, example, contrast, time) before picking a transition.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@641234d1808d41ec98477ba4961d06d7"
   },
@@ -1956,6 +2000,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence sits at a paragraph's end, so 'in conclusion' feels structurally natural.",
       "rule_md": "Position doesn't dictate the transition — the logical relationship does.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -1999,6 +2044,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Both sentences describe reactions to the vote, so 'similarly' feels plausible.",
       "rule_md": "Decide whether sentence two agrees, opposes, or results — then match the transition to that.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2042,6 +2088,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Trail mix mentions hikers, the paragraph's subject, so it feels loosely on-topic.",
       "rule_md": "A concluding sentence gathers what came before — reject choices that add new or off-topic ideas.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2085,6 +2132,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Downtown' overlaps with where parks are, making the sentence feel connected.",
       "rule_md": "Test each sentence against the paragraph's main claim; cut whatever doesn't advance it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2128,6 +2176,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'In fact' is a common intensifier, and the sentence pair reads fine until the logic is tested.",
       "rule_md": "When sentence two says 'despite that', the transition must carry the concession.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2171,6 +2220,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The mineral fact (A) opens the same subject, so it feels like a natural lead — but it's too narrow.",
       "rule_md": "Read the body first; the best topic sentence is the umbrella the details already argue for.",
       "item_type": "underlined-span-mc",
+      "misconception": "the mineral fact (A) opens the same subject, so it feels like a natur…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2214,6 +2264,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "History and famous rooms feel 'library-related', so they seem supportive.",
       "rule_md": "Choose supporting detail that proves the exact point being argued, not merely the general topic.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2257,6 +2308,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The bakery sentence is concrete and vivid, which can masquerade as a strong opening.",
       "rule_md": "A thesis states a debatable position and maps the essay's reasons — not a fact or a vague topic label.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2300,6 +2352,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Rainfall variability is on-theme with drought, so it feels like a fitting close.",
       "rule_md": "A conclusion should advance the piece's purpose, not merely mention its subject.",
       "item_type": "underlined-span-mc",
+      "misconception": "rainfall variability is on-theme with drought, so it feels like a fit…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2343,6 +2396,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Options C and D both mention birds, so they feel connected to the falcon topic.",
       "rule_md": "When a passage builds a causal list, each addition must belong to that same causal thread.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2386,6 +2440,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Honey feels on-topic because bees make it — adjacency masquerades as relevance.",
       "rule_md": "Read the body first; the right topic sentence is the one the details already argue for.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2429,6 +2484,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (keep/delete w/ reasoning)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2472,6 +2528,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Meanwhile' signals a transition, so option A looks structurally correct at a glance.",
       "rule_md": "A transition sentence should echo the prior paragraph and point toward the next one.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2515,6 +2572,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Consequently' sounds authoritative, and both sentences do describe real events in order.",
       "rule_md": "Ask whether the second clause happens because of, despite, or alongside the first — then pick the transition that says so.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Consequently' sounds authoritative, and both sentences do describe r…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2558,6 +2616,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Option C stays on bridges, so it feels on-topic even though it repeats paragraph one's theme.",
       "rule_md": "Track the essay's stated plan; each paragraph must deliver the part it's responsible for.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2601,6 +2660,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Factually true closers feel legitimate even when they ignore the stated goal.",
       "rule_md": "When the stem names the writer's goal, eliminate every choice that doesn't perform it — truth alone doesn't qualify.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2644,6 +2704,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Recipe cards (D) sit near the cooking theme, so they feel like a callback.",
       "rule_md": "A callback conclusion must reawaken the specific image named, not merely the general subject.",
       "item_type": "underlined-span-mc",
+      "misconception": "recipe cards (D) sit near the cooking theme, so they feel like a call…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2687,6 +2748,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'The city has money' feels like a supporting point, but it's a separate spending debate.",
       "rule_md": "Keep only evidence that advances the exact argument; cut tangents even if loosely budget-related.",
       "item_type": "underlined-span-mc",
+      "misconception": "'The city has money' feels like a supporting point, but it's a separa…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2730,6 +2792,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Placing new information last feels safe, but here it breaks the ceiling-to-reinforcement flow.",
       "rule_md": "Insert a detail next to the sentence it develops, keeping the paragraph's logical order intact.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2773,6 +2836,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Short items read fast aloud, so the missing commas are easy to skate past.",
       "rule_md": "In a series of three or more, put a comma after each item except the last.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2816,6 +2880,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The single comma before 'Arizona' looks like it is already doing the job.",
       "rule_md": "City, State, ... and Month Day, Year, ... — the state and the year each take a closing comma.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2859,6 +2924,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Openers without verbs feel too small to deserve punctuation.",
       "rule_md": "After a long opening phrase (four-plus words), set the main clause off with a comma.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2902,6 +2968,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The single leading comma looks finished, so the missing second comma is easy to miss.",
       "rule_md": "Rule focus: Conventions (interrupter punctuation)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2945,6 +3012,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (transition punctuation)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -2988,6 +3056,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Read quickly aloud, the sentence seems to flow fine without any pause.",
       "rule_md": "A dependent clause that OPENS the sentence takes a comma before the main clause — 'Because X happened, Y followed.'",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3031,6 +3100,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (no comma splice/redundant pronoun)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3074,6 +3144,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Plural 'cats' and possessive 'cat's' sound identical aloud, so the missing apostrophe is easy to overlook.",
       "rule_md": "Singular owner → 's; plural owners ending in s → s'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3117,6 +3188,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Only one pause is easy to hear aloud, so a single comma feels sufficient.",
       "rule_md": "A nonrestrictive appositive takes commas on BOTH sides; drop both only when the name truly restricts.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3160,6 +3232,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Plural and possessive forms sound identical aloud, so the written apostrophe placement is easy to miss.",
       "rule_md": "Singular owner → 's; plural owners ending in s → s'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3203,6 +3276,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Most possessives DO take apostrophes, so 'it's' looks right.",
       "rule_md": "Test by expanding: if 'it is' fails in the slot, write 'its'.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3246,6 +3320,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Two adjectives in a row look like the comma-separated kind at a glance.",
       "rule_md": "Comma only between adjectives that pass the swap/'and' test; cumulative adjectives take none.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3289,6 +3364,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The comma splice reads smoothly aloud, so the error hides in plain sight.",
       "rule_md": "Independent clause + independent clause → semicolon, or comma + coordinating conjunction — never a comma alone.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3332,6 +3408,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'However' feels like 'but', which really does take just a comma.",
       "rule_md": "Conjunctive adverbs (however, therefore, meanwhile) joining clauses take ';' before and ',' after.",
       "item_type": "underlined-span-mc",
+      "misconception": "'However' feels like 'but', which really does take just a comma",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3375,6 +3452,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "By the end of a long aside it's easy to forget the bracket is still open.",
       "rule_md": "Whatever opens an aside (comma, dash, parenthesis) must be matched at its close.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3418,6 +3496,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The clauses are so tightly related that a comma feels sufficient.",
       "rule_md": "Comma-splice fixes: semicolon, period, or comma + FANBOYS — never a comma alone.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3461,6 +3540,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The phrase sits so close to its noun that it feels built in.",
       "rule_md": "Nonrestrictive (extra) modifiers take commas on both sides; restrictive ones take none.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3504,6 +3584,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence reads smoothly aloud, so the missing punctuation is easy to skate past.",
       "rule_md": "Use a colon — never a semicolon — after a complete clause to introduce a list.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3547,6 +3628,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original clause is perfectly grammatical — just not inside another sentence.",
       "rule_md": "Rename with a comma-wrapped phrase; save 'he is' for a separate sentence.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3590,6 +3672,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Two owners feel like they deserve two apostrophes.",
       "rule_md": "Shared thing → apostrophe on the last name; separate things → apostrophe on each name.",
       "item_type": "underlined-span-mc",
+      "misconception": "two owners feel like they deserve two apostrophes",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3633,6 +3716,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The single leading comma looks like enough, so the missing closing comma slips by.",
       "rule_md": "Rule focus: Knowledge of Language (NOT-acceptable)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3676,6 +3760,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "One dash feels dramatic enough, and the closing partner gets forgotten.",
       "rule_md": "Interrupters pair their marks: two commas, two dashes, or two parentheses — never a mix.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3719,6 +3804,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Semicolons and colons blur together as 'formal marks before lists'.",
       "rule_md": "A colon introduces a list only after a complete statement; a semicolon never introduces a list.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3762,6 +3848,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The singular 's pattern is so common it gets pasted onto plurals.",
       "rule_md": "Singular owner → 's; plural owners ending in s → s' (apostrophe alone).",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3805,6 +3892,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Commas feel harmless, but here they change who is being addressed.",
       "rule_md": "Commas around the clause = applies to all; no commas = only those. Punctuate the MEANING.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3848,6 +3936,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Plain commas are the series habit even after the items grow internal commas.",
       "rule_md": "Upgrade series separators to semicolons once any item has an internal comma.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3891,6 +3980,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence reads smoothly with only the first comma's pause.",
       "rule_md": "Contrastive 'not X' interrupters take commas before AND after.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3934,6 +4024,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The clauses are short and parallel, so the comma feels light and quick.",
       "rule_md": "Semicolon = related independent clauses, no conjunction; colon = only when the second part explains the first.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -3977,6 +4068,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The joint-ownership pattern (last name only) gets over-applied to every pair.",
       "rule_md": "Ask shared-or-separate: shared → last owner only; separate → every owner marked.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4020,6 +4112,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Semicolon and colon look interchangeable at the pivot of a sentence.",
       "rule_md": "Colon: complete clause before, anything after. Semicolon: complete clauses on BOTH sides.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4063,6 +4156,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The plural-ends-in-s rule (s') gets forced onto plurals that never end in s.",
       "rule_md": "If the plural doesn't end in s, add 's: children's, women's, geese's.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4106,6 +4200,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Aged' feels more descriptive than 'old', so it seems like enough of an upgrade.",
       "rule_md": "When the stem asks for a mood or image, pick the word whose connotation paints that picture.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4149,6 +4244,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Every option is grammatically fine, so the flat synonym 'assisted' looks safe.",
       "rule_md": "For a goal question, grade each choice only against the stated purpose — grammar alone never decides it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4192,6 +4288,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Knowledge of Language (concision)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4235,6 +4332,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The informal options are exactly how the sentence would be spoken aloud.",
       "rule_md": "Identify the passage's register first; then pick the word that belongs to it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4278,6 +4376,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Meant a ton' sounds heartfelt, but its casualness undercuts the formal courtesy.",
       "rule_md": "Match the phrasing to both the emotion and the formality the situation calls for.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Meant a ton' sounds heartfelt, but its casualness undercuts the form…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4321,6 +4420,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Disaster' and 'catastrophe' feel vivid, but their intensity fights the sentence's reassurance.",
       "rule_md": "Match the word's emotional weight to the speaker's intent — don't reach for the most dramatic option.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4364,6 +4464,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Accurate-but-bland options like 'swam' feel safe because nothing is wrong with them grammatically.",
       "rule_md": "Goal questions are not grammar questions — grade each choice against the stated purpose alone.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4407,6 +4508,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The precise scientific phrasings seem 'more correct', but they miss the young audience entirely.",
       "rule_md": "Register follows audience — for children, choose plain, vivid words over technical accuracy.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4450,6 +4552,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The casual options feel expressive, but expressiveness isn't what a formal document rewards.",
       "rule_md": "Name the passage's register first, then choose the word that belongs to it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4493,6 +4596,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The idioms are vivid, but vividness reads as unprofessional in a corporate statement.",
       "rule_md": "For official communications, choose the neutral, diplomatic wording over colorful idioms.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4536,6 +4640,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The opinion phrasings feel safe and inoffensive, but they don't move a decision-maker.",
       "rule_md": "To persuade, prefer verifiable facts and figures over hedged 'some people think' claims.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4579,6 +4684,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Rapid' sounds more sophisticated than 'fast', so it feels like the intended upgrade.",
       "rule_md": "When the aim is to impress or awe, choose the word that adds feeling, not just a fancier synonym.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Rapid' sounds more sophisticated than 'fast', so it feels like the i…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4622,6 +4728,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Notorious' sounds impressive and vaguely means 'well-known'.",
       "rule_md": "Check a word's emotional charge, not just its dictionary meaning, against the sentence's intent.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Notorious' sounds impressive and vaguely means 'well-known'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4665,6 +4772,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Beat out' is shorter and idiomatic, so it can pass as neutral until you weigh the register.",
       "rule_md": "In objective/academic writing, pick the exact, unemotional verb.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4708,6 +4816,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The technical options sound authoritative, which can seem 'more correct' on a test.",
       "rule_md": "Fit the diction to the stated audience — for novices, prefer clarity over technical precision.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4751,6 +4860,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The informal options are vivid and natural in speech.",
       "rule_md": "Check the passage's tone before judging a word: formal context → formal diction.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4794,6 +4904,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Orange-colored sphere' sounds precise, but precision isn't imagery.",
       "rule_md": "When the goal is figurative vividness, choose the metaphor or simile, not a literal description.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Orange-colored sphere' sounds precise, but precision isn't imagery",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4837,6 +4948,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The idioms convey the unfairness forcefully, but force isn't the textbook's job.",
       "rule_md": "Expository writing stays neutral — replace charged idioms with plain descriptive phrasing.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4880,6 +4992,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Determined' pairs with 'operators' naturally, hiding that it praises rather than criticizes.",
       "rule_md": "Read the surrounding clues for the writer's stance, then match the word's charge (positive/negative) to it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4923,6 +5036,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'A very lively spot' feels like an upgrade because of 'very', but an intensifier isn't imagery.",
       "rule_md": "To surpass plain phrasing, reach for a metaphor tied to the passage's imagery, not a stronger adjective.",
       "item_type": "underlined-span-mc",
+      "misconception": "'A very lively spot' feels like an upgrade because of 'very', but an…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -4966,6 +5080,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (conclusion tie-back)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5009,6 +5124,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Seriously limit your options' feels professional enough, but 'seriously' still lowers the register.",
       "rule_md": "In technical or legal writing, choose the exact domain term over an idiom or hedge.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5052,6 +5168,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Loud' is literally accurate, so it seems safe — but in a eulogy it risks sounding like criticism.",
       "rule_md": "Match connotation to the intended feeling; in a tribute, choose the warmly positive word.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5095,6 +5212,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Set down' is more specific than 'put out', so it looks like the vivid choice — but it implies carelessness.",
       "rule_md": "Pick the verb whose connotation supplies the exact impression the stem requests.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5138,6 +5256,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Pitched in' and 'lent a hand' are positive, so they feel appropriate until you weigh the solemn setting.",
       "rule_md": "Let the genre set the register — a tribute or eulogy calls for formal, dignified wording.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5181,6 +5300,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (tone/style)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5224,6 +5344,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Unwise' sounds more formal than the original, so it feels sufficient — but it lacks the alarm.",
       "rule_md": "Calibrate intensity to the writer's stance; a cautionary editorial needs a word that signals genuine risk.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Unwise' sounds more formal than the original, so it feels sufficient…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5267,6 +5388,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Useful' feels concrete, but it reduces a profound relationship to convenience.",
       "rule_md": "Choose the word that captures the depth the stem names, not a safe general-purpose synonym.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5310,6 +5432,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Read quickly, 'the rain stopped the players' parses as one clause, hiding the seam.",
       "rule_md": "Find where one complete thought ends and the next begins; mark that seam with a period, semicolon, or comma + conjunction.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5353,6 +5476,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence reads smoothly, hiding that two full sentences have collided.",
       "rule_md": "Locate where one complete thought ends; mark that seam — a lone comma or nothing won't hold two clauses.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5396,6 +5520,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The events are so connected that leaving them fused feels natural.",
       "rule_md": "Independent + independent → semicolon, period, or comma + conjunction — never nothing, never a lone comma.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5439,6 +5564,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "A single comma looks like enough because a natural pause falls there.",
       "rule_md": "Comma-splice repair: add a conjunction after the comma, or upgrade the comma to a semicolon or period.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5482,6 +5608,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Conventions (hyphenated modifier)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5525,6 +5652,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'However' feels like a conjunction, but it's an adverb — the classic splice non-fix.",
       "rule_md": "Join independent clauses with comma + FANBOYS, a semicolon, or a period — never a bare comma.",
       "item_type": "underlined-span-mc",
+      "misconception": "'However' feels like a conjunction, but it's an adverb — the classic…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5568,6 +5696,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The sentence's meaning is obvious to a human, so the misplacement slips by.",
       "rule_md": "Move a misplaced modifier so it sits directly next to the noun it modifies.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5611,6 +5740,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The phrase is long and detailed, so it feels like a full sentence.",
       "rule_md": "If the word group has no subject doing a real (finite) verb, it is a fragment — give it one.",
       "item_type": "underlined-span-mc",
+      "misconception": "the phrase is long and detailed, so it feels like a full sentence",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5654,6 +5784,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Every option reads smoothly until you ask WHO is walking.",
       "rule_md": "Ask who performs the opening modifier's action; that noun must come immediately after the comma (or be given its own clause).",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5697,6 +5828,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "We know the bicycle was dusty, so the sentence 'sounds' fine despite the misattachment.",
       "rule_md": "After an opening descriptive phrase, the very next noun must be the thing it describes.",
       "item_type": "underlined-span-mc",
+      "misconception": "we know the bicycle was dusty, so the sentence 'sounds' fine despite…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5740,6 +5872,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Almost' drifts to the front in speech, even when it belongs deeper in the sentence.",
       "rule_md": "only / almost / just / even modify whatever immediately follows them — position them there.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5783,6 +5916,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The intended meaning is clear, so the impossible attachment is easy to miss.",
       "rule_md": "Ask who performs the opening phrase's action; make that noun the subject that follows the comma.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5826,6 +5960,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Everyone knows Priya studied, so the sentence feels acceptable as written.",
       "rule_md": "An introductory -ing/-ed phrase modifies the noun that immediately follows it — make that noun the actor.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5869,6 +6004,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The verb phrase carries the same idea, so it feels interchangeable with an adjective.",
       "rule_md": "Match each list item to the form the first items set — adjective with adjectives, noun with nouns, verb with verbs.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5912,6 +6048,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The passive voice sounds formal and 'test-like', masking the misattachment.",
       "rule_md": "After an opening 'to + verb' purpose phrase, name the actor as the subject; avoid a passive that hides them.",
       "item_type": "underlined-span-mc",
+      "misconception": "the passive voice sounds formal and 'test-like', masking the misattac…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5955,6 +6092,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Each option is grammatical in isolation; only the series pattern exposes the mismatch.",
       "rule_md": "Match every item in a list to the form the first items establish (parallel structure).",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -5998,6 +6136,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The passive 'were noticed by the committee' names the committee, so it seems attached — but grammatically it isn't the subject.",
       "rule_md": "A 'While + -ing' opener modifies the sentence's subject; make the actor that subject, not a later 'by' phrase.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6041,6 +6180,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'However' feels like 'but', so a comma before it seems to work — but it can't glue clauses.",
       "rule_md": "however / therefore / moreover between two complete clauses ⇒ ; before, , after.",
       "item_type": "underlined-span-mc",
+      "misconception": "'However' feels like 'but', so a comma before it seems to work — but…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6084,6 +6224,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Public speaking' is a perfectly natural phrase on its own; only the series pattern exposes it.",
       "rule_md": "Match each list item to the grammatical form the first item establishes.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6127,6 +6268,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Than the old plant' sounds complete, hiding that a turbine's output is being set against a building.",
       "rule_md": "Complete a comparison so both sides name the same kind of thing — often by adding the echoing verb (did, does, is).",
       "item_type": "underlined-span-mc",
+      "misconception": "'Than the old plant' sounds complete, hiding that a turbine's output…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6170,6 +6312,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The shorthand comparison is how people actually talk, so the mismatch hides.",
       "rule_md": "When comparing possessions or attributes, add 'that of' / 'those of' so both sides match.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6213,6 +6356,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Than the original film' is idiomatic-sounding, masking the soundtrack-to-film mismatch.",
       "rule_md": "When comparing an attribute, insert 'that of' / 'those of' so both sides name the same attribute.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6256,6 +6400,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The extra 'being resilient' adds a nice idea, so it's tempting to keep despite breaking the balance.",
       "rule_md": "Correlative pairs (not only/but also, either/or) demand identical grammatical forms on both sides.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6299,6 +6444,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Rise up' is common in speech and song, so it sounds idiomatic.",
       "rule_md": "Drop particles that repeat the verb's built-in direction (rise up, descend down, return back).",
       "item_type": "underlined-span-mc",
+      "misconception": "'Rise up' is common in speech and song, so it sounds idiomatic",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6342,6 +6488,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The longer relative clause sounds more formal and 'complete'.",
       "rule_md": "Try replacing a relative clause with a single preposition; if nothing is lost, the preposition wins.",
       "item_type": "underlined-span-mc",
+      "misconception": "the longer relative clause sounds more formal and 'complete'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6385,6 +6532,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Curious' and 'interested' are true in a loose sense, so they seem adequate.",
       "rule_md": "Pick the related word whose precise connotation fits the situation's emotional cue.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6428,6 +6576,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The long phrase sounds official, which reads as 'more correct'.",
       "rule_md": "Swap wordy connectors for their one-word equivalents (due to the fact that → because).",
       "item_type": "underlined-span-mc",
+      "misconception": "the long phrase sounds official, which reads as 'more correct'",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6471,6 +6620,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Skinny', 'thin', and 'slim' are close cousins, so it's easy to swap one for another.",
       "rule_md": "Related words differ in meaning — pick the one whose sense the sentence actually needs.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Skinny', 'thin', and 'slim' are close cousins, so it's easy to swap…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6514,6 +6664,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The doubled phrase is common in speech, where redundancy aids the listener.",
       "rule_md": "Expand abbreviations mentally (a.m. = morning) to catch hidden repetition.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6557,6 +6708,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Hard', 'solid', and 'stiff' all touch firmness physically, so one seems swappable for 'firm'.",
       "rule_md": "Check whether the underlined word already carries the right shade before replacing it.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6600,6 +6752,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Respect' is a common near-synonym, so leaving it feels safe.",
       "rule_md": "When several related words fit loosely, choose the one whose exact shade the sentence rewards.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6643,6 +6796,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The words look almost identical, so the negative one slips in unnoticed.",
       "rule_md": "Related words can carry opposite connotations — match the emotional charge to the context.",
       "item_type": "underlined-span-mc",
+      "misconception": "the words look almost identical, so the negative one slips in unnoticed",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6686,6 +6840,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Longer phrases feel more formal and thorough.",
       "rule_md": "Cut words that restate what another word already contains.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6729,6 +6884,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Doubling adjectives feels emphatic, as if two synonyms are stronger than one.",
       "rule_md": "Cut any word that repeats what a neighboring word already says.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6772,6 +6928,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Not very good at' sounds appropriately cautious, but caution isn't precision.",
       "rule_md": "In technical description, choose the exact term for the failure over a vague qualifier.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Not very good at' sounds appropriately cautious, but caution isn't p…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6815,6 +6972,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Very exact' feels emphatic, but the intensifier adds no meaning 'precise' lacks.",
       "rule_md": "Prefer the one word that names the exact quality over an intensifier-plus-adjective.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6858,6 +7016,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The phrase 'said good things about' sounds specific because it's long, but it's imprecise.",
       "rule_md": "Replace a vague multi-word phrase with the single verb that names the exact action.",
       "item_type": "underlined-span-mc",
+      "misconception": "the phrase 'said good things about' sounds specific because it's long…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6901,6 +7060,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Goes over' is technically true, and 'true enough' masquerades as 'precise'.",
       "rule_md": "Prefer the specific verb over a general verb + preposition when one exists.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6944,6 +7104,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (emphasis/contrast)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -6987,6 +7148,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Made' is technically true, so it passes unless you reach for the exact term.",
       "rule_md": "Choose the specific verb the field uses over a general-purpose one.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7030,6 +7192,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Rewritten versions look like improvements because they change the words — but not the waste.",
       "rule_md": "If a modifier repeats information the noun already carries, delete it entirely.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7073,6 +7236,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The original can read smoothly until you apply the rule.",
       "rule_md": "Rule focus: Production (introduction)..",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7116,6 +7280,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "A fancy foreign phrase like 'raison d'être' can feel sophisticated enough to be right.",
       "rule_md": "Test an idiom or borrowed phrase against the literal meaning; replace it if the senses clash.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7159,6 +7324,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "The elevated phrases sound impressive on a menu, tempting you past their meaning.",
       "rule_md": "When a borrowed superlative clashes with the facts, a plain accurate phrase is the correct fix.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7202,6 +7368,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'180 degree turn' is a familiar way to say reversal, so its built-in redundancy hides.",
       "rule_md": "Cut redundancy in stock phrases, and check that any figure of speech points the right direction.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7245,6 +7412,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Ad nauseam' is a familiar Latin tag for repetition, so it seems apt on the surface.",
       "rule_md": "Weigh a borrowed phrase's connotation against the sentence's tone, not just its literal sense.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7288,6 +7456,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'The reason is because' is extremely common in speech and sounds natural.",
       "rule_md": "Pair 'the reason' with 'that'; pair 'because' with a plain clause — never both.",
       "item_type": "underlined-span-mc",
+      "misconception": "'The reason is because' is extremely common in speech and sounds natural",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7331,6 +7500,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "'Enfants terribles' sounds worldly and startup-flavored, masking that it means the reverse.",
       "rule_md": "Confirm a borrowed phrase's meaning agrees with the surrounding facts before keeping it.",
       "item_type": "underlined-span-mc",
+      "misconception": "'Enfants terribles' sounds worldly and startup-flavored, masking that…",
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },
@@ -7374,6 +7544,7 @@ export const TEST_ITEM_BANK: readonly TestItem[] = [
       "why_tempted_md": "Both are French borrowings, so one can seem as fitting as the other to an unsure reader.",
       "rule_md": "Match a borrowed expression to its true meaning; sophistication doesn't excuse a misfit.",
       "item_type": "underlined-span-mc",
+      "misconception": null,
       "reviewed": true,
       "generated_by": "gpt-4o-mini+gpt-4o>=d2@d5532ef964cc4b0c864e72539eed376c"
   },

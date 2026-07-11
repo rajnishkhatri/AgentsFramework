@@ -1,11 +1,13 @@
 /**
- * SummaryView — the Session-Summary screen (Screen 5, FR-G1..G3).
+ * SummaryView — the Session-Summary screen (Screen 5, FR-G1..G3 + C2 payoff).
  *
  * Presentational only (F-R1): renders a `SummaryVM` (composed by `loadSummary`).
  * No engine port, no I/O, no SDK. Three stat tiles — score (STORED, FR-G1),
  * mastery delta (signed, or "—" when the session-start snapshot was absent,
- * ADR-0011 §4), and time — plus a recommended-next card whose CTA re-opens Quiz
- * (FR-G2). The mastery-delta tile shows a number, never color-only (FR-A8).
+ * ADR-0011 §4), and time — plus a recommended-next card and the C2 three-actions
+ * row (FR-16). Misconception accent card when authored (FR-15). Framed title
+ * from the VM (FR-13). The mastery-delta tile shows a number, never color-only
+ * (FR-A8).
  */
 
 import * as React from "react";
@@ -31,6 +33,8 @@ function StatTile(props: { label: string; value: string; testId: string }): Reac
 export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
   const { summary, masteryDeltaKnown } = props.vm;
   const quizRoute = screen("quiz").route; // /learn/quiz
+  const skillScreen = screen("skill");
+  const dashboardRoute = screen("dashboard").route;
   const deltaValue = masteryDeltaKnown ? summary.masteryDeltaTile : "—";
   // S2 (FR-4): the recommended-skill name deep-links into a FOCUSED drill on
   // that skill (`?focus=<skillId>`), honored by the Quiz page (FR-6). The
@@ -42,9 +46,26 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold">Session summary</h1>
-        <p className="text-sm text-muted">Here&rsquo;s how this session went.</p>
+        <h1 className="text-xl font-semibold">{summary.title}</h1>
+        <p className="text-sm text-muted">{summary.body}</p>
       </header>
+
+      {summary.misconception != null ? (
+        <section
+          aria-label="The misconception I spotted"
+          data-testid="summary-misconception"
+          className={cn(
+            "rounded-[13px] border p-4",
+            "border-[color-mix(in_oklab,var(--color-accent)_35%,var(--color-border))]",
+            "bg-[color-mix(in_oklab,var(--color-accent)_8%,transparent)]",
+          )}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+            The misconception I spotted
+          </p>
+          <p className="mt-1 text-sm">{summary.misconception}</p>
+        </section>
+      ) : null}
 
       <dl className="grid grid-cols-3 gap-3">
         <StatTile label="Score" value={summary.scoreTile} testId="summary-score" />
@@ -57,7 +78,7 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
         data-testid="summary-recommended"
         style={{ ["--accent" as string]: `var(${summary.recommended.accentVar})` }}
         className={cn(
-          "flex flex-col gap-3 rounded-[13px] border p-5 sm:flex-row sm:items-center sm:justify-between",
+          "flex flex-col gap-3 rounded-[13px] border p-5",
           "border-[color-mix(in_oklab,var(--accent)_35%,var(--color-border))]",
           "bg-[color-mix(in_oklab,var(--accent)_8%,transparent)]",
         )}
@@ -73,19 +94,56 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
           >
             {summary.recommended.skillName}
           </Link>
+          <p className="text-sm text-muted">{summary.recommended.drillTitle}</p>
         </div>
-        <Link
-          href={quizRoute}
-          data-testid="summary-start-next"
-          // FR-1/FR-3: fill with the BRAND accent (`--color-accent`), not the
-          // card-scoped per-bucket `--accent` above. The per-bucket fill + white
-          // text drops below WCAG-AA on the pale/mid buckets (~3.6:1, measured);
-          // the bucket-independent brand pair (`bg-accent`/`text-on-accent`)
-          // clears AA (~6.5:1). The card keeps `--accent` for its border/tint.
-          className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
-        >
-          Practice this next
-        </Link>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          <Link
+            href={focusHref}
+            data-testid="summary-start-next"
+            // FR-1/FR-3: fill with the BRAND accent (`--color-accent`), not the
+            // card-scoped per-bucket `--accent` above. The per-bucket fill + white
+            // text drops below WCAG-AA on the pale/mid buckets (~3.6:1, measured);
+            // the bucket-independent brand pair (`bg-accent`/`text-on-accent`)
+            // clears AA (~6.5:1). The card keeps `--accent` for its border/tint.
+            className="inline-flex items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-on-accent"
+          >
+            Start recommended drill
+          </Link>
+
+          {skillScreen.comingSoon ? (
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              data-disabled="true"
+              title="Coming soon"
+              data-testid="summary-see-lesson"
+              className={cn(
+                "inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-semibold",
+                "cursor-not-allowed opacity-50",
+              )}
+            >
+              See full lesson
+            </button>
+          ) : (
+            <Link
+              href={skillScreen.route}
+              data-testid="summary-see-lesson"
+              className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-semibold"
+            >
+              See full lesson
+            </Link>
+          )}
+
+          <Link
+            href={dashboardRoute}
+            data-testid="summary-done"
+            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold text-muted underline-offset-2 hover:underline"
+          >
+            Done for today
+          </Link>
+        </div>
       </section>
     </div>
   );

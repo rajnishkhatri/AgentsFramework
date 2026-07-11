@@ -152,6 +152,8 @@ export const testItem = pgTable("test_item", {
   why_tempted_md: text("why_tempted_md").notNull().default(""),
   rule_md: text("rule_md").notNull().default(""),
   item_type: text("item_type").notNull().default(""),
+  // Author-captured one-line misconception (C2 / ADR-0027). Null = honest-absent.
+  misconception: text("misconception"),
   reviewed: boolean("reviewed").notNull().default(false),
   generated_by: text("generated_by").notNull().default(""),
 });
