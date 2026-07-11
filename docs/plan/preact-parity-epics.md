@@ -195,8 +195,14 @@ templated) → `decisions.md` at minimum, ADR if it introduces a new derivation 
 
 ---
 
-## Epic D — Quiz session frame + taxonomy polish  🟨
+## Epic D — Quiz session frame + taxonomy polish  🟨  ✅ **RELEASED** *(2026-07-11)*
 
+> **✅ RELEASED 2026-07-11** — all sprints on `main`: D0 (#148), D1 Q-7/Q-8/Q-9 (#149),
+> D2 taxonomy+dots + D3 Q-1b→**keep 30** (#150), D4 D-8→**deferred to Epic E** (#151).
+> `Q-1b` resolved docs-only (kept `DEFAULT_TARGET_COUNT = 30`); `D-8` declined the
+> `comingSoon` alternate and deferred to Epic E (route + nav land together). Exit criteria:
+> [board §exit](preact-parity-sprint-board-D.md). **Next gate: Epic E** (one epic in flight).
+>
 > **Board authored** ([preact-parity-sprint-board-D.md](preact-parity-sprint-board-D.md)) —
 > Stage-1 CLOSED-pending-human-gate ([brainstorm](preact-parity-epic-D.brainstorm.md)):
 > five premises refuted (Q-7 view-only, Q-9 "dismissible", Q-1b as code, D-8 as free
