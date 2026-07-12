@@ -387,6 +387,30 @@ function resolveBlock(
   }
 }
 
+const TENSION_TAGS: ReadonlySet<BlockTag> = new Set([
+  "pitfall",
+  "misconceptionCallout",
+]);
+
+/**
+ * GUARD-END-1 (AL-13 block layer): a self-contained lesson main zone must end
+ * on a resolution, never on an unresolved tension block. Mutates `main` in
+ * place: while the last block is a tension block AND no `rule` appears anywhere
+ * before it, drop it. A parting tension block that FOLLOWS a `rule` (the
+ * refresher exception) is retained, because the rule already resolved the beat.
+ */
+function enforceEndOnResolution(main: BlockVM[]): void {
+  while (main.length > 0) {
+    const last = main[main.length - 1]!;
+    if (!TENSION_TAGS.has(last.tag)) return;
+    const ruleAbove = main
+      .slice(0, main.length - 1)
+      .some((b) => b.tag === "rule");
+    if (ruleAbove) return; // parting caution after the rule — permitted (FR-6d)
+    main.pop();
+  }
+}
+
 /**
  * Compose the skill-detail surface VM from selector output + recipe map.
  * Returns empty:true when tutorial is null (honest degrade, FR-3/FR-18).
@@ -415,6 +439,13 @@ export function toSkillDetailVM(inputs: SkillDetailInputs): SkillDetailVM {
       order += 1;
     }
   }
+
+  // GUARD-END-1 (AL-13 block layer): the main zone must end on a resolution,
+  // never on an unresolved tension block. A partial seed could otherwise leave
+  // a `pitfall`/`misconceptionCallout` trailing with no `rule` above it — the
+  // learner staring at a trap with no fix below. Drop such trailing tension
+  // blocks. A parting `pitfall` AFTER `rule` (refresher, FR-6d) is retained.
+  enforceEndOnResolution(main);
 
   const rail: BlockVM[] = [];
   let railOrder = 0;

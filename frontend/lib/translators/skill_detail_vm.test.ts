@@ -199,6 +199,43 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
     expect(vm.main.every((b) => b.tag !== "misconceptionCallout")).toBe(true);
   });
 
+  it("GUARD-END-1: newSkill with only ground+pitfall authored must NOT end on pitfall (no rule above it)", () => {
+    // A partial seed (ground + pitfall only) would let the pure recipe walk end
+    // on a tension block with no rule/resolution above it — the AL-13 block-layer
+    // guard forbids this (Adaptive-Lesson-Protocol §AL-13 / Decisions §D2). The
+    // composer must drop the trailing unresolved tension block, never leave the
+    // learner staring at a trap with no way out.
+    const partial: Tutorial = {
+      id: "tut-partial",
+      subject: "act-english",
+      skill_id: "s-punc",
+      body_md: "", // no rule content
+      examples: [],
+      generated_from: "hand:rajnish@2026-07-11",
+      reviewed: true,
+      ground_md: "You already use commas.",
+      pitfall_md: "A pair vs none flips meaning.",
+    };
+    const vm = toSkillDetailVM({
+      context: "newSkill",
+      tutorial: partial,
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: null,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const last = vm.main[vm.main.length - 1];
+    // The main zone must not end on an unresolved tension block.
+    const TENSION = new Set(["pitfall", "misconceptionCallout"]);
+    const hasRule = vm.main.some((b) => b.tag === "rule");
+    if (last != null && TENSION.has(last.tag)) {
+      expect(hasRule).toBe(true); // ending on tension is only OK if rule appeared above
+    }
+    // Concretely for this fixture: no rule authored → pitfall must be dropped.
+    expect(vm.main.map((b) => b.tag)).not.toContain("pitfall");
+  });
+
   it("FR-6d: refresher → rule→annotated→pitfall(parting), ends on parting pitfall", () => {
     const vm = toSkillDetailVM({
       context: "refresher",
