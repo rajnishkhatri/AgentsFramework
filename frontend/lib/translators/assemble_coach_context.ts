@@ -1,9 +1,10 @@
 /**
  * assemble_coach_context — pin + Question + optional misses/mastery → wire
- * `input.coach_context` (BP-3 / design §4.1 / ADR-0012).
+ * `input.coach_context` (BP-3 / design §4.1 / ADR-0012 / ADR-0030).
  *
  * Pure T1: omit dishonest optionals; never invent `misses_aggregate.window`.
- * Returns null when pin is absent or Question failed to load (FR-9/FR-10).
+ * Item pin: null when Question failed to load or id mismatches (FR-9/FR-10).
+ * Lesson pin: skill-only context, question omitted (honest-null, E1b-D2).
  */
 
 import type { CoachMode } from "./coach_context_sanitizer";
@@ -16,7 +17,9 @@ export interface CoachMissesAggregate {
   // window intentionally omitted this pass (C1a #2)
 }
 
-export interface WireCoachContext {
+/** Item-scoped coach context (quiz pin). Wire-compatible with pre-D2 shape. */
+export interface WireCoachContextItem {
+  readonly context_kind?: "item";
   readonly mode: CoachMode;
   readonly question_id: string;
   readonly skill_id: string;
@@ -24,6 +27,20 @@ export interface WireCoachContext {
   readonly misses_aggregate?: CoachMissesAggregate;
   readonly mastery_snapshot?: Readonly<Record<string, number>>;
 }
+
+/**
+ * Lesson-scoped coach context (E1b-D2 / ADR-0030). `question_id`/`question`
+ * omitted (honest-null) — never fabricated. Mode is always pre_submit.
+ */
+export interface WireCoachContextLesson {
+  readonly context_kind: "lesson";
+  readonly mode: "pre_submit";
+  readonly skill_id: string;
+  readonly misses_aggregate?: CoachMissesAggregate;
+  readonly mastery_snapshot?: Readonly<Record<string, number>>;
+}
+
+export type WireCoachContext = WireCoachContextItem | WireCoachContextLesson;
 
 export interface AssembleCoachContextArgs {
   readonly pin: CoachSurfacePin | null;
@@ -36,35 +53,22 @@ export interface AssembleCoachContextArgs {
   readonly skillStates?: ReadonlyArray<SkillState> | null;
 }
 
-/**
- * Build wire coach_context or null when honesty forbids a payload.
- * Mastery values are percent (0–100) from SkillState.mastery (0–1).
- */
-export function assembleCoachContext(
+function withOptionals<T extends WireCoachContext>(
+  ctx: T,
   args: AssembleCoachContextArgs,
-): WireCoachContext | null {
-  const { pin, question, mode } = args;
-  if (pin == null || question == null) return null;
-  if (question.id !== pin.questionId) return null;
-
-  const ctx: WireCoachContext = {
-    mode,
-    question_id: pin.questionId,
-    skill_id: pin.skillId,
-    question,
-  };
-
+  skillId: string,
+): T {
   const misses = args.missesOnSkill;
-  const withMisses: WireCoachContext =
+  const withMisses =
     misses != null && Number.isFinite(misses) && misses >= 0
       ? {
           ...ctx,
-          misses_aggregate: { skill_id: pin.skillId, missed: misses },
+          misses_aggregate: { skill_id: skillId, missed: misses },
         }
       : ctx;
 
   const states = args.skillStates;
-  if (states == null || states.length === 0) return withMisses;
+  if (states == null || states.length === 0) return withMisses as T;
 
   const snapshot: Record<string, number> = {};
   for (const s of states) {
@@ -72,7 +76,41 @@ export function assembleCoachContext(
       snapshot[s.skill_id] = Math.round(s.mastery * 100);
     }
   }
-  if (Object.keys(snapshot).length === 0) return withMisses;
+  if (Object.keys(snapshot).length === 0) return withMisses as T;
 
-  return { ...withMisses, mastery_snapshot: snapshot };
+  return { ...withMisses, mastery_snapshot: snapshot } as T;
+}
+
+/**
+ * Build wire coach_context or null when honesty forbids a payload.
+ * Mastery values are percent (0–100) from SkillState.mastery (0–1).
+ */
+export function assembleCoachContext(
+  args: AssembleCoachContextArgs,
+): WireCoachContext | null {
+  const { pin, question } = args;
+  if (pin == null) return null;
+
+  if (pin.kind === "lesson") {
+    // E1b-D2: skill-only seed. Skip questionId guard; omit question (honest-null).
+    // Mode forced to pre_submit — no question_id ⇒ cannot assert post_feedback.
+    const ctx: WireCoachContextLesson = {
+      context_kind: "lesson",
+      mode: "pre_submit",
+      skill_id: pin.skillId,
+    };
+    return withOptionals(ctx, args, pin.skillId);
+  }
+
+  // Item branch (unchanged contract).
+  if (question == null) return null;
+  if (question.id !== pin.questionId) return null;
+
+  const ctx: WireCoachContextItem = {
+    mode: args.mode,
+    question_id: pin.questionId,
+    skill_id: pin.skillId,
+    question,
+  };
+  return withOptionals(ctx, args, pin.skillId);
 }

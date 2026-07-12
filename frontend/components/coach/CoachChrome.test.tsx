@@ -57,7 +57,7 @@ describe("CoachChrome — structure (FR-4)", () => {
   it("shows current-item and history when present (FR-5, FR-6)", () => {
     const doc = staticDoc({
       vm: vm({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
         missesOnSkill: 3,
         skillLabel: "Commas",
       }),

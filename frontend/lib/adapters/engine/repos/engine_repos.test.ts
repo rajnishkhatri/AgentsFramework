@@ -472,6 +472,159 @@ describe("DrizzleAttemptRepo — append-only + misses", () => {
     });
     expect([...(await repo.servedSkillIds("sessB"))]).toEqual(["s-punc"]);
   });
+
+  it("FR-7: accuracyBySkill reads attempt only — never skill_state", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([question({ id: "q1", skill_id: "s-punct" })]);
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-06-30T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    await db.insertAttempt({
+      id: "a1",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q1",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:01Z",
+    });
+    // Poison mastery — accuracy must ignore it (FR-5/FR-7).
+    await db.upsertSkillState({
+      subject: "act-english",
+      skill_id: "s-punct",
+      learner_id: "alice",
+      mastery: 0.99,
+      last_seen: "2026-06-30T00:00:00Z",
+      fsrs_stability: 10,
+      fsrs_difficulty: 1,
+      due_at: "2999-01-01T00:00:00Z",
+      fsrs_card: null,
+    });
+    const repo = new DrizzleAttemptRepo({ db });
+    const origGet = db.getSkillState.bind(db);
+    const origList = db.listSkillState.bind(db);
+    const origUpsert = db.upsertSkillState.bind(db);
+    let skillStateReads = 0;
+    let skillStateWrites = 0;
+    db.getSkillState = async (...args) => {
+      skillStateReads += 1;
+      return origGet(...args);
+    };
+    db.listSkillState = async (...args) => {
+      skillStateReads += 1;
+      return origList(...args);
+    };
+    db.upsertSkillState = async (...args) => {
+      skillStateWrites += 1;
+      return origUpsert(...args);
+    };
+    const acc = await repo.accuracyBySkill("act-english", "alice", "s-punct");
+    expect(acc).toEqual({ valuePct: 100, bars: [100] });
+    expect(skillStateReads).toBe(0);
+    expect(skillStateWrites).toBe(0);
+  });
+
+  it("FR-8: hinted-but-correct counts as correct in accuracyBySkill", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedQuestions([question({ id: "q1", skill_id: "s-punct" })]);
+    await db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-06-30T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    await db.insertAttempt({
+      id: "a1",
+      subject: "act-english",
+      session_id: "sess1",
+      question_id: "q1",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 1,
+      used_hint: true, // hinted… still correct (FR-D5 / FR-8)
+      created_at: "2026-06-30T00:00:01Z",
+    });
+    const repo = new DrizzleAttemptRepo({ db });
+    const acc = await repo.accuracyBySkill("act-english", "alice", "s-punct");
+    expect(acc).toEqual({ valuePct: 100, bars: [100] });
+  });
+
+  it("accuracyBySkill join counts bank(test_item) attempts via COALESCE", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedTestItems([
+      {
+        id: "ti-punc",
+        subject: "act-english",
+        skill_id: "s-punc",
+        difficulty: 2,
+        context_html: "<p>c</p>",
+        stem_md: "Which choice is best?",
+        choices: [
+          { letter: "A", label: "NO CHANGE", is_no_change: true },
+          { letter: "B", label: "b", is_no_change: false },
+          { letter: "C", label: "c", is_no_change: false },
+          { letter: "D", label: "d", is_no_change: false },
+        ],
+        answer_letter: "A",
+        per_choice_rationale: { A: "correct" },
+        why_correct_md: "because",
+        why_tempted_md: "tempting",
+        rule_md: "the rule",
+        item_type: "underlined-span-mc",
+        misconception: null,
+        reviewed: true,
+        generated_by: "test@run1",
+      },
+    ]);
+    await db.insertSession({
+      id: "sessB",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: "2026-07-08T00:00:00Z",
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+    await db.insertAttempt({
+      id: "a1",
+      subject: "act-english",
+      session_id: "sessB",
+      question_id: "ti-punc",
+      chosen_letter: "A",
+      correct: true,
+      elapsed_ms: 1,
+      used_hint: false,
+      created_at: "2026-07-08T00:00:01Z",
+    });
+    const repo = new DrizzleAttemptRepo({ db });
+    const acc = await repo.accuracyBySkill("act-english", "alice", "s-punc");
+    expect(acc).toEqual({ valuePct: 100, bars: [100] });
+  });
+
+  it("accuracyBySkill returns null when learner has no on-skill attempts", async () => {
+    const repo = new DrizzleAttemptRepo({ db: new InMemoryEngineDb() });
+    expect(await repo.accuracyBySkill("act-english", "alice", "s-punct")).toBeNull();
+  });
 });
 
 // --- SessionRepo ---------------------------------------------------------

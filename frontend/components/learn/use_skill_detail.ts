@@ -48,10 +48,11 @@ export async function loadSkillDetail(
   const skill = skills.find((s) => s.id === args.skillId);
   if (skill == null) return { status: "not_found" };
 
-  const [tutorial, skillStates, misses] = await Promise.all([
+  const [tutorial, skillStates, misses, accuracy] = await Promise.all([
     ports.tutorialRepo.getTutorial(args.subject, args.skillId),
     ports.learnerRead.listSkillState(args.subject, args.learnerId),
     ports.attemptRepo.misses(args.subject, args.learnerId),
+    ports.attemptRepo.accuracyBySkill(args.subject, args.learnerId, args.skillId),
   ]);
 
   const stateForSkill = skillStates.find((s) => s.skill_id === args.skillId);
@@ -93,7 +94,8 @@ export async function loadSkillDetail(
     skill,
     misconceptionTag: dueMiss?.tag ?? null,
     dueSkills,
-    accuracy: null, // E1a carve-out FR-16
+    accuracy,
+    masteryPct,
     nowISO: args.nowISO,
     skillStates,
   });
@@ -143,6 +145,7 @@ export function useSkillDetail(args: {
   readonly subject: string;
   readonly learnerId: string;
   readonly skillId: string | null;
+  readonly requested?: LessonContext;
 }): {
   readonly result: SkillDetailLoadResult | null;
   readonly loading: boolean;
@@ -164,6 +167,7 @@ export function useSkillDetail(args: {
       learnerId: args.learnerId,
       skillId: args.skillId,
       nowISO: new Date().toISOString(),
+      ...(args.requested != null ? { requested: args.requested } : {}),
     }).then((r) => {
       if (!cancelled) {
         setResult(r);
@@ -173,7 +177,7 @@ export function useSkillDetail(args: {
     return () => {
       cancelled = true;
     };
-  }, [ports, args.subject, args.learnerId, args.skillId]);
+  }, [ports, args.subject, args.learnerId, args.skillId, args.requested]);
 
   return { result, loading };
 }

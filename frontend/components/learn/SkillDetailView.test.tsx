@@ -1,12 +1,12 @@
 /**
- * L1 tests for SkillDetailView — E1a FR-6b/6e/11/12/13/14/16.
+ * L1 tests for SkillDetailView — E1a FR-6b/6e/11/12/13/14/16 + E1b-D1/D2.
  * Repo convention (no @testing-library/react): renderToStaticMarkup + JSDOM
  * for structure; createRoot for interactive FR-12/13/14.
  */
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 import * as React from "react";
 import { createRoot } from "react-dom/client";
@@ -14,7 +14,17 @@ import { act } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Skill, Tutorial } from "@/lib/wire/engine_entities";
 import { toSkillDetailVM } from "@/lib/translators/skill_detail_vm";
+import {
+  coachThreadSnapshot,
+  resetCoachThread,
+  setCoachPin,
+} from "@/components/coach/coach_thread_store";
 import { SkillDetailView } from "./SkillDetailView";
+
+const pushMock = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn(), prefetch: vi.fn() }),
+}));
 
 // react-dom/client needs a document in the node environment.
 const domGlobal = new JSDOM("<!DOCTYPE html><html><body></body></html>", {
@@ -88,6 +98,7 @@ describe("SkillDetailView — structural FRs", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const doc = ssr(vm);
@@ -104,6 +115,7 @@ describe("SkillDetailView — structural FRs", () => {
       misconceptionTag: tag,
       dueSkills: [{ skillId: "s-gram", name: "Usage" }],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const doc = ssr(vm);
@@ -121,6 +133,7 @@ describe("SkillDetailView — structural FRs", () => {
       misconceptionTag: "a tag",
       dueSkills: [{ skillId: "s-gram", name: "Usage" }],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const doc = ssr(vm);
@@ -188,6 +201,7 @@ describe("SkillDetailView — interactive FRs (createRoot)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const host = mount(vm, { onAttemptRecord, onSchedulerReview });
@@ -214,6 +228,7 @@ describe("SkillDetailView — interactive FRs (createRoot)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const host = mount(vm);
@@ -237,6 +252,7 @@ describe("SkillDetailView — interactive FRs (createRoot)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const host = mount(vm);
@@ -255,5 +271,99 @@ describe("SkillDetailView — interactive FRs (createRoot)", () => {
     expect(host.querySelector('[data-testid="note-echo"]')!.textContent).toContain(
       "when you can remove it",
     );
+  });
+});
+
+describe("SkillDetailView — accuracyStat (E1b-D1 FR-4)", () => {
+  it("FR-4: renders % alongside bars + distinct-from-mastery footnote", () => {
+    const vm = toSkillDetailVM({
+      context: "returning",
+      tutorial: fullTutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: { valuePct: 67, bars: [50, 75, 100] },
+      masteryPct: 42,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const doc = ssr(vm);
+    expect(doc.querySelector('[data-testid="block-accuracyStat"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="accuracy-value"]')!.textContent).toBe(
+      "67%",
+    );
+    expect(doc.querySelectorAll('[data-testid="accuracy-bars"]')).toHaveLength(1);
+    expect(doc.querySelectorAll('[data-testid^="accuracy-bar-"]')).toHaveLength(3);
+    expect(
+      doc.querySelector('[data-testid="accuracy-mastery-footnote"]')!.textContent,
+    ).toContain("Not your mastery estimate (42%)");
+    expect(
+      doc.querySelector('[data-testid="accuracy-mastery-footnote"]')!.textContent,
+    ).toContain("accuracy is a different number");
+  });
+
+  it("FR-4 honest-absent: masteryPct null → footnote without parenthetical", () => {
+    const vm = toSkillDetailVM({
+      context: "newSkill",
+      tutorial: fullTutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: { valuePct: 50, bars: [50] },
+      masteryPct: null,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const doc = ssr(vm);
+    const footnote = doc.querySelector(
+      '[data-testid="accuracy-mastery-footnote"]',
+    )!.textContent!;
+    expect(footnote).toContain("Not your mastery estimate");
+    expect(footnote).not.toMatch(/\(\d+%\)/);
+  });
+});
+
+describe("SkillDetailView — coach entry seed (E1b-D2 FR-3)", () => {
+  afterEach(() => {
+    resetCoachThread();
+    pushMock.mockClear();
+  });
+
+  it("FR-3: Open coach writes a lesson pin + navigates", () => {
+    // Stale item pin must be overwritten (FR-1 side-effect of the write).
+    setCoachPin({
+      kind: "item",
+      questionId: "q-stale",
+      skillId: "s-gram",
+      label: "Q9 · Usage",
+    });
+    const vm = toSkillDetailVM({
+      context: "returning",
+      tutorial: fullTutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: null,
+      masteryPct: null,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    act(() => {
+      root.render(<SkillDetailView vm={vm} />);
+    });
+    const btn = host.querySelector(
+      '[data-testid="coach-entry-seam"]',
+    ) as HTMLButtonElement;
+    expect(btn).not.toBeNull();
+    act(() => {
+      btn.click();
+    });
+    expect(coachThreadSnapshot().pin).toEqual({
+      kind: "lesson",
+      skillId: "s-punc",
+      label: "Punctuation",
+    });
+    expect(coachThreadSnapshot().mode).toBe("pre_submit");
+    expect(pushMock).toHaveBeenCalledWith("/learn/coach");
   });
 });

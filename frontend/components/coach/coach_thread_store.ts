@@ -84,14 +84,14 @@ export function subscribeCoachThread(onChange: () => void): () => void {
 }
 
 /**
- * Set or clear the UI pin (Feedback Ask-the-coach / quiz panel live item).
- * Optional `mode` is advisory for chrome + wire (default `pre_submit`);
- * clearing the pin resets mode.
+ * Set or clear the UI pin (Feedback Ask-the-coach / quiz panel live item /
+ * lesson coachEntry). Optional `mode` is advisory for chrome + wire (default
+ * `pre_submit`); clearing the pin resets mode.
  *
- * Same-item pin/mode updates leave transcript + threadId alone (FR-J3 panel↔
- * screen). A different `questionId` starts a fresh server thread and clears
- * turns so chips like "Give me a similar item" are not answered against the
- * previous item's conversation.
+ * Same-identity pin/mode updates leave transcript + threadId alone (FR-J3
+ * panel↔screen). Identity is **branch-aware** (ADR-0030): item pins key on
+ * `questionId`; lesson pins key on `skillId`. A kind switch or id change
+ * starts a fresh server thread and clears turns.
  */
 export function setCoachPin(
   pin: CoachSurfacePin | null,
@@ -101,8 +101,7 @@ export function setCoachPin(
   if (
     pin != null &&
     state.pin != null &&
-    pin.questionId === state.pin.questionId &&
-    pin.skillId === state.pin.skillId &&
+    pinIdentityEqual(pin, state.pin) &&
     pin.label === state.pin.label &&
     state.mode === nextMode
   ) {
@@ -110,12 +109,10 @@ export function setCoachPin(
   }
   if (pin == null && state.pin == null && state.mode === nextMode) return;
 
-  const itemChanged =
-    pin != null &&
-    state.pin != null &&
-    pin.questionId !== state.pin.questionId;
+  const identityChanged =
+    pin != null && state.pin != null && !pinIdentityEqual(pin, state.pin);
 
-  if (itemChanged) {
+  if (identityChanged) {
     emit({
       threadId: null,
       turns: [],
@@ -127,6 +124,18 @@ export function setCoachPin(
   }
 
   emit({ ...state, pin, mode: nextMode });
+}
+
+/** True when both pins represent the same coach identity (item id or lesson skill). */
+function pinIdentityEqual(a: CoachSurfacePin, b: CoachSurfacePin): boolean {
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "item" && b.kind === "item") {
+    return a.questionId === b.questionId && a.skillId === b.skillId;
+  }
+  if (a.kind === "lesson" && b.kind === "lesson") {
+    return a.skillId === b.skillId;
+  }
+  return false;
 }
 
 /**

@@ -19,6 +19,7 @@ export function toQuizCoachPin(args: {
 }): { pin: CoachSurfacePin; mode: CoachMode } {
   return {
     pin: {
+      kind: "item",
       questionId: args.questionId,
       skillId: args.skillId,
       label: `Q${args.position} · ${args.skillId}`,

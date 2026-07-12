@@ -556,3 +556,5 @@ title: 'Lightweight decision log (intent debt, long tail)'
   `failOnceDecorator` around `sessionRepo.listByLearner` in
   `composition_engine_browser.ts`, opt-in via `?e2e_rail_fail=1`.
   Zero test-hook code inside `use_dashboard.ts` (Rule F-R4 restored).
+
+- 2026-07-12 — **E1b-D1 accuracy window + read seam (OQ-1).** Window = last-6-sessions, 1 bar/session (bar count IS the window). Rejected rolling-days: needs a 2nd constant, empty for inactive learners, misaligns with the session model. Seam = `accuracyBySkill` method on existing `AttemptRepo` (not a new port) — shares append-only `attempt` + skill join with `servedSkillIds`/`misses` (ADR-0006 precedent). Escalate to ADR-0031 only if review deems it port-level.

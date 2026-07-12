@@ -12,11 +12,19 @@ const LEARNER_ID = "Garvit";
 export default function SkillPage(): React.JSX.Element {
   const searchParams = useSearchParams();
   const skillId = searchParams.get("skillId");
+  const contextParam = searchParams.get("context");
+  const requested =
+    contextParam === "newSkill" ||
+    contextParam === "returning" ||
+    contextParam === "refresher"
+      ? contextParam
+      : undefined;
 
   const { result, loading } = useSkillDetail({
     subject: DEFAULT_SUBJECT,
     learnerId: LEARNER_ID,
     skillId,
+    ...(requested != null ? { requested } : {}),
   });
 
   if (loading || result == null) {

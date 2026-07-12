@@ -115,11 +115,13 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
 
   it("setCoachPin writes the pin; reset clears pin with the thread", () => {
     setCoachPin({
+      kind: "item",
       questionId: "q1",
       skillId: "s-punc",
       label: "Q4 · Commas",
     });
     expect(coachThreadSnapshot().pin).toEqual({
+      kind: "item",
       questionId: "q1",
       skillId: "s-punc",
       label: "Q4 · Commas",
@@ -133,6 +135,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
 
   it("setCoachPin(null) clears pin without dropping the transcript", () => {
     setCoachPin({
+      kind: "item",
       questionId: "q1",
       skillId: "s-punc",
       label: "Q4 · Commas",
@@ -148,6 +151,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
   it("stores advisory mode with the pin (Feedback→Coach post_feedback)", () => {
     setCoachPin(
       {
+        kind: "item",
         questionId: "q1",
         skillId: "s-punc",
         label: "Q4 · Commas",
@@ -157,6 +161,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     expect(coachThreadSnapshot().mode).toBe("post_feedback");
     setCoachPin(
       {
+        kind: "item",
         questionId: "q1",
         skillId: "s-punc",
         label: "Q4 · Commas",
@@ -170,6 +175,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     let saw = 0;
     const un = subscribeCoachThread(() => (saw += 1));
     setCoachPin({
+      kind: "item",
       questionId: "q2",
       skillId: "s-agr",
       label: "Q2 · Agreement",
@@ -180,6 +186,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
 
   it("questionId change clears transcript + threadId (new item = fresh coach thread)", () => {
     setCoachPin({
+      kind: "item",
       questionId: "q2",
       skillId: "s-org",
       label: "Q2 · s-org",
@@ -191,6 +198,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
 
     setCoachPin(
       {
+        kind: "item",
         questionId: "q3",
         skillId: "s-gram",
         label: "Q3 · s-gram",
@@ -198,7 +206,10 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
       "post_feedback",
     );
     const snap = coachThreadSnapshot();
-    expect(snap.pin?.questionId).toBe("q3");
+    expect(snap.pin?.kind).toBe("item");
+    if (snap.pin?.kind === "item") {
+      expect(snap.pin.questionId).toBe("q3");
+    }
     expect(snap.mode).toBe("post_feedback");
     expect(snap.turns).toEqual([]);
     expect(snap.threadId).toBeNull();
@@ -207,6 +218,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
 
   it("same questionId pin update keeps transcript and threadId (FR-J3)", () => {
     setCoachPin({
+      kind: "item",
       questionId: "q2",
       skillId: "s-org",
       label: "Q2 · s-org",
@@ -215,6 +227,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     endCoachTurn();
     setCoachPin(
       {
+        kind: "item",
         questionId: "q2",
         skillId: "s-org",
         label: "Q2 · Organization",
@@ -224,5 +237,46 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     expect(coachThreadSnapshot().threadId).toBe(threadId);
     expect(coachThreadSnapshot().turns).toHaveLength(1);
     expect(coachThreadSnapshot().pin?.label).toBe("Q2 · Organization");
+  });
+
+  it("FR-1: lesson pin overwrites a stale item pin", () => {
+    setCoachPin({
+      kind: "item",
+      questionId: "q-stale",
+      skillId: "s-gram",
+      label: "Q9 · Usage",
+    });
+    beginCoachTurn("stale ask");
+    endCoachTurn();
+    setCoachPin(
+      { kind: "lesson", skillId: "s-punc", label: "Punctuation" },
+      "pre_submit",
+    );
+    const snap = coachThreadSnapshot();
+    expect(snap.pin).toEqual({
+      kind: "lesson",
+      skillId: "s-punc",
+      label: "Punctuation",
+    });
+    expect(snap.pin).not.toHaveProperty("questionId");
+    expect(snap.mode).toBe("pre_submit");
+    // Item→lesson is an identity change → fresh thread.
+    expect(snap.turns).toEqual([]);
+    expect(snap.threadId).toBeNull();
+  });
+
+  it("FR-6b: lesson→lesson same skill does not spuriously reset", () => {
+    setCoachPin(
+      { kind: "lesson", skillId: "s-punc", label: "Punctuation" },
+      "pre_submit",
+    );
+    const { threadId } = beginCoachTurn("help with commas");
+    endCoachTurn();
+    setCoachPin(
+      { kind: "lesson", skillId: "s-punc", label: "Punctuation" },
+      "pre_submit",
+    );
+    expect(coachThreadSnapshot().threadId).toBe(threadId);
+    expect(coachThreadSnapshot().turns).toHaveLength(1);
   });
 });

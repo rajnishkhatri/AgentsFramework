@@ -107,7 +107,11 @@ export async function sendCoachAsk(
     if (pin != null && opts.ports != null) {
       const subject = opts.subject ?? DEFAULT_SUBJECT;
       const learnerId = opts.learnerId ?? LEARNER_ID;
-      const question = await opts.ports.questionRepo.get(pin.questionId);
+      // Lesson pins: skip questionRepo (no questionId — ADR-0030 honest-null).
+      const question =
+        pin.kind === "item"
+          ? await opts.ports.questionRepo.get(pin.questionId)
+          : null;
       const missesOnSkill = await countMissesOnSkill(opts.ports, {
         subject,
         learnerId,

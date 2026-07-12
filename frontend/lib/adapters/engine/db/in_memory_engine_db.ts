@@ -19,6 +19,7 @@ import type {
   Question,
   QuizSession,
   Skill,
+  SkillAccuracyRow,
   SkillState,
   TestBlueprint,
   TestItem,
@@ -289,6 +290,51 @@ export class InMemoryEngineDb implements EngineDb {
       skills.push(skillId);
     }
     return skills;
+  }
+
+  async accuracyRowsBySkill(
+    subject: string,
+    learnerId: string,
+    skillId: string,
+    sessions: number,
+  ): Promise<SkillAccuracyRow[]> {
+    // Per-session on-skill tallies newest-first (E1b-D1). Same COALESCE join as
+    // listSessionSkillIds: attempt.question_id may be a `question` id OR a
+    // `test_item` id (ADR-0021). Scope by learner via session.learner_id.
+    // Derived from `attempt` only — never skill_state (FR-7).
+    const learnerSessionIds = new Set(
+      [...this.sessions.values()]
+        .filter((s) => s.subject === subject && s.learner_id === learnerId)
+        .map((s) => s.id),
+    );
+    const bySession = new Map<
+      string,
+      { correct: number; total: number; newestAt: string }
+    >();
+    for (const a of this.attempts) {
+      if (a.subject !== subject || !learnerSessionIds.has(a.session_id)) continue;
+      const resolvedSkill =
+        this.questions.get(a.question_id)?.skill_id ??
+        this.testItems.get(a.question_id)?.skill_id;
+      if (resolvedSkill !== skillId) continue;
+      const cur = bySession.get(a.session_id) ?? {
+        correct: 0,
+        total: 0,
+        newestAt: a.created_at,
+      };
+      cur.total += 1;
+      if (a.correct) cur.correct += 1;
+      if (a.created_at > cur.newestAt) cur.newestAt = a.created_at;
+      bySession.set(a.session_id, cur);
+    }
+    return [...bySession.entries()]
+      .sort(([, x], [, y]) => (x.newestAt < y.newestAt ? 1 : -1))
+      .slice(0, sessions)
+      .map(([sessionId, v]) => ({
+        sessionId,
+        correct: v.correct,
+        total: v.total,
+      }));
   }
 
   // --- skill_state ---

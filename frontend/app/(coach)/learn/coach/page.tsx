@@ -64,7 +64,7 @@ export default function CoachPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [pin?.skillId, pin?.questionId, countMissesOnSkill]);
+  }, [pin?.skillId, pin?.kind === "item" ? pin.questionId : null, countMissesOnSkill]);
 
   const surfaceVm = React.useMemo(
     () =>

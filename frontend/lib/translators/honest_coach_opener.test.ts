@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { honestCoachOpener } from "./honest_coach_opener";
 
 const pin = {
+  kind: "item" as const,
   questionId: "q1",
   skillId: "s-punc",
   label: "Commas",

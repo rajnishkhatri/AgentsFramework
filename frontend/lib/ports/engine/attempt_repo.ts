@@ -1,6 +1,10 @@
 /** AttemptRepo port (ADR-0006 #3) — append-only history + "review my misses". */
 
-import type { Attempt, AttemptInput } from "../../wire/engine_entities";
+import type {
+  AccuracyBySkill,
+  Attempt,
+  AttemptInput,
+} from "../../wire/engine_entities";
 
 /**
  * AttemptRepo — append-only attempt history + "review my misses" (ADR-0006 #3).
@@ -31,6 +35,11 @@ import type { Attempt, AttemptInput } from "../../wire/engine_entities";
  *      each question's `skill_id`; NEVER `skill_state`), passed to
  *      `Scheduler.next(…, servedSkillIds)` so a finished skill rotates to the
  *      back. Returns `[]` for a session with no attempts.
+ *   7. `accuracyBySkill()` returns per-skill answer-accuracy over the last N
+ *      qualifying sessions (default 6), newest-first bars (E1b-D1). Derived
+ *      from append-only `attempt` only — NEVER reads/writes `skill_state`
+ *      (FR-7 / FR-13 purity). Hinted-correct counts as correct (FR-8 / FR-D5).
+ *      Returns `null` when the learner has no on-skill attempts (self-omit).
  *
  * @throws EngineRepoError on persistence failure.
  */
@@ -57,4 +66,16 @@ export interface AttemptRepo {
    * joined to each question's skill, never persisted on `skill_state`.
    */
   servedSkillIds(sessionId: string): Promise<readonly string[]>;
+
+  /**
+   * Per-skill answer-accuracy over the last `opts.sessions` (default 6)
+   * qualifying sessions (E1b-D1). Append-only `attempt` source; `null` when
+   * no on-skill attempts exist.
+   */
+  accuracyBySkill(
+    subject: string,
+    learnerId: string,
+    skillId: string,
+    opts?: { sessions?: number },
+  ): Promise<AccuracyBySkill>;
 }

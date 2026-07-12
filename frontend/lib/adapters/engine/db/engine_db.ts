@@ -24,6 +24,7 @@ import type {
   Question,
   QuizSession,
   Skill,
+  SkillAccuracyRow,
   SkillState,
   TestBlueprint,
   TestItem,
@@ -134,6 +135,20 @@ export interface EngineDb extends ReadableEngineDb {
    * when the session has no attempts.
    */
   listSessionSkillIds(sessionId: string): Promise<string[]>;
+  /**
+   * Per-session on-skill accuracy tallies for a learner, **newest-first**,
+   * limited to `sessions` rows (E1b-D1). Groups append-only `attempt` rows by
+   * `session_id` where the attempt's question/test_item resolves to `skillId`
+   * (COALESCE join — ADR-0021 bank attempts must count). Derived from `attempt`
+   * only — NEVER `skill_state` (FR-7 / FR-13 purity). `[]` when no on-skill
+   * attempts exist.
+   */
+  accuracyRowsBySkill(
+    subject: string,
+    learnerId: string,
+    skillId: string,
+    sessions: number,
+  ): Promise<SkillAccuracyRow[]>;
 
   // --- skill_state (Scheduler is the only writer; repos read for adaptivity) ---
   // `listSkillState` is inherited from ReadableEngineDb (the ADR-0011 read seam).

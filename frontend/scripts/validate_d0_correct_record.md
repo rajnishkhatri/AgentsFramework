@@ -10,7 +10,7 @@ intent debt. It did **not** implement Q-7 / Q-8 / Q-9 / Q-1b / D-3b / D-8 UI.
 | Plan | [`docs/plan/preact-parity-D0-correct-record.plan.md`](../../docs/plan/preact-parity-D0-correct-record.plan.md) |
 | Board | [`docs/plan/preact-parity-sprint-board-D.md`](../../docs/plan/preact-parity-sprint-board-D.md) |
 | Decisions | [`docs/adr/decisions.md`](../../docs/adr/decisions.md) (2026-07-10 Epic D entry) |
-| Playwright baseline | [`e2e/learn/validate_d0_baseline.spec.ts`](../e2e/learn/validate_d0_baseline.spec.ts) |
+| Playwright baseline | ~~`e2e/learn/validate_d0_baseline.spec.ts`~~ — **retired by Epic E1a** (ADR-0028): the spec's premise was "Skills nav still absent"; E1a shipped Skill as a live nav tab, so the guard was deleted. Quiz-continuity coverage lives in `e2e/learn/quiz-frame.spec.ts`; the live Skill surface in `e2e/learn/skill-lesson.spec.ts`. |
 
 **What you are proving:**
 
@@ -19,7 +19,7 @@ intent debt. It did **not** implement Q-7 / Q-8 / Q-9 / Q-1b / D-3b / D-8 UI.
 | FR-2..FR-5 | Docs greps | Epics + VISUAL rows carry corrected framings |
 | FR-6 | Docs read | `decisions.md` newest Epic D entry + Rejected tail |
 | FR-7 | Docs grep | Board has no *live* stale claims |
-| DoD | Playwright | Core Quiz works; D1 frame chrome + Skills nav still **absent** |
+| DoD | Playwright | Core Quiz works; D1 frame chrome present *(Skills-nav-absent check retired by E1a — see baseline row)* |
 | Manual UI | Browser + live middleware | Same baseline + Coach still reachable via real middleware |
 
 ---
@@ -94,25 +94,16 @@ grep -niE "skill chip|dismissible|change 30 to 10|X-4 (as )?independent" \
 
 - [ ] **A.1** All six greps match the expectations above
 
-### A.2 Playwright D0 baseline (UI absence + Quiz regression)
+### A.2 Playwright D0 baseline — RETIRED (superseded by Epic E1a)
 
-```bash
-cd /Users/rajnishkhatri/Documents/AgentsFramework/agent/frontend
-
-E2E_SCREENSHOTS=1 CI=1 BASE_URL=http://localhost:3000 \
-  pnpm test:e2e:d0-baseline
-```
-
-**Expected console checkpoints:**
-
-```
-  ✔ D-8 baseline: sidebar has Home/Practice/Coach/Progress — no Skills entry
-  ✔ core Quiz answering chrome present …
-  ✔ Q-7/Q-8/Q-9 baseline: no skill chip, no End-session, no timer clock
-  ✔ regression: Submit → Feedback still works
-  D0 baseline PASSED — record corrected in docs; no D1/D-8 UI shipped.
-  1 passed
-```
+> `validate_d0_baseline.spec.ts` asserted "Skills nav still absent". Epic E1a
+> (ADR-0028) shipped Skill as a live nav tab, invalidating that premise, so the
+> spec was deleted. The coverage it carried now lives in:
+>
+> - **Quiz chrome + Submit→Feedback regression** → `pnpm test:e2e:learn e2e/learn/quiz-frame.spec.ts`
+> - **The live `/learn/skill` surface** → `pnpm test:e2e:learn e2e/learn/skill-lesson.spec.ts`
+>
+> This D0 record is preserved as history; the absence-guard it described no longer holds.
 
 ### A.3 Learn-suite regression (optional but recommended)
 

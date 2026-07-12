@@ -21,11 +21,18 @@ export const COACH_CHIP_SEEDS: readonly string[] = [
   "Show my comma pattern",
 ] as const;
 
-export interface CoachSurfacePin {
-  readonly questionId: string;
-  readonly skillId: string;
-  readonly label: string;
-}
+export type CoachSurfacePin =
+  | {
+      readonly kind: "item";
+      readonly questionId: string;
+      readonly skillId: string;
+      readonly label: string;
+    }
+  | {
+      readonly kind: "lesson";
+      readonly skillId: string;
+      readonly label: string;
+    };
 
 export interface CoachSurfaceInputs {
   readonly mode: CoachMode;
@@ -93,10 +100,15 @@ function historyLine(
 
 export function toCoachSurfaceVM(inputs: CoachSurfaceInputs): CoachSurfaceVM {
   const { mode, pin, missesOnSkill, skillLabel, chipSeeds } = inputs;
+  // Lesson pins are skill-only — no current-item panel (E1b-D2 FR-8).
+  const currentItemLine =
+    pin != null && pin.kind === "item"
+      ? `Current item: ${pin.label}`
+      : null;
   return {
     railTitle: "Your Coach",
     railStatus: "Adaptive · always on",
-    currentItemLine: pin ? `Current item: ${pin.label}` : null,
+    currentItemLine,
     historyLine: historyLine(pin, missesOnSkill, skillLabel),
     modes: modeDisplays(mode),
     chips: [...chipSeeds],
