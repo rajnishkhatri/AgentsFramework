@@ -161,12 +161,17 @@ committed verdict matches a fresh run (drift lock).
 
 ## 9. Definition of Done
 
-- [ ] `scripts/tier1_taxonomy_readiness.py` (read-only, stdlib-only, deterministic) implements FR-1…FR-9.
-- [ ] `docs/plan/tier1-taxonomy-readiness.verdict.json` committed with today's measured verdict.
-- [ ] Every FR has a passing test **seen to fail first** (red→green); output pasted, not summarized.
-- [ ] `make check` green (lint + format-check + pyright + test) incl. the new architecture test.
-- [ ] Invariants §5 unbroken (`tests/architecture/` green); no ADR (confirmed no ⚠️ trigger).
-- [ ] The verdict + its thresholds recorded so the D1 build/defer decision is auditable.
+- [x] `scripts/tier1_taxonomy_readiness.py` (read-only, stdlib-only, deterministic) implements FR-1…FR-9.
+- [x] `docs/plan/tier1-taxonomy-readiness.verdict.json` committed with today's measured verdict.
+- [x] Every FR has a passing test **seen to fail first** (red→green); output pasted, not summarized.
+- [x] `make check` green (lint + format-check + pyright + test) incl. the new architecture test.
+- [x] Invariants §5 unbroken (`tests/architecture/` green); no ADR (confirmed no ⚠️ trigger).
+- [x] The verdict + its thresholds recorded so the D1 build/defer decision is auditable.
+
+**Evidence (sdd-implement 2026-07-12):**
+- Red→green: FR-1/5 `ModuleNotFoundError` → 2 pass; FR-2/3/4 `NameError` → 5 pass; FR-6/7 import miss → 7 pass; FR-8 `ImportError: verdict` → 9 pass; FR-5/9 + drift → 12 pass.
+- Today's measured verdict: **`defer`** — cluster gate passes (`n_clusters_ge_3=4`); fire-rate `0.0210` under `due_model=all_due`, `misses_per_learner=2`, `n_learners=2000`, `seed=0` (need ≥5%).
+- `make check`: **5294 passed**, 51 skipped, 72 deselected.
 
 ## 10. Clarify resolutions
 

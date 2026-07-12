@@ -105,10 +105,10 @@ FR-1→T1 · FR-2/3/4→T2 · FR-5→T1 · FR-6/7→T3 · FR-8→T4 · FR-9→T6
 
 ## E. Definition of Done (from spec §9)
 
-- [ ] `scripts/tier1_taxonomy_readiness.py` implements FR-1…FR-9 (read-only, stdlib, deterministic).
-- [ ] `docs/plan/tier1-taxonomy-readiness.verdict.json` committed with today's verdict + thresholds.
-- [ ] Every FR test seen to fail first (red→green); output pasted.
-- [ ] `make check` green incl. `test_tier1_readiness_probe.py`; `tests/architecture/` green.
-- [ ] No ADR (confirmed); decision + thresholds auditable in the verdict JSON.
+- [x] `scripts/tier1_taxonomy_readiness.py` implements FR-1…FR-9 (read-only, stdlib, deterministic).
+- [x] `docs/plan/tier1-taxonomy-readiness.verdict.json` committed with today's verdict + thresholds.
+- [x] Every FR test seen to fail first (red→green); output pasted.
+- [x] `make check` green incl. `test_tier1_readiness_probe.py`; `tests/architecture/` green.
+- [x] No ADR (confirmed); decision + thresholds auditable in the verdict JSON.
 
-**Next: sdd-implement** (red/green TDD per task, watch-fail-first, paste output).
+**Implemented 2026-07-12.** Verdict on today's bank: **`defer`** (fire-rate 0.0210 < 5%; 4 clusters of ≥3). 12/12 probe tests green; `make check` 5294 passed.

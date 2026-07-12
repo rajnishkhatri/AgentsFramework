@@ -1,0 +1,83 @@
+{
+  "verdict": "defer",
+  "thresholds": {
+    "min_meaningful_clusters": 1,
+    "min_cluster_size": 3,
+    "min_fire_rate": 0.05
+  },
+  "measured": {
+    "n_clusters_ge_3": 4,
+    "n_meaningful_clusters_ge_2": 14,
+    "fire_rate": 0.021,
+    "due_model": "all_due",
+    "structural_zero": false,
+    "n_learners": 2000,
+    "misses_per_learner": 2,
+    "seed": 0
+  },
+  "reasons": [
+    "fire-rate gate: measured 0.0210 under due_model='all_due' (need \u22655%)"
+  ],
+  "clusters": {
+    "s-gram:3": 2,
+    "s-gram:11": 2,
+    "s-gram:12": 2,
+    "s-gram:13": 2,
+    "s-gram:16": 2,
+    "s-gram:18": 2,
+    "s-gram:28": 2,
+    "s-rhet:2": 3,
+    "s-rhet:4": 3,
+    "s-sent:15": 3,
+    "s-style:5": 3,
+    "s-style:6": 2,
+    "s-style:8": 2,
+    "s-style:9": 2
+  },
+  "not_meaningful": {
+    "s-org:1": 5
+  },
+  "label": "candidate",
+  "coverage": {
+    "s-gram": {
+      "total": 39,
+      "tagged": 19,
+      "tagged_pct": 0.48717948717948717,
+      "distinct_standards": 12
+    },
+    "s-org": {
+      "total": 24,
+      "tagged": 5,
+      "tagged_pct": 0.20833333333333334,
+      "distinct_standards": 1
+    },
+    "s-punc": {
+      "total": 31,
+      "tagged": 2,
+      "tagged_pct": 0.06451612903225806,
+      "distinct_standards": 2
+    },
+    "s-rhet": {
+      "total": 28,
+      "tagged": 6,
+      "tagged_pct": 0.21428571428571427,
+      "distinct_standards": 2
+    },
+    "s-sent": {
+      "total": 23,
+      "tagged": 6,
+      "tagged_pct": 0.2608695652173913,
+      "distinct_standards": 4
+    },
+    "s-style": {
+      "total": 26,
+      "tagged": 9,
+      "tagged_pct": 0.34615384615384615,
+      "distinct_standards": 4
+    }
+  },
+  "untagged_count": 124,
+  "integrity_warnings": [],
+  "bank_items": 171,
+  "tagged_items": 47
+}
