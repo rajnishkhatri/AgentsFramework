@@ -308,10 +308,10 @@ describe("loadDashboard — C1 rail + greeting (FR-1/FR-2/FR-15)", () => {
     const vm = await loadDashboard(rejecting, {
       subject: SUBJECT,
       learnerId: LEARNER,
-      displayName: "Maya",
+      displayName: "Garvit",
       nowISO: NOW,
     });
-    expect(vm.greeting.headline).toMatch(/Maya/);
+    expect(vm.greeting.headline).toMatch(/Garvit/);
     expect(vm.buckets.length).toBeGreaterThan(0);
     expect(vm.rail.status).toBe("unavailable");
     expect(vm.rail.weekly.label).toBe("—");

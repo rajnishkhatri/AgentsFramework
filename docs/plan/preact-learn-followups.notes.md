@@ -160,7 +160,9 @@ interstitial vs banner, and whether "continue" resets the counter or keeps count
 ## F5 (🔒 infra/security) — Real per-learner identity: enable WorkOS auth for eng-coach + an agent registry
 
 > User decision 2026-07-12: change the dev learner to **"Garvit"** now (done — the
-> `maya → Garvit` rename commit), and **park** the real-identity wiring here.
+> `maya → Garvit` rename commit `1b146b6`, **completed** 2026-07-12 in a follow-up that
+> swept the live-identity refs the original commit missed — see "rename completion"
+> below), and **park** the real-identity wiring here.
 
 **Today (dev posture).** Every coach surface hardcodes the dev learner instead of
 deriving it from the authenticated session. One source of truth
@@ -194,6 +196,33 @@ regress): tests that mix the auto-seeded dev corpus (`buildBrowserEngineAdapters
 [`use_skill_detail.test.ts`](../../frontend/components/learn/use_skill_detail.test.ts)
 and [`use_dashboard.test.ts`](../../frontend/components/dashboard/use_dashboard.test.ts);
 any new such test inherits the same rule.
+
+**Rename completion (2026-07-12 follow-up).** Commit `1b146b6` flipped `DEV_LEARNER_ID`
++ the 7 live-page constants but left the *rest* of the live-identity surface on the old
+name. Swept in the follow-up (bank content + `generated_from` provenance left untouched —
+the "Maya" character in grammar prose stays):
+- **Live-identity test refs → `"Garvit"`:** dashboard greeting assertions
+  ([`DashboardView.test.tsx`](../../frontend/components/dashboard/DashboardView.test.tsx),
+  [`use_dashboard.test.ts`](../../frontend/components/dashboard/use_dashboard.test.ts) —
+  red/green on the greeting oracle), coach `learner_id`
+  ([`use_coach.test.ts`](../../frontend/components/coach/use_coach.test.ts)), and the
+  WorkOS session subject in the marker/coach routes
+  ([`session-marker/route.test.ts`](../../frontend/app/api/coach/session-marker/route.test.ts),
+  [`run/stream/route.test.ts`](../../frontend/app/api/coach/run/stream/route.test.ts)).
+- **Same coupling rule, two more sites:**
+  [`use_coach_surface.test.ts`](../../frontend/components/coach/use_coach_surface.test.ts)
+  now binds `LEARNER = DEV_LEARNER_ID`; and
+  [`validate_s3_bounded_session.ts`](../../frontend/scripts/validate_s3_bounded_session.ts)
+  had a *latent bug* — it read under the literal `"maya"` while `seedDevCorpus` seeds
+  under `"Garvit"`, so its skill_state reads would have missed the corpus. Now bound to
+  the imported `DEV_LEARNER_ID` (harness: 22/22 pass).
+- **Stale comments** (dev-preview narration in `_dev_seed.ts`,
+  `composition_engine_browser.ts`, the `/learn/quiz|summary` page headers, and the e2e
+  fixtures/specs) updated to "Garvit".
+- **Deliberately left on `"maya"`:** opaque `learner_id` keys in low-level
+  repo/translator tests (self-consistent local literals, not app-facing) and the pure
+  `greeting_vm.test.ts` string oracles (the VM takes an explicit `displayName` and never
+  derives from `learner_id`, so the code was already correct at runtime).
 
 **Fix direction (spec):** derive the learner id from `AuthProvider`/`Session.user_id`
 at each `/learn/*` entry (a single shared `useLearnerId()` seam so there's one read

@@ -19,7 +19,7 @@ import { readQuizSessionSnapshot } from "@/components/quiz/quiz_session_store";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { SkillState } from "@/lib/wire/engine_entities";
 
-// Phase-1 single-learner surface (the plan's "Maya"); see the dashboard page note.
+// Phase-1 single-learner surface (dev learner "Garvit"); see the dashboard page note.
 const LEARNER_ID = "Garvit";
 
 export default function SummaryPage(): React.JSX.Element {

@@ -11,9 +11,10 @@ import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import type { Question } from "@/lib/wire/engine_entities";
 import { countMissesOnSkill } from "./use_coach_surface";
+import { DEV_LEARNER_ID } from "@/lib/adapters/engine/_dev_seed";
 
 const SUBJECT = "act-english";
-const LEARNER = "maya";
+const LEARNER = DEV_LEARNER_ID;
 
 function question(over: Partial<Question> = {}): Question {
   return {

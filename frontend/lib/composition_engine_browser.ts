@@ -181,7 +181,7 @@ let singleton: EnginePortBag | null = null;
  * DEV SEED (why the guard). A fresh `InMemoryEngineDb` is empty, which makes the
  * live `/learn` surface unusable in a dev preview (0% dashboard; the Quiz route
  * throws `no reviewed question` from `openQuizItem`). Outside production we load
- * the "Maya" skills/mastery spread (`_dev_seed.ts`) plus the cascade-promoted
+ * the "Garvit" skills/mastery spread (`_dev_seed.ts`) plus the cascade-promoted
  * item bank (`_test_item_bank.ts`, ADR-0021) so the Dashboard → Quiz → Summary
  * loop is exercisable in the browser — the QUIZ now serves the governed bank,
  * not hand-authored dev questions (spec FR-B2/B2a). The guard keeps it off the
@@ -199,7 +199,7 @@ export function browserEngineAdapters(): EnginePortBag {
       // provider mounts. When present it REPLACES the dev seed entirely — specs
       // drive their own byte-stable QUESTION fixtures, so the override keeps
       // the practice-table wiring (their oracles predate the bank; migrating
-      // them is a separate task). Absent → the dev preview default: Maya
+      // them is a separate task). Absent → the dev preview default: Garvit
       // skills/states + the governed bank, quiz wired to the bank (ADR-0021).
       const injected = readE2ESeedOverride();
       if (injected) {
