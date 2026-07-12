@@ -15,7 +15,8 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { Question, QuizSession, TestItem } from "./engine_entities";
+import { Question, QuizSession, TestItem, Tutorial } from "./engine_entities";
+import type { Tutorial as TutorialT } from "./engine_entities";
 
 function session(over: Record<string, unknown> = {}) {
   return {
@@ -144,5 +145,85 @@ describe("TestItem.misconception — C2 FR-10 (ADR-0027)", () => {
 
   it("rejects misconception: 42", () => {
     expect(TestItem.safeParse(validTestItem({ misconception: 42 })).success).toBe(false);
+  });
+});
+
+// --- Tutorial teaching fields (E1a / ADR-0028 / FR-8a) --------------------
+
+function validTutorial(over: Record<string, unknown> = {}) {
+  return {
+    id: "tut-1",
+    subject: "act-english",
+    skill_id: "s-nec",
+    body_md: "A non-essential clause must be fenced by a pair of commas.",
+    examples: ["My car, which is electric, is quiet."],
+    generated_from: "hand:author@2026-07-11",
+    reviewed: true,
+    ...over,
+  };
+}
+
+describe("Tutorial teaching fields — E1a FR-8a (ADR-0028)", () => {
+  it("accepts a row without teaching fields (all optional)", () => {
+    const parsed = Tutorial.parse(validTutorial());
+    expect(parsed.ground_md).toBeUndefined();
+    expect(parsed.pitfall_md).toBeUndefined();
+    expect(parsed.question_md).toBeUndefined();
+    expect(parsed.self_explain_prompt).toBeUndefined();
+    expect(parsed.worked_example).toBeUndefined();
+    expect(parsed.completion_try).toBeUndefined();
+    expect(parsed.annotated_examples).toBeUndefined();
+  });
+
+  it("accepts a row with all teaching fields", () => {
+    const parsed = Tutorial.parse(
+      validTutorial({
+        ground_md: "You already know commas separate items in a list.",
+        pitfall_md: "Deleting commas to shorten a sentence.",
+        question_md: "When does a clause need a pair of commas?",
+        self_explain_prompt: "Why do both commas stay?",
+        worked_example: {
+          sentence: "My kitchen, which provides an alternative to eating out, is small.",
+          steps: ["Remove the clause.", "Still complete → non-essential.", "Fence with commas."],
+          answer: "Keep both commas.",
+        },
+        completion_try: {
+          sentence: "The teacher, who grades fairly, is popular.",
+          choices: [
+            { text: "Keep both commas", correct: true },
+            { text: "Delete the commas", correct: false },
+          ],
+          why: "Remove the clause → the sentence still stands.",
+        },
+        annotated_examples: [
+          {
+            pre: "My kitchen",
+            clause: "which provides an alternative to eating out",
+            post: " is small.",
+            essential: false,
+            callouts: ["remove it → still works", "so → fence with commas"],
+          },
+        ],
+      }),
+    );
+    expect(parsed.ground_md).toBe("You already know commas separate items in a list.");
+    expect(parsed.worked_example?.answer).toBe("Keep both commas.");
+    expect(parsed.completion_try?.choices[0]?.correct).toBe(true);
+    expect(parsed.annotated_examples?.[0]?.essential).toBe(false);
+  });
+
+  it("does not declare blocks/zone/role on the inferred type (FR-8a)", () => {
+    // Compile-time: forbidden keys must not appear on Tutorial.
+    type Forbidden = "blocks" | "zone" | "role" | "context" | "beats";
+    type HasForbidden = Extract<keyof TutorialT, Forbidden>;
+    type AssertNever<T> = [T] extends [never] ? true : false;
+    const ok: AssertNever<HasForbidden> = true;
+    expect(ok).toBe(true);
+    const row = Tutorial.parse(validTutorial());
+    expect(
+      Object.prototype.hasOwnProperty.call(row, "blocks") ||
+        Object.prototype.hasOwnProperty.call(row, "zone") ||
+        Object.prototype.hasOwnProperty.call(row, "role"),
+    ).toBe(false);
   });
 });

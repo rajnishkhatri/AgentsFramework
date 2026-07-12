@@ -47,6 +47,42 @@ describe("buildEngineAdapters — full bag + end-to-end loop", () => {
     expect(bag.learnerRead).toBeDefined();
   });
 
+  it("exposes tutorialRepo and progressRepo (ADR-0028 / E1a FR-17)", () => {
+    const bag = buildEngineAdapters({ env: {} });
+    expect(bag.tutorialRepo).toBeDefined();
+    expect(bag.progressRepo).toBeDefined();
+  });
+
+  it("tutorialRepo and progressRepo read through the live seam (FR-17)", async () => {
+    const db = new InMemoryEngineDb();
+    db.seedTutorial({
+      id: "tut-1",
+      subject: "act-english",
+      skill_id: "s1",
+      body_md: "Fence non-essential clauses.",
+      examples: [],
+      generated_from: "hand:author@2026-07-11",
+      reviewed: true,
+      ground_md: "You know list commas.",
+    });
+    db.seedProgress([
+      {
+        id: "pp-1",
+        subject: "act-english",
+        learner_id: "maya",
+        at: "2026-07-11T00:00:00.000Z",
+        projected_score: 22,
+        items_reviewed: 5,
+      },
+    ]);
+    const bag = buildEngineAdapters({ env: {}, engineDb: db });
+    const tut = await bag.tutorialRepo.getTutorial("act-english", "s1");
+    expect(tut?.ground_md).toBe("You know list commas.");
+    const pts = await bag.progressRepo.list("act-english", "maya");
+    expect(pts).toHaveLength(1);
+    expect(pts[0]!.projected_score).toBe(22);
+  });
+
   it("runs the open→grade→record→review→close loop through the wired ports", async () => {
     const db = new InMemoryEngineDb();
     const skill: Skill = {

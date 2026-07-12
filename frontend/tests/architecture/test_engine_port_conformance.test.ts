@@ -28,9 +28,9 @@ const ENGINE_PORTS_DIR = path.join(FRONTEND_ROOT, "lib", "ports", "engine");
 // Non-interface helper modules under ports/engine/ — skipped by interface checks.
 const NON_PORT_FILES = new Set(["errors.ts", "index.ts"]);
 
-// The nine engine ports (7 ADR-0006 + LearnerReadRepo, ADR-0011 + HintRepo,
-// ADR-0014). Adding a port without a row here is a P7 violation (port ->
-// conformance pairing).
+// The thirteen engine ports (7 ADR-0006 + LearnerReadRepo ADR-0011 + HintRepo
+// ADR-0014 + TestBlueprint/TestItem ADR-0015 + Tutorial/Progress ADR-0028).
+// Adding a port without a row here is a P7 violation (port -> conformance pairing).
 const REQUIRED_PORTS: ReadonlyArray<{
   file: string;
   interfaceName: string;
@@ -57,6 +57,10 @@ const REQUIRED_PORTS: ReadonlyArray<{
   { file: "test_blueprint_repo.ts", interfaceName: "TestBlueprintRepo" },
   // ADR-0015: read-only test-item seam (11th, reviewed=true only, FR-27.1).
   { file: "test_item_repo.ts", interfaceName: "TestItemRepo" },
+  // ADR-0028: read-only tutorial seam (12th, reviewed=true only, E1a FR-1/17).
+  { file: "tutorial_repo.ts", interfaceName: "TutorialRepo" },
+  // ADR-0028: read-only progress seam (13th, E1a FR-17).
+  { file: "progress_repo.ts", interfaceName: "ProgressRepo" },
 ];
 
 // Vendor acronyms a port name must never contain (P2).
@@ -85,7 +89,7 @@ function findInterface(sf: SourceFile, name: string) {
 }
 
 describe("Engine port conformance suite [ADR-0006 / P7]", () => {
-  it("ports/engine/ contains exactly the eleven engine ports (+ helper modules)", () => {
+  it("ports/engine/ contains exactly the thirteen engine ports (+ helper modules)", () => {
     expect(fs.existsSync(ENGINE_PORTS_DIR), `${ENGINE_PORTS_DIR} must exist`).toBe(true);
     const interfaceFiles = fs
       .readdirSync(ENGINE_PORTS_DIR)
@@ -239,4 +243,33 @@ describe("Engine port conformance suite [ADR-0006 / P7]", () => {
       ).toBe(false);
     }
   });
+
+  // ADR-0028: TutorialRepo / ProgressRepo are read-only (E1a FR-17).
+  it.each([
+    { file: "tutorial_repo.ts", interfaceName: "TutorialRepo" },
+    { file: "progress_repo.ts", interfaceName: "ProgressRepo" },
+  ] as const)(
+    "$interfaceName exposes only read methods (no write verbs) [ADR-0028 FR-17]",
+    ({ file, interfaceName }) => {
+      const proj = project();
+      const sf = proj.getSourceFile(path.join(ENGINE_PORTS_DIR, file))!;
+      const iface = findInterface(sf, interfaceName)!;
+      const WRITE_VERB =
+        /^(upsert|insert|update|delete|patch|write|save|set|record|remove|review|seed|put|create|mutate|clear|append|merge|reset|mark|flag)/i;
+      for (const member of iface.getMembers()) {
+        if (member.getKind() !== SyntaxKind.MethodSignature) continue;
+        const ms = member.asKindOrThrow(SyntaxKind.MethodSignature);
+        const name = ms.getName();
+        expect(
+          WRITE_VERB.test(name),
+          `${interfaceName}.${name} looks like a write; the read port must not mutate`,
+        ).toBe(false);
+        const ret = ms.getReturnType().getText();
+        expect(
+          /Promise<void>|(^|\W)void(\W|$)/.test(ret),
+          `${interfaceName}.${name} returns a mutation shape (${ret}); read methods must return data`,
+        ).toBe(false);
+      }
+    },
+  );
 });

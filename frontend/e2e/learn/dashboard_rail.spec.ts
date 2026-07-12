@@ -64,7 +64,7 @@ test.describe("C1 dashboard rail + greeting", () => {
     await expectNoAxeViolations(page);
     await expect(page.getByTestId("streak-tile")).toContainText("Start a streak");
     await expect(page.getByTestId("weekly-tile")).toContainText("0 / 3 sessions");
-    await expect(page.getByTestId("dashboard-greeting")).toContainText("Maya");
+    await expect(page.getByTestId("dashboard-greeting")).toContainText("Garvit");
   });
 
   test("returning_learner_shows_streak_and_weekly", async ({ page }) => {

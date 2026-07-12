@@ -50,7 +50,7 @@ import { countMissesOnSkill } from "./use_coach_surface";
  */
 export const SUBJECT_COACH_AGENT_ID = "subject-coach-english";
 
-const LEARNER_ID = "maya";
+const LEARNER_ID = "Garvit";
 
 /** One coach exchange: the learner's ask + the coach's (streaming) reply. */
 export interface CoachTurn {

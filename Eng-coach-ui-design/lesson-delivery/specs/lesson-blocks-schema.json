@@ -1,0 +1,111 @@
+{
+  "$schema": "https://preact-english-coach/lesson-blocks/1.0",
+  "version": "1.0",
+  "description": "Schema for the English Coach lesson-block system. A lesson is DATA: an ordered list of typed blocks. The runtime composer selects/orders blocks by learner context and renders each by looking its `type` up in a component registry. Every block carries a `zone` (placement) and a `role` (semantic color).",
+  "colorRoles": {
+    "neutral":     { "use": "reference / rule content",                 "border": "var(--color-border)", "bg": "var(--color-surface)", "ink": "var(--color-muted)" },
+    "accent":      { "use": "instruction, examples, worked models",     "border": "color-mix(in oklab,var(--accent) 35%,var(--color-border))", "bg": "color-mix(in oklab,var(--accent) 6%,var(--color-bg))", "ink": "color-mix(in oklab,var(--accent) 55%,var(--color-fg))" },
+    "accentDashed":{ "use": "an active task the learner must complete",  "border": "color-mix(in oklab,var(--accent) 48%,var(--color-border))", "bg": "transparent", "ink": "color-mix(in oklab,var(--accent) 55%,var(--color-fg))", "borderStyle": "dashed" },
+    "accentSoft":  { "use": "reflective / self-explanation prompts",     "border": "color-mix(in oklab,var(--accent) 30%,var(--color-border))", "bg": "color-mix(in oklab,var(--accent) 5%,var(--color-bg))", "ink": "color-mix(in oklab,var(--accent) 55%,var(--color-fg))" },
+    "warning":     { "use": "the learner's diagnosed error / due items", "border": "color-mix(in oklab,var(--color-warning) 38%,var(--color-border))", "bg": "color-mix(in oklab,var(--color-warning) 9%,var(--color-bg))", "ink": "var(--color-warning)" },
+    "success":     { "use": "confirmed answers / correct examples",      "border": "color-mix(in oklab,var(--color-success) 32%,transparent)", "bg": "color-mix(in oklab,var(--color-success) 9%,var(--color-bg))", "ink": "var(--color-success)" }
+  },
+  "note": "`--accent` is set on the screen root to the skill's bucket token (e.g. --b-punct), so accent-role blocks always read as the current skill's color. role→color is resolved at render time.",
+  "blocks": {
+    "rule": {
+      "role": "neutral", "zone": "main",
+      "whenToUse": "Always available. The one-line rule + optional worked/anti examples. The reference spine of any lesson.",
+      "fields": {
+        "title": "string  — eyebrow label, e.g. 'The rule, in one line'",
+        "body": "string   — the rule statement (1–2 sentences)",
+        "examples": "Array<{ text: string, note: string, kind: 'good' | 'bad' }>?  — ✓ good / ✕ counter examples"
+      }
+    },
+    "workedExample": {
+      "role": "accent", "zone": "main",
+      "whenToUse": "First exposure or rebuild. A fully-worked model — ALL steps shown (scaffold ●●●). Pair with completionTry (alternation).",
+      "fields": {
+        "title": "string",
+        "sentence": "string  — the item being worked",
+        "steps": "string[]   — every reasoning step, shown in full",
+        "answer": "string    — the resolved conclusion (rendered as a success chip)"
+      }
+    },
+    "completionTry": {
+      "role": "accentDashed", "zone": "main",
+      "whenToUse": "Immediately after a workedExample — backward-faded practice (●●○): the learner completes the back-end. Ends the teach loop on a doable win.",
+      "fields": {
+        "title": "string",
+        "sentence": "string",
+        "promptHint": "string  — nudge toward the missing final step (never the answer)",
+        "choices": "Array<{ text: string, correct: boolean }>"
+      }
+    },
+    "annotatedExample": {
+      "role": "accent", "zone": "main",
+      "whenToUse": "Quick visual refresher. One canonical item marked up with color-signaled callouts showing WHAT SUCCESS LOOKS LIKE. Lowest text, highest clarity.",
+      "fields": {
+        "title": "string",
+        "examples": "Array<{ pre: string, clause: string, post: string, essential: boolean, callouts: string[] }>  — non-essential clause = accent tint + commas shown; essential = muted tint + no commas"
+      }
+    },
+    "misconceptionCallout": {
+      "role": "warning", "zone": "main",
+      "whenToUse": "Returning learner with a diagnosed error pattern. Leads the lesson: names the specific misconception + the fix. Driven by the item bank's misconception tags.",
+      "fields": {
+        "label": "string  — 'Your pattern · <misconception label>'",
+        "body": "string   — evidence from recent misses",
+        "fix": "string    — the corrective heuristic"
+      }
+    },
+    "dueChecklist": {
+      "role": "neutral", "zone": "rail",
+      "whenToUse": "When spaced-repetition items are due. Turns review into an actionable checklist.",
+      "fields": {
+        "title": "string",
+        "items": "string[]",
+        "cta": "string?  — optional button label"
+      }
+    },
+    "accuracyStat": {
+      "role": "accent", "zone": "rail",
+      "whenToUse": "Almost always. The 6-session trend + numeric %. Color is never the only signal — the number is always shown.",
+      "fields": {
+        "value": "string    — e.g. '49%'",
+        "caption": "string",
+        "bars": "number[]   — session percentages (ascending = trending up)"
+      }
+    },
+    "selfExplainPrompt": {
+      "role": "accentSoft", "zone": "main",
+      "whenToUse": "Consolidation. Prompt the learner to explain in their own words BEFORE any instructional explanation (self-explanation effect).",
+      "fields": { "prompt": "string" }
+    },
+    "coachEntry": {
+      "role": "accent", "zone": "rail",
+      "whenToUse": "Hand-off to the responsive Socratic coach — complements the static lesson scaffold.",
+      "fields": { "label": "string", "body": "string", "cta": "string" }
+    }
+  },
+  "contexts": {
+    "newSkill": {
+      "label": "New skill",
+      "reason": "First exposure → teach forward: rule → worked model → a faded try → self-explain. Ends on a win.",
+      "blocks": ["rule", "workedExample", "completionTry", "selfExplainPrompt", "accuracyStat"]
+    },
+    "returning": {
+      "label": "Returning & struggling",
+      "reason": "Mastery 49%, 4 misses due → lead with the misconception, clear the due items; rule as backup; coach on hand.",
+      "blocks": ["misconceptionCallout", "annotatedExample", "rule", "dueChecklist", "accuracyStat", "coachEntry"]
+    },
+    "refresher": {
+      "label": "Quick refresher",
+      "reason": "High mastery, a pre-drill glance → annotated example + rule, then straight to accuracy.",
+      "blocks": ["annotatedExample", "rule", "accuracyStat"]
+    }
+  },
+  "runtime": {
+    "composer": "Given { skill, learnerContext }, resolve context → ordered block list; partition by `zone` (main | rail); render each block via registry[type]. Unknown types are skipped. `--accent` = skill bucket token.",
+    "selection": "In production, the context is not a preset name but a decision from learner state (mastery, recent misconception tags, due schedule) — the same signals the v2 outer loop uses. Presets here are the demonstrable form."
+  }
+}

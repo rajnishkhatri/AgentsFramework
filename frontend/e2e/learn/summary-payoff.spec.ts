@@ -127,7 +127,10 @@ test.describe("C2 summary payoff", () => {
     );
   });
 
-  test("renders_three_actions_and_disables_lesson_while_comingSoon", async ({
+  // G8: the disabled-button branch this asserted no longer exists once
+  // skill.comingSoon flips false — replaced (not weakened) by the live-Link
+  // path, a stronger claim (href present, not disabled).
+  test("renders_three_actions_and_live_lesson_link (E1a FR-20)", async ({
     page,
   }) => {
     await seedBrowser(page, false);
@@ -137,8 +140,9 @@ test.describe("C2 summary payoff", () => {
     const done = page.locator("[data-testid='summary-done']");
     await expect(start).toBeVisible();
     await expect(start).toHaveAttribute("href", /\/learn\/quiz\?focus=/);
-    await expect(lesson).toBeDisabled();
-    await expect(lesson).toHaveAttribute("aria-disabled", "true");
+    await expect(lesson).toBeVisible();
+    await expect(lesson).toHaveAttribute("href", /\/learn\/skill\?skillId=/);
+    await expect(lesson).not.toBeDisabled();
     await expect(done).toHaveAttribute("href", /\/learn\/?$/);
   });
 

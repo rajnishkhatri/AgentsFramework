@@ -70,9 +70,9 @@ export const SCREENS: readonly Screen[] = [
   // Test Mode — a fixed, timed section (Test-01 English), DECOUPLED from the
   // adaptive quiz. A focus screen (hide the iPhone tab bar while the clock runs).
   { id: "test", route: `${COACH_BASE}/test`, navLabel: "Test", comingSoon: false, isFocusScreen: true },
-  // Screens 6/7 — subjective/tutorial plane. Deferred to the second ADR-0006
-  // amendment (getTutorial / listProgressPoints); shipped disabled (FR-B5).
-  { id: "skill", route: `${COACH_BASE}/skill`, navLabel: "Skill", comingSoon: true, isFocusScreen: false },
+  // Screens 6/7 — subjective/tutorial plane. Skill is live (E1a / ADR-0028);
+  // Progress stays comingSoon until its surface ships.
+  { id: "skill", route: `${COACH_BASE}/skill`, navLabel: "Skill", comingSoon: false, isFocusScreen: false },
   { id: "progress", route: `${COACH_BASE}/progress`, navLabel: "Progress", comingSoon: true, isFocusScreen: false },
 ];
 
@@ -98,12 +98,12 @@ export interface NavItem {
 }
 
 // Per-surface nav membership by screen id (FR-B1 + §8.1 iPhone 3-tab supersede).
-//   desktop / ipad sidebar: Home / Practice / Coach / Progress
-//   iphone bottom tab bar : Home / Practice / Progress  (Coach is contextual)
+//   desktop / ipad sidebar: Home / Practice / Coach / Skill / Progress
+//   iphone bottom tab bar : Home / Practice / Skill / Progress  (Coach is contextual)
 const NAV_MEMBERSHIP: Readonly<Record<Surface, readonly ScreenId[]>> = {
-  desktop: ["dashboard", "quiz", "coach", "progress"],
-  ipad: ["dashboard", "quiz", "coach", "progress"],
-  iphone: ["dashboard", "quiz", "progress"],
+  desktop: ["dashboard", "quiz", "coach", "skill", "progress"],
+  ipad: ["dashboard", "quiz", "coach", "skill", "progress"],
+  iphone: ["dashboard", "quiz", "skill", "progress"],
 };
 
 function toNavItem(s: Screen): NavItem {

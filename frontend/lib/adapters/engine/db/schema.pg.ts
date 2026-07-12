@@ -260,7 +260,8 @@ export const skillState = pgTable(
 /**
  * tutorial — the "rule in one line" + examples for a skill.
  * Same reviewed-gate as `question` (FR-B*). Generated offline, gated before
- * a learner sees it.
+ * a learner sees it. Optional teaching fields (ADR-0028 / E1a) feed the
+ * adaptive lesson surface; block order/zone/role are NOT persisted (D5).
  */
 export const tutorial = pgTable("tutorial", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -273,6 +274,14 @@ export const tutorial = pgTable("tutorial", {
   // 'rule' | 'misses' — what the tutorial was generated from.
   generated_from: text("generated_from").notNull().default("rule"),
   reviewed: boolean("reviewed").notNull().default(false),
+  // Optional teaching fields (ADR-0028). Null = content without that asset.
+  ground_md: text("ground_md"),
+  pitfall_md: text("pitfall_md"),
+  question_md: text("question_md"),
+  self_explain_prompt: text("self_explain_prompt"),
+  worked_example: jsonb("worked_example"),
+  completion_try: jsonb("completion_try"),
+  annotated_examples: jsonb("annotated_examples"),
 });
 
 /**

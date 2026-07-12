@@ -29,6 +29,8 @@ import type { LearnerReadRepo } from "./ports/engine/learner_read_repo";
 import type { HintRepo } from "./ports/engine/hint_repo";
 import type { TestItemRepo } from "./ports/engine/test_item_repo";
 import type { TestBlueprintRepo } from "./ports/engine/test_blueprint_repo";
+import type { TutorialRepo } from "./ports/engine/tutorial_repo";
+import type { ProgressRepo } from "./ports/engine/progress_repo";
 import type { QuizSubmitNotifier } from "./ports/quiz_submit_notifier";
 
 import type { EngineDb } from "./adapters/engine/db/engine_db";
@@ -45,6 +47,8 @@ import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
 import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
+import { DrizzleTutorialRepo } from "./adapters/engine/repos/drizzle_tutorial_repo";
+import { DrizzleProgressRepo } from "./adapters/engine/repos/drizzle_progress_repo";
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
@@ -77,6 +81,10 @@ export interface EnginePortBag {
   readonly testItemRepo: TestItemRepo;
   /** Read-only test-form blueprint (ADR-0015, FR-24.3). */
   readonly testBlueprintRepo: TestBlueprintRepo;
+  /** Read-only reviewed tutorial / lesson content (ADR-0028, E1a FR-1/17). */
+  readonly tutorialRepo: TutorialRepo;
+  /** Read-only progress-trend points (ADR-0028, E1a FR-17). */
+  readonly progressRepo: ProgressRepo;
   /**
    * Fire-and-forget quiz-submit signal to the coach-session marker store
    * (ADR-0012 Amendment, FR-19). Optional: absent on the server root (the
@@ -138,5 +146,8 @@ export function buildEngineAdapters(
     // no write surface — serving code can never flip the gate.
     testItemRepo,
     testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
+    // Read-only lesson content + progress (ADR-0028): no write surface.
+    tutorialRepo: new DrizzleTutorialRepo(db),
+    progressRepo: new DrizzleProgressRepo(db),
   };
 }

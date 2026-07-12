@@ -46,12 +46,15 @@ describe("AppNav — FR-B5 no dead controls", () => {
 });
 
 describe("AppNav — FR-B1 surface-appropriate membership + active state", () => {
-  it("iPhone shows exactly Home / Practice / Progress (no Coach tab)", () => {
+  it("iPhone shows exactly Home / Practice / Skill / Progress (no Coach tab)", () => {
+    // E1a FR-20: Skill went live (ADR-0028), so the iPhone tab bar is now
+    // Home / Practice / Skill / Progress. Mirrors nav_model.test.ts membership;
+    // Coach stays contextual (desktop/iPad peer only), never an iPhone tab.
     const doc = dom(<AppNav surface="iphone" pathname={DASH} />);
     const labels = [...doc.querySelectorAll("[data-screen]")].map((el) =>
       el.textContent?.trim(),
     );
-    expect(labels).toEqual(["Home", "Practice", "Progress"]);
+    expect(labels).toEqual(["Home", "Practice", "Skill", "Progress"]);
     expect(doc.querySelector('[data-screen="coach"]')).toBeNull();
   });
 

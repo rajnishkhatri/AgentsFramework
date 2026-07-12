@@ -1,5 +1,10 @@
-# Research bundle log
+---
+type: log
+title: 'Research prompts & source-of-truth notes — bundle log'
+---
 
-Chronological history of the research bundle, newest first (ISO-8601).
+# Research prompts & source-of-truth notes — bundle log
 
-- 2026-06-20 — Declared `research/` an OKF bundle: added `index.md` + this `log.md`, added `type: research-prompt` frontmatter to the 3 prompt Concepts (pyramid / scqa / tdd). Convention pinned in [CONVENTIONS_OKF.md](../docs/CONVENTIONS_OKF.md); linted by `scripts/okf_lint.py`.
+Chronological history, newest first (ISO-8601).
+
+- 2026-07-11 — Added the Eng-coach-ui-design ACT-English research cluster (6 docs): eng-coach v2 pedagogy spec, item-generation prompt, bucket-weights, teaching-strategy framework, authoring/QA playbook, LLM ranking — supports Epic E lesson generation. Convention in [CONVENTIONS_OKF.md](../docs/CONVENTIONS_OKF.md); linted by `scripts/okf_lint.py`.

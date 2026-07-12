@@ -25,7 +25,7 @@ import {
 import { honestCoachOpener } from "@/lib/translators/honest_coach_opener";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "maya";
+const LEARNER_ID = "Garvit";
 
 export default function CoachPage(): React.JSX.Element {
   const router = useRouter();

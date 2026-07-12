@@ -18,10 +18,15 @@ import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import { loadDashboard } from "./use_dashboard";
+import { DEV_LEARNER_ID } from "@/lib/adapters/engine/_dev_seed";
 import type { Question, Skill, SkillState } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
-const LEARNER = "maya";
+// The browser composition auto-seeds the dev corpus under DEV_LEARNER_ID
+// (buildBrowserEngineAdapters → seedDevCorpus). Bind LEARNER to that id so the
+// hand-seeded rows and the auto-seeded rows land on the same learner — keeps the
+// miss-count arithmetic deterministic and independent of the dev learner's name.
+const LEARNER = DEV_LEARNER_ID;
 const NOW = "2026-07-01T12:00:00.000Z";
 
 function skill(over: Partial<Skill> = {}): Skill {
