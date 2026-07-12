@@ -135,4 +135,35 @@ describe("newestDueMiss — FR-16a / FR-16b", () => {
     });
     expect(got).toBeNull();
   });
+
+  it("malformed nowISO → null (explicit degrade, not a silent no-due-miss)", () => {
+    const got = newestDueMiss({
+      misses: [attempt()],
+      skillStates: [skillState({ due_at: PAST })],
+      questions: [question({ misconception: "a real tag" })],
+      nowISO: "not-a-date",
+    });
+    expect(got).toBeNull();
+  });
+
+  it("newest DUE miss untagged → tier-3 hide, even when an older DUE miss IS tagged (binds to THE newest, not first-tagged)", () => {
+    // Pins the load-bearing early-return-null at newest_due_miss.ts:50. Both
+    // misses are DUE on the same skill; the newer one is untagged. FR-6b binds
+    // the callout to the NEWEST due miss and FR-6c hides it when that newest
+    // miss is untagged — the older tagged miss must NOT surface. A mutation to
+    // `continue` (scan on for any tagged miss) would wrongly return "stale tag".
+    const got = newestDueMiss({
+      misses: [
+        attempt({ id: "a-new", question_id: "q-new-untagged" }),
+        attempt({ id: "a-old", question_id: "q-old-tagged" }),
+      ],
+      skillStates: [skillState({ skill_id: "s-punc", due_at: PAST })],
+      questions: [
+        question({ id: "q-new-untagged", skill_id: "s-punc", misconception: null }),
+        question({ id: "q-old-tagged", skill_id: "s-punc", misconception: "stale tag" }),
+      ],
+      nowISO: NOW,
+    });
+    expect(got).toBeNull();
+  });
 });

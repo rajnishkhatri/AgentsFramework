@@ -58,4 +58,31 @@ describe("loadSkillDetail — E1a FR-3/18/19", () => {
       expect(result.vm.main).toEqual([]);
     }
   });
+
+  it("FR-6e cross-skill: dueChecklist rail excludes the current lesson's own skill", async () => {
+    // The dev corpus seeds s-punc, s-gram, s-org all due (due_at=PAST). Opening
+    // s-punc in the `returning` context must list the OTHER due skills only —
+    // the rail is cross-skill ("Also due for review"), never the skill in front
+    // (design FR-BLK-18 / D8 / AC-11).
+    const db = new InMemoryEngineDb();
+    seedDevCorpus(db);
+    seedLessonContent(db);
+    const ports = buildEngineAdapters({ env: {}, engineDb: db });
+    const result = await loadSkillDetail(ports, {
+      subject: "act-english",
+      learnerId: "maya",
+      skillId: "s-punc",
+      nowISO: "2026-07-11T12:00:00.000Z",
+      requested: "returning",
+    });
+    expect(result.status).toBe("ok");
+    if (result.status !== "ok") return;
+    const checklist = result.vm.rail.find((b) => b.tag === "dueChecklist");
+    expect(checklist).toBeDefined();
+    if (checklist?.tag !== "dueChecklist") return;
+    const ids = checklist.items.map((i) => i.skillId);
+    expect(ids).not.toContain("s-punc"); // the current skill must be excluded
+    expect(ids).toContain("s-gram"); // other due skills still listed
+    expect(ids.length).toBeGreaterThan(0);
+  });
 });

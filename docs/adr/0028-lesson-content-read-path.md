@@ -107,6 +107,15 @@ Ship the lesson content read path as one coherent unit:
 | Full B2 generator cascade now (`tutorial_generation.py` + `.j2` + quality judge) | Rejected for the first drop: three Ask-first triggers at once (new component + new prompt + new judge), and **no lesson-prose quality/leakage lint exists** (`hint_leakage.py` is answer-leakage-specific to hint rungs; "leakage" is undefined at the skill-copy level). Correct **scale-up** path once the quality-judge question is resolved on its own ADR track. |
 | Stamp `reviewed=true` on generated content without a cascade | Rejected: a forged provenance stamp — the exact anti-pattern the hint/item-bank confinement tests exist to prevent (AP-6 / "never forge a stamp"). |
 
+> **Serve-time twin (review follow-up, 2026-07-11).** The confinement format is
+> enforced at **build time** by `test_tutorial_provenance_confinement.py` (FR-2)
+> **and** at **serve time** by `DrizzleTutorialRepo.getTutorial`, which rejects a
+> `reviewed=true` row whose `generated_from` fails the `hand:…@…` / `llm:…@…`
+> pattern (FR-1 second clause) — defense in depth mirroring the `DrizzleHintRepo`
+> reviewed filter, so a forged stamp that somehow reached the store is still never
+> handed to a learner. This tightens *within* the ratified decision; it is not a
+> new Ask-first trigger.
+
 **Adjacent decisions folded in (with their rejected alternatives):**
 
 - **`accuracyStat` — build the accuracy read now?** Rejected: no per-skill accuracy read

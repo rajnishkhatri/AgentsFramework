@@ -4,6 +4,8 @@
  * for structure; createRoot for interactive FR-12/13/14.
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { JSDOM } from "jsdom";
 import * as React from "react";
@@ -125,6 +127,30 @@ describe("SkillDetailView — structural FRs", () => {
     expect(doc.querySelector('[data-testid="block-dueChecklist"]')).not.toBeNull();
     expect(doc.querySelector('[data-testid="block-coachEntry"]')).not.toBeNull();
     expect(doc.querySelector('[data-testid="block-accuracyStat"]')).toBeNull();
+  });
+
+  it("GUARD-NOWRITE-1: the view imports no engine repo/scheduler (structural no-write)", () => {
+    // The spy assertions in FR-12 are necessary but not sufficient — the view
+    // never invokes those props, so they cannot catch a real write. The load-
+    // bearing guarantee is that the view holds NO engine write surface: if a
+    // future edit wired an AttemptRepo/Scheduler/engine port into the view, a
+    // real write would go THROUGH that import, not the spies. Assert the import
+    // graph directly so that regression fails here.
+    // vitest root is frontend/; resolve the view relative to it.
+    const src = readFileSync(
+      resolve(process.cwd(), "components/learn/SkillDetailView.tsx"),
+      "utf-8",
+    );
+    const forbidden = [
+      /from\s+["'][^"']*attempt_repo/i,
+      /from\s+["'][^"']*\bscheduler\b/i,
+      /from\s+["'][^"']*\/repos\//i,
+      /from\s+["'][^"']*\/adapters\/engine\//i,
+      /from\s+["'][^"']*composition_engine/i,
+      /useEngine\b/,
+    ];
+    const offenders = forbidden.filter((re) => re.test(src)).map(String);
+    expect(offenders).toEqual([]);
   });
 });
 

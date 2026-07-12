@@ -34,6 +34,10 @@ export interface NewestDueMissInputs {
  */
 export function newestDueMiss(inputs: NewestDueMissInputs): NewestDueMiss | null {
   const now = Date.parse(inputs.nowISO);
+  // Malformed nowISO would make every `due_at <= now` comparison silently false
+  // (x <= NaN === false), hiding all due misses. Degrade explicitly to null
+  // rather than a silent tier-3 that looks like "no due miss".
+  if (Number.isNaN(now)) return null;
   const dueSkillIds = new Set(
     inputs.skillStates
       .filter((s) => Date.parse(s.due_at) <= now)

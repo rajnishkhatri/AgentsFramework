@@ -42,6 +42,20 @@ describe("selectLessonContext — design §9.2 5-row table (FR-4 / AC-1)", () =>
       state: { firstExposure: false, masteryPct: 88, dueMisses: 0 },
       expected: "refresher",
     },
+    {
+      // Boundary: `masteryPct >= 80` is inclusive. Exactly 80 → refresher.
+      // Pins against an off-by-one mutation to `> 80` (FR-4).
+      name: "boundary: mastery EXACTLY 80, 0 due → refresher",
+      state: { firstExposure: false, masteryPct: 80, dueMisses: 0 },
+      expected: "refresher",
+    },
+    {
+      // Just below the boundary: 79 is not >= 80 and nothing is due → newSkill
+      // (the else branch), keeping teaching. Pins the other side of the edge.
+      name: "boundary: mastery 79, 0 due → newSkill",
+      state: { firstExposure: false, masteryPct: 79, dueMisses: 0 },
+      expected: "newSkill",
+    },
   ];
 
   it.each(rows)("$name", ({ state, expected }) => {

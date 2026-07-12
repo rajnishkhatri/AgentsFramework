@@ -182,6 +182,23 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
     expect(vm.main.every((b) => b.tag !== "misconceptionCallout")).toBe(true);
   });
 
+  it("FR-6c: returning with whitespace-only tag → callout hides (trim clause)", () => {
+    // Pins the `.trim() === ""` half of the hide guard — distinct from the
+    // null case above. A mutation dropping the trim clause would render a
+    // callout with a blank body.
+    const vm = toSkillDetailVM({
+      context: "returning",
+      tutorial: tutorial(),
+      skill: SKILL,
+      misconceptionTag: "   ",
+      dueSkills: [{ skillId: "s-gram", name: "Usage" }],
+      accuracy: null,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    expect(mainTags(vm.main)).toEqual(["annotatedExample", "rule"]);
+    expect(vm.main.every((b) => b.tag !== "misconceptionCallout")).toBe(true);
+  });
+
   it("FR-6d: refresher → rule→annotated→pitfall(parting), ends on parting pitfall", () => {
     const vm = toSkillDetailVM({
       context: "refresher",
@@ -204,9 +221,11 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       tutorial: tutorial(),
       skill: SKILL,
       misconceptionTag: "a tag",
+      // Cross-skill rail: the producer (dueSkillRows) excludes the current skill
+      // (s-punc), so dueSkills carries OTHER due skills only.
       dueSkills: [
-        { skillId: "s-punc", name: "Punctuation" },
         { skillId: "s-gram", name: "Usage" },
+        { skillId: "s-sent", name: "Sentence structure" },
       ],
       accuracy: null,
       nowISO: "2026-07-11T12:00:00.000Z",

@@ -35,6 +35,16 @@ describe("DrizzleTutorialRepo (against InMemoryEngineDb) — E1a FR-1", () => {
     expect(await repo.getTutorial(SUBJECT, "s-nec")).toBeNull();
   });
 
+  it("NEVER serves a reviewed row whose generated_from fails the confinement format (FR-1 second clause)", async () => {
+    // Isolates the second clause: reviewed=true but a stamp that is neither
+    // hand:<author>@<date> nor llm:<model>@<promptrev>. Serve-time defense in
+    // depth — a forged stamp that somehow reaches the store must not be served.
+    const db = new InMemoryEngineDb();
+    db.seedTutorial(tutorial({ reviewed: true, generated_from: "forged-stamp" }));
+    const repo = new DrizzleTutorialRepo(db);
+    expect(await repo.getTutorial(SUBJECT, "s-nec")).toBeNull();
+  });
+
   it("returns the reviewed tutorial for a known skill", async () => {
     const db = new InMemoryEngineDb();
     const row = tutorial({

@@ -27,28 +27,46 @@ _SEED_FILES = (
 )
 
 
+def _row_spans(source: str) -> list[str]:
+    """Split source into per-object row candidates, anchored on ``"id"``.
+
+    Each seed row is an object literal that opens with an ``"id"`` key; a row
+    runs from one ``"id"`` up to the next (or end of source). This is
+    order-independent within a row and unbounded in length, so a forged
+    ``generated_from`` cannot escape by (a) preceding ``body_md`` or (b) hiding
+    behind a very long ``body_md`` — the two evasions a fixed forward window
+    from ``body_md`` missed.
+    """
+    starts = [m.start() for m in re.finditer(r'"id"\s*:', source)]
+    if not starts:
+        return []
+    bounds = starts + [len(source)]
+    return [source[bounds[i] : bounds[i + 1]] for i in range(len(starts))]
+
+
 def _reviewed_tutorial_provenances(source: str) -> list[str]:
     """Extract generated_from values from reviewed=true tutorial-family rows.
 
     Tutorial rows are discriminated by ``body_md`` + ``skill_id`` +
     ``generated_from`` (hint rows use ``generated_by`` + ``rung``; question
-    rows use ``stem`` / ``stem_md``). The emitted order puts reviewed /
-    generated_from within a short window after body_md.
+    rows use ``stem`` / ``stem_md``). Row-scoped: reviewed / generated_from are
+    matched anywhere inside the same row object, regardless of field order or
+    body length.
     """
     provenances: list[str] = []
-    for m in re.finditer(r'"body_md"\s*:', source):
-        window = source[m.start() : m.start() + 1200]
-        # Must look like a tutorial: skill_id nearby, generated_from (not
+    for row in _row_spans(source):
+        # Must look like a tutorial: body_md + skill_id, generated_from (not
         # generated_by), and no rung (hints).
-        lookbehind = source[max(0, m.start() - 400) : m.start() + 1200]
-        if not re.search(r'"skill_id"\s*:', lookbehind):
+        if not re.search(r'"body_md"\s*:', row):
             continue
-        if re.search(r'"rung"\s*:', lookbehind):
+        if not re.search(r'"skill_id"\s*:', row):
             continue
-        if not re.search(r'"generated_from"\s*:', window):
+        if re.search(r'"rung"\s*:', row):
             continue
-        reviewed = re.search(r'"reviewed"\s*:\s*true', window)
-        gen = re.search(r'"generated_from"\s*:\s*"([^"]*)"', window)
+        if not re.search(r'"generated_from"\s*:', row):
+            continue
+        reviewed = re.search(r'"reviewed"\s*:\s*true', row)
+        gen = re.search(r'"generated_from"\s*:\s*"([^"]*)"', row)
         if reviewed and gen:
             provenances.append(gen.group(1))
     return provenances
@@ -83,6 +101,33 @@ def test_detector_flags_a_self_stamped_reviewed_tutorial() -> None:
     )
     provs = _reviewed_tutorial_provenances(sneaky)
     assert provs == ["forged-stamp"]
+    assert not _is_legitimate(provs[0])
+
+
+def test_detector_flags_a_row_ordering_provenance_before_body_md() -> None:
+    """Evasion E: reviewed/generated_from emitted BEFORE body_md must not escape
+    a forward-only window. Row-scoped scan catches it."""
+    sneaky = (
+        '{ "id": "tut-e", "skill_id": "s-punc", '
+        '"reviewed": true, "generated_from": "forged-before", '
+        '"body_md": "Fence non-essential clauses." }'
+    )
+    provs = _reviewed_tutorial_provenances(sneaky)
+    assert provs == ["forged-before"]
+    assert not _is_legitimate(provs[0])
+
+
+def test_detector_flags_a_row_with_a_long_body_md() -> None:
+    """Evasion F: a body_md longer than any fixed window must not push
+    generated_from out of scan range. Row-scoped scan catches it."""
+    long_body = "x" * 4000
+    sneaky = (
+        '{ "id": "tut-f", "skill_id": "s-punc", '
+        f'"body_md": "{long_body}", '
+        '"reviewed": true, "generated_from": "forged-long" }'
+    )
+    provs = _reviewed_tutorial_provenances(sneaky)
+    assert provs == ["forged-long"]
     assert not _is_legitimate(provs[0])
 
 

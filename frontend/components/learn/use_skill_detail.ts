@@ -85,7 +85,7 @@ export async function loadSkillDetail(
     ...(args.requested != null ? { requested: args.requested } : {}),
   });
 
-  const dueSkills = dueSkillRows(skills, skillStates, args.nowISO);
+  const dueSkills = dueSkillRows(skills, skillStates, args.nowISO, args.skillId);
 
   const vm = toSkillDetailVM({
     context,
@@ -122,12 +122,16 @@ function dueSkillRows(
   skills: readonly Skill[],
   skillStates: readonly SkillState[],
   nowISO: string,
+  currentSkillId: string,
 ): ReadonlyArray<{ readonly skillId: string; readonly name: string }> {
   const now = Date.parse(nowISO);
   const byId = new Map(skills.map((s) => [s.id, s]));
   const out: { skillId: string; name: string }[] = [];
   for (const st of skillStates) {
     if (Date.parse(st.due_at) > now) continue;
+    // Cross-skill rail: exclude the lesson in front ("Also due for review" is
+    // OTHER due skills — FR-BLK-18 / D8 / AC-11).
+    if (st.skill_id === currentSkillId) continue;
     const sk = byId.get(st.skill_id);
     if (sk == null) continue;
     out.push({ skillId: sk.id, name: sk.name });
