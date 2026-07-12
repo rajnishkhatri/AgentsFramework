@@ -133,12 +133,15 @@ export default function QuizPage(): React.JSX.Element {
                   usedHint: pointer.usedHint ?? false,
                 }
               : undefined;
+          // exactOptionalPropertyTypes: omit `feedback` entirely when absent
+          // rather than passing it as `undefined` (an optional prop may be
+          // missing, not explicitly undefined).
           dispatch({
             type: "resume_item",
             item: resumed.item,
             score: { correct: pointer.correct, total: pointer.total },
             presentedAt: performance.now(),
-            feedback,
+            ...(feedback != null ? { feedback } : {}),
           });
           return;
         }
