@@ -39,7 +39,7 @@ import {
 const SUBJECT = DEFAULT_SUBJECT; // "act-english"
 
 /** The Phase-1 learner id hard-coded in the /learn pages — the seed MUST use it. */
-export const LEARN_LEARNER_ID = "maya";
+export const LEARN_LEARNER_ID = "Garvit";
 
 /** The six ACT-English taxonomy buckets (parity with the dashboard SIX_SKILLS). */
 export const LEARN_SKILLS: readonly Skill[] = [

@@ -16,8 +16,8 @@ import {
 } from "@/components/dashboard/use_dashboard";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "maya";
-const LEARNER_DISPLAY_NAME = "Maya";
+const LEARNER_ID = "Garvit";
+const LEARNER_DISPLAY_NAME = "Garvit";
 
 type BaseVm = Omit<DashboardVM, "rail">;
 

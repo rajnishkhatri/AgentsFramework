@@ -34,7 +34,7 @@ import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "maya";
+const LEARNER_ID = "Garvit";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;

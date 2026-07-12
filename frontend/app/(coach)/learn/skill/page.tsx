@@ -7,7 +7,7 @@ import { SkillDetailView } from "@/components/learn/SkillDetailView";
 import { useSkillDetail } from "@/components/learn/use_skill_detail";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "maya";
+const LEARNER_ID = "Garvit";
 
 export default function SkillPage(): React.JSX.Element {
   const searchParams = useSearchParams();

@@ -40,7 +40,7 @@ import {
 const SUBJECT = DEFAULT_SUBJECT; // "act-english"
 
 /** The plan's single Phase-1 learner (hard-coded in the /learn pages). */
-export const DEV_LEARNER_ID = "maya";
+export const DEV_LEARNER_ID = "Garvit";
 
 /**
  * The six ACT-English taxonomy buckets (mirrors the dashboard's SIX_SKILLS).

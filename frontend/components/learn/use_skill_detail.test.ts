@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { buildEngineAdapters } from "@/lib/composition_engine";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { seedLessonContent } from "@/lib/adapters/engine/_lesson_seed";
-import { seedDevCorpus } from "@/lib/adapters/engine/_dev_seed";
+import { seedDevCorpus, DEV_LEARNER_ID } from "@/lib/adapters/engine/_dev_seed";
 import { loadSkillDetail } from "./use_skill_detail";
 
 describe("loadSkillDetail — E1a FR-3/18/19", () => {
@@ -17,7 +17,7 @@ describe("loadSkillDetail — E1a FR-3/18/19", () => {
     const ports = buildEngineAdapters({ env: {}, engineDb: db });
     const result = await loadSkillDetail(ports, {
       subject: "act-english",
-      learnerId: "maya",
+      learnerId: DEV_LEARNER_ID,
       skillId: "s-punc",
       nowISO: "2026-07-11T12:00:00.000Z",
     });
@@ -34,7 +34,7 @@ describe("loadSkillDetail — E1a FR-3/18/19", () => {
     const ports = buildEngineAdapters({ env: {}, engineDb: db });
     const result = await loadSkillDetail(ports, {
       subject: "act-english",
-      learnerId: "maya",
+      learnerId: DEV_LEARNER_ID,
       skillId: "s-nope",
       nowISO: "2026-07-11T12:00:00.000Z",
     });
@@ -48,7 +48,7 @@ describe("loadSkillDetail — E1a FR-3/18/19", () => {
     const ports = buildEngineAdapters({ env: {}, engineDb: db });
     const result = await loadSkillDetail(ports, {
       subject: "act-english",
-      learnerId: "maya",
+      learnerId: DEV_LEARNER_ID,
       skillId: "s-punc",
       nowISO: "2026-07-11T12:00:00.000Z",
     });
@@ -70,7 +70,7 @@ describe("loadSkillDetail — E1a FR-3/18/19", () => {
     const ports = buildEngineAdapters({ env: {}, engineDb: db });
     const result = await loadSkillDetail(ports, {
       subject: "act-english",
-      learnerId: "maya",
+      learnerId: DEV_LEARNER_ID,
       skillId: "s-punc",
       nowISO: "2026-07-11T12:00:00.000Z",
       requested: "returning",
