@@ -157,8 +157,60 @@ interstitial vs banner, and whether "continue" resets the counter or keeps count
 
 ---
 
+## F5 (🔒 infra/security) — Real per-learner identity: enable WorkOS auth for eng-coach + an agent registry
+
+> User decision 2026-07-12: change the dev learner to **"Garvit"** now (done — the
+> `maya → Garvit` rename commit), and **park** the real-identity wiring here.
+
+**Today (dev posture).** Every coach surface hardcodes the dev learner instead of
+deriving it from the authenticated session. One source of truth
+([`DEV_LEARNER_ID`](../../frontend/lib/adapters/engine/_dev_seed.ts:43), now
+`"Garvit"`) is re-hardcoded as a `const LEARNER_ID` at each of **7 read sites**:
+[`learn/page.tsx:19`](../../frontend/app/(coach)/learn/page.tsx:19),
+[`learn/skill/page.tsx:10`](../../frontend/app/(coach)/learn/skill/page.tsx:10),
+[`learn/quiz/page.tsx:47`](../../frontend/app/(coach)/learn/quiz/page.tsx:47),
+[`learn/coach/page.tsx:28`](../../frontend/app/(coach)/learn/coach/page.tsx:28),
+[`learn/summary/page.tsx:23`](../../frontend/app/(coach)/learn/summary/page.tsx:23),
+[`components/coach/use_coach.ts:53`](../../frontend/components/coach/use_coach.ts:53),
+[`components/coach/CoachPanel.tsx:37`](../../frontend/components/coach/CoachPanel.tsx:37).
+The auth stack itself exists and is wired for the **chat** surface (WorkOS AuthKit
+behind the `AuthProvider` port; `Session.user_id`; see
+`STYLE_GUIDE_FRONTEND.md` §16) — the coach `/learn/*` routes simply don't consume it
+yet.
+
+**Why it's parked, not a quick edit.** This is a cross-cutting integration, not a
+value swap: (a) all 7 sites must change together or one surface reads a different
+learner than the rest; (b) it's an ⚠️ Ask-first trigger (a new integration crossing
+the auth boundary) → needs an SDD pass (brainstorm → spec) + an ADR; (c) the user
+scoped a second deliverable — **create an agent registry for authentication** (the
+eng-coach agent's identity/AgentFacts entry so the authenticated learner is bound to
+a registered coach agent, mirroring the trust-kernel AgentFacts pattern). `DEV_LEARNER_ID`
+stays as the unauthenticated dev/seed fallback.
+
+**Two hidden couplings the rename exposed** (fix as part of this item so they don't
+regress): tests that mix the auto-seeded dev corpus (`buildBrowserEngineAdapters` →
+`seedDevCorpus`, keyed to `DEV_LEARNER_ID`) with a hand-seeded learner must bind to
+`DEV_LEARNER_ID`, not a literal — done for
+[`use_skill_detail.test.ts`](../../frontend/components/learn/use_skill_detail.test.ts)
+and [`use_dashboard.test.ts`](../../frontend/components/dashboard/use_dashboard.test.ts);
+any new such test inherits the same rule.
+
+**Fix direction (spec):** derive the learner id from `AuthProvider`/`Session.user_id`
+at each `/learn/*` entry (a single shared `useLearnerId()` seam so there's one read
+path, not 7 constants), fall back to `DEV_LEARNER_ID` when unauthenticated; register
+the eng-coach agent in the AgentFacts/agent registry so the session identity resolves
+to a certified agent. Clarify at spec time: display-name source (WorkOS profile vs a
+learner-profile store), and whether the dev-seed fallback ships to prod behind a flag
+or is dev-only.
+
+---
+
 ### Suggested sequencing (for whoever plans the sprint)
-1. **F1 first** — it's a correctness bug that actively misleads the learner about
-   their progress; the others are enhancements. Start with the red-first direction test.
-2. **F4 / S5** — completes the originally-scoped loop-closure gap.
-3. **F2 + F3** — both live in the feedback/reviewing render path; natural to do together.
+1. **F5 first if the coach ships beyond a single-user demo** — it's the
+   infra/security gate (real identity + agent registry); everything else is
+   single-learner UX polish that stays correct under the dev learner. If the
+   near-term target is still the dev demo, F5 can wait behind F1.
+2. **F1** — a correctness bug that actively misleads the learner about their
+   progress; the remaining items are enhancements. Start with the red-first direction test.
+3. **F4 / S5** — completes the originally-scoped loop-closure gap.
+4. **F2 + F3** — both live in the feedback/reviewing render path; natural to do together.
