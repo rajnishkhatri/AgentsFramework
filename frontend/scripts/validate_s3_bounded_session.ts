@@ -20,7 +20,7 @@
  * Why headless-but-real: the browser engine is an in-memory singleton not exposed
  * on `window`, so we exercise the identical adapter classes directly. This is the
  * same substrate `browserEngineAdapters()` builds for the dev `/learn` surface
- * (composition_engine_browser.ts) — bank-backed, Maya's skill spread.
+ * (composition_engine_browser.ts) — bank-backed, Garvit's skill spread.
  */
 
 /* eslint-disable no-console */
@@ -33,14 +33,14 @@ import { DrizzleContentRepo } from "../lib/adapters/engine/repos/drizzle_content
 import { TestItemQuestionRepo } from "../lib/adapters/engine/repos/test_item_question_repo";
 import { DrizzleTestItemRepo } from "../lib/adapters/engine/repos/drizzle_test_item_repo";
 import { FsrsScheduler } from "../lib/adapters/engine/scheduler/fsrs_scheduler";
-import { seedDevCorpus } from "../lib/adapters/engine/_dev_seed";
+import { seedDevCorpus, DEV_LEARNER_ID } from "../lib/adapters/engine/_dev_seed";
 import { seedTestItemBank } from "../lib/adapters/engine/_test_item_bank";
 import { QuizSession } from "../lib/wire/engine_entities";
 import type { AttemptRepo } from "../lib/ports/engine/attempt_repo";
 import type { QuestionRepo } from "../lib/ports/engine/question_repo";
 
 const SUBJECT = "act-english";
-const LEARNER = "maya"; // the dev-seed learner (composition_engine_browser.ts)
+const LEARNER = DEV_LEARNER_ID; // the dev-seed learner (composition_engine_browser.ts)
 
 // ── tiny assertion harness ───────────────────────────────────────────────
 let passed = 0;
@@ -65,7 +65,7 @@ function eq<T>(name: string, got: T, want: T): void {
 // ── build a bank-backed engine exactly like the dev browser surface ──────
 function buildBankEngine() {
   const db = new InMemoryEngineDb();
-  seedDevCorpus(db); // Maya skills + skill_states (s-punc weakest+due)
+  seedDevCorpus(db); // Garvit skills + skill_states (s-punc weakest+due)
   seedTestItemBank(db); // the 171-item governed bank
   const contentRepo = new DrizzleContentRepo(db);
   const sessionRepo = new DrizzleSessionRepo({ db, contentRepo });
@@ -445,10 +445,10 @@ function printUIWalkthrough(): void {
   console.log(`${B} MANUAL UI WALKTHROUGH — validate S3 in the running dev preview${R}`);
   console.log(`${B}════════════════════════════════════════════════════════════════${R}`);
   console.log(`${D} Preview: ${R}${C}http://localhost:3000/learn/quiz${R}`);
-  console.log(`${D} (dev preview seeds Maya + the 171-item bank; quiz is bank-backed)${R}\n`);
+  console.log(`${D} (dev preview seeds Garvit + the 171-item bank; quiz is bank-backed)${R}\n`);
 
   console.log(`${B}What IS observable in S3 (no-repeat serving):${R}`);
-  console.log(`  1. Open ${C}/learn/quiz${R}. A punctuation item loads (Maya's weakest`);
+  console.log(`  1. Open ${C}/learn/quiz${R}. A punctuation item loads (Garvit's weakest`);
   console.log(`     skill s-punc is served first).`);
   console.log(`  2. Answer it (pick any choice → "Submit answer") → Feedback → "Next".`);
   console.log(`  3. Repeat for ~10–15 items. ${B}Track the question stems.${R}`);

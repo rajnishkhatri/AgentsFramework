@@ -115,7 +115,7 @@ describe("coach stream route — ADR-0012 sanitizer (FR-19/FR-21)", () => {
   }
 
   beforeEach(() => {
-    getSession.mockResolvedValue({ sub: "maya" });
+    getSession.mockResolvedValue({ sub: "Garvit" });
     getAccessToken.mockResolvedValue("tok-123");
     forwardToMiddleware.mockResolvedValue(new Response("data: hi\n\n"));
     proxySSE.mockReturnValue(new Response("proxied"));
@@ -140,7 +140,7 @@ describe("coach stream route — ADR-0012 sanitizer (FR-19/FR-21)", () => {
     }
     expect(q.stem).toBe(question.stem);
     // Mode derived from the SERVER-side session subject, never client input.
-    expect(isSubmitted).toHaveBeenCalledWith("maya", "q-punc-1");
+    expect(isSubmitted).toHaveBeenCalledWith("Garvit", "q-punc-1");
   });
 
   it("marker present ⇒ post_feedback with full question forwarded (FR-21)", async () => {

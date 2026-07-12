@@ -44,7 +44,7 @@ function vm(over: Partial<DashboardVM> = {}): DashboardVM {
     },
     reviewMissesCount: 3,
     greeting: {
-      headline: "Good afternoon, Maya",
+      headline: "Good afternoon, Garvit",
       subline: "Friday, July 10",
     },
     rail: {
@@ -184,7 +184,7 @@ describe("DashboardView — C1 rail + greeting (FR-1/FR-5/FR-14)", () => {
     expect(doc.querySelector('[data-testid="streak-tile"]')).toBeNull();
     expect(doc.querySelector('[data-testid="weekly-tile"]')).toBeNull();
     // Header + mastery still present (FR-1).
-    expect(doc.querySelector("header")?.textContent).toContain("Good afternoon, Maya");
+    expect(doc.querySelector("header")?.textContent).toContain("Good afternoon, Garvit");
     expect(doc.querySelector('[aria-label="Skill mastery"]')).not.toBeNull();
   });
 

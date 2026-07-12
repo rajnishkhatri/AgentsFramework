@@ -43,7 +43,7 @@ test.describe("Quiz rotates across skills (S3.1 / ADR-0024)", () => {
   test("no skill is served twice in a row; the walk spreads across ≥3 skills", async ({
     page,
   }) => {
-    // NO addInitScript override — the app takes the dev bank path (Maya + 171).
+    // NO addInitScript override — the app takes the dev bank path (Garvit + 171).
     await page.goto("/learn/quiz", { waitUntil: "networkidle" });
 
     const first = await currentSkill(page);

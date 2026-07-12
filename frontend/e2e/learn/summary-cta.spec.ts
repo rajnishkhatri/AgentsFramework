@@ -4,10 +4,10 @@
  * Spec: docs/plan/preact-summary-cta-and-skill-links.spec.md
  *
  * TWO proofs, both over the REAL dev bank path (NO `__PREACT_E2E_SEED__`
- * override — the app falls through to the Maya-seed + governed-bank wiring, the
+ * override — the app falls through to the Garvit-seed + governed-bank wiring, the
  * same path the bank-integration spec exercises). This is deliberate: the
  * recommended-next skill is a real bank skill, and the buckets are the six
- * ACT-English skills with Maya's mastery spread.
+ * ACT-English skills with Garvit's mastery spread.
  *
  *   T2 (FR-1). The "Start recommended drill" CTA must clear WCAG-AA contrast. Before
  *       the S1 fix it inherited the card's PER-BUCKET accent as its fill and,

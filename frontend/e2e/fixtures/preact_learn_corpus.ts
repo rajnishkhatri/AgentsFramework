@@ -2,7 +2,7 @@
  * Shared PreAct `/learn` e2e corpus (synthetic learners + question bank + walks).
  *
  * WHY A SEPARATE MODULE. The production dev-seed
- * (`frontend/lib/adapters/engine/_dev_seed.ts`) is the tiny hand-authored "Maya"
+ * (`frontend/lib/adapters/engine/_dev_seed.ts`) is the tiny hand-authored "Garvit"
  * corpus that makes the live `/learn` preview usable in dev. The e2e specs want a
  * LARGER, deterministic corpus (several reviewed items per skill + a scripted
  * answer walk) without coupling the tests to prod seed content or bloating it.

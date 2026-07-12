@@ -243,7 +243,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
             {
               subject: "act-english",
               skill_id: "s-punc",
-              learner_id: "maya",
+              learner_id: "Garvit",
               mastery: 0.5,
               last_seen: null,
               fsrs_stability: 0,
@@ -258,7 +258,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
 
     await sendCoachAsk(runtime, "why B?", {
       ports: ports as never,
-      learnerId: "maya",
+      learnerId: "Garvit",
       subject: "act-english",
     });
 

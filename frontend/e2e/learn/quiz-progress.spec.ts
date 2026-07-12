@@ -60,7 +60,7 @@ test.describe("Quiz progress bar — 'Question N of M' (S4)", () => {
   test("first item reads 'Question 1 of 30' with a progressbar (FR-3 / FR-7)", async ({
     page,
   }) => {
-    // NO seed override — the app takes the dev bank path (Maya + the 171-item bank
+    // NO seed override — the app takes the dev bank path (Garvit + the 171-item bank
     // over InMemoryEngineDb); the session opens at the target_count floor of 30.
     await page.goto("/learn/quiz", { waitUntil: "networkidle" });
 

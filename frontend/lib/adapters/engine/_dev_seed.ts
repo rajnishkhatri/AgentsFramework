@@ -1,5 +1,5 @@
 /**
- * Dev-only Maya fixtures for the browser engine substrate: SKILLS + MASTERY
+ * Dev-only Garvit fixtures for the browser engine substrate: SKILLS + MASTERY
  * SPREAD only (ADR-0021 / spec FR-B2a).
  *
  * WHY THIS EXISTS. `browserEngineAdapters()` (composition_engine_browser.ts)
@@ -112,7 +112,7 @@ export const DEV_SKILLS: readonly Skill[] = [
 
 
 /**
- * Pre-seeded mastery for Maya so the Dashboard shows a real spread (varied
+ * Pre-seeded mastery for Garvit so the Dashboard shows a real spread (varied
  * bars + one weak, due bucket to anchor "today's focus") instead of six 0%
  * cards. `due_at` in the past = due now; a far-future date = not due. Punctuation
  * is the weakest + due, so it becomes the focus banner and the first Quiz item.
