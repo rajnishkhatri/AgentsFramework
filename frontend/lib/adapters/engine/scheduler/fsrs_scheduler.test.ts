@@ -247,6 +247,127 @@ describe("FsrsScheduler — seeding (FR-A7) + pick (FR-A1) + sole writer (FR-A2)
   });
 });
 
+// --- E1b-D0: mastery write-path fix (ADR-0029) ---
+//
+// F1 report: "completed a skill, all 30 answers wrong, dashboard shows 100% mastery."
+// Root cause: review() stored `mastery = retrievability(card, reviewedAt)` — evaluated at
+// elapsed≈0, so ~1.0 regardless of a wrong Rating.Again (which correctly collapses stability,
+// but was masked). The fix derives mastery from fsrs_stability (monotone squash). These tests
+// assert DIRECTION + monotonicity + bounds, so they hold for any monotone stability→[0,1] map.
+
+describe("FsrsScheduler — mastery reflects competence, not retrievability-at-review (E1b-D0)", () => {
+  function seedOneSkill(db: InMemoryEngineDb) {
+    db.seedSkills([skill({ id: "s1" })]);
+    db.seedQuestions([reviewedQuestion({ id: "q1", skill_id: "s1" })]);
+    return db.insertSession({
+      id: "sess1",
+      subject: "act-english",
+      learner_id: "alice",
+      mode: "adaptive",
+      skill_focus: null,
+      started_at: NOW.toISOString(),
+      ended_at: null,
+      score_correct: 0,
+      score_total: 0,
+      target_count: null,
+    });
+  }
+  const attemptAt = (createdAt: Date, correct: boolean): Attempt => ({
+    id: "a",
+    subject: "act-english",
+    session_id: "sess1",
+    question_id: "q1",
+    chosen_letter: "A",
+    correct,
+    elapsed_ms: 1000,
+    used_hint: false,
+    created_at: createdAt.toISOString(),
+  });
+
+  it("FR-1: N consecutive wrong answers never RAISE mastery (the F1 bug)", async () => {
+    const { db } = setup();
+    await seedOneSkill(db);
+    // 30 wrong grades in one session, clock frozen at NOW (elapsed≈0 each review —
+    // the exact condition that pinned retrievability to ~1.0).
+    let prevMastery = Number.POSITIVE_INFINITY;
+    let last = 0;
+    for (let i = 0; i < 30; i++) {
+      const s = await schedulerOver(db, () => NOW).review(attemptAt(NOW, false));
+      expect(s.mastery).toBeLessThanOrEqual(prevMastery); // never increases on a wrong grade
+      prevMastery = s.mastery;
+      last = s.mastery;
+    }
+    // And it ends LOW, not pinned near 1.0 (the reported 100%).
+    expect(last).toBeLessThan(0.5);
+  });
+
+  it("FR-2: collapsed stability (repeated wrong) trends mastery toward 0, not ~1", async () => {
+    const { db } = setup();
+    await seedOneSkill(db);
+    let s = await schedulerOver(db, () => NOW).review(attemptAt(NOW, false));
+    for (let i = 0; i < 5; i++) {
+      s = await schedulerOver(db, () => NOW).review(attemptAt(NOW, false));
+    }
+    expect(s.fsrs_stability).toBeLessThan(1); // stability did collapse (sanity)
+    expect(s.mastery).toBeLessThan(0.2); // and mastery followed it down
+  });
+
+  it("FR-3: mastery is a monotone function of stability, independent of the review clock", async () => {
+    // Two learners, identical wrong-then-right history, reviewed at different wall-clock
+    // instants. Retrievability-at-review would diverge with elapsed time; a stability-derived
+    // mastery must be identical for identical card state.
+    const mk = async (clock: Date) => {
+      const { db } = setup();
+      await seedOneSkill(db);
+      return schedulerOver(db, () => clock).review(attemptAt(clock, true));
+    };
+    const a = await mk(NOW);
+    const b = await mk(new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000)); // +3 days
+    // Same first-review card state → same stability → same mastery (clock-independent).
+    expect(a.fsrs_stability).toBeCloseTo(b.fsrs_stability, 6);
+    expect(a.mastery).toBeCloseTo(b.mastery, 6);
+  });
+
+  it("FR-4: a correct streak RAISES mastery (the signal is not inverted)", async () => {
+    const { db } = setup();
+    await seedOneSkill(db);
+    const s1 = await schedulerOver(db, () => NOW).review(attemptAt(NOW, true));
+    const due1 = new Date(s1.due_at);
+    const s2 = await schedulerOver(db, () => due1).review(attemptAt(due1, true));
+    const due2 = new Date(s2.due_at);
+    const s3 = await schedulerOver(db, () => due2).review(attemptAt(due2, true));
+    // Stability grows across correct reviews, so mastery grows with it.
+    expect(s2.mastery).toBeGreaterThanOrEqual(s1.mastery);
+    expect(s3.mastery).toBeGreaterThan(s1.mastery);
+  });
+
+  it("FR-5: mastery stays within [0,1] across a long correct streak (bounds)", async () => {
+    const { db } = setup();
+    await seedOneSkill(db);
+    let clock = NOW;
+    let s = await schedulerOver(db, () => clock).review(attemptAt(clock, true));
+    for (let i = 0; i < 8; i++) {
+      clock = new Date(s.due_at);
+      s = await schedulerOver(db, () => clock).review(attemptAt(clock, true));
+      expect(s.mastery).toBeGreaterThanOrEqual(0);
+      expect(s.mastery).toBeLessThanOrEqual(1);
+    }
+    // A long streak drives mastery high but never over 1.
+    expect(s.mastery).toBeGreaterThan(0.5);
+    expect(s.mastery).toBeLessThanOrEqual(1);
+  });
+
+  it("FR-6: the projection swap leaves scheduling (due_at, stability) unchanged", async () => {
+    // A correct review still advances due_at into the future with positive stability —
+    // only the mastery PROJECTION changed, not the FSRS card math.
+    const { db } = setup();
+    await seedOneSkill(db);
+    const s = await schedulerOver(db, () => NOW).review(attemptAt(NOW, true));
+    expect(Date.parse(s.due_at)).toBeGreaterThan(NOW.getTime());
+    expect(s.fsrs_stability).toBeGreaterThan(0);
+  });
+});
+
 // --- S3: within-session no-repeat via servedIds (FR-9/10/11/13) ---
 
 /** A default skill_state row so a learner is pre-seeded (no seeding upsert). */

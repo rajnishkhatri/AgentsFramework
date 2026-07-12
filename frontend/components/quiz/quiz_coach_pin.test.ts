@@ -12,6 +12,7 @@ describe("toQuizCoachPin", () => {
       }),
     ).toEqual({
       pin: {
+        kind: "item",
         questionId: "q2",
         skillId: "s-org",
         label: "Q2 · s-org",
@@ -30,6 +31,7 @@ describe("toQuizCoachPin", () => {
       }),
     ).toEqual({
       pin: {
+        kind: "item",
         questionId: "q2",
         skillId: "s-punc",
         label: "Q2 · s-punc",

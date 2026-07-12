@@ -179,6 +179,16 @@ export type BlockVM =
       readonly items: ReadonlyArray<{ readonly skillId: string; readonly name: string }>;
     }
   | {
+      readonly tag: "accuracyStat";
+      readonly zone: "rail";
+      readonly role: "neutral";
+      readonly tint: RoleTint;
+      readonly order: number;
+      readonly valuePct: number;
+      readonly bars: readonly number[];
+      readonly masteryPct: number | null;
+    }
+  | {
       readonly tag: "coachEntry";
       readonly zone: "rail";
       readonly role: "accent";
@@ -197,10 +207,15 @@ export interface SkillDetailInputs {
   /** Whole due skills for the dueChecklist rail (returning). */
   readonly dueSkills: ReadonlyArray<{ readonly skillId: string; readonly name: string }>;
   /**
-   * Real per-skill answer-accuracy. E1a: always null → accuracyStat self-omits
-   * (FR-16 carve-out). When a follow-up supplies data, the block activates.
+   * Real per-skill answer-accuracy. Null → accuracyStat self-omits (FR-1/FR-2).
+   * Filled by AttemptRepo.accuracyBySkill → toAccuracyVM (E1b-D1).
    */
   readonly accuracy: { readonly valuePct: number; readonly bars: readonly number[] } | null;
+  /**
+   * FSRS mastery % for the FR-BLK-19 distinct-from-mastery footnote.
+   * Null when no SkillState row yet (honest-absent parenthetical).
+   */
+  readonly masteryPct: number | null;
   readonly nowISO: string;
   readonly skillStates?: readonly SkillState[];
 }
@@ -364,10 +379,18 @@ function resolveBlock(
       };
     }
     case "accuracyStat": {
-      // FR-16: self-omit when no real accuracy data (E1a carve-out).
+      // FR-1/FR-2: self-omit when no real accuracy data.
       if (inputs.accuracy == null) return null;
-      // Render path reserved for the follow-up; today always null.
-      return null;
+      return {
+        tag: "accuracyStat",
+        zone: "rail",
+        role: "neutral",
+        tint: ROLE_TINT.neutral,
+        order,
+        valuePct: inputs.accuracy.valuePct,
+        bars: inputs.accuracy.bars,
+        masteryPct: inputs.masteryPct,
+      };
     }
     case "coachEntry": {
       return {

@@ -74,6 +74,7 @@ describe("toSkillDetailVM — newSkill (FR-7 / FR-8b / FR-9 / FR-10)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)).toEqual([
@@ -111,6 +112,7 @@ describe("toSkillDetailVM — newSkill (FR-7 / FR-8b / FR-9 / FR-10)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)[0]).toBe("pitfall");
@@ -125,6 +127,7 @@ describe("toSkillDetailVM — newSkill (FR-7 / FR-8b / FR-9 / FR-10)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(vm.main[vm.main.length - 1]!.tag).toBe("completionTry");
@@ -142,6 +145,7 @@ describe("toSkillDetailVM — newSkill (FR-7 / FR-8b / FR-9 / FR-10)", () => {
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(vm.empty).toBe(true);
@@ -158,6 +162,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: "deleting commas to shorten a which-clause",
       dueSkills: [{ skillId: "s-gram", name: "Usage" }],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)).toEqual([
@@ -176,6 +181,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: null,
       dueSkills: [{ skillId: "s-gram", name: "Usage" }],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)).toEqual(["annotatedExample", "rule"]);
@@ -193,6 +199,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: "   ",
       dueSkills: [{ skillId: "s-gram", name: "Usage" }],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)).toEqual(["annotatedExample", "rule"]);
@@ -223,6 +230,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const last = vm.main[vm.main.length - 1];
@@ -244,6 +252,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: null,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(mainTags(vm.main)).toEqual(["rule", "annotatedExample", "pitfall"]);
@@ -265,6 +274,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
         { skillId: "s-sent", name: "Sentence structure" },
       ],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     expect(vm.rail.map((b) => b.tag)).toEqual(["dueChecklist", "coachEntry"]);
@@ -279,6 +289,7 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
       misconceptionTag: tag,
       dueSkills: [],
       accuracy: null,
+      masteryPct: null,
       nowISO: "2026-07-11T12:00:00.000Z",
     });
     const callout = vm.main.find((b) => b.tag === "misconceptionCallout");
@@ -286,6 +297,64 @@ describe("toSkillDetailVM — returning / refresher (FR-6a / FR-6c / FR-6d)", ()
     if (callout?.tag === "misconceptionCallout") {
       expect(callout.body).toBe(tag);
       expect(callout.eyebrow).toBe("On your last miss · Punctuation");
+    }
+  });
+});
+
+describe("toSkillDetailVM — accuracyStat self-omit (E1b-D1 FR-1 / FR-2)", () => {
+  it("FR-1: no attempts → accuracy: null → accuracyStat self-omits", () => {
+    const vm = toSkillDetailVM({
+      context: "newSkill",
+      tutorial: tutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: null,
+      masteryPct: 42,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    expect(vm.rail.every((b) => b.tag !== "accuracyStat")).toBe(true);
+    expect(vm.rail).toEqual([]);
+  });
+
+  it("FR-2: unavailable accuracy → omit; never emit mastery under accuracy label", () => {
+    // Any null accuracy (unavailable for any reason) must omit — and the VM
+    // must never put a mastery scalar into an accuracyStat block.
+    const vm = toSkillDetailVM({
+      context: "returning",
+      tutorial: tutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: null,
+      masteryPct: 87,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const accuracyBlocks = vm.rail.filter((b) => b.tag === "accuracyStat");
+    expect(accuracyBlocks).toEqual([]);
+    // No rail block may carry a valuePct equal to mastery under an accuracy tag.
+    for (const b of vm.rail) {
+      expect(b.tag).not.toBe("accuracyStat");
+    }
+  });
+
+  it("positive: real accuracy data emits accuracyStat with value + bars + masteryPct", () => {
+    const vm = toSkillDetailVM({
+      context: "returning",
+      tutorial: tutorial(),
+      skill: SKILL,
+      misconceptionTag: null,
+      dueSkills: [],
+      accuracy: { valuePct: 67, bars: [50, 75, 100] },
+      masteryPct: 42,
+      nowISO: "2026-07-11T12:00:00.000Z",
+    });
+    const block = vm.rail.find((b) => b.tag === "accuracyStat");
+    expect(block).toBeDefined();
+    if (block?.tag === "accuracyStat") {
+      expect(block.valuePct).toBe(67);
+      expect(block.bars).toEqual([50, 75, 100]);
+      expect(block.masteryPct).toBe(42);
     }
   });
 });

@@ -81,7 +81,7 @@ export function CoachPanel(props: {
     return () => {
       cancelled = true;
     };
-  }, [pin?.skillId, pin?.questionId, countMissesOnSkill]);
+  }, [pin?.skillId, pin?.kind === "item" ? pin.questionId : null, countMissesOnSkill]);
 
   const surfaceVm: CoachSurfaceVM = React.useMemo(
     () =>

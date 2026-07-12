@@ -190,6 +190,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
     const { runtime, streamReqs } = scriptedRuntime();
     setCoachPin(
       {
+        kind: "item",
         questionId: "q1",
         skillId: "s-punc",
         label: "Q4 · Commas",

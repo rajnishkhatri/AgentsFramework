@@ -10,9 +10,12 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { BlockVM, SkillDetailVM } from "@/lib/translators/skill_detail_vm";
 import { screen } from "@/components/shell/nav_model";
+import { AccuracyBars } from "./AccuracyBars";
+import { setCoachPin } from "@/components/coach/coach_thread_store";
 
 export interface SkillDetailViewProps {
   readonly vm: SkillDetailVM;
@@ -367,10 +370,37 @@ function DueChecklistBlock(props: {
   );
 }
 
+function AccuracyStatBlock(props: {
+  readonly block: Extract<BlockVM, { tag: "accuracyStat" }>;
+}): React.JSX.Element {
+  const { block } = props;
+  const footnote =
+    block.masteryPct == null
+      ? "Not your mastery estimate — accuracy is a different number"
+      : `Not your mastery estimate (${block.masteryPct}%) — accuracy is a different number`;
+  return (
+    <BlockShell block={block}>
+      <RoleLabel ink={block.tint.ink}>Accuracy</RoleLabel>
+      <p
+        data-testid="accuracy-value"
+        className="text-2xl font-semibold tabular-nums leading-none"
+      >
+        {block.valuePct}%
+      </p>
+      <p className="text-sm text-muted">Recent sessions on this skill</p>
+      <AccuracyBars bars={block.bars} />
+      <p data-testid="accuracy-mastery-footnote" className="text-xs text-muted">
+        {footnote}
+      </p>
+    </BlockShell>
+  );
+}
+
 function CoachEntryBlock(props: {
   readonly block: Extract<BlockVM, { tag: "coachEntry" }>;
 }): React.JSX.Element {
   const { block } = props;
+  const router = useRouter();
   return (
     <BlockShell block={block}>
       <RoleLabel ink={block.tint.ink}>Stuck? Ask the coach</RoleLabel>
@@ -378,13 +408,24 @@ function CoachEntryBlock(props: {
         Work it out with a hint-first Socratic nudge — never the answer up front.
         Pinned to {block.skillName}.
       </p>
-      <Link
-        href={screen("coach").route}
+      <button
+        type="button"
         data-testid="coach-entry-seam"
         className="self-start rounded-md border border-border px-3 py-1.5 text-sm font-semibold"
+        onClick={() => {
+          setCoachPin(
+            {
+              kind: "lesson",
+              skillId: block.skillId,
+              label: block.skillName,
+            },
+            "pre_submit",
+          );
+          router.push(screen("coach").route);
+        }}
       >
         ✦ Open coach
-      </Link>
+      </button>
     </BlockShell>
   );
 }
@@ -430,6 +471,8 @@ function renderBlock(
       return <AnnotatedExampleBlock block={block} />;
     case "dueChecklist":
       return <DueChecklistBlock block={block} />;
+    case "accuracyStat":
+      return <AccuracyStatBlock block={block} />;
     case "coachEntry":
       return <CoachEntryBlock block={block} />;
     default: {

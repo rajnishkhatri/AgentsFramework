@@ -14,7 +14,12 @@
 
 import type { AttemptRepo } from "../../../ports/engine/attempt_repo";
 import { EngineRepoError } from "../../../ports/engine/errors";
-import type { Attempt, AttemptInput } from "../../../wire/engine_entities";
+import type {
+  AccuracyBySkill,
+  Attempt,
+  AttemptInput,
+} from "../../../wire/engine_entities";
+import { toAccuracyVM } from "../../../wire/engine_entities";
 import type { EngineDb } from "../db/engine_db";
 
 export type AttemptRepoDeps = {
@@ -71,6 +76,22 @@ export class DrizzleAttemptRepo implements AttemptRepo {
       return await this.db.listSessionSkillIds(sessionId);
     } catch (err) {
       throw translate("servedSkillIds", err);
+    }
+  }
+
+  async accuracyBySkill(
+    subject: string,
+    learnerId: string,
+    skillId: string,
+    opts?: { sessions?: number },
+  ): Promise<AccuracyBySkill> {
+    const sessions = opts?.sessions ?? 6;
+    try {
+      return toAccuracyVM(
+        await this.db.accuracyRowsBySkill(subject, learnerId, skillId, sessions),
+      );
+    } catch (err) {
+      throw translate("accuracyBySkill", err);
     }
   }
 }

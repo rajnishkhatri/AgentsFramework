@@ -36,7 +36,7 @@ describe("toCoachSurfaceVM — honest absent (FR-1, FR-3)", () => {
   it("never emits fabricated 'of last 5' copy (FR-1)", () => {
     const withCount = toCoachSurfaceVM(
       inputs({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
         missesOnSkill: 3,
         skillLabel: "Commas",
       }),
@@ -53,7 +53,7 @@ describe("toCoachSurfaceVM — current item (FR-5 / FR-3)", () => {
   it("shows current-item line when pin is present", () => {
     const vm = toCoachSurfaceVM(
       inputs({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4 · Commas, non-essential" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4 · Commas, non-essential" },
       }),
     );
     expect(vm.currentItemLine).toBe("Current item: Q4 · Commas, non-essential");
@@ -64,7 +64,7 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
   it("shows skill-scoped history when missesOnSkill is known", () => {
     const vm = toCoachSurfaceVM(
       inputs({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4 · Commas" },
         missesOnSkill: 3,
         skillLabel: "Commas",
       }),
@@ -75,7 +75,7 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
   it("falls back to skillId when skillLabel is missing", () => {
     const vm = toCoachSurfaceVM(
       inputs({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4" },
         missesOnSkill: 2,
         skillLabel: null,
       }),
@@ -86,7 +86,7 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
   it("omits history when missesOnSkill is null even if pin exists", () => {
     const vm = toCoachSurfaceVM(
       inputs({
-        pin: { questionId: "q1", skillId: "s-punc", label: "Q4" },
+        pin: { kind: "item", questionId: "q1", skillId: "s-punc", label: "Q4" },
         missesOnSkill: null,
       }),
     );
@@ -128,5 +128,40 @@ describe("toCoachSurfaceVM — rail + chips", () => {
     expect(vm.railTitle).toBe("Your Coach");
     expect(vm.railStatus).toMatch(/Adaptive/i);
     expect(vm.chips).toEqual([...seeds]);
+  });
+});
+
+describe("CoachSurfacePin union — FR-4 exhaustiveness", () => {
+  it("pin union — both branches handled (exhaustive)", () => {
+    function labelOf(pin: import("./coach_surface_vm").CoachSurfacePin): string {
+      switch (pin.kind) {
+        case "item":
+          return `item:${pin.questionId}`;
+        case "lesson":
+          return `lesson:${pin.skillId}`;
+        default: {
+          const _never: never = pin;
+          return _never;
+        }
+      }
+    }
+    expect(
+      labelOf({ kind: "item", questionId: "q1", skillId: "s-punc", label: "Q1" }),
+    ).toBe("item:q1");
+    expect(labelOf({ kind: "lesson", skillId: "s-punc", label: "Punctuation" })).toBe(
+      "lesson:s-punc",
+    );
+  });
+
+  it("lesson pin omits current-item line", () => {
+    const vm = toCoachSurfaceVM(
+      inputs({
+        pin: { kind: "lesson", skillId: "s-punc", label: "Punctuation" },
+        missesOnSkill: 2,
+        skillLabel: "Punctuation",
+      }),
+    );
+    expect(vm.currentItemLine).toBeNull();
+    expect(vm.historyLine).toBe("Sees your history: 2 misses on Punctuation");
   });
 });

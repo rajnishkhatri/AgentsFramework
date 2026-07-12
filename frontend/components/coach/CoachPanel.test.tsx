@@ -130,6 +130,7 @@ describe("CoachPanel — B1 shared chrome (FR-5, FR-9)", () => {
         hintLadder={LADDER}
         mode="pre_submit"
         pin={{
+          kind: "item",
           questionId: "q1",
           skillId: "s-punc",
           label: "Q4 · Commas, non-essential",
@@ -173,6 +174,7 @@ describe("CoachPanel — BP-2b store pin sync (FR-6)", () => {
         runtime={scriptedRuntime()}
         hintLadder={LADDER}
         pin={{
+          kind: "item",
           questionId: "q1",
           skillId: "s-punc",
           label: "Q4 · Commas, non-essential",
@@ -180,6 +182,7 @@ describe("CoachPanel — BP-2b store pin sync (FR-6)", () => {
       />,
     );
     expect(coachThreadSnapshot().pin).toEqual({
+      kind: "item",
       questionId: "q1",
       skillId: "s-punc",
       label: "Q4 · Commas, non-essential",

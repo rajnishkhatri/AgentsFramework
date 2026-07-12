@@ -238,6 +238,48 @@ export type Attempt = z.infer<typeof Attempt>;
 export const AttemptInput = Attempt.omit({ id: true, created_at: true });
 export type AttemptInput = z.infer<typeof AttemptInput>;
 
+/**
+ * One session's on-skill accuracy tallies (E1b-D1). Newest-first rows from
+ * `EngineDb.accuracyRowsBySkill`; reduced by `toAccuracyVM` to valuePct + bars.
+ * Plain wire shape — no SDK types.
+ */
+export const SkillAccuracyRow = z.object({
+  sessionId: z.string(),
+  correct: z.number().int().nonnegative(),
+  total: z.number().int().positive(),
+});
+export type SkillAccuracyRow = z.infer<typeof SkillAccuracyRow>;
+
+/**
+ * Reduced per-skill accuracy for the accuracyStat block (E1b-D1).
+ * `null` when the learner has no on-skill attempts (self-omit).
+ */
+export type AccuracyBySkill = {
+  readonly valuePct: number;
+  readonly bars: readonly number[];
+} | null;
+
+/**
+ * Reduce per-session accuracy rows → accuracyStat inputs (E1b-D1).
+ * Lives in wire/ so adapters can call it without importing translators/ (Rule A3).
+ * Empty input → null (self-omit). Window = bar count; no padding.
+ */
+export function toAccuracyVM(rows: readonly SkillAccuracyRow[]): AccuracyBySkill {
+  if (rows.length === 0) return null;
+  let sumCorrect = 0;
+  let sumTotal = 0;
+  const bars: number[] = [];
+  for (const r of rows) {
+    sumCorrect += r.correct;
+    sumTotal += r.total;
+    bars.push(Math.round((100 * r.correct) / r.total));
+  }
+  return {
+    valuePct: Math.round((100 * sumCorrect) / sumTotal),
+    bars,
+  };
+}
+
 // --- skill_state ---------------------------------------------------------
 
 /**

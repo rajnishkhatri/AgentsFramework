@@ -39,6 +39,7 @@ import type {
   Question,
   QuizSession,
   Skill,
+  SkillAccuracyRow,
   SkillState,
   TestBlueprint,
   TestItem,
@@ -532,6 +533,42 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
         skills.push(id);
       }
       return skills;
+    },
+    async accuracyRowsBySkill(subject, learnerId, skillId, sessions) {
+      // Per-session on-skill tallies newest-first (E1b-D1). COALESCE join so
+      // ADR-0021 bank (test_item) attempts count — an INNER JOIN on `question`
+      // alone would drop them. GROUP BY session_id; ORDER BY MAX(created_at)
+      // DESC; LIMIT sessions. Derived from `attempt` only (FR-7).
+      const rows = await wrap(
+        "accuracyRowsBySkill",
+        db
+          .select({
+            session_id: pg.attempt.session_id,
+            correct: sql<number>`sum(case when ${pg.attempt.correct} then 1 else 0 end)`,
+            total: sql<number>`count(*)`,
+            newest_at: sql<Date>`max(${pg.attempt.created_at})`,
+          })
+          .from(pg.attempt)
+          .innerJoin(pg.quizSession, eq(pg.attempt.session_id, pg.quizSession.id))
+          .leftJoin(pg.question, eq(pg.attempt.question_id, pg.question.id))
+          .leftJoin(pg.testItem, eq(pg.attempt.question_id, pg.testItem.id))
+          .where(
+            and(
+              eq(pg.attempt.subject, subject),
+              eq(pg.quizSession.learner_id, learnerId),
+              eq(pg.quizSession.subject, subject),
+              sql`coalesce(${pg.question.skill_id}, ${pg.testItem.skill_id}) = ${skillId}`,
+            ),
+          )
+          .groupBy(pg.attempt.session_id)
+          .orderBy(sql`max(${pg.attempt.created_at}) desc`)
+          .limit(sessions),
+      );
+      return rows.map((r): SkillAccuracyRow => ({
+        sessionId: String((r as { session_id: unknown }).session_id),
+        correct: Number((r as { correct: unknown }).correct),
+        total: Number((r as { total: unknown }).total),
+      }));
     },
     async listSkillState(subject, learnerId) {
       const rows = await wrap(

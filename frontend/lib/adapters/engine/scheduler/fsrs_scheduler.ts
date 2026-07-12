@@ -23,10 +23,14 @@
  *     upserts the new `skill_state`. Deterministic given prior state + attempt +
  *     the injected clock.
  *
- * Mastery projection: FSRS has no 0..1 "mastery" — the UI needs one (Progress
- * bars, weakest-skill pick). We project `mastery = retrievability at review time`
- * (forgetting curve over stability), clamped to [0,1]. This keeps "weakest" and
- * "most due" consistent: a freshly-failed card has low stability → low mastery.
+ * Mastery projection (ADR-0029): FSRS has no 0..1 "mastery" — the UI needs one
+ * (Progress bars, weakest-skill pick). We project mastery from `fsrs_stability`
+ * via a monotone squash `s/(s+K)` (K = MASTERY_HALF_STABILITY_DAYS). Stability is
+ * the FSRS state that tracks durable competence: it COLLAPSES on a wrong answer
+ * (Rating.Again) and GROWS on correct streaks, so a freshly-failed card gets low
+ * mastery. We deliberately do NOT use retrievability-at-review — the forgetting
+ * curve at elapsed≈0 is ~1.0 regardless of the grade, which masked wrong answers
+ * as ~100% mastery (the F1 dashboard bug). The projection is clock-independent.
  */
 
 import {
@@ -46,6 +50,25 @@ import type {
 } from "../../../wire/engine_entities";
 import type { EngineDb } from "../db/engine_db";
 import type { QuestionRepo } from "../../../ports/engine/question_repo";
+
+/**
+ * The stability (in days) at which displayed mastery reads 0.5 — the
+ * "half-mastery interval" (ADR-0029). A 3-week retention interval ≈ competent.
+ * Product-tunable: raising it makes mastery climb more slowly. The mastery
+ * projection's contract (direction + monotonicity + bounds) holds for any K > 0.
+ */
+export const MASTERY_HALF_STABILITY_DAYS = 21;
+
+/**
+ * Project FSRS `stability` (days; unbounded ≥ 0) into a 0..1 mastery via the
+ * monotone squash `s / (s + K)` (ADR-0029). `0 ↦ 0`, `s → ∞ ↦ 1`, strictly
+ * increasing, clock-independent. Replaces retrievability-at-review, which pinned
+ * to ~1.0 at elapsed≈0 and masked wrong answers (the F1 dashboard bug).
+ */
+export function masteryFromStability(stability: number): number {
+  if (!Number.isFinite(stability) || stability <= 0) return 0;
+  return stability / (stability + MASTERY_HALF_STABILITY_DAYS);
+}
 
 export type FsrsSchedulerDeps = {
   db: EngineDb;
@@ -296,21 +319,13 @@ export class FsrsScheduler implements Scheduler {
       subject,
       skill_id: skillId,
       learner_id: learnerId,
-      mastery: this.retrievability(card, reviewedAt),
+      mastery: masteryFromStability(card.stability),
       last_seen: reviewedAt.toISOString(),
       fsrs_stability: card.stability,
       fsrs_difficulty: card.difficulty,
       due_at: card.due.toISOString(),
       fsrs_card: this.cardToSnapshot(card),
     };
-  }
-
-  /** Project FSRS retrievability at `at` into a 0..1 mastery. */
-  private retrievability(card: Card, at: Date): number {
-    const r = this.fsrs.get_retrievability(card, at, false);
-    const num = typeof r === "number" ? r : Number(r);
-    if (!Number.isFinite(num)) return 0;
-    return Math.min(1, Math.max(0, num));
   }
 
   /**

@@ -32,6 +32,7 @@ function question(over: Partial<Question> = {}): Question {
 }
 
 const pin = {
+  kind: "item" as const,
   questionId: "q1",
   skillId: "s-punc",
   label: "Q4 · Commas",
@@ -96,7 +97,9 @@ describe("assembleCoachContext — happy path (FR-10)", () => {
       skill_id: "s-punc",
       misses_aggregate: { skill_id: "s-punc", missed: 3 },
     });
-    expect(ctx!.question.id).toBe("q1");
+    if (ctx && "question" in ctx) {
+      expect(ctx.question.id).toBe("q1");
+    }
     expect(ctx!.misses_aggregate).not.toHaveProperty("window");
   });
 
@@ -121,5 +124,50 @@ describe("assembleCoachContext — happy path (FR-10)", () => {
       skillStates: states,
     });
     expect(ctx?.mastery_snapshot).toEqual({ "s-punc": 42 });
+  });
+});
+
+describe("assembleCoachContext — lesson pin (E1b-D2 FR-2 / FR-5 / FR-6)", () => {
+  const lessonPin = {
+    kind: "lesson" as const,
+    skillId: "s-punc",
+    label: "Punctuation",
+  };
+
+  it("FR-2: lesson pin (no questionId) → valid skill-only context, not null", () => {
+    const ctx = assembleCoachContext({
+      pin: lessonPin,
+      question: null,
+      mode: "pre_submit",
+    });
+    expect(ctx).not.toBeNull();
+    expect(ctx).toMatchObject({
+      mode: "pre_submit",
+      skill_id: "s-punc",
+    });
+    expect(ctx).not.toHaveProperty("question_id");
+    expect(ctx).not.toHaveProperty("question");
+  });
+
+  it("FR-5: lesson pin derives pre_submit mode (advisory overridden to pre_submit)", () => {
+    // Even if a caller passes post_feedback, lesson has no question → pre_submit.
+    const ctx = assembleCoachContext({
+      pin: lessonPin,
+      question: null,
+      mode: "post_feedback",
+    });
+    expect(ctx?.mode).toBe("pre_submit");
+  });
+
+  it("FR-6: lesson pin skips the questionId guard (mismatched question ignored)", () => {
+    const ctx = assembleCoachContext({
+      pin: lessonPin,
+      question: question({ id: "totally-other" }),
+      mode: "pre_submit",
+      missesOnSkill: 2,
+    });
+    expect(ctx).not.toBeNull();
+    expect(ctx).not.toHaveProperty("question");
+    expect(ctx?.misses_aggregate).toEqual({ skill_id: "s-punc", missed: 2 });
   });
 });
