@@ -7,8 +7,8 @@ tags: [research, eng-coach, act-english, taxonomy]
 
 # ACT / PreACT English — Official Weights & Bucket Coverage Research
 
-**Date:** 2026-07-08  
-**Purpose:** Validate the project's 6 skill-bucket taxonomy and weightings (`27 / 21 / 19 / 19 / 8 / 6`) against official ACT and PreACT specifications.  
+**Date:** 2026-07-08
+**Purpose:** Validate the project's 6 skill-bucket taxonomy and weightings (`27 / 21 / 19 / 19 / 8 / 6`) against official ACT and PreACT specifications.
 **Companion docs:** `PreACT-English-Coach-Spec.md` §3, `eng-coach-v2.md` §3.1, `bank_review-analysis.md`
 
 ---
@@ -50,7 +50,7 @@ ACT explicitly describes **six elements** nested inside the three reporting cate
 
 ### 2.1 Enhanced ACT (current blueprint, 50 questions / 35 min)
 
-Effective for national/enhanced administrations from **September 2025** onward.  
+Effective for national/enhanced administrations from **September 2025** onward.
 40 operational (scored) items + 10 embedded field-test items.
 
 | Reporting category | Items | % of section |
@@ -172,12 +172,12 @@ From `PreACT-English-Coach-Spec.md` §3 and `eng-coach-v2.md` §3.1:
 ```
 OFFICIAL (3 categories, 6 elements)     PROJECT (6 drill buckets)
 ─────────────────────────────────────     ───────────────────────────
-Production of Writing (38-43%)          
+Production of Writing (38-43%)
   ├─ Topic Development          ──────►  Rhetoric
   └─ Organization/Unity/Cohesion ─────►  Organization
 
-Knowledge of Language (18-23%)            
-  └─ Precision, concision, style, tone   
+Knowledge of Language (18-23%)
+  └─ Precision, concision, style, tone
        ├─ concision/redundancy   ──────►  Conciseness
        └─ style/tone/register    ──────►  Rhetoric (partial overlap)
 

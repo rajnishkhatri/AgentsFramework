@@ -44,7 +44,7 @@ you tell when a clause actually needs its commas?"). They exist as **beat sectio
 entries**. So the inductive choice is a **reconciliation of the beat layer into the block composer**, not new authoring:
 lift the 3 beat sections into 3 new block types (`ground`, a first-exposure `tension` variant, a standalone `question`).
 
-**One adaptation the reconciliation forces (feeds new design ask A1 below):** the block catalog's `tension` = 
+**One adaptation the reconciliation forces (feeds new design ask A1 below):** the block catalog's `tension` =
 `misconceptionCallout` is **miss-data-driven** — but first-exposure learners have **no misses**. So `newSkill`'s tension
 must be a **generic "where it trips you up"** framing (the Adaptive `.dc.html` `tension` beat is already written this
 generic way for `new`), NOT the miss-specific callout. That's a first-exposure `tension` variant.
