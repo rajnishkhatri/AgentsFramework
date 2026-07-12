@@ -193,6 +193,8 @@ function toSkillState(r: Record<string, unknown>): SkillState {
 }
 
 function toTutorial(r: Record<string, unknown>): Tutorial {
+  const optStr = (v: unknown): string | undefined =>
+    v == null ? undefined : String(v);
   return {
     id: String(r.id),
     subject: String(r.subject),
@@ -201,8 +203,27 @@ function toTutorial(r: Record<string, unknown>): Tutorial {
     examples: (r.examples as string[]) ?? [],
     generated_from: String(r.generated_from ?? "rule"),
     reviewed: Boolean(r.reviewed),
+    ground_md: optStr(r.ground_md),
+    pitfall_md: optStr(r.pitfall_md),
+    question_md: optStr(r.question_md),
+    self_explain_prompt: optStr(r.self_explain_prompt),
+    worked_example:
+      r.worked_example == null
+        ? undefined
+        : (r.worked_example as Tutorial["worked_example"]),
+    completion_try:
+      r.completion_try == null
+        ? undefined
+        : (r.completion_try as Tutorial["completion_try"]),
+    annotated_examples:
+      r.annotated_examples == null
+        ? undefined
+        : (r.annotated_examples as Tutorial["annotated_examples"]),
   };
 }
+
+/** Exported for L1 round-trip tests (E1a FR-8b); production callers use getTutorial. */
+export { toTutorial };
 
 function toProgressPoint(r: Record<string, unknown>): ProgressPoint {
   return {

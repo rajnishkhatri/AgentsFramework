@@ -1,7 +1,7 @@
 ---
 type: decision-record
 title: 'ADR-0028: Lesson content read path — Tutorial teaching fields + TutorialRepo/ProgressRepo read ports + authored-seed provenance'
-status: proposed
+status: accepted
 created: 2026-07-11
 updated: 2026-07-11
 owner: Rajnish Khatri
@@ -11,7 +11,7 @@ tags: [decision-record]
 
 # ADR-0028: Lesson content read path — Tutorial teaching fields + TutorialRepo/ProgressRepo read ports + authored-seed provenance
 
-**Status:** Proposed — 2026-07-11.
+**Status:** Accepted — 2026-07-11 (ratified at the E1a tasks→implement gate).
 **Related:** [preact-parity-epic-E1a.spec.md](../plan/preact-parity-epic-E1a.spec.md) (the *what*); design contract [`PreACT-English-Coach-v2-E1-LearnSkill-Implementation-Spec.md`](../../eng-coach-ui-design/e1-learn-skill-delivery/specs/PreACT-English-Coach-v2-E1-LearnSkill-Implementation-Spec.md); amends the ADR-0005 engine substrate; mirrors the ADR-0014 / ADR-0015 read-seam pattern.
 **Audience:** anyone reconsidering where lesson content lives, how the `/learn/skill` surface reads it, or how it earns `reviewed=true`.
 

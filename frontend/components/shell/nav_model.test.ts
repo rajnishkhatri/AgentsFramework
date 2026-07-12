@@ -22,6 +22,7 @@ import {
   flowStepPills,
   focusScreenIds,
   activeScreenId,
+  screen,
   type Surface,
 } from "./nav_model";
 
@@ -107,18 +108,30 @@ describe("FR-B3 flow-step pills — numbered, ordered, jump-nav to the five", ()
 });
 
 describe("FR-B1 surface-appropriate global navigation", () => {
+  it("E1a FR-20: skill screen is live (not comingSoon) and in membership", () => {
+    const skill = screen("skill");
+    expect(skill.comingSoon).toBe(false);
+    expect(skill.route).toBe("/learn/skill");
+    for (const surface of SURFACES) {
+      const items = navItemsForSurface(surface);
+      const skillItem = items.find((i) => i.screenId === "skill");
+      expect(skillItem, `${surface} must list skill`).toBeDefined();
+      expect(skillItem!.disabled).toBe(false);
+      expect(skillItem!.href).toBe("/learn/skill");
+    }
+  });
   it("desktop + iPad expose Coach as a sidebar peer; iPhone does NOT (3-tab)", () => {
-    // §8.1 supersede: iPhone tab bar is Home / Practice / Progress — Coach is
-    // contextual on iPhone (reached Feedback→Coach), not a persistent tab.
+    // §8.1 supersede: iPhone tab bar is Home / Practice / Skill / Progress —
+    // Coach is contextual on iPhone (reached Feedback→Coach), not a persistent tab.
     const iphoneLabels = navItemsForSurface("iphone").map((i) => i.label);
-    expect(iphoneLabels).toEqual(["Home", "Practice", "Progress"]);
+    expect(iphoneLabels).toEqual(["Home", "Practice", "Skill", "Progress"]);
     expect(iphoneLabels).not.toContain("Coach");
 
     for (const surface of ["desktop", "ipad"] as const) {
       const labels = navItemsForSurface(surface).map((i) => i.label);
       expect(labels, `${surface} sidebar must include Coach as a peer`).toContain("Coach");
-      // Sidebar model: Home / Practice / Coach / Progress (FR-B1 prototype ipad).
-      expect(labels).toEqual(["Home", "Practice", "Coach", "Progress"]);
+      // Sidebar model: Home / Practice / Coach / Skill / Progress (E1a FR-20).
+      expect(labels).toEqual(["Home", "Practice", "Coach", "Skill", "Progress"]);
     }
   });
 

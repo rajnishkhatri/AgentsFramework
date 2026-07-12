@@ -128,7 +128,7 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
             </button>
           ) : (
             <Link
-              href={skillScreen.route}
+              href={`${skillScreen.route}?skillId=${summary.recommended.skillId}`}
               data-testid="summary-see-lesson"
               className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-sm font-semibold"
             >

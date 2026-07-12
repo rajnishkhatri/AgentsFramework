@@ -196,7 +196,7 @@ export const skillState = sqliteTable(
   }),
 );
 
-/** tutorial — reviewed-gated; see schema.pg.ts. */
+/** tutorial — reviewed-gated; see schema.pg.ts. Optional teaching fields ADR-0028. */
 export const tutorial = sqliteTable("tutorial", {
   id: text("id").primaryKey(),
   subject: text("subject").notNull().default(DEFAULT_SUBJECT),
@@ -207,6 +207,14 @@ export const tutorial = sqliteTable("tutorial", {
   examples: text("examples", { mode: "json" }).notNull().default([]),
   generated_from: text("generated_from").notNull().default("rule"),
   reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),
+  // Optional teaching fields (ADR-0028). Null = content without that asset.
+  ground_md: text("ground_md"),
+  pitfall_md: text("pitfall_md"),
+  question_md: text("question_md"),
+  self_explain_prompt: text("self_explain_prompt"),
+  worked_example: text("worked_example", { mode: "json" }),
+  completion_try: text("completion_try", { mode: "json" }),
+  annotated_examples: text("annotated_examples", { mode: "json" }),
 });
 
 /** content_string — objective plane; PK (subject, key, locale). */

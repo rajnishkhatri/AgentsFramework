@@ -49,11 +49,14 @@ import { DrizzleLearnerReadRepo } from "./adapters/engine/repos/drizzle_learner_
 import { DrizzleHintRepo } from "./adapters/engine/repos/drizzle_hint_repo";
 import { DrizzleTestItemRepo } from "./adapters/engine/repos/drizzle_test_item_repo";
 import { DrizzleTestBlueprintRepo } from "./adapters/engine/repos/drizzle_test_blueprint_repo";
+import { DrizzleTutorialRepo } from "./adapters/engine/repos/drizzle_tutorial_repo";
+import { DrizzleProgressRepo } from "./adapters/engine/repos/drizzle_progress_repo";
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
 import { seedDevCorpus } from "./adapters/engine/_dev_seed";
 import { seedHintBank } from "./adapters/engine/_hint_bank";
 import { seedTestItemBank } from "./adapters/engine/_test_item_bank";
+import { seedLessonContent } from "./adapters/engine/_lesson_seed";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 
 export interface BuildBrowserEngineAdaptersOptions {
@@ -122,6 +125,9 @@ export function buildBrowserEngineAdapters(
     // Read-only governed test plane (ADR-0015): reviewed items + blueprint.
     testItemRepo,
     testBlueprintRepo: new DrizzleTestBlueprintRepo(db),
+    // Read-only lesson content + progress (ADR-0028): no write surface.
+    tutorialRepo: new DrizzleTutorialRepo(db),
+    progressRepo: new DrizzleProgressRepo(db),
     // ADR-0012 Amendment (FR-19): browser→BFF fire-and-forget marker write on
     // quiz submit, flipping the coach's derived mode to post_feedback.
     quizSubmitNotifier: new FetchQuizSubmitNotifier(),
@@ -208,6 +214,8 @@ export function browserEngineAdapters(): EnginePortBag {
             void db.insertSession({ ...s });
           }
         }
+        // Lesson content is independent of the quiz corpus (E1a / ADR-0028).
+        seedLessonContent(db);
         singleton = buildBrowserEngineAdapters({ engineDb: db });
       } else {
         seedDevCorpus(db);
@@ -215,6 +223,8 @@ export function browserEngineAdapters(): EnginePortBag {
         // Generated hint ladders for the bank items (coach-bank-hints FR-C1):
         // without them every bank item degrades to the generic nudge.
         seedHintBank(db);
+        // Hand-authored lesson content for /learn/skill (ADR-0028 / E1a).
+        seedLessonContent(db);
         singleton = buildBrowserEngineAdapters({
           engineDb: db,
           questionSource: "bank",

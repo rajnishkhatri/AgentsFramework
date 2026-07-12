@@ -173,14 +173,16 @@ describe("SummaryView — C2 payoff (FR-3/FR-7/FR-13/FR-15/FR-16/FR-17)", () => 
     expect(positions[1]!).toBeLessThan(positions[2]!);
   });
 
-  it("see_lesson_renders_disabled_when_screen_comingSoon", () => {
+  it("see_lesson_renders_live_link_when_skill_screen_active (E1a FR-20)", () => {
+    // G8: the disabled-button branch asserted previously no longer exists once
+    // skill.comingSoon flips false — replaced (not weakened) by the live-Link
+    // path, a stronger claim (href present, not disabled).
     const doc = dom(<SummaryView vm={vm()} />);
     const lesson = doc.querySelector('[data-testid="summary-see-lesson"]')!;
-    expect(lesson.tagName.toLowerCase()).toBe("button");
-    expect(lesson.hasAttribute("disabled")).toBe(true);
-    expect(lesson.getAttribute("aria-disabled")).toBe("true");
-    expect(lesson.getAttribute("data-disabled")).toBe("true");
-    expect(lesson.getAttribute("href")).toBeNull();
+    expect(lesson.tagName.toLowerCase()).toBe("a");
+    expect(lesson.getAttribute("href")).toBe("/learn/skill?skillId=s-conc");
+    expect(lesson.hasAttribute("disabled")).toBe(false);
+    expect(lesson.getAttribute("aria-disabled")).toBeNull();
   });
 
   it("summary_skill_link_stays_present_and_focused", () => {

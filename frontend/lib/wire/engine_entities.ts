@@ -269,7 +269,44 @@ export type SkillState = z.infer<typeof SkillState>;
 
 // --- tutorial / content_string / progress_point --------------------------
 
-/** "Rule in one line" + examples for a skill; same reviewed-gate as question. */
+/** Worked example: sentence + numbered steps + answer (E1a teaching field). */
+export const WorkedExample = z.object({
+  sentence: z.string(),
+  steps: z.array(z.string()),
+  answer: z.string(),
+});
+export type WorkedExample = z.infer<typeof WorkedExample>;
+
+/** One choice in a completion-try interactive block (`correct` reaches the DOM). */
+export const CompletionTryChoice = z.object({
+  text: z.string(),
+  correct: z.boolean(),
+});
+export type CompletionTryChoice = z.infer<typeof CompletionTryChoice>;
+
+/** Completion try: faded practice item graded locally (never written to scheduler). */
+export const CompletionTry = z.object({
+  sentence: z.string(),
+  choices: z.array(CompletionTryChoice),
+  why: z.string(),
+});
+export type CompletionTry = z.infer<typeof CompletionTry>;
+
+/** One marked-up annotated example (pre/clause/post + callouts). */
+export const AnnotatedExample = z.object({
+  pre: z.string(),
+  clause: z.string(),
+  post: z.string(),
+  essential: z.boolean(),
+  callouts: z.array(z.string()),
+});
+export type AnnotatedExample = z.infer<typeof AnnotatedExample>;
+
+/**
+ * "Rule in one line" + examples for a skill; same reviewed-gate as question.
+ * Optional teaching fields (ADR-0028 / E1a) feed the adaptive lesson surface;
+ * block order/zone/role are NOT persisted here (D5 / DATA-BLK-6).
+ */
 export const Tutorial = z.object({
   id: z.string(),
   subject: z.string(),
@@ -278,6 +315,14 @@ export const Tutorial = z.object({
   examples: z.array(z.string()),
   generated_from: z.string(),
   reviewed: z.boolean(),
+  // Optional teaching fields — absent when content does not have them (Verdict precedent).
+  ground_md: z.string().optional(),
+  pitfall_md: z.string().optional(),
+  question_md: z.string().optional(),
+  self_explain_prompt: z.string().optional(),
+  worked_example: WorkedExample.optional(),
+  completion_try: CompletionTry.optional(),
+  annotated_examples: z.array(AnnotatedExample).optional(),
 });
 export type Tutorial = z.infer<typeof Tutorial>;
 
