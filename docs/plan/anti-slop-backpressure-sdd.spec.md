@@ -1,6 +1,8 @@
 # Spec — Fold Runbook VI (anti-slop + backpressure) into the SDD lifecycle
 
-> **Status:** Draft — 2026-07-13
+> **Status:** Implemented (spec-complete) — 2026-07-13. Convention bundle (TASK-1..8) merged in
+> #158; PI-6a (C901) decided = **defer** (see `docs/adr/decisions.md` 2026-07-13 + the
+> `.c901-measurement.notes.md` companion). TASK-10 not executed by that decision.
 > **Owner:** Rajnish Khatri
 > **Related:** brainstorm `docs/plan/anti-slop-backpressure-sdd.brainstorm.md` (SDD Stage 1);
 > source research `docs/research/agenticengineeringplaybook/ai-slop-backpressure` (Runbook VI);
