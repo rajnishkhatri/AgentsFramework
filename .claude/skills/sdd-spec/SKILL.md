@@ -32,6 +32,13 @@ Stages 2–4. Two hard gates: spec → (human) → plan → (human) → tasks.
   plan that needs an ⚠️ Ask-first item raises an ADR
   (`docs/adr/0000-template.md` + index/log); spec = the *what*, ADR = the *why*.
 
+**Slop-reduction ownership at spec time** (Runbook VI, `docs/research/agenticengineeringplaybook/ai-slop-backpressure`):
+this is the stage that owns **A1 — spec the simplest thing that satisfies the
+criteria** (the plan proposes the least machinery, not the most impressive) and
+**A7 — spec before code** (the acceptance criteria exist before any implementation
+here by construction). A plan that introduces a new abstraction is the **G1** case
+— state what it buys and the simpler thing rejected, in the plan or its ADR.
+
 ## Stage 3 — Checklist + tasks
 
 - Checklist = "unit tests for English": is every criterion measurable? Flag

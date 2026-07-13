@@ -105,12 +105,38 @@ names below are the triggers.
   (`tests/architecture/test_no_test_weakening.py` is the mechanical sensor: it
   fails a removed `def test_*` or a newly skipped/xfailed test that lacks a
   justification token.)
+- **G9 — defensive-coding gate.** When a diff *adds or broadens a defensive path*
+  (a new `try/except`, a `… or <default>`, an `if x is None: return`, a swallowed
+  error, a fallback branch) on a path that didn't previously need it, name the
+  specific failure it catches and why silent-degrade is correct — a fallback that
+  can't name its failure is slop. Convention-only (no sensor); wordings in
+  `docs/adr/GATES.md`. Cf. AP-6: undecidable → `None`, never a fabricated value.
 - **Spec the *what*, ADR the *why*.** For a non-trivial durable change, copy
   `docs/plan/_spec_template.md` → `docs/plan/<name>.spec.md` (EARS acceptance criteria
   → testable). The spec is the *what*; the ADR is the *why*. Small non-obvious choices
   too minor for an ADR go in `docs/adr/decisions.md` (2–4 lines).
 - **Ratchet rule.** Every instruction line here traces to a real failure. Delete
   aspirational lines; don't add a rule without a failure that justifies it.
+
+### Anti-slop musts (bounded — each traces to a repo mechanism, not an essay)
+
+The slop-reduction discipline as *musts* (Runbook VI, `docs/research/agenticengineeringplaybook/ai-slop-backpressure`).
+Softer sizing guidance (WIP caps, small-diff heuristics) lives in the skill prose, not here.
+
+- **Simplest thing / no free abstraction.** No new abstraction, dep, service, or
+  graph node without asking first — state what it buys and the simpler thing you
+  rejected (→ the `⚠️ Ask first` list + **G1**, ADR ratchet).
+- **Ship only what you can explain.** If a diff can't be understood line-by-line,
+  back it out rather than merge it (→ the answer-before-reveal preamble in
+  `docs/adr/GATES.md`).
+- **Defensive fallbacks are not free.** A silent `except` / `return None` / `or
+  <default>` that masks a real error is slop — justify each failure it catches or
+  delete it (→ **G9**; cf. AP-6 — undecidable → `None`, never a fabricated value).
+- **Stop before expanding scope.** Build what the spec asked, not what you noticed
+  nearby — unrequested drift is caught at sdd-converge sign-off; if scope really
+  changed, route to sdd-replan rather than widening the diff in place.
+- **Three strikes → re-plan, don't thrash.** Three failed attempts at the same
+  task = stop and re-plan (→ sdd-replan), not a fourth variation of the same code.
 
 > Honest limit: Claude Code hooks can `ask`/`block` but **cannot** capture a typed
 > human answer (no controlling terminal). The gates above are convention +

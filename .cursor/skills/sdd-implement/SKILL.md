@@ -35,6 +35,17 @@ rules); it does not restate them. Read that section before starting.
    All tasks green → route to Stage 7 review (**code-review** skill, fresh
    thread).
 
+**Backpressure while making** (Runbook VI, `docs/research/agenticengineeringplaybook/ai-slop-backpressure`):
+- **B3 — three strikes → re-plan.** Three failed attempts at the same task is the
+  circuit-breaker: stop, route to **sdd-replan** (step 5), don't emit a fourth
+  variation of the same broken code.
+- **B4 — small diffs.** Keep each task's diff small enough to read every line; a
+  task whose change balloons past that is a signal to split it, not to push harder.
+- **A2 — defensive coding is not free.** When implementing, a `try/except` /
+  `return None` / `or <default>` you add to make a test pass is the **G9** case —
+  name the failure it catches or delete it; never fabricate a value to paper over
+  an undecidable case.
+
 ## Harness instrumentation (fires automatically today)
 
 - Write-time: `post_edit_ruff.py` (PostToolUse) + `cursor_after_edit.py` —
