@@ -1,6 +1,6 @@
 ---
 type: reference
-title: 'Forced-engagement comprehension gates (G1/G3/G4/G7/G8)'
+title: 'Forced-engagement comprehension gates (G1/G3/G4/G7/G8/G9)'
 ---
 
 # Forced-engagement comprehension gates
@@ -47,6 +47,7 @@ re-reading the diff, the gate has caught real comprehension debt.
 | **G4** | The crypto / signing path (`trust/`) | What the algorithm does and why the change is correct, *before* pasting the impl. |
 | **G7** | An **architecture** change | Anything touching a layer boundary, a dependency-direction rule, or an `Architecture Invariant` (even when `tests/architecture/` still passes — a green test is not comprehension). |
 | **G8** | A large test rewrite / deletion | Why each weakened assertion is still sound (mechanically sensed by `test_no_test_weakening.py`). |
+| **G9** | A diff that **adds or broadens a defensive path** on a code path that didn't previously need it — a new `try/except`, a `… or <default>`, an `if x is None: return`, a swallowed error, or a fallback branch | Name the specific failure this fallback catches, why that failure can actually occur here, and why silently degrading (vs. raising / returning an honest `None`) is correct. A fallback that can't name its failure is slop — delete it. *Convention-only: PR-review, no mechanical sensor (cf. AP-6 — undecidable → `None`, never a fabricated value).* |
 
 G3 and G7 are the highest-stakes gates: they map to the lethal trifecta and the
 architecture invariants the repo cares most about. `⚠️ Ask first` makes you
@@ -94,3 +95,9 @@ Pick a different framing each time a gate fires (the underlying ask is identical
 - "For the assertion you weakened, write the bug it would now MISS."
 - "Which of these rewritten tests, if it had existed, would have failed for the
   last real regression in this area?"
+
+**G9 — defensive-coding amplification**
+- "Point at the line that fails if this fallback is removed. If you can't name
+  it, the fallback is masking a bug, not handling a case."
+- "What real input reaches this `except`/default, and would raising instead have
+  surfaced a bug you'd actually want to see?"

@@ -1,0 +1,239 @@
+# Runbook VI — Anti-Slop & Backpressure for the Solo Agentic Practitioner
+
+*A standalone, rules-first handbook for a senior AI engineering practitioner working solo in a single-operator-plus-agent loop — building software WITH coding agents and designing/building production agentic systems. Sixth in the runbook series. Overlap with prior runbooks is intentional; this stands alone.*
+
+## TL;DR
+- **Generation now vastly outpaces both verification and comprehension. The two disciplines that keep a solo human-plus-agent loop controllable are (1) reducing slop at the source (constrain what the agent produces) and (2) applying backpressure (pace and gate what the agent is allowed to do). Neither alone is sufficient.** The data is unambiguous: GitClear's 2026 data shows copy/paste rose to 15.7% of changed lines while refactoring collapsed to 3.8%; Faros AI (10,000+ devs) found AI-heavy teams merged 98% more PRs but review time rose 91% and DORA metrics did not move.
+- **Slop is not a style problem; it is a maintainability and review-burden problem with measured cost.** Treat every abstraction, dependency, and line as guilty until proven earning-its-keep, and run automated "sensors" (lint, duplication, complexity, dead-code) plus a mandatory anti-slop cleanup pass before shipping.
+- **Backpressure is real engineering discipline (Nygard's stability patterns, Kanban/Little's Law, TCP-style flow control) that maps cleanly onto BOTH your workflow (WIP limits, review as the bottleneck, circuit-breakers on thrashing agents) AND the systems you build (bounded queues, rate limits, token budgets, bulkheads, load shedding).** The human review step is the rate-limiting resource — design the whole loop around it.
+
+## Key Findings
+
+**The generation–verification asymmetry is now quantified and worsening.** This is the throughline of 2026 AI-engineering discourse. METR's July 2025 randomized controlled trial (arXiv 2507.09089; Becker, Rush, Barnes, Rein) studied 16 experienced open-source developers averaging ~5 years of experience on their own repos, across 246 tasks, using Cursor Pro with Claude 3.5/3.7 Sonnet. The finding: "developers forecast that allowing AI will reduce completion time by 24%… After completing the study, developers estimate that allowing AI reduced completion time by 20%… we find that allowing AI actually increases completion time by 19%." Perception and reality were inverted. Faros AI's 2025 telemetry (10,000+ developers, 1,255 teams) found high-AI-adoption teams completed 21% more tasks and merged 98% more PRs, but PR review time rose 91%, average PR size grew 154%, bug counts rose 9%, and organizational DORA metrics were flat. The March 2026 Faros follow-up ("The Acceleration Whiplash," 22,000 devs, 4,000 teams) showed the pattern compounding: "Bugs per developer are up 54%. The incidents-to-PR ratio has more than tripled. Median review time has increased 5X. 31% more PRs are merging without any review." This is Goldratt's Theory of Constraints and Amdahl's Law in practice: speeding up a non-bottleneck (generation) while the bottleneck (human review/comprehension) is unchanged yields no system throughput gain.
+
+**Slop has a measured maintainability cost.** GitClear's longitudinal work (211M+ lines from Google/Microsoft/Meta and OSS repos): copy/paste rose from 8.3% (2020) to 12.3% (2024), then to 15.7% of changed lines (H1 2026); "moved"/refactored code (the signature of reuse) fell from 21% (2022) to 13% (2023) to 3.8% year-to-date 2026; code-block duplication is up 81% since 2023; and cross-file function connectivity has fallen 35% since 2023 (343 → 223 method calls per thousand changed lines), the structural signature of "duplicative reinvention" beating "progressively-improved reuse." 2024 was the first year on record that copy/paste exceeded moved code. SIG's *State of Software 2026* (30,000 enterprise systems): 86% of code falls below their recommended maintainability rating, 72% of AI systems in production score below recommended build-quality, and one case study saw autonomous agents build a system in a week while incurring €10–15M in token fees and producing "nearly unmaintainable" code. Roughly 42% of committed code is now AI-generated (Faros telemetry, cited across 2026 coverage) — the volume is real, so the discipline has to be systematic.
+
+**Named practitioners converge on the same discipline.** Andrej Karpathy (who coined "vibe coding," Feb 2025) now urges keeping AI on a "tight leash" — many small generation-and-verification cycles, reading and accepting each diff before the next. At Sequoia Capital (Apr 30, 2026) he described the output candidly: "Sometimes I get a little bit of a heart attack because it's not like super amazing code necessarily all the time… It's very bloaty, and there's a lot of copy-paste, and there's awkward abstractions that are brittle, and it works, but it's just really gross." Armin Ronacher: present-day models produce code "too defensive, too complex, too local in its reasoning" — "They add fallbacks instead of making bad states impossible. They duplicate code, invent bad abstractions, and paper over unclear design with more machinery." Addy Osmani: the "70% problem" and "house of cards code" that "looks complete but collapses under real-world pressure." Simon Willison: "A computer can never be held accountable. That's your job as the human in the loop" — and he warns of a "normalization of deviance" as repeated AI success erodes review. Mitchell Hashimoto runs a mandatory "anti-slop" cleanup session and refuses to "ship code I don't understand." Kent Beck frames the AI as an "unpredictable genie" that grants wishes in perverse ways, kept in check by treating the test suite as an immutable contract.
+
+**Open source is the canary — social backpressure applied.** curl ran its HackerOne/Internet Bug Bounty program from April 2019 to January 31, 2026, paying "over $90,000 for 81 discovered vulnerabilities" before Daniel Stenberg ended it ("The end of the curl bug-bounty," daniel.haxx.se, Jan 26 2026) after "death by a thousand slops." Stenberg's numbers: "Previous years we have had a rate of somewhere north of 15% of the submissions ending up confirmed vulnerabilities. Starting 2025, the confirmed-rate plummeted to below 5%. Not even one in twenty was real." Per Bugcrowd's account of his tracking, "in six years of monitoring submissions generated by AI alone, not a single one discovered a genuine vulnerability—zero." Removing the money was backpressure on intake incentives. QEMU, NetBSD, Zig, and Servo banned AI-generated contributions (largely on provenance/DCO grounds), though QEMU began relaxing toward disclosure-based limited acceptance in mid-2026 — a maintainer's key point: AI "reduces the cost of producing patches" but "does not reduce the cost of reviewing them and may even increase it."
+
+## Details — the origins of the backpressure toolkit
+
+The mechanisms below are not new; they are decades-old systems discipline. Michael Nygard's *Release It!* (2007) catalogued the stability patterns now standard: Timeouts, Circuit Breaker, Bulkheads, Fail Fast, Handshaking, Shed Load, and "Create Back Pressure" — each designed to stop a local failure from cascading. Kanban/Lean (Toyota; David Anderson's software adaptation) contributes WIP limits and Little's Law (John Little, 1961): *average cycle time = work-in-progress ÷ throughput*. Since your throughput (review capacity) is roughly fixed, every extra in-flight item lengthens everything. TCP flow control and reactive streams contribute the core idea of backpressure: a slow consumer signals a fast producer to slow down, rather than letting buffers grow unbounded. Every one of these maps directly onto agentic work — as a workflow discipline and as system architecture.
+
+---
+
+## PATTERN CATALOG — PART A: SLOP-REDUCTION PATTERNS
+
+### A1. Simplest-Thing-That-Works
+**Attribution:** Karpathy ("tight leash"); Kent Beck ("tidy code that works").
+- **Problem:** Agents have "an over-abundance of courage and show little to no taste for good code" (Karpathy); they default to the locally convenient answer and blow up complexity.
+- **Rule:** Prompt for the minimal solution. "Write the simplest thing that works. No new abstractions, dependencies, or files without asking first." Constrain verbosity explicitly.
+- **When to use / not:** Always for code you'll maintain. Relax only for genuine throwaway prototypes you will not ship.
+
+### A2. Defensive-Coding Amplification Guard
+**Attribution:** Armin Ronacher ("The Friction Is Your Judgment"; "Building Pi With Pi").
+- **Problem:** "If you tell them that 'this malformed session log crashes the reader,' the clanker will often add a tolerant reader. Then it will add a fallback, then maybe a migration, then more debug output, then a test for all of this." Each looks reasonable in isolation; a hundred of them accrete into an unreasonable system.
+- **Rule:** Tell the agent where the fix belongs. Prefer making bad states impossible (strong invariants) over adding fallbacks. Directive: "Do not add defensive fallbacks, tolerant readers, or error-masking without asking. Respect existing invariants."
+- **When to use / not:** Any codebase with real invariants. Do *not* suppress genuine validation at true untrusted-input boundaries — the target is gratuitous local defense, not real boundary hardening.
+
+### A3. The Anti-Slop Cleanup Session
+**Attribution:** Mitchell Hashimoto ("Vibing a Non-Trivial Ghostty Feature," mitchellh.com, Oct 11 2025).
+- **Problem:** Blindly accepting AI code produces comprehension debt; well-organized code also makes future agent sessions perform better.
+- **Rule:** After the feature works, run a dedicated cleanup pass. Hashimoto: "To cleanup effectively you have to have a pretty good understanding of the code, so this forces me to not blindly accept AI-written code… I sometimes tongue-in-cheek refer to this as the 'anti-slop session'." Always end a session asking the agent what else it might be missing — with no code written in that step.
+- **When to use / not:** Every non-trivial feature before shipping. Skippable only for disposable experiments.
+
+### A4. Only-Ship-Code-You-Understand / Back-It-Out Rule
+**Attribution:** Hashimoto; Simon Willison ("Your job is to deliver code you have proven to work").
+- **Problem:** "Normalization of deviance" — repeated AI success erodes review discipline until you're merging code nobody reasoned through.
+- **Rule:** If the agent fixes something and you don't understand the fix, back it out. Hashimoto: "If the agent figures it out and I don't understand it, I back it out. I'm not shipping code I don't understand… AI is no longer the solution; it is a liability."
+- **When to use / not:** Always for anything touching other people's data or production. A deliberately-relaxed comprehension bar is acceptable only for personal throwaway tools.
+
+### A5. Delete-Code Pass / Zero-Tolerance for Smells
+**Attribution:** Kent Beck ("Tidy First?").
+- **Problem:** Dead code, reinvented wheels, and inconsistent patterns accumulate silently; duplication imposes a "propagation tax" (GitClear) — change one copy, inherit the obligation to find and evaluate every sibling.
+- **Rule:** Because fixing is now cheap, adopt zero tolerance. Run an explicit "what can be deleted?" pass each cycle. Flag duplication for consolidation, never copy-paste. Preserve optionality — don't let the agent "eat the seed corn" with poor design choices (Beck).
+- **When to use / not:** Every review cycle. There is no "not" — cheapness of fixing removes the old excuse.
+
+### A6. Sensors / Harness Engineering
+**Attribution:** Birgitta Böckeler (Thoughtworks, "Harness Engineering," martinfowler.com, Apr 2026); Martin Fowler (caveat).
+- **Problem:** Manual review doesn't scale to agent output volume; Böckeler names the "flow crisis" — humans becoming the congestion point — and "cognitive surrender," the point at which you stop caring and accept everything.
+- **Rule:** Build computational "sensors" — linters, complexity metrics, duplication detectors, dead-code detection, architecture-fitness functions, and custom lint rules that catch your recurring slop patterns — that the agent runs against itself. Böckeler's model: feedforward (guides that prevent errors) + feedback (sensors that detect them) = a regulation system. Fowler's caveat is load-bearing: "Harness engineering is necessary. But it's the second line of defense, not the first. The first is specification engineering." A perfect harness verifying a vague spec just produces "garbage that's elegantly verified."
+- **When to use / not:** Standing infrastructure for any repo an agent touches. Tools like SIG's Sigrid MCP check maintainability/security in-IDE as code is generated. Don't let sensors substitute for a clear spec.
+
+### A7. Spec-Before-Code / Review the Plan
+**Attribution:** Addy Osmani (spec-driven development, O'Reilly); Hashimoto.
+- **Problem:** Vague requests produce plausible-but-hollow code. Osmani's thesis: "the AI is not the bottleneck. Your specification is." AI agents are "confidently wrong."
+- **Rule:** Ask for a plan with no code first. Hashimoto: "It's important that I review a plan before it goes off and does a ton of work (and spends a ton of tokens doing it)." Spend the majority of effort on problem definition; inject "Known Pitfalls" into the spec (business rules, library gotchas, table relationships the training data can't know).
+- **When to use / not:** Any vague or multi-step task. Overkill for a one-line, obviously-scoped fix.
+
+### A8. Lean Agentic System Design (slop-reduction carried into what you build)
+**Attribution:** 2026 multi-agent practitioner consensus; Google Research; Kent Beck (outcome-orientation).
+- **Problem:** Over-engineered multi-agent architectures, tool sprawl, prompt bloat, premature framework adoption. "Most teams over-engineer toward multi-agent topologies before single-agent reaches its quality ceiling."
+- **Rule:** Default to a single agent (ReAct baseline). Escalate to multi-agent only when single-agent caps out on a *measured* quality dimension. Google Research found 39–70% sequential-reasoning degradation from multi-agent coordination; teams that began with 3–5 agents and scaled on measured performance consistently outperformed teams launching with 10+. Coordination overhead can 5–10x cost and double latency without improving accuracy.
+- **When to use / not:** Building production agentic systems. Add a second agent only when work decomposes cleanly, sub-tasks need different tools/models, or you need explicit safety/audit boundaries. Skip multi-agent entirely for linear pipelines and simple chatbots.
+
+---
+
+## PATTERN CATALOG — PART B: BACKPRESSURE FOR THE WORKFLOW (the human-plus-agent loop)
+
+### B1. WIP Limits on Agent Work
+**Attribution:** Kanban; Hashimoto ("the mayor," ≤2 agents).
+- **Problem:** Multiple agents in flight exceed human review capacity; by Little's Law every extra in-flight item lengthens the cycle time of everything.
+- **Rule:** Cap concurrent agent tasks. Hashimoto manages "at most two agents at a time." Solo, 2–3 is the ceiling where flow survives (Personal Kanban converges on this; task-switching costs 20–40% of capacity). Iterative-Kanban guidance for agent loops: cap "Awaiting Human Review" at what one reviewer can clear (5–10 cards is a common team starting point; solo, far fewer). When the column is full, the only honest options are finish something or demote it to backlog.
+- **When to use / not:** Always. Raise the limit only if review is genuinely idle. *(Hashimoto's specific "mayor"/two-agent framing traces to his Pragmatic Engineer podcast appearance via a secondary summary — directionally consistent with his written work, but treat the exact number as his practice, not a law.)*
+
+### B2. Review-Capacity as the Bottleneck
+**Attribution:** Little's Law; Goldratt's Theory of Constraints; LogRocket/MetaCTO framing.
+- **Problem:** Throughput is limited by review, not generation. Optimizing generation while review is fixed produces the Faros paradox (98% more PRs, flat delivery).
+- **Rule:** Treat your own review/comprehension bandwidth as *the* fixed constraint and size everything upstream to it. Move review earlier: approve specs/plans *before* generation, converting review from a discovery task ("is this correct?") into a verification task ("did it implement what we agreed?"), which is far faster.
+- **When to use / not:** Always. This is the master frame the rest of Part B serves.
+
+### B3. Circuit Breaker on Thrashing Agents
+**Attribution:** Nygard; Osmani (the fix-creates-two-bugs spiral).
+- **Problem:** Agents loop. Osmani: "The fix is gonna break something else. You're gonna ask AI to fix that issue and it's gonna create two more problems. Rinse, repeat. Sometimes it's five new problems."
+- **Rule:** Halt the agent after N failed attempts on the same problem. Trip after ~3 strikes; then step back yourself, or back out any fix you can't explain (A4). Don't let it keep spending your review budget on a spiral.
+- **When to use / not:** Any debugging loop. When it trips, the correct move is human diagnosis, not another prompt.
+
+### B4. Timeouts / Small Diffs
+**Attribution:** Karpathy ("the loop frequency matters more than the loop size").
+- **Problem:** Long unattended runs produce worse code. Ronacher observes hands-off Claude Code working uninterrupted for 30+ minutes produces worse output than shorter human-in-the-loop cycles.
+- **Rule:** Small incremental chunks; read and accept each diff before the next. Karpathy: "I always go in small incremental chunks… I want to spin this loop very, very fast."
+- **When to use / not:** Production code. Longer autonomous runs are acceptable only for well-specified, measurable, low-stakes/throwaway tasks (Ronacher's "loops for exploration, interactive sessions for judgment").
+
+### B5. Load Shedding Low-Value Tasks
+**Attribution:** Nygard ("Shed Load"); Kanban backlog discipline.
+- **Problem:** Agents generate candidate work faster than it can be verified; not all of it is worth doing.
+- **Rule:** Explicitly shed/decline low-value tasks rather than queue them. Demoting a card back to backlog is the WIP limit working, not a failure. Shed when a task's expected value is less than the review cost it will impose.
+- **When to use / not:** Whenever the review queue exceeds capacity.
+
+### B6. Backpressure Signals — Stop and Ask
+**Attribution:** Ronacher (scope-expansion critique); Hashimoto (hard interrupt).
+- **Problem:** Agents "expand scope almost immediately," turning a narrow, fact-based bug into a large hypothesized surface area.
+- **Rule:** Directive: "Surface before expanding scope. Do one thing at a time. Stop and ask after N failures." Keep the hard interrupt available — Hashimoto mid-session: "Stop stop stop. Undo all the main actor stuff." You choose when to engage; the agent doesn't get to drag you along.
+- **When to use / not:** Always.
+
+---
+
+## PATTERN CATALOG — PART C: BACKPRESSURE FOR AGENTIC SYSTEMS YOU BUILD
+
+### C1. Bounded Queues Between Agents
+**Attribution:** Nygard / reactive streams (TianPan, "Backpressure in Agent Pipelines," Apr 2026).
+- **Problem:** Agent pipelines that spawn sub-agents and fan out tool calls create unbounded work queues. "An unbounded queue is just a memory leak with extra steps — it hides the problem by growing until something more catastrophic fails."
+- **Rule:** Every buffer between planning and execution has fixed capacity; when full, the planner blocks. The planning LLM "does not know that the execution queue is 200 items deep or that you have hit 80% of your hourly token budget" — build that feedback loop explicitly.
+- **When to use / not:** Any fan-out/orchestrator architecture. Unnecessary for a single linear agent.
+
+### C2. Token/Cost Budgets as Flow Control
+**Attribution:** Hierarchical budgets (TianPan; Claude Agent SDK; Runyard).
+- **Problem:** Token costs compound non-linearly; a stuck overnight run turns "a hobby project into a horror story." Documented cases: an agent scanning a hobby network hit a $6,531 bill; a runaway aggregator agent burned $2,847 in 4 hours; late-loop steps can exceed 50K input tokens each.
+- **Rule:** Hierarchical budgets — **job level** (hard ceiling, e.g. 500K tokens), **agent level** (a fraction of the job proportional to expected complexity), **function level** (strictest, e.g. 5K for a web search). When a level exhausts, execution stops *at that level* and does not cascade upward (the Linux cgroups principle). Set `max_turns` and `max_budget_usd` explicitly — the Claude Agent SDK ships both defaulting to *no limit*; its own docs say "Setting a budget is a good default for production agents," and the example sets `max_turns=30` "Prevent runaway sessions." The OpenAI Agents SDK raises `MaxTurnsExceeded`; treat `max_turns=None` as a loaded gun.
+- **When to use / not:** Every autonomous agent, no exceptions. Quick win: a $10/day hard cap at the gateway catches most runaways before they matter.
+
+### C3. Rate Limiting LLM Calls
+**Attribution:** Token bucket / leaky bucket (TrueFoundry, BuildMVPFast, HiveMind arXiv).
+- **Problem:** Per-user rate limits break at machine speed — one client's agent "sent 50,000 requests over six hours because no individual rate limit was ever breached. The per-user limit was 60 requests per minute. The agent never exceeded it. It just never stopped."
+- **Rule:** Token bucket per *agent identity*; cost-based quotas; retry budgets; adaptive throttling (AIMD). Exponential backoff alone creates a thundering herd (all workers get the same 429, back off, and resume simultaneously, reproducing the overload). Parse provider rate-limit headers to pause proactively; keep a sliding-window RPM/TPM counter for providers that send no headers.
+- **When to use / not:** Any production LLM pipeline. Roll out audit-only first (log what *would* be throttled), then enable on the highest-risk class — CI/CD agentic pipelines that have no human pacing mechanism.
+
+### C4. Circuit Breakers Around Flaky Tools/Models
+**Attribution:** Nygard (popularized by Netflix Hystrix; now Resilience4j/Polly/Opossum).
+- **Problem:** "Without a circuit breaker, one bad minute cascades into minutes of queued failures." Cloud APIs drop packets, time out, rate-limit, and return 5xx.
+- **Rule:** Track error rate over a rolling window; open the circuit at a threshold (e.g. 50% over the last 10 calls, or 5 consecutive failures); fail fast with a cached fallback or explicit "unavailable"; half-open probe after a timeout. A **token-rate** circuit breaker catches semantic loops that error-rate misses: a healthy agent rarely sustains >3,000–4,000 tokens/min because of I/O wait, so a 10,000 tokens/min threshold caught a runaway loop "within 60 seconds — well before any meaningful cost accumulated."
+- **When to use / not:** Every external tool/model dependency. Not for in-process, local resources that can't hang independently.
+
+### C5. Bulkheads Isolating Agent Failures
+**Attribution:** Nygard (nautical watertight-compartment metaphor).
+- **Problem:** When all agents/tools share one resource pool, one noisy workload exhausts threads/connections and breaks critical paths. Related real incidents: over-permissioned agents deleting thousands of legitimate records; credential sprawl across dozens of tokens.
+- **Rule:** Separate resource pools per dependency — e.g. tightly cap expensive AI-model calls (5 concurrent), DB queries (20), email (10). One runaway agent cannot drain the whole system. Add a job-level budget kill switch and human-approval pause at the swarm level.
+- **When to use / not:** Multi-agent/multi-tool production systems. Overkill for a single-tool agent.
+
+### C6. Admission Control + Fallback Chains
+**Attribution:** Nygard (admission control); TrueFoundry (declarative fallback).
+- **Problem:** Under overload, hard-failing every request is the wrong outcome.
+- **Rule:** Declarative per-route fallback chain (primary model → cheaper model → semantic cache → 503). Admission control temporarily rejects new work until capacity frees. Tune per route: a coding pipeline may prefer a clear failure over a degraded cheap-model result; a user-facing chatbot prefers any response.
+- **When to use / not:** User-facing systems where degraded output beats no output. For correctness-critical pipelines, a clean fail can be safer than silent degradation.
+
+---
+
+## DROP-IN DIRECTIVES for AGENTS.md / CLAUDE.md
+
+**Anti-slop block:**
+```
+- Write the simplest thing that works. Prefer deleting code over adding it.
+- No new abstractions, dependencies, files, or frameworks without asking first.
+- Do not add defensive fallbacks, tolerant readers, or error-masking without asking.
+  Respect existing invariants; prefer making bad states impossible.
+- Flag when you are duplicating logic — propose consolidation, do not copy-paste.
+- No filler comments. Comment only non-obvious "why," never restate the code.
+- Match existing patterns in this codebase. Do not introduce a new style.
+- When you finish, list what could be deleted or simplified.
+```
+
+**Backpressure block:**
+```
+- Do one thing at a time. Surface before expanding scope.
+- For any vague or multi-step task: produce a PLAN first, write NO code, wait for approval.
+- Stop and ask after 3 failed attempts on the same problem. Do not thrash.
+- Keep diffs small. Prefer many small verified steps over one large change.
+- Respect max_turns and the token budget. Report cost/turns when asked.
+- End every session by listing what I might be missing. Do not write code in that step.
+```
+
+---
+
+## CHECKLISTS & GATES
+
+**Anti-Slop Review Gate (block merge until all pass):**
+- [ ] I understand every line; nothing was accepted blindly.
+- [ ] No unrequested features / no code no one asked for.
+- [ ] No new dependency, abstraction, or file that isn't earning its keep.
+- [ ] Duplication detector clean (no new 5+ line clones).
+- [ ] Complexity / lint / dead-code sensors green.
+- [ ] Defensive-coding amplification check: no gratuitous fallbacks/tolerant readers.
+- [ ] Diff is small enough to review honestly (else split it).
+
+**"Is This Abstraction Earning Its Keep?" Gate:**
+- [ ] Used in ≥2 genuinely different places (not speculative)?
+- [ ] Does it reduce total comprehension load, or just move it around?
+- [ ] Would a newcomer understand the code faster with or without it?
+- [ ] If premature → inline it now; abstract later when the third real case appears.
+
+**WIP / Backpressure Gate:**
+- [ ] ≤2–3 agent tasks in flight?
+- [ ] Review queue below capacity (else shed or finish before starting new)?
+- [ ] Token/turn budgets set on any autonomous run?
+- [ ] Circuit-breaker / retry cap defined for this loop?
+
+---
+
+## DECISION RULES & THRESHOLDS
+- **WIP limit:** 2–3 concurrent agent tasks solo; Hashimoto uses "at most two."
+- **Circuit breaker (workflow):** trip after ~3 failed fix attempts; back out any fix you can't explain.
+- **Circuit breaker (systems):** 50% error over last 10 calls, or 5 consecutive failures; sustained >10,000 tokens/min ≈ a loop (healthy agents idle at 3–4K/min).
+- **Token budget:** job ≤500K tokens; per-agent a proportional fraction; $10/day gateway cap as the first guard; always set `max_turns` (e.g. 30) and `max_budget_usd`.
+- **Duplication tripwire:** any new 5+ line duplicated block triggers review (GitClear's recommended "tripwire on duplicate blocks").
+- **AI-code share:** ~42% of committed code is now AI-generated industry-wide; the practical band where review stays manageable for most teams is ~25–40% — above it, review becomes the binding constraint.
+- **Diff size:** small enough to read every line honestly; split if not.
+- **Shed a task:** when its expected value < the review cost it imposes.
+
+## ANTI-PATTERNS & COUNTERS
+- **Agent psychosis / in-group hype (Ronacher):** building decoupled from external validation — "for as long as nobody looks under the hood, you're good." *Counter:* outside review; ship to real users; sanity-check against reality.
+- **Cognitive surrender (Böckeler):** accepting everything because volume overwhelms. *Counter:* WIP limits + sensors so you review *less but better*.
+- **Automation bias (Zechner):** reviewing less after repeated success. *Counter:* fixed review discipline regardless of the agent's track record.
+- **Slop loop / house of cards (Osmani):** the fix-creates-two-bugs spiral. *Counter:* circuit-breaker (3 strikes) + back-it-out rule.
+- **Multi-agent over-engineering:** coordination overhead 5–10x cost, 39–70% reasoning degradation. *Counter:* single-agent default; escalate only on a measured ceiling.
+- **Unbounded queue / no budget:** "the single most common failure mode in our audits: no budget caps." *Counter:* bounded queues + hierarchical budgets + gateway cap.
+- **Slop PRs/reports to OSS (curl, QEMU, Servo):** generation is cheap, review is expensive — "a PR that took someone a minute to generate and takes an hour to review." *Counter:* disclose AI use, verify yourself with a real repro, respect project policy, and consider submitting the prompt, not just the code.
+
+## STAGED ADOPTION PLAN
+1. **Week 1 — Sensors on.** Add lint, duplication, dead-code, and complexity checks to the repo; wire SIG-style maintainability/security checks into the IDE/CI. Paste the anti-slop + backpressure blocks into AGENTS.md/CLAUDE.md. *Benchmark to watch:* duplication and complexity trend lines.
+2. **Week 2 — Gate the intake.** Adopt plan-before-code, small diffs, and the Anti-Slop Review Gate. Institute the back-it-out rule. *Benchmark:* PR size stops growing; you understand 100% of merged lines.
+3. **Week 3 — WIP + circuit breakers (workflow).** Cap concurrent agent tasks at 2; add the 3-strikes stop rule; make "what am I missing?" the mandatory closing step. *Benchmark:* review queue depth stays flat; no thrash spirals reach merge.
+4. **Week 4 — Budgets + breakers (systems).** For any agentic system you build: set `max_turns`/`max_budget_usd`, bounded queues, per-tool circuit breakers and bulkheads; enable audit-only rate limiting, then enforce on the riskiest class. *Benchmark:* zero uncapped autonomous runs; no runaway cost events.
+5. **Ongoing — Tune to metrics.** Track review-queue depth, duplication trend, churn (lines rewritten within 2 weeks), and incidents-per-PR. **Thresholds that change the plan:** if churn or incidents-per-PR rise while velocity climbs → tighten gates and lower WIP; if the review queue is chronically idle → you may raise WIP; if a class of mistake recurs → convert it into a lint rule/skill file rather than re-reviewing (A6).
+
+## CAVEATS
+- **Fast-moving tooling.** Model and harness behavior changes monthly. Ronacher notes mid-2026 hands-off harnesses sometimes produce *worse* code than late-2025 human-in-the-loop cycles. Re-tune every threshold here on a regular cadence; they are starting points, not constants.
+- **Source reliability.** Vendor material (Faros, SIG, gateway vendors, orchestration startups) has commercial interest in the "review is the bottleneck / slop has cost" narrative. That direction is independently corroborated by an RCT (METR), longitudinal analysis (GitClear, 211M+ lines), and peer-style arXiv work — but treat specific vendor percentages as indicative rather than precise. Some practitioner details (notably Hashimoto's "mayor"/two-agent and "harness engineering" framing) reach this document through a secondary podcast summary; they are consistent with his primary blog writing but should be confirmed against the primary transcript before being quoted as exact.
+- **Solo-context limits.** WIP numbers and Kanban/Little's Law framing come from team practice; adapted to one operator they are heuristics, not laws. The right WIP number is the one at which *your* review stays honest.
+- **The core claim is durable even as numbers shift.** Generation outpaces both verification and comprehension. Slop-reduction constrains what the agent produces; backpressure paces and gates what it is allowed to do. Used together — on the code you write with agents and on the agentic systems you build — they are the controllable path. Used apart, you get either elegantly-verified garbage or an unbounded queue with a bill attached.
