@@ -35,7 +35,8 @@ rules); it does not restate them. Read that section before starting.
    All tasks green → route to Stage 7 review (**code-review** skill, fresh
    thread).
 
-**Backpressure while making** (Runbook VI, `docs/research/agenticengineeringplaybook/ai-slop-backpressure`):
+**Backpressure while making** (Runbook VI §B3/§B4/§A2 in
+`docs/research/agenticengineeringplaybook/ai-slop-backpressure`):
 - **B3 — three strikes → re-plan.** Three failed attempts at the same task is the
   circuit-breaker: stop, route to **sdd-replan** (step 5), don't emit a fourth
   variation of the same broken code.

@@ -293,7 +293,8 @@ newest-first `log.md` line. (Or an `ADR-OK:` waiver in the commit for a range.)
 
 ## Anti-slop review gate (reviewer-applied, beyond the automated dimensions)
 
-A named checklist the human reviewer runs while reading the diff (Runbook VI,
+A named checklist the human reviewer runs while reading the diff (Runbook VI
+§A4/§A2/§A1/§B4 — the `### A4.`-style anchors in
 `docs/research/agenticengineeringplaybook/ai-slop-backpressure`). This is prose
 judgment layered on top of the certified v3 rubric — it does **not** modify the
 rubric or the deterministic tools; it is what a reader flags that the AST/LLM
