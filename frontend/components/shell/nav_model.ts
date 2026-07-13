@@ -71,9 +71,9 @@ export const SCREENS: readonly Screen[] = [
   // adaptive quiz. A focus screen (hide the iPhone tab bar while the clock runs).
   { id: "test", route: `${COACH_BASE}/test`, navLabel: "Test", comingSoon: false, isFocusScreen: true },
   // Screens 6/7 — subjective/tutorial plane. Skill is live (E1a / ADR-0028);
-  // Progress stays comingSoon until its surface ships.
+  // Progress is live (Epic F — honest accuracy trend, no projected score).
   { id: "skill", route: `${COACH_BASE}/skill`, navLabel: "Skill", comingSoon: false, isFocusScreen: false },
-  { id: "progress", route: `${COACH_BASE}/progress`, navLabel: "Progress", comingSoon: true, isFocusScreen: false },
+  { id: "progress", route: `${COACH_BASE}/progress`, navLabel: "Progress", comingSoon: false, isFocusScreen: false },
 ];
 
 const SCREEN_BY_ID: ReadonlyMap<ScreenId, Screen> = new Map(

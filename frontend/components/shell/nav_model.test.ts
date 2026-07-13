@@ -120,6 +120,22 @@ describe("FR-B1 surface-appropriate global navigation", () => {
       expect(skillItem!.href).toBe("/learn/skill");
     }
   });
+
+  // G8-OK: Epic F flips progress.comingSoon → false with the live page (FR-5).
+  it("Epic F FR-5: progress screen is live (not comingSoon) and in membership", () => {
+    const progress = screen("progress");
+    expect(progress.comingSoon).toBe(false);
+    expect(progress.route).toBe("/learn/progress");
+    const wiredRoutes = SCREENS.filter((s) => !s.comingSoon).map((s) => s.route);
+    expect(wiredRoutes).toContain("/learn/progress");
+    for (const surface of SURFACES) {
+      const items = navItemsForSurface(surface);
+      const progressItem = items.find((i) => i.screenId === "progress");
+      expect(progressItem, `${surface} must list progress`).toBeDefined();
+      expect(progressItem!.disabled).toBe(false);
+      expect(progressItem!.href).toBe("/learn/progress");
+    }
+  });
   it("desktop + iPad expose Coach as a sidebar peer; iPhone does NOT (3-tab)", () => {
     // §8.1 supersede: iPhone tab bar is Home / Practice / Skill / Progress —
     // Coach is contextual on iPhone (reached Feedback→Coach), not a persistent tab.

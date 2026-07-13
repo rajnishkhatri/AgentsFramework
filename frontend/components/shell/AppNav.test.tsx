@@ -24,14 +24,14 @@ function dom(node: React.ReactElement): Document {
 }
 
 describe("AppNav — FR-B5 no dead controls", () => {
-  it("iPhone: coming-soon Progress renders as a disabled non-link, not an <a href>", () => {
+  // G8-OK: Epic F ships /learn/progress — Progress is now a live link (was
+  // comingSoon disabled non-link). Intended behavior change, not a weakened gate.
+  it("iPhone: Progress is a live <a href=/learn/progress> (Epic F)", () => {
     const doc = dom(<AppNav surface="iphone" pathname={DASH} />);
-    const progress = doc.querySelector('[data-screen="progress"]');
-    expect(progress, "Progress control must render").not.toBeNull();
-    // A coming-soon control is disabled and is NOT an anchor with a destination.
-    expect(progress!.getAttribute("aria-disabled")).toBe("true");
-    expect(progress!.tagName.toLowerCase()).not.toBe("a");
-    expect(progress!.hasAttribute("href")).toBe(false);
+    const progress = doc.querySelector('a[data-screen="progress"]');
+    expect(progress, "Progress control must render as a link").not.toBeNull();
+    expect(progress!.getAttribute("href")).toBe("/learn/progress");
+    expect(progress!.getAttribute("aria-disabled")).not.toBe("true");
   });
 
   it("enabled items render as real links with their route as href", () => {
