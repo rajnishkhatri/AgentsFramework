@@ -2,13 +2,13 @@
 type: spec
 title: "Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)"
 description: EARS spec for the D0+D3 bundle — a server-side RSC withAuth guard on the (coach) route group so /learn/* pages no longer paint unauth (FR-1..3), plus a per-run coach-card verify-before-execute gate (fail-closed 503) with a no-PII audit line at the middleware coach seam (FR-4..7). Clarify pass CLOSED (Q-C1 group-root server layout / Q-C2 web-guard + native check / Q-C3 per-run verify). No new dependency, no ADR trigger.
-status: "Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed — await human approve → sdd-implement"
+status: "Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 green — next: sdd-converge"
 authored: 2026-07-13
 ---
 
 # Spec — Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)
 
-**Status:** Stage 5 replan 2026-07-13 (clarify CLOSED; Phase 1 scope dispositions below)
+**Status:** Stage 6 implement 2026-07-14 — D0+D3 shipped; Phase 1 residual gaps closed — next: sdd-converge
 **Owner:** Rajnish Khatri
 **Related:** [eng-coach-workos-auth.brainstorm.md](eng-coach-workos-auth.brainstorm.md) (SDD Stage-1, gate CLOSED: D0 scoped RSC guard + D3 bundled; D1/D2/D4 rejected/deferred)
 
@@ -25,7 +25,7 @@ authored: 2026-07-13
   (`registry.verify(SUBJECT_COACH_AGENT_ID)` on every coach request, after lazy-seed) —
   catches a card suspended/tampered mid-session; one HMAC check per run, coach path only.
 
-**Stage-5 replan dispositions (2026-07-13) — await human approve:**
+**Stage-5 replan dispositions (2026-07-13) — approved; implemented 2026-07-14:**
 - **P1-3:** FR-6 correlator = run `thread_id` (field name `thread=`), not domain
   `trace_id` — audit fires pre-stream; domain trace arrives later.
 - **P1-4:** FR-6 keeps "verification result" on **both** accept and reject paths

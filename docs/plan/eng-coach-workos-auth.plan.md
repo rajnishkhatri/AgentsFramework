@@ -2,13 +2,13 @@
 type: plan
 title: "Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit — implementation plan"
 description: Architecture + 7 file-level touchpoints (T1 new (coach)/layout.tsx server guard + tests; T4/T5 mirrored verify-gate in app_prod.py & __main__.py; T6 pytest extension; T7 decisions.md). Two independent vertical slices (D0 frontend, D3 middleware), no shared new code; no ADR trigger; risks R1 native-flow / R2 __main__ drift / R3 first-request 503.
-status: "Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed — await human approve → sdd-implement"
+status: "Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 green — next: sdd-converge"
 authored: 2026-07-13
 ---
 
 # Plan — Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit
 
-**Status:** Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed
+**Status:** Stage 6 implement 2026-07-14 — Phase 1 residual closed on nearly-complete D0+D3
 **Spec:** [eng-coach-workos-auth.spec.md](eng-coach-workos-auth.spec.md) (FR-1…FR-7)
 **Constitution:** root `AGENTS.md` (8 invariants) + `frontend/AGENTS.md` (F/W/P/A/T/X/C/B/U/S rules)
 
@@ -43,12 +43,15 @@ D3:  /run/stream  (app_prod.py + __main__.py)
        if agent_id == SUBJECT_COACH_AGENT_ID:
           if coach_runtime is None: 503                     (existing)
           identity = _coach_run_identity(subject)           (seeds card)
-          if not registry.verify(SUBJECT_COACH_AGENT_ID): 503   ── NEW (FR-4)
-          logger.info(audit: subject, agent_id, verified, thread_id)  ── NEW (FR-6)
+          verified = registry.verify(SUBJECT_COACH_AGENT_ID)
+       run_ctx = build_run_stream_context(...)
+       if coach:
+          logger.info(audit: subject, agent_id, verified, thread_id)  ── FR-6 (hoisted)
+          if not verified: 503                              ── FR-4
           → dispatch                                        (FR-5)
        else: … unchanged …                                  (FR-7)
 ```
-Reject path (`verify→False`): same audit shape with `verified=False`, then 503 (no dispatch).
+Reject path (`verify→False`): same single audit line with `verified=False`, then 503 (no dispatch).
 ## 2. File-level touchpoints
 
 | # | File | Change | FR | Layer / rule |
@@ -116,6 +119,14 @@ Logged here until `docs/adr/tech-debt-tracker.md` exists (runbook § Stage 9).
 | `E2E_BYPASS_AUTH` | **add to spec** | Edge case §6; layout already mirrors `page.tsx`. |
 
 **Implement order after approve:** P1-1 → P1-2 → P1-3 → P1-4 → sdd-converge.
+
+**Phase 1 landed (2026-07-14):** P1-1 G8 waivers · P1-2 `fs.readdir` discover-existing ·
+P1-3 `thread=` · P1-4 hoisted audit (`verified=<bool>`). Evidence:
+`pytest tests/middleware/test_coach_shadow_wiring.py` → 23 passed;
+`pytest tests/architecture/` → 199 passed, 2 skipped;
+`pnpm exec vitest run app/(coach)/layout.test.tsx` → 3/3;
+`pytest tests/architecture/test_no_test_weakening.py` → 1 passed.
+Next: **sdd-converge**.
 
 **Rejected alternatives (intent debt):**
 - P1-3 inventing a domain `trace_id` at the pre-stream seam.

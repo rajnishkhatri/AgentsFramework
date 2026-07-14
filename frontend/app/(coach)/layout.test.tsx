@@ -52,17 +52,26 @@ describe("CoachGroupLayout — D0 withAuth guard (FR-1/2/3)", () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
     const learnDir = path.join(__dirname, "learn");
-    const pageFiles = [
-      "page.tsx",
-      "coach/page.tsx",
-      "quiz/page.tsx",
-      "skill/page.tsx",
-      "progress/page.tsx",
-      "summary/page.tsx",
-      "test/page.tsx",
-    ];
-    for (const rel of pageFiles) {
-      const src = fs.readFileSync(path.join(learnDir, rel), "utf8");
+
+    // Spec §6: enumerate pages that exist on the branch (not a fixed list).
+    function collectPageTsx(dir: string): string[] {
+      const out: string[] = [];
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, ent.name);
+        if (ent.isDirectory()) {
+          out.push(...collectPageTsx(full));
+        } else if (ent.name === "page.tsx") {
+          out.push(full);
+        }
+      }
+      return out;
+    }
+
+    const pageFiles = collectPageTsx(learnDir);
+    expect(pageFiles.length).toBeGreaterThan(0);
+    for (const pagePath of pageFiles) {
+      const rel = path.relative(learnDir, pagePath);
+      const src = fs.readFileSync(pagePath, "utf8");
       expect(src, `${rel} must not call withAuth`).not.toMatch(/withAuth/);
     }
     const groupLayout = fs.readFileSync(path.join(__dirname, "layout.tsx"), "utf8");

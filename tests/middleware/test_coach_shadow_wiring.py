@@ -330,6 +330,8 @@ def _audit_lines_from_info_spy(info_spy) -> list[str]:
 class TestProdRunStreamCoachSelection:
     """app_prod /run/stream honors body agent_id (fail-closed first)."""
 
+    # G8-OK: test_coach_request_with_no_coach_runtime_is_503_not_default renamed →
+    # test_coach_request_with_missing_coach_runtime_is_rejected (TAP-4 name tokens)
     def test_coach_request_with_missing_coach_runtime_is_rejected(
         self, tmp_path: Path
     ) -> None:
@@ -367,28 +369,38 @@ class TestProdRunStreamCoachSelection:
         assert _audit_lines_from_info_spy(info_spy) == []
 
     def test_coach_run_unverified_card_is_rejected(self, tmp_path: Path) -> None:
-        """FR-4 FAILURE PATH: verify→False ⇒ 503; no run; no success audit."""
+        """FR-4/FR-6 FAILURE PATH: verify→False ⇒ 503; no run; verified=False audit."""
         import middleware.app_prod as mod
 
-        client, _, default_captured, coach_captured, registry, _ = (
+        client, _, default_captured, coach_captured, registry, subject = (
             _build_prod_coach_client(tmp_path)
         )
+        thread_id = "audit-thread-reject"
         with (
             patch.object(registry, "verify", return_value=False),
             patch.object(mod.logger, "info", wraps=mod.logger.info) as info_spy,
         ):
             r = client.post(
                 "/run/stream",
-                json={"agent_id": SUBJECT_COACH_AGENT_ID, "input": {}},
+                json={
+                    "agent_id": SUBJECT_COACH_AGENT_ID,
+                    "thread_id": thread_id,
+                    "input": {},
+                },
                 headers=_AUTH,
             )
         assert r.status_code == 503
         assert "unverified" in r.json().get("detail", "").lower()
         assert coach_captured == {}, "coach runtime.run must not run on unverified card"
         assert default_captured == {}, "must not fall back to the default graph"
-        assert _audit_lines_from_info_spy(info_spy) == [], (
-            "reject path must not emit coach_identity_verified success audit"
-        )
+        audit = _audit_lines_from_info_spy(info_spy)
+        assert len(audit) == 1, f"expected reject audit line, got {audit!r}"
+        line = audit[0]
+        assert subject in line
+        assert SUBJECT_COACH_AGENT_ID in line
+        assert "verified=False" in line
+        assert f"thread={thread_id}" in line
+        assert "verified=True" not in line
 
     def test_coach_run_verified_card_dispatches(self, tmp_path: Path) -> None:
         """FR-5: verify→True ⇒ coach runtime invoked; identity.owner == subject."""
@@ -410,7 +422,7 @@ class TestProdRunStreamCoachSelection:
     def test_coach_identity_resolution_emits_audit_line_no_pii(
         self, tmp_path: Path
     ) -> None:
-        """FR-6: verified coach run emits subject+agent_id+verified+trace; no PII."""
+        """FR-6: verified coach run emits subject+agent_id+verified+thread; no PII."""
         import middleware.app_prod as mod
 
         client, _, _, coach_captured, _, subject = _build_prod_coach_client(tmp_path)
@@ -435,7 +447,11 @@ class TestProdRunStreamCoachSelection:
         assert subject in line
         assert SUBJECT_COACH_AGENT_ID in line
         assert "verified=True" in line
-        assert thread_id in line
+        assert f"thread={thread_id}" in line
+        assert (
+            "trace="
+            not in line.split("coach_identity_verified", 1)[-1].split("\n", 1)[0]
+        )
         assert "secret-token-must-not-log" not in line
         assert "secret lesson" not in line
         assert "Bearer" not in line
@@ -727,6 +743,8 @@ class TestDevRunnerCoachWiring:
             assert identity.owner == "dev-user"
             assert registry.verify(SUBJECT_COACH_AGENT_ID) is True
 
+    # G8-OK: test_dev_coach_request_with_no_coach_runtime_is_503 renamed →
+    # test_dev_coach_request_with_missing_coach_runtime_is_rejected (TAP-4 name tokens)
     def test_dev_coach_request_with_missing_coach_runtime_is_rejected(
         self, tmp_path: Path
     ) -> None:
@@ -744,10 +762,11 @@ class TestDevRunnerCoachWiring:
             assert default_captured == {}
 
     def test_coach_run_unverified_card_is_rejected(self, tmp_path: Path) -> None:
-        """FR-4 / R2 drift guard: __main__ seam rejects unverified cards too."""
+        """FR-4/FR-6 / R2: __main__ rejects unverified cards and audits verified=False."""
         import middleware.__main__ as mod
 
         running, _, registry = _boot_dev_app(tmp_path)
+        thread_id = "audit-thread-dev-reject"
         with running() as (app, client):
             default_captured: dict = {}
             coach_captured: dict = {}
@@ -759,11 +778,19 @@ class TestDevRunnerCoachWiring:
             ):
                 r = client.post(
                     "/run/stream",
-                    json={"agent_id": SUBJECT_COACH_AGENT_ID, "input": {}},
+                    json={
+                        "agent_id": SUBJECT_COACH_AGENT_ID,
+                        "thread_id": thread_id,
+                        "input": {},
+                    },
                     headers=_AUTH,
                 )
             assert r.status_code == 503
             assert "unverified" in r.json().get("detail", "").lower()
             assert coach_captured == {}
             assert default_captured == {}
-            assert _audit_lines_from_info_spy(info_spy) == []
+            audit = _audit_lines_from_info_spy(info_spy)
+            assert len(audit) == 1, f"expected reject audit line, got {audit!r}"
+            line = audit[0]
+            assert "verified=False" in line
+            assert f"thread={thread_id}" in line

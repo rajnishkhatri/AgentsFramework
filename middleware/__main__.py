@@ -576,23 +576,26 @@ def build_dev_app() -> FastAPI:
             # Stage-4 note: seeds with DEV_USER_ID (not claims.subject); that
             # is intentional for the permissive-auth local runner.
             identity = _coach_run_identity(DEV_USER_ID)
-            if not agent_facts_registry.verify(SUBJECT_COACH_AGENT_ID):
-                raise HTTPException(status_code=503, detail="coach identity unverified")
+            verified = agent_facts_registry.verify(SUBJECT_COACH_AGENT_ID)
         else:
             runtime = request.app.state.runtime
+            verified = None
         run_ctx = build_run_stream_context(
             body,
             identity=identity,
             subject=DEV_USER_ID,
         )
         if body.get("agent_id") == SUBJECT_COACH_AGENT_ID:
+            # FR-6: no-PII audit on accept *and* reject (hoisted; mirrors app_prod).
             logger.info(
-                "coach_identity_verified subject=%s agent_id=%s verified=%s trace=%s",
+                "coach_identity_verified subject=%s agent_id=%s verified=%s thread=%s",
                 DEV_USER_ID,
                 SUBJECT_COACH_AGENT_ID,
-                True,
+                verified,
                 run_ctx.thread_id,
             )
+            if not verified:
+                raise HTTPException(status_code=503, detail="coach identity unverified")
         if run_ctx.saturation is not None:
             logger.info(
                 "goaljudge_saturation case=%s trace=%s thread=%s",
