@@ -34,7 +34,7 @@ export default function CoachPage(): React.JSX.Element {
     () => buildBrowserRuntimeClient({ baseUrl: "/api/coach" }),
     [],
   );
-  const { countMissesOnSkill } = useCoachSurface();
+  const { countMissesOnSkill, skillNameById } = useCoachSurface();
 
   const snap = React.useSyncExternalStore(
     subscribeCoachThread,
@@ -47,11 +47,16 @@ export default function CoachPage(): React.JSX.Element {
   const { turns, busy, ask, retry } = useCoach(runtime, { mode });
 
   const [missesOnSkill, setMissesOnSkill] = React.useState<number | null>(null);
+  // C-3: resolve the pinned skillId to a friendly name so the history line reads
+  // "Commas" not a raw "s-gram" id. null while resolving / when unresolved —
+  // the VM falls back to omitting the label, never echoing the raw id.
+  const [skillLabel, setSkillLabel] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
     if (pin?.skillId == null) {
       setMissesOnSkill(null);
+      setSkillLabel(null);
       return;
     }
     void countMissesOnSkill({
@@ -61,10 +66,18 @@ export default function CoachPage(): React.JSX.Element {
     }).then((n) => {
       if (!cancelled) setMissesOnSkill(n);
     });
+    void skillNameById(DEFAULT_SUBJECT, pin.skillId).then((name) => {
+      if (!cancelled) setSkillLabel(name);
+    });
     return () => {
       cancelled = true;
     };
-  }, [pin?.skillId, pin?.kind === "item" ? pin.questionId : null, countMissesOnSkill]);
+  }, [
+    pin?.skillId,
+    pin?.kind === "item" ? pin.questionId : null,
+    countMissesOnSkill,
+    skillNameById,
+  ]);
 
   const surfaceVm = React.useMemo(
     () =>
@@ -72,10 +85,10 @@ export default function CoachPage(): React.JSX.Element {
         mode,
         pin,
         missesOnSkill,
-        skillLabel: null,
+        skillLabel,
         chipSeeds: COACH_CHIP_SEEDS,
       }),
-    [mode, pin, missesOnSkill],
+    [mode, pin, missesOnSkill, skillLabel],
   );
 
   const layout = surface === "desktop" ? "rail" : "strip";
@@ -91,11 +104,12 @@ export default function CoachPage(): React.JSX.Element {
   );
 
   const onBack = React.useCallback(() => {
-    // C2: prefer history; cold-open / no history → quiz.
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back();
-      return;
-    }
+    // D-F b (FLAG-4): "Back" resumes practice where the learner left off, NOT the
+    // browser's previous entry. `router.back()` lands on Feedback when the coach
+    // was reached via Feedback→Ask-the-coach — it does not honor "resume the item
+    // I left". Pushing the bare quiz route triggers the quiz page's active-pointer
+    // resume (Effect 1: readActiveQuiz → resumeSession restores the left item,
+    // feedback phase included). No `?focus=`, so it resumes rather than drills.
     router.push(screen("quiz").route);
   }, [router]);
 

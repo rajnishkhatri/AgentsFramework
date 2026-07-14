@@ -56,6 +56,15 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   }
 
-  await coachMarkerRepo().markSubmitted(claim.sub, parsed.question_id);
+  // Fire-and-forget (route header + marker_repo docstring): a marker WRITE is
+  // best-effort. A store outage must NOT surface as a 500 — the write fails
+  // CLOSED downstream (isSubmitted returns false on any read error, so the
+  // coach derives pre_submit and never leaks answer fields). Swallow the throw
+  // and still 204; the caller does not retry a marker.
+  try {
+    await coachMarkerRepo().markSubmitted(claim.sub, parsed.question_id);
+  } catch {
+    // best-effort: a missed marker degrades to pre_submit, never a 500.
+  }
   return new Response(null, { status: 204 });
 }

@@ -406,13 +406,12 @@ test.describe("Epic A/B — manual-walkthrough regression guards", () => {
       step(1, `first pin: history text = "${firstText}"`);
 
       await page.locator("[data-testid='coach-back']").click();
-      await expect(page.locator("[data-testid='quiz-context']")).toBeVisible({ timeout: 15_000 });
-
-      // Resume lands on the already-answered item — submit + Next, then walk
-      // until a different item shares skillA (unique miss ids require a new qid).
-      await page.locator("[data-testid^='choice-']").first().click();
-      await page.locator("[data-testid='quiz-submit']").click();
-      await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({ timeout: 10_000 });
+      await expect(page).toHaveURL(/\/learn\/quiz/);
+      // D-F b: Back resumes the item as left — in the FEEDBACK phase (it was
+      // answered before Ask-coach), so the feedback banner is showing, not the
+      // answering `quiz-context`. The already-answered item just needs Next to
+      // advance; do NOT re-submit (there's no choice to pick in reviewing).
+      await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({ timeout: 15_000 });
       await page.locator("[data-testid='quiz-next']").click();
 
       let foundSameSkill = false;
@@ -471,13 +470,16 @@ test.describe("Epic A/B — manual-walkthrough regression guards", () => {
       await expect(page.locator("[data-testid='quiz-context']")).toBeVisible({ timeout: 10_000 });
       step(1, "learner is on Q2 (has answered Q1)");
 
-      const q2Context = await page
-        .locator("[data-testid='quiz-context']")
-        .innerText()
-        .catch(() => "");
-      step(1, `Q2 context text length = ${q2Context.length}`);
+      // Capture the Q2 identity from the progress region ("Question 2 of N"),
+      // which persists across the answering→reviewing→resume states (the
+      // quiz-context frame does NOT survive into the reviewing branch).
+      const q2Progress = (
+        await page.locator("[data-testid='quiz-progress']").innerText().catch(() => "")
+      ).trim();
+      step(1, `Q2 progress = "${q2Progress}"`);
+      expect(q2Progress).toMatch(/Question 2 of/);
 
-      // Answer Q2 + Ask the coach.
+      // Answer Q2 + Ask the coach — this leaves the item in the FEEDBACK phase.
       await page.locator("[data-testid^='choice-']").first().click();
       await page.locator("[data-testid='quiz-submit']").click();
       await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({ timeout: 10_000 });
@@ -485,13 +487,21 @@ test.describe("Epic A/B — manual-walkthrough regression guards", () => {
       await expect(page).toHaveURL(/\/learn\/coach/);
       step(2, "learner clicked Ask-the-coach on Q2 → Coach page");
 
+      // D-F b: Back RESUMES the left item. Because the item was left in the
+      // feedback phase, a faithful resume returns to Q2's FEEDBACK view (not the
+      // answering `quiz-context`, and NOT a fresh Q1). Assert both: the feedback
+      // banner is back AND the progress still reads "Question 2" (same item).
       await page.locator("[data-testid='coach-back']").click();
-      await expect(page.locator("[data-testid='quiz-context']")).toBeVisible({ timeout: 15_000 });
-      const returnedContext = await page.locator("[data-testid='quiz-context']").innerText();
-      step(3, `after Back: quiz-context length = ${returnedContext.length}`);
-
-      expect(returnedContext).toBe(q2Context);
-      await shot(page, testInfo, "FLAG-4-back-should-resume");
+      await expect(page).toHaveURL(/\/learn\/quiz/);
+      await expect(page.locator("[data-testid='feedback-banner']")).toBeVisible({ timeout: 15_000 });
+      const returnedProgress = (
+        await page.locator("[data-testid='quiz-progress']").innerText()
+      ).trim();
+      step(3, `after Back: progress = "${returnedProgress}"`);
+      // Resumed the SAME item (Q2), not a fresh Q1 — this is the FLAG-4 fix.
+      expect(returnedProgress).toBe(q2Progress);
+      expect(returnedProgress).toMatch(/Question 2 of/);
+      await shot(page, testInfo, "FLAG-4-back-resumes-q2-feedback");
     },
   );
 

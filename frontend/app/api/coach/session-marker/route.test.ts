@@ -74,3 +74,17 @@ describe("marker write route — authed write", () => {
     expect(markSubmitted).toHaveBeenCalledWith("Garvit", "q-punc-1");
   });
 });
+
+describe("marker write route — fire-and-forget resilience (D0)", () => {
+  it("still returns 204 when the marker store throws (DB outage)", async () => {
+    // The route header + marker_repo docstring declare markSubmitted a
+    // fire-and-forget path ("the caller logs and continues"). A DB outage must
+    // NOT surface as a 500 — the write is best-effort and fails CLOSED to
+    // pre_submit downstream (isSubmitted returns false), never leaking answers.
+    getSession.mockResolvedValue({ sub: "Garvit" });
+    markSubmitted.mockRejectedValue(new Error("ECONNREFUSED"));
+    const res = await POST(req({ question_id: "q-punc-1" }));
+    expect(res.status).toBe(204);
+    expect(markSubmitted).toHaveBeenCalledWith("Garvit", "q-punc-1");
+  });
+});

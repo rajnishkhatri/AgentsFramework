@@ -12,6 +12,8 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-13 — **Epic F: honest accuracy-trend Progress screen; projected score self-omits (D4 deferred).** Ship `/learn/progress` via one T1 translator (`progress_screen_vm`) + inline SVG `TrendChart` + horizontal mastery bar-rows; trend y = per-session accuracy from `listByLearner` (not `progressRepo`). Rejected: consuming orphaned `ProgressRepo.projected_score` (no honest write path — same gating risk as Epic E Tutorial). No ADR (pure composition). Spec/plan: [preact-parity-epic-F.spec.md](../plan/preact-parity-epic-F.spec.md) · [preact-parity-epic-F.plan.md](../plan/preact-parity-epic-F.plan.md) · brainstorm: [preact-parity-epic-F.brainstorm.md](../plan/preact-parity-epic-F.brainstorm.md).
+
 - D-8 (2026-07-11): deferred to Epic E per D4 alternate declined. Adding "skill" to NAV_MEMBERSHIP without a live /learn/skill route re-opens the Q-6 trust-bug class Epic A closed. Epic E will land route + membership together. Alternate spec preserved at docs/plan/preact-parity-D4-skills-nav.spec.md. T-DES-D4 locked placement (coach→skill→progress; iPhone unchanged) in docs/plan/preact-parity-D4-skills-nav.impl.md for when E lands.
 
 - 2026-07-11 — **D2 taxonomy: 6 canonical bucket labels.** Rhetoric · Usage · Punctuation · Organization · Sentence Structure · Conciseness. Source: `PreAct/UI-Design/design-spec.md:62-69`. Renamed display `name` only: Grammar & Usage → Usage, Rhetorical Skills → Rhetoric, Style → Conciseness in `_dev_seed.ts` + e2e fixtures. Dashboard `BucketCard` gains a leading 11×11 rounded-square dot (`border-radius:4px`, prototype exact) tinted by existing `--accent` — not the plan's 8px circle. CSS token ids stay `--color-bucket-*`. No ADR (content + view). Spec: [preact-parity-D2-taxonomy.spec.md](../plan/preact-parity-D2-taxonomy.spec.md).
@@ -560,3 +562,22 @@ title: 'Lightweight decision log (intent debt, long tail)'
 - 2026-07-12 — **E1b-D1 accuracy window + read seam (OQ-1).** Window = last-6-sessions, 1 bar/session (bar count IS the window). Rejected rolling-days: needs a 2nd constant, empty for inactive learners, misaligns with the session model. Seam = `accuracyBySkill` method on existing `AttemptRepo` (not a new port) — shares append-only `attempt` + skill join with `servedSkillIds`/`misses` (ADR-0006 precedent). Escalate to ADR-0031 only if review deems it port-level.
 
 - 2026-07-13 — **C901 complexity sensor: DEFER (anti-slop spec PI-6a).** Measured the ruff `C901` baseline (ruff 0.15.16): 109 fns @10, 42 @15, 26 @20, 16 @25; ceiling = 4 fns >40, outlier `build_graph`=176 (`orchestration/react_loop.py`). Per **FR-5**, no threshold below 177 is green-on-arrival, so any wire-in first needs grandfathering (`# noqa`/`per-file-ignores`) or refactoring. **Verdict: defer — no CI change (TASK-10 not executed).** Rationale: the convention layer already merged (#158 — G9 gate + anti-slop musts + code-review anti-slop gate) governs defensive-complexity slop *by review*, the same class as G1/G3/G7; and cyclomatic complexity correlates weakly with the *defensive-fallback* slop G9 actually targets — a ratchet here would be teeth on the wrong metric. Rejected grandfather-at-20 (26 `# noqa`) and grandfather-at-15 (42): cheap-ish but low-value now, ~29% of offenders are `scripts/` one-offs + 9 are skill-mirror triplicates. Revisit only if a *specific* over-complex function ships as slop. Evidence: `docs/plan/anti-slop-backpressure-sdd.c901-measurement.notes.md`.
+
+- 2026-07-13 — **Honest-null at the translator seam (parity-review D-B class fix).**
+  Convention for `frontend/lib/translators/` (and the VM-building hooks): *when the
+  underlying datum is absent or unresolved, emit an explicit "unknown" signal —
+  `null`, `"—"`, or a `*Known: false` flag — NEVER a zero, empty string, or other
+  plausible value the view renders as if it were real data.* The view branches on the
+  signal, not the number. **What it buys (G1):** it names and closes a recurring
+  defect *class* (the parity review found 3 instances at once — P-4 fabricated 0%
+  mastery, S-2b "0 min" for sub-minute sessions, C-3 raw `s-*` id for an unresolved
+  skill name) with one rule + per-VM guard tests, instead of three disconnected
+  patches that leave the 4th instance free to recur. It is a *convention*, not a new
+  abstraction or helper — no shared code, no new module (so no ADR); enforcement is
+  the per-VM guard test + code review. Applied: `bucket_card_vm.masteryKnown`
+  (guard `bucket_card_vm.test.ts::bucket_missing_mastery_is_honest_not_zero` +
+  `BucketCard`/`ProgressView` "no data" branches), `session_summary_vm.timeTile`
+  `"<1 min"`, `use_coach_surface.skillNameById` (null on unresolved, never the raw id).
+  Rejected the alternative "patch each singly" — it was the status quo that produced
+  all three. Precedent: the existing honest-null cases this generalizes —
+  `session_summary_vm` `"—"` on null `ended_at`, `progress_screen_vm` empty-trend.

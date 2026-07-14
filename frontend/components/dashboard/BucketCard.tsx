@@ -3,11 +3,10 @@
  *
  * Presentational only (F-R1): renders a `BucketCardVM`. Shows the bucket name,
  * mastery %, share-of-test %, a bucket-colored progress bar (the `--color-bucket-*`
- * accent, FR-A3), and a "Due" badge when due. The card IS a link (FR-C4): the
- * prototype opens Skill detail on a bucket click. Skill detail is comingSoon
- * (nav_model), so the interim target is a FOCUSED drill on the bucket's skill
- * (`/learn/quiz?focus=<skillId>`, honored by the Quiz page, FR-6) — never the
- * dead /learn/skill route (FR-B5/FR-2). Re-points to Skill detail when S9 lands.
+ * accent, FR-A3), and a "Due" badge when due. The card IS a link (FR-C4): per the
+ * prototype, a bucket click opens Skill detail (`/learn/skill?skillId=<id>`) — the
+ * teach plane, not a drill. `/learn/skill` is live (E1a/ADR-0028; SD-6), so this is
+ * the real destination, not the interim `/learn/quiz?focus=` drill it replaced.
  *
  * FR-A8 (color is never the sole signal): "Due" is a text badge, not just a color;
  * mastery is a number, not only a bar length. State rides `data-*` (§13).
@@ -21,12 +20,13 @@ import { screen } from "@/components/shell/nav_model";
 
 export function BucketCard(props: { vm: BucketCardVM }): React.JSX.Element {
   const { vm } = props;
-  // Interim focus-drill target (see file header). The quiz route comes from the
-  // nav model; the Quiz page validates the `focus` id and opens a drill (FR-6).
-  const focusHref = `${screen("quiz").route}?focus=${vm.skillId}`;
+  // SD-6: open Skill detail (the teach plane) for this bucket's skill. The skill
+  // route comes from the nav model; the Skill page reads `?skillId` and matches
+  // by Skill.id (mirrors SummaryView's "See full lesson" link).
+  const skillHref = `${screen("skill").route}?skillId=${vm.skillId}`;
   return (
     <Link
-      href={focusHref}
+      href={skillHref}
       data-testid={`bucket-${vm.skillId}`}
       data-due={vm.due ? "true" : "false"}
       // Scope the bucket accent to a local var the bar + border read (FR-A3).
@@ -58,19 +58,33 @@ export function BucketCard(props: { vm: BucketCardVM }): React.JSX.Element {
         ) : null}
       </header>
 
-      <div
-        className="h-2 w-full overflow-hidden rounded-full bg-selected"
-        role="progressbar"
-        aria-valuenow={vm.masteryPct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${vm.name} mastery`}
-      >
+      {/*
+        Honest-null (Epic F FR-4 / P-4): a bucket with no SkillState has UNKNOWN
+        mastery. Render an inert "no data" track — NOT a role=progressbar with
+        aria-valuenow=0, which a screen reader (and the eye) can't tell apart
+        from a genuine 0% mastery. The KNOWN flag gates the whole bar+percent.
+      */}
+      {vm.masteryKnown ? (
         <div
-          className="h-full rounded-full bg-[var(--accent)]"
-          style={{ width: `${vm.masteryPct}%` }}
+          className="h-2 w-full overflow-hidden rounded-full bg-selected"
+          role="progressbar"
+          aria-valuenow={vm.masteryPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${vm.name} mastery`}
+        >
+          <div
+            className="h-full rounded-full bg-[var(--accent)]"
+            style={{ width: `${vm.masteryPct}%` }}
+          />
+        </div>
+      ) : (
+        <div
+          data-testid={`bucket-nodata-${vm.skillId}`}
+          className="h-2 w-full rounded-full bg-selected opacity-40"
+          aria-hidden="true"
         />
-      </div>
+      )}
 
       {/*
         A <dl> may contain only <dt>/<dd> (optionally grouped in a <div>) — bare
@@ -82,8 +96,15 @@ export function BucketCard(props: { vm: BucketCardVM }): React.JSX.Element {
         <div className="flex gap-1">
           <dt className="sr-only">Mastery</dt>
           <dd className="flex gap-1">
-            <span className="font-semibold text-fg">{vm.masteryPct}%</span>
-            <span>mastery</span>
+            {vm.masteryKnown ? (
+              <>
+                <span className="font-semibold text-fg">{vm.masteryPct}%</span>
+                <span>mastery</span>
+              </>
+            ) : (
+              // Honest absence — never a fabricated 0% (FR-4).
+              <span className="italic">No data yet</span>
+            )}
           </dd>
         </div>
         <div className="flex gap-1">

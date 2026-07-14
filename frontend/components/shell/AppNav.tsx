@@ -3,12 +3,14 @@
  *
  * Presentational only (F-R1): it takes the current `surface` + `pathname` and
  * renders the nav items the pure `nav_model` returns for that surface. The
- * desktop/iPad shape is a sidebar (Home / Practice / Coach / Progress); iPhone
- * is a 3-tab bottom bar (Home / Practice / Progress — Coach is contextual, §8.1).
+ * desktop/iPad shape is a sidebar (Home / Practice / Coach / Skill / Progress);
+ * iPhone is a 4-tab bottom bar (Home / Practice / Coach / Progress) — Skill
+ * detail is reached on iPhone via the dashboard bucket→skill link, not a tab.
  *
  * FR-B5 (no dead controls): an enabled item is a real <Link href>; a coming-soon
- * item (Screens 6/7 until the second ADR-0006 amendment) renders as a DISABLED
- * <span> — never an anchor with a live destination. State rides `data-*` (§13).
+ * item renders as a DISABLED <span> — never an anchor with a live destination.
+ * (No screen is comingSoon today; the mechanism stays for the next dark launch.)
+ * State rides `data-*` (§13).
  */
 
 import * as React from "react";

@@ -59,6 +59,41 @@ describe("toSessionSummaryVM — edge row first", () => {
     expect(vm.timeTile).toBe("—");
     expect(vm.scoreTile).toBe("7/10"); // still reads stored score (FR-G1)
   });
+
+  it("sub-minute session (>0 but <60s) → '<1 min', never a fabricated '0 min'", () => {
+    // S-2b: a real, closed 18s session is not zero time. Rounding to whole
+    // minutes prints "0 min" — a value indistinguishable from an instant/no-op.
+    // The honest form is "<1 min".
+    const vm = toSessionSummaryVM(
+      session({
+        started_at: "2026-06-30T10:00:00.000Z",
+        ended_at: "2026-06-30T10:00:18.000Z", // 18s
+      }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
+    expect(vm.timeTile).toBe("<1 min");
+  });
+
+  it("a session at/over one minute still reads whole minutes", () => {
+    const vm = toSessionSummaryVM(
+      session({
+        started_at: "2026-06-30T10:00:00.000Z",
+        ended_at: "2026-06-30T10:01:00.000Z", // exactly 60s
+      }),
+      rec,
+      skill(),
+      8,
+      null,
+      false,
+      false,
+    );
+    expect(vm.timeTile).toBe("1 min");
+  });
 });
 
 describe("toSessionSummaryVM — happy path (FR-G1/G2)", () => {
