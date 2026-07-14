@@ -633,16 +633,32 @@ def build_combined_app() -> FastAPI:
                 raise HTTPException(
                     status_code=503, detail="coach runtime not available"
                 )
+            # Seed then verify (R3): lazy-register the signed coach card, then
+            # fail-closed if the card is missing / non-ACTIVE / tampered.
             identity = _coach_run_identity(claims.subject)
+            verified = agent_facts_registry.verify(SUBJECT_COACH_AGENT_ID)
         else:
             runtime = request.app.state.runtime
             identity = _resolve_identity(claims.subject)
+            verified = None
 
         run_ctx = build_run_stream_context(
             body,
             identity=identity,
             subject=claims.subject,
         )
+        if body.get("agent_id") == SUBJECT_COACH_AGENT_ID:
+            # FR-6: no-PII audit on accept *and* reject (hoisted; verified=<bool>).
+            # Correlate via thread_id (pre-stream; domain trace_id arrives later).
+            logger.info(
+                "coach_identity_verified subject=%s agent_id=%s verified=%s thread=%s",
+                claims.subject,
+                SUBJECT_COACH_AGENT_ID,
+                verified,
+                run_ctx.thread_id,
+            )
+            if not verified:
+                raise HTTPException(status_code=503, detail="coach identity unverified")
         if run_ctx.saturation is not None:
             logger.info(
                 "goaljudge_saturation case=%s trace=%s thread=%s",
