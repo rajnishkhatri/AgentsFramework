@@ -291,6 +291,28 @@ newest-first `log.md` line. (Or an `ADR-OK:` waiver in the commit for a range.)
 | D3 Test Quality | TAP-4 failure-path ratio | `detect_failure_path_ratio` |
 | FD2/FD3 Frontend | CSP, iframe sandbox, secrets, JWT, composer | TS predicates (`code_reviewer/frontend/tools.py`) |
 
+## Anti-slop review gate (reviewer-applied, beyond the automated dimensions)
+
+A named checklist the human reviewer runs while reading the diff (Runbook VI
+§A4/§A2/§A1/§B4 — the `### A4.`-style anchors in
+`docs/research/agenticengineeringplaybook/ai-slop-backpressure`). This is prose
+judgment layered on top of the certified v3 rubric — it does **not** modify the
+rubric or the deterministic tools; it is what a reader flags that the AST/LLM
+dimensions don't. Cite the answer-before-reveal preamble (`docs/adr/GATES.md`)
+when you ask the author to explain a hunk:
+
+- **A4 — back-it-out.** Any hunk the author can't explain line-by-line is a
+  back-it-out candidate, not a merge. (The G-preamble is the same generation
+  test — "explain the load-bearing line in your own words.")
+- **A2 / G9 — defensive fallback with no named failure.** A `try/except` /
+  `return None` / `or <default>` that catches nothing nameable is masking, not
+  handling — flag it (the AP-6 auto-reject already catches the *fabricated-value*
+  subset; this is the broader reviewer read).
+- **A1 — single-call-site abstraction.** An indirection introduced with one
+  caller and no duplication removed hasn't earned its place (the G1 case).
+- **B4 — unreadably large diff.** A diff too big to read every line gets a
+  split request, not a rubber-stamp.
+
 ## Honest limits — say these out loud in the report
 
 - **LLM verdicts ARE gate-grade — the WI-8 judge is certified.** The certification

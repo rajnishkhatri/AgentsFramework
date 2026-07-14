@@ -45,9 +45,16 @@ iteration's plan doc (a `tech-debt-tracker.md` ledger is not yet created).
 3. Every ADR trigger hit during the change has a filed `docs/adr/*` (+
    `index.md`/`log.md` entries) — `tests/architecture/test_adr_ratchet.py` is
    the mechanical backstop.
-4. Every comprehension gate that fired (G1/G3/G4/G7/G8 — wordings in
+4. Every comprehension gate that fired (G1/G3/G4/G7/G8/G9 — wordings in
    `docs/adr/GATES.md`) was answered by the human in their own words.
 5. LLM calls recorded via `eval_capture.record()` with `user_id` + `task_id`.
+6. **Blast-radius cleanup (scoped to THIS change).** Ask: *what did THIS change
+   add that can now be deleted* — a scaffold, a dead branch, a defensive path the
+   final shape no longer needs, a helper with one caller? Delete it before
+   sign-off. Scope is the change's own diff, **not** a repo-wide delete-code pass
+   (that is a separate initiative). *(This is where Runbook VI's A5 "delete code"
+   lands for a change — folded into the A3 blast-radius sweep as
+   "delete-what-this-change-added," not a standalone repo-wide pass.)*
 
 **Bounded**: if convergence isn't reached within the agreed `max_iterations`,
 stop and force human review — the loop never calls itself done. Not converged
