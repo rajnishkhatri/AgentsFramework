@@ -2,13 +2,13 @@
 type: plan
 title: "Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit — implementation plan"
 description: Architecture + 7 file-level touchpoints (T1 new (coach)/layout.tsx server guard + tests; T4/T5 mirrored verify-gate in app_prod.py & __main__.py; T6 pytest extension; T7 decisions.md). Two independent vertical slices (D0 frontend, D3 middleware), no shared new code; no ADR trigger; risks R1 native-flow / R2 __main__ drift / R3 first-request 503.
-status: "Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 green — next: sdd-converge"
+status: "Stage 9/10 converge 2026-07-14 — CONVERGED — await human Stage 10 sign-off"
 authored: 2026-07-13
 ---
 
 # Plan — Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit
 
-**Status:** Stage 6 implement 2026-07-14 — Phase 1 residual closed on nearly-complete D0+D3
+**Status:** Stage 9/10 converge 2026-07-14 — **CONVERGED** — await human Stage 10 sign-off
 **Spec:** [eng-coach-workos-auth.spec.md](eng-coach-workos-auth.spec.md) (FR-1…FR-7)
 **Constitution:** root `AGENTS.md` (8 invariants) + `frontend/AGENTS.md` (F/W/P/A/T/X/C/B/U/S rules)
 
@@ -98,12 +98,13 @@ native check). Or parallel — they share no code.
 
 ---
 
-## 6. Convergence deferrals (Stage 9 · 2026-07-13)
+## 6. Convergence deferrals (Stage 9 · 2026-07-13; updated 2026-07-14)
 
 Logged here until `docs/adr/tech-debt-tracker.md` exists (runbook § Stage 9).
 
 - **Q-C2 live native smoke** — **deferred** (structural `/api/auth/*` check is DoD).
 - **CI architecture job shallow checkout** — G8 can skip when merge-base is unavailable; local full-history run is the honest G8 signal for this PR (P1-1). Out of this change's code scope.
+- **`preact-parity-e2e-validation-report-2026-07-13.md` trailing whitespace** — failed CI `--all-files` on PR #160 merge base with #161; **not** introduced by WorkOS auth. Out of this change's Phase 2.
 
 ## 7. Stage 5 replan (2026-07-13) — Phase 1 sprint board
 
@@ -121,14 +122,18 @@ Logged here until `docs/adr/tech-debt-tracker.md` exists (runbook § Stage 9).
 **Implement order after approve:** P1-1 → P1-2 → P1-3 → P1-4 → sdd-converge.
 
 **Phase 1 landed (2026-07-14):** P1-1 G8 waivers · P1-2 `fs.readdir` discover-existing ·
-P1-3 `thread=` · P1-4 hoisted audit (`verified=<bool>`). Evidence:
-`pytest tests/middleware/test_coach_shadow_wiring.py` → 23 passed;
-`pytest tests/architecture/` → 199 passed, 2 skipped;
-`pnpm exec vitest run app/(coach)/layout.test.tsx` → 3/3;
-`pytest tests/architecture/test_no_test_weakening.py` → 1 passed.
-Next: **sdd-converge**.
+P1-3 `thread=` · P1-4 hoisted audit (`verified=<bool>`).
+
+## 8. Stage 9/10 re-converge (2026-07-14) — Phase 2 → CONVERGED
+
+**P2-1 implemented** (EOF newline). Post-P2 re-converge found **no new in-scope
+gaps** → **CONVERGED**. Deferred: Q-C2 live native; CI shallow G8; foreign
+preact-parity trailing whitespace on `main` (line 45 still has `  \n`).
+
+Next: **Stage 10 human sign-off** + commit/PR the uncommitted converge/P2 docs.
 
 **Rejected alternatives (intent debt):**
 - P1-3 inventing a domain `trace_id` at the pre-stream seam.
 - P1-4 narrowing FR-6 to success-only (would hide deny events from the audit trail).
 - Holding the PR for a live Tauri/iOS smoke before merge.
+- Folding the foreign preact-parity trailing-whitespace into WorkOS Phase 2.

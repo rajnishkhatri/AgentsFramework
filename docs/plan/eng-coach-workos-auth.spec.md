@@ -2,13 +2,13 @@
 type: spec
 title: "Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)"
 description: EARS spec for the D0+D3 bundle — a server-side RSC withAuth guard on the (coach) route group so /learn/* pages no longer paint unauth (FR-1..3), plus a per-run coach-card verify-before-execute gate (fail-closed 503) with a no-PII audit line at the middleware coach seam (FR-4..7). Clarify pass CLOSED (Q-C1 group-root server layout / Q-C2 web-guard + native check / Q-C3 per-run verify). No new dependency, no ADR trigger.
-status: "Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 green — next: sdd-converge"
+status: "Stage 9/10 converge 2026-07-14 — CONVERGED — await human Stage 10 sign-off"
 authored: 2026-07-13
 ---
 
 # Spec — Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)
 
-**Status:** Stage 6 implement 2026-07-14 — D0+D3 shipped; Phase 1 residual gaps closed — next: sdd-converge
+**Status:** Stage 9/10 converge 2026-07-14 — **CONVERGED** — await human Stage 10 sign-off
 **Owner:** Rajnish Khatri
 **Related:** [eng-coach-workos-auth.brainstorm.md](eng-coach-workos-auth.brainstorm.md) (SDD Stage-1, gate CLOSED: D0 scoped RSC guard + D3 bundled; D1/D2/D4 rejected/deferred)
 

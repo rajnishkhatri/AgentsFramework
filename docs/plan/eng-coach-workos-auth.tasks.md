@@ -2,13 +2,13 @@
 type: tasks
 title: "Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit — task list"
 description: Red-first atomic tasks in two independent tracks — D3 backend (G1..G6: unverified-card 503 red → verify-gate green → audit line → __main__ mirror → decisions.md) and D0 frontend (G7..G10: guard unit test → new server layout → e2e redirect + native check → arch/a11y) → G11 full gate. Measurability checklist confirms all 7 FRs machine-checkable.
-status: "Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 green — next: sdd-converge"
+status: "Stage 9/10 converge 2026-07-14 — CONVERGED — await human Stage 10 sign-off"
 authored: 2026-07-13
 ---
 
 # Tasks — Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit
 
-**Status:** Stage 6 implement 2026-07-14 — Phase 1 P1-1..P1-4 landed (residual on nearly-complete D0+D3)
+**Status:** Stage 9/10 converge 2026-07-14 — **CONVERGED** (no new Phase N tasks) — await human sign-off
 **Spec:** [eng-coach-workos-auth.spec.md](eng-coach-workos-auth.spec.md) · **Plan:** [eng-coach-workos-auth.plan.md](eng-coach-workos-auth.plan.md)
 
 Red-first (write the test, watch it fail, then implement). Two independent tracks
@@ -132,7 +132,7 @@ Tracks D3 and D0 are fully independent until G11.
 | `E2E_BYPASS_AUTH` escape hatch in `(coach)/layout.tsx` | `unrequested` → **specced** | **Replan ADD** — explicit edge case in spec §6; mirrors `app/page.tsx`. No new code task. |
 | CI architecture job shallow checkout | `partial` | Out of code scope; local full-history G8 remains the honest signal (P1-1). |
 
-**Converge verdict (iteration 1 code):** Phase 1 tasks **done** — re-enter **sdd-converge** to confirm residual gaps closed.
+**Converge verdict (iteration 1 code):** Phase 1 tasks **done** — re-entered **sdd-converge** 2026-07-14.
 
 ---
 
@@ -160,10 +160,115 @@ P1-1 (G8 waivers) → P1-2 (layout FR-3 pages) → P1-3 (rename trace→thread) 
 
 **Landed 2026-07-14** in that order (P1-2 = `fs.readdir`; P1-4 = hoisted audit, not duplicated).
 
-Gate evidence pasted:
+Gate evidence pasted (Phase 1 closeout):
 - `pytest tests/middleware/test_coach_shadow_wiring.py -q` → **23 passed**
 - `pytest tests/architecture/ -q` → **199 passed, 2 skipped**
 - `pnpm exec vitest run 'app/(coach)/layout.test.tsx'` → **3 passed**
 - `pytest tests/architecture/test_no_test_weakening.py -q` → **1 passed**
 
-**Routing:** **sdd-converge** (Stage 9) — Phase 1 residual closed.
+**Routing:** **sdd-converge** (Stage 9) — Phase 1 residual closed → re-converge below.
+
+---
+
+## Phase 2 — Convergence (Stage 9 · 2026-07-14 re-entry)
+
+`max_iterations`: 2 · **iteration 2 of 2** (ceiling — after P2, next fail forces human review).
+
+### EARS re-check (tree + tests, 2026-07-14)
+
+| FR | Verdict | Evidence |
+|----|---------|----------|
+| FR-1 | met | `(coach)/layout.tsx` `withAuth({ ensureSignedIn: true })`; `frontend/e2e/coach-auth-guard.spec.ts`; Vitest guard call |
+| FR-2 | met | layout returns `children`; Vitest authed render |
+| FR-3 | met | single group-root guard; `collectPageTsx` / no per-page `withAuth` |
+| FR-4 | met | `verify→False` ⇒ 503; prod + `__main__` reject tests |
+| FR-5 | met | `test_coach_run_verified_card_dispatches` |
+| FR-6 | met | hoisted audit `thread=` + `verified=True/False` on accept+reject |
+| FR-7 | met | `test_plain_chat_never_uses_coach_runtime` |
+
+Re-paste (this re-entry):
+```
+$ pytest tests/middleware/test_coach_shadow_wiring.py tests/architecture/test_no_test_weakening.py -q
+........................                                                 [100%]
+24 passed in 1.61s
+
+$ cd frontend && pnpm exec vitest run 'app/(coach)/layout.test.tsx'
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+
+$ pytest tests/architecture/ -q
+197 passed, 4 skipped in 10.90s
+```
+
+### New gaps
+
+| ID | Gap | gap-type | source-ref | Task | Pass/fail |
+|----|-----|----------|------------|------|-----------|
+| P2-1 | `docs/plan/eng-coach-workos-auth.tasks.md` missing trailing newline; CI `end-of-file-fixer` red on PR #160 merge | `partial` → **done** | GitHub Actions `ruff + gitleaks + hygiene` run 29347115503; local `ends_with_newline False` | Ensure file ends with `\n`; `pre-commit run end-of-file-fixer --files …` → **Passed** (2026-07-14). |
+
+### Out of change scope (not Phase 2)
+
+| Item | gap-type | Notes |
+|------|----------|-------|
+| `docs/plan/preact-parity-e2e-validation-report-2026-07-13.md` trailing whitespace | n/a (foreign) | Failed same CI job via `--all-files` / merge-base with #161; **not** introduced by WorkOS auth. Logged under plan §6 deferrals. |
+| Q-C2 live Tauri/iOS smoke | deferred | Unchanged — structural DoD stands. |
+| CI architecture shallow checkout / G8 | deferred | Unchanged. |
+
+### Blast-radius (Stage 10 §6)
+
+Nothing this change added is now deletable: D0 layout, D3 verify+audit, E2E_BYPASS (specced), and FR tests are all load-bearing. Worktree-only `frontend/node_modules` symlink (review harness) was never committed.
+
+### Converge verdict (iteration 2)
+
+**NOT converged** at classification time — P2-1 was the remaining in-scope `partial`.
+
+**P2-1 landed (2026-07-14):** trailing `\n` restored; end-of-file-fixer green on this path.
+
+**Routing:** re-enter **sdd-converge** (iteration ceiling: if still red after this, **forced human review**).
+
+PR #160 already **MERGED** (`072f93c`); P2-1 ships as a follow-up commit/PR for Stage 10 hygiene.
+
+---
+
+## Post-P2 re-converge (Stage 9/10 · 2026-07-14)
+
+`max_iterations`: 2 · post-iteration-2 check (within ceiling).
+
+### Gap scan
+
+| Candidate | Class | Disposition |
+|-----------|-------|-------------|
+| FR-1..FR-7 | — | **met** (seams + tests) |
+| P1-1..P1-4 | — | **done** |
+| P2-1 EOF newline | `partial` | **done** — `EOF_nl True`; end-of-file-fixer **Passed** |
+| preact-parity trailing WS on `main` | foreign | deferred (plan §6) — not WorkOS Phase N |
+| G8 `test_no_test_weakening` skip | env | "no tests/**.py changes in this range" — expected for docs-only delta; prior P1-1 waiver remains |
+
+**No new Phase 3 tasks.** No `missing` / `partial` / `contradicts` / `unrequested` in-scope gaps.
+
+### Evidence (pasted)
+
+```
+$ python3 … EOF_nl True (tasks/spec/plan)
+$ pre-commit run end-of-file-fixer --files docs/plan/eng-coach-workos-auth.*.md
+fix end of files.........................................................Passed
+$ pre-commit run trailing-whitespace --files …
+trim trailing whitespace.................................................Passed
+
+$ pytest tests/middleware/test_coach_shadow_wiring.py tests/architecture/test_no_test_weakening.py -q
+23 passed, 1 skipped in 1.35s
+
+$ pnpm exec vitest run 'app/(coach)/layout.test.tsx'
+3 passed (3)
+
+$ pytest tests/architecture/ -q
+197 passed, 4 skipped in 10.26s
+```
+
+### Blast-radius
+
+Nothing this change added is deletable (layout, verify+audit, E2E_BYPASS, FR tests all load-bearing).
+
+### Converge verdict
+
+**CONVERGED.** Route → **Stage 10 human sign-off** (checklist below). Commit/PR the uncommitted P2-1 + converge docs when ready — do not treat merge of #160 alone as signed.
