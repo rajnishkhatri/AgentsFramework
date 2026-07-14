@@ -1,5 +1,15 @@
 # Operations Runbook — V3-Dev-Tier
 
+> **⚠ Stack retired (2026-07-14, ADR-0031): `infra/dev-tier/` no longer exists.**
+> This entire runbook describes the abandoned V3 dev-tier stack (Neon +
+> Cloud Run scale-to-zero), which was deleted. Every `tofu -chdir=infra/dev-tier`
+> command, the `neon-database-url` secret, and the `agent-middleware` service
+> below are **historical** — none resolve today. Production serves from
+> `infra/gcp/` (`agent-frontend` + `agent-backend-combined`), operated via
+> `scripts/deploy_gcp.sh`; the live backend's DB is Cloud SQL (`database-url`),
+> not Neon. Kept as the historical record of the dev-tier design. See
+> [docs/adr/0031-retire-dev-tier-neon-stack.md](../docs/adr/0031-retire-dev-tier-neon-stack.md).
+>
 > **⚠ Hosting note (2026-06-18): Cloudflare removed.** This runbook predates the
 > decision to host the BFF on Cloud Run (`agent-frontend`) instead of Cloudflare
 > Pages. Every "Cloudflare Pages" / "wrangler pages deploy" / "Cloudflare WAF"

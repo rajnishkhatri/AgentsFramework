@@ -61,6 +61,9 @@ dev = [
     "pip-tools>=7.0,<8",
     "pre-commit>=4.0,<5",
 ]
+# HCL-parsing deps for the OpenTofu/HCL test suite. After ADR-0031 the only
+# consumer is the GCP Tier A suite `tests/infra/gcp/` (`-m infra_gcp`); the
+# retired dev-tier stack was its original driver.
 infra = [
     "python-hcl2>=7.0,<8",
     "pytest>=8.0,<10",
@@ -79,11 +82,14 @@ markers = [
     "simulation: marks tests as simulation-based (Layer 4)",
     "live_llm: marks tests that require real LLM API calls",
     "property: marks property-based tests (Hypothesis)",
-    "infra: marks Sprint 2 OpenTofu/HCL infrastructure tests (run with `pytest tests/infra/`)",
+    # The GCP Tier A IaC suite (`tests/infra/gcp/`) uses the `infra_gcp` marker,
+    # registered dynamically in `tests/infra/gcp/conftest.py` (kept there so the
+    # extra isn't required to load this file). The retired dev-tier stack's
+    # `infra` marker was removed with it (ADR-0031).
 ]
 testpaths = ["tests"]
 # Skip tests/infra during default collection — that tree needs the `infra`
-# extra (python-hcl2) and is run via `pytest tests/infra/ -m infra`.
+# extra (python-hcl2) and is run via `pytest tests/infra/ -m infra_gcp`.
 norecursedirs = [
     ".git",
     ".hg",
@@ -104,7 +110,7 @@ norecursedirs = [
 # own `tests/` package which would otherwise shadow ours under
 # `from tests.conftest import ...` style imports).
 pythonpath = ["."]
-addopts = "-m 'not slow and not simulation and not live_llm and not infra' --strict-markers"
+addopts = "-m 'not slow and not simulation and not live_llm and not infra_gcp' --strict-markers"
 asyncio_mode = "auto"
 
 [tool.ruff]
