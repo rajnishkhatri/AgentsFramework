@@ -572,7 +572,12 @@ def build_dev_app() -> FastAPI:
                 raise HTTPException(
                     status_code=503, detail="coach runtime not available"
                 )
+            # Seed then verify (R3) — mirrors app_prod.py (drift guard).
+            # Stage-4 note: seeds with DEV_USER_ID (not claims.subject); that
+            # is intentional for the permissive-auth local runner.
             identity = _coach_run_identity(DEV_USER_ID)
+            if not agent_facts_registry.verify(SUBJECT_COACH_AGENT_ID):
+                raise HTTPException(status_code=503, detail="coach identity unverified")
         else:
             runtime = request.app.state.runtime
         run_ctx = build_run_stream_context(
@@ -580,6 +585,14 @@ def build_dev_app() -> FastAPI:
             identity=identity,
             subject=DEV_USER_ID,
         )
+        if body.get("agent_id") == SUBJECT_COACH_AGENT_ID:
+            logger.info(
+                "coach_identity_verified subject=%s agent_id=%s verified=%s trace=%s",
+                DEV_USER_ID,
+                SUBJECT_COACH_AGENT_ID,
+                True,
+                run_ctx.thread_id,
+            )
         if run_ctx.saturation is not None:
             logger.info(
                 "goaljudge_saturation case=%s trace=%s thread=%s",
