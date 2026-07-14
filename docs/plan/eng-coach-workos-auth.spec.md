@@ -2,7 +2,7 @@
 type: spec
 title: "Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)"
 description: EARS spec for the D0+D3 bundle — a server-side RSC withAuth guard on the (coach) route group so /learn/* pages no longer paint unauth (FR-1..3), plus a per-run coach-card verify-before-execute gate (fail-closed 503) with a no-PII audit line at the middleware coach seam (FR-4..7). Clarify pass CLOSED (Q-C1 group-root server layout / Q-C2 web-guard + native check / Q-C3 per-run verify). No new dependency, no ADR trigger.
-status: "Implemented (Stage 6) 2026-07-13 — next: code-review"
+status: "Stage 9 converge 2026-07-13 — NOT converged (Phase 1 gaps) — next: sdd-implement"
 authored: 2026-07-13
 ---
 

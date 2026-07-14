@@ -2,7 +2,7 @@
 type: tasks
 title: "Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit — task list"
 description: Red-first atomic tasks in two independent tracks — D3 backend (G1..G6: unverified-card 503 red → verify-gate green → audit line → __main__ mirror → decisions.md) and D0 frontend (G7..G10: guard unit test → new server layout → e2e redirect + native check → arch/a11y) → G11 full gate. Measurability checklist confirms all 7 FRs machine-checkable.
-status: "Implemented 2026-07-13 — Stage 6 G1–G10 green; G11 make check + arch green; pnpm test has 2 pre-existing unrelated fails (AppNav/D2 labels) — next: code-review"
+status: "Stage 9 converge 2026-07-13 — NOT converged; Phase 1 P1-1..P1-4 spawned — next: sdd-implement"
 authored: 2026-07-13
 ---
 
@@ -109,3 +109,26 @@ D0:  G7  →  G8  →  G9  →  G10             ├→  G11 (full gate)
 ```
 G1/G2 and G7 are the red-first entry points (parallelizable). G3 unblocks G4/G5.
 Tracks D3 and D0 are fully independent until G11.
+
+---
+
+## Phase 1 — Convergence (Stage 9 · 2026-07-13)
+
+`max_iterations`: 2 · iteration 1 of 2.
+
+| ID | Gap | gap-type | source-ref | Task | Pass/fail |
+|----|-----|----------|------------|------|-----------|
+| P1-1 | G8 rename waivers missing for TAP-4 renames | `partial` | `tests/architecture/test_no_test_weakening.py` (local red; CI shallow-clone skips G8) | In `tests/middleware/test_coach_shadow_wiring.py`, add `# G8-OK: test_coach_request_with_no_coach_runtime_is_503_not_default renamed → test_coach_request_with_missing_coach_runtime_is_rejected (TAP-4 name tokens)` and `# G8-OK: test_dev_coach_request_with_no_coach_runtime_is_503 renamed → test_dev_coach_request_with_missing_coach_runtime_is_rejected (TAP-4 name tokens)`. **Pass/fail:** `pytest tests/architecture/test_no_test_weakening.py -q` green. |
+| P1-2 | FR-3 structural unit test opens non-existent `progress/page.tsx` on this base | `partial` | `frontend/app/(coach)/layout.test.tsx` (1 failed / 3); pages on `main`: learn/{page,coach,quiz,skill,summary,test} only | Drop `progress/page.tsx` from the FR-3 page list (or discover pages via `fs.readdir` of existing `**/page.tsx`). Keep asserting group-root `layout.tsx` is the sole `withAuth({ensureSignedIn:true})` site. **Pass/fail:** `pnpm exec vitest run app/(coach)/layout.test.tsx` 3/3 green. |
+| P1-3 | FR-6 audit correlator is `thread_id` labeled `trace=` | `partial` | spec FR-6 ("run `trace_id`"); `middleware/app_prod.py` + `__main__.py` audit `logger.info` | Either (a) rename field to `thread=` and update FR-6 / FR-6 test to match pre-stream reality, or (b) thread a real domain `trace_id` into the audit. Prefer (a) unless a trace id is already available at the seam. **Pass/fail:** audit assertion + FR-6 wording agree on the same field name. |
+| P1-4 | FR-6 does not emit verification result when `verify→False` | `partial` | spec FR-6 ("verification result"); reject path has no audit line (tests now assert absence of *success* audit only) | Emit a no-PII audit on the reject path with `verified=False` (still no token/content), **or** route to sdd-replan to narrow FR-6 to success-only. **Pass/fail:** reject path either logs `verified=False` or FR-6 is replan-narrowed. |
+
+### Deferred (human gate — not in-iteration unless approved)
+
+| Item | gap-type | Notes |
+|------|----------|-------|
+| Q-C2 live Tauri/iOS deep-link sign-in | `partial` | G9 shipped a **structural** check (`/api/auth/*` outside `(coach)`). Plan R1 asked for live native completion. Accept structural as DoD, or run a manual native smoke before merge. |
+| `E2E_BYPASS_AUTH` escape hatch in `(coach)/layout.tsx` | `unrequested` | Mirrors `app/page.tsx`; needed for learn-e2e. Route to sdd-replan only if it should be an explicit edge-case in the spec. |
+| Spec body status still "Draft" vs frontmatter "Implemented" | hygiene | Fix with P1 doc polish if touching the file. |
+
+**Converge verdict (iteration 1):** **not converged** — P1-1..P1-4 remain. Re-enter **sdd-implement** for P1-1/P1-2 (blocking); P1-3/P1-4 need human choose fix-vs-replan.

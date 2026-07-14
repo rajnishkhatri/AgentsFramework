@@ -90,3 +90,13 @@ native check). Or parallel — they share no code.
   asserting the `__main__.py` seam 503s on unverified card, same as `app_prod.py`.
 - **R3 — first-request spurious 503** if verify runs before lazy-seed. Mitigation:
   order is seed (`_coach_run_identity`) **then** verify — encoded in T4 and its test.
+
+---
+
+## 6. Convergence deferrals (Stage 9 · 2026-07-13)
+
+Logged here until `docs/adr/tech-debt-tracker.md` exists (runbook § Stage 9).
+
+- **Q-C2 live native smoke** — deferred pending human accept of the structural `/api/auth/*` check vs a device/WebView pass (plan risk R1).
+- **`E2E_BYPASS_AUTH` in `(coach)/layout.tsx`** — `unrequested` vs spec; mirrors `app/page.tsx`. Spec it on replan if reviewers want it explicit.
+- **CI architecture job shallow checkout** — G8 can skip when merge-base is unavailable; local full-history run is the honest G8 signal for this PR (P1-1). Out of this change's code scope.
