@@ -2,13 +2,13 @@
 type: plan
 title: "Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit — implementation plan"
 description: Architecture + 7 file-level touchpoints (T1 new (coach)/layout.tsx server guard + tests; T4/T5 mirrored verify-gate in app_prod.py & __main__.py; T6 pytest extension; T7 decisions.md). Two independent vertical slices (D0 frontend, D3 middleware), no shared new code; no ADR trigger; risks R1 native-flow / R2 __main__ drift / R3 first-request 503.
-status: "Draft 2026-07-13"
+status: "Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed — await human approve → sdd-implement"
 authored: 2026-07-13
 ---
 
 # Plan — Eng Coach WorkOS auth: D0 page-guard + D3 verify-before-execute & audit
 
-**Status:** Draft — 2026-07-13
+**Status:** Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed
 **Spec:** [eng-coach-workos-auth.spec.md](eng-coach-workos-auth.spec.md) (FR-1…FR-7)
 **Constitution:** root `AGENTS.md` (8 invariants) + `frontend/AGENTS.md` (F/W/P/A/T/X/C/B/U/S rules)
 
@@ -44,11 +44,11 @@ D3:  /run/stream  (app_prod.py + __main__.py)
           if coach_runtime is None: 503                     (existing)
           identity = _coach_run_identity(subject)           (seeds card)
           if not registry.verify(SUBJECT_COACH_AGENT_ID): 503   ── NEW (FR-4)
-          logger.info(audit: subject, agent_id, verified, trace_id)  ── NEW (FR-6)
+          logger.info(audit: subject, agent_id, verified, thread_id)  ── NEW (FR-6)
           → dispatch                                        (FR-5)
        else: … unchanged …                                  (FR-7)
 ```
-
+Reject path (`verify→False`): same audit shape with `verified=False`, then 503 (no dispatch).
 ## 2. File-level touchpoints
 
 | # | File | Change | FR | Layer / rule |
@@ -61,9 +61,10 @@ D3:  /run/stream  (app_prod.py + __main__.py)
 | T6 | `tests/middleware/test_coach_shadow_wiring.py` (extend) | pytest: unverified card → 503 (FR-4, failure first); verified → dispatch (FR-5); audit line + no-PII (FR-6); chat path no verify/no audit (FR-7). | FR-4-7 | §20 L1 |
 | T7 | `docs/adr/decisions.md` (append) | 2–4 line note: "D3 verifies the coach **card's** agent_id (`SUBJECT_COACH_AGENT_ID`), not the learner subject — the signed artifact is the card; the subject is auto-provisioned and not integrity-relevant." | — | decisions.md |
 
-**Native-flow check (Q-C2):** part of T3 — a manual/Playwright pass confirming the Tauri
-+ iOS deep-link sign-in still completes with `ensureSignedIn` active. Not a code
-touchpoint unless it breaks (then: scope the guard by native UA in T1).
+**Native-flow check (Q-C2):** part of T3 — **structural** DoD: `/api/auth/*` remains
+outside `(coach)` so deep-link completion is not blocked by the page guard. Live
+Tauri/iOS WebView smoke is deferred (R1 tech debt), not merge-blocking. If a later
+live pass breaks, scope the guard by native UA in T1.
 
 ## 3. Migration / rollout
 
@@ -84,8 +85,9 @@ native check). Or parallel — they share no code.
 
 ## 5. Risks
 
-- **R1 — `ensureSignedIn` breaks native sign-in** (Q-C2). Mitigation: T3 native check
-  before merge; fallback = scope guard by native UA.
+- **R1 — `ensureSignedIn` breaks native sign-in** (Q-C2). Mitigation: T3 **structural**
+  check (`/api/auth/*` outside `(coach)`) is merge DoD; live native smoke deferred.
+  Fallback if a later live pass breaks = scope guard by native UA.
 - **R2 — T4/T5 drift** (the standing hazard). Mitigation: identical gate + a T6 test
   asserting the `__main__.py` seam 503s on unverified card, same as `app_prod.py`.
 - **R3 — first-request spurious 503** if verify runs before lazy-seed. Mitigation:
@@ -97,6 +99,25 @@ native check). Or parallel — they share no code.
 
 Logged here until `docs/adr/tech-debt-tracker.md` exists (runbook § Stage 9).
 
-- **Q-C2 live native smoke** — deferred pending human accept of the structural `/api/auth/*` check vs a device/WebView pass (plan risk R1).
-- **`E2E_BYPASS_AUTH` in `(coach)/layout.tsx`** — `unrequested` vs spec; mirrors `app/page.tsx`. Spec it on replan if reviewers want it explicit.
+- **Q-C2 live native smoke** — **deferred** (structural `/api/auth/*` check is DoD).
 - **CI architecture job shallow checkout** — G8 can skip when merge-base is unavailable; local full-history run is the honest G8 signal for this PR (P1-1). Out of this change's code scope.
+
+## 7. Stage 5 replan (2026-07-13) — Phase 1 sprint board
+
+**Trigger:** Stage-9 gaps needing scope decisions before more code.
+
+| Item | Stay / slip / split / drop | Decision |
+|------|---------------------------|----------|
+| P1-1 G8 waivers | **stay** | Implement first; no spec change. |
+| P1-2 FR-3 page list | **stay** | Implement second; drop/discover missing `progress/`. |
+| P1-3 `trace=` vs `thread=` | **scope → stay** | Spec FR-6 = `thread_id` / `thread=`; rename code+test. |
+| P1-4 reject audit silent | **clarify → stay** | Spec FR-6 = both paths; emit `verified=False` on reject. |
+| Q-C2 live native | **drop from DoD** | Structural check accepted; live smoke = tech debt. |
+| `E2E_BYPASS_AUTH` | **add to spec** | Edge case §6; layout already mirrors `page.tsx`. |
+
+**Implement order after approve:** P1-1 → P1-2 → P1-3 → P1-4 → sdd-converge.
+
+**Rejected alternatives (intent debt):**
+- P1-3 inventing a domain `trace_id` at the pre-stream seam.
+- P1-4 narrowing FR-6 to success-only (would hide deny events from the audit trail).
+- Holding the PR for a live Tauri/iOS smoke before merge.

@@ -2,27 +2,35 @@
 type: spec
 title: "Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)"
 description: EARS spec for the D0+D3 bundle — a server-side RSC withAuth guard on the (coach) route group so /learn/* pages no longer paint unauth (FR-1..3), plus a per-run coach-card verify-before-execute gate (fail-closed 503) with a no-PII audit line at the middleware coach seam (FR-4..7). Clarify pass CLOSED (Q-C1 group-root server layout / Q-C2 web-guard + native check / Q-C3 per-run verify). No new dependency, no ADR trigger.
-status: "Stage 9 converge 2026-07-13 — NOT converged (Phase 1 gaps) — next: sdd-implement"
+status: "Stage 5 replan 2026-07-13 — Phase 1 dispositions proposed — await human approve → sdd-implement"
 authored: 2026-07-13
 ---
 
 # Spec — Eng Coach WorkOS auth: page-guard (D0) + verify-before-execute & audit (D3)
 
-**Status:** Draft (clarify pass CLOSED) — 2026-07-13
+**Status:** Stage 5 replan 2026-07-13 (clarify CLOSED; Phase 1 scope dispositions below)
 **Owner:** Rajnish Khatri
 **Related:** [eng-coach-workos-auth.brainstorm.md](eng-coach-workos-auth.brainstorm.md) (SDD Stage-1, gate CLOSED: D0 scoped RSC guard + D3 bundled; D1/D2/D4 rejected/deferred)
 
 **Clarify decisions (2026-07-13):**
 - **Q-C1 — D0 guard site:** new **server** layout at `frontend/app/(coach)/layout.tsx`
   calling `withAuth({ ensureSignedIn: true })`, rendering the existing client
-  `learn/layout.tsx` shell as `children` (Rule B2). One guard covers all 7 pages +
-  future siblings. (Rejected: per-page guards, splitting the working client shell.)
-- **Q-C2 — native flows:** ship the web guard; add a **check** that Tauri desktop +
-  iOS Capacitor deep-link sign-in still completes (redirect must not dead-lock inside
-  the WebView). If it breaks, scope the guard to exclude the native UA path.
+  `learn/layout.tsx` shell as `children` (Rule B2). One guard covers all pages under
+  `(coach)` + future siblings. (Rejected: per-page guards, splitting the working client shell.)
+- **Q-C2 — native flows:** ship the web guard; DoD is a **structural** check that
+  `/api/auth/*` stays outside `(coach)` so deep-link completion is not blocked by the
+  page guard. Live Tauri/iOS WebView smoke is deferred (tech debt), not merge-blocking.
+  If a live native pass later dead-locks, scope the guard to exclude the native UA path.
 - **Q-C3 — verify cadence:** verify the coach card **per coach run**
   (`registry.verify(SUBJECT_COACH_AGENT_ID)` on every coach request, after lazy-seed) —
   catches a card suspended/tampered mid-session; one HMAC check per run, coach path only.
+
+**Stage-5 replan dispositions (2026-07-13) — await human approve:**
+- **P1-3:** FR-6 correlator = run `thread_id` (field name `thread=`), not domain
+  `trace_id` — audit fires pre-stream; domain trace arrives later.
+- **P1-4:** FR-6 keeps "verification result" on **both** accept and reject paths
+  (`verified=True` / `verified=False`); reject does not stay silent.
+- **E2E_BYPASS_AUTH:** explicit edge case (mirrors `app/page.tsx`); non-production only.
 
 ---
 
@@ -84,10 +92,12 @@ extract-before-split only if a real trigger fires).
   ("coach identity unverified") and SHALL NOT dispatch the coach runtime.
 - **FR-5.** WHEN a coach run passes card verification THE SYSTEM SHALL dispatch the
   coach runtime exactly as today (owner-scoped to the verified subject).
-- **FR-6.** WHEN the coach run identity is resolved THE SYSTEM SHALL emit a
-  structured audit log line recording the verified `subject`, the coach `agent_id`,
-  the verification result, and the run `trace_id`, WITHOUT logging any PII
-  (no token, no learner content) — per O2.
+- **FR-6.** WHEN the coach run identity verification completes (accept **or**
+  reject) THE SYSTEM SHALL emit a structured audit log line recording the
+  `subject`, the coach `agent_id`, the verification result (`verified=True` or
+  `verified=False`), and the run `thread_id` (field name `thread=`), WITHOUT
+  logging any PII (no token, no learner content) — per O2. Domain `trace_id` is
+  not required: the audit fires pre-stream, before a domain trace exists.
 - **FR-7.** THE SYSTEM SHALL leave the plain-chat path
   (`agent_id != SUBJECT_COACH_AGENT_ID`) byte-identical — no verify-gate, no new
   audit line, no latency added.
@@ -118,7 +128,7 @@ record, not a new schema.
   returns `bool` (never raises), so the gate is a plain `if not …: raise
   HTTPException(503)` — no try/except needed.
 - **O2 (no PII in logs):** FR-6 logs `subject` (an id), `agent_id`, a boolean, and
-  `trace_id` only.
+  `thread_id` only.
 - **Prod-surface drift guard:** `middleware/__main__.py` mirrors the coach dispatch
   (documented drift hazard). FR-4's verify-gate MUST be added to **both**
   `app_prod.py` and `__main__.py` coach seams, or the dev surface diverges.
@@ -133,10 +143,17 @@ or abstraction ⇒ **no ADR trigger**.
   seeding (seed then verify), else the first-ever coach request 503s spuriously.
 - **`ensureSignedIn` vs Tauri desktop / iOS Capacitor deep-link auth** — those flows
   authenticate out-of-band; the redirect target must not dead-lock the shell inside
-  the native WebView. Q-C2: ship web guard + verify native sign-in still completes;
-  scope-out the native UA path only if it breaks.
+  the native WebView. Q-C2 DoD = structural (`/api/auth/*` outside `(coach)`);
+  live device smoke deferred. Scope-out the native UA path only if a later live
+  pass breaks.
+- **`E2E_BYPASS_AUTH`** — WHEN `NODE_ENV !== "production"` AND `E2E_BYPASS_AUTH=1`
+  THE SYSTEM MAY skip `withAuth` in `(coach)/layout.tsx` so seeded learn-e2e can
+  run without a WorkOS session. Production builds MUST NOT take this branch
+  (mirrors `app/page.tsx`).
 - **`/learn` group root has no page today** — only `/learn` and descendants exist; the
   guard at `(coach)/layout.tsx` wraps the whole group including any future sibling.
+  FR-3 structural tests MUST enumerate pages that exist on the branch (not a fixed
+  "7 pages" list that may include routes not yet landed).
 - **Verify returns False mid-session (card tampered / suspended after seed)** — each
   coach run re-verifies, so a suspended card 503s the next run (not just startup).
 - **Static assets / `_next` under the matcher** — the guard is a layout, not middleware,
@@ -167,7 +184,8 @@ Failure-path tests first. Frontend = Vitest/RTL + Playwright; middleware = pytes
 | FR-3 | `…layout.test.tsx::single group-root guard wraps all pages` (structural) | L1 | yes |
 | FR-4 | `tests/middleware/test_coach_shadow_wiring.py::test_coach_run_unverified_card_is_rejected` (verify→False) | L1 | yes |
 | FR-5 | `…::test_coach_run_verified_card_dispatches` (verify→True) | L1 | yes |
-| FR-6 | `…::test_coach_identity_resolution_emits_audit_line_no_pii` (caplog) | L1 | yes |
+| FR-6 | `…::test_coach_identity_resolution_emits_audit_line_no_pii` (accept path: `thread=` + `verified=True`, no PII) | L1 | yes |
+| FR-6 | `…::test_coach_run_unverified_card_is_rejected` (reject path: `verified=False` audit, no run) | L1 | yes |
 | FR-7 | `…::test_plain_chat_no_verify_no_audit_line` (extend existing `test_plain_chat_never_uses_coach_runtime`) | L1 | yes |
 
 Existing `tests/middleware/test_coach_shadow_wiring.py` already has the mock-JWT
