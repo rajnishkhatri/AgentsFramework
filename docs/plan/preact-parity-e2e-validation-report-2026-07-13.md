@@ -42,7 +42,7 @@ E2E_BYPASS_AUTH=1 pnpm exec playwright test --project=learn-e2e \
   coach-mocked ipad
 ```
 
-Logs: [assets/preact-parity-e2e-2026-07-13/logs/](assets/preact-parity-e2e-2026-07-13/logs/).  
+Logs: [assets/preact-parity-e2e-2026-07-13/logs/](assets/preact-parity-e2e-2026-07-13/logs/).
 Raw Playwright output: [assets/preact-parity-e2e-2026-07-13/results/](assets/preact-parity-e2e-2026-07-13/results/).
 
 ---
