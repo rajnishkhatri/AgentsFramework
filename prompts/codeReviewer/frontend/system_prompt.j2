@@ -180,8 +180,17 @@ Kill any finding that fails any gate. Record the gate that killed it.
 **Evidence source:** Authoritative — `run_pytest_middleware_arch` (the test is the tool; see Section 5). Supplementary: `read_file` on `middleware/server.py` and `middleware/composition.py`, `search_codebase("ARCHITECTURE_PROFILE", "middleware/**/*.py")`.
 **Severity:** CRITICAL for any failure of the pytest module — matches FD1 severity for the TypeScript layering test.
 
-## FD10: Infra Dev-Tier (OpenTofu)
-**Rules covered:** Sprint 2 §S2.1.1-§S2.1.4 acceptance criteria for `infra/dev-tier/*.tf`:
+## FD10: Infra Dev-Tier (OpenTofu) — **RETIRED (ADR-0031)**
+> **DO NOT RUN this dimension.** The dev-tier (Neon + Cloudflare) stack at
+> `infra/dev-tier/` was deleted along with its `tests/infra/test_{cloud_run,
+> neon,secret_manager,cross_cutting}.py` nodes. Every `run_pytest_infra` node
+> named below now points at a **deleted file** and will error. Emit no FD10
+> findings; if a diff touches dev-tier paths, record a `gaps[]`/retired note.
+> The live IaC is `infra/gcp/`, audited by `tests/infra/gcp/` (`-m infra_gcp`);
+> re-pointing FD10 at that suite is a separate, not-yet-done task. The Section-5
+> criteria below are kept as the historical record of what FD10 audited.
+
+**Rules covered (HISTORICAL — retired):** Sprint 2 §S2.1.1-§S2.1.4 acceptance criteria for `infra/dev-tier/*.tf`:
 - `cloud-run.tf` — `min_instance_count = 0`, 1 vCPU / 2 GB, `timeout = 3600s`, `startup_cpu_boost = true`, dedicated `agent-middleware-runtime` service account, `/healthz` startup probe.
 - `neon.tf` — exactly one Neon project, locked `pg_version`, `pgvector` extension declared, `tablesFilter` (in `frontend/drizzle.config.ts`) excludes LangGraph checkpoint tables.
 - `cloudflare-edge.tf` — zone data source present; the **Pro-plan WAF entitlement erratum** is documented in the file header (custom WAF `log` action requires Enterprise; Pro is restricted to `block`/`challenge`/`js_challenge`/`managed_challenge`/`skip`). Reviewer must NOT flag the absence of a 24h count-mode window — see "Accepted V3 Deviations" in `architecture_rules.j2`. Cloudflare's auto-applied "Free Managed Ruleset" is the v1 baseline.
@@ -327,7 +336,7 @@ For each story in the `Sprint Story Acceptance Map` (architecture_rules.j2 appen
 - **FD9.SERVER:** "`middleware/server.py` Python-imports `orchestration/` (specific instance of `FD9.F4_orchestration`; the contract is that the graph loads via `langgraph.json` only)." → AST scan of `middleware/server.py` + `run_pytest_middleware_arch({"pattern": "test_middleware_does_not_import_orchestration"})`.
 - **FD9.COMPOSITION:** "A file in `middleware/` other than `composition.py` reads `os.environ['ARCHITECTURE_PROFILE']` or `os.getenv('ARCHITECTURE_PROFILE')`." → AST scan + the `TestF1` pytest assertion.
 
-## FD10 Hypotheses (Infra Dev-Tier)
+## FD10 Hypotheses (Infra Dev-Tier) — **RETIRED (ADR-0031): do NOT dispatch these `run_pytest_infra` nodes; the target test files were deleted with the dev-tier stack.**
 
 - **FD10.RUN_MIN:** "`google_cloud_run_v2_service.middleware` does not pin `min_instance_count = 0`." → Tool: `run_pytest_infra({"node": "tests/infra/test_cloud_run.py::test_cloud_run_min_instance_count_is_zero"})`.
 - **FD10.RUN_TIMEOUT:** "Cloud Run service `request_timeout` is not 3600s." → Tool: `run_pytest_infra({"node": "tests/infra/test_cloud_run.py::test_cloud_run_request_timeout_is_3600s"})`.

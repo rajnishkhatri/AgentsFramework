@@ -11,8 +11,9 @@
 #
 #   tofu init -backend-config="bucket=${PROJECT}-tofu-state"
 #
-# Prefix `infra/gcp` keeps Tier A state isolated from the dev-tier prefix
-# (`infra/dev-tier`) so both stacks can coexist in the same GCS bucket.
+# Prefix `infra/gcp` keeps Tier A state isolated under its own GCS prefix.
+# (It once shared the bucket with the `infra/dev-tier` prefix; that stack was
+# retired — ADR-0031 — so `infra/gcp` is now the only live stack here.)
 #
 # Why GCS remote state matters: Tofu's `tofu_creates_versions` strategy
 # (per Sprint 2 clarifications) stores secret_data in state. GCS versioning

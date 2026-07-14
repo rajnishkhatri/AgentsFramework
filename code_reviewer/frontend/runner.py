@@ -402,7 +402,9 @@ def _classify_layer(p: str) -> str:
         ("frontend/app/", "app"),
         ("frontend/middleware.ts", "edge_middleware"),
         ("middleware/", "middleware_python"),
-        ("infra/dev-tier/", "infra"),
+        # Live IaC is `infra/gcp/` (the dev-tier stack was retired — ADR-0031);
+        # match the whole `infra/` tree so the GCP stack still classifies.
+        ("infra/", "infra"),
     ):
         if token in lower:
             return layer
