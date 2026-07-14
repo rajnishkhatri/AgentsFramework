@@ -50,6 +50,22 @@ Eng-coach-ui-design/**/sources/
 Eng-coach-ui-design/**/*.dc.html
 Eng-coach-ui-design/**/support.js
 Eng-coach-ui-design/**/tests/
+# The rest of the Eng-coach design bundle (HTML prototypes, seed/promoted JSON,
+# research) is heavy local-only reference; keep it out of the tree entirely.
+Eng-coach-ui-design/
+
+# Local-only source/reference corpora — large binaries (PDFs, page scans,
+# syllabus) and proprietary test material; never committed.
+PreAct/
+docs/ACT-syllabus/
+docs/ui-design/
+docs/research/eng-coach-judge/
+review_llm_submission.txt
+
+# Playwright run artifacts captured under docs/plan/assets/ (videos, screenshots,
+# .last-run.json) — evidence bundles kept local, not committed.
+docs/plan/assets/**/results/
+docs/plan/assets/**/*.webm
 
 # OS / editor
 .DS_Store

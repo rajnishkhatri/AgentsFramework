@@ -15,6 +15,7 @@ function bucket(over: Partial<BucketCardVM> = {}): BucketCardVM {
   return {
     skillId: over.skillId ?? "s-punc",
     name: over.name ?? "Punctuation",
+    masteryKnown: over.masteryKnown ?? true,
     masteryPct: over.masteryPct ?? 42,
     shareOfTestPct: over.shareOfTestPct ?? 15,
     accentVar: over.accentVar ?? "--color-bucket-punctuation",
@@ -101,6 +102,32 @@ describe("ProgressView — Epic F", () => {
     const pct = doc.querySelector('[data-testid="mastery-pct-s-rhet"]');
     expect(pct).not.toBeNull();
     expect(pct!.textContent).toMatch(/55%/);
+  });
+
+  it("UNKNOWN-mastery bucket renders 'no data', not a fabricated 0% bar (FR-4/P-4)", () => {
+    const doc = dom(
+      <ProgressView
+        vm={vm({
+          buckets: [
+            bucket({ skillId: "s-new", name: "Brand New", masteryKnown: false, masteryPct: 0 }),
+            bucket({ skillId: "s-punc", name: "Punctuation", masteryKnown: true, masteryPct: 70 }),
+          ],
+        })}
+        range="all"
+        onRangeChange={() => {}}
+      />,
+    );
+    // The known bucket keeps its progressbar; the unknown one must NOT emit a
+    // role=progressbar aria-valuenow=0 (indistinguishable from real 0% — P-4).
+    const newRow = doc.querySelector('[data-testid="mastery-row-s-new"]');
+    expect(newRow).not.toBeNull();
+    expect(newRow!.querySelector('[role="progressbar"]')).toBeNull();
+    expect(newRow!.textContent ?? "").not.toMatch(/0%/);
+    expect(newRow!.textContent ?? "").toMatch(/no data/i);
+    // The known bucket is unaffected.
+    const puncRow = doc.querySelector('[data-testid="mastery-row-s-punc"]');
+    expect(puncRow!.querySelector('[role="progressbar"]')).not.toBeNull();
+    expect(puncRow!.textContent ?? "").toMatch(/70%/);
   });
 
   it("trend caption is Accuracy trend, not projected score (FR-3)", () => {

@@ -32,6 +32,7 @@ function bucket(over: Partial<BucketCardVM> = {}): BucketCardVM {
   return {
     skillId: over.skillId ?? "s-punc",
     name: over.name ?? "Punctuation",
+    masteryKnown: over.masteryKnown ?? true,
     masteryPct: over.masteryPct ?? 42,
     shareOfTestPct: over.shareOfTestPct ?? 15,
     accentVar: over.accentVar ?? "--color-bucket-punctuation",

@@ -47,16 +47,43 @@ export async function countMissesOnSkill(
   }
 }
 
+/**
+ * Resolve a pinned `skillId` to its display name via the SkillTaxonomy (C-3).
+ * The taxonomy resolves by `key`, not `id`, so we `list()` and match on `id`.
+ * Returns null on a null/empty id, an unknown id, or any load failure — the
+ * coach history line then omits a name rather than echoing a raw `s-*` id
+ * (honest-null: an unresolved label is absent, never a fabricated one).
+ */
+export async function skillNameById(
+  ports: Pick<EnginePortBag, "skillTaxonomy">,
+  subject: string,
+  skillId: string | null | undefined,
+): Promise<string | null> {
+  if (skillId == null || skillId === "") return null;
+  try {
+    const skills = await ports.skillTaxonomy.list(subject);
+    return skills.find((s) => s.id === skillId)?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export function useCoachSurface(): {
   countMissesOnSkill: (
     args: CountMissesOnSkillArgs,
   ) => Promise<number | null>;
+  skillNameById: (
+    subject: string,
+    skillId: string | null | undefined,
+  ) => Promise<string | null>;
 } {
   const ports = useEngine();
   return React.useMemo(
     () => ({
       countMissesOnSkill: (args: CountMissesOnSkillArgs) =>
         countMissesOnSkill(ports, args),
+      skillNameById: (subject: string, skillId: string | null | undefined) =>
+        skillNameById(ports, subject, skillId),
     }),
     [ports],
   );

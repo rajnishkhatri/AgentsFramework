@@ -20,6 +20,7 @@ function card(over: Partial<BucketCardVM> = {}): BucketCardVM {
   return {
     skillId: "s-punc",
     name: "Punctuation",
+    masteryKnown: true,
     masteryPct: 42,
     shareOfTestPct: 20,
     accentVar: "--color-bucket-punctuation",
@@ -77,15 +78,16 @@ describe("DashboardView — FR-A8 due state is never color-only", () => {
   });
 });
 
-describe("DashboardView — FR-5/FR-2/FR-7 bucket card is a focus link", () => {
-  it("makes each bucket card a link to the focused quiz (/learn/quiz?focus=<skillId>)", () => {
+describe("DashboardView — FR-5/FR-7 bucket card opens Skill detail (SD-6)", () => {
+  it("makes each bucket card a link to Skill detail (/learn/skill?skillId=<skillId>)", () => {
     const doc = dom(<DashboardView vm={vm()} />);
     const card = doc.querySelector('[data-testid="bucket-s-punc"]');
     expect(card, "bucket card must render").not.toBeNull();
-    // The prototype opens a skill/quiz on a bucket click — the card is an <a>,
-    // not an inert <article> (the documented-but-unimplemented FR-C4 behavior).
+    // SD-6: the prototype opens Skill detail (the teach plane) on a bucket click.
+    // /learn/skill is live now (E1a/ADR-0028), so the card links there — the card
+    // is an <a>, not an inert <article> (FR-C4).
     expect(card!.tagName.toLowerCase()).toBe("a");
-    expect(card!.getAttribute("href")).toBe("/learn/quiz?focus=s-punc");
+    expect(card!.getAttribute("href")).toBe("/learn/skill?skillId=s-punc");
     // FR-7: the accessible name includes the bucket name.
     expect(card!.textContent).toContain("Punctuation");
   });
@@ -98,11 +100,11 @@ describe("DashboardView — FR-5/FR-2/FR-7 bucket card is a focus link", () => {
     expect(card.querySelector('[role="progressbar"]')).not.toBeNull();
   });
 
-  it("never links to the coming-soon Skill route (FR-2 no dead end)", () => {
+  it("links to the live Skill route, never the old quiz-drill target (SD-6)", () => {
     const doc = dom(<DashboardView vm={vm()} />);
     const card = doc.querySelector('[data-testid="bucket-s-gram"]')!;
-    expect(card.getAttribute("href")).toBe("/learn/quiz?focus=s-gram");
-    expect(card.getAttribute("href")).not.toContain("/learn/skill");
+    expect(card.getAttribute("href")).toBe("/learn/skill?skillId=s-gram");
+    expect(card.getAttribute("href")).not.toContain("/learn/quiz?focus=");
   });
 });
 

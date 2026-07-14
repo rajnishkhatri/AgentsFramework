@@ -108,17 +108,26 @@ describe("FR-B3 flow-step pills — numbered, ordered, jump-nav to the five", ()
 });
 
 describe("FR-B1 surface-appropriate global navigation", () => {
-  it("E1a FR-20: skill screen is live (not comingSoon) and in membership", () => {
+  it("E1a FR-20: skill screen is live (not comingSoon) and a sidebar peer on desktop/iPad", () => {
     const skill = screen("skill");
     expect(skill.comingSoon).toBe(false);
     expect(skill.route).toBe("/learn/skill");
-    for (const surface of SURFACES) {
+    // D-C1: Skill is a persistent sidebar item on the roomy surfaces; iPhone's
+    // 4-tab bar omits it (reached via the dashboard bucket→skill link, D-D) —
+    // so membership is asserted for desktop/iPad only. Skill stays LIVE (never a
+    // dead/coming-soon control) on every surface it appears.
+    for (const surface of ["desktop", "ipad"] as const) {
       const items = navItemsForSurface(surface);
       const skillItem = items.find((i) => i.screenId === "skill");
       expect(skillItem, `${surface} must list skill`).toBeDefined();
       expect(skillItem!.disabled).toBe(false);
       expect(skillItem!.href).toBe("/learn/skill");
     }
+    // iPhone does NOT surface Skill as a tab (D-C1 parity restore).
+    const iphoneSkill = navItemsForSurface("iphone").find(
+      (i) => i.screenId === "skill",
+    );
+    expect(iphoneSkill).toBeUndefined();
   });
 
   // G8-OK: Epic F flips progress.comingSoon → false with the live page (FR-5).
@@ -136,12 +145,14 @@ describe("FR-B1 surface-appropriate global navigation", () => {
       expect(progressItem!.href).toBe("/learn/progress");
     }
   });
-  it("desktop + iPad expose Coach as a sidebar peer; iPhone does NOT (3-tab)", () => {
-    // §8.1 supersede: iPhone tab bar is Home / Practice / Skill / Progress —
-    // Coach is contextual on iPhone (reached Feedback→Coach), not a persistent tab.
+  it("iPhone bottom bar matches the prototype: Home / Practice / Coach / Progress", () => {
+    // D-C1 (parity-review): the prototype's iPhone tab bar keeps Coach as a
+    // persistent tab and does NOT surface Skill — Skill detail is reached on
+    // iPhone via the dashboard bucket→skill link (D-D), not a bottom tab. This
+    // reverts the earlier Skill-for-Coach swap that cited a fabricated "§8.1".
     const iphoneLabels = navItemsForSurface("iphone").map((i) => i.label);
-    expect(iphoneLabels).toEqual(["Home", "Practice", "Skill", "Progress"]);
-    expect(iphoneLabels).not.toContain("Coach");
+    expect(iphoneLabels).toEqual(["Home", "Practice", "Coach", "Progress"]);
+    expect(iphoneLabels).not.toContain("Skill");
 
     for (const surface of ["desktop", "ipad"] as const) {
       const labels = navItemsForSurface(surface).map((i) => i.label);

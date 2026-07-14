@@ -10,11 +10,26 @@ import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import type { EnginePortBag } from "@/lib/composition_engine";
 import type { Question } from "@/lib/wire/engine_entities";
-import { countMissesOnSkill } from "./use_coach_surface";
+import { countMissesOnSkill, skillNameById } from "./use_coach_surface";
 import { DEV_LEARNER_ID } from "@/lib/adapters/engine/_dev_seed";
+import type { Skill } from "@/lib/wire/engine_entities";
 
 const SUBJECT = "act-english";
 const LEARNER = DEV_LEARNER_ID;
+
+function skill(over: Partial<Skill> = {}): Skill {
+  return {
+    id: "s-punc",
+    subject: SUBJECT,
+    key: "punctuation",
+    name: "Punctuation",
+    share_of_test_pct: 20,
+    accent_var: "--color-bucket-punctuation",
+    description: "Commas, semicolons.",
+    order: 1,
+    ...over,
+  };
+}
 
 function question(over: Partial<Question> = {}): Question {
   return {
@@ -125,5 +140,40 @@ describe("countMissesOnSkill — skill-scoped count (FR-6)", () => {
       skillId: "s-punc",
     });
     expect(n).toBe(0);
+  });
+});
+
+describe("skillNameById — C-3 friendly label, honest absent", () => {
+  it("resolves a pinned skillId to its display name", async () => {
+    db.seedSkills([
+      skill({ id: "s-punc", name: "Punctuation" }),
+      skill({ id: "s-gram", key: "grammar", name: "Grammar & Usage" }),
+    ]);
+    const name = await skillNameById(ports, SUBJECT, "s-gram");
+    expect(name).toBe("Grammar & Usage");
+  });
+
+  it("returns null for an unknown skillId (never echoes the raw id)", async () => {
+    db.seedSkills([skill({ id: "s-punc", name: "Punctuation" })]);
+    const name = await skillNameById(ports, SUBJECT, "s-does-not-exist");
+    expect(name).toBeNull();
+  });
+
+  it("returns null when skillId is null/empty (no honest scope)", async () => {
+    expect(await skillNameById(ports, SUBJECT, null)).toBeNull();
+    expect(await skillNameById(ports, SUBJECT, "")).toBeNull();
+  });
+
+  it("returns null when the taxonomy read throws (honest absent)", async () => {
+    const broken: EnginePortBag = {
+      ...ports,
+      skillTaxonomy: {
+        ...ports.skillTaxonomy,
+        list: async () => {
+          throw new Error("db down");
+        },
+      },
+    };
+    expect(await skillNameById(broken, SUBJECT, "s-punc")).toBeNull();
   });
 });

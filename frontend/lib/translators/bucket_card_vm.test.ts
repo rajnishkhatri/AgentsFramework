@@ -7,7 +7,8 @@
  *
  * Purity (T1): "now" is an injected ISO string, never read from the clock, so
  * the map is deterministic. Failure/edge rows first (Anti-Pattern 6): a skill
- * with no SkillState yet (brand-new learner) → 0% mastery, not due, no crash.
+ * with no SkillState yet (brand-new learner) → mastery UNKNOWN (masteryKnown
+ * false), not due, no crash — never a fabricated 0% (Epic F FR-4 honest-null).
  */
 
 import { describe, expect, it } from "vitest";
@@ -46,9 +47,9 @@ function state(over: Partial<SkillState> = {}): SkillState {
 const NOW = "2026-06-30T00:00:00.000Z";
 
 describe("toBucketCardVM — edge/failure rows first", () => {
-  it("brand-new skill (no SkillState) → 0% mastery, not due, no crash", () => {
+  it("brand-new skill (no SkillState) → mastery UNKNOWN, not due, no crash", () => {
     const vm = toBucketCardVM(skill(), null, NOW);
-    expect(vm.masteryPct).toBe(0);
+    expect(vm.masteryKnown).toBe(false);
     expect(vm.due).toBe(false);
     expect(vm.name).toBe("Punctuation");
     expect(vm.accentVar).toBe("--color-bucket-punctuation");
@@ -59,15 +60,19 @@ describe("toBucketCardVM — edge/failure rows first", () => {
     expect(vm.due).toBe(false);
   });
 
-  // ADR-0011 §0.6d lock: when LearnerReadRepo.listSkillState returns no row for
-  // a skill (brand-new learner, or the read port not yet wired), the dashboard
-  // grid renders 0% / not-due WITHOUT the VM reaching across a boundary to seed
-  // one. Locks the placeholder path so a future edit can't silently start
-  // fabricating mastery. `masteryPct` is exactly the integer 0, not "0"/NaN.
-  it("absent SkillState → masteryPct is exactly 0 (placeholder path, no boundary crossing)", () => {
+  // Epic F FR-4 (honest-null): when LearnerReadRepo.listSkillState returns no row
+  // for a skill (brand-new learner, or the read port not yet wired), mastery is
+  // UNKNOWN — the VM carries `masteryKnown: false` so the view renders an honest
+  // "no data" form, NEVER a fabricated 0% bar (indistinguishable from a real 0).
+  // This is the guard the spec promised (progress_screen_vm.test.ts::
+  // bucket_missing_mastery_is_honest_not_zero) but that never existed; it lives
+  // here, at the translator seam where the fabrication was born.
+  it("bucket_missing_mastery_is_honest_not_zero", () => {
     const vm = toBucketCardVM(skill(), null, NOW);
-    expect(vm.masteryPct).toBe(0);
-    expect(Object.is(vm.masteryPct, 0)).toBe(true); // not -0, not NaN
+    expect(vm.masteryKnown).toBe(false);
+    // masteryPct is still a number (0) for type-stability, but the KNOWN flag —
+    // not the number — is what the view must gate on. A consumer that reads
+    // masteryPct without checking masteryKnown is the P-4 bug.
     expect(vm.due).toBe(false);
   });
 });
@@ -75,10 +80,20 @@ describe("toBucketCardVM — edge/failure rows first", () => {
 describe("toBucketCardVM — happy path", () => {
   it("maps mastery 0..1 → integer percent and carries share + accent", () => {
     const vm = toBucketCardVM(skill(), state({ mastery: 0.42 }), NOW);
+    expect(vm.masteryKnown).toBe(true);
     expect(vm.masteryPct).toBe(42);
     expect(vm.shareOfTestPct).toBe(20);
     expect(vm.accentVar).toBe("--color-bucket-punctuation");
     expect(vm.skillId).toBe("s-punc");
+  });
+
+  it("a genuine mastery of 0 is KNOWN (distinct from absent SkillState)", () => {
+    // The honest-null point: a real, measured mastery of exactly 0 (learner has
+    // attempted and missed everything) is DIFFERENT from "no data yet". Both
+    // have masteryPct 0; only the absent case has masteryKnown false.
+    const vm = toBucketCardVM(skill(), state({ mastery: 0 }), NOW);
+    expect(vm.masteryKnown).toBe(true);
+    expect(vm.masteryPct).toBe(0);
   });
 
   it("due_at at/earlier than now → due badge shown", () => {

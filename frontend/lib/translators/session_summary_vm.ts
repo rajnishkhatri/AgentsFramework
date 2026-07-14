@@ -39,7 +39,7 @@ export interface SessionSummaryVM {
   readonly scoreTotal: number;
   readonly scoreTile: string; // "7/10"
   readonly masteryDeltaTile: string; // "+8%" / "-3%"
-  readonly timeTile: string; // "12 min" or "—"
+  readonly timeTile: string; // "12 min", "<1 min" (sub-minute), or "—" (unknown)
   readonly recommended: RecommendedNextVM;
   readonly title: string;
   readonly body: string;
@@ -61,6 +61,10 @@ function timeTile(session: QuizSession): string {
   if (session.ended_at == null) return "—";
   const ms = Date.parse(session.ended_at) - Date.parse(session.started_at);
   if (!Number.isFinite(ms) || ms < 0) return "—";
+  // S-2b (honest-null discipline): a real but sub-minute session is not zero
+  // time. Rounding to whole minutes prints "0 min" — indistinguishable from an
+  // instant/no-op. Below one minute reads "<1 min" instead of a fabricated 0.
+  if (ms < 60000) return "<1 min";
   return `${Math.round(ms / 60000)} min`;
 }
 

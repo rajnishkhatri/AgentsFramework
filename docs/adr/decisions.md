@@ -560,3 +560,22 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Zero test-hook code inside `use_dashboard.ts` (Rule F-R4 restored).
 
 - 2026-07-12 — **E1b-D1 accuracy window + read seam (OQ-1).** Window = last-6-sessions, 1 bar/session (bar count IS the window). Rejected rolling-days: needs a 2nd constant, empty for inactive learners, misaligns with the session model. Seam = `accuracyBySkill` method on existing `AttemptRepo` (not a new port) — shares append-only `attempt` + skill join with `servedSkillIds`/`misses` (ADR-0006 precedent). Escalate to ADR-0031 only if review deems it port-level.
+
+- 2026-07-13 — **Honest-null at the translator seam (parity-review D-B class fix).**
+  Convention for `frontend/lib/translators/` (and the VM-building hooks): *when the
+  underlying datum is absent or unresolved, emit an explicit "unknown" signal —
+  `null`, `"—"`, or a `*Known: false` flag — NEVER a zero, empty string, or other
+  plausible value the view renders as if it were real data.* The view branches on the
+  signal, not the number. **What it buys (G1):** it names and closes a recurring
+  defect *class* (the parity review found 3 instances at once — P-4 fabricated 0%
+  mastery, S-2b "0 min" for sub-minute sessions, C-3 raw `s-*` id for an unresolved
+  skill name) with one rule + per-VM guard tests, instead of three disconnected
+  patches that leave the 4th instance free to recur. It is a *convention*, not a new
+  abstraction or helper — no shared code, no new module (so no ADR); enforcement is
+  the per-VM guard test + code review. Applied: `bucket_card_vm.masteryKnown`
+  (guard `bucket_card_vm.test.ts::bucket_missing_mastery_is_honest_not_zero` +
+  `BucketCard`/`ProgressView` "no data" branches), `session_summary_vm.timeTile`
+  `"<1 min"`, `use_coach_surface.skillNameById` (null on unresolved, never the raw id).
+  Rejected the alternative "patch each singly" — it was the status quo that produced
+  all three. Precedent: the existing honest-null cases this generalizes —
+  `session_summary_vm` `"—"` on null `ended_at`, `progress_screen_vm` empty-trend.

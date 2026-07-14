@@ -44,27 +44,49 @@ function MasteryBarRow(props: { vm: BucketCardVM }): React.JSX.Element {
         />
         <span className="text-sm font-medium text-fg">{vm.name}</span>
       </div>
-      <div
-        className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-selected"
-        role="progressbar"
-        aria-valuenow={vm.masteryPct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label={`${vm.name} mastery`}
-      >
+      {/*
+        Honest-null (Epic F FR-4 / P-4): UNKNOWN mastery renders an inert track,
+        never a role=progressbar aria-valuenow=0 (indistinguishable from a real
+        0%). The KNOWN flag — not the number — gates the bar and the percent.
+      */}
+      {vm.masteryKnown ? (
         <div
-          className="h-full rounded-full bg-[var(--accent)]"
-          style={{ width: `${vm.masteryPct}%` }}
-        />
-      </div>
-      <div className="flex min-w-[4.5rem] items-center justify-end gap-2">
-        <span
-          data-testid={`mastery-pct-${vm.skillId}`}
-          className="text-sm font-semibold tabular-nums"
-          style={{ color: "var(--accent)" }}
+          className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-selected"
+          role="progressbar"
+          aria-valuenow={vm.masteryPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${vm.name} mastery`}
         >
-          {vm.masteryPct}%
-        </span>
+          <div
+            className="h-full rounded-full bg-[var(--accent)]"
+            style={{ width: `${vm.masteryPct}%` }}
+          />
+        </div>
+      ) : (
+        <div
+          data-testid={`mastery-nodata-${vm.skillId}`}
+          className="h-2 min-w-0 flex-1 rounded-full bg-selected opacity-40"
+          aria-hidden="true"
+        />
+      )}
+      <div className="flex min-w-[4.5rem] items-center justify-end gap-2">
+        {vm.masteryKnown ? (
+          <span
+            data-testid={`mastery-pct-${vm.skillId}`}
+            className="text-sm font-semibold tabular-nums"
+            style={{ color: "var(--accent)" }}
+          >
+            {vm.masteryPct}%
+          </span>
+        ) : (
+          <span
+            data-testid={`mastery-nodata-label-${vm.skillId}`}
+            className="text-xs italic text-muted"
+          >
+            No data yet
+          </span>
+        )}
         {vm.due ? (
           <span
             data-testid={`mastery-due-${vm.skillId}`}

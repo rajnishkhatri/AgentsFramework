@@ -12,11 +12,12 @@
  *
  * FR-B5 (no dead controls) is a structural property of this model: a screen with
  * no wired destination is marked `comingSoon` and surfaces as a *disabled*
- * control, never as a live link. Screens 6/7 (Skill detail, Progress) are
- * `comingSoon` until the second ADR-0006 amendment lands (plan D1).
+ * control, never as a live link. Screens 6/7 (Skill detail, Progress) are now
+ * BOTH live (Skill: E1a/ADR-0028; Progress: Epic F) — no `comingSoon` screens
+ * remain today, but the mechanism stays for the next dark-launched screen.
  */
 
-/** The three device surfaces the shell renders for (design-spec §8 / UI-spec §8.1). */
+/** The three device surfaces the shell renders for (prototype §8). */
 export type Surface = "desktop" | "ipad" | "iphone";
 
 /** Stable screen identifiers — used for active-state matching and the focus set. */
@@ -97,13 +98,17 @@ export interface NavItem {
   readonly comingSoon: boolean;
 }
 
-// Per-surface nav membership by screen id (FR-B1 + §8.1 iPhone 3-tab supersede).
+// Per-surface nav membership by screen id (FR-B1; prototype's per-device bars).
 //   desktop / ipad sidebar: Home / Practice / Coach / Skill / Progress
-//   iphone bottom tab bar : Home / Practice / Skill / Progress  (Coach is contextual)
+//   iphone bottom tab bar : Home / Practice / Coach / Progress
+// The iPhone bar matches the prototype: Coach is a persistent tab, and Skill
+// detail is reached via the dashboard bucket→skill link (not a bottom tab) to
+// keep the phone bar to four items. (Restores parity — the earlier Skill-for-
+// Coach swap cited a "§8.1 supersede" that does not exist in any spec.)
 const NAV_MEMBERSHIP: Readonly<Record<Surface, readonly ScreenId[]>> = {
   desktop: ["dashboard", "quiz", "coach", "skill", "progress"],
   ipad: ["dashboard", "quiz", "coach", "skill", "progress"],
-  iphone: ["dashboard", "quiz", "skill", "progress"],
+  iphone: ["dashboard", "quiz", "coach", "progress"],
 };
 
 function toNavItem(s: Screen): NavItem {

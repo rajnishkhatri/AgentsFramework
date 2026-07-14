@@ -75,7 +75,12 @@ Failure/empty paths first (the honest-null discipline is the point of this epic)
   (render nothing) until a future epic supplies a real score model. No placeholder number, no `0`,
   no bucket-average stand-in is emitted. *(This is the AP-6 "don't fabricate a trust signal" rule.)*
 - **FR-4 (no mastery data).** IF a bucket has no `SkillState` (mastery unknown) THEN THE SYSTEM SHALL
-  render that bucket bar in its honest "no data" form (per `bucket_card_vm` today), never a fabricated 0%.
+  render that bucket bar in its honest "no data" form — no `role="progressbar"`, no `aria-valuenow`,
+  no fabricated 0% — gated on `BucketCardVM.masteryKnown`. A genuine measured mastery of 0 (a learner
+  who has attempted and missed) is distinct and DOES render a real 0% bar. *(Implemented 2026-07-13:
+  `bucket_card_vm.ts` carries `masteryKnown`; the guard test is
+  `bucket_card_vm.test.ts::bucket_missing_mastery_is_honest_not_zero`. This supersedes the earlier
+  "per `bucket_card_vm` today" wording, which described the pre-fix behavior that fabricated 0%.)*
 - **FR-5 (dead-control ban).** THE SYSTEM SHALL flip `nav_model.progress.comingSoon` to `false`
   **only in the same change that ships the page** — the nav link SHALL NOT point at a 404 at any
   commit (Q-6/Epic-A dead-control class).
@@ -203,7 +208,7 @@ Failure/empty-path tests first (they encode the honesty invariants). All L1 dete
 | FR-1 | `progress_screen_vm.test.ts::empty_history_renders_empty_state_no_line` | L1 | yes |
 | FR-2 | `progress_screen_vm.test.ts::single_session_no_synthetic_slope` | L1 | yes |
 | FR-3 | `progress_screen_vm.test.ts::vm_has_no_projected_score_field` (type + runtime: no score/goal keys) | L1 | yes |
-| FR-4 | `progress_screen_vm.test.ts::bucket_missing_mastery_is_honest_not_zero` | L1 | yes |
+| FR-4 | `bucket_card_vm.test.ts::bucket_missing_mastery_is_honest_not_zero` (+ view guards: `BucketCard.test.tsx` / `ProgressView.test.tsx` "no data, not a 0% bar") | L1/L2 | yes |
 | FR-5 | `nav_model.test.ts::progress_not_comingSoon` + e2e route-200 (no dead control) | L1+e2e | yes |
 | FR-6/7 | `progress_screen_vm.test.ts::trend_points_oldest_first_accuracy` (table-driven) | L1 | yes |
 | FR-8 | `progress_screen_vm.test.ts::range_30d_filters_by_sinceISO` / `all_time_includes_all` | L1 | yes |
