@@ -103,3 +103,30 @@ with siblings. Each task's **Verify** maps 1:1 to an EARS criterion.
 - **Converge:** T21.
 
 Load-bearing critical path: T1→T2→T3→T4→T5→T10→T11→T14→T15 (+ T16→T18 branch).
+
+## Phase 7 — Convergence (Stage 9, append-only)
+
+- **T22.** `[gap-type: partial]` `[source-ref: converge FR-8a]` Two frontmatter
+  `description` fields leak a raw `{{placeholder}}` into the live harness skill
+  registry — `sdd-spec` (`copy {{adr_template}} directly`) and `sdd-implement`
+  (`hooks and {{check_gate}} still apply`). FR-8a requires live SDD guidance to be
+  semantically unchanged; a registry trigger showing an unresolved token is
+  degraded UX. The T5 rewrite genericized these two descriptions from prose
+  (`copy docs/adr/0000-template.md`, `hooks and make check`) into placeholders,
+  but the frontmatter is **not** runtime-resolved (the harness reads it before any
+  agent runtime), so the placeholder can't resolve there. **Fix:** in the two
+  canonical descriptions, resolve the token back to workspace-neutral English that
+  needs no binding (`copy the ADR template directly`, `gates still apply`) — keep
+  it generic (no `docs/adr/`, no `make check`) so it stays FR-1-clean AND
+  FR-8a-clean. Then re-sync + re-pack (mirrors + archives). **Verify:** a guard
+  test asserts no `{{` token in any SDD frontmatter; `sync_skills.py --check` and
+  `pack_skills.py --check` green; arch suite green. `[dep: T5]`
+
+**Deferred (not gaps in THIS spec — logged, not fixed here):**
+- Registering the 4 plan docs in `docs/plan/index.md`+`log.md` is OKF bookkeeping
+  (`agentsframework-okf-curator`), out of FR-1..19 scope, and blocked by another
+  session's uncommitted edits to those exact files — do at that session's merge,
+  not entangled here.
+- Full `pytest -q` not run: this diff touches no package-layer code; every EARS
+  criterion maps to a green `tests/architecture/` L1 test. CI runs full `pytest`
+  on the PR.

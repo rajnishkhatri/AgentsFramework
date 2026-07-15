@@ -181,4 +181,3 @@ untouched) — chose the in-place rewrite for a single source of truth over the
 lower-regression duplicate-skill path.
 
 **ADR-0032 required** (new abstraction: the workspace-binding contract).
-

@@ -1,18 +1,23 @@
-"""Portable-core guards for the six SDD lifecycle skills (spec FR-1/3/4).
+"""Portable-core guards for the six SDD lifecycle skills (spec FR-1/3/4/8a).
 
 The SDD skills must be workspace-neutral: their canonical bodies express every
 this-repo binding as a ``{{placeholder}}`` from the fixed vocabulary, never a
 hard-coded token like ``AGENTS.md`` or ``make check``. Concrete values are
 resolved at runtime from the workspace binding (``binding.reference.toml`` here).
 
-Three guards:
+Four guards:
   * ``test_no_repo_binding_token_leaks`` (FR-1) — no this-repo token in a body.
   * ``test_reference_binding_round_trips`` (FR-3) — substituting the reference
     binding reproduces the strings the skills carried before the rewrite.
   * ``test_portable_skeleton_preserved`` (FR-4) — the portable methodology
     (10-stage table, micro-loop, EARS, red/green) survives, repo-agnostic.
+  * ``test_no_placeholder_leaks_into_frontmatter`` (FR-8a) — a body placeholder
+    must never leak into the YAML frontmatter ``description``: the harness reads
+    frontmatter *before* any agent runtime, so a ``{{token}}`` there can never be
+    resolved and degrades the live SDD registry UX. Frontmatter must be
+    workspace-neutral English that needs no binding.
 
-Governed by ADR-0032; realizes FR-1/FR-3/FR-4 of
+Governed by ADR-0032; realizes FR-1/FR-3/FR-4/FR-8a of
 ``docs/plan/sdd-skills-portability-export.spec.md``.
 """
 
@@ -59,6 +64,34 @@ _FORBIDDEN_TOKENS = (
 
 def _skill_body(name: str) -> str:
     return (_SKILLS / name / "SKILL.md").read_text()
+
+
+def _skill_frontmatter(name: str) -> str:
+    """The YAML frontmatter block (between the leading ``---`` fences), or ``""``
+    if the file has none. This is what the harness reads into the skill registry
+    — it is never runtime-resolved, so a ``{{placeholder}}`` here cannot resolve."""
+    text = _skill_body(name)
+    if not text.startswith("---"):
+        return ""
+    end = text.find("\n---", 3)
+    return text[3:end] if end != -1 else ""
+
+
+def test_no_placeholder_leaks_into_frontmatter() -> None:
+    # FR-8a: the frontmatter (esp. `description`, the registry trigger) must stay
+    # workspace-neutral English. A body-only {{placeholder}} that leaked into it
+    # shows the reader a raw, unresolvable token in the live skill list.
+    leaks: list[str] = []
+    for name in _SDD_SKILLS:
+        for match in re.finditer(r"\{\{[^}]*\}\}", _skill_frontmatter(name)):
+            leaks.append(
+                f"{name}/SKILL.md frontmatter: unresolved token {match.group()!r}"
+            )
+    assert not leaks, (
+        "SDD skill frontmatter must not carry {{placeholder}} tokens — the harness "
+        "reads it before any runtime binding resolution, so the reader sees a raw "
+        "token. Resolve to workspace-neutral English:\n" + "\n".join(leaks)
+    )
 
 
 def test_no_repo_binding_token_leaks() -> None:

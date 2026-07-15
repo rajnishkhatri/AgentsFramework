@@ -10,8 +10,8 @@ description: >-
   direction. The keystone rule: never skip from spec to code. Do NOT use for
   ideation with no chosen direction (sdd-brainstorm), mid-flight task
   reshuffling (sdd-replan), writing the code (sdd-implement), post-hoc docs
-  curation (agentsframework-okf-curator), or an ADR alone (copy
-  {{adr_template}} directly).
+  curation (agentsframework-okf-curator), or an ADR alone (copy the ADR
+  template directly).
 ---
 
 # SDD Stages 2–4 — Specify · Clarify · Plan · Tasks · Analyze

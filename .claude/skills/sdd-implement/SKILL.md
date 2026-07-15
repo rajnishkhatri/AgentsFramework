@@ -9,7 +9,7 @@ description: >-
   Each task ends by checking its own pass/fail criteria; blocked tasks route
   to sdd-replan, never free-run around the plan. Do NOT use without an
   approved task list (sdd-spec first), for trivial one-liners (vibe-coding
-  carve-out — hooks and {{check_gate}} still apply), for reviewing the finished
+  carve-out — hooks and gates still apply), for reviewing the finished
   diff (code-review skill), or for post-implementation gap classification
   (sdd-converge).
 ---
