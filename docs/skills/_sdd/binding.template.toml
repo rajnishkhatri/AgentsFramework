@@ -1,0 +1,32 @@
+# SDD workspace-binding — TEMPLATE (fill this in for a foreign workspace).
+#
+# Copy to `.sdd/binding.toml` at your repo root and replace every `<fill>` with
+# your workspace's real value. On first run the SDD skill will help: it inspects
+# your ecosystem, PROPOSES values, and asks you to confirm before writing this
+# file (see FIRST_RUN.md). Use `<none>` for any binding your workspace does not
+# have (the skill degrades that step gracefully rather than running a bad command).
+#
+# Schema + fill-prompts for every key: binding.schema.md.
+
+[binding]
+constitution       = "<fill>"   # rules-of-record doc, e.g. AGENTS.md / CLAUDE.md / CONTRIBUTING.md
+check_gate         = "<fill>"   # full lint+format+typecheck+test command, e.g. make check / npm run verify
+test_gate          = "<fill>"   # invariant/architecture test command, e.g. pytest tests/architecture/ -q / npm test
+spec_home          = "<fill>"   # dir holding specs (+ template if any)
+plan_home          = "<fill>"   # dir holding plans / task lists
+adr_home           = "<fill>"   # decision-record dir, or <none>
+adr_template       = "<fill>"   # ADR template file to copy, or <none>
+decision_log       = "<fill>"   # small-decision log, or <none>
+adr_waiver_token   = "<fill>"   # commit token that waives the missing-ADR gate, or <none>
+test_waiver_token  = "<fill>"   # commit token that justifies a deleted/skipped test, or <none>
+breadth_read_tool  = "<fill>"   # broad read-only exploration mechanism, e.g. a subagent / rg / IDE search
+methodology_source = "<fill>"   # full SDD runbook location, or <none> to rely on the skill bodies
+gate_catalog       = "<fill>"   # comprehension-gate / review-checklist catalog, or <none>
+
+# Optional: workspace-specific illustrations the skill bodies reference generically.
+# Omit the whole [examples] table if you have none.
+[examples]
+deterministic_cascade = "<fill>"   # your demand-side / known-answer-first precedent, or omit
+live_prod_surface     = "<fill>"   # how to tell your live prod surface from a dev/standalone one, or omit
+eval_capture_rule     = "<fill>"   # your telemetry/LLM-call recording rule, or omit
+hook_instrumentation  = "<fill>"   # your editor/agent hook set, or omit
