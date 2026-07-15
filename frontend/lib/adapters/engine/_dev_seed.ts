@@ -261,16 +261,23 @@ function devAccuracySessions(): {
 }
 
 /**
- * Load the dev fixtures (skills + mastery spread ONLY — ADR-0021) into a fresh
- * browser-safe `InMemoryEngineDb`. Called ONCE by the composition root behind a
- * dev guard (never in tests, never in prod); the quiz-question source is the
- * governed bank, seeded separately via `seedTestItemBank`.
+ * Authenticated fresh-slate seed (FR-7): taxonomy skills only — no Garvit
+ * mastery rows and no demo accuracy sessions. Bank/hints/lessons are seeded
+ * separately by the composition root.
+ */
+export function seedDevTaxonomy(db: InMemoryEngineDb): void {
+  db.seedSkills([...DEV_SKILLS]);
+}
+
+/**
+ * Load the full demo fixtures (skills + mastery + accuracy) for bypass /
+ * learn-e2e. Called by the composition root when `seedMode=demo`.
  *
  * Also seeds a ≥6-session accuracy history for Garvit (E1b-D1) so accuracyStat
  * can render real bars in the skill-lesson rail.
  */
 export function seedDevCorpus(db: InMemoryEngineDb): void {
-  db.seedSkills([...DEV_SKILLS]);
+  seedDevTaxonomy(db);
   db.seedSkillStates([...DEV_SKILL_STATES]);
   db.seedQuestions([...DEV_ACC_QUESTIONS]);
   const { sessions, attempts } = devAccuracySessions();

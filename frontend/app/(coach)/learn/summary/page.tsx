@@ -16,13 +16,12 @@ import { useSearchParams } from "next/navigation";
 import { SummaryView } from "@/components/summary/SummaryView";
 import { useSummary, type SummaryVM } from "@/components/summary/use_summary";
 import { readQuizSessionSnapshot } from "@/components/quiz/quiz_session_store";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { SkillState } from "@/lib/wire/engine_entities";
 
-// Phase-1 single-learner surface (dev learner "Garvit"); see the dashboard page note.
-const LEARNER_ID = "Garvit";
-
 export default function SummaryPage(): React.JSX.Element {
+  const { learnerId } = useLearnIdentity();
   const { load } = useSummary();
   const params = useSearchParams();
   const sessionId = params.get("session");
@@ -46,7 +45,7 @@ export default function SummaryPage(): React.JSX.Element {
       readQuizSessionSnapshot(sessionId) ?? emptySnapshot;
     load({
       subject: DEFAULT_SUBJECT,
-      learnerId: LEARNER_ID,
+      learnerId,
       sessionId,
       skillStateAtStart,
       nowISO: new Date().toISOString(),
@@ -62,7 +61,7 @@ export default function SummaryPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [load, sessionId]);
+  }, [load, sessionId, learnerId]);
 
   if (error != null) {
     return (

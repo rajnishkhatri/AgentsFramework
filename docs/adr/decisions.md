@@ -585,3 +585,11 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Rejected the alternative "patch each singly" — it was the status quo that produced
   all three. Precedent: the existing honest-null cases this generalizes —
   `session_summary_vm` `"—"` on null `ended_at`, `progress_screen_vm` empty-trend.
+
+- 2026-07-14 — **Eng Coach learn-identity RSC bridge + seedMode gate (F5 slice).**
+  `(coach)/layout` resolves WorkOS `user.id` + `firstName`→email-local→`"Learner"`
+  into `LearnIdentityProvider`; authenticated `seedMode=fresh` seeds taxonomy+bank
+  only (no Garvit mastery/accuracy); bypass keeps `DEV_LEARNER_ID` + full demo corpus.
+  Registry binding = align FE `learnerId` to JWT `sub` + existing D3
+  `subject-coach-english` verify (no new registry service). Q-C3 in-memory / Q-C5 no
+  `SEED_GARVIT`. Rejected: widen `IdentityClaim`, per-page `withAuth`, durable store.

@@ -40,6 +40,7 @@
     "test:e2e:stress": "playwright test e2e/full-stack/planning-stress.spec.ts --project=chromium-desktop --global-timeout=600000",
     "test:e2e:mem": "playwright test e2e/full-stack/memory-multisession.spec.ts --project=chromium-desktop --global-timeout=900000",
     "test:e2e:phaseb": "playwright test e2e/full-stack/phaseb-recall-reject.spec.ts --project=chromium-desktop --global-timeout=900000",
+    "test:e2e:coach-workos": "E2E_AUTHENTICATED=1 playwright test e2e/coach-auth-guard.spec.ts e2e/full-stack/coach-workos-local.spec.ts --project=chromium-desktop",
     "test:e2e:learn": "playwright test --project=learn-e2e",
     "test:e2e:learn:full": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e full-session.spec.ts",
     "test:e2e:test-mode": "E2E_BYPASS_AUTH=1 playwright test --project=learn-e2e test-mode.spec.ts",

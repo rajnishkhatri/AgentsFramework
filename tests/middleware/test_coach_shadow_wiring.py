@@ -393,6 +393,9 @@ class TestProdRunStreamCoachSelection:
         assert "unverified" in r.json().get("detail", "").lower()
         assert coach_captured == {}, "coach runtime.run must not run on unverified card"
         assert default_captured == {}, "must not fall back to the default graph"
+        # FR-11: reject must not recover by substituting a demo learner id.
+        assert "Garvit" not in r.text
+        assert "Garvit" not in str(coach_captured)
         audit = _audit_lines_from_info_spy(info_spy)
         assert len(audit) == 1, f"expected reject audit line, got {audit!r}"
         line = audit[0]
@@ -401,6 +404,7 @@ class TestProdRunStreamCoachSelection:
         assert "verified=False" in line
         assert f"thread={thread_id}" in line
         assert "verified=True" not in line
+        assert "Garvit" not in line
 
     def test_coach_run_verified_card_dispatches(self, tmp_path: Path) -> None:
         """FR-5: verify→True ⇒ coach runtime invoked; identity.owner == subject."""

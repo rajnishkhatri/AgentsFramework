@@ -4,17 +4,17 @@
 import * as React from "react";
 import { ProgressView } from "@/components/learn/ProgressView";
 import { useProgressScreen } from "@/components/learn/use_progress_screen";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import type { ProgressRange } from "@/lib/translators/progress_screen_vm";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "Garvit";
-
 export default function ProgressPage(): React.JSX.Element {
+  const { learnerId } = useLearnIdentity();
   // iPhone defaults to all-time (tabs hidden via @container — DT-6).
   const [range, setRange] = React.useState<ProgressRange>("all");
   const { vm, loading } = useProgressScreen({
     subject: DEFAULT_SUBJECT,
-    learnerId: LEARNER_ID,
+    learnerId,
     range,
   });
 

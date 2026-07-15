@@ -41,6 +41,7 @@ import {
   subscribeCoachThread,
 } from "./coach_thread_store";
 import { countMissesOnSkill } from "./use_coach_surface";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 
 /**
  * The coach's AgentFacts id (services/governance/subject_coach_identity.py).
@@ -49,8 +50,6 @@ import { countMissesOnSkill } from "./use_coach_surface";
  * untouched (see app/api/coach/run/stream/route.ts).
  */
 export const SUBJECT_COACH_AGENT_ID = "subject-coach-english";
-
-const LEARNER_ID = "Garvit";
 
 /** One coach exchange: the learner's ask + the coach's (streaming) reply. */
 export interface CoachTurn {
@@ -106,7 +105,13 @@ export async function sendCoachAsk(
 
     if (pin != null && opts.ports != null) {
       const subject = opts.subject ?? DEFAULT_SUBJECT;
-      const learnerId = opts.learnerId ?? LEARNER_ID;
+      if (opts.learnerId == null || opts.learnerId === "") {
+        throw new Error(
+          "sendCoachAsk: learnerId is required when assembling coach_context " +
+            "(pass session identity — never invent Garvit)",
+        );
+      }
+      const learnerId = opts.learnerId;
       // Lesson pins: skip questionRepo (no questionId — ADR-0030 honest-null).
       const question =
         pin.kind === "item"
@@ -177,6 +182,7 @@ export function useCoach(
   retry: () => Promise<void>;
 } {
   const ports = useEngine();
+  const { learnerId } = useLearnIdentity();
   const mode = options.mode ?? "pre_submit";
   const snap = React.useSyncExternalStore(
     subscribeCoachThread,
@@ -196,10 +202,10 @@ export function useCoach(
         attemptRepo: ports.attemptRepo,
         learnerRead: ports.learnerRead,
       },
-      learnerId: LEARNER_ID,
+      learnerId,
       subject: DEFAULT_SUBJECT,
     }),
-    [mode, ports],
+    [mode, ports, learnerId],
   );
 
   const ask = React.useCallback(

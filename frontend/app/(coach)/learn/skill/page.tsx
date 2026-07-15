@@ -5,11 +5,11 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { SkillDetailView } from "@/components/learn/SkillDetailView";
 import { useSkillDetail } from "@/components/learn/use_skill_detail";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "Garvit";
-
 export default function SkillPage(): React.JSX.Element {
+  const { learnerId } = useLearnIdentity();
   const searchParams = useSearchParams();
   const skillId = searchParams.get("skillId");
   const contextParam = searchParams.get("context");
@@ -22,7 +22,7 @@ export default function SkillPage(): React.JSX.Element {
 
   const { result, loading } = useSkillDetail({
     subject: DEFAULT_SUBJECT,
-    learnerId: LEARNER_ID,
+    learnerId,
     skillId,
     ...(requested != null ? { requested } : {}),
   });

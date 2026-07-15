@@ -53,11 +53,15 @@ import { DrizzleTutorialRepo } from "./adapters/engine/repos/drizzle_tutorial_re
 import { DrizzleProgressRepo } from "./adapters/engine/repos/drizzle_progress_repo";
 import { TestItemQuestionRepo } from "./adapters/engine/repos/test_item_question_repo";
 import { FetchQuizSubmitNotifier } from "./adapters/coach_marker/marker_write_client";
-import { seedDevCorpus } from "./adapters/engine/_dev_seed";
+import {
+  seedDevCorpus,
+  seedDevTaxonomy,
+} from "./adapters/engine/_dev_seed";
 import { seedHintBank } from "./adapters/engine/_hint_bank";
 import { seedTestItemBank } from "./adapters/engine/_test_item_bank";
 import { seedLessonContent } from "./adapters/engine/_lesson_seed";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
+import type { SeedMode } from "./learn/resolve_learn_identity";
 
 export interface BuildBrowserEngineAdaptersOptions {
   /**
@@ -173,22 +177,39 @@ function maybeFailOnceSessionRepo(
 let singleton: EnginePortBag | null = null;
 
 /**
+ * Seed mode for the next `browserEngineAdapters()` singleton build.
+ * Set synchronously by `EngineProvider` from `useLearnIdentity().seedMode`
+ * before the first bag construction (FR-2 / FR-7).
+ * - `demo` → full Garvit corpus (bypass / learn-e2e)
+ * - `fresh` → taxonomy + bank only (authenticated WorkOS)
+ * Default `demo` preserves prior non-prod behavior when unset (tests inject bag).
+ */
+let seedModeLatch: SeedMode = "demo";
+
+/** Latch seed mode before the first `browserEngineAdapters()` call. */
+export function setBrowserEngineSeedMode(mode: SeedMode): void {
+  seedModeLatch = mode;
+}
+
+/** Test-only: drop the singleton so the next call reseeds under a new mode. */
+export function resetBrowserEngineSingleton(): void {
+  singleton = null;
+  seedModeLatch = "demo";
+}
+
+/**
  * Lazy app-wide engine bag for client components (the analogue of
  * `browserRuntimeClient()`). The `useEngine()` provider (Phase 0.4) reads this.
  * A stable singleton is required so the provider does not re-mount adapters —
  * and so the in-memory substrate keeps its state across a session.
  *
  * DEV SEED (why the guard). A fresh `InMemoryEngineDb` is empty, which makes the
- * live `/learn` surface unusable in a dev preview (0% dashboard; the Quiz route
- * throws `no reviewed question` from `openQuizItem`). Outside production we load
- * the "Garvit" skills/mastery spread (`_dev_seed.ts`) plus the cascade-promoted
- * item bank (`_test_item_bank.ts`, ADR-0021) so the Dashboard → Quiz → Summary
- * loop is exercisable in the browser — the QUIZ now serves the governed bank,
- * not hand-authored dev questions (spec FR-B2/B2a). The guard keeps it off the
- * production path, where the on-device SQLite substrate (ADR-0005/0010) is
- * expected to supply real data. Tests never reach this branch: they inject their
- * own seeded bag via `buildBrowserEngineAdapters({ engineDb })` / the
- * `EngineProvider bag` prop and never call this singleton.
+ * live `/learn` surface unusable in a dev preview. Outside production we load
+ * taxonomy (+ optional Garvit mastery when `seedMode=demo`) plus the
+ * cascade-promoted item bank (`_test_item_bank.ts`, ADR-0021). Authenticated
+ * WorkOS sessions use `seedMode=fresh` (taxonomy+bank, no demo mastery).
+ * Tests inject their own bag via `buildBrowserEngineAdapters({ engineDb })` /
+ * the `EngineProvider bag` prop and never call this singleton.
  */
 export function browserEngineAdapters(): EnginePortBag {
   if (singleton === null) {
@@ -199,8 +220,7 @@ export function browserEngineAdapters(): EnginePortBag {
       // provider mounts. When present it REPLACES the dev seed entirely — specs
       // drive their own byte-stable QUESTION fixtures, so the override keeps
       // the practice-table wiring (their oracles predate the bank; migrating
-      // them is a separate task). Absent → the dev preview default: Garvit
-      // skills/states + the governed bank, quiz wired to the bank (ADR-0021).
+      // them is a separate task). Absent → seedMode latch (demo|fresh).
       const injected = readE2ESeedOverride();
       if (injected) {
         db.seedSkills([...injected.skills]);
@@ -218,7 +238,11 @@ export function browserEngineAdapters(): EnginePortBag {
         seedLessonContent(db);
         singleton = buildBrowserEngineAdapters({ engineDb: db });
       } else {
-        seedDevCorpus(db);
+        if (seedModeLatch === "fresh") {
+          seedDevTaxonomy(db);
+        } else {
+          seedDevCorpus(db);
+        }
         seedTestItemBank(db);
         // Generated hint ladders for the bank items (coach-bank-hints FR-C1):
         // without them every bank item degrades to the generic nudge.
