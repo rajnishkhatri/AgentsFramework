@@ -13,11 +13,11 @@ authored: 2026-07-14
 
 # Plan — Eng Coach WorkOS learner identity + fresh progress slate
 
-**Status:** Stage 6 DONE 2026-07-14 — unit evidence green — await `@t3` live + Stage 7/9  
+**Status:** Stage 6 DONE 2026-07-14 — unit evidence green — await `@t3` live + Stage 7/9
 
-**Spec:** [eng-coach-workos-learner-identity.spec.md](eng-coach-workos-learner-identity.spec.md)  
-**Tasks:** [eng-coach-workos-learner-identity.tasks.md](eng-coach-workos-learner-identity.tasks.md)  
-**Constitution:** root `AGENTS.md` + `frontend/AGENTS.md` + STYLE_GUIDE_FRONTEND §16  
+**Spec:** [eng-coach-workos-learner-identity.spec.md](eng-coach-workos-learner-identity.spec.md)
+**Tasks:** [eng-coach-workos-learner-identity.tasks.md](eng-coach-workos-learner-identity.tasks.md)
+**Constitution:** root `AGENTS.md` + `frontend/AGENTS.md` + STYLE_GUIDE_FRONTEND §16
 **Locked clarify:** Q-C1=A (registry binding in scope) · Q-C2=A (RSC firstName bridge) · Q-C3=A (in-memory) · Q-C4=A (@t3) · Q-C5=A (no SEED_GARVIT)
 
 ---
