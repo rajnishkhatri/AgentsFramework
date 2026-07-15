@@ -79,6 +79,12 @@ check: lint format-check typecheck cite-lint hygiene test
 skills-sync:
 	$(PYTHON) scripts/sync_skills.py
 
+# Emit the portable SDD .skill archives (docs/skills/sdd-*.skill) — a mechanical
+# projection of the skill source + the workspace-binding contract, deterministic
+# so `--check` is stable. tests/architecture/test_skills_pack.py runs the check.
+skills-pack:
+	$(PYTHON) scripts/pack_skills.py
+
 # Routed code reviewer (v3) over branch commits vs main. Deterministic by
 # default (no API key, CI-safe); add ARGS="--llm" to also run the certified v3
 # LLM judge (needs ANTHROPIC_API_KEY / OPENAI_API_KEY / LITELLM_API_KEY). Thin

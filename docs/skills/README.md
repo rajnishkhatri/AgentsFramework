@@ -76,3 +76,44 @@ These distill and operationalize the testing docs already in `docs/`:
 - `SKILL.md` — exact commands, env vars, URLs, selectors, headline gotchas
 - `references/gotchas.md` — full gotcha catalog with fixes + the working `gcloud` query
 - `references/goaljudge-batch.md` — the GoalJudge registry batch + verification playbook
+
+---
+
+## Portable SDD lifecycle skills (workspace-neutral, multi-agent)
+
+The six SDD lifecycle skills (`sdd-lifecycle`, `sdd-brainstorm`, `sdd-spec`,
+`sdd-replan`, `sdd-implement`, `sdd-converge`) are **workspace-neutral**: their
+bodies use `{{placeholder}}` tokens instead of any one repo's file paths or
+commands, resolved at runtime from a **workspace binding** (ADR-0032).
+
+### The binding contract — `_sdd/`
+- [`binding.schema.md`](_sdd/binding.schema.md) — the 13-key vocabulary
+  (`{{constitution}}`, `{{check_gate}}`, `{{test_gate}}`, `{{adr_home}}`, …), each
+  with purpose + reference value + a first-run fill-prompt.
+- [`binding.reference.toml`](_sdd/binding.reference.toml) — **this repo's** real
+  values (the worked example; how the skills resolve when run here).
+- [`binding.template.toml`](_sdd/binding.template.toml) — copy to
+  `.sdd/binding.toml` in a foreign workspace and fill.
+- [`FIRST_RUN.md`](_sdd/FIRST_RUN.md) — the first-run auto-adapt flow: the skill
+  inspects the workspace ecosystem, **proposes** a filled binding, requires
+  **human confirmation**, then persists it (never runs a guessed gate command).
+
+### Multi-agent projection — `scripts/sync_skills.py`
+The sync layer is an **adapter registry**; adding a coding agent is one entry.
+Today: `claude` → `.claude/skills/` and `cursor` → `.cursor/skills/`
+(byte-identical mirrors), plus `copilot` → thin
+`.github/instructions/sdd-*.instructions.md` pointers (+ repo-wide
+`.github/copilot-instructions.md`) that point back at the canonical `SKILL.md`,
+never restating prose. Run `make skills-sync`; parity is guard-tested by
+`tests/architecture/test_skills_mirror_parity.py`,
+`test_sync_adapter_registry.py`, and `test_copilot_instructions_parity.py`.
+
+### Export — `scripts/pack_skills.py`
+`make skills-pack` emits `docs/skills/sdd-*.skill` — a self-contained zip per
+skill (`<name>/SKILL.md` + the binding template/schema/FIRST_RUN) that drops into
+any repo. `python scripts/pack_skills.py --check` guards the archives against
+drift (`tests/architecture/test_skills_pack.py`).
+
+Guards: `tests/architecture/test_sdd_portable_core.py` (no repo-token leak,
+reference round-trip, skeleton preserved) + `test_sdd_binding_schema.py`
+(schema↔reference complete).
