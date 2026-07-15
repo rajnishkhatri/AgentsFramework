@@ -549,6 +549,16 @@ export function ChatShell(props: {
             {props.userEmail}
           </span>
           <ThemeToggle />
+          {/* D2 (FR-9): the single authed entry point to the English Coach, so
+             /learn is reachable without typing the URL. Same 44pt tap target as
+             the sign-out link. FR-6's post-login return-to-/learn is handled by
+             the (coach)/layout guard, so this is a plain in-app <Link>. */}
+          <Link
+            href="/learn"
+            className="inline-flex min-h-11 items-center px-2 text-sm text-muted hover:text-fg no-underline"
+          >
+            Open Coach
+          </Link>
           {/* §4c/HIG: the visible text is unchanged, but the hit area is padded
              to a 44pt-tall tap target (min-h-11 + horizontal padding). */}
           <Link

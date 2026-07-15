@@ -62,6 +62,7 @@ import { seedTestItemBank } from "./adapters/engine/_test_item_bank";
 import { seedLessonContent } from "./adapters/engine/_lesson_seed";
 import { DEFAULT_SUBJECT } from "./wire/engine_entities";
 import type { SeedMode } from "./learn/resolve_learn_identity";
+import { planEngineSeed } from "./engine_seed_plan";
 
 export interface BuildBrowserEngineAdaptersOptions {
   /**
@@ -213,53 +214,64 @@ export function resetBrowserEngineSingleton(): void {
  */
 export function browserEngineAdapters(): EnginePortBag {
   if (singleton === null) {
-    if (process.env.NODE_ENV !== "production") {
+    const isProd = process.env.NODE_ENV === "production";
+
+    // E2E override (non-prod only — FR-5): a Playwright spec may inject a larger
+    // deterministic corpus on `window` via `page.addInitScript` before the
+    // provider mounts. When present it REPLACES the dev seed entirely — specs
+    // drive their own byte-stable QUESTION fixtures, so the override keeps the
+    // practice-table wiring (their oracles predate the bank; migrating them is
+    // a separate task). Never read in a prod build (guarded by `!isProd`).
+    const injected = isProd ? null : readE2ESeedOverride();
+    if (injected) {
       const db = new InMemoryEngineDb();
-      // E2E override (non-prod only): a Playwright spec may inject a larger
-      // deterministic corpus on `window` via `page.addInitScript` before the
-      // provider mounts. When present it REPLACES the dev seed entirely — specs
-      // drive their own byte-stable QUESTION fixtures, so the override keeps
-      // the practice-table wiring (their oracles predate the bank; migrating
-      // them is a separate task). Absent → seedMode latch (demo|fresh).
-      const injected = readE2ESeedOverride();
-      if (injected) {
-        db.seedSkills([...injected.skills]);
-        db.seedQuestions([...injected.questions]);
-        db.seedSkillStates([...injected.skillStates]);
-        // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
-        // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
-        if (injected.hints) db.seedHints([...injected.hints]);
-        if (injected.sessions) {
-          for (const s of injected.sessions) {
-            void db.insertSession({ ...s });
-          }
+      db.seedSkills([...injected.skills]);
+      db.seedQuestions([...injected.questions]);
+      db.seedSkillStates([...injected.skillStates]);
+      // Optional reviewed hint ladders (ADR-0014) — the iPad panel's
+      // two-tier nudge (FR-J3a) needs rungs 2/3 on the served items.
+      if (injected.hints) db.seedHints([...injected.hints]);
+      if (injected.sessions) {
+        for (const s of injected.sessions) {
+          void db.insertSession({ ...s });
         }
-        // Lesson content is independent of the quiz corpus (E1a / ADR-0028).
-        seedLessonContent(db);
-        singleton = buildBrowserEngineAdapters({ engineDb: db });
-      } else {
-        if (seedModeLatch === "fresh") {
-          seedDevTaxonomy(db);
-        } else {
-          seedDevCorpus(db);
-        }
-        seedTestItemBank(db);
-        // Generated hint ladders for the bank items (coach-bank-hints FR-C1):
-        // without them every bank item degrades to the generic nudge.
-        seedHintBank(db);
-        // Hand-authored lesson content for /learn/skill (ADR-0028 / E1a).
-        seedLessonContent(db);
-        singleton = buildBrowserEngineAdapters({
-          engineDb: db,
-          questionSource: "bank",
-        });
       }
-    } else {
-      // Production: an EMPTY substrate. The on-device SQLite EngineDb
-      // (ADR-0005/0010) supplies real data here; the dev corpus must not ship,
-      // and the e2e override is never read (guarded by NODE_ENV above).
-      singleton = buildBrowserEngineAdapters();
+      // Lesson content is independent of the quiz corpus (E1a / ADR-0028).
+      seedLessonContent(db);
+      singleton = buildBrowserEngineAdapters({ engineDb: db });
+      return singleton;
     }
+
+    // D7 (FR-1..4): the pure helper decides the seed pack from (isProd,
+    // seedMode). In prod ONLY `fresh` seeds (the reviewed web corpus); every
+    // non-fresh prod mode (demo/unset/undecidable) → `"none"` → an EMPTY bag,
+    // never the Garvit `seedDevCorpus` or a partial pack (AP-6 undecidable→empty).
+    // The on-device SQLite EngineDb (ADR-0005/0010) is the intended prod-data
+    // path; until it lands, `fresh` ships the in-bundle reviewed corpus.
+    const plan = planEngineSeed({ isProd, seedMode: seedModeLatch });
+    if (plan === "none") {
+      singleton = buildBrowserEngineAdapters();
+      return singleton;
+    }
+
+    const db = new InMemoryEngineDb();
+    // fresh-pack → taxonomy only (empty progress slate, FR-4); demo-corpus →
+    // full Garvit mastery. Both share the bank/hints/lessons tail below.
+    if (plan === "fresh-pack") {
+      seedDevTaxonomy(db);
+    } else {
+      seedDevCorpus(db);
+    }
+    seedTestItemBank(db);
+    // Generated hint ladders for the bank items (coach-bank-hints FR-C1):
+    // without them every bank item degrades to the generic nudge.
+    seedHintBank(db);
+    // Hand-authored lesson content for /learn/skill (ADR-0028 / E1a).
+    seedLessonContent(db);
+    singleton = buildBrowserEngineAdapters({
+      engineDb: db,
+      questionSource: "bank",
+    });
   }
   return singleton;
 }

@@ -1,0 +1,30 @@
+# SDD workspace-binding — REFERENCE INSTANCE (this repo).
+#
+# The committed values for THIS repository. The portable SDD skill bodies resolve
+# their {{placeholders}} from here when run inside this repo (spec FR-6/FR-8a), so
+# this-repo SDD guidance is semantically unchanged despite the mirrors carrying
+# placeholders. A foreign workspace writes its own .sdd/binding.toml instead.
+#
+# Schema: docs/skills/_sdd/binding.schema.md (must stay key-complete — guarded by
+# tests/architecture/test_sdd_binding_schema.py, FR-8).
+
+[binding]
+constitution       = "AGENTS.md"
+check_gate         = "make check"
+test_gate          = "pytest tests/architecture/ -q"
+spec_home          = "docs/plan/"
+plan_home          = "docs/plan/"
+adr_home           = "docs/adr/"
+adr_template       = "docs/adr/0000-template.md"
+decision_log       = "docs/adr/decisions.md"
+adr_waiver_token   = "ADR-OK:"
+test_waiver_token  = "G8-OK:"
+breadth_read_tool  = "the `explore` subagent"
+methodology_source = "docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md"
+gate_catalog       = "docs/adr/GATES.md"
+
+[examples]
+deterministic_cascade = "`components/router.py` (deterministic tree) + `services/guardrails.py` (regex→classifier→LLM cascade with its `decision_stage` audit field)"
+live_prod_surface     = "`middleware/app_prod.py` hand-builds the prod routes; `agent_ui_adapter/server.py` is dev/standalone"
+eval_capture_rule     = "record every LLM call via `eval_capture.record()` with `user_id`+`task_id`"
+hook_instrumentation  = "`scripts/hooks/*.py` (PreToolUse/PostToolUse/Stop/SubagentStop/SessionStart)"

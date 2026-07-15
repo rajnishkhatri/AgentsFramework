@@ -2,7 +2,7 @@
 name: sdd-lifecycle
 type: skill
 description: >-
-  Route a production-grade, durable change through this repo's 10-stage
+  Route a production-grade, durable change through your workspace's 10-stage
   spec-driven-development (SDD) lifecycle. Use whenever the user asks to "run
   the SDD lifecycle", "do this the spec-driven way", "what stage are we in",
   "kick off a production-grade change", or starts a non-trivial feature without
@@ -16,7 +16,14 @@ description: >-
 
 # SDD Lifecycle — the 10-stage router
 
-Full methodology: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md`.
+> **Workspace binding.** This skill is portable. Resolve each `{{placeholder}}`
+> from the workspace binding: `.sdd/binding.toml` at the repo root, else the
+> repo's committed reference (this repo: `docs/skills/_sdd/binding.reference.toml`),
+> else **first-run auto-adapt** — inspect the ecosystem, propose values, get
+> human confirmation, persist to `.sdd/binding.toml` (never run a guessed gate
+> command silently). See `docs/skills/_sdd/binding.schema.md`.
+
+Full methodology: `{{methodology_source}}`.
 Every stage is a **human↔agent micro-loop**: human initiates → agent does the
 work → human gatekeeps → re-enter or advance. Never collapse this into "take
 the spec and free-run."
@@ -30,33 +37,33 @@ the spec and free-run."
 | 5 replan / sprint board | **sdd-replan** (the loop-back hub) |
 | 6 implementation | **sdd-implement** |
 | 7 review | existing **code-review** skill (+ `security-review` for security seams) — do not re-author |
-| 8 test | `make check` + `pytest tests/architecture/ -q` — the executable constitution |
+| 8 test | `{{check_gate}}` + `{{test_gate}}` — the executable constitution |
 | 9 issue fixes · 10 refine/sign-off | **sdd-converge** |
 
 ## The constitution rule
 
-The constitution is **not** a new document: it is `AGENTS.md` (8 Architecture
-Invariants + ✅/⚠️/🚫 Boundaries) enforced by `tests/architecture/`. Any
-stage's "constitution check" = run those tests + walk the ⚠️ Ask-first list.
-If a Spec Kit trial ever lands, its constitution must be *generated from*
-these sources (runbook §2), never rewritten.
+The constitution is **not** a new document: it is `{{constitution}}` (the
+workspace's binding engineering rules + boundaries) enforced by the
+`{{test_gate}}` suite. Any stage's "constitution check" = run those tests + walk
+the ⚠️ Ask-first list. If a generated-constitution trial ever lands, it must be
+*generated from* these sources, never rewritten.
 
 ## When to skip the lifecycle
 
 Trivial changes (typo, one-liner, throwaway spike) skip the runbook — but the
-constitution stays on (`make check`, arch-tests, hooks). Anything touching an
-ADR seam (`trust/models.py`, a new `orchestration/react_loop.py` node, a new
-horizontal service, a new abstraction, a `pyproject.toml` dep) is by
-definition non-trivial: full lifecycle + ADR (`docs/adr/0000-template.md`).
+constitution stays on (`{{check_gate}}`, arch-tests, hooks). Anything touching a
+decision-record seam (a shared-kernel type change, a new framework node, a new
+horizontal service, a new abstraction, a new dependency) is by definition
+non-trivial: full lifecycle + a decision record (`{{adr_template}}`).
 
-## Harness instrumentation (fires automatically today)
+## Harness instrumentation
 
-- `scripts/hooks/pre_bash_guard.py` (PreToolUse) · `post_edit_ruff.py`
-  (PostToolUse) · `stop_adr_reminder.py` (Stop, ADR.1 advisory) ·
-  `subagent_stop_review.py` (SubagentStop) · `sessionstart_reinject.py`
-  (SessionStart, `source == "compact"` — re-injects the active subtree's nested
-  `AGENTS.md` after compaction).
-- Merge-time ratchets: `tests/architecture/test_adr_ratchet.py` (missing ADR),
-  `test_no_test_weakening.py` (deleted/skipped tests).
-- Comprehension gates G1/G3/G4/G7/G8: preamble + rotating wording in
-  `docs/adr/GATES.md`; small decisions → `docs/adr/decisions.md`.
+Where the workspace wires editor/agent hooks, they run here (write-time
+format/lint, command-time deny-list backstop, turn-end decision-record
+reminder). This repo's reference set: `{{examples.hook_instrumentation}}`.
+
+- Merge-time ratchets (if present): a missing-decision-record gate and a
+  test-weakening gate. Don't fight the ratchets — justify (`{{adr_waiver_token}}`
+  / `{{test_waiver_token}}` in the commit message) or fix.
+- Comprehension gates: the workspace's gate catalog (`{{gate_catalog}}`); small
+  decisions → `{{decision_log}}`.

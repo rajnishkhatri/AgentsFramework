@@ -109,6 +109,20 @@ describe("ChatShell — header rendering", () => {
     expect(signOutLink).toBeTruthy();
     expect(signOutLink?.textContent).toContain("Sign out");
   });
+
+  // D2 (FR-9): exactly one visible, labelled control navigating to /learn, so
+  // an authenticated user can reach the coach without typing the URL.
+  it("renders exactly one labelled /learn entry link in the authed header (FR-9)", () => {
+    const d = render();
+    const learnLinks = d.querySelectorAll('a[href="/learn"]');
+    expect(learnLinks.length).toBe(1);
+    const link = learnLinks[0];
+    // Labelled: has visible text (or an aria-label) a user can act on.
+    const label = link?.textContent?.trim() || link?.getAttribute("aria-label");
+    expect(label).toBeTruthy();
+    // It lives in the header action cluster, next to sign-out.
+    expect(d.querySelector("header")?.querySelector('a[href="/learn"]')).toBeTruthy();
+  });
 });
 
 describe("ChatShell — initialModel seed (A/B `?model=` pin)", () => {
