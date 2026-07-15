@@ -139,3 +139,9 @@ docs/skills/code-review-workspace/
 /review.json
 /review_llm.json
 /review_*.json
+
+# All-in-one SDD export bundle — a build-on-demand artifact, not tracked per
+# owner request 2026-07-15. Regenerate any time with `make skills-pack`; the
+# emitter (scripts/pack_skills.py), the install guide (docs/skills/_sdd/INSTALL.md),
+# and the six tracked per-skill docs/skills/sdd-*.skill archives stay tracked.
+docs/skills/sdd-skills-bundle.zip

@@ -86,3 +86,86 @@ def test_pack_check_detects_drift(tmp_path) -> None:
     finally:
         target.write_bytes(backup.read_bytes())
     assert mod.check() == [], "restore failed — archive left drifted"
+
+
+def test_bundle_is_complete() -> None:
+    """The all-in-one bundle holds the shared contract + every skill, self-contained.
+
+    The bundle is a build-on-demand artifact (NOT tracked in git), so this asserts
+    on what the emitter *produces* from source, not on a committed file — it holds
+    whether or not `make skills-pack` has been run in this checkout.
+    """
+    mod = _load()
+    names = set(mod.bundle_members())
+    top = mod.BUNDLE_NAME
+    # Shared contract + install guide at the top-level _sdd/.
+    for fname in (
+        "INSTALL.md",
+        "binding.schema.md",
+        "binding.template.toml",
+        "FIRST_RUN.md",
+    ):
+        assert f"{top}/_sdd/{fname}" in names, f"bundle missing {top}/_sdd/{fname}"
+    # Every skill present and self-contained (its own SKILL.md + binding files).
+    for name in _SDD_SKILLS:
+        assert f"{top}/{name}/SKILL.md" in names, (
+            f"bundle missing {top}/{name}/SKILL.md"
+        )
+        for fname in _BUNDLED:
+            assert f"{top}/{name}/{fname}" in names, (
+                f"bundle missing {top}/{name}/{fname}"
+            )
+    # Nothing escapes the single bundle top dir.
+    assert all(n.startswith(f"{top}/") for n in names), (
+        f"bundle has members outside {top}/: "
+        f"{sorted(n for n in names if not n.startswith(f'{top}/'))}"
+    )
+    # The reference binding (this-repo values) must NOT ship — it is meaningless
+    # in a foreign workspace and would mislead a consumer.
+    assert not any("binding.reference.toml" in n for n in names), (
+        "bundle must not ship binding.reference.toml (this-repo-only values)"
+    )
+
+
+def test_bundle_check_detects_drift_when_present() -> None:
+    """FR-18 (bundle): a *present* bundle that no longer matches source is drift.
+
+    The bundle is untracked/build-on-demand, so its absence is NOT drift — that
+    is asserted in test_bundle_absence_is_not_drift. When it IS present, check()
+    must still catch a stale copy. We build it, corrupt it, verify, restore.
+    """
+    mod = _load()
+    target = _SKILLS / f"{mod.BUNDLE_NAME}.zip"
+    was_present = target.is_file()
+    backup = target.read_bytes() if was_present else None
+    try:
+        target.write_bytes(mod.build_bundle_bytes())  # ensure an in-sync bundle
+        assert mod.check() == [], mod.check()
+        with zipfile.ZipFile(target, "a") as zf:
+            zf.writestr(f"{mod.BUNDLE_NAME}/INTRUDER.md", b"drift")
+        problems = mod.check()
+        assert any(f"{mod.BUNDLE_NAME}.zip" in p for p in problems), (
+            f"check() did not detect injected bundle drift: {problems}"
+        )
+    finally:
+        if backup is not None:
+            target.write_bytes(backup)
+        elif target.is_file():
+            target.unlink()  # leave the tree as we found it (untracked artifact)
+
+
+def test_bundle_absence_is_not_drift() -> None:
+    """The untracked bundle being absent is NOT flagged by check() (build-on-demand)."""
+    mod = _load()
+    target = _SKILLS / f"{mod.BUNDLE_NAME}.zip"
+    saved = target.read_bytes() if target.is_file() else None
+    try:
+        if target.is_file():
+            target.unlink()
+        problems = mod.check()
+        assert not any(f"{mod.BUNDLE_NAME}.zip" in p for p in problems), (
+            f"absent build-on-demand bundle wrongly reported as drift: {problems}"
+        )
+    finally:
+        if saved is not None:
+            target.write_bytes(saved)

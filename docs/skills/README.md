@@ -109,10 +109,23 @@ never restating prose. Run `make skills-sync`; parity is guard-tested by
 `test_sync_adapter_registry.py`, and `test_copilot_instructions_parity.py`.
 
 ### Export — `scripts/pack_skills.py`
-`make skills-pack` emits `docs/skills/sdd-*.skill` — a self-contained zip per
-skill (`<name>/SKILL.md` + the binding template/schema/FIRST_RUN) that drops into
-any repo. `python scripts/pack_skills.py --check` guards the archives against
-drift (`tests/architecture/test_skills_pack.py`).
+`make skills-pack` emits two things:
+- **Six per-skill archives** `docs/skills/sdd-*.skill` — a self-contained zip per
+  skill (`<name>/SKILL.md` + the binding template/schema/FIRST_RUN) for dropping
+  in a single stage.
+- **One all-in-one export bundle** `docs/skills/sdd-skills-bundle.zip` — every SDD
+  skill + the shared `_sdd/` contract + an **`INSTALL.md`** how-to under a single
+  `sdd-skills-bundle/` top dir. This is the one file to hand someone who wants the
+  whole lifecycle in a new workspace: unzip, copy the `sdd-*/` dirs into their
+  agent's skills path (Claude Code / Cursor / Copilot recipes in `INSTALL.md`),
+  first run auto-adapts the binding. The install guide is authored at
+  [`_sdd/INSTALL.md`](_sdd/INSTALL.md). **The bundle is build-on-demand and
+  `.gitignore`-d — not tracked**; regenerate it any time with `make skills-pack`.
+
+Both outputs are deterministic (sorted members, fixed 1980 mtime).
+`python scripts/pack_skills.py --check` guards the six tracked archives against
+drift; the untracked bundle is checked only when present
+(`tests/architecture/test_skills_pack.py`).
 
 Guards: `tests/architecture/test_sdd_portable_core.py` (no repo-token leak,
 reference round-trip, skeleton preserved) + `test_sdd_binding_schema.py`
