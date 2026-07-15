@@ -4,7 +4,15 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { DEV_SKILLS } from "./_dev_seed";
+import { InMemoryEngineDb } from "./db/in_memory_engine_db";
+import {
+  DEV_LEARNER_ID,
+  DEV_SKILLS,
+  DEV_SKILL_STATES,
+  seedDevCorpus,
+  seedDevTaxonomy,
+} from "./_dev_seed";
+import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
 /** Exact 6-tuple after D2 rename (design-spec.md:62-69). */
 const CANONICAL_ID_NAME: ReadonlyArray<readonly [string, string]> = [
@@ -92,5 +100,26 @@ describe("DEV_SKILLS — D2 taxonomy (FR-3, FR-6)", () => {
       expect(skill.share_of_test_pct).toBe(expected.share_of_test_pct);
       expect(skill.order).toBe(expected.order);
     }
+  });
+});
+
+describe("seedDevTaxonomy vs seedDevCorpus (FR-7)", () => {
+  it("taxonomy-only leaves skill_states empty for Garvit", async () => {
+    const db = new InMemoryEngineDb();
+    seedDevTaxonomy(db);
+    const skills = await db.listSkills(DEFAULT_SUBJECT);
+    expect(skills.map((s) => s.id)).toEqual(DEV_SKILLS.map((s) => s.id));
+    const states = await db.listSkillState(DEFAULT_SUBJECT, DEV_LEARNER_ID);
+    expect(states).toEqual([]);
+  });
+
+  it("full corpus still seeds DEV_SKILL_STATES mastery rows", async () => {
+    const db = new InMemoryEngineDb();
+    seedDevCorpus(db);
+    const states = await db.listSkillState(DEFAULT_SUBJECT, DEV_LEARNER_ID);
+    expect(states.length).toBe(DEV_SKILL_STATES.length);
+    expect(states.some((s) => s.skill_id === "s-punc" && s.mastery === 0.28)).toBe(
+      true,
+    );
   });
 });

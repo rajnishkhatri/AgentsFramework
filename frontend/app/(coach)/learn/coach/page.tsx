@@ -23,11 +23,11 @@ import {
   toCoachSurfaceVM,
 } from "@/lib/translators/coach_surface_vm";
 import { honestCoachOpener } from "@/lib/translators/honest_coach_opener";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 
-const LEARNER_ID = "Garvit";
-
 export default function CoachPage(): React.JSX.Element {
+  const { learnerId } = useLearnIdentity();
   const router = useRouter();
   const surface = useSurface();
   const runtime = React.useMemo(
@@ -61,7 +61,7 @@ export default function CoachPage(): React.JSX.Element {
     }
     void countMissesOnSkill({
       subject: DEFAULT_SUBJECT,
-      learnerId: LEARNER_ID,
+      learnerId,
       skillId: pin.skillId,
     }).then((n) => {
       if (!cancelled) setMissesOnSkill(n);
@@ -77,6 +77,7 @@ export default function CoachPage(): React.JSX.Element {
     pin?.kind === "item" ? pin.questionId : null,
     countMissesOnSkill,
     skillNameById,
+    learnerId,
   ]);
 
   const surfaceVm = React.useMemo(

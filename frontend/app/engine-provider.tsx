@@ -7,25 +7,43 @@
 
 import * as React from "react";
 import type { EnginePortBag } from "@/lib/composition_engine";
-import { browserEngineAdapters } from "@/lib/composition_engine_browser";
+import {
+  browserEngineAdapters,
+  setBrowserEngineSeedMode,
+} from "@/lib/composition_engine_browser";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 
 const EngineContext = React.createContext<EnginePortBag | null>(null);
 
 /**
  * Provides the engine `EnginePortBag` to the subtree. `bag` is optional: when
  * omitted, the browser-safe singleton (`browserEngineAdapters()`, InMemoryEngineDb
- * substrate — ADR-0005/0010) is used, so the root layout can mount the provider
- * with no wiring. Tests inject a seeded bag via the prop (the C2 seam).
+ * substrate — ADR-0005/0010) is used, seeded per `useLearnIdentity().seedMode`.
+ * Tests inject a seeded bag via the prop (the C2 seam) and skip the identity latch.
  */
 export function EngineProvider(props: {
   bag?: EnginePortBag;
   children: React.ReactNode;
 }): React.JSX.Element {
-  const bag = props.bag ?? browserEngineAdapters();
+  if (props.bag) {
+    return (
+      <EngineContext.Provider value={props.bag}>
+        {props.children}
+      </EngineContext.Provider>
+    );
+  }
+  return <EngineProviderFromIdentity>{props.children}</EngineProviderFromIdentity>;
+}
+
+function EngineProviderFromIdentity(props: {
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const { seedMode } = useLearnIdentity();
+  // Latch before first singleton build (must be sync with this render).
+  setBrowserEngineSeedMode(seedMode);
+  const bag = browserEngineAdapters();
   return (
-    <EngineContext.Provider value={bag}>
-      {props.children}
-    </EngineContext.Provider>
+    <EngineContext.Provider value={bag}>{props.children}</EngineContext.Provider>
   );
 }
 

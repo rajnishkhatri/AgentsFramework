@@ -14,14 +14,13 @@ import {
   type DashboardVM,
   type RailVM,
 } from "@/components/dashboard/use_dashboard";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
-
-const LEARNER_ID = "Garvit";
-const LEARNER_DISPLAY_NAME = "Garvit";
 
 type BaseVm = Omit<DashboardVM, "rail">;
 
 export default function DashboardPage(): React.JSX.Element {
+  const { learnerId, displayName } = useLearnIdentity();
   const { load, loadRail } = useDashboard();
   const [baseVm, setBaseVm] = React.useState<BaseVm | null>(null);
   const [rail, setRail] = React.useState<RailVM | null>(null);
@@ -34,8 +33,8 @@ export default function DashboardPage(): React.JSX.Element {
     setError(null);
     load({
       subject: DEFAULT_SUBJECT,
-      learnerId: LEARNER_ID,
-      displayName: LEARNER_DISPLAY_NAME,
+      learnerId,
+      displayName,
       nowISO: new Date().toISOString(),
       skipRail: true,
     })
@@ -52,15 +51,15 @@ export default function DashboardPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [load, learnerId, displayName]);
 
   // Effect B — rail only (mount + Retry). FR-8: does not touch baseVm.
   React.useEffect(() => {
     let cancelled = false;
     loadRail({
       subject: DEFAULT_SUBJECT,
-      learnerId: LEARNER_ID,
-      displayName: LEARNER_DISPLAY_NAME,
+      learnerId,
+      displayName,
       nowISO: new Date().toISOString(),
     })
       .then((next) => {
@@ -72,7 +71,7 @@ export default function DashboardPage(): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [loadRail, reloadToken]);
+  }, [loadRail, reloadToken, learnerId, displayName]);
 
   if (error != null) {
     return (
