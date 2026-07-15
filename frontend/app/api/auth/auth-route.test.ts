@@ -18,9 +18,15 @@ const MOCK_SIGN_IN_URL = "https://authkit.workos.com/sign-in?client_id=test";
 const MOCK_SIGN_UP_URL = "https://authkit.workos.com/sign-up?client_id=test";
 const mockSignOut = vi.fn();
 const mockCallbackHandler = vi.fn();
+// Shared spy so the returnTo-threading tests (FR-6/7) can assert the exact
+// options getSignInUrl was called with. Typed with the real optional-options
+// arg so `.mock.calls[0]?.[0]` narrows (getSignInUrl({ returnTo? })).
+const mockGetSignInUrl = vi.fn(
+  async (_options?: { returnTo?: string }) => MOCK_SIGN_IN_URL,
+);
 
 vi.mock("@workos-inc/authkit-nextjs", () => ({
-  getSignInUrl: vi.fn(async () => MOCK_SIGN_IN_URL),
+  getSignInUrl: mockGetSignInUrl,
   getSignUpUrl: vi.fn(async () => MOCK_SIGN_UP_URL),
   signOut: vi.fn(async () => {
     mockSignOut();
@@ -88,6 +94,34 @@ describe("auth route handler — sign-in dispatch", () => {
     );
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe(MOCK_SIGN_IN_URL);
+  });
+});
+
+describe("auth route handler — returnTo threading (Q1 / FR-6, FR-7)", () => {
+  let GET: AuthRouteGET;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const mod = await import("./[...workos]/route");
+    GET = mod.GET;
+  });
+
+  it("threads ?returnTo=/learn into getSignInUrl (FR-6)", async () => {
+    const req = new NextRequest(
+      "https://example.com/api/auth/sign-in?returnTo=/learn",
+    );
+    await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) });
+    expect(mockGetSignInUrl).toHaveBeenCalledWith({ returnTo: "/learn" });
+  });
+
+  it("a bare sign-in calls getSignInUrl with NO returnTo — default stays / (FR-7)", async () => {
+    const req = new NextRequest("https://example.com/api/auth/sign-in");
+    await GET(req, { params: Promise.resolve({ workos: ["sign-in"] }) });
+    // No options object (or no returnTo) → AuthKit default returnPathname, i.e. /.
+    const callArg = mockGetSignInUrl.mock.calls[0]?.[0] as
+      | { returnTo?: string }
+      | undefined;
+    expect(callArg?.returnTo).toBeUndefined();
   });
 });
 

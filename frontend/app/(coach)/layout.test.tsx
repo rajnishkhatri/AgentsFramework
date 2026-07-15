@@ -73,6 +73,25 @@ describe("CoachGroupLayout — D0 withAuth guard (FR-1/2/3) + identity bridge", 
     expect(html).toContain('data-testid="shell"');
   });
 
+  it("returns an unauthed /learn visitor to /learn post-login via ensureSignedIn — no return-path override (Q1 / FR-6)", async () => {
+    // FR-6 is satisfied by the layout guard, NOT by a coach CTA (there is no
+    // distinct coach sign-in CTA — the only web CTA is the agent home button at
+    // page.tsx:64, which must keep landing on / per FR-7). AuthKit's
+    // withAuth({ ensureSignedIn: true }) internally calls getReturnPathname(url)
+    // and threads the CURRENT path (/learn) as returnPathname, so an unauthed
+    // /learn visitor lands back on /learn after signing in. This test locks the
+    // two properties we own that keep that native capture intact:
+    //   (a) the guard uses ensureSignedIn: true (triggers the return capture);
+    //   (b) it passes NO returnTo/redirectUri/returnPathname override that would
+    //       redirect the post-login landing somewhere other than the origin path.
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const src = fs.readFileSync(path.join(__dirname, "layout.tsx"), "utf8");
+    expect(src).toMatch(/withAuth\(\{\s*ensureSignedIn:\s*true\s*\}\)/);
+    // No override arg that would defeat the native /learn return-path capture.
+    expect(src).not.toMatch(/returnTo|returnPathname|redirectUri/);
+  });
+
   it("is the single group-root guard — learn pages do not import withAuth (FR-3)", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");

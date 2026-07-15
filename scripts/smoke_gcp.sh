@@ -3,7 +3,9 @@
 #
 # Checks:
 #   1. Backend /healthz (no auth)
-#   2. Optional frontend root (HTTP 200)
+#   2. Optional frontend root (HTTP 200/307/308)
+#   2b. Optional coach route /learn → 307/308 to WorkOS (Q5 / FR-11,12 — proves the
+#       (coach) guard fires + the new revision is live; unauth, no credential)
 #   3. Authenticated POST /run/stream SSE chunks within 5 seconds (when BEARER_TOKEN set)
 #
 # Usage:
@@ -69,6 +71,23 @@ if [[ -n "${FRONTEND_URL}" ]]; then
     fail "frontend root returned HTTP ${status_code}, expected 200/307/308"
   fi
   pass "frontend root returned HTTP ${status_code}"
+
+  # ── 2b. Coach route proof (Q5 / FR-11, FR-12) ──────────────────────────────
+  # A bare `/` 200 does NOT prove the coach works (FR-11): the root may serve
+  # the sign-in CTA on ANY live frontend, seeded or not. Additionally assert
+  # `/learn` exists, its (coach)/layout guard fires, and the new revision is
+  # live: an UNAUTHENTICATED `/learn` must 307/308-redirect to the WorkOS host
+  # (proving route + guard, without a session or any test credential — F-R9).
+  learn_headers="$(curl -s -o /dev/null -D - -w 'HTTP_STATUS:%{http_code}\n' "${FRONTEND_URL}/learn")"
+  learn_status="$(echo "${learn_headers}" | sed -n 's/^HTTP_STATUS://p' | tr -d '\r')"
+  if [[ "${learn_status}" != "307" && "${learn_status}" != "308" ]]; then
+    fail "/learn returned HTTP ${learn_status}, expected 307/308 (unauth → WorkOS redirect). A 200 here means the guard did not fire; a 404 means the route/revision is not live."
+  fi
+  learn_location="$(echo "${learn_headers}" | sed -n 's/^[Ll]ocation:[[:space:]]*//p' | tr -d '\r')"
+  if ! echo "${learn_location}" | grep -qiE 'workos\.com|authkit'; then
+    fail "/learn redirected to '${learn_location}', expected a WorkOS/AuthKit host (the sign-in flow). Redirect target is not the auth host — the guard may be misconfigured."
+  fi
+  pass "/learn returned HTTP ${learn_status} → WorkOS (${learn_location})"
 else
   warn "FRONTEND_URL unset — skipping frontend check"
 fi
