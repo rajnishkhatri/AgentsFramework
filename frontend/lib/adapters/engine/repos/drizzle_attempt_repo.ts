@@ -21,10 +21,11 @@ import type {
 } from "../../../wire/engine_entities";
 import { toAccuracyVM } from "../../../wire/engine_entities";
 import type { EngineDb } from "../db/engine_db";
+import { newUuid } from "../../../new_uuid";
 
 export type AttemptRepoDeps = {
   db: EngineDb;
-  /** Defaults to crypto.randomUUID; injectable for deterministic tests. */
+  /** Defaults to `newUuid` (LAN-HTTP-safe); injectable for deterministic tests. */
   newId?: () => string;
   /** Defaults to () => new Date(); injectable for deterministic tests. */
   now?: () => Date;
@@ -37,7 +38,7 @@ export class DrizzleAttemptRepo implements AttemptRepo {
 
   constructor(deps: AttemptRepoDeps) {
     this.db = deps.db;
-    this.newId = deps.newId ?? (() => crypto.randomUUID());
+    this.newId = deps.newId ?? newUuid;
     this.now = deps.now ?? (() => new Date());
   }
 

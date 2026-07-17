@@ -1,17 +1,12 @@
 /**
- * CoachPanel — the iPad quiz split's persistent live coach panel (FR-J3/J3a).
+ * CoachPanel — Direction 2b Zone A/B/C stack (ADR-0035 / FR-5/10–15/20).
  *
- * Rendered beside the quiz item on the iPad surface. Contracts:
+ * Zones:
+ *   A fixed — status / mode chrome
+ *   B scroll — HintLadderList + separator + conversation (role=log)
+ *   C pinned — "+ One more nudge" + chips + composer (Q-C1 / FR-12)
  *
- *  - ONE thread (FR-J3): shared `coach_thread_store` via `useCoach`.
- *  - Two-tier hint (FR-J3a × FR-D5): "One more nudge" reveals deeper reviewed
- *    ladder rungs; exhausted → disabled (FR-B5).
- *  - B1 chrome (D1+D6): shared `CoachChrome` above the nudge ladder, driven by
- *    host-supplied pin + derived mode + skill-scoped misses (ADR-0025).
- *
- * Per F-R1 the panel owns no run logic (useCoach) and no hint logic (ladder
- * arrives as props). Callers should key the panel by question id so nudge
- * state resets per item.
+ * ONE thread via coach_thread_store / useCoach. Hint ladder arrives as props.
  */
 
 "use client";
@@ -27,13 +22,17 @@ import {
   type CoachSurfaceVM,
 } from "@/lib/translators/coach_surface_vm";
 import { honestCoachOpener } from "@/lib/translators/honest_coach_opener";
+import { Composer } from "@/components/chat/Composer";
+import { cn } from "@/lib/utils";
 import { CoachChrome, CoachChips } from "./CoachChrome";
 import { CoachView } from "./CoachView";
+import { HintLadderList, NUDGE_EXHAUSTED_REASON } from "./HintLadderList";
 import { useCoach } from "./use_coach";
 import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
+import { useSurface } from "@/components/shell/use_surface";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
@@ -45,6 +44,14 @@ export function CoachPanel(props: {
   pin?: CoachSurfacePin | null;
   /** Optional skill display name for the history line. */
   skillLabel?: string | null;
+  /** Optional dismiss control (A3) — host owns panelDismissed. */
+  onDismiss?: () => void;
+  /** Imperative focus for Feedback→coach bridge (FR-14). */
+  composerFocusRef?: React.RefObject<HTMLTextAreaElement | null>;
+  /** Optional className override (drawer vs inline). */
+  className?: string;
+  /** Inline host sets true so e2e can find `coach-panel-inline`. */
+  inlineHost?: boolean;
 }): React.JSX.Element {
   const {
     runtime,
@@ -52,15 +59,18 @@ export function CoachPanel(props: {
     mode = "pre_submit",
     pin = null,
     skillLabel = null,
+    onDismiss,
+    composerFocusRef,
+    className,
+    inlineHost = false,
   } = props;
+  const surface = useSurface();
   const { learnerId } = useLearnIdentity();
   const { turns, busy, ask, retry } = useCoach(runtime, { mode });
   const { countMissesOnSkill } = useCoachSurface();
 
   const [missesOnSkill, setMissesOnSkill] = React.useState<number | null>(null);
 
-  // C1: keep the shared store pin + advisory mode in sync with the live quiz
-  // item so standalone `/learn/coach` shows honest chrome after panel → coach.
   React.useEffect(() => {
     setCoachPin(pin, mode);
   }, [pin, mode]);
@@ -116,60 +126,74 @@ export function CoachPanel(props: {
   );
   const [revealed, setRevealed] = React.useState(0);
   const exhausted = revealed >= deeperRungs.length;
+  const revealedHints = deeperRungs.slice(0, revealed);
+  const isDesktop = surface === "desktop";
 
   return (
     <aside
-      data-testid="coach-panel"
+      data-testid={inlineHost ? "coach-panel-inline" : "coach-panel"}
+      data-inline={inlineHost ? "true" : undefined}
       aria-label="Live coach panel"
-      className="flex w-80 shrink-0 flex-col gap-3 rounded-[16px] border border-border bg-surface p-4"
+      style={
+        isDesktop
+          ? { width: "clamp(400px, 30vw, 480px)" }
+          : { width: "360px" }
+      }
+      className={cn(
+        "flex min-h-0 shrink-0 flex-col border-border bg-surface",
+        "min-w-0",
+        className,
+      )}
     >
-      <CoachChrome
-        vm={surfaceVm}
-        busy={busy}
-        onAsk={ask}
-        layout="stacked"
-        showChips={false}
-      />
-
-      <header className="flex flex-col gap-0.5">
-        <p className="text-sm font-semibold">Socratic mode · watching this item</p>
-        <p className="text-xs text-muted">
-          Same coach, same thread — pick it up on the Coach screen anytime.
-        </p>
-      </header>
-
-      <div className="flex flex-col gap-2">
-        {deeperRungs.slice(0, revealed).map((h) => (
-          <p
-            key={h.id}
-            data-testid={`panel-nudge-${h.rung}`}
-            className="rounded-[13px] bg-accent-light px-3 py-2 text-sm"
-          >
-            {h.body_md}
-          </p>
-        ))}
-        <button
-          type="button"
-          data-testid="one-more-nudge"
-          disabled={exhausted}
-          title={
-            exhausted
-              ? "That's every nudge for this one — try the coach below."
-              : undefined
-          }
-          onClick={() => setRevealed((n) => Math.min(n + 1, deeperRungs.length))}
-          className="min-h-11 w-fit rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          One more nudge
-        </button>
+      {/* Zone A — fixed header */}
+      <div
+        data-testid="coach-zone-a"
+        className="shrink-0 border-b border-border px-[18px] pb-3 pt-4"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <CoachChrome
+              vm={surfaceVm}
+              busy={busy}
+              onAsk={ask}
+              layout="stacked"
+              showChips={false}
+            />
+          </div>
+          {onDismiss != null ? (
+            <button
+              type="button"
+              data-testid="coach-panel-dismiss"
+              aria-label="Hide coach panel"
+              onClick={onDismiss}
+              className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-selected hover:text-fg"
+            >
+              ✕
+            </button>
+          ) : null}
+        </div>
       </div>
 
+      {/* Zone B — scroll: ladder + conversation */}
       <div
-        data-testid="coach-panel-composer"
-        className="flex min-h-0 flex-1 flex-col gap-3"
+        data-testid="coach-zone-b"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-3.5"
       >
-        <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
-        <div className="min-h-0 flex-1">
+        <HintLadderList revealed={revealedHints} totalDeeper={deeperRungs.length} />
+        {revealedHints.length > 0 ? (
+          <div
+            role="separator"
+            aria-hidden="true"
+            className="my-3.5 border-t border-border"
+          />
+        ) : null}
+        <div className="mb-2 shrink-0">
+          <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-muted">
+            Conversation
+          </h3>
+        </div>
+        {/* Flow content — Zone B is the only vertical scroll (FR-11/12). */}
+        <div className="min-w-0 break-words">
           <CoachView
             turns={turns}
             busy={busy}
@@ -177,6 +201,39 @@ export function CoachPanel(props: {
             onRetry={retry}
             placeholder="Ask about this item…"
             openerMarkdown={openerMarkdown}
+            showComposer={false}
+          />
+        </div>
+      </div>
+
+      {/* Zone C — pinned: nudge + chips + composer */}
+      <div
+        data-testid="coach-zone-c"
+        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3"
+      >
+        <button
+          type="button"
+          data-testid="one-more-nudge"
+          disabled={exhausted}
+          aria-disabled={exhausted ? "true" : undefined}
+          title={exhausted ? NUDGE_EXHAUSTED_REASON : undefined}
+          onClick={() => {
+            if (exhausted) return;
+            setRevealed((n) => Math.min(n + 1, deeperRungs.length));
+          }}
+          className="min-h-11 w-fit rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          + One more nudge
+        </button>
+        <div data-testid="coach-panel-composer" className="flex flex-col gap-3">
+          <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
+          <Composer
+            onSend={(body) => ask(body)}
+            busy={busy}
+            placeholder="Ask about this item…"
+            {...(composerFocusRef != null
+              ? { textareaRef: composerFocusRef }
+              : {})}
           />
         </div>
       </div>

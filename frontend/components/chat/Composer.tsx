@@ -53,9 +53,25 @@ export function Composer(props: {
   selectedModel?: string;
   /** Lifts the selection to the owner (ChatShell), so `send` can pass it. */
   onSelectModel?: (model: string) => void;
+  /**
+   * Optional external ref to the textarea (wide-layout Feedback→coach focus
+   * bridge, FR-14). Merged with the internal autosize/focus ref.
+   */
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
 }): React.JSX.Element {
   const [body, setBody] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
+  const setTextareaRef = React.useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      taRef.current = el;
+      const external = props.textareaRef;
+      if (external != null) {
+        (external as React.MutableRefObject<HTMLTextAreaElement | null>).current =
+          el;
+      }
+    },
+    [props.textareaRef],
+  );
 
   const models = props.models ?? [];
   const selectedModel = props.selectedModel ?? AUTO_MODEL;
@@ -111,7 +127,7 @@ export function Composer(props: {
         the max-h ceiling caps growth at ~6 lines before it scrolls.
       */}
       <Textarea
-        ref={taRef}
+        ref={setTextareaRef}
         rows={2}
         value={body}
         placeholder={props.placeholder ?? "Send a message… (⌘↩ for newline)"}

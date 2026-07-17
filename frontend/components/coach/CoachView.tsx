@@ -8,45 +8,22 @@
  * shows a typing indicator (FR-F3); a terminal error shows a RETRY affordance,
  * never a stuck spinner (FR-F4).
  *
+ * Wide-layout: Zone B scrolls (`flex-1 min-h-0 overflow-y-auto`); Zone C
+ * composer is a `shrink-0` sibling. Answers collapse via CollapsibleCoachAnswer
+ * (ADR-0035 / FR-3/4/7/11).
+ *
  * `onAsk`/`onRetry` are optional so the view is SSR-testable without wiring; the
  * page supplies them from `useCoach`.
  */
 
+"use client";
+
 import * as React from "react";
 import { Composer } from "@/components/chat/Composer";
 import { StreamingMarkdown } from "@/components/chat/StreamingMarkdown";
+import { CollapsibleCoachAnswer } from "./CollapsibleCoachAnswer";
 import type { CoachTurn } from "./use_coach";
-
-function CoachBubble(props: {
-  turn: CoachTurn;
-  onRetry?: (() => void) | undefined;
-}): React.JSX.Element {
-  const { turn, onRetry } = props;
-  const { coach } = turn;
-  return (
-    <div data-testid={`coach-turn-${turn.id}`} className="flex flex-col gap-2">
-      <p className="self-end rounded-2xl bg-selected px-3 py-2 text-sm">{turn.user}</p>
-      <div className="flex flex-col gap-1 rounded-2xl border border-border p-1">
-        <StreamingMarkdown text={coach.markdown} />
-        {coach.pending ? (
-          <span data-testid="coach-typing" className="px-3 pb-2 text-xs text-muted" aria-label="Coach is typing">
-            Coach is thinking&hellip;
-          </span>
-        ) : null}
-        {coach.error && coach.canRetry ? (
-          <button
-            type="button"
-            data-testid="coach-retry"
-            onClick={onRetry}
-            className="mx-3 mb-2 inline-flex w-fit items-center rounded-md border border-border px-3 py-1.5 text-sm font-medium hover:bg-selected"
-          >
-            Retry
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+import { useExpandableList } from "./use_expandable_list";
 
 export function CoachView(props: {
   turns: ReadonlyArray<CoachTurn>;
@@ -61,6 +38,13 @@ export function CoachView(props: {
    * is empty and pin+misses exist. Hosts compute via `honestCoachOpener`.
    */
   openerMarkdown?: string | null;
+  /**
+   * When false, omit the Composer (host pins it in Zone C — CoachPanel).
+   * Default true for standalone / backward-compat.
+   */
+  showComposer?: boolean;
+  /** Imperative focus target for Feedback→coach bridge (FR-14). */
+  composerFocusRef?: React.RefObject<HTMLTextAreaElement | null>;
 }): React.JSX.Element {
   const {
     turns,
@@ -69,33 +53,77 @@ export function CoachView(props: {
     onRetry,
     placeholder = "Ask the coach…",
     openerMarkdown = null,
+    showComposer = true,
+    composerFocusRef,
   } = props;
+  const turnIds = React.useMemo(() => turns.map((t) => t.id), [turns]);
+  const forceExpandedIds = React.useMemo(() => {
+    const forced = new Set<string>();
+    for (const t of turns) {
+      if (t.coach.pending || t.coach.error) forced.add(t.id);
+    }
+    return forced;
+  }, [turns]);
+  const { isExpanded, toggle } = useExpandableList({
+    ids: turnIds,
+    forceExpandedIds,
+    autoCollapseOnComplete: true,
+  });
+
+  // Embedded in CoachPanel Zone B: flow with the panel's single scroll.
+  // Standalone (composer on): keep an internal scroll region for the log.
+  const embedded = !showComposer;
+
   return (
-    <div className="flex h-full flex-col gap-4">
+    <div
+      className={
+        embedded
+          ? "flex min-w-0 flex-col gap-4"
+          : "flex h-full min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-hidden"
+      }
+    >
       <section
         role="log"
         aria-live="polite"
         aria-atomic="false"
         aria-label="Coach conversation"
-        className="flex flex-1 flex-col gap-4 overflow-y-auto"
+        data-testid="coach-log"
+        className={
+          embedded
+            ? "flex flex-col gap-4"
+            : "flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto overscroll-contain"
+        }
       >
         {openerMarkdown && turns.length === 0 ? (
           <div
             data-testid="coach-opener"
             className="flex flex-col gap-1 rounded-2xl border border-border p-3"
           >
-            <StreamingMarkdown text={openerMarkdown} />
+            <StreamingMarkdown text={openerMarkdown} tone="plain" />
           </div>
         ) : null}
         {turns.map((t) => (
-          <CoachBubble key={t.id} turn={t} onRetry={onRetry} />
+          <CollapsibleCoachAnswer
+            key={t.id}
+            turn={t}
+            expanded={isExpanded(t.id)}
+            onToggle={() => toggle(t.id)}
+            onRetry={onRetry}
+          />
         ))}
       </section>
-      <Composer
-        onSend={(body) => onAsk?.(body)}
-        busy={busy}
-        placeholder={placeholder}
-      />
+      {showComposer ? (
+        <div data-testid="coach-zone-c" className="shrink-0">
+          <Composer
+            onSend={(body) => onAsk?.(body)}
+            busy={busy}
+            placeholder={placeholder}
+            {...(composerFocusRef != null
+              ? { textareaRef: composerFocusRef }
+              : {})}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

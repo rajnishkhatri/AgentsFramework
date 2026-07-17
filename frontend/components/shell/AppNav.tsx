@@ -1,58 +1,114 @@
 /**
- * AppNav — the global-navigation control (FR-B1/B5).
+ * AppNav — the global-navigation control (FR-B1/B5 + wide-layout B1/B3).
  *
  * Presentational only (F-R1): it takes the current `surface` + `pathname` and
  * renders the nav items the pure `nav_model` returns for that surface. The
  * desktop/iPad shape is a sidebar (Home / Practice / Coach / Skill / Progress);
- * iPhone is a 4-tab bottom bar (Home / Practice / Coach / Progress) — Skill
- * detail is reached on iPhone via the dashboard bucket→skill link, not a tab.
+ * iPhone is a 4-tab bottom bar. Collapsed desktop/iPad = 64px icon rail (ADR-0035).
  *
  * FR-B5 (no dead controls): an enabled item is a real <Link href>; a coming-soon
  * item renders as a DISABLED <span> — never an anchor with a live destination.
- * (No screen is comingSoon today; the mechanism stays for the next dark launch.)
  * State rides `data-*` (§13).
+ *
+ * FR-6: ThemeToggle is always the last rail item (collapsed and expanded).
  */
+
+"use client";
 
 import * as React from "react";
 import Link from "next/link";
+import {
+  BookOpen,
+  ChartColumnIncreasing,
+  GraduationCap,
+  Home,
+  MessagesSquare,
+  type LucideIcon,
+} from "lucide-react";
+import { ThemeToggle } from "@/components/chat/ThemeToggle";
 import { cn } from "@/lib/utils";
 import {
   navItemsForSurface,
   activeScreenId,
   type Surface,
+  type ScreenId,
 } from "./nav_model";
+
+/** Lucide icons for the rail — distinct glyphs (letter fallback made two "P"s). */
+const RAIL_ICONS: Readonly<Record<ScreenId, LucideIcon>> = {
+  dashboard: Home,
+  quiz: BookOpen,
+  feedback: BookOpen,
+  coach: MessagesSquare,
+  summary: ChartColumnIncreasing,
+  test: BookOpen,
+  skill: GraduationCap,
+  progress: ChartColumnIncreasing,
+};
+
+/** Locked §2 visual: 38×38 circular glyph; hit target is the full rail row (≥44px). */
+const RAIL_GLYPH =
+  "flex size-[38px] items-center justify-center rounded-full";
 
 export function AppNav(props: {
   surface: Surface;
   pathname: string;
+  /** Desktop/iPad only — ignored for iPhone tab bar. */
+  collapsed?: boolean;
+  /** Desktop/iPad: render ThemeToggle as last rail item (FR-6). */
+  showThemeToggle?: boolean;
 }): React.JSX.Element {
-  const { surface, pathname } = props;
+  const {
+    surface,
+    pathname,
+    collapsed = false,
+    showThemeToggle = false,
+  } = props;
   const items = navItemsForSurface(surface);
   const active = activeScreenId(pathname);
   const isTabBar = surface === "iphone";
+  const isRail = !isTabBar && collapsed;
 
   return (
     <nav
       aria-label="Primary"
       data-surface={surface}
+      data-collapsed={isRail ? "true" : "false"}
       className={cn(
         isTabBar
           ? "flex items-stretch justify-around border-t border-border bg-surface"
-          : "flex flex-col gap-1 p-3",
+          : isRail
+            ? "flex h-full flex-col items-stretch gap-1 px-1 py-2"
+            : "flex flex-col gap-1 p-3",
       )}
     >
       {items.map((item) => {
         const isActive = active === item.screenId;
+        const Icon = RAIL_ICONS[item.screenId];
         const shared = cn(
-          "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium",
+          "flex items-center text-sm font-medium",
           "data-[active=true]:bg-selected data-[active=true]:text-fg",
-          // FR-K3: the tab bar is the coarse-pointer surface — every control
-          // is a ≥44px touch target (sidebar rows keep their compact height).
-          isTabBar && "min-h-11 justify-center",
+          isTabBar && "min-h-11 justify-center gap-2 rounded-md px-3 py-2",
+          // Full-rail ≥44px hit target; visual glyph stays 38×38 inside.
+          isRail &&
+            "min-h-11 w-full justify-center rounded-md hover:bg-selected hover:text-fg",
+          !isTabBar && !isRail && "gap-2 rounded-md px-3 py-2",
+        );
+
+        const railGlyph = (
+          <span
+            aria-hidden="true"
+            className={cn(
+              RAIL_GLYPH,
+              isActive && "bg-selected text-fg",
+              !isActive && "text-muted",
+            )}
+          >
+            <Icon className="size-4" strokeWidth={1.75} />
+          </span>
         );
 
         if (item.disabled) {
-          // Coming soon: a legible, non-interactive control (FR-B5) — not a link.
           return (
             <span
               key={item.screenId}
@@ -62,7 +118,7 @@ export function AppNav(props: {
               title="Coming soon"
               className={cn(shared, "cursor-not-allowed text-muted opacity-60")}
             >
-              {item.label}
+              {isRail ? railGlyph : item.label}
             </span>
           );
         }
@@ -74,12 +130,35 @@ export function AppNav(props: {
             data-screen={item.screenId}
             data-active={isActive ? "true" : "false"}
             aria-current={isActive ? "page" : undefined}
-            className={cn(shared, "text-muted hover:text-fg")}
+            aria-label={isRail ? item.label : undefined}
+            title={isRail ? item.label : undefined}
+            className={cn(shared, !isRail && "text-muted hover:text-fg")}
           >
-            {item.label}
+            {isRail ? railGlyph : item.label}
           </Link>
         );
       })}
+      {showThemeToggle && !isTabBar ? (
+        <>
+          <div
+            role="separator"
+            aria-hidden="true"
+            className={cn(
+              "mt-auto border-t border-border",
+              isRail ? "mx-auto my-3 w-6" : "my-3",
+            )}
+          />
+          <div
+            data-testid="nav-theme-toggle"
+            className={cn(
+              isRail && "flex justify-center pb-1",
+              !isRail && "flex items-center px-1",
+            )}
+          >
+            <ThemeToggle />
+          </div>
+        </>
+      ) : null}
     </nav>
   );
 }

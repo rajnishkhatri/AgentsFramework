@@ -19,9 +19,20 @@ import { QuizView, QuizFrameChrome } from "@/components/quiz/QuizView";
 import { QuizProgress } from "@/components/quiz/QuizProgress";
 import { QuizDoneBanner } from "@/components/quiz/QuizDoneBanner";
 import { FeedbackView } from "@/components/feedback/FeedbackView";
+import { CoachDrawer } from "@/components/coach/CoachDrawer";
 import { CoachPanel } from "@/components/coach/CoachPanel";
+import { CoachTriggerPill } from "@/components/coach/CoachTriggerPill";
 import { setCoachPin } from "@/components/coach/coach_thread_store";
-import { useSurface } from "@/components/shell/use_surface";
+import {
+  getShellLayoutSnapshot,
+  setPanelDismissed,
+  subscribeShellLayout,
+} from "@/components/shell/shell_layout_store";
+import {
+  coachMode,
+  RAIL_COLLAPSED,
+  useSurface,
+} from "@/components/shell/use_surface";
 import { useQuiz, type QuizItemResult } from "@/components/quiz/use_quiz";
 import { resolveQuizOpenMode } from "@/components/quiz/resolve_focus_mode";
 import { toQuizCoachPin } from "@/components/quiz/quiz_coach_pin";
@@ -73,18 +84,32 @@ export default function QuizPage(): React.JSX.Element {
   // Deep-link intent: open the requested mode, do not resume a prior adaptive walk.
   const wantsFreshSession =
     modeParam === "review" || (focusParam != null && focusParam.length > 0);
-  // FR-J3: on the iPad surface the Quiz renders as a SPLIT — item on the left,
-  // the persistent live coach panel on the right, feeding the SAME coach
-  // thread as the Coach screen. The coach-pointed runtime is built only when
-  // the split is live (page-level composition access, Rule C1).
+  // ADR-0035 Direction 2b: quiz host switches on coachMode (not pin ladder).
+  // Content screens always mount with 64px rail — pass RAIL_COLLAPSED.
   const surface = useSurface();
+  const [viewportWidth, setViewportWidth] = React.useState(1200);
+  React.useEffect(() => {
+    const measure = () => setViewportWidth(window.innerWidth);
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  const mode = coachMode(surface, viewportWidth, RAIL_COLLAPSED);
   const coachRuntime = React.useMemo(
     () =>
-      surface === "ipad"
-        ? buildBrowserRuntimeClient({ baseUrl: "/api/coach" })
-        : null,
-    [surface],
+      mode === "fullscreen"
+        ? null
+        : buildBrowserRuntimeClient({ baseUrl: "/api/coach" }),
+    [mode],
   );
+  const shellLayout = React.useSyncExternalStore(
+    subscribeShellLayout,
+    getShellLayoutSnapshot,
+    getShellLayoutSnapshot,
+  );
+  const composerFocusRef = React.useRef<HTMLTextAreaElement | null>(null);
+  const pillRef = React.useRef<HTMLButtonElement | null>(null);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [state, dispatch] = React.useReducer(
     quizScreenReducer,
     initialQuizScreen,
@@ -245,9 +270,9 @@ export default function QuizPage(): React.JSX.Element {
     });
   }, [session, state]);
 
-  // Effect 4: desktop has no CoachPanel — keep coach_thread_store pin aligned
+  // Effect 4: iPhone has no CoachPanel — keep coach_thread_store pin aligned
   // with the live item so sidebar "Coach" matches Ask-the-coach (not cold/stale Q1).
-  // iPad CoachPanel already writes the same store; skip to avoid a duplicate path.
+  // Wide CoachPanel already writes the same store; skip to avoid a duplicate path.
   React.useEffect(() => {
     if (coachRuntime != null) return;
     if (session == null) return;
@@ -403,21 +428,39 @@ export default function QuizPage(): React.JSX.Element {
       state.verdict,
       { letter: state.answeredLetter },
     );
-    // FR-5 / F-6: desktop Ask-the-coach writes store pin + navigates; iPad
-    // already has the live CoachPanel (FR-8 — do not duplicate the bridge).
-    const onAskCoach =
-      surface !== "ipad" && feedback.present
-        ? () => {
-            const { pin, mode } = toQuizCoachPin({
-              questionId: feedback.askCoachContext.questionId,
-              skillId: feedback.askCoachContext.skillId,
-              position: progressVm.position,
-              phase: "reviewing",
-            });
-            setCoachPin(pin, mode);
+    // FR-16/17/18: inline pin+focus; drawer open then focus after 220ms; iphone navigate.
+    const onAskCoach = feedback.present
+      ? () => {
+          const { pin, mode: coachPinMode } = toQuizCoachPin({
+            questionId: feedback.askCoachContext.questionId,
+            skillId: feedback.askCoachContext.skillId,
+            position: progressVm.position,
+            phase: "reviewing",
+          });
+          setCoachPin(pin, coachPinMode);
+          if (mode === "fullscreen") {
             router.push(screen("coach").route);
+            return;
           }
-        : undefined;
+          if (mode === "drawer") {
+            setDrawerOpen(true);
+            const delay =
+              typeof window !== "undefined" &&
+              window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+                ? 0
+                : 220;
+            window.setTimeout(() => {
+              composerFocusRef.current?.focus();
+            }, delay);
+            return;
+          }
+          // inline
+          if (shellLayout.panelDismissed) setPanelDismissed(false);
+          requestAnimationFrame(() => {
+            composerFocusRef.current?.focus();
+          });
+        }
+      : undefined;
     content = (
       <div className="mx-auto flex max-w-[760px] flex-col gap-6">
         <QuizFrameChrome
@@ -493,26 +536,76 @@ export default function QuizPage(): React.JSX.Element {
     </div>
   );
 
-  // iPad split (FR-J3): item on the left, the persistent live coach panel on
-  // the right. Keyed by question id so the panel's nudge tier resets per item
-  // (FR-J3a); the coach THREAD itself lives in coach_thread_store and survives.
-  if (coachRuntime != null) {
+  // coachMode switch (FR-1/10/18): inline | drawer | fullscreen (no panel).
+  if (coachRuntime != null && mode !== "fullscreen") {
     const coachPin = toQuizCoachPin({
       questionId: item.question.id,
       skillId: item.question.skill_id,
       position: progressVm.position,
       phase: state.phase === "reviewing" ? "reviewing" : "answering",
     });
+    const itemMax =
+      surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
+    const panel = (
+      <CoachPanel
+        key={item.question.id}
+        runtime={coachRuntime}
+        hintLadder={item.hintLadder}
+        mode={coachPin.mode}
+        pin={coachPin.pin}
+        onDismiss={() => setPanelDismissed(true)}
+        composerFocusRef={composerFocusRef}
+        inlineHost={mode === "inline"}
+        className="h-full rounded-none border-0 border-l border-border"
+      />
+    );
+
+    if (mode === "drawer") {
+      // `relative` hosts CoachDrawer (absolute) so the scrim stays inside main
+      // and never intercepts left-rail AppNav clicks (Home / Progress / …).
+      return (
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div
+            className={`mx-auto min-h-0 w-full flex-1 overflow-y-auto overscroll-contain ${itemMax} px-6 pb-12 pt-6`}
+          >
+            {framed}
+          </div>
+          {!drawerOpen ? (
+            <CoachTriggerPill
+              ref={pillRef}
+              onClick={() => setDrawerOpen(true)}
+            />
+          ) : null}
+          <CoachDrawer
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+            restoreFocusRef={pillRef}
+          >
+            <CoachPanel
+              key={`drawer-${item.question.id}`}
+              runtime={coachRuntime}
+              hintLadder={item.hintLadder}
+              mode={coachPin.mode}
+              pin={coachPin.pin}
+              composerFocusRef={composerFocusRef}
+              className="h-full w-full max-w-none rounded-none border-0"
+            />
+          </CoachDrawer>
+        </div>
+      );
+    }
+
+    // inline
     return (
-      <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1">{framed}</div>
-        <CoachPanel
-          key={item.question.id}
-          runtime={coachRuntime}
-          hintLadder={item.hintLadder}
-          mode={coachPin.mode}
-          pin={coachPin.pin}
-        />
+      <div className="flex min-h-0 flex-1 items-stretch">
+        <div
+          className={`min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain`}
+        >
+          <div className={`mx-auto w-full ${itemMax} px-8 pb-12 pt-8`}>
+            {framed}
+          </div>
+        </div>
+        {shellLayout.panelDismissed ? null : panel}
       </div>
     );
   }

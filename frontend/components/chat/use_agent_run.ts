@@ -35,6 +35,7 @@ import {
   type AssistantRunView,
 } from "@/lib/translators/run_view_reducer";
 import type { UIRuntimeEvent } from "@/lib/wire/ui_runtime_events";
+import { newUuid } from "@/lib/new_uuid";
 
 export interface ChatTurn {
   readonly id: string;
@@ -187,7 +188,7 @@ export function useAgentRun(
   ) => void;
   /**
    * Start a fresh conversation: abort any in-flight run, clear the transcript,
-   * and drop the thread id so the NEXT `send` mints a new `crypto.randomUUID()`
+   * and drop the thread id so the NEXT `send` mints a new id via `newUuid()`
    * (lazy creation — no BFF POST on click). UI refresh Phase 3 / plan §D3.
    */
   startNewChat: () => void;
@@ -233,10 +234,10 @@ export function useAgentRun(
       // (D1) so the conversation is saved from turn one. `isFirstSend` is true
       // only when the ref was null before this assignment.
       const isFirstSend = threadIdRef.current == null;
-      threadIdRef.current ??= crypto.randomUUID();
+      threadIdRef.current ??= newUuid();
       const threadId = threadIdRef.current;
       if (isFirstSend) persistRef.current?.onFirstSend?.(threadId, body);
-      const turnId = crypto.randomUUID();
+      const turnId = newUuid();
       setTurns((prev) => [
         ...prev,
         { id: turnId, user: body, assistant: emptyRunView() },

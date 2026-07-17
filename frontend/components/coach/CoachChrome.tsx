@@ -34,7 +34,8 @@ export function CoachChips(props: {
       data-testid="coach-chips"
       role="group"
       aria-label="Quick replies"
-      className="flex flex-wrap gap-2"
+      // Horizontal scroll (not wrap) so Zone C stays short on narrow panels (FR-9/10).
+      className="flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain"
     >
       {seeds.map((seed) => (
         <button
@@ -46,7 +47,7 @@ export function CoachChips(props: {
             if (!busy) void onAsk(seed);
           }}
           className={cn(
-            "rounded-[13px] border border-border bg-surface px-3 py-1.5 text-xs",
+            "shrink-0 rounded-[13px] border border-border bg-surface px-3 py-1.5 text-xs",
             "hover:bg-accent-light hover:text-accent disabled:cursor-not-allowed disabled:opacity-50",
           )}
         >
@@ -119,7 +120,13 @@ export function CoachChrome(props: {
         data-testid="coach-modes"
         role="group"
         aria-label="Coach modes"
-        className="flex flex-wrap gap-2"
+        className={cn(
+          "flex gap-2",
+          // Stacked panel is narrow — wrap blows Zone A and starves the log (W9).
+          layout === "stacked"
+            ? "flex-nowrap overflow-x-auto overscroll-x-contain"
+            : "flex-wrap",
+        )}
       >
         {vm.modes.map((m) => (
           <span
@@ -127,7 +134,7 @@ export function CoachChrome(props: {
             data-active={m.active ? "true" : "false"}
             aria-current={m.active ? "true" : undefined}
             className={cn(
-              "rounded-[13px] border px-2.5 py-1 text-xs",
+              "shrink-0 rounded-[13px] border px-2.5 py-1 text-xs",
               m.active
                 ? "border-accent bg-accent-light text-accent"
                 : "border-border bg-surface text-muted",

@@ -8,6 +8,7 @@
  */
 
 import * as React from "react";
+import { Composer } from "@/components/chat/Composer";
 import { cn } from "@/lib/utils";
 import type { CoachSurfaceVM } from "@/lib/translators/coach_surface_vm";
 import type { CoachTurn } from "./use_coach";
@@ -46,35 +47,29 @@ export function CoachWorkspace(props: {
       data-layout={layout}
       className="flex h-full flex-col gap-4"
     >
-      <header
-        data-testid="coach-header"
-        className="flex items-center justify-between gap-3"
-      >
-        <button
-          type="button"
-          data-testid="coach-back"
-          onClick={onBack}
-          className="text-sm text-muted hover:text-fg"
+      {/* Zone A — chrome + nav (fullscreen host; FR-18) */}
+      <div data-testid="coach-zone-a" className="flex shrink-0 flex-col gap-3">
+        <header
+          data-testid="coach-header"
+          className="flex items-center justify-between gap-3"
         >
-          ← Back
-        </button>
-        <button
-          type="button"
-          data-testid="coach-wrap-up"
-          onClick={onWrapUp}
-          className="text-sm font-medium text-accent hover:underline"
-        >
-          Wrap up session →
-        </button>
-      </header>
-
-      <div
-        data-testid="coach-workspace-body"
-        className={cn(
-          "flex min-h-0 flex-1 gap-4",
-          isRail ? "flex-row" : "mx-auto w-full max-w-[600px] flex-col",
-        )}
-      >
+          <button
+            type="button"
+            data-testid="coach-back"
+            onClick={onBack}
+            className="text-sm text-muted hover:text-fg"
+          >
+            ← Back
+          </button>
+          <button
+            type="button"
+            data-testid="coach-wrap-up"
+            onClick={onWrapUp}
+            className="text-sm font-medium text-accent hover:underline"
+          >
+            Wrap up session →
+          </button>
+        </header>
         <div
           data-testid="coach-context-column"
           className={cn(isRail ? "w-64 shrink-0" : "w-full shrink-0")}
@@ -87,19 +82,42 @@ export function CoachWorkspace(props: {
             showChips={false}
           />
         </div>
+      </div>
 
+      <div
+        data-testid="coach-workspace-body"
+        className={cn(
+          "flex min-h-0 flex-1",
+          isRail ? "flex-row gap-4" : "mx-auto w-full max-w-[600px] flex-col",
+        )}
+      >
         <div
           data-testid="coach-chat-column"
-          className="flex min-h-0 min-w-0 flex-1 flex-col gap-3"
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
         >
-          <CoachChips seeds={vm.chips} busy={busy} onAsk={onAsk} />
-          <div className="min-h-0 flex-1">
+          {/* Zone B scrolls; Zone C chips+composer pinned (same contract as CoachPanel) */}
+          <div
+            data-testid="coach-zone-b"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          >
             <CoachView
               turns={turns}
               busy={busy}
               onAsk={onAsk}
               onRetry={onRetry}
               openerMarkdown={openerMarkdown}
+              showComposer={false}
+            />
+          </div>
+          <div
+            data-testid="coach-zone-c"
+            className="flex shrink-0 flex-col gap-3 border-t border-border px-1 py-3"
+          >
+            <CoachChips seeds={vm.chips} busy={busy} onAsk={onAsk} />
+            <Composer
+              onSend={(body) => onAsk(body)}
+              busy={busy}
+              placeholder="Ask the coach…"
             />
           </div>
         </div>

@@ -28,6 +28,7 @@
  */
 
 import type { ChatTurn } from "@/components/chat/use_agent_run";
+import { newUuid } from "@/lib/new_uuid";
 import {
   emptyRunView,
   reduceRunView,
@@ -147,8 +148,8 @@ export function beginCoachTurn(user: string): {
   threadId: string;
   turnId: string;
 } {
-  const threadId = state.threadId ?? crypto.randomUUID();
-  const turnId = crypto.randomUUID();
+  const threadId = state.threadId ?? newUuid();
+  const turnId = newUuid();
   emit({
     ...state,
     threadId,

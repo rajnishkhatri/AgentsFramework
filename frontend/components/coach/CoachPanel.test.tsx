@@ -113,13 +113,39 @@ describe("CoachPanel — failure path first (FR-B5)", () => {
     );
     expect(nudge).not.toBeNull();
     expect(nudge!.disabled).toBe(true);
+    expect(nudge!.getAttribute("aria-disabled")).toBe("true");
+    expect(nudge!.getAttribute("title")).toBe(
+      "You've used all available nudges for this item",
+    );
+  });
+
+  it("FR-12: Zone C hosts nudge; Zone B hosts ladder header", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    const zoneC = container.querySelector("[data-testid='coach-zone-c']");
+    expect(zoneC?.querySelector("[data-testid='one-more-nudge']")).not.toBeNull();
+    expect(
+      container.querySelector(
+        "[data-testid='coach-zone-b'] [data-testid='hint-ladder-list']",
+      ),
+    ).not.toBeNull();
+    expect(
+      container.querySelector(
+        "[data-testid='coach-zone-b'] [data-testid='one-more-nudge']",
+      ),
+    ).toBeNull();
   });
 });
 
 describe("CoachPanel — FR-J3 presence + shared thread", () => {
-  it("labels itself as the live Socratic panel watching this item", async () => {
+  it("labels itself as the live coach panel with stacked chrome", async () => {
     await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
-    expect(container.textContent).toContain("Socratic mode · watching this item");
+    const panel = container.querySelector("[data-testid='coach-panel']");
+    expect(panel?.getAttribute("aria-label")).toBe("Live coach panel");
+    expect(
+      container
+        .querySelector("[data-testid='coach-chrome']")
+        ?.getAttribute("data-layout"),
+    ).toBe("stacked");
   });
 
   it("offers the item-scoped composer and an ask lands in the SHARED coach thread", async () => {
