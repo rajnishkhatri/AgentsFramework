@@ -1,0 +1,176 @@
+# AGENTS.md — ReAct Agent Workspace
+
+## Project Overview
+
+LangGraph-based ReAct agent with four-layer architecture, trust kernel, governance
+services, and dynamic model routing. Python 3.13+, LiteLLM for model calls, Jinja2
+for prompts, Pydantic for validation.
+
+> **Per-folder guides.** Folder-specific rules live in nested `AGENTS.md` files
+> that load on demand when Claude reads that subtree: `trust/`, `services/`,
+> `components/`, `orchestration/`, `meta/`, `prompts/`, and `frontend/` +
+> `middleware/` (the Frontend Ring). This root file holds the **inter-layer**
+> invariants — the rules a nested file would load too late to enforce.
+
+## Key Commands
+
+Run after making changes; fix all failures before proceeding.
+
+- **Check (lint + format-check + typecheck + cite-lint + hygiene + test):**
+  `make check` — the canonical pre-commit gate; it runs the same hygiene hooks
+  (end-of-file-fixer, trailing-whitespace) as CI, so green locally = green in CI.
+  Mostly read-only; `hygiene` *fixes* whitespace/newline drift **and** fails, so a
+  fixed file still blocks the gate until re-staged.
+- **Test:** `pytest tests/ -q`. **Architecture tests:** `pytest tests/architecture/ -q`
+  (these MUST pass).
+- **Install / Run:** `pip install -e ".[dev]"` · `python -m agent.cli "..."`.
+
+> **Subagents as context firewalls.** For broad fan-out reading ("where is X / how
+> does Y work") spawn the read-only `explore` subagent (`.claude/agents/explore.md`):
+> the dozens of files it reads stay in *its* context and only the distilled answer
+> returns, keeping the main thread uncluttered. Use it before an implementation task,
+> not as a substitute for reading the few files you're about to edit.
+
+## Architecture Invariants — STRICTLY ENFORCED
+
+Tests in `tests/architecture/` verify these. Never break them. (These stay in the
+root because a nested file loads too late to stop an upward import in a *new* file.)
+
+1. **Dependencies flow downward only.** Orchestration → Components → Services →
+   Trust Kernel. Never upward.
+2. **Trust kernel has ZERO outward dependencies.** `trust/` imports only stdlib +
+   Pydantic. No I/O, no logging, no network.
+3. **Components are framework-agnostic.** `components/` MUST NOT import `langgraph`
+   or `langchain`.
+4. **Services are framework-agnostic.** `services/` MUST NOT import `langgraph` or
+   `langchain` (exception: `llm_config.py` wraps `ChatLiteLLM`).
+5. **No peer imports between components.** `router.py` MUST NOT import from
+   `evaluator.py` or vice versa.
+6. **Orchestration nodes are thin wrappers.** All logic delegates to `components/`
+   and `services/`. No domain logic in `orchestration/` (≤10–15 lines/node).
+7. **Services MUST NOT import from components.** Horizontal services have no
+   knowledge of domain logic.
+8. **Meta-layer (`meta/`) MUST NOT import from orchestration.** It reads logs and
+   config, never calls the graph directly.
+
+## Boundaries
+
+(The Architecture Invariants above already cover layering/import rules — these add
+the non-layering boundaries.)
+
+### ✅ Always
+- `make check` after changes · `PromptService.render_prompt()` for all prompts (no
+  hardcoded strings) · record every LLM call via `eval_capture.record()` with
+  `user_id`+`task_id` · new prompts are `.j2` files in `prompts/`.
+- **Red/green TDD for anything verifiable** — write the test, *watch it fail first*,
+  then implement. A test that never failed proves nothing.
+- **Demand evidence, not assertions** — paste the actual command/test output, not a
+  summary of it. "Tests pass" without the output is not a result.
+
+### ⚠️ Ask first  (also ADR triggers — see Decision records)
+- New `pyproject.toml` dependency · trust-kernel type change in `trust/models.py`
+  (triggers re-signing) · new graph node in `orchestration/react_loop.py` · new
+  horizontal service · a new abstraction or any deviation from an invariant.
+
+### 🚫 Never
+- Commit secrets, API keys, or `.env` files · run live LLM calls in CI · hardcode
+  model names (use tiers from `services/llm_config.py`) · place shared trust types
+  in a service module (they belong in `trust/`).
+
+## Decision records (intent debt) + comprehension gates
+
+Capture the *why* behind structural changes — the human engagement automation can't.
+The gate *mechanism* (the answer-before-reveal preamble + rotating wordings, incl.
+**G3** security-boundary and **G7** architecture) lives in `docs/adr/GATES.md`; the
+names below are the triggers.
+
+- **ADR.1 — ADR ratchet.** When a change matches an `⚠️ Ask first` trigger above,
+  append a numbered ADR to the `docs/adr/` OKF bundle and link it from the code
+  seam it governs. Copy `docs/adr/0000-template.md` (Context / Decision /
+  Options / Rationale / Consequences — the rejected alternatives are the
+  intent-debt payload). OKF: every ADR needs frontmatter `type:`, an `index.md`
+  entry, and a newest-first `log.md` line. (`tests/architecture/test_adr_ratchet.py`
+  is the mechanical gate: a trigger path changed without a new `docs/adr/*` file —
+  or an `ADR-OK:` waiver in a range commit message — fails it.)
+- **G1 — new-abstraction gate.** Automation can't judge whether an abstraction
+  earns its place. Before adding one, state in the PR/commit what it buys and what
+  you considered instead (→ an ADR for anything load-bearing).
+- **G4 — complex-algorithm gate (scoped to `trust/`).** On the crypto/signing
+  path, write down what the algorithm does and why the change is correct *before*
+  pasting the implementation back. A green test you can't explain is not done.
+  (Detail in `trust/AGENTS.md`.)
+- **G8 — test-mass-rewrite gate.** A large rewrite of existing tests can silently
+  weaken the suite (TAP-1/3/4). When a diff rewrites many tests, justify *why each
+  weakened assertion is still sound* before relying on the green result.
+  (`tests/architecture/test_no_test_weakening.py` is the mechanical sensor: it
+  fails a removed `def test_*` or a newly skipped/xfailed test that lacks a
+  justification token.)
+- **G9 — defensive-coding gate.** When a diff *adds or broadens a defensive path*
+  (a new `try/except`, a `… or <default>`, an `if x is None: return`, a swallowed
+  error, a fallback branch) on a path that didn't previously need it, name the
+  specific failure it catches and why silent-degrade is correct — a fallback that
+  can't name its failure is slop. Convention-only (no sensor); wordings in
+  `docs/adr/GATES.md`. Cf. AP-6: undecidable → `None`, never a fabricated value.
+- **Spec the *what*, ADR the *why*.** For a non-trivial durable change, copy
+  `docs/plan/_spec_template.md` → `docs/plan/<name>.spec.md` (EARS acceptance criteria
+  → testable). The spec is the *what*; the ADR is the *why*. Small non-obvious choices
+  too minor for an ADR go in `docs/adr/decisions.md` (2–4 lines).
+- **Ratchet rule.** Every instruction line here traces to a real failure. Delete
+  aspirational lines; don't add a rule without a failure that justifies it.
+
+### Anti-slop musts (bounded — each traces to a repo mechanism, not an essay)
+
+The slop-reduction discipline as *musts* (Runbook VI, `docs/research/agenticengineeringplaybook/ai-slop-backpressure`).
+Softer sizing guidance (WIP caps, small-diff heuristics) lives in the skill prose, not here.
+
+- **Simplest thing / no free abstraction.** No new abstraction, dep, service, or
+  graph node without asking first — state what it buys and the simpler thing you
+  rejected (→ the `⚠️ Ask first` list + **G1**, ADR ratchet).
+- **Ship only what you can explain.** If a diff can't be understood line-by-line,
+  back it out rather than merge it (→ the answer-before-reveal preamble in
+  `docs/adr/GATES.md`).
+- **Defensive fallbacks are not free.** A silent `except` / `return None` / `or
+  <default>` that masks a real error is slop — justify each failure it catches or
+  delete it (→ **G9**; cf. AP-6 — undecidable → `None`, never a fabricated value).
+- **Stop before expanding scope.** Build what the spec asked, not what you noticed
+  nearby — unrequested drift is caught at sdd-converge sign-off; if scope really
+  changed, route to sdd-replan rather than widening the diff in place.
+- **Three strikes → re-plan, don't thrash.** Three failed attempts at the same
+  task = stop and re-plan (→ sdd-replan), not a fourth variation of the same code.
+
+> Honest limit: Claude Code hooks can `ask`/`block` but **cannot** capture a typed
+> human answer (no controlling terminal). The gates above are convention +
+> PR-review, not tool-enforced. `tests/architecture/` is the hard enforcement.
+
+## Key Directories
+
+The four package layers + their support dirs (per-folder detail lives in each
+nested `AGENTS.md` — read those, not this map, for the rules):
+
+| Directory | Purpose |
+|-----------|---------|
+| `trust/` | Shared kernel: pure types, protocols, crypto. ZERO framework deps. |
+| `services/` | Horizontal infrastructure (`governance/`, `tools/` subpkgs). |
+| `components/` | Framework-agnostic domain logic: router, evaluator, schemas. |
+| `orchestration/` | LangGraph topology (`react_loop.py`) + state (`state.py`). |
+| `prompts/` | Jinja2 `.j2` templates. | `meta/` | Offline meta-optimization. |
+| `frontend/`, `middleware/` | The Frontend Ring (Next.js BFF + middleware). |
+| `utils/` | Shared utilities. Prefer `services/` for new infrastructure. |
+| `docs/` | `plan/` (designs), `vision/` (`MISSION`/`SOUL`), `adr/` (OKF bundle). |
+
+> **Repo layout:** root holds only build/config files + the package dirs above.
+> `governanaceTriangle/` (misspelled on disk; 26 docs reference it) holds governance
+> explainability narratives. Keep the root scannable.
+
+## Cross-cutting References
+
+Layer patterns (H/V families), testing rules (L1–L4, TAP-1…4), and the security model
+live in each folder's nested `AGENTS.md`. Read these canonical catalogs on demand
+(plain links, not `@`-imports — they're large; don't eager-load them every session):
+
+- [STYLE_GUIDE_LAYERING.md](docs/style-guides/STYLE_GUIDE_LAYERING.md) — four-layer rules and anti-patterns.
+- [STYLE_GUIDE_PATTERNS.md](docs/style-guides/STYLE_GUIDE_PATTERNS.md) — design patterns catalog (H1–H7, V1–V6).
+- [STYLE_GUIDE_FRONTEND.md](docs/style-guides/STYLE_GUIDE_FRONTEND.md) — Frontend Ring (F/W/P/A/T/X/C/B/U/S/O).
+- [FOUR_LAYER_ARCHITECTURE.md](docs/Architectures/FOUR_LAYER_ARCHITECTURE.md) — trust foundation, ports, policy engines.
+- [TRUST_FRAMEWORK_ARCHITECTURE.md](docs/Architectures/TRUST_FRAMEWORK_ARCHITECTURE.md) — seven-layer trust framework.
+- [tdd_agentic_systems_prompt.md](research/tdd_agentic_systems_prompt.md) — the agentic testing pyramid (11 patterns).
