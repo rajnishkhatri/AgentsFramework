@@ -14,6 +14,7 @@ function hint(rung: 1 | 2 | 3, body: string): Hint {
     id: `h-${rung}`,
     subject: "act-english",
     question_id: "q1",
+    choice_letter: null, // item-level ladder (ADR-0035)
     rung,
     body_md: body,
     reviewed: true,
