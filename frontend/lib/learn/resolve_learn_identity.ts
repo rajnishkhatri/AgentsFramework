@@ -5,7 +5,12 @@
  * No React; called from the (coach) RSC layout before LearnIdentityProvider.
  */
 
-import { DEV_LEARNER_ID } from "@/lib/adapters/engine/_dev_seed";
+/**
+ * Demo learner id for E2E bypass. Kept as a local constant (not imported from
+ * `_dev_seed`) so this pure learn/ helper stays adapter-free (C1/F1).
+ * Must stay byte-identical to `_dev_seed.DEV_LEARNER_ID` ("Garvit").
+ */
+const DEMO_LEARNER_ID = "Garvit";
 
 export type SeedMode = "demo" | "fresh";
 
@@ -46,7 +51,7 @@ export function resolveLearnIdentity(args: {
 }): LearnIdentity {
   if (args.bypass) {
     return {
-      learnerId: DEV_LEARNER_ID,
+      learnerId: DEMO_LEARNER_ID,
       displayName: "Garvit",
       seedMode: "demo",
     };

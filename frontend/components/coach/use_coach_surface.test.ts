@@ -147,10 +147,10 @@ describe("skillNameById — C-3 friendly label, honest absent", () => {
   it("resolves a pinned skillId to its display name", async () => {
     db.seedSkills([
       skill({ id: "s-punc", name: "Punctuation" }),
-      skill({ id: "s-gram", key: "grammar", name: "Grammar & Usage" }),
+      skill({ id: "s-gram", key: "grammar", name: "Usage" }),
     ]);
     const name = await skillNameById(ports, SUBJECT, "s-gram");
-    expect(name).toBe("Grammar & Usage");
+    expect(name).toBe("Usage");
   });
 
   it("returns null for an unknown skillId (never echoes the raw id)", async () => {

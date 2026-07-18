@@ -125,6 +125,26 @@ describe("assembleCoachContext — happy path (FR-10)", () => {
     });
     expect(ctx?.mastery_snapshot).toEqual({ "s-punc": 42 });
   });
+
+  it("ADR-0035: includes choice_letter when a wrong letter is supplied", () => {
+    const ctx = assembleCoachContext({
+      pin,
+      question: question(),
+      mode: "pre_submit",
+      choiceLetter: "C",
+    });
+    expect(ctx).toMatchObject({ choice_letter: "C" });
+  });
+
+  it("ADR-0035: omits choice_letter when null/unknown", () => {
+    const ctx = assembleCoachContext({
+      pin,
+      question: question(),
+      mode: "pre_submit",
+      choiceLetter: null,
+    });
+    expect(ctx).not.toHaveProperty("choice_letter");
+  });
 });
 
 describe("assembleCoachContext — lesson pin (E1b-D2 FR-2 / FR-5 / FR-6)", () => {

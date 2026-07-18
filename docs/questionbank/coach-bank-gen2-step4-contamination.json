@@ -1,0 +1,43 @@
+{
+  "gate": "step4-contamination",
+  "timestamp": "2026-07-17T23:58:31.018841+00:00",
+  "n_gen2": 1000,
+  "n_live": 171,
+  "n_test01": 48,
+  "threshold_jaccard": 0.85,
+  "timed_corpus": "frontend/lib/adapters/engine/_test01_english_corpus.ts",
+  "comparisons": {
+    "vs_live_context": {
+      "exact": 0,
+      "jaccard_ge_threshold": 0,
+      "hits": []
+    },
+    "vs_live_both": {
+      "exact": 0,
+      "jaccard_ge_threshold": 0,
+      "hits": []
+    },
+    "vs_test01_context": {
+      "exact": 0,
+      "jaccard_ge_threshold": 0,
+      "hits": []
+    },
+    "vs_test01_both": {
+      "exact": 0,
+      "jaccard_ge_threshold": 0,
+      "hits": []
+    },
+    "vs_live_context_j075": {
+      "exact": 0,
+      "jaccard_ge_0.75": 0,
+      "hits": []
+    },
+    "vs_test01_context_j075": {
+      "exact": 0,
+      "jaccard_ge_0.75": 0,
+      "hits": []
+    }
+  },
+  "verdict": "PASS",
+  "critical_hits": 0
+}

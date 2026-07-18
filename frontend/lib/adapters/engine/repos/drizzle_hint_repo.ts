@@ -18,9 +18,17 @@ import type { EngineDb } from "../db/engine_db";
 export class DrizzleHintRepo implements HintRepo {
   constructor(private readonly db: EngineDb) {}
 
-  async list(subject: string, questionId: string): Promise<Hint[]> {
+  async list(
+    subject: string,
+    questionId: string,
+    choiceLetter?: string | null,
+  ): Promise<Hint[]> {
     try {
-      const rungs = await this.db.listReviewedHints(subject, questionId);
+      const rungs = await this.db.listReviewedHints(
+        subject,
+        questionId,
+        choiceLetter,
+      );
       // Defense in depth: the gate is enforced in the store, but the repo
       // must never hand a learner an unreviewed rung even if a seam regressed.
       return rungs.filter((h) => h.reviewed === true);

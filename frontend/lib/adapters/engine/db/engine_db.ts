@@ -82,10 +82,18 @@ export interface EngineDb extends ReadableEngineDb {
   getQuestion(id: string): Promise<Question | null>;
   insertQuestion(q: Question): Promise<void>;
 
-  // --- hint (ADR-0014; same pushed-down reviewed gate as question) ---
-  /** The question's ladder, reviewed=true ONLY, ordered by rung ascending. */
-  listReviewedHints(subject: string, questionId: string): Promise<Hint[]>;
-  /** Rejects a duplicate (question_id, rung) — one rung per level (ADR-0014). */
+  // --- hint (ADR-0014/ADR-0035; same pushed-down reviewed gate as question) ---
+  /**
+   * One ladder, reviewed=true ONLY, ordered by rung ascending.
+   * `choiceLetter` defaults to null (Gen1 item-level). Pass A–D for a
+   * choice-conditional Gen2 ladder.
+   */
+  listReviewedHints(
+    subject: string,
+    questionId: string,
+    choiceLetter?: string | null,
+  ): Promise<Hint[]>;
+  /** Rejects a duplicate (question_id, choice_letter, rung) — ADR-0035. */
   insertHint(h: Hint): Promise<void>;
 
   // --- test_item (ADR-0015; same pushed-down reviewed gate as question) ---

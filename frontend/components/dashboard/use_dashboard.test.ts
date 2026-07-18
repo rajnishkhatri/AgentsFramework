@@ -248,17 +248,30 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
       question({ id: "q-b", skill_id: "s-punc", answer_letter: "B" }),
     ]);
     const prior = await ports.sessionRepo.open(SUBJECT, LEARNER, "adaptive");
-    for (const id of ["q-a", "q-b"]) {
-      await ports.attemptRepo.record({
-        subject: SUBJECT,
-        session_id: prior.id,
-        question_id: id,
-        chosen_letter: "A",
-        correct: false,
-        elapsed_ms: 1000,
-        used_hint: false,
-      });
-    }
+    // Explicit timestamps — same-ms record() clocks can scramble newest-first
+    // (UUID v4 id tie-break is not chronological; see use_quiz.test.ts).
+    await db.insertAttempt({
+      id: "a-miss-a",
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-a",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:01.000Z",
+    });
+    await db.insertAttempt({
+      id: "a-miss-b",
+      subject: SUBJECT,
+      session_id: prior.id,
+      question_id: "q-b",
+      chosen_letter: "A",
+      correct: false,
+      elapsed_ms: 1000,
+      used_hint: false,
+      created_at: "2026-06-30T00:00:02.000Z",
+    });
     const before = await loadDashboard(ports, {
       subject: SUBJECT,
       learnerId: LEARNER,
@@ -267,7 +280,8 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
     expect(before.reviewMissesCount).toBe(2);
 
     const review = await ports.sessionRepo.open(SUBJECT, LEARNER, "review");
-    await ports.attemptRepo.record({
+    await db.insertAttempt({
+      id: "a-fix-a",
       subject: SUBJECT,
       session_id: review.id,
       question_id: "q-a",
@@ -275,8 +289,10 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
       correct: true,
       elapsed_ms: 1000,
       used_hint: false,
+      created_at: "2026-06-30T00:00:03.000Z",
     });
-    await ports.attemptRepo.record({
+    await db.insertAttempt({
+      id: "a-remiss-b",
       subject: SUBJECT,
       session_id: review.id,
       question_id: "q-b",
@@ -284,6 +300,7 @@ describe("loadDashboard — FR-C5 review-my-misses count (empty-state first)", (
       correct: false,
       elapsed_ms: 1000,
       used_hint: false,
+      created_at: "2026-06-30T00:00:04.000Z",
     });
     const after = await loadDashboard(ports, {
       subject: SUBJECT,

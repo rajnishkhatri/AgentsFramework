@@ -52,6 +52,11 @@ export interface CoachThreadState {
    * Cleared to `pre_submit` when pin is null / on reset.
    */
   readonly mode: CoachMode;
+  /**
+   * ADR-0035 moment router: wrong letter for Gen2 choice-conditional ladders.
+   * Sibling of pin (not on the pin schema). Cleared with pin / on reset.
+   */
+  readonly choiceLetter: "A" | "B" | "C" | "D" | null;
 }
 
 const EMPTY: CoachThreadState = {
@@ -60,6 +65,7 @@ const EMPTY: CoachThreadState = {
   busy: false,
   pin: null,
   mode: "pre_submit",
+  choiceLetter: null,
 };
 
 let state: CoachThreadState = EMPTY;
@@ -119,11 +125,25 @@ export function setCoachPin(
       busy: false,
       pin,
       mode: nextMode,
+      choiceLetter: null,
     });
     return;
   }
 
-  emit({ ...state, pin, mode: nextMode });
+  // Clearing the pin also clears the wrong-letter (no item → no ladder letter).
+  const choiceLetter = pin == null ? null : state.choiceLetter;
+  emit({ ...state, pin, mode: nextMode, choiceLetter });
+}
+
+/**
+ * ADR-0035: set the wrong-letter for choice-conditional coach_context / ladders.
+ * Does not reset the transcript (same item, letter change only).
+ */
+export function setCoachChoiceLetter(
+  letter: "A" | "B" | "C" | "D" | null,
+): void {
+  if (state.choiceLetter === letter) return;
+  emit({ ...state, choiceLetter: letter });
 }
 
 /** True when both pins represent the same coach identity (item id or lesson skill). */
