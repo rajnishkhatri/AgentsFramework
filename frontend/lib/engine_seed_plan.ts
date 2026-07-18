@@ -9,9 +9,11 @@
  * here. This is a pure decision function pulled out of an existing branch — not
  * a new abstraction (no new dep/service/node), so no ADR (noted in decisions.md).
  *
- * The e2e-seed override (`__PREACT_E2E_SEED__`) is NOT decided here: it is a
- * runtime `window` read gated to `NODE_ENV !== "production"` and stays upstream
- * of this helper (FR-5 — never reachable in a prod build).
+ * The Playwright e2e seed override (window flag on the composition root) is
+ * NOT decided here: it is a runtime `window` read gated to
+ * `NODE_ENV !== "production"` and stays upstream of this helper (FR-5 — never
+ * reachable in a prod build). The token itself must stay confined to
+ * `composition_engine_browser.ts` (arch FR-3).
  */
 
 import type { SeedMode } from "./learn/resolve_learn_identity";
