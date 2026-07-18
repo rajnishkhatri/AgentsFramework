@@ -169,13 +169,15 @@ Checkbox list for adopting Gen2 / v2 into the eng coach. Order is dependency-awa
 
 ### Phase 0 — Lock decisions (docs / ADR)
 
-- [ ] **P0.1** Accept Path A (or explicitly lock B/C) as the adoption path.
-- [ ] **P0.2** Ratify moment-based pedagogy as normative (no-pick / wrong-pick / free-ask).
-- [ ] **P0.3** Record rejection of layout-hybrid and skill-swap-hybrid (`docs/adr/decisions.md` or short ADR).
-- [ ] **P0.4** Assertion policy: keep ADR-0012 no-assertion **or** amend — assertion / rung-4 **post-feedback only** (never pre-submit reveal).
-- [ ] **P0.5** Schema direction lock: unique `(question_id, choice_letter | null, rung)`; null = item-level ladder.
-- [ ] **P0.6** Define student A/B metrics: first-rechoose accuracy, time-to-correct, nudge count, felt-helpful, leak incidents.
-- [ ] **P0.7** Human Accept → open `sdd-spec` for Phase 1 (EARS + plan + tasks).
+- [x] **P0.1** Accept Path A (or explicitly lock B/C) as the adoption path. → **Path A locked (2026-07-17).**
+- [x] **P0.2** Ratify moment-based pedagogy as normative (no-pick / wrong-pick / free-ask). → **Ratified.**
+- [x] **P0.3** Record rejection of layout-hybrid and skill-swap-hybrid (`docs/adr/decisions.md` or short ADR). → **Recorded in `docs/adr/decisions.md` (2026-07-17).**
+- [x] **P0.4** Assertion policy: keep ADR-0012 no-assertion **or** amend — assertion / rung-4 **post-feedback only** (never pre-submit reveal). → **Amend: post-feedback-only + item-type-aware; exercises ADR-0012's built-in reveal-rung trigger. Precise amendment text deferred to `sdd-spec`.**
+- [x] **P0.5** Schema direction lock: unique `(question_id, choice_letter | null, rung)`; null = item-level ladder. → **Two partial unique indexes (PG + SQLite parity).**
+- [x] **P0.6** Define student A/B metrics: first-rechoose accuracy, time-to-correct, nudge count, felt-helpful, leak incidents. → **Adopted as listed.**
+- [ ] **P0.7** Human Accept → open `sdd-spec` for Phase 1 (EARS + plan + tasks). *(P0.1–P0.6 + P0.8 locked 2026-07-17; this gate opens `sdd-spec` next.)*
+
+> **P0.8 (from architecture doc §7)** — pilot-emit scope: **(a) quiz-engine serve path only** locked (skip `BANK_RUNGS`; UC-3 unchanged; LLD T5 deferred). 2026-07-17.
 
 ### Phase 1 — Pedagogy on reviewed fuel (highest ROI; no Gen2 emit)
 
