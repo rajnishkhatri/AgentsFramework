@@ -7,7 +7,7 @@ owner: Rajnish Khatri
 related:
   - docs/plan/preact-wide-layout-coach-panel.plan.md
   - docs/plan/preact-wide-layout-coach-panel.tasks.md
-  - docs/adr/0035-wide-layout-coach-panel-parity.md
+  - docs/adr/0036-wide-layout-coach-panel-parity.md
   - docs/width-design-ui-session-artifacts/locked-spec-artifacts/PreACT-English-Coach-LOCKED-Spec.md
   - docs/width-design-ui-session-artifacts/locked-spec-artifacts/README.md
   - docs/width-design-ui-session-artifacts/locked-spec-artifacts/Coach Layout Options - Locked Design + Redlines (standalone).html
@@ -32,7 +32,7 @@ governs:
 
 > **What / why split.** This spec is the *what*. Intent debt for shell store,
 > expandable-list hook, CoachDrawer, and `coachMode` lives in
-> [ADR-0035](../adr/0035-wide-layout-coach-panel-parity.md) (G1 / ⚠️ Ask first),
+> [ADR-0036](../adr/0036-wide-layout-coach-panel-parity.md) (G1 / ⚠️ Ask first),
 > amended for the Direction 2b lock.
 >
 > **Product source of truth:**
@@ -55,7 +55,7 @@ Stage 6 (`sdd-implement`).
 | ID | Question | Decision |
 |----|----------|----------|
 | **Q-C1** | Nudge control zone (§4.2 narrative vs AC-12 pin) | **Zone C** — `"+ One more nudge"` pinned with chips/composer; ladder rows only in Zone B |
-| **Q-C2** | ADR for Sheet → CoachDrawer reversal | **Amend ADR-0035** + `decisions.md` note (lock supersession) |
+| **Q-C2** | ADR for Sheet → CoachDrawer reversal | **Amend ADR-0036** + `decisions.md` note (lock supersession) |
 | **Q-C3** | Content-screen sidebar state home | **Layout-local** boolean (init `true`, in-memory toggle); store owns Home/Progress `localStorage` + `panelDismissed` only; **drop** `sidebarUserPinned` |
 | **Q-C4** | Reuse Sheet chrome for drawer? | New **`CoachDrawer.tsx`** per lock §5; may reuse in-tree focus-trap/dialog primitives, **not** Sheet visual chrome or edge-tab |
 | **Q-C5** | Hook migration | Replace `use_collapsible_thread` with **`use_expandable_list`**; delete old hook + retarget tests (G8 justify removals) |
@@ -180,7 +180,7 @@ and iPhone fullscreen (outer chrome/width only differs).
 - iPhone tab bar / focus-mode chrome: unchanged beyond lock §6 confirmation.
 - Hint non-reveal pedagogy and coach LLM behavior unchanged.
 - No new npm dependencies.
-- G1 abstractions (ADR-0035 amended): `shell_layout_store` (narrowed),
+- G1 abstractions (ADR-0036 amended): `shell_layout_store` (narrowed),
   `use_expandable_list`, `CollapsibleCoachAnswer`, `HintLadderList`,
   `CoachDrawer`, `CoachTriggerPill`.
 
@@ -236,7 +236,7 @@ and iPhone fullscreen (outer chrome/width only differs).
 - [ ] All FR-1…FR-20 implemented; each has a passing test that was *seen to fail first*.
 - [ ] `make check` green; frontend learn unit + targeted e2e green.
 - [ ] iPhone quiz/coach behavior matches FR-18 (regression suite).
-- [ ] ADR-0035 amended for Direction 2b; design folder cited as Related only.
+- [ ] ADR-0036 amended for Direction 2b; design folder cited as Related only.
 - [ ] Safari/`dvh` height-chain spike signed off (or residual risk recorded).
 - [ ] Actual command output pasted for verification claims.
 

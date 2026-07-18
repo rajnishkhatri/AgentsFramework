@@ -12,14 +12,14 @@ authored: 2026-07-16
 derives_from:
   - docs/plan/preact-wide-layout-coach-panel.spec.md
   - docs/plan/preact-wide-layout-coach-panel.plan.md
-  - docs/adr/0035-wide-layout-coach-panel-parity.md
+  - docs/adr/0036-wide-layout-coach-panel-parity.md
   - docs/width-design-ui-session-artifacts/locked-spec-artifacts/PreACT-English-Coach-LOCKED-Spec.md
 
 # Tasks — Wide-layout & CoachPanel parity (Direction 2b)
 
 **Spec:** [preact-wide-layout-coach-panel.spec.md](preact-wide-layout-coach-panel.spec.md) ·
 **Plan:** [preact-wide-layout-coach-panel.plan.md](preact-wide-layout-coach-panel.plan.md) ·
-**ADR:** [0035-wide-layout-coach-panel-parity.md](../adr/0035-wide-layout-coach-panel-parity.md) ·
+**ADR:** [0036-wide-layout-coach-panel-parity.md](../adr/0036-wide-layout-coach-panel-parity.md) ·
 **Lock:** [locked-spec-artifacts/](../width-design-ui-session-artifacts/locked-spec-artifacts/)
 
 **Status:** Stage 4 PASSED — 2026-07-16. Baseline green. Human Accept →
@@ -29,7 +29,7 @@ Convention: `L{n}` = track; `T{n}.{m}` = task; `[P]` = parallelizable with other
 same-block `[P]` tasks; `[red]` = watched failure first; each task names
 **Verifies** FR(s) and explicit **Pass / Fail**.
 
-**Clarify locks (do not re-litigate):** Q-C1 Zone C nudge · Q-C2 amend ADR-0035 ·
+**Clarify locks (do not re-litigate):** Q-C1 Zone C nudge · Q-C2 amend ADR-0036 ·
 Q-C3 layout-local content rail · Q-C4 CoachDrawer (not Sheet chrome) ·
 Q-C5 `use_expandable_list` replaces `use_collapsible_thread`.
 
@@ -99,9 +99,9 @@ unmeasurable criterion**; proceed after Stage 4.
 
 ## L0 — Docs Accepted + baseline
 
-- **T0.1** — Spec / plan / ADR-0035 re-Accepted for Direction 2b + OKF index/log.
+- **T0.1** — Spec / plan / ADR-0036 re-Accepted for Direction 2b + OKF index/log.
   - Files: `docs/plan/preact-wide-layout-coach-panel.{spec,plan,tasks}.md`,
-  `docs/adr/0035-wide-layout-coach-panel-parity.md`,
+  `docs/adr/0036-wide-layout-coach-panel-parity.md`,
   `docs/plan/index.md`, `docs/plan/log.md`, `docs/adr/index.md`,
   `docs/adr/log.md`, `docs/adr/decisions.md`.
   - Verifies: Stage 2 artifacts exist; clarify Q-C1…Q-C5 recorded.
@@ -403,7 +403,7 @@ Dashboard/Summary/Skill/Progress/Test internals beyond shell chrome.
 | FR-1…20 each measurable + ≥1 task    | PASS — checklist + FR→task table; no zero-coverage FR                        |
 | Plan T1–T17 ↔ task files             | PASS — same seams; L-track atomicizes plan §5                                |
 | Clarify Q-C1…Q-C5                    | PASS — locked in spec; tasks refuse re-litigation                            |
-| ADR-0035 amended (G1)                | PASS — 64px, no pin, CoachDrawer, `use_expandable_list`                      |
+| ADR-0036 amended (G1)                | PASS — 64px, no pin, CoachDrawer, `use_expandable_list`                      |
 | New npm / py deps                    | PASS — none; no Ask-first dep trigger                                        |
 | Layering (AGENTS.md #1–#8)           | PASS — frontend shell/components only                                        |
 | Trust / orchestration / bank         | PASS — explicitly untouched                                                  |

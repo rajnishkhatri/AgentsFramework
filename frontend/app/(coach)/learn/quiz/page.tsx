@@ -22,7 +22,10 @@ import { FeedbackView } from "@/components/feedback/FeedbackView";
 import { CoachDrawer } from "@/components/coach/CoachDrawer";
 import { CoachPanel } from "@/components/coach/CoachPanel";
 import { CoachTriggerPill } from "@/components/coach/CoachTriggerPill";
-import { setCoachPin } from "@/components/coach/coach_thread_store";
+import {
+  setCoachChoiceLetter,
+  setCoachPin,
+} from "@/components/coach/coach_thread_store";
 import {
   getShellLayoutSnapshot,
   setPanelDismissed,
@@ -50,6 +53,7 @@ import {
 } from "@/components/quiz/quiz_session_store";
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
+import { resolveHintChoiceLetter } from "@/lib/translators/resolve_hint_choice_letter";
 import { screen } from "@/components/shell/nav_model";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
@@ -74,6 +78,7 @@ export default function QuizPage(): React.JSX.Element {
     closeSession,
     listSkillIds,
     listSkills,
+    loadLadder,
   } = useQuiz();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -291,6 +296,47 @@ export default function QuizPage(): React.JSX.Element {
     setCoachPin(pin, mode);
   }, [coachRuntime, session, state]);
 
+  // Effect 5: ADR-0035 moment router — wrong letter → choice-conditional ladder
+  // + coach_context.choice_letter; no/correct pick → item-level (null letter).
+  const momentLetter =
+    state.phase === "answering"
+      ? state.selectedLetter
+      : state.phase === "reviewing"
+        ? state.answeredLetter
+        : null;
+  const momentQuestionId =
+    state.phase === "answering" || state.phase === "reviewing"
+      ? state.item.question.id
+      : null;
+  const momentAnswerLetter =
+    state.phase === "answering" || state.phase === "reviewing"
+      ? state.item.question.answer_letter
+      : null;
+  React.useEffect(() => {
+    if (session == null || momentQuestionId == null || momentAnswerLetter == null) {
+      return;
+    }
+    const choice = resolveHintChoiceLetter(momentLetter, momentAnswerLetter);
+    setCoachChoiceLetter(choice);
+    let cancelled = false;
+    loadLadder(DEFAULT_SUBJECT, momentQuestionId, choice)
+      .then((hintLadder) => {
+        if (!cancelled) dispatch({ type: "ladder_loaded", hintLadder });
+      })
+      .catch(() => {
+        // Ladder reload is best-effort: keep the open-time item-level ladder.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    session,
+    momentLetter,
+    momentQuestionId,
+    momentAnswerLetter,
+    loadLadder,
+  ]);
+
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
     const letter = state.selectedLetter;
@@ -429,6 +475,8 @@ export default function QuizPage(): React.JSX.Element {
       { letter: state.answeredLetter },
     );
     // FR-16/17/18: inline pin+focus; drawer open then focus after 220ms; iphone navigate.
+    // ADR-0035 (main): pin the wrong letter so the free-ask coach loads the
+    // choice-conditional ladder, regardless of which surface branch serves it.
     const onAskCoach = feedback.present
       ? () => {
           const { pin, mode: coachPinMode } = toQuizCoachPin({
@@ -438,6 +486,12 @@ export default function QuizPage(): React.JSX.Element {
             phase: "reviewing",
           });
           setCoachPin(pin, coachPinMode);
+          setCoachChoiceLetter(
+            resolveHintChoiceLetter(
+              state.answeredLetter,
+              state.item.question.answer_letter,
+            ),
+          );
           if (mode === "fullscreen") {
             router.push(screen("coach").route);
             return;

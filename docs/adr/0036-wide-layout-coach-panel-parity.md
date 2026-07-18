@@ -1,6 +1,6 @@
 ---
 type: decision-record
-title: 'ADR-0035: Wide-layout CoachPanel parity — shell store, expandable list, coachMode + CoachDrawer'
+title: 'ADR-0036: Wide-layout CoachPanel parity — shell store, expandable list, coachMode + CoachDrawer'
 status: accepted
 created: 2026-07-16
 updated: 2026-07-16
@@ -9,7 +9,7 @@ related: preact-wide-layout-coach-panel.spec.md, preact-wide-layout-coach-panel.
 tags: [decision-record]
 ---
 
-# ADR-0035: Wide-layout CoachPanel parity — shell store, expandable list, coachMode + CoachDrawer
+# ADR-0036: Wide-layout CoachPanel parity — shell store, expandable list, coachMode + CoachDrawer
 
 **Status:** Accepted — 2026-07-16; **amended 2026-07-16** for Direction 2b lock
 (supersedes the same-day draft decisions: 56px rail, session pin, Sheet drawer,

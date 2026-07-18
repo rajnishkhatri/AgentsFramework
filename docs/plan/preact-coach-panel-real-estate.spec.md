@@ -8,7 +8,7 @@ related:
   - docs/plan/preact-wide-layout-coach-panel.spec.md
   - docs/plan/preact-wide-layout-coach-panel.plan.md
   - docs/plan/preact-wide-layout-coach-panel.tasks.md
-  - docs/adr/0035-wide-layout-coach-panel-parity.md
+  - docs/adr/0036-wide-layout-coach-panel-parity.md
   - docs/width-design-ui-session-artifacts/PreACT-English-Coach-v2-Wide-Layout-CoachPanel-Implementation-Spec.md
 governs:
   - frontend/components/coach/CoachPanel.tsx
@@ -31,7 +31,7 @@ governs:
 **Status:** Draft — 2026-07-16 · clarify OPEN · plan/tasks deferred until Accept.
 **Owner:** Rajnish Khatri
 **Related:** parent [wide-layout spec](preact-wide-layout-coach-panel.spec.md) ·
-[ADR-0035](../adr/0035-wide-layout-coach-panel-parity.md) · W9 device screenshots
+[ADR-0036](../adr/0036-wide-layout-coach-panel-parity.md) · W9 device screenshots
 (coach column cramped; Nudge 2 clipped by Zone C).
 
 ---

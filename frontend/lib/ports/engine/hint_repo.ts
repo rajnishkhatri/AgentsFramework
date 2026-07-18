@@ -3,8 +3,8 @@
 import type { Hint } from "../../wire/engine_entities";
 
 /**
- * HintRepo — read-only access to a question's hint ladder (ADR-0014, the
- * ADR-0006 amendment ADR-0012 §Consequences committed to).
+ * HintRepo — read-only access to a question's hint ladder (ADR-0014/ADR-0035,
+ * the ADR-0006 amendment ADR-0012 §Consequences committed to).
  *
  * Behavioral contract:
  *   1. THE REVIEWED GATE (spec FR-12/FR-20). `list()` returns ONLY rungs with
@@ -18,12 +18,20 @@ import type { Hint } from "../../wire/engine_entities";
  *      (probe → conceptual → directive) and `[]` (not throw) when the
  *      question has no reviewed rungs — the caller treats that as "no ladder"
  *      and falls back to a probing question, never a free-generated hint.
- *   4. At most one rung per level: the store enforces unique
- *      `(question_id, rung)`, so consumers never disambiguate duplicates.
+ *   4. At most one rung per level per `(question_id, choice_letter|null)`:
+ *      the store enforces unique `(question_id, choice_letter, rung)`
+ *      (ADR-0035). Default `choiceLetter` is null (Gen1 item-level ladder).
  *
  * @throws EngineRepoError on persistence failure.
  */
 export interface HintRepo {
-  /** The question's reviewed ladder, rung ascending; [] when none. */
-  list(subject: string, questionId: string): Promise<Hint[]>;
+  /**
+   * One reviewed ladder, rung ascending; [] when none.
+   * Omit `choiceLetter` (or pass null) for the item-level ladder.
+   */
+  list(
+    subject: string,
+    questionId: string,
+    choiceLetter?: string | null,
+  ): Promise<Hint[]>;
 }

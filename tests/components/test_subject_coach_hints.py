@@ -120,21 +120,40 @@ class TestBankPlane:
     rule-naming leak class the react_loop comment warns about)."""
 
     def test_every_bank_item_serves_a_full_ladder_by_default(self):
+        """ADR-0035: Gen1 item-level via default; Gen2 via each choice_letter."""
         from components.subject_coach_bank_hints import BANK_RUNGS
 
         bank_ids = sorted({r.question_id for r in BANK_RUNGS})
         assert bank_ids, "generated bank asset must not be empty"
+        by_qid: dict[str, list] = {}
+        for r in BANK_RUNGS:
+            by_qid.setdefault(r.question_id, []).append(r)
         for qid in bank_ids:
-            served = rungs_for_question(qid)
-            assert [r.rung for r in served] == [1, 2, 3], (
-                f"{qid}: default rungs_for_question must serve the bank "
-                f"ladder (got rungs {[r.rung for r in served]})"
-            )
+            rows = by_qid[qid]
+            item_level = [r for r in rows if r.choice_letter is None]
+            if item_level:
+                served = rungs_for_question(qid)
+                assert [r.rung for r in served] == [1, 2, 3], (
+                    f"{qid}: default rungs_for_question must serve the Gen1 "
+                    f"ladder (got rungs {[r.rung for r in served]})"
+                )
+                continue
+            letters = sorted({r.choice_letter for r in rows if r.choice_letter})
+            assert len(letters) >= 3, f"{qid}: Gen2 needs ≥3 wrong-letter ladders"
+            for letter in letters:
+                served = rungs_for_question(qid, choice_letter=letter)
+                assert [r.rung for r in served] == [1, 2, 3], (
+                    f"{qid}/{letter}: choice-conditional ladder incomplete "
+                    f"(got {[r.rung for r in served]})"
+                )
 
     def test_bank_rungs_carry_cascade_provenance(self):
         from components.subject_coach_bank_hints import BANK_RUNGS
 
-        served = rungs_for_question(BANK_RUNGS[0].question_id)
+        first = BANK_RUNGS[0]
+        served = rungs_for_question(
+            first.question_id, choice_letter=first.choice_letter
+        )
         assert served and all("@" in r.authored_by for r in served)
 
     def test_unknown_id_still_serves_empty_never_fabricated(self):

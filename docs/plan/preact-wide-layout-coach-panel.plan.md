@@ -7,7 +7,7 @@ owner: Rajnish Khatri
 implements: docs/plan/preact-wide-layout-coach-panel.spec.md
 related:
   - docs/plan/preact-wide-layout-coach-panel.tasks.md
-  - docs/adr/0035-wide-layout-coach-panel-parity.md
+  - docs/adr/0036-wide-layout-coach-panel-parity.md
   - docs/width-design-ui-session-artifacts/locked-spec-artifacts/PreACT-English-Coach-LOCKED-Spec.md
 ---
 
@@ -19,7 +19,7 @@ clarify Q-C1…Q-C5 CLOSED). Stage 3 tasks Accepted (L0–L6). Stage 4 analyze
 
 **Spec:** [preact-wide-layout-coach-panel.spec.md](preact-wide-layout-coach-panel.spec.md)
 **Tasks:** [preact-wide-layout-coach-panel.tasks.md](preact-wide-layout-coach-panel.tasks.md)
-**ADR:** [0035-wide-layout-coach-panel-parity.md](../adr/0035-wide-layout-coach-panel-parity.md)
+**ADR:** [0036-wide-layout-coach-panel-parity.md](../adr/0036-wide-layout-coach-panel-parity.md)
 **Constitution:** root `AGENTS.md` + `frontend/AGENTS.md` + STYLE_GUIDE_FRONTEND
 **Product lock:** Direction **2b** — locked-spec-artifacts (supersedes draft)
 
@@ -79,7 +79,7 @@ and `coach-edge-tab`.
 | Idea | Why rejected |
 |------|----------------|
 | Keep 56px + session pin | Contradicts lock §2.1 / FR-9 |
-| Keep Sheet as product drawer | Lock §5/§9 require CoachDrawer + pill (Q-C4); ADR-0035 amended |
+| Keep Sheet as product drawer | Lock §5/§9 require CoachDrawer + pill (Q-C4); ADR-0036 amended |
 | Two expand hooks (thread + ladder) | Lock §8: one `use_expandable_list` (Q-C5) |
 | Stack coach under item | Forbidden by FR-1 / height contract |
 | Nudge in Zone B scroll | Violates FR-12 pin (Q-C1 → Zone C) |
@@ -170,7 +170,7 @@ Parallelizable: L1 ‖ L2 after L0; L3 after L2; L4 after L1+L3; L5 after L4.
 | Product lock grounded | locked-spec-artifacts present; Turn 5 + LOCKED-Spec.md |
 | New npm deps | none |
 | Layering | frontend shell/components only |
-| Ask-first | ADR-0035 amended (64px, no pin, CoachDrawer, use_expandable_list) |
+| Ask-first | ADR-0036 amended (64px, no pin, CoachDrawer, use_expandable_list) |
 | Clarify | Q-C1…Q-C5 CLOSED in spec |
 | Draft seams to retire | Sheet path, edge-tab, `sidebarUserPinned`, `use_collapsible_thread`, 56px — still in tree (expected) |
 | iPhone | FR-18 only; no tab redesign |

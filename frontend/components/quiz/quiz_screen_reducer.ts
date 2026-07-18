@@ -123,6 +123,8 @@ export type QuizScreenAction =
     }
   | { type: "select"; letter: string }
   | { type: "toggle_hint" }
+  /** ADR-0035: swap in a choice-conditional ladder without resetting selection. */
+  | { type: "ladder_loaded"; hintLadder: QuizItemResult["hintLadder"] }
   | { type: "submitted"; verdict: Verdict | null; letter: string | null }
   | { type: "next" }
   | { type: "finish" }
@@ -196,6 +198,17 @@ export function quizScreenReducer(
         hintOpen: !state.hintOpen,
         // usedHint is sticky: opening it once marks the item hinted for good.
         usedHint: state.usedHint || !state.hintOpen,
+      };
+
+    case "ladder_loaded":
+      // Moment-router reload (ADR-0035): keep phase/selection; only the ladder
+      // body changes (wrong-letter Gen2 pack or back to item-level).
+      if (state.phase !== "answering" && state.phase !== "reviewing") {
+        return state;
+      }
+      return {
+        ...state,
+        item: { ...state.item, hintLadder: action.hintLadder },
       };
 
     case "submitted":

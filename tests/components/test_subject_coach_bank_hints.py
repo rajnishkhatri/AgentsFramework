@@ -21,7 +21,9 @@ _SEED_JSON = _REPO / "docs" / "plan" / "coach-bank-hints.seed.json"
 
 def _corpus_rows() -> list[dict]:
     rows = json.loads(_SEED_JSON.read_text(encoding="utf-8"))["rows"]
-    return sorted(rows, key=lambda r: (r["question_id"], r["rung"]))
+    return sorted(
+        rows, key=lambda r: (r["question_id"], r.get("choice_letter") or "", r["rung"])
+    )
 
 
 def test_bank_rungs_match_the_seed_row_for_row() -> None:
@@ -32,6 +34,7 @@ def test_bank_rungs_match_the_seed_row_for_row() -> None:
         assert rung.rung == row["rung"]
         assert rung.body_md == row["body_md"]
         assert rung.reviewed is True
+        assert rung.choice_letter == row.get("choice_letter")
 
 
 def test_authored_by_carries_the_generated_by_stamp_verbatim() -> None:
@@ -39,13 +42,17 @@ def test_authored_by_carries_the_generated_by_stamp_verbatim() -> None:
     stamps = {row["id"]: row["generated_by"] for row in _corpus_rows()}
     assert all("@" in s for s in stamps.values())
     by_key = {
-        (row["question_id"], row["rung"]): row["generated_by"] for row in _corpus_rows()
+        (row["question_id"], row.get("choice_letter"), row["rung"]): row["generated_by"]
+        for row in _corpus_rows()
     }
     for rung in BANK_RUNGS:
-        assert rung.authored_by == by_key[(rung.question_id, rung.rung)]
+        assert (
+            rung.authored_by
+            == by_key[(rung.question_id, rung.choice_letter, rung.rung)]
+        )
 
 
 def test_rungs_are_sorted_and_unique_per_question() -> None:
-    keys = [(r.question_id, r.rung) for r in BANK_RUNGS]
-    assert keys == sorted(keys)
-    assert len(keys) == len(set(keys)), "duplicate (question_id, rung)"
+    keys = [(r.question_id, r.choice_letter, r.rung) for r in BANK_RUNGS]
+    assert keys == sorted(keys, key=lambda k: (k[0], k[1] or "", k[2]))
+    assert len(keys) == len(set(keys)), "duplicate (question_id, choice_letter, rung)"

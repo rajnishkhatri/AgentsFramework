@@ -131,6 +131,29 @@ describe("quiz_screen_reducer — selection + hint (answering)", () => {
     expect(s.phase === "answering" && s.selectedLetter).toBe("B");
   });
 
+  it("ladder_loaded swaps the hint ladder without clearing selection (ADR-0035)", () => {
+    const selected = quizScreenReducer(answering, { type: "select", letter: "A" });
+    const ladder = [
+      {
+        id: "h1",
+        subject: "act-english",
+        question_id: "q1",
+        choice_letter: "A" as const,
+        rung: 1 as const,
+        body_md: "Why did A tempt you?",
+        reviewed: true,
+        generated_by: "test",
+      },
+    ];
+    const s = quizScreenReducer(selected, {
+      type: "ladder_loaded",
+      hintLadder: ladder,
+    });
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.selectedLetter).toBe("A");
+    expect(s.phase === "answering" && s.item.hintLadder).toEqual(ladder);
+  });
+
   it("toggle_hint flips the hint and marks the item hinted (FR-D5 usedHint)", () => {
     const s = quizScreenReducer(answering, { type: "toggle_hint" });
     expect(s.phase === "answering" && s.hintOpen).toBe(true);
