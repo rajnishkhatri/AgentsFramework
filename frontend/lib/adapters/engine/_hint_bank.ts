@@ -12,7 +12,7 @@
  *
  * SERVING. Loaded by the browser composition root's dev-default branch via
  * `seedHintBank(db)` (next to `seedTestItemBank`); served ONLY through the
- * read-only `HintRepo` reviewed gate (ADR-0014/ADR-0031, FR-12). JSON-quoted
+ * read-only `HintRepo` reviewed gate (ADR-0014/ADR-0035, FR-12). JSON-quoted
  * keys are deliberate: the provenance detector matches the quoted form.
  */
 
