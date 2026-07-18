@@ -2,6 +2,12 @@
 
 OKF bundle. Each entry is a typed Concept. See the convention in [CONVENTIONS_OKF.md](../CONVENTIONS_OKF.md).
 
+## Eng-coach Gen2 / v2 adoption
+
+- [Gen2 / v2 adoption — exploratory session + todo](eng-coach-gen2-v2-adoption.session.md) — Devil's-advocate + A/B + hybrid critique (2026-07-17): **do not ship Gen2 as-is**; recommend Path A (moment-based pedagogy + choice-conditional ladders on reviewed fuel → curated Gen2 batches → MiscLibrary). Phased todo P0–P4 + hard blockers. Awaiting human path lock → `sdd-spec`.
+- [Gen2 / v2 adoption — architecture (v2, readable)](eng-coach-gen2-v2-adoption.architecture.v2.md) — **Read this one.** Readability rewrite of the verified baseline: plain-English §0 overview, inline Mermaid diagrams (rendered by GitHub / VS Code), tighter prose. Same evidence, re-presented. Diagrams also standalone in [architecture.diagrams.html](eng-coach-gen2-v2-adoption.architecture.diagrams.html).
+- [Gen2 / v2 adoption — validated baseline (v1, auditable record)](eng-coach-gen2-v2-adoption.architecture.md) — The **proof**: session-doc §2 **fully verified** against the tree (2026-07-17) + adoption-seam use case / domain / component / Phase-1 LLD (adversarially verified; 2 major corrections incl. the `seedHints` silent-overwrite path). Every `jq` result and `file:line` citation lives here. 30-item Gen2 probe: 0/30 key defects → **full grounded-theory eval NOT warranted**; two narrow judges + 4 lints instead. Adds Phase-0 lock candidate **P0.8** (pilot-emit scope vs `BANK_RUNGS`).
+
 ## Wide-layout & CoachPanel parity
 
 - [Wide-layout CoachPanel parity spec](preact-wide-layout-coach-panel.spec.md) — Stage-2 EARS **FR-1…20 ≡ locked AC-1…20** (Direction 2b): `coachMode` 900px rule, **64px** rail (no pin), hint ladder + conversation, `CoachDrawer`+pill, Zone C pinned nudge. **Re-Accepted 2026-07-16** (clarify Q-C1…Q-C5 CLOSED). Stage 4 PASSED — human Accept → `sdd-implement`. Pairs with [plan](preact-wide-layout-coach-panel.plan.md) + [tasks](preact-wide-layout-coach-panel.tasks.md) + [ADR-0035](../adr/0035-wide-layout-coach-panel-parity.md). Product lock: [`locked-spec-artifacts/`](../width-design-ui-session-artifacts/locked-spec-artifacts/).

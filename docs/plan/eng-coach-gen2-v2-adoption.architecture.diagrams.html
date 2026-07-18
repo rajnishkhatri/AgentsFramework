@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Eng-coach Gen2 / v2 adoption — Architecture diagrams</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #faf9f5;
+      --panel: #ffffff;
+      --ink: #1f2328;
+      --muted: #57606a;
+      --accent: #b3590f;
+      --rule: #d8d4c8;
+      --code-bg: #f6f3ec;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.55;
+    }
+    header {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 40px 24px 16px;
+    }
+    header h1 { margin: 0 0 6px; font-size: 26px; }
+    header p { margin: 0; color: var(--muted); font-size: 14px; }
+    nav.toc {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 12px 24px 24px;
+      font-size: 14px;
+    }
+    nav.toc a {
+      color: var(--accent);
+      text-decoration: none;
+      margin-right: 18px;
+      white-space: nowrap;
+    }
+    nav.toc a:hover { text-decoration: underline; }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    section.diagram {
+      background: var(--panel);
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      padding: 24px 28px 28px;
+      margin-bottom: 28px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    section.diagram h2 {
+      margin: 0 0 4px;
+      font-size: 19px;
+    }
+    section.diagram .meta {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0 0 18px;
+    }
+    section.diagram .meta code {
+      background: var(--code-bg);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .mermaid {
+      text-align: center;
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    .source {
+      margin-top: 18px;
+      border-top: 1px dashed var(--rule);
+      padding-top: 14px;
+    }
+    .source summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      user-select: none;
+    }
+    .source pre {
+      margin: 10px 0 0;
+      background: var(--code-bg);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-x: auto;
+      color: #24292f;
+    }
+    footer {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Eng-coach Gen2 / v2 adoption — Architecture diagrams</h1>
+    <p>Visual renderings of the four Mermaid diagrams in
+      <code>docs/plan/eng-coach-gen2-v2-adoption.architecture.md</code>.
+      Scope = adoption seam only (bank, hints, emit, wire, serve paths, coach context, moment routing, curation gates).</p>
+  </header>
+  <nav class="toc">
+    <a href="#d1">1. Use-case (1a serve paths · 1b authoring · 1c A/B)</a>
+    <a href="#d2">2. AS-IS entity model</a>
+    <a href="#d3">3. AS-IS component (3a assets/emit · 3b P1 quiz · 3c P2 LLM)</a>
+    <a href="#d4">4. TO-BE Phase-1 component model</a>
+  </nav>
+  <main>
+    <section class="diagram" id="d1">
+      <h2>1. Use-case diagram (broken down)</h2>
+      <p class="meta">Source: §2.2 · the single diagram is split into three by actor cluster: learner serve paths, authoring/curation, and A/B experiment assignment.</p>
+
+      <h3 style="margin:8px 0 2px;font-size:15px;">1a · Learner-facing serve paths</h3>
+      <p class="meta">UC-1..UC-4 — the four moments a learner hits the seam. Quiz Engine owns the no-LLM path (UC-1/UC-2); LLM Coach owns the chat paths (UC-2..UC-4); BFF is the mode authority for free-ask and post-feedback.</p>
+      <pre class="mermaid">
+flowchart LR
+  L([Learner]) --- UC1(UC-1 Request hint\nbefore any pick)
+  L --- UC2(UC-2 Unstick after\nwrong pick)
+  L --- UC3(UC-3 Free-ask chat)
+  L --- UC4(UC-4 Post-feedback\nreview)
+  QE[[Quiz Engine]] --- UC1
+  QE --- UC2
+  LC[[LLM Coach]] --- UC2
+  LC --- UC3
+  LC --- UC4
+  BFF[[BFF mode authority]] --- UC3
+  BFF --- UC4
+      </pre>
+
+      <h3 style="margin:20px 0 2px;font-size:15px;">1b · Authoring &amp; curation</h3>
+      <p class="meta">UC-5 (Phase-1 pilot ladders on reviewed Gen1 stems) and UC-6 (Phase-2 Gen2 batch curation, deferred). Author/Reviewer is the only actor that can flip <code>reviewed:true</code>; Curation Pipeline runs the emit scripts + validators.</p>
+      <pre class="mermaid">
+flowchart LR
+  A([Author/Reviewer]) --- UC5(UC-5 Author + promote\nchoice-conditional ladder)
+  A --- UC6(UC-6 Curate + promote\nGen2 item)
+  CP[[Curation Pipeline]] --- UC5
+  CP --- UC6
+  UC5 -. fuels .-> UC2ref(UC-2 wrong-pick\nladder, see 1a)
+  UC6 -. deferred to Phase 2 .-> UC6ref(blocked on B1-B5)
+      </pre>
+
+      <h3 style="margin:20px 0 2px;font-size:15px;">1c · A/B experiment assignment</h3>
+      <p class="meta">UC-7 is meta: it selects which ladder pack UC-1/UC-2 serve. Phase-1 dogfood → student A/B; assignment randomizes the ladder pack only (never viewport/device, per Direction 2b parity).</p>
+      <pre class="mermaid">
+flowchart LR
+  E([Experimenter]) --- UC7(UC-7 Assign\nladder-pack A/B)
+  UC7 -. selects pack for .-> UC1(UC-1 no-pick hint\nsee 1a)
+  UC7 -. selects pack for .-> UC2(UC-2 wrong-pick unstick\nsee 1a)
+      </pre>
+    </section>
+    <section class="diagram" id="d2">
+      <h2>2. AS-IS entity model</h2>
+      <p class="meta">Source: §3.1 · <code>erDiagram</code> · seed/wire-plane view (verified against tree).</p>
+      <pre class="mermaid">
+erDiagram
+    Skill ||--o{ TestItem : "skill_id"
+    SyllabusStandard ||--o{ TestItem : "standard_id (JSON only; STRIPPED at wire)"
+    TestItem ||--|{ Choice : "choices[] (embedded)"
+    TestItem ||--o{ Hint : "question_id (exactly rungs 1,2,3)"
+    TestItem ||--o{ Attempt : "question_id"
+
+    TestItem {
+        string id PK "ti-gen-*"
+        string subject
+        string skill_id FK
+        int standard_id "1..32 in promoted JSON; stripped by emit pending D4"
+        string item_type
+        int difficulty
+        string stem_md
+        string context_html
+        string answer_letter
+        json per_choice_rationale "keyed by letter"
+        string why_correct_md
+        string why_tempted_md
+        string rule_md
+        string misconception "free-text, 47/171 Gen1 items; NOT a tag"
+        bool reviewed "curation gate - all 171 Gen1 true"
+        string generated_by "provenance"
+    }
+    Choice {
+        string letter
+        string label
+        bool is_no_change "wire Question.Choice only"
+    }
+    Hint {
+        string id PK
+        string subject
+        string question_id FK
+        int rung "1|2|3 - rung 4 unrepresentable AT THE WIRE (no DB CHECK)"
+        string body_md
+        bool reviewed "all 513 Gen1 rows true"
+        string generated_by "wire; Pydantic HintRung uses authored_by"
+    }
+    Attempt {
+        uuid id PK
+        string subject
+        uuid session_id FK
+        uuid question_id FK
+        string chosen_letter "EXISTS here + quiz state; NOT on coach wire"
+        bool correct
+        int elapsed_ms
+        bool used_hint
+    }
+    Skill {
+        string id PK
+        string key
+        string name
+        number share_of_test_pct
+        string accent_var
+        int order
+    }
+    SyllabusStandard {
+        int standard_id PK "exactly 1..32"
+        string name
+        string category
+        json bands
+        string app_skill
+    }
+      </pre>
+      <details class="source"><summary>Mermaid source</summary><pre>erDiagram
+    Skill ||--o{ TestItem : "skill_id"
+    SyllabusStandard ||--o{ TestItem : "standard_id (JSON only; STRIPPED at wire)"
+    TestItem ||--|{ Choice : "choices[] (embedded)"
+    TestItem ||--o{ Hint : "question_id (exactly rungs 1,2,3)"
+    TestItem ||--o{ Attempt : "question_id"
+    ... (full field lists in the .md source)</pre></details>
+    </section>
+    <section class="diagram" id="d3">
+      <h2>3. AS-IS component model (broken down)</h2>
+      <p class="meta">Source: §4.1 · the single diagram is split into three: the offline assets/emit pipeline, and the two runtime serve paths (P1 quiz-UI direct, P2 LLM coach). Gen2 assets are on disk with zero code wiring (dashed = orphan).</p>
+
+      <h3 style="margin:8px 0 2px;font-size:15px;">3a · Content assets &amp; emit pipeline (offline)</h3>
+      <p class="meta">Gen1 reviewed corpus + syllabus seed flow through the emit scripts into the generated TS/Py modules. Gen2 (dashed) sits on disk with zero wiring — every gate rejects it today.</p>
+      <pre class="mermaid">
+flowchart TB
+  subgraph ASSETS["Content assets (docs/)"]
+    G1I["Gen1 items 171 - reviewed:true<br/>coach-item-bank-live.promoted.json"]
+    G1H["Gen1 hints 513 - rungs 1-3 - no choice_letter<br/>coach-bank-hints.seed.json"]
+    SYL["Syllabus seed 1..32<br/>act-english-syllabus.seed.json"]
+    G2I["Gen2 items 1000 - reviewed:false - std 1..43<br/>coach-item-bank-gen2.promoted.json"]:::orphan
+    G2H["Gen2 hints 12000 - 3 letters x 4 rungs - choice_letter<br/>coach-bank-hints-gen2.json"]:::orphan
+  end
+  subgraph EMIT["Emit scripts (offline)"]
+    EI["emit_test_item_bank.py<br/>reviewed gate :96-97 - strips standard_id :16-17"]
+    EH["emit_hint_bank.py<br/>rungs (1,2,3) :34 - reviewed gate :72-75 - (qid,rung) uniq"]
+    ES["emit_syllabus.py<br/>_STANDARD_COUNT=32 :40"]
+  end
+  TBout["_test_item_bank.ts (171)"]
+  HBout["_hint_bank.ts (513)"]
+  SCBout["subject_coach_bank_hints.py<br/>BANK_RUNGS (513)"]
+  ASYout["act_english_syllabus.py (1..32)"]
+  G1I --> EI --> TBout
+  G1H --> EH --> HBout
+  EH --> SCBout
+  SYL --> ES --> ASYout
+  classDef orphan stroke-dasharray: 5 5;
+      </pre>
+
+      <h3 style="margin:20px 0 2px;font-size:15px;">3b · Serve path 1 — Quiz UI direct (no LLM)</h3>
+      <p class="meta">The deterministic hint ladder: <code>use_quiz</code> → <code>HintRepo.list</code> → <code>DrizzleHintRepo</code> re-filters <code>reviewed===true</code> (defense-in-depth) → engine DB. Zod validates the emitted hint bank.</p>
+      <pre class="mermaid">
+flowchart TB
+  WZ["Zod wire: Hint.rung 1|2|3<br/>engine_entities.ts:110"]
+  HB["_hint_bank.ts (513)"]
+  DB["EngineDb dialects - uniq (question_id,rung)<br/>schema.pg.ts:113-127 - schema.sqlite.ts:76-90 -<br/>in_memory_engine_db.ts key qid NUL rung"]
+  HR["HintRepo port list(subject,qid)<br/>ports/engine/hint_repo.ts"]
+  DHR["DrizzleHintRepo - reviewed===true defense-in-depth<br/>repos/drizzle_hint_repo.ts:21-30"]
+  UQ["use_quiz.ts:198-352<br/>hint ladder panel"]
+  UQ -- "P1: hintRepo.list" --> HR --> DHR --> DB
+  HB --> DB
+  WZ -.validates.- HB
+      </pre>
+
+      <h3 style="margin:20px 0 2px;font-size:15px;">3c · Serve path 2 — LLM coach (ADR-0012)</h3>
+      <p class="meta">The select-and-paraphrase coach: <code>use_quiz</code> → <code>assemble_coach_context</code> (mode only) → sanitizer strips answer fields pre-submit → <code>react_loop</code> → <code>rungs_for_question</code> merges AUTHORED+BANK rungs (reviewed-only) → <code>coach_context</code> renders the ladder into the system prompt.</p>
+      <pre class="mermaid">
+flowchart TB
+  UQ["use_quiz.ts<br/>quiz state"]
+  ACC["assemble_coach_context.ts:21-54<br/>mode pre_submit|post_feedback only"]
+  SAN["coach_context_sanitizer.ts:20<br/>BFF strips answer fields pre_submit (ADR-0012)"]
+  RL["react_loop.py:2325-2339<br/>hint-context injection SEGMENT of<br/>system-prompt-assembly node"]
+  SCH["subject_coach_hints.py<br/>HintRung rung Literal[1,2,3] :40 - rungs_for_question"]
+  SCB["subject_coach_bank_hints.py<br/>BANK_RUNGS (513)"]
+  CC["coach_context.py:39-41<br/>render_coach_context_block - fail-closed pre_submit"]
+  UQ -- "P2: quiz state" --> ACC --> SAN -- "BFF route" --> RL
+  RL --> SCH
+  SCH -- "lazy import BANK_RUNGS" --> SCB
+  RL --> CC -- "system prompt block" --> RL
+      </pre>
+    </section>
+    <section class="diagram" id="d4">
+      <h2>4. TO-BE Phase-1 component model</h2>
+      <p class="meta">Source: §4.2 · <code>flowchart TB</code> · authored choice-conditional ladders on 5–20 reviewed Gen1 stems, feature-flagged moment router, no Gen2 emit.</p>
+      <pre class="mermaid">
+flowchart TB
+  subgraph NEWASSET["NEW asset"]
+    PP["pilot pack JSON (authored, leak-linted, reviewed:true)<br/>choice_letter per row; null = item-level ladder"]
+  end
+  PP --> EH2["emit_hint_bank.py: uniq key -> (qid, choice_letter|null, rung);<br/>pilot pack as ADDITIONAL input; Gen2 never a default input"]
+  EH2 --> HB2["_hint_bank.ts + BANK_RUNGS gain choice_letter"]
+  subgraph MR["Moment router (split across the seam)"]
+    FMR["frontend: pure moment fn in a translator<br/>(quiz state -> moment + letter|null)"]
+    BMR["backend: ladder-subset selection inside<br/>components/subject_coach_hints + coach_context render"]
+  end
+  UQ2["use_quiz (flag on)"] --> FMR -- "letter|null" --> HR2["HintRepo.list(+letter)"]
+  FMR --> ACC2["assemble_coach_context + chosen_letter"] --> SAN2["sanitizer: fail-closed letter->null"] --> RL2["react_loop (unchanged shape: passes context through)"] --> BMR
+  FLAG["feature flag coach_moment_router (default OFF = today's behavior)<br/>read at frontend composition + BFF assembly"] -.gates.- FMR
+      </pre>
+    </section>
+  </main>
+  <footer>
+    Generated from <code>eng-coach-gen2-v2-adoption.architecture.md</code> · Mermaid.js renders client-side.
+  </footer>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "default", securityLevel: "loose", flowchart: { useMaxWidth: true } });
+  </script>
+</body>
+</html>
