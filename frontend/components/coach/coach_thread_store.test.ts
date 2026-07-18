@@ -115,7 +115,7 @@ describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
     expect(coachThreadSnapshot().choiceLetter).toBeNull();
   });
 
-  it("setCoachChoiceLetter stores a wrong letter without clearing the thread (ADR-0031)", () => {
+  it("setCoachChoiceLetter stores a wrong letter without clearing the thread (ADR-0035)", () => {
     setCoachPin({
       kind: "item",
       questionId: "q1",

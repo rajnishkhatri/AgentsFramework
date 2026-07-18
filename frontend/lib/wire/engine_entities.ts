@@ -97,7 +97,7 @@ export const QUESTION_ANSWER_BEARING_FIELDS = [
 // --- hint (ADR-0014) ------------------------------------------------------
 
 /**
- * One hint-ladder rung (ADR-0012/ADR-0014/ADR-0031, spec FR-12/FR-20). The rung
+ * One hint-ladder rung (ADR-0012/ADR-0014/ADR-0035, spec FR-12/FR-20). The rung
  * union keeps the assertion rung (4) UNREPRESENTABLE at the wire — probe (1),
  * conceptual (2), directive (3) only. `choice_letter` is null for Gen1
  * item-level ladders, or A–D for Gen2 choice-conditional ladders; uniqueness

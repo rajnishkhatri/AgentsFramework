@@ -125,11 +125,11 @@ serving-time policy logic.
   > source, two generated artifacts) rather than by the retired parity pin.
   > See [coach-bank-hints spec](../plan/coach-bank-hints.spec.md) FR-B1..B3/D1.
 
-  > **Amendment (2026-07-17, ADR-0031).** Unique key is now
+  > **Amendment (2026-07-17, ADR-0035).** Unique key is now
   > `(question_id, choice_letter|null, rung)` with nullable `choice_letter` on
   > the wire/table/`HintRung`. `list()` defaults to the item-level
   > (`choice_letter IS NULL`) ladder. Rung 4 remains unrepresentable at the
-  > wire; the emitter strips it. See [ADR-0031](0031-hint-choice-letter-uniqueness.md).
+  > wire; the emitter strips it. See [ADR-0035](0035-hint-choice-letter-uniqueness.md).
 - *`generated_by` free-text* → format pinned by the wire entity's regex-free string but
   asserted in the cascade ("authored" | "model@run_id"); tighten to a union if a third
   producer appears.

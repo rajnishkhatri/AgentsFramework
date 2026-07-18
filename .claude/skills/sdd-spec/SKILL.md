@@ -10,30 +10,36 @@ description: >-
   direction. The keystone rule: never skip from spec to code. Do NOT use for
   ideation with no chosen direction (sdd-brainstorm), mid-flight task
   reshuffling (sdd-replan), writing the code (sdd-implement), post-hoc docs
-  curation (agentsframework-okf-curator), or an ADR alone (copy
-  docs/adr/0000-template.md directly).
+  curation (agentsframework-okf-curator), or an ADR alone (copy the ADR
+  template directly).
 ---
 
 # SDD Stages 2–4 — Specify · Clarify · Plan · Tasks · Analyze
 
-Runbook: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md` §3
+> **Workspace binding.** Resolve each `{{placeholder}}` from the workspace binding:
+> `.sdd/binding.toml` at the repo root, else the committed reference
+> (`docs/skills/_sdd/binding.reference.toml` in this repo), else first-run
+> auto-adapt (inspect ecosystem → propose → human-confirm → persist). See
+> `docs/skills/_sdd/binding.schema.md`.
+
+Runbook: `{{methodology_source}}` §3
 Stages 2–4. Two hard gates: spec → (human) → plan → (human) → tasks.
 
 ## Stage 2 — Specify + clarify + plan
 
-- **Specify:** copy `docs/plan/_spec_template.md` → `docs/plan/<name>.spec.md`.
+- **Specify:** copy the spec template in {{spec_home}} → `{{spec_home}}<name>.spec.md`.
   Acceptance criteria in EARS notation (Ubiquitous / WHEN / WHILE / IF-THEN /
   WHERE) — each collapses to one testable claim. Failure paths FIRST.
 - **Clarify:** structured ambiguity pass *before* planning — scan functional
   scope, data model, edge cases, NFRs; ask ≤5 targeted questions, one at a
   time, each with a recommended answer. The first draft is never final.
 - **Plan:** architecture, file-level touchpoints, migration steps — derived
-  from the clarified spec AND the constitution (`AGENTS.md` 8 invariants). A
+  from the clarified spec AND the constitution (`{{constitution}}` 8 invariants). A
   plan that needs an ⚠️ Ask-first item raises an ADR
-  (`docs/adr/0000-template.md` + index/log); spec = the *what*, ADR = the *why*.
+  (`{{adr_template}}` + index/log); spec = the *what*, ADR = the *why*.
 
 **Slop-reduction ownership at spec time** (Runbook VI §A1/§A7 in
-`docs/research/agenticengineeringplaybook/ai-slop-backpressure`):
+`{{methodology_source}}`):
 this is the stage that owns **A1 — spec the simplest thing that satisfies the
 criteria** (the plan proposes the least machinery, not the most impressive) and
 **A7 — spec before code** (the acceptance criteria exist before any implementation
@@ -54,14 +60,15 @@ here by construction). A plan that introduces a new abstraction is the **G1** ca
   CRITICAL = invariant violations, zero-coverage requirements, references to
   non-existent files/APIs.
 - **Grounding pass:** probe every file path/API the plan references (glob/grep
-  — use the `explore` subagent for breadth); confirm every new dependency is
+  — use the workspace's broad read-only exploration tool ({{breadth_read_tool}}) for breadth); confirm every new dependency is
   in `pyproject.toml` or flagged as an ADR trigger.
-- Baseline: `make check` + `pytest tests/architecture/ -q` must be green
+- Baseline: `{{check_gate}}` + `{{test_gate}}` must be green
   *before* implementation starts.
 
 ## Harness instrumentation (today)
 
-`stop_adr_reminder.py` fires on Stop if an ADR seam was touched with no new
-`docs/adr/*`; `tests/architecture/test_adr_ratchet.py` is the merge-time gate
-(waiver: `ADR-OK: <reason>` in a commit message). Verifier-checkable criteria
-can reuse `components/answer_verifiers.py`. Advance → **sdd-implement**.
+The workspace's turn-end decision-record reminder / merge-time ratchet ({{examples.hook_instrumentation}})
+fires on Stop if an ADR seam was touched with no new
+`{{adr_home}}*`; the merge-time ratchet is the merge-time gate
+(waiver: `{{adr_waiver_token}} <reason>` in a commit message). Verifier-checkable criteria
+can reuse the workspace's verifier/assertion helpers, if any. Advance → **sdd-implement**.

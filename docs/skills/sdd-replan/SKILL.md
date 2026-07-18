@@ -16,9 +16,15 @@ description: >-
 
 # SDD Stage 5 — Replan / sprint board (the loop-back hub)
 
-Runbook: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md` §3
-Stage 5 — the deliberate gap: Spec Kit has no command for mid-flight
-replanning; this repo treats it as first-class.
+> **Workspace binding.** Resolve each `{{placeholder}}` from the workspace binding:
+> `.sdd/binding.toml` at the repo root, else the committed reference
+> (`docs/skills/_sdd/binding.reference.toml` in this repo), else first-run
+> auto-adapt (inspect ecosystem → propose → human-confirm → persist). See
+> `docs/skills/_sdd/binding.schema.md`.
+
+Runbook: `{{methodology_source}}` §3
+Stage 5 — the deliberate gap: unlike tools that have no mid-flight replanning
+command, this lifecycle treats it as first-class.
 
 ## Triggers (initiation)
 
@@ -28,8 +34,8 @@ refine gate sending the loop back.
 
 ## Agent work
 
-1. Read the current externalized state — the change's `tasks.md` /
-   `docs/plan/<name>.plan.md`. **State lives in the plan doc, not in-context
+1. Read the current externalized state — the change's `{{plan_home}}tasks.md` /
+   `{{plan_home}}<name>.plan.md`. **State lives in the plan doc, not in-context
    only**: update the doc so the replan survives `/compact` and session ends.
 2. Propose the re-prioritization: which tasks stay / slip / split / drop —
    with the reason per task.
@@ -46,7 +52,8 @@ The human approves the replan (this is the steering nudge). Then route:
 
 ## Harness instrumentation (today)
 
-`sessionstart_reinject.py` (SessionStart, `source == "compact"`) re-injects the
-active subtree's nested `AGENTS.md` after a compaction, so the replan doesn't silently lose the folder
+The workspace's post-compaction context re-injection, if any
+({{examples.hook_instrumentation}}), re-injects the
+active subtree's nested `{{constitution}}` after a compaction, so the replan doesn't silently lose the folder
 rules; the plan doc itself is the durable state. Small non-obvious replan
-decisions → 2–4 lines in `docs/adr/decisions.md`.
+decisions → 2–4 lines in `{{decision_log}}`.

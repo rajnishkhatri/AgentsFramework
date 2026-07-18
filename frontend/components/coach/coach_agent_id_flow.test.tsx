@@ -17,6 +17,7 @@ import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EngineProvider } from "@/app/engine-provider";
+import { LearnIdentityProvider } from "@/components/learn/LearnIdentityProvider";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import { SUBJECT_COACH_AGENT_ID, useCoach } from "./use_coach";
@@ -27,6 +28,13 @@ import type {
 } from "@/lib/ports/agent_runtime_client";
 import type { RunCreateRequest } from "@/lib/wire/agent_protocol";
 import type { UIRuntimeEvent } from "@/lib/wire/ui_runtime_events";
+import type { LearnIdentity } from "@/lib/learn/resolve_learn_identity";
+
+const TEST_IDENTITY: LearnIdentity = {
+  learnerId: "user_workos_1",
+  displayName: "Rajnish",
+  seedMode: "fresh",
+};
 
 const engineBag = buildBrowserEngineAdapters({
   engineDb: new InMemoryEngineDb(),
@@ -119,14 +127,35 @@ describe("coach agent_id stamping — failure path first", () => {
   it("a coach ask carries agent_id=subject-coach-english on the run body", async () => {
     const { runtime, streamReqs } = scriptedRuntime();
     root.render(
-      React.createElement(EngineProvider, {
-        bag: engineBag,
-        children: React.createElement(CoachProbe, { runtime }),
+      React.createElement(LearnIdentityProvider, {
+        value: TEST_IDENTITY,
+        children: React.createElement(EngineProvider, {
+          bag: engineBag,
+          children: React.createElement(CoachProbe, { runtime }),
+        }),
       }),
     );
     await clickProbe();
     await until(() => streamReqs.length === 1, "coach streamRun call");
     expect(streamReqs[0]?.agent_id).toBe(SUBJECT_COACH_AGENT_ID);
     expect(SUBJECT_COACH_AGENT_ID).toBe("subject-coach-english");
+  });
+
+  it("FR-10: coach ask uses session learnerId, never Garvit", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    root.render(
+      React.createElement(LearnIdentityProvider, {
+        value: TEST_IDENTITY,
+        children: React.createElement(EngineProvider, {
+          bag: engineBag,
+          children: React.createElement(CoachProbe, { runtime }),
+        }),
+      }),
+    );
+    await clickProbe();
+    await until(() => streamReqs.length === 1, "coach streamRun call");
+    const body = JSON.stringify(streamReqs[0]);
+    expect(body).not.toContain("Garvit");
+    expect(TEST_IDENTITY.learnerId).toBe("user_workos_1");
   });
 });

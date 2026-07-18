@@ -53,7 +53,7 @@ export interface CoachThreadState {
    */
   readonly mode: CoachMode;
   /**
-   * ADR-0031 moment router: wrong letter for Gen2 choice-conditional ladders.
+   * ADR-0035 moment router: wrong letter for Gen2 choice-conditional ladders.
    * Sibling of pin (not on the pin schema). Cleared with pin / on reset.
    */
   readonly choiceLetter: "A" | "B" | "C" | "D" | null;
@@ -136,7 +136,7 @@ export function setCoachPin(
 }
 
 /**
- * ADR-0031: set the wrong-letter for choice-conditional coach_context / ladders.
+ * ADR-0035: set the wrong-letter for choice-conditional coach_context / ladders.
  * Does not reset the transcript (same item, letter change only).
  */
 export function setCoachChoiceLetter(

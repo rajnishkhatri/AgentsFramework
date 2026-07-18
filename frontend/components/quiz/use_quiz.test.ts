@@ -639,7 +639,7 @@ describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () 
   });
 });
 
-describe("loadHintLadder — ADR-0031 moment router", () => {
+describe("loadHintLadder — ADR-0035 moment router", () => {
   it("default (null letter) serves the Gen1 item-level ladder", async () => {
     db.seedHints([
       {

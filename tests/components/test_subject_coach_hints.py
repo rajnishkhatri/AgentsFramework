@@ -120,7 +120,7 @@ class TestBankPlane:
     rule-naming leak class the react_loop comment warns about)."""
 
     def test_every_bank_item_serves_a_full_ladder_by_default(self):
-        """ADR-0031: Gen1 item-level via default; Gen2 via each choice_letter."""
+        """ADR-0035: Gen1 item-level via default; Gen2 via each choice_letter."""
         from components.subject_coach_bank_hints import BANK_RUNGS
 
         bank_ids = sorted({r.question_id for r in BANK_RUNGS})

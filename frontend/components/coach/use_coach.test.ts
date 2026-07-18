@@ -245,7 +245,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
             {
               subject: "act-english",
               skill_id: "s-punc",
-              learner_id: "Garvit",
+              learner_id: "user_workos_1",
               mastery: 0.5,
               last_seen: null,
               fsrs_stability: 0,
@@ -260,7 +260,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
 
     await sendCoachAsk(runtime, "why B?", {
       ports: ports as never,
-      learnerId: "Garvit",
+      learnerId: "user_workos_1",
       subject: "act-english",
     });
 
@@ -286,7 +286,7 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
     expect(input.coach_context!.mastery_snapshot).toEqual({ "s-punc": 50 });
   });
 
-  it("ADR-0031: attaches choice_letter from the thread store wrong letter", async () => {
+  it("ADR-0035: attaches choice_letter from the thread store wrong letter", async () => {
     const { runtime, streamReqs } = scriptedRuntime();
     setCoachPin(
       {

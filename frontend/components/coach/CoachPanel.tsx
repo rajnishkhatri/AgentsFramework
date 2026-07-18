@@ -32,9 +32,8 @@ import { CoachView } from "./CoachView";
 import { useCoach } from "./use_coach";
 import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
-
-const LEARNER_ID = "Garvit";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
@@ -54,6 +53,7 @@ export function CoachPanel(props: {
     pin = null,
     skillLabel = null,
   } = props;
+  const { learnerId } = useLearnIdentity();
   const { turns, busy, ask, retry } = useCoach(runtime, { mode });
   const { countMissesOnSkill } = useCoachSurface();
 
@@ -73,7 +73,7 @@ export function CoachPanel(props: {
     }
     void countMissesOnSkill({
       subject: DEFAULT_SUBJECT,
-      learnerId: LEARNER_ID,
+      learnerId,
       skillId: pin.skillId,
     }).then((n) => {
       if (!cancelled) setMissesOnSkill(n);
@@ -81,7 +81,12 @@ export function CoachPanel(props: {
     return () => {
       cancelled = true;
     };
-  }, [pin?.skillId, pin?.kind === "item" ? pin.questionId : null, countMissesOnSkill]);
+  }, [
+    pin?.skillId,
+    pin?.kind === "item" ? pin.questionId : null,
+    countMissesOnSkill,
+    learnerId,
+  ]);
 
   const surfaceVm: CoachSurfaceVM = React.useMemo(
     () =>

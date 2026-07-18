@@ -139,3 +139,18 @@ docs/skills/code-review-workspace/
 /review.json
 /review_llm.json
 /review_*.json
+
+# Eng-coach GCP deploy SDD process docs (brainstorm/spec/plan/tasks) — transient
+# planning artifacts, not tracked per owner request 2026-07-15. The durable
+# intent-debt record (ADR-0033/0034 + docs/adr/decisions.md) and all code/tests
+# stay tracked.
+docs/plan/eng-coach-gcp-deploy.brainstorm.md
+docs/plan/eng-coach-gcp-deploy.spec.md
+docs/plan/eng-coach-gcp-deploy.plan.md
+docs/plan/eng-coach-gcp-deploy.tasks.md
+
+# All-in-one SDD export bundle — a build-on-demand artifact, not tracked per
+# owner request 2026-07-15. Regenerate any time with `make skills-pack`; the
+# emitter (scripts/pack_skills.py), the install guide (docs/skills/_sdd/INSTALL.md),
+# and the six tracked per-skill docs/skills/sdd-*.skill archives stay tracked.
+docs/skills/sdd-skills-bundle.zip

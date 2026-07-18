@@ -111,7 +111,7 @@ class TestEmission:
 
 class TestRejection:
     def test_strips_rung_4_not_rejects(self, tmp_path):
-        # ADR-0031: assertion rung stays off the wire — strip, don't die.
+        # ADR-0035: assertion rung stays off the wire — strip, don't die.
         rows = [
             dict(FIXTURE_ROWS[1]),  # ti-gen-01 rung 1
             {
@@ -138,7 +138,7 @@ class TestRejection:
             _emit(tmp_path, rows=bad)
 
     def test_rejects_duplicate_question_letter_rung(self, tmp_path):
-        # ADR-0031: unique (question_id, choice_letter, rung).
+        # ADR-0035: unique (question_id, choice_letter, rung).
         bad = [
             dict(FIXTURE_ROWS[0], choice_letter="B"),
             dict(

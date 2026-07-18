@@ -43,14 +43,14 @@ export interface QuizItemResult {
    * The question's REVIEWED hint ladder, rung ascending (ADR-0014, FR-12/20).
    * `[]` when no reviewed rungs exist — the hint panel falls back to the
    * generic Socratic nudge, never an unreviewed row.
-   * ADR-0031: item-level by default; pass `choiceLetter` via `loadHintLadder`
+   * ADR-0035: item-level by default; pass `choiceLetter` via `loadHintLadder`
    * after a wrong pick for Gen2 choice-conditional rungs.
    */
   readonly hintLadder: readonly Hint[];
 }
 
 /**
- * ADR-0031 moment-router load: `choiceLetter` null/omit → Gen1 item-level;
+ * ADR-0035 moment-router load: `choiceLetter` null/omit → Gen1 item-level;
  * A–D → that wrong letter's Gen2 ladder (empty when none reviewed).
  */
 export async function loadHintLadder(
@@ -218,7 +218,7 @@ export async function openQuizItem(
     throw new Error(`scheduled question ${next.question_id} not found`);
   }
   // Item-level ladder at open (ADR-0014); wrong-letter Gen2 reload is
-  // loadHintLadder + ladder_loaded on the quiz page (ADR-0031).
+  // loadHintLadder + ladder_loaded on the quiz page (ADR-0035).
   const hintLadder = await loadHintLadder(ports, args.subject, question.id);
   return { skillId: next.skill_id, question, hintLadder };
 }
@@ -397,7 +397,7 @@ export function useQuiz(): {
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
   listSkills: (subject: string) => Promise<Skill[]>;
-  /** ADR-0031: reload ladder for a wrong-letter pick (moment router). */
+  /** ADR-0035: reload ladder for a wrong-letter pick (moment router). */
   loadLadder: (
     subject: string,
     questionId: string,

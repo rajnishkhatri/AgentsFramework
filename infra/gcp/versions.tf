@@ -4,8 +4,8 @@
 # Provider pins for the GCP Tier A stack (Recipe 1).
 #
 # This stack is Google-only — no Cloudflare, Neon, or PostgreSQL providers
-# (those belong to infra/dev-tier/, which remains unchanged). The google
-# provider ~>6.0 is the same pin used in infra/dev-tier/ for consistency.
+# (those belonged to the retired infra/dev-tier/ stack — ADR-0031). The google
+# provider ~>6.0 matches the pin dev-tier used, kept for continuity.
 #
 # OpenTofu >=1.6 is required. Do NOT use HashiCorp Terraform — versions.tf
 # uses `required_version` scoped to OpenTofu semantics and future recipes

@@ -140,7 +140,7 @@ export class InMemoryEngineDb implements EngineDb {
     this.questions.set(q.id, { ...q });
   }
 
-  // --- hint (ADR-0014/ADR-0031) ---
+  // --- hint (ADR-0014/ADR-0035) ---
   async listReviewedHints(
     subject: string,
     questionId: string,

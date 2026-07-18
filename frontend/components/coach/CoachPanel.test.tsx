@@ -16,6 +16,7 @@ import * as React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EngineProvider } from "@/app/engine-provider";
+import { LearnIdentityProvider } from "@/components/learn/LearnIdentityProvider";
 import { InMemoryEngineDb } from "@/lib/adapters/engine/db/in_memory_engine_db";
 import { buildBrowserEngineAdapters } from "@/lib/composition_engine_browser";
 import { CoachPanel } from "./CoachPanel";
@@ -24,6 +25,13 @@ import type { AgentRuntimeClient, StreamRunOptions } from "@/lib/ports/agent_run
 import type { RunCreateRequest } from "@/lib/wire/agent_protocol";
 import type { UIRuntimeEvent } from "@/lib/wire/ui_runtime_events";
 import type { Hint } from "@/lib/wire/engine_entities";
+import type { LearnIdentity } from "@/lib/learn/resolve_learn_identity";
+
+const TEST_IDENTITY: LearnIdentity = {
+  learnerId: "user_workos_1",
+  displayName: "Test",
+  seedMode: "fresh",
+};
 
 function scriptedRuntime(): AgentRuntimeClient {
   return {
@@ -83,7 +91,9 @@ const tick = (ms = 15): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 function render(node: React.ReactElement): Promise<void> {
   root.render(
-    <EngineProvider bag={engineBag}>{node}</EngineProvider>,
+    <LearnIdentityProvider value={TEST_IDENTITY}>
+      <EngineProvider bag={engineBag}>{node}</EngineProvider>
+    </LearnIdentityProvider>,
   );
   return tick();
 }

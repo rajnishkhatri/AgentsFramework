@@ -72,7 +72,7 @@ export const question = sqliteTable("question", {
   generated_by: text("generated_by").notNull().default(""),
 });
 
-/** hint — reviewed-gated hint-ladder rungs (ADR-0014/ADR-0031); see schema.pg.ts. */
+/** hint — reviewed-gated hint-ladder rungs (ADR-0014/ADR-0035); see schema.pg.ts. */
 export const hint = sqliteTable(
   "hint",
   {
@@ -81,7 +81,7 @@ export const hint = sqliteTable(
     question_id: text("question_id")
       .notNull()
       .references(() => question.id, { onDelete: "cascade" }),
-    choice_letter: text("choice_letter"), // null | A–D (ADR-0031)
+    choice_letter: text("choice_letter"), // null | A–D (ADR-0035)
     rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
     body_md: text("body_md").notNull(),
     reviewed: integer("reviewed", { mode: "boolean" }).notNull().default(false),

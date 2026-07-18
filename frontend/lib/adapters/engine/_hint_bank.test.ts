@@ -39,7 +39,7 @@ function loadSeed(): SeedCorpus {
 }
 
 /**
- * FR-E1 checker (ADR-0031): a reviewed item is covered when it has either
+ * FR-E1 checker (ADR-0035): a reviewed item is covered when it has either
  * a Gen1 item-level ladder (choice_letter null, rungs 1–3) or a complete
  * Gen2 choice-conditional set (every wrong-letter that appears has rungs 1–3).
  */
@@ -174,7 +174,7 @@ describe("coverage ratchet — full ladder per reviewed bank item (FR-E1)", () =
 });
 
 describe("seedHintBank serving path (FR-C1 substrate)", () => {
-  it("loads Gen1 item-level ladders by default; Gen2 by choice_letter (ADR-0031)", async () => {
+  it("loads Gen1 item-level ladders by default; Gen2 by choice_letter (ADR-0035)", async () => {
     const db = new InMemoryEngineDb();
     seedHintBank(db);
     for (const item of TEST_ITEM_BANK) {

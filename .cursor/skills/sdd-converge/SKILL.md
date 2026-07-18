@@ -17,7 +17,13 @@ description: >-
 
 # SDD Stages 9–10 — Converge · Refine · Sign-off
 
-Runbook: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md`
+> **Workspace binding.** Resolve each `{{placeholder}}` from the workspace binding:
+> `.sdd/binding.toml` at the repo root, else the committed reference
+> (`docs/skills/_sdd/binding.reference.toml` in this repo), else first-run
+> auto-adapt (inspect ecosystem → propose → human-confirm → persist). See
+> `docs/skills/_sdd/binding.schema.md`.
+
+Runbook: `{{methodology_source}}`
 §3 Stages 9–10 + §4 (the converge-loop mechanics).
 
 ## Stage 9 — classify, then spawn (never fix in place)
@@ -34,20 +40,20 @@ Classify every red gate / review finding / test failure:
 **Append-only**: add a `## Phase N — Convergence` section to the change's task
 list with each new task tagged `source-ref` + `gap-type`. Never rewrite
 existing tasks or touch code in this stage. Deferred items go in the
-iteration's plan doc (a `tech-debt-tracker.md` ledger is not yet created).
+iteration's plan doc (or, if the workspace keeps a tech-debt ledger, there).
 
 ## Stage 10 — the sign-off gate (all five, human-answered)
 
 1. Converged: every EARS acceptance criterion has a passing test; no
    `missing`/`partial`/`contradicts` gaps remain.
-2. `make check` green AND `pytest tests/architecture/ -q` green — paste the
+2. `{{check_gate}}` green AND `{{test_gate}}` green — paste the
    actual output, not a summary.
-3. Every ADR trigger hit during the change has a filed `docs/adr/*` (+
-   `index.md`/`log.md` entries) — `tests/architecture/test_adr_ratchet.py` is
-   the mechanical backstop.
+3. Every ADR trigger hit during the change has a filed `{{adr_home}}` decision record (+
+   `index.md`/`log.md` entries) — the workspace's merge-time decision-record ratchet
+   ({{examples.hook_instrumentation}}) is the mechanical backstop.
 4. Every comprehension gate that fired (G1/G3/G4/G7/G8/G9 — wordings in
-   `docs/adr/GATES.md`) was answered by the human in their own words.
-5. LLM calls recorded via `eval_capture.record()` with `user_id` + `task_id`.
+   `{{gate_catalog}}`) was answered by the human in their own words.
+5. {{examples.eval_capture_rule}}
 6. **Blast-radius cleanup (scoped to THIS change).** Ask: *what did THIS change
    add that can now be deleted* — a scaffold, a dead branch, a defensive path the
    final shape no longer needs, a helper with one caller? Delete it before

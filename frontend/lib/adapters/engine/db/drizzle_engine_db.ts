@@ -351,7 +351,7 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       await wrap("insertQuestion", db.insert(pg.question).values(q));
     },
     async listReviewedHints(subject, questionId, choiceLetter) {
-      // Default to item-level (null) — ADR-0031.
+      // Default to item-level (null) — ADR-0035.
       const letter = choiceLetter ?? null;
       const letterPred =
         letter == null
@@ -375,7 +375,7 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       return rows.map((r) => toHint(r as Record<string, unknown>));
     },
     async insertHint(h) {
-      // Duplicate (question_id, choice_letter, rung) — ADR-0031 partial uqs.
+      // Duplicate (question_id, choice_letter, rung) — ADR-0035 partial uqs.
       await wrap(
         "insertHint",
         db.insert(pg.hint).values({

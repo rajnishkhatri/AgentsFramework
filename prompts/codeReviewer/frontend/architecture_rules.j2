@@ -318,11 +318,16 @@ Mirror of the M-family enforced by `tests/architecture/test_middleware_layer.py`
 
 The four adapter families today are: `auth/` (WorkOS JWT verifier), `acl/` (tool ACL), `memory/` (Mem0), `observability/` (Langfuse / Cloud Logging). Adding a fifth family requires a merged ADR (mirror of `F2` for the Python ring).
 
-## Infra Dev-Tier Rules (OpenTofu)
+## Infra Dev-Tier Rules (OpenTofu) — **RETIRED (ADR-0031)**
 
-Authoritative for FD10. Each rule maps 1:1 to a pytest node in `tests/infra/`.
+> **These IR-* rules are retired.** They were authoritative for FD10, mapping
+> 1:1 to pytest nodes in `tests/infra/test_{cloud_run,neon,secret_manager,
+> cross_cutting}.py` — all of which were **deleted** with the dev-tier stack.
+> Do NOT dispatch these nodes (they no longer exist) and emit no FD10 finding.
+> The live IaC is `infra/gcp/` (`tests/infra/gcp/`, `-m infra_gcp`). Table kept
+> below as the historical record of what FD10 asserted.
 
-| ID | Rule | Test node |
+| ID | Rule (HISTORICAL — retired) | Test node (deleted) |
 |----|------|-----------|
 | **IR-RUN-1** | `google_cloud_run_v2_service.middleware` exists and is named `agent-middleware`. | `tests/infra/test_cloud_run.py::test_cloud_run_service_named_agent_middleware` |
 | **IR-RUN-2** | `min_instance_count = 0` (free-tier scale-to-zero). | `test_cloud_run_min_instance_count_is_zero` |

@@ -131,7 +131,7 @@ describe("quiz_screen_reducer — selection + hint (answering)", () => {
     expect(s.phase === "answering" && s.selectedLetter).toBe("B");
   });
 
-  it("ladder_loaded swaps the hint ladder without clearing selection (ADR-0031)", () => {
+  it("ladder_loaded swaps the hint ladder without clearing selection (ADR-0035)", () => {
     const selected = quizScreenReducer(answering, { type: "select", letter: "A" });
     const ladder = [
       {

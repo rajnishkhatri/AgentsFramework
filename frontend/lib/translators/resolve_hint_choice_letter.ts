@@ -1,5 +1,5 @@
 /**
- * resolve_hint_choice_letter — ADR-0031 moment router (Axis A).
+ * resolve_hint_choice_letter — ADR-0035 moment router (Axis A).
  *
  * Pure T1: maps the learner's selected/answered letter + the item key to the
  * `choiceLetter` argument for `HintRepo.list` / `assembleCoachContext`.

@@ -41,7 +41,7 @@ class HintRung(BaseModel):
     body_md: str
     reviewed: bool = False
     authored_by: str
-    # ADR-0031: null = Gen1 item-level ladder; A–D = choice-conditional Gen2.
+    # ADR-0035: null = Gen1 item-level ladder; A–D = choice-conditional Gen2.
     choice_letter: Literal["A", "B", "C", "D"] | None = None
 
     model_config = ConfigDict(frozen=True)
@@ -66,7 +66,7 @@ def rungs_for_question(
     reach a learner regardless of how it entered ``source``.
 
     Default ``choice_letter=None`` selects the Gen1 item-level ladder
-    (ADR-0031). Pass A–D for a choice-conditional Gen2 ladder.
+    (ADR-0035). Pass A–D for a choice-conditional Gen2 ladder.
 
     Default source = the authored asset PLUS the generated bank ladders
     (coach-bank-hints FR-D1): the ADR-0021 bank serves ``ti-gen-*`` ids the

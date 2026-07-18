@@ -62,7 +62,7 @@ Files written:
 - [x] AQL sample drawn from N=816 only
 - [x] n=80 inspected against §B.2/B.3 taxonomy
 - [x] Lot ACCEPT → `reviewed=true` on eligible shard
-- [x] Step 6 schema/emitter — ADR-0031 (`choice_letter` + uniqueness; rung 4 off wire)
+- [x] Step 6 schema/emitter — ADR-0035 (`choice_letter` + uniqueness; rung 4 off wire)
 - [x] Step 6 emit Gen2 shard — merged reviewed 816 items + 7,344 wire hints into live seeds; regenerated banks (987 items / 7,857 hints). Coach pass-through: `choice_letter` on `coach_context` + `react_loop` → `rungs_for_question`.
 - [x] Step 6 quiz moment router — wrong pick → `loadHintLadder` + `setCoachChoiceLetter` → panel ladder + `sendCoachAsk` `choice_letter` (no/correct pick → item-level null).
 - [ ] 184 quarantine: human key-ambiguity / mismatch review (out of this shard)

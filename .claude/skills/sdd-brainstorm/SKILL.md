@@ -2,7 +2,7 @@
 name: sdd-brainstorm
 type: skill
 description: >-
-  Run SDD Stage 1 (brainstorm/ideation) for a change to THIS repository: expand
+  Run SDD Stage 1 (brainstorm/ideation) for a change to your workspace: expand
   a problem statement into ~6 candidate directions and validate every
   hypothesis against repo evidence before any spec exists. Use whenever the
   user says "let's brainstorm approaches", "explore options/directions for X",
@@ -15,16 +15,22 @@ description: >-
 
 # SDD Stage 1 — Brainstorm
 
-Runbook: `docs/research/agenticengineeringplaybook/sdd_lifecycle_runbook.md` §3
+> **Workspace binding.** Resolve each `{{placeholder}}` from the workspace binding:
+> `.sdd/binding.toml` at the repo root, else the committed reference
+> (`docs/skills/_sdd/binding.reference.toml` in this repo), else first-run
+> auto-adapt (inspect ecosystem → propose → human-confirm → persist). See
+> `docs/skills/_sdd/binding.schema.md`.
+
+Runbook: `{{methodology_source}}` §3
 Stage 1. Micro-loop: human poses the *problem* (not the solution) → agent
 expands + validates → human accepts a direction or re-poses.
 
 ## Agent work
 
-1. **Read the subtree's nested `AGENTS.md`** for every folder the idea touches.
+1. **Read the subtree's nested `{{constitution}}`** for every folder the idea touches.
 2. **Audit the premises before ideation.** The problem statement is itself a
    hypothesis. Check every load-bearing premise against the working tree
-   (grep/glob; the read-only `explore` subagent for broad sweeps) and publish a
+   (grep/glob; the workspace's broad read-only exploration tool ({{breadth_read_tool}}) for broad sweeps) and publish a
    premise-status table: `verified` / `refuted` / `unverifiable`.
    - `refuted` → re-pose the corrected framing with evidence *in the same
      document* and generate directions over the corrected space; the human
@@ -45,9 +51,8 @@ expands + validates → human accepts a direction or re-poses.
      expensive operation (LLM calls, DB writes, egress), include the direction
      that makes the operation *not happen*: deterministic cascades / local
      reasoning / known-answer fast-paths first, the expensive call as
-     fallback. Repo precedents: the router's deterministic tree
-     (`components/router.py`) and the guardrail's regex→classifier→LLM
-     cascade with its `decision_stage` audit field (`services/guardrails.py`).
+     fallback. Repo precedent: your workspace's deterministic-cascade precedent
+     ({{examples.deterministic_cascade}}).
    - **Class over instance.** A recurring defect class (a third
      composition-root drift, say) gets the class-level fix — shared seam + an
      architecture test that fails the next occurrence — not just the patch.
@@ -78,8 +83,8 @@ expands + validates → human accepts a direction or re-poses.
      which and why.
    - **Only verified `file:line` citations** — open the file or drop the
      line number.
-   - **Name the live prod surface.** `middleware/app_prod.py` hand-builds the
-     prod routes; `agent_ui_adapter/server.py` is dev/standalone. A "ship at
+   - **Name the live prod surface.** Name the live prod surface, not a
+     dev/standalone one ({{examples.live_prod_surface}}). A "ship at
      seam X" claim citing the dev surface does not relieve prod.
    - **Feasibility adjectives are hypotheses.** "Trivial", "zero code", "the
      arms are a flag flip", and especially "these are parallel" get the same
@@ -107,7 +112,7 @@ chosen direction + validated hypotheses.
 
 ## Constraints
 
-- Constitution backdrop: the 8 invariants in `AGENTS.md` + `tests/architecture/`.
+- Constitution backdrop: the 8 invariants in `{{constitution}}` + the {{test_gate}} suite.
   A direction that needs an ⚠️ Ask-first item (new dep, trust-kernel type,
   new node, new service, new abstraction) must say so up front — it will need
   an ADR at spec time.

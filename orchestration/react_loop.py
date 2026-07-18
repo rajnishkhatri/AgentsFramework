@@ -2331,7 +2331,7 @@ def build_graph(
         if isinstance(_coach_ctx, dict) and _coach_ctx.get("question_id"):
             from components.subject_coach_hints import rungs_for_question
 
-            # ADR-0031: optional wrong-letter selects a Gen2 choice-conditional
+            # ADR-0035: optional wrong-letter selects a Gen2 choice-conditional
             # ladder; omit/None keeps the Gen1 item-level default.
             _letter = _coach_ctx.get("choice_letter")
             if _letter not in ("A", "B", "C", "D"):

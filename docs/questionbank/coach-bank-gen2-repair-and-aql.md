@@ -192,7 +192,7 @@ Notes:
 | ≥1 critical | **REJECT** → repair/quarantine; tighten inspection on next shard (Z1.4 switching); do not patch-one-and-ship |
 | 0 critical AND ≥6 minor | **REJECT** on minor AQL |
 
-After ACCEPT: emit via `scripts/emit_test_item_bank.py` / `emit_hint_bank.py` (ADR-0031). Done: live bank is Gen1∪reviewed-Gen2.
+After ACCEPT: emit via `scripts/emit_test_item_bank.py` / `emit_hint_bank.py` (ADR-0035). Done: live bank is Gen1∪reviewed-Gen2.
 
 ### B.5 Stratified sample (n=80, seed=20260717) — redrawn post Step 4
 
@@ -300,7 +300,7 @@ Difficulty mix: {1: 3, 2: 25, 3: 27, 4: 14, 5: 11} · types: {'underlined-span-m
 3. **Timed-test contamination corpus** — set to Test-01 English (`_test01_english_corpus.ts`, 48 items); contamination PASS 2026-07-17.
 4. **Standards 33–43 in product demand?** — 388 Gen2 items sit on them.
 5. **Path A/B/C adoption** — pipeline does not choose; see eng-coach-gen2-v2-adoption docs.
-6. **Step 6 emit + moment router** — done 2026-07-17: reviewed Gen2 merged into live seeds (171+816 items; 513+7,344 wire hints); banks regenerated. Quiz moment router passes wrong-letter into `loadHintLadder` / `hintRepo.list` and `setCoachChoiceLetter` → `sendCoachAsk` → `coach_context.choice_letter` (ADR-0031).
+6. **Step 6 emit + moment router** — done 2026-07-17: reviewed Gen2 merged into live seeds (171+816 items; 513+7,344 wire hints); banks regenerated. Quiz moment router passes wrong-letter into `loadHintLadder` / `hintRepo.list` and `setCoachChoiceLetter` → `sendCoachAsk` → `coach_context.choice_letter` (ADR-0035).
 
 ### B.7 Companion machine-readable lists
 

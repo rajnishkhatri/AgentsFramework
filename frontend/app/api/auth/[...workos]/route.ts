@@ -43,7 +43,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       // Same redirect shape as the working web sign-in leg below (default 307).
       return NextResponse.redirect(url);
     }
-    const url = await getSignInUrl();
+    // Q1 (FR-6): a caller may scope the post-login landing per-CTA with
+    // `?returnTo=<path>` (the coach CTA sends `/learn`). This threads AuthKit's
+    // native `returnTo` for THIS sign-in only — it does NOT touch the global
+    // `returnPathname` default (D1 rejected), so the eval/agent CTAs still land
+    // on `/` (FR-7). Web-only by construction: the desktop leg returned above.
+    const returnTo = request.nextUrl.searchParams.get("returnTo");
+    const url = returnTo
+      ? await getSignInUrl({ returnTo })
+      : await getSignInUrl();
     return NextResponse.redirect(url);
   }
 

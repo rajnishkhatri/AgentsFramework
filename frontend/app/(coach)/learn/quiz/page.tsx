@@ -44,11 +44,9 @@ import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { resolveHintChoiceLetter } from "@/lib/translators/resolve_hint_choice_letter";
 import { screen } from "@/components/shell/nav_model";
+import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { QuizSession, Skill } from "@/lib/wire/engine_entities";
-
-// Phase-1 single-learner surface (dev learner "Garvit"); see the dashboard page note.
-const LEARNER_ID = "Garvit";
 
 /**
  * A Socratic nudge derived from the stem — deliberately generic so it never
@@ -60,6 +58,7 @@ function socraticHint(stem: string): string {
 }
 
 export default function QuizPage(): React.JSX.Element {
+  const { learnerId } = useLearnIdentity();
   const {
     openSession,
     openItem,
@@ -165,7 +164,7 @@ export default function QuizPage(): React.JSX.Element {
       );
       const opened = await openSession({
         subject: DEFAULT_SUBJECT,
-        learnerId: LEARNER_ID,
+        learnerId,
         ...openMode,
       });
       if (cancelled || opened == null) return;
@@ -189,6 +188,7 @@ export default function QuizPage(): React.JSX.Element {
     focusParam,
     modeParam,
     wantsFreshSession,
+    learnerId,
   ]);
 
   // Effect 2: whenever we enter `loading` (initial + after Next) and a session
@@ -199,7 +199,7 @@ export default function QuizPage(): React.JSX.Element {
     let cancelled = false;
     // S3: pass the session id so openItem derives this session's served-ids and
     // never re-serves a question already answered this session (FR-9/FR-13).
-    openItem({ subject: DEFAULT_SUBJECT, learnerId: LEARNER_ID, sessionId: session.id })
+    openItem({ subject: DEFAULT_SUBJECT, learnerId, sessionId: session.id })
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.
@@ -271,7 +271,7 @@ export default function QuizPage(): React.JSX.Element {
     setCoachPin(pin, mode);
   }, [coachRuntime, session, state]);
 
-  // Effect 5: ADR-0031 moment router — wrong letter → choice-conditional ladder
+  // Effect 5: ADR-0035 moment router — wrong letter → choice-conditional ladder
   // + coach_context.choice_letter; no/correct pick → item-level (null letter).
   const momentLetter =
     state.phase === "answering"
@@ -323,7 +323,7 @@ export default function QuizPage(): React.JSX.Element {
     submit({
       session,
       question,
-      learnerId: LEARNER_ID,
+      learnerId,
       letter,
       elapsedMs,
       usedHint,

@@ -98,7 +98,7 @@ describe("DrizzleHintRepo (against InMemoryEngineDb)", () => {
     await expect(db.insertHint(rung({ rung: 1 }))).rejects.toThrow();
   });
 
-  it("allows same rung on different choice_letter (ADR-0031)", async () => {
+  it("allows same rung on different choice_letter (ADR-0035)", async () => {
     const db = new InMemoryEngineDb();
     await db.insertHint(rung({ rung: 1, choice_letter: "A", body_md: "A1" }));
     await db.insertHint(rung({ rung: 1, choice_letter: "B", body_md: "B1" }));

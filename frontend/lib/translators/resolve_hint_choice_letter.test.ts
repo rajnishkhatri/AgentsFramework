@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveHintChoiceLetter } from "./resolve_hint_choice_letter";
 
-describe("resolveHintChoiceLetter — ADR-0031 moment router", () => {
+describe("resolveHintChoiceLetter — ADR-0035 moment router", () => {
   it("no pick → null (item-level Gen1 ladder)", () => {
     expect(resolveHintChoiceLetter(null, "B")).toBeNull();
     expect(resolveHintChoiceLetter(undefined, "B")).toBeNull();

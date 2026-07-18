@@ -126,7 +126,7 @@ describe("assembleCoachContext — happy path (FR-10)", () => {
     expect(ctx?.mastery_snapshot).toEqual({ "s-punc": 42 });
   });
 
-  it("ADR-0031: includes choice_letter when a wrong letter is supplied", () => {
+  it("ADR-0035: includes choice_letter when a wrong letter is supplied", () => {
     const ctx = assembleCoachContext({
       pin,
       question: question(),
@@ -136,7 +136,7 @@ describe("assembleCoachContext — happy path (FR-10)", () => {
     expect(ctx).toMatchObject({ choice_letter: "C" });
   });
 
-  it("ADR-0031: omits choice_letter when null/unknown", () => {
+  it("ADR-0035: omits choice_letter when null/unknown", () => {
     const ctx = assembleCoachContext({
       pin,
       question: question(),

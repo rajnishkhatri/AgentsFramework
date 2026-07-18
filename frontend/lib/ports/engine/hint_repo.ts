@@ -3,7 +3,7 @@
 import type { Hint } from "../../wire/engine_entities";
 
 /**
- * HintRepo — read-only access to a question's hint ladder (ADR-0014/ADR-0031,
+ * HintRepo — read-only access to a question's hint ladder (ADR-0014/ADR-0035,
  * the ADR-0006 amendment ADR-0012 §Consequences committed to).
  *
  * Behavioral contract:
@@ -20,7 +20,7 @@ import type { Hint } from "../../wire/engine_entities";
  *      and falls back to a probing question, never a free-generated hint.
  *   4. At most one rung per level per `(question_id, choice_letter|null)`:
  *      the store enforces unique `(question_id, choice_letter, rung)`
- *      (ADR-0031). Default `choiceLetter` is null (Gen1 item-level ladder).
+ *      (ADR-0035). Default `choiceLetter` is null (Gen1 item-level ladder).
  *
  * @throws EngineRepoError on persistence failure.
  */

@@ -11,7 +11,7 @@ waivers) is the ONLY hand-off artifact; this converter deterministically emits
   literals, with the wire ``generated_by`` stamp carried verbatim on
   ``authored_by`` (FR-B3).
 
-ADR-0031: optional ``choice_letter`` (null = Gen1 item-level; A–D = Gen2
+ADR-0035: optional ``choice_letter`` (null = Gen1 item-level; A–D = Gen2
 choice-conditional); uniqueness on ``(question_id, choice_letter, rung)``;
 rung 4 is stripped before emit (assertion stays off the wire per ADR-0012).
 
@@ -75,7 +75,7 @@ def _normalize_letter(raw: Any) -> str | None:
 
 
 def _strip_rung4(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """ADR-0031 / ADR-0012: assertion rung stays off the wire — drop, don't die."""
+    """ADR-0035 / ADR-0012: assertion rung stays off the wire — drop, don't die."""
     kept: list[dict[str, Any]] = []
     dropped = 0
     for row in rows:
@@ -115,7 +115,7 @@ def _validate(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> None
         if key in seen:
             _die(
                 f"duplicate (question_id, choice_letter, rung) {key} — "
-                "ADR-0031 uniqueness"
+                "ADR-0035 uniqueness"
             )
         seen.add(key)
     for waiver in waivers:
@@ -165,7 +165,7 @@ def _render_ts(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> str
  *
  * SERVING. Loaded by the browser composition root's dev-default branch via
  * `seedHintBank(db)` (next to `seedTestItemBank`); served ONLY through the
- * read-only `HintRepo` reviewed gate (ADR-0014/ADR-0031, FR-12). JSON-quoted
+ * read-only `HintRepo` reviewed gate (ADR-0014/ADR-0035, FR-12). JSON-quoted
  * keys are deliberate: the provenance detector matches the quoted form.
  */
 
