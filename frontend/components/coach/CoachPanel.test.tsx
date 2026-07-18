@@ -55,6 +55,7 @@ function rung(rungLevel: 1 | 2 | 3, body: string): Hint {
     id: `h-q1-${rungLevel}`,
     subject: "act-english",
     question_id: "q1",
+    choice_letter: null,
     rung: rungLevel,
     body_md: body,
     reviewed: true,

@@ -311,4 +311,3 @@ Difficulty mix: {1: 3, 2: 25, 3: 27, 4: 14, 5: 11} · types: {'underlined-span-m
 | Review packet | `docs/questionbank/coach-bank-gen2-step5-review-packet.json` |
 | Inspection + verdicts | `docs/questionbank/coach-bank-gen2-step5-inspection.json` |
 | Step-5 scorecard | `docs/questionbank/coach-bank-gen2-step5-scorecard.md` |
-
