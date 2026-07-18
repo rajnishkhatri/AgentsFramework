@@ -27,7 +27,18 @@
  * path.
  */
 
-import { and, asc, desc, eq, gte, isNotNull, lte, notInArray, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  isNotNull,
+  isNull,
+  lte,
+  notInArray,
+  sql,
+} from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as pg from "./schema.pg";
@@ -96,10 +107,15 @@ function toQuestion(r: Record<string, unknown>): Question {
 }
 
 function toHint(r: Record<string, unknown>): Hint {
+  const letter = r.choice_letter;
   return {
     id: String(r.id),
     subject: String(r.subject),
     question_id: String(r.question_id),
+    choice_letter:
+      letter == null || letter === ""
+        ? null
+        : (String(letter) as Hint["choice_letter"]),
     rung: Number(r.rung) as Hint["rung"],
     body_md: String(r.body_md ?? ""),
     reviewed: Boolean(r.reviewed),
@@ -334,7 +350,13 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
     async insertQuestion(q) {
       await wrap("insertQuestion", db.insert(pg.question).values(q));
     },
-    async listReviewedHints(subject, questionId) {
+    async listReviewedHints(subject, questionId, choiceLetter) {
+      // Default to item-level (null) — ADR-0031.
+      const letter = choiceLetter ?? null;
+      const letterPred =
+        letter == null
+          ? isNull(pg.hint.choice_letter)
+          : eq(pg.hint.choice_letter, letter);
       const rows = await wrap(
         "listReviewedHints",
         db
@@ -344,6 +366,7 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
             and(
               eq(pg.hint.subject, subject),
               eq(pg.hint.question_id, questionId),
+              letterPred,
               eq(pg.hint.reviewed, true), // HARD GATE (FR-12/FR-20)
             ),
           )
@@ -352,8 +375,14 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
       return rows.map((r) => toHint(r as Record<string, unknown>));
     },
     async insertHint(h) {
-      // Duplicate (question_id, rung) is rejected by hint_question_rung_uq.
-      await wrap("insertHint", db.insert(pg.hint).values(h));
+      // Duplicate (question_id, choice_letter, rung) — ADR-0031 partial uqs.
+      await wrap(
+        "insertHint",
+        db.insert(pg.hint).values({
+          ...h,
+          choice_letter: h.choice_letter ?? null,
+        }),
+      );
     },
     async listReviewedTestItems(subject) {
       const rows = await wrap(

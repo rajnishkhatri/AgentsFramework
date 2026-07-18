@@ -97,16 +97,23 @@ export const QUESTION_ANSWER_BEARING_FIELDS = [
 // --- hint (ADR-0014) ------------------------------------------------------
 
 /**
- * One hint-ladder rung (ADR-0012/ADR-0014, spec FR-12/FR-20). The rung union
- * keeps the assertion rung (4) UNREPRESENTABLE at the wire — probe (1),
- * conceptual (2), directive (3) only. `reviewed = false` rows MUST NOT reach
- * a learner; `HintRepo.list` serves reviewed rungs only. `generated_by` is
- * `"authored"` or `"<model>@<run_id>"` (generator provenance).
+ * One hint-ladder rung (ADR-0012/ADR-0014/ADR-0031, spec FR-12/FR-20). The rung
+ * union keeps the assertion rung (4) UNREPRESENTABLE at the wire — probe (1),
+ * conceptual (2), directive (3) only. `choice_letter` is null for Gen1
+ * item-level ladders, or A–D for Gen2 choice-conditional ladders; uniqueness
+ * is `(question_id, choice_letter, rung)`. `reviewed = false` rows MUST NOT
+ * reach a learner; `HintRepo.list` serves reviewed rungs only. `generated_by`
+ * is `"authored"` or `"<model>@<run_id>"` (generator provenance).
  */
 export const Hint = z.object({
   id: z.string(),
   subject: z.string(),
   question_id: z.string(),
+  choice_letter: z
+    .enum(["A", "B", "C", "D"])
+    .nullable()
+    .optional()
+    .transform((v) => v ?? null),
   rung: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   body_md: z.string().min(1),
   reviewed: z.boolean(),

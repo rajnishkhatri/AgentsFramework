@@ -43,8 +43,30 @@ export interface QuizItemResult {
    * The question's REVIEWED hint ladder, rung ascending (ADR-0014, FR-12/20).
    * `[]` when no reviewed rungs exist — the hint panel falls back to the
    * generic Socratic nudge, never an unreviewed row.
+   * ADR-0031: item-level by default; pass `choiceLetter` via `loadHintLadder`
+   * after a wrong pick for Gen2 choice-conditional rungs.
    */
   readonly hintLadder: readonly Hint[];
+}
+
+/**
+ * ADR-0031 moment-router load: `choiceLetter` null/omit → Gen1 item-level;
+ * A–D → that wrong letter's Gen2 ladder (empty when none reviewed).
+ */
+export async function loadHintLadder(
+  ports: Pick<EnginePortBag, "hintRepo">,
+  subject: string,
+  questionId: string,
+  choiceLetter?: string | null,
+): Promise<readonly Hint[]> {
+  const letter =
+    choiceLetter === "A" ||
+    choiceLetter === "B" ||
+    choiceLetter === "C" ||
+    choiceLetter === "D"
+      ? choiceLetter
+      : null;
+  return ports.hintRepo.list(subject, questionId, letter);
 }
 
 export interface OpenSessionArgs {
@@ -195,9 +217,9 @@ export async function openQuizItem(
     // rather than handing the learner an empty item.
     throw new Error(`scheduled question ${next.question_id} not found`);
   }
-  // The ladder loads WITH the item (no per-hint fetch): reviewed rungs only
-  // (ADR-0014); [] keeps the panel on the generic nudge fallback.
-  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  // Item-level ladder at open (ADR-0014); wrong-letter Gen2 reload is
+  // loadHintLadder + ladder_loaded on the quiz page (ADR-0031).
+  const hintLadder = await loadHintLadder(ports, args.subject, question.id);
   return { skillId: next.skill_id, question, hintLadder };
 }
 
@@ -220,7 +242,7 @@ async function openDrillQuizItem(
       `no unserved reviewed question for drill skill '${args.skillId}' (subject '${args.subject}')`,
     );
   }
-  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  const hintLadder = await loadHintLadder(ports, args.subject, question.id);
   return { skillId: args.skillId, question, hintLadder };
 }
 
@@ -245,7 +267,7 @@ async function openReviewQuizItem(
   if (question == null) {
     throw new Error(`missed question ${nextId} not found`);
   }
-  const hintLadder = await ports.hintRepo.list(args.subject, question.id);
+  const hintLadder = await loadHintLadder(ports, args.subject, question.id);
   return { skillId: question.skill_id, question, hintLadder };
 }
 
@@ -346,7 +368,7 @@ export async function resumeQuizSession(
   if (session == null) return null;
   const question = await ports.questionRepo.get(args.questionId);
   if (question == null) return null;
-  const hintLadder = await ports.hintRepo.list(session.subject, question.id);
+  const hintLadder = await loadHintLadder(ports, session.subject, question.id);
   return {
     session,
     item: { skillId: question.skill_id, question, hintLadder },
@@ -375,6 +397,12 @@ export function useQuiz(): {
   closeSession: (args: CloseSessionArgs) => Promise<QuizSession>;
   listSkillIds: (subject: string) => Promise<string[]>;
   listSkills: (subject: string) => Promise<Skill[]>;
+  /** ADR-0031: reload ladder for a wrong-letter pick (moment router). */
+  loadLadder: (
+    subject: string,
+    questionId: string,
+    choiceLetter?: string | null,
+  ) => Promise<readonly Hint[]>;
 } {
   const ports = useEngine();
   return React.useMemo(
@@ -388,6 +416,11 @@ export function useQuiz(): {
       closeSession: (args: CloseSessionArgs) => closeQuizSession(ports, args),
       listSkillIds: (subject: string) => listQuizSkillIds(ports, subject),
       listSkills: (subject: string) => listQuizSkills(ports, subject),
+      loadLadder: (
+        subject: string,
+        questionId: string,
+        choiceLetter?: string | null,
+      ) => loadHintLadder(ports, subject, questionId, choiceLetter),
     }),
     [ports],
   );

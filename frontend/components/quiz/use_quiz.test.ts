@@ -17,6 +17,7 @@ import type { EnginePortBag } from "@/lib/composition_engine";
 import {
   closeQuizSession,
   listQuizSkills,
+  loadHintLadder,
   openQuizItem,
   openQuizSession,
   resumeQuizSession,
@@ -634,6 +635,75 @@ describe("openQuizItem — scheduler pick → reviewed question (FR-A1/B*)", () 
     expect(item.hintLadder.map((h) => h.body_md)).toEqual([
       "probe rung",
       "conceptual rung",
+    ]);
+  });
+});
+
+describe("loadHintLadder — ADR-0031 moment router", () => {
+  it("default (null letter) serves the Gen1 item-level ladder", async () => {
+    db.seedHints([
+      {
+        id: "h-item-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        choice_letter: null,
+        rung: 1,
+        body_md: "item-level probe",
+        reviewed: true,
+        generated_by: "authored",
+      },
+      {
+        id: "h-A-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        choice_letter: "A",
+        rung: 1,
+        body_md: "wrong-A probe",
+        reviewed: true,
+        generated_by: "authored",
+      },
+    ]);
+    const ladder = await loadHintLadder(ports, SUBJECT, "q1");
+    expect(ladder.map((h) => h.body_md)).toEqual(["item-level probe"]);
+  });
+
+  it("wrong letter serves that Gen2 choice-conditional ladder", async () => {
+    db.seedHints([
+      {
+        id: "h-item-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        choice_letter: null,
+        rung: 1,
+        body_md: "item-level probe",
+        reviewed: true,
+        generated_by: "authored",
+      },
+      {
+        id: "h-A-1",
+        subject: SUBJECT,
+        question_id: "q1",
+        choice_letter: "A",
+        rung: 1,
+        body_md: "wrong-A probe",
+        reviewed: true,
+        generated_by: "authored",
+      },
+      {
+        id: "h-A-2",
+        subject: SUBJECT,
+        question_id: "q1",
+        choice_letter: "A",
+        rung: 2,
+        body_md: "wrong-A conceptual",
+        reviewed: true,
+        generated_by: "authored",
+      },
+    ]);
+    const ladder = await loadHintLadder(ports, SUBJECT, "q1", "A");
+    expect(ladder.map((h) => h.body_md)).toEqual([
+      "wrong-A probe",
+      "wrong-A conceptual",
     ]);
   });
 });

@@ -17,6 +17,7 @@ import { coachTurnsFromChat, sendCoachAsk, SUBJECT_COACH_AGENT_ID } from "./use_
 import {
   coachThreadSnapshot,
   resetCoachThread,
+  setCoachChoiceLetter,
   setCoachPin,
 } from "./coach_thread_store";
 import type { ChatTurn } from "@/components/chat/use_agent_run";
@@ -283,5 +284,65 @@ describe("sendCoachAsk — coach_context when pinned (BP-3b / FR-10)", () => {
     });
     expect(input.coach_context!.misses_aggregate).not.toHaveProperty("window");
     expect(input.coach_context!.mastery_snapshot).toEqual({ "s-punc": 50 });
+  });
+
+  it("ADR-0031: attaches choice_letter from the thread store wrong letter", async () => {
+    const { runtime, streamReqs } = scriptedRuntime();
+    setCoachPin(
+      {
+        kind: "item",
+        questionId: "q1",
+        skillId: "s-punc",
+        label: "Q4 · Commas",
+      },
+      "pre_submit",
+    );
+    setCoachChoiceLetter("C");
+    const question = {
+      id: "q1",
+      subject: "act-english",
+      skill_id: "s-punc",
+      difficulty: 3,
+      context_html: "x",
+      stem: "stem",
+      choices: [{ letter: "A", label: "a", is_no_change: false }],
+      answer_letter: "A",
+      per_choice_rationale: { A: "ok" },
+      why_correct_md: "",
+      why_tempted_md: "",
+      rule_md: "rule",
+      item_type: "underlined-span-mc" as const,
+      misconception: null,
+      reviewed: true,
+      generated_by: "test",
+    };
+    const ports = {
+      questionRepo: {
+        async get(id: string) {
+          return id === "q1" ? question : null;
+        },
+      },
+      attemptRepo: {
+        async misses() {
+          return [];
+        },
+      },
+      learnerRead: {
+        async listSkillState() {
+          return [];
+        },
+      },
+    };
+
+    await sendCoachAsk(runtime, "why not C?", {
+      ports: ports as never,
+      learnerId: "Garvit",
+      subject: "act-english",
+    });
+
+    const input = streamReqs[0]!.input as {
+      coach_context?: { choice_letter?: string };
+    };
+    expect(input.coach_context?.choice_letter).toBe("C");
   });
 });

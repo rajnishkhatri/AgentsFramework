@@ -41,6 +41,8 @@ class HintRung(BaseModel):
     body_md: str
     reviewed: bool = False
     authored_by: str
+    # ADR-0031: null = Gen1 item-level ladder; A–D = choice-conditional Gen2.
+    choice_letter: Literal["A", "B", "C", "D"] | None = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -55,11 +57,16 @@ class HintRung(BaseModel):
 def rungs_for_question(
     question_id: str,
     source: list[HintRung] | None = None,
+    *,
+    choice_letter: Literal["A", "B", "C", "D"] | None = None,
 ) -> list[HintRung]:
     """Serve the reviewed ladder for a question, probe → directive (FR-20).
 
     The gate: unreviewed rungs are filtered here, so an ungated row can never
     reach a learner regardless of how it entered ``source``.
+
+    Default ``choice_letter=None`` selects the Gen1 item-level ladder
+    (ADR-0031). Pass A–D for a choice-conditional Gen2 ladder.
 
     Default source = the authored asset PLUS the generated bank ladders
     (coach-bank-hints FR-D1): the ADR-0021 bank serves ``ti-gen-*`` ids the
@@ -74,7 +81,13 @@ def rungs_for_question(
         rows: list[HintRung] = [*AUTHORED_RUNGS, *BANK_RUNGS]
     else:
         rows = source
-    served = [r for r in rows if r.question_id == question_id and r.reviewed]
+    served = [
+        r
+        for r in rows
+        if r.question_id == question_id
+        and r.reviewed
+        and r.choice_letter == choice_letter
+    ]
     return sorted(served, key=lambda r: r.rung)
 
 

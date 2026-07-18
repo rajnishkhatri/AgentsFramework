@@ -1,0 +1,770 @@
+{
+  "gate": "step5-aql-sample",
+  "standard": "ISO 2859-1 / ANSI-ASQ Z1.4",
+  "inspection_level": "II",
+  "code_letter": "J",
+  "lot_size_N": 816,
+  "lot_definition": "leak-green \u2229 solve-PASS (status=pass in step4-solve)",
+  "sample_size_n": 80,
+  "seed": 20260717,
+  "critical_aql": 0,
+  "critical_ac_re": [
+    0,
+    1
+  ],
+  "minor_aql": 2.5,
+  "minor_ac_re": [
+    5,
+    6
+  ],
+  "skill_alloc": {
+    "s-gram": 11,
+    "s-org": 16,
+    "s-punc": 8,
+    "s-rhet": 18,
+    "s-sent": 9,
+    "s-style": 18
+  },
+  "skill_lot_counts": {
+    "s-gram": 111,
+    "s-style": 181,
+    "s-rhet": 188,
+    "s-punc": 85,
+    "s-org": 165,
+    "s-sent": 86
+  },
+  "difficulty_mix": {
+    "1": 3,
+    "2": 25,
+    "3": 27,
+    "4": 14,
+    "5": 11
+  },
+  "type_mix": {
+    "underlined-span-mc": 58,
+    "rhetorical-mc": 22
+  },
+  "note": "Redraw after Step-4 quarantine; supersedes pre-solve \u00a7B.5 sample",
+  "rows": [
+    {
+      "sample_seq": 1,
+      "question_id": "ti-gen-1f9624c3292b98e5",
+      "skill_id": "s-gram",
+      "standard_id": 17,
+      "difficulty": 1,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 2,
+      "question_id": "ti-gen-2f27b759b69745cb",
+      "skill_id": "s-gram",
+      "standard_id": 22,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 3,
+      "question_id": "ti-gen-710a3599e4abf52e",
+      "skill_id": "s-gram",
+      "standard_id": 3,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 4,
+      "question_id": "ti-gen-7a31749e549850b4",
+      "skill_id": "s-gram",
+      "standard_id": 7,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 5,
+      "question_id": "ti-gen-008e6e42275f539a",
+      "skill_id": "s-gram",
+      "standard_id": 23,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 6,
+      "question_id": "ti-gen-842a62e017e2bdd1",
+      "skill_id": "s-gram",
+      "standard_id": 11,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 7,
+      "question_id": "ti-gen-d6c59e93c9aa7df3",
+      "skill_id": "s-gram",
+      "standard_id": 27,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 8,
+      "question_id": "ti-gen-f0f3698908251c91",
+      "skill_id": "s-gram",
+      "standard_id": 18,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 9,
+      "question_id": "ti-gen-62b1c68bb839c79c",
+      "skill_id": "s-gram",
+      "standard_id": 11,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 10,
+      "question_id": "ti-gen-6fae17a2143e9de6",
+      "skill_id": "s-gram",
+      "standard_id": 18,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 11,
+      "question_id": "ti-gen-95b3cf2541e5b0b8",
+      "skill_id": "s-gram",
+      "standard_id": 28,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 12,
+      "question_id": "ti-gen-0f348f00c49c85ab",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 13,
+      "question_id": "ti-gen-5bdbf65db2d82245",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 14,
+      "question_id": "ti-gen-791e41888777d68d",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 15,
+      "question_id": "ti-gen-ae1d260e0e7bb1fa",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 16,
+      "question_id": "ti-gen-af28702318d403e6",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 17,
+      "question_id": "ti-gen-edeee013f8460122",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 18,
+      "question_id": "ti-gen-288ef204e430f47f",
+      "skill_id": "s-org",
+      "standard_id": 38,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 19,
+      "question_id": "ti-gen-5a6cb4caa45e8765",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 20,
+      "question_id": "ti-gen-78da321a18e5e6b8",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 21,
+      "question_id": "ti-gen-c03b2eb630d29e75",
+      "skill_id": "s-org",
+      "standard_id": 37,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 22,
+      "question_id": "ti-gen-ec85fced0c9cb680",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 23,
+      "question_id": "ti-gen-13a120b7f1bf5f0e",
+      "skill_id": "s-org",
+      "standard_id": 36,
+      "difficulty": 4,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 24,
+      "question_id": "ti-gen-3d75a81048059e7b",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 25,
+      "question_id": "ti-gen-117c48a1e211290f",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 26,
+      "question_id": "ti-gen-56613d5d0dccbfa1",
+      "skill_id": "s-org",
+      "standard_id": 1,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 27,
+      "question_id": "ti-gen-98e39f81c158b40a",
+      "skill_id": "s-org",
+      "standard_id": 38,
+      "difficulty": 5,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 28,
+      "question_id": "ti-gen-41fc759996b6afc0",
+      "skill_id": "s-punc",
+      "standard_id": 29,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 29,
+      "question_id": "ti-gen-6af713b67368333e",
+      "skill_id": "s-punc",
+      "standard_id": 29,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 30,
+      "question_id": "ti-gen-d79b7be26ed8021b",
+      "skill_id": "s-punc",
+      "standard_id": 24,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 31,
+      "question_id": "ti-gen-3afe53bbd07a0e82",
+      "skill_id": "s-punc",
+      "standard_id": 41,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 32,
+      "question_id": "ti-gen-3eb5738a961ab620",
+      "skill_id": "s-punc",
+      "standard_id": 40,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 33,
+      "question_id": "ti-gen-a76732e69d259db0",
+      "skill_id": "s-punc",
+      "standard_id": 30,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 34,
+      "question_id": "ti-gen-08cfb045497c4c57",
+      "skill_id": "s-punc",
+      "standard_id": 24,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 35,
+      "question_id": "ti-gen-6b1982b311bbf5fd",
+      "skill_id": "s-punc",
+      "standard_id": 40,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 36,
+      "question_id": "ti-gen-0113496a8c005fe7",
+      "skill_id": "s-rhet",
+      "standard_id": 34,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 37,
+      "question_id": "ti-gen-086013df3cc9c3f6",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 38,
+      "question_id": "ti-gen-98597c95afd267a6",
+      "skill_id": "s-rhet",
+      "standard_id": 2,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 39,
+      "question_id": "ti-gen-add134b6fe11490b",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 40,
+      "question_id": "ti-gen-eddb33388adf6eda",
+      "skill_id": "s-rhet",
+      "standard_id": 35,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 41,
+      "question_id": "ti-gen-ff453e5783b1bca1",
+      "skill_id": "s-rhet",
+      "standard_id": 34,
+      "difficulty": 2,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 42,
+      "question_id": "ti-gen-37e641442920347a",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 43,
+      "question_id": "ti-gen-51dabb91f4950f88",
+      "skill_id": "s-rhet",
+      "standard_id": 4,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 44,
+      "question_id": "ti-gen-877a39fb3e4eb82b",
+      "skill_id": "s-rhet",
+      "standard_id": 2,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 45,
+      "question_id": "ti-gen-a66ffaa6114e62b5",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 46,
+      "question_id": "ti-gen-d0caa0dcd1ef208c",
+      "skill_id": "s-rhet",
+      "standard_id": 2,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 47,
+      "question_id": "ti-gen-ee066093eaaed416",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 3,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 48,
+      "question_id": "ti-gen-0b9f10d3a8d17637",
+      "skill_id": "s-rhet",
+      "standard_id": 2,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 49,
+      "question_id": "ti-gen-a0058c52245d7aea",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 4,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 50,
+      "question_id": "ti-gen-1df2022022bbb6ac",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 5,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 51,
+      "question_id": "ti-gen-4dd01927285711b4",
+      "skill_id": "s-rhet",
+      "standard_id": 33,
+      "difficulty": 5,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 52,
+      "question_id": "ti-gen-5dc0512ec0ce5162",
+      "skill_id": "s-rhet",
+      "standard_id": 2,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 53,
+      "question_id": "ti-gen-bf2f0097cfdd29e9",
+      "skill_id": "s-rhet",
+      "standard_id": 34,
+      "difficulty": 5,
+      "item_type": "rhetorical-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 54,
+      "question_id": "ti-gen-b92e1e2c56840572",
+      "skill_id": "s-sent",
+      "standard_id": 10,
+      "difficulty": 1,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 55,
+      "question_id": "ti-gen-77155fe8b8724aa8",
+      "skill_id": "s-sent",
+      "standard_id": 25,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 56,
+      "question_id": "ti-gen-fbab9de9458c9c07",
+      "skill_id": "s-sent",
+      "standard_id": 15,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 57,
+      "question_id": "ti-gen-28af8f2f93f40156",
+      "skill_id": "s-sent",
+      "standard_id": 25,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 58,
+      "question_id": "ti-gen-66617fd8e162d976",
+      "skill_id": "s-sent",
+      "standard_id": 39,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 59,
+      "question_id": "ti-gen-6cbc25a928512301",
+      "skill_id": "s-sent",
+      "standard_id": 21,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 60,
+      "question_id": "ti-gen-41d49644ac23ae91",
+      "skill_id": "s-sent",
+      "standard_id": 20,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 61,
+      "question_id": "ti-gen-a42b5cacf649a56f",
+      "skill_id": "s-sent",
+      "standard_id": 39,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 62,
+      "question_id": "ti-gen-850ac543a78e429f",
+      "skill_id": "s-sent",
+      "standard_id": 39,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 63,
+      "question_id": "ti-gen-672521a75dc49fe0",
+      "skill_id": "s-style",
+      "standard_id": 9,
+      "difficulty": 1,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 64,
+      "question_id": "ti-gen-0cae2ba3f5c992eb",
+      "skill_id": "s-style",
+      "standard_id": 42,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 65,
+      "question_id": "ti-gen-2c333a5e989049b3",
+      "skill_id": "s-style",
+      "standard_id": 9,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 66,
+      "question_id": "ti-gen-3b65d25513ef6927",
+      "skill_id": "s-style",
+      "standard_id": 6,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 67,
+      "question_id": "ti-gen-843fad2b5de8bf22",
+      "skill_id": "s-style",
+      "standard_id": 8,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 68,
+      "question_id": "ti-gen-ca729512b2a3c613",
+      "skill_id": "s-style",
+      "standard_id": 8,
+      "difficulty": 2,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 69,
+      "question_id": "ti-gen-1a09c7cb7471f71e",
+      "skill_id": "s-style",
+      "standard_id": 8,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 70,
+      "question_id": "ti-gen-3d6b6d45ecb6d445",
+      "skill_id": "s-style",
+      "standard_id": 42,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "D"
+    },
+    {
+      "sample_seq": 71,
+      "question_id": "ti-gen-68bc818dbb54d0e0",
+      "skill_id": "s-style",
+      "standard_id": 8,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "A"
+    },
+    {
+      "sample_seq": 72,
+      "question_id": "ti-gen-702a4ea3471dd966",
+      "skill_id": "s-style",
+      "standard_id": 9,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 73,
+      "question_id": "ti-gen-891be373652d0cc6",
+      "skill_id": "s-style",
+      "standard_id": 6,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 74,
+      "question_id": "ti-gen-b37b2b5e45edd9f9",
+      "skill_id": "s-style",
+      "standard_id": 5,
+      "difficulty": 3,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 75,
+      "question_id": "ti-gen-5aa213e50a0c59c1",
+      "skill_id": "s-style",
+      "standard_id": 8,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 76,
+      "question_id": "ti-gen-6a9e74b956a1a566",
+      "skill_id": "s-style",
+      "standard_id": 43,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 77,
+      "question_id": "ti-gen-70f61537f01421d5",
+      "skill_id": "s-style",
+      "standard_id": 5,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 78,
+      "question_id": "ti-gen-8d6fa09255742d03",
+      "skill_id": "s-style",
+      "standard_id": 5,
+      "difficulty": 4,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    },
+    {
+      "sample_seq": 79,
+      "question_id": "ti-gen-61af7a4ba8314159",
+      "skill_id": "s-style",
+      "standard_id": 42,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "C"
+    },
+    {
+      "sample_seq": 80,
+      "question_id": "ti-gen-a07a23176fd0a16a",
+      "skill_id": "s-style",
+      "standard_id": 42,
+      "difficulty": 5,
+      "item_type": "underlined-span-mc",
+      "answer_letter": "B"
+    }
+  ]
+}

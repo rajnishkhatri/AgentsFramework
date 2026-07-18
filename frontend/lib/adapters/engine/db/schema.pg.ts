@@ -104,11 +104,13 @@ export const question = pgTable("question", {
 });
 
 /**
- * hint — reviewed-gated hint-ladder rungs (ADR-0012/ADR-0014, spec FR-12/20).
- * One rung per level per question (unique index); `reviewed = true` is EARNED
- * by the generator's verifier cascade (deterministic per-rung leakage check
- * first) — `reviewed = false` rows MUST NOT reach a learner. `generated_by`
- * is "authored" or "<model>@<run_id>" (provenance, FR-B4-analog).
+ * hint — reviewed-gated hint-ladder rungs (ADR-0012/ADR-0014/ADR-0031,
+ * spec FR-12/20). Unique per (question_id, choice_letter|null, rung) via dual
+ * partial indexes; `reviewed = true` is EARNED by the generator's verifier
+ * cascade (deterministic per-rung leakage check first) — `reviewed = false`
+ * rows MUST NOT reach a learner. `generated_by` is "authored" or
+ * "<model>@<run_id>" (provenance, FR-B4-analog). `choice_letter` null = Gen1
+ * item-level ladder; A–D = Gen2 choice-conditional.
  */
 export const hint = pgTable(
   "hint",
@@ -118,12 +120,20 @@ export const hint = pgTable(
     question_id: uuid("question_id")
       .notNull()
       .references(() => question.id, { onDelete: "cascade" }),
+    choice_letter: text("choice_letter"), // null | A–D (ADR-0031)
     rung: integer("rung").notNull(), // 1..3; assertion rung unrepresentable at the wire
     body_md: text("body_md").notNull(),
     reviewed: boolean("reviewed").notNull().default(false),
     generated_by: text("generated_by").notNull().default(""),
   },
-  (t) => [uniqueIndex("hint_question_rung_uq").on(t.question_id, t.rung)],
+  (t) => [
+    uniqueIndex("hint_item_level_uq")
+      .on(t.question_id, t.rung)
+      .where(sql`${t.choice_letter} is null`),
+    uniqueIndex("hint_choice_level_uq")
+      .on(t.question_id, t.choice_letter, t.rung)
+      .where(sql`${t.choice_letter} is not null`),
+  ],
 );
 
 /**

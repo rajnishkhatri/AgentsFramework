@@ -24,6 +24,8 @@ export interface WireCoachContextItem {
   readonly question_id: string;
   readonly skill_id: string;
   readonly question: Question;
+  /** ADR-0031: wrong letter for Gen2 choice-conditional ladder; omit when unknown. */
+  readonly choice_letter?: "A" | "B" | "C" | "D";
   readonly misses_aggregate?: CoachMissesAggregate;
   readonly mastery_snapshot?: Readonly<Record<string, number>>;
 }
@@ -51,6 +53,8 @@ export interface AssembleCoachContextArgs {
   readonly missesOnSkill?: number | null;
   /** Skill states for mastery_snapshot; omit when empty / unavailable. */
   readonly skillStates?: ReadonlyArray<SkillState> | null;
+  /** ADR-0031: learner's selected wrong letter when known (Gen2 ladders). */
+  readonly choiceLetter?: "A" | "B" | "C" | "D" | null;
 }
 
 function withOptionals<T extends WireCoachContext>(
@@ -106,11 +110,18 @@ export function assembleCoachContext(
   if (question == null) return null;
   if (question.id !== pin.questionId) return null;
 
+  const letter = args.choiceLetter;
   const ctx: WireCoachContextItem = {
     mode: args.mode,
     question_id: pin.questionId,
     skill_id: pin.skillId,
     question,
+    ...(letter === "A" ||
+    letter === "B" ||
+    letter === "C" ||
+    letter === "D"
+      ? { choice_letter: letter }
+      : {}),
   };
   return withOptionals(ctx, args, pin.skillId);
 }

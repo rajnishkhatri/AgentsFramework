@@ -11,9 +11,13 @@ waivers) is the ONLY hand-off artifact; this converter deterministically emits
   literals, with the wire ``generated_by`` stamp carried verbatim on
   ``authored_by`` (FR-B3).
 
+ADR-0031: optional ``choice_letter`` (null = Gen1 item-level; A–D = Gen2
+choice-conditional); uniqueness on ``(question_id, choice_letter, rung)``;
+rung 4 is stripped before emit (assertion stays off the wire per ADR-0012).
+
 Deterministic and offline: stdlib only, byte-stable for a given corpus (rows
-sorted by ``(question_id, rung)``). Never edit the emitted files by hand —
-parity tests pin both against the JSON (FR-B2). Regenerate:
+sorted by ``(question_id, choice_letter, rung)``). Never edit the emitted
+files by hand — parity tests pin both against the JSON (FR-B2). Regenerate:
 
     .venv/bin/python scripts/emit_hint_bank.py
 """
@@ -32,10 +36,12 @@ DEFAULT_TS_OUT = _REPO / "frontend" / "lib" / "adapters" / "engine" / "_hint_ban
 DEFAULT_PY_OUT = _REPO / "components" / "subject_coach_bank_hints.py"
 
 _VALID_RUNGS = (1, 2, 3)
+_VALID_LETTERS = ("A", "B", "C", "D")
 _ROW_FIELDS = (
     "id",
     "subject",
     "question_id",
+    "choice_letter",
     "rung",
     "body_md",
     "reviewed",
@@ -59,9 +65,37 @@ def _die(msg: str) -> None:
     raise SystemExit(f"emit_hint_bank: {msg}")
 
 
-def _validate(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> None:
-    seen: set[tuple[str, int]] = set()
+def _normalize_letter(raw: Any) -> str | None:
+    if raw is None or raw == "":
+        return None
+    letter = str(raw)
+    if letter not in _VALID_LETTERS:
+        _die(f"choice_letter must be one of {_VALID_LETTERS} or null, got {raw!r}")
+    return letter
+
+
+def _strip_rung4(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """ADR-0031 / ADR-0012: assertion rung stays off the wire — drop, don't die."""
+    kept: list[dict[str, Any]] = []
+    dropped = 0
     for row in rows:
+        if int(row.get("rung", 0)) == 4:
+            dropped += 1
+            continue
+        kept.append(row)
+    if dropped:
+        print(
+            f"emit_hint_bank: stripped {dropped} rung-4 row(s) (off-wire)",
+            file=sys.stderr,
+        )
+    return kept
+
+
+def _validate(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> None:
+    seen: set[tuple[str, str | None, int]] = set()
+    for row in rows:
+        # choice_letter is optional in source JSON; normalize before field check.
+        row["choice_letter"] = _normalize_letter(row.get("choice_letter"))
         missing = [f for f in _ROW_FIELDS if f not in row]
         if missing:
             _die(f"row {row.get('id', '?')} missing fields {missing}")
@@ -77,10 +111,11 @@ def _validate(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> None
             _die(f"row {row['id']}: empty body_md")
         if not str(row["generated_by"]).strip():
             _die(f"row {row['id']}: empty generated_by")
-        key = (str(row["question_id"]), int(row["rung"]))
+        key = (str(row["question_id"]), row["choice_letter"], int(row["rung"]))
         if key in seen:
             _die(
-                f"duplicate (question_id, rung) {key} — the hint table is unique on it"
+                f"duplicate (question_id, choice_letter, rung) {key} — "
+                "ADR-0031 uniqueness"
             )
         seen.add(key)
     for waiver in waivers:
@@ -93,7 +128,14 @@ def _validate(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> None
 
 
 def _sorted_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return sorted(rows, key=lambda r: (str(r["question_id"]), int(r["rung"])))
+    return sorted(
+        rows,
+        key=lambda r: (
+            str(r["question_id"]),
+            r["choice_letter"] or "",
+            int(r["rung"]),
+        ),
+    )
 
 
 def _ts_row(row: dict[str, Any]) -> str:
@@ -123,8 +165,8 @@ def _render_ts(rows: list[dict[str, Any]], waivers: list[dict[str, Any]]) -> str
  *
  * SERVING. Loaded by the browser composition root's dev-default branch via
  * `seedHintBank(db)` (next to `seedTestItemBank`); served ONLY through the
- * read-only `HintRepo` reviewed gate (ADR-0014, FR-12). JSON-quoted keys are
- * deliberate: the provenance detector matches the quoted form.
+ * read-only `HintRepo` reviewed gate (ADR-0014/ADR-0031, FR-12). JSON-quoted
+ * keys are deliberate: the provenance detector matches the quoted form.
  */
 
 import type {{ Hint }} from "../../wire/engine_entities";
@@ -137,7 +179,7 @@ export const HINT_BANK: readonly Hint[] = [
 /**
  * Explicit FR-A3 waivers — (question_id, rung) ladder gaps the coverage
  * ratchet (`_hint_bank.test.ts`) accepts. An empty table means every
- * reviewed bank item carries a full 3-rung ladder.
+ * reviewed bank item carries a full 3-rung item-level ladder.
  */
 export const HINT_BANK_WAIVERS: ReadonlyArray<{{
   readonly question_id: string;
@@ -169,6 +211,8 @@ def _render_py(rows: list[dict[str, Any]]) -> str:
         f"        body_md={_py_str(row['body_md'])},\n"
         f"        reviewed=True,\n"
         f"        authored_by={_py_str(row['generated_by'])},\n"
+        f"        choice_letter="
+        f"{'None' if row['choice_letter'] is None else _py_str(row['choice_letter'])},\n"
         f"    ),"
         for row in rows
     )
@@ -206,6 +250,7 @@ def emit_hint_bank(seed: Path, ts_out: Path, py_out: Path) -> None:
         return  # unreachable; keeps the type-checker happy
     if not isinstance(rows, list) or not isinstance(waivers, list):
         _die("corpus must be {'rows': [...], 'waivers': [...]}")
+    rows = _strip_rung4(rows)
     _validate(rows, waivers)
     ordered = _sorted_rows(rows)
     ordered_waivers = sorted(

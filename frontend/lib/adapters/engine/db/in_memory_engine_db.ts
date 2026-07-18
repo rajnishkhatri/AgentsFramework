@@ -35,10 +35,14 @@ function contentKey(subject: string, key: string, locale: string): string {
   return `${subject}\0${key}\0${locale}`;
 }
 
+function hintKey(h: Pick<Hint, "question_id" | "choice_letter" | "rung">): string {
+  return `${h.question_id}\0${h.choice_letter ?? ""}\0${h.rung}`;
+}
+
 export class InMemoryEngineDb implements EngineDb {
   private skills: Skill[] = [];
   private questions = new Map<string, Question>();
-  private hints = new Map<string, Hint>(); // key: `${question_id} ${rung}`
+  private hints = new Map<string, Hint>(); // key: `${question_id}\0${letter??''}\0${rung}`
   private testItems = new Map<string, TestItem>();
   private testBlueprints = new Map<string, TestBlueprint>();
   private sessions = new Map<string, QuizSession>();
@@ -56,7 +60,7 @@ export class InMemoryEngineDb implements EngineDb {
     for (const q of questions) this.questions.set(q.id, { ...q });
   }
   seedHints(hints: Hint[]): void {
-    for (const h of hints) this.hints.set(`${h.question_id}\0${h.rung}`, { ...h });
+    for (const h of hints) this.hints.set(hintKey(h), { ...h, choice_letter: h.choice_letter ?? null });
   }
   seedTestItems(items: TestItem[]): void {
     for (const i of items) this.testItems.set(i.id, { ...i });
@@ -136,26 +140,35 @@ export class InMemoryEngineDb implements EngineDb {
     this.questions.set(q.id, { ...q });
   }
 
-  // --- hint (ADR-0014) ---
-  async listReviewedHints(subject: string, questionId: string): Promise<Hint[]> {
+  // --- hint (ADR-0014/ADR-0031) ---
+  async listReviewedHints(
+    subject: string,
+    questionId: string,
+    choiceLetter?: string | null,
+  ): Promise<Hint[]> {
+    // Default to item-level ladder (null letter) so Gen1 quiz/coach callers
+    // stay correct when choice-conditional rows are also seeded.
+    const letter = choiceLetter ?? null;
     return [...this.hints.values()]
       .filter(
         (h) =>
           h.subject === subject &&
           h.question_id === questionId &&
+          (h.choice_letter ?? null) === letter &&
           h.reviewed === true, // HARD GATE (FR-12)
       )
       .sort((a, b) => a.rung - b.rung)
-      .map((h) => ({ ...h }));
+      .map((h) => ({ ...h, choice_letter: h.choice_letter ?? null }));
   }
   async insertHint(h: Hint): Promise<void> {
-    const key = `${h.question_id} ${h.rung}`;
+    const row = { ...h, choice_letter: h.choice_letter ?? null };
+    const key = hintKey(row);
     if (this.hints.has(key)) {
       throw new Error(
-        `duplicate hint rung: (${h.question_id}, ${h.rung}) already exists`,
+        `duplicate hint rung: (${row.question_id}, ${row.choice_letter}, ${row.rung}) already exists`,
       );
     }
-    this.hints.set(key, { ...h });
+    this.hints.set(key, row);
   }
 
   // --- test_item (ADR-0015; same pushed-down reviewed gate as question) ---

@@ -18,6 +18,7 @@ import {
   coachThreadSnapshot,
   endCoachTurn,
   resetCoachThread,
+  setCoachChoiceLetter,
   setCoachPin,
   subscribeCoachThread,
 } from "./coach_thread_store";
@@ -111,6 +112,23 @@ describe("coach_thread_store — one shared thread (FR-J3)", () => {
 describe("coach_thread_store — surface pin (BP-2a / C1, C1a)", () => {
   it("cold open has pin null (honest absent)", () => {
     expect(coachThreadSnapshot().pin).toBeNull();
+    expect(coachThreadSnapshot().choiceLetter).toBeNull();
+  });
+
+  it("setCoachChoiceLetter stores a wrong letter without clearing the thread (ADR-0031)", () => {
+    setCoachPin({
+      kind: "item",
+      questionId: "q1",
+      skillId: "s-punc",
+      label: "Q1 · Commas",
+    });
+    beginCoachTurn("why A?");
+    endCoachTurn();
+    setCoachChoiceLetter("A");
+    expect(coachThreadSnapshot().choiceLetter).toBe("A");
+    expect(coachThreadSnapshot().turns).toHaveLength(1);
+    setCoachPin(null);
+    expect(coachThreadSnapshot().choiceLetter).toBeNull();
   });
 
   it("setCoachPin writes the pin; reset clears pin with the thread", () => {

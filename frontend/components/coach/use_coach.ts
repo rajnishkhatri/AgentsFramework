@@ -68,6 +68,11 @@ export interface SendCoachAskOptions {
   >;
   readonly learnerId?: string;
   readonly subject?: string;
+  /**
+   * ADR-0031: wrong letter for Gen2 ladders. Omit → read from coach thread
+   * store (quiz moment router). Explicit null clears.
+   */
+  readonly choiceLetter?: "A" | "B" | "C" | "D" | null;
 }
 
 /**
@@ -100,8 +105,11 @@ export async function sendCoachAsk(
 ): Promise<void> {
   const { threadId, turnId } = beginCoachTurn(body);
   try {
-    const pin = coachThreadSnapshot().pin;
-    const mode = opts.mode ?? coachThreadSnapshot().mode;
+    const snap = coachThreadSnapshot();
+    const pin = snap.pin;
+    const mode = opts.mode ?? snap.mode;
+    const choiceLetter =
+      opts.choiceLetter !== undefined ? opts.choiceLetter : snap.choiceLetter;
     let coach_context = null as ReturnType<typeof assembleCoachContext>;
 
     if (pin != null && opts.ports != null) {
@@ -134,6 +142,7 @@ export async function sendCoachAsk(
         mode,
         missesOnSkill,
         skillStates,
+        choiceLetter,
       });
     }
 

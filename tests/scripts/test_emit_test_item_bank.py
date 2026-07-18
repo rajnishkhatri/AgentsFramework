@@ -143,6 +143,34 @@ class TestFailClosed:
         with pytest.raises(SystemExit):
             _emit(tmp_path, [_promoted_row(), _promoted_row(difficulty=3)])
 
+    def test_shared_stem_different_context_emits(self, tmp_path: Path):
+        """Gen2 ACT stems are templates; uniqueness is (context, stem)."""
+        rows = [
+            _promoted_row(
+                id="ti-gen-aaaaaaaaaaaaaaaa",
+                context_html="Passage one <u>foo</u>.",
+                stem_md="Which choice is correct for the underlined portion?",
+            ),
+            _promoted_row(
+                id="ti-gen-bbbbbbbbbbbbbbbb",
+                context_html="Passage two <u>bar</u>.",
+                stem_md="Which choice is correct for the underlined portion?",
+            ),
+        ]
+        text = _emit(tmp_path, rows).read_text(encoding="utf-8")
+        assert "ti-gen-aaaaaaaaaaaaaaaa" in text
+        assert "ti-gen-bbbbbbbbbbbbbbbb" in text
+
+    def test_duplicate_context_and_stem_dies(self, tmp_path: Path):
+        with pytest.raises(SystemExit, match="duplicate \\(context_html, stem_md\\)"):
+            _emit(
+                tmp_path,
+                [
+                    _promoted_row(id="ti-gen-aaaaaaaaaaaaaaaa"),
+                    _promoted_row(id="ti-gen-bbbbbbbbbbbbbbbb", difficulty=3),
+                ],
+            )
+
     def test_rationale_missing_a_letter_dies(self, tmp_path: Path):
         rationale = {
             "A": "No punctuation runs the list into the noun naming it.",

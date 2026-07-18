@@ -110,10 +110,25 @@ class TestEmission:
 
 
 class TestRejection:
-    def test_rejects_rung_out_of_bounds(self, tmp_path):
-        bad = [dict(FIXTURE_ROWS[0], rung=4)]
-        with pytest.raises(SystemExit):
-            _emit(tmp_path, rows=bad)
+    def test_strips_rung_4_not_rejects(self, tmp_path):
+        # ADR-0031: assertion rung stays off the wire — strip, don't die.
+        rows = [
+            dict(FIXTURE_ROWS[1]),  # ti-gen-01 rung 1
+            {
+                "id": "h-gen-rung4only",
+                "subject": "act-english",
+                "question_id": "ti-gen-01",
+                "choice_letter": "A",
+                "rung": 4,
+                "body_md": "Assertion stays server-side.",
+                "reviewed": True,
+                "generated_by": _STAMP,
+            },
+        ]
+        ts_out, _ = _emit(tmp_path, rows=rows)
+        ts = ts_out.read_text()
+        assert '"rung": 4' not in ts
+        assert '"ti-gen-01"' in ts
 
     def test_rejects_unreviewed_row(self, tmp_path):
         # The corpus is cascade-earned by definition; an unreviewed row in the
@@ -122,9 +137,51 @@ class TestRejection:
         with pytest.raises(SystemExit):
             _emit(tmp_path, rows=bad)
 
-    def test_rejects_duplicate_question_rung(self, tmp_path):
-        # Unique (question_id, rung) mirrors the hint table constraint
-        # (ADR-0014 clause 2).
-        bad = [FIXTURE_ROWS[0], dict(FIXTURE_ROWS[1], question_id="ti-gen-02", rung=2)]
+    def test_rejects_duplicate_question_letter_rung(self, tmp_path):
+        # ADR-0031: unique (question_id, choice_letter, rung).
+        bad = [
+            dict(FIXTURE_ROWS[0], choice_letter="B"),
+            dict(
+                FIXTURE_ROWS[0],
+                id="h-gen-dup",
+                choice_letter="B",
+            ),
+        ]
         with pytest.raises(SystemExit):
             _emit(tmp_path, rows=bad)
+
+    def test_allows_same_rung_different_choice_letter(self, tmp_path):
+        rows = [
+            dict(
+                FIXTURE_ROWS[0],
+                id="h-gen-letter-a",
+                question_id="ti-gen-02",
+                choice_letter="A",
+                rung=1,
+                body_md="Ladder for A rung 1",
+            ),
+            dict(
+                FIXTURE_ROWS[0],
+                id="h-gen-letter-b",
+                question_id="ti-gen-02",
+                choice_letter="B",
+                rung=1,
+                body_md="Ladder for B rung 1",
+            ),
+        ]
+        ts_out, py_out = _emit(tmp_path, rows=rows)
+        ts = ts_out.read_text()
+        assert '"choice_letter": "A"' in ts
+        assert '"choice_letter": "B"' in ts
+        ns: dict = {}
+        exec(compile(py_out.read_text(), str(py_out), "exec"), ns)  # noqa: S102
+        letters = sorted(r.choice_letter for r in ns["BANK_RUNGS"])
+        assert letters == ["A", "B"]
+
+    def test_gen1_rows_emit_null_choice_letter(self, tmp_path):
+        ts_out, py_out = _emit(tmp_path)
+        ts = ts_out.read_text()
+        assert '"choice_letter": null' in ts
+        ns: dict = {}
+        exec(compile(py_out.read_text(), str(py_out), "exec"), ns)  # noqa: S102
+        assert all(r.choice_letter is None for r in ns["BANK_RUNGS"])

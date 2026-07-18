@@ -38,22 +38,58 @@ function loadSeed(): SeedCorpus {
   return JSON.parse(readFileSync(SEED_JSON_PATH, "utf-8")) as SeedCorpus;
 }
 
-/** FR-E1 checker, extracted so the ratchet itself is testable red. */
+/**
+ * FR-E1 checker (ADR-0031): a reviewed item is covered when it has either
+ * a Gen1 item-level ladder (choice_letter null, rungs 1–3) or a complete
+ * Gen2 choice-conditional set (every wrong-letter that appears has rungs 1–3).
+ */
 function ladderGaps(
   items: ReadonlyArray<{ id: string; reviewed: boolean }>,
-  hints: ReadonlyArray<{ question_id: string; rung: number; reviewed: boolean }>,
+  hints: ReadonlyArray<{
+    question_id: string;
+    rung: number;
+    reviewed: boolean;
+    choice_letter?: string | null;
+  }>,
   waivers: ReadonlyArray<{ question_id: string; rung: number }>,
 ): string[] {
   const waived = new Set(waivers.map((w) => `${w.question_id} ${w.rung}`));
-  const have = new Set(
-    hints.filter((h) => h.reviewed).map((h) => `${h.question_id} ${h.rung}`),
+  const reviewed = hints.filter((h) => h.reviewed);
+  const itemLevel = new Set(
+    reviewed
+      .filter((h) => (h.choice_letter ?? null) === null)
+      .map((h) => `${h.question_id} ${h.rung}`),
   );
+  const byQuestionLetter = new Map<string, Set<number>>();
+  for (const h of reviewed) {
+    const letter = h.choice_letter ?? null;
+    if (letter == null) continue;
+    const key = `${h.question_id}\0${letter}`;
+    const rungs = byQuestionLetter.get(key) ?? new Set<number>();
+    rungs.add(h.rung);
+    byQuestionLetter.set(key, rungs);
+  }
+  const choiceCovered = new Set<string>();
+  for (const [key, rungs] of byQuestionLetter) {
+    if ([1, 2, 3].every((r) => rungs.has(r))) {
+      choiceCovered.add(key.split("\0")[0]!);
+    }
+  }
+  // An item with any choice-conditional row must have EVERY such letter complete.
+  const incompleteChoice = new Set<string>();
+  for (const [key, rungs] of byQuestionLetter) {
+    const qid = key.split("\0")[0]!;
+    if (![1, 2, 3].every((r) => rungs.has(r))) incompleteChoice.add(qid);
+  }
+  for (const qid of incompleteChoice) choiceCovered.delete(qid);
+
   const gaps: string[] = [];
   for (const item of items) {
     if (!item.reviewed) continue;
+    if (choiceCovered.has(item.id)) continue;
     for (const rung of [1, 2, 3]) {
       const key = `${item.id} ${rung}`;
-      if (!have.has(key) && !waived.has(key)) gaps.push(key);
+      if (!itemLevel.has(key) && !waived.has(key)) gaps.push(key);
     }
   }
   return gaps;
@@ -62,10 +98,12 @@ function ladderGaps(
 describe("HINT_BANK parity with the canonical seed JSON (FR-B2)", () => {
   it("matches the seed rows exactly (count, ids, bodies, rungs, flags)", () => {
     const seed = loadSeed();
-    const byKey = (r: Hint) => `${r.question_id} ${r.rung}`;
-    const sortedSeed = [...seed.rows].sort((a, b) =>
-      byKey(a).localeCompare(byKey(b)),
-    );
+    const byKey = (r: Hint) =>
+      `${r.question_id} ${r.choice_letter ?? ""} ${r.rung}`;
+    // Seed JSON may omit choice_letter (Gen1); emit normalizes to null.
+    const sortedSeed = seed.rows
+      .map((r) => Hint.parse(r))
+      .sort((a, b) => byKey(a).localeCompare(byKey(b)));
     const sortedBank = [...HINT_BANK].sort((a, b) =>
       byKey(a).localeCompare(byKey(b)),
     );
@@ -109,6 +147,21 @@ describe("coverage ratchet — full ladder per reviewed bank item (FR-E1)", () =
     expect(gaps).toEqual(["ti-gen-synthetic 2"]);
   });
 
+  it("a complete Gen2 choice-conditional set covers the item (no item-level rows)", () => {
+    const letters = ["A", "B", "C"] as const;
+    const hints = letters.flatMap((letter) =>
+      ([1, 2, 3] as const).map((rung) => ({
+        question_id: "ti-gen-synthetic",
+        rung,
+        reviewed: true,
+        choice_letter: letter,
+      })),
+    );
+    expect(
+      ladderGaps([{ id: "ti-gen-synthetic", reviewed: true }], hints, []),
+    ).toEqual([]);
+  });
+
   it("every reviewed TEST_ITEM_BANK item has rungs 1-3 (or an FR-A3 waiver)", () => {
     const gaps = ladderGaps(TEST_ITEM_BANK, HINT_BANK, HINT_BANK_WAIVERS);
     expect(
@@ -121,12 +174,30 @@ describe("coverage ratchet — full ladder per reviewed bank item (FR-E1)", () =
 });
 
 describe("seedHintBank serving path (FR-C1 substrate)", () => {
-  it("loads every ladder behind the reviewed-only read (FR-C3 unchanged)", async () => {
+  it("loads Gen1 item-level ladders by default; Gen2 by choice_letter (ADR-0031)", async () => {
     const db = new InMemoryEngineDb();
     seedHintBank(db);
     for (const item of TEST_ITEM_BANK) {
-      const rungs = await db.listReviewedHints("act-english", item.id);
-      expect(rungs.map((r) => r.rung)).toEqual([1, 2, 3]);
+      const itemLevel = await db.listReviewedHints("act-english", item.id);
+      if (itemLevel.length > 0) {
+        expect(itemLevel.map((r) => r.rung)).toEqual([1, 2, 3]);
+        continue;
+      }
+      const lettersWithLadder: string[] = [];
+      for (const letter of ["A", "B", "C", "D"] as const) {
+        const rungs = await db.listReviewedHints(
+          "act-english",
+          item.id,
+          letter,
+        );
+        if (rungs.length === 0) continue;
+        expect(rungs.map((r) => r.rung)).toEqual([1, 2, 3]);
+        lettersWithLadder.push(letter);
+      }
+      expect(
+        lettersWithLadder.length,
+        `${item.id}: expected Gen1 item-level or Gen2 choice-conditional ladder`,
+      ).toBeGreaterThanOrEqual(3);
     }
   });
 });

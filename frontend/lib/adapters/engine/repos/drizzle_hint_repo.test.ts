@@ -21,6 +21,7 @@ function rung(overrides: Partial<Hint> = {}): Hint {
     id: `h-${Math.random().toString(36).slice(2, 10)}`,
     subject: SUBJECT,
     question_id: "q-punc-1",
+    choice_letter: null,
     rung: 1,
     body_md: "What job is the clause doing in this sentence?",
     reviewed: true,
@@ -91,10 +92,26 @@ describe("DrizzleHintRepo (against InMemoryEngineDb)", () => {
     expect(served.map((h) => h.rung)).toEqual([1, 2, 3]);
   });
 
-  it("rejects a duplicate (question_id, rung) insert — one rung per level", async () => {
+  it("rejects a duplicate (question_id, choice_letter, rung) insert", async () => {
     const db = new InMemoryEngineDb();
     await db.insertHint(rung({ rung: 1 }));
     await expect(db.insertHint(rung({ rung: 1 }))).rejects.toThrow();
+  });
+
+  it("allows same rung on different choice_letter (ADR-0031)", async () => {
+    const db = new InMemoryEngineDb();
+    await db.insertHint(rung({ rung: 1, choice_letter: "A", body_md: "A1" }));
+    await db.insertHint(rung({ rung: 1, choice_letter: "B", body_md: "B1" }));
+    const repo = new DrizzleHintRepo(db);
+    expect((await repo.list(SUBJECT, "q-punc-1")).map((h) => h.body_md)).toEqual(
+      [],
+    );
+    expect(
+      (await repo.list(SUBJECT, "q-punc-1", "A")).map((h) => h.body_md),
+    ).toEqual(["A1"]);
+    expect(
+      (await repo.list(SUBJECT, "q-punc-1", "B")).map((h) => h.body_md),
+    ).toEqual(["B1"]);
   });
 });
 

@@ -8,7 +8,7 @@
   "measured": {
     "n_clusters_ge_3": 4,
     "n_meaningful_clusters_ge_2": 14,
-    "fire_rate": 0.021,
+    "fire_rate": 0.024,
     "due_model": "all_due",
     "structural_zero": false,
     "n_learners": 2000,
@@ -16,7 +16,7 @@
     "seed": 0
   },
   "reasons": [
-    "fire-rate gate: measured 0.0210 under due_model='all_due' (need \u22655%)"
+    "fire-rate gate: measured 0.0240 under due_model='all_due' (need \u22655%)"
   ],
   "clusters": {
     "s-gram:3": 2,
@@ -40,44 +40,44 @@
   "label": "candidate",
   "coverage": {
     "s-gram": {
-      "total": 39,
+      "total": 150,
       "tagged": 19,
-      "tagged_pct": 0.48717948717948717,
+      "tagged_pct": 0.12666666666666668,
       "distinct_standards": 12
     },
     "s-org": {
-      "total": 24,
+      "total": 189,
       "tagged": 5,
-      "tagged_pct": 0.20833333333333334,
+      "tagged_pct": 0.026455026455026454,
       "distinct_standards": 1
     },
     "s-punc": {
-      "total": 31,
+      "total": 116,
       "tagged": 2,
-      "tagged_pct": 0.06451612903225806,
+      "tagged_pct": 0.017241379310344827,
       "distinct_standards": 2
     },
     "s-rhet": {
-      "total": 28,
+      "total": 216,
       "tagged": 6,
-      "tagged_pct": 0.21428571428571427,
+      "tagged_pct": 0.027777777777777776,
       "distinct_standards": 2
     },
     "s-sent": {
-      "total": 23,
+      "total": 109,
       "tagged": 6,
-      "tagged_pct": 0.2608695652173913,
+      "tagged_pct": 0.05504587155963303,
       "distinct_standards": 4
     },
     "s-style": {
-      "total": 26,
+      "total": 207,
       "tagged": 9,
-      "tagged_pct": 0.34615384615384615,
+      "tagged_pct": 0.043478260869565216,
       "distinct_standards": 4
     }
   },
-  "untagged_count": 124,
+  "untagged_count": 940,
   "integrity_warnings": [],
-  "bank_items": 171,
+  "bank_items": 987,
   "tagged_items": 47
 }

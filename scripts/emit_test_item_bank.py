@@ -87,7 +87,9 @@ def _validate(rows: list[dict[str, Any]]) -> None:
     if not rows:
         _die("promoted corpus is empty — refusing to emit a blank bank")
     seen_ids: set[str] = set()
-    seen_stems: set[str] = set()
+    # Gen2 (and ACT English generally) shares template stems across items;
+    # uniqueness is (context_html, stem_md), not stem alone.
+    seen_passages: set[tuple[str, str]] = set()
     for row in rows:
         rid = row.get("id", "?")
         missing = [f for f in _ROW_FIELDS if f not in row]
@@ -119,10 +121,13 @@ def _validate(rows: list[dict[str, Any]]) -> None:
         if rid in seen_ids:
             _die(f"duplicate row id {rid}")
         seen_ids.add(rid)
-        stem = " ".join(str(row["stem_md"]).lower().split())
-        if stem in seen_stems:
-            _die(f"row {rid}: duplicate stem after normalization")
-        seen_stems.add(stem)
+        passage = (
+            " ".join(str(row.get("context_html", "")).lower().split()),
+            " ".join(str(row["stem_md"]).lower().split()),
+        )
+        if passage in seen_passages:
+            _die(f"row {rid}: duplicate (context_html, stem_md) after normalization")
+        seen_passages.add(passage)
 
 
 def _sorted_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:

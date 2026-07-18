@@ -66,10 +66,10 @@ class TestFR5PerSkillCoverage:
     def test_per_skill_coverage_counts(self):
         bank = load_bank(_CORPUS)
         syllabus = load_syllabus(_SYLLABUS)
-        assert len(bank) == 171
+        assert len(bank) == 987  # Gen1 171 + Gen2 reviewed 816
         tagged = tagged_rows(bank)
-        assert len(tagged) == 47
-        assert len(untagged_ids(bank)) == 171 - 47
+        assert len(tagged) == 47  # Gen1 tags only; Gen2 has misconception=null
+        assert len(untagged_ids(bank)) == 987 - 47
         # Syllabus per-skill standard counts (FR-3 substrate).
         assert {k: len(v) for k, v in syllabus.items()} == {
             "s-gram": 14,
