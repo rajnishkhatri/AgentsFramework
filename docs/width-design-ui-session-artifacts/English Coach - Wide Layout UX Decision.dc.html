@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/agentsframework-ui-f8ce5c07-a053-4017-a4c0-b0602a2fc3e8/styles.css">
+<script src="_ds/agentsframework-ui-f8ce5c07-a053-4017-a4c0-b0602a2fc3e8/_ds_bundle.js"></script>
+<style>
+  a{color:var(--color-accent);text-decoration:none}
+  a:hover{color:var(--color-accent);text-decoration:underline}
+  [data-refs="off"] .refchip{display:none !important}
+  .sec{scroll-margin-top:64px}
+  .tag{display:inline-flex;align-items:center;font-family:var(--font-mono);font-size:.6rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;border:1px solid;white-space:nowrap}
+  .tag-accept{color:var(--color-success);border-color:color-mix(in oklab,var(--color-success) 40%,transparent);background:color-mix(in oklab,var(--color-success) 12%,transparent)}
+  .tag-refine{color:var(--color-accent);border-color:color-mix(in oklab,var(--color-accent) 45%,transparent);background:var(--color-accent-light)}
+  .tag-reject{color:var(--color-danger);border-color:color-mix(in oklab,var(--color-danger) 42%,transparent);background:color-mix(in oklab,var(--color-danger) 12%,transparent)}
+  .refchip{display:inline-flex;font-family:var(--font-mono);font-size:.66rem;padding:1px 7px;border:1px solid var(--color-border);border-radius:999px;color:var(--color-muted)}
+  .zlabel{position:absolute;top:-9px;left:14px;background:var(--color-bg);padding:0 8px;font-size:.62rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .ears{font-family:var(--font-mono);font-size:.82em;font-weight:700;color:var(--color-accent)}
+  .toclink{font-size:.82rem;color:var(--color-muted);padding:5px 10px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .toclink:hover{color:var(--color-accent);text-decoration:none;border-color:var(--color-border);background:var(--color-surface)}
+</style>
+</helmet>
+<div data-theme="{{ theme }}" data-refs="{{ refs }}" style="background:var(--color-bg);color:var(--color-fg);min-height:100vh;font-family:var(--font-sans);padding:0 0 64px">
+  <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300"><rect width="400" height="300" fill="#232A34"/><g fill="none" stroke="#C2643E" stroke-width="6"><rect x="40" y="70" width="70" height="160" rx="10"/><rect x="122" y="70" width="150" height="160" rx="10"/><rect x="284" y="70" width="76" height="160" rx="10"/></g><g fill="#C2643E" opacity=".9"><rect x="292" y="196" width="60" height="26" rx="8"/></g><text x="200" y="266" font-family="ui-monospace,monospace" font-size="26" font-weight="800" fill="#C2643E" text-anchor="middle">wide · coach split</text></svg></template>
+
+  <!-- ============ HEADER ============ -->
+  <div style="max-width:1120px;margin:0 auto;padding:30px 24px 8px">
+    <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px">
+      <div style="display:flex;flex-direction:column;gap:8px;max-width:780px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="refchip">preact-english-coach</span>
+          <span style="font-size:.78rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--color-accent)">UX Decision Record · /learn/*</span>
+        </div>
+        <h1 style="font-size:2rem;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin:0">Wide-layout &amp; coach-panel parity</h1>
+        <p style="font-size:1.0625rem;color:var(--color-muted);line-height:1.5;text-wrap:pretty;margin:0">Bring the desktop surface to parity with the iPad-landscape quiz+coach split: a collapsible left nav and a coach column that stays usable as the conversation grows. Everything below is decided so engineering can lift it straight into an EARS spec — no further design clarification on A–F.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onClick="{{ toggleTheme }}" style="flex:none">Theme · {{ themeLabel }}</button>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;margin-top:16px">
+      <span class="tag tag-accept">Accept default</span><span style="font-size:.82rem;color:var(--color-muted)">aligns with the proposed engineering default</span>
+      <span style="width:1px;height:16px;background:var(--color-border);margin:0 4px"></span>
+      <span class="tag tag-refine">Refine</span><span style="font-size:.82rem;color:var(--color-muted)">keeps the intent, changes the mechanism</span>
+      <span style="width:1px;height:16px;background:var(--color-border);margin:0 4px"></span>
+      <span class="tag tag-reject">Reject</span><span style="font-size:.82rem;color:var(--color-muted)">overrides a stated default</span>
+      <button class="refchip" onClick="{{ toggleRefs }}" style="cursor:pointer;margin-left:auto;background:var(--color-surface)">FR refs · {{ refsLabel }}</button>
+    </div>
+  </div>
+
+  <!-- ============ STICKY TOC ============ -->
+  <div style="position:sticky;top:0;z-index:5;background:color-mix(in oklab,var(--color-bg) 88%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--color-border);margin-top:18px">
+    <div style="max-width:1120px;margin:0 auto;padding:8px 20px;display:flex;flex-wrap:wrap;gap:2px;align-items:center">
+      <a class="toclink" href="#decisions">1 · Decision log</a>
+      <a class="toclink" href="#wireframes">2 · Wireframes</a>
+      <a class="toclink" href="#inventory">3 · Components</a>
+      <a class="toclink" href="#state">4 · State model</a>
+      <a class="toclink" href="#acceptance">5 · Acceptance</a>
+      <a class="toclink" href="#risks">6 · Risks</a>
+      <a class="toclink" href="#nongoals">7 · Non-goals</a>
+    </div>
+  </div>
+
+  <div style="max-width:1120px;margin:0 auto;padding:0 24px;display:flex;flex-direction:column;gap:44px">
+
+    <!-- ============ 1 · DECISION LOG ============ -->
+    <div class="sec" id="decisions" style="display:flex;flex-direction:column;gap:16px;padding-top:32px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">01</span>
+        <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Decision log</h2>
+      </div>
+      <p style="font-size:.98rem;color:var(--color-muted);line-height:1.5;margin:0;max-width:760px">Every question A1–F3 with a single clear choice and one line of rationale. Status tags mark alignment with the proposed engineering defaults. Two hard <span class="tag tag-reject">Reject</span> calls: B1 (scope auto-collapse) and E1 (keep an in-place ask bridge).</p>
+
+      <!-- GROUP A -->
+      <div style="margin-top:6px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">A</span>
+        <span style="font-weight:600;font-size:1.05rem">Information architecture / surfaces</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- A1 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">A1</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Share one "wide" layout system across desktop &amp; iPad, or keep distinct surface labels?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Keep the three surface <em>labels</em> (<code style="font-family:var(--font-mono);font-size:.85em">iphone/ipad/desktop</code>), but drive the split off a derived predicate <code style="font-family:var(--font-mono);font-size:.85em">isWide = surface !== "iphone"</code>. One layout system, one code path; labels still feed nav membership.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> the labels already carry semantics (Skill in nav, focus screens) — collapsing them risks those; a boolean seam is the minimal change. <span class="refchip">FR-J1/J2/J3</span></div>
+          </div>
+        </div>
+        <!-- A2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">A2</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Minimum width for the split? What happens at ~481–900px?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Split requires <strong>≥ 900px of content width</strong> (viewport minus any open sidebar). Below that, degrade in a fixed order: <strong>(1)</strong> collapse sidebar to icon rail → <strong>(2)</strong> if still &lt; 900, hide the inline panel and offer a "Coach" control that opens it as an overlay drawer. Never stack coach below the item.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> a <em>content-width</em> trigger composes with sidebar state, so collapsing the nav can rescue the split before anything is hidden; stacking would break the height chain and shove the item off-screen.</div>
+          </div>
+        </div>
+        <!-- A3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">A3</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Is the right panel always visible, or dismissible / re-expandable?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Visible by default; the learner <strong>can dismiss it</strong> to a thin labeled edge tab and re-expand. Dismissal persists per session. Dismissed ≠ gone — the thread survives and stays reachable from the Coach nav item.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> desktop is new here and desktop users expect to reclaim width for a long stem; a reversible dismiss beats an all-or-nothing rule.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP B -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">B</span>
+        <span style="font-weight:600;font-size:1.05rem">Sidebar collapse</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- B1 -->
+        <div style="display:flex;gap:14px;border:1px solid color-mix(in oklab,var(--color-danger) 30%,var(--color-border));border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">B1</span>
+            <span class="tag tag-reject">Reject</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Auto-hide after <em>any</em> nav selection, or only content-heavy screens?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Auto-collapse only when entering a <strong>content-heavy focus screen</strong> — Quiz, Coach, Skill, Test. Home and Progress keep the sidebar expanded. <span style="color:var(--color-danger);font-weight:700">Rejects</span> the blunt "auto-collapse after any nav" default.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> dashboards are navigation hubs — collapsing on arrival fights the user; the width win only matters where content is dense. <span class="refchip">FR-B1</span></div>
+          </div>
+        </div>
+        <!-- B2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">B2</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Does Dashboard/Home keep the sidebar expanded by default?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Yes. Home and Progress default to <strong>expanded</strong>; they are wayfinding surfaces, not focus surfaces.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> consistent with B1 — the collapse rule is keyed to the destination class, not the act of navigating.</div>
+          </div>
+        </div>
+        <!-- B3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">B3</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Reopen control: placement, label, keyboard, does a thin rail remain?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">"Collapsed" = a persistent <strong>56px icon rail</strong>, never a full hide. A chevron toggle (<code style="font-family:var(--font-mono)">⟨ / ☰</code>) at the rail top expands/collapses; <code style="font-family:var(--font-mono);font-size:.85em">aria-label</code> "Expand / Collapse sidebar", real <code style="font-family:var(--font-mono);font-size:.85em">&lt;button&gt;</code> (Tab + Enter/Space) plus a global <code style="font-family:var(--font-mono)">[</code> shortcut. Icons keep hover tooltips + active state.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> a thin rail keeps every destination one click away — no trapped nav, meets ≥44px targets, avoids a disorienting blank gutter.</div>
+          </div>
+        </div>
+        <!-- B4 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">B4</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Where does ThemeToggle live when the sidebar is hidden?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">It never disappears. In the icon rail it becomes an <strong>icon-only toggle pinned at the rail bottom</strong>. Because we use a rail (not a full hide), theme is reachable on every screen.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> structurally forecloses the "sidebar-trapped theme" failure path called out in the brief. <span class="refchip">FR-K1</span></div>
+          </div>
+        </div>
+        <!-- B5 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">B5</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Persist collapsed/expanded across routes and reloads? Session vs local?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Base preference persists in <strong>localStorage</strong> (<code style="font-family:var(--font-mono);font-size:.82em">preact.shell.sidebar</code>), default expanded. The B1 auto-collapse fires on entering a content screen <em>unless</em> the learner explicitly expanded this session (a <strong>sessionStorage</strong> "user-pinned" flag wins).</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> reload stability (local) without the auto rule fighting an explicit choice (session precedence).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP C -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">C</span>
+        <span style="font-weight:600;font-size:1.05rem">Coach column structure</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- C1 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">C1</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Quiz CoachPanel stacking order, zones labeled fixed / sticky / scroll.</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Three zones, top→bottom: <strong>A · FIXED</strong> chrome (title, status, current-item line, mode pills) → <strong>B · SCROLL</strong> the log (<code style="font-family:var(--font-mono);font-size:.82em">role="log"</code>: opener → revealed nudge bodies → coach turns) → <strong>C · PINNED</strong> action cluster (One-more-nudge button, chip row, composer).</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> moving nudge bodies <em>into</em> the scroll zone is what resolves the brief's height-physics problem — revealed text no longer competes with pinned chrome for vertical space. See wireframe W3. <span class="refchip">FR-J3a</span></div>
+          </div>
+        </div>
+        <!-- C2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">C2</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Same zone model for standalone <code style="font-family:var(--font-mono);font-size:.85em">/learn/coach</code> (rail + strip). Differences?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Same zone model. <strong>Desktop rail:</strong> Back/Wrap-up header (fixed) + left context rail (fixed) + right column = scroll log over pinned chips+composer. <strong>iPad strip:</strong> identical, chrome is a top strip instead of a left rail. Differences vs panel: adds Back/Wrap-up + history line; <strong>no "One more nudge"</strong> (no per-item ladder off-quiz).</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> one height-chain implementation, surface-specific chrome placement only. See wireframe W4. <span class="refchip">BP-1.5</span></div>
+          </div>
+        </div>
+        <!-- C3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">C3</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Revealed nudge <em>texts</em>: scroll, stay pinned under the button, or collapse?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">They <strong>scroll with the transcript</strong> — rendered as coach-authored bubbles inside the log (tagged "Nudge 2 / 3"). Only the "One more nudge" <em>button</em> is pinned. Nudges do not collapse per-rung (they're one line each and form the ladder record).</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> a single scrollable reading surface; nudges become part of the thread narrative rather than a growing pinned block.</div>
+          </div>
+        </div>
+        <!-- C4 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">C4</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Chip row: pinned above composer, pinned under chrome, or scroll?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty"><strong>Pinned directly above the composer</strong>, inside the bottom cluster (Zone C).</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> chips seed the composer ("Explain the rule simply" → input), so they're compose-adjacent actions and must never scroll away.</div>
+          </div>
+        </div>
+        <!-- C5 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">C5</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Identical pin/scroll/collapse in panel vs standalone?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">The <strong>zone model and collapsible-answer behavior are identical</strong>. Only chrome placement differs (stacked-top panel / left-rail desktop / top-strip iPad), and standalone drops "One more nudge" and adds Back/Wrap-up.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> one mental model + one implementation of the physics; surface chrome is the only variable.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP D -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">D</span>
+        <span style="font-weight:600;font-size:1.05rem">Collapsible answers</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- D1 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">D1</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">What is visible in the collapsed state?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">One summary row: a "Coach" label + the <strong>first sentence</strong> (truncated, ellipsis) + a relative timestamp + an expand chevron (<code style="font-family:var(--font-mono)">▸</code>). The paired user question stays visible above it (D3). The whole row is the click target.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> enough to recognise a turn while scanning; the question above supplies context so the first line need not repeat it.</div>
+          </div>
+        </div>
+        <!-- D2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">D2</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Auto-collapse rules?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">When a new reply <strong>completes</strong>, auto-collapse all prior (non-error) coach answers; newest stays expanded; streaming stays expanded. A <strong>manual</strong> expand/collapse is remembered per-turn and always overrides the auto rule.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> keeps long threads scannable by default while honoring explicit intent — no fighting the user.</div>
+          </div>
+        </div>
+        <!-- D3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">D3</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">User message bubbles: always expanded, or collapse with the pair?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty"><strong>User questions always stay visible.</strong> Collapse hides only the coach <em>answer</em> body; the user prompt remains as the label for the collapsed answer.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> the question is the anchor; hiding it would make collapsed answers unidentifiable and defeat scanning.</div>
+          </div>
+        </div>
+        <!-- D4 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">D4</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Streaming stays expanded (confirm); Error+Retry when collapsed?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty"><strong>Confirmed:</strong> a streaming turn is force-expanded and cannot be collapsed until it completes. An <strong>errored turn is force-expanded and excluded from auto-collapse</strong> so its Retry stays visible.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> never bury a live spinner or a recovery action behind a chevron. <span class="refchip">FR-F3/F4</span></div>
+          </div>
+        </div>
+        <!-- D5 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">D5</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">a11y: how should aria-live / focus behave when collapsing mid-thread?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">The log stays <code style="font-family:var(--font-mono);font-size:.82em">role="log" aria-live="polite"</code>. Collapse is a <code style="font-family:var(--font-mono);font-size:.82em">&lt;button aria-expanded aria-controls&gt;</code> — it does <strong>not</strong> announce via the live region and does <strong>not</strong> move focus. Collapsed bodies use <code style="font-family:var(--font-mono);font-size:.82em">hidden</code> (removed from the a11y tree). Auto-collapse of prior turns is silent; new streamed tokens still announce because the newest turn is expanded and live.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> no focus theft, no re-announcement of old content, new replies still reach screen readers. <span class="refchip">U4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP E -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">E</span>
+        <span style="font-weight:600;font-size:1.05rem">Feedback bridge &amp; empty states</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- E1 -->
+        <div style="display:flex;gap:14px;border:1px solid color-mix(in oklab,var(--color-danger) 30%,var(--color-border));border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">E1</span>
+            <span class="tag tag-reject">Reject</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Remove "Ask the coach" on wide Feedback, or keep as secondary?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">Remove the <em>navigate</em>, but <strong>keep an in-place bridge</strong>: "Ask the coach about this" pins the item context and <strong>moves focus to the panel composer</strong> — no route change. At the narrow drawer width it opens the drawer. <span style="color:var(--color-danger);font-weight:700">Rejects</span> a clean "drop Feedback→Coach" reading of the default.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> the panel is already present so navigating is wrong, but the "take this to the coach" intent is valuable — preserve it as a focus bridge. iPhone keeps the navigate (no panel). <span class="refchip">FR-5</span></div>
+          </div>
+        </div>
+        <!-- E2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">E2</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Cold coach (no pin): layout change or only chrome copy?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty"><strong>Copy only</strong>, no layout change. Status reads "Ready when you are", the current-item line is omitted, and the empty log shows just the opener bubble.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> layout stability across warm/cold states; honesty is expressed in copy, not structure.</div>
+          </div>
+        </div>
+        <!-- E3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">E3</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Long stem left vs tall coach right: independent columns? linked height? who owns page scroll?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty"><strong>Two independent scroll columns; the window does not scroll</strong> on wide Quiz. The split row is height-locked to the viewport; the left (item) column scrolls internally if the stem+feedback overflow, the right (coach) column scrolls its log. Neither owns window scroll.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> generalises "scroll only the coach" to both columns; keeps composer, nudge, and both columns' chrome stable regardless of the other side's length.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GROUP F -->
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+        <span style="font-family:var(--font-mono);font-weight:700;font-size:.95rem;color:var(--color-accent)">F</span>
+        <span style="font-weight:600;font-size:1.05rem">Visual / motion</span>
+        <span style="flex:1;height:1px;background:var(--color-border)"></span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <!-- F1 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">F1</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Sidebar collapse motion; reduced-motion rule.</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">A short <strong>160–200ms ease-out</strong> on rail width + content reflow. Under <code style="font-family:var(--font-mono);font-size:.82em">prefers-reduced-motion: reduce</code> → instant, no transition.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> a brief transition reads as "the same rail narrowing", not a jump; reduced-motion is honored.</div>
+          </div>
+        </div>
+        <!-- F2 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">F2</span>
+            <span class="tag tag-accept">Accept</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Answer collapse motion.</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">~<strong>150ms</strong> height + opacity on a single turn. When a new reply auto-collapses several prior turns, they change in <strong>one frame</strong> (no staggered cascade). Reduced-motion → instant.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> gentle and non-distracting; a cascade of animating rows on every reply would churn.</div>
+          </div>
+        </div>
+        <!-- F3 -->
+        <div style="display:flex;gap:14px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:13px 15px">
+          <div style="flex:none;width:76px;display:flex;flex-direction:column;gap:7px;align-items:flex-start">
+            <span style="font-family:var(--font-mono);font-weight:700;font-size:1rem">F3</span>
+            <span class="tag tag-refine">Refine</span>
+          </div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:5px">
+            <div style="font-size:.88rem;color:var(--color-muted);text-wrap:pretty">Density change for the w-80 panel on desktop?</div>
+            <div style="font-size:1rem;font-weight:600;line-height:1.42;text-wrap:pretty">On desktop the panel grows from a fixed <code style="font-family:var(--font-mono);font-size:.82em">w-80</code> (320px) to a fluid <code style="font-family:var(--font-mono);font-size:.82em">clamp(340px, 32%, 460px)</code>; iPad keeps ≈320–360px. The item column takes the rest, capped at a ~680–720px reading measure.</div>
+            <div style="font-size:.9rem;color:var(--color-muted);line-height:1.45;text-wrap:pretty"><em>Why:</em> desktop has spare width — a slightly wider coach column improves chat readability; the clamp stops it dominating or starving the item.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2 · WIREFRAMES ============ -->
+    <div class="sec" id="wireframes" style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">02</span>
+        <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Wireframes</h2>
+      </div>
+
+      <!-- LEGEND -->
+      <div class="etched" style="border-radius:var(--radius-md);background:var(--color-surface);padding:12px 16px;display:flex;flex-wrap:wrap;gap:18px 26px;align-items:center;font-size:.84rem">
+        <span style="font-weight:600;color:var(--color-muted);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase">Zone key</span>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:14px;border:1.5px solid var(--color-fg);border-radius:4px;flex:none"></span><span><strong>Fixed</strong> — never scrolls</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:14px;border:1.5px solid var(--color-accent);background:var(--color-accent-light);border-radius:4px;flex:none"></span><span><strong>Pinned / sticky</strong> — stays as log scrolls</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:22px;height:14px;border:1.5px dashed var(--color-muted);background:var(--color-surface-sunken);border-radius:4px;flex:none"></span><span><strong>Scroll</strong> — <code style="font-family:var(--font-mono);font-size:.85em">overflow-y:auto</code></span></div>
+      </div>
+
+      <!-- W1 -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><span class="refchip" style="border-color:var(--color-accent);color:var(--color-accent)">W1</span><span style="font-weight:600;font-size:1.02rem">Wide Quiz — sidebar expanded</span></div>
+        <div style="border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface-sunken);padding:14px;display:flex;gap:10px;height:320px">
+          <!-- sidebar expanded -->
+          <div style="flex:none;width:150px;border:1.5px solid var(--color-fg);border-radius:var(--radius-md);background:var(--color-bg);display:flex;flex-direction:column;padding:10px 8px;gap:8px;position:relative">
+            <span class="zlabel" style="color:var(--color-fg)">Fixed · 224px</span>
+            <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:.62rem;color:var(--color-muted)">⟨ collapse</span><span style="width:16px;height:16px;border-radius:5px;border:1px solid var(--color-border);display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--color-muted)">◐</span></div>
+            <div style="height:1px;background:var(--color-border)"></div>
+            <div style="font-size:.72rem;color:var(--color-muted);padding:5px 6px">Home</div>
+            <div style="font-size:.72rem;font-weight:700;color:var(--color-accent);background:var(--color-accent-light);border-radius:7px;padding:5px 6px">Practice ●</div>
+            <div style="font-size:.72rem;color:var(--color-muted);padding:5px 6px">Coach</div>
+            <div style="font-size:.72rem;color:var(--color-muted);padding:5px 6px">Skill</div>
+            <div style="font-size:.72rem;color:var(--color-muted);padding:5px 6px">Progress</div>
+          </div>
+          <!-- quiz item -->
+          <div style="flex:1;min-width:0;border:1.5px dashed var(--color-muted);border-radius:var(--radius-md);background:var(--color-bg);padding:12px;display:flex;flex-direction:column;gap:9px;position:relative">
+            <span class="zlabel" style="color:var(--color-muted)">Scroll · item ≤720px</span>
+            <div style="height:6px;width:60%;background:var(--color-border);border-radius:99px"></div>
+            <div style="font-size:.78rem;font-weight:600">Question 12 of 30</div>
+            <div style="height:8px;width:92%;background:var(--color-selected);border-radius:99px"></div>
+            <div style="height:8px;width:80%;background:var(--color-selected);border-radius:99px"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <div style="height:22px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface)"></div>
+              <div style="height:22px;border:1px solid var(--color-accent);border-radius:8px;background:var(--color-accent-light)"></div>
+              <div style="height:22px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface)"></div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:flex-end"><div style="height:26px;width:96px;background:var(--color-accent);border-radius:99px"></div></div>
+          </div>
+          <!-- coach panel -->
+          <div style="flex:none;width:190px;position:relative;display:flex;flex-direction:column">
+            <span class="zlabel" style="color:var(--color-accent)">Coach · clamp 340–460</span>
+            <div style="flex:1;min-height:0;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);display:flex;flex-direction:column;overflow:hidden">
+              <div style="border-bottom:1px solid var(--color-border);padding:9px 10px;display:flex;flex-direction:column;gap:5px"><span style="font-size:.68rem;font-weight:700">Socratic · this item</span><div style="display:flex;gap:4px"><span style="font-size:.56rem;border:1px solid var(--color-accent);color:var(--color-accent);border-radius:99px;padding:0 6px">probe</span><span style="font-size:.56rem;border:1px solid var(--color-border);color:var(--color-muted);border-radius:99px;padding:0 6px">rule</span></div></div>
+              <div style="flex:1;background:var(--color-surface-sunken);padding:9px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden"><div style="height:20px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px"></div><div style="height:26px;background:var(--color-accent-light);border-radius:8px"></div><div style="height:34px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px"></div><span style="font-size:.56rem;color:var(--color-muted);text-align:center">⋮ scrolls</span></div>
+              <div style="border-top:1px solid var(--color-accent);background:var(--color-accent-light);padding:8px 10px;display:flex;flex-direction:column;gap:5px"><div style="height:16px;width:70%;border:1px dashed var(--color-accent);border-radius:99px"></div><div style="display:flex;gap:4px"><span style="height:12px;width:34px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px"></span><span style="height:12px;width:30px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px"></span></div><div style="height:20px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:99px"></div></div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:.86rem;color:var(--color-muted);margin:0;line-height:1.45">Three columns; window does not scroll. Item column and coach log scroll independently (E3). Coach panel shows all three zones (C1).</p>
+      </div>
+
+      <!-- W2 -->
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:10px"><span class="refchip" style="border-color:var(--color-accent);color:var(--color-accent)">W2</span><span style="font-weight:600;font-size:1.02rem">Wide Quiz — sidebar collapsed (icon rail)</span></div>
+        <div style="border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface-sunken);padding:14px;display:flex;gap:10px;height:320px">
+          <!-- icon rail -->
+          <div style="flex:none;width:48px;border:1.5px solid var(--color-fg);border-radius:var(--radius-md);background:var(--color-bg);display:flex;flex-direction:column;align-items:center;padding:10px 0;gap:10px;position:relative">
+            <span class="zlabel" style="left:4px;color:var(--color-fg)">56px</span>
+            <span style="width:22px;height:22px;border-radius:6px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;font-size:.66rem;color:var(--color-muted)">☰</span>
+            <span style="width:22px;height:22px;border-radius:6px;background:var(--color-border)"></span>
+            <span style="width:22px;height:22px;border-radius:6px;background:var(--color-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.6rem">✎</span>
+            <span style="width:22px;height:22px;border-radius:6px;background:var(--color-border)"></span>
+            <span style="width:22px;height:22px;border-radius:6px;background:var(--color-border)"></span>
+            <span style="margin-top:auto;width:22px;height:22px;border-radius:6px;border:1px solid var(--color-border);display:flex;align-items:center;justify-content:center;font-size:.62rem;color:var(--color-muted)">◐</span>
+          </div>
+          <!-- quiz item wider -->
+          <div style="flex:1;min-width:0;border:1.5px dashed var(--color-muted);border-radius:var(--radius-md);background:var(--color-bg);padding:12px;display:flex;flex-direction:column;gap:9px;position:relative">
+            <span class="zlabel" style="color:var(--color-muted)">Scroll · item (more width)</span>
+            <div style="font-size:.78rem;font-weight:600">Question 12 of 30</div>
+            <div style="height:8px;width:94%;background:var(--color-selected);border-radius:99px"></div>
+            <div style="height:8px;width:86%;background:var(--color-selected);border-radius:99px"></div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-top:4px">
+              <div style="height:22px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface)"></div>
+              <div style="height:22px;border:1px solid var(--color-accent);border-radius:8px;background:var(--color-accent-light)"></div>
+              <div style="height:22px;border:1px solid var(--color-border);border-radius:8px;background:var(--color-surface)"></div>
+            </div>
+            <div style="margin-top:auto;display:flex;justify-content:flex-end"><div style="height:26px;width:96px;background:var(--color-accent);border-radius:99px"></div></div>
+          </div>
+          <!-- coach panel wider -->
+          <div style="flex:none;width:214px;position:relative;display:flex;flex-direction:column">
+            <span class="zlabel" style="color:var(--color-accent)">Coach (reclaimed width)</span>
+            <div style="flex:1;min-height:0;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg);display:flex;flex-direction:column;overflow:hidden">
+              <div style="border-bottom:1px solid var(--color-border);padding:9px 10px"><span style="font-size:.68rem;font-weight:700">Socratic · this item</span></div>
+              <div style="flex:1;background:var(--color-surface-sunken);padding:9px 10px;display:flex;flex-direction:column;gap:6px;overflow:hidden"><div style="height:20px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px"></div><div style="height:26px;background:var(--color-accent-light);border-radius:8px"></div><div style="height:30px;background:var(--color-surface);border:1px solid var(--color-border);border-radius:8px"></div></div>
+              <div style="border-top:1px solid var(--color-accent);background:var(--color-accent-light);padding:8px 10px;display:flex;flex-direction:column;gap:5px"><div style="height:16px;width:66%;border:1px dashed var(--color-accent);border-radius:99px"></div><div style="height:20px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:99px"></div></div>
+            </div>
+          </div>
+        </div>
+        <p style="font-size:.86rem;color:var(--color-muted);margin:0;line-height:1.45">Auto-collapsed on entry (B1). Icons stay clickable with tooltips (B3); theme toggle pinned at rail bottom (B4). Item + coach reclaim the freed ~168px.</p>
+      </div>
+
+      <!-- W3 + W4 side by side on wide -->
+      <div style="display:flex;flex-wrap:wrap;gap:18px">
+        <!-- W3 -->
+        <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span class="refchip" style="border-color:var(--color-accent);color:var(--color-accent)">W3</span><span style="font-weight:600;font-size:1.02rem">Coach column zones (the panel, zoomed)</span></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface-sunken);padding:16px 14px;display:flex;flex-direction:column;gap:0;height:520px">
+            <!-- Zone A fixed -->
+            <div style="border:1.5px solid var(--color-fg);border-radius:var(--radius-md) var(--radius-md) 0 0;background:var(--color-bg);padding:10px 12px;display:flex;flex-direction:column;gap:6px;position:relative">
+              <span class="zlabel" style="color:var(--color-fg)">A · Fixed — chrome</span>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:.78rem;font-weight:700">Socratic mode · watching this item</span><span style="font-size:.6rem;color:var(--color-success)">● live</span></div>
+              <div style="font-size:.68rem;color:var(--color-muted)">On: Commas &amp; clauses · Q12</div>
+              <div style="display:flex;gap:5px"><span style="font-size:.6rem;border:1px solid var(--color-accent);color:var(--color-accent);background:var(--color-accent-light);border-radius:99px;padding:1px 7px">probe</span><span style="font-size:.6rem;border:1px solid var(--color-border);color:var(--color-muted);border-radius:99px;padding:1px 7px">conceptual</span><span style="font-size:.6rem;border:1px solid var(--color-border);color:var(--color-muted);border-radius:99px;padding:1px 7px">narrowing</span></div>
+            </div>
+            <!-- Zone B scroll -->
+            <div style="flex:1;min-height:0;border:1.5px dashed var(--color-muted);border-top:none;background:var(--color-surface-sunken);padding:12px;display:flex;flex-direction:column;gap:8px;overflow:hidden;position:relative">
+              <div style="display:flex;justify-content:flex-end;margin-bottom:2px"><span style="font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">B · Scroll — log</span></div>
+              <div style="border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);padding:7px 9px;font-size:.66rem;color:var(--color-muted)">Opener — "What's the sentence asking?"</div>
+              <div style="align-self:flex-start;border-radius:10px;background:var(--color-accent-light);padding:7px 9px;font-size:.66rem"><span style="font-family:var(--font-mono);font-size:.85em;color:var(--color-accent)">Nudge 2</span> · look at the clause before the comma</div>
+              <!-- collapsed answer example -->
+              <div style="border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);padding:6px 9px;display:flex;align-items:center;gap:6px;font-size:.64rem;color:var(--color-muted)"><span style="color:var(--color-accent)">▸</span><span style="font-weight:600;color:var(--color-fg)">Coach</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">A comma splice joins two independent…</span><span>2m</span></div>
+              <!-- expanded newest -->
+              <div style="border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);padding:8px 9px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:center;gap:6px;font-size:.64rem"><span style="color:var(--color-accent)">▾</span><span style="font-weight:600">Coach · now</span></div><div style="height:6px;width:92%;background:var(--color-selected);border-radius:99px"></div><div style="height:6px;width:78%;background:var(--color-selected);border-radius:99px"></div><div style="height:6px;width:85%;background:var(--color-selected);border-radius:99px"></div></div>
+              <span style="font-size:.58rem;color:var(--color-muted);text-align:center;margin-top:auto">⋮ nudges + turns scroll here · newest expanded</span>
+            </div>
+            <!-- Zone C pinned -->
+            <div style="border:1.5px solid var(--color-accent);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--color-accent-light);padding:8px 12px 10px;display:flex;flex-direction:column;gap:7px;position:relative">
+              <div style="display:flex;justify-content:flex-end"><span style="font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent)">C · Pinned</span></div>
+              <div style="display:flex;align-items:center;justify-content:center"><span style="border:1px dashed var(--color-accent);color:var(--color-accent);border-radius:99px;padding:3px 12px;font-size:.66rem;font-weight:600">＋ One more nudge</span></div>
+              <div style="display:flex;gap:5px;flex-wrap:wrap"><span style="font-size:.6rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px;padding:2px 8px">Explain the rule simply</span><span style="font-size:.6rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px;padding:2px 8px">Give an example</span></div>
+              <div style="height:26px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:99px;display:flex;align-items:center;padding:0 10px;font-size:.62rem;color:var(--color-muted)">Ask about this item…</div>
+            </div>
+          </div>
+          <p style="font-size:.86rem;color:var(--color-muted);margin:0;line-height:1.45">Nudge bodies live inside the scroll log (C3), so the pinned cluster never grows. Collapsed answer = one summary line (D1); newest stays open (D2).</p>
+        </div>
+
+        <!-- W4 -->
+        <div style="flex:1;min-width:300px;display:flex;flex-direction:column;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px"><span class="refchip" style="border-color:var(--color-accent);color:var(--color-accent)">W4</span><span style="font-weight:600;font-size:1.02rem">Standalone Coach (desktop rail) — same zones</span></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-lg);background:var(--color-surface-sunken);padding:16px 14px;display:flex;flex-direction:column;gap:8px;height:520px">
+            <!-- fixed header -->
+            <div style="border:1.5px solid var(--color-fg);border-radius:var(--radius-md);background:var(--color-bg);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;position:relative">
+              <span class="zlabel" style="color:var(--color-fg)">Fixed — header</span>
+              <span style="font-size:.66rem;color:var(--color-muted)">← Back</span><span style="font-size:.66rem;color:var(--color-accent);font-weight:600">Wrap up session →</span>
+            </div>
+            <div style="flex:1;min-height:0;display:flex;gap:8px">
+              <!-- left rail fixed -->
+              <div style="flex:none;width:120px;border:1.5px solid var(--color-fg);border-radius:var(--radius-md);background:var(--color-bg);padding:10px;display:flex;flex-direction:column;gap:6px;position:relative">
+                <span class="zlabel" style="color:var(--color-fg)">Fixed rail</span>
+                <span style="font-size:.68rem;font-weight:700">Your coach</span>
+                <span style="font-size:.58rem;color:var(--color-success)">● live</span>
+                <div style="height:1px;background:var(--color-border);margin:2px 0"></div>
+                <span style="font-size:.6rem;color:var(--color-muted)">On: Commas · Q12</span>
+                <span style="font-size:.6rem;color:var(--color-muted)">3 recent misses here</span>
+                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px"><span style="font-size:.56rem;border:1px solid var(--color-accent);color:var(--color-accent);background:var(--color-accent-light);border-radius:99px;padding:0 6px">probe</span><span style="font-size:.56rem;border:1px solid var(--color-border);color:var(--color-muted);border-radius:99px;padding:0 6px">rule</span></div>
+              </div>
+              <!-- right column: scroll + pinned -->
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:0">
+                <div style="flex:1;min-height:0;border:1.5px dashed var(--color-muted);border-radius:var(--radius-md) var(--radius-md) 0 0;background:var(--color-surface-sunken);padding:10px;display:flex;flex-direction:column;gap:7px;overflow:hidden;position:relative">
+                  <div style="display:flex;justify-content:flex-start;margin-bottom:2px"><span style="font-size:.58rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">Scroll — log</span></div>
+                  <div style="align-self:flex-end;border-radius:10px;background:var(--color-selected);padding:6px 8px;font-size:.62rem;max-width:80%">Why is B wrong?</div>
+                  <div style="border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);padding:6px 8px;display:flex;align-items:center;gap:6px;font-size:.62rem;color:var(--color-muted)"><span style="color:var(--color-accent)">▸</span><span style="font-weight:600;color:var(--color-fg)">Coach</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Because "however" is…</span><span>1m</span></div>
+                  <div style="border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg);padding:7px 8px;display:flex;flex-direction:column;gap:4px"><span style="font-size:.6rem;font-weight:600">Coach · now ▾</span><div style="height:6px;width:88%;background:var(--color-selected);border-radius:99px"></div><div style="height:6px;width:72%;background:var(--color-selected);border-radius:99px"></div></div>
+                  <span style="font-size:.56rem;color:var(--color-muted);text-align:center;margin-top:auto">⋮ scrolls · no "one more nudge" here</span>
+                </div>
+                <div style="border:1.5px solid var(--color-accent);border-top:none;border-radius:0 0 var(--radius-md) var(--radius-md);background:var(--color-accent-light);padding:6px 10px 8px;display:flex;flex-direction:column;gap:6px;position:relative">
+                  <div style="display:flex;justify-content:flex-end"><span style="font-size:.56rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-accent)">Pinned</span></div>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap"><span style="font-size:.58rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px;padding:2px 7px">Explain simply</span><span style="font-size:.58rem;background:var(--color-surface);border:1px solid var(--color-border);border-radius:99px;padding:2px 7px">Example</span></div>
+                  <div style="height:24px;background:var(--color-bg);border:1px solid var(--color-border);border-radius:99px;display:flex;align-items:center;padding:0 10px;font-size:.6rem;color:var(--color-muted)">Ask the coach…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p style="font-size:.86rem;color:var(--color-muted);margin:0;line-height:1.45">Identical physics to W3 — fixed chrome (here a left rail + header), scroll log, pinned chips+composer. iPad "strip" is the same with chrome as a top strip.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 3 · COMPONENT INVENTORY ============ -->
+    <div class="sec" id="inventory" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">03</span>
+        <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Component inventory</h2>
+      </div>
+      <p style="font-size:.98rem;color:var(--color-muted);line-height:1.5;margin:0;max-width:760px">Fewest new abstractions: <strong>one real new presentational piece</strong> (<code style="font-family:var(--font-mono);font-size:.9em">CollapsibleCoachAnswer</code>), one small pure hook, one tiny button. The height chain is a class contract, not a component. Everything else is a change to an existing file.</p>
+
+      <div style="display:flex;flex-wrap:wrap;gap:14px">
+        <!-- CHANGED -->
+        <div style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">Changed</span><span style="flex:1;height:1px;background:var(--color-border)"></span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">learn/layout.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Owns the viewport→shell→row height chain; sidebar collapse state + icon-rail render; toggle control + theme relocation to rail bottom; gate wide layout on <code style="font-family:var(--font-mono);font-size:.85em">isWide</code>.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">shell/AppNav.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Add a collapsed icon-rail variant (icon + tooltip + active state) beside the expanded list; ≥44px targets in the rail.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">quiz/page.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Gate CoachPanel on <code style="font-family:var(--font-mono);font-size:.85em">isWide</code> (not just ipad); build coachRuntime for both; height-lock the split row; left-column internal scroll; panel-dismiss state; swap desktop Ask-coach navigate for the focus bridge.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">coach/CoachPanel.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Restructure into the 3-zone model; move nudge bodies into the log; pin nudge+chips+composer; width clamp; dismiss control.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">coach/CoachView.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Render turns through <code style="font-family:var(--font-mono);font-size:.85em">CollapsibleCoachAnswer</code>; keep <code style="font-family:var(--font-mono);font-size:.85em">role="log"</code>; keep composer pinned as the flex sibling of the scroll region.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">coach/CoachWorkspace.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Apply the same zone model to rail + strip; fixed chrome, scroll log, pinned cluster; height chain.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">coach/CoachChrome.tsx · feedback/FeedbackView.tsx</div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Chrome: cold-state copy + render as the fixed header/rail. Feedback: replace navigate with the in-place focus bridge on wide; keep navigate on iPhone.</div></div>
+          </div>
+        </div>
+        <!-- NEW -->
+        <div style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:9px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent)">New</span><span style="flex:1;height:1px;background:var(--color-border)"></span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="border:1px solid var(--color-accent);border-radius:var(--radius-md);background:var(--color-accent-light);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">CollapsibleCoachAnswer.tsx <span style="font-weight:400;color:var(--color-muted)">· presentational</span></div><div style="font-size:.86rem;line-height:1.4;margin-top:3px">The only substantial new piece. Wraps a coach turn body; owns collapsed summary row + chevron + <code style="font-family:var(--font-mono);font-size:.85em">aria-expanded/aria-controls</code>; force-expands while streaming or errored.</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">use_collapsible_thread.ts <span style="font-weight:400;color:var(--color-muted)">· pure hook</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Derives <code style="font-family:var(--font-mono);font-size:.85em">expandedTurnIds</code> from turns + manual overrides + streaming/error force-expand. Node-testable like the existing reducer seams (F-R1).</div></div>
+            <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-accent)">SidebarToggle.tsx <span style="font-weight:400;color:var(--color-muted)">· tiny</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Chevron button (aria-label, <code style="font-family:var(--font-mono);font-size:.85em">[</code> shortcut). Could fold into AppNav; listed separately for clarity.</div></div>
+            <div style="border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px"><div style="font-family:var(--font-mono);font-size:.82rem;font-weight:700;color:var(--color-muted)">shell_layout_store.ts <span style="font-weight:400;color:var(--color-muted)">· module store</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px">Mirrors the existing <code style="font-family:var(--font-mono);font-size:.85em">coach_thread_store</code> pattern (useSyncExternalStore) for sidebar + dismiss state. No new npm dep.</div></div>
+            <div style="border:1px dashed var(--color-border);border-radius:var(--radius-md);background:var(--color-surface-sunken);padding:11px 13px"><div style="font-size:.82rem;font-weight:700;color:var(--color-muted)">Height-chain contract <span style="font-weight:400">· NOT a component</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.4;margin-top:3px"><code style="font-family:var(--font-mono);font-size:.85em">h-dvh</code> shell + <code style="font-family:var(--font-mono);font-size:.85em">min-h-0</code> flex children + <code style="font-family:var(--font-mono);font-size:.85em">overflow-y-auto</code> on Zone B — a documented className convention, no abstraction.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 4 · STATE MODEL ============ -->
+    <div class="sec" id="state" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">04</span>
+        <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">State model</h2>
+      </div>
+      <p style="font-size:.98rem;color:var(--color-muted);line-height:1.5;margin:0;max-width:760px">All client-side. No new backend, no new state library. Persistence is deliberate: reload-durable prefs in localStorage, session-scoped intent in sessionStorage, ephemeral view state in React.</p>
+
+      <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);overflow:hidden">
+        <!-- header row -->
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;gap:0;background:var(--color-surface-sunken);font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-muted)">
+          <div style="padding:9px 12px">State</div><div style="padding:9px 12px">Type</div><div style="padding:9px 12px">Lives in</div><div style="padding:9px 12px">Persistence</div>
+        </div>
+        <!-- rows -->
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">sidebarCollapsed</div><div style="padding:10px 12px;color:var(--color-muted)">boolean</div><div style="padding:10px 12px;color:var(--color-muted)">shell_layout_store</div><div style="padding:10px 12px"><span class="refchip">localStorage</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center;background:var(--color-surface)">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">sidebarUserPinned</div><div style="padding:10px 12px;color:var(--color-muted)">boolean</div><div style="padding:10px 12px;color:var(--color-muted)">shell_layout_store</div><div style="padding:10px 12px"><span class="refchip">sessionStorage</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">panelDismissed</div><div style="padding:10px 12px;color:var(--color-muted)">boolean</div><div style="padding:10px 12px;color:var(--color-muted)">shell_layout_store</div><div style="padding:10px 12px"><span class="refchip">sessionStorage</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center;background:var(--color-surface)">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">revealed <span style="color:var(--color-muted);font-weight:400">(nudge #)</span></div><div style="padding:10px 12px;color:var(--color-muted)">number</div><div style="padding:10px 12px;color:var(--color-muted)">CoachPanel local <span style="font-size:.76rem">(exists)</span></div><div style="padding:10px 12px;color:var(--color-muted)">none · resets per item</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">expandedTurnIds</div><div style="padding:10px 12px;color:var(--color-muted)">Set&lt;id&gt; (derived)</div><div style="padding:10px 12px;color:var(--color-muted)">use_collapsible_thread</div><div style="padding:10px 12px;color:var(--color-muted)">none · ephemeral</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center;background:var(--color-surface)">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">manualTurnOverride</div><div style="padding:10px 12px;color:var(--color-muted)">Map&lt;id,state&gt;</div><div style="padding:10px 12px;color:var(--color-muted)">use_collapsible_thread</div><div style="padding:10px 12px;color:var(--color-muted)">none · ephemeral</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1.1fr 1.3fr 1fr;border-top:1px solid var(--color-border);font-size:.86rem;align-items:center">
+          <div style="padding:10px 12px;font-family:var(--font-mono);font-size:.8rem;font-weight:600">thread · pin · mode</div><div style="padding:10px 12px;color:var(--color-muted)">store snapshot</div><div style="padding:10px 12px;color:var(--color-muted)">coach_thread_store <span style="font-size:.76rem">(exists)</span></div><div style="padding:10px 12px;color:var(--color-muted)">unchanged</div>
+        </div>
+      </div>
+      <p style="font-size:.86rem;color:var(--color-muted);margin:0;line-height:1.45"><strong>Precedence:</strong> on entering a content screen, auto-collapse writes <code style="font-family:var(--font-mono);font-size:.85em">sidebarCollapsed=true</code> unless <code style="font-family:var(--font-mono);font-size:.85em">sidebarUserPinned</code> is set this session. A reload re-derives collapsible state (newest expanded, rest collapsed) — no per-turn persistence needed.</p>
+    </div>
+
+    <!-- ============ 5 · ACCEPTANCE CRITERIA ============ -->
+    <div class="sec" id="acceptance" style="display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;align-items:baseline;gap:12px">
+        <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">05</span>
+        <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Acceptance criteria draft</h2>
+      </div>
+      <p style="font-size:.98rem;color:var(--color-muted);line-height:1.5;margin:0;max-width:760px">EARS-style, liftable into the SDD spec. <strong>Failure paths first.</strong></p>
+
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:-2px"><span style="font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-danger)">Failure &amp; edge paths</span><span style="flex:1;height:1px;background:color-mix(in oklab,var(--color-danger) 30%,var(--color-border))"></span></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-1</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">IF</span> content width is below 900px, <span class="ears">THEN THE SYSTEM SHALL</span> collapse the sidebar to the icon rail before hiding the coach panel, and shall never stack the coach below the quiz item.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-2</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">IF</span> content width stays below 900px with the sidebar already collapsed, <span class="ears">THEN THE SYSTEM SHALL</span> hide the inline panel and present a "Coach" control that opens it as an overlay drawer without navigating away.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-3</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHILE</span> a coach reply is streaming, <span class="ears">THE SYSTEM SHALL</span> keep that turn expanded and prevent it from being collapsed, manually or automatically.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-4</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">IF</span> a coach turn is in an error state, <span class="ears">THEN THE SYSTEM SHALL</span> keep it expanded and its Retry control reachable, excluding it from auto-collapse.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-5</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> the last available ladder rung has been revealed, <span class="ears">THE SYSTEM SHALL</span> disable "One more nudge" with an explanation and shall not hide or displace the composer.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-6</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHILE</span> the sidebar is collapsed, <span class="ears">THE SYSTEM SHALL</span> keep the theme toggle reachable within the icon rail.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-danger);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-danger);flex:none">AC-7</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> the learner collapses or expands a coach answer, <span class="ears">THE SYSTEM SHALL</span> not move keyboard focus and shall not re-announce prior content through the live region.</div></div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin:8px 0 -2px"><span style="font-size:.7rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent)">Nominal behavior</span><span style="flex:1;height:1px;background:var(--color-border)"></span></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-8</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHERE</span> the surface is wide (desktop or iPad), <span class="ears">THE SYSTEM SHALL</span> render the quiz item and the live coach panel side-by-side sharing one coach thread.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-9</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHILE</span> on a wide Quiz surface, <span class="ears">THE SYSTEM SHALL</span> scroll the item column and the coach log independently and shall not scroll the browser window.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-10</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">THE SYSTEM SHALL</span> keep the composer, chip row, and "One more nudge" control pinned and visible regardless of coach-log scroll position.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-11</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> a new coach reply completes, <span class="ears">THE SYSTEM SHALL</span> collapse all prior non-error coach answers and keep the newest expanded.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-12</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> the learner enters a content screen (Quiz / Coach / Skill / Test), <span class="ears">THE SYSTEM SHALL</span> auto-collapse the sidebar unless the learner explicitly expanded it this session; Home and Progress shall stay expanded.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-13</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> the learner dismisses the coach panel on wide Quiz, <span class="ears">THE SYSTEM SHALL</span> preserve the coach thread and keep it reachable from the Coach nav item.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-14</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHEN</span> the learner activates "Ask the coach about this" on wide Feedback, <span class="ears">THE SYSTEM SHALL</span> pin the item context and move focus to the coach composer without navigating.</div></div>
+        <div style="display:flex;gap:12px;border:1px solid var(--color-border);border-left:3px solid var(--color-accent);border-radius:var(--radius-sm);background:var(--color-surface);padding:11px 14px"><span style="font-family:var(--font-mono);font-weight:700;color:var(--color-accent);flex:none">AC-15</span><div style="font-size:.94rem;line-height:1.5"><span class="ears">WHERE</span> prefers-reduced-motion is set, <span class="ears">THE SYSTEM SHALL</span> apply sidebar and answer collapse changes instantly, with no transition; otherwise the sidebar preference persists across reloads via localStorage.</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 6 · RISKS + 7 · NON-GOALS ============ -->
+    <div style="display:flex;flex-wrap:wrap;gap:24px">
+      <!-- RISKS -->
+      <div class="sec" id="risks" style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">06</span>
+          <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Open risks</h2>
+        </div>
+        <p style="font-size:.92rem;color:var(--color-muted);margin:0;line-height:1.45">Needs an eng spike before the spec locks.</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-reject">Spike</span><span style="font-weight:600;font-size:.94rem">Height chain on mobile Safari / iPad Safari</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42"><code style="font-family:var(--font-mono);font-size:.85em">100dvh</code> toolbar behavior + nested <code style="font-family:var(--font-mono);font-size:.85em">min-h-0</code> flex + <code style="font-family:var(--font-mono);font-size:.85em">overflow-y-auto</code> can collapse on iOS. Device-test before committing the chain.</div></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-reject">Spike</span><span style="font-weight:600;font-size:.94rem">Pinned composer inside overflow ancestor</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42"><code style="font-family:var(--font-mono);font-size:.85em">position:sticky</code> can fail under a transformed/overflow parent — prefer a flex bottom cluster; verify with real content.</div></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-refine">Watch</span><span style="font-weight:600;font-size:.94rem">Nested / dual-column scroll chaining</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42">Two independent scroll columns + a drawer → overscroll chaining on trackpad/touch. Apply <code style="font-family:var(--font-mono);font-size:.85em">overscroll-behavior:contain</code>.</div></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-refine">Watch</span><span style="font-weight:600;font-size:.94rem">Auto-collapse × aria-live</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42">Confirm no double-announcement across browsers/SRs; confirm <code style="font-family:var(--font-mono);font-size:.85em">hidden</code> removes bodies from the AX tree without breaking log semantics.</div></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-refine">Watch</span><span style="font-weight:600;font-size:.94rem">Drawer focus trap + return focus</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42">At the narrow width, the overlay drawer needs a focus trap and return-focus to the trigger (a11y).</div></div>
+          <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:11px 13px;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px"><span class="tag tag-refine">Watch</span><span style="font-weight:600;font-size:.94rem">Panel width vs long tokens</span></div><div style="font-size:.86rem;color:var(--color-muted);line-height:1.42">Long code/URL tokens in coach markdown can overflow the clamped panel — need <code style="font-family:var(--font-mono);font-size:.85em">min-w-0</code> + wrap/break.</div></div>
+        </div>
+      </div>
+
+      <!-- NON-GOALS -->
+      <div class="sec" id="nongoals" style="flex:1;min-width:320px;display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:baseline;gap:12px">
+          <span style="font-family:var(--font-mono);font-size:.82rem;color:var(--color-accent);font-weight:700">07</span>
+          <h2 style="font-size:1.4rem;font-weight:700;letter-spacing:-.01em;margin:0">Explicit non-goals</h2>
+        </div>
+        <p style="font-size:.92rem;color:var(--color-muted);margin:0;line-height:1.45">Not redesigned in this pass.</p>
+        <div style="border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-surface);padding:6px 4px">
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>iPhone tab bar &amp; focus-mode chrome — untouched.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Question / hint bank content; hint-rung pedagogy (probe / conceptual / narrowing); the non-reveal guarantee.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Coach LLM behavior, prompts, or mode semantics.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Auth / WorkOS.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Backend / engine changes; any new npm dependency.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Dashboard / Summary / Skill / Progress / Test screen internals — only their shell chrome + sidebar behavior change.</span></div>
+          <div style="display:flex;gap:9px;padding:8px 12px;font-size:.92rem;align-items:flex-start;border-top:1px solid var(--color-border)"><span style="color:var(--color-danger);font-weight:700;flex:none">✕</span><span>Theme tokens / color palette.</span></div>
+        </div>
+        <div style="border-left:3px solid var(--color-accent);background:var(--color-accent-light);border-radius:0 var(--radius-md) var(--radius-md) 0;padding:11px 14px;font-size:.92rem;line-height:1.5;text-wrap:pretty"><strong>Preserved invariants:</strong> one shared coach thread (panel ↔ <code style="font-family:var(--font-mono);font-size:.85em">/learn/coach</code>), the reviewed hint ladder, and non-reveal nudges that never name the answer letter.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;'auto'|'light'|'dark'&quot;},&quot;showRefs&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { theme: null, refs: null };
+  componentDidMount(){
+    this._mq = window.matchMedia('(prefers-color-scheme: dark)');
+    this._onMq = () => { if(!this.state.theme) this.forceUpdate(); };
+    this._mq.addEventListener('change', this._onMq);
+  }
+  componentWillUnmount(){ if(this._mq) this._mq.removeEventListener('change', this._onMq); }
+  resolvedTheme(){
+    const pref = this.state.theme || this.props.theme || 'auto';
+    if(pref === 'auto') return (this._mq && this._mq.matches) ? 'dark' : 'light';
+    return pref;
+  }
+  resolvedRefs(){
+    if(this.state.refs != null) return this.state.refs;
+    return (this.props.showRefs ?? true) ? 'on' : 'off';
+  }
+  renderVals(){
+    const theme = this.resolvedTheme();
+    const refs = this.resolvedRefs();
+    return {
+      theme,
+      refs,
+      themeLabel: theme === 'dark' ? 'Dark' : 'Light',
+      refsLabel: refs === 'on' ? 'shown' : 'hidden',
+      toggleTheme: () => this.setState({ theme: this.resolvedTheme() === 'dark' ? 'light' : 'dark' }),
+      toggleRefs: () => this.setState({ refs: this.resolvedRefs() === 'on' ? 'off' : 'on' }),
+    };
+  }
+}
+</script>
+</body>
+</html>
