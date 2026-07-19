@@ -1,7 +1,7 @@
 # Plan — Gen2 item-level (no-pick) hint opener authoring — pilot shard
 
 **Spec:** [gen2-item-level-openers.spec.md](gen2-item-level-openers.spec.md)
-**Status:** Draft — 2026-07-19
+**Status:** WITHDRAWN — 2026-07-19, superseded by v3 "commit-first" (see spec's withdrawal note)
 **Pipeline:** synthetic-data-pipeline Steps 1–7 (Plane C)
 
 ---

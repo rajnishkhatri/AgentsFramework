@@ -1,7 +1,7 @@
 # Tasks — Gen2 item-level (no-pick) hint opener authoring — pilot shard
 
 **Spec:** [gen2-item-level-openers.spec.md](gen2-item-level-openers.spec.md) · **Plan:** [gen2-item-level-openers.plan.md](gen2-item-level-openers.plan.md)
-**Status:** Draft — 2026-07-19
+**Status:** WITHDRAWN — 2026-07-19. All tasks T1–T10 dropped unstarted (replan): v3 "commit-first" retired the no-pick moment, so openers have no serve surface. T6 was a no-op (asserted already-existing emit behavior).
 
 ---
 

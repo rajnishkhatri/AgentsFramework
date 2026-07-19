@@ -1,7 +1,13 @@
 # Spec — Gen2 item-level (no-pick) hint opener authoring — pilot shard
 
-**Status:** Draft — 2026-07-19
+**Status:** WITHDRAWN — 2026-07-19, superseded by v3 "commit-first"
 **Owner:** Rajnish Khatri
+
+> **Withdrawal note (replan 2026-07-19).** The approved v3 prototype/spec
+> ([gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md](gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md))
+> retires the no-pick moment entirely (DAT-5, MOM-2 RETIRED): coaching begins only
+> after a committed choice, so item-level (pre-pick) openers have no serve surface.
+> No task from this spec was started; nothing to unwind. Kept for traceability.
 **Related:** [gen2-proto-handoff EARS spec (MOM-2, DAT-5)](gen2-proto-handoff/03-ears-spec-gen2-coach.md) · synthetic-data-pipeline skill (Steps 1–7) · [coach-bank-hints.spec.md](coach-bank-hints.spec.md) (choice-keyed precedent) · ADR-0035 (hint choice_letter) · brainstorm: no-pick gap direction D3
 
 ---

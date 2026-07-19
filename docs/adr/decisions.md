@@ -609,3 +609,13 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Registry binding = align FE `learnerId` to JWT `sub` + existing D3
   `subject-coach-english` verify (no new registry service). Q-C3 in-memory / Q-C5 no
   `SEED_GARVIT`. Rejected: widen `IdentityClaim`, per-page `withAuth`, durable store.
+
+- 2026-07-19 — **Gen2 item-level opener pilot WITHDRAWN at replan (v3 commit-first).**
+  The approved v3 prototype spec (`docs/plan/gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md`)
+  retires the no-pick moment (DAT-5/MOM-2 RETIRED) — coaching starts only after a
+  committed choice — so item-level (pre-pick) openers lost their serve surface.
+  All 10 pilot tasks dropped unstarted; ~150–300 rows of human review capacity
+  freed; the choice-keyed Gen2 bank the v3 flow needs is already authored+reviewed.
+  Rejected: shelving (keeping the pilot dormant) — commit-first is the product
+  direction, not an experiment; a reversal would re-open from the brainstorm, not
+  this pilot. New scope routes to sdd-spec: app implementation of v3 commit-first.
