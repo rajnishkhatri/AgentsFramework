@@ -1,7 +1,7 @@
 # Tasks — Commit-first coach flow (v3) in the app quiz
 
 **Spec:** [commit-first-coach.spec.md](commit-first-coach.spec.md) · **Plan:** [commit-first-coach.plan.md](commit-first-coach.plan.md)
-**Status:** Ready for sdd-implement — 2026-07-19 (Stage-4 analyze passed)
+**Status:** Implemented — 2026-07-19 (T1–T12 landed; Stage-7 review next)
 
 **Stage-4 baseline (2026-07-19):** `pytest tests/architecture/ -q` → 221 passed, 3 skipped (green). Targeted frontend suites (quiz/coach/feedback/summary/translators) → 577/578; the 1 failure is a PRE-EXISTING flaky test (`use_summary.test.ts::derives_misconception_from_last_incorrect_attempt_on_recommended_skill`, 2/5 runs — same-ms `created_at` tie broken by random id order), unrelated to this change but in T10's blast radius. Fix spawned as a separate task; resolve it before or alongside T10 so gate runs are stable.
 

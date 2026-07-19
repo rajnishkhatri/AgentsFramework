@@ -12,6 +12,28 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-19 — **Commit-first coach app implement locks (clarify Q1–Q4 + UI home).**
+  (1) Outcome persisted as nullable `Attempt.resolution` ∈ {first_try, coached,
+  walked_through} on the resolving row only (additive; legacy null = single-attempt
+  semantics). (2) Session `score_correct` = first_try count; Summary shows honest
+  outcome counts (hide walked_through when 0). (3) `scheduler.review` once per item
+  on the first graded attempt. (4) Flag `commit_first_coach` defaults ON in
+  dev/`E2E_BYPASS_AUTH`, OFF in prod until staged; Playwright webServer forces OFF
+  so legacy e2e stay byte-stable (opt-in `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH=1`).
+  (5) Ladder UI lives in shared `QuizView` (not CoachPanel) so fullscreen has no
+  per-surface fork (FR-13). Rejected: a second "coaching moment" store (dual truth
+  with `quiz_screen_reducer`). Spec: [commit-first-coach.spec.md](../plan/commit-first-coach.spec.md).
+
+- 2026-07-19 — **Gen2 item-level opener pilot WITHDRAWN at replan (v3 commit-first).**
+  The approved v3 prototype spec (`docs/plan/gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md`)
+  retires the no-pick moment (DAT-5/MOM-2 RETIRED) — coaching starts only after a
+  committed choice — so item-level (pre-pick) openers lost their serve surface.
+  All 10 pilot tasks dropped unstarted; ~150–300 rows of human review capacity
+  freed; the choice-keyed Gen2 bank the v3 flow needs is already authored+reviewed.
+  Rejected: shelving (keeping the pilot dormant) — commit-first is the product
+  direction, not an experiment; a reversal would re-open from the brainstorm, not
+  this pilot. New scope routes to sdd-spec: app implementation of v3 commit-first.
+
 - 2026-07-17 — **Eng-coach Gen2/v2 adoption — Phase 0 locks (P0.1–P0.8), human-ratified.** Grounding pass: [eng-coach-gen2-v2-adoption.architecture.md](../plan/eng-coach-gen2-v2-adoption.architecture.md) (v1 auditable) / [.v2](../plan/eng-coach-gen2-v2-adoption.architecture.v2.md) (readable). Locks: **P0.1** Path A (Phase-0 → Phase-1 on Gen1 stems → student A/B → selective Gen2 promote); **P0.2** moment-based pedagogy (no-pick / wrong-pick / free-ask) is normative; **P0.3** reject layout-hybrid ("inline=Gen2 coach, standalone/drawer/iPhone=Gen1+freer LLM") and skill-swap-hybrid ("global skill band → different coach species") — *also* reject device/viewport as A/B assignment and treating a Gen2 rationale trailing `(tag)` as MiscLibrary; **P0.4** amend ADR-0012 to allow a rung-4 assertion **post-feedback only** (answer already on-screen) **and item-type-aware** (structural items — placement/deletion/concision/division — where a rule assertion uniquely identifies the key must not reveal mid-ladder), **never a pre-submit reveal** — this *exercises ADR-0012's own built-in "reveal-rung" decision trigger* (§Consequences), not an override; **P0.5** uniqueness `(question_id, choice_letter|null, rung)` via **two partial unique indexes** (`WHERE choice_letter IS NULL` / `IS NOT NULL`) — rejected PG `NULLS NOT DISTINCT` (breaks SQLite/in-memory parity) and app-only enforcement (loses the DB backstop); **P0.6** A/B metrics = first-rechoose accuracy, time-to-correct, nudge count, felt-helpful, leak incidents; **P0.8** (NEW) pilot-emit scope **(a) quiz-engine serve path only** — skip `BANK_RUNGS`, UC-3 (free-ask coach) unchanged, LLD T5 deferred, no `selected_letter` on the coach wire — rejected (b) emit-into-`BANK_RUNGS` (bigger; needs the duplicate-rung merge in `rungs_for_question` resolved first). **Deferred to `sdd-spec` (not fabricated now):** the precise ADR-0012 amendment text (how "structural type" is detected + where the guard lives) lands with the EARS acceptance criteria (P0.4); **P0.7** (human Accept → open `sdd-spec`) is the gate these locks clear. No Gen2 emit until Phase-2 batch gates B1–B5 pass (B5 has a wire-gap caveat: `standard_id` is stripped at the item wire pending "D4").
 
 - 2026-07-16 — **L6 Safari/`dvh` residual (FR-11):** height-chain className contract is locked in `learn/layout.tsx` (`h-dvh` shell + `main` `overflow-hidden` on content screens + Zone B `overflow-y-auto` + Zone C `shrink-0`). Playwright preflight covers `document.scrollingElement.scrollTop === 0` on Quiz; real Safari iPad toolbar/`dvh` collapse remains a manual device checklist before production sign-off (T6.1). Rejected: inventing a JS viewport shim for Safari chrome.
@@ -609,13 +631,3 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Registry binding = align FE `learnerId` to JWT `sub` + existing D3
   `subject-coach-english` verify (no new registry service). Q-C3 in-memory / Q-C5 no
   `SEED_GARVIT`. Rejected: widen `IdentityClaim`, per-page `withAuth`, durable store.
-
-- 2026-07-19 — **Gen2 item-level opener pilot WITHDRAWN at replan (v3 commit-first).**
-  The approved v3 prototype spec (`docs/plan/gen2-proto-handoff/03-ears-spec-gen2-coach-v3.md`)
-  retires the no-pick moment (DAT-5/MOM-2 RETIRED) — coaching starts only after a
-  committed choice — so item-level (pre-pick) openers lost their serve surface.
-  All 10 pilot tasks dropped unstarted; ~150–300 rows of human review capacity
-  freed; the choice-keyed Gen2 bank the v3 flow needs is already authored+reviewed.
-  Rejected: shelving (keeping the pilot dormant) — commit-first is the product
-  direction, not an experiment; a reversal would re-open from the brainstorm, not
-  this pilot. New scope routes to sdd-spec: app implementation of v3 commit-first.

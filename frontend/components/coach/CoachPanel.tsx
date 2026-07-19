@@ -27,12 +27,22 @@ import { cn } from "@/lib/utils";
 import { CoachChrome, CoachChips } from "./CoachChrome";
 import { CoachView } from "./CoachView";
 import { HintLadderList, NUDGE_EXHAUSTED_REASON } from "./HintLadderList";
+import { CoachedLoopSection } from "./CoachedLoopSection";
 import { useCoach } from "./use_coach";
 import { useCoachSurface } from "./use_coach_surface";
 import { setCoachPin } from "./coach_thread_store";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import { useSurface } from "@/components/shell/use_surface";
+import type { CoachedLoopState } from "@/components/quiz/quiz_screen_reducer";
+
+/** Idle copy when commit-first is ON and the learner has not yet submitted (FR-2). */
+export const COMMIT_FIRST_IDLE_COPY =
+  "Commit to a choice — coaching starts from what you pick. Ask me anything below; I never reveal the answer.";
+
+/** Wrong-pick moment opener once a letter is committed (MOM-3 / MOM-8). */
+export const COMMIT_FIRST_WRONG_PICK_COPY =
+  "You're in the coaching loop for that pick — rungs below follow what you chose. I never name the answer.";
 
 export function CoachPanel(props: {
   runtime: AgentRuntimeClient;
@@ -52,6 +62,16 @@ export function CoachPanel(props: {
   className?: string;
   /** Inline host sets true so e2e can find `coach-panel-inline`. */
   inlineHost?: boolean;
+  /**
+   * Commit-first (FR-2/13): retire quiz-pin HintLadderList + nudge; show idle
+   * copy pre-submit. Wrong-pick loop also mirrors in this panel (v3).
+   */
+  commitFirstCoach?: boolean;
+  /** Active wrong-pick loop; when set, idle opener is suppressed (MOM-8). */
+  coachedLoop?: CoachedLoopState | null;
+  readonly onNudge?: () => void;
+  readonly onTryAgain?: () => void;
+  readonly onEscape?: () => void;
 }): React.JSX.Element {
   const {
     runtime,
@@ -63,6 +83,11 @@ export function CoachPanel(props: {
     composerFocusRef,
     className,
     inlineHost = false,
+    commitFirstCoach = false,
+    coachedLoop = null,
+    onNudge,
+    onTryAgain,
+    onEscape,
   } = props;
   const surface = useSurface();
   const { learnerId } = useLearnIdentity();
@@ -110,15 +135,24 @@ export function CoachPanel(props: {
     [mode, pin, missesOnSkill, skillLabel],
   );
 
-  const openerMarkdown = React.useMemo(
-    () =>
-      honestCoachOpener({
-        pin,
-        missesOnSkill,
-        transcriptEmpty: turns.length === 0,
-      }),
-    [pin, missesOnSkill, turns.length],
-  );
+  const openerMarkdown = React.useMemo(() => {
+    if (commitFirstCoach && turns.length === 0) {
+      if (coachedLoop != null) return COMMIT_FIRST_WRONG_PICK_COPY;
+      if (mode === "pre_submit") return COMMIT_FIRST_IDLE_COPY;
+    }
+    return honestCoachOpener({
+      pin,
+      missesOnSkill,
+      transcriptEmpty: turns.length === 0,
+    });
+  }, [
+    commitFirstCoach,
+    coachedLoop,
+    mode,
+    pin,
+    missesOnSkill,
+    turns.length,
+  ]);
 
   const deeperRungs = React.useMemo(
     () => hintLadder.filter((h) => h.rung > 1),
@@ -128,6 +162,7 @@ export function CoachPanel(props: {
   const exhausted = revealed >= deeperRungs.length;
   const revealedHints = deeperRungs.slice(0, revealed);
   const isDesktop = surface === "desktop";
+  const showQuizLadder = !commitFirstCoach;
 
   return (
     <aside
@@ -179,13 +214,34 @@ export function CoachPanel(props: {
         data-testid="coach-zone-b"
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-3.5"
       >
-        <HintLadderList revealed={revealedHints} totalDeeper={deeperRungs.length} />
-        {revealedHints.length > 0 ? (
-          <div
-            role="separator"
-            aria-hidden="true"
-            className="my-3.5 border-t border-border"
-          />
+        {showQuizLadder ? (
+          <>
+            <HintLadderList
+              revealed={revealedHints}
+              totalDeeper={deeperRungs.length}
+            />
+            {revealedHints.length > 0 ? (
+              <div
+                role="separator"
+                aria-hidden="true"
+                className="my-3.5 border-t border-border"
+              />
+            ) : null}
+          </>
+        ) : null}
+        {commitFirstCoach && coachedLoop != null ? (
+          <div className="mb-3.5 shrink-0">
+            <CoachedLoopSection
+              coachedLoop={coachedLoop}
+              hintLadder={hintLadder.map((h) => ({
+                rung: h.rung,
+                body_md: h.body_md,
+              }))}
+              onNudge={onNudge}
+              onTryAgain={onTryAgain}
+              onEscape={onEscape}
+            />
+          </div>
         ) : null}
         <div className="mb-2 shrink-0">
           <h3 className="text-xs font-bold uppercase tracking-[0.06em] text-muted">
@@ -211,20 +267,22 @@ export function CoachPanel(props: {
         data-testid="coach-zone-c"
         className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3"
       >
-        <button
-          type="button"
-          data-testid="one-more-nudge"
-          disabled={exhausted}
-          aria-disabled={exhausted ? "true" : undefined}
-          title={exhausted ? NUDGE_EXHAUSTED_REASON : undefined}
-          onClick={() => {
-            if (exhausted) return;
-            setRevealed((n) => Math.min(n + 1, deeperRungs.length));
-          }}
-          className="min-h-11 w-fit rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          + One more nudge
-        </button>
+        {showQuizLadder ? (
+          <button
+            type="button"
+            data-testid="one-more-nudge"
+            disabled={exhausted}
+            aria-disabled={exhausted ? "true" : undefined}
+            title={exhausted ? NUDGE_EXHAUSTED_REASON : undefined}
+            onClick={() => {
+              if (exhausted) return;
+              setRevealed((n) => Math.min(n + 1, deeperRungs.length));
+            }}
+            className="min-h-11 w-fit rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + One more nudge
+          </button>
+        ) : null}
         <div data-testid="coach-panel-composer" className="flex flex-col gap-3">
           <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
           <Composer

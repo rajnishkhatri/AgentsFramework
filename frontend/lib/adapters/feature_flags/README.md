@@ -29,6 +29,7 @@ Post-construction env mutation does **not** affect lookups (tested).
 | `voice_mode` | `NEXT_PUBLIC_FF_VOICE_MODE` | `false` |
 | `per_tool_authorization` | `NEXT_PUBLIC_FF_PER_TOOL_AUTHORIZATION` | `false` |
 | `json_run_export` | `NEXT_PUBLIC_FF_JSON_RUN_EXPORT` | `false` |
+| `commit_first_coach` | `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH` | ON when `NODE_ENV=development` or `E2E_BYPASS_AUTH=1`; OFF otherwise (explicit env overrides) |
 
 Adding a new flag requires updating both `FeatureFlagName` (the port
 helper type) and the `FLAG_TO_ENV` table — both live in this family.

@@ -15,9 +15,14 @@
  * Imports `wire/` only. No I/O, no React, no SDK.
  */
 
-import type { Answer, Question, Verdict } from "../wire/engine_entities";
+import type {
+  Answer,
+  AttemptResolution,
+  Question,
+  Verdict,
+} from "../wire/engine_entities";
 
-export type FeedbackBanner = "celebrate" | "soft";
+export type FeedbackBanner = "celebrate" | "soft" | "walked_through";
 
 /** Per-choice review styling state (FR-E4). */
 export type ReviewedChoiceState = "correct" | "chosen-wrong" | "other";
@@ -27,6 +32,15 @@ export interface ReviewedChoiceVM {
   readonly label: string;
   readonly state: ReviewedChoiceState;
 }
+
+export const WALKED_THROUGH_BANNER =
+  "The breakdown takes it from here — this one won't count as solved.";
+
+export const RESOLUTION_LABEL: Record<AttemptResolution, string> = {
+  first_try: "Solved on first try",
+  coached: "Worked through it with the coach",
+  walked_through: "Walked through together",
+};
 
 export interface FeedbackVM {
   readonly correct: boolean;
@@ -46,6 +60,9 @@ export interface FeedbackVM {
    */
   readonly recapHtml: string;
   readonly recapHasUnderline: boolean;
+  /** Commit-first outcome label (FR-9); null under legacy / flag OFF. */
+  readonly resultLabel: string | null;
+  readonly resolution: AttemptResolution | null;
 }
 
 function stateFor(
@@ -82,19 +99,40 @@ export function toFeedbackVM(
   question: Question,
   verdict: Verdict,
   answer: Answer,
+  resolution?: AttemptResolution | null,
 ): FeedbackVM {
   const chosenLetter = answer.letter;
   const correctLetter = verdict.correct_letter ?? question.answer_letter;
   const rationale = question.per_choice_rationale;
   const recap = buildFeedbackRecap(question);
+  const res = resolution ?? null;
+
+  let banner: FeedbackBanner;
+  if (res === "walked_through") {
+    banner = "walked_through";
+  } else if (verdict.correct) {
+    banner = "celebrate";
+  } else {
+    banner = "soft";
+  }
+
+  // FBK-1: prefer authored why_correct / why_tempted; fall back to per-choice.
+  const correctRationale =
+    question.why_correct_md.trim() || (rationale[correctLetter] ?? "");
+  const chosenRationale =
+    res === "walked_through"
+      ? question.why_tempted_md.trim() ||
+        (chosenLetter && rationale[chosenLetter]) ||
+        ""
+      : (chosenLetter && rationale[chosenLetter]) || "";
 
   return {
     correct: verdict.correct,
-    banner: verdict.correct ? "celebrate" : "soft",
+    banner,
     chosenLetter,
     correctLetter,
-    chosenRationale: (chosenLetter && rationale[chosenLetter]) || "",
-    correctRationale: rationale[correctLetter] ?? "",
+    chosenRationale,
+    correctRationale,
     reviewedChoices: question.choices.map((c) => ({
       letter: c.letter,
       label: c.label,
@@ -105,5 +143,7 @@ export function toFeedbackVM(
     ruleMd: question.rule_md,
     recapHtml: recap.recapHtml,
     recapHasUnderline: recap.recapHasUnderline,
+    resultLabel: res != null ? RESOLUTION_LABEL[res] : null,
+    resolution: res,
   };
 }

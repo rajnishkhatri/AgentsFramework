@@ -60,7 +60,8 @@ describe("toFeedbackVM — wrong pick (FR-E3, failure path first)", () => {
   it("surfaces THAT distractor's specific rationale (B), plus the correct one (A)", () => {
     const vm = toFeedbackVM(q, verdict, answer);
     expect(vm.chosenRationale).toContain("B tempted you");
-    expect(vm.correctRationale).toContain("A is correct");
+    // FBK-1: authored why_correct_md wins over per_choice for the key.
+    expect(vm.correctRationale).toContain("Singular collective noun");
   });
 
   it("marks the chosen letter and the correct letter", () => {
@@ -139,5 +140,44 @@ describe("toFeedbackVM — green-span recap (BP-2c / FR-7 / C5)", () => {
     );
     expect(vm.recapHtml).toBe("Just a sentence.");
     expect(vm.recapHasUnderline).toBe(false);
+  });
+});
+
+describe("toFeedbackVM — commit-first resolution labels (FR-6/9)", () => {
+  const q = question({ answer_letter: "A" });
+
+  it("first_try → celebrate + Solved on first try", () => {
+    const vm = toFeedbackVM(
+      q,
+      { correct: true, correct_letter: "A" },
+      { letter: "A" },
+      "first_try",
+    );
+    expect(vm.banner).toBe("celebrate");
+    expect(vm.resultLabel).toBe("Solved on first try");
+  });
+
+  it("coached → celebrate + Worked through it with the coach", () => {
+    const vm = toFeedbackVM(
+      q,
+      { correct: true, correct_letter: "A" },
+      { letter: "A" },
+      "coached",
+    );
+    expect(vm.resultLabel).toBe("Worked through it with the coach");
+  });
+
+  it("walked_through → walked banner + why-tempted keyed to last wrong letter", () => {
+    const vm = toFeedbackVM(
+      q,
+      { correct: false, correct_letter: "A" },
+      { letter: "B" },
+      "walked_through",
+    );
+    expect(vm.banner).toBe("walked_through");
+    expect(vm.resultLabel).toBe("Walked through together");
+    expect(vm.chosenLetter).toBe("B");
+    // FBK-1 walked-through: why_tempted_md for the last wrong letter's gap.
+    expect(vm.chosenRationale).toContain("committee");
   });
 });

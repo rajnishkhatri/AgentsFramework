@@ -19,6 +19,7 @@ import type {
   FeedbackVM,
   ReviewedChoiceState,
 } from "@/lib/translators/feedback_vm";
+import { WALKED_THROUGH_BANNER } from "@/lib/translators/feedback_vm";
 
 const STATE_ICON: Record<ReviewedChoiceState, LucideIcon> = {
   correct: Check,
@@ -36,6 +37,7 @@ const STATE_LABEL: Record<ReviewedChoiceState, string> = {
 const BANNER_TEXT = {
   celebrate: "Exactly right.",
   soft: "Not quite — and that's useful.",
+  walked_through: WALKED_THROUGH_BANNER,
 } as const;
 
 function ReviewedChoiceRow(props: {
@@ -99,15 +101,30 @@ export function FeedbackView(props: {
           "data-[banner=celebrate]:bg-[color-mix(in_oklab,var(--color-success)_12%,transparent)]",
           "data-[banner=celebrate]:text-success",
           "data-[banner=soft]:bg-accent-light data-[banner=soft]:text-accent",
+          "data-[banner=walked_through]:bg-[color-mix(in_oklab,var(--color-warning,var(--color-accent))_14%,transparent)]",
+          "data-[banner=walked_through]:text-accent",
         )}
       >
         {vm.banner === "celebrate" ? (
           <Check aria-hidden="true" className="size-5" />
+        ) : vm.banner === "walked_through" ? (
+          <span aria-hidden="true" className="text-lg font-bold">
+            →
+          </span>
         ) : (
           <Circle aria-hidden="true" className="size-5" />
         )}
         {BANNER_TEXT[vm.banner]}
       </div>
+
+      {vm.resultLabel != null ? (
+        <p
+          data-testid="feedback-result-label"
+          className="text-sm font-medium text-muted"
+        >
+          {vm.resultLabel}
+        </p>
+      ) : null}
 
       {/* FR-A7 / C5: reviewed context_html with <u> restyled to success; plain otherwise. */}
       {vm.recapHasUnderline ? (
@@ -157,7 +174,9 @@ export function FeedbackView(props: {
           </p>
         ) : null}
         <p className="rounded-[13px] bg-surface px-4 py-3 text-muted">
-          <span className="font-semibold text-fg">The rule: </span>
+          <span className="font-semibold text-fg">
+            One rule decided this item:{" "}
+          </span>
           {vm.ruleMd}
         </p>
       </div>

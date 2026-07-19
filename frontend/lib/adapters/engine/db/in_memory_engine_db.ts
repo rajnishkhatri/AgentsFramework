@@ -282,6 +282,18 @@ export class InMemoryEngineDb implements EngineDb {
       .filter((a) => a.session_id === sessionId)
       .map((a) => a.question_id);
   }
+  async listSessionAttempts(sessionId: string): Promise<Attempt[]> {
+    return this.attempts
+      .filter((a) => a.session_id === sessionId)
+      .slice()
+      .sort((a, b) => {
+        if (a.created_at !== b.created_at) {
+          return a.created_at < b.created_at ? -1 : 1;
+        }
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      })
+      .map((a) => ({ ...a }));
+  }
   async listSessionSkillIds(sessionId: string): Promise<string[]> {
     // The session's served skills newest-first, distinct (S3.1 FR-5). Resolve
     // each attempt's question_id → skill_id, order by created_at desc, de-dup

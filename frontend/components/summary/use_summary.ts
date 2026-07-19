@@ -133,13 +133,14 @@ export async function loadSummary(
 ): Promise<SummaryVM> {
   const { subject, learnerId, sessionId, skillStateAtStart, nowISO } = args;
 
-  const [session, currentStates, skills, allMisses, servedIds] =
+  const [session, currentStates, skills, allMisses, servedIds, sessionAttempts] =
     await Promise.all([
       ports.sessionRepo.get(sessionId),
       ports.learnerRead.listSkillState(subject, learnerId),
       ports.skillTaxonomy.list(subject),
       ports.attemptRepo.misses(subject, learnerId),
       ports.attemptRepo.servedQuestionIds(sessionId),
+      ports.attemptRepo.listForSession(sessionId),
     ]);
 
   if (session == null) {
@@ -214,6 +215,7 @@ export async function loadSummary(
     misconception,
     selfCorrected,
     scoreRatioMet,
+    sessionAttempts,
   );
   return { summary, masteryDeltaKnown };
 }

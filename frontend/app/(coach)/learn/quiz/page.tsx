@@ -54,10 +54,24 @@ import {
 import { toQuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { toQuizProgressVM } from "@/lib/translators/quiz_progress_vm";
 import { resolveHintChoiceLetter } from "@/lib/translators/resolve_hint_choice_letter";
+import { resolveCommitFirstLadder } from "@/lib/translators/resolve_commit_first_ladder";
+import { EnvVarFlagsAdapter } from "@/lib/adapters/feature_flags/env_var_flags_adapter";
 import { screen } from "@/components/shell/nav_model";
 import { useLearnIdentity } from "@/components/learn/LearnIdentityProvider";
 import { DEFAULT_SUBJECT } from "@/lib/wire/engine_entities";
 import type { QuizSession, Skill } from "@/lib/wire/engine_entities";
+
+/** Sync flag snapshot for the quiz page (FR-14). Composition-ring adapter. */
+function readCommitFirstCoachFlag(): boolean {
+  return new EnvVarFlagsAdapter({
+    env: {
+      NEXT_PUBLIC_FF_COMMIT_FIRST_COACH:
+        process.env.NEXT_PUBLIC_FF_COMMIT_FIRST_COACH,
+      E2E_BYPASS_AUTH: process.env.E2E_BYPASS_AUTH,
+      NODE_ENV: process.env.NODE_ENV,
+    },
+  }).isEnabled("commit_first_coach");
+}
 
 /**
  * A Socratic nudge derived from the stem — deliberately generic so it never
@@ -75,11 +89,13 @@ export default function QuizPage(): React.JSX.Element {
     openItem,
     resumeSession,
     submit,
+    escape,
     closeSession,
     listSkillIds,
     listSkills,
     loadLadder,
   } = useQuiz();
+  const commitFirstCoach = React.useMemo(() => readCommitFirstCoachFlag(), []);
   const router = useRouter();
   const searchParams = useSearchParams();
   // FR-A5 / S2 (FR-6): `?focus=<skillId>` → drill. FR-A6 / FR-C5: `?mode=review`
@@ -119,6 +135,17 @@ export default function QuizPage(): React.JSX.Element {
     quizScreenReducer,
     initialQuizScreen,
   );
+
+  // v3: open the coach as soon as a wrong commit starts the ladder (MOM-3).
+  const coachedLoopActive =
+    commitFirstCoach &&
+    state.phase === "answering" &&
+    state.coachedLoop != null;
+  React.useEffect(() => {
+    if (!coachedLoopActive) return;
+    setDrawerOpen(true);
+    if (shellLayout.panelDismissed) setPanelDismissed(false);
+  }, [coachedLoopActive, shellLayout.panelDismissed]);
 
   // The open session (+ its id, the Summary handoff key) for the page's life.
   const [session, setSession] = React.useState<QuizSession | null>(null);
@@ -298,9 +325,13 @@ export default function QuizPage(): React.JSX.Element {
 
   // Effect 5: ADR-0035 moment router — wrong letter → choice-conditional ladder
   // + coach_context.choice_letter; no/correct pick → item-level (null letter).
+  // Commit-first (FR-2/3): key off the *submitted* wrong letter (coachedLoop),
+  // not the pre-submit selection — so no ladder loads before a commit.
   const momentLetter =
     state.phase === "answering"
-      ? state.selectedLetter
+      ? commitFirstCoach
+        ? (state.coachedLoop?.activeLetter ?? null)
+        : state.selectedLetter
       : state.phase === "reviewing"
         ? state.answeredLetter
         : null;
@@ -312,14 +343,35 @@ export default function QuizPage(): React.JSX.Element {
     state.phase === "answering" || state.phase === "reviewing"
       ? state.item.question.answer_letter
       : null;
+  const momentStem =
+    state.phase === "answering" || state.phase === "reviewing"
+      ? state.item.question.stem
+      : null;
   React.useEffect(() => {
     if (session == null || momentQuestionId == null || momentAnswerLetter == null) {
+      return;
+    }
+    // Commit-first pre-submit: no letter committed → no ladder load (FR-2).
+    if (commitFirstCoach && state.phase === "answering" && momentLetter == null) {
+      setCoachChoiceLetter(null);
       return;
     }
     const choice = resolveHintChoiceLetter(momentLetter, momentAnswerLetter);
     setCoachChoiceLetter(choice);
     let cancelled = false;
-    loadLadder(DEFAULT_SUBJECT, momentQuestionId, choice)
+    const load = (letter: string | null) =>
+      loadLadder(DEFAULT_SUBJECT, momentQuestionId, letter);
+    const ladderPromise =
+      commitFirstCoach && choice != null && momentStem != null
+        ? resolveCommitFirstLadder(
+            load,
+            choice,
+            socraticHint(momentStem),
+            momentQuestionId,
+            DEFAULT_SUBJECT,
+          )
+        : load(choice);
+    ladderPromise
       .then((hintLadder) => {
         if (!cancelled) dispatch({ type: "ladder_loaded", hintLadder });
       })
@@ -334,17 +386,29 @@ export default function QuizPage(): React.JSX.Element {
     momentLetter,
     momentQuestionId,
     momentAnswerLetter,
+    momentStem,
     loadLadder,
+    commitFirstCoach,
+    state.phase,
   ]);
 
   const onSubmit = React.useCallback(() => {
     if (state.phase !== "answering" || session == null) return;
     const letter = state.selectedLetter;
+    // FR-7: same-letter resubmit is inert — skip record before it reaches the repo.
+    if (
+      commitFirstCoach &&
+      letter != null &&
+      state.coachedLoop?.activeLetter === letter
+    ) {
+      return;
+    }
     const { question } = state.item;
-    const usedHint = state.usedHint;
-    // D0 elapsed timing: real per-item latency (monotonic stop − start), replacing
-    // the former hardcoded `elapsedMs: 0`. Clamped non-negative / whole-ms by the helper.
+    const usedHint = state.usedHint || state.coachedLoop != null;
     const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
+    const isFirstGradedAttempt = state.coachedLoop == null;
+    const hadPriorWrongAttempts =
+      state.coachedLoop != null && state.coachedLoop.wrongLetters.length > 0;
     submit({
       session,
       question,
@@ -352,14 +416,58 @@ export default function QuizPage(): React.JSX.Element {
       letter,
       elapsedMs,
       usedHint,
+      ...(commitFirstCoach
+        ? {
+            commitFirstCoach: true,
+            isFirstGradedAttempt,
+            hadPriorWrongAttempts,
+          }
+        : {}),
     })
       .then((result) => {
-        dispatch({ type: "submitted", verdict: result.verdict, letter });
+        dispatch({
+          type: "submitted",
+          verdict: result.verdict,
+          letter,
+          ...(commitFirstCoach ? { commitFirstCoach: true } : {}),
+        });
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Failed to grade your answer");
       });
-  }, [state, session, submit]);
+  }, [state, session, submit, commitFirstCoach, learnerId]);
+
+  const onNudge = React.useCallback(() => {
+    dispatch({ type: "nudge_requested" });
+  }, []);
+
+  const onTryAgain = React.useCallback(() => {
+    dispatch({ type: "try_again" });
+  }, []);
+
+  const onEscape = React.useCallback(() => {
+    if (state.phase !== "answering" || session == null) return;
+    const lastWrong = state.coachedLoop?.activeLetter;
+    if (lastWrong == null) return;
+    const elapsedMs = elapsedMsFrom(state.presentedAt, performance.now());
+    escape({
+      session,
+      question: state.item.question,
+      learnerId,
+      lastWrongLetter: lastWrong,
+      elapsedMs,
+      usedHint: true,
+      isFirstGradedAttempt: false,
+    })
+      .then(() => {
+        dispatch({ type: "escape_taken" });
+      })
+      .catch((err: unknown) => {
+        setError(
+          err instanceof Error ? err.message : "Failed to walk through the item",
+        );
+      });
+  }, [state, session, escape, learnerId]);
 
   const onFinish = React.useCallback(() => {
     if (session == null) return;
@@ -460,6 +568,14 @@ export default function QuizPage(): React.JSX.Element {
         endSessionEnabled={endSessionEnabled}
         onEndSession={onEndSession}
         startedAtIso={startedAtIso}
+        commitFirstCoach={commitFirstCoach}
+        coachedLoop={state.coachedLoop}
+        hintLadder={state.item.hintLadder}
+        onNudge={onNudge}
+        onTryAgain={onTryAgain}
+        onEscape={onEscape}
+        // Fullscreen has no CoachPanel — keep the ladder on the item column.
+        renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
       />
     );
   } else {
@@ -473,6 +589,7 @@ export default function QuizPage(): React.JSX.Element {
       state.item.question,
       state.verdict,
       { letter: state.answeredLetter },
+      state.resolution,
     );
     // FR-16/17/18: inline pin+focus; drawer open then focus after 220ms; iphone navigate.
     // ADR-0035 (main): pin the wrong letter so the free-ask coach loads the
@@ -600,6 +717,8 @@ export default function QuizPage(): React.JSX.Element {
     });
     const itemMax =
       surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
+    const coachedLoop =
+      state.phase === "answering" ? state.coachedLoop : null;
     const panel = (
       <CoachPanel
         key={item.question.id}
@@ -611,6 +730,11 @@ export default function QuizPage(): React.JSX.Element {
         composerFocusRef={composerFocusRef}
         inlineHost={mode === "inline"}
         className="h-full rounded-none border-0 border-l border-border"
+        commitFirstCoach={commitFirstCoach}
+        coachedLoop={coachedLoop}
+        onNudge={onNudge}
+        onTryAgain={onTryAgain}
+        onEscape={onEscape}
       />
     );
 
@@ -643,6 +767,11 @@ export default function QuizPage(): React.JSX.Element {
               pin={coachPin.pin}
               composerFocusRef={composerFocusRef}
               className="h-full w-full max-w-none rounded-none border-0"
+              commitFirstCoach={commitFirstCoach}
+              coachedLoop={coachedLoop}
+              onNudge={onNudge}
+              onTryAgain={onTryAgain}
+              onEscape={onEscape}
             />
           </CoachDrawer>
         </div>

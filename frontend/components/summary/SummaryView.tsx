@@ -73,6 +73,27 @@ export function SummaryView(props: { vm: SummaryVM }): React.JSX.Element {
         <StatTile label="Time" value={summary.timeTile} testId="summary-time" />
       </dl>
 
+      {summary.outcomeCounts != null ? (
+        <ul
+          data-testid="summary-outcomes"
+          aria-label="How items resolved"
+          className="flex flex-wrap gap-3 text-sm text-muted"
+        >
+          <li data-testid="summary-outcome-first-try">
+            Solved on first try: {summary.outcomeCounts.firstTry}
+          </li>
+          <li data-testid="summary-outcome-coached">
+            Worked through with the coach: {summary.outcomeCounts.coached}
+          </li>
+          {summary.outcomeCounts.walkedThrough > 0 ? (
+            <li data-testid="summary-outcome-walked-through">
+              Walked through (not counted as solved):{" "}
+              {summary.outcomeCounts.walkedThrough}
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
+
       <section
         aria-label="Recommended next"
         data-testid="summary-recommended"

@@ -18,6 +18,8 @@
  */
 
 import type {
+  Attempt,
+  AttemptResolution,
   QuizSession,
   RecommendedNext,
   Skill,
@@ -34,6 +36,13 @@ export interface RecommendedNextVM {
   readonly drillTitle: string;
 }
 
+/** Honest outcome tallies for the Summary row (FR-11). */
+export interface OutcomeCountsVM {
+  readonly firstTry: number;
+  readonly coached: number;
+  readonly walkedThrough: number;
+}
+
 export interface SessionSummaryVM {
   readonly scoreCorrect: number;
   readonly scoreTotal: number;
@@ -46,6 +55,70 @@ export interface SessionSummaryVM {
   readonly misconception: string | null;
   readonly selfCorrected: boolean;
   readonly showFramedTitle: boolean;
+  /**
+   * Commit-first outcome counts (FR-11). Null when no resolving-row signal
+   * exists (legacy session with only null resolutions → hide the row, AP-6).
+   */
+  readonly outcomeCounts: OutcomeCountsVM | null;
+}
+
+/**
+ * Derive per-item outcomes from session attempts (FR-11 / AP-6).
+ * Uses the resolving attempt per question_id (last row with a resolution, else
+ * legacy single-attempt rule: correct ⇒ first_try). Non-resolving retries ignored.
+ */
+export function countSessionOutcomes(
+  attempts: ReadonlyArray<
+    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+  >,
+): OutcomeCountsVM | null {
+  if (attempts.length === 0) return null;
+
+  const byQuestion = new Map<string, (typeof attempts)[number]>();
+  for (const a of attempts) {
+    const prev = byQuestion.get(a.question_id);
+    if (prev == null) {
+      byQuestion.set(a.question_id, a);
+      continue;
+    }
+    // Prefer a row that carries resolution; else keep newest.
+    if (a.resolution != null) {
+      byQuestion.set(a.question_id, a);
+    } else if (prev.resolution == null && a.created_at >= prev.created_at) {
+      byQuestion.set(a.question_id, a);
+    }
+  }
+
+  let firstTry = 0;
+  let coached = 0;
+  let walkedThrough = 0;
+  let anyResolution = false;
+
+  for (const a of byQuestion.values()) {
+    const res: AttemptResolution | null | undefined = a.resolution;
+    if (res == null) {
+      // Legacy: one attempt per item; correct ⇒ first_try (AP-6 — no fabricate).
+      if (a.correct) firstTry += 1;
+      continue;
+    }
+    anyResolution = true;
+    if (res === "first_try") firstTry += 1;
+    else if (res === "coached") coached += 1;
+    else if (res === "walked_through") walkedThrough += 1;
+  }
+
+  // Hide the row when the session has zero resolution-bearing rows AND zero
+  // legacy corrects — i.e. nothing honest to show. Legacy sessions with
+  // corrects still surface firstTry via the legacy rule above; return counts.
+  if (!anyResolution && firstTry === 0 && coached === 0 && walkedThrough === 0) {
+    // All-wrong legacy session: still no outcome row (would show 0/0/0 noise).
+    return null;
+  }
+  if (!anyResolution && walkedThrough === 0 && coached === 0) {
+    // Pure legacy correct-only tally — show first_try count; hide walked when 0.
+    return { firstTry, coached: 0, walkedThrough: 0 };
+  }
+  return { firstTry, coached, walkedThrough };
 }
 
 function signedPct(delta: number): string {
@@ -100,6 +173,9 @@ export function toSessionSummaryVM(
   misconception: string | null,
   selfCorrected: boolean,
   scoreRatioMet: boolean,
+  sessionAttempts: ReadonlyArray<
+    Pick<Attempt, "question_id" | "correct" | "resolution" | "created_at">
+  > = [],
 ): SessionSummaryVM {
   const { title, body } = titleAndBody(
     nextSkill.name,
@@ -110,6 +186,8 @@ export function toSessionSummaryVM(
   return {
     scoreCorrect: session.score_correct,
     scoreTotal: session.score_total,
+    // FR-11 / FR-G1: score tile is the STORED session tally (first_try under
+    // commit-first; identical for legacy single-attempt sessions).
     scoreTile: `${session.score_correct}/${session.score_total}`,
     masteryDeltaTile: signedPct(masteryDeltaPct),
     timeTile: timeTile(session),
@@ -125,5 +203,6 @@ export function toSessionSummaryVM(
     misconception,
     selfCorrected,
     showFramedTitle: scoreRatioMet,
+    outcomeCounts: countSessionOutcomes(sessionAttempts),
   };
 }

@@ -72,6 +72,14 @@ export class DrizzleAttemptRepo implements AttemptRepo {
     }
   }
 
+  async listForSession(sessionId: string): Promise<readonly Attempt[]> {
+    try {
+      return await this.db.listSessionAttempts(sessionId);
+    } catch (err) {
+      throw translate("listForSession", err);
+    }
+  }
+
   async servedSkillIds(sessionId: string): Promise<readonly string[]> {
     try {
       return await this.db.listSessionSkillIds(sessionId);

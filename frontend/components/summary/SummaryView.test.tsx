@@ -34,6 +34,7 @@ function summary(over: Partial<SessionSummaryVM> = {}): SessionSummaryVM {
     misconception: null,
     selfCorrected: false,
     showFramedTitle: false,
+    outcomeCounts: null,
     ...over,
   };
 }

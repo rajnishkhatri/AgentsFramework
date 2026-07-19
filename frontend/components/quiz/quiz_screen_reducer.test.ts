@@ -368,3 +368,176 @@ describe("quiz_screen_reducer — resume_item (FLAG-4 / FR-3)", () => {
     expect(s.score).toEqual({ correct: 1, total: 1 });
   });
 });
+
+// --- Commit-first coached loop (FR-1/3/4/5/6/7/9/14) ----------------------
+
+function answeringCommitFirst(): QuizScreenState {
+  return quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+}
+
+describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
+  it("wrong submit stays answering with coachedLoop + rung 1 (FR-1/FR-3)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.coachedLoop?.activeLetter).toBe("A");
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(1);
+    expect(s.phase === "answering" && s.coachedLoop?.exhausted).toBe(false);
+    expect(s.score).toEqual({ correct: 0, total: 0 });
+  });
+
+  it("same-letter wrong resubmit is inert (FR-7)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    const afterFirst = s;
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    expect(s).toEqual(afterFirst);
+  });
+
+  it("letter switch L1→L2 resets L2 to rung 1; L1 rungs retained (FR-7)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(2);
+    s = quizScreenReducer(s, { type: "select", letter: "C" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "C",
+      commitFirstCoach: true,
+    });
+    expect(s.phase === "answering" && s.coachedLoop?.activeLetter).toBe("C");
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.C).toBe(1);
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(2);
+  });
+
+  it("nudge_requested reveals next rung; exhaustion at 3 of 3 (FR-4/FR-5)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(2);
+    expect(s.phase === "answering" && s.coachedLoop?.exhausted).toBe(false);
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(3);
+    expect(s.phase === "answering" && s.coachedLoop?.exhausted).toBe(true);
+    const exhausted = s;
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    expect(s).toEqual(exhausted);
+  });
+
+  it("try_again clears the pick and retains rung count (FR-5)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    s = quizScreenReducer(s, { type: "try_again" });
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.selectedLetter).toBeNull();
+    expect(s.phase === "answering" && s.coachedLoop?.rungsRevealed.A).toBe(3);
+    expect(s.phase === "answering" && s.coachedLoop?.exhausted).toBe(true);
+  });
+
+  it("escape_taken → reviewing with walked_through; score total only (FR-6)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    s = quizScreenReducer(s, { type: "nudge_requested" });
+    s = quizScreenReducer(s, { type: "escape_taken" });
+    expect(s.phase).toBe("reviewing");
+    expect(s.phase === "reviewing" && s.resolution).toBe("walked_through");
+    expect(s.phase === "reviewing" && s.answeredLetter).toBe("A");
+    expect(s.phase === "reviewing" && s.verdict.correct).toBe(false);
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+  });
+
+  it("correct on first attempt → first_try and scores (FR-9/FR-11)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    expect(s.phase).toBe("reviewing");
+    expect(s.phase === "reviewing" && s.resolution).toBe("first_try");
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+
+  it("correct after wrong → coached; score_correct unchanged (FR-9/FR-11)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    expect(s.phase).toBe("reviewing");
+    expect(s.phase === "reviewing" && s.resolution).toBe("coached");
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+  });
+});
+
+describe("quiz_screen_reducer — commit-first flag OFF (FR-14 regression)", () => {
+  it("wrong submit without commitFirstCoach still advances to reviewing", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+    });
+    expect(s.phase).toBe("reviewing");
+    expect(s.phase === "reviewing" && s.resolution).toBeUndefined();
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+  });
+});

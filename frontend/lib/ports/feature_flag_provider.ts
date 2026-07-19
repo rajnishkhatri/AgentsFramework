@@ -11,7 +11,8 @@ export type FeatureFlagName =
   | "pyramid_panel"
   | "voice_mode"
   | "per_tool_authorization"
-  | "json_run_export";
+  | "json_run_export"
+  | "commit_first_coach";
 
 /**
  * Vendor-neutral feature flag port.
@@ -26,6 +27,9 @@ export type FeatureFlagName =
  *     throw -- so adding a new flag without an adapter update is safe.
  *   - `pyramid_panel`, `voice_mode`, `per_tool_authorization`, and
  *     `json_run_export` are off by default in V3.
+ *   - `commit_first_coach` defaults ON in dev (`NODE_ENV=development`) or when
+ *     `E2E_BYPASS_AUTH=1`; OFF otherwise (prod staged rollout). Explicit
+ *     `NEXT_PUBLIC_FF_COMMIT_FIRST_COACH` overrides the default.
  */
 export interface FeatureFlagProvider {
   /**

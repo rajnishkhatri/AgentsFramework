@@ -15,6 +15,9 @@ import type {
  *      not re-derive correctness (engine spec FR-D2).
  *   2. `used_hint` is persisted as-is and NEVER changes recorded correctness
  *      (FR-D5) — a hinted correct answer is still correct.
+ *   2b. `resolution` (`first_try` | `coached` | `walked_through` | null) is
+ *      set ONLY on the resolving attempt for an item (commit-first FR-10).
+ *      Non-resolving retries omit it / leave it null; legacy rows stay null.
  *   3. `misses()` returns **outstanding** misses (newest-first): for each
  *      `question_id`, the learner's latest attempt is included iff it is
  *      incorrect. A later correct answer clears that item from the review pool
@@ -59,6 +62,13 @@ export interface AttemptRepo {
    * derived from `attempt`, never persisted on `skill_state`.
    */
   servedQuestionIds(sessionId: string): Promise<readonly string[]>;
+
+  /**
+   * All attempt rows for `sessionId` (append order / created_at ascending).
+   * Commit-first FR-11: Summary derives outcome counts from resolving rows.
+   * Returns `[]` (not throw) for a session with no attempts.
+   */
+  listForSession(sessionId: string): Promise<readonly Attempt[]>;
 
   /**
    * The distinct skills served in `sessionId`, newest-first, for round-robin

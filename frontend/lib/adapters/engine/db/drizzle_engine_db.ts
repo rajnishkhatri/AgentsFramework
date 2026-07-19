@@ -182,6 +182,11 @@ function toSession(r: Record<string, unknown>): QuizSession {
 }
 
 function toAttempt(r: Record<string, unknown>): Attempt {
+  const resolutionRaw = r.resolution;
+  const resolution =
+    resolutionRaw == null || resolutionRaw === ""
+      ? null
+      : (String(resolutionRaw) as Attempt["resolution"]);
   return {
     id: String(r.id),
     subject: String(r.subject),
@@ -192,6 +197,7 @@ function toAttempt(r: Record<string, unknown>): Attempt {
     elapsed_ms: Number(r.elapsed_ms ?? 0),
     used_hint: Boolean(r.used_hint),
     created_at: isoOf(r.created_at),
+    resolution,
   };
 }
 
@@ -526,6 +532,17 @@ export function pgEngineDbFrom(db: PgDb): EngineDb {
           .where(eq(pg.attempt.session_id, sessionId)),
       );
       return rows.map((r) => String((r as { question_id: unknown }).question_id));
+    },
+    async listSessionAttempts(sessionId) {
+      const rows = await wrap(
+        "listSessionAttempts",
+        db
+          .select()
+          .from(pg.attempt)
+          .where(eq(pg.attempt.session_id, sessionId))
+          .orderBy(asc(pg.attempt.created_at)),
+      );
+      return (rows as Record<string, unknown>[]).map(toAttempt);
     },
     async listSessionSkillIds(sessionId) {
       // The session's served skills newest-first (S3.1 FR-5): resolve each

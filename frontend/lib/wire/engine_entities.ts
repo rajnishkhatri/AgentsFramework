@@ -227,6 +227,17 @@ export type QuizSession = z.infer<typeof QuizSession>;
 
 // --- attempt -------------------------------------------------------------
 
+/**
+ * How an item was resolved under commit-first coaching (FR-10).
+ * Set only on the resolving attempt; non-resolving / legacy rows stay null/omitted.
+ */
+export const AttemptResolution = z.enum([
+  "first_try",
+  "coached",
+  "walked_through",
+]);
+export type AttemptResolution = z.infer<typeof AttemptResolution>;
+
 /** Append-only history of one answered item (FR-D2). */
 export const Attempt = z.object({
   id: z.string(),
@@ -238,6 +249,8 @@ export const Attempt = z.object({
   elapsed_ms: z.number().int(),
   used_hint: z.boolean(),
   created_at: z.string(),
+  /** Set only on the resolving attempt (commit-first FR-10); legacy rows omit/null. */
+  resolution: AttemptResolution.nullable().optional(),
 });
 export type Attempt = z.infer<typeof Attempt>;
 

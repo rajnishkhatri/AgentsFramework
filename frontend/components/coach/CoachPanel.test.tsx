@@ -247,3 +247,21 @@ describe("CoachPanel — FR-J3a two-tier nudge", () => {
     expect(nudge().disabled).toBe(true);
   });
 });
+
+describe("CoachPanel — commit-first retires quiz-pin ladder (FR-2)", () => {
+  it("flag ON: idle copy present; no nudge / hint-ladder in quiz context", async () => {
+    await render(
+      <CoachPanel
+        runtime={scriptedRuntime()}
+        hintLadder={LADDER}
+        mode="pre_submit"
+        commitFirstCoach
+      />,
+    );
+    expect(container.textContent).toContain(
+      "Commit to a choice — coaching starts from what you pick",
+    );
+    expect(container.querySelector("[data-testid='one-more-nudge']")).toBeNull();
+    expect(container.querySelector("[data-testid='hint-ladder-list']")).toBeNull();
+  });
+});

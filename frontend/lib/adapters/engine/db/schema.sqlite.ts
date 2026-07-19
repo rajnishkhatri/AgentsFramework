@@ -178,6 +178,9 @@ export const attempt = sqliteTable("attempt", {
   created_at: integer("created_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),
+  // Commit-first FR-10: set only on the resolving attempt. Null = legacy /
+  // non-resolving row (no backfill). Values: first_try | coached | walked_through.
+  resolution: text("resolution"),
 });
 
 /** skill_state — adaptivity source of truth; FSRS is the only writer. */

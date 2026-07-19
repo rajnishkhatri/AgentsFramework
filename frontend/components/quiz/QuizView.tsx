@@ -23,6 +23,8 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { canSubmit, type QuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { formatElapsedFromStartedAt } from "@/lib/translators/quiz_frame_timer";
+import { CoachedLoopSection } from "@/components/coach/CoachedLoopSection";
+import type { CoachedLoopState } from "./quiz_screen_reducer";
 
 export interface QuizFrameChromeProps {
   /** Q-7: joined skill name; omit chip when null (FR-Q7-1). */
@@ -154,7 +156,26 @@ export interface QuizViewProps {
   readonly endSessionEnabled?: boolean;
   readonly onEndSession?: () => void;
   readonly startedAtIso?: string | null;
+  /**
+   * Commit-first coaching (FR-1…5). When true: no pre-commit hint/reveal;
+   * coached section under choices when `coachedLoop` is set.
+   */
+  readonly commitFirstCoach?: boolean;
+  readonly coachedLoop?: CoachedLoopState | null;
+  /** Current ladder bodies (choice-keyed or fallback), rung-ascending. */
+  readonly hintLadder?: ReadonlyArray<{ rung: number; body_md: string }>;
+  readonly onNudge?: () => void;
+  readonly onTryAgain?: () => void;
+  readonly onEscape?: () => void;
+  /**
+   * When true, render the coached loop under the choices (fullscreen / tests).
+   * Default false — v3 hosts the loop in CoachPanel.
+   */
+  readonly renderCoachedInline?: boolean;
 }
+
+const COMMIT_FIRST_IDLE_HINT =
+  "Pick a choice and submit — no hints until you commit.";
 
 export function QuizView(props: QuizViewProps): React.JSX.Element {
   const {
@@ -168,6 +189,12 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
     endSessionEnabled = false,
     onEndSession,
     startedAtIso = null,
+    commitFirstCoach = false,
+    coachedLoop = null,
+    hintLadder = [],
+    onNudge,
+    onTryAgain,
+    onEscape,
   } = props;
   const submittable = canSubmit(selectedLetter);
   const showFrame =
@@ -236,41 +263,61 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
         })}
       </ul>
 
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          data-testid="quiz-hint-toggle"
-          onClick={onToggleHint}
-          className="min-h-11 rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent"
-        >
-          {hintOpen ? "Hide hint" : "Get a hint"}
-        </button>
-        {/* UI FR-D6 / FR-D6a: ghost control; gated submit alias (Sprint A1). No answer letter here. */}
-        <button
-          type="button"
-          data-testid="quiz-reveal"
-          disabled={!submittable}
-          onClick={onSubmit}
-          data-enabled={submittable ? "true" : "false"}
-          className={cn(
-            "min-h-11 rounded-full px-4 py-2 text-sm text-muted",
-            "data-[enabled=true]:text-fg",
-            "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
-          )}
-        >
-          Reveal answer
-        </button>
-      </div>
+      {commitFirstCoach ? (
+        // Wrong-pick ladder lives in CoachPanel (v3). Item column keeps idle
+        // helper + optional fallback when the host still passes renderInline.
+        coachedLoop != null && props.renderCoachedInline === true ? (
+          <CoachedLoopSection
+            coachedLoop={coachedLoop}
+            hintLadder={hintLadder}
+            onNudge={onNudge}
+            onTryAgain={onTryAgain}
+            onEscape={onEscape}
+          />
+        ) : coachedLoop == null ? (
+          <p data-testid="quiz-commit-idle-hint" className="text-xs text-muted">
+            {COMMIT_FIRST_IDLE_HINT}
+          </p>
+        ) : null
+      ) : (
+        <>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              data-testid="quiz-hint-toggle"
+              onClick={onToggleHint}
+              className="min-h-11 rounded-full border border-dashed border-accent px-4 py-2 text-sm text-accent"
+            >
+              {hintOpen ? "Hide hint" : "Get a hint"}
+            </button>
+            {/* UI FR-D6 / FR-D6a: ghost control; gated submit alias (Sprint A1). */}
+            <button
+              type="button"
+              data-testid="quiz-reveal"
+              disabled={!submittable}
+              onClick={onSubmit}
+              data-enabled={submittable ? "true" : "false"}
+              className={cn(
+                "min-h-11 rounded-full px-4 py-2 text-sm text-muted",
+                "data-[enabled=true]:text-fg",
+                "data-[enabled=false]:opacity-60 data-[enabled=false]:pointer-events-none",
+              )}
+            >
+              Reveal answer
+            </button>
+          </div>
 
-      {hintOpen ? (
-        <div
-          data-testid="quiz-hint"
-          role="note"
-          className="rounded-[16px] border border-dashed border-accent bg-accent-light px-4 py-3 text-sm"
-        >
-          {hint}
-        </div>
-      ) : null}
+          {hintOpen ? (
+            <div
+              data-testid="quiz-hint"
+              role="note"
+              className="rounded-[16px] border border-dashed border-accent bg-accent-light px-4 py-3 text-sm"
+            >
+              {hint}
+            </div>
+          ) : null}
+        </>
+      )}
 
       <button
         type="button"

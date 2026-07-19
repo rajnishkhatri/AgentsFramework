@@ -494,3 +494,106 @@ describe("QuizView — D1 collapsible timer (Q-9)", () => {
     });
   });
 });
+
+describe("QuizView — commit-first coached section (FR-1/2/4/5)", () => {
+  it("flag ON pre-submit: no hint toggle, reveal, or ladder (FR-1/2)", () => {
+    const html = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: null,
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "should not show",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedLoop: null,
+      }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(doc.querySelector('[data-testid="quiz-hint-toggle"]')).toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-reveal"]')).toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-coached-section"]')).toBeNull();
+  });
+
+  it("flag ON coached loop: n of 3 + nudge; escape only when exhausted (FR-4/5)", () => {
+    const loop = {
+      wrongLetters: ["A"],
+      activeLetter: "A",
+      rungsRevealed: { A: 1 },
+      exhausted: false,
+      rungCap: 3,
+    };
+    const html = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: "A",
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedLoop: loop,
+        renderCoachedInline: true,
+        hintLadder: [
+          { rung: 1, body_md: "Pump: why A?" },
+          { rung: 2, body_md: "Hint: re-read" },
+          { rung: 3, body_md: "Prompt: try B" },
+        ],
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+      }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(doc.querySelector('[data-testid="quiz-rung-counter"]')?.textContent).toBe(
+      "1 of 3",
+    );
+    const section = doc.querySelector('[data-testid="quiz-coached-section"]');
+    expect(section?.getAttribute("role")).toBe("region");
+    expect(section?.getAttribute("aria-label")).toBe("Coaching");
+    expect(section?.querySelector("[aria-live='polite']")).not.toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-nudge"]')).not.toBeNull();
+    expect(doc.querySelector('[data-testid="quiz-escape"]')).toBeNull();
+
+    const exhaustedHtml = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: "A",
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        renderCoachedInline: true,
+        coachedLoop: {
+          ...loop,
+          rungsRevealed: { A: 3 },
+          exhausted: true,
+        },
+        hintLadder: [
+          { rung: 1, body_md: "Pump: why A?" },
+          { rung: 2, body_md: "Hint: re-read" },
+          { rung: 3, body_md: "Prompt: try B" },
+        ],
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+      }),
+    );
+    const exhaustedDoc = new JSDOM(
+      `<!doctype html><html><body>${exhaustedHtml}</body></html>`,
+    ).window.document;
+    expect(exhaustedDoc.querySelector('[data-testid="quiz-try-again"]')).not.toBeNull();
+    const escape = exhaustedDoc.querySelector('[data-testid="quiz-escape"]');
+    expect(escape).not.toBeNull();
+    expect(escape?.getAttribute("aria-describedby")).toBe("quiz-escape-cost");
+    expect(exhaustedDoc.querySelector('[data-testid="quiz-escape-cost"]')?.textContent).toContain(
+      "won't count as solved",
+    );
+  });
+});
