@@ -631,3 +631,13 @@ title: 'Lightweight decision log (intent debt, long tail)'
   Registry binding = align FE `learnerId` to JWT `sub` + existing D3
   `subject-coach-english` verify (no new registry service). Q-C3 in-memory / Q-C5 no
   `SEED_GARVIT`. Rejected: widen `IdentityClaim`, per-page `withAuth`, durable store.
+
+- 2026-07-19 — **Commit-first Phase-2 replan: end-session → summary + gap board.**
+  v3-spec conformance e2e (16 tests from the design-agent spec) found 4 gaps:
+  missing MOM-3 acknowledgment turn, summary outcomes unreachable (End session
+  routed to dashboard), no FBK-2 self-explanation, no SEQ-2 why-this-item line.
+  Decided: "End session" with ≥1 resolved item now routes to the session summary
+  (honesty: outcomes must be seeable), 0-resolved keeps dashboard. Rejected:
+  keeping dashboard routing + demoting SUM-1 to VM-only verification — hides
+  earned outcome data from every early-ended session. Tasks T13–T18 appended
+  (append-only) to commit-first-coach.tasks.md.

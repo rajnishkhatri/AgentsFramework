@@ -105,3 +105,64 @@ Start immediately in parallel: T1, T3. Then T4 (the concentration point), then f
 ## Verification map (1:1 EARS → task)
 
 FR-1→T4/T6/T11 · FR-2→T6/T9 · FR-3→T4/T7 · FR-4→T4/T6 · FR-5→T4/T6/T11 · FR-6→T4/T5/T8/T11 · FR-7→T4 · FR-8→T7 · FR-9→T4/T8/T11 · FR-10→T1/T2/T5 · FR-11→T10 · FR-12→T5 · FR-13→T6(shared home)+review · FR-14→T3/T4/T6/T12.
+
+---
+
+## Phase 2 — v3-spec convergence (replan 2026-07-19, append-only)
+
+Gap analysis: 16-test conformance suite derived from the design-agent spec
+(`frontend/e2e/learn/quiz-commit-first-v3-spec.spec.ts`) — 12 green, 4 gaps —
+plus a code-level FR audit. Approved: all T13–T18; End-session routes to
+summary (decision in `docs/adr/decisions.md`).
+
+### T13 — Acknowledgment turn before the pump (G1, MOM-3/VOICE-1) [highest]
+- **Files:** `frontend/components/coach/CoachedLoopSection.tsx` (+ a pure
+  composer, e.g. `lib/translators/coached_ack_vm.ts`), reducer/page wiring.
+- **Do (red→green):** compose shared-ground acknowledgment from the item's
+  `misconception` + `per_choice_rationale[L]` for the picked letter; render as
+  `data-testid="quiz-coached-ack"` above rung 1; VOICE-1 order (shared ground →
+  trap → handoff), VOICE-3 vocabulary, never names the correct letter/key.
+- **Pass/fail:** currently-failing MOM-3/VOICE-1 e2e goes green; VM unit test
+  table over 2+ items/letters; no leak of correct answer text.
+
+### T14 — End session routes to summary (G2, SUM-1 reachability)
+- **Files:** `frontend/app/(coach)/learn/quiz/page.tsx` (end-session handler),
+  session close path in `use_quiz.ts`.
+- **Do:** ≥1 resolved item → close session and route to the summary view
+  (score, outcome counts, misconception); 0 resolved → dashboard (today's
+  behavior). Flag-OFF path unchanged.
+- **Pass/fail:** currently-failing SUM-1 e2e goes green (walked-through count
+  visible, first-try-only score); legacy end-session e2e (flag OFF) unchanged.
+
+### T15 — Self-explanation input on feedback (G3, FBK-2)
+- **Files:** `frontend/components/feedback/FeedbackView.tsx` (+ VM).
+- **Do:** optional textarea "Saying it back makes it stick" —
+  `data-testid="feedback-self-explanation"`; never gates progression; value
+  not persisted in this slice (UI affordance parity only — note in code).
+- **Pass/fail:** FBK-2 e2e green; advancing without typing stays possible.
+
+### T16 — "Why this item" line (G4, SEQ-2)
+- **Files:** `frontend/components/quiz/QuizView.tsx` (+ small VM helper).
+- **Do:** honest line from skill + difficulty + position
+  (`data-testid="quiz-why-item"`); copy never claims interleaving/ordering the
+  scheduler doesn't guarantee (VOICE-5).
+- **Pass/fail:** SEQ-2 e2e green; copy sourced from real session state.
+
+### T17 — Polish batch (G5–G9)
+- Distinct wrapper + `data-testid="feedback-why-tempted"` for the
+  walked-through why-tempted block (G5).
+- Aria announcement drops "rung" vocabulary (G6, VOICE-3).
+- `used_hint` semantics under commit-first: decision note in `decisions.md`
+  (G7) — currently any coached item is `used_hint=true`.
+- Race-pinning test: rung bodies must match `coachedLoop.activeLetter` even
+  with a slow `ladder_loaded` (G8).
+- Remove dead branch in `countSessionOutcomes` (G9).
+- **Pass/fail:** each has a test or decision-note artifact; no behavior change
+  beyond the listed ones.
+
+### T18 — Convergence gate
+- **Do:** `pnpm vitest run` (touched suites) + full
+  `quiz-commit-first-v3-spec.spec.ts` 16/16 green + legacy suites flag-OFF
+  green; paste actual output; commit.
+
+Verification map: G1→T13 · G2→T14 · G3→T15 · G4→T16 · G5-G9→T17 · gate→T18.
