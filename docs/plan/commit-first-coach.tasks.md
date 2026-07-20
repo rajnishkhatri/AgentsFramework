@@ -570,3 +570,40 @@ state showed **"Next question →" on the MAIN panel** (`nextIsInCoachPanel:fals
 `nextLabel:"Next question →"`, `finishLabel:"Finish & see summary"`) → clicking it
 advanced to a clean Q2 (`coachedConfirmPresent:false`, `idleHintPresent:true`),
 tally carried.
+
+### Phase 4 follow-up — T37 (V30) IMPLEMENTED 2026-07-20
+
+Trigger: human screenshot — after T36, a **first-try** correct answer still
+**auto-jumped to the breakdown/FeedbackView**. Human directive: "every time a user
+answers correct, automatically breakdown screen is shown. Let's follow how it is
+done in v3 prototype." Human scope answers: **First-try + coached (full parity)** and
+**Match prototype exactly**.
+
+Prototype finding: `showContinue = s.solved` gates the item-column Continue for BOTH
+paths; the item column never swaps to a breakdown on solve — the breakdown is only
+the coach panel's opt-in `goFeedback` ("See the breakdown →"). Root cause: T36 only
+routed `coached` into confirm-in-place; `first_try` still fell through to
+`phase: "reviewing"` → `FeedbackView`.
+
+- **T37 (V30)** ✓ Reducer: `CoachedConfirmState` gains
+  `resolution: "first_try" | "coached"`; the `submitted` correct branch lands
+  **both** resolutions in `answering` + `coachedConfirm` (first-try no longer hits
+  `reviewing`). `usedHint` kept honest (`coached` → true, `first_try` → state's real
+  value). `see_breakdown` carries the confirm's real `resolution` (no relabel).
+  `CoachedConfirmSection`: affirmation turn + result label switch on `resolution`
+  ("Clean solve" / **"Solved on first try"** green vs "worked through the trap" /
+  **"Worked through it with the coach"** accent).
+  `quiz_screen_reducer.ts` (+`.test.ts`) · `CoachedConfirmSection.tsx`
+  (+ new `.test.tsx`) · `QuizView.test.tsx` (fixture `resolution`).
+  Red/green: G8-retargeted "first attempt → first_try" (behavior changed per
+  directive; strictly stronger), proved red against the coached-only branch first;
+  +3 reducer V30 tests, +4 CoachedConfirmSection label tests.
+
+**Gate:** vitest 666/666 (quiz + coach + feedback + summary + translators); tsc
+introduces **0 new errors** (3 pre-existing in `use_expandable_list.ts`, untouched
+— confirmed by stash-and-tsc); prettier clean.
+**Live-verified** (commit-first ON, :3000): first-try correct → item column keeps
+the choices with the pick **✓-marked green**, **"Solved on first try"**,
+**"Next question →"** + "Finish & see summary" on the item column, coach panel shows
+"Clean solve" affirmation + **"See the breakdown →" as opt-in** —
+`feedbackAutoRendered:false`. Screenshot captured.

@@ -340,3 +340,40 @@ Red/green: 3 reducer tests (next/finish advance from confirm; next still no-ops
 from plain answering). Live-verified: coached solve on Q1 → "Next question →"
 present on the MAIN panel (`nextIsInCoachPanel:false`) → advanced to a clean Q2.
 Implemented as T36.
+
+### V30 — a FIRST-TRY correct auto-jumps to the breakdown (2026-07-20) — completes V29 parity
+
+**CONFIRMED actionable (human screenshot).** After V29 fixed the *coached* path,
+a **first-try correct** answer still **auto-navigated straight to the breakdown /
+FeedbackView**. The v3 prototype does the opposite: a first-try solve stays on the
+item column ("Solved on first try" + "Next question →"), and the breakdown is only
+ever reached via the opt-in "See the breakdown →". The user: *"every time a user
+answers correct, automatically breakdown screen is shown. Let's follow how it is
+done in v3 prototype."*
+
+**Root cause.** V29 only routed the **coached** resolution into the confirm-in-place
+state; the **first-try** resolution still fell through to `phase: "reviewing"`, which
+`page.tsx` renders as `FeedbackView` — the auto-breakdown. The prototype gates its
+Continue on `showContinue = s.solved` (BOTH paths) and its item column never swaps to
+a breakdown on solve.
+
+**Fix — full prototype parity (human-chosen: "First-try + coached", "Match prototype
+exactly").** Under commit-first, **any** correct submit — first-try OR coached — now
+confirms in place on the item column; the breakdown is opt-in for both.
+- `CoachedConfirmState` gains `resolution: "first_try" | "coached"`; the `submitted`
+  branch lands first-try in `answering` + `coachedConfirm` too (no more `reviewing`
+  on a clean solve). `usedHint` stays honest (only `coached` forces it true).
+- `see_breakdown` carries the confirm's real `resolution` (a first-try that opts into
+  the breakdown is still `first_try`, never relabelled `coached`).
+- `CoachedConfirmSection` switches the affirmation turn + result label on
+  `resolution`: "Clean solve" / **"Solved on first try"** (green) vs "worked through
+  the trap" / **"Worked through it with the coach"** (accent) — mirroring the
+  prototype's `resultLabel`.
+Red/green: G8-retargeted the "first attempt → first_try" reducer test (behavior
+changed per directive; strictly stronger — now pins phase + resolution + null loop)
+and proved it red against the coached-only branch first; +3 reducer V30 tests, +4
+CoachedConfirmSection label tests. vitest 666/666; tsc introduces 0 new errors
+(3 pre-existing in `use_expandable_list.ts`, untouched); prettier clean.
+Live-verified: first-try correct on Q → item column shows choices with the pick
+✓-marked green, "Solved on first try", "Next question →", "See the breakdown →" as
+opt-in, and `feedbackAutoRendered:false`. Implemented as T37.

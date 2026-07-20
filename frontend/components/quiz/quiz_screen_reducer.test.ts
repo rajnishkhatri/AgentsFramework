@@ -530,7 +530,15 @@ describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
     expect(s.score).toEqual({ correct: 0, total: 1 });
   });
 
-  it("correct on first attempt → first_try and scores (FR-9/FR-11)", () => {
+  // G8 retarget (V30, prototype-parity directive): a first-try correct used to
+  // land on `reviewing` — which the page renders as the auto-breakdown/FeedbackView,
+  // the exact defect the user reported. The v3 prototype keeps a solved item on the
+  // item column (`showContinue = s.solved`) with the breakdown opt-in, so first-try
+  // now confirms IN PLACE like coached, carrying `resolution: "first_try"`. The
+  // scoring assertion is UNCHANGED (still bumps correct); only the phase/carrier
+  // changed, and this test is strictly stronger — it now also pins the resolution
+  // and the still-null coachedLoop.
+  it("correct on first attempt → first_try confirm in place; scores (FR-9/FR-11/V30)", () => {
     let s = answeringCommitFirst();
     s = quizScreenReducer(s, { type: "select", letter: "B" });
     s = quizScreenReducer(s, {
@@ -539,9 +547,47 @@ describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
       letter: "B",
       commitFirstCoach: true,
     });
-    expect(s.phase).toBe("reviewing");
-    expect(s.phase === "reviewing" && s.resolution).toBe("first_try");
+    // No auto-breakdown: stays answering with a first-try confirm.
+    expect(s.phase).toBe("answering");
+    expect(s.phase === "answering" && s.coachedConfirm?.resolution).toBe(
+      "first_try",
+    );
+    expect(s.phase === "answering" && s.coachedConfirm?.answeredLetter).toBe(
+      "B",
+    );
+    expect(s.phase === "answering" && s.coachedLoop).toBeNull();
+    // FR-11: a first-try solve still bumps correct.
     expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+
+  it("first-try confirm advances directly via next — no forced breakdown (V30)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    expect(s.phase).toBe("answering");
+    s = quizScreenReducer(s, { type: "next" });
+    expect(s.phase).toBe("loading");
+    expect(s.score).toEqual({ correct: 1, total: 1 });
+  });
+
+  it("first-try confirm → see_breakdown carries first_try, not coached (V30)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "see_breakdown" });
+    expect(s.phase).toBe("reviewing");
+    // The opt-in breakdown must NOT relabel a clean solve as coached.
+    expect(s.phase === "reviewing" && s.resolution).toBe("first_try");
   });
 
   it("correct after wrong → coached confirm in place; score_correct unchanged (FR-9/FR-11/FR-15)", () => {

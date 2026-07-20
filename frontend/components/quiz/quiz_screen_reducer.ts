@@ -86,13 +86,19 @@ export type CoachedLoopState = {
 };
 
 /**
- * FR-15: in-place confirmation after a coached solve. Learner opts into the
- * feedback view via `see_breakdown` — feedback does not auto-render.
+ * FR-15 / V30: in-place confirmation after a SOLVE (first-try OR coached).
+ * Both correct paths confirm on the item column (v3-prototype parity:
+ * `showContinue = s.solved`) — the feedback/breakdown view is opt-in via
+ * `see_breakdown`, never auto-rendered. `resolution` carries which solve this
+ * was so the confirm label reads "Solved on first try" vs "Worked through it
+ * with the coach", exactly like the prototype's `resultLabel`.
  */
 export type CoachedConfirmState = {
   readonly correctLetter: string;
   readonly answeredLetter: string;
   readonly whySummary: string;
+  /** first_try = solved with no wrong attempts; coached = solved after nudges. */
+  readonly resolution: "first_try" | "coached";
 };
 
 interface LoadingPhase {
@@ -434,8 +440,15 @@ export function quizScreenReducer(
         total: state.score.total + 1,
       };
 
-      // FR-15: coached solve confirms in place — no auto feedback render.
-      if (commitFirst && resolution === "coached") {
+      // FR-15 / V30: ANY commit-first solve — first-try OR coached — confirms in
+      // place on the item column, never auto-rendering the breakdown. The v3
+      // prototype gates its Continue control on `showContinue = s.solved` (both
+      // paths) and only reaches the breakdown via the opt-in "See the breakdown →".
+      // Landing first-try on `reviewing` was the auto-breakdown defect (V30).
+      if (
+        commitFirst &&
+        (resolution === "coached" || resolution === "first_try")
+      ) {
         const correctLetter =
           action.verdict.correct_letter ?? state.item.question.answer_letter;
         return {
@@ -446,8 +459,11 @@ export function quizScreenReducer(
             correctLetter,
             answeredLetter: action.letter,
             whySummary: state.item.question.why_correct_md.trim(),
+            resolution,
           },
-          usedHint: true,
+          // A coached solve engaged the coach (sticky usedHint); a first-try solve
+          // did not — keep the item's real usedHint so attempt accounting is honest.
+          usedHint: resolution === "coached" ? true : state.usedHint,
           score: nextScore,
         };
       }
@@ -524,7 +540,10 @@ export function quizScreenReducer(
         answeredLetter: confirm.answeredLetter,
         usedHint: state.usedHint,
         score: state.score,
-        resolution: "coached",
+        // V30: the breakdown must attribute the SAME resolution the confirm
+        // carried — a first-try solve that opts into the breakdown is still
+        // first_try, not "coached".
+        resolution: confirm.resolution,
       };
     }
 
