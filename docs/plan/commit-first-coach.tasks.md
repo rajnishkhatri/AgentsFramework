@@ -480,3 +480,25 @@ exhaustion actions `position:static`, `zIndex:auto`, `bg:rgba(0,0,0,0)`; the
 `quiz-rung-3` PROMPT bubble (bottom 276) and the actions block (top 288) **do not
 overlap** while scrolled (`scrollTop:650/1304`); screenshot shows the PROMPT
 bubble rendered in full, nothing behind the buttons.
+
+### Phase 4 — e2e re-verification 2026-07-20 (on-demand, ALL GREEN)
+
+All coach-touching learn-e2e specs run in their intended flag state (Playwright-
+managed dev server; `E2E_BYPASS_AUTH=1`):
+
+- `wide-layout.spec.ts` (commit-first OFF) — **10/10** (FR-10 inline panel,
+  FR-11 window-scroll 0, FR-19 dismiss, FR-1 drawer + Escape, FR-18 iPhone).
+- `ipad.spec.ts` (OFF) — **3/3** (iPad split panel, shared-thread message,
+  deeper-hint nudge).
+- `quiz-commit-first-v3-spec.spec.ts` (commit-first ON) — **14/14**, incl.
+  `MOM-4/ESC-2` exhaustion test (line 138) that exercises the **M9** un-stick
+  fix (exact copy, exactly two actions, priced escape).
+- `quiz-commit-first.spec.ts` (ON) — **2/2** (wrong→3 nudges→escape→walkthrough;
+  wrong→try-again→correct→coached label).
+
+Gotcha logged: `wide-layout.spec.ts:49` ("Zone C nudge") asserts `one-more-nudge`
+VISIBLE, which only holds with commit-first OFF (the nudge is retired under ON via
+`showQuizLadder = !commitFirstCoach`). Running it against a flag-ON server fails on
+that line — env mismatch, NOT a regression (the commit left that gating untouched).
+The test name is stale (M7 moved the nudge to Zone B); run wide-layout with the
+flag OFF. `playwright.config.ts` default for the learn webServer is already OFF.
