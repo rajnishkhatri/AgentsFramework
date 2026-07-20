@@ -11,7 +11,7 @@ region-by-region. Literal pixel-diffing was rejected (design prototype vs app =
 - **Prototype:** `docs/plan/gen2-proto-handoff/English Coach - Gen2 Slice v3 -desktop-.html` (file://)
 - **App:** `localhost:3000/learn/quiz` (`commit_first_coach` ON, bypass auth)
 - **Capture script (re-runnable):** [`visual-audit/capture.cjs`](gen2-proto-handoff/visual-audit/capture.cjs) — `node capture.cjs` with dev server on :3000
-- **Screenshots:** session scratchpad `proto-app-audit/` (regenerate via script; not committed)
+- **Screenshots:** [`visual-audit/pairs/`](gen2-proto-handoff/visual-audit/pairs/) — 20 PNGs named `<state>-{proto|app}.png` + `capture-log.json` (regenerate any time via the script)
 - **Spec references:** `03-ears-spec-gen2-coach-v3.md` (v3 EARS) · `commit-first-coach.spec.md` (app spec)
 
 ## What already matches (verified, no action)
