@@ -58,7 +58,10 @@ describe("quiz_screen_reducer — initial + item load", () => {
   });
 
   it("item_loaded moves to answering with the question and a cleared selection", () => {
-    const s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+    const s = quizScreenReducer(initialQuizScreen, {
+      type: "item_loaded",
+      item,
+    });
     expect(s.phase).toBe("answering");
     expect(s.phase === "answering" && s.item.question.id).toBe("q1");
     expect(s.phase === "answering" && s.selectedLetter).toBeNull();
@@ -84,7 +87,11 @@ describe("quiz_screen_reducer — per-item start timestamp (D0 elapsed timing)",
       presentedAt: 1000,
     });
     s = quizScreenReducer(s, { type: "select", letter: "B" });
-    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+    });
     s = quizScreenReducer(s, { type: "next" });
     // Item 2 presented at t=5000 — the clock restarts for the new item.
     s = quizScreenReducer(s, { type: "item_loaded", item, presentedAt: 5000 });
@@ -96,7 +103,10 @@ describe("quiz_screen_reducer — per-item start timestamp (D0 elapsed timing)",
     // finite 0 into elapsedMsFrom(0, now) returns `now` — a multi-million-ms
     // fabricated elapsed, the exact D0 bug. Missing → NaN → the helper's finite-guard
     // returns 0. This locks the reducer default and the helper guard to one contract.
-    const s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+    const s = quizScreenReducer(initialQuizScreen, {
+      type: "item_loaded",
+      item,
+    });
     const start = s.phase === "answering" ? s.presentedAt : 0;
     expect(Number.isFinite(start)).toBe(false);
     expect(elapsedMsFrom(start, 9_999_999)).toBe(0);
@@ -124,7 +134,10 @@ describe("elapsedMsFrom — monotonic, clamped, whole-ms (D0 elapsed timing)", (
 });
 
 describe("quiz_screen_reducer — selection + hint (answering)", () => {
-  const answering = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
+  const answering = quizScreenReducer(initialQuizScreen, {
+    type: "item_loaded",
+    item,
+  });
 
   it("select sets the chosen letter", () => {
     const s = quizScreenReducer(answering, { type: "select", letter: "B" });
@@ -132,7 +145,10 @@ describe("quiz_screen_reducer — selection + hint (answering)", () => {
   });
 
   it("ladder_loaded swaps the hint ladder without clearing selection (ADR-0035)", () => {
-    const selected = quizScreenReducer(answering, { type: "select", letter: "A" });
+    const selected = quizScreenReducer(answering, {
+      type: "select",
+      letter: "A",
+    });
     const ladder = [
       {
         id: "h1",
@@ -172,13 +188,21 @@ describe("quiz_screen_reducer — submit (answering → reviewing)", () => {
   );
 
   it("a null-verdict submit does NOT advance (no selection, FR-D2a — edge first)", () => {
-    const s = quizScreenReducer(answered, { type: "submitted", verdict: null, letter: null });
+    const s = quizScreenReducer(answered, {
+      type: "submitted",
+      verdict: null,
+      letter: null,
+    });
     expect(s.phase).toBe("answering");
   });
 
   it("a real verdict advances to reviewing, carrying the graded verdict + answered letter", () => {
     const v = verdict(false);
-    const s = quizScreenReducer(answered, { type: "submitted", verdict: v, letter: "B" });
+    const s = quizScreenReducer(answered, {
+      type: "submitted",
+      verdict: v,
+      letter: "B",
+    });
     expect(s.phase).toBe("reviewing");
     expect(s.phase === "reviewing" && s.verdict.correct).toBe(false);
     expect(s.phase === "reviewing" && s.answeredLetter).toBe("B");
@@ -293,13 +317,21 @@ describe("quiz_screen_reducer — running score tally (FR-D3 close)", () => {
     // Item 1: correct.
     let s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
     s = quizScreenReducer(s, { type: "select", letter: "B" });
-    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+    });
     s = quizScreenReducer(s, { type: "next" }); // → loading, tally preserved
     expect(s.score).toEqual({ correct: 1, total: 1 });
     // Item 2: wrong.
     s = quizScreenReducer(s, { type: "item_loaded", item });
     s = quizScreenReducer(s, { type: "select", letter: "A" });
-    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(false), letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+    });
     expect(s.score).toEqual({ correct: 1, total: 2 });
     // Finish carries the final tally to `done` for the session-close.
     s = quizScreenReducer(s, { type: "finish" });
@@ -311,7 +343,10 @@ describe("quiz_screen_reducer — running score tally (FR-D3 close)", () => {
 describe("quiz_screen_reducer — resume_item (FLAG-4 / FR-3)", () => {
   const item2 = {
     skillId: "s-punc",
-    question: question({ id: "q2", stem: "Which choice fixes the comma splice?" }),
+    question: question({
+      id: "q2",
+      stem: "Which choice fixes the comma splice?",
+    }),
     hintLadder: [],
   };
 
@@ -356,7 +391,11 @@ describe("quiz_screen_reducer — resume_item (FLAG-4 / FR-3)", () => {
   it("resume_item from a mid-walk loading state still restores the stashed tally", () => {
     let s = quizScreenReducer(initialQuizScreen, { type: "item_loaded", item });
     s = quizScreenReducer(s, { type: "select", letter: "B" });
-    s = quizScreenReducer(s, { type: "submitted", verdict: verdict(true), letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+    });
     s = quizScreenReducer(s, { type: "next" });
     expect(s.phase).toBe("loading");
     s = quizScreenReducer(s, {
@@ -523,13 +562,79 @@ describe("quiz_screen_reducer — commit-first coached loop (flag ON)", () => {
     });
     // FR-15: stay answering with confirmation — no auto feedback.
     expect(s.phase).toBe("answering");
-    expect(s.phase === "answering" && s.coachedConfirm?.answeredLetter).toBe("B");
+    expect(s.phase === "answering" && s.coachedConfirm?.answeredLetter).toBe(
+      "B",
+    );
     expect(s.phase === "answering" && s.coachedLoop).toBeNull();
     expect(s.score).toEqual({ correct: 0, total: 1 });
 
     s = quizScreenReducer(s, { type: "see_breakdown" });
     expect(s.phase).toBe("reviewing");
     expect(s.phase === "reviewing" && s.resolution).toBe("coached");
+  });
+
+  // V3-prototype parity (V29): the prototype shows "Next question →" whenever the
+  // item is solved — first-try OR coached — WITHOUT forcing the learner through
+  // the breakdown (`showContinue = s.solved`). So `next` (and `finish`) must
+  // advance directly from the coached-confirm state; today they no-op there
+  // because they gate on phase==="reviewing", which is why the main quiz panel
+  // had no forward control after a coached solve. FR-15's "no auto feedback" is
+  // preserved: the breakdown stays an opt-in (see_breakdown), it's just no longer
+  // the ONLY exit.
+  it("next advances directly from coached-confirm — no forced breakdown (V29)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    // In the coached-confirm answering state, advance WITHOUT see_breakdown.
+    expect(s.phase).toBe("answering");
+    s = quizScreenReducer(s, { type: "next" });
+    expect(s.phase).toBe("loading");
+    // The tally the confirm carried survives the direct advance.
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+  });
+
+  it("finish advances directly from coached-confirm to done (V29)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "select", letter: "B" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(true),
+      letter: "B",
+      commitFirstCoach: true,
+    });
+    expect(s.phase).toBe("answering");
+    s = quizScreenReducer(s, { type: "finish" });
+    expect(s.phase).toBe("done");
+    expect(s.score).toEqual({ correct: 0, total: 1 });
+  });
+
+  it("next still no-ops from a plain answering state (no coached confirm)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    // No submit yet → no coachedConfirm; next must NOT advance.
+    const before = s;
+    s = quizScreenReducer(s, { type: "next" });
+    expect(s).toEqual(before);
+    expect(s.phase).toBe("answering");
   });
 });
 
@@ -550,7 +655,10 @@ describe("quiz_screen_reducer — commit-first flag OFF (FR-14 regression)", () 
 
 // --- G8: race-pinning for slow ladder_loaded (FR-7 / FR-8) -----------------
 
-function ladderFor(letter: string, body: string): readonly {
+function ladderFor(
+  letter: string,
+  body: string,
+): readonly {
   id: string;
   subject: string;
   question_id: string;

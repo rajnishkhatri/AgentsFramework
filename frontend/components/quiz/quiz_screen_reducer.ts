@@ -24,10 +24,7 @@
  * transitions byte-for-byte.
  */
 
-import type {
-  AttemptResolution,
-  Verdict,
-} from "@/lib/wire/engine_entities";
+import type { AttemptResolution, Verdict } from "@/lib/wire/engine_entities";
 import type { QuizItemResult } from "./use_quiz";
 
 /**
@@ -46,7 +43,10 @@ import type { QuizItemResult } from "./use_quiz";
  *     fallback, not a fabricated reading — the universal stub is gone.
  *   - Rounded to whole ms; a sub-ms delta is an honest 0.
  */
-export function elapsedMsFrom(presentedAt: number | undefined, now: number): number {
+export function elapsedMsFrom(
+  presentedAt: number | undefined,
+  now: number,
+): number {
   if (presentedAt == null || !Number.isFinite(presentedAt)) return 0;
   return Math.max(0, Math.round(now - presentedAt));
 }
@@ -149,10 +149,7 @@ interface DonePhase {
 }
 
 export type QuizScreenState =
-  | LoadingPhase
-  | AnsweringPhase
-  | ReviewingPhase
-  | DonePhase;
+  LoadingPhase | AnsweringPhase | ReviewingPhase | DonePhase;
 
 export type QuizScreenAction =
   // `presentedAt` is the monotonic clock reading at item-present time (D0 elapsed
@@ -260,6 +257,20 @@ export const initialQuizScreen: QuizScreenState = {
   score: ZERO_TALLY,
 };
 
+/**
+ * The item is SOLVED and may advance (Next / Finish). Two forms: the standard
+ * `reviewing` phase (first-try correct, walked-through), OR the coached-solve
+ * confirm — an `answering` phase carrying `coachedConfirm` (correct after a
+ * coached loop, FR-15). The prototype gates its Continue control on the same
+ * union (`showContinue = s.solved`), so the coached solve is never a dead end.
+ */
+function isSolvedState(state: QuizScreenState): boolean {
+  return (
+    state.phase === "reviewing" ||
+    (state.phase === "answering" && state.coachedConfirm != null)
+  );
+}
+
 export function quizScreenReducer(
   state: QuizScreenState,
   action: QuizScreenAction,
@@ -341,13 +352,16 @@ export function quizScreenReducer(
         const letter = state.coachedLoop.activeLetter;
         const cap = clampRungCap(action.hintLadder.length);
         const revealed =
-          letter != null
-            ? (state.coachedLoop.rungsRevealed[letter] ?? 1)
-            : 1;
+          letter != null ? (state.coachedLoop.rungsRevealed[letter] ?? 1) : 1;
         return {
           ...state,
           item: { ...state.item, hintLadder: action.hintLadder },
-          coachedLoop: withRungs(state.coachedLoop, letter ?? "?", revealed, cap),
+          coachedLoop: withRungs(
+            state.coachedLoop,
+            letter ?? "?",
+            revealed,
+            cap,
+          ),
         };
       }
       return {
@@ -450,7 +464,8 @@ export function quizScreenReducer(
     }
 
     case "nudge_requested": {
-      if (state.phase !== "answering" || state.coachedLoop == null) return state;
+      if (state.phase !== "answering" || state.coachedLoop == null)
+        return state;
       const letter = state.coachedLoop.activeLetter;
       if (letter == null || state.coachedLoop.exhausted) return state;
       const current = state.coachedLoop.rungsRevealed[letter] ?? 1;
@@ -461,22 +476,29 @@ export function quizScreenReducer(
     }
 
     case "try_again": {
-      if (state.phase !== "answering" || state.coachedLoop == null) return state;
+      if (state.phase !== "answering" || state.coachedLoop == null)
+        return state;
       // Clear the pick; retain per-letter rung counts (FR-5).
       return { ...state, selectedLetter: null };
     }
 
     case "escape_taken": {
-      if (state.phase !== "answering" || state.coachedLoop == null) return state;
+      if (state.phase !== "answering" || state.coachedLoop == null)
+        return state;
       const lastWrong =
         state.coachedLoop.activeLetter ??
-        state.coachedLoop.wrongLetters[state.coachedLoop.wrongLetters.length - 1];
+        state.coachedLoop.wrongLetters[
+          state.coachedLoop.wrongLetters.length - 1
+        ];
       if (lastWrong == null) return state;
       // FR-6: resolve as walked_through; honest wrong verdict; last wrong letter.
       return {
         phase: "reviewing",
         item: state.item,
-        verdict: { correct: false, correct_letter: state.item.question.answer_letter },
+        verdict: {
+          correct: false,
+          correct_letter: state.item.question.answer_letter,
+        },
         answeredLetter: lastWrong,
         usedHint: state.usedHint,
         score: {
@@ -507,12 +529,18 @@ export function quizScreenReducer(
     }
 
     case "next":
-      if (state.phase !== "reviewing") return state;
+      // Advance from any SOLVED state — `reviewing` (first-try / walked-through),
+      // OR the coached-solve confirm (answering + coachedConfirm). V3-prototype
+      // parity (V29): the prototype shows "Next question →" whenever the item is
+      // solved and advances directly, so the learner is never stuck on a solved
+      // item with no forward control. FR-15 preserved: the breakdown stays an
+      // opt-in (see_breakdown), it is just no longer the ONLY exit.
+      if (!isSolvedState(state)) return state;
       // Back to loading; the page fetches the next scheduled item. Tally carries.
       return { phase: "loading", score: state.score };
 
     case "finish":
-      if (state.phase !== "reviewing") return state;
+      if (!isSolvedState(state)) return state;
       // The final tally rides to `done` so the page closes the session with it.
       return { phase: "done", score: state.score };
 

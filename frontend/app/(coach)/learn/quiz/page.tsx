@@ -226,7 +226,9 @@ export default function QuizPage(): React.JSX.Element {
 
     start().catch((err: unknown) => {
       if (!cancelled) {
-        setError(err instanceof Error ? err.message : "Failed to start the session");
+        setError(
+          err instanceof Error ? err.message : "Failed to start the session",
+        );
       }
     });
     return () => {
@@ -255,11 +257,20 @@ export default function QuizPage(): React.JSX.Element {
       .then((item) => {
         // D0 elapsed timing: stamp the monotonic clock the moment the item is
         // presented (clock start); onSubmit stops it to record a real elapsed_ms.
-        if (!cancelled) dispatch({ type: "item_loaded", item, presentedAt: performance.now() });
+        if (!cancelled)
+          dispatch({
+            type: "item_loaded",
+            item,
+            presentedAt: performance.now(),
+          });
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load the next question");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to load the next question",
+          );
         }
       });
     return () => {
@@ -349,11 +360,19 @@ export default function QuizPage(): React.JSX.Element {
       ? state.item.question.stem
       : null;
   React.useEffect(() => {
-    if (session == null || momentQuestionId == null || momentAnswerLetter == null) {
+    if (
+      session == null ||
+      momentQuestionId == null ||
+      momentAnswerLetter == null
+    ) {
       return;
     }
     // Commit-first pre-submit: no letter committed → no ladder load (FR-2).
-    if (commitFirstCoach && state.phase === "answering" && momentLetter == null) {
+    if (
+      commitFirstCoach &&
+      state.phase === "answering" &&
+      momentLetter == null
+    ) {
       setCoachChoiceLetter(null);
       return;
     }
@@ -441,7 +460,9 @@ export default function QuizPage(): React.JSX.Element {
         });
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to grade your answer");
+        setError(
+          err instanceof Error ? err.message : "Failed to grade your answer",
+        );
       });
   }, [state, session, submit, commitFirstCoach, learnerId]);
 
@@ -476,7 +497,9 @@ export default function QuizPage(): React.JSX.Element {
       })
       .catch((err: unknown) => {
         setError(
-          err instanceof Error ? err.message : "Failed to walk through the item",
+          err instanceof Error
+            ? err.message
+            : "Failed to walk through the item",
         );
       });
   }, [state, session, escape, learnerId]);
@@ -490,7 +513,11 @@ export default function QuizPage(): React.JSX.Element {
     // session before the close lands. `close` is idempotent. The reducer carried
     // the tally across the whole walk; read it here.
     const { correct, total } = state.score;
-    closeSession({ sessionId: session.id, scoreCorrect: correct, scoreTotal: total })
+    closeSession({
+      sessionId: session.id,
+      scoreCorrect: correct,
+      scoreTotal: total,
+    })
       .then(() => {
         // FR-2: Finish clears the resume pointer; mastery snapshot stays for Summary.
         clearActiveQuiz();
@@ -498,7 +525,9 @@ export default function QuizPage(): React.JSX.Element {
         router.push(`${screen("summary").route}?session=${session.id}`);
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : "Failed to close the session");
+        setError(
+          err instanceof Error ? err.message : "Failed to close the session",
+        );
       });
   }, [session, state.score, closeSession, router]);
 
@@ -564,43 +593,89 @@ export default function QuizPage(): React.JSX.Element {
     (state.phase === "answering" || state.phase === "reviewing");
   const startedAtIso = session?.started_at ?? null;
 
+  // S5 (FR-6/FR-7): the two advance actions keep their ORIGINAL labels
+  // ("Next question" / "Finish & see summary") for every pre-target review, and
+  // FLIP to "Keep practising" / "See summary" only once the target is reached
+  // (gated on `progressVm.complete`, in lock-step with the milestone banner).
+  // Label text is the ONLY thing that changes — testids + handlers are unchanged
+  // (FR-10). "Next question"/"Keep practising" both dispatch `next`; the finish
+  // control closes + routes either way (Summary never re-tallies).
+  // Review sessions (FR-A6): once complete the miss pool is finite — hide "Keep
+  // practising" (no over-run) so the learner sees only "See summary".
+  // V29 (v3-prototype parity): the SAME controls render in the coached-solve
+  // confirm state on the item column, so a coached correct is never a dead end.
+  const advanceControls = (
+    <div className="flex items-center justify-between gap-3">
+      {!(session?.mode === "review" && progressVm.complete) ? (
+        <button
+          type="button"
+          data-testid="quiz-next"
+          onClick={() => dispatch({ type: "next" })}
+          className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+        >
+          {progressVm.complete ? "Keep practising" : "Next question →"}
+        </button>
+      ) : null}
+      <button
+        type="button"
+        data-testid="quiz-finish"
+        onClick={onFinish}
+        className={
+          session?.mode === "review" && progressVm.complete
+            ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
+            : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
+        }
+      >
+        {progressVm.complete ? "See summary" : "Finish & see summary"}
+      </button>
+    </div>
+  );
+
   let item: QuizItemResult;
   let content: React.JSX.Element;
   if (state.phase === "answering") {
     item = state.item;
     const vm = toQuizItemVM(state.item.question, skillsById);
+    // V29 (v3-prototype parity): a coached solve confirms in place (FR-15) but is
+    // SOLVED — the prototype shows "Next question →" on the item column in this
+    // state (`showContinue = s.solved`), so the learner is never stuck on a
+    // solved item with no forward control. The breakdown stays an opt-in in the
+    // coach panel; these controls are the direct advance the panel lacked.
     content = (
-      <QuizView
-        key={state.item.question.id}
-        vm={vm}
-        selectedLetter={state.selectedLetter}
-        onSelect={(letter) => dispatch({ type: "select", letter })}
-        onSubmit={onSubmit}
-        hintOpen={state.hintOpen}
-        // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
-        // exists; the generic stem nudge only as the no-ladder fallback.
-        hint={
-          state.item.hintLadder[0]?.body_md ??
-          socraticHint(state.item.question.stem)
-        }
-        onToggleHint={() => dispatch({ type: "toggle_hint" })}
-        endSessionEnabled={endSessionEnabled}
-        onEndSession={onEndSession}
-        startedAtIso={startedAtIso}
-        commitFirstCoach={commitFirstCoach}
-        coachedLoop={state.coachedLoop}
-        coachedConfirm={state.coachedConfirm}
-        hintLadder={state.item.hintLadder}
-        onNudge={onNudge}
-        onTryAgain={onTryAgain}
-        onEscape={onEscape}
-        onSeeBreakdown={onSeeBreakdown}
-        // Fullscreen has no CoachPanel — keep the ladder on the item column.
-        renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
-        ackQuestion={state.item.question}
-        whyItemPosition={progressVm.position}
-        whyItemTotal={progressVm.total}
-      />
+      <div className="mx-auto flex max-w-[760px] flex-col gap-6">
+        <QuizView
+          key={state.item.question.id}
+          vm={vm}
+          selectedLetter={state.selectedLetter}
+          onSelect={(letter) => dispatch({ type: "select", letter })}
+          onSubmit={onSubmit}
+          hintOpen={state.hintOpen}
+          // ADR-0014 (FR-D5/FR-20): the reviewed ladder's probe rung when one
+          // exists; the generic stem nudge only as the no-ladder fallback.
+          hint={
+            state.item.hintLadder[0]?.body_md ??
+            socraticHint(state.item.question.stem)
+          }
+          onToggleHint={() => dispatch({ type: "toggle_hint" })}
+          endSessionEnabled={endSessionEnabled}
+          onEndSession={onEndSession}
+          startedAtIso={startedAtIso}
+          commitFirstCoach={commitFirstCoach}
+          coachedLoop={state.coachedLoop}
+          coachedConfirm={state.coachedConfirm}
+          hintLadder={state.item.hintLadder}
+          onNudge={onNudge}
+          onTryAgain={onTryAgain}
+          onEscape={onEscape}
+          onSeeBreakdown={onSeeBreakdown}
+          // Fullscreen has no CoachPanel — keep the ladder on the item column.
+          renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
+          ackQuestion={state.item.question}
+          whyItemPosition={progressVm.position}
+          whyItemTotal={progressVm.total}
+        />
+        {state.coachedConfirm != null ? advanceControls : null}
+      </div>
     );
   } else {
     // reviewing — Feedback is a Quiz sub-state (OD-5), rendered inline with the
@@ -682,44 +757,7 @@ export default function QuizPage(): React.JSX.Element {
             {...(onAskCoach !== undefined ? { onAskCoach } : {})}
           />
         ) : null}
-        <div className="flex items-center justify-between gap-3">
-          {/* S5 (FR-6/FR-7): the two actions keep their ORIGINAL labels
-              ("Next question" / "Finish & see summary") for every pre-target
-              review, and FLIP to "Keep practising" / "See summary" only once the
-              target is reached (gated on `progressVm.complete`, in lock-step with
-              the milestone banner — reverted 2026-07-09 from the unconditional
-              relabel). Label text is the ONLY thing that changes — testids +
-              handlers are unchanged, so S3/S4 selectors and the loop behaviour are
-              untouched (FR-10). "Next question"/"Keep practising" both dispatch the
-              same `next` (continuing the SAME session; past the target that is
-              over-run, tally kept); the finish control closes + routes either way
-              (Summary never re-tallies).
-              Review sessions (FR-A6): the miss pool is finite — once complete,
-              hide "Keep practising" (no over-run) so the learner only sees
-              "See summary" instead of an empty-pool error. */}
-          {!(session?.mode === "review" && progressVm.complete) ? (
-            <button
-              type="button"
-              data-testid="quiz-next"
-              onClick={() => dispatch({ type: "next" })}
-              className="rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-            >
-              {progressVm.complete ? "Keep practising" : "Next question →"}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            data-testid="quiz-finish"
-            onClick={onFinish}
-            className={
-              session?.mode === "review" && progressVm.complete
-                ? "rounded-full bg-accent px-6 py-3 font-semibold text-on-accent"
-                : "rounded-full border border-border px-6 py-3 font-medium hover:bg-selected"
-            }
-          >
-            {progressVm.complete ? "See summary" : "Finish & see summary"}
-          </button>
-        </div>
+        {advanceControls}
       </div>
     );
   }
@@ -743,10 +781,8 @@ export default function QuizPage(): React.JSX.Element {
       position: progressVm.position,
       phase: state.phase === "reviewing" ? "reviewing" : "answering",
     });
-    const itemMax =
-      surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
-    const coachedLoop =
-      state.phase === "answering" ? state.coachedLoop : null;
+    const itemMax = surface === "desktop" ? "max-w-[720px]" : "max-w-[560px]";
+    const coachedLoop = state.phase === "answering" ? state.coachedLoop : null;
     const coachedConfirm =
       state.phase === "answering" ? state.coachedConfirm : null;
     const panel = (

@@ -303,3 +303,40 @@ view; it does not pin). G8: the R1 test "exhaustion action footer is opaque (no
 translucent bleed-through)" asserted the sticky footer's opaque background — its
 premise is now the bug, so it is retargeted (not deleted) to assert the block is
 **not** sticky. Implemented Phase 4 follow-up (T35).
+
+### V29 — no Next button after a coached-solve correct (2026-07-20) — resolves V20
+
+*(New sequential ID; **not** the coach-page V22 above. This closes the flow-shape
+question V20 flagged as "decision, not a bug": the coached-solve confirm-in-place
+is kept, but it MUST offer a direct advance — per the v3 prototype.)*
+
+**CONFIRMED actionable (human screenshot, Q6).** A quiz item resolved via the
+**coached-solve** path (wrong pick → nudges → correct; coach shows "Worked through
+it with the coach" + "See the breakdown →", correct choice ✓) rendered **no
+"Next question →" control on the main quiz panel** — the learner was stuck with no
+way to advance.
+
+**Root cause.** `submitted` with `resolution === "coached"` returns
+`{...state, coachedConfirm}` — it **stays in `phase: "answering"`** (FR-15: "confirm
+in place, no auto feedback"). But the advance controls (`quiz-next` / `quiz-finish`)
+only render in `phase: "reviewing"` (`page.tsx`), and the ONLY transition to
+`reviewing` was `see_breakdown` — a button that, in the default inline/drawer
+surfaces, lives in the **CoachPanel**, not the main quiz panel. So from the main
+panel there was no forward path at all.
+
+**Fix — v3-prototype parity (human-chosen: "follow the v3 prototype").** The v3
+prototype (`gen2-proto-handoff/English Coach - Gen2 Slice v3 -desktop-.html`) gates
+its Continue control on `showContinue = s.solved` — it shows "Next question →" on
+the item column whenever the item is SOLVED (first-try OR coached), advancing
+DIRECTLY, and only flips the *result label* to "Worked through it with the coach".
+The breakdown is never the forced exit. Implemented to match:
+- Reducer: `next`/`finish` now advance from any SOLVED state — `reviewing` OR
+  `answering`+`coachedConfirm` (new `isSolvedState` helper). Tally already tallied
+  at submit, so it carries. FR-15 preserved: `see_breakdown` stays the opt-in
+  breakdown, just no longer the only exit.
+- Page: the Next/Finish block extracted to a reusable `advanceControls`, rendered
+  on the item column in the coached-confirm state too.
+Red/green: 3 reducer tests (next/finish advance from confirm; next still no-ops
+from plain answering). Live-verified: coached solve on Q1 → "Next question →"
+present on the MAIN panel (`nextIsInCoachPanel:false`) → advanced to a clean Q2.
+Implemented as T36.

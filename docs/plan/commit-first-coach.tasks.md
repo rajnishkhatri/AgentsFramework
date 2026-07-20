@@ -540,3 +540,33 @@ evidence instead of a live LLM call (demand-side default):
   re-indent under the `{showToolbar ? … : null}` wrapper, not new logic).
 
 Result: all three LLM-only dimensions verified clean by evidence, no live call.
+
+### Phase 4 follow-up — T36 (V29) IMPLEMENTED 2026-07-20
+
+Trigger: human screenshot (Q6) — a coached-solve correct answer showed "Worked
+through it with the coach" + the ✓, but **no "Next question" control on the main
+quiz panel**; the learner was stuck. Human directive: "check the flow in the v3
+prototype and follow the same approach."
+
+Prototype finding (`gen2-proto-handoff/English Coach - Gen2 Slice v3 -desktop-.html`):
+`vals.q.showContinue = s.solved` — the Continue/"Next question →" control shows on
+the item column whenever the item is SOLVED (first-try OR coached) and advances
+DIRECTLY; only the *result label* flips to "Worked through it with the coach". The
+breakdown is never the forced exit.
+
+- **T36 (V29)** ✓ Reducer: `next`/`finish` advance from any SOLVED state — added
+  `isSolvedState()` = `reviewing` OR (`answering` + `coachedConfirm`). The tally is
+  already bumped at submit, so it carries on the direct advance. FR-15 preserved:
+  `see_breakdown` stays the opt-in breakdown, no longer the only exit.
+  Page: extracted the Next/Finish block to a reusable `advanceControls`, rendered
+  on the item column in the coached-confirm state (`state.coachedConfirm != null`).
+  `quiz_screen_reducer.ts` + `.test.ts` + `learn/quiz/page.tsx`. Red/green: 3
+  reducer tests (next/finish advance from confirm; next still no-ops from plain
+  answering) seen to fail first, then green.
+
+**Gate:** vitest 147/147 (quiz + page); tsc clean (changed files); prettier clean.
+**Live-verified**: drove wrong-B → try-again → correct-D on Q1 → coached-confirm
+state showed **"Next question →" on the MAIN panel** (`nextIsInCoachPanel:false`,
+`nextLabel:"Next question →"`, `finishLabel:"Finish & see summary"`) → clicking it
+advanced to a clean Q2 (`coachedConfirmPresent:false`, `idleHintPresent:true`),
+tally carried.
