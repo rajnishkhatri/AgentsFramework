@@ -373,7 +373,14 @@ export default function QuizPage(): React.JSX.Element {
         : load(choice);
     ladderPromise
       .then((hintLadder) => {
-        if (!cancelled) dispatch({ type: "ladder_loaded", hintLadder });
+        if (!cancelled)
+          dispatch({
+            type: "ladder_loaded",
+            hintLadder,
+            // G8 race guard: tag this load with the letter it was loaded for,
+            // so a slow L1 load arriving after a switch to L2 is ignored.
+            forLetter: choice,
+          });
       })
       .catch(() => {
         // Ladder reload is best-effort: keep the open-time item-level ladder.
@@ -490,27 +497,34 @@ export default function QuizPage(): React.JSX.Element {
       });
   }, [session, state.score, closeSession, router]);
 
-  // D1 Q-8: End session — same close-with-tally as Finish, routes to dashboard
-  // (/learn) instead of Summary. Distinct reducer action so the two exits stay
-  // separable (FR-Q8-6).
+  // D1 Q-8: End session — same close-with-tally as Finish. G2 (SUM-1
+  // reachability): under commit-first with ≥1 resolved item, route to the
+  // summary view (score + outcome counts + misconception); 0 resolved →
+  // dashboard (today's behavior). Flag-OFF path unchanged — legacy end-session
+  // keeps routing to /learn (FR-Q8-6), so the flag-OFF e2e stays green.
   const onEndSession = React.useCallback(() => {
     if (session == null) return;
     dispatch({ type: "end_session" });
     const { correct, total } = state.score;
+    const routeToSummary = commitFirstCoach && total > 0;
     closeSession({
       sessionId: session.id,
       scoreCorrect: correct,
       scoreTotal: total,
     })
       .then(() => {
-        router.push(screen("dashboard").route);
+        router.push(
+          routeToSummary
+            ? `${screen("summary").route}?session=${session.id}`
+            : screen("dashboard").route,
+        );
       })
       .catch((err: unknown) => {
         setError(
           err instanceof Error ? err.message : "Failed to end the session",
         );
       });
-  }, [session, state.score, closeSession, router]);
+  }, [session, state.score, closeSession, router, commitFirstCoach]);
 
   if (error != null) {
     return (
@@ -576,6 +590,9 @@ export default function QuizPage(): React.JSX.Element {
         onEscape={onEscape}
         // Fullscreen has no CoachPanel — keep the ladder on the item column.
         renderCoachedInline={mode === "fullscreen" || coachRuntime == null}
+        ackQuestion={state.item.question}
+        whyItemPosition={progressVm.position}
+        whyItemTotal={progressVm.total}
       />
     );
   } else {
@@ -735,6 +752,7 @@ export default function QuizPage(): React.JSX.Element {
         onNudge={onNudge}
         onTryAgain={onTryAgain}
         onEscape={onEscape}
+        ackQuestion={item.question}
       />
     );
 
@@ -772,6 +790,7 @@ export default function QuizPage(): React.JSX.Element {
               onNudge={onNudge}
               onTryAgain={onTryAgain}
               onEscape={onEscape}
+              ackQuestion={item.question}
             />
           </CoachDrawer>
         </div>

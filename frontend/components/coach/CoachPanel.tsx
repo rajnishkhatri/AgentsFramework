@@ -72,6 +72,11 @@ export function CoachPanel(props: {
   readonly onNudge?: () => void;
   readonly onTryAgain?: () => void;
   readonly onEscape?: () => void;
+  /**
+   * MOM-3 / VOICE-1: the current item, used to compose the shared-ground
+   * acknowledgment above rung 1 in the panel's coached section.
+   */
+  readonly ackQuestion?: import("@/lib/wire/engine_entities").Question;
 }): React.JSX.Element {
   const {
     runtime,
@@ -88,6 +93,7 @@ export function CoachPanel(props: {
     onNudge,
     onTryAgain,
     onEscape,
+    ackQuestion,
   } = props;
   const surface = useSurface();
   const { learnerId } = useLearnIdentity();
@@ -237,9 +243,10 @@ export function CoachPanel(props: {
                 rung: h.rung,
                 body_md: h.body_md,
               }))}
-              onNudge={onNudge}
-              onTryAgain={onTryAgain}
-              onEscape={onEscape}
+              {...(onNudge != null ? { onNudge } : {})}
+              {...(onTryAgain != null ? { onTryAgain } : {})}
+              {...(onEscape != null ? { onEscape } : {})}
+              {...(ackQuestion != null ? { ackQuestion } : {})}
             />
           </div>
         ) : null}

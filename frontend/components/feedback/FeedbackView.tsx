@@ -166,7 +166,7 @@ export function FeedbackView(props: {
           {vm.correctRationale}
         </p>
         {!vm.correct && vm.chosenLetter ? (
-          <p>
+          <p data-testid="feedback-why-tempted">
             <span className="font-semibold">
               Why {vm.chosenLetter} tempted you:{" "}
             </span>
@@ -191,6 +191,28 @@ export function FeedbackView(props: {
           Ask the coach
         </button>
       ) : null}
+
+      {/*
+        FBK-2: optional self-explanation input ("Saying it back makes it
+        stick"). UI affordance parity only for this slice — the value is NOT
+        persisted (no onSubmit gate, no `required`). Advancing past feedback
+        stays possible without typing a word.
+      */}
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor="feedback-self-explanation"
+          className="text-sm font-medium text-muted"
+        >
+          Saying it back makes it stick
+        </label>
+        <textarea
+          id="feedback-self-explanation"
+          data-testid="feedback-self-explanation"
+          placeholder="Say it back in your own words…"
+          rows={2}
+          className="rounded-[13px] border border-border bg-surface px-4 py-3 text-sm"
+        />
+      </div>
     </section>
   );
 }

@@ -148,3 +148,70 @@ describe("FeedbackView — Ask the coach (BP-2d / FR-5)", () => {
       .toContain("Ask the coach");
   });
 });
+
+describe("FeedbackView — FBK-2 self-explanation input", () => {
+  it("renders an optional self-explanation textarea with the affordance copy", () => {
+    const doc = render(
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+    );
+    const textarea = doc.querySelector<HTMLTextAreaElement>(
+      '[data-testid="feedback-self-explanation"]',
+    );
+    expect(textarea).not.toBeNull();
+    // Placeholder carries the "Saying it back makes it stick" affordance.
+    expect(textarea?.getAttribute("placeholder")).toMatch(/back/i);
+  });
+
+  it("never gates progression — the textarea is not required", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    const textarea = doc.querySelector<HTMLTextAreaElement>(
+      '[data-testid="feedback-self-explanation"]',
+    );
+    expect(textarea?.hasAttribute("required")).toBe(false);
+  });
+
+  it("appears on the walked-through resolution too (parity across outcomes)", () => {
+    const vm = toFeedbackVM(
+      question(),
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+      "walked_through",
+    );
+    const html = renderToStaticMarkup(
+      React.createElement(FeedbackView, { vm }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    expect(
+      doc.querySelector('[data-testid="feedback-self-explanation"]'),
+    ).not.toBeNull();
+  });
+});
+
+describe("FeedbackView — G5 why-tempted wrapper (FBK-1)", () => {
+  it("wraps the why-tempted block in a feedback-why-tempted element", () => {
+    const doc = render(
+      { correct: false, correct_letter: "A", rationale_key: "B" },
+      { letter: "B" },
+    );
+    const whyTempted = doc.querySelector(
+      '[data-testid="feedback-why-tempted"]',
+    );
+    expect(whyTempted).not.toBeNull();
+    expect(whyTempted?.textContent).toContain("Why B tempted you");
+  });
+
+  it("omits the why-tempted block on a correct pick (no distractor to explain)", () => {
+    const doc = render(
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(
+      doc.querySelector('[data-testid="feedback-why-tempted"]'),
+    ).toBeNull();
+  });
+});

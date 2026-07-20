@@ -541,3 +541,94 @@ describe("quiz_screen_reducer — commit-first flag OFF (FR-14 regression)", () 
     expect(s.score).toEqual({ correct: 0, total: 1 });
   });
 });
+
+// --- G8: race-pinning for slow ladder_loaded (FR-7 / FR-8) -----------------
+
+function ladderFor(letter: string, body: string): readonly {
+  id: string;
+  subject: string;
+  question_id: string;
+  choice_letter: "A" | "B" | "C" | "D" | null;
+  rung: 1 | 2 | 3;
+  body_md: string;
+  reviewed: boolean;
+  generated_by: string;
+}[] {
+  return [
+    {
+      id: `h-${letter}-1`,
+      subject: "act-english",
+      question_id: "q1",
+      choice_letter: letter as "A" | "B" | "C" | "D",
+      rung: 1,
+      body_md: `${letter}-rung-1`,
+      reviewed: true,
+      generated_by: "test",
+    },
+  ];
+}
+
+describe("quiz_screen_reducer — G8 race: stale ladder_loaded ignored", () => {
+  it("applies ladder_loaded when forLetter matches the active letter", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    const ladder = ladderFor("A", "A-rung-1");
+    s = quizScreenReducer(s, {
+      type: "ladder_loaded",
+      hintLadder: ladder,
+      forLetter: "A",
+    });
+    expect(s.phase === "answering" && s.item.hintLadder).toEqual(ladder);
+  });
+
+  it("ignores a stale ladder_loaded whose forLetter no longer matches activeLetter (G8 race)", () => {
+    // L1 wrong commit → activeLetter A; then switch to L2 → activeLetter C.
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    s = quizScreenReducer(s, { type: "select", letter: "C" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "C",
+      commitFirstCoach: true,
+    });
+    expect(s.phase === "answering" && s.coachedLoop?.activeLetter).toBe("C");
+    // A slow ladder_loaded for L1 (A) arrives AFTER the switch to L2 (C).
+    const stale = ladderFor("A", "A-rung-1");
+    const before = s;
+    s = quizScreenReducer(s, {
+      type: "ladder_loaded",
+      hintLadder: stale,
+      forLetter: "A",
+    });
+    // State unchanged — the stale L1 bodies must NOT overwrite the live L2 view.
+    expect(s).toBe(before);
+    expect(s.phase === "answering" && s.item.hintLadder).not.toEqual(stale);
+  });
+
+  it("ladder_loaded without forLetter still applies (backward compat)", () => {
+    let s = answeringCommitFirst();
+    s = quizScreenReducer(s, { type: "select", letter: "A" });
+    s = quizScreenReducer(s, {
+      type: "submitted",
+      verdict: verdict(false),
+      letter: "A",
+      commitFirstCoach: true,
+    });
+    const ladder = ladderFor("A", "A-rung-1");
+    s = quizScreenReducer(s, { type: "ladder_loaded", hintLadder: ladder });
+    expect(s.phase === "answering" && s.item.hintLadder).toEqual(ladder);
+  });
+});

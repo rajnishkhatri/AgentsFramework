@@ -12,6 +12,33 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-19 — **Phase 2 v3 convergence (T13–T18) — small decisions.**
+  (1) **T13 acknowledgment (MOM-3/VOICE-1):** shared-ground → complication →
+  handoff, composed by a pure `coached_ack_vm` from `misconception` (preferred) →
+  `per_choice_rationale[L]` → generic; LEAK-1 substitutes a neutral complication
+  when the source names the answer letter or restates the key. Rejected: a
+  synthesized "what you did right" line (no field sources it — AP-6, no fabricate).
+  (2) **T14 end-session routing (G2/SUM-1):** under commit-first with ≥1 resolved
+  item, End session routes to Summary (score + outcomes); 0 resolved → dashboard
+  (today's behavior). Flag-OFF path unchanged so legacy `quiz-frame` e2e stays
+  green. (3) **T15 self-explanation (FBK-2):** optional textarea, never gates
+  progression, value NOT persisted this slice (UI affordance parity only).
+  (4) **T16 "why this item" (SEQ-2/VOICE-5):** `quiz_why_item_vm` composes
+  skill + difficulty + position-of-target from real session state; copy never
+  claims ordering/interleaving the scheduler doesn't guarantee. (5) **G7
+  `used_hint` semantics under commit-first:** any item that entered the coached
+  loop is recorded `used_hint=true` (the page sets `usedHint = usedHint ||
+  coachedLoop != null`). Rationale: the coached loop IS the hint affordance in
+  v3 — entering it consumed coaching, so the attempt honestly reflects that
+  coaching was engaged. Rejected: `used_hint=false` for coached items (would
+  under-report coaching engagement and break the legacy "hint consulted ⇒
+  used_hint" invariant). (6) **G8 race guard:** `ladder_loaded` carries
+  `forLetter`; the reducer ignores a stale load whose letter no longer matches
+  `coachedLoop.activeLetter` (backstop behind the page's effect-cleanup
+  cancellation). (7) **G9:** removed a dead branch in `countSessionOutcomes`
+  (under `!anyResolution`, coached/walkedThrough are structurally zero, so the
+  legacy correct-only branch was redundant with the fall-through return).
+
 - 2026-07-19 — **Commit-first coach app implement locks (clarify Q1–Q4 + UI home).**
   (1) Outcome persisted as nullable `Attempt.resolution` ∈ {first_try, coached,
   walked_through} on the resolving row only (additive; legacy null = single-attempt

@@ -114,10 +114,12 @@ export function countSessionOutcomes(
     // All-wrong legacy session: still no outcome row (would show 0/0/0 noise).
     return null;
   }
-  if (!anyResolution && walkedThrough === 0 && coached === 0) {
-    // Pure legacy correct-only tally — show first_try count; hide walked when 0.
-    return { firstTry, coached: 0, walkedThrough: 0 };
-  }
+  // G9: the prior `!anyResolution && coached === 0 && walkedThrough === 0`
+  // branch was dead — under `!anyResolution` the coached/walkedThrough counts
+  // are structurally zero (they only increment when a row carries a resolution,
+  // which also flips anyResolution true). The fall-through return produces the
+  // identical { firstTry, coached: 0, walkedThrough: 0 } for the legacy
+  // correct-only case, so the branch was unreachable in intent and redundant.
   return { firstTry, coached, walkedThrough };
 }
 

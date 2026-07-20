@@ -1,7 +1,7 @@
 # Tasks — Commit-first coach flow (v3) in the app quiz
 
 **Spec:** [commit-first-coach.spec.md](commit-first-coach.spec.md) · **Plan:** [commit-first-coach.plan.md](commit-first-coach.plan.md)
-**Status:** Implemented — 2026-07-19 (T1–T12 landed; Stage-7 review next)
+**Status:** Implemented — 2026-07-19 (T1–T12 landed; T13–T18 Phase 2 v3 convergence landed; Stage-7 review next)
 
 **Stage-4 baseline (2026-07-19):** `pytest tests/architecture/ -q` → 221 passed, 3 skipped (green). Targeted frontend suites (quiz/coach/feedback/summary/translators) → 577/578; the 1 failure is a PRE-EXISTING flaky test (`use_summary.test.ts::derives_misconception_from_last_incorrect_attempt_on_recommended_skill`, 2/5 runs — same-ms `created_at` tie broken by random id order), unrelated to this change but in T10's blast radius. Fix spawned as a separate task; resolve it before or alongside T10 so gate runs are stable.
 
@@ -114,6 +114,14 @@ Gap analysis: 16-test conformance suite derived from the design-agent spec
 (`frontend/e2e/learn/quiz-commit-first-v3-spec.spec.ts`) — 12 green, 4 gaps —
 plus a code-level FR audit. Approved: all T13–T18; End-session routes to
 summary (decision in `docs/adr/decisions.md`).
+
+**Phase 2 result (2026-07-19):** T13–T18 landed. The 4 red conformance tests
+(MOM-3/VOICE-1, FBK-2, SEQ-2, SUM-1) now green; full v3 spec 14/14 green;
+legacy flag-OFF `quiz-frame` 12/12 green; Phase 1 `quiz-commit-first` (flag ON)
+2/2 green; full frontend vitest 1992/1992 green. Touched files typecheck-clean
+(3 pre-existing errors remain in untouched `components/coach/use_expandable_list.ts`;
+1 pre-existing e2e failure in `validate_e1b` lesson→coach pin flow — both fail on
+the Phase-2-free baseline, unrelated). Decisions captured in `docs/adr/decisions.md`.
 
 ### T13 — Acknowledgment turn before the pump (G1, MOM-3/VOICE-1) [highest]
 - **Files:** `frontend/components/coach/CoachedLoopSection.tsx` (+ a pure

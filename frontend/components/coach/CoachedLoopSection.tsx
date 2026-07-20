@@ -7,6 +7,8 @@
 
 import * as React from "react";
 import type { CoachedLoopState } from "@/components/quiz/quiz_screen_reducer";
+import type { Question } from "@/lib/wire/engine_entities";
+import { composeCoachedAck } from "@/lib/translators/coached_ack_vm";
 
 export const ESCAPE_COST =
   "The breakdown shows the answer — this one won't count as solved.";
@@ -21,8 +23,21 @@ export function CoachedLoopSection(props: {
   readonly onNudge?: () => void;
   readonly onTryAgain?: () => void;
   readonly onEscape?: () => void;
+  /**
+   * MOM-3 / VOICE-1: when provided with an `activeLetter`, render the
+   * shared-ground acknowledgment above rung 1. Omit for surfaces that host the
+   * ack elsewhere.
+   */
+  readonly ackQuestion?: Question;
 }): React.JSX.Element {
-  const { coachedLoop, hintLadder, onNudge, onTryAgain, onEscape } = props;
+  const {
+    coachedLoop,
+    hintLadder,
+    onNudge,
+    onTryAgain,
+    onEscape,
+    ackQuestion,
+  } = props;
   const rungCap = coachedLoop.rungCap;
   const rungsRevealed =
     coachedLoop.activeLetter != null
@@ -40,7 +55,9 @@ export function CoachedLoopSection(props: {
   const prevRungs = React.useRef(0);
   React.useEffect(() => {
     if (rungsRevealed > prevRungs.current) {
-      setAnnounce(`Coaching rung ${rungsRevealed} of ${rungCap} revealed`);
+      // G6 / VOICE-3: learner-facing aria copy drops engine vocabulary
+      // ("rung"); "nudge" matches the footnote wording the learner already sees.
+      setAnnounce(`Coaching nudge ${rungsRevealed} of ${rungCap} revealed`);
       const t = window.setTimeout(() => setAnnounce(""), 1000);
       prevRungs.current = rungsRevealed;
       return () => window.clearTimeout(t);
@@ -62,12 +79,25 @@ export function CoachedLoopSection(props: {
         </h3>
         <span
           data-testid="quiz-rung-counter"
-          aria-label={`${rungsRevealed} of ${rungCap} coaching rungs revealed`}
+          aria-label={`${rungsRevealed} of ${rungCap} coaching nudges revealed`}
           className="text-xs text-muted"
         >
           {rungsRevealed} of {rungCap}
         </span>
       </div>
+      {ackQuestion != null && coachedLoop.activeLetter != null ? (
+        <p
+          data-testid="quiz-coached-ack"
+          className="text-sm leading-relaxed text-fg"
+        >
+          {
+            composeCoachedAck({
+              question: ackQuestion,
+              pickedLetter: coachedLoop.activeLetter,
+            }).body
+          }
+        </p>
+      ) : null}
       <ul className="flex flex-col gap-2">
         {revealedBodies.map((h) => (
           <li

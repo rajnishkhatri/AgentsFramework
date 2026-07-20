@@ -23,6 +23,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { canSubmit, type QuizItemVM } from "@/lib/translators/quiz_item_vm";
 import { formatElapsedFromStartedAt } from "@/lib/translators/quiz_frame_timer";
+import { toQuizWhyItemVM } from "@/lib/translators/quiz_why_item_vm";
 import { CoachedLoopSection } from "@/components/coach/CoachedLoopSection";
 import type { CoachedLoopState } from "./quiz_screen_reducer";
 
@@ -172,6 +173,18 @@ export interface QuizViewProps {
    * Default false — v3 hosts the loop in CoachPanel.
    */
   readonly renderCoachedInline?: boolean;
+  /**
+   * MOM-3 / VOICE-1: the current item, used to compose the shared-ground
+   * acknowledgment above rung 1 in the inline coached section.
+   */
+  readonly ackQuestion?: import("@/lib/wire/engine_entities").Question;
+  /**
+   * SEQ-2: progress position (1-based) for the "why this item" line. Omit →
+   * the line is hidden (legacy callers).
+   */
+  readonly whyItemPosition?: number;
+  /** SEQ-2: display denominator (target_count), or null when endless. */
+  readonly whyItemTotal?: number | null;
 }
 
 const COMMIT_FIRST_IDLE_HINT =
@@ -195,10 +208,24 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
     onNudge,
     onTryAgain,
     onEscape,
+    renderCoachedInline = false,
+    ackQuestion,
+    whyItemPosition,
+    whyItemTotal,
   } = props;
   const submittable = canSubmit(selectedLetter);
   const showFrame =
     onEndSession != null || vm.skillName != null || startedAtIso != null;
+
+  const whyItemLine =
+    whyItemPosition != null
+      ? toQuizWhyItemVM({
+          skillName: vm.skillName,
+          difficulty: vm.difficulty,
+          position: whyItemPosition,
+          total: whyItemTotal ?? null,
+        }).line
+      : null;
 
   return (
     <section
@@ -217,6 +244,15 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
           onEndSession={onEndSession ?? (() => {})}
           startedAtIso={startedAtIso}
         />
+      ) : null}
+
+      {whyItemLine != null ? (
+        <p
+          data-testid="quiz-why-item"
+          className="text-xs text-muted"
+        >
+          {whyItemLine}
+        </p>
       ) : null}
 
       {/* FR-A6: reviewed engine-authored context carrying the underlined span. */}
@@ -270,9 +306,10 @@ export function QuizView(props: QuizViewProps): React.JSX.Element {
           <CoachedLoopSection
             coachedLoop={coachedLoop}
             hintLadder={hintLadder}
-            onNudge={onNudge}
-            onTryAgain={onTryAgain}
-            onEscape={onEscape}
+            {...(onNudge != null ? { onNudge } : {})}
+            {...(onTryAgain != null ? { onTryAgain } : {})}
+            {...(onEscape != null ? { onEscape } : {})}
+            {...(ackQuestion != null ? { ackQuestion } : {})}
           />
         ) : coachedLoop == null ? (
           <p data-testid="quiz-commit-idle-hint" className="text-xs text-muted">

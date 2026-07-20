@@ -596,4 +596,37 @@ describe("QuizView — commit-first coached section (FR-1/2/4/5)", () => {
       "won't count as solved",
     );
   });
+
+  it("G6/VOICE-3: aria-label on the counter drops 'rung' vocabulary", () => {
+    const loop = {
+      wrongLetters: ["A"],
+      activeLetter: "A",
+      rungsRevealed: { A: 1 },
+      exhausted: false,
+      rungCap: 3,
+    };
+    const html = renderToStaticMarkup(
+      React.createElement(QuizView, {
+        vm: baseVm(),
+        selectedLetter: "A",
+        onSelect: () => {},
+        onSubmit: () => {},
+        hintOpen: false,
+        hint: "",
+        onToggleHint: () => {},
+        commitFirstCoach: true,
+        coachedLoop: loop,
+        renderCoachedInline: true,
+        hintLadder: [{ rung: 1, body_md: "Pump: why A?" }],
+        onNudge: () => {},
+        onTryAgain: () => {},
+        onEscape: () => {},
+      }),
+    );
+    const doc = new JSDOM(`<!doctype html><html><body>${html}</body></html>`)
+      .window.document;
+    const counter = doc.querySelector('[data-testid="quiz-rung-counter"]');
+    expect(counter?.getAttribute("aria-label")).not.toMatch(/\brung\b/i);
+    expect(counter?.getAttribute("aria-label")).toMatch(/nudge/i);
+  });
 });

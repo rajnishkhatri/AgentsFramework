@@ -164,7 +164,17 @@ export type QuizScreenAction =
   | { type: "select"; letter: string }
   | { type: "toggle_hint" }
   /** ADR-0035: swap in a choice-conditional ladder without resetting selection. */
-  | { type: "ladder_loaded"; hintLadder: QuizItemResult["hintLadder"] }
+  | {
+      type: "ladder_loaded";
+      hintLadder: QuizItemResult["hintLadder"];
+      /**
+       * G8 race guard: the letter this ladder was loaded for. When the active
+       * wrong letter has since switched (L1→L2), a stale L1 load is ignored so
+       * the rung bodies shown always match `coachedLoop.activeLetter`. Omit for
+       * the legacy non-commit-first path (no active letter to guard against).
+       */
+      forLetter?: string | null;
+    }
   | {
       type: "submitted";
       verdict: Verdict | null;
@@ -293,6 +303,20 @@ export function quizScreenReducer(
       // Moment-router reload (ADR-0035): keep phase/selection; only the ladder
       // body changes (wrong-letter Gen2 pack or back to item-level).
       if (state.phase !== "answering" && state.phase !== "reviewing") {
+        return state;
+      }
+      // G8 race guard: ignore a stale load whose letter no longer matches the
+      // active wrong letter (a slow L1 load arriving after a switch to L2).
+      // The page's effect-cleanup cancellation is the first line of defense;
+      // this guard is the reducer-level backstop so the bodies shown always
+      // match `coachedLoop.activeLetter`. `forLetter` null/omit = legacy path.
+      if (
+        state.phase === "answering" &&
+        state.coachedLoop != null &&
+        action.forLetter != null &&
+        state.coachedLoop.activeLetter != null &&
+        action.forLetter !== state.coachedLoop.activeLetter
+      ) {
         return state;
       }
       if (state.phase === "answering" && state.coachedLoop != null) {
