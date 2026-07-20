@@ -23,19 +23,26 @@ export type ExpandableListAction =
 export interface DeriveExpandedOpts {
   readonly ids: readonly string[];
   readonly manual: ReadonlyMap<string, boolean>;
-  readonly forceExpandedIds?: ReadonlySet<string>;
+  // `| undefined` on the optional fields is required under
+  // exactOptionalPropertyTypes: callers forward values that are already
+  // `T | undefined` (a hook prop with no default, `opts.foo`), which the
+  // present-or-absent `?:` form rejects. The destructuring below still supplies
+  // the real defaults, so an undefined here behaves identically to absent.
+  readonly forceExpandedIds?: ReadonlySet<string> | undefined;
   /** Conversation: newest open; prior non-forced collapse (FR-13). */
-  readonly autoCollapseOnComplete?: boolean;
+  readonly autoCollapseOnComplete?: boolean | undefined;
   /** Ladder: newly appearing id opens; others retain via manual (FR-14). */
-  readonly autoExpandNewest?: boolean;
+  readonly autoExpandNewest?: boolean | undefined;
   /** Prior id list for detecting newly appearing ids (FR-14). */
-  readonly previousIds?: readonly string[];
+  readonly previousIds?: readonly string[] | undefined;
 }
 
 /**
  * Pure: which ids should render expanded.
  */
-export function deriveExpandedIds(opts: DeriveExpandedOpts): ReadonlySet<string> {
+export function deriveExpandedIds(
+  opts: DeriveExpandedOpts,
+): ReadonlySet<string> {
   const {
     ids,
     manual,
@@ -85,9 +92,10 @@ export function deriveExpandedIds(opts: DeriveExpandedOpts): ReadonlySet<string>
 
 export interface ReduceOpts {
   readonly ids: readonly string[];
-  readonly forceExpandedIds?: ReadonlySet<string>;
-  readonly autoCollapseOnComplete?: boolean;
-  readonly autoExpandNewest?: boolean;
+  // See DeriveExpandedOpts — same exactOptionalPropertyTypes forwarding contract.
+  readonly forceExpandedIds?: ReadonlySet<string> | undefined;
+  readonly autoCollapseOnComplete?: boolean | undefined;
+  readonly autoExpandNewest?: boolean | undefined;
 }
 
 export function reduceExpandableList(
@@ -203,12 +211,16 @@ export function useExpandableList(opts: UseExpandableListOpts): {
   const toggle = React.useCallback(
     (id: string) => {
       setState((s) =>
-        reduceExpandableList(s, { type: "toggle", id }, {
-          ids,
-          forceExpandedIds,
-          autoCollapseOnComplete,
-          autoExpandNewest,
-        }),
+        reduceExpandableList(
+          s,
+          { type: "toggle", id },
+          {
+            ids,
+            forceExpandedIds,
+            autoCollapseOnComplete,
+            autoExpandNewest,
+          },
+        ),
       );
     },
     [ids, forceExpandedIds, autoCollapseOnComplete, autoExpandNewest],

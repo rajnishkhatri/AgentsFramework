@@ -116,7 +116,21 @@ function stateFor(
 }
 
 function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, "").trim();
+  // Loop until the string stops shrinking. A single `.replace(/<[^>]*>/g, "")`
+  // is an incomplete multi-character sanitizer (CodeQL
+  // js/incomplete-multi-character-sanitization): a crafted `<scr<script>ipt>`
+  // collapses to a fresh `<script>` that the one-shot pass leaves behind.
+  // Re-running to a fixpoint removes those re-formed tags.
+  let out = html;
+  let prev: string;
+  do {
+    prev = out;
+    out = out.replace(/<[^>]*>/g, "");
+  } while (out !== prev);
+  // Drop any residual lone angle brackets the balanced-tag pass leaves behind
+  // (e.g. unmatched `>` after a nested `<…<…>…>`), so no fragment can later be
+  // re-composed into a tag downstream.
+  return out.replace(/[<>]/g, "").trim();
 }
 
 /** Pure: build recap from context_html / stem without inventing a highlight. */
@@ -154,9 +168,7 @@ function composeFeedCards(
   skillName: string | null | undefined,
 ): ReadonlyArray<FeedCardVM> {
   const skill =
-    skillName != null && skillName.trim().length > 0
-      ? skillName.trim()
-      : null;
+    skillName != null && skillName.trim().length > 0 ? skillName.trim() : null;
   // R5 / VOICE-3: item_type is an engine id ("underlined-span-mc") — strip the
   // internal "-mc" (multiple-choice) suffix and present it as "<type> item".
   const itemTypeLabel = `${question.item_type.replace(/-mc$/, "")} item`;

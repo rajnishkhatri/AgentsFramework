@@ -48,7 +48,11 @@ function question(over: Partial<Question> = {}): Question {
 
 describe("toFeedbackVM — wrong pick (FR-E3, failure path first)", () => {
   const q = question({ answer_letter: "A" });
-  const verdict: Verdict = { correct: false, correct_letter: "A", rationale_key: "B" };
+  const verdict: Verdict = {
+    correct: false,
+    correct_letter: "A",
+    rationale_key: "B",
+  };
   const answer: Answer = { letter: "B" };
 
   it("shows the soft (not-quite) banner, not the celebrate banner", () => {
@@ -73,7 +77,11 @@ describe("toFeedbackVM — wrong pick (FR-E3, failure path first)", () => {
 
 describe("toFeedbackVM — correct pick (FR-E2 celebrate)", () => {
   const q = question({ answer_letter: "A" });
-  const verdict: Verdict = { correct: true, correct_letter: "A", rationale_key: "A" };
+  const verdict: Verdict = {
+    correct: true,
+    correct_letter: "A",
+    rationale_key: "A",
+  };
   const answer: Answer = { letter: "A" };
 
   it("shows the celebrate banner", () => {
@@ -85,12 +93,18 @@ describe("toFeedbackVM — correct pick (FR-E2 celebrate)", () => {
 
 describe("toFeedbackVM — per-choice review states (FR-E4) + rule (FR-E1)", () => {
   const q = question({ answer_letter: "A" });
-  const verdict: Verdict = { correct: false, correct_letter: "A", rationale_key: "B" };
+  const verdict: Verdict = {
+    correct: false,
+    correct_letter: "A",
+    rationale_key: "B",
+  };
   const answer: Answer = { letter: "B" };
   const vm = toFeedbackVM(q, verdict, answer);
 
   it("styles the correct choice as 'correct', the chosen-wrong as 'chosen-wrong', others 'other'", () => {
-    const byLetter = Object.fromEntries(vm.reviewedChoices.map((c) => [c.letter, c.state]));
+    const byLetter = Object.fromEntries(
+      vm.reviewedChoices.map((c) => [c.letter, c.state]),
+    );
     expect(byLetter.A).toBe("correct");
     expect(byLetter.B).toBe("chosen-wrong");
     expect(byLetter.C).toBe("other");
@@ -103,7 +117,11 @@ describe("toFeedbackVM — per-choice review states (FR-E4) + rule (FR-E1)", () 
 
   it("when the learner is correct, the chosen row is styled 'correct' (not chosen-wrong)", () => {
     const cq = question({ answer_letter: "A" });
-    const cVm = toFeedbackVM(cq, { correct: true, correct_letter: "A", rationale_key: "A" }, { letter: "A" });
+    const cVm = toFeedbackVM(
+      cq,
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
     const a = cVm.reviewedChoices.find((c) => c.letter === "A");
     expect(a?.state).toBe("correct");
   });
@@ -123,7 +141,10 @@ describe("toFeedbackVM — green-span recap (BP-2c / FR-7 / C5)", () => {
 
   it("falls back to plain stem without inventing <u> when context has none", () => {
     const vm = toFeedbackVM(
-      question({ context_html: "Plain sentence with no underline.", stem: "Which is best?" }),
+      question({
+        context_html: "Plain sentence with no underline.",
+        stem: "Which is best?",
+      }),
       { correct: true, correct_letter: "A", rationale_key: "A" },
       { letter: "A" },
     );
@@ -140,6 +161,23 @@ describe("toFeedbackVM — green-span recap (BP-2c / FR-7 / C5)", () => {
     );
     expect(vm.recapHtml).toBe("Just a sentence.");
     expect(vm.recapHasUnderline).toBe(false);
+  });
+
+  it("fully strips nested/partial tags on the stripHtmlTags fallback (no re-formed <script> — CodeQL js/incomplete-multi-character-sanitization)", () => {
+    // A one-shot `.replace(/<[^>]*>/g, "")` leaves a re-formed `<script>` behind:
+    // removing the inner `<script>` from `<scr<script>ipt>alert(1)` collapses the
+    // outer fragments into a fresh `<script>`. The fixpoint loop must remove it.
+    const vm = toFeedbackVM(
+      question({
+        context_html: "<scr<script>ipt>alert(1)</scr</script>ipt>",
+        stem: "",
+      }),
+      { correct: true, correct_letter: "A", rationale_key: "A" },
+      { letter: "A" },
+    );
+    expect(vm.recapHtml).not.toMatch(/<script/i);
+    expect(vm.recapHtml).not.toContain("<");
+    expect(vm.recapHtml).not.toContain(">");
   });
 });
 
@@ -198,11 +236,7 @@ describe("toFeedbackVM — T23 composition (V16–V19)", () => {
       "walked_through",
       { skillName: "Grammar & Usage" },
     );
-    expect(vm.feedCards.map((c) => c.kind)).toEqual([
-      "up",
-      "back",
-      "forward",
-    ]);
+    expect(vm.feedCards.map((c) => c.kind)).toEqual(["up", "back", "forward"]);
     expect(vm.feedCards[0]!.body).toContain("Grammar & Usage");
     expect(vm.feedCards[1]!.body).toContain("nearest noun");
     expect(vm.feedCards[2]!.body).toMatch(/Find the verb/i);
@@ -218,9 +252,9 @@ describe("toFeedbackVM — T23 composition (V16–V19)", () => {
     for (const c of vm.reviewedChoices) {
       expect(c.rationale.length).toBeGreaterThan(0);
     }
-    expect(vm.reviewedChoices.find((c) => c.letter === "C")?.rationale).toContain(
-      "participle",
-    );
+    expect(
+      vm.reviewedChoices.find((c) => c.letter === "C")?.rationale,
+    ).toContain("participle");
   });
 
   it("parses numbered procedure steps from rule_md when present (V19)", () => {
