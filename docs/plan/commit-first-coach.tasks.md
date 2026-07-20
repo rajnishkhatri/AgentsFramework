@@ -502,3 +502,41 @@ VISIBLE, which only holds with commit-first OFF (the nudge is retired under ON v
 that line — env mismatch, NOT a regression (the commit left that gating untouched).
 The test name is stale (M7 moved the nudge to Zone B); run wide-layout with the
 flag OFF. `playwright.config.ts` default for the learn webServer is already OFF.
+
+### Phase 4 — deterministic gap-closure (D2/D3/D5), 2026-07-20
+
+The code-review deterministic run left D2 (style/design), D3 (test quality),
+D5 (anti-patterns) in `gaps[]` (LLM-only dimensions). Closed by hand-reasoning +
+evidence instead of a live LLM call (demand-side default):
+
+- **D3 test-weakening (G8, the highest-risk gap — 5 retargets).** The mechanical
+  sensor `tests/architecture/test_no_test_weakening.py` is Python-ONLY, so these
+  TS retargets are convention-only. Adjudicated each base→HEAD by assertion body:
+  - M9 `exhaustion footer opaque` → `not sticky opaque`: 3 asserts → 4; the
+    `toContain("bg-surface")` INVERTED to `not.toMatch(/bg-surface/)` (premise
+    flipped — the opaque sticky footer WAS the bug). Stronger.
+  - 3× coach_surface_vm mode maps: full-array `toEqual` preserved (array shrank
+    3→2 by FR-26); misconception test STRENGTHENED (present-but-inactive →
+    `toBeUndefined()` + label absent).
+  - FR-12→FR-23 (nudge Zone C→B): two inverted asserts + ladder-in-B preserved +
+    composer-in-C ADDED. Stronger.
+  - chips-with-composer→chips-in-body: "==3" preserved (relocated) + zone-C-==0
+    ADDED. Stronger.
+  Verdict: no test deleted; every retarget equal-or-stronger; all carry FR/M
+  justification tokens. No G8 weakening.
+- **D3 TAP-2 mock-abuse.** Max 2 mock-primitives in any changed test file (file-
+  level, not per-test); zero test exceeds the >3 threshold. Coach tests use the
+  repo `scriptedRuntime()` + real `createRoot`/JSDOM idiom, not mock-heavy RTL.
+- **D3 TAP-4 failure-path ratio.** Net UP: new predicate fixtures assert
+  `pass:false` per U-rule; M9/FR-21/FR-27 assert negatives (not-sticky, no-overflow,
+  no-fixed-zone).
+- **D5 anti-patterns.** Only defensive-looking add is `showToolbar ?? true` — a
+  backward-compat PROP DEFAULT (matches 13 existing default patterns in Composer),
+  not a masking fallback (G9-clean). No new `||`/`??` absence-masking (AP-6 clean).
+  No new hardcoded copy in TSX (AP-3/F-R5 clean).
+- **D2 design/G1.** `isTextareaTag` has 2 call sites (removes real duplication in
+  both JSX-element branches) — earns its place. `showToolbar` follows the file's
+  own optional-prop idiom. Diffs readable per-hunk (Composer's 125 lines are a JSX
+  re-indent under the `{showToolbar ? … : null}` wrapper, not new logic).
+
+Result: all three LLM-only dimensions verified clean by evidence, no live call.
