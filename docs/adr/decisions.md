@@ -693,3 +693,14 @@ title: 'Lightweight decision log (intent debt, long tail)'
   region-by-region against each claimed-fixed V-gap, and paste capture log +
   verdicts into the T28 checkpoint. Remaining gaps → append-only replan tasks.
   Rejected: treating the original audit pairs as post-fix proof (stale).
+
+- 2026-07-20 — **R7: summary misconception recap goes session-wide (FR-12 amended).**
+  The recap card derived only from misses on the RECOMMENDED skill, so it almost
+  never rendered (capture sessions: misses on Punctuation/Organization, recommended
+  Usage → null). Human-approved: prefer the recommended-skill miss, else fall back
+  to the newest session miss on any skill; no misses → no card (AP-6 unchanged).
+  Rejected: keeping recommendation-scoped (buried the prototype's core narrative)
+  and always-newest (loses recommendation coherence when both exist). The old
+  pinning test was rewritten to the new contract with a superseded-note (G8).
+  Live caveat: the dev bank has misconception on only 47/987 items — the card
+  stays honestly absent until bank coverage lands (task chip spawned).

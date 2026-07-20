@@ -77,7 +77,11 @@ function deriveScoreRatioMet(scoreCorrect: number, scoreTotal: number): boolean 
 }
 
 /**
- * FR-12: newest session-scoped miss on the recommended skill → its misconception.
+ * FR-12 (amended 2026-07-20, R7): newest session-scoped miss on the recommended
+ * skill → its misconception; when the session's misses all sit on OTHER skills,
+ * fall back to the newest session miss overall (the recap is the session's core
+ * narrative — hiding it because the recommendation points elsewhere buried it
+ * in practice). No misses → null (no card), unchanged.
  * Misses are already newest-first from AttemptRepo; filter to served ids.
  */
 async function deriveMisconception(
@@ -85,13 +89,18 @@ async function deriveMisconception(
   sessionScopedMisses: readonly Attempt[],
   recommendedSkillId: string,
 ): Promise<string | null> {
+  let newestAnySkill: string | null = null;
   for (const miss of sessionScopedMisses) {
     const q = await ports.questionRepo.get(miss.question_id);
-    if (q != null && q.skill_id === recommendedSkillId) {
+    if (q == null) continue;
+    if (q.skill_id === recommendedSkillId) {
       return normalizeMisconception(q.misconception);
     }
+    if (newestAnySkill == null) {
+      newestAnySkill = normalizeMisconception(q.misconception);
+    }
   }
-  return null;
+  return newestAnySkill;
 }
 
 /**

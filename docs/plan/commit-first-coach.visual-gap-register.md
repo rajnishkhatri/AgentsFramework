@@ -136,3 +136,11 @@ the pre-FR-15 auto-feedback flow.
 Gate evidence: vitest 651/651 (affected areas); e2e 16/16 (v3 conformance +
 journeys); tsc clean except 3 pre-existing `use_expandable_list` errors;
 fresh capture 0 FAILED, End session → `/learn/summary?session=…` live.
+
+**R7 update (2026-07-20, later same day):** session-wide fallback approved and
+implemented (`use_summary.deriveMisconception`; pinning test rewritten to the
+new contract, red→green 652/652). Live rendering blocked by DATA, not code:
+`_test_item_bank.ts` has `misconception: null` on 940/987 items — recap stays
+honestly absent (AP-6) until bank coverage lands (spawned task). Capture script
+end-session step now waits for the summary URL instead of a fixed delay
+(eliminates the mid-transition screenshot artifact).

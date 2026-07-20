@@ -233,15 +233,37 @@ describe("loadSummary — C2 misconception + self-correction (FR-1/FR-2/FR-12/FR
     expect(vm.summary.misconception).toBeNull();
   });
 
-  it("renders_no_misconception_when_no_misses_on_recommended_skill", async () => {
+  // Superseded 2026-07-20 (R7, human-approved): FR-12 amended to a session-wide
+  // fallback — a recommended-skill miss is still PREFERRED, but when the session's
+  // misses all sit on other skills, the recap falls back to the newest session
+  // miss instead of hiding the card (the prototype treats the recap as the
+  // session's core narrative). A no-miss session still renders no card.
+  it("falls_back_to_newest_session_miss_when_recommended_skill_has_none (R7)", async () => {
     db.seedSkillStates([skillState()]);
     db.seedQuestions([
-      question({ id: "q-gram", skill_id: "s-gram", misconception: "wrong skill miss" }),
+      question({ id: "q-gram", skill_id: "s-gram", misconception: "other-skill trap" }),
       question({ id: "q-punc-ok", skill_id: "s-punc", misconception: "should not show" }),
     ]);
     const session = await openClosedSession();
     await recordAttempt(session.id, "q-gram", false); // miss on other skill
     await recordAttempt(session.id, "q-punc-ok", true); // correct on recommended
+    const vm = await loadSummary(ports, {
+      subject: SUBJECT,
+      learnerId: LEARNER,
+      sessionId: session.id,
+      skillStateAtStart: new Map([["s-punc", skillState()]]),
+      nowISO: NOW,
+    });
+    expect(vm.summary.misconception).toBe("other-skill trap");
+  });
+
+  it("renders_no_misconception_when_the_session_had_no_misses_at_all", async () => {
+    db.seedSkillStates([skillState()]);
+    db.seedQuestions([
+      question({ id: "q-punc-ok", skill_id: "s-punc", misconception: "should not show" }),
+    ]);
+    const session = await openClosedSession();
+    await recordAttempt(session.id, "q-punc-ok", true);
     const vm = await loadSummary(ports, {
       subject: SUBJECT,
       learnerId: LEARNER,

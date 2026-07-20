@@ -237,7 +237,13 @@ async function captureApp(browser) {
   await step("app end-session result", async () => {
     const end = page.locator("button").filter({ hasText: /End session/ }).first();
     await end.click();
-    await page.waitForTimeout(1500);
+    // T14 routes resolved sessions to /learn/summary — wait for the navigation
+    // (a fixed delay races Next dev's route compile and screenshots mid-transition).
+    await page
+      .waitForURL(/\/learn(\/summary.*)?$/, { timeout: 20000 })
+      .catch(() => {});
+    await page.waitForLoadState("networkidle").catch(() => {});
+    await page.waitForTimeout(400);
     await shot(page, "08-end-session-result-app");
     note(`end-session landed on: ${page.url()}`);
   });
