@@ -66,6 +66,9 @@ export interface CoachSurfaceVM {
 }
 
 function modeDisplays(mode: CoachMode): ReadonlyArray<CoachModeDisplay> {
+  // FR-26 (ADR-0037): only the two LIVE modes. The former "Misconception
+  // summary" chip was always `active: false` — it added header width (forcing a
+  // horizontal-scroll clip) with no learner value, so it is dropped.
   return [
     {
       id: "socratic",
@@ -76,11 +79,6 @@ function modeDisplays(mode: CoachMode): ReadonlyArray<CoachModeDisplay> {
       id: "deep_dive",
       label: "Post-answer deep-dive",
       active: mode === "post_feedback",
-    },
-    {
-      id: "misconception",
-      label: "Misconception summary",
-      active: false,
     },
   ];
 }

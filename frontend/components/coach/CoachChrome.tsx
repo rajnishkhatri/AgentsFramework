@@ -34,8 +34,9 @@ export function CoachChips(props: {
       data-testid="coach-chips"
       role="group"
       aria-label="Quick replies"
-      // Horizontal scroll (not wrap) so Zone C stays short on narrow panels (FR-9/10).
-      className="flex flex-nowrap gap-2 overflow-x-auto overscroll-x-contain"
+      // FR-21/22 (ADR-0037): chips wrap and live in the scroll body — they never
+      // form a horizontal-scroll strip that clips its last chip.
+      className="flex flex-wrap gap-2"
     >
       {seeds.map((seed) => (
         <button
@@ -120,13 +121,10 @@ export function CoachChrome(props: {
         data-testid="coach-modes"
         role="group"
         aria-label="Coach modes"
-        className={cn(
-          "flex gap-2",
-          // Stacked panel is narrow — wrap blows Zone A and starves the log (W9).
-          layout === "stacked"
-            ? "flex-nowrap overflow-x-auto overscroll-x-contain"
-            : "flex-wrap",
-        )}
+        // FR-21/26 (ADR-0037): the mode indicator never scrolls horizontally —
+        // it wraps. With only two live modes (FR-26) two chips fit the narrow
+        // panel; a third row wrapping is preferable to a clipped H-scroll strip.
+        className="flex flex-wrap gap-2"
       >
         {vm.modes.map((m) => (
           <span

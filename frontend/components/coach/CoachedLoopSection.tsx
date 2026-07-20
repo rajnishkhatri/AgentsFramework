@@ -229,12 +229,14 @@ export function CoachedLoopSection(props: {
             ? "quiz-exhaustion-actions"
             : "quiz-coached-actions"
         }
-        className={cn(
-          "flex flex-col gap-2",
-          // V4/R1: keep exhaustion CTAs in view (sticky within panel scroll);
-          // fully opaque — a translucent footer bleeds transcript text through.
-          coachedLoop.exhausted && "sticky bottom-0 z-10 bg-surface pb-1 pt-2",
-        )}
+        // M9 (ADR-0037 single-scroll): the exhaustion actions scroll in normal
+        // flow with the transcript. The old `sticky bottom-0 z-10 bg-surface`
+        // footer (V4/R1) pinned this block above the composer and its opaque
+        // paint hid transcript bubbles scrolling behind it — the exact overlap
+        // the single-scroll column forbids. Only the composer is pinned now;
+        // `scrollIntoView` on a new rung (below) keeps the newest turn in view
+        // without pinning anything.
+        className="flex flex-col gap-2"
       >
         {coachedLoop.exhausted ? (
           <p data-testid="quiz-exhaustion-copy" className="text-sm text-muted">

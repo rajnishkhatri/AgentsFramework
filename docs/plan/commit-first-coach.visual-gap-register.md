@@ -144,3 +144,162 @@ new contract, red→green 652/652). Live rendering blocked by DATA, not code:
 honestly absent (AP-6) until bank coverage lands (spawned task). Capture script
 end-session step now waits for the summary URL instead of a fixed delay
 (eliminates the mid-transition screenshot artifact).
+
+---
+
+## Manual-pass observations (M-series, 2026-07-20)
+
+Captured by the human running `commit-first-coach.manual-validation.md` on
+localhost (HEAD `07692b9`, flag ON). These are **observations, not accepted
+fixes** — each needs an analysis pass to decide if a change is warranted. Logged
+here so they're durable; NOT yet scheduled into a task board.
+
+| ID | Where | Observation | Disposition |
+|---|---|---|---|
+| M1 | Coach mode chips — `modeDisplays()` `coach_surface_vm.ts:68-86`, rendered `CoachChrome.tsx:119-146` (`data-testid="coach-modes"`). Actual labels: **"In-drill Socratic"** / **"Post-answer deep-dive"** / **"Misconception summary"** (`misconception` chip is always display-only, never active). | Labels were intentional earlier, but against the coach's real estate they "don't add much value." Candidate for removal/simplification. | **Analyze** — do the modes earn their space, or is a single coach voice clearer? The 3rd chip is already inert. Decide before cutting. |
+| M2 | Quick-action chips — `COACH_CHIP_SEEDS` `coach_surface_vm.ts:18-22` ("Explain the rule simply" / "Give me a similar item" / **"Show my comma pattern"** — note: no "me"); rendered `CoachChrome.tsx:26-59`; click → `ask` → `sendCoachAsk` `use_coach.ts:100-176` → `runtime.streamRun` → POST `/api/coach/run/stream` (`route.ts:83`). Same path for free-text composer submit. | Buttons ARE clickable, but the coach is **not wired to a live LLM** in this build → the stream errors, mapped by `coach_message_vm.ts:41-58` to *"The coach could not respond."* + retry. Same failure typing free text and submitting. | **Analyze** — affordance implies a capability the build can't deliver (AP-6 / VOICE-1). Options: (a) gate the live-coach affordances behind the same condition as the LLM wiring; (b) stub; (c) leave but gate. Pick deliberately — not a silent-degrade. |
+| M3 | Composer controls — shared `Composer.tsx`: "+" attach button `:150-160` (**no `onClick` — display-only parity affordance, confirmed**), model-picker `DropdownMenu` `:165-209`. Coach uses this composer via `CoachPanel.tsx:313-320`. | Not needed for the learner-facing coach; no attach or model-selection use case here. Candidate for removal *on the coach surface*. | **Analyze** — `Composer` is **shared** (also the main chat composer). Removal must be a coach-scoped prop (e.g. `showAttach`/`showModelPicker=false`), NOT a delete of the shared control. The "+" is already inert, so removing it is pure de-clutter with no behavior loss. |
+
+> M2 is the load-bearing one: a clickable coach that only errors is worse than
+> an honestly-unavailable coach (VOICE-1 / AP-6 — don't imply a capability the
+> build doesn't have). Whatever we do, the affordance and the backing capability
+> must agree.
+
+**Decision (2026-07-20, human):** RECORD ONLY — no M-series fixes this branch.
+M2 disposition: **leave as-is** — the missing live LLM is treated as a
+deploy/config concern (wire the coach upstream), not a UI change; the error+retry
+path stays. M1/M3 remain candidates for a later pass, not scheduled. These stay
+as durable observations; revisit when the coach gets a live backend.
+
+### M-series, second manual pass (2026-07-20) — ladder styling vs prototype
+
+Human comparing app ↔ prototype at the wrong-submit → escalation states. Grounded
+against the committed capture pairs `03-rung2-{app,proto}.png` and
+`04-exhaustion-{app,proto}.png`.
+
+| ID | Where | Observation | Grounding | Disposition |
+|---|---|---|---|---|
+| M4 | Ladder rail + loop controls in the coach panel (`QuizView` / `CoachedLoopSection`) | App styles the PUMP→HINT→PROMPT rail and the "Let me try again" / "Show me more →" controls as **rounded-red-outlined pills**; prototype uses a **flat 3-segment underline bar** (plain "PUMP HINT PROMPT" labels) and quiet/plain buttons. The red frames eat vertical space. Match prototype: flatten the rail to the underline style, quiet the button chrome. | **CONFIRMED** by pairs: proto rail = flat segmented underline (`03-rung2-proto.png`); app = outlined pills (`03-rung2-app.png`). Pure presentation. | **Analyze** — cosmetic convergence toward prototype; VOICE-neutral. Low risk. |
+| M5 | "Nudge N of 3 used" counter | Claim: app doesn't show the "nudge N of 3 used" line that the prototype shows. | **NOT REPRODUCED** — app DOES render *"Nudge 2 of 3 used — these questions follow your pick of A."* at rung 2 (`03-rung2-app.png`), matching the prototype. No gap at the captured state. Possible the human hit a scroll position where it was below the fold. | **No action** — parity already holds; re-check live if it recurs. |
+| M6 | Priced-escape cost line *"The breakdown shows the answer — this one won't count as solved."* | Claim: app shows this line but the prototype does **not**. | **CONTRADICTED** — the prototype **also** shows this exact line, at the very bottom of the exhaustion panel in muted gray (`04-exhaustion-proto.png`, last line). The app shows it too (`04-exhaustion-app.png`). Both have it; the prototype's is just quiet/easy to miss. | **No removal** — the line is a deliberate priced-escape signal present in BOTH surfaces (FR-7). Surfaced the discrepancy rather than acting on it. If anything, the *app's* placement is more prominent than the prototype's muted one — that's a styling nuance, folded into M4. |
+
+> M4 is the only actionable item in this pass. M5/M6 are reconciled as
+> non-gaps against the capture evidence — recording them so the "why we didn't
+> touch it" is durable, not lost.
+
+### M7 — coach-panel "scroll within scroll" (2026-07-20)
+
+Human flagged the coach panel showing a scroll region nested in a scroll region,
+with a cramped visible band (red-boxed the "PROMPT · NO ANSWER" rail). Proposed
+fix: stop piecemeal patching — adopt the prototype's coach layout wholesale.
+
+**Live DOM diagnosis** (measured against the running app, `coach-panel-inline`,
+399×672 panel, idle state — numbers are `scrollWidth` vs `clientWidth`):
+
+| Region | testid | Scrolls? | Evidence |
+|---|---|---|---|
+| Panel root | `coach-panel-inline` | no | 399/399, `overflow: visible` |
+| Zone A (header) | `coach-zone-a` | no | h=188px fixed |
+| Mode chips | `coach-modes` | **H-scroll** | `scrollW 489 > clientW 323`, `overflow-x-auto` — 3rd chip clipped mid-word |
+| Zone B (transcript) | `coach-zone-b` | V only (correct) | `overflow-y-auto`, but squeezed to **h=226px** |
+| Ladder rail | `coach-rail` / `quiz-ladder-rail` | **no** | `overflow: visible`; plain `grid grid-cols-3` — NOT a nested strip |
+| Quick-action chips | `coach-chips` | **H-scroll** | `scrollW 540 > clientW 367`, `overflow-x-auto` |
+| Zone C (footer) | `coach-zone-c` | no | h=256px fixed |
+
+**Root cause (corrected from the initial read):** the rail the human boxed is
+NOT its own scroll container. The real defects are:
+1. **Two horizontal-scroll chip strips** (`coach-modes` + `coach-chips`) that clip
+   their last item — these are the literal "scroll within scroll" the eye catches.
+2. **Zone A (188px) + Zone C (256px) = 444px of the 672px panel are fixed
+   chrome**, crushing the actual conversation (Zone B) into a 226px window. The
+   transcript then scrolls inside that sliver, compounding the cramped feel.
+
+The prototype avoids both: its mode rail is a flat inline segment bar (no
+horizontal scroll), it has no always-on quick-action strip competing for width,
+and its header/footer are lighter — so the transcript gets the vertical real
+estate. **Adopting the prototype layout = the right structural fix, not a patch.**
+
+**Scope of a layout rework** (from the structural scout):
+`CoachPanel.tsx` (zone stack), `CoachChrome.tsx` (Zone A + both chip strips),
+`CoachedLoopSection.tsx` (rail + transcript bubbles), `CoachedConfirmSection.tsx`,
+`CoachView.tsx` (transcript), `CoachDrawer.tsx` (mobile host), `Composer.tsx`
+(Zone C). Mounted twice by `app/(coach)/learn/quiz/page.tsx` (desktop inline +
+mobile drawer). No existing React component mirrors the prototype layout — the
+prototype is only the standalone HTML artifact. This is a real SDD change
+(FR/ADR touch), NOT a residual tweak — route through spec/replan, not a quick edit.
+
+**Resolved (2026-07-20) → SPEC LANDED.** Human chose P2. Written:
+[ADR-0037](../adr/0037-coach-column-single-scroll-prototype.md) (supersedes
+ADR-0036 on FR-11/FR-12 + Zone contract only) + spec amendment §11 in
+[`preact-wide-layout-coach-panel.spec.md`](preact-wide-layout-coach-panel.spec.md)
+adding FR-21…FR-26 (single-scroll body; pin only composer; no H-scroll;
+flex-remainder transcript; drop inert "Misconception summary" chip).
+
+**IMPLEMENTED (2026-07-20) — Phase 4 T29–T33 green.** Single-scroll coach column
+shipped: mode chips flattened (2 live modes, no clip); quick-action chips wrap +
+moved into the scroll body; pinned bar = composer-only; **M1 + M3 folded in**
+(inert "Misconception summary" chip dropped = M1; coach composer `showToolbar=
+false` removes the "+" attach + model picker = M3). FR-24 amended from an
+unreachable "≥50% at idle" floor to the honest flex-remainder contract (Zone B is
+the single `flex-1 overflow-y-auto` region; header+composer `shrink-0`). Live
+verified: `hScrollOffenders:[]`, `windowScrollTop:0`, `hasAttach/hasModelPicker:
+false`. vitest 412/412; tsc clean (bar 3 pre-existing `use_expandable_list`
+errors). Board detail: `commit-first-coach.tasks.md` Phase 4.
+
+### M8 — residual: unpin the coach header too (2026-07-20)
+
+**CONFIRMED actionable (human, post-M7 screenshot).** After M7 shipped, the coach
+identity header — "Your Coach" / "Adaptive · always on" / "Current item: …" /
+"Sees your history: …" + the two mode chips (`In-drill Socratic` /
+`Post-answer deep-dive`) — was still rendered as the **fixed Zone A** (`shrink-0`
+header outside the scroll region). At idle it measured ~187px, which — with the
+pinned composer — is what forced FR-24 down to a ~40% flex-remainder and left the
+transcript with the small "scroll within scroll" visible area the screenshot
+still showed.
+
+**Fix:** unpin Zone A → move `CoachChrome` (title/status/current-item/history +
+mode chips) to the **top of the scroll body** (Zone B), so it scrolls away with
+the transcript. Zone A collapses to nothing; the **only** pinned region is the
+composer (Zone C). This is a tightening of the FR-24 flex-remainder contract, not
+a reversal: with the header no longer fixed, Zone B now takes essentially all
+height above the composer and wins the ≥50% the original FR-24 wanted — reachable
+now precisely *because* the header is not fixed. Routed to spec (§11 refinement +
+FR-24 tightened + new FR-27); dismiss control stays reachable (rides with the
+chrome at the top of the scroll body). Implemented Phase 4 follow-up (T34).
+
+**IMPLEMENTED + live-verified (2026-07-20).** `CoachChrome` + dismiss moved to the
+top of `coach-zone-b`; `coach-zone-a` removed (no fixed header). Live DOM on the
+399px inline panel (`http://localhost:3000/learn/quiz`, 672px tall):
+`zoneA_exists:false`, `chromeInBody:true`, `dismissInBody:true`, **Zone B = 460px
+= 68%** of the panel at idle (was ~40% with the fixed header — the M7/M8 defect),
+`hScrollOffenders:[]`, `windowScrollTop:0`. Red/green: FR-27 test seen to fail
+first, then green; the FR-24/25 test was retargeted (G8) — it required a
+`shrink-0` fixed Zone A, which no longer exists. vitest 413/413; tsc clean (bar
+the 3 pre-existing `use_expandable_list` errors).
+
+### M9 — exhaustion actions pin over the scrolling transcript (2026-07-20)
+
+**CONFIRMED actionable (human, two screenshots).** In the wrong-pick loop's
+**exhausted** state, the actions block — the "That's all three nudges…" message,
+the "Let me try again" / "Walk me through it" buttons, and the cost line — is
+initially scrollable but, **as the conversation grows, becomes pinned above the
+text-entry**. Its opaque background then paints *over* the transcript: the
+"PROMPT · NO ANSWER" bubble scrolls up and disappears **behind** the pinned block
+(observed clipping mid-word). This contradicts the M7/M8 single-scroll intent
+(only the text-entry composer is pinned; everything else scrolls).
+
+**Root cause:** `CoachedLoopSection.tsx:236` applies
+`sticky bottom-0 z-10 bg-surface pb-1 pt-2` to the actions block **when
+`coachedLoop.exhausted`**. That was an intentional pre-single-scroll choice (V4/R1
+— "keep exhaustion CTAs in view"; fully opaque so transcript text wouldn't bleed
+through). Post-M7/M8 it is the defect: a sticky, opaque footer inside the one
+scroll body is exactly the overlap the human is seeing.
+
+**Fix (human-confirmed):** remove the `sticky bottom-0 z-10 bg-surface` treatment
+so the exhaustion actions sit in normal document flow and scroll with the
+transcript — nothing paints behind anything; only the composer stays pinned. The
+`scrollIntoView`-on-new-rung effect is **kept** (it brings the newest turn into
+view; it does not pin). G8: the R1 test "exhaustion action footer is opaque (no
+translucent bleed-through)" asserted the sticky footer's opaque background — its
+premise is now the bug, so it is retargeted (not deleted) to assert the block is
+**not** sticky. Implemented Phase 4 follow-up (T35).

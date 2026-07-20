@@ -13,7 +13,14 @@ tags: [decision-record]
 
 **Status:** Accepted — 2026-07-16; **amended 2026-07-16** for Direction 2b lock
 (supersedes the same-day draft decisions: 56px rail, session pin, Sheet drawer,
-`use_collapsible_thread`).
+`use_collapsible_thread`). **PARTIALLY SUPERSEDED 2026-07-20 by
+[ADR-0037](0037-coach-column-single-scroll-prototype.md)** — the coach-column
+internal layout (FR-11 dual independent scroll, FR-12 pinned chip row, the Zone
+A/B/C contract) is replaced by a single-scroll prototype column pinning only the
+composer + action buttons. This ADR REMAINS canonical for everything else:
+`coachMode` surface routing, `CoachDrawer`/`CoachTriggerPill`, the 64px rail,
+`shell_layout_store`, iPhone fullscreen, and the a11y FRs (FR-1..10, 13..20),
+which re-attach to the new column.
 **Related:** [preact-wide-layout-coach-panel.spec.md](../plan/preact-wide-layout-coach-panel.spec.md),
 [plan](../plan/preact-wide-layout-coach-panel.plan.md),
 [tasks](../plan/preact-wide-layout-coach-panel.tasks.md),

@@ -1,10 +1,12 @@
 /**
  * CoachPanel — Direction 2b Zone A/B/C stack (ADR-0035 / FR-5/10–15/20).
  *
- * Zones:
- *   A fixed — status / mode chrome
- *   B scroll — HintLadderList + separator + conversation (role=log)
- *   C pinned — "+ One more nudge" + chips + composer (Q-C1 / FR-12)
+ * Column (ADR-0037, single-scroll; header unpinned FR-27/M8):
+ *   B scroll — CoachChrome header (title/status/current-item/history + mode
+ *              chips) + dismiss, then ladder + conversation (role=log) + chips.
+ *              The ONLY scroll region; header scrolls away with it.
+ *   C pinned — composer (text entry + send). The SOLE pinned region (FR-23).
+ *   (There is no fixed Zone A: the ~187px header used to starve the transcript.)
  *
  * ONE thread via coach_thread_store / useCoach. Hint ladder arrives as props.
  */
@@ -197,40 +199,41 @@ export function CoachPanel(props: {
         className,
       )}
     >
-      {/* Zone A — fixed header */}
-      <div
-        data-testid="coach-zone-a"
-        className="shrink-0 border-b border-border px-[18px] pb-3 pt-4"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <CoachChrome
-              vm={surfaceVm}
-              busy={busy}
-              onAsk={ask}
-              layout="stacked"
-              showChips={false}
-            />
-          </div>
-          {onDismiss != null ? (
-            <button
-              type="button"
-              data-testid="coach-panel-dismiss"
-              aria-label="Hide coach panel"
-              onClick={onDismiss}
-              className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-selected hover:text-fg"
-            >
-              ✕
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      {/* Zone B — scroll: ladder + conversation */}
+      {/* Zone B — the single scroll region. FR-27/M8: the identity header
+          (CoachChrome + dismiss) is unpinned and rides at the top of this body,
+          so it scrolls away with the transcript instead of eating a fixed
+          ~187px. The composer (Zone C) is the ONLY pinned region. */}
       <div
         data-testid="coach-zone-b"
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-3.5"
       >
+        {/* Identity header — scrolls with the body (FR-27). Bottom hairline +
+            spacing keep it visually separated from the transcript below. */}
+        <div className="mb-3.5 shrink-0 border-b border-border pb-3">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <CoachChrome
+                vm={surfaceVm}
+                busy={busy}
+                onAsk={ask}
+                layout="stacked"
+                showChips={false}
+              />
+            </div>
+            {onDismiss != null ? (
+              <button
+                type="button"
+                data-testid="coach-panel-dismiss"
+                aria-label="Hide coach panel"
+                onClick={onDismiss}
+                className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted hover:bg-selected hover:text-fg"
+              >
+                ✕
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         {showQuizLadder ? (
           <>
             <HintLadderList
@@ -273,7 +276,9 @@ export function CoachPanel(props: {
             Conversation
           </h3>
         </div>
-        {/* Flow content — Zone B is the only vertical scroll (FR-11/12). */}
+        {/* Flow content — Zone B is the ONLY scroll region (FR-25); the single
+            vertical scroll now also carries the nudge control + quick-action
+            chips (FR-22/23), which used to live in the pinned bar. */}
         <div className="min-w-0 break-words">
           <CoachView
             turns={turns}
@@ -285,13 +290,9 @@ export function CoachPanel(props: {
             showComposer={false}
           />
         </div>
-      </div>
 
-      {/* Zone C — pinned: nudge + chips + composer */}
-      <div
-        data-testid="coach-zone-c"
-        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3"
-      >
+        {/* "One more nudge" — scrolls with the body (FR-23: not in the pinned
+            bar). Kept below the conversation, above the chips. */}
         {showQuizLadder ? (
           <button
             type="button"
@@ -303,17 +304,30 @@ export function CoachPanel(props: {
               if (exhausted) return;
               setRevealed((n) => Math.min(n + 1, deeperRungs.length));
             }}
-            className="min-h-11 w-fit rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 min-h-11 w-fit shrink-0 rounded-md border border-dashed border-accent px-[15px] py-1.5 text-sm font-semibold text-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             + One more nudge
           </button>
         ) : null}
-        <div data-testid="coach-panel-composer" className="flex flex-col gap-3">
+
+        {/* Quick-action chips — in the scroll body (FR-22), wrapping (FR-21). */}
+        <div className="mt-3 shrink-0">
           <CoachChips seeds={surfaceVm.chips} busy={busy} onAsk={ask} />
+        </div>
+      </div>
+
+      {/* Zone C — pinned bar: composer only (FR-23). */}
+      <div
+        data-testid="coach-zone-c"
+        className="flex shrink-0 flex-col gap-3 border-t border-border px-4 py-3"
+      >
+        <div data-testid="coach-panel-composer" className="flex flex-col gap-3">
           <Composer
             onSend={(body) => ask(body)}
             busy={busy}
             placeholder="Ask about this item…"
+            // M3 / FR-24: coach composer is slim — no attach or model picker.
+            showToolbar={false}
             {...(composerFocusRef != null
               ? { textareaRef: composerFocusRef }
               : {})}

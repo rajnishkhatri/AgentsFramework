@@ -307,3 +307,176 @@ green alone is not enough to close Phase 3.
 Verification map: V1/V6/V10→T19 · V2→T20 · V3→T21 · V14/V15→T22 ·
 V16-V19→T23 · V4/V5/V7→T24 · V8/V11/V12/V13→T25 · V22-V24→T26 ·
 V25-V27→T27 · V20(FR-15)+e2e+visual-recapture→T28.
+
+---
+
+## Phase 4 — coach-panel layout rework (M7 replan, 2026-07-20)
+
+**Trigger:** (b) human scope change — "scroll within scroll" in the coach panel;
+human chose *full prototype layout adoption*, spec-first.
+
+**Blocking finding (routes to sdd-spec, NOT a task reshuffle):** the layout the
+human wants changed is **locked**, not accidental.
+- **ADR-0036** ("Wide-layout CoachPanel parity — Direction 2b lock") *accepts*
+  the Zone A fixed / Zone B scroll / Zone C pinned contract.
+- **FR-11** (locked spec): item column + coach log scroll independently; window
+  must NOT scroll.
+- **FR-12** (locked spec): composer, **chip row**, and "One more nudge" SHALL
+  stay pinned/visible in Zone C regardless of log scroll — i.e. the quick-action
+  chip strip living in the pinned footer is *specified* behavior. Its horizontal
+  overflow (measured `scrollW 540 > clientW 367`) is the by-product of pinning a
+  too-wide row into a fixed zone.
+- ADR-0036 already flagged the "**Safari `dvh` + nested `min-h-0` height chain**"
+  as an **accepted risk** needing an L6 device spike before DoD — the transcript
+  being crushed to 226px is that risk materializing.
+
+**Measured defects (live DOM, M7 in the register):**
+1. `coach-modes` H-scroll `489>323` — 3rd mode chip clipped mid-word.
+2. `coach-chips` H-scroll `540>367` — last quick-action clipped.
+3. Zone A (188px) + Zone C (256px) = 444/672px fixed chrome → Zone B transcript
+   squeezed to 226px.
+
+**Two readings of "adopt the prototype layout" — the human gate must pick:**
+- **(P1) Refinement WITHIN ADR-0036** — treat 1–3 as bugs against the lock's
+  intent (independent scroll + pinned zone C were meant to *help* the log, not
+  starve it). Fix: de-scroll the two chip rows (wrap / inline the mode bar; make
+  quick-actions wrap or collapse), rebalance Zone A/B/C heights so the transcript
+  gets real estate, resolve the `min-h-0` chain (the deferred L6 spike). **No ADR
+  supersession** — an amendment note + the L6 spike closes it. Smaller, keeps the
+  locked contract.
+- **(P2) True prototype adoption (supersede ADR-0036)** — rebuild the coach
+  column to the v3 prototype's structure (flat inline mode bar, no always-pinned
+  quick-action strip, lighter chrome). This **reverses FR-11/FR-12 + Zone
+  contract** → needs a **new ADR superseding 0036** and a spec rev of
+  `preact-wide-layout-coach-panel.spec.md` before any code.
+
+**Routing:** either reading is a **spec/scope change → sdd-spec (Stage 2)**, not a
+task-list rewrite. P1 = amend spec + ADR-0036 note; P2 = new superseding ADR +
+spec rev. Implementation (Phase-4 tasks) is authored only after the spec lands.
+
+**DECISION (2026-07-20, human): P2 — true prototype adoption. Reverting
+ADR-0036.** The Direction 2b zone model (fixed A / scroll B / pinned C with the
+H-scroll chip strips) is rejected outright, not amended. Next steps, gated:
+1. **New ADR-0037** superseding ADR-0036 (revert Direction 2b; adopt v3 prototype
+   coach column). OKF: template + index.md + log.md.
+2. **Spec rev** of `preact-wide-layout-coach-panel.spec.md` — replace FR-11
+   (dual independent scroll) + FR-12 (pinned chip row) + the Zone contract with
+   the prototype structure; new EARS layout invariants (no H-scroll on mode/chip
+   rows; transcript min-height floor; single scroll region).
+3. **THEN** author Phase-4 T-numbered implementation tasks against the new spec.
+
+**Tasks still deferred until the spec gate closes** — no T-numbers yet (authoring
+them now would be planning ahead of an unapproved contract, AGENTS.md "stop before
+expanding scope"). Sequenced as tasks #10 (ADR) → #11 (spec rev) → Phase-4 impl.
+
+### Phase 4 tasks (T29–T33) — authored 2026-07-20 after ADR-0037 + spec §11 accepted
+
+Verification maps 1:1 to FR-21…FR-26 (spec §11). Red first per task.
+
+- **T29 (FR-26) — drop inert mode chip + flatten mode indicator.** In
+  `coach_surface_vm.ts` `modeDisplays()`, remove the always-`active:false`
+  "Misconception summary" entry (2 live modes remain). In `CoachChrome.tsx`
+  `coach-modes`, remove the `overflow-x-auto` branch → wrap. Verify: RTL — no
+  "Misconception summary" in DOM; `coach-modes` has no `overflow-x-auto`.
+- **T30 (FR-21+FR-22) — quick-action chips: no H-scroll, in scroll body.** In
+  `CoachChips` (`CoachChrome.tsx:38`) swap `flex-nowrap overflow-x-auto` → `flex-wrap`.
+  In `CoachPanel.tsx`, move `<CoachChips>` OUT of Zone C into the scroll body
+  (Zone B), above the pinned bar. Verify: RTL — chips are descendants of the
+  scroll-body testid, not the pinned-bar testid; no `overflow-x-auto`.
+- **T31 (FR-23) — pinned bar = composer + action buttons only.** Restructure
+  `CoachPanel.tsx` Zone C so it holds ONLY `Composer` (+ commit-first footer note)
+  and, when present, the loop action buttons; the "+ One more nudge" control and
+  chips move to the scroll body. Rename zones to two-region (scroll body + pinned
+  bar) with stable testids. Verify: RTL — pinned bar contains composer + actions;
+  asserts chips + one-more-nudge are NOT in it.
+- **T32 (FR-21 sweep) — single-scroll, no horizontal scroll anywhere.** After
+  T29–T31, assert no coach-panel descendant has `overflow-x:auto|scroll`. Verify:
+  e2e (desktop + iPad) — zero H-scroll descendants; unit — className sweep.
+- **T33 (FR-24+FR-25) — transcript height floor + no window scroll.** Ensure the
+  scroll body gets ≥50% of panel height (bound the pinned bar; single
+  `overflow-y-auto` region). Verify: e2e — `scrollBody.clientHeight ≥ 0.5*panel`;
+  scroll body → `document.scrollingElement.scrollTop === 0`.
+
+**G8 note:** ADR-0036 FR-12 test ("Zone C tops unchanged on log scroll") is
+invalidated by the new layout (chips leave Zone C). Retarget/replace with the
+FR-23 assertion + a justification token, don't silently delete.
+
+### Phase 4 — IMPLEMENTED 2026-07-20 (T29–T33 green)
+
+- **T29 (FR-26)** ✓ dropped inert "Misconception summary" mode; flattened
+  `coach-modes` to `flex-wrap` (no H-scroll). `coach_surface_vm.ts` +
+  `CoachChrome.tsx`. Live: 2 mode chips, no clip.
+- **T30 (FR-21+22)** ✓ `CoachChips` → `flex-wrap`; moved into scroll body
+  (Zone B). `CoachChrome.tsx` + `CoachPanel.tsx`. Live: chips wrap to 2 lines,
+  no clip; `chipsInZoneB:true`.
+- **T31 (FR-23)** ✓ pinned bar (Zone C) = composer-only; `one-more-nudge` +
+  chips moved to scroll body. `CoachPanel.tsx`. Live: `zoneCOnlyComposer:true`.
+- **T32 (FR-21 sweep)** ✓ live `hScrollOffenders: []` (idle AND with rail
+  present); unit className-sweep guard added.
+- **T33 (FR-24+25)** ✓ FR-25 live `windowScrollTop:0`. FR-24 **amended**: the
+  absolute "≥50% at idle" floor was unreachable (measured header ~187px +
+  minimal composer ~185px on a 672px panel); replaced with the honest
+  flex-remainder contract — Zone B is the single `flex-1 min-h-0 overflow-y-auto`
+  region, header+composer `shrink-0`; body grows with content. Unit-guarded.
+  M3 folded in (composer `showToolbar={false}` — no attach/model-picker on coach;
+  live `hasAttach:false, hasModelPicker:false, hasSend:true`).
+
+**Gate:** vitest 412/412 (coach+chat+quiz+VM); tsc clean except 3 PRE-EXISTING
+`use_expandable_list.ts` errors (untouched). e2e (drawer/iPhone re-verify + FR-24
+growth-under-content) = on-demand, next. G8: 2 ADR-0036 tests retargeted with
+justification (Zone-C-hosts-nudge → FR-23 composer-only; chips-by-composer →
+FR-22 chips-in-body); no silent weakening.
+
+### Phase 4 follow-up — T34 (FR-27, M8) IMPLEMENTED 2026-07-20
+
+Trigger: after M7 shipped, the human posted a screenshot showing the coach
+identity header *still pinned* — the last fixed chrome starving the transcript
+("scroll within scroll" persisted). Human: "let's just completely unpint the top
+portion." Routed to spec (§11 refinement + FR-24 tightened + new FR-27).
+
+- **T34 (FR-27)** ✓ Unpinned the identity header: `CoachChrome` + the dismiss
+  control moved from the fixed Zone A into the **top of the scroll body**
+  (`coach-zone-b`); `coach-zone-a` removed entirely. Composer (Zone C) is now the
+  **sole** pinned region. `CoachPanel.tsx` + `CoachPanel.test.tsx`. Red seen first
+  (FR-27 test: chrome-not-in-body + zoneA-still-present both failed), then green.
+  G8: the FR-24/25 test asserted a `shrink-0` fixed `coach-zone-a` — retargeted to
+  "no fixed header zone; only the composer is shrink-0" with justification (the new
+  layout deliberately deletes that zone), not silently weakened.
+- **FR-24 tightened:** with the ~187px header no longer fixed, Zone B wins the
+  remainder above the composer and clears 50% even at idle — the original ≥50%
+  intent is now reachable *because* the header is unpinned.
+
+**Gate:** vitest **413/413** (coach+chat+quiz+VM — +1 = the FR-27 test); tsc clean
+except the same 3 PRE-EXISTING `use_expandable_list.ts` errors (untouched).
+**Live-verified** (399×672 inline panel): `zoneA_exists:false`, `chromeInBody:
+true`, `dismissInBody:true`, **Zone B = 68%** at idle (was ~40%), `hScrollOffenders:
+[]`, `windowScrollTop:0`. e2e (`wide-layout.spec.ts` — the "Zone C nudge" test name
+is now stale since M7 moved the nudge to Zone B; assertions still pass) =
+on-demand re-verify, next.
+
+### Phase 4 follow-up — T35 (M9) IMPLEMENTED 2026-07-20
+
+Trigger: two human screenshots — in the wrong-pick loop's **exhausted** state the
+actions block (message + "Let me try again" / "Walk me through it" + cost line)
+started scrollable but **pinned above the composer as the transcript grew**, and
+its opaque background painted *over* the scrolling transcript so the
+"PROMPT · NO ANSWER" bubble slid up and hid **behind** it. Human intent: only the
+text-entry is pinned; the whole loop block scrolls.
+
+- **T35 (M9)** ✓ Removed `sticky bottom-0 z-10 bg-surface pb-1 pt-2` from the
+  exhaustion actions in `CoachedLoopSection.tsx:236` — the block now sits in
+  normal flow (`position:static`, transparent) and scrolls with the transcript.
+  Kept the `scrollIntoView`-on-new-rung effect (brings the newest turn into view;
+  does not pin). `CoachedLoopSection.tsx` + `CoachedLoopSection.test.tsx`. Red
+  seen first (block still carried `sticky …`), then green. G8: the R1 test
+  "exhaustion action footer is opaque" asserted the sticky footer's opaque bg —
+  its premise *was* the bug, so retargeted (not deleted) to assert the block is
+  **not** sticky and lays **no** opaque paint layer.
+
+**Gate:** vitest **413/413** (unchanged count — the R1 test was retargeted in
+place); tsc clean except the same 3 pre-existing `use_expandable_list.ts` errors.
+**Live-verified** in the exhausted loop state (drove pick-B → submit → nudge×3):
+exhaustion actions `position:static`, `zIndex:auto`, `bg:rgba(0,0,0,0)`; the
+`quiz-rung-3` PROMPT bubble (bottom 276) and the actions block (top 288) **do not
+overlap** while scrolled (`scrollTop:650/1304`); screenshot shows the PROMPT
+bubble rendered in full, nothing behind the buttons.

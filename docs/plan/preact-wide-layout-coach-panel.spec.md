@@ -42,11 +42,17 @@ governs:
 > FR-n ≡ locked AC-n (1:1).
 
 **Status:** Accepted — 2026-07-16 (re-Accepted after Direction 2b lock;
-clarify CLOSED — Q-C1…Q-C5 below). Plan:
+clarify CLOSED — Q-C1…Q-C5 below). **AMENDED 2026-07-20 (M7 / ADR-0037):** the
+coach-column internal layout is revised — see §11 "Amendment 2026-07-20". Plan:
 [`preact-wide-layout-coach-panel.plan.md`](preact-wide-layout-coach-panel.plan.md).
 Tasks: [`preact-wide-layout-coach-panel.tasks.md`](preact-wide-layout-coach-panel.tasks.md)
 (Stage 3 Accepted — L0–L6; Stage 4 PASSED 2026-07-16). Human Accept →
 Stage 6 (`sdd-implement`).
+
+> **⚠️ Amendment notice (2026-07-20).** FR-11, FR-12, and the §4 "Zone contract
+> (Direction 2b)" are **SUPERSEDED** by ADR-0037 and the new FR-21…FR-25 in §11.
+> Read §11 as the current coach-column layout; the original FR-11/FR-12 text below
+> is retained struck-through for provenance. All other FRs stand.
 
 ---
 
@@ -117,11 +123,15 @@ Nominal behavior.
 - **FR-10.** WHERE the surface is desktop or iPad AND content width is at least
   900px, THE SYSTEM SHALL render the quiz item and the live coach panel
   side-by-side sharing one coach thread.
-- **FR-11.** WHILE on the inline split, THE SYSTEM SHALL scroll the item column
-  and the coach log independently and SHALL NOT scroll the browser window.
-- **FR-12.** THE SYSTEM SHALL keep the composer, chip row, and "One more nudge"
+- ~~**FR-11.** WHILE on the inline split, THE SYSTEM SHALL scroll the item column
+  and the coach log independently and SHALL NOT scroll the browser window.~~
+  **SUPERSEDED by ADR-0037 / FR-21+FR-25 (§11)** — the coach column is now a
+  single scroll region (no separate log-vs-zone scroll); the no-window-scroll
+  guarantee is preserved as FR-25.
+- ~~**FR-12.** THE SYSTEM SHALL keep the composer, chip row, and "One more nudge"
   control pinned and visible regardless of coach-log scroll position (Zone C;
-  Q-C1).
+  Q-C1).~~ **SUPERSEDED by ADR-0037 / FR-22+FR-23 (§11)** — only the composer +
+  action buttons are pinned; the quick-action chip row now scrolls with the body.
 - **FR-13.** WHEN a coach reply completes, THE SYSTEM SHALL collapse all prior
   non-error answers and keep only the newest expanded.
 - **FR-14.** WHEN a new nudge is revealed, THE SYSTEM SHALL auto-expand that
@@ -168,10 +178,11 @@ All client-side; no backend types; no new npm deps.
   decisions use `coachMode`**, not a two-step pin-aware ladder.
 - Surface labels and `surfaceForWidth` unchanged.
 
-**Zone contract (Direction 2b):** Zone A fixed header; Zone B scroll =
+~~**Zone contract (Direction 2b):** Zone A fixed header; Zone B scroll =
 `HintLadderList` + separator + conversation (`role="log"` on conversation only);
 Zone C pinned = nudge + chips + composer (Q-C1). Same stack in inline, drawer,
-and iPhone fullscreen (outer chrome/width only differs).
+and iPhone fullscreen (outer chrome/width only differs).~~
+**SUPERSEDED by ADR-0037 — see §11 "Column contract (single-scroll)".**
 
 ## 5. Invariants & security boundaries
 
@@ -245,3 +256,116 @@ and iPhone fullscreen (outer chrome/width only differs).
 iPhone tab/focus redesign beyond lock §6; bank/hints/LLM; auth/WorkOS; new npm
 deps; Dashboard/Summary/Skill/Progress/Test **internals** beyond shell chrome;
 theme tokens/palette inventing.
+
+---
+
+## 11. Amendment 2026-07-20 — single-scroll coach column (M7 / ADR-0037)
+
+> **What changed & why.** The Direction-2b three-zone contract (Zone A fixed /
+> Zone B scroll / Zone C pinned) produced a "scroll within scroll": two
+> horizontal-scroll chip strips clipped their content and a tall fixed
+> header+footer crushed the transcript. Measured live (`coach-panel-inline`,
+> 399×672 desktop): `coach-modes` scrolled `489>323` (3rd chip clipped),
+> `coach-chips` scrolled `540>367` (last chip clipped), Zone A(188)+Zone C(256) =
+> 444/672px fixed chrome left the transcript a 226px window. Full detail: M7 in
+> [`commit-first-coach.visual-gap-register.md`](commit-first-coach.visual-gap-register.md).
+> Decision: [ADR-0037](../adr/0037-coach-column-single-scroll-prototype.md).
+> **Refined same day (M8):** the coach identity header, still fixed after M7 at
+> ~187px, is also unpinned into the scroll body — the composer becomes the sole
+> pinned region. See FR-27 and the tightened FR-24.
+
+**What this amendment revises:** FR-11, FR-12, and the §4 Zone contract only.
+**What survives unchanged:** FR-1..FR-10, FR-13..FR-20 (drawer, focus-trap,
+reduced-motion, streaming/error expand, 64px rail, iPhone route, ask-coach
+bridge, collapsed-answer shape) — they now describe behavior of the **new**
+single-scroll column and re-verify against its DOM.
+
+### Column contract (single-scroll)
+
+The coach column has exactly **two** regions in every host (inline, drawer,
+iPhone fullscreen — outer chrome/width differs only):
+
+1. **Scroll body** — one vertical scroll region containing, top-to-bottom: the
+   coach identity header + mode indicator (title / status / current-item /
+   history line + the mode chips), the PUMP/HINT/PROMPT ladder rail (when
+   `rung ≥ 0`, per MOM-9), the conversation transcript (`role="log"`), and the
+   **quick-action chips**. Nothing inside it scrolls horizontally, and — refined
+   2026-07-20 (M8) — nothing above the transcript is a *fixed* region either: the
+   identity header scrolls away with the body. There is **no** fixed top zone.
+2. **Pinned action bar** — a single bottom region, always visible regardless of
+   scroll body position, containing **only** the composer (text entry) and the
+   current-state action buttons (loop controls: "Let me try again" /
+   "Show me more →" / "Walk me through it"; the send affordance). The
+   quick-action chips and the "One more nudge" control are **not** here — they
+   live in the scroll body. The composer is the **sole** pinned region.
+
+### New functional requirements (EARS) — layout invariants
+
+Failure / edge paths first.
+
+- **FR-21.** THE SYSTEM SHALL NOT render any horizontally-scrolling region inside
+  the coach column: no descendant of the coach panel SHALL have
+  `scrollWidth > clientWidth` on an `overflow-x: auto|scroll` axis. (Kills the
+  `coach-modes` / `coach-chips` clip.)
+- **FR-22.** THE SYSTEM SHALL place the quick-action chips inside the scroll body,
+  NOT in the pinned action bar; WHEN the learner scrolls the body, the chips
+  SHALL scroll with it. (Chips wrap or stack; they never H-scroll — FR-21.)
+- **FR-23.** THE SYSTEM SHALL keep the composer (text entry + its send control)
+  pinned and visible regardless of scroll-body position; the pinned bar SHALL NOT
+  contain the quick-action chips or the "One more nudge" control. *(Refined
+  2026-07-20, human: the commit-first loop buttons — try-again / show-more /
+  walk-me-through — stay at the tail of the scrolling transcript inside
+  `CoachedLoopSection`, not in the pinned bar; pulling them out would be a larger
+  refactor and they already sit directly above the composer. The pinned bar is
+  composer-only.)*
+- **FR-24.** THE SYSTEM SHALL make the scroll body the single `flex-1` region
+  that takes **all height not used by the pinned composer**, and SHALL bound the
+  pinned composer so the body wins the remainder and grows with the conversation.
+  *(Amended 2026-07-20 from an absolute "≥50% at idle" floor; then tightened the
+  same day (M8): the coach identity header is **no longer a fixed region** — it
+  scrolls inside the body (FR-27), so the only chrome outside Zone B is the
+  composer. With the ~187px header removed from the fixed budget, Zone B now takes
+  essentially all height above the composer and clears 50% even at idle. The M7/M8
+  defect was fixed chrome — chip strips, tall composer toolbar, the identity
+  header — stealing the remainder; all are removed or unpinned, so the body wins
+  it.)*
+- **FR-25.** WHILE on the inline split, THE SYSTEM SHALL NOT scroll the browser
+  window when the coach body scrolls (`document.scrollingElement.scrollTop === 0`
+  after scrolling the body) — the no-window-scroll guarantee from the retired
+  FR-11 is preserved.
+- **FR-26.** THE SYSTEM SHALL render the mode indicator as a flat, non-scrolling
+  element and SHALL NOT render the always-inert "Misconception summary" mode chip
+  (M1). The two live modes (in-drill Socratic / post-answer deep-dive) remain.
+- **FR-27.** THE SYSTEM SHALL render the coach identity header (title, live
+  status, current-item line, history line, and the mode chips) **inside the scroll
+  body**, not as a fixed top region; WHEN the learner scrolls the body, the header
+  SHALL scroll away with it. No coach-panel descendant above the transcript is a
+  `shrink-0` fixed zone. The dismiss control (`Hide coach panel`) SHALL remain
+  reachable — it moves with the header at the top of the scroll body. *(M8: the
+  ~187px fixed header was the last chrome starving the transcript; unpinning it is
+  what makes FR-24 clear 50% at idle.)*
+
+### Test plan (append to §8)
+
+| FR | Test | Layer | In `make check`? |
+|----|------|-------|------------------|
+| FR-21 | e2e desktop + iPad: assert **no** coach-panel descendant has `overflow-x∈{auto,scroll}` with `scrollWidth>clientWidth` | L4 | on-demand |
+| FR-22 | RTL: quick-action chips are descendants of the scroll body, not the pinned bar; component: chips wrap (no `overflow-x-auto`) | L2 | yes |
+| FR-23 | RTL: pinned bar contains composer + action buttons; asserts chips/"One more nudge" are NOT in it | L2 | yes |
+| FR-24 | unit: Zone B is the single `flex-1 min-h-0 overflow-y-auto` region; header + composer are `shrink-0`. e2e: as the transcript fills, `scrollBody.clientHeight` grows and exceeds 50% (flex-remainder, not a fixed idle floor) | L2 + L4 | L2 yes / L4 on-demand |
+| FR-25 | e2e scroll coach body → `document.scrollingElement.scrollTop === 0` | L4 | on-demand |
+| FR-26 | RTL: mode indicator not `overflow-x-auto`; no "Misconception summary" chip in DOM | L2 | yes |
+| FR-27 | RTL: CoachChrome (title/current-item/history + mode chips) is a descendant of the scroll body, NOT of a `shrink-0` fixed zone; dismiss control still present. e2e: after scrolling the body, the header row is scrolled out of view | L2 + L4 | L2 yes / L4 on-demand |
+
+### DoD delta
+
+- [ ] FR-21…FR-26 implemented; each has a test *seen to fail first* against the
+  current (pre-amendment) DOM.
+- [ ] ADR-0036 e2e/RTL for the surviving FRs (FR-2/3/4/7/8, drawer, iPhone)
+  retargeted to the new column and green — G8: any assertion the new layout
+  invalidates (e.g. FR-12 "Zone C tops unchanged") is rewritten with a
+  justification token, not deleted.
+- [ ] Visual re-capture: the coach panel shows one scroll region, no clipped
+  chips, transcript reclaimed — paired against the prototype.
+- [ ] The deferred ADR-0036 Safari `dvh`/`min-h-0` spike is closed by the
+  simpler two-region chain (or residual risk recorded).

@@ -96,30 +96,33 @@ describe("toCoachSurfaceVM — history (FR-6)", () => {
   });
 });
 
-describe("toCoachSurfaceVM — D5a mode map (FR-7)", () => {
-  it("marks In-drill Socratic active for pre_submit", () => {
+describe("toCoachSurfaceVM — D5a mode map (FR-7 / FR-26)", () => {
+  // FR-26 (ADR-0037): the always-inert "Misconception summary" chip is dropped.
+  // Only the two live modes remain. (G8: supersedes the prior 3-mode assertions —
+  // the third chip never activated and added no learner value, M1/M7 register.)
+  it("marks In-drill Socratic active for pre_submit (2 live modes only)", () => {
     const vm = toCoachSurfaceVM(inputs({ mode: "pre_submit" }));
     expect(vm.modes).toEqual([
       { id: "socratic", label: "In-drill Socratic", active: true },
       { id: "deep_dive", label: "Post-answer deep-dive", active: false },
-      { id: "misconception", label: "Misconception summary", active: false },
     ]);
   });
 
-  it("marks Post-answer deep-dive active for post_feedback", () => {
+  it("marks Post-answer deep-dive active for post_feedback (2 live modes only)", () => {
     const vm = toCoachSurfaceVM(inputs({ mode: "post_feedback" }));
     expect(vm.modes).toEqual([
       { id: "socratic", label: "In-drill Socratic", active: false },
       { id: "deep_dive", label: "Post-answer deep-dive", active: true },
-      { id: "misconception", label: "Misconception summary", active: false },
     ]);
   });
 
-  it("never activates Misconception summary in B1", () => {
+  it("no longer exposes a Misconception summary mode (FR-26)", () => {
     for (const mode of ["pre_submit", "post_feedback"] as const) {
       const vm = toCoachSurfaceVM(inputs({ mode }));
-      const mis = vm.modes.find((m) => m.id === "misconception");
-      expect(mis?.active).toBe(false);
+      expect(vm.modes.find((m) => m.id === "misconception")).toBeUndefined();
+      expect(vm.modes.map((m) => m.label)).not.toContain(
+        "Misconception summary",
+      );
     }
   });
 });

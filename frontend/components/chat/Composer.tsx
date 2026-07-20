@@ -58,6 +58,14 @@ export function Composer(props: {
    * bridge, FR-14). Merged with the internal autosize/focus ref.
    */
   textareaRef?: React.RefObject<HTMLTextAreaElement | null>;
+  /**
+   * When false, hide the left toolbar affordances (attach "+" and model
+   * picker) — the send puck stays. The coach surface has no attach or
+   * model-selection use case (M3), and dropping them shortens the pinned
+   * composer bar so the transcript reclaims height (FR-24). Defaults to true
+   * (chat surface unchanged).
+   */
+  showToolbar?: boolean;
 }): React.JSX.Element {
   const [body, setBody] = React.useState("");
   const taRef = React.useRef<HTMLTextAreaElement>(null);
@@ -98,6 +106,7 @@ export function Composer(props: {
   }
 
   const disabled = props.busy || body.trim().length === 0;
+  const showToolbar = props.showToolbar ?? true;
   // The chip shows the active choice: a pinned model name, or "Auto".
   const chipLabel = selectedModel === AUTO_MODEL ? "Auto" : selectedModel;
 
@@ -146,67 +155,73 @@ export function Composer(props: {
          model-picker are display affordances (design parity); they carry no
          run-lifecycle logic (F-R1). */}
       <div className="flex items-center gap-2">
-        {/* §4c/HIG: size-11 (44×44pt) hit area; the glyph stays size-4. */}
-        <button
-          type="button"
-          aria-label="Add attachment"
-          className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-full",
-            "bg-surface text-muted transition-colors",
-            "cursor-pointer hover:bg-selected hover:text-fg",
-          )}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-        </button>
-        {/* Model picker (Task #4): real dropdown — Auto (default) + the fetched
-           registry models. Selecting one pins it for the run; the choice rides
-           input.pinned_model and is honored by the backend router's pin branch.
-           §4c/HIG: min-h-11 floors a 44pt-tall tap target. */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Attach + model picker are display affordances (design parity, F-R1).
+           The coach surface hides them (showToolbar=false, M3) — no attach or
+           model-selection use case there, and dropping them shortens the pinned
+           bar (FR-24). */}
+        {showToolbar ? (
+          <>
+            {/* §4c/HIG: size-11 (44×44pt) hit area; the glyph stays size-4. */}
             <button
               type="button"
-              data-testid="model-picker-trigger"
-              aria-label="Choose model"
-              title={`Model: ${chipLabel}`}
+              aria-label="Add attachment"
               className={cn(
-                "inline-flex min-h-11 items-center gap-1 rounded-sm px-2 py-1",
-                "text-sm text-muted transition-colors min-w-0",
-                "cursor-pointer hover:bg-selected",
-                "data-[state=open]:bg-selected data-[state=open]:text-fg",
+                "flex size-11 shrink-0 items-center justify-center rounded-full",
+                "bg-surface text-muted transition-colors",
+                "cursor-pointer hover:bg-selected hover:text-fg",
               )}
             >
-              {/* In a narrow slot the label is hidden (chevron stays as the
-                 affordance); it returns once the composer slot is wide enough. */}
-              <span className="truncate hidden @[20rem]/composer:inline">
-                {chipLabel}
-              </span>
-              <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
+              <Plus className="size-4" aria-hidden="true" />
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-[12rem]">
-            <ModelMenuItem
-              label="Auto"
-              hint="Let the agent route per step"
-              testid="model-option-Auto"
-              checked={selectedModel === AUTO_MODEL}
-              onSelect={() => props.onSelectModel?.(AUTO_MODEL)}
-            />
-            {models.length > 0 ? (
-              <DropdownMenuSeparator />
-            ) : null}
-            {models.map((m) => (
-              <ModelMenuItem
-                key={m.name}
-                label={m.name}
-                hint={m.tier}
-                testid={`model-option-${m.name}`}
-                checked={selectedModel === m.name}
-                onSelect={() => props.onSelectModel?.(m.name)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            {/* Model picker (Task #4): real dropdown — Auto (default) + the
+               fetched registry models. Selecting one pins it for the run; the
+               choice rides input.pinned_model and is honored by the backend
+               router's pin branch. §4c/HIG: min-h-11 floors a 44pt tap target. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  data-testid="model-picker-trigger"
+                  aria-label="Choose model"
+                  title={`Model: ${chipLabel}`}
+                  className={cn(
+                    "inline-flex min-h-11 items-center gap-1 rounded-sm px-2 py-1",
+                    "text-sm text-muted transition-colors min-w-0",
+                    "cursor-pointer hover:bg-selected",
+                    "data-[state=open]:bg-selected data-[state=open]:text-fg",
+                  )}
+                >
+                  {/* In a narrow slot the label is hidden (chevron stays as the
+                     affordance); it returns once the slot is wide enough. */}
+                  <span className="truncate hidden @[20rem]/composer:inline">
+                    {chipLabel}
+                  </span>
+                  <ChevronDown className="size-3.5 shrink-0" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="min-w-[12rem]">
+                <ModelMenuItem
+                  label="Auto"
+                  hint="Let the agent route per step"
+                  testid="model-option-Auto"
+                  checked={selectedModel === AUTO_MODEL}
+                  onSelect={() => props.onSelectModel?.(AUTO_MODEL)}
+                />
+                {models.length > 0 ? <DropdownMenuSeparator /> : null}
+                {models.map((m) => (
+                  <ModelMenuItem
+                    key={m.name}
+                    label={m.name}
+                    hint={m.tier}
+                    testid={`model-option-${m.name}`}
+                    checked={selectedModel === m.name}
+                    onSelect={() => props.onSelectModel?.(m.name)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        ) : null}
         <button
           type="submit"
           disabled={disabled}

@@ -12,6 +12,25 @@ title: 'Lightweight decision log (intent debt, long tail)'
 > non-obvious-but-small choices that would otherwise go uncaptured. Lower the bar,
 > capture more intent debt. (Playbook: Comprehension-Debt runbook, Part B.)
 
+- 2026-07-20 — **M7 coach-panel "scroll within scroll" → replan routes to
+  sdd-spec, blocked on ADR-0036.** Live DOM proved the boxed rail does NOT scroll;
+  the real defects are two H-scroll chip strips (`coach-modes` 489>323,
+  `coach-chips` 540>367) + Zone A/C fixed chrome (444/672px) crushing the Zone B
+  transcript to 226px. Human chose full prototype adoption, spec-first. Finding:
+  the target layout is **locked** (ADR-0036 Direction 2b; FR-11 independent
+  scroll; FR-12 pins the chip row in Zone C). So this is a scope/spec change, not
+  a task reshuffle — routed to sdd-spec. Two readings pending the human gate:
+  P1 = refine within ADR-0036 (de-scroll chips + rebalance heights + close the
+  deferred `min-h-0` L6 spike; amendment note, no supersession); P2 = true
+  prototype adoption (new ADR superseding 0036 + spec rev of
+  preact-wide-layout-coach-panel). Board in commit-first-coach.tasks.md Phase 4;
+  no T-numbers until the spec lands. Rejected: free-hand the layout edit —
+  reverses a locked FR/ADR without a spec (AGENTS.md ⚠️ Ask-first + G1).
+  **RESOLVED same day: human chose P2 — reverting ADR-0036 outright (not
+  amending).** Next: new ADR-0037 supersedes 0036 → spec rev replacing
+  FR-11/FR-12 + Zone contract with prototype layout invariants → then Phase-4
+  impl tasks. Routed to sdd-spec.
+
 - 2026-07-19 — **Phase 2 v3 convergence (T13–T18) — small decisions.**
   (1) **T13 acknowledgment (MOM-3/VOICE-1):** shared-ground → complication →
   handoff, composed by a pure `coached_ack_vm` from `misconception` (preferred) →

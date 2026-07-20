@@ -205,13 +205,24 @@ describe("CoachedLoopSection — T21 MOM-9 ladder rail (V3)", () => {
 });
 
 describe("CoachedLoopSection — Phase-3 residual R1 (fold + bleed)", () => {
-  it("exhaustion action footer is opaque (no translucent bleed-through)", () => {
+  // FR-23 (ADR-0037 / M9): supersedes the old R1 "opaque footer" assertion.
+  // R1 pinned the exhaustion actions as a `sticky bottom-0 z-10 bg-surface`
+  // footer and required the background to be OPAQUE so transcript text wouldn't
+  // bleed through. Post-M7/M8 the coach column is a SINGLE scroll body with only
+  // the composer pinned — a sticky opaque block there is the defect the human
+  // reported (the "PROMPT · NO ANSWER" bubble scrolls up and hides BEHIND it).
+  // So the premise is inverted: the actions must NOT be sticky and must NOT lay
+  // an opaque paint layer over the scroll flow. (G8: retargeted, not deleted.)
+  it("exhaustion actions scroll in normal flow — not a sticky opaque footer (M9)", () => {
     const doc = render({ rungsRevealed: 3, exhausted: true });
     const actions = doc.querySelector('[data-testid="quiz-exhaustion-actions"]');
     const cls = actions?.getAttribute("class") ?? "";
-    expect(cls).not.toContain("bg-surface/95");
-    expect(cls).not.toContain("backdrop-blur");
-    expect(cls).toContain("bg-surface");
+    // No pinning: the block sits in normal flow and scrolls with the transcript.
+    expect(cls).not.toMatch(/\bsticky\b/);
+    expect(cls).not.toMatch(/bottom-0/);
+    expect(cls).not.toMatch(/\bz-10\b/);
+    // No opaque paint layer over the scroll flow (that was what hid the bubble).
+    expect(cls).not.toMatch(/bg-surface\b/);
   });
 
   it("scrolls the actions row into view when a rung is revealed", async () => {

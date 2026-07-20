@@ -7,6 +7,8 @@ title: 'Architecture Decision Records — bundle log'
 
 Chronological history, newest first (ISO-8601).
 
+- 2026-07-20 — **[ADR-0037](0037-coach-column-single-scroll-prototype.md) proposed: coach column = single-scroll prototype layout; pin only composer + action buttons.** Partially supersedes ADR-0036 (FR-11 dual scroll, FR-12 pinned chip row, Zone A/B/C contract) after M7 "scroll within scroll" — measured H-scroll chip clips (`489>323`, `540>367`) + fixed chrome crushing the transcript to 226px/672. Body scrolls as one region (mode + rail + transcript + quick-actions); only composer + action buttons pinned. Retains `coachMode`/drawer/rail/iPhone + a11y FRs, re-hosted. Spec: [preact-wide-layout-coach-panel.spec.md](../plan/preact-wide-layout-coach-panel.spec.md).
+
 - 2026-07-17 — **[ADR-0035](0035-hint-choice-letter-uniqueness.md) accepted: Hint.choice_letter + uniqueness `(question_id, choice_letter, rung)`; rung 4 stays off wire (Step-6 Gen2 emit).** Amends ADR-0014. Nullable `choice_letter` on wire/DB/Python; dual partial unique indexes; emitter strips rung 4; `HintRepo.list` defaults to item-level (`null`) ladder. Preserves ADR-0012 no-assertion-on-wire. Numbered 0035 because main already assigned 0031–0034.
 
 - 2026-07-16 — **[ADR-0036](0036-wide-layout-coach-panel-parity.md) amended: Direction 2b lock supersession.** Revises same-day Accepted draft: **64px** rail (drop session pin); `coachMode` replaces pin-aware ladder; `use_expandable_list` replaces `use_collapsible_thread`; dedicated `CoachDrawer`+pill retires Sheet product path; HintLadderList. Spec re-Accepted FR-1…20. Spec: [preact-wide-layout-coach-panel.spec.md](../plan/preact-wide-layout-coach-panel.spec.md).

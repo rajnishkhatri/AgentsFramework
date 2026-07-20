@@ -120,20 +120,123 @@ describe("CoachPanel — failure path first (FR-B5)", () => {
     );
   });
 
-  it("FR-12: Zone C hosts nudge; Zone B hosts ladder header", async () => {
+  // FR-23 (ADR-0037): supersedes the old FR-12 "Zone C hosts nudge" — the pinned
+  // bar (coach-zone-c) is composer-only; the "One more nudge" control moves into
+  // the single scroll body (coach-zone-b) alongside the ladder. (G8: the prior
+  // assertion pinned a control the new single-scroll layout deliberately relocates.)
+  it("FR-23: pinned bar is composer-only; nudge + ladder live in the scroll body", async () => {
     await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
     const zoneC = container.querySelector("[data-testid='coach-zone-c']");
-    expect(zoneC?.querySelector("[data-testid='one-more-nudge']")).not.toBeNull();
+    // nudge NOT in the pinned bar anymore
+    expect(zoneC?.querySelector("[data-testid='one-more-nudge']")).toBeNull();
+    // nudge + ladder BOTH in the scroll body
+    expect(
+      container.querySelector(
+        "[data-testid='coach-zone-b'] [data-testid='one-more-nudge']",
+      ),
+    ).not.toBeNull();
     expect(
       container.querySelector(
         "[data-testid='coach-zone-b'] [data-testid='hint-ladder-list']",
       ),
     ).not.toBeNull();
+    // pinned bar still hosts the composer
     expect(
-      container.querySelector(
-        "[data-testid='coach-zone-b'] [data-testid='one-more-nudge']",
-      ),
+      zoneC?.querySelector("[data-testid='coach-panel-composer']"),
+    ).not.toBeNull();
+  });
+
+  // FR-24 mechanism (ADR-0037 / M3): the coach composer is slimmed to reclaim
+  // transcript height — no "+" attach button, no model picker. (The ≥50% height
+  // floor itself is a computed-layout assertion covered live/e2e; this guards the
+  // mechanism that makes it reachable.)
+  it("FR-24: coach composer has no attach or model-picker (slim bar)", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    const bar = container.querySelector("[data-testid='coach-zone-c']");
+    expect(bar).not.toBeNull();
+    expect(
+      bar!.querySelector("[data-testid='model-picker-trigger']"),
+      "coach composer must not show the model picker",
     ).toBeNull();
+    expect(
+      bar!.querySelector("[aria-label='Add attachment']"),
+      "coach composer must not show the '+' attach button",
+    ).toBeNull();
+    // the send control stays
+    expect(bar!.querySelector("[aria-label='Send']")).not.toBeNull();
+  });
+
+  // FR-24/25 (ADR-0037, tightened by FR-27/M8): the coach column is a single-scroll
+  // body with ONLY the composer pinned — there is no fixed top header zone anymore.
+  // Zone B is the ONLY vertical scroll region and takes the flex remainder (grows
+  // with the conversation); the composer is shrink-0 so it never scrolls. (G8: the
+  // prior assertion required a shrink-0 `coach-zone-a` fixed header — M8 unpins that
+  // header into the scroll body, so a fixed Zone A no longer exists; the height it
+  // used to steal now belongs to Zone B. Absolute heights are computed layout —
+  // asserted live/e2e; this guards the class contract that produces it.)
+  it("FR-24/25/27: Zone B is the single flex-1 scroll region; only the composer is shrink-0", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    const zoneB = container.querySelector("[data-testid='coach-zone-b']");
+    const zoneC = container.querySelector("[data-testid='coach-zone-c']");
+    // Zone B: the one growing scroll region.
+    expect(zoneB?.className).toMatch(/flex-1/);
+    expect(zoneB?.className).toMatch(/min-h-0/);
+    expect(zoneB?.className).toMatch(/overflow-y-auto/);
+    // Composer: the sole fixed region; never scrolls.
+    expect(zoneC?.className).toMatch(/shrink-0/);
+    expect(zoneC?.className ?? "").not.toMatch(/overflow-y-(auto|scroll)/);
+    // FR-27: there is NO fixed top header zone — the identity header scrolls in Zone B.
+    expect(
+      container.querySelector("[data-testid='coach-zone-a']"),
+      "coach-zone-a (fixed header) must be gone — header now scrolls in the body",
+    ).toBeNull();
+  });
+
+  // FR-27 (M8): the coach identity header (title/status/current-item/history + mode
+  // chips = CoachChrome) is unpinned — it lives at the TOP of the scroll body
+  // (coach-zone-b), so it scrolls away with the transcript instead of eating a
+  // fixed ~187px. The dismiss control stays reachable, riding with the header.
+  it("FR-27: CoachChrome + dismiss live in the scroll body, not a fixed header", async () => {
+    let dismissed = false;
+    await render(
+      <CoachPanel
+        runtime={scriptedRuntime()}
+        hintLadder={LADDER}
+        onDismiss={() => {
+          dismissed = true;
+        }}
+      />,
+    );
+    const zoneB = container.querySelector("[data-testid='coach-zone-b']");
+    // The identity chrome is a descendant of the scroll body.
+    expect(
+      zoneB?.querySelector("[data-testid='coach-chrome']"),
+      "CoachChrome must scroll inside Zone B",
+    ).not.toBeNull();
+    // The dismiss control rides with it (still reachable).
+    const dismiss = zoneB?.querySelector<HTMLButtonElement>(
+      "[data-testid='coach-panel-dismiss']",
+    );
+    expect(dismiss, "dismiss control must remain in the scroll body").not.toBeNull();
+    dismiss!.click();
+    await tick();
+    expect(dismissed).toBe(true);
+  });
+
+  // FR-21 (ADR-0037): no descendant of the coach panel may declare a horizontal
+  // scroll axis. jsdom can't compute real overflow, so we assert the className
+  // contract that produces it — the single guard that keeps the "scroll within
+  // scroll" from regressing. (Live overflow is asserted by the e2e FR-21 test.)
+  it("FR-21: no coach-panel descendant declares overflow-x auto/scroll", async () => {
+    await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
+    const panel = container.querySelector("[data-testid='coach-panel']");
+    expect(panel).not.toBeNull();
+    const offenders = Array.from(panel!.querySelectorAll<HTMLElement>("*"))
+      .filter((el) => /overflow-x-(auto|scroll)/.test(el.className ?? ""))
+      .map((el) => el.getAttribute("data-testid") ?? el.className);
+    expect(offenders, `horizontal-scroll offenders: ${offenders.join(", ")}`).toEqual(
+      [],
+    );
   });
 });
 
@@ -187,20 +290,30 @@ describe("CoachPanel — B1 shared chrome (FR-5, FR-9)", () => {
   });
 });
 
-describe("CoachPanel — BP-1.5c stacked + chips by composer (FR-1)", () => {
-  it("uses stacked chrome without left-rail class; chips sit with composer", async () => {
+describe("CoachPanel — stacked chrome + chips in scroll body (FR-22)", () => {
+  // FR-22 (ADR-0037): quick-action chips move OUT of the pinned composer bar into
+  // the single scroll body, so they scroll with the transcript and never form a
+  // horizontal-scroll strip. (G8: supersedes the prior "chips by composer" pin.)
+  it("uses stacked chrome; chips live in the scroll body, not the pinned bar", async () => {
     await render(<CoachPanel runtime={scriptedRuntime()} hintLadder={LADDER} />);
     const chrome = container.querySelector("[data-testid='coach-chrome']");
     expect(chrome?.getAttribute("data-layout")).toBe("stacked");
     expect(chrome?.className ?? "").not.toMatch(/coach-layout-rail/);
+    // chrome (Zone A header) still carries no chips
     expect(
       chrome?.querySelectorAll("[data-testid='coach-chip']").length ?? 0,
     ).toBe(0);
+    // chips are in the scroll body (Zone B), NOT in the pinned composer bar
     expect(
       container.querySelectorAll(
-        "[data-testid='coach-panel-composer'] [data-testid='coach-chip']",
+        "[data-testid='coach-zone-b'] [data-testid='coach-chip']",
       ).length,
     ).toBe(3);
+    expect(
+      container.querySelectorAll(
+        "[data-testid='coach-zone-c'] [data-testid='coach-chip']",
+      ).length,
+    ).toBe(0);
   });
 });
 
