@@ -13,8 +13,8 @@ derives_from:
 
 # Validation report — Wide-layout & CoachPanel parity (Direction 2b)
 
-**Date:** 2026-07-16  
-**Branch work:** Stage 6 implementation + FR-18 e2e oracle fix + CoachDrawer focus-restore fix  
+**Date:** 2026-07-16
+**Branch work:** Stage 6 implementation + FR-18 e2e oracle fix + CoachDrawer focus-restore fix
 **Commands:**
 
 ```bash
